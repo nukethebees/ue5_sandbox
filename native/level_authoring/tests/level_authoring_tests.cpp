@@ -9,6 +9,7 @@
 #include <ioj/levels/authoring/starfield_reader.h>
 #include <ioj/levels/catalog_validation.h>
 #include <ioj/s7/interpreter.h>
+#include <ioj/testing/files.h>
 #include <ioj/testing/structural_diff.h>
 
 #include <gtest/gtest.h>
@@ -16,13 +17,13 @@
 #include <algorithm>
 #include <chrono>
 #include <format>
-#include <fstream>
 #include <limits>
 #include <type_traits>
 #include <unordered_set>
 
 namespace ioj::levels::authoring::tests {
 using ioj::testing::structurally_equal;
+using ioj::testing::write_files;
 namespace {
 auto timer_mission() -> MissionDefinition {
     ObjectiveDefinition objective{.id = ioj::levels::ObjectiveName{"primary"}, .team = Team::Blue};
@@ -157,7 +158,7 @@ TEST(NativeSettings, AssignsWholeVectorsOnlyAfterEveryComponentConverts) {
 TEST(NativeSettings, DerivesStarfieldBindingsAndPreservesSparseLayers) {
     TemporaryLevelDirectory directory;
     auto const path{directory.path() / "settings.scm"};
-    std::ofstream{path} << R"((settings-layers
+    ASSERT_TRUE(write_files({{path, R"((settings-layers
       (settings :starfield (starfield
         :generation (generation :star-count 42 :random-seed -7)
         :star (star :scale 2 :size-multiplier 3 :global-brightness 4
@@ -171,7 +172,7 @@ TEST(NativeSettings, DerivesStarfieldBindingsAndPreservesSparseLayers) {
         :galactic-haze (galactic-haze :strength 20 :width-degrees 21)
         :galactic-core (galactic-core :strength 22 :width-degrees 23)
         :nebular-knot (nebular-knot :strength 24 :size-degrees 25)))
-      (settings :starfield (starfield :star (star :scale 1)))))";
+      (settings :starfield (starfield :star (star :scale 1)))))"}}));
     auto const result{read_starfield_settings_file(path)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     starfield::Settings const expected{.generation = {42, -7},
@@ -341,8 +342,8 @@ TEST(NativeSettings, RetainsStarfieldConversionAndDomainDiagnostics) {
           Case{"(star :scale 1e100)", DiagnosticCode::InvalidNumber, "star.scale"},
           Case{"(star :scale 0)", DiagnosticCode::InvalidNumber, "star.scale"}}) {
         SCOPED_TRACE(test.section);
-        std::ofstream{path} << std::format("(settings :starfield (starfield :star {}))",
-                                           test.section);
+        ASSERT_TRUE(write_files(
+            {{path, std::format("(settings :starfield (starfield :star {}))", test.section)}}));
         auto const result{read_starfield_settings_file(path)};
         ASSERT_FALSE(result);
         ASSERT_EQ(result.error().size(), 1u);
@@ -360,18 +361,18 @@ TEST(NativeSettings, ReadsShippedStarfieldSettingsAndValidatesEachNestedLayer) {
 
     TemporaryLevelDirectory directory;
     auto const path{directory.path() / "settings.scm"};
-    std::ofstream{path} << R"((settings :starfield (starfield
+    ASSERT_TRUE(write_files({{path, R"((settings :starfield (starfield
       :star (settings-layers
         (star :scale 2 :size-multiplier 3)
-        (star :scale 1)))))";
+        (star :scale 1)))))"}}));
     auto result{read_starfield_settings_file(path)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     starfield::Settings expected;
     expected.star.size_multiplier = 3.f;
     EXPECT_PRED_FORMAT2(structurally_equal, expected, *result);
 
-    std::ofstream{path} << R"((settings :starfield (starfield
-      :star (settings-layers (star :scale 0) (star :scale 1)))))";
+    ASSERT_TRUE(write_files({{path, R"((settings :starfield (starfield
+      :star (settings-layers (star :scale 0) (star :scale 1)))))"}}));
     result = read_starfield_settings_file(path);
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().front().node_path, "starfield.star.scale");
@@ -391,7 +392,7 @@ TEST(NativeSettings, RejectsMalformedStarfieldRecordsAndInvalidEffectiveValues) 
           "(settings :starfield (starfield :galactic-band (galactic-band :width-degrees 91)))",
           "(settings :starfield (starfield :nebular-knot (nebular-knot :size-degrees 0)))"}) {
         SCOPED_TRACE(source);
-        std::ofstream{path} << source;
+        ASSERT_TRUE(write_files({{path, source}}));
         auto result{read_starfield_settings_file(path)};
         ASSERT_FALSE(result);
         EXPECT_FALSE(result.error().empty());
@@ -556,7 +557,7 @@ TEST(NativeSourceSession, PreservesTextAndSeparatesSavedFromAppliedState) {
     EXPECT_EQ(session.state().preview, PreviewState::Stale);
     EXPECT_GT(session.state().revision, revision);
 
-    std::ofstream{path} << "external";
+    ASSERT_TRUE(write_files({{path, "external"}}));
     ASSERT_TRUE(session.refresh_external_conflict());
     EXPECT_TRUE(session.state().disk_conflict);
     EXPECT_FALSE(session.save());
@@ -575,7 +576,7 @@ TEST(NativeSourceSession, ProtectsDiskChangesAndRecoversDetachedBuffers) {
         SCOPED_TRACE(change);
         std::filesystem::remove(path);
         if (std::string_view{change} != "create") {
-            std::ofstream{path} << "original";
+            ASSERT_TRUE(write_files({{path, "original"}}));
         }
         SourceSession session;
         ASSERT_TRUE(session.attach(path));
@@ -584,7 +585,7 @@ TEST(NativeSourceSession, ProtectsDiskChangesAndRecoversDetachedBuffers) {
         if (std::string_view{change} == "delete") {
             std::filesystem::remove(path);
         } else {
-            std::ofstream{path} << "external";
+            ASSERT_TRUE(write_files({{path, "external"}}));
         }
         ASSERT_TRUE(session.refresh_external_conflict());
         EXPECT_TRUE(session.state().disk_conflict);
@@ -597,7 +598,7 @@ TEST(NativeSourceSession, ProtectsDiskChangesAndRecoversDetachedBuffers) {
         EXPECT_EQ(session.buffer(), "unsaved");
         EXPECT_FALSE(session.state().scene_dirty);
         EXPECT_EQ(session.state().preview, PreviewState::None);
-        std::ofstream{recovery} << "unrelated";
+        ASSERT_TRUE(write_files({{recovery, "unrelated"}}));
         EXPECT_FALSE(session.save_as(recovery, SourceOverwritePolicy::RefuseExisting));
         EXPECT_EQ(read_file(recovery).value(), "unrelated");
 
@@ -618,8 +619,7 @@ TEST(NativeSourceSession, ReadsUtf8BomText) {
     auto const path{directory.path() / "encoding.scm"};
     std::string const bytes{"\xef\xbb\xbf"
                             "A\xcf\x80"};
-    std::ofstream{path, std::ios::binary}.write(bytes.data(),
-                                                static_cast<std::streamsize>(bytes.size()));
+    ASSERT_TRUE(write_files({{path, bytes}}));
     SourceSession session;
     ASSERT_TRUE(session.attach(path));
     EXPECT_EQ(session.buffer(), "A\xcf\x80");
@@ -629,12 +629,14 @@ TEST(NativeSourceSession, ReadsUtf8BomText) {
 
 TEST(NativeLevelAuthoringReader, ReadsFileWithRootRelativeLibrary) {
     TemporaryLevelDirectory directory;
-    std::ofstream{directory.path() / "Libraries" / "metadata.scm"}
-        << "(define benchmark-title \"Loaded From Library\")";
     auto source{minimal_source()};
     source.replace(source.find("\"Test\""), 6, "benchmark-title");
     auto const path{directory.path() / "level.scm"};
-    std::ofstream{path} << "(load-script \"Libraries/metadata.scm\")\n" << source;
+    ASSERT_TRUE(write_files({
+        {directory.path() / "Libraries" / "metadata.scm",
+         "(define benchmark-title \"Loaded From Library\")"},
+        {path, "(load-script \"Libraries/metadata.scm\")\n" + source},
+    }));
     auto const result{DefinitionReader{}.read_level_file(path)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     EXPECT_EQ(result->metadata().title, "Loaded From Library");
@@ -650,52 +652,59 @@ TEST(NativeLevelAuthoringReader, RootControlsImportsAndPreservesFailuresAndSourc
     auto const& root{directory.path()};
     auto source{minimal_source()};
     source.replace(source.find("\"Test\""), 6, "shared-title");
-    std::ofstream{root / "first.scm"} << "(define shared-title \"Shared\")\n" << source;
-    std::ofstream{root / "second.scm"} << source;
-    std::ofstream{root / "broken.scm"} << "(undefined-function)";
-    std::ofstream{root / "ignored.scm"} << "(error 'ignored \"Must not be loaded\")";
-    std::ofstream{root / "campaign.scm"}
-        << "(campaign :id 'shared :title shared-title :levels '(test))";
-    std::ofstream{root / "catalog.scm"} << R"(
+    ASSERT_TRUE(write_files({
+        {root / "first.scm", "(define shared-title \"Shared\")\n" + source},
+        {root / "second.scm", source},
+        {root / "broken.scm", "(undefined-function)"},
+        {root / "ignored.scm", "(error 'ignored \"Must not be loaded\")"},
+        {root / "campaign.scm", "(campaign :id 'shared :title shared-title :levels '(test))"},
+        {root / "catalog.scm", R"(
         (catalog
           :levels (list "first.scm"
                         "broken.scm"
                         "second.scm")
-          :campaigns (list "campaign.scm")))";
+          :campaigns (list "campaign.scm")))"},
+    }));
     auto const catalog{DefinitionReader{}.read_root_file(root / "catalog.scm")};
     ASSERT_TRUE(catalog) << format_diagnostics(catalog.error());
-    ASSERT_EQ(catalog->levels.size(), 3u);
+    auto const& levels{catalog->levels};
+    ASSERT_EQ(levels.size(), 3u);
     ASSERT_EQ(catalog->campaigns.size(), 1u);
-    ASSERT_TRUE(catalog->levels[0].definition);
-    EXPECT_EQ(catalog->levels[0].definition->metadata().title, "Shared");
-    ASSERT_FALSE(catalog->levels[1].definition);
-    EXPECT_EQ(catalog->levels[1].definition.error().front().source_path, root / "broken.scm");
-    ASSERT_TRUE(catalog->levels[2].definition);
-    EXPECT_EQ(catalog->levels[2].definition->metadata().title, "Shared");
-    ASSERT_TRUE(catalog->campaigns[0].definition);
-    EXPECT_EQ(catalog->campaigns[0].definition->title, "Shared");
+    ASSERT_TRUE(levels[0].definition);
+    EXPECT_EQ(levels[0].definition->metadata().title, "Shared");
+    ASSERT_FALSE(levels[1].definition);
+    EXPECT_EQ(levels[1].definition.error().front().source_path, root / "broken.scm");
+    ASSERT_TRUE(levels[2].definition);
+    EXPECT_EQ(levels[2].definition->metadata().title, "Shared");
 
-    std::ofstream{root / "variation.scm"} << "(catalog :levels (list \"second.scm\"))";
+    auto const& campaign{catalog->campaigns[0].definition};
+    ASSERT_TRUE(campaign);
+    CampaignDefinition const expected{CampaignId{"shared"}, "Shared", {LevelId{"test"}}};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected, *campaign);
+
+    ASSERT_TRUE(write_files({{root / "variation.scm", "(catalog :levels (list \"second.scm\"))"}}));
     auto const variation{DefinitionReader{}.read_root_file(root / "variation.scm")};
     ASSERT_TRUE(variation);
+    ASSERT_EQ(variation->levels.size(), 1u);
     ASSERT_FALSE(variation->levels[0].definition);
     EXPECT_EQ(variation->levels[0].definition.error().front().code,
               DiagnosticCode::ScriptEvaluationFailed);
-    EXPECT_EQ(catalog->levels[0].definition->metadata().title, "Shared");
+    EXPECT_EQ(levels[0].definition->metadata().title, "Shared");
 }
 TEST(NativeLevelAuthoringReader, RootLoadsSharedLibrariesOnce) {
     TemporaryLevelDirectory directory;
     auto const& root{directory.path()};
-    std::ofstream{root / "Libraries" / "count.scm"}
-        << "(set! library-load-count (+ library-load-count 1))";
     auto source{minimal_source()};
     source.replace(source.find("\"Test\""), 6, "(number->string library-load-count)");
-    std::ofstream{root / "level.scm"} << "(load-script \"Libraries/count.scm\")\n" << source;
-    std::ofstream{root / "catalog.scm"} << R"(
+    ASSERT_TRUE(write_files({
+        {root / "Libraries" / "count.scm", "(set! library-load-count (+ library-load-count 1))"},
+        {root / "level.scm", "(load-script \"Libraries/count.scm\")\n" + source},
+        {root / "catalog.scm", R"(
         (define library-load-count 0)
         (load-script "Libraries/count.scm")
         (catalog :levels (list "level.scm"
-                               "level.scm")))";
+                               "level.scm")))"},
+    }));
     auto const catalog{DefinitionReader{}.read_root_file(root / "catalog.scm")};
     ASSERT_TRUE(catalog) << format_diagnostics(catalog.error());
     ASSERT_EQ(catalog->levels.size(), 2u);
@@ -707,12 +716,12 @@ TEST(NativeLevelAuthoringReader, RootLoadsSharedLibrariesOnce) {
 TEST(NativeLevelAuthoringReader, RootReportsEvaluationAndGrammarErrors) {
     TemporaryLevelDirectory directory;
     auto const root{directory.path() / "catalog.scm"};
-    std::ofstream{root} << "(undefined-root-function)";
+    ASSERT_TRUE(write_files({{root, "(undefined-root-function)"}}));
     auto const evaluation{DefinitionReader{}.read_root_file(root)};
     ASSERT_FALSE(evaluation);
     EXPECT_EQ(evaluation.error().front().code, DiagnosticCode::ScriptEvaluationFailed);
     EXPECT_EQ(evaluation.error().front().source_path, root);
-    std::ofstream{root} << "(catalog :levels 42 :unexpected #t)";
+    ASSERT_TRUE(write_files({{root, "(catalog :levels 42 :unexpected #t)"}}));
     auto const grammar{DefinitionReader{}.read_root_file(root)};
     ASSERT_FALSE(grammar);
     EXPECT_GE(grammar.error().size(), 2u);
@@ -720,19 +729,13 @@ TEST(NativeLevelAuthoringReader, RootReportsEvaluationAndGrammarErrors) {
 TEST(NativeLevelAuthoringFiles, ReadsEmptyBinaryAndLargeFilesWithExplicitErrors) {
     TemporaryLevelDirectory directory;
     auto const path{directory.path() / "binary.dat"};
-    {
-        std::ofstream empty_file{path, std::ios::binary};
-        ASSERT_TRUE(empty_file);
-    }
+    ASSERT_TRUE(write_files({{path, ""}}));
     EXPECT_EQ(read_file(path), "");
     std::string bytes(20000, 'x');
     bytes[100] = '\0';
     bytes[8191] = '\r';
     bytes[8192] = '\n';
-    {
-        std::ofstream output{path, std::ios::binary};
-        output.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
-    }
+    ASSERT_TRUE(write_files({{path, bytes}}));
     EXPECT_EQ(read_file(path), bytes);
     auto const missing{read_file(directory.path() / "missing.dat")};
     ASSERT_FALSE(missing);
@@ -825,14 +828,16 @@ TEST(NativeLevelAuthoringReader, RestartsGeneratedIdsForEachDefinitionInOneRoot)
     TemporaryLevelDirectory directory;
     auto const& root{directory.path()};
     for (auto const name : {"first", "second"}) {
-        std::ofstream{root / std::format("{}.scm", name)} << std::format(R"(
+        ASSERT_TRUE(write_files({{root / std::format("{}.scm", name),
+                                  std::format(R"(
           (level :id '{} :title "Generated" :player 'player
             :entities (list
               (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0))
               (entity :archetype 'static-turret :team 'red :position '(1 2 3)))))",
-                                                                         name);
+                                              name)}}));
     }
-    std::ofstream{root / "catalog.scm"} << R"((catalog :levels '("first.scm" "second.scm")))";
+    ASSERT_TRUE(
+        write_files({{root / "catalog.scm", R"((catalog :levels '("first.scm" "second.scm")))"}}));
     auto const catalog{DefinitionReader{}.read_root_file(root / "catalog.scm")};
     ASSERT_TRUE(catalog) << format_diagnostics(catalog.error());
     ASSERT_EQ(catalog->levels.size(), 2u);
