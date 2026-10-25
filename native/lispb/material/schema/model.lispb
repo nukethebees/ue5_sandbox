@@ -1,0 +1,116 @@
+(module material_domain
+  :header "MaterialDomain.h"
+  :namespace material_synth
+  (enum MaterialDomain std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value ui :serialized-name "ui")
+    (value surface :serialized-name "surface")
+    (value post_process :serialized-name "post-process")))
+
+(module blend_mode
+  :header "BlendMode.h"
+  :namespace material_synth
+  (enum BlendMode std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value additive :serialized-name "additive")
+    (value translucent :serialized-name "translucent")
+    (value opaque :serialized-name "opaque")
+    (value masked :serialized-name "masked")
+    (value alpha_composite :serialized-name "alpha-composite")))
+
+(module shading_model
+  :header "ShadingModel.h"
+  :namespace material_synth
+  (enum ShadingModel std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value default_lit :serialized-name "default-lit")
+    (value unlit :serialized-name "unlit")))
+
+(module texture_sampler_type
+  :header "TextureSamplerType.h"
+  :namespace material_synth
+  (enum TextureSamplerType std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value linear_color :serialized-name "linear-color")
+    (value linear_grayscale :serialized-name "linear-grayscale")))
+
+(module position_space
+  :header "PositionSpace.h"
+  :namespace material_synth
+  (enum PositionSpace std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value world :serialized-name "world")
+    (value local :serialized-name "local")))
+
+(module scene_texture
+  :header "SceneTexture.h"
+  :namespace material_synth
+  (enum SceneTexture std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value post_process_input0 :serialized-name "post-process-input0")
+    (value scene_depth :serialized-name "scene-depth")))
+
+(module material_clause
+  :header "MaterialClause.h"
+  :namespace material_synth
+  (enum MaterialClause std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value asset :serialized-name "asset")
+    (value domain :serialized-name "domain")
+    (value blend :serialized-name "blend")
+    (value shading :serialized-name "shading")
+    (value two_sided :serialized-name "two-sided")
+    (value disable_depth_test :serialized-name "disable-depth-test")
+    (value usage :serialized-name "usage")
+    (value adopt_existing :serialized-name "adopt-existing")
+    (value opacity_mask_clip :serialized-name "opacity-mask-clip")
+    (value parameter :serialized-name "parameter")
+    (value let_ :serialized-name "let")
+    (value emissive :serialized-name "emissive")
+    (value opacity :serialized-name "opacity")
+    (value base_color :serialized-name "base-color")
+    (value opacity_mask :serialized-name "opacity-mask")
+    (value world_position_offset :serialized-name "world-position-offset")))
+
+(module material_operator
+  :header "MaterialOperator.h"
+  :namespace material_synth
+  (enum MaterialOperator std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value float2 :serialized-name "float2")
+    (value float3 :serialized-name "float3")
+    (value float4 :serialized-name "float4")
+    (value add :serialized-name "+")
+    (value subtract :serialized-name "-")
+    (value multiply :serialized-name "*")
+    (value divide :serialized-name "/")
+    (value lerp :serialized-name "lerp")
+    (value saturate :serialized-name "saturate")
+    (value step :serialized-name "step")
+    (value time :serialized-name "time")
+    (value sin :serialized-name "sin")
+    (value cos :serialized-name "cos")
+    (value texcoord :serialized-name "texcoord")
+    (value per_instance_custom_data :serialized-name "per-instance-custom-data")
+    (value sample :serialized-name "sample")
+    (value texture :serialized-name "texture")
+    (value swizzle :serialized-name "swizzle")
+    (value world_position :serialized-name "world-position")
+    (value object_position :serialized-name "object-position")
+    (value pixel_normal :serialized-name "pixel-normal")
+    (value vertex_normal :serialized-name "vertex-normal")
+    (value camera_vector :serialized-name "camera-vector")
+    (value camera_position :serialized-name "camera-position")
+    (value vertex_color :serialized-name "vertex-color")
+    (value transform_position :serialized-name "transform-position")
+    (value scene_texture :serialized-name "scene-texture")
+    (value shader_call :serialized-name "shader-call")
+    (value custom :serialized-name "custom")))

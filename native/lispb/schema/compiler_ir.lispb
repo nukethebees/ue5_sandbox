@@ -78,3 +78,13 @@
     (field pragma_once bool :bits 1)
     (field clang_format_off bool :bits 1)
     (field format_generated bool :bits 1)))
+
+(module access
+  :header "access.h"
+  :namespace lispb::codegen
+  (enum Access std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value public_ :serialized-name "public")
+    (value protected_ :serialized-name "protected")
+    (value private_ :serialized-name "private")))

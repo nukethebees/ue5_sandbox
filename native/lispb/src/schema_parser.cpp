@@ -46,7 +46,6 @@
 #include <lispb/strings.h>
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -369,15 +368,12 @@ auto SchemaParser::parse_member(Declarations& declarations, sexpr::FormId const 
                      P::equivalent_member,
                      P::equivalent_accessor},
                     {"relation"});
-    auto const kind_name{std::string{parser_.text(fields.positional(1), "member kind")}};
-    SoaMemberKind kind;
-    if (kind_name == "array") {
-        kind = SoaMemberKind::array;
-    } else if (kind_name == "nested") {
-        kind = SoaMemberKind::nested;
-    } else {
+    auto const kind_name{parser_.text(fields.positional(1), "member kind")};
+    auto const parsed_kind{try_parse_serialized_soa_member_kind(kind_name)};
+    if (!parsed_kind) {
         parser_.fail(fields.positional(1), std::format("unknown SOA member kind '{}'", kind_name));
     }
+    auto const kind{*parsed_kind};
     std::vector<SoaMaskDimensionId> mask_dimensions;
     if (auto const dimensions{fields.optional(P::mask_dimensions)}) {
         if (!syntax_.is_list(*dimensions)) {
@@ -510,19 +506,9 @@ auto SchemaParser::parse_module_settings(Declarations& declarations, sexpr::Fiel
 }
 
 auto SchemaParser::parse_native_enum_helper(sexpr::FormId const form) -> NativeEnumHelper {
-    auto const value{std::string{parser_.text(form, "native enum helper")}};
-    constexpr std::array helpers{
-        NativeEnumHelper::to_string,
-        NativeEnumHelper::try_parse,
-        NativeEnumHelper::to_display_string,
-        NativeEnumHelper::to_serialized_string,
-        NativeEnumHelper::try_parse_serialized,
-        NativeEnumHelper::traits,
-    };
-    for (auto const helper : helpers) {
-        if (native_enum_helper_name(helper) == value) {
-            return helper;
-        }
+    auto const value{parser_.text(form, "native enum helper")};
+    if (auto const parsed{try_parse_serialized_native_enum_helper(value)}) {
+        return *parsed;
     }
     parser_.fail(form, std::format("unknown native enum helper '{}'", value));
 }
@@ -562,34 +548,25 @@ auto SchemaParser::parse_enum_unreal_projection(Declarations& declarations,
 }
 
 auto SchemaParser::parse_semantic_relation_unit(sexpr::FormId const form) -> SemanticRelationUnit {
-    auto const name{std::string{parser_.text(form, "semantic relationship unit")}};
-    if (name == "elements") {
-        return SemanticRelationUnit::elements;
-    }
-    if (name == "bytes") {
-        return SemanticRelationUnit::bytes;
+    auto const value{parser_.text(form, "semantic relationship unit")};
+    if (auto const parsed{try_parse_serialized_semantic_relation_unit(value)}) {
+        return *parsed;
     }
     parser_.fail(form, "semantic relationship unit must be 'elements' or 'bytes'");
 }
 
 auto SchemaParser::parse_packed_byte_order(sexpr::FormId const form) -> PackedByteOrder {
-    auto const name{std::string{parser_.text(form, "packed byte order")}};
-    if (name == "little") {
-        return PackedByteOrder::little_endian;
-    }
-    if (name == "big") {
-        return PackedByteOrder::big_endian;
+    auto const value{parser_.text(form, "packed byte order")};
+    if (auto const parsed{try_parse_serialized_packed_byte_order(value)}) {
+        return *parsed;
     }
     parser_.fail(form, "packed byte order must be 'little' or 'big'");
 }
 
 auto SchemaParser::parse_packed_bit_order(sexpr::FormId const form) -> PackedBitOrder {
-    auto const name{std::string{parser_.text(form, "packed bit order")}};
-    if (name == "lsb-first") {
-        return PackedBitOrder::least_significant_first;
-    }
-    if (name == "msb-first") {
-        return PackedBitOrder::most_significant_first;
+    auto const value{parser_.text(form, "packed bit order")};
+    if (auto const parsed{try_parse_serialized_packed_bit_order(value)}) {
+        return *parsed;
     }
     parser_.fail(form, "packed bit order must be 'lsb-first' or 'msb-first'");
 }
@@ -924,12 +901,9 @@ auto SchemaParser::parse_facade_access(sexpr::Fields const& fields, SchemaProper
     if (!form) {
         return Access::public_;
     }
-    auto const value{std::string{parser_.text(*form, property)}};
-    if (value == "public") {
-        return Access::public_;
-    }
-    if (value == "private") {
-        return Access::private_;
+    auto const value{try_parse_serialized_access(parser_.text(*form, property))};
+    if (value && *value != Access::protected_) {
+        return *value;
     }
     parser_.fail(*form, "facade access must be public or private");
 }
@@ -1010,15 +984,9 @@ auto SchemaParser::parse_facade(Declarations& declarations, sexpr::FormId const 
 }
 
 auto SchemaParser::parse_setting_device(sexpr::FormId const form) -> SettingDevice {
-    auto const value{std::string{parser_.text(form, "setting device")}};
-    if (value == "shared") {
-        return SettingDevice::shared;
-    }
-    if (value == "keyboard-mouse") {
-        return SettingDevice::keyboard_mouse;
-    }
-    if (value == "controller") {
-        return SettingDevice::controller;
+    auto const value{parser_.text(form, "setting device")};
+    if (auto const parsed{try_parse_serialized_setting_device(value)}) {
+        return *parsed;
     }
     parser_.fail(form, std::format("unknown setting device '{}'", value));
 }
@@ -1410,12 +1378,12 @@ auto SchemaParser::parse_linear_quantized(Declarations& declarations, sexpr::For
 
     auto clipping{QuantizationClipping::reject};
     if (auto const value{fields.optional(P::clipping)}) {
-        auto const name{std::string{parser_.text(*value, "linear quantization clipping policy")}};
-        if (name == "clamp") {
-            clipping = QuantizationClipping::clamp;
-        } else if (name != "reject") {
+        auto const parsed{try_parse_serialized_quantization_clipping(
+            parser_.text(*value, "linear quantization clipping policy"))};
+        if (!parsed) {
             parser_.fail(*value, "linear quantization clipping must be reject or clamp");
         }
+        clipping = *parsed;
     }
 
     auto const bits{parser_.integer(fields.required(P::bits), "linear quantization bit width")};
@@ -1479,12 +1447,12 @@ auto SchemaParser::parse_fixed_point(Declarations& declarations, sexpr::FormId c
 
     auto rounding{FixedPointRounding::nearest_even};
     if (auto const value{fields.optional(P::rounding)}) {
-        auto const name{std::string{parser_.text(*value, "fixed-point rounding policy")}};
-        if (name == "toward-zero") {
-            rounding = FixedPointRounding::toward_zero;
-        } else if (name != "nearest-even") {
+        auto const parsed{try_parse_serialized_fixed_point_rounding(
+            parser_.text(*value, "fixed-point rounding policy"))};
+        if (!parsed) {
             parser_.fail(*value, "fixed-point rounding must be nearest-even or toward-zero");
         }
+        rounding = *parsed;
     }
 
     auto const minimum{fields.optional(P::minimum)};

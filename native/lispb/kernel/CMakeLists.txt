@@ -1,8 +1,6 @@
 add_library(kernel-codegen-lib
-  src/binary_operator.cpp
   src/document.cpp
   src/expressions.cpp
-  src/scalar_type.cpp
   src/compiler.cpp
   src/lowering.cpp
   src/parser.cpp
@@ -19,6 +17,7 @@ target_link_libraries(kernel-codegen-lib
     sandbox::native_defaults
     lispb-output
     lispb-syntax
+    native-core-headers
   PRIVATE
     codegen-lib
     ioj::codegen_pch

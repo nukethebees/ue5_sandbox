@@ -8,3 +8,34 @@
     (value callback :serialized-name "callback")
     (value factory :serialized-name "factory")
     (value existing :serialized-name "existing")))
+
+(module structural_form
+  :header "structural_form.h"
+  :namespace slate_codegen::detail
+  (enum StructuralForm std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value widget_class :serialized-name "widget-class")
+    (value widget_library :serialized-name "widget-library")
+    (value function :serialized-name "function")
+    (value vbox :serialized-name "vbox")
+    (value hbox :serialized-name "hbox")
+    (value slot :serialized-name "slot")
+    (value auto_ :serialized-name "auto")
+    (value fill :serialized-name "fill")
+    (value assign :serialized-name "assign")
+    (value existing :serialized-name "existing")
+    (value call :serialized-name "call")
+    (value let_ :serialized-name "let")
+    (value params :serialized-name "params")))
+
+(module slot_option
+  :header "slot_option.h"
+  :namespace slate_codegen::detail
+  (enum SlotOption std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value weight :serialized-name "weight")
+    (value padding :serialized-name "padding")
+    (value halign :serialized-name "halign")
+    (value valign :serialized-name "valign")))

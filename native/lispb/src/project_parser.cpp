@@ -6,7 +6,9 @@
 #include <codegen/sexpr/syntax.h>
 #include <lispb/path_base.h>
 #include <lispb/project.h>
+#include <lispb/project_property.h>
 #include <lispb/strings.h>
+#include <lispb/target_kind.h>
 
 #include <optional>
 #include <span>
@@ -18,6 +20,7 @@ namespace sexpr = codegen::sexpr;
 using codegen::sexpr::Fields;
 using codegen::sexpr::FormId;
 using codegen::sexpr::SourceSpan;
+using P = ProjectProperty;
 
 ProjectParser::ProjectParser(codegen::sexpr::Syntax& syntax)
     : syntax_{syntax}
@@ -49,8 +52,8 @@ void ProjectParser::output_path(Project& project,
                                 TargetId const target,
                                 FormId const form,
                                 std::string_view const purpose) {
-    if (!syntax_.is_list(form) || syntax_.children(form).size() != 2 ||
-        (syntax_.head(form) != "project-path" && syntax_.head(form) != "build-path")) {
+    auto const base{try_parse_serialized_path_base(syntax_.head(form))};
+    if (!syntax_.is_list(form) || syntax_.children(form).size() != 2 || !base) {
         parser_.fail(form,
                      std::string{purpose} + " must be (project-path ...) or (build-path ...)");
     }
@@ -59,9 +62,7 @@ void ProjectParser::output_path(Project& project,
     if (value.is_absolute() || value.has_root_path()) {
         parser_.fail(syntax_.child(form, 1), std::string{purpose} + " must be relative");
     }
-    project.set_output(target,
-                       syntax_.head(form) == "project-path" ? PathBase::project : PathBase::build,
-                       path_id);
+    project.set_output(target, *base, path_id);
 }
 
 auto ProjectParser::parse(codegen::sexpr::SourceFileId file,
@@ -74,56 +75,57 @@ auto ProjectParser::parse(codegen::sexpr::SourceFileId file,
     }
 
     Fields const project_fields{parser_, syntax_.forms(forms).front(), "lispb-project", 0};
-    project_fields.validate({"language-version", "project-root"},
+    project_fields.validate({P::language_version, P::project_root},
                             {"cpp-schema", "slate", "kernel", "material", "group"});
-    if (parser_.text(project_fields.required("language-version"), "language version") != "1") {
-        parser_.fail(project_fields.required("language-version"),
+    if (parser_.text(project_fields.required(P::language_version), "language version") != "1") {
+        parser_.fail(project_fields.required(P::language_version),
                      "unsupported Lispb language version; expected 1");
     }
 
     Project project{syntax_.strings()};
     project.root = (project_path.parent_path() /
-                    parser_.text(project_fields.required("project-root"), "project root"))
+                    parser_.text(project_fields.required(P::project_root), "project root"))
                        .lexically_normal();
     std::optional<DiagnosticId> first_error;
     for (auto const declaration : project_fields.declarations()) {
         try {
             auto const head{syntax_.head(declaration)};
             Fields const fields{parser_, declaration, head, 1};
-            if (head == "cpp-schema") {
-                fields.validate({"types", "sources", "output-root"});
+            auto const kind{try_parse_serialized_target_kind(head)};
+            if (kind == TargetKind::cpp_schema) {
+                fields.validate({P::types, P::sources, P::output_root});
                 auto const target{
                     project.append(TargetKind::cpp_schema,
                                    parser_.identifier(fields.positional(0), "target name"))};
-                project.set_types(target, parser_.text_id(fields.required("types"), "types path"));
-                project.set_sources(target, paths(project, fields.required("sources"), "sources"));
-                output_path(project, target, fields.required("output-root"), "output root");
-            } else if (head == "slate") {
-                fields.validate({"sources", "include-directories", "output-root"});
+                project.set_types(target, parser_.text_id(fields.required(P::types), "types path"));
+                project.set_sources(target, paths(project, fields.required(P::sources), "sources"));
+                output_path(project, target, fields.required(P::output_root), "output root");
+            } else if (kind == TargetKind::slate) {
+                fields.validate({P::sources, P::include_directories, P::output_root});
                 auto const target{project.append(
                     TargetKind::slate, parser_.identifier(fields.positional(0), "target name"))};
-                project.set_sources(target, paths(project, fields.required("sources"), "sources"));
-                if (auto const includes{fields.optional("include-directories")}) {
+                project.set_sources(target, paths(project, fields.required(P::sources), "sources"));
+                if (auto const includes{fields.optional(P::include_directories)}) {
                     project.set_includes(target, paths(project, *includes, "include directories"));
                 }
-                output_path(project, target, fields.required("output-root"), "output root");
-            } else if (head == "kernel") {
-                fields.validate({"sources", "output-root"});
+                output_path(project, target, fields.required(P::output_root), "output root");
+            } else if (kind == TargetKind::kernel) {
+                fields.validate({P::sources, P::output_root});
                 auto const target{project.append(
                     TargetKind::kernel, parser_.identifier(fields.positional(0), "target name"))};
-                project.set_sources(target, paths(project, fields.required("sources"), "sources"));
-                output_path(project, target, fields.required("output-root"), "output root");
-            } else if (head == "material") {
-                fields.validate({"source", "artifact"});
+                project.set_sources(target, paths(project, fields.required(P::sources), "sources"));
+                output_path(project, target, fields.required(P::output_root), "output root");
+            } else if (kind == TargetKind::material) {
+                fields.validate({P::source, P::artifact});
                 auto const target{project.append(
                     TargetKind::material, parser_.identifier(fields.positional(0), "target name"))};
-                auto const source{parser_.text_id(fields.required("source"), "source path")};
+                auto const source{parser_.text_id(fields.required(P::source), "source path")};
                 project.set_sources(target, project.append_paths(std::span{&source, 1}));
-                output_path(project, target, fields.required("artifact"), "artifact path");
-            } else if (head == "group") {
-                fields.validate({"targets"});
+                output_path(project, target, fields.required(P::artifact), "artifact path");
+            } else if (kind == TargetKind::group) {
+                fields.validate({P::targets});
                 auto const name{parser_.identifier(fields.positional(0), "group name")};
-                project.add_group(name, names(fields.required("targets"), "targets"));
+                project.add_group(name, names(fields.required(P::targets), "targets"));
             }
         } catch (sexpr::SourceError const& error) {
             if (!first_error) {

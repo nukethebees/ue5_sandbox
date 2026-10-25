@@ -1,0 +1,10 @@
+lispb-outputs-v1
+aliasing.h
+binary_operator.h
+constant_kind.h
+emission_field.h
+operation_field.h
+operation_kind.h
+scalar_type.h
+storage_kind.h
+variant_kind.h

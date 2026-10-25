@@ -54,10 +54,12 @@ Unknown or duplicate helpers are errors. Existing native schemas must explicitly
 helpers they need; `:native-api true` no longer selects them automatically. Unreal enums use
 the existing `:conversions` list instead.
 
-Compiler keyword enums live in `schema/compiler_schema.lispb` and `schema/compiler_ir.lispb`.
-Use their generated serialized-name lookups for closed keyword sets. Grammar restrictions, such
-as accepting only class/struct facade friends, remain in the parser. `generate-code` regenerates
-both compiler targets using the existing compiler before rebuilding its consumers.
+Compiler keyword enums live in `schema/`, with dialect-specific enums in `slate/schema/`,
+`kernel/schema/`, and `material/schema/`. Use their generated serialized-name lookups for closed
+keyword sets. Grammar restrictions, such as accepting only class/struct facade friends, remain
+in the parser. `generate-code` and `check-generated-code` include the `compiler-models` project
+group, which covers all these enums. Regenerate with the existing compiler before rebuilding
+consumers of new generated declarations.
 
 `SchemaProperty` owns the property spellings used by the handwritten schema parser. Property
 lookups and per-form allowlists use its generated enum values; `Fields` shares the same validation

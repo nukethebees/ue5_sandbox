@@ -114,7 +114,6 @@ target_sources(lispb-schema PRIVATE
   src/module_query.cpp
   src/manifest.cpp
   src/packed_integer_value.cpp
-  src/semantic_relation_unit.cpp
   src/type_reference_role.cpp
   src/type_registry.cpp
   src/registered_types.cpp
@@ -441,15 +440,7 @@ add_custom_target(generate-code
   COMMAND "$<TARGET_FILE:lispb>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
-    --target slate-schema
-  COMMAND "$<TARGET_FILE:lispb>" generate
-    --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
-    --build-root "${CMAKE_BINARY_DIR}"
-    --target compiler-ir
-  COMMAND "$<TARGET_FILE:lispb>" generate
-    --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
-    --build-root "${CMAKE_BINARY_DIR}"
-    --target compiler-schema
+    --target compiler-models
   COMMAND "$<TARGET_FILE:lispb>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
@@ -469,15 +460,7 @@ add_custom_target(check-generated-code
   COMMAND "$<TARGET_FILE:lispb>" check
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
-    --target slate-schema
-  COMMAND "$<TARGET_FILE:lispb>" check
-    --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
-    --build-root "${CMAKE_BINARY_DIR}"
-    --target compiler-ir
-  COMMAND "$<TARGET_FILE:lispb>" check
-    --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
-    --build-root "${CMAKE_BINARY_DIR}"
-    --target compiler-schema
+    --target compiler-models
   COMMAND "$<TARGET_FILE:lispb>" check
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"

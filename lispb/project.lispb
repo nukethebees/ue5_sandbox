@@ -17,6 +17,24 @@
     :sources ("native/lispb/slate/schema/model.lispb")
     :output-root (project-path "native/lispb/slate/include/slate_codegen"))
 
+  (cpp-schema project-schema
+    :types "native/lispb/schema/compiler_types.lispb"
+    :sources ("native/lispb/schema/project.lispb")
+    :output-root (project-path "native/lispb/include/lispb"))
+
+  (cpp-schema kernel-schema
+    :types "native/lispb/schema/compiler_types.lispb"
+    :sources ("native/lispb/kernel/schema/model.lispb")
+    :output-root (project-path "native/lispb/kernel/include/kernel_codegen"))
+
+  (cpp-schema material-schema
+    :types "native/lispb/schema/compiler_types.lispb"
+    :sources ("native/lispb/material/schema/model.lispb")
+    :output-root (project-path "native/lispb/material/lib/include/material_gen"))
+
+  (group compiler-models
+    :targets (compiler-ir compiler-schema project-schema slate-schema kernel-schema material-schema))
+
   (cpp-schema layout-analysis
     :types "native/layout/schema/types.lispb"
     :sources (
@@ -203,7 +221,7 @@
       slate-game-options
       slate-level-select))
   (group committed-code
-    :targets (compiler-ir compiler-schema layout-analysis sandbox-code native-soa-fixture slate-production kernel-native-core))
+    :targets (compiler-models layout-analysis sandbox-code native-soa-fixture slate-production kernel-native-core))
   (group materials
     :targets (
       ui-glow-material

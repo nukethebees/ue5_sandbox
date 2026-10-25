@@ -800,7 +800,8 @@ class Validator {
         std::set<NativeEnumHelper> helpers;
         for (auto const helper :
              declarations_.items(declarations_.enums.helpers[declarations_.enums.index(schema)])) {
-            if (native_enum_helper_name(helper).empty() || !helpers.insert(helper).second) {
+            if (!try_parse_serialized_native_enum_helper(to_serialized_string(helper)) ||
+                !helpers.insert(helper).second) {
                 throw std::invalid_argument{
                     "Enum '" + text(declarations_.enums.name[declarations_.enums.index(schema)]) +
                     "' has an invalid or duplicate helper"};

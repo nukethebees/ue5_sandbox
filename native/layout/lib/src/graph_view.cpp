@@ -48,7 +48,7 @@ auto relationship_label(TypeGraph const& types, lispb::schema::RelationshipId co
         types.relationships().kind[types.relationships().index(relationship)])}};
     if (types.relationships().unit[types.relationships().index(relationship)].has_value()) {
         result += " (";
-        result += lispb::codegen::semantic_relation_unit_name(
+        result += lispb::codegen::to_serialized_string(
             *types.relationships().unit[types.relationships().index(relationship)]);
         result += ')';
     }

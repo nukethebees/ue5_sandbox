@@ -182,7 +182,7 @@ auto CanonicalRenderer::build_enum(codegen::DeclarationHandle const schema) -> E
     }
     result.flag("native-api", enums.native_api[index]);
     result.list_field("helpers", items(enums.helpers[index]), [this](auto helper) {
-        return ir_.atom(codegen::native_enum_helper_name(helper));
+        return ir_.atom(codegen::to_serialized_string(helper));
     });
     for (auto const value : items(enums.values[index])) {
         result.add(build_enum_value(value));
@@ -239,7 +239,7 @@ auto CanonicalRenderer::build_semantic_relation(codegen::SemanticRelationId cons
                          {ir_.atom(to_serialized_string(relations.kind[index])),
                           build_type_ref(relations.target[index])})};
     if (relations.unit[index].has_value()) {
-        result.field("unit", ir_.atom(semantic_relation_unit_name(*relations.unit[index])));
+        result.field("unit", ir_.atom(to_serialized_string(*relations.unit[index])));
     }
     return result.build();
 }
@@ -287,10 +287,10 @@ auto CanonicalRenderer::build_packed_value(codegen::DeclarationHandle const sche
     auto result{ir_.form("packed-value", {ir_.atom(values.name[index])})};
     result.field("storage", build_type_ref(values.storage_type[index]));
     if (values.byte_order[index].has_value()) {
-        result.field("byte-order", ir_.atom(packed_byte_order_name(*values.byte_order[index])));
+        result.field("byte-order", ir_.atom(to_serialized_string(*values.byte_order[index])));
     }
     if (values.bit_order[index].has_value()) {
-        result.field("bit-order", ir_.atom(packed_bit_order_name(*values.bit_order[index])));
+        result.field("bit-order", ir_.atom(to_serialized_string(*values.bit_order[index])));
     }
     result.optional_field("invalid-value", values.invalid_value[index]);
     if (values.export_specifier[index].value != 0) {
@@ -340,7 +340,7 @@ auto CanonicalRenderer::build_linear_quantized(codegen::DeclarationHandle const 
         .field("source", build_type_ref(values.source[index]))
         .field("bits", values.bit_width[index])
         .field("reserved-codes", values.reserved_codes[index])
-        .field("clipping", ir_.atom(quantization_clipping_name(values.clipping[index])))
+        .field("clipping", ir_.atom(to_serialized_string(values.clipping[index])))
         .build();
 }
 auto CanonicalRenderer::build_integer_varint(codegen::DeclarationHandle const schema) -> Expr {
@@ -359,7 +359,7 @@ auto CanonicalRenderer::build_fixed_point(codegen::DeclarationHandle const schem
     result.field("signed", values.signedness[index] ? ir_.atoms.true_value : ir_.atoms.false_value)
         .field("total-bits", values.total_bits[index])
         .field("fractional-bits", values.fractional_bits[index])
-        .field("rounding", ir_.atom(fixed_point_rounding_name(values.rounding[index])));
+        .field("rounding", ir_.atom(to_serialized_string(values.rounding[index])));
     result.optional_field("minimum", values.minimum_value[index], atom);
     result.optional_field("maximum", values.maximum_value[index], atom);
     return result.build();

@@ -1,0 +1,9 @@
+lispb-outputs-v1
+BlendMode.h
+MaterialClause.h
+MaterialDomain.h
+MaterialOperator.h
+PositionSpace.h
+SceneTexture.h
+ShadingModel.h
+TextureSamplerType.h

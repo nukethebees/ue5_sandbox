@@ -3,7 +3,11 @@
 
 #pragma once
 
+#include "ioj/parse_enum.h"
+
+#include <array>
 #include <cstdint>
+#include <optional>
 #include <string_view>
 
 namespace lispb::codegen {
@@ -28,6 +32,13 @@ enum class SoaMemberKind : SoaMemberKindUnderlying {
             return "<invalid SoaMemberKind>";
         }
     }
+}
+
+[[nodiscard]] constexpr auto
+    try_parse_serialized_soa_member_kind(std::string_view const value) noexcept
+    -> std::optional<SoaMemberKind> {
+    std::array<std::string_view, 2> constexpr names{"array", "nested"};
+    return ioj::try_parse_enum<SoaMemberKind>(value, names);
 }
 
 } // namespace lispb::codegen

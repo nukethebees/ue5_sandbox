@@ -38,7 +38,7 @@
   :namespace lispb::codegen
   (enum SoaMemberKind std::uint8_t
     :native-api true
-    :helpers (to-serialized-string)
+    :helpers (to-serialized-string try-parse-serialized)
     (value array :serialized-name "array")
     (value nested :serialized-name "nested")))
 
@@ -274,3 +274,77 @@
     (value validation_dependencies :serialized-name "validation-dependencies")
     (value value :serialized-name "value")
     (value value_type :serialized-name "value-type")))
+
+(module native_enum_helper
+  :header "native_enum_helper.h"
+  :namespace lispb::codegen
+  (enum NativeEnumHelper std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value to_string :serialized-name "to-string")
+    (value try_parse :serialized-name "try-parse")
+    (value to_display_string :serialized-name "to-display-string")
+    (value to_serialized_string :serialized-name "to-serialized-string")
+    (value try_parse_serialized :serialized-name "try-parse-serialized")
+    (value traits :serialized-name "traits")))
+
+
+(module semantic_relation_unit
+  :header "semantic_relation_unit.h"
+  :namespace lispb::codegen
+  (enum SemanticRelationUnit std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value elements :serialized-name "elements")
+    (value bytes :serialized-name "bytes")))
+
+
+(module packed_byte_order
+  :header "packed_byte_order.h"
+  :namespace lispb::codegen
+  (enum PackedByteOrder std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value little_endian :serialized-name "little")
+    (value big_endian :serialized-name "big")))
+
+
+(module packed_bit_order
+  :header "packed_bit_order.h"
+  :namespace lispb::codegen
+  (enum PackedBitOrder std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value least_significant_first :serialized-name "lsb-first")
+    (value most_significant_first :serialized-name "msb-first")))
+
+
+(module setting_device
+  :header "setting_device.h"
+  :namespace lispb::codegen
+  (enum SettingDevice std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value shared :serialized-name "shared")
+    (value keyboard_mouse :serialized-name "keyboard-mouse")
+    (value controller :serialized-name "controller")))
+
+
+(module quantization_clipping
+  :header "quantization_clipping.h"
+  :namespace lispb::codegen
+  (enum QuantizationClipping std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value reject :serialized-name "reject")
+    (value clamp :serialized-name "clamp")))
+
+
+(module fixed_point_rounding
+  :header "fixed_point_rounding.h"
+  :namespace lispb::codegen
+  (enum FixedPointRounding std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value nearest_even :serialized-name "nearest-even")
+    (value toward_zero :serialized-name "toward-zero")))

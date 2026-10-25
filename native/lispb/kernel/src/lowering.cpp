@@ -128,7 +128,7 @@ auto output_names(Document const& document, ExpandedVariantId const id)
 auto raw_name(Document const& document, ExpandedVariantId const id) -> std::string {
     auto const& expanded{document.expanded_variants};
     auto result{document.text(document.operations.name(expanded.operation(id))) + "_" +
-                type_spelling(expanded.type(id))};
+                std::string{to_serialized_string(expanded.type(id))}};
     for (auto const storage : expanded.storage(id)) {
         result += storage == StorageKind::array ? "_array" : "_scalar";
     }
@@ -184,7 +184,7 @@ auto standard_type(ScalarType const type) -> std::string {
     if (type == ScalarType::uint32) {
         return "std::uint32_t";
     }
-    return type_spelling(type);
+    return std::string{to_serialized_string(type)};
 }
 
 }

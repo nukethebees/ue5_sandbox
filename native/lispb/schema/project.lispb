@@ -1,0 +1,37 @@
+(module target_kind
+  :header "target_kind.h"
+  :namespace lispb
+  (enum TargetKind std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value none :serialized-name "none")
+    (value cpp_schema :serialized-name "cpp-schema")
+    (value slate :serialized-name "slate")
+    (value kernel :serialized-name "kernel")
+    (value material :serialized-name "material")
+    (value group :serialized-name "group")))
+
+(module path_base
+  :header "path_base.h"
+  :namespace lispb
+  (enum PathBase std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value project :serialized-name "project-path")
+    (value build :serialized-name "build-path")))
+
+(module project_property
+  :header "project_property.h"
+  :namespace lispb
+  (enum ProjectProperty std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string)
+    (value language_version :serialized-name "language-version")
+    (value project_root :serialized-name "project-root")
+    (value types :serialized-name "types")
+    (value sources :serialized-name "sources")
+    (value output_root :serialized-name "output-root")
+    (value include_directories :serialized-name "include-directories")
+    (value source :serialized-name "source")
+    (value artifact :serialized-name "artifact")
+    (value targets :serialized-name "targets")))

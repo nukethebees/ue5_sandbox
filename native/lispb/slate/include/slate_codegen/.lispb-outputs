@@ -1,2 +1,4 @@
 lispb-outputs-v1
 parameter_kind.h
+slot_option.h
+structural_form.h

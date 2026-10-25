@@ -9,9 +9,11 @@
 #include <kernel_codegen/binary_operator.h>
 #include <kernel_codegen/constant_kind.h>
 #include <kernel_codegen/document.h>
+#include <kernel_codegen/emission_field.h>
 #include <kernel_codegen/expression_id.h>
 #include <kernel_codegen/expression_kind.h>
 #include <kernel_codegen/indices.h>
+#include <kernel_codegen/operation_field.h>
 #include <kernel_codegen/operation_kind.h>
 #include <kernel_codegen/scalar_type.h>
 #include <kernel_codegen/storage_kind.h>
@@ -322,37 +324,23 @@ class Parser {
         if (operation == "constant") {
             require_size(form, 2, "'(constant nan|infinity|negative-infinity)'");
             auto const name{atom(syntax_.children(form)[1], "expected constant name")};
-            ConstantKind constant;
-            if (name == "nan") {
-                constant = ConstantKind::nan;
-            } else if (name == "infinity") {
-                constant = ConstantKind::infinity;
-            } else if (name == "negative-infinity") {
-                constant = ConstantKind::negative_infinity;
-            } else {
+            auto const constant{try_parse_serialized_constant_kind(name)};
+            if (!constant) {
                 fail(syntax_.token_span(syntax_.children(form)[1]),
                      "unknown constant '" + name + "'");
             }
-            return expressions.constant(constant, syntax_.token_span(form));
+            return expressions.constant(*constant, syntax_.token_span(form));
         }
 
         require_size(form, 3, "binary expression '(operator lhs rhs)'");
-        BinaryOperator binary;
-        if (operation == "+") {
-            binary = BinaryOperator::add;
-        } else if (operation == "-") {
-            binary = BinaryOperator::subtract;
-        } else if (operation == "*") {
-            binary = BinaryOperator::multiply;
-        } else if (operation == "/") {
-            binary = BinaryOperator::divide;
-        } else {
+        auto const binary{try_parse_serialized_binary_operator(operation)};
+        if (!binary) {
             fail(syntax_.token_span(syntax_.children(form)[0]),
                  "unsupported expression operator '" + operation + "'");
         }
         auto const left{parse_expression(syntax_.children(form)[1], owner, used_operands)};
         auto const right{parse_expression(syntax_.children(form)[2], owner, used_operands)};
-        return expressions.binary(binary, left, right, syntax_.token_span(form));
+        return expressions.binary(*binary, left, right, syntax_.token_span(form));
     }
 
     void parse_operation_expression(OperationId const operation,
@@ -373,11 +361,8 @@ class Parser {
     void parse_storage(FormId const form, OperandId const operand) const {
         auto parse_one = [&](FormId const item) {
             auto const& value{atom(item, "expected 'array' or 'scalar'")};
-            if (value == "array") {
-                return StorageKind::array;
-            }
-            if (value == "scalar") {
-                return StorageKind::scalar;
+            if (auto const storage{try_parse_serialized_storage_kind(value)}) {
+                return *storage;
             }
             fail(syntax_.token_span(item), "unknown operand storage '" + value + "'");
         };
@@ -401,7 +386,8 @@ class Parser {
 
     auto parse_variant(FormId const form, OperationId const operation) const -> VariantId {
         auto const& form_head{head(form, "variant")};
-        if (form_head == "out-of-place") {
+        auto const kind{try_parse_serialized_variant_kind(form_head)};
+        if (kind == VariantKind::out_of_place) {
             require_size(form, 2, "'(out-of-place public_name)'");
             auto const& public_name{
                 atom(syntax_.children(form)[1], "expected public function name")};
@@ -414,7 +400,7 @@ class Parser {
                                           std::nullopt,
                                           syntax_.token_span(form));
         }
-        if (form_head == "in-place") {
+        if (kind == VariantKind::in_place) {
             require_size(form, 3, "'(in-place target public_name)'");
             auto const& target{atom(syntax_.children(form)[1], "expected in-place target")};
             auto const& public_name{
@@ -453,21 +439,19 @@ class Parser {
 
     auto parse_operation(FormId const form, ModuleId const module) const -> OperationId {
         auto const form_head{head(form, "map or component-map")};
-        if ((form_head != "map" && form_head != "component-map") ||
-            syntax_.children(form).size() < 2) {
+        auto const kind{try_parse_serialized_operation_kind(form_head)};
+        if (!kind || syntax_.children(form).size() < 2) {
             fail(syntax_.token_span(form), "expected '(map|component-map name ...)'");
         }
-        auto const is_component_map{form_head == "component-map"};
+        auto const is_component_map{*kind == OperationKind::component_map};
         auto const& name{atom(syntax_.children(form)[1], "expected map name")};
         if (!is_identifier(name)) {
             fail(syntax_.token_span(syntax_.children(form)[1]),
                  "map name must be a C++ identifier");
         }
 
-        auto const result{document_.operations.add(is_component_map ? OperationKind::component_map
-                                                                    : OperationKind::map,
-                                                   syntax_.identifier(syntax_.children(form)[1]),
-                                                   syntax_.token_span(form))};
+        auto const result{document_.operations.add(
+            *kind, syntax_.identifier(syntax_.children(form)[1]), syntax_.token_span(form))};
         std::set<lispb::StringId> fields;
         std::set<lispb::StringId> operand_names;
         std::optional<lispb::codegen::sexpr::FormId> expression_form;
@@ -475,8 +459,10 @@ class Parser {
         for (std::size_t index{2}; index < syntax_.children(form).size(); ++index) {
             auto const& field{syntax_.children(form)[index]};
             auto const& field_name{head(field, "map field")};
-            if (field_name == "operand" || field_name == "component-operand") {
-                if (field_name == "component-operand" && !is_component_map) {
+            auto const field_kind{try_parse_serialized_operation_field(field_name)};
+            if (field_kind == OperationField::operand ||
+                field_kind == OperationField::component_operand) {
+                if (field_kind == OperationField::component_operand && !is_component_map) {
                     fail(syntax_.token_span(field),
                          "component-operand is valid only in component-map");
                 }
@@ -493,7 +479,7 @@ class Parser {
                 auto const operand{
                     document_.operands.add(syntax_.identifier(syntax_.children(field)[1]),
                                            syntax_.token_span(field),
-                                           field_name == "component-operand")};
+                                           field_kind == OperationField::component_operand)};
                 parse_storage(syntax_.children(field)[2], operand);
                 document_.operations.append_operands(result, operand);
                 continue;
@@ -501,7 +487,7 @@ class Parser {
             if (!fields.insert(syntax_.identifier(syntax_.children(field).front())).second) {
                 fail(syntax_.token_span(field), "duplicate map field '" + field_name + "'");
             }
-            if (field_name == "components") {
+            if (field_kind == OperationField::components) {
                 if (!is_component_map || syntax_.children(field).size() < 3) {
                     fail(syntax_.token_span(field),
                          "component-map requires at least two component names");
@@ -522,11 +508,11 @@ class Parser {
                     document_.operations.append_components(
                         result, syntax_.identifier(syntax_.children(field)[component_index]));
                 }
-            } else if (field_name == "types") {
+            } else if (field_kind == OperationField::types) {
                 require_size(field, 2, "'(types type_set)'");
                 document_.operations.type_set(result) =
                     resolve_type_set(module, syntax_.children(field)[1]);
-            } else if (field_name == "output") {
+            } else if (field_kind == OperationField::output) {
                 require_size(field, 2, "'(output name)'");
                 static_cast<void>(atom(syntax_.children(field)[1], "expected output name"));
                 document_.operations.output(result) =
@@ -535,25 +521,23 @@ class Parser {
                     fail(syntax_.token_span(syntax_.children(field)[1]),
                          "output name must be a C++ identifier");
                 }
-            } else if (field_name == "expression") {
+            } else if (field_kind == OperationField::expression) {
                 require_size(field, 2, "'(expression expression)'");
                 expression_form = syntax_.children(field)[1];
-            } else if (field_name == "variants") {
+            } else if (field_kind == OperationField::variants) {
                 if (syntax_.children(field).size() < 2) {
                     fail(syntax_.token_span(field), "variants must not be empty");
                 }
                 variants_form = field;
-            } else if (field_name == "aliasing") {
+            } else if (field_kind == OperationField::aliasing) {
                 require_size(field, 2, "'(aliasing output-disjoint|pairwise-disjoint)'");
                 auto const& policy{atom(syntax_.children(field)[1], "expected aliasing policy")};
-                if (policy == "output-disjoint") {
-                    document_.operations.aliasing(result) = Aliasing::output_disjoint;
-                } else if (policy == "pairwise-disjoint") {
-                    document_.operations.aliasing(result) = Aliasing::pairwise_disjoint;
-                } else {
+                auto const aliasing{try_parse_serialized_aliasing(policy)};
+                if (!aliasing) {
                     fail(syntax_.token_span(syntax_.children(field)[1]),
                          "unknown aliasing policy '" + policy + "'");
                 }
+                document_.operations.aliasing(result) = *aliasing;
             } else {
                 fail(syntax_.token_span(field), "unknown map field '" + field_name + "'");
             }
@@ -622,8 +606,8 @@ class Parser {
         if (expression.kind() == ExpressionKind::constant &&
             (type == ScalarType::int32 || type == ScalarType::uint32)) {
             fail(document_.expressions.span(expression),
-                 "constant is not supported by integral concrete type '" + type_spelling(type) +
-                     "'");
+                 "constant is not supported by integral concrete type '" +
+                     std::string{to_serialized_string(type)} + "'");
         }
         if (expression.kind() == ExpressionKind::literal) {
             auto const value{document_.expressions.number(expression)};
@@ -672,17 +656,8 @@ class Parser {
 
     auto parse_scalar_type(FormId const form) const -> ScalarType {
         auto const type{atom(form, "expected concrete type")};
-        if (type == "int32") {
-            return ScalarType::int32;
-        }
-        if (type == "uint32") {
-            return ScalarType::uint32;
-        }
-        if (type == "float") {
-            return ScalarType::float32;
-        }
-        if (type == "double") {
-            return ScalarType::float64;
+        if (auto const parsed{try_parse_serialized_scalar_type(type)}) {
+            return *parsed;
         }
         fail(syntax_.token_span(form), "unsupported concrete type '" + type + "'");
     }
@@ -703,7 +678,7 @@ class Parser {
             auto const type{parse_scalar_type(syntax_.children(form)[index])};
             if (!types.insert(type).second) {
                 fail(syntax_.token_span(syntax_.children(form)[index]),
-                     "duplicate concrete type '" + type_spelling(type) + "'");
+                     "duplicate concrete type '" + std::string{to_serialized_string(type)} + "'");
             }
             document_.type_sets.append_types(result, type);
         }
@@ -728,19 +703,20 @@ class Parser {
                 fail(syntax_.token_span(field), "duplicate emission field '" + field_name + "'");
             }
             require_size(field, 2, "single-value emission field");
-            if (field_name == "header") {
+            auto const field_kind{try_parse_serialized_emission_field(field_name)};
+            if (field_kind == EmissionField::header) {
                 document_.emissions.header(result) =
                     string_value(syntax_.children(field)[1], "expected header path string");
-            } else if (field_name == "source") {
+            } else if (field_kind == EmissionField::source) {
                 document_.emissions.source(result) =
                     string_value(syntax_.children(field)[1], "expected source path string");
-            } else if (field_name == "tests") {
+            } else if (field_kind == EmissionField::tests) {
                 document_.emissions.tests(result) =
                     string_value(syntax_.children(field)[1], "expected test path string");
-            } else if (field_name == "header-include") {
+            } else if (field_kind == EmissionField::header_include) {
                 document_.emissions.header_include(result) =
                     string_value(syntax_.children(field)[1], "expected header include string");
-            } else if (field_name == "namespace") {
+            } else if (field_kind == EmissionField::namespace_) {
                 static_cast<void>(atom(syntax_.children(field)[1], "expected C++ namespace"));
                 document_.emissions.cpp_namespace(result) =
                     syntax_.identifier(syntax_.children(field)[1]);
@@ -802,7 +778,7 @@ class Parser {
             if (field_name == "type-set") {
                 continue;
             }
-            if (field_name == "map" || field_name == "component-map") {
+            if (try_parse_serialized_operation_kind(field_name).has_value()) {
                 auto operation{parse_operation(field, result)};
                 if (!operation_names.insert(document_.operations.name(operation)).second) {
                     fail(document_.operations.span(operation),

@@ -20,6 +20,7 @@ target_link_libraries(material-gen
   PUBLIC
     sandbox::native_defaults
     lispb-syntax
+    native-core-headers
   PRIVATE
     ioj::codegen_pch
 )
@@ -53,6 +54,7 @@ if(IOJ_WITH_UNREAL)
   target_link_libraries(sandbox-material-gen
     PUBLIC
       sandbox::native_defaults
+      native-core-headers
     PRIVATE
       lispb-strings
       ioj::unreal_avx2
