@@ -36,10 +36,9 @@ SANDBOXEDITOR_API auto find_level_authoring_document(ULevel const& level)
 SANDBOXEDITOR_API auto create_level_authoring_document(ULevel& level)
     -> std::expected<AS7LevelAuthoringDocument*, FString>;
 SANDBOXEDITOR_API auto adopt_unbound_level_entities(ULevel& level,
-                                                    AS7LevelAuthoringDocument& document)
-    -> std::expected<int32, FString>;
+                                                    AS7LevelAuthoringDocument& document) -> int32;
 SANDBOXEDITOR_API auto repair_s7_level_bindings(ULevel& level, AS7LevelAuthoringDocument& document)
-    -> std::expected<FS7LevelBindingRepairResult, FString>;
+    -> FS7LevelBindingRepairResult;
 SANDBOXEDITOR_API auto collect_s7_editor_level(ULevel const& level,
                                                AS7LevelAuthoringDocument const& document)
     -> std::expected<levels::LevelDefinition, FString>;

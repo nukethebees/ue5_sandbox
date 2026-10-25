@@ -105,13 +105,8 @@ auto prepare_s7_level_for_pie(UWorld& world) -> std::expected<void, FString> {
 auto validate_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)
     -> std::expected<FString, FString> {
     auto* const world{level.OwningWorld.Get()};
-    auto* const config{document.level_config.Get()};
     if (!IsValid(world) || document.GetLevel() != &level) {
         return std::unexpected{TEXT("The current editor level is unavailable.")};
-    }
-    if (!IsValid(config)) {
-        return std::unexpected{
-            TEXT("The canonical S7 runtime level configuration is unavailable.")};
     }
     auto const definition{collect_s7_editor_level(level, document)};
     if (!definition) {
@@ -119,7 +114,7 @@ auto validate_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& docume
     }
     auto* const player{
         s7_level_playable_setup_detail::find_player(document, definition->player_entity_id())};
-    return validate_playable_s7_definition(*definition, *config, player);
+    return validate_playable_s7_definition(*definition, *document.level_config, player);
 }
 
 auto validate_playable_s7_definition(levels::LevelDefinition const& definition,

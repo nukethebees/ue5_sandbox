@@ -187,8 +187,7 @@ auto create_level_authoring_document(ULevel& level)
     return document;
 }
 
-auto adopt_unbound_level_entities(ULevel& level, AS7LevelAuthoringDocument& document)
-    -> std::expected<int32, FString> {
+auto adopt_unbound_level_entities(ULevel& level, AS7LevelAuthoringDocument& document) -> int32 {
     auto bindings{document.entities};
     auto const adopted{s7_level_authoring_session_detail::adopt(level, bindings)};
     if (adopted != 0) {
@@ -201,7 +200,7 @@ auto adopt_unbound_level_entities(ULevel& level, AS7LevelAuthoringDocument& docu
 }
 
 auto repair_s7_level_bindings(ULevel& level, AS7LevelAuthoringDocument& document)
-    -> std::expected<FS7LevelBindingRepairResult, FString> {
+    -> FS7LevelBindingRepairResult {
     FS7LevelBindingRepairResult result;
     TArray<FS7LevelEntityBinding> bindings;
     TSet<AActor const*> bound;
@@ -209,11 +208,11 @@ auto repair_s7_level_bindings(ULevel& level, AS7LevelAuthoringDocument& document
     TMap<AActor const*, double> spawn_times;
     for (auto const& binding : document.entities) {
         auto* const actor{binding.actor.Get()};
-        if (IsValid(actor) && actor->GetLevel() == &level && !spawn_times.Contains(actor)) {
+        auto const actor_in_level{IsValid(actor) && actor->GetLevel() == &level};
+        if (actor_in_level && !spawn_times.Contains(actor)) {
             spawn_times.Add(actor, binding.spawn_time_seconds);
         }
-        if (!IsValid(actor) || actor->GetLevel() != &level ||
-            !resolve_s7_level_actor(*actor).IsSet() ||
+        if (!actor_in_level || !resolve_s7_level_actor(*actor).IsSet() ||
             !is_canonical_s7_level_entity_id(binding.id) || bound.Contains(actor) ||
             ids.Contains(binding.id)) {
             ++result.removed_bindings;
@@ -233,11 +232,8 @@ auto repair_s7_level_bindings(ULevel& level, AS7LevelAuthoringDocument& document
         }
     }
     auto camera{document.camera.targets};
-    auto prune{[&](auto& references) {
-        result.removed_references += references.RemoveAll(
-            [&](auto const actor) { return !IsValid(actor) || !bound.Contains(actor); });
-    }};
-    prune(camera);
+    result.removed_references = camera.RemoveAll(
+        [&](auto const actor) { return !IsValid(actor) || !bound.Contains(actor); });
     if (result.has_changes()) {
         FScopedTransaction transaction{
             NSLOCTEXT("S7LevelAuthoring", "RepairBindings", "Repair S7 Level Bindings")};
@@ -300,21 +296,15 @@ auto collect_s7_scene(ULevel const& level, AS7LevelAuthoringDocument const& docu
         }
     }
 
-    auto references{[&](auto const& actors, bool& valid) {
-        std::vector<EntityId> result;
-        for (auto const actor : actors) {
-            auto const* const id{ids_by_actor.Find(actor)};
-            valid = valid && id != nullptr;
-            result.push_back(id ? *id : EntityId{});
-        }
-        return result;
-    }};
     if (document.use_observer_camera) {
         definition.player_entity_id = {};
-        definition.camera = {.target_entity_ids =
-                                 references(document.camera.targets, snapshot.viewpoint_valid),
-                             .offset_direction = Vector3d{document.camera.offset_direction},
+        definition.camera = {.offset_direction = Vector3d{document.camera.offset_direction},
                              .distance = document.camera.distance};
+        for (auto const actor : document.camera.targets) {
+            auto const* const id{ids_by_actor.Find(actor)};
+            snapshot.viewpoint_valid = snapshot.viewpoint_valid && id != nullptr;
+            definition.camera->target_entity_ids.push_back(id ? *id : EntityId{});
+        }
     } else {
         snapshot.viewpoint_valid = player_count == 1;
     }

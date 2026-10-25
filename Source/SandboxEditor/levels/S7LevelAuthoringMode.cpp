@@ -81,6 +81,29 @@ auto confirm_replace_source(FStringView const path) -> bool {
                    FText::FromString(FString{path}))) == EAppReturnType::Yes;
 }
 
+struct SourceSaveTarget {
+    FString path;
+    ES7SourceOverwritePolicy overwrite;
+};
+
+auto select_save_target(ULevel const* const level) -> TOptional<SourceSaveTarget> {
+    auto const map_name{IsValid(level)
+                            ? FPackageName::GetShortName(level->GetOutermost()->GetName())
+                            : FString{TEXT("level")}};
+    auto selected{select_source_path(true, map_name + TEXT(".scm"))};
+    if (!selected.IsSet()) {
+        return NullOpt;
+    }
+    auto overwrite{ES7SourceOverwritePolicy::RefuseExisting};
+    if (IFileManager::Get().FileExists(**selected)) {
+        if (!confirm_replace_source(*selected)) {
+            return NullOpt;
+        }
+        overwrite = ES7SourceOverwritePolicy::ReplaceExisting;
+    }
+    return SourceSaveTarget{MoveTemp(*selected), overwrite};
+}
+
 auto scene_has_unsaved_changes(AS7LevelAuthoringDocument const& document, FString const& source)
     -> bool {
     return source.IsEmpty() || (document.synchronized_scene_source.IsEmpty()
@@ -138,8 +161,7 @@ void US7LevelAuthoringMode::Enter() {
 }
 
 void US7LevelAuthoringMode::Exit() {
-    preview_.Reset();
-    source_session_.state().preview = PreviewState::None;
+    clear_preview();
     source_session_.state().scene_dirty = false;
     document_.Reset();
     source_session_.detach();
@@ -162,7 +184,7 @@ void US7LevelAuthoringMode::Tick(FEditorViewportClient* const viewport_client,
     auto* const previous{document_.Get()};
     refresh_document();
     if (previous != document_.Get()) {
-        changed_.Broadcast();
+        notify_changed();
         return;
     }
     if (!document_.IsValid()) {
@@ -190,10 +212,9 @@ void US7LevelAuthoringMode::Tick(FEditorViewportClient* const viewport_client,
         auto const current{
             validate_s7_level_authoring_preview(*level, *document_, source_session_, *preview_)};
         if (!current) {
-            state.invalidate_preview();
-            preview_.Reset();
+            clear_preview(PreviewState::Stale);
             set_status(FText::FromString(current.error().message));
-            changed_.Broadcast();
+            notify_changed();
             return;
         }
     }
@@ -217,7 +238,7 @@ void US7LevelAuthoringMode::Tick(FEditorViewportClient* const viewport_client,
     } else if (was_scene_dirty || was_disk_conflict) {
         set_status(LOCTEXT("StateClean", "There are no scene changes or disk conflicts."));
     }
-    changed_.Broadcast();
+    notify_changed();
 }
 
 void US7LevelAuthoringMode::Render(FSceneView const* const view,
@@ -363,7 +384,7 @@ void US7LevelAuthoringMode::refresh_document() {
                                std::unexpected{TEXT("The current editor level is unavailable.")}}};
     auto* const next{found ? *found : nullptr};
     if (document_.Get() != next || !IsValid(next)) {
-        preview_.Reset();
+        clear_preview();
         observed_scene_.Reset();
         source_session_.detach();
         document_ = next;
@@ -386,6 +407,18 @@ void US7LevelAuthoringMode::set_status(FText text) {
     status_ = MoveTemp(text);
 }
 
+void US7LevelAuthoringMode::clear_preview(PreviewState const state) {
+    preview_.Reset();
+    source_session_.state().preview = state;
+}
+
+void US7LevelAuthoringMode::notify_changed() {
+    if (source_session_.state().preview != PreviewState::Valid) {
+        preview_.Reset();
+    }
+    changed_.Broadcast();
+}
+
 void US7LevelAuthoringMode::create_document() {
     auto* const level{current_level()};
     if (!IsValid(level)) {
@@ -399,23 +432,24 @@ void US7LevelAuthoringMode::create_document() {
         document_ = *created;
         auto const attached{source_session_.attach(*document_)};
         auto const adopted{adopt_unbound_level_entities(*level, *document_)};
+        if (adopted > 0) {
+            source_session_.state().invalidate_preview();
+        }
         if (!attached) {
             set_status(FText::FromString(attached.error()));
-        } else if (!adopted) {
-            set_status(FText::FromString(adopted.error()));
         } else if (had_document) {
             set_status(FText::Format(
                 LOCTEXT("ExistingDocumentAdopted", "Adopted {0} existing level entities."),
-                *adopted));
+                adopted));
         } else {
             set_status(FText::Format(
                 LOCTEXT(
                     "DocumentCreatedAndAdopted",
                     "Created the S7 authoring document and adopted {0} existing level entities."),
-                *adopted));
+                adopted));
         }
     }
-    changed_.Broadcast();
+    notify_changed();
 }
 
 void US7LevelAuthoringMode::adopt_entities() {
@@ -427,9 +461,11 @@ void US7LevelAuthoringMode::adopt_entities() {
         return;
     }
     auto const adopted{adopt_unbound_level_entities(*level, *document_)};
-    set_status(adopted ? FText::Format(LOCTEXT("Adopted", "Adopted {0} entities."), *adopted)
-                       : FText::FromString(adopted.error()));
-    changed_.Broadcast();
+    set_status(FText::Format(LOCTEXT("Adopted", "Adopted {0} entities."), adopted));
+    if (adopted > 0) {
+        source_session_.state().invalidate_preview();
+    }
+    notify_changed();
 }
 
 void US7LevelAuthoringMode::repair_and_adopt_entities() {
@@ -442,37 +478,32 @@ void US7LevelAuthoringMode::repair_and_adopt_entities() {
     }
 
     auto const repaired{repair_s7_level_bindings(*level, *document_)};
-    if (!repaired) {
-        set_status(FText::FromString(repaired.error()));
-    } else if (!repaired->has_changes()) {
+    if (!repaired.has_changes()) {
         set_status(
             LOCTEXT("BindingsAlreadyRepaired", "Bindings and references already need no repair."));
     } else {
-        if (preview_.IsSet()) {
-            preview_.Reset();
-            source_session_.state().preview = PreviewState::Stale;
-        }
+        source_session_.state().invalidate_preview();
         set_status(FText::Format(
             LOCTEXT("BindingsRepaired",
                     "Repaired bindings: removed {0}; references: removed {1}; adopted {2}."),
-            repaired->removed_bindings,
-            repaired->removed_references,
-            repaired->adopted_entities));
+            repaired.removed_bindings,
+            repaired.removed_references,
+            repaired.adopted_entities));
     }
-    changed_.Broadcast();
+    notify_changed();
 }
 
 void US7LevelAuthoringMode::rename_selected_entity(FString const id) {
     if (!document_.IsValid()) {
         set_status(LOCTEXT("NoDocumentForRename", "Create an S7 authoring document first."));
-        changed_.Broadcast();
+        notify_changed();
         return;
     }
 
     auto const binding{selected_bound_entity(*document_)};
     if (!binding) {
         set_status(FText::FromString(binding.error()));
-        changed_.Broadcast();
+        notify_changed();
         return;
     }
 
@@ -480,12 +511,12 @@ void US7LevelAuthoringMode::rename_selected_entity(FString const id) {
     if (!is_canonical_s7_level_entity_id(FStringView{id})) {
         set_status(LOCTEXT("InvalidEntityId",
                            "Entity IDs must be lowercase S7 symbols beginning with a letter."));
-        changed_.Broadcast();
+        notify_changed();
         return;
     }
     if ((*binding)->id == new_id) {
         set_status(LOCTEXT("UnchangedEntityId", "The selected entity already has that ID."));
-        changed_.Broadcast();
+        notify_changed();
         return;
     }
     if (document_->entities.ContainsByPredicate(
@@ -493,20 +524,17 @@ void US7LevelAuthoringMode::rename_selected_entity(FString const id) {
                 return &candidate != binding && candidate.id == new_id;
             })) {
         set_status(LOCTEXT("DuplicateEntityId", "That S7 entity ID is already in use."));
-        changed_.Broadcast();
+        notify_changed();
         return;
     }
 
     FScopedTransaction transaction{LOCTEXT("RenameEntityId", "Rename S7 Entity ID")};
     document_->Modify();
     (*binding)->id = new_id;
-    if (preview_.IsSet()) {
-        preview_.Reset();
-        source_session_.state().preview = PreviewState::Stale;
-    }
+    source_session_.state().invalidate_preview();
     set_status(FText::Format(LOCTEXT("RenamedEntityId", "Renamed selected entity to '{0}'."),
                              FText::FromName(new_id)));
-    changed_.Broadcast();
+    notify_changed();
 }
 
 void US7LevelAuthoringMode::open_level_config() {
@@ -520,7 +548,7 @@ void US7LevelAuthoringMode::open_level_config() {
                            "Edit Collision Grid > Grid Size in the level config asset. "
                            "This asset may be shared by other levels."));
     }
-    changed_.Broadcast();
+    notify_changed();
 }
 
 void US7LevelAuthoringMode::validate_playable_level() {
@@ -531,19 +559,19 @@ void US7LevelAuthoringMode::validate_playable_level() {
         auto const result{validate_playable_s7_level(*level, *document_)};
         set_status(FText::FromString(result ? *result : result.error()));
     }
-    changed_.Broadcast();
+    notify_changed();
 }
 
 void US7LevelAuthoringMode::set_up_playable_level() {
     auto* const level{current_level()};
     if (!IsValid(level) || !document_.IsValid()) {
         set_status(LOCTEXT("NoLevelForPlayableSetup", "Open an S7 level before setting up play."));
-        changed_.Broadcast();
+        notify_changed();
         return;
     }
     auto const setup{set_up_playable_s7_level(*level, *document_)};
     set_status(FText::FromString(setup ? *setup : setup.error()));
-    changed_.Broadcast();
+    notify_changed();
 }
 
 auto US7LevelAuthoringMode::load_s7() -> bool {
@@ -560,7 +588,7 @@ auto US7LevelAuthoringMode::load_s7() -> bool {
     auto const loaded{source_session_.load(*document_, path.GetValue())};
     if (!loaded) {
         set_status(FText::FromString(loaded.error()));
-        changed_.Broadcast();
+        notify_changed();
         return false;
     }
     document_->Modify();
@@ -583,11 +611,10 @@ void US7LevelAuthoringMode::reload_s7() {
     if (!reloaded) {
         set_status(FText::FromString(reloaded.error()));
     } else {
-        preview_.Reset();
-        source_session_.state().preview = PreviewState::None;
+        clear_preview();
         set_status(LOCTEXT("SourceReloaded", "Attached the document source from disk."));
     }
-    changed_.Broadcast();
+    notify_changed();
 }
 
 void US7LevelAuthoringMode::set_source_buffer(FString source) {
@@ -596,39 +623,36 @@ void US7LevelAuthoringMode::set_source_buffer(FString source) {
     if (source_session_.revision() != revision) {
         set_status(LOCTEXT("BufferUpdated", "Source buffer updated. Preview before applying."));
     }
-    changed_.Broadcast();
+    notify_changed();
 }
 
 void US7LevelAuthoringMode::preview_apply() {
-    preview_.Reset();
-    source_session_.state().preview = PreviewState::None;
+    clear_preview();
     auto* const level{current_level()};
     if (!IsValid(level) || !document_.IsValid() || source_session_.document() != document_.Get()) {
         set_status(LOCTEXT("NoSource", "Attach an S7 source buffer to this level first."));
-        changed_.Broadcast();
+        notify_changed();
         return;
     }
     if (!prepare_source_replay()) {
-        changed_.Broadcast();
+        notify_changed();
         return;
     }
     if (!IsValid(document_->level_config)) {
         set_status(LOCTEXT("MissingReplayResources", "The level resources are unavailable."));
-        changed_.Broadcast();
+        notify_changed();
         return;
     }
     auto base{read_game_settings_source(s7_settings_path(*level), *document_->level_config)};
     if (!base) {
         set_status(FText::FromString(base.error()));
-        changed_.Broadcast();
+        notify_changed();
         return;
     }
     auto read{source_session_.read_replay(std::move(base->settings))};
     if (!read) {
         set_status(FText::FromString(ioj::to_fstring(levels::format_diagnostics(read.error()))));
-        preview_.Reset();
-        source_session_.state().preview = PreviewState::None;
-        changed_.Broadcast();
+        notify_changed();
         return;
     }
     auto plan{make_s7_level_sync_plan(*level,
@@ -640,18 +664,14 @@ void US7LevelAuthoringMode::preview_apply() {
                                                             MoveTemp(base->evaluated_source)})};
     if (!plan) {
         set_status(FText::FromString(plan.error()));
-        preview_.Reset();
-        source_session_.state().preview = PreviewState::None;
-        changed_.Broadcast();
+        notify_changed();
         return;
     }
     auto preview{
         make_s7_level_authoring_preview(*level, *document_, source_session_, MoveTemp(*plan))};
     if (!preview) {
         set_status(FText::FromString(preview.error()));
-        preview_.Reset();
-        source_session_.state().preview = PreviewState::None;
-        changed_.Broadcast();
+        notify_changed();
         return;
     }
     preview_ = MoveTemp(*preview);
@@ -691,7 +711,7 @@ void US7LevelAuthoringMode::preview_apply() {
                                 entity_summary,
                                 FText::FromString(FString::Join(document_changes, TEXT(", ")))));
     }
-    changed_.Broadcast();
+    notify_changed();
 }
 
 void US7LevelAuthoringMode::apply_preview() {
@@ -754,7 +774,7 @@ auto US7LevelAuthoringMode::prepare_source_replay() -> bool {
         set_status(FText::FromString(loaded.error()));
         return false;
     }
-    changed_.Broadcast();
+    notify_changed();
     return true;
 }
 
@@ -768,10 +788,9 @@ auto US7LevelAuthoringMode::apply_current_source(bool const require_review) -> b
         auto const current{
             validate_s7_level_authoring_preview(*level, *document_, source_session_, *previous)};
         if (!current) {
-            preview_.Reset();
-            source_session_.state().preview = PreviewState::Stale;
+            clear_preview(PreviewState::Stale);
             set_status(FText::FromString(current.error().message));
-            changed_.Broadcast();
+            notify_changed();
             return false;
         }
     }
@@ -790,7 +809,7 @@ auto US7LevelAuthoringMode::apply_current_source(bool const require_review) -> b
         set_status(LOCTEXT(
             "ReplayChangedPreview",
             "The saved source inputs changed. Review the refreshed preview, then apply it."));
-        changed_.Broadcast();
+        notify_changed();
         return false;
     }
     if (!require_review) {
@@ -798,7 +817,7 @@ auto US7LevelAuthoringMode::apply_current_source(bool const require_review) -> b
             validate_playable_s7_definition(preview_->plan.definition, *document_->level_config)};
         if (!candidate) {
             set_status(FText::FromString(candidate.error()));
-            changed_.Broadcast();
+            notify_changed();
             return false;
         }
     }
@@ -808,12 +827,10 @@ auto US7LevelAuthoringMode::apply_current_source(bool const require_review) -> b
     if (!applied) {
         set_status(FText::FromString(applied.error().message));
         if (applied.error().code == ES7LevelPreviewError::Stale) {
-            preview_.Reset();
-            source_session_.state().preview = PreviewState::Stale;
+            clear_preview(PreviewState::Stale);
         }
     } else {
-        preview_.Reset();
-        source_session_.state().preview = PreviewState::None;
+        clear_preview();
         source_session_.state().scene_dirty = false;
         auto const validation{validate_playable_s7_level(*level, *document_)};
         playable = validation.has_value();
@@ -823,53 +840,34 @@ auto US7LevelAuthoringMode::apply_current_source(bool const require_review) -> b
                                               "%s"),
                                          *validation.error())));
     }
-    changed_.Broadcast();
+    notify_changed();
     return applied.has_value() && (require_review || playable);
 }
 
 void US7LevelAuthoringMode::save() {
-    if (source_session_.buffer().IsEmpty()) {
-        set_status(LOCTEXT("NoSourceBuffer", "There is no source buffer to save."));
-        changed_.Broadcast();
-        return;
-    }
-    if (!source_session_.is_attached() || source_session_.path().IsEmpty()) {
-        save_as();
-        return;
-    }
-    auto const saved{source_session_.save()};
-    if (!saved) {
-        set_status(FText::FromString(saved.error()));
-    } else {
-        update_document_source_path();
-        set_status(FText::FromString(FString::Printf(TEXT("Saved the source buffer exactly to %s."),
-                                                     *source_session_.path())));
-    }
-    changed_.Broadcast();
+    save_source_buffer(false);
 }
 
 void US7LevelAuthoringMode::save_as() {
+    save_source_buffer(true);
+}
+
+void US7LevelAuthoringMode::save_source_buffer(bool const select_path) {
     if (source_session_.buffer().IsEmpty()) {
         set_status(LOCTEXT("NoSourceBuffer", "There is no source buffer to save."));
-        changed_.Broadcast();
+        notify_changed();
         return;
     }
-    auto* const level{current_level()};
-    auto const map_name{IsValid(level)
-                            ? FPackageName::GetShortName(level->GetOutermost()->GetName())
-                            : FString{TEXT("level")}};
-    auto const selected{select_source_path(true, map_name + TEXT(".scm"))};
-    if (!selected.IsSet()) {
-        return;
-    }
-    auto overwrite{ES7SourceOverwritePolicy::RefuseExisting};
-    if (IFileManager::Get().FileExists(*selected.GetValue())) {
-        if (!confirm_replace_source(selected.GetValue())) {
+    std::expected<void, FString> saved;
+    if (select_path || !source_session_.is_attached() || source_session_.path().IsEmpty()) {
+        auto const selected{select_save_target(current_level())};
+        if (!selected.IsSet()) {
             return;
         }
-        overwrite = ES7SourceOverwritePolicy::ReplaceExisting;
+        saved = source_session_.save_as(selected->path, selected->overwrite);
+    } else {
+        saved = source_session_.save();
     }
-    auto const saved{source_session_.save_as(selected.GetValue(), overwrite)};
     if (!saved) {
         set_status(FText::FromString(saved.error()));
     } else {
@@ -877,7 +875,7 @@ void US7LevelAuthoringMode::save_as() {
         set_status(FText::FromString(FString::Printf(TEXT("Saved the source buffer exactly to %s."),
                                                      *source_session_.path())));
     }
-    changed_.Broadcast();
+    notify_changed();
 }
 
 void US7LevelAuthoringMode::save_canonical_from_scene() {
@@ -889,39 +887,31 @@ void US7LevelAuthoringMode::save_canonical_from_scene() {
         set_status(LOCTEXT("UnappliedSource",
                            "Apply or discard the source buffer before saving canonical scene "
                            "state."));
-        changed_.Broadcast();
+        notify_changed();
         return;
     }
     auto const emitted{collect_s7_scene_source(*level, *document_)};
     if (!emitted) {
         set_status(FText::FromString(emitted.error()));
-        changed_.Broadcast();
+        notify_changed();
         return;
     }
     auto const source{*emitted};
 
     std::expected<void, FString> saved;
     if (source_session_.path().IsEmpty()) {
-        auto const map_name{FPackageName::GetShortName(level->GetOutermost()->GetName())};
-        auto const selected{select_source_path(true, map_name + TEXT(".scm"))};
+        auto const selected{select_save_target(level)};
         if (!selected.IsSet()) {
             return;
         }
-        auto overwrite{ES7SourceOverwritePolicy::RefuseExisting};
-        if (IFileManager::Get().FileExists(*selected.GetValue())) {
-            if (!confirm_replace_source(selected.GetValue())) {
-                return;
-            }
-            overwrite = ES7SourceOverwritePolicy::ReplaceExisting;
-        }
         saved = source_session_.save_replacement_as(
-            source, selected.GetValue(), document_->synchronized_source, overwrite);
+            source, selected->path, document_->synchronized_source, selected->overwrite);
     } else {
         saved = source_session_.save_replacement(source, document_->synchronized_source);
     }
     if (!saved) {
         set_status(FText::FromString(saved.error()));
-        changed_.Broadcast();
+        notify_changed();
         return;
     }
     document_->Modify();
@@ -934,7 +924,7 @@ void US7LevelAuthoringMode::save_canonical_from_scene() {
         FString::Printf(TEXT("Saved canonical scene state with %d entities to %s."),
                         document_->entities.Num(),
                         *source_session_.path())));
-    changed_.Broadcast();
+    notify_changed();
 }
 
 void US7LevelAuthoringMode::update_document_source_path() {

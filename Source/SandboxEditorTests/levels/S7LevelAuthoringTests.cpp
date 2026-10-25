@@ -1599,23 +1599,20 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         duplicate_two->set_team(ETestTeam::Red);
         deleted->Destroy();
 
-        document->entities = {{.id = TEXT("enemy-group"), .actor = retained},
-                              {.id = TEXT("deleted"), .actor = deleted},
-                              {.id = TEXT("enemy"), .actor = retained}};
+        document->entities = {
+            {.id = TEXT("enemy-group"), .actor = retained, .spawn_time_seconds = 7.0},
+            {.id = TEXT("deleted"), .actor = deleted},
+            {.id = TEXT("enemy"), .actor = retained},
+            {.id = TEXT("bad id"), .actor = duplicate_one, .spawn_time_seconds = 9.0}};
         document->camera.targets = {retained, deleted, duplicate_one};
 
         auto const repaired{
             ioj::editor::repair_s7_level_bindings(*world->GetCurrentLevel(), *document)};
-        if (!TestRunner->TestTrue(TEXT("Bindings repair succeeds"), repaired.has_value())) {
-            TestRunner->AddError(repaired.error());
-            return;
-        }
+        TestRunner->TestEqual(TEXT("Invalid bindings are removed"), repaired.removed_bindings, 3);
         TestRunner->TestEqual(
-            TEXT("Dead and duplicate bindings are removed"), repaired->removed_bindings, 2);
+            TEXT("Only dead references are removed"), repaired.removed_references, 1);
         TestRunner->TestEqual(
-            TEXT("Only dead references are removed"), repaired->removed_references, 1);
-        TestRunner->TestEqual(
-            TEXT("Both duplicated actors are adopted"), repaired->adopted_entities, 2);
+            TEXT("Both duplicated actors are adopted"), repaired.adopted_entities, 2);
         TestRunner->TestTrue(TEXT("Stable binding ID is preserved"),
                              bound_actor(*document, TEXT("enemy-group")) == retained);
         TestRunner->TestTrue(TEXT("First canonical collision receives suffix"),
@@ -1627,10 +1624,22 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                               2);
         TestRunner->TestTrue(TEXT("Camera reference remains bound"),
                              document->camera.targets[0] == retained);
+        TestRunner->TestEqual(
+            TEXT("Retained spawn time survives"), document->entities[0].spawn_time_seconds, 7.0);
+        TestRunner->TestEqual(
+            TEXT("Readopted spawn time survives"), document->entities[1].spawn_time_seconds, 9.0);
+        TestRunner->TestFalse(
+            TEXT("Repeated repair changes nothing"),
+            ioj::editor::repair_s7_level_bindings(*world->GetCurrentLevel(), *document)
+                .has_changes());
+        TestRunner->TestEqual(
+            TEXT("Repeated adoption changes nothing"),
+            ioj::editor::adopt_unbound_level_entities(*world->GetCurrentLevel(), *document),
+            0);
 
         GEditor->UndoTransaction();
 
-        TestRunner->TestEqual(TEXT("Repair undo restores bindings"), document->entities.Num(), 3);
+        TestRunner->TestEqual(TEXT("Repair undo restores bindings"), document->entities.Num(), 4);
         TestRunner->TestEqual(
             TEXT("Repair undo restores camera references"), document->camera.targets.Num(), 3);
     }
@@ -1785,6 +1794,24 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
 
     TEST_METHOD(EditorModeActivatesAndDeactivates)
     {
+        auto const fixture{make_preview_fixture()};
+        if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
+            return;
+        }
+        auto const source{ioj::editor::collect_s7_scene_source(*fixture.world->GetCurrentLevel(),
+                                                               *fixture.document)};
+        if (!TestRunner->TestTrue(TEXT("Scene source collects"), source.has_value())) {
+            return;
+        }
+        FTemporarySourceDirectory directory;
+        auto const path{FPaths::Combine(directory.path, TEXT("level.scm"))};
+        if (!TestRunner->TestTrue(TEXT("Source is saved"), write_source(*source, path))) {
+            return;
+        }
+        fixture.document->source_path = path;
+        fixture.document->synchronized_source = *source;
+        fixture.document->synchronized_scene_source = *source;
+
         auto& modes{GLevelEditorModeTools()};
         modes.ActivateMode(US7LevelAuthoringMode::mode_id);
         TestRunner->TestTrue(TEXT("Mode activates"),
@@ -1804,12 +1831,25 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Authoring toolkit has inline controls"),
                              toolkit->GetInlineContent().IsValid());
 
+        mode->preview_apply();
+        TestRunner->TestTrue(TEXT("Preview is available"),
+                             mode->script_editor_state().preview_valid);
         mode->set_source_buffer(TEXT("(level)"));
         TestRunner->TestEqual(TEXT("Mode owns script-editor buffer edits"),
                               mode->source_session().buffer(),
                               FString{TEXT("(level)")});
         TestRunner->TestTrue(TEXT("Unsaved buffer state is surfaced"),
                              mode->script_editor_state().source_dirty);
+        TestRunner->TestFalse(TEXT("Editing invalidates the preview immediately"),
+                              mode->script_editor_state().preview_valid);
+        TestRunner->TestTrue(TEXT("Editing marks the preview stale"),
+                             mode->script_editor_state().preview_stale);
+        mode->set_source_buffer(*source);
+        mode->reload_s7();
+        TestRunner->TestFalse(TEXT("Reload clears the stale preview"),
+                              mode->script_editor_state().preview_stale);
+        TestRunner->TestFalse(TEXT("Reload does not restore the preview"),
+                              mode->script_editor_state().preview_valid);
 
         auto const tab{FSandboxEditorModule::open_s7_level_script_editor()};
         TestRunner->TestTrue(TEXT("Script editor tab opens"), tab.IsValid());

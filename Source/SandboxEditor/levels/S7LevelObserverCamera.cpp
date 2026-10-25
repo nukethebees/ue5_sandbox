@@ -15,6 +15,10 @@ auto make_s7_observer_camera_transform(ULevel const& level,
         return std::unexpected{TEXT("Observer camera requires at least one target.")};
     }
 
+    TSet<AActor const*> bound;
+    for (auto const& binding : document.entities) {
+        bound.Add(binding.actor);
+    }
     TArray<FVector> target_positions;
     target_positions.Reserve(document.camera.targets.Num());
     for (auto const target : document.camera.targets) {
@@ -22,9 +26,7 @@ auto make_s7_observer_camera_transform(ULevel const& level,
             return std::unexpected{
                 TEXT("Every observer camera target must be a valid level actor.")};
         }
-        auto const is_bound{document.entities.ContainsByPredicate(
-            [target](FS7LevelEntityBinding const& binding) { return binding.actor == target; })};
-        if (!is_bound) {
+        if (!bound.Contains(target)) {
             return std::unexpected{TEXT("Every observer camera target must be an adopted entity.")};
         }
         target_positions.Add(target->GetActorLocation());
