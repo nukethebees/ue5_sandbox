@@ -1348,13 +1348,16 @@ class Validator {
             auto const record_name{text(records.name[record]) +
                                    (records.constraint_policy[record] ? "Value" : "")};
             if (record_name == "Field" || record_name == "visit_field" || record_name == "Self" ||
-                record_name == "Visitor") {
+                record_name == "Visitor" || record_name == "Selected" ||
+                record_name == "get_field" || record_name == "field_name" ||
+                record_name == "invoke_field") {
                 throw std::invalid_argument{"Record visitor conflicts with record name: " +
                                             record_name};
             }
             auto const check_name{[&](StringId name) {
                 auto const value{text(name)};
-                if (value == "Field" || value == "Count" || value == "visit_field") {
+                if (value == "Field" || value == "Count" || value == "visit_field" ||
+                    value == "get_field" || value == "field_name" || value == "invoke_field") {
                     throw std::invalid_argument{"Record visitor reserves the name: " + value};
                 }
             }};

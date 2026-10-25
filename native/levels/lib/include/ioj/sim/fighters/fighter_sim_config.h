@@ -10,11 +10,14 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
 namespace ioj::sim {
 struct FighterSimConfig {
+    bool operator==(FighterSimConfig const&) const = default;
+
     enum class Field : std::uint8_t {
         max_live_fighters,
         fire_point_distance,
@@ -45,148 +48,234 @@ struct FighterSimConfig {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, FighterSimConfig> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::max_live_fighters) {
+            return (self.max_live_fighters);
+        }
+        if constexpr (Selected == Field::fire_point_distance) {
+            return (self.fire_point_distance);
+        }
+        if constexpr (Selected == Field::fire_dot_product_threshold) {
+            return (self.fire_dot_product_threshold);
+        }
+        if constexpr (Selected == Field::speed) {
+            return (self.speed);
+        }
+        if constexpr (Selected == Field::turn_speed_unitless) {
+            return (self.turn_speed_unitless);
+        }
+        if constexpr (Selected == Field::avoidance_clear_update_frequency) {
+            return (self.avoidance_clear_update_frequency);
+        }
+        if constexpr (Selected == Field::avoidance_update_frequency) {
+            return (self.avoidance_update_frequency);
+        }
+        if constexpr (Selected == Field::avoidance_active_update_frequency) {
+            return (self.avoidance_active_update_frequency);
+        }
+        if constexpr (Selected == Field::avoidance_immediate_update_frequency) {
+            return (self.avoidance_immediate_update_frequency);
+        }
+        if constexpr (Selected == Field::avoidance_lookahead_time) {
+            return (self.avoidance_lookahead_time);
+        }
+        if constexpr (Selected == Field::avoidance_clearance_buffer) {
+            return (self.avoidance_clearance_buffer);
+        }
+        if constexpr (Selected == Field::separation_radius) {
+            return (self.separation_radius);
+        }
+        if constexpr (Selected == Field::separation_strength) {
+            return (self.separation_strength);
+        }
+        if constexpr (Selected == Field::steering_memory_duration) {
+            return (self.steering_memory_duration);
+        }
+        if constexpr (Selected == Field::dense_traffic_neighbour_threshold) {
+            return (self.dense_traffic_neighbour_threshold);
+        }
+        if constexpr (Selected == Field::laser) {
+            return (self.laser);
+        }
+        if constexpr (Selected == Field::health) {
+            return (self.health);
+        }
+        if constexpr (Selected == Field::attack_retry_cooldown) {
+            return (self.attack_retry_cooldown);
+        }
+        if constexpr (Selected == Field::attack_engagement_threshold) {
+            return (self.attack_engagement_threshold);
+        }
+        if constexpr (Selected == Field::attack_reposition_frequency) {
+            return (self.attack_reposition_frequency);
+        }
+        if constexpr (Selected == Field::attack_distance_band) {
+            return (self.attack_distance_band);
+        }
+        if constexpr (Selected == Field::arrival_distance) {
+            return (self.arrival_distance);
+        }
+        if constexpr (Selected == Field::los_check_buffer) {
+            return (self.los_check_buffer);
+        }
+        if constexpr (Selected == Field::awareness_radius) {
+            return (self.awareness_radius);
+        }
+        if constexpr (Selected == Field::awareness_scan_frequency) {
+            return (self.awareness_scan_frequency);
+        }
+        if constexpr (Selected == Field::minimum_opportunistic_intercept_deviation_dot_product) {
+            return (self.minimum_opportunistic_intercept_deviation_dot_product);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::max_live_fighters:
+                return "max_live_fighters";
+            case Field::fire_point_distance:
+                return "fire_point_distance";
+            case Field::fire_dot_product_threshold:
+                return "fire_dot_product_threshold";
+            case Field::speed:
+                return "speed";
+            case Field::turn_speed_unitless:
+                return "turn_speed_unitless";
+            case Field::avoidance_clear_update_frequency:
+                return "avoidance_clear_update_frequency";
+            case Field::avoidance_update_frequency:
+                return "avoidance_update_frequency";
+            case Field::avoidance_active_update_frequency:
+                return "avoidance_active_update_frequency";
+            case Field::avoidance_immediate_update_frequency:
+                return "avoidance_immediate_update_frequency";
+            case Field::avoidance_lookahead_time:
+                return "avoidance_lookahead_time";
+            case Field::avoidance_clearance_buffer:
+                return "avoidance_clearance_buffer";
+            case Field::separation_radius:
+                return "separation_radius";
+            case Field::separation_strength:
+                return "separation_strength";
+            case Field::steering_memory_duration:
+                return "steering_memory_duration";
+            case Field::dense_traffic_neighbour_threshold:
+                return "dense_traffic_neighbour_threshold";
+            case Field::laser:
+                return "laser";
+            case Field::health:
+                return "health";
+            case Field::attack_retry_cooldown:
+                return "attack_retry_cooldown";
+            case Field::attack_engagement_threshold:
+                return "attack_engagement_threshold";
+            case Field::attack_reposition_frequency:
+                return "attack_reposition_frequency";
+            case Field::attack_distance_band:
+                return "attack_distance_band";
+            case Field::arrival_distance:
+                return "arrival_distance";
+            case Field::los_check_buffer:
+                return "los_check_buffer";
+            case Field::awareness_radius:
+                return "awareness_radius";
+            case Field::awareness_scan_frequency:
+                return "awareness_scan_frequency";
+            case Field::minimum_opportunistic_intercept_deviation_dot_product:
+                return "minimum_opportunistic_intercept_deviation_dot_product";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, FighterSimConfig>
     {
         switch (field) {
-            case Field::max_live_fighters: {
-                std::forward<Visitor>(visitor).template operator()<Field::max_live_fighters>(
-                    self.max_live_fighters);
-                return;
-            }
-            case Field::fire_point_distance: {
-                std::forward<Visitor>(visitor).template operator()<Field::fire_point_distance>(
-                    self.fire_point_distance);
-                return;
-            }
-            case Field::fire_dot_product_threshold: {
-                std::forward<Visitor>(visitor).template
-                    operator()<Field::fire_dot_product_threshold>(self.fire_dot_product_threshold);
-                return;
-            }
-            case Field::speed: {
-                std::forward<Visitor>(visitor).template operator()<Field::speed>(self.speed);
-                return;
-            }
-            case Field::turn_speed_unitless: {
-                std::forward<Visitor>(visitor).template operator()<Field::turn_speed_unitless>(
-                    self.turn_speed_unitless);
-                return;
-            }
-            case Field::avoidance_clear_update_frequency: {
-                std::forward<Visitor>(visitor)
-                    .template operator()<Field::avoidance_clear_update_frequency>(
-                        self.avoidance_clear_update_frequency);
-                return;
-            }
-            case Field::avoidance_update_frequency: {
-                std::forward<Visitor>(visitor).template
-                    operator()<Field::avoidance_update_frequency>(self.avoidance_update_frequency);
-                return;
-            }
-            case Field::avoidance_active_update_frequency: {
-                std::forward<Visitor>(visitor)
-                    .template operator()<Field::avoidance_active_update_frequency>(
-                        self.avoidance_active_update_frequency);
-                return;
-            }
-            case Field::avoidance_immediate_update_frequency: {
-                std::forward<Visitor>(visitor)
-                    .template operator()<Field::avoidance_immediate_update_frequency>(
-                        self.avoidance_immediate_update_frequency);
-                return;
-            }
-            case Field::avoidance_lookahead_time: {
-                std::forward<Visitor>(visitor).template operator()<Field::avoidance_lookahead_time>(
-                    self.avoidance_lookahead_time);
-                return;
-            }
-            case Field::avoidance_clearance_buffer: {
-                std::forward<Visitor>(visitor).template
-                    operator()<Field::avoidance_clearance_buffer>(self.avoidance_clearance_buffer);
-                return;
-            }
-            case Field::separation_radius: {
-                std::forward<Visitor>(visitor).template operator()<Field::separation_radius>(
-                    self.separation_radius);
-                return;
-            }
-            case Field::separation_strength: {
-                std::forward<Visitor>(visitor).template operator()<Field::separation_strength>(
-                    self.separation_strength);
-                return;
-            }
-            case Field::steering_memory_duration: {
-                std::forward<Visitor>(visitor).template operator()<Field::steering_memory_duration>(
-                    self.steering_memory_duration);
-                return;
-            }
-            case Field::dense_traffic_neighbour_threshold: {
-                std::forward<Visitor>(visitor)
-                    .template operator()<Field::dense_traffic_neighbour_threshold>(
-                        self.dense_traffic_neighbour_threshold);
-                return;
-            }
-            case Field::laser: {
-                std::forward<Visitor>(visitor).template operator()<Field::laser>(self.laser);
-                return;
-            }
-            case Field::health: {
-                std::forward<Visitor>(visitor).template operator()<Field::health>(self.health);
-                return;
-            }
-            case Field::attack_retry_cooldown: {
-                std::forward<Visitor>(visitor).template operator()<Field::attack_retry_cooldown>(
-                    self.attack_retry_cooldown);
-                return;
-            }
-            case Field::attack_engagement_threshold: {
-                std::forward<Visitor>(visitor)
-                    .template operator()<Field::attack_engagement_threshold>(
-                        self.attack_engagement_threshold);
-                return;
-            }
-            case Field::attack_reposition_frequency: {
-                std::forward<Visitor>(visitor)
-                    .template operator()<Field::attack_reposition_frequency>(
-                        self.attack_reposition_frequency);
-                return;
-            }
-            case Field::attack_distance_band: {
-                std::forward<Visitor>(visitor).template operator()<Field::attack_distance_band>(
-                    self.attack_distance_band);
-                return;
-            }
-            case Field::arrival_distance: {
-                std::forward<Visitor>(visitor).template operator()<Field::arrival_distance>(
-                    self.arrival_distance);
-                return;
-            }
-            case Field::los_check_buffer: {
-                std::forward<Visitor>(visitor).template operator()<Field::los_check_buffer>(
-                    self.los_check_buffer);
-                return;
-            }
-            case Field::awareness_radius: {
-                std::forward<Visitor>(visitor).template operator()<Field::awareness_radius>(
-                    self.awareness_radius);
-                return;
-            }
-            case Field::awareness_scan_frequency: {
-                std::forward<Visitor>(visitor).template operator()<Field::awareness_scan_frequency>(
-                    self.awareness_scan_frequency);
-                return;
-            }
-            case Field::minimum_opportunistic_intercept_deviation_dot_product: {
-                std::forward<Visitor>(visitor).template
-                    operator()<Field::minimum_opportunistic_intercept_deviation_dot_product>(
-                        self.minimum_opportunistic_intercept_deviation_dot_product);
-                return;
-            }
-            case Field::Count: {
+            case Field::max_live_fighters:
+                return invoke_field<Field::max_live_fighters>(self, std::forward<Visitor>(visitor));
+            case Field::fire_point_distance:
+                return invoke_field<Field::fire_point_distance>(self,
+                                                                std::forward<Visitor>(visitor));
+            case Field::fire_dot_product_threshold:
+                return invoke_field<Field::fire_dot_product_threshold>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::speed:
+                return invoke_field<Field::speed>(self, std::forward<Visitor>(visitor));
+            case Field::turn_speed_unitless:
+                return invoke_field<Field::turn_speed_unitless>(self,
+                                                                std::forward<Visitor>(visitor));
+            case Field::avoidance_clear_update_frequency:
+                return invoke_field<Field::avoidance_clear_update_frequency>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::avoidance_update_frequency:
+                return invoke_field<Field::avoidance_update_frequency>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::avoidance_active_update_frequency:
+                return invoke_field<Field::avoidance_active_update_frequency>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::avoidance_immediate_update_frequency:
+                return invoke_field<Field::avoidance_immediate_update_frequency>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::avoidance_lookahead_time:
+                return invoke_field<Field::avoidance_lookahead_time>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::avoidance_clearance_buffer:
+                return invoke_field<Field::avoidance_clearance_buffer>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::separation_radius:
+                return invoke_field<Field::separation_radius>(self, std::forward<Visitor>(visitor));
+            case Field::separation_strength:
+                return invoke_field<Field::separation_strength>(self,
+                                                                std::forward<Visitor>(visitor));
+            case Field::steering_memory_duration:
+                return invoke_field<Field::steering_memory_duration>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::dense_traffic_neighbour_threshold:
+                return invoke_field<Field::dense_traffic_neighbour_threshold>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::laser:
+                return invoke_field<Field::laser>(self, std::forward<Visitor>(visitor));
+            case Field::health:
+                return invoke_field<Field::health>(self, std::forward<Visitor>(visitor));
+            case Field::attack_retry_cooldown:
+                return invoke_field<Field::attack_retry_cooldown>(self,
+                                                                  std::forward<Visitor>(visitor));
+            case Field::attack_engagement_threshold:
+                return invoke_field<Field::attack_engagement_threshold>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::attack_reposition_frequency:
+                return invoke_field<Field::attack_reposition_frequency>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::attack_distance_band:
+                return invoke_field<Field::attack_distance_band>(self,
+                                                                 std::forward<Visitor>(visitor));
+            case Field::arrival_distance:
+                return invoke_field<Field::arrival_distance>(self, std::forward<Visitor>(visitor));
+            case Field::los_check_buffer:
+                return invoke_field<Field::los_check_buffer>(self, std::forward<Visitor>(visitor));
+            case Field::awareness_radius:
+                return invoke_field<Field::awareness_radius>(self, std::forward<Visitor>(visitor));
+            case Field::awareness_scan_frequency:
+                return invoke_field<Field::awareness_scan_frequency>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::minimum_opportunistic_intercept_deviation_dot_product:
+                return invoke_field<Field::minimum_opportunistic_intercept_deviation_dot_product>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();

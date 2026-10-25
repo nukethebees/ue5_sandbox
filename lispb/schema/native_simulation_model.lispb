@@ -138,7 +138,7 @@
   :header-include "ioj/settings/attack_distance_band.h"
   :namespace ioj::settings
   :prelude ("#include <ioj/settings/attack_distance_band_policy.h>")
-  (record AttackDistanceBand
+  (record AttackDistanceBand :generate-visitor true
     :constraint-policy ioj::settings::attack_distance_band_policy
     :comparison equality
     :generate-s7-reader true :s7-tag "attack-distance-band"
@@ -150,7 +150,7 @@
   :header "native/levels/lib/include/ioj/sim/lasers/laser_weapon_sim_config.h"
   :header-include "ioj/sim/lasers/laser_weapon_sim_config.h"
   :namespace ioj::sim
-  (record LaserWeaponSimConfig
+  (record LaserWeaponSimConfig :comparison equality
     :generate-visitor true
     :generate-s7-reader true :s7-tag "laser"
     (member damage std::int32_t :initializer "5")
@@ -162,7 +162,7 @@
   :header "native/levels/lib/include/ioj/sim/lasers/laser_sim_config.h"
   :header-include "ioj/sim/lasers/laser_sim_config.h"
   :namespace ioj::sim
-  (record LaserSimConfig
+  (record LaserSimConfig :comparison equality
     :generate-visitor true
     :generate-s7-reader true :s7-tag "laser-projectiles"
     (member n_preallocated_instances std::int32_t :initializer "5000")))
@@ -171,7 +171,7 @@
   :header "native/levels/lib/include/ioj/sim/collision/overlap_response_config.h"
   :header-include "ioj/sim/collision/overlap_response_config.h"
   :namespace ioj::sim
-  (record OverlapResponseConfig
+  (record OverlapResponseConfig :comparison equality
     :generate-visitor true
     :generate-s7-reader true :s7-tag "collision-grid"
     (member damage_per_overlap_detection std::int32_t :initializer 50)
@@ -182,7 +182,7 @@
   :header "native/levels/lib/include/ioj/sim/fighters/fighter_sim_config.h"
   :header-include "ioj/sim/fighters/fighter_sim_config.h"
   :namespace ioj::sim
-  (record FighterSimConfig
+  (record FighterSimConfig :comparison equality
     :generate-visitor true
     :generate-s7-reader true :s7-tag "fighters"
     (member max_live_fighters std::int32_t :initializer "2000")

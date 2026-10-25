@@ -9,12 +9,15 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
 namespace ioj::sim {
 struct SpinnerSimConfig {
+    bool operator==(SpinnerSimConfig const&) const = default;
+
     enum class Field : std::uint8_t {
         fire_point_offsets,
         yaw_rotation_speed_degrees,
@@ -22,28 +25,57 @@ struct SpinnerSimConfig {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, SpinnerSimConfig> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::fire_point_offsets) {
+            return (self.fire_point_offsets);
+        }
+        if constexpr (Selected == Field::yaw_rotation_speed_degrees) {
+            return (self.yaw_rotation_speed_degrees);
+        }
+        if constexpr (Selected == Field::laser) {
+            return (self.laser);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::fire_point_offsets:
+                return "fire_point_offsets";
+            case Field::yaw_rotation_speed_degrees:
+                return "yaw_rotation_speed_degrees";
+            case Field::laser:
+                return "laser";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, SpinnerSimConfig>
     {
         switch (field) {
-            case Field::fire_point_offsets: {
-                std::forward<Visitor>(visitor).template operator()<Field::fire_point_offsets>(
-                    self.fire_point_offsets);
-                return;
-            }
-            case Field::yaw_rotation_speed_degrees: {
-                std::forward<Visitor>(visitor).template
-                    operator()<Field::yaw_rotation_speed_degrees>(self.yaw_rotation_speed_degrees);
-                return;
-            }
-            case Field::laser: {
-                std::forward<Visitor>(visitor).template operator()<Field::laser>(self.laser);
-                return;
-            }
-            case Field::Count: {
+            case Field::fire_point_offsets:
+                return invoke_field<Field::fire_point_offsets>(self,
+                                                               std::forward<Visitor>(visitor));
+            case Field::yaw_rotation_speed_degrees:
+                return invoke_field<Field::yaw_rotation_speed_degrees>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::laser:
+                return invoke_field<Field::laser>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();

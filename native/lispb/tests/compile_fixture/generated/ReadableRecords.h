@@ -67,22 +67,47 @@ struct ReadableChild {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, ReadableChild> && Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::name) {
+            return (self.name);
+        }
+        if constexpr (Selected == Field::count) {
+            return (self.count);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::name:
+                return "name";
+            case Field::count:
+                return "count";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, ReadableChild>
     {
         switch (field) {
-            case Field::name: {
-                std::forward<Visitor>(visitor).template operator()<Field::name>(self.name);
-                return;
-            }
-            case Field::count: {
-                std::forward<Visitor>(visitor).template operator()<Field::count>(self.count);
-                return;
-            }
-            case Field::Count: {
+            case Field::name:
+                return invoke_field<Field::name>(self, std::forward<Visitor>(visitor));
+            case Field::count:
+                return invoke_field<Field::count>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -93,6 +118,115 @@ struct ReadableChild {
 };
 
 struct ReadableRecord {
+    enum class Field : std::uint8_t {
+        child,
+        values,
+        points,
+        enabled,
+        maybe,
+        scale,
+        offset,
+        title,
+        mode,
+        Count,
+    };
+
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, ReadableRecord> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::child) {
+            return (self.child);
+        }
+        if constexpr (Selected == Field::values) {
+            return (self.values);
+        }
+        if constexpr (Selected == Field::points) {
+            return (self.points);
+        }
+        if constexpr (Selected == Field::enabled) {
+            return (self.enabled);
+        }
+        if constexpr (Selected == Field::maybe) {
+            return (self.maybe);
+        }
+        if constexpr (Selected == Field::scale) {
+            return (self.scale);
+        }
+        if constexpr (Selected == Field::offset) {
+            return (self.offset);
+        }
+        if constexpr (Selected == Field::title) {
+            return (self.title);
+        }
+        if constexpr (Selected == Field::mode) {
+            return (self.mode);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::child:
+                return "child";
+            case Field::values:
+                return "values";
+            case Field::points:
+                return "points";
+            case Field::enabled:
+                return "enabled";
+            case Field::maybe:
+                return "maybe";
+            case Field::scale:
+                return "scale";
+            case Field::offset:
+                return "offset";
+            case Field::title:
+                return "title";
+            case Field::mode:
+                return "mode";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, ReadableRecord>
+    {
+        switch (field) {
+            case Field::child:
+                return invoke_field<Field::child>(self, std::forward<Visitor>(visitor));
+            case Field::values:
+                return invoke_field<Field::values>(self, std::forward<Visitor>(visitor));
+            case Field::points:
+                return invoke_field<Field::points>(self, std::forward<Visitor>(visitor));
+            case Field::enabled:
+                return invoke_field<Field::enabled>(self, std::forward<Visitor>(visitor));
+            case Field::maybe:
+                return invoke_field<Field::maybe>(self, std::forward<Visitor>(visitor));
+            case Field::scale:
+                return invoke_field<Field::scale>(self, std::forward<Visitor>(visitor));
+            case Field::offset:
+                return invoke_field<Field::offset>(self, std::forward<Visitor>(visitor));
+            case Field::title:
+                return invoke_field<Field::title>(self, std::forward<Visitor>(visitor));
+            case Field::mode:
+                return invoke_field<Field::mode>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     ReadableChild child;
     std::vector<codegen_compile_fixture::ReadableChild> values{};
     std::array<float, 3> points{};

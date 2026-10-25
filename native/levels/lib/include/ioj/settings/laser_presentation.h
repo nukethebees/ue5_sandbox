@@ -6,35 +6,62 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
 namespace ioj::settings {
 struct LaserPresentation {
+    bool operator==(LaserPresentation const&) const = default;
+
     enum class Field : std::uint8_t {
         min_cull_distance,
         max_cull_distance,
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, LaserPresentation> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::min_cull_distance) {
+            return (self.min_cull_distance);
+        }
+        if constexpr (Selected == Field::max_cull_distance) {
+            return (self.max_cull_distance);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::min_cull_distance:
+                return "min_cull_distance";
+            case Field::max_cull_distance:
+                return "max_cull_distance";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, LaserPresentation>
     {
         switch (field) {
-            case Field::min_cull_distance: {
-                std::forward<Visitor>(visitor).template operator()<Field::min_cull_distance>(
-                    self.min_cull_distance);
-                return;
-            }
-            case Field::max_cull_distance: {
-                std::forward<Visitor>(visitor).template operator()<Field::max_cull_distance>(
-                    self.max_cull_distance);
-                return;
-            }
-            case Field::Count: {
+            case Field::min_cull_distance:
+                return invoke_field<Field::min_cull_distance>(self, std::forward<Visitor>(visitor));
+            case Field::max_cull_distance:
+                return invoke_field<Field::max_cull_distance>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();

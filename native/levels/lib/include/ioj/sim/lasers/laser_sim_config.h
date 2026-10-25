@@ -6,29 +6,55 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
 namespace ioj::sim {
 struct LaserSimConfig {
+    bool operator==(LaserSimConfig const&) const = default;
+
     enum class Field : std::uint8_t {
         n_preallocated_instances,
         Count,
     };
+
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, LaserSimConfig> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::n_preallocated_instances) {
+            return (self.n_preallocated_instances);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::n_preallocated_instances:
+                return "n_preallocated_instances";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
 
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, LaserSimConfig>
     {
         switch (field) {
-            case Field::n_preallocated_instances: {
-                std::forward<Visitor>(visitor).template operator()<Field::n_preallocated_instances>(
-                    self.n_preallocated_instances);
-                return;
-            }
-            case Field::Count: {
+            case Field::n_preallocated_instances:
+                return invoke_field<Field::n_preallocated_instances>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();

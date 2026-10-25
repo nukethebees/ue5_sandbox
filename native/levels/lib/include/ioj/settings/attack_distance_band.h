@@ -6,9 +6,77 @@
 #include "ioj/constrained_value.h"
 #include <ioj/settings/attack_distance_band_policy.h>
 
+#include <cassert>
+#include <concepts>
+#include <cstdint>
+#include <string_view>
+#include <type_traits>
+#include <utility>
+
 namespace ioj::settings {
 struct AttackDistanceBandValue {
     bool operator==(AttackDistanceBandValue const&) const = default;
+
+    enum class Field : std::uint8_t {
+        minimum,
+        desired,
+        maximum,
+        Count,
+    };
+
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, AttackDistanceBandValue> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::minimum) {
+            return (self.minimum);
+        }
+        if constexpr (Selected == Field::desired) {
+            return (self.desired);
+        }
+        if constexpr (Selected == Field::maximum) {
+            return (self.maximum);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::minimum:
+                return "minimum";
+            case Field::desired:
+                return "desired";
+            case Field::maximum:
+                return "maximum";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, AttackDistanceBandValue>
+    {
+        switch (field) {
+            case Field::minimum:
+                return invoke_field<Field::minimum>(self, std::forward<Visitor>(visitor));
+            case Field::desired:
+                return invoke_field<Field::desired>(self, std::forward<Visitor>(visitor));
+            case Field::maximum:
+                return invoke_field<Field::maximum>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
 
     float minimum{0.4f};
     float desired{0.5f};

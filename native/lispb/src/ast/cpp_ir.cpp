@@ -145,10 +145,11 @@ auto CppIR::if_stmt(Expr condition, BlockId then_block, std::optional<BlockId> e
     return ir_detail::node(NodeKind::if_stmt, index);
 }
 
-auto CppIR::switch_case(std::optional<Expr> label, BlockId body) -> SwitchCaseId {
+auto CppIR::switch_case(std::optional<Expr> label, BlockId body, bool braced) -> SwitchCaseId {
     SwitchCaseId const result{static_cast<std::uint32_t>(cases_.label.size())};
     cases_.label.push_back(label);
     cases_.body.push_back(block_nodes_.children[body.index()]);
+    cases_.braced.push_back(braced);
     return result;
 }
 

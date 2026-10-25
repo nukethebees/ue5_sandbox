@@ -121,7 +121,7 @@ class CppIR {
         -> NodeId;
     // Require a variable declaration, assignment or expression statement as the initializer.
     auto for_stmt(NodeId initializer, Expr condition, Expr increment, BlockId body) -> NodeId;
-    auto switch_case(std::optional<Expr> label, BlockId body) -> SwitchCaseId;
+    auto switch_case(std::optional<Expr> label, BlockId body, bool braced = true) -> SwitchCaseId;
     auto switch_stmt(Expr condition, std::span<SwitchCaseId const> cases) -> NodeId;
     auto switch_stmt(Expr condition, std::initializer_list<SwitchCaseId> cases) -> NodeId {
         return switch_stmt(condition, std::span<SwitchCaseId const>{cases});

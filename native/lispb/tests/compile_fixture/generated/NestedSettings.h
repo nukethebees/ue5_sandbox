@@ -8,6 +8,7 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -20,27 +21,55 @@ struct SettingsTarget {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, SettingsTarget> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::first) {
+            return (self.first);
+        }
+        if constexpr (Selected == Field::second) {
+            return (self.second);
+        }
+        if constexpr (Selected == Field::external_value) {
+            return (self.external_value);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::first:
+                return "first";
+            case Field::second:
+                return "second";
+            case Field::external_value:
+                return "external_value";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, SettingsTarget>
     {
         switch (field) {
-            case Field::first: {
-                std::forward<Visitor>(visitor).template operator()<Field::first>(self.first);
-                return;
-            }
-            case Field::second: {
-                std::forward<Visitor>(visitor).template operator()<Field::second>(self.second);
-                return;
-            }
-            case Field::external_value: {
-                std::forward<Visitor>(visitor).template operator()<Field::external_value>(
-                    self.external_value);
-                return;
-            }
-            case Field::Count: {
+            case Field::first:
+                return invoke_field<Field::first>(self, std::forward<Visitor>(visitor));
+            case Field::second:
+                return invoke_field<Field::second>(self, std::forward<Visitor>(visitor));
+            case Field::external_value:
+                return invoke_field<Field::external_value>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();

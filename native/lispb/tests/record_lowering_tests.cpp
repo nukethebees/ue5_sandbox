@@ -90,6 +90,10 @@ TEST(RecordLowering, RejectsInvalidSettingsBindingsAndConstrainedNames) {
           R"((record Config :generate-visitor true (member Field int)))",
           R"((record Config :generate-visitor true (member Count int)))",
           R"((record Config :generate-visitor true (member visit_field int)))",
+          R"((record Config :generate-visitor true (member get_field int)))",
+          R"((record Config :generate-visitor true (member field_name int)))",
+          R"((record Config :generate-visitor true (member invoke_field int)))",
+          R"((record Selected :generate-visitor true))",
           R"((record Field :generate-visitor true))",
           R"((record Self :generate-visitor true))"}) {
         SCOPED_TRACE(declarations);
@@ -146,8 +150,11 @@ TEST(RecordLowering, SettingsOptionsSurviveSourceRoundTrip) {
     auto const round_trip{parse_test_manifest(reparsed, source)};
     EXPECT_EQ(schema::render_module_source(round_trip.declarations, round_trip.modules.front()),
               source);
-    EXPECT_EQ(render_test_manifest(context, manifest).front().content,
-              render_test_manifest(reparsed, round_trip).front().content);
+    auto const output{render_test_manifest(context, manifest).front().content};
+    EXPECT_EQ(output, render_test_manifest(reparsed, round_trip).front().content);
+    EXPECT_NE(output.find("case Field::max_speed:\n"), std::string::npos);
+    EXPECT_EQ(output.find("case Field::max_speed: {"), std::string::npos);
+    EXPECT_NE(output.find("return invoke_field<Field::max_speed>"), std::string::npos);
 }
 
 TEST(RecordLowering, ReaderOptionsSurviveRoundTripAndLeaveOrdinaryOutputUnchanged) {

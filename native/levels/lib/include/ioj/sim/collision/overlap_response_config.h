@@ -8,11 +8,14 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
 namespace ioj::sim {
 struct OverlapResponseConfig {
+    bool operator==(OverlapResponseConfig const&) const = default;
+
     enum class Field : std::uint8_t {
         damage_per_overlap_detection,
         level_size,
@@ -20,30 +23,56 @@ struct OverlapResponseConfig {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, OverlapResponseConfig> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::damage_per_overlap_detection) {
+            return (self.damage_per_overlap_detection);
+        }
+        if constexpr (Selected == Field::level_size) {
+            return (self.level_size);
+        }
+        if constexpr (Selected == Field::cell_size) {
+            return (self.cell_size);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::damage_per_overlap_detection:
+                return "damage_per_overlap_detection";
+            case Field::level_size:
+                return "level_size";
+            case Field::cell_size:
+                return "cell_size";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, OverlapResponseConfig>
     {
         switch (field) {
-            case Field::damage_per_overlap_detection: {
-                std::forward<Visitor>(visitor)
-                    .template operator()<Field::damage_per_overlap_detection>(
-                        self.damage_per_overlap_detection);
-                return;
-            }
-            case Field::level_size: {
-                std::forward<Visitor>(visitor).template operator()<Field::level_size>(
-                    self.level_size);
-                return;
-            }
-            case Field::cell_size: {
-                std::forward<Visitor>(visitor).template operator()<Field::cell_size>(
-                    self.cell_size);
-                return;
-            }
-            case Field::Count: {
+            case Field::damage_per_overlap_detection:
+                return invoke_field<Field::damage_per_overlap_detection>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::level_size:
+                return invoke_field<Field::level_size>(self, std::forward<Visitor>(visitor));
+            case Field::cell_size:
+                return invoke_field<Field::cell_size>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();

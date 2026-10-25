@@ -45,7 +45,9 @@ namespace {
 static_assert(
     !std::is_invocable_v<decltype(&CppIR::set_record_template), CppIR&, NodeId, TemplateId>);
 static_assert(
-    !std::is_invocable_v<decltype(&CppIR::switch_case), CppIR&, std::optional<Expr>, NodeId>);
+    !std::is_invocable_v<decltype(&CppIR::switch_case), CppIR&, std::optional<Expr>, NodeId, bool>);
+static_assert(
+    std::is_invocable_v<decltype(&CppIR::switch_case), CppIR&, std::optional<Expr>, BlockId, bool>);
 
 TEST(Ast, NodeListBuilderComposesSectionsAndSpacing) {
     CompilerTestContext context;

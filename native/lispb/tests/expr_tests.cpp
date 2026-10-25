@@ -446,6 +446,19 @@ TEST(Ast, VisitsBothBranchesAndAllSwitchBodiesInOrder) {
     EXPECT_EQ(visited, (std::vector<std::string>{"then", "else", "one", "two", "default"}));
 }
 
+TEST(Ast, RendersUnbracedSwitchReturnsWithoutChangingOtherCases) {
+    CompilerTestContext context;
+    auto& ir{context.ir};
+    auto const selection{ir.switch_stmt(
+        ir.named("field"),
+        {ir.switch_case(
+             ir.named("Field::value"), ir.block({ir.return_stmt(ir.named("value"))}), false),
+         ir.switch_case(std::nullopt, ir.block({ir.return_stmt(ir.literal("0"))}))})};
+    EXPECT_EQ(
+        CppRenderer{ir}.render(selection),
+        "switch (field) {\ncase Field::value:\n    return value;\ndefault: {\n    return 0;\n}\n}");
+}
+
 TEST(Ast, CollectsDeepControlFlowDependenciesOnlyForDefinitions) {
     CompilerTestContext context;
     auto& ir{context.ir};

@@ -11,6 +11,7 @@
 #include <compare>
 #include <concepts>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -30,18 +31,40 @@ struct CrossSettings {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, CrossSettings> && Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::actor) {
+            return (self.actor);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::actor:
+                return "actor";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, CrossSettings>
     {
         switch (field) {
-            case Field::actor: {
-                std::forward<Visitor>(visitor).template operator()<Field::actor>(self.actor);
-                return;
-            }
-            case Field::Count: {
+            case Field::actor:
+                return invoke_field<Field::actor>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();

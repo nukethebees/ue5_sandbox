@@ -11,6 +11,7 @@ namespace lispb::codegen::ir {
 struct SwitchCases {
     std::vector<std::optional<Expr>> label;
     std::vector<Range> body;
+    std::vector<bool> braced;
 };
 
 } // namespace lispb::codegen::ir

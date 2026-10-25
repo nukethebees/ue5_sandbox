@@ -11,6 +11,7 @@
 #include <concepts>
 #include <cstdint>
 #include <optional>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -24,22 +25,47 @@ struct RangeValue {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, RangeValue> && Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::minimum) {
+            return (self.minimum);
+        }
+        if constexpr (Selected == Field::maximum) {
+            return (self.maximum);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::minimum:
+                return "minimum";
+            case Field::maximum:
+                return "maximum";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, RangeValue>
     {
         switch (field) {
-            case Field::minimum: {
-                std::forward<Visitor>(visitor).template operator()<Field::minimum>(self.minimum);
-                return;
-            }
-            case Field::maximum: {
-                std::forward<Visitor>(visitor).template operator()<Field::maximum>(self.maximum);
-                return;
-            }
-            case Field::Count: {
+            case Field::minimum:
+                return invoke_field<Field::minimum>(self, std::forward<Visitor>(visitor));
+            case Field::maximum:
+                return invoke_field<Field::maximum>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -58,22 +84,47 @@ struct RangeSettings {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, RangeSettings> && Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::range) {
+            return (self.range);
+        }
+        if constexpr (Selected == Field::enabled) {
+            return (self.enabled);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::range:
+                return "range";
+            case Field::enabled:
+                return "enabled";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, RangeSettings>
     {
         switch (field) {
-            case Field::range: {
-                std::forward<Visitor>(visitor).template operator()<Field::range>(self.range);
-                return;
-            }
-            case Field::enabled: {
-                std::forward<Visitor>(visitor).template operator()<Field::enabled>(self.enabled);
-                return;
-            }
-            case Field::Count: {
+            case Field::range:
+                return invoke_field<Field::range>(self, std::forward<Visitor>(visitor));
+            case Field::enabled:
+                return invoke_field<Field::enabled>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -90,22 +141,47 @@ struct ApiPair {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, ApiPair> && Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::x) {
+            return (self.x);
+        }
+        if constexpr (Selected == Field::y) {
+            return (self.y);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::x:
+                return "x";
+            case Field::y:
+                return "y";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, ApiPair>
     {
         switch (field) {
-            case Field::x: {
-                std::forward<Visitor>(visitor).template operator()<Field::x>(self.x);
-                return;
-            }
-            case Field::y: {
-                std::forward<Visitor>(visitor).template operator()<Field::y>(self.y);
-                return;
-            }
-            case Field::Count: {
+            case Field::x:
+                return invoke_field<Field::x>(self, std::forward<Visitor>(visitor));
+            case Field::y:
+                return invoke_field<Field::y>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -120,14 +196,32 @@ struct EmptySettings {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self&)
+        requires (std::same_as<std::remove_const_t<Self>, EmptySettings> && Selected < Field::Count)
+    {}
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self&, Field field, Visitor&&)
         requires std::same_as<std::remove_const_t<Self>, EmptySettings>
     {
         switch (field) {
-            case Field::Count: {
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -142,28 +236,55 @@ struct WeaponSettings {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, WeaponSettings> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::damage) {
+            return (self.damage);
+        }
+        if constexpr (Selected == Field::turn_rate) {
+            return (self.turn_rate);
+        }
+        if constexpr (Selected == Field::asset_distance) {
+            return (self.asset_distance);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::damage:
+                return "damage";
+            case Field::turn_rate:
+                return "turn_rate";
+            case Field::asset_distance:
+                return "asset_distance";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, WeaponSettings>
     {
         switch (field) {
-            case Field::damage: {
-                std::forward<Visitor>(visitor).template operator()<Field::damage>(self.damage);
-                return;
-            }
-            case Field::turn_rate: {
-                std::forward<Visitor>(visitor).template operator()<Field::turn_rate>(
-                    self.turn_rate);
-                return;
-            }
-            case Field::asset_distance: {
-                std::forward<Visitor>(visitor).template operator()<Field::asset_distance>(
-                    self.asset_distance);
-                return;
-            }
-            case Field::Count: {
+            case Field::damage:
+                return invoke_field<Field::damage>(self, std::forward<Visitor>(visitor));
+            case Field::turn_rate:
+                return invoke_field<Field::turn_rate>(self, std::forward<Visitor>(visitor));
+            case Field::asset_distance:
+                return invoke_field<Field::asset_distance>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -182,28 +303,54 @@ struct ActorSettings {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, ActorSettings> && Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::max_health) {
+            return (self.max_health);
+        }
+        if constexpr (Selected == Field::weapon) {
+            return (self.weapon);
+        }
+        if constexpr (Selected == Field::optional_limit) {
+            return (self.optional_limit);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::max_health:
+                return "max_health";
+            case Field::weapon:
+                return "weapon";
+            case Field::optional_limit:
+                return "optional_limit";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, ActorSettings>
     {
         switch (field) {
-            case Field::max_health: {
-                std::forward<Visitor>(visitor).template operator()<Field::max_health>(
-                    self.max_health);
-                return;
-            }
-            case Field::weapon: {
-                std::forward<Visitor>(visitor).template operator()<Field::weapon>(self.weapon);
-                return;
-            }
-            case Field::optional_limit: {
-                std::forward<Visitor>(visitor).template operator()<Field::optional_limit>(
-                    self.optional_limit);
-                return;
-            }
-            case Field::Count: {
+            case Field::max_health:
+                return invoke_field<Field::max_health>(self, std::forward<Visitor>(visitor));
+            case Field::weapon:
+                return invoke_field<Field::weapon>(self, std::forward<Visitor>(visitor));
+            case Field::optional_limit:
+                return invoke_field<Field::optional_limit>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();

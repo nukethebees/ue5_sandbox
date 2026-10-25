@@ -2,7 +2,7 @@
   :header "native/levels/lib/include/ioj/settings/player_presentation.h"
   :header-include "ioj/settings/player_presentation.h"
   :namespace ioj::settings
-  (record PlayerPresentation
+  (record PlayerPresentation :comparison equality
     :generate-visitor true
     :generate-s7-reader true :s7-tag "player-ship"
     (member boost_effect_colour_intensity float :initializer 75.f :finite true)))
@@ -11,7 +11,7 @@
   :header "native/levels/lib/include/ioj/settings/laser_presentation.h"
   :header-include "ioj/settings/laser_presentation.h"
   :namespace ioj::settings
-  (record LaserPresentation
+  (record LaserPresentation :comparison equality
     :generate-visitor true
     :generate-s7-reader true :s7-tag "laser-projectiles"
     (member min_cull_distance float :initializer 0.f :finite true)
@@ -21,7 +21,7 @@
   :header "native/levels/lib/include/ioj/settings/capital_presentation.h"
   :header-include "ioj/settings/capital_presentation.h"
   :namespace ioj::settings
-  (record CapitalPresentation
+  (record CapitalPresentation :comparison equality
     :generate-visitor true
     :generate-s7-reader true :s7-tag "capital-ships"
     (member n_small_explosions std::int32_t :initializer 6)
@@ -35,7 +35,7 @@
   :header "native/levels/lib/include/ioj/settings/turret_presentation.h"
   :header-include "ioj/settings/turret_presentation.h"
   :namespace ioj::settings
-  (record TurretPresentation
+  (record TurretPresentation :comparison equality
     :generate-visitor true
     :generate-s7-reader true :s7-tag "turrets"
     (member death_effect_scale float :initializer 1.f :finite true)))
@@ -44,7 +44,7 @@
   :header "native/levels/lib/include/ioj/settings/soft_target.h"
   :header-include "ioj/settings/soft_target.h"
   :namespace ioj::settings
-  (record SoftTarget
+  (record SoftTarget :comparison equality
     :generate-visitor true
     :generate-s7-reader true :s7-tag "soft-target"
     (member acquisition_radius_pixels float :initializer 72.f :finite true)
@@ -65,7 +65,7 @@
   :header "native/levels/lib/include/ioj/settings/entity_overlay.h"
   :header-include "ioj/settings/entity_overlay.h"
   :namespace ioj::settings
-  (record EntityOverlay
+  (record EntityOverlay :comparison equality
     :generate-visitor true
     :generate-s7-reader true :s7-tag "entity-overlay"
     (member enabled bool :initializer true)
@@ -85,7 +85,7 @@
   :header "native/levels/lib/include/ioj/settings/radar.h"
   :header-include "ioj/settings/radar.h"
   :namespace ioj::settings
-  (record Radar
+  (record Radar :comparison equality
     :generate-visitor true
     :generate-s7-reader true :s7-tag "radar"
     (member enabled bool :initializer true)
@@ -107,7 +107,7 @@
   :header "native/levels/lib/include/ioj/settings/presentation.h"
   :header-include "ioj/settings/presentation.h"
   :namespace ioj::settings
-  (record Presentation
+  (record Presentation :comparison equality
     :generate-visitor true
     :generate-s7-reader true :s7-tag "presentation"
     (member player_ship ioj::settings::PlayerPresentation :initializer "")

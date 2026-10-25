@@ -12,7 +12,7 @@
   :header "native/levels/lib/include/ioj/sim/player/player_sim_config.h"
   :header-include "ioj/sim/player/player_sim_config.h"
   :namespace ioj::sim
-  (record PlayerSimConfig :generate-visitor true
+  (record PlayerSimConfig :comparison equality :generate-visitor true
     :generate-s7-reader true :s7-tag "player-ship"
     (member thrust_energy_max @settings_positive_float :initializer 1.f)
     (member pitch_angle_max float :initializer 30.f :finite true)
@@ -42,7 +42,7 @@
   :header "native/levels/lib/include/ioj/sim/turrets/turret_sim_config.h"
   :header-include "ioj/sim/turrets/turret_sim_config.h"
   :namespace ioj::sim
-  (record TurretSimConfig :generate-visitor true
+  (record TurretSimConfig :comparison equality :generate-visitor true
     :generate-s7-reader true :s7-tag "turrets"
     (member detection_radius float :initializer 3000.f :finite true)
     (member target_refresh_frequency float :initializer 5.f :finite true)
@@ -55,7 +55,7 @@
   :header "native/levels/lib/include/ioj/sim/spinners/spinner_sim_config.h"
   :header-include "ioj/sim/spinners/spinner_sim_config.h"
   :namespace ioj::sim
-  (record SpinnerSimConfig :generate-visitor true
+  (record SpinnerSimConfig :comparison equality :generate-visitor true
     :generate-s7-reader true :s7-tag "tube-spinners"
     (member fire_point_offsets @settings_fire_points :initializer "" :s7-exclude true)
     (member yaw_rotation_speed_degrees float :initializer 66.f :finite true)
@@ -65,7 +65,7 @@
   :header "native/levels/lib/include/ioj/sim/levels/hud_settings.h"
   :header-include "ioj/sim/levels/hud_settings.h"
   :namespace ioj::sim
-  (record HudSettings :generate-visitor true
+  (record HudSettings :comparison equality :generate-visitor true
     :generate-s7-reader true :s7-tag "hud"
     (member player_status_update_period float :initializer 0.25f :finite true :nonnegative true)
     (member entity_count_update_period float :initializer 0.25f :finite true :nonnegative true)

@@ -9,11 +9,14 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
 namespace ioj::settings {
 struct EntityOverlay {
+    bool operator==(EntityOverlay const&) const = default;
+
     enum class Field : std::uint8_t {
         enabled,
         maximum_range,
@@ -30,73 +33,122 @@ struct EntityOverlay {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, EntityOverlay> && Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::enabled) {
+            return (self.enabled);
+        }
+        if constexpr (Selected == Field::maximum_range) {
+            return (self.maximum_range);
+        }
+        if constexpr (Selected == Field::bar_size_pixels) {
+            return (self.bar_size_pixels);
+        }
+        if constexpr (Selected == Field::screen_offset_pixels) {
+            return (self.screen_offset_pixels);
+        }
+        if constexpr (Selected == Field::minimum_bar_scale) {
+            return (self.minimum_bar_scale);
+        }
+        if constexpr (Selected == Field::maximum_bar_scale) {
+            return (self.maximum_bar_scale);
+        }
+        if constexpr (Selected == Field::inset_pixels) {
+            return (self.inset_pixels);
+        }
+        if constexpr (Selected == Field::maximum_inset_height_ratio) {
+            return (self.maximum_inset_height_ratio);
+        }
+        if constexpr (Selected == Field::objective_frame_pixels) {
+            return (self.objective_frame_pixels);
+        }
+        if constexpr (Selected == Field::objective_bar_height_scale) {
+            return (self.objective_bar_height_scale);
+        }
+        if constexpr (Selected == Field::screen_edge_padding_pixels) {
+            return (self.screen_edge_padding_pixels);
+        }
+        if constexpr (Selected == Field::soft_target) {
+            return (self.soft_target);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::enabled:
+                return "enabled";
+            case Field::maximum_range:
+                return "maximum_range";
+            case Field::bar_size_pixels:
+                return "bar_size_pixels";
+            case Field::screen_offset_pixels:
+                return "screen_offset_pixels";
+            case Field::minimum_bar_scale:
+                return "minimum_bar_scale";
+            case Field::maximum_bar_scale:
+                return "maximum_bar_scale";
+            case Field::inset_pixels:
+                return "inset_pixels";
+            case Field::maximum_inset_height_ratio:
+                return "maximum_inset_height_ratio";
+            case Field::objective_frame_pixels:
+                return "objective_frame_pixels";
+            case Field::objective_bar_height_scale:
+                return "objective_bar_height_scale";
+            case Field::screen_edge_padding_pixels:
+                return "screen_edge_padding_pixels";
+            case Field::soft_target:
+                return "soft_target";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, EntityOverlay>
     {
         switch (field) {
-            case Field::enabled: {
-                std::forward<Visitor>(visitor).template operator()<Field::enabled>(self.enabled);
-                return;
-            }
-            case Field::maximum_range: {
-                std::forward<Visitor>(visitor).template operator()<Field::maximum_range>(
-                    self.maximum_range);
-                return;
-            }
-            case Field::bar_size_pixels: {
-                std::forward<Visitor>(visitor).template operator()<Field::bar_size_pixels>(
-                    self.bar_size_pixels);
-                return;
-            }
-            case Field::screen_offset_pixels: {
-                std::forward<Visitor>(visitor).template operator()<Field::screen_offset_pixels>(
-                    self.screen_offset_pixels);
-                return;
-            }
-            case Field::minimum_bar_scale: {
-                std::forward<Visitor>(visitor).template operator()<Field::minimum_bar_scale>(
-                    self.minimum_bar_scale);
-                return;
-            }
-            case Field::maximum_bar_scale: {
-                std::forward<Visitor>(visitor).template operator()<Field::maximum_bar_scale>(
-                    self.maximum_bar_scale);
-                return;
-            }
-            case Field::inset_pixels: {
-                std::forward<Visitor>(visitor).template operator()<Field::inset_pixels>(
-                    self.inset_pixels);
-                return;
-            }
-            case Field::maximum_inset_height_ratio: {
-                std::forward<Visitor>(visitor).template
-                    operator()<Field::maximum_inset_height_ratio>(self.maximum_inset_height_ratio);
-                return;
-            }
-            case Field::objective_frame_pixels: {
-                std::forward<Visitor>(visitor).template operator()<Field::objective_frame_pixels>(
-                    self.objective_frame_pixels);
-                return;
-            }
-            case Field::objective_bar_height_scale: {
-                std::forward<Visitor>(visitor).template
-                    operator()<Field::objective_bar_height_scale>(self.objective_bar_height_scale);
-                return;
-            }
-            case Field::screen_edge_padding_pixels: {
-                std::forward<Visitor>(visitor).template
-                    operator()<Field::screen_edge_padding_pixels>(self.screen_edge_padding_pixels);
-                return;
-            }
-            case Field::soft_target: {
-                std::forward<Visitor>(visitor).template operator()<Field::soft_target>(
-                    self.soft_target);
-                return;
-            }
-            case Field::Count: {
+            case Field::enabled:
+                return invoke_field<Field::enabled>(self, std::forward<Visitor>(visitor));
+            case Field::maximum_range:
+                return invoke_field<Field::maximum_range>(self, std::forward<Visitor>(visitor));
+            case Field::bar_size_pixels:
+                return invoke_field<Field::bar_size_pixels>(self, std::forward<Visitor>(visitor));
+            case Field::screen_offset_pixels:
+                return invoke_field<Field::screen_offset_pixels>(self,
+                                                                 std::forward<Visitor>(visitor));
+            case Field::minimum_bar_scale:
+                return invoke_field<Field::minimum_bar_scale>(self, std::forward<Visitor>(visitor));
+            case Field::maximum_bar_scale:
+                return invoke_field<Field::maximum_bar_scale>(self, std::forward<Visitor>(visitor));
+            case Field::inset_pixels:
+                return invoke_field<Field::inset_pixels>(self, std::forward<Visitor>(visitor));
+            case Field::maximum_inset_height_ratio:
+                return invoke_field<Field::maximum_inset_height_ratio>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::objective_frame_pixels:
+                return invoke_field<Field::objective_frame_pixels>(self,
+                                                                   std::forward<Visitor>(visitor));
+            case Field::objective_bar_height_scale:
+                return invoke_field<Field::objective_bar_height_scale>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::screen_edge_padding_pixels:
+                return invoke_field<Field::screen_edge_padding_pixels>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::soft_target:
+                return invoke_field<Field::soft_target>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();

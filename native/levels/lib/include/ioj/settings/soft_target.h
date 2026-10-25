@@ -6,11 +6,14 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
 namespace ioj::settings {
 struct SoftTarget {
+    bool operator==(SoftTarget const&) const = default;
+
     enum class Field : std::uint8_t {
         acquisition_radius_pixels,
         retention_radius_pixels,
@@ -28,80 +31,134 @@ struct SoftTarget {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, SoftTarget> && Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::acquisition_radius_pixels) {
+            return (self.acquisition_radius_pixels);
+        }
+        if constexpr (Selected == Field::retention_radius_pixels) {
+            return (self.retention_radius_pixels);
+        }
+        if constexpr (Selected == Field::centre_tie_radius_pixels) {
+            return (self.centre_tie_radius_pixels);
+        }
+        if constexpr (Selected == Field::switch_improvement_ratio) {
+            return (self.switch_improvement_ratio);
+        }
+        if constexpr (Selected == Field::range_transition_start_multiplier) {
+            return (self.range_transition_start_multiplier);
+        }
+        if constexpr (Selected == Field::minimum_radius_pixels) {
+            return (self.minimum_radius_pixels);
+        }
+        if constexpr (Selected == Field::maximum_radius_pixels) {
+            return (self.maximum_radius_pixels);
+        }
+        if constexpr (Selected == Field::bounds_padding_pixels) {
+            return (self.bounds_padding_pixels);
+        }
+        if constexpr (Selected == Field::bracket_start_radius_multiplier) {
+            return (self.bracket_start_radius_multiplier);
+        }
+        if constexpr (Selected == Field::opacity) {
+            return (self.opacity);
+        }
+        if constexpr (Selected == Field::pulse_opacity_boost) {
+            return (self.pulse_opacity_boost);
+        }
+        if constexpr (Selected == Field::pulse_duration) {
+            return (self.pulse_duration);
+        }
+        if constexpr (Selected == Field::fade_out_duration) {
+            return (self.fade_out_duration);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::acquisition_radius_pixels:
+                return "acquisition_radius_pixels";
+            case Field::retention_radius_pixels:
+                return "retention_radius_pixels";
+            case Field::centre_tie_radius_pixels:
+                return "centre_tie_radius_pixels";
+            case Field::switch_improvement_ratio:
+                return "switch_improvement_ratio";
+            case Field::range_transition_start_multiplier:
+                return "range_transition_start_multiplier";
+            case Field::minimum_radius_pixels:
+                return "minimum_radius_pixels";
+            case Field::maximum_radius_pixels:
+                return "maximum_radius_pixels";
+            case Field::bounds_padding_pixels:
+                return "bounds_padding_pixels";
+            case Field::bracket_start_radius_multiplier:
+                return "bracket_start_radius_multiplier";
+            case Field::opacity:
+                return "opacity";
+            case Field::pulse_opacity_boost:
+                return "pulse_opacity_boost";
+            case Field::pulse_duration:
+                return "pulse_duration";
+            case Field::fade_out_duration:
+                return "fade_out_duration";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, SoftTarget>
     {
         switch (field) {
-            case Field::acquisition_radius_pixels: {
-                std::forward<Visitor>(visitor).template
-                    operator()<Field::acquisition_radius_pixels>(self.acquisition_radius_pixels);
-                return;
-            }
-            case Field::retention_radius_pixels: {
-                std::forward<Visitor>(visitor).template operator()<Field::retention_radius_pixels>(
-                    self.retention_radius_pixels);
-                return;
-            }
-            case Field::centre_tie_radius_pixels: {
-                std::forward<Visitor>(visitor).template operator()<Field::centre_tie_radius_pixels>(
-                    self.centre_tie_radius_pixels);
-                return;
-            }
-            case Field::switch_improvement_ratio: {
-                std::forward<Visitor>(visitor).template operator()<Field::switch_improvement_ratio>(
-                    self.switch_improvement_ratio);
-                return;
-            }
-            case Field::range_transition_start_multiplier: {
-                std::forward<Visitor>(visitor)
-                    .template operator()<Field::range_transition_start_multiplier>(
-                        self.range_transition_start_multiplier);
-                return;
-            }
-            case Field::minimum_radius_pixels: {
-                std::forward<Visitor>(visitor).template operator()<Field::minimum_radius_pixels>(
-                    self.minimum_radius_pixels);
-                return;
-            }
-            case Field::maximum_radius_pixels: {
-                std::forward<Visitor>(visitor).template operator()<Field::maximum_radius_pixels>(
-                    self.maximum_radius_pixels);
-                return;
-            }
-            case Field::bounds_padding_pixels: {
-                std::forward<Visitor>(visitor).template operator()<Field::bounds_padding_pixels>(
-                    self.bounds_padding_pixels);
-                return;
-            }
-            case Field::bracket_start_radius_multiplier: {
-                std::forward<Visitor>(visitor)
-                    .template operator()<Field::bracket_start_radius_multiplier>(
-                        self.bracket_start_radius_multiplier);
-                return;
-            }
-            case Field::opacity: {
-                std::forward<Visitor>(visitor).template operator()<Field::opacity>(self.opacity);
-                return;
-            }
-            case Field::pulse_opacity_boost: {
-                std::forward<Visitor>(visitor).template operator()<Field::pulse_opacity_boost>(
-                    self.pulse_opacity_boost);
-                return;
-            }
-            case Field::pulse_duration: {
-                std::forward<Visitor>(visitor).template operator()<Field::pulse_duration>(
-                    self.pulse_duration);
-                return;
-            }
-            case Field::fade_out_duration: {
-                std::forward<Visitor>(visitor).template operator()<Field::fade_out_duration>(
-                    self.fade_out_duration);
-                return;
-            }
-            case Field::Count: {
+            case Field::acquisition_radius_pixels:
+                return invoke_field<Field::acquisition_radius_pixels>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::retention_radius_pixels:
+                return invoke_field<Field::retention_radius_pixels>(self,
+                                                                    std::forward<Visitor>(visitor));
+            case Field::centre_tie_radius_pixels:
+                return invoke_field<Field::centre_tie_radius_pixels>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::switch_improvement_ratio:
+                return invoke_field<Field::switch_improvement_ratio>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::range_transition_start_multiplier:
+                return invoke_field<Field::range_transition_start_multiplier>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::minimum_radius_pixels:
+                return invoke_field<Field::minimum_radius_pixels>(self,
+                                                                  std::forward<Visitor>(visitor));
+            case Field::maximum_radius_pixels:
+                return invoke_field<Field::maximum_radius_pixels>(self,
+                                                                  std::forward<Visitor>(visitor));
+            case Field::bounds_padding_pixels:
+                return invoke_field<Field::bounds_padding_pixels>(self,
+                                                                  std::forward<Visitor>(visitor));
+            case Field::bracket_start_radius_multiplier:
+                return invoke_field<Field::bracket_start_radius_multiplier>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::opacity:
+                return invoke_field<Field::opacity>(self, std::forward<Visitor>(visitor));
+            case Field::pulse_opacity_boost:
+                return invoke_field<Field::pulse_opacity_boost>(self,
+                                                                std::forward<Visitor>(visitor));
+            case Field::pulse_duration:
+                return invoke_field<Field::pulse_duration>(self, std::forward<Visitor>(visitor));
+            case Field::fade_out_duration:
+                return invoke_field<Field::fade_out_duration>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();

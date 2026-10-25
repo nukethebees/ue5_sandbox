@@ -10,11 +10,14 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
 namespace ioj::sim {
 struct TurretSimConfig {
+    bool operator==(TurretSimConfig const&) const = default;
+
     enum class Field : std::uint8_t {
         detection_radius,
         target_refresh_frequency,
@@ -24,38 +27,70 @@ struct TurretSimConfig {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, TurretSimConfig> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::detection_radius) {
+            return (self.detection_radius);
+        }
+        if constexpr (Selected == Field::target_refresh_frequency) {
+            return (self.target_refresh_frequency);
+        }
+        if constexpr (Selected == Field::fire_point_offset) {
+            return (self.fire_point_offset);
+        }
+        if constexpr (Selected == Field::laser) {
+            return (self.laser);
+        }
+        if constexpr (Selected == Field::max_health) {
+            return (self.max_health);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::detection_radius:
+                return "detection_radius";
+            case Field::target_refresh_frequency:
+                return "target_refresh_frequency";
+            case Field::fire_point_offset:
+                return "fire_point_offset";
+            case Field::laser:
+                return "laser";
+            case Field::max_health:
+                return "max_health";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, TurretSimConfig>
     {
         switch (field) {
-            case Field::detection_radius: {
-                std::forward<Visitor>(visitor).template operator()<Field::detection_radius>(
-                    self.detection_radius);
-                return;
-            }
-            case Field::target_refresh_frequency: {
-                std::forward<Visitor>(visitor).template operator()<Field::target_refresh_frequency>(
-                    self.target_refresh_frequency);
-                return;
-            }
-            case Field::fire_point_offset: {
-                std::forward<Visitor>(visitor).template operator()<Field::fire_point_offset>(
-                    self.fire_point_offset);
-                return;
-            }
-            case Field::laser: {
-                std::forward<Visitor>(visitor).template operator()<Field::laser>(self.laser);
-                return;
-            }
-            case Field::max_health: {
-                std::forward<Visitor>(visitor).template operator()<Field::max_health>(
-                    self.max_health);
-                return;
-            }
-            case Field::Count: {
+            case Field::detection_radius:
+                return invoke_field<Field::detection_radius>(self, std::forward<Visitor>(visitor));
+            case Field::target_refresh_frequency:
+                return invoke_field<Field::target_refresh_frequency>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::fire_point_offset:
+                return invoke_field<Field::fire_point_offset>(self, std::forward<Visitor>(visitor));
+            case Field::laser:
+                return invoke_field<Field::laser>(self, std::forward<Visitor>(visitor));
+            case Field::max_health:
+                return invoke_field<Field::max_health>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();

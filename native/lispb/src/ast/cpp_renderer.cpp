@@ -1064,9 +1064,13 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
                 } else {
                     output += "default";
                 }
-                output += ": {\n";
-                scoped_nodes(ir_.cases_.body[ir_.case_references_[c].value]);
-                close("}");
+                auto const row{ir_.case_references_[c].value};
+                auto const braced{ir_.cases_.braced[row]};
+                output += braced ? ": {\n" : ":\n";
+                scoped_nodes(ir_.cases_.body[row]);
+                if (braced) {
+                    close("}");
+                }
             }
             close("}");
             break;

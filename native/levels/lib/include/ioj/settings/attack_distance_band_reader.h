@@ -15,33 +15,18 @@ template <>
 struct TypeReader<settings::AttackDistanceBandValue>
     : RecordReader<settings::AttackDistanceBandValue> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field>(context,
-                             "attack-distance-band",
-                             field_names,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::minimum:
-                                         read(result.minimum);
-                                         break;
-                                     case Field::desired:
-                                         read(result.desired);
-                                         break;
-                                     case Field::maximum:
-                                         read(result.maximum);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }),
-                             required);
+        decode_record<Field>(
+            context,
+            "attack-distance-band",
+            field_names,
+            ([&](Field selected, auto const& read) {
+                value_type::visit_field(
+                    result, selected, [&]<Field field>(auto& member) { read(member); });
+            }),
+            required);
     }
   private:
-    enum class Field : std::uint8_t {
-        minimum,
-        desired,
-        maximum,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 3> field_names{
         "minimum-ratio", "desired-ratio", "maximum-ratio"};

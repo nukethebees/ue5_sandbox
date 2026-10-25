@@ -12,11 +12,14 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
 namespace ioj::sim {
 struct PlayerSimConfig {
+    bool operator==(PlayerSimConfig const&) const = default;
+
     enum class Field : std::uint8_t {
         thrust_energy_max,
         pitch_angle_max,
@@ -32,67 +35,112 @@ struct PlayerSimConfig {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, PlayerSimConfig> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::thrust_energy_max) {
+            return (self.thrust_energy_max);
+        }
+        if constexpr (Selected == Field::pitch_angle_max) {
+            return (self.pitch_angle_max);
+        }
+        if constexpr (Selected == Field::pitch_speed) {
+            return (self.pitch_speed);
+        }
+        if constexpr (Selected == Field::yaw_angle_max) {
+            return (self.yaw_angle_max);
+        }
+        if constexpr (Selected == Field::yaw_speed) {
+            return (self.yaw_speed);
+        }
+        if constexpr (Selected == Field::turn_bank_angle_max) {
+            return (self.turn_bank_angle_max);
+        }
+        if constexpr (Selected == Field::turn_bank_speed) {
+            return (self.turn_bank_speed);
+        }
+        if constexpr (Selected == Field::laser) {
+            return (self.laser);
+        }
+        if constexpr (Selected == Field::health) {
+            return (self.health);
+        }
+        if constexpr (Selected == Field::laser_mode) {
+            return (self.laser_mode);
+        }
+        if constexpr (Selected == Field::laser_fire_rate) {
+            return (self.laser_fire_rate);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::thrust_energy_max:
+                return "thrust_energy_max";
+            case Field::pitch_angle_max:
+                return "pitch_angle_max";
+            case Field::pitch_speed:
+                return "pitch_speed";
+            case Field::yaw_angle_max:
+                return "yaw_angle_max";
+            case Field::yaw_speed:
+                return "yaw_speed";
+            case Field::turn_bank_angle_max:
+                return "turn_bank_angle_max";
+            case Field::turn_bank_speed:
+                return "turn_bank_speed";
+            case Field::laser:
+                return "laser";
+            case Field::health:
+                return "health";
+            case Field::laser_mode:
+                return "laser_mode";
+            case Field::laser_fire_rate:
+                return "laser_fire_rate";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, PlayerSimConfig>
     {
         switch (field) {
-            case Field::thrust_energy_max: {
-                std::forward<Visitor>(visitor).template operator()<Field::thrust_energy_max>(
-                    self.thrust_energy_max);
-                return;
-            }
-            case Field::pitch_angle_max: {
-                std::forward<Visitor>(visitor).template operator()<Field::pitch_angle_max>(
-                    self.pitch_angle_max);
-                return;
-            }
-            case Field::pitch_speed: {
-                std::forward<Visitor>(visitor).template operator()<Field::pitch_speed>(
-                    self.pitch_speed);
-                return;
-            }
-            case Field::yaw_angle_max: {
-                std::forward<Visitor>(visitor).template operator()<Field::yaw_angle_max>(
-                    self.yaw_angle_max);
-                return;
-            }
-            case Field::yaw_speed: {
-                std::forward<Visitor>(visitor).template operator()<Field::yaw_speed>(
-                    self.yaw_speed);
-                return;
-            }
-            case Field::turn_bank_angle_max: {
-                std::forward<Visitor>(visitor).template operator()<Field::turn_bank_angle_max>(
-                    self.turn_bank_angle_max);
-                return;
-            }
-            case Field::turn_bank_speed: {
-                std::forward<Visitor>(visitor).template operator()<Field::turn_bank_speed>(
-                    self.turn_bank_speed);
-                return;
-            }
-            case Field::laser: {
-                std::forward<Visitor>(visitor).template operator()<Field::laser>(self.laser);
-                return;
-            }
-            case Field::health: {
-                std::forward<Visitor>(visitor).template operator()<Field::health>(self.health);
-                return;
-            }
-            case Field::laser_mode: {
-                std::forward<Visitor>(visitor).template operator()<Field::laser_mode>(
-                    self.laser_mode);
-                return;
-            }
-            case Field::laser_fire_rate: {
-                std::forward<Visitor>(visitor).template operator()<Field::laser_fire_rate>(
-                    self.laser_fire_rate);
-                return;
-            }
-            case Field::Count: {
+            case Field::thrust_energy_max:
+                return invoke_field<Field::thrust_energy_max>(self, std::forward<Visitor>(visitor));
+            case Field::pitch_angle_max:
+                return invoke_field<Field::pitch_angle_max>(self, std::forward<Visitor>(visitor));
+            case Field::pitch_speed:
+                return invoke_field<Field::pitch_speed>(self, std::forward<Visitor>(visitor));
+            case Field::yaw_angle_max:
+                return invoke_field<Field::yaw_angle_max>(self, std::forward<Visitor>(visitor));
+            case Field::yaw_speed:
+                return invoke_field<Field::yaw_speed>(self, std::forward<Visitor>(visitor));
+            case Field::turn_bank_angle_max:
+                return invoke_field<Field::turn_bank_angle_max>(self,
+                                                                std::forward<Visitor>(visitor));
+            case Field::turn_bank_speed:
+                return invoke_field<Field::turn_bank_speed>(self, std::forward<Visitor>(visitor));
+            case Field::laser:
+                return invoke_field<Field::laser>(self, std::forward<Visitor>(visitor));
+            case Field::health:
+                return invoke_field<Field::health>(self, std::forward<Visitor>(visitor));
+            case Field::laser_mode:
+                return invoke_field<Field::laser_mode>(self, std::forward<Visitor>(visitor));
+            case Field::laser_fire_rate:
+                return invoke_field<Field::laser_fire_rate>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();

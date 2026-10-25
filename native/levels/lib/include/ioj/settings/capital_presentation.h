@@ -8,11 +8,14 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
 namespace ioj::settings {
 struct CapitalPresentation {
+    bool operator==(CapitalPresentation const&) const = default;
+
     enum class Field : std::uint8_t {
         n_small_explosions,
         time_between_explosions,
@@ -23,44 +26,81 @@ struct CapitalPresentation {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, CapitalPresentation> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::n_small_explosions) {
+            return (self.n_small_explosions);
+        }
+        if constexpr (Selected == Field::time_between_explosions) {
+            return (self.time_between_explosions);
+        }
+        if constexpr (Selected == Field::min_small_explosion_range) {
+            return (self.min_small_explosion_range);
+        }
+        if constexpr (Selected == Field::max_small_explosion_range) {
+            return (self.max_small_explosion_range);
+        }
+        if constexpr (Selected == Field::large_explosion_delay) {
+            return (self.large_explosion_delay);
+        }
+        if constexpr (Selected == Field::proxy_arrow_size) {
+            return (self.proxy_arrow_size);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::n_small_explosions:
+                return "n_small_explosions";
+            case Field::time_between_explosions:
+                return "time_between_explosions";
+            case Field::min_small_explosion_range:
+                return "min_small_explosion_range";
+            case Field::max_small_explosion_range:
+                return "max_small_explosion_range";
+            case Field::large_explosion_delay:
+                return "large_explosion_delay";
+            case Field::proxy_arrow_size:
+                return "proxy_arrow_size";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, CapitalPresentation>
     {
         switch (field) {
-            case Field::n_small_explosions: {
-                std::forward<Visitor>(visitor).template operator()<Field::n_small_explosions>(
-                    self.n_small_explosions);
-                return;
-            }
-            case Field::time_between_explosions: {
-                std::forward<Visitor>(visitor).template operator()<Field::time_between_explosions>(
-                    self.time_between_explosions);
-                return;
-            }
-            case Field::min_small_explosion_range: {
-                std::forward<Visitor>(visitor).template
-                    operator()<Field::min_small_explosion_range>(self.min_small_explosion_range);
-                return;
-            }
-            case Field::max_small_explosion_range: {
-                std::forward<Visitor>(visitor).template
-                    operator()<Field::max_small_explosion_range>(self.max_small_explosion_range);
-                return;
-            }
-            case Field::large_explosion_delay: {
-                std::forward<Visitor>(visitor).template operator()<Field::large_explosion_delay>(
-                    self.large_explosion_delay);
-                return;
-            }
-            case Field::proxy_arrow_size: {
-                std::forward<Visitor>(visitor).template operator()<Field::proxy_arrow_size>(
-                    self.proxy_arrow_size);
-                return;
-            }
-            case Field::Count: {
+            case Field::n_small_explosions:
+                return invoke_field<Field::n_small_explosions>(self,
+                                                               std::forward<Visitor>(visitor));
+            case Field::time_between_explosions:
+                return invoke_field<Field::time_between_explosions>(self,
+                                                                    std::forward<Visitor>(visitor));
+            case Field::min_small_explosion_range:
+                return invoke_field<Field::min_small_explosion_range>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::max_small_explosion_range:
+                return invoke_field<Field::max_small_explosion_range>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::large_explosion_delay:
+                return invoke_field<Field::large_explosion_delay>(self,
+                                                                  std::forward<Visitor>(visitor));
+            case Field::proxy_arrow_size:
+                return invoke_field<Field::proxy_arrow_size>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();

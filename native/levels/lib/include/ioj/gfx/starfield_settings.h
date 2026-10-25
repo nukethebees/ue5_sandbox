@@ -6,6 +6,7 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -17,24 +18,48 @@ struct GenerationSettings {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, GenerationSettings> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::star_count) {
+            return (self.star_count);
+        }
+        if constexpr (Selected == Field::random_seed) {
+            return (self.random_seed);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::star_count:
+                return "star_count";
+            case Field::random_seed:
+                return "random_seed";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, GenerationSettings>
     {
         switch (field) {
-            case Field::star_count: {
-                std::forward<Visitor>(visitor).template operator()<Field::star_count>(
-                    self.star_count);
-                return;
-            }
-            case Field::random_seed: {
-                std::forward<Visitor>(visitor).template operator()<Field::random_seed>(
-                    self.random_seed);
-                return;
-            }
-            case Field::Count: {
+            case Field::star_count:
+                return invoke_field<Field::star_count>(self, std::forward<Visitor>(visitor));
+            case Field::random_seed:
+                return invoke_field<Field::random_seed>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -54,38 +79,69 @@ struct StarSettings {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, StarSettings> && Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::scale) {
+            return (self.scale);
+        }
+        if constexpr (Selected == Field::size_multiplier) {
+            return (self.size_multiplier);
+        }
+        if constexpr (Selected == Field::global_brightness) {
+            return (self.global_brightness);
+        }
+        if constexpr (Selected == Field::colour_variation_strength) {
+            return (self.colour_variation_strength);
+        }
+        if constexpr (Selected == Field::parallax_strength) {
+            return (self.parallax_strength);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::scale:
+                return "scale";
+            case Field::size_multiplier:
+                return "size_multiplier";
+            case Field::global_brightness:
+                return "global_brightness";
+            case Field::colour_variation_strength:
+                return "colour_variation_strength";
+            case Field::parallax_strength:
+                return "parallax_strength";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, StarSettings>
     {
         switch (field) {
-            case Field::scale: {
-                std::forward<Visitor>(visitor).template operator()<Field::scale>(self.scale);
-                return;
-            }
-            case Field::size_multiplier: {
-                std::forward<Visitor>(visitor).template operator()<Field::size_multiplier>(
-                    self.size_multiplier);
-                return;
-            }
-            case Field::global_brightness: {
-                std::forward<Visitor>(visitor).template operator()<Field::global_brightness>(
-                    self.global_brightness);
-                return;
-            }
-            case Field::colour_variation_strength: {
-                std::forward<Visitor>(visitor).template
-                    operator()<Field::colour_variation_strength>(self.colour_variation_strength);
-                return;
-            }
-            case Field::parallax_strength: {
-                std::forward<Visitor>(visitor).template operator()<Field::parallax_strength>(
-                    self.parallax_strength);
-                return;
-            }
-            case Field::Count: {
+            case Field::scale:
+                return invoke_field<Field::scale>(self, std::forward<Visitor>(visitor));
+            case Field::size_multiplier:
+                return invoke_field<Field::size_multiplier>(self, std::forward<Visitor>(visitor));
+            case Field::global_brightness:
+                return invoke_field<Field::global_brightness>(self, std::forward<Visitor>(visitor));
+            case Field::colour_variation_strength:
+                return invoke_field<Field::colour_variation_strength>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::parallax_strength:
+                return invoke_field<Field::parallax_strength>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -105,23 +161,48 @@ struct GalacticBandSettings {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, GalacticBandSettings> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::strength) {
+            return (self.strength);
+        }
+        if constexpr (Selected == Field::width_degrees) {
+            return (self.width_degrees);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::strength:
+                return "strength";
+            case Field::width_degrees:
+                return "width_degrees";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, GalacticBandSettings>
     {
         switch (field) {
-            case Field::strength: {
-                std::forward<Visitor>(visitor).template operator()<Field::strength>(self.strength);
-                return;
-            }
-            case Field::width_degrees: {
-                std::forward<Visitor>(visitor).template operator()<Field::width_degrees>(
-                    self.width_degrees);
-                return;
-            }
-            case Field::Count: {
+            case Field::strength:
+                return invoke_field<Field::strength>(self, std::forward<Visitor>(visitor));
+            case Field::width_degrees:
+                return invoke_field<Field::width_degrees>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -138,23 +219,48 @@ struct StellarClusterSettings {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, StellarClusterSettings> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::strength) {
+            return (self.strength);
+        }
+        if constexpr (Selected == Field::width_degrees) {
+            return (self.width_degrees);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::strength:
+                return "strength";
+            case Field::width_degrees:
+                return "width_degrees";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, StellarClusterSettings>
     {
         switch (field) {
-            case Field::strength: {
-                std::forward<Visitor>(visitor).template operator()<Field::strength>(self.strength);
-                return;
-            }
-            case Field::width_degrees: {
-                std::forward<Visitor>(visitor).template operator()<Field::width_degrees>(
-                    self.width_degrees);
-                return;
-            }
-            case Field::Count: {
+            case Field::strength:
+                return invoke_field<Field::strength>(self, std::forward<Visitor>(visitor));
+            case Field::width_degrees:
+                return invoke_field<Field::width_degrees>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -172,28 +278,55 @@ struct DustLaneSettings {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, DustLaneSettings> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::strength) {
+            return (self.strength);
+        }
+        if constexpr (Selected == Field::width_degrees) {
+            return (self.width_degrees);
+        }
+        if constexpr (Selected == Field::irregularity) {
+            return (self.irregularity);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::strength:
+                return "strength";
+            case Field::width_degrees:
+                return "width_degrees";
+            case Field::irregularity:
+                return "irregularity";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, DustLaneSettings>
     {
         switch (field) {
-            case Field::strength: {
-                std::forward<Visitor>(visitor).template operator()<Field::strength>(self.strength);
-                return;
-            }
-            case Field::width_degrees: {
-                std::forward<Visitor>(visitor).template operator()<Field::width_degrees>(
-                    self.width_degrees);
-                return;
-            }
-            case Field::irregularity: {
-                std::forward<Visitor>(visitor).template operator()<Field::irregularity>(
-                    self.irregularity);
-                return;
-            }
-            case Field::Count: {
+            case Field::strength:
+                return invoke_field<Field::strength>(self, std::forward<Visitor>(visitor));
+            case Field::width_degrees:
+                return invoke_field<Field::width_degrees>(self, std::forward<Visitor>(visitor));
+            case Field::irregularity:
+                return invoke_field<Field::irregularity>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -213,33 +346,63 @@ struct BrightStarSettings {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, BrightStarSettings> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::fraction) {
+            return (self.fraction);
+        }
+        if constexpr (Selected == Field::size_multiplier) {
+            return (self.size_multiplier);
+        }
+        if constexpr (Selected == Field::brightness_multiplier) {
+            return (self.brightness_multiplier);
+        }
+        if constexpr (Selected == Field::shape_strength) {
+            return (self.shape_strength);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::fraction:
+                return "fraction";
+            case Field::size_multiplier:
+                return "size_multiplier";
+            case Field::brightness_multiplier:
+                return "brightness_multiplier";
+            case Field::shape_strength:
+                return "shape_strength";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, BrightStarSettings>
     {
         switch (field) {
-            case Field::fraction: {
-                std::forward<Visitor>(visitor).template operator()<Field::fraction>(self.fraction);
-                return;
-            }
-            case Field::size_multiplier: {
-                std::forward<Visitor>(visitor).template operator()<Field::size_multiplier>(
-                    self.size_multiplier);
-                return;
-            }
-            case Field::brightness_multiplier: {
-                std::forward<Visitor>(visitor).template operator()<Field::brightness_multiplier>(
-                    self.brightness_multiplier);
-                return;
-            }
-            case Field::shape_strength: {
-                std::forward<Visitor>(visitor).template operator()<Field::shape_strength>(
-                    self.shape_strength);
-                return;
-            }
-            case Field::Count: {
+            case Field::fraction:
+                return invoke_field<Field::fraction>(self, std::forward<Visitor>(visitor));
+            case Field::size_multiplier:
+                return invoke_field<Field::size_multiplier>(self, std::forward<Visitor>(visitor));
+            case Field::brightness_multiplier:
+                return invoke_field<Field::brightness_multiplier>(self,
+                                                                  std::forward<Visitor>(visitor));
+            case Field::shape_strength:
+                return invoke_field<Field::shape_strength>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -258,22 +421,48 @@ struct TwinkleSettings {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, TwinkleSettings> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::strength) {
+            return (self.strength);
+        }
+        if constexpr (Selected == Field::speed) {
+            return (self.speed);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::strength:
+                return "strength";
+            case Field::speed:
+                return "speed";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, TwinkleSettings>
     {
         switch (field) {
-            case Field::strength: {
-                std::forward<Visitor>(visitor).template operator()<Field::strength>(self.strength);
-                return;
-            }
-            case Field::speed: {
-                std::forward<Visitor>(visitor).template operator()<Field::speed>(self.speed);
-                return;
-            }
-            case Field::Count: {
+            case Field::strength:
+                return invoke_field<Field::strength>(self, std::forward<Visitor>(visitor));
+            case Field::speed:
+                return invoke_field<Field::speed>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -290,23 +479,48 @@ struct GalacticHazeSettings {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, GalacticHazeSettings> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::strength) {
+            return (self.strength);
+        }
+        if constexpr (Selected == Field::width_degrees) {
+            return (self.width_degrees);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::strength:
+                return "strength";
+            case Field::width_degrees:
+                return "width_degrees";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, GalacticHazeSettings>
     {
         switch (field) {
-            case Field::strength: {
-                std::forward<Visitor>(visitor).template operator()<Field::strength>(self.strength);
-                return;
-            }
-            case Field::width_degrees: {
-                std::forward<Visitor>(visitor).template operator()<Field::width_degrees>(
-                    self.width_degrees);
-                return;
-            }
-            case Field::Count: {
+            case Field::strength:
+                return invoke_field<Field::strength>(self, std::forward<Visitor>(visitor));
+            case Field::width_degrees:
+                return invoke_field<Field::width_degrees>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -323,23 +537,48 @@ struct GalacticCoreSettings {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, GalacticCoreSettings> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::strength) {
+            return (self.strength);
+        }
+        if constexpr (Selected == Field::width_degrees) {
+            return (self.width_degrees);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::strength:
+                return "strength";
+            case Field::width_degrees:
+                return "width_degrees";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, GalacticCoreSettings>
     {
         switch (field) {
-            case Field::strength: {
-                std::forward<Visitor>(visitor).template operator()<Field::strength>(self.strength);
-                return;
-            }
-            case Field::width_degrees: {
-                std::forward<Visitor>(visitor).template operator()<Field::width_degrees>(
-                    self.width_degrees);
-                return;
-            }
-            case Field::Count: {
+            case Field::strength:
+                return invoke_field<Field::strength>(self, std::forward<Visitor>(visitor));
+            case Field::width_degrees:
+                return invoke_field<Field::width_degrees>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -356,23 +595,48 @@ struct NebularKnotSettings {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, NebularKnotSettings> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::strength) {
+            return (self.strength);
+        }
+        if constexpr (Selected == Field::size_degrees) {
+            return (self.size_degrees);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::strength:
+                return "strength";
+            case Field::size_degrees:
+                return "size_degrees";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, NebularKnotSettings>
     {
         switch (field) {
-            case Field::strength: {
-                std::forward<Visitor>(visitor).template operator()<Field::strength>(self.strength);
-                return;
-            }
-            case Field::size_degrees: {
-                std::forward<Visitor>(visitor).template operator()<Field::size_degrees>(
-                    self.size_degrees);
-                return;
-            }
-            case Field::Count: {
+            case Field::strength:
+                return invoke_field<Field::strength>(self, std::forward<Visitor>(visitor));
+            case Field::size_degrees:
+                return invoke_field<Field::size_degrees>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -397,62 +661,103 @@ struct Settings {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, Settings> && Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::generation) {
+            return (self.generation);
+        }
+        if constexpr (Selected == Field::star) {
+            return (self.star);
+        }
+        if constexpr (Selected == Field::galactic_band) {
+            return (self.galactic_band);
+        }
+        if constexpr (Selected == Field::stellar_cluster) {
+            return (self.stellar_cluster);
+        }
+        if constexpr (Selected == Field::dust_lane) {
+            return (self.dust_lane);
+        }
+        if constexpr (Selected == Field::bright_star) {
+            return (self.bright_star);
+        }
+        if constexpr (Selected == Field::twinkle) {
+            return (self.twinkle);
+        }
+        if constexpr (Selected == Field::galactic_haze) {
+            return (self.galactic_haze);
+        }
+        if constexpr (Selected == Field::galactic_core) {
+            return (self.galactic_core);
+        }
+        if constexpr (Selected == Field::nebular_knot) {
+            return (self.nebular_knot);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::generation:
+                return "generation";
+            case Field::star:
+                return "star";
+            case Field::galactic_band:
+                return "galactic_band";
+            case Field::stellar_cluster:
+                return "stellar_cluster";
+            case Field::dust_lane:
+                return "dust_lane";
+            case Field::bright_star:
+                return "bright_star";
+            case Field::twinkle:
+                return "twinkle";
+            case Field::galactic_haze:
+                return "galactic_haze";
+            case Field::galactic_core:
+                return "galactic_core";
+            case Field::nebular_knot:
+                return "nebular_knot";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, Settings>
     {
         switch (field) {
-            case Field::generation: {
-                std::forward<Visitor>(visitor).template operator()<Field::generation>(
-                    self.generation);
-                return;
-            }
-            case Field::star: {
-                std::forward<Visitor>(visitor).template operator()<Field::star>(self.star);
-                return;
-            }
-            case Field::galactic_band: {
-                std::forward<Visitor>(visitor).template operator()<Field::galactic_band>(
-                    self.galactic_band);
-                return;
-            }
-            case Field::stellar_cluster: {
-                std::forward<Visitor>(visitor).template operator()<Field::stellar_cluster>(
-                    self.stellar_cluster);
-                return;
-            }
-            case Field::dust_lane: {
-                std::forward<Visitor>(visitor).template operator()<Field::dust_lane>(
-                    self.dust_lane);
-                return;
-            }
-            case Field::bright_star: {
-                std::forward<Visitor>(visitor).template operator()<Field::bright_star>(
-                    self.bright_star);
-                return;
-            }
-            case Field::twinkle: {
-                std::forward<Visitor>(visitor).template operator()<Field::twinkle>(self.twinkle);
-                return;
-            }
-            case Field::galactic_haze: {
-                std::forward<Visitor>(visitor).template operator()<Field::galactic_haze>(
-                    self.galactic_haze);
-                return;
-            }
-            case Field::galactic_core: {
-                std::forward<Visitor>(visitor).template operator()<Field::galactic_core>(
-                    self.galactic_core);
-                return;
-            }
-            case Field::nebular_knot: {
-                std::forward<Visitor>(visitor).template operator()<Field::nebular_knot>(
-                    self.nebular_knot);
-                return;
-            }
-            case Field::Count: {
+            case Field::generation:
+                return invoke_field<Field::generation>(self, std::forward<Visitor>(visitor));
+            case Field::star:
+                return invoke_field<Field::star>(self, std::forward<Visitor>(visitor));
+            case Field::galactic_band:
+                return invoke_field<Field::galactic_band>(self, std::forward<Visitor>(visitor));
+            case Field::stellar_cluster:
+                return invoke_field<Field::stellar_cluster>(self, std::forward<Visitor>(visitor));
+            case Field::dust_lane:
+                return invoke_field<Field::dust_lane>(self, std::forward<Visitor>(visitor));
+            case Field::bright_star:
+                return invoke_field<Field::bright_star>(self, std::forward<Visitor>(visitor));
+            case Field::twinkle:
+                return invoke_field<Field::twinkle>(self, std::forward<Visitor>(visitor));
+            case Field::galactic_haze:
+                return invoke_field<Field::galactic_haze>(self, std::forward<Visitor>(visitor));
+            case Field::galactic_core:
+                return invoke_field<Field::galactic_core>(self, std::forward<Visitor>(visitor));
+            case Field::nebular_knot:
+                return invoke_field<Field::nebular_knot>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();

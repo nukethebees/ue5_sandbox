@@ -50,22 +50,29 @@ auto record_visitor(LoweringContext& context, DeclarationHandle record, std::str
     auto const fields{context.declarations.items(records.members[record])};
     std::vector<EnumValueId> values;
     std::vector<SwitchCaseId> cases;
+    std::vector<SwitchCaseId> name_cases;
+    std::string accessors;
     for (auto const field : fields) {
         auto const member{members.name[members.index(field)]};
         values.push_back(ir.enumerator(member));
         auto const id{"Field::" + context.text(member)};
+        accessors += std::format(
+            "if constexpr (Selected == {}) {{ return (self.{}); }}\n", id, context.text(member));
+        name_cases.push_back(
+            ir.switch_case(ir.named(id),
+                           ir.block({ir.return_stmt(ir.string_literal(context.text(member)))}),
+                           false));
         cases.push_back(ir.switch_case(
             ir.named(id),
-            ir.block(
-                {ir.expr_stmt(ir.raw_expr(
-                     std::format("std::forward<Visitor>(visitor).template operator()<{}>(self.{})",
-                                 id,
-                                 context.text(member)),
-                     {ir.types.dependency("std::forward", "utility")})),
-                 ir.return_stmt()})));
+            ir.block({ir.return_stmt(ir.raw_expr(
+                std::format("invoke_field<{}>(self, std::forward<Visitor>(visitor))", id),
+                {ir.types.dependency("std::forward", "utility")}))}),
+            false));
     }
     values.push_back(ir.enumerator(ir.strings.intern("Count")));
-    cases.push_back(ir.switch_case(ir.named("Field::Count"), ir.block({ir.break_stmt()})));
+    cases.push_back(ir.switch_case(ir.named("Field::Count"), ir.block({ir.break_stmt()}), false));
+    name_cases.push_back(
+        ir.switch_case(ir.named("Field::Count"), ir.block({ir.break_stmt()}), false));
 
     NodeListBuilder result{ir};
     result.add(
@@ -74,6 +81,60 @@ auto record_visitor(LoweringContext& context, DeclarationHandle record, std::str
                                        {ir.types.dependency("std::uint8_t", "cstdint")}),
                        values),
         2);
+    auto const accessor{ir.function("get_field", "decltype(auto)")};
+    ir.set_function_template(
+        accessor,
+        ir.template_declaration(
+            {ir.value_template_parameter(ir.types.intern("Field"), ir.strings.intern("Selected")),
+             ir.type_template_parameter(ir.strings.intern("Self"))}));
+    ir.set_function_requires_clause(
+        accessor,
+        ir.raw_expr("(std::same_as<std::remove_const_t<Self>, " + name +
+                        "> && Selected < Field::Count)",
+                    {ir.types.dependency("std::same_as", "concepts"),
+                     ir.types.dependency("std::remove_const_t", "type_traits")}));
+    ir.set_function_receiver(accessor, FunctionReceiver::static_);
+    ir.set_function_parameters(accessor, {ir.parameter("Self&", fields.empty() ? "" : "self")});
+    ir.function_flags(accessor).set_is_constexpr(true);
+    ir.function_flags(accessor).set_define_in_header(true);
+    ir.set_function_body(accessor, fields.empty() ? Nodes{} : Nodes{ir.raw(accessors)});
+    result.add(ir.header_function(accessor), 2);
+
+    auto const invoke{ir.function("invoke_field", "void")};
+    ir.set_function_template(
+        invoke,
+        ir.template_declaration(
+            {ir.value_template_parameter(ir.types.intern("Field"), ir.strings.intern("Selected")),
+             ir.type_template_parameter(ir.strings.intern("Self")),
+             ir.type_template_parameter(ir.strings.intern("Visitor"))}));
+    ir.set_function_receiver(invoke, FunctionReceiver::static_);
+    ir.set_function_parameters(
+        invoke, {ir.parameter("Self&", "self"), ir.parameter("Visitor&&", "visitor")});
+    ir.function_flags(invoke).set_is_constexpr(true);
+    ir.function_flags(invoke).set_define_in_header(true);
+    ir.set_function_body(
+        invoke,
+        {ir.expr_stmt(ir.raw_expr("std::forward<Visitor>(visitor).template "
+                                  "operator()<Selected>(get_field<Selected>(self))",
+                                  {ir.types.dependency("std::forward", "utility")}))});
+    result.add(ir.header_function(invoke), 2);
+
+    auto const field_name{
+        ir.function("field_name",
+                    ir.types.intern("std::string_view",
+                                    {ir.types.dependency("std::string_view", "string_view")}))};
+    ir.set_function_receiver(field_name, FunctionReceiver::static_);
+    ir.set_function_parameters(field_name, {ir.parameter("Field", "field")});
+    ir.function_flags(field_name).set_is_constexpr(true);
+    ir.function_flags(field_name).set_define_in_header(true);
+    ir.set_function_body(
+        field_name,
+        {ir.switch_stmt(ir.named("field"), name_cases),
+         ir.expr_stmt(ir.raw_expr("assert(false && \"Invalid record field\")",
+                                  {ir.types.dependency("assert", "cassert")})),
+         ir.expr_stmt(ir.raw_expr("std::unreachable()",
+                                  {ir.types.dependency("std::unreachable", "utility")}))});
+    result.add(ir.header_function(field_name), 2);
     auto const function{ir.function("visit_field", "void")};
     ir.set_function_template(
         function,

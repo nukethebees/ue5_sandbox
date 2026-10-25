@@ -18,6 +18,7 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -38,65 +39,111 @@ struct SettingsValues {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, SettingsValues> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::tick) {
+            return (self.tick);
+        }
+        if constexpr (Selected == Field::player_ship) {
+            return (self.player_ship);
+        }
+        if constexpr (Selected == Field::laser_projectiles) {
+            return (self.laser_projectiles);
+        }
+        if constexpr (Selected == Field::capital_ships) {
+            return (self.capital_ships);
+        }
+        if constexpr (Selected == Field::fighters) {
+            return (self.fighters);
+        }
+        if constexpr (Selected == Field::turrets) {
+            return (self.turrets);
+        }
+        if constexpr (Selected == Field::tube_spinners) {
+            return (self.tube_spinners);
+        }
+        if constexpr (Selected == Field::collision_grid) {
+            return (self.collision_grid);
+        }
+        if constexpr (Selected == Field::hud) {
+            return (self.hud);
+        }
+        if constexpr (Selected == Field::presentation) {
+            return (self.presentation);
+        }
+        if constexpr (Selected == Field::starfield) {
+            return (self.starfield);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::tick:
+                return "tick";
+            case Field::player_ship:
+                return "player_ship";
+            case Field::laser_projectiles:
+                return "laser_projectiles";
+            case Field::capital_ships:
+                return "capital_ships";
+            case Field::fighters:
+                return "fighters";
+            case Field::turrets:
+                return "turrets";
+            case Field::tube_spinners:
+                return "tube_spinners";
+            case Field::collision_grid:
+                return "collision_grid";
+            case Field::hud:
+                return "hud";
+            case Field::presentation:
+                return "presentation";
+            case Field::starfield:
+                return "starfield";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, SettingsValues>
     {
         switch (field) {
-            case Field::tick: {
-                std::forward<Visitor>(visitor).template operator()<Field::tick>(self.tick);
-                return;
-            }
-            case Field::player_ship: {
-                std::forward<Visitor>(visitor).template operator()<Field::player_ship>(
-                    self.player_ship);
-                return;
-            }
-            case Field::laser_projectiles: {
-                std::forward<Visitor>(visitor).template operator()<Field::laser_projectiles>(
-                    self.laser_projectiles);
-                return;
-            }
-            case Field::capital_ships: {
-                std::forward<Visitor>(visitor).template operator()<Field::capital_ships>(
-                    self.capital_ships);
-                return;
-            }
-            case Field::fighters: {
-                std::forward<Visitor>(visitor).template operator()<Field::fighters>(self.fighters);
-                return;
-            }
-            case Field::turrets: {
-                std::forward<Visitor>(visitor).template operator()<Field::turrets>(self.turrets);
-                return;
-            }
-            case Field::tube_spinners: {
-                std::forward<Visitor>(visitor).template operator()<Field::tube_spinners>(
-                    self.tube_spinners);
-                return;
-            }
-            case Field::collision_grid: {
-                std::forward<Visitor>(visitor).template operator()<Field::collision_grid>(
-                    self.collision_grid);
-                return;
-            }
-            case Field::hud: {
-                std::forward<Visitor>(visitor).template operator()<Field::hud>(self.hud);
-                return;
-            }
-            case Field::presentation: {
-                std::forward<Visitor>(visitor).template operator()<Field::presentation>(
-                    self.presentation);
-                return;
-            }
-            case Field::starfield: {
-                std::forward<Visitor>(visitor).template operator()<Field::starfield>(
-                    self.starfield);
-                return;
-            }
-            case Field::Count: {
+            case Field::tick:
+                return invoke_field<Field::tick>(self, std::forward<Visitor>(visitor));
+            case Field::player_ship:
+                return invoke_field<Field::player_ship>(self, std::forward<Visitor>(visitor));
+            case Field::laser_projectiles:
+                return invoke_field<Field::laser_projectiles>(self, std::forward<Visitor>(visitor));
+            case Field::capital_ships:
+                return invoke_field<Field::capital_ships>(self, std::forward<Visitor>(visitor));
+            case Field::fighters:
+                return invoke_field<Field::fighters>(self, std::forward<Visitor>(visitor));
+            case Field::turrets:
+                return invoke_field<Field::turrets>(self, std::forward<Visitor>(visitor));
+            case Field::tube_spinners:
+                return invoke_field<Field::tube_spinners>(self, std::forward<Visitor>(visitor));
+            case Field::collision_grid:
+                return invoke_field<Field::collision_grid>(self, std::forward<Visitor>(visitor));
+            case Field::hud:
+                return invoke_field<Field::hud>(self, std::forward<Visitor>(visitor));
+            case Field::presentation:
+                return invoke_field<Field::presentation>(self, std::forward<Visitor>(visitor));
+            case Field::starfield:
+                return invoke_field<Field::starfield>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();

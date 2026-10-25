@@ -6,30 +6,55 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
 namespace ioj::settings {
 struct PlayerPresentation {
+    bool operator==(PlayerPresentation const&) const = default;
+
     enum class Field : std::uint8_t {
         boost_effect_colour_intensity,
         Count,
     };
+
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, PlayerPresentation> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::boost_effect_colour_intensity) {
+            return (self.boost_effect_colour_intensity);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::boost_effect_colour_intensity:
+                return "boost_effect_colour_intensity";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
 
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, PlayerPresentation>
     {
         switch (field) {
-            case Field::boost_effect_colour_intensity: {
-                std::forward<Visitor>(visitor)
-                    .template operator()<Field::boost_effect_colour_intensity>(
-                        self.boost_effect_colour_intensity);
-                return;
-            }
-            case Field::Count: {
+            case Field::boost_effect_colour_intensity:
+                return invoke_field<Field::boost_effect_colour_intensity>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();

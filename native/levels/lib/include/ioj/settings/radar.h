@@ -6,11 +6,14 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
 namespace ioj::settings {
 struct Radar {
+    bool operator==(Radar const&) const = default;
+
     enum class Field : std::uint8_t {
         enabled,
         combat_range,
@@ -29,85 +32,138 @@ struct Radar {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, Radar> && Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::enabled) {
+            return (self.enabled);
+        }
+        if constexpr (Selected == Field::combat_range) {
+            return (self.combat_range);
+        }
+        if constexpr (Selected == Field::tactical_range) {
+            return (self.tactical_range);
+        }
+        if constexpr (Selected == Field::maximum_range) {
+            return (self.maximum_range);
+        }
+        if constexpr (Selected == Field::combat_display_radius) {
+            return (self.combat_display_radius);
+        }
+        if constexpr (Selected == Field::grid_opacity) {
+            return (self.grid_opacity);
+        }
+        if constexpr (Selected == Field::core_cell_radius) {
+            return (self.core_cell_radius);
+        }
+        if constexpr (Selected == Field::combat_cell_radius) {
+            return (self.combat_cell_radius);
+        }
+        if constexpr (Selected == Field::tactical_cell_radius) {
+            return (self.tactical_cell_radius);
+        }
+        if constexpr (Selected == Field::strategic_cell_radius) {
+            return (self.strategic_cell_radius);
+        }
+        if constexpr (Selected == Field::glyph_size_scale) {
+            return (self.glyph_size_scale);
+        }
+        if constexpr (Selected == Field::objective_size_multiplier) {
+            return (self.objective_size_multiplier);
+        }
+        if constexpr (Selected == Field::objective_ring_padding_pixels) {
+            return (self.objective_ring_padding_pixels);
+        }
+        if constexpr (Selected == Field::objective_ring_thickness_pixels) {
+            return (self.objective_ring_thickness_pixels);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::enabled:
+                return "enabled";
+            case Field::combat_range:
+                return "combat_range";
+            case Field::tactical_range:
+                return "tactical_range";
+            case Field::maximum_range:
+                return "maximum_range";
+            case Field::combat_display_radius:
+                return "combat_display_radius";
+            case Field::grid_opacity:
+                return "grid_opacity";
+            case Field::core_cell_radius:
+                return "core_cell_radius";
+            case Field::combat_cell_radius:
+                return "combat_cell_radius";
+            case Field::tactical_cell_radius:
+                return "tactical_cell_radius";
+            case Field::strategic_cell_radius:
+                return "strategic_cell_radius";
+            case Field::glyph_size_scale:
+                return "glyph_size_scale";
+            case Field::objective_size_multiplier:
+                return "objective_size_multiplier";
+            case Field::objective_ring_padding_pixels:
+                return "objective_ring_padding_pixels";
+            case Field::objective_ring_thickness_pixels:
+                return "objective_ring_thickness_pixels";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, Radar>
     {
         switch (field) {
-            case Field::enabled: {
-                std::forward<Visitor>(visitor).template operator()<Field::enabled>(self.enabled);
-                return;
-            }
-            case Field::combat_range: {
-                std::forward<Visitor>(visitor).template operator()<Field::combat_range>(
-                    self.combat_range);
-                return;
-            }
-            case Field::tactical_range: {
-                std::forward<Visitor>(visitor).template operator()<Field::tactical_range>(
-                    self.tactical_range);
-                return;
-            }
-            case Field::maximum_range: {
-                std::forward<Visitor>(visitor).template operator()<Field::maximum_range>(
-                    self.maximum_range);
-                return;
-            }
-            case Field::combat_display_radius: {
-                std::forward<Visitor>(visitor).template operator()<Field::combat_display_radius>(
-                    self.combat_display_radius);
-                return;
-            }
-            case Field::grid_opacity: {
-                std::forward<Visitor>(visitor).template operator()<Field::grid_opacity>(
-                    self.grid_opacity);
-                return;
-            }
-            case Field::core_cell_radius: {
-                std::forward<Visitor>(visitor).template operator()<Field::core_cell_radius>(
-                    self.core_cell_radius);
-                return;
-            }
-            case Field::combat_cell_radius: {
-                std::forward<Visitor>(visitor).template operator()<Field::combat_cell_radius>(
-                    self.combat_cell_radius);
-                return;
-            }
-            case Field::tactical_cell_radius: {
-                std::forward<Visitor>(visitor).template operator()<Field::tactical_cell_radius>(
-                    self.tactical_cell_radius);
-                return;
-            }
-            case Field::strategic_cell_radius: {
-                std::forward<Visitor>(visitor).template operator()<Field::strategic_cell_radius>(
-                    self.strategic_cell_radius);
-                return;
-            }
-            case Field::glyph_size_scale: {
-                std::forward<Visitor>(visitor).template operator()<Field::glyph_size_scale>(
-                    self.glyph_size_scale);
-                return;
-            }
-            case Field::objective_size_multiplier: {
-                std::forward<Visitor>(visitor).template
-                    operator()<Field::objective_size_multiplier>(self.objective_size_multiplier);
-                return;
-            }
-            case Field::objective_ring_padding_pixels: {
-                std::forward<Visitor>(visitor)
-                    .template operator()<Field::objective_ring_padding_pixels>(
-                        self.objective_ring_padding_pixels);
-                return;
-            }
-            case Field::objective_ring_thickness_pixels: {
-                std::forward<Visitor>(visitor)
-                    .template operator()<Field::objective_ring_thickness_pixels>(
-                        self.objective_ring_thickness_pixels);
-                return;
-            }
-            case Field::Count: {
+            case Field::enabled:
+                return invoke_field<Field::enabled>(self, std::forward<Visitor>(visitor));
+            case Field::combat_range:
+                return invoke_field<Field::combat_range>(self, std::forward<Visitor>(visitor));
+            case Field::tactical_range:
+                return invoke_field<Field::tactical_range>(self, std::forward<Visitor>(visitor));
+            case Field::maximum_range:
+                return invoke_field<Field::maximum_range>(self, std::forward<Visitor>(visitor));
+            case Field::combat_display_radius:
+                return invoke_field<Field::combat_display_radius>(self,
+                                                                  std::forward<Visitor>(visitor));
+            case Field::grid_opacity:
+                return invoke_field<Field::grid_opacity>(self, std::forward<Visitor>(visitor));
+            case Field::core_cell_radius:
+                return invoke_field<Field::core_cell_radius>(self, std::forward<Visitor>(visitor));
+            case Field::combat_cell_radius:
+                return invoke_field<Field::combat_cell_radius>(self,
+                                                               std::forward<Visitor>(visitor));
+            case Field::tactical_cell_radius:
+                return invoke_field<Field::tactical_cell_radius>(self,
+                                                                 std::forward<Visitor>(visitor));
+            case Field::strategic_cell_radius:
+                return invoke_field<Field::strategic_cell_radius>(self,
+                                                                  std::forward<Visitor>(visitor));
+            case Field::glyph_size_scale:
+                return invoke_field<Field::glyph_size_scale>(self, std::forward<Visitor>(visitor));
+            case Field::objective_size_multiplier:
+                return invoke_field<Field::objective_size_multiplier>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::objective_ring_padding_pixels:
+                return invoke_field<Field::objective_ring_padding_pixels>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::objective_ring_thickness_pixels:
+                return invoke_field<Field::objective_ring_thickness_pixels>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();

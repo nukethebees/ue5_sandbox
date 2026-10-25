@@ -6,11 +6,14 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
 namespace ioj::sim {
 struct LaserWeaponSimConfig {
+    bool operator==(LaserWeaponSimConfig const&) const = default;
+
     enum class Field : std::uint8_t {
         damage,
         projectile_speed,
@@ -19,33 +22,62 @@ struct LaserWeaponSimConfig {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, LaserWeaponSimConfig> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::damage) {
+            return (self.damage);
+        }
+        if constexpr (Selected == Field::projectile_speed) {
+            return (self.projectile_speed);
+        }
+        if constexpr (Selected == Field::max_distance) {
+            return (self.max_distance);
+        }
+        if constexpr (Selected == Field::fire_cooldown) {
+            return (self.fire_cooldown);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::damage:
+                return "damage";
+            case Field::projectile_speed:
+                return "projectile_speed";
+            case Field::max_distance:
+                return "max_distance";
+            case Field::fire_cooldown:
+                return "fire_cooldown";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, LaserWeaponSimConfig>
     {
         switch (field) {
-            case Field::damage: {
-                std::forward<Visitor>(visitor).template operator()<Field::damage>(self.damage);
-                return;
-            }
-            case Field::projectile_speed: {
-                std::forward<Visitor>(visitor).template operator()<Field::projectile_speed>(
-                    self.projectile_speed);
-                return;
-            }
-            case Field::max_distance: {
-                std::forward<Visitor>(visitor).template operator()<Field::max_distance>(
-                    self.max_distance);
-                return;
-            }
-            case Field::fire_cooldown: {
-                std::forward<Visitor>(visitor).template operator()<Field::fire_cooldown>(
-                    self.fire_cooldown);
-                return;
-            }
-            case Field::Count: {
+            case Field::damage:
+                return invoke_field<Field::damage>(self, std::forward<Visitor>(visitor));
+            case Field::projectile_speed:
+                return invoke_field<Field::projectile_speed>(self, std::forward<Visitor>(visitor));
+            case Field::max_distance:
+                return invoke_field<Field::max_distance>(self, std::forward<Visitor>(visitor));
+            case Field::fire_cooldown:
+                return invoke_field<Field::fire_cooldown>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();

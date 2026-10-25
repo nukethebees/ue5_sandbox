@@ -9,6 +9,7 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -20,24 +21,47 @@ struct TickSettings {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, TickSettings> && Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::tick_rate) {
+            return (self.tick_rate);
+        }
+        if constexpr (Selected == Field::time_scale) {
+            return (self.time_scale);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::tick_rate:
+                return "tick_rate";
+            case Field::time_scale:
+                return "time_scale";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, TickSettings>
     {
         switch (field) {
-            case Field::tick_rate: {
-                std::forward<Visitor>(visitor).template operator()<Field::tick_rate>(
-                    self.tick_rate);
-                return;
-            }
-            case Field::time_scale: {
-                std::forward<Visitor>(visitor).template operator()<Field::time_scale>(
-                    self.time_scale);
-                return;
-            }
-            case Field::Count: {
+            case Field::tick_rate:
+                return invoke_field<Field::tick_rate>(self, std::forward<Visitor>(visitor));
+            case Field::time_scale:
+                return invoke_field<Field::time_scale>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();

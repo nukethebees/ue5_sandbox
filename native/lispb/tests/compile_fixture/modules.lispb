@@ -19,7 +19,7 @@
     :generate-s7-reader true :s7-tag "child"
     (member name @reader_nonempty_string :required true)
     (member count int :initializer "2" :nonnegative true))
-  (record ReadableRecord :generate-s7-reader true :s7-tag "record"
+  (record ReadableRecord :generate-visitor true :generate-s7-reader true :s7-tag "record"
     (member child ReadableChild :required true)
     (member values @reader_children :initializer "")
     (member points float :count 3 :initializer "" :s7-name "samples")

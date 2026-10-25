@@ -9,6 +9,7 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -23,35 +24,64 @@ struct CapitalShipSimConfig {
         Count,
     };
 
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, CapitalShipSimConfig> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::spawn_delay) {
+            return (self.spawn_delay);
+        }
+        if constexpr (Selected == Field::fighter_spawn_slots) {
+            return (self.fighter_spawn_slots);
+        }
+        if constexpr (Selected == Field::fighter_spawn_slots_relative_transforms) {
+            return (self.fighter_spawn_slots_relative_transforms);
+        }
+        if constexpr (Selected == Field::max_health) {
+            return (self.max_health);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::spawn_delay:
+                return "spawn_delay";
+            case Field::fighter_spawn_slots:
+                return "fighter_spawn_slots";
+            case Field::fighter_spawn_slots_relative_transforms:
+                return "fighter_spawn_slots_relative_transforms";
+            case Field::max_health:
+                return "max_health";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, CapitalShipSimConfig>
     {
         switch (field) {
-            case Field::spawn_delay: {
-                std::forward<Visitor>(visitor).template operator()<Field::spawn_delay>(
-                    self.spawn_delay);
-                return;
-            }
-            case Field::fighter_spawn_slots: {
-                std::forward<Visitor>(visitor).template operator()<Field::fighter_spawn_slots>(
-                    self.fighter_spawn_slots);
-                return;
-            }
-            case Field::fighter_spawn_slots_relative_transforms: {
-                std::forward<Visitor>(visitor)
-                    .template operator()<Field::fighter_spawn_slots_relative_transforms>(
-                        self.fighter_spawn_slots_relative_transforms);
-                return;
-            }
-            case Field::max_health: {
-                std::forward<Visitor>(visitor).template operator()<Field::max_health>(
-                    self.max_health);
-                return;
-            }
-            case Field::Count: {
+            case Field::spawn_delay:
+                return invoke_field<Field::spawn_delay>(self, std::forward<Visitor>(visitor));
+            case Field::fighter_spawn_slots:
+                return invoke_field<Field::fighter_spawn_slots>(self,
+                                                                std::forward<Visitor>(visitor));
+            case Field::fighter_spawn_slots_relative_transforms:
+                return invoke_field<Field::fighter_spawn_slots_relative_transforms>(
+                    self, std::forward<Visitor>(visitor));
+            case Field::max_health:
+                return invoke_field<Field::max_health>(self, std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();

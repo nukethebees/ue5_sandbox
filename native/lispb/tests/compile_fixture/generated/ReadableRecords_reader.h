@@ -317,6 +317,8 @@ struct TypeReader<codegen_compile_fixture::ReadableRecord>
                                      case Field::mode:
                                          read.construct(value_mode);
                                          break;
+                                     default:
+                                         std::unreachable();
                                      case Field::Count:
                                          std::unreachable();
                                  }
@@ -356,61 +358,33 @@ struct TypeReader<codegen_compile_fixture::ReadableRecord>
     }
 
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field>(context,
-                             "record",
-                             field_names,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::child:
-                                         read(result.child);
-                                         break;
-                                     case Field::values:
-                                         read(result.values);
-                                         break;
-                                     case Field::points:
-                                         read(result.points);
-                                         break;
-                                     case Field::enabled:
-                                         read(result.enabled);
-                                         break;
-                                     case Field::maybe:
-                                         read(result.maybe);
-                                         break;
-                                     case Field::scale:
-                                         read(result.scale,
-                                              constraints::positive,
-                                              constraints::finite,
-                                              constraints::minimum(5.00000000000000000e-01),
-                                              constraints::maximum(5ULL));
-                                         break;
-                                     case Field::offset:
-                                         read(result.offset, constraints::nonzero);
-                                         break;
-                                     case Field::title:
-                                         read(result.title, constraints::nonempty);
-                                         break;
-                                     case Field::mode:
-                                         read(result.mode);
-                                         break;
-                                     case Field::Count:
-                                         std::unreachable();
-                                 }
-                             }),
-                             required);
+        decode_record<Field>(
+            context,
+            "record",
+            field_names,
+            ([&](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+                    if constexpr (field == Field::child || field == Field::values ||
+                                  field == Field::points || field == Field::enabled ||
+                                  field == Field::maybe || field == Field::mode) {
+                        read(member);
+                    } else if constexpr (field == Field::title) {
+                        read(member, constraints::nonempty);
+                    } else if constexpr (field == Field::offset) {
+                        read(member, constraints::nonzero);
+                    } else if constexpr (field == Field::scale) {
+                        read(member,
+                             constraints::positive,
+                             constraints::finite,
+                             constraints::minimum(5.00000000000000000e-01),
+                             constraints::maximum(5ULL));
+                    }
+                });
+            }),
+            required);
     }
   private:
-    enum class Field : std::uint8_t {
-        child,
-        values,
-        points,
-        enabled,
-        maybe,
-        scale,
-        offset,
-        title,
-        mode,
-        Count,
-    };
+    using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 9> field_names{
         "child", "values", "samples", "enabled", "maybe", "scale", "offset", "title", "mode"};

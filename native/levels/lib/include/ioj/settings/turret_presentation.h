@@ -6,29 +6,55 @@
 #include <cassert>
 #include <concepts>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
 namespace ioj::settings {
 struct TurretPresentation {
+    bool operator==(TurretPresentation const&) const = default;
+
     enum class Field : std::uint8_t {
         death_effect_scale,
         Count,
     };
+
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, TurretPresentation> &&
+                  Selected < Field::Count)
+    {
+        if constexpr (Selected == Field::death_effect_scale) {
+            return (self.death_effect_scale);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    static constexpr std::string_view field_name(Field field) {
+        switch (field) {
+            case Field::death_effect_scale:
+                return "death_effect_scale";
+            case Field::Count:
+                break;
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
 
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, TurretPresentation>
     {
         switch (field) {
-            case Field::death_effect_scale: {
-                std::forward<Visitor>(visitor).template operator()<Field::death_effect_scale>(
-                    self.death_effect_scale);
-                return;
-            }
-            case Field::Count: {
+            case Field::death_effect_scale:
+                return invoke_field<Field::death_effect_scale>(self,
+                                                               std::forward<Visitor>(visitor));
+            case Field::Count:
                 break;
-            }
         }
         assert(false && "Invalid record field");
         std::unreachable();
