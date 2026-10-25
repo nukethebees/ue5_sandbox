@@ -6,13 +6,15 @@
 #include <ReadableRecords.h>
 #include <Records.h>
 
+#include <deque>
 #include <limits>
+#include <span>
 #include <stdexcept>
 
 namespace lispb::tests {
 using namespace codegen_compile_fixture;
 using ioj::DiffContext;
-using ioj::DiffResult;
+using ioj::DiffReport;
 
 template <typename T, auto field>
 concept AccessibleField = requires(T& value) { T::template get_field<field>(value); };
@@ -67,10 +69,9 @@ TEST(StructuralDiff, AccessorsAndVisitorsReferToTheSameMembers) {
         member = 4.f;
     });
     EXPECT_EQ(pair.x, 4.f);
-    DiffResult result;
-    DiffContext context{result};
-    context.diff("empty", EmptySettings{}, EmptySettings{});
-    context.diff("pair", pair, pair);
+    DiffReport result;
+    result.diff("empty", EmptySettings{}, EmptySettings{});
+    result.diff("pair", pair, pair);
     EXPECT_TRUE(result.empty()) << result.message();
 }
 
@@ -102,10 +103,9 @@ TEST(StructuralDiff, ReportsDeepRecordsSequencesAndPresenceWithoutLosingSiblingP
     actual[1].first.optional_limit.reset();
     actual[1].second.weapon.turn_rate = 9.f;
     actual.emplace_back();
-    DiffResult result;
-    DiffContext context{result};
-    context.diff("fighters", expected, actual);
-    context.diff("next", 1, 2);
+    DiffReport result;
+    result.diff("fighters", expected, actual);
+    result.diff("next", 1, 2);
     EXPECT_EQ(
         result.differences,
         (std::vector<ioj::Difference>{{"fighters.size", "2", "3"},
@@ -118,16 +118,24 @@ TEST(StructuralDiff, ReportsDeepRecordsSequencesAndPresenceWithoutLosingSiblingP
 TEST(StructuralDiff, DescendsThroughConstrainedRecordsArraysAndOptionalValues) {
     RangeSettings expected;
     RangeSettings actual{.range = *Range::try_make({1, 9})};
-    DiffResult result;
-    DiffContext context{result};
-    context.diff("range", std::optional{expected}, std::optional{actual});
-    context.diff("array", std::array{1, 2}, std::array{1, 3});
-    context.diff("bits", std::vector<bool>{true}, std::vector<bool>{false});
+    DiffReport result;
+    result.diff("range", std::optional{expected}, std::optional{actual});
+    result.diff("array", std::array{1, 2}, std::array{1, 3});
+    result.diff("bits", std::vector<bool>{true}, std::vector<bool>{false});
+    result.diff("deque", std::deque{1, 2}, std::deque{1, 4});
+    int const first[]{1, 2};
+    int const second[]{1, 3, 4};
+    result.diff("span", std::span<int const>{first}, std::span<int const>{second});
+    result.diff("text", std::string{"ab"}, std::string{"ac"});
     EXPECT_EQ(result.differences,
               (std::vector<ioj::Difference>{{"range.range.minimum", "0", "1"},
                                             {"range.range.maximum", "10", "9"},
                                             {"array[1]", "2", "3"},
-                                            {"bits[0]", "true", "false"}}));
+                                            {"bits[0]", "true", "false"},
+                                            {"deque[1]", "2", "4"},
+                                            {"span.size", "2", "3"},
+                                            {"span[1]", "2", "3"},
+                                            {"text", "ab", "ac"}}));
 }
 
 struct CustomComparison {
@@ -145,7 +153,7 @@ void diff_members(CustomComparison const& expected,
 }
 
 TEST(StructuralDiff, RestoresPathsAfterCustomComparisonsThrowAndOwnsDiagnosticStrings) {
-    DiffResult result;
+    DiffReport result;
     DiffContext context{result};
     {
         std::string name{"temporary"};
@@ -166,21 +174,20 @@ struct Opaque {
 };
 
 TEST(StructuralDiff, UsesExactLeafSemanticsAndBoundsDiagnosticStorage) {
-    DiffResult result{.limit = 5};
-    DiffContext context{result};
-    context.diff("opaque", Opaque{1}, Opaque{2});
-    context.diff(
+    DiffReport result{.limit = 5};
+    result.diff("opaque", Opaque{1}, Opaque{2});
+    result.diff(
         "nan", std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN());
-    context.diff("infinity",
-                 std::numeric_limits<double>::infinity(),
-                 std::numeric_limits<double>::infinity());
-    context.diff("zero", -0.0, 0.0);
-    context.diff("enum", ReaderEnum::Mixed, static_cast<ReaderEnum>(1));
+    result.diff("infinity",
+                std::numeric_limits<double>::infinity(),
+                std::numeric_limits<double>::infinity());
+    result.diff("zero", -0.0, 0.0);
+    result.diff("enum", ReaderEnum::Mixed, static_cast<ReaderEnum>(1));
     int first{};
     int second{};
-    context.diff("pointer", &first, &second);
-    context.diff("null", static_cast<char const*>(nullptr), static_cast<char const*>("text"));
-    context.diff("limited", std::array{1, 2}, std::array{3, 4});
+    result.diff("pointer", &first, &second);
+    result.diff("null", static_cast<char const*>(nullptr), static_cast<char const*>("text"));
+    result.diff("limited", std::array{1, 2}, std::array{3, 4});
     ASSERT_EQ(result.differences.size(), 5u);
     EXPECT_EQ(result.differences[0].expected, "<unformattable value>");
     EXPECT_EQ(result.differences[1].path, "nan");

@@ -3,6 +3,6 @@
 struct Unsupported {};
 
 void reject_unsupported() {
-    ioj::DiffResult result;
-    ioj::DiffContext{result}.diff("unsupported", Unsupported{}, Unsupported{});
+    ioj::DiffReport result;
+    result.diff("unsupported", Unsupported{}, Unsupported{});
 }

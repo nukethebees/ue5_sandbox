@@ -50,8 +50,8 @@ TEST(GeneratedEnumFormatter, RejectsUnavailableRepresentationsAndInvalidSpecific
 }
 
 TEST(GeneratedEnumFormatter, SuppliesReadableStructuralDiffValues) {
-    ioj::DiffResult result;
-    ioj::DiffContext{result}.diff("state", EPlainFixture::First, EPlainFixture::ReadableName);
+    ioj::DiffReport result;
+    result.diff("state", EPlainFixture::First, EPlainFixture::ReadableName);
     EXPECT_EQ(result.message(), "state\n  Expected: First\n  Actual:   ReadableName\n");
 }
 }

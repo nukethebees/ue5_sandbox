@@ -10,8 +10,8 @@ auto structurally_equal(char const* expected_expression,
                         char const* actual_expression,
                         T const& expected,
                         T const& actual) -> ::testing::AssertionResult {
-    DiffResult differences;
-    DiffContext{differences}.diff(std::string_view{actual_expression}, expected, actual);
+    DiffReport differences;
+    differences.diff(std::string_view{actual_expression}, expected, actual);
     if (differences.empty()) {
         return ::testing::AssertionSuccess();
     }

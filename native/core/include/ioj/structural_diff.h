@@ -1,14 +1,14 @@
 #pragma once
 
-#include <ioj/constrained_value.h>
+#include <ioj/format_writer.h>
 
 #include <algorithm>
-#include <array>
 #include <concepts>
 #include <cstddef>
 #include <format>
 #include <iterator>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -25,7 +25,12 @@ struct Difference {
     std::string actual;
 };
 
-struct DiffResult {
+using DiffPathComponent = std::variant<std::string_view, std::size_t>;
+
+struct DiffReport {
+    template <typename T>
+    void diff(DiffPathComponent component, T const& expected, T const& actual);
+
     [[nodiscard]] auto empty() const -> bool { return differences.empty() && omitted == 0; }
     [[nodiscard]] auto message() const -> std::string {
         std::string text;
@@ -49,14 +54,12 @@ struct DiffResult {
 
 class DiffContext;
 
-using DiffPathComponent = std::variant<std::string_view, std::size_t>;
-
 template <typename T>
 void diff_value(T const& expected, T const& actual, DiffContext& context);
 
 class DiffContext {
   public:
-    explicit DiffContext(DiffResult& result)
+    explicit DiffContext(DiffReport& result)
         : result_{result} {}
 
     template <typename T>
@@ -73,6 +76,7 @@ class DiffContext {
             return;
         }
         std::string path;
+        FormatWriter write{std::back_inserter(path)};
         for (auto const& component : path_) {
             if (auto const* name{std::get_if<std::string_view>(&component)}) {
                 if (!path.empty()) {
@@ -80,7 +84,7 @@ class DiffContext {
                 }
                 path += *name;
             } else {
-                std::format_to(std::back_inserter(path), "[{}]", std::get<std::size_t>(component));
+                write("[{}]", std::get<std::size_t>(component));
             }
         }
         result_.differences.push_back({std::move(path), describe(expected), describe(actual)});
@@ -105,27 +109,30 @@ class DiffContext {
         }
     }
 
-    DiffResult& result_;
+    DiffReport& result_;
     std::vector<DiffPathComponent> path_;
 };
 
+template <typename T>
+void DiffReport::diff(DiffPathComponent component, T const& expected, T const& actual) {
+    DiffContext{*this}.diff(component, expected, actual);
+}
+
 namespace diff_detail {
 template <typename T>
-inline constexpr bool sequence = false;
-template <typename T, typename Allocator>
-inline constexpr bool sequence<std::vector<T, Allocator>> = true;
-template <typename T, std::size_t N>
-inline constexpr bool sequence<std::array<T, N>> = true;
+concept Sequence = std::ranges::random_access_range<T const> && std::ranges::sized_range<T const> &&
+                   !std::convertible_to<T const&, std::string_view>;
 
 template <typename T>
-inline constexpr bool optional = false;
-template <typename T>
-inline constexpr bool optional<std::optional<T>> = true;
+concept Optional =
+    requires { typename T::value_type; } && std::same_as<T, std::optional<typename T::value_type>>;
 
 template <typename T>
-inline constexpr bool constrained = false;
-template <typename T, ConstrainedValuePolicy policy>
-inline constexpr bool constrained<ConstrainedValue<T, policy>> = true;
+concept Constrained = requires(T const& value, typename T::value_type const& inner) {
+    { value.get_ref() } -> std::same_as<typename T::value_type const&>;
+    { T::valid(inner) } -> std::same_as<bool>;
+    { T::try_make(inner) } -> std::same_as<std::optional<T>>;
+};
 
 template <typename T>
 concept Record = requires(typename T::Field field) {
@@ -153,20 +160,22 @@ void diff_value(T const& expected, T const& actual, DiffContext& context) {
                         T::field_name(field), member, T::template get_field<field>(actual));
                 });
         }
-    } else if constexpr (diff_detail::constrained<T>) {
+    } else if constexpr (diff_detail::Constrained<T>) {
         diff_value(expected.get_ref(), actual.get_ref(), context);
-    } else if constexpr (diff_detail::optional<T>) {
+    } else if constexpr (diff_detail::Optional<T>) {
         if (expected.has_value() != actual.has_value()) {
             context.mismatch(std::string_view{expected ? "present" : "absent"},
                              std::string_view{actual ? "present" : "absent"});
         } else if (expected) {
             diff_value(*expected, *actual, context);
         }
-    } else if constexpr (diff_detail::sequence<T>) {
-        context.diff("size", expected.size(), actual.size());
-        auto const count{std::min(expected.size(), actual.size())};
+    } else if constexpr (diff_detail::Sequence<T>) {
+        context.diff("size", std::ranges::size(expected), std::ranges::size(actual));
+        auto const count{std::min(std::ranges::size(expected), std::ranges::size(actual))};
+        auto const expected_begin{std::ranges::begin(expected)};
+        auto const actual_begin{std::ranges::begin(actual)};
         for (std::size_t index{}; index < count; ++index) {
-            context.diff(index, expected[index], actual[index]);
+            context.diff(index, expected_begin[index], actual_begin[index]);
         }
     } else if constexpr (std::equality_comparable<T>) {
         if (!(expected == actual)) {
