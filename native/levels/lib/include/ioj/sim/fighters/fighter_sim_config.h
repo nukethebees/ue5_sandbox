@@ -3,14 +3,16 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
 #include "ioj/settings/attack_distance_band.h"
 #include "ioj/sim/entities/health.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -45,13 +47,12 @@ struct FighterSimConfig {
         awareness_radius,
         awareness_scan_frequency,
         minimum_opportunistic_intercept_deviation_dot_product,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, FighterSimConfig> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::max_live_fighters) {
             return (self.max_live_fighters);
@@ -138,67 +139,6 @@ struct FighterSimConfig {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::max_live_fighters:
-                return "max_live_fighters";
-            case Field::fire_point_distance:
-                return "fire_point_distance";
-            case Field::fire_dot_product_threshold:
-                return "fire_dot_product_threshold";
-            case Field::speed:
-                return "speed";
-            case Field::turn_speed_unitless:
-                return "turn_speed_unitless";
-            case Field::avoidance_clear_update_frequency:
-                return "avoidance_clear_update_frequency";
-            case Field::avoidance_update_frequency:
-                return "avoidance_update_frequency";
-            case Field::avoidance_active_update_frequency:
-                return "avoidance_active_update_frequency";
-            case Field::avoidance_immediate_update_frequency:
-                return "avoidance_immediate_update_frequency";
-            case Field::avoidance_lookahead_time:
-                return "avoidance_lookahead_time";
-            case Field::avoidance_clearance_buffer:
-                return "avoidance_clearance_buffer";
-            case Field::separation_radius:
-                return "separation_radius";
-            case Field::separation_strength:
-                return "separation_strength";
-            case Field::steering_memory_duration:
-                return "steering_memory_duration";
-            case Field::dense_traffic_neighbour_threshold:
-                return "dense_traffic_neighbour_threshold";
-            case Field::laser:
-                return "laser";
-            case Field::health:
-                return "health";
-            case Field::attack_retry_cooldown:
-                return "attack_retry_cooldown";
-            case Field::attack_engagement_threshold:
-                return "attack_engagement_threshold";
-            case Field::attack_reposition_frequency:
-                return "attack_reposition_frequency";
-            case Field::attack_distance_band:
-                return "attack_distance_band";
-            case Field::arrival_distance:
-                return "arrival_distance";
-            case Field::los_check_buffer:
-                return "los_check_buffer";
-            case Field::awareness_radius:
-                return "awareness_radius";
-            case Field::awareness_scan_frequency:
-                return "awareness_scan_frequency";
-            case Field::minimum_opportunistic_intercept_deviation_dot_product:
-                return "minimum_opportunistic_intercept_deviation_dot_product";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, FighterSimConfig>
@@ -274,8 +214,6 @@ struct FighterSimConfig {
             case Field::minimum_opportunistic_intercept_deviation_dot_product:
                 return invoke_field<Field::minimum_opportunistic_intercept_deviation_dot_product>(
                     self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -309,3 +247,24 @@ struct FighterSimConfig {
     float minimum_opportunistic_intercept_deviation_dot_product{0.5f};
 };
 } // namespace ioj::sim
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::FighterSimConfig::Field>() noexcept
+    -> std::size_t {
+    return 26;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::sim::FighterSimConfig::Field,
+                                        ioj::Name>{ioj::PackedStrings{
+    "max_live_fighters\000fire_point_distance\000fire_dot_product_threshold\000speed\000turn_speed_"
+    "unitless\000avoidance_clear_update_frequency\000avoidance_update_frequency\000avoidance_"
+    "active_update_frequency\000avoidance_immediate_update_frequency\000avoidance_lookahead_"
+    "time\000avoidance_clearance_buffer\000separation_radius\000separation_strength\000steering_"
+    "memory_duration\000dense_traffic_neighbour_threshold\000laser\000health\000attack_retry_"
+    "cooldown\000attack_engagement_threshold\000attack_reposition_frequency\000attack_distance_"
+    "band\000arrival_distance\000los_check_buffer\000awareness_radius\000awareness_scan_"
+    "frequency\000minimum_opportunistic_intercept_deviation_dot_product",
+    std::array<std::uint16_t, 27>{0,   18,  38,  65,  71,  91,  124, 151, 185,
+                                  222, 247, 274, 292, 312, 337, 371, 377, 384,
+                                  406, 434, 462, 483, 500, 517, 534, 559, 613}}};

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/enum_strings.h>
+#include <ioj/enum_traits.h>
 #include <ioj/format_writer.h>
 
 #include <algorithm>
@@ -136,8 +138,8 @@ concept Constrained = requires(T const& value, typename T::value_type const& inn
 
 template <typename T>
 concept Record = requires(typename T::Field field) {
-    T::Field::Count;
-    { T::field_name(field) } -> std::convertible_to<std::string_view>;
+    { enum_count<typename T::Field>() } -> std::same_as<std::size_t>;
+    { to_string(field) } -> std::convertible_to<std::string_view>;
 };
 
 template <typename T>
@@ -152,12 +154,11 @@ void diff_value(T const& expected, T const& actual, DiffContext& context) {
         diff_members(expected, actual, context);
     } else if constexpr (diff_detail::Record<T>) {
         using Field = typename T::Field;
-        constexpr auto count{static_cast<std::size_t>(Field::Count)};
+        constexpr auto count{enum_count<Field>()};
         for (std::size_t index{}; index < count; ++index) {
             T::visit_field(
                 expected, static_cast<Field>(index), [&]<Field field>(auto const& member) {
-                    context.diff(
-                        T::field_name(field), member, T::template get_field<field>(actual));
+                    context.diff(to_string(field), member, T::template get_field<field>(actual));
                 });
         }
     } else if constexpr (diff_detail::Constrained<T>) {

@@ -199,7 +199,7 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
                 // Stage construction before an object exists; excluded fields cannot be looked up.
                 visitor += "default: std::unreachable();\n";
             }
-            visitor += "case Field::Count: std::unreachable();\n}\n}";
+            visitor += "}\n}";
         }
         std::vector<Expr> arguments{ir.named("context"),
                                     ir.string_literal(context.text(*records.s7_tag[row])),
@@ -320,7 +320,6 @@ void lower_record_reader(LoweringContext& context,
                                                   ir.types.intern("value_type::Field")),
                              2);
         } else {
-            values.push_back(ir.enumerator(ir.strings.intern("Count")));
             declarations.add(ir.enumeration(ir.strings.intern("Field"),
                                             ir.types.intern(values.size() <= 256 ? "std::uint8_t"
                                                                                  : "std::uint32_t"),
@@ -352,11 +351,12 @@ void lower_record_reader(LoweringContext& context,
             ir.constexpr_member(array_type, ir.strings.intern("field_names"), ir.init_list(names)),
             1);
         if (!required.empty()) {
-            declarations.add(ir.constexpr_member(ir.types.intern("auto"),
-                                                 ir.strings.intern("required"),
-                                                 ir.call(ir.named("required_fields<Field>"),
-                                                         {ir.init_list(required)})),
-                             1);
+            declarations.add(
+                ir.constexpr_member(ir.types.intern("auto"),
+                                    ir.strings.intern("required"),
+                                    ir.call(ir.named("required_fields<Field, field_names.size()>"),
+                                            {ir.init_list(required)})),
+                1);
         }
     }
     auto const specialization{

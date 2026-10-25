@@ -3,10 +3,13 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -16,13 +19,12 @@ struct LaserSimConfig {
 
     enum class Field : std::uint8_t {
         n_preallocated_instances,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, LaserSimConfig> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::n_preallocated_instances) {
             return (self.n_preallocated_instances);
@@ -34,17 +36,6 @@ struct LaserSimConfig {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::n_preallocated_instances:
-                return "n_preallocated_instances";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, LaserSimConfig>
@@ -53,8 +44,6 @@ struct LaserSimConfig {
             case Field::n_preallocated_instances:
                 return invoke_field<Field::n_preallocated_instances>(
                     self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -63,3 +52,13 @@ struct LaserSimConfig {
     std::int32_t n_preallocated_instances{5000};
 };
 } // namespace ioj::sim
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::LaserSimConfig::Field>() noexcept
+    -> std::size_t {
+    return 1;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::sim::LaserSimConfig::Field, ioj::Name>{
+    ioj::PackedStrings{"n_preallocated_instances", std::array<std::uint8_t, 2>{0, 25}}};

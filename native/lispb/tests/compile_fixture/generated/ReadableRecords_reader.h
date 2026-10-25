@@ -20,7 +20,7 @@ struct TypeReader<codegen_compile_fixture::EmptyReadable>
     }
   private:
     enum class Field : std::uint8_t {
-        Count,
+
     };
 
     static constexpr std::array<std::string_view, 0> field_names{};
@@ -113,7 +113,7 @@ struct TypeReader<codegen_compile_fixture::DefaultReadable>
     using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 2> field_names{"count", "maybe"};
-    static constexpr auto required{required_fields<Field>({Field::count})};
+    static constexpr auto required{required_fields<Field, field_names.size()>({Field::count})};
 };
 
 template <>
@@ -148,8 +148,6 @@ struct TypeReader<codegen_compile_fixture::BoundedInteger>
                                              constraints::minimum((-9223372036854775807LL - 1LL)),
                                              constraints::maximum(9223372036854775806ULL));
                                          break;
-                                     case Field::Count:
-                                         std::unreachable();
                                  }
                              }),
                              required);
@@ -173,8 +171,6 @@ struct TypeReader<codegen_compile_fixture::BoundedInteger>
                                               constraints::minimum((-9223372036854775807LL - 1LL)),
                                               constraints::maximum(9223372036854775806ULL));
                                          break;
-                                     case Field::Count:
-                                         std::unreachable();
                                  }
                              }),
                              required);
@@ -182,11 +178,10 @@ struct TypeReader<codegen_compile_fixture::BoundedInteger>
   private:
     enum class Field : std::uint8_t {
         value,
-        Count,
     };
 
     static constexpr std::array<std::string_view, 1> field_names{"value"};
-    static constexpr auto required{required_fields<Field>({Field::value})};
+    static constexpr auto required{required_fields<Field, field_names.size()>({Field::value})};
 };
 
 template <>
@@ -207,8 +202,6 @@ struct TypeReader<codegen_compile_fixture::ReadableChild>
                                          read.construct(value_count, constraints::nonnegative);
                                          break;
                                      default:
-                                         std::unreachable();
-                                     case Field::Count:
                                          std::unreachable();
                                  }
                              }),
@@ -245,7 +238,7 @@ struct TypeReader<codegen_compile_fixture::ReadableChild>
     using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 2> field_names{"name", "count"};
-    static constexpr auto required{required_fields<Field>({Field::name})};
+    static constexpr auto required{required_fields<Field, field_names.size()>({Field::name})};
 };
 
 template <>
@@ -299,8 +292,6 @@ struct TypeReader<codegen_compile_fixture::ReadableRecord>
                                          read.construct(value_mode);
                                          break;
                                      default:
-                                         std::unreachable();
-                                     case Field::Count:
                                          std::unreachable();
                                  }
                              }),
@@ -369,7 +360,7 @@ struct TypeReader<codegen_compile_fixture::ReadableRecord>
 
     static constexpr std::array<std::string_view, 9> field_names{
         "child", "values", "samples", "enabled", "maybe", "scale", "offset", "title", "mode"};
-    static constexpr auto required{required_fields<Field>({Field::child})};
+    static constexpr auto required{required_fields<Field, field_names.size()>({Field::child})};
 };
 
 } // namespace ioj::s7

@@ -4,12 +4,14 @@
 #pragma once
 
 #include "ioj/constrained_value.h"
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
 #include <ioj/settings/attack_distance_band_policy.h>
 
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -21,13 +23,12 @@ struct AttackDistanceBandValue {
         minimum,
         desired,
         maximum,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, AttackDistanceBandValue> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::minimum) {
             return (self.minimum);
@@ -45,21 +46,6 @@ struct AttackDistanceBandValue {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::minimum:
-                return "minimum";
-            case Field::desired:
-                return "desired";
-            case Field::maximum:
-                return "maximum";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, AttackDistanceBandValue>
@@ -71,8 +57,6 @@ struct AttackDistanceBandValue {
                 return invoke_field<Field::desired>(self, std::forward<Visitor>(visitor));
             case Field::maximum:
                 return invoke_field<Field::maximum>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -86,3 +70,13 @@ struct AttackDistanceBandValue {
 using AttackDistanceBand =
     ioj::ConstrainedValue<AttackDistanceBandValue, ioj::settings::attack_distance_band_policy>;
 } // namespace ioj::settings
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::settings::AttackDistanceBandValue::Field>() noexcept
+    -> std::size_t {
+    return 3;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::settings::AttackDistanceBandValue::Field, ioj::Name>{
+    ioj::PackedStrings{"minimum\000desired\000maximum", std::array<std::uint8_t, 4>{0, 8, 16, 24}}};

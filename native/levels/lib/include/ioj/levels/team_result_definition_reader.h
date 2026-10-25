@@ -30,8 +30,6 @@ struct TypeReader<levels::TeamResultDefinition> : RecordReader<levels::TeamResul
                                      case Field::result:
                                          read(result.result);
                                          break;
-                                     case Field::Count:
-                                         std::unreachable();
                                  }
                              }),
                              required);
@@ -41,12 +39,11 @@ struct TypeReader<levels::TeamResultDefinition> : RecordReader<levels::TeamResul
         team,
         when,
         result,
-        Count,
     };
 
     static constexpr std::array<std::string_view, 3> field_names{"team", "when", "result"};
     static constexpr auto required{
-        required_fields<Field>({Field::team, Field::when, Field::result})};
+        required_fields<Field, field_names.size()>({Field::team, Field::when, Field::result})};
 };
 
 } // namespace ioj::s7

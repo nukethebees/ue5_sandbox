@@ -11,10 +11,10 @@
 #include <array>
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -37,13 +37,12 @@ struct PositionalChild {
     enum class Field : std::uint8_t {
         name,
         count,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, PositionalChild> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::name) {
             return (self.name);
@@ -58,19 +57,6 @@ struct PositionalChild {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::name:
-                return "name";
-            case Field::count:
-                return "count";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, PositionalChild>
@@ -80,8 +66,6 @@ struct PositionalChild {
                 return invoke_field<Field::name>(self, std::forward<Visitor>(visitor));
             case Field::count:
                 return invoke_field<Field::count>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -95,13 +79,12 @@ struct DefaultReadable {
     enum class Field : std::uint8_t {
         count,
         maybe,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, DefaultReadable> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::count) {
             return (self.count);
@@ -116,19 +99,6 @@ struct DefaultReadable {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::count:
-                return "count";
-            case Field::maybe:
-                return "maybe";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, DefaultReadable>
@@ -138,8 +108,6 @@ struct DefaultReadable {
                 return invoke_field<Field::count>(self, std::forward<Visitor>(visitor));
             case Field::maybe:
                 return invoke_field<Field::maybe>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -152,13 +120,12 @@ struct DefaultReadable {
 struct RecursiveReadable {
     enum class Field : std::uint8_t {
         children,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, RecursiveReadable> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::children) {
             return (self.children);
@@ -170,17 +137,6 @@ struct RecursiveReadable {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::children:
-                return "children";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, RecursiveReadable>
@@ -188,8 +144,6 @@ struct RecursiveReadable {
         switch (field) {
             case Field::children:
                 return invoke_field<Field::children>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -206,12 +160,12 @@ struct ReadableChild {
     enum class Field : std::uint8_t {
         name,
         count,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
-        requires (std::same_as<std::remove_const_t<Self>, ReadableChild> && Selected < Field::Count)
+        requires (std::same_as<std::remove_const_t<Self>, ReadableChild> &&
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::name) {
             return (self.name);
@@ -226,19 +180,6 @@ struct ReadableChild {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::name:
-                return "name";
-            case Field::count:
-                return "count";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, ReadableChild>
@@ -248,8 +189,6 @@ struct ReadableChild {
                 return invoke_field<Field::name>(self, std::forward<Visitor>(visitor));
             case Field::count:
                 return invoke_field<Field::count>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -270,13 +209,12 @@ struct ReadableRecord {
         offset,
         title,
         mode,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, ReadableRecord> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::child) {
             return (self.child);
@@ -312,33 +250,6 @@ struct ReadableRecord {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::child:
-                return "child";
-            case Field::values:
-                return "values";
-            case Field::points:
-                return "points";
-            case Field::enabled:
-                return "enabled";
-            case Field::maybe:
-                return "maybe";
-            case Field::scale:
-                return "scale";
-            case Field::offset:
-                return "offset";
-            case Field::title:
-                return "title";
-            case Field::mode:
-                return "mode";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, ReadableRecord>
@@ -362,8 +273,6 @@ struct ReadableRecord {
                 return invoke_field<Field::title>(self, std::forward<Visitor>(visitor));
             case Field::mode:
                 return invoke_field<Field::mode>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -390,3 +299,63 @@ struct EnumTraits<::codegen_compile_fixture::ReaderEnum> {
 template <>
 inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::ReaderEnum, ioj::Serialized>{
     ioj::PackedStrings{"MixedCase", std::array<std::uint8_t, 2>{0, 10}}};
+
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto
+    enum_count<::codegen_compile_fixture::PositionalChild::Field>() noexcept -> std::size_t {
+    return 2;
+}
+} // namespace ioj
+template <>
+inline constexpr auto
+    ioj::enum_strings<::codegen_compile_fixture::PositionalChild::Field, ioj::Name>{
+        ioj::PackedStrings{"name\000count", std::array<std::uint8_t, 3>{0, 5, 11}}};
+
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto
+    enum_count<::codegen_compile_fixture::DefaultReadable::Field>() noexcept -> std::size_t {
+    return 2;
+}
+} // namespace ioj
+template <>
+inline constexpr auto
+    ioj::enum_strings<::codegen_compile_fixture::DefaultReadable::Field, ioj::Name>{
+        ioj::PackedStrings{"count\000maybe", std::array<std::uint8_t, 3>{0, 6, 12}}};
+
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto
+    enum_count<::codegen_compile_fixture::RecursiveReadable::Field>() noexcept -> std::size_t {
+    return 1;
+}
+} // namespace ioj
+template <>
+inline constexpr auto
+    ioj::enum_strings<::codegen_compile_fixture::RecursiveReadable::Field, ioj::Name>{
+        ioj::PackedStrings{"children", std::array<std::uint8_t, 2>{0, 9}}};
+
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::ReadableChild::Field>() noexcept
+    -> std::size_t {
+    return 2;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::ReadableChild::Field, ioj::Name>{
+    ioj::PackedStrings{"name\000count", std::array<std::uint8_t, 3>{0, 5, 11}}};
+
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::ReadableRecord::Field>() noexcept
+    -> std::size_t {
+    return 9;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::ReadableRecord::Field,
+                                        ioj::Name>{ioj::PackedStrings{
+    "child\000values\000points\000enabled\000maybe\000scale\000offset\000title\000mode",
+    std::array<std::uint8_t, 10>{0, 6, 13, 20, 28, 34, 40, 47, 53, 58}}};

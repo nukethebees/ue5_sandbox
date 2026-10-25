@@ -2144,8 +2144,8 @@ enum class ApiField : std::uint8_t {
     Values = 0,
     Count = static_cast<std::uint8_t>(Values) + 1,
 };
-struct ApiMask : ioj::FieldMask<ApiField> {
-    using Base = ioj::FieldMask<ApiField>;
+struct ApiMask : ioj::FieldMask<ApiField, static_cast<std::size_t>(ApiField::Count)> {
+    using Base = ioj::FieldMask<ApiField, static_cast<std::size_t>(ApiField::Count)>;
 
     using Base::Base;
 };

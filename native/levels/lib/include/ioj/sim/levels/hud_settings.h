@@ -3,10 +3,13 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -18,12 +21,12 @@ struct HudSettings {
         player_status_update_period,
         entity_count_update_period,
         mission_status_update_period,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
-        requires (std::same_as<std::remove_const_t<Self>, HudSettings> && Selected < Field::Count)
+        requires (std::same_as<std::remove_const_t<Self>, HudSettings> &&
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::player_status_update_period) {
             return (self.player_status_update_period);
@@ -41,21 +44,6 @@ struct HudSettings {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::player_status_update_period:
-                return "player_status_update_period";
-            case Field::entity_count_update_period:
-                return "entity_count_update_period";
-            case Field::mission_status_update_period:
-                return "mission_status_update_period";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, HudSettings>
@@ -70,8 +58,6 @@ struct HudSettings {
             case Field::mission_status_update_period:
                 return invoke_field<Field::mission_status_update_period>(
                     self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -82,3 +68,14 @@ struct HudSettings {
     float mission_status_update_period{0.25f};
 };
 } // namespace ioj::sim
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::HudSettings::Field>() noexcept -> std::size_t {
+    return 3;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::sim::HudSettings::Field, ioj::Name>{
+    ioj::PackedStrings{
+        "player_status_update_period\000entity_count_update_period\000mission_status_update_period",
+        std::array<std::uint8_t, 4>{0, 28, 55, 84}}};

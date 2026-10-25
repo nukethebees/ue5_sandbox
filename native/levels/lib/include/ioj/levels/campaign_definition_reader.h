@@ -30,7 +30,7 @@ struct TypeReader<levels::CampaignDefinition> : RecordReader<levels::CampaignDef
 
     static constexpr std::array<std::string_view, 3> field_names{"id", "title", "levels"};
     static constexpr auto required{
-        required_fields<Field>({Field::id, Field::title, Field::level_ids})};
+        required_fields<Field, field_names.size()>({Field::id, Field::title, Field::level_ids})};
 };
 
 } // namespace ioj::s7

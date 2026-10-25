@@ -30,7 +30,7 @@ struct TypeReader<levels::LevelCameraDefinition> : RecordReader<levels::LevelCam
 
     static constexpr std::array<std::string_view, 3> field_names{
         "look-at", "offset-direction", "distance"};
-    static constexpr auto required{required_fields<Field>(
+    static constexpr auto required{required_fields<Field, field_names.size()>(
         {Field::target_entity_ids, Field::offset_direction, Field::distance})};
 };
 

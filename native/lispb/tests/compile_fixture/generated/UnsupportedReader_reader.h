@@ -21,15 +21,12 @@ struct TypeReader<codegen_compile_fixture::UnsupportedReader>
                     case Field::target:
                         read(result.target);
                         break;
-                    case Field::Count:
-                        std::unreachable();
                 }
             }));
     }
   private:
     enum class Field : std::uint8_t {
         target,
-        Count,
     };
 
     static constexpr std::array<std::string_view, 1> field_names{"target"};

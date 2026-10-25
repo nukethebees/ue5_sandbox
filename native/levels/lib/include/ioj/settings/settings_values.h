@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
 #include "ioj/gfx/starfield_settings.h"
 #include "ioj/settings/presentation.h"
 #include "ioj/settings/tick_settings.h"
@@ -17,8 +19,8 @@
 
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -38,13 +40,12 @@ struct SettingsValues {
         hud,
         presentation,
         starfield,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, SettingsValues> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::tick) {
             return (self.tick);
@@ -86,37 +87,6 @@ struct SettingsValues {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::tick:
-                return "tick";
-            case Field::player_ship:
-                return "player_ship";
-            case Field::laser_projectiles:
-                return "laser_projectiles";
-            case Field::capital_ships:
-                return "capital_ships";
-            case Field::fighters:
-                return "fighters";
-            case Field::turrets:
-                return "turrets";
-            case Field::tube_spinners:
-                return "tube_spinners";
-            case Field::collision_grid:
-                return "collision_grid";
-            case Field::hud:
-                return "hud";
-            case Field::presentation:
-                return "presentation";
-            case Field::starfield:
-                return "starfield";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, SettingsValues>
@@ -144,8 +114,6 @@ struct SettingsValues {
                 return invoke_field<Field::presentation>(self, std::forward<Visitor>(visitor));
             case Field::starfield:
                 return invoke_field<Field::starfield>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -164,3 +132,16 @@ struct SettingsValues {
     ioj::starfield::Settings starfield{};
 };
 } // namespace ioj::settings
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::settings::SettingsValues::Field>() noexcept
+    -> std::size_t {
+    return 11;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::settings::SettingsValues::Field, ioj::Name>{
+    ioj::PackedStrings{
+        "tick\000player_ship\000laser_projectiles\000capital_ships\000fighters\000turrets\000tube_"
+        "spinners\000collision_grid\000hud\000presentation\000starfield",
+        std::array<std::uint8_t, 12>{0, 5, 17, 35, 49, 58, 66, 80, 95, 99, 112, 122}}};

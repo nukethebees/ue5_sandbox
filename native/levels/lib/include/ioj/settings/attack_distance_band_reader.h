@@ -30,8 +30,8 @@ struct TypeReader<settings::AttackDistanceBandValue>
 
     static constexpr std::array<std::string_view, 3> field_names{
         "minimum-ratio", "desired-ratio", "maximum-ratio"};
-    static constexpr auto required{
-        required_fields<Field>({Field::minimum, Field::desired, Field::maximum})};
+    static constexpr auto required{required_fields<Field, field_names.size()>(
+        {Field::minimum, Field::desired, Field::maximum})};
 };
 
 } // namespace ioj::s7

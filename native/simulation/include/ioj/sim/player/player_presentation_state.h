@@ -3,12 +3,14 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
 #include "ioj/transform3d.h"
 
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -17,13 +19,12 @@ struct PlayerPresentationState {
     enum class Field : std::uint8_t {
         body_transform,
         boost_start_sequence,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, PlayerPresentationState> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::body_transform) {
             return (self.body_transform);
@@ -38,19 +39,6 @@ struct PlayerPresentationState {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::body_transform:
-                return "body_transform";
-            case Field::boost_start_sequence:
-                return "boost_start_sequence";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, PlayerPresentationState>
@@ -61,8 +49,6 @@ struct PlayerPresentationState {
             case Field::boost_start_sequence:
                 return invoke_field<Field::boost_start_sequence>(self,
                                                                  std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -72,3 +58,15 @@ struct PlayerPresentationState {
     std::uint64_t boost_start_sequence{};
 };
 } // namespace ioj::sim::player
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto
+    enum_count<::ioj::sim::player::PlayerPresentationState::Field>() noexcept -> std::size_t {
+    return 2;
+}
+} // namespace ioj
+template <>
+inline constexpr auto
+    ioj::enum_strings<::ioj::sim::player::PlayerPresentationState::Field, ioj::Name>{
+        ioj::PackedStrings{"body_transform\000boost_start_sequence",
+                           std::array<std::uint8_t, 3>{0, 15, 36}}};

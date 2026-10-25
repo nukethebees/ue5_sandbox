@@ -14,8 +14,8 @@ enum class EField8 : std::uint8_t {
     Values = 0,
     Count = static_cast<std::uint8_t>(Values) + (8),
 };
-struct FFieldMask8 : ioj::FieldMask<EField8> {
-    using Base = ioj::FieldMask<EField8>;
+struct FFieldMask8 : ioj::FieldMask<EField8, static_cast<std::size_t>(EField8::Count)> {
+    using Base = ioj::FieldMask<EField8, static_cast<std::size_t>(EField8::Count)>;
 
     using Base::Base;
     [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
@@ -43,8 +43,8 @@ enum class EField9 : std::uint8_t {
     Tail = static_cast<std::uint8_t>(Values) + (8),
     Count = static_cast<std::uint8_t>(Tail) + 1,
 };
-struct FFieldMask9 : ioj::FieldMask<EField9> {
-    using Base = ioj::FieldMask<EField9>;
+struct FFieldMask9 : ioj::FieldMask<EField9, static_cast<std::size_t>(EField9::Count)> {
+    using Base = ioj::FieldMask<EField9, static_cast<std::size_t>(EField9::Count)>;
 
     using Base::Base;
     [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
@@ -73,8 +73,8 @@ enum class EField16 : std::uint8_t {
     Values = 0,
     Count = static_cast<std::uint8_t>(Values) + (16),
 };
-struct FFieldMask16 : ioj::FieldMask<EField16> {
-    using Base = ioj::FieldMask<EField16>;
+struct FFieldMask16 : ioj::FieldMask<EField16, static_cast<std::size_t>(EField16::Count)> {
+    using Base = ioj::FieldMask<EField16, static_cast<std::size_t>(EField16::Count)>;
 
     using Base::Base;
     [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
@@ -101,8 +101,8 @@ enum class EField17 : std::uint8_t {
     Values = 0,
     Count = static_cast<std::uint8_t>(Values) + (17),
 };
-struct FFieldMask17 : ioj::FieldMask<EField17> {
-    using Base = ioj::FieldMask<EField17>;
+struct FFieldMask17 : ioj::FieldMask<EField17, static_cast<std::size_t>(EField17::Count)> {
+    using Base = ioj::FieldMask<EField17, static_cast<std::size_t>(EField17::Count)>;
 
     using Base::Base;
     [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
@@ -129,8 +129,8 @@ enum class EField32 : std::uint8_t {
     Values = 0,
     Count = static_cast<std::uint8_t>(Values) + (32),
 };
-struct FFieldMask32 : ioj::FieldMask<EField32> {
-    using Base = ioj::FieldMask<EField32>;
+struct FFieldMask32 : ioj::FieldMask<EField32, static_cast<std::size_t>(EField32::Count)> {
+    using Base = ioj::FieldMask<EField32, static_cast<std::size_t>(EField32::Count)>;
 
     using Base::Base;
     [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept
@@ -157,8 +157,8 @@ enum class EField33 : std::uint8_t {
     Values = 0,
     Count = static_cast<std::uint8_t>(Values) + (33),
 };
-struct FFieldMask33 : ioj::FieldMask<EField33> {
-    using Base = ioj::FieldMask<EField33>;
+struct FFieldMask33 : ioj::FieldMask<EField33, static_cast<std::size_t>(EField33::Count)> {
+    using Base = ioj::FieldMask<EField33, static_cast<std::size_t>(EField33::Count)>;
 
     using Base::Base;
     [[nodiscard]] static constexpr auto values_field(std::int32_t const value_index) noexcept

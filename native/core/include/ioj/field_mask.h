@@ -1,14 +1,16 @@
 #pragma once
 
+#include <ioj/enum_traits.h>
+
 #include <cstdint>
 #include <type_traits>
 
 namespace ioj {
 
-template <typename Field>
+template <typename Field, std::size_t N = enum_count<Field>()>
 class FieldMask {
   public:
-    static constexpr std::int32_t field_count{static_cast<std::int32_t>(Field::Count)};
+    static constexpr std::size_t field_count{N};
     static_assert(field_count <= 64, "Field mask exceeds 64 bits.");
 
     using storage_type = std::conditional_t<

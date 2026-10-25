@@ -30,7 +30,8 @@ struct TypeReader<codegen_compile_fixture::RangeValue>
     using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 2> field_names{"minimum", "maximum"};
-    static constexpr auto required{required_fields<Field>({Field::minimum, Field::maximum})};
+    static constexpr auto required{
+        required_fields<Field, field_names.size()>({Field::minimum, Field::maximum})};
 };
 
 template <>
@@ -86,7 +87,7 @@ struct TypeReader<codegen_compile_fixture::WeaponSettings>
     using Field = value_type::Field;
 
     static constexpr std::array<std::string_view, 3> field_names{"damage", "turn-speed", ""};
-    static constexpr auto required{required_fields<Field>({Field::damage})};
+    static constexpr auto required{required_fields<Field, field_names.size()>({Field::damage})};
 };
 
 template <>

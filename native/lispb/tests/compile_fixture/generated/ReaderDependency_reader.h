@@ -25,8 +25,6 @@ struct TypeReader<codegen_compile_fixture::ReaderDependency>
                                      case Field::child:
                                          read.construct(value_child);
                                          break;
-                                     case Field::Count:
-                                         std::unreachable();
                                  }
                              }),
                              required);
@@ -48,8 +46,6 @@ struct TypeReader<codegen_compile_fixture::ReaderDependency>
                                      case Field::child:
                                          read(result.child);
                                          break;
-                                     case Field::Count:
-                                         std::unreachable();
                                  }
                              }),
                              required);
@@ -57,11 +53,10 @@ struct TypeReader<codegen_compile_fixture::ReaderDependency>
   private:
     enum class Field : std::uint8_t {
         child,
-        Count,
     };
 
     static constexpr std::array<std::string_view, 1> field_names{"child"};
-    static constexpr auto required{required_fields<Field>({Field::child})};
+    static constexpr auto required{required_fields<Field, field_names.size()>({Field::child})};
 };
 
 } // namespace ioj::s7

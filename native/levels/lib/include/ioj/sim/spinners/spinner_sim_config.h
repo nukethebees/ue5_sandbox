@@ -3,13 +3,15 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
 #include "ioj/sim/lasers/fire_point.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -22,13 +24,12 @@ struct SpinnerSimConfig {
         fire_point_offsets,
         yaw_rotation_speed_degrees,
         laser,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, SpinnerSimConfig> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::fire_point_offsets) {
             return (self.fire_point_offsets);
@@ -46,21 +47,6 @@ struct SpinnerSimConfig {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::fire_point_offsets:
-                return "fire_point_offsets";
-            case Field::yaw_rotation_speed_degrees:
-                return "yaw_rotation_speed_degrees";
-            case Field::laser:
-                return "laser";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, SpinnerSimConfig>
@@ -74,8 +60,6 @@ struct SpinnerSimConfig {
                     self, std::forward<Visitor>(visitor));
             case Field::laser:
                 return invoke_field<Field::laser>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -86,3 +70,14 @@ struct SpinnerSimConfig {
     LaserWeaponSimConfig laser{};
 };
 } // namespace ioj::sim
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::SpinnerSimConfig::Field>() noexcept
+    -> std::size_t {
+    return 3;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::sim::SpinnerSimConfig::Field, ioj::Name>{
+    ioj::PackedStrings{"fire_point_offsets\000yaw_rotation_speed_degrees\000laser",
+                       std::array<std::uint8_t, 4>{0, 19, 46, 52}}};

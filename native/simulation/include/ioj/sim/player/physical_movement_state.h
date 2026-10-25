@@ -3,13 +3,15 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
 #include "ioj/transform3d.h"
 #include "ioj/vector_value_math.h"
 
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -18,13 +20,12 @@ struct PhysicalMovementState {
     enum class Field : std::uint8_t {
         transform,
         velocity,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, PhysicalMovementState> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::transform) {
             return (self.transform);
@@ -39,19 +40,6 @@ struct PhysicalMovementState {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::transform:
-                return "transform";
-            case Field::velocity:
-                return "velocity";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, PhysicalMovementState>
@@ -61,8 +49,6 @@ struct PhysicalMovementState {
                 return invoke_field<Field::transform>(self, std::forward<Visitor>(visitor));
             case Field::velocity:
                 return invoke_field<Field::velocity>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -72,3 +58,14 @@ struct PhysicalMovementState {
     Vector3d velocity{};
 };
 } // namespace ioj::sim::player
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::player::PhysicalMovementState::Field>() noexcept
+    -> std::size_t {
+    return 2;
+}
+} // namespace ioj
+template <>
+inline constexpr auto
+    ioj::enum_strings<::ioj::sim::player::PhysicalMovementState::Field, ioj::Name>{
+        ioj::PackedStrings{"transform\000velocity", std::array<std::uint8_t, 3>{0, 10, 19}}};

@@ -3,10 +3,13 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -17,13 +20,12 @@ struct LaserPresentation {
     enum class Field : std::uint8_t {
         min_cull_distance,
         max_cull_distance,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, LaserPresentation> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::min_cull_distance) {
             return (self.min_cull_distance);
@@ -38,19 +40,6 @@ struct LaserPresentation {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::min_cull_distance:
-                return "min_cull_distance";
-            case Field::max_cull_distance:
-                return "max_cull_distance";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, LaserPresentation>
@@ -60,8 +49,6 @@ struct LaserPresentation {
                 return invoke_field<Field::min_cull_distance>(self, std::forward<Visitor>(visitor));
             case Field::max_cull_distance:
                 return invoke_field<Field::max_cull_distance>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -71,3 +58,14 @@ struct LaserPresentation {
     float max_cull_distance{50000.f};
 };
 } // namespace ioj::settings
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::settings::LaserPresentation::Field>() noexcept
+    -> std::size_t {
+    return 2;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::settings::LaserPresentation::Field, ioj::Name>{
+    ioj::PackedStrings{"min_cull_distance\000max_cull_distance",
+                       std::array<std::uint8_t, 3>{0, 18, 36}}};

@@ -340,7 +340,7 @@ auto read_override(Reader const& reader, NodeIndex node, std::string_view path, 
     return apply_overrides(std::move(value), {{reader, node, path}});
 }
 
-template <typename Field>
+template <typename Field, std::size_t N = enum_count<Field>()>
 class LargeFieldMask {
   public:
     constexpr void set(Field field) { bits_.set(static_cast<std::size_t>(field)); }
@@ -354,17 +354,15 @@ class LargeFieldMask {
         return result;
     }
   private:
-    std::bitset<static_cast<std::size_t>(Field::Count)> bits_{};
+    std::bitset<N> bits_{};
 };
 
-template <typename Field>
-using RecordMask = std::conditional_t<(static_cast<std::size_t>(Field::Count) <= 64),
-                                      FieldMask<Field>,
-                                      LargeFieldMask<Field>>;
+template <typename Field, std::size_t N = enum_count<Field>()>
+using RecordMask = std::conditional_t<(N <= 64), FieldMask<Field, N>, LargeFieldMask<Field, N>>;
 
-template <typename Field>
-constexpr auto required_fields(std::initializer_list<Field> fields) -> RecordMask<Field> {
-    RecordMask<Field> required;
+template <typename Field, std::size_t N = enum_count<Field>()>
+constexpr auto required_fields(std::initializer_list<Field> fields) -> RecordMask<Field, N> {
+    RecordMask<Field, N> required;
     for (auto const field : fields) {
         required.set(field);
     }
@@ -372,15 +370,15 @@ constexpr auto required_fields(std::initializer_list<Field> fields) -> RecordMas
 }
 
 template <typename Field, std::size_t N>
-void require_fields(RecordMask<Field> const& seen,
-                    RecordMask<Field> const& required,
+void require_fields(RecordMask<Field, N> const& seen,
+                    RecordMask<Field, N> const& required,
                     std::array<std::string_view, N> const& names,
                     std::string_view const path,
                     AstDiagnostics& errors) {
     auto const missing{[&] {
         if constexpr (N <= 64) {
-            using Storage = typename RecordMask<Field>::storage_type;
-            return RecordMask<Field>{static_cast<Storage>(required.value() & ~seen.value())};
+            using Storage = typename RecordMask<Field, N>::storage_type;
+            return RecordMask<Field, N>{static_cast<Storage>(required.value() & ~seen.value())};
         } else {
             return required.excluding(seen);
         }

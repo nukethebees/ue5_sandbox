@@ -3,13 +3,15 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
 #include "ioj/levels/identifiers.h"
 
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <string>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -20,13 +22,12 @@ struct CampaignDefinition {
         id,
         title,
         level_ids,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, CampaignDefinition> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::id) {
             return (self.id);
@@ -44,21 +45,6 @@ struct CampaignDefinition {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::id:
-                return "id";
-            case Field::title:
-                return "title";
-            case Field::level_ids:
-                return "level_ids";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, CampaignDefinition>
@@ -70,8 +56,6 @@ struct CampaignDefinition {
                 return invoke_field<Field::title>(self, std::forward<Visitor>(visitor));
             case Field::level_ids:
                 return invoke_field<Field::level_ids>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -82,3 +66,13 @@ struct CampaignDefinition {
     std::vector<ioj::levels::LevelId> level_ids{};
 };
 } // namespace ioj::levels
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::levels::CampaignDefinition::Field>() noexcept
+    -> std::size_t {
+    return 3;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::levels::CampaignDefinition::Field, ioj::Name>{
+    ioj::PackedStrings{"id\000title\000level_ids", std::array<std::uint8_t, 4>{0, 3, 9, 19}}};

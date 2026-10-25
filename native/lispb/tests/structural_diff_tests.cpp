@@ -29,11 +29,20 @@ static_assert(
 static_assert(
     std::same_as<decltype(ApiPair::get_field<ApiPair::Field::x>(std::declval<ApiPair const&>())),
                  float const&>);
-static_assert(!AccessibleField<ApiPair, ApiPair::Field::Count>);
+static_assert(ioj::enum_count<ApiPair::Field>() == 2);
+static_assert(ioj::enum_count<EmptySettings::Field>() == 0);
+static_assert(ioj::HasEnumStrings<EmptySettings::Field, ioj::Name>);
+static_assert(
+    !AccessibleField<ApiPair, static_cast<ApiPair::Field>(ioj::enum_count<ApiPair::Field>())>);
 static_assert(!AccessibleField<ApiPair, static_cast<ApiPair::Field>(255)>);
-static_assert(!AccessibleField<EmptySettings, EmptySettings::Field::Count>);
+static_assert(!AccessibleField<EmptySettings, static_cast<EmptySettings::Field>(0)>);
 static_assert(!RvalueAccessibleField<ApiPair, ApiPair::Field::x>);
-static_assert(WeaponSettings::field_name(WeaponSettings::Field::turn_rate) == "turn_rate");
+static_assert(ioj::enum_count<WeaponSettings::Field>() == 3);
+static_assert(ioj::to_string(WeaponSettings::Field::turn_rate) == "turn_rate");
+static_assert(ioj::to_string(WeaponSettings::Field::asset_distance) == "asset_distance");
+static_assert(ioj::enum_count<FormerVisitorNames::Field>() == 2);
+static_assert(ioj::to_string(FormerVisitorNames::Field::Count) == "Count");
+static_assert(ioj::to_string(FormerVisitorNames::Field::field_name) == "field_name");
 static_assert(std::same_as<decltype(ReadableRecord::get_field<ReadableRecord::Field::points>(
                                std::declval<ReadableRecord const&>())),
                            std::array<float, 3> const&>);
@@ -73,6 +82,15 @@ TEST(StructuralDiff, AccessorsAndVisitorsReferToTheSameMembers) {
     result.diff("empty", EmptySettings{}, EmptySettings{});
     result.diff("pair", pair, pair);
     EXPECT_TRUE(result.empty()) << result.message();
+
+    FormerVisitorNames expected{1, 2};
+    auto actual{expected};
+    FormerVisitorNames::get_field<FormerVisitorNames::Field::Count>(actual) = 3;
+    FormerVisitorNames::get_field<FormerVisitorNames::Field::field_name>(actual) = 4;
+    result.diff("names", expected, actual);
+    EXPECT_EQ(
+        result.differences,
+        (std::vector<ioj::Difference>{{"names.Count", "1", "3"}, {"names.field_name", "2", "4"}}));
 }
 
 TEST(StructuralDiff, GoogleTestPredicateRetainsExpressionsAndNestedDifferences) {
@@ -90,9 +108,11 @@ TEST(StructuralDiff, GoogleTestPredicateRetainsExpressionsAndNestedDifferences) 
 #ifndef NDEBUG
 TEST(GeneratedRecordsDeathTest, RejectsInvalidRuntimeFields) {
     ApiPair pair{};
-    EXPECT_DEATH(ApiPair::visit_field(pair, ApiPair::Field::Count, []<auto>(auto&) {}),
+    auto const end{static_cast<ApiPair::Field>(ioj::enum_count<ApiPair::Field>())};
+    EXPECT_DEATH(ApiPair::visit_field(pair, end, []<auto>(auto&) {}), "Invalid record field");
+    EXPECT_DEATH(ApiPair::visit_field(pair, static_cast<ApiPair::Field>(255), []<auto>(auto&) {}),
                  "Invalid record field");
-    EXPECT_DEATH(ApiPair::field_name(static_cast<ApiPair::Field>(255)), "Invalid record field");
+    EXPECT_DEATH(static_cast<void>(ioj::to_string(static_cast<ApiPair::Field>(255))), "");
 }
 #endif
 

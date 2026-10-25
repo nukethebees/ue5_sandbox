@@ -92,6 +92,8 @@ auto internal_name(LoweringContext& context,
            "_" + std::string{suffix};
 }
 
+} // namespace
+
 auto enum_count_specialization(CppIR& ir, CppTypeId enum_type, std::size_t const count) -> NodeId {
     auto const function{
         ir.function(ir.template_id(ir.named("enum_count"), {ir.type_reference(enum_type)}),
@@ -109,6 +111,8 @@ auto enum_count_specialization(CppIR& ir, CppTypeId enum_type, std::size_t const
     ir.set_function_body(function, {ir.return_stmt(ir.literal(std::to_string(count)))});
     return ir.header_function(function);
 }
+
+namespace {
 
 auto lookup_function(LoweringContext& context,
                      DeclarationHandle schema,
@@ -143,17 +147,30 @@ auto packed_enum_strings(LoweringContext& context,
     }
     auto const name{context.text(enums.name[schema])};
     auto const qualified{"::" + qualified_enum_name(context, settings, schema)};
+    std::vector<std::string> names;
+    for (auto const value : values) {
+        auto const value_name{context.text(enumerators.name[value])};
+        names.push_back(
+            category == "Serialized" ? context.optional_text(enumerators.serialized_name[value])
+                                           .value_or("<invalid " + name + ">")
+            : category == "Display"
+                ? context.optional_text(enumerators.display_name[value]).value_or(value_name)
+                : value_name);
+    }
+    return enum_strings_specialization(context.ir, qualified, category, names, wide);
+}
+
+} // namespace
+
+auto enum_strings_specialization(CppIR& ir,
+                                 std::string_view qualified,
+                                 std::string_view category,
+                                 std::span<std::string const> names,
+                                 bool wide) -> NodeId {
     std::string blob;
     std::vector<std::size_t> offsets{0};
     std::vector<std::size_t> wide_offsets{0};
-    for (auto const value : values) {
-        auto const value_name{context.text(enumerators.name[value])};
-        auto text{category == "Serialized"
-                      ? context.optional_text(enumerators.serialized_name[value])
-                            .value_or("<invalid " + name + ">")
-                  : category == "Display"
-                      ? context.optional_text(enumerators.display_name[value]).value_or(value_name)
-                      : value_name};
+    for (auto text : names) {
         auto next{offsets.back()};
         auto wide_next{wide_offsets.back()};
         // Preserve the old null-terminated literal conversion, including embedded nulls.
@@ -209,9 +226,10 @@ auto packed_enum_strings(LoweringContext& context,
         }
     }
     output += "}}};";
-    return context.ir.raw(
-        output, {context.ir.types.dependency("ioj::PackedStrings", "ioj/enum_strings.h")});
+    return ir.raw(output, {ir.types.dependency("ioj::PackedStrings", "ioj/enum_strings.h")});
 }
+
+namespace {
 
 auto string_lookup(LoweringContext& context,
                    ModuleSettingsId settings,

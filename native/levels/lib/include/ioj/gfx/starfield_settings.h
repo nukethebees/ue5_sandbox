@@ -3,10 +3,13 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -17,13 +20,12 @@ struct GenerationSettings {
     enum class Field : std::uint8_t {
         star_count,
         random_seed,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, GenerationSettings> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::star_count) {
             return (self.star_count);
@@ -38,19 +40,6 @@ struct GenerationSettings {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::star_count:
-                return "star_count";
-            case Field::random_seed:
-                return "random_seed";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, GenerationSettings>
@@ -60,8 +49,6 @@ struct GenerationSettings {
                 return invoke_field<Field::star_count>(self, std::forward<Visitor>(visitor));
             case Field::random_seed:
                 return invoke_field<Field::random_seed>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -80,12 +67,12 @@ struct StarSettings {
         global_brightness,
         colour_variation_strength,
         parallax_strength,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
-        requires (std::same_as<std::remove_const_t<Self>, StarSettings> && Selected < Field::Count)
+        requires (std::same_as<std::remove_const_t<Self>, StarSettings> &&
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::scale) {
             return (self.scale);
@@ -109,25 +96,6 @@ struct StarSettings {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::scale:
-                return "scale";
-            case Field::size_multiplier:
-                return "size_multiplier";
-            case Field::global_brightness:
-                return "global_brightness";
-            case Field::colour_variation_strength:
-                return "colour_variation_strength";
-            case Field::parallax_strength:
-                return "parallax_strength";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, StarSettings>
@@ -144,8 +112,6 @@ struct StarSettings {
                     self, std::forward<Visitor>(visitor));
             case Field::parallax_strength:
                 return invoke_field<Field::parallax_strength>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -164,13 +130,12 @@ struct GalacticBandSettings {
     enum class Field : std::uint8_t {
         strength,
         width_degrees,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, GalacticBandSettings> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::strength) {
             return (self.strength);
@@ -185,19 +150,6 @@ struct GalacticBandSettings {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::strength:
-                return "strength";
-            case Field::width_degrees:
-                return "width_degrees";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, GalacticBandSettings>
@@ -207,8 +159,6 @@ struct GalacticBandSettings {
                 return invoke_field<Field::strength>(self, std::forward<Visitor>(visitor));
             case Field::width_degrees:
                 return invoke_field<Field::width_degrees>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -224,13 +174,12 @@ struct StellarClusterSettings {
     enum class Field : std::uint8_t {
         strength,
         width_degrees,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, StellarClusterSettings> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::strength) {
             return (self.strength);
@@ -245,19 +194,6 @@ struct StellarClusterSettings {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::strength:
-                return "strength";
-            case Field::width_degrees:
-                return "width_degrees";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, StellarClusterSettings>
@@ -267,8 +203,6 @@ struct StellarClusterSettings {
                 return invoke_field<Field::strength>(self, std::forward<Visitor>(visitor));
             case Field::width_degrees:
                 return invoke_field<Field::width_degrees>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -285,13 +219,12 @@ struct DustLaneSettings {
         strength,
         width_degrees,
         irregularity,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, DustLaneSettings> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::strength) {
             return (self.strength);
@@ -309,21 +242,6 @@ struct DustLaneSettings {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::strength:
-                return "strength";
-            case Field::width_degrees:
-                return "width_degrees";
-            case Field::irregularity:
-                return "irregularity";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, DustLaneSettings>
@@ -335,8 +253,6 @@ struct DustLaneSettings {
                 return invoke_field<Field::width_degrees>(self, std::forward<Visitor>(visitor));
             case Field::irregularity:
                 return invoke_field<Field::irregularity>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -355,13 +271,12 @@ struct BrightStarSettings {
         size_multiplier,
         brightness_multiplier,
         shape_strength,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, BrightStarSettings> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::fraction) {
             return (self.fraction);
@@ -382,23 +297,6 @@ struct BrightStarSettings {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::fraction:
-                return "fraction";
-            case Field::size_multiplier:
-                return "size_multiplier";
-            case Field::brightness_multiplier:
-                return "brightness_multiplier";
-            case Field::shape_strength:
-                return "shape_strength";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, BrightStarSettings>
@@ -413,8 +311,6 @@ struct BrightStarSettings {
                                                                   std::forward<Visitor>(visitor));
             case Field::shape_strength:
                 return invoke_field<Field::shape_strength>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -432,13 +328,12 @@ struct TwinkleSettings {
     enum class Field : std::uint8_t {
         strength,
         speed,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, TwinkleSettings> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::strength) {
             return (self.strength);
@@ -453,19 +348,6 @@ struct TwinkleSettings {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::strength:
-                return "strength";
-            case Field::speed:
-                return "speed";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, TwinkleSettings>
@@ -475,8 +357,6 @@ struct TwinkleSettings {
                 return invoke_field<Field::strength>(self, std::forward<Visitor>(visitor));
             case Field::speed:
                 return invoke_field<Field::speed>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -492,13 +372,12 @@ struct GalacticHazeSettings {
     enum class Field : std::uint8_t {
         strength,
         width_degrees,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, GalacticHazeSettings> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::strength) {
             return (self.strength);
@@ -513,19 +392,6 @@ struct GalacticHazeSettings {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::strength:
-                return "strength";
-            case Field::width_degrees:
-                return "width_degrees";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, GalacticHazeSettings>
@@ -535,8 +401,6 @@ struct GalacticHazeSettings {
                 return invoke_field<Field::strength>(self, std::forward<Visitor>(visitor));
             case Field::width_degrees:
                 return invoke_field<Field::width_degrees>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -552,13 +416,12 @@ struct GalacticCoreSettings {
     enum class Field : std::uint8_t {
         strength,
         width_degrees,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, GalacticCoreSettings> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::strength) {
             return (self.strength);
@@ -573,19 +436,6 @@ struct GalacticCoreSettings {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::strength:
-                return "strength";
-            case Field::width_degrees:
-                return "width_degrees";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, GalacticCoreSettings>
@@ -595,8 +445,6 @@ struct GalacticCoreSettings {
                 return invoke_field<Field::strength>(self, std::forward<Visitor>(visitor));
             case Field::width_degrees:
                 return invoke_field<Field::width_degrees>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -612,13 +460,12 @@ struct NebularKnotSettings {
     enum class Field : std::uint8_t {
         strength,
         size_degrees,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, NebularKnotSettings> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::strength) {
             return (self.strength);
@@ -633,19 +480,6 @@ struct NebularKnotSettings {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::strength:
-                return "strength";
-            case Field::size_degrees:
-                return "size_degrees";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, NebularKnotSettings>
@@ -655,8 +489,6 @@ struct NebularKnotSettings {
                 return invoke_field<Field::strength>(self, std::forward<Visitor>(visitor));
             case Field::size_degrees:
                 return invoke_field<Field::size_degrees>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -680,12 +512,12 @@ struct Settings {
         galactic_haze,
         galactic_core,
         nebular_knot,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
-        requires (std::same_as<std::remove_const_t<Self>, Settings> && Selected < Field::Count)
+        requires (std::same_as<std::remove_const_t<Self>, Settings> &&
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::generation) {
             return (self.generation);
@@ -724,35 +556,6 @@ struct Settings {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::generation:
-                return "generation";
-            case Field::star:
-                return "star";
-            case Field::galactic_band:
-                return "galactic_band";
-            case Field::stellar_cluster:
-                return "stellar_cluster";
-            case Field::dust_lane:
-                return "dust_lane";
-            case Field::bright_star:
-                return "bright_star";
-            case Field::twinkle:
-                return "twinkle";
-            case Field::galactic_haze:
-                return "galactic_haze";
-            case Field::galactic_core:
-                return "galactic_core";
-            case Field::nebular_knot:
-                return "nebular_knot";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, Settings>
@@ -778,8 +581,6 @@ struct Settings {
                 return invoke_field<Field::galactic_core>(self, std::forward<Visitor>(visitor));
             case Field::nebular_knot:
                 return invoke_field<Field::nebular_knot>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -797,3 +598,130 @@ struct Settings {
     NebularKnotSettings nebular_knot{};
 };
 } // namespace ioj::starfield
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::starfield::GenerationSettings::Field>() noexcept
+    -> std::size_t {
+    return 2;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::starfield::GenerationSettings::Field, ioj::Name>{
+    ioj::PackedStrings{"star_count\000random_seed", std::array<std::uint8_t, 3>{0, 11, 23}}};
+
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::starfield::StarSettings::Field>() noexcept
+    -> std::size_t {
+    return 5;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::starfield::StarSettings::Field, ioj::Name>{
+    ioj::PackedStrings{"scale\000size_multiplier\000global_brightness\000colour_variation_"
+                       "strength\000parallax_strength",
+                       std::array<std::uint8_t, 6>{0, 6, 22, 40, 66, 84}}};
+
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::starfield::GalacticBandSettings::Field>() noexcept
+    -> std::size_t {
+    return 2;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::starfield::GalacticBandSettings::Field, ioj::Name>{
+    ioj::PackedStrings{"strength\000width_degrees", std::array<std::uint8_t, 3>{0, 9, 23}}};
+
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::starfield::StellarClusterSettings::Field>() noexcept
+    -> std::size_t {
+    return 2;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::starfield::StellarClusterSettings::Field, ioj::Name>{
+    ioj::PackedStrings{"strength\000width_degrees", std::array<std::uint8_t, 3>{0, 9, 23}}};
+
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::starfield::DustLaneSettings::Field>() noexcept
+    -> std::size_t {
+    return 3;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::starfield::DustLaneSettings::Field, ioj::Name>{
+    ioj::PackedStrings{"strength\000width_degrees\000irregularity",
+                       std::array<std::uint8_t, 4>{0, 9, 23, 36}}};
+
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::starfield::BrightStarSettings::Field>() noexcept
+    -> std::size_t {
+    return 4;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::starfield::BrightStarSettings::Field, ioj::Name>{
+    ioj::PackedStrings{"fraction\000size_multiplier\000brightness_multiplier\000shape_strength",
+                       std::array<std::uint8_t, 5>{0, 9, 25, 47, 62}}};
+
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::starfield::TwinkleSettings::Field>() noexcept
+    -> std::size_t {
+    return 2;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::starfield::TwinkleSettings::Field, ioj::Name>{
+    ioj::PackedStrings{"strength\000speed", std::array<std::uint8_t, 3>{0, 9, 15}}};
+
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::starfield::GalacticHazeSettings::Field>() noexcept
+    -> std::size_t {
+    return 2;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::starfield::GalacticHazeSettings::Field, ioj::Name>{
+    ioj::PackedStrings{"strength\000width_degrees", std::array<std::uint8_t, 3>{0, 9, 23}}};
+
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::starfield::GalacticCoreSettings::Field>() noexcept
+    -> std::size_t {
+    return 2;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::starfield::GalacticCoreSettings::Field, ioj::Name>{
+    ioj::PackedStrings{"strength\000width_degrees", std::array<std::uint8_t, 3>{0, 9, 23}}};
+
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::starfield::NebularKnotSettings::Field>() noexcept
+    -> std::size_t {
+    return 2;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::starfield::NebularKnotSettings::Field, ioj::Name>{
+    ioj::PackedStrings{"strength\000size_degrees", std::array<std::uint8_t, 3>{0, 9, 22}}};
+
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::starfield::Settings::Field>() noexcept
+    -> std::size_t {
+    return 10;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::starfield::Settings::Field, ioj::Name>{
+    ioj::PackedStrings{
+        "generation\000star\000galactic_band\000stellar_cluster\000dust_lane\000bright_"
+        "star\000twinkle\000galactic_haze\000galactic_core\000nebular_knot",
+        std::array<std::uint8_t, 11>{0, 11, 16, 30, 46, 56, 68, 76, 90, 104, 117}}};

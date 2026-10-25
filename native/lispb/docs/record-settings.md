@@ -53,13 +53,13 @@ Weapon::visit_field(weapon, Weapon::Field::damage,
 ```
 
 `Field` is guaranteed to be zero-based and contiguous, with one enumerator per member
-in schema declaration order. `Field::Count` equals the number of members, including
-S7-excluded members; it is zero for an empty record. Consequently, each integer
-in `[0, Count)` can be cast directly to a valid field and used for iteration or array indexing:
+in schema declaration order. `ioj::enum_count<Field>()` returns the number of members,
+including S7-excluded members; it is zero for an empty record. There is no count sentinel.
+Each integer in `[0, count)` can be cast directly to a valid field for iteration or array indexing:
 
 ```cpp
 using Field = Weapon::Field;
-constexpr auto count{static_cast<std::size_t>(Field::Count)};
+constexpr auto count{ioj::enum_count<Field>()};
 for (std::size_t index{}; index < count; ++index) {
     Weapon::visit_field(weapon, static_cast<Field>(index), visitor);
 }
@@ -70,14 +70,15 @@ These indices follow schema order and are not stable persistent identifiers acro
 The object must be a mutable or const lvalue of the record type. Const objects produce
 const member references. The callable must compile for every member; use `if constexpr`
 when an operation applies only to particular fields. Dispatch invokes it exactly once.
-`Field::Count` and other invalid IDs violate the caller contract. The generated API reserves
-`Field`, `Count`, `visit_field`, `invoke_field`, `get_field` and `field_name`; it adds no object
+Invalid IDs violate the caller contract. The generated API reserves
+`Field`, `visit_field`, `invoke_field` and `get_field`; it adds no object
 storage and preserves aggregate layout. Record names must not collide with these generated
 functions, `Field`, or the template parameter names `Selected`, `Self` and `Visitor`.
 
 `get_field<Field::damage>(weapon)` selects a member at compile time, preserving its reference
-and constness. Invalid fields are rejected by template constraints. `field_name(Field::damage)`
-returns the C++ member name as a static `string_view`, independent of S7 aliases. Runtime
+and constness. Invalid fields are rejected by template constraints. `ioj::to_string(Field::damage)`
+returns the C++ member name as a static `string_view`, independent of S7 aliases, through the
+ordinary packed enum string metadata. Runtime
 visitation retains a switch with unbraced return cases. Each case calls `invoke_field<F>`, which
 forwards the callable, discards its return value and obtains the member through `get_field<F>`.
 

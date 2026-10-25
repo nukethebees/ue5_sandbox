@@ -18,7 +18,9 @@ fighters.laser.damage
 
 Lispb records opt in with `:generate-visitor true`. Every member participates, including
 S7-excluded fields. The diff visits the expected member once and selects the actual member
-with `get_field<F>()`. It supports nested records, sized random-access ranges (including
+with `get_field<F>()`. It uses `ioj::enum_count<Record::Field>()` for traversal bounds and
+`ioj::to_string(field)` for member paths, sharing the ordinary enum metadata. It supports
+nested records, sized random-access ranges (including
 vectors, arrays, spans and deques), optionals and constrained-value wrappers exposing
 `get_ref()`, `valid()` and `try_make()`. Narrow strings remain whole-value leaves.
 Sequence length differences appear at `.size`;

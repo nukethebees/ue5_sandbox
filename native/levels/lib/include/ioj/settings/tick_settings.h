@@ -4,12 +4,14 @@
 #pragma once
 
 #include "ioj/constrained_numbers.h"
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
 #include "ioj/frequency.h"
 
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -20,12 +22,12 @@ struct TickSettings {
     enum class Field : std::uint8_t {
         tick_rate,
         time_scale,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
-        requires (std::same_as<std::remove_const_t<Self>, TickSettings> && Selected < Field::Count)
+        requires (std::same_as<std::remove_const_t<Self>, TickSettings> &&
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::tick_rate) {
             return (self.tick_rate);
@@ -40,19 +42,6 @@ struct TickSettings {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::tick_rate:
-                return "tick_rate";
-            case Field::time_scale:
-                return "time_scale";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, TickSettings>
@@ -62,8 +51,6 @@ struct TickSettings {
                 return invoke_field<Field::tick_rate>(self, std::forward<Visitor>(visitor));
             case Field::time_scale:
                 return invoke_field<Field::time_scale>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -73,3 +60,13 @@ struct TickSettings {
     ioj::PositiveFinite<double> time_scale{1.0};
 };
 } // namespace ioj::settings
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::settings::TickSettings::Field>() noexcept
+    -> std::size_t {
+    return 2;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::settings::TickSettings::Field, ioj::Name>{
+    ioj::PackedStrings{"tick_rate\000time_scale", std::array<std::uint8_t, 3>{0, 10, 21}}};

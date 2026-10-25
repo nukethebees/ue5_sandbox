@@ -4,14 +4,16 @@
 #pragma once
 
 #include "ioj/constrained_value.h"
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
 
 #include <compile_fixture/range_policy.hpp>
 
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -22,12 +24,12 @@ struct RangeValue {
     enum class Field : std::uint8_t {
         minimum,
         maximum,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
-        requires (std::same_as<std::remove_const_t<Self>, RangeValue> && Selected < Field::Count)
+        requires (std::same_as<std::remove_const_t<Self>, RangeValue> &&
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::minimum) {
             return (self.minimum);
@@ -42,19 +44,6 @@ struct RangeValue {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::minimum:
-                return "minimum";
-            case Field::maximum:
-                return "maximum";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, RangeValue>
@@ -64,8 +53,6 @@ struct RangeValue {
                 return invoke_field<Field::minimum>(self, std::forward<Visitor>(visitor));
             case Field::maximum:
                 return invoke_field<Field::maximum>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -81,12 +68,12 @@ struct RangeSettings {
     enum class Field : std::uint8_t {
         range,
         enabled,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
-        requires (std::same_as<std::remove_const_t<Self>, RangeSettings> && Selected < Field::Count)
+        requires (std::same_as<std::remove_const_t<Self>, RangeSettings> &&
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::range) {
             return (self.range);
@@ -101,19 +88,6 @@ struct RangeSettings {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::range:
-                return "range";
-            case Field::enabled:
-                return "enabled";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, RangeSettings>
@@ -123,8 +97,6 @@ struct RangeSettings {
                 return invoke_field<Field::range>(self, std::forward<Visitor>(visitor));
             case Field::enabled:
                 return invoke_field<Field::enabled>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -138,12 +110,12 @@ struct ApiPair {
     enum class Field : std::uint8_t {
         x,
         y,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
-        requires (std::same_as<std::remove_const_t<Self>, ApiPair> && Selected < Field::Count)
+        requires (std::same_as<std::remove_const_t<Self>, ApiPair> &&
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::x) {
             return (self.x);
@@ -158,19 +130,6 @@ struct ApiPair {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::x:
-                return "x";
-            case Field::y:
-                return "y";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, ApiPair>
@@ -180,8 +139,6 @@ struct ApiPair {
                 return invoke_field<Field::x>(self, std::forward<Visitor>(visitor));
             case Field::y:
                 return invoke_field<Field::y>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -191,14 +148,57 @@ struct ApiPair {
     float y;
 };
 
-struct EmptySettings {
+struct FormerVisitorNames {
     enum class Field : std::uint8_t {
         Count,
+        field_name,
+    };
+
+    template <Field Selected, typename Self>
+    static constexpr decltype(auto) get_field(Self& self)
+        requires (std::same_as<std::remove_const_t<Self>, FormerVisitorNames> &&
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+    {
+        if constexpr (Selected == Field::Count) {
+            return (self.Count);
+        }
+        if constexpr (Selected == Field::field_name) {
+            return (self.field_name);
+        }
+    }
+
+    template <Field Selected, typename Self, typename Visitor>
+    static constexpr void invoke_field(Self& self, Visitor&& visitor) {
+        std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
+    }
+
+    template <typename Self, typename Visitor>
+    static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
+        requires std::same_as<std::remove_const_t<Self>, FormerVisitorNames>
+    {
+        switch (field) {
+            case Field::Count:
+                return invoke_field<Field::Count>(self, std::forward<Visitor>(visitor));
+            case Field::field_name:
+                return invoke_field<Field::field_name>(self, std::forward<Visitor>(visitor));
+        }
+        assert(false && "Invalid record field");
+        std::unreachable();
+    }
+
+    int Count;
+    int field_name;
+};
+
+struct EmptySettings {
+    enum class Field : std::uint8_t {
+
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self&)
-        requires (std::same_as<std::remove_const_t<Self>, EmptySettings> && Selected < Field::Count)
+        requires (std::same_as<std::remove_const_t<Self>, EmptySettings> &&
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {}
 
     template <Field Selected, typename Self, typename Visitor>
@@ -206,23 +206,11 @@ struct EmptySettings {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self&, Field field, Visitor&&)
         requires std::same_as<std::remove_const_t<Self>, EmptySettings>
     {
-        switch (field) {
-            case Field::Count:
-                break;
-        }
+        switch (field) {}
         assert(false && "Invalid record field");
         std::unreachable();
     }
@@ -233,13 +221,12 @@ struct WeaponSettings {
         damage,
         turn_rate,
         asset_distance,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, WeaponSettings> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::damage) {
             return (self.damage);
@@ -257,21 +244,6 @@ struct WeaponSettings {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::damage:
-                return "damage";
-            case Field::turn_rate:
-                return "turn_rate";
-            case Field::asset_distance:
-                return "asset_distance";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, WeaponSettings>
@@ -283,8 +255,6 @@ struct WeaponSettings {
                 return invoke_field<Field::turn_rate>(self, std::forward<Visitor>(visitor));
             case Field::asset_distance:
                 return invoke_field<Field::asset_distance>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -300,12 +270,12 @@ struct ActorSettings {
         max_health,
         weapon,
         optional_limit,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
-        requires (std::same_as<std::remove_const_t<Self>, ActorSettings> && Selected < Field::Count)
+        requires (std::same_as<std::remove_const_t<Self>, ActorSettings> &&
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::max_health) {
             return (self.max_health);
@@ -323,21 +293,6 @@ struct ActorSettings {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::max_health:
-                return "max_health";
-            case Field::weapon:
-                return "weapon";
-            case Field::optional_limit:
-                return "optional_limit";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, ActorSettings>
@@ -349,8 +304,6 @@ struct ActorSettings {
                 return invoke_field<Field::weapon>(self, std::forward<Visitor>(visitor));
             case Field::optional_limit:
                 return invoke_field<Field::optional_limit>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -361,3 +314,83 @@ struct ActorSettings {
     std::optional<int> optional_limit{3};
 };
 } // namespace codegen_compile_fixture
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::RangeValue::Field>() noexcept
+    -> std::size_t {
+    return 2;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::RangeValue::Field, ioj::Name>{
+    ioj::PackedStrings{"minimum\000maximum", std::array<std::uint8_t, 3>{0, 8, 16}}};
+
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::RangeSettings::Field>() noexcept
+    -> std::size_t {
+    return 2;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::RangeSettings::Field, ioj::Name>{
+    ioj::PackedStrings{"range\000enabled", std::array<std::uint8_t, 3>{0, 6, 14}}};
+
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::ApiPair::Field>() noexcept
+    -> std::size_t {
+    return 2;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::ApiPair::Field, ioj::Name>{
+    ioj::PackedStrings{"x\000y", std::array<std::uint8_t, 3>{0, 2, 4}}};
+
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto
+    enum_count<::codegen_compile_fixture::FormerVisitorNames::Field>() noexcept -> std::size_t {
+    return 2;
+}
+} // namespace ioj
+template <>
+inline constexpr auto
+    ioj::enum_strings<::codegen_compile_fixture::FormerVisitorNames::Field, ioj::Name>{
+        ioj::PackedStrings{"Count\000field_name", std::array<std::uint8_t, 3>{0, 6, 17}}};
+
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::EmptySettings::Field>() noexcept
+    -> std::size_t {
+    return 0;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::EmptySettings::Field, ioj::Name>{
+    ioj::PackedStrings{"", std::array<std::uint8_t, 1>{0}}};
+
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::WeaponSettings::Field>() noexcept
+    -> std::size_t {
+    return 3;
+}
+} // namespace ioj
+template <>
+inline constexpr auto
+    ioj::enum_strings<::codegen_compile_fixture::WeaponSettings::Field, ioj::Name>{
+        ioj::PackedStrings{"damage\000turn_rate\000asset_distance",
+                           std::array<std::uint8_t, 4>{0, 7, 17, 32}}};
+
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::ActorSettings::Field>() noexcept
+    -> std::size_t {
+    return 3;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::ActorSettings::Field, ioj::Name>{
+    ioj::PackedStrings{"max_health\000weapon\000optional_limit",
+                       std::array<std::uint8_t, 4>{0, 11, 18, 33}}};

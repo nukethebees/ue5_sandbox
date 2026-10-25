@@ -3,10 +3,13 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -28,12 +31,12 @@ struct SoftTarget {
         pulse_opacity_boost,
         pulse_duration,
         fade_out_duration,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
-        requires (std::same_as<std::remove_const_t<Self>, SoftTarget> && Selected < Field::Count)
+        requires (std::same_as<std::remove_const_t<Self>, SoftTarget> &&
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::acquisition_radius_pixels) {
             return (self.acquisition_radius_pixels);
@@ -81,41 +84,6 @@ struct SoftTarget {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::acquisition_radius_pixels:
-                return "acquisition_radius_pixels";
-            case Field::retention_radius_pixels:
-                return "retention_radius_pixels";
-            case Field::centre_tie_radius_pixels:
-                return "centre_tie_radius_pixels";
-            case Field::switch_improvement_ratio:
-                return "switch_improvement_ratio";
-            case Field::range_transition_start_multiplier:
-                return "range_transition_start_multiplier";
-            case Field::minimum_radius_pixels:
-                return "minimum_radius_pixels";
-            case Field::maximum_radius_pixels:
-                return "maximum_radius_pixels";
-            case Field::bounds_padding_pixels:
-                return "bounds_padding_pixels";
-            case Field::bracket_start_radius_multiplier:
-                return "bracket_start_radius_multiplier";
-            case Field::opacity:
-                return "opacity";
-            case Field::pulse_opacity_boost:
-                return "pulse_opacity_boost";
-            case Field::pulse_duration:
-                return "pulse_duration";
-            case Field::fade_out_duration:
-                return "fade_out_duration";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, SoftTarget>
@@ -157,8 +125,6 @@ struct SoftTarget {
                 return invoke_field<Field::pulse_duration>(self, std::forward<Visitor>(visitor));
             case Field::fade_out_duration:
                 return invoke_field<Field::fade_out_duration>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -179,3 +145,19 @@ struct SoftTarget {
     float fade_out_duration{0.15f};
 };
 } // namespace ioj::settings
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::settings::SoftTarget::Field>() noexcept
+    -> std::size_t {
+    return 13;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::settings::SoftTarget::Field, ioj::Name>{
+    ioj::PackedStrings{
+        "acquisition_radius_pixels\000retention_radius_pixels\000centre_tie_radius_"
+        "pixels\000switch_improvement_ratio\000range_transition_start_multiplier\000minimum_radius_"
+        "pixels\000maximum_radius_pixels\000bounds_padding_pixels\000bracket_start_radius_"
+        "multiplier\000opacity\000pulse_opacity_boost\000pulse_duration\000fade_out_duration",
+        std::array<std::uint16_t, 14>{
+            0, 26, 50, 75, 100, 134, 156, 178, 200, 232, 240, 260, 275, 293}}};

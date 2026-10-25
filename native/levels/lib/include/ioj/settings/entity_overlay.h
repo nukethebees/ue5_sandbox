@@ -3,13 +3,15 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
 #include "ioj/settings/soft_target.h"
 #include "ioj/vector.h"
 
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -30,12 +32,12 @@ struct EntityOverlay {
         objective_bar_height_scale,
         screen_edge_padding_pixels,
         soft_target,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
-        requires (std::same_as<std::remove_const_t<Self>, EntityOverlay> && Selected < Field::Count)
+        requires (std::same_as<std::remove_const_t<Self>, EntityOverlay> &&
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::enabled) {
             return (self.enabled);
@@ -80,39 +82,6 @@ struct EntityOverlay {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::enabled:
-                return "enabled";
-            case Field::maximum_range:
-                return "maximum_range";
-            case Field::bar_size_pixels:
-                return "bar_size_pixels";
-            case Field::screen_offset_pixels:
-                return "screen_offset_pixels";
-            case Field::minimum_bar_scale:
-                return "minimum_bar_scale";
-            case Field::maximum_bar_scale:
-                return "maximum_bar_scale";
-            case Field::inset_pixels:
-                return "inset_pixels";
-            case Field::maximum_inset_height_ratio:
-                return "maximum_inset_height_ratio";
-            case Field::objective_frame_pixels:
-                return "objective_frame_pixels";
-            case Field::objective_bar_height_scale:
-                return "objective_bar_height_scale";
-            case Field::screen_edge_padding_pixels:
-                return "screen_edge_padding_pixels";
-            case Field::soft_target:
-                return "soft_target";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, EntityOverlay>
@@ -147,8 +116,6 @@ struct EntityOverlay {
                     self, std::forward<Visitor>(visitor));
             case Field::soft_target:
                 return invoke_field<Field::soft_target>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -168,3 +135,17 @@ struct EntityOverlay {
     SoftTarget soft_target{};
 };
 } // namespace ioj::settings
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::settings::EntityOverlay::Field>() noexcept
+    -> std::size_t {
+    return 12;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::settings::EntityOverlay::Field, ioj::Name>{
+    ioj::PackedStrings{
+        "enabled\000maximum_range\000bar_size_pixels\000screen_offset_pixels\000minimum_bar_"
+        "scale\000maximum_bar_scale\000inset_pixels\000maximum_inset_height_ratio\000objective_"
+        "frame_pixels\000objective_bar_height_scale\000screen_edge_padding_pixels\000soft_target",
+        std::array<std::uint8_t, 13>{0, 8, 22, 38, 59, 77, 95, 108, 135, 158, 185, 212, 224}}};

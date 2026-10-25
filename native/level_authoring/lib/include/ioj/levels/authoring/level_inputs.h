@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
 #include "ioj/levels/authoring/expr_input.h"
 #include "ioj/levels/authoring/positional_inputs.h"
 #include "ioj/levels/campaign_definition.h"
@@ -19,10 +21,10 @@
 
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -41,12 +43,12 @@ struct EntityInput {
         initial_spawn_delay,
         spawn_cooldown,
         target,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
-        requires (std::same_as<std::remove_const_t<Self>, EntityInput> && Selected < Field::Count)
+        requires (std::same_as<std::remove_const_t<Self>, EntityInput> &&
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::id) {
             return (self.id);
@@ -88,37 +90,6 @@ struct EntityInput {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::id:
-                return "id";
-            case Field::archetype:
-                return "archetype";
-            case Field::team:
-                return "team";
-            case Field::position:
-                return "position";
-            case Field::rotation:
-                return "rotation";
-            case Field::spawn_at:
-                return "spawn_at";
-            case Field::health:
-                return "health";
-            case Field::laser_damage:
-                return "laser_damage";
-            case Field::initial_spawn_delay:
-                return "initial_spawn_delay";
-            case Field::spawn_cooldown:
-                return "spawn_cooldown";
-            case Field::target:
-                return "target";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, EntityInput>
@@ -147,8 +118,6 @@ struct EntityInput {
                 return invoke_field<Field::spawn_cooldown>(self, std::forward<Visitor>(visitor));
             case Field::target:
                 return invoke_field<Field::target>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -213,3 +182,16 @@ struct CatalogInput {
     std::vector<ioj::s7::ReadResult<ioj::levels::authoring::IncludedCampaignInput>> campaigns{};
 };
 } // namespace ioj::levels::authoring
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::levels::authoring::EntityInput::Field>() noexcept
+    -> std::size_t {
+    return 11;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::levels::authoring::EntityInput::Field, ioj::Name>{
+    ioj::PackedStrings{
+        "id\000archetype\000team\000position\000rotation\000spawn_at\000health\000laser_"
+        "damage\000initial_spawn_delay\000spawn_cooldown\000target",
+        std::array<std::uint8_t, 12>{0, 3, 13, 18, 27, 36, 45, 52, 65, 85, 100, 107}}};

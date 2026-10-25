@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
 #include "Records.h"
 #include "SignatureSecond.h"
 
@@ -10,8 +12,8 @@
 #include <cassert>
 #include <compare>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -28,12 +30,12 @@ union Payload;
 struct CrossSettings {
     enum class Field : std::uint8_t {
         actor,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
-        requires (std::same_as<std::remove_const_t<Self>, CrossSettings> && Selected < Field::Count)
+        requires (std::same_as<std::remove_const_t<Self>, CrossSettings> &&
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::actor) {
             return (self.actor);
@@ -45,17 +47,6 @@ struct CrossSettings {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::actor:
-                return "actor";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, CrossSettings>
@@ -63,8 +54,6 @@ struct CrossSettings {
         switch (field) {
             case Field::actor:
                 return invoke_field<Field::actor>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -213,3 +202,14 @@ struct ParameterLookup {
     }
 };
 } // namespace codegen_compile_fixture::mixed
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto
+    enum_count<::codegen_compile_fixture::mixed::CrossSettings::Field>() noexcept -> std::size_t {
+    return 1;
+}
+} // namespace ioj
+template <>
+inline constexpr auto
+    ioj::enum_strings<::codegen_compile_fixture::mixed::CrossSettings::Field, ioj::Name>{
+        ioj::PackedStrings{"actor", std::array<std::uint8_t, 2>{0, 6}}};

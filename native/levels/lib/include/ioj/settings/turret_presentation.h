@@ -3,10 +3,13 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -16,13 +19,12 @@ struct TurretPresentation {
 
     enum class Field : std::uint8_t {
         death_effect_scale,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, TurretPresentation> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::death_effect_scale) {
             return (self.death_effect_scale);
@@ -34,17 +36,6 @@ struct TurretPresentation {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::death_effect_scale:
-                return "death_effect_scale";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, TurretPresentation>
@@ -53,8 +44,6 @@ struct TurretPresentation {
             case Field::death_effect_scale:
                 return invoke_field<Field::death_effect_scale>(self,
                                                                std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -63,3 +52,13 @@ struct TurretPresentation {
     float death_effect_scale{1.f};
 };
 } // namespace ioj::settings
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::settings::TurretPresentation::Field>() noexcept
+    -> std::size_t {
+    return 1;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::settings::TurretPresentation::Field, ioj::Name>{
+    ioj::PackedStrings{"death_effect_scale", std::array<std::uint8_t, 2>{0, 19}}};

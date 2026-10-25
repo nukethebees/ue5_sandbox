@@ -54,8 +54,8 @@ struct TypeReader<levels::authoring::EntityInput> : RecordReader<levels::authori
                                                                   "initial-spawn-delay",
                                                                   "spawn-cooldown",
                                                                   "target"};
-    static constexpr auto required{
-        required_fields<Field>({Field::archetype, Field::team, Field::position})};
+    static constexpr auto required{required_fields<Field, field_names.size()>(
+        {Field::archetype, Field::team, Field::position})};
 };
 
 template <>
@@ -91,8 +91,6 @@ struct TypeReader<levels::authoring::ObjectiveInput>
                                      case Field::depends_on:
                                          read(result.depends_on);
                                          break;
-                                     case Field::Count:
-                                         std::unreachable();
                                  }
                              }),
                              required);
@@ -107,12 +105,12 @@ struct TypeReader<levels::authoring::ObjectiveInput>
         fail,
         expire,
         depends_on,
-        Count,
     };
 
     static constexpr std::array<std::string_view, 8> field_names{
         "id", "title", "team", "nodes", "pass", "fail", "expire", "depends-on"};
-    static constexpr auto required{required_fields<Field>({Field::id, Field::team})};
+    static constexpr auto required{
+        required_fields<Field, field_names.size()>({Field::id, Field::team})};
 };
 
 template <>
@@ -129,8 +127,6 @@ struct TypeReader<levels::authoring::MissionInput> : RecordReader<levels::author
                                      case Field::team_results:
                                          read(result.team_results);
                                          break;
-                                     case Field::Count:
-                                         std::unreachable();
                                  }
                              }),
                              required);
@@ -139,11 +135,10 @@ struct TypeReader<levels::authoring::MissionInput> : RecordReader<levels::author
     enum class Field : std::uint8_t {
         objectives,
         team_results,
-        Count,
     };
 
     static constexpr std::array<std::string_view, 2> field_names{"objectives", "team-results"};
-    static constexpr auto required{required_fields<Field>({Field::objectives})};
+    static constexpr auto required{required_fields<Field, field_names.size()>({Field::objectives})};
 };
 
 template <>
@@ -184,8 +179,6 @@ struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authorin
                                      case Field::entities:
                                          read(result.entities);
                                          break;
-                                     case Field::Count:
-                                         std::unreachable();
                                  }
                              }),
                              required);
@@ -202,7 +195,6 @@ struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authorin
         settings,
         mission,
         entities,
-        Count,
     };
 
     static constexpr std::array<std::string_view, 10> field_names{"id",
@@ -215,7 +207,8 @@ struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authorin
                                                                   "settings",
                                                                   "mission",
                                                                   "entities"};
-    static constexpr auto required{required_fields<Field>({Field::id, Field::title})};
+    static constexpr auto required{
+        required_fields<Field, field_names.size()>({Field::id, Field::title})};
 };
 
 template <>
@@ -236,8 +229,6 @@ struct TypeReader<levels::authoring::IncludedLevelInput>
                                      case Field::error:
                                          read(result.error);
                                          break;
-                                     case Field::Count:
-                                         std::unreachable();
                                  }
                              }),
                              required);
@@ -247,11 +238,10 @@ struct TypeReader<levels::authoring::IncludedLevelInput>
         path,
         value,
         error,
-        Count,
     };
 
     static constexpr std::array<std::string_view, 3> field_names{"path", "value", "error"};
-    static constexpr auto required{required_fields<Field>({Field::path})};
+    static constexpr auto required{required_fields<Field, field_names.size()>({Field::path})};
 };
 
 template <>
@@ -272,8 +262,6 @@ struct TypeReader<levels::authoring::IncludedCampaignInput>
                                      case Field::error:
                                          read(result.error);
                                          break;
-                                     case Field::Count:
-                                         std::unreachable();
                                  }
                              }),
                              required);
@@ -283,11 +271,10 @@ struct TypeReader<levels::authoring::IncludedCampaignInput>
         path,
         value,
         error,
-        Count,
     };
 
     static constexpr std::array<std::string_view, 3> field_names{"path", "value", "error"};
-    static constexpr auto required{required_fields<Field>({Field::path})};
+    static constexpr auto required{required_fields<Field, field_names.size()>({Field::path})};
 };
 
 template <>
@@ -302,8 +289,6 @@ struct TypeReader<levels::authoring::CatalogInput> : RecordReader<levels::author
                     case Field::campaigns:
                         read(result.campaigns);
                         break;
-                    case Field::Count:
-                        std::unreachable();
                 }
             }));
     }
@@ -311,7 +296,6 @@ struct TypeReader<levels::authoring::CatalogInput> : RecordReader<levels::author
     enum class Field : std::uint8_t {
         levels,
         campaigns,
-        Count,
     };
 
     static constexpr std::array<std::string_view, 2> field_names{"levels", "campaigns"};

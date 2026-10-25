@@ -3,14 +3,16 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
 #include "ioj/math_types.h"
 #include "ioj/sim/entities/health.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -24,13 +26,12 @@ struct TurretSimConfig {
         fire_point_offset,
         laser,
         max_health,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, TurretSimConfig> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::detection_radius) {
             return (self.detection_radius);
@@ -54,25 +55,6 @@ struct TurretSimConfig {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::detection_radius:
-                return "detection_radius";
-            case Field::target_refresh_frequency:
-                return "target_refresh_frequency";
-            case Field::fire_point_offset:
-                return "fire_point_offset";
-            case Field::laser:
-                return "laser";
-            case Field::max_health:
-                return "max_health";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, TurretSimConfig>
@@ -89,8 +71,6 @@ struct TurretSimConfig {
                 return invoke_field<Field::laser>(self, std::forward<Visitor>(visitor));
             case Field::max_health:
                 return invoke_field<Field::max_health>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -103,3 +83,15 @@ struct TurretSimConfig {
     Health max_health{20};
 };
 } // namespace ioj::sim
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::TurretSimConfig::Field>() noexcept
+    -> std::size_t {
+    return 5;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::sim::TurretSimConfig::Field, ioj::Name>{
+    ioj::PackedStrings{
+        "detection_radius\000target_refresh_frequency\000fire_point_offset\000laser\000max_health",
+        std::array<std::uint8_t, 6>{0, 17, 42, 60, 66, 77}}};

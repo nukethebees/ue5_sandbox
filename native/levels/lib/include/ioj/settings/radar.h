@@ -3,10 +3,13 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -29,12 +32,12 @@ struct Radar {
         objective_size_multiplier,
         objective_ring_padding_pixels,
         objective_ring_thickness_pixels,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
-        requires (std::same_as<std::remove_const_t<Self>, Radar> && Selected < Field::Count)
+        requires (std::same_as<std::remove_const_t<Self>, Radar> &&
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::enabled) {
             return (self.enabled);
@@ -85,43 +88,6 @@ struct Radar {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::enabled:
-                return "enabled";
-            case Field::combat_range:
-                return "combat_range";
-            case Field::tactical_range:
-                return "tactical_range";
-            case Field::maximum_range:
-                return "maximum_range";
-            case Field::combat_display_radius:
-                return "combat_display_radius";
-            case Field::grid_opacity:
-                return "grid_opacity";
-            case Field::core_cell_radius:
-                return "core_cell_radius";
-            case Field::combat_cell_radius:
-                return "combat_cell_radius";
-            case Field::tactical_cell_radius:
-                return "tactical_cell_radius";
-            case Field::strategic_cell_radius:
-                return "strategic_cell_radius";
-            case Field::glyph_size_scale:
-                return "glyph_size_scale";
-            case Field::objective_size_multiplier:
-                return "objective_size_multiplier";
-            case Field::objective_ring_padding_pixels:
-                return "objective_ring_padding_pixels";
-            case Field::objective_ring_thickness_pixels:
-                return "objective_ring_thickness_pixels";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, Radar>
@@ -162,8 +128,6 @@ struct Radar {
             case Field::objective_ring_thickness_pixels:
                 return invoke_field<Field::objective_ring_thickness_pixels>(
                     self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -185,3 +149,18 @@ struct Radar {
     float objective_ring_thickness_pixels{1.25f};
 };
 } // namespace ioj::settings
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::settings::Radar::Field>() noexcept -> std::size_t {
+    return 14;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::settings::Radar::Field, ioj::Name>{
+    ioj::PackedStrings{
+        "enabled\000combat_range\000tactical_range\000maximum_range\000combat_display_"
+        "radius\000grid_opacity\000core_cell_radius\000combat_cell_radius\000tactical_cell_"
+        "radius\000strategic_cell_radius\000glyph_size_scale\000objective_size_"
+        "multiplier\000objective_ring_padding_pixels\000objective_ring_thickness_pixels",
+        std::array<std::uint16_t, 15>{
+            0, 8, 21, 36, 50, 72, 85, 102, 121, 142, 164, 181, 207, 237, 269}}};

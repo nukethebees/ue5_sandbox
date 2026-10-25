@@ -3,12 +3,14 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
 #include "Records.h"
 
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -18,13 +20,12 @@ struct SettingsTarget {
         first,
         second,
         external_value,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, SettingsTarget> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::first) {
             return (self.first);
@@ -42,21 +43,6 @@ struct SettingsTarget {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::first:
-                return "first";
-            case Field::second:
-                return "second";
-            case Field::external_value:
-                return "external_value";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, SettingsTarget>
@@ -68,8 +54,6 @@ struct SettingsTarget {
                 return invoke_field<Field::second>(self, std::forward<Visitor>(visitor));
             case Field::external_value:
                 return invoke_field<Field::external_value>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -80,3 +64,15 @@ struct SettingsTarget {
     int external_value{0};
 };
 } // namespace codegen_compile_fixture
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::SettingsTarget::Field>() noexcept
+    -> std::size_t {
+    return 3;
+}
+} // namespace ioj
+template <>
+inline constexpr auto
+    ioj::enum_strings<::codegen_compile_fixture::SettingsTarget::Field, ioj::Name>{
+        ioj::PackedStrings{"first\000second\000external_value",
+                           std::array<std::uint8_t, 4>{0, 6, 13, 28}}};

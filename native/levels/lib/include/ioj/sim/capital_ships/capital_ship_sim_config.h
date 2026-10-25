@@ -3,13 +3,15 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
 #include "ioj/sim/entities/health.h"
 #include "ioj/transform3d.h"
 
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -23,13 +25,12 @@ struct CapitalShipSimConfig {
         fighter_spawn_slots,
         fighter_spawn_slots_relative_transforms,
         max_health,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, CapitalShipSimConfig> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::spawn_delay) {
             return (self.spawn_delay);
@@ -50,23 +51,6 @@ struct CapitalShipSimConfig {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::spawn_delay:
-                return "spawn_delay";
-            case Field::fighter_spawn_slots:
-                return "fighter_spawn_slots";
-            case Field::fighter_spawn_slots_relative_transforms:
-                return "fighter_spawn_slots_relative_transforms";
-            case Field::max_health:
-                return "max_health";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, CapitalShipSimConfig>
@@ -82,8 +66,6 @@ struct CapitalShipSimConfig {
                     self, std::forward<Visitor>(visitor));
             case Field::max_health:
                 return invoke_field<Field::max_health>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -95,3 +77,15 @@ struct CapitalShipSimConfig {
     Health max_health{5000};
 };
 } // namespace ioj::sim
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::CapitalShipSimConfig::Field>() noexcept
+    -> std::size_t {
+    return 4;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::sim::CapitalShipSimConfig::Field,
+                                        ioj::Name>{ioj::PackedStrings{
+    "spawn_delay\000fighter_spawn_slots\000fighter_spawn_slots_relative_transforms\000max_health",
+    std::array<std::uint8_t, 5>{0, 12, 32, 72, 83}}};

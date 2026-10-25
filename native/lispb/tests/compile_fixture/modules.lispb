@@ -55,6 +55,8 @@
     (member range Range :initializer "")
     (member enabled bool :initializer true))
   (record ApiPair :generate-visitor true (member x float) (member y float))
+  (record FormerVisitorNames :generate-visitor true
+    (member Count int) (member field_name int))
   (record EmptySettings :generate-visitor true :generate-s7-reader true :s7-tag "empty-settings")
   (record WeaponSettings :generate-visitor true
     :generate-s7-reader true :s7-tag "weapon"

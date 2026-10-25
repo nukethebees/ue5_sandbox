@@ -3,12 +3,14 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
 #include "ioj/math_types.h"
 
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -23,13 +25,12 @@ struct CapitalPresentation {
         max_small_explosion_range,
         large_explosion_delay,
         proxy_arrow_size,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, CapitalPresentation> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::n_small_explosions) {
             return (self.n_small_explosions);
@@ -56,27 +57,6 @@ struct CapitalPresentation {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::n_small_explosions:
-                return "n_small_explosions";
-            case Field::time_between_explosions:
-                return "time_between_explosions";
-            case Field::min_small_explosion_range:
-                return "min_small_explosion_range";
-            case Field::max_small_explosion_range:
-                return "max_small_explosion_range";
-            case Field::large_explosion_delay:
-                return "large_explosion_delay";
-            case Field::proxy_arrow_size:
-                return "proxy_arrow_size";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, CapitalPresentation>
@@ -99,8 +79,6 @@ struct CapitalPresentation {
                                                                   std::forward<Visitor>(visitor));
             case Field::proxy_arrow_size:
                 return invoke_field<Field::proxy_arrow_size>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -114,3 +92,16 @@ struct CapitalPresentation {
     float proxy_arrow_size{5.f};
 };
 } // namespace ioj::settings
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::settings::CapitalPresentation::Field>() noexcept
+    -> std::size_t {
+    return 6;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::settings::CapitalPresentation::Field, ioj::Name>{
+    ioj::PackedStrings{
+        "n_small_explosions\000time_between_explosions\000min_small_explosion_range\000max_small_"
+        "explosion_range\000large_explosion_delay\000proxy_arrow_size",
+        std::array<std::uint8_t, 7>{0, 19, 43, 69, 95, 117, 134}}};

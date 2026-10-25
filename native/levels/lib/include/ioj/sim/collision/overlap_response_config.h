@@ -3,12 +3,14 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
 #include "ioj/math_types.h"
 
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -20,13 +22,12 @@ struct OverlapResponseConfig {
         damage_per_overlap_detection,
         level_size,
         cell_size,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, OverlapResponseConfig> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::damage_per_overlap_detection) {
             return (self.damage_per_overlap_detection);
@@ -44,21 +45,6 @@ struct OverlapResponseConfig {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::damage_per_overlap_detection:
-                return "damage_per_overlap_detection";
-            case Field::level_size:
-                return "level_size";
-            case Field::cell_size:
-                return "cell_size";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, OverlapResponseConfig>
@@ -71,8 +57,6 @@ struct OverlapResponseConfig {
                 return invoke_field<Field::level_size>(self, std::forward<Visitor>(visitor));
             case Field::cell_size:
                 return invoke_field<Field::cell_size>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -83,3 +67,14 @@ struct OverlapResponseConfig {
     Vector3f cell_size{5000.f, 5000.f, 20000.f};
 };
 } // namespace ioj::sim
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::OverlapResponseConfig::Field>() noexcept
+    -> std::size_t {
+    return 3;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::sim::OverlapResponseConfig::Field, ioj::Name>{
+    ioj::PackedStrings{"damage_per_overlap_detection\000level_size\000cell_size",
+                       std::array<std::uint8_t, 4>{0, 29, 40, 50}}};

@@ -5,14 +5,16 @@
 
 #include "fire_rate.h"
 #include "ioj/constrained_numbers.h"
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
 #include "ioj/sim/entities/health.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 #include "ship_laser_mode.h"
 
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -32,13 +34,12 @@ struct PlayerSimConfig {
         health,
         laser_mode,
         laser_fire_rate,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, PlayerSimConfig> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::thrust_energy_max) {
             return (self.thrust_energy_max);
@@ -80,37 +81,6 @@ struct PlayerSimConfig {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::thrust_energy_max:
-                return "thrust_energy_max";
-            case Field::pitch_angle_max:
-                return "pitch_angle_max";
-            case Field::pitch_speed:
-                return "pitch_speed";
-            case Field::yaw_angle_max:
-                return "yaw_angle_max";
-            case Field::yaw_speed:
-                return "yaw_speed";
-            case Field::turn_bank_angle_max:
-                return "turn_bank_angle_max";
-            case Field::turn_bank_speed:
-                return "turn_bank_speed";
-            case Field::laser:
-                return "laser";
-            case Field::health:
-                return "health";
-            case Field::laser_mode:
-                return "laser_mode";
-            case Field::laser_fire_rate:
-                return "laser_fire_rate";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, PlayerSimConfig>
@@ -139,8 +109,6 @@ struct PlayerSimConfig {
                 return invoke_field<Field::laser_mode>(self, std::forward<Visitor>(visitor));
             case Field::laser_fire_rate:
                 return invoke_field<Field::laser_fire_rate>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -159,3 +127,16 @@ struct PlayerSimConfig {
     ShipFireRate laser_fire_rate{ShipFireRate::FullAuto};
 };
 } // namespace ioj::sim
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::PlayerSimConfig::Field>() noexcept
+    -> std::size_t {
+    return 11;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::sim::PlayerSimConfig::Field, ioj::Name>{
+    ioj::PackedStrings{
+        "thrust_energy_max\000pitch_angle_max\000pitch_speed\000yaw_angle_max\000yaw_speed\000turn_"
+        "bank_angle_max\000turn_bank_speed\000laser\000health\000laser_mode\000laser_fire_rate",
+        std::array<std::uint8_t, 12>{0, 18, 34, 46, 60, 70, 90, 106, 112, 119, 130, 146}}};

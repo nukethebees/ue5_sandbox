@@ -3,10 +3,13 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -19,13 +22,12 @@ struct LaserWeaponSimConfig {
         projectile_speed,
         max_distance,
         fire_cooldown,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, LaserWeaponSimConfig> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::damage) {
             return (self.damage);
@@ -46,23 +48,6 @@ struct LaserWeaponSimConfig {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::damage:
-                return "damage";
-            case Field::projectile_speed:
-                return "projectile_speed";
-            case Field::max_distance:
-                return "max_distance";
-            case Field::fire_cooldown:
-                return "fire_cooldown";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, LaserWeaponSimConfig>
@@ -76,8 +61,6 @@ struct LaserWeaponSimConfig {
                 return invoke_field<Field::max_distance>(self, std::forward<Visitor>(visitor));
             case Field::fire_cooldown:
                 return invoke_field<Field::fire_cooldown>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -89,3 +72,14 @@ struct LaserWeaponSimConfig {
     float fire_cooldown{0.33f};
 };
 } // namespace ioj::sim
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::LaserWeaponSimConfig::Field>() noexcept
+    -> std::size_t {
+    return 4;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::sim::LaserWeaponSimConfig::Field, ioj::Name>{
+    ioj::PackedStrings{"damage\000projectile_speed\000max_distance\000fire_cooldown",
+                       std::array<std::uint8_t, 5>{0, 7, 24, 37, 51}}};

@@ -29,8 +29,9 @@ enum class HistoryField : std::uint8_t {
     LasersFired = static_cast<std::uint8_t>(ActiveLasers) + 1,
     Count = static_cast<std::uint8_t>(LasersFired) + 1,
 };
-struct HistoryFieldMask : ioj::FieldMask<HistoryField> {
-    using Base = ioj::FieldMask<HistoryField>;
+struct HistoryFieldMask
+    : ioj::FieldMask<HistoryField, static_cast<std::size_t>(HistoryField::Count)> {
+    using Base = ioj::FieldMask<HistoryField, static_cast<std::size_t>(HistoryField::Count)>;
 
     using Base::Base;
     [[nodiscard]] static constexpr auto

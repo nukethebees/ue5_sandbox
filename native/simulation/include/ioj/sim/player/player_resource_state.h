@@ -3,10 +3,13 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -15,13 +18,12 @@ struct PlayerResourceState {
     enum class Field : std::uint8_t {
         thrust_energy,
         thrust_change_rate,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, PlayerResourceState> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::thrust_energy) {
             return (self.thrust_energy);
@@ -36,19 +38,6 @@ struct PlayerResourceState {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::thrust_energy:
-                return "thrust_energy";
-            case Field::thrust_change_rate:
-                return "thrust_change_rate";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, PlayerResourceState>
@@ -59,8 +48,6 @@ struct PlayerResourceState {
             case Field::thrust_change_rate:
                 return invoke_field<Field::thrust_change_rate>(self,
                                                                std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -70,3 +57,14 @@ struct PlayerResourceState {
     float thrust_change_rate{};
 };
 } // namespace ioj::sim::player
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::player::PlayerResourceState::Field>() noexcept
+    -> std::size_t {
+    return 2;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::sim::player::PlayerResourceState::Field, ioj::Name>{
+    ioj::PackedStrings{"thrust_energy\000thrust_change_rate",
+                       std::array<std::uint8_t, 3>{0, 14, 33}}};

@@ -109,7 +109,7 @@ auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nod
     auto const base{ir.types.template_type(
         ir.types.intern("ioj::FieldMask",
                         {ir.types.dependency("ioj::FieldMask", "ioj/field_mask.h")}),
-        {enum_type})};
+        {enum_type, ir.types.intern("static_cast<std::size_t>(" + enum_name + "::Count)")})};
     NodeListBuilder children{ir};
     children.add(ir.using_declaration(ir.store_text("Base"), base))
         .add(ir.raw("using Base::Base;"));

@@ -3,13 +3,15 @@
 
 #pragma once
 
+#include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
 #include "ioj/levels/identifiers.h"
 #include "ioj/vector_value_math.h"
 
 #include <cassert>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -20,13 +22,12 @@ struct LevelCameraDefinition {
         target_entity_ids,
         offset_direction,
         distance,
-        Count,
     };
 
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, LevelCameraDefinition> &&
-                  Selected < Field::Count)
+                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::target_entity_ids) {
             return (self.target_entity_ids);
@@ -44,21 +45,6 @@ struct LevelCameraDefinition {
         std::forward<Visitor>(visitor).template operator()<Selected>(get_field<Selected>(self));
     }
 
-    static constexpr std::string_view field_name(Field field) {
-        switch (field) {
-            case Field::target_entity_ids:
-                return "target_entity_ids";
-            case Field::offset_direction:
-                return "offset_direction";
-            case Field::distance:
-                return "distance";
-            case Field::Count:
-                break;
-        }
-        assert(false && "Invalid record field");
-        std::unreachable();
-    }
-
     template <typename Self, typename Visitor>
     static constexpr void visit_field(Self& self, Field field, Visitor&& visitor)
         requires std::same_as<std::remove_const_t<Self>, LevelCameraDefinition>
@@ -70,8 +56,6 @@ struct LevelCameraDefinition {
                 return invoke_field<Field::offset_direction>(self, std::forward<Visitor>(visitor));
             case Field::distance:
                 return invoke_field<Field::distance>(self, std::forward<Visitor>(visitor));
-            case Field::Count:
-                break;
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -82,3 +66,14 @@ struct LevelCameraDefinition {
     double distance{};
 };
 } // namespace ioj::levels
+namespace ioj {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::levels::LevelCameraDefinition::Field>() noexcept
+    -> std::size_t {
+    return 3;
+}
+} // namespace ioj
+template <>
+inline constexpr auto ioj::enum_strings<::ioj::levels::LevelCameraDefinition::Field, ioj::Name>{
+    ioj::PackedStrings{"target_entity_ids\000offset_direction\000distance",
+                       std::array<std::uint8_t, 4>{0, 18, 35, 44}}};

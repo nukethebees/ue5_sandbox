@@ -12,11 +12,19 @@
 #include <lispb/indices.h>
 
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace lispb::codegen::detail {
+
+auto enum_count_specialization(CppIR& ir, CppTypeId enum_type, std::size_t count) -> NodeId;
+auto enum_strings_specialization(CppIR& ir,
+                                 std::string_view qualified,
+                                 std::string_view category,
+                                 std::span<std::string const> names,
+                                 bool wide = false) -> NodeId;
 
 auto lower_schema_function(LoweringContext& context,
                            FunctionSchemaId schema,

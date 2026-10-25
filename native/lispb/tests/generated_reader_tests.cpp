@@ -345,11 +345,11 @@ TEST(GeneratedS7Reader, AppliesOverrideChainsFromDistinctSourcesWithoutMutatingT
 }
 
 TEST(GeneratedS7Reader, UsesCompactMasksAndSupportsMoreThan64Fields) {
-    enum class Small : std::uint8_t { Required, Optional, Count };
-    static_assert(std::same_as<RecordMask<Small>, ioj::FieldMask<Small>>);
+    enum class Small : std::uint8_t { Required, Optional };
+    static_assert(std::same_as<RecordMask<Small, 2>, ioj::FieldMask<Small, 2>>);
     std::array<std::string_view, 2> constexpr names{"required", "optional"};
-    auto constexpr required{required_fields<Small>({Small::Required})};
-    RecordMask<Small> seen;
+    auto constexpr required{required_fields<Small, 2>({Small::Required})};
+    RecordMask<Small, 2> seen;
     AstDiagnostics errors;
     require_fields<Small>(seen, required, names, "record", errors);
     ASSERT_EQ(errors.size(), 1u);
@@ -358,14 +358,14 @@ TEST(GeneratedS7Reader, UsesCompactMasksAndSupportsMoreThan64Fields) {
     require_fields<Small>(seen, required, names, "record", errors);
     EXPECT_TRUE(errors.empty());
 
-    enum class Large : std::uint8_t { Last = 64, Count };
+    enum class Large : std::uint8_t { Last = 64 };
     auto constexpr large_names{[] {
         std::array<std::string_view, 65> result{};
         result.back() = "last";
         return result;
     }()};
-    auto constexpr large_required{required_fields<Large>({Large::Last})};
-    RecordMask<Large> large_seen;
+    auto constexpr large_required{required_fields<Large, 65>({Large::Last})};
+    RecordMask<Large, 65> large_seen;
     require_fields<Large>(large_seen, large_required, large_names, "record", errors);
     ASSERT_EQ(errors.size(), 1u);
     EXPECT_EQ(errors.front().node_path, "record.last");

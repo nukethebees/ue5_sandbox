@@ -26,7 +26,7 @@ void read_record(DecodeContext context,
                           std::format("Expected a '{}' record", tag)});
         return;
     }
-    RecordMask<Field> seen;
+    RecordMask<Field, N> seen;
     auto const count{children->size()};
     for (std::size_t i{1}; i < count; i += 2) {
         auto const key{(*children)[i]};
@@ -48,7 +48,7 @@ void read_record(DecodeContext context,
                               std::format("Unknown property ':{}'", name)});
             continue;
         }
-        assert(static_cast<std::size_t>(*field) < static_cast<std::size_t>(Field::Count));
+        assert(static_cast<std::size_t>(*field) < N);
         if (seen.has(*field)) {
             errors.push_back({AstErrorCode::DuplicateProperty,
                               location,
@@ -67,9 +67,8 @@ void decode_record(DecodeContext context,
                    std::string_view tag,
                    std::array<std::string_view, N> const& names,
                    Visit visit,
-                   RecordMask<Field> const& required = {}) {
-    static_assert(N == static_cast<std::size_t>(Field::Count));
-    RecordMask<Field> seen;
+                   RecordMask<Field, N> const& required = {}) {
+    RecordMask<Field, N> seen;
     auto const& ast{context.reader.ast()};
     auto const decode{[&](auto const& self, NodeIndex node) -> void {
         if (ast.node(node).kind == NodeKind::List) {

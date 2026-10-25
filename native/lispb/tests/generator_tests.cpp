@@ -86,7 +86,10 @@ TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
     EXPECT_NE(header.find("Matrix = static_cast<std::uint8_t>(First) + 1"), std::string::npos);
     EXPECT_NE(header.find("Last = static_cast<std::uint8_t>(Matrix) + (2) * (3)"),
               std::string::npos);
-    EXPECT_NE(header.find("struct FFieldMask : ioj::FieldMask<EField>"), std::string::npos);
+    EXPECT_NE(
+        header.find(
+            "struct FFieldMask : ioj::FieldMask<EField, static_cast<std::size_t>(EField::Count)>"),
+        std::string::npos);
     EXPECT_NE(
         header.find("matrix_field(std::int32_t const row_index, std::int32_t const column_index)"),
         std::string::npos);
