@@ -38,6 +38,7 @@
 #include <codegen/schema/type_refs.h>
 #include <lispb/compiler_storage.h>
 #include <lispb/indices.h>
+#include <lispb/schema/source_renderer.h>
 #include <lispb/strings.h>
 
 #include <gtest/gtest.h>
@@ -226,6 +227,43 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
         EXPECT_EQ(selected.find("std::array names"), std::string::npos);
         EXPECT_EQ(selected.contains("<string_view>"), helper != NativeEnumHelper::traits);
         EXPECT_EQ(selected.find("<unordered_map>"), std::string::npos);
+    }
+}
+
+TEST(Lowering, EnumFormatterOptInPreservesSourceRoundTrip) {
+    for (auto const enabled : {false, true}) {
+        SCOPED_TRACE(enabled);
+        CompilerTestContext context;
+        auto const manifest{parse_test_manifest(context,
+                                                std::format(R"(
+          (module states :header States.h :namespace example
+            (enum State std::uint8_t :native-api true :helpers (to-string {})
+              (value Ready))))",
+                                                            enabled ? "formatter" : ""))};
+        auto const output{render_test_manifest(context, manifest).front().content};
+        EXPECT_EQ(output.contains("ioj/enum_formatter.h"), enabled);
+        EXPECT_EQ(output.contains("ioj::EnumFormatter<"), enabled);
+        EXPECT_EQ(output.contains("struct formatter<"), enabled);
+
+        auto const source{
+            schema::render_module_source(manifest.declarations, manifest.modules.front())};
+        CompilerTestContext reparsed;
+        auto const round_trip{parse_test_manifest(reparsed, source)};
+        EXPECT_EQ(output, render_test_manifest(reparsed, round_trip).front().content);
+    }
+}
+
+TEST(Lowering, EnumFormatterRequiresNameConversion) {
+    CompilerTestContext context;
+    auto const manifest{parse_test_manifest(context, R"(
+      (module states :header States.h
+        (enum State std::uint8_t :native-api true :helpers (formatter)
+          (value Ready))))")};
+    try {
+        static_cast<void>(render_test_manifest(context, manifest));
+        FAIL() << "Expected an invalid formatter declaration";
+    } catch (std::invalid_argument const& error) {
+        EXPECT_STREQ(error.what(), "Enum 'State' formatter requires the to-string helper");
     }
 }
 

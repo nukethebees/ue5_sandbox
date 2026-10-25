@@ -18,6 +18,7 @@ enum class NativeEnumHelper : NativeEnumHelperUnderlying {
     to_serialized_string,
     try_parse_serialized,
     traits,
+    formatter,
 };
 
 [[nodiscard]] constexpr auto to_serialized_string(NativeEnumHelper const value) noexcept
@@ -41,6 +42,9 @@ enum class NativeEnumHelper : NativeEnumHelperUnderlying {
         case NativeEnumHelper::traits: {
             return "traits";
         }
+        case NativeEnumHelper::formatter: {
+            return "formatter";
+        }
         default: {
             return "<invalid NativeEnumHelper>";
         }
@@ -50,39 +54,36 @@ enum class NativeEnumHelper : NativeEnumHelperUnderlying {
 [[nodiscard]] constexpr auto
     try_parse_serialized_native_enum_helper(std::string_view const value) noexcept
     -> std::optional<NativeEnumHelper> {
-    if (!value.starts_with("t")) {
-        return std::nullopt;
-    }
-
-    auto const suffix{value.substr(1)};
-
-    switch (suffix.size()) {
-        case 5: {
-            if (suffix == "raits") {
+    switch (value.size()) {
+        case 6: {
+            if (value == "traits") {
                 return NativeEnumHelper::traits;
             }
             return std::nullopt;
         }
-        case 8: {
-            if (suffix == "o-string") {
+        case 9: {
+            if (value == "to-string") {
                 return NativeEnumHelper::to_string;
             }
-            if (suffix == "ry-parse") {
+            if (value == "try-parse") {
                 return NativeEnumHelper::try_parse;
+            }
+            if (value == "formatter") {
+                return NativeEnumHelper::formatter;
             }
             return std::nullopt;
         }
-        case 16: {
-            if (suffix == "o-display-string") {
+        case 17: {
+            if (value == "to-display-string") {
                 return NativeEnumHelper::to_display_string;
             }
             return std::nullopt;
         }
-        case 19: {
-            if (suffix == "o-serialized-string") {
+        case 20: {
+            if (value == "to-serialized-string") {
                 return NativeEnumHelper::to_serialized_string;
             }
-            if (suffix == "ry-parse-serialized") {
+            if (value == "try-parse-serialized") {
                 return NativeEnumHelper::try_parse_serialized;
             }
             return std::nullopt;

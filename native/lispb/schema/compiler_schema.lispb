@@ -286,7 +286,8 @@
     (value to_display_string :serialized-name "to-display-string")
     (value to_serialized_string :serialized-name "to-serialized-string")
     (value try_parse_serialized :serialized-name "try-parse-serialized")
-    (value traits :serialized-name "traits")))
+    (value traits :serialized-name "traits")
+    (value formatter :serialized-name "formatter")))
 
 
 (module semantic_relation_unit

@@ -317,6 +317,7 @@ target_sources(codegen-generated-tests PRIVATE
   tests/packed_support_tests.cpp
   tests/generated_reader_tests.cpp
   tests/structural_diff_tests.cpp
+  tests/enum_formatter_tests.cpp
 )
 set_target_properties(codegen-generated-tests PROPERTIES UNITY_BUILD OFF)
 target_link_libraries(codegen-generated-tests PRIVATE

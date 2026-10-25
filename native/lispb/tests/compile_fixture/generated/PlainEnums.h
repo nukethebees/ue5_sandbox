@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_formatter.h"
 #include "ioj/enum_traits.h"
 #include "ioj/parse_enum.h"
 
@@ -84,6 +85,19 @@ enum class ESparseFixture : ESparseFixtureUnderlying {
     Positive = 4,
 };
 
+[[nodiscard]] constexpr auto to_string(ESparseFixture const value) noexcept -> std::string_view {
+    switch (value) {
+        case ESparseFixture::Negative: {
+            return "Negative";
+        }
+        case ESparseFixture::Positive: {
+            return "Positive";
+        }
+    }
+
+    return "<invalid ESparseFixture>";
+}
+
 [[nodiscard]] constexpr auto try_parse_sparse_fixture(std::string_view const value) noexcept
     -> std::optional<ESparseFixture> {
     if (value == "Negative") {
@@ -146,3 +160,14 @@ template <>
     return 2;
 }
 } // namespace ioj
+namespace std {
+template <>
+struct formatter<::codegen_compile_fixture::EPlainFixture>
+    : ioj::EnumFormatter<::codegen_compile_fixture::EPlainFixture> {};
+} // namespace std
+
+namespace std {
+template <>
+struct formatter<::codegen_compile_fixture::ESparseFixture>
+    : ioj::EnumFormatter<::codegen_compile_fixture::ESparseFixture> {};
+} // namespace std

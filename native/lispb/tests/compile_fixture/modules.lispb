@@ -145,14 +145,14 @@
   (enum EPlainFixture @standard_uint8
     :enum-array true
     :native-api true
-    :helpers (to-string try-parse to-display-string to-serialized-string try-parse-serialized traits)
+    :helpers (to-string try-parse to-display-string to-serialized-string try-parse-serialized traits formatter)
     (value First
       :serialized-name first)
     (value ReadableName
       :display-name "Readable Name"
       :serialized-name readable_name))
   (enum ESparseFixture std::int32_t
-    :native-api true :helpers (try-parse try-parse-serialized)
+    :native-api true :helpers (to-string try-parse try-parse-serialized formatter)
     (value Negative :value -2 :serialized-name negative)
     (value Positive :value 4 :serialized-name positive))
   (enum EReorderedFixture std::uint8_t

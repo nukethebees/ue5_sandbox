@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/enum_formatter.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -20,6 +21,25 @@ enum class ParameterKind : ParameterKindUnderlying {
     factory,
     existing,
 };
+
+[[nodiscard]] constexpr auto to_string(ParameterKind const value) noexcept -> std::string_view {
+    switch (value) {
+        case ParameterKind::value: {
+            return "value";
+        }
+        case ParameterKind::callback: {
+            return "callback";
+        }
+        case ParameterKind::factory: {
+            return "factory";
+        }
+        case ParameterKind::existing: {
+            return "existing";
+        }
+    }
+
+    return "<invalid ParameterKind>";
+}
 
 [[nodiscard]] constexpr auto to_serialized_string(ParameterKind const value) noexcept
     -> std::string_view {
@@ -50,3 +70,8 @@ enum class ParameterKind : ParameterKindUnderlying {
 }
 
 } // namespace slate_codegen::detail
+namespace std {
+template <>
+struct formatter<::slate_codegen::detail::ParameterKind>
+    : ioj::EnumFormatter<::slate_codegen::detail::ParameterKind> {};
+} // namespace std

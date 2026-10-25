@@ -3,7 +3,7 @@
   :namespace slate_codegen::detail
   (enum ParameterKind std::uint8_t
     :native-api true
-    :helpers (to-serialized-string try-parse-serialized)
+    :helpers (to-string to-serialized-string try-parse-serialized formatter)
     (value value :serialized-name "value")
     (value callback :serialized-name "callback")
     (value factory :serialized-name "factory")

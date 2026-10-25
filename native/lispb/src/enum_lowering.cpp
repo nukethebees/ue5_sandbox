@@ -600,6 +600,23 @@ auto native_enum_traits(LoweringContext& context,
     return result.build();
 }
 
+auto native_enum_formatter(LoweringContext& context,
+                           ModuleSettingsId settings,
+                           DeclarationHandle schema) -> NodeId {
+    auto& ir{context.ir};
+    auto const enum_type{ir.types.intern(native_enum_name(context, settings, schema))};
+    auto const formatter{
+        ir.record(ir.template_id(ir.named("formatter"), {ir.type_reference(enum_type)}), {})};
+    ir.set_record_template(formatter, ir.template_specialization());
+    ir.set_record_bases(
+        formatter,
+        {ir.types.template_type(
+            ir.types.named("ioj::EnumFormatter",
+                           {ir.types.dependency("ioj::EnumFormatter", "ioj/enum_formatter.h")}),
+            {enum_type})});
+    return ir.namespace_node(ir.strings.intern("std"), {formatter});
+}
+
 auto unreal_underlying_type(std::string_view const spelling) -> std::string {
     if (spelling == "std::uint8_t") {
         return "uint8";
@@ -760,6 +777,10 @@ auto lower_enum(LoweringContext& context,
         if (needs_traits) {
             emission.header_global = {ir.namespace_node(
                 ir.strings.intern("ioj"), native_enum_traits(context, settings, schema))};
+        }
+        if (std::ranges::contains(context.declarations.items(enums.helpers[row]),
+                                  NativeEnumHelper::formatter)) {
+            emission.header_global.push_back(native_enum_formatter(context, settings, schema));
         }
         if (auto const projection_id{enums.unreal_projection[row]}) {
             auto const projection{*projection_id};

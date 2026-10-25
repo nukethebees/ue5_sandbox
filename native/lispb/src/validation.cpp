@@ -694,6 +694,11 @@ class Validator {
                                             "' has an invalid or duplicate helper"};
             }
         }
+        if (helpers.contains(NativeEnumHelper::formatter) &&
+            !helpers.contains(NativeEnumHelper::to_string)) {
+            throw std::invalid_argument{
+                std::format("Enum '{}' formatter requires the to-string helper", name)};
+        }
         if (enums.native_api[schema] && enums.reflection[schema] != EnumReflection::none) {
             throw std::invalid_argument{"Native enum '" + name + "' cannot use Unreal reflection"};
         }

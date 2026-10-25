@@ -327,22 +327,19 @@ class Parser {
         auto const spelling{syntax_.text(name)};
         if (found == parameter_states_.end()) {
             fail(syntax_.token_span(name),
-                 std::format(
-                     "undeclared {} parameter '{}'", to_serialized_string(expected), spelling));
+                 std::format("undeclared {:s} parameter '{}'", expected, spelling));
         }
         auto& state{found->second};
         if (state.kind != expected) {
             fail(syntax_.token_span(name),
-                 std::format("parameter '{}' is declared as {}, not {}",
+                 std::format("parameter '{}' is declared as {:s}, not {:s}",
                              spelling,
-                             to_serialized_string(state.kind),
-                             to_serialized_string(expected)));
+                             state.kind,
+                             expected));
         }
         if (!multiple && state.uses != 0) {
             fail(syntax_.token_span(name),
-                 std::format("{} parameter '{}' may only be used once",
-                             to_serialized_string(expected),
-                             spelling));
+                 std::format("{:s} parameter '{}' may only be used once", expected, spelling));
         }
         ++state.uses;
     }
