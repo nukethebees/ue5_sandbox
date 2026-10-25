@@ -64,7 +64,7 @@ auto linear_settings(float const maximum_range = 100.0f) -> ioj::settings::Radar
     settings.tactical_range = maximum_range * 0.5f;
     settings.maximum_range = maximum_range;
     settings.combat_display_radius = 0.25f;
-    return sanitize_radar_settings(settings);
+    return ioj::presentation::sanitize_radar_settings(settings);
 }
 
 auto nonlinear_settings() -> ioj::settings::Radar {
@@ -73,7 +73,7 @@ auto nonlinear_settings() -> ioj::settings::Radar {
     settings.tactical_range = 400.0f;
     settings.maximum_range = 2000.0f;
     settings.combat_display_radius = 0.45f;
-    return sanitize_radar_settings(settings);
+    return ioj::presentation::sanitize_radar_settings(settings);
 }
 } // namespace ioj::test_radar_source
 
@@ -281,76 +281,6 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                              no_roll_instances[0].radar_position.X > 0.0f);
         TestRunner->TestTrue(TEXT("Right remains positive on the radar"),
                              no_roll_instances[0].radar_position.Y > 0.0f);
-    }
-
-    TEST_METHOD(NonlinearMappingUsesStableSemanticAnchors)
-    {
-        auto const settings{ioj::test_radar_source::nonlinear_settings()};
-        auto const centre{ioj::radar_source::to_radar_position(FVector3f::ZeroVector, settings)};
-        auto const combat{
-            ioj::radar_source::to_radar_position({settings.combat_range, 0.0f, 0.0f}, settings)};
-        auto const maximum{
-            ioj::radar_source::to_radar_position({settings.maximum_range, 0.0f, 0.0f}, settings)};
-
-        TestRunner->TestTrue(TEXT("The centre maps exactly to the origin"), centre.IsZero());
-        TestRunner->TestTrue(
-            TEXT("The combat boundary maps to its configured radius"),
-            FMath::IsNearlyEqual(combat.X, settings.combat_display_radius, UE_KINDA_SMALL_NUMBER));
-        TestRunner->TestTrue(TEXT("The maximum range maps exactly to the edge"),
-                             FMath::IsNearlyEqual(maximum.X, 1.0f, UE_KINDA_SMALL_NUMBER));
-        TestRunner->TestTrue(TEXT("The tactical boundary maps near eighty percent"),
-                             FMath::IsNearlyEqual(ioj::radar_source::to_radar_display_radius(
-                                                      settings.tactical_range, settings),
-                                                  0.8f,
-                                                  0.01f));
-
-        auto previous_radius{0.0f};
-        for (int32 distance{1}; distance <= 2000; ++distance) {
-            auto const radius{
-                ioj::radar_source::to_radar_display_radius(static_cast<float>(distance), settings)};
-            TestRunner->TestTrue(TEXT("Mapping is strictly monotonic"), radius > previous_radius);
-            previous_radius = radius;
-        }
-
-        for (auto const boundary : {settings.combat_range, settings.tactical_range}) {
-            auto const before{
-                ioj::radar_source::to_radar_display_radius(boundary - 1.0f, settings)};
-            auto const at{ioj::radar_source::to_radar_display_radius(boundary, settings)};
-            auto const after{ioj::radar_source::to_radar_display_radius(boundary + 1.0f, settings)};
-            TestRunner->TestTrue(TEXT("Movement remains finite across a semantic boundary"),
-                                 FMath::IsFinite(before) && FMath::IsFinite(at) &&
-                                     FMath::IsFinite(after));
-            TestRunner->TestTrue(TEXT("Movement remains smooth across a semantic boundary"),
-                                 FMath::IsNearlyEqual(at - before, after - at, 0.0001f));
-        }
-    }
-
-    TEST_METHOD(NonlinearMappingPreservesBearingAndCompressesHeight)
-    {
-        auto const settings{ioj::test_radar_source::nonlinear_settings()};
-        FVector2f const planar_deltas[]{
-            {80.0f, 60.0f}, {-80.0f, 60.0f}, {-80.0f, -60.0f}, {80.0f, -60.0f}};
-        for (auto const planar_delta : planar_deltas) {
-            auto const mapped{ioj::radar_source::to_radar_position(
-                {planar_delta.X, planar_delta.Y, 0.0f}, settings)};
-            auto const cross{planar_delta.X * mapped.Y - planar_delta.Y * mapped.X};
-            auto const dot{planar_delta.X * mapped.X + planar_delta.Y * mapped.Y};
-            TestRunner->TestTrue(TEXT("Planar bearing is preserved in every quadrant"),
-                                 FMath::IsNearlyZero(cross, 0.001f) && dot > 0.0f);
-        }
-
-        auto previous_height{0.0f};
-        for (float const height : {25.0f, 100.0f, 400.0f, 1000.0f}) {
-            auto const above{
-                ioj::radar_source::to_radar_position({0.0f, 0.0f, height}, settings).Z};
-            auto const below{
-                ioj::radar_source::to_radar_position({0.0f, 0.0f, -height}, settings).Z};
-            TestRunner->TestTrue(TEXT("Vertical compression is signed and symmetric"),
-                                 above > 0.0f && FMath::IsNearlyEqual(above, -below));
-            TestRunner->TestTrue(TEXT("Vertical compression is strictly monotonic"),
-                                 above > previous_height);
-            previous_height = above;
-        }
     }
 
     TEST_METHOD(ContactMappingDoesNotDependOnOtherContacts)

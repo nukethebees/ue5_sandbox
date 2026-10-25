@@ -1,7 +1,10 @@
 #include <SpaceGamePresentation/audio/GameAudio.h>
 
+#include <ioj/files.h>
 #include <SpaceGamePresentation/audio/BoomAudioLibrary.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
+
+#include <SandboxCoreEngine/strings.h>
 
 #include <Components/AudioComponent.h>
 #include <Engine/GameInstance.h>
@@ -35,7 +38,7 @@ void FGameAudioFacade::play_button_pressed() const {
 void FGameAudio::initialize(UGameInstance& game_instance) {
     game_instance_ = &game_instance;
     external_audio_ = resolve_boom_audio_library(get_configured_boom_audio_root());
-    if (external_audio_.root.path.IsEmpty()) {
+    if (external_audio_.root.path.empty()) {
         UE_LOG(LogSandboxAudio,
                Warning,
                TEXT("BEE_AUDIO_ROOT is unset. External audio sources are unavailable."));
@@ -44,7 +47,7 @@ void FGameAudio::initialize(UGameInstance& game_instance) {
                Warning,
                TEXT("BEE_AUDIO_ROOT is not an existing directory: \"%s\". External audio "
                     "sources are unavailable."),
-               *external_audio_.root.path);
+               *ioj::to_fstring(ioj::path_to_utf8(external_audio_.root.path)));
     } else {
         auto all_directories_valid{true};
         for (auto const& directory : external_audio_.directories) {
@@ -57,8 +60,8 @@ void FGameAudio::initialize(UGameInstance& game_instance) {
                    Warning,
                    TEXT("Expected external audio source directory is missing or is not a "
                         "directory: \"%s\" (relative directory \"%s\")."),
-                   *directory.path,
-                   *directory.relative_directory);
+                   *ioj::to_fstring(ioj::path_to_utf8(directory.path)),
+                   *ioj::to_fstring(ioj::path_to_utf8(directory.relative_path)));
         }
 
         if (all_directories_valid && !external_audio_.menu_ambience_source.valid) {
@@ -66,24 +69,29 @@ void FGameAudio::initialize(UGameInstance& game_instance) {
                    Warning,
                    TEXT("Expected menu ambience source file is missing: \"%s\" (relative path "
                         "\"%s\")."),
-                   *external_audio_.menu_ambience_source.path,
-                   *external_audio_.menu_ambience_source.relative_path);
+                   *ioj::to_fstring(ioj::path_to_utf8(external_audio_.menu_ambience_source.path)),
+                   *ioj::to_fstring(
+                       ioj::path_to_utf8(external_audio_.menu_ambience_source.relative_path)));
         }
         if (all_directories_valid && !external_audio_.menu_button_pressed_source.valid) {
             UE_LOG(LogSandboxAudio,
                    Warning,
                    TEXT("Expected menu button source file is missing: \"%s\" (relative path "
                         "\"%s\")."),
-                   *external_audio_.menu_button_pressed_source.path,
-                   *external_audio_.menu_button_pressed_source.relative_path);
+                   *ioj::to_fstring(
+                       ioj::path_to_utf8(external_audio_.menu_button_pressed_source.path)),
+                   *ioj::to_fstring(ioj::path_to_utf8(
+                       external_audio_.menu_button_pressed_source.relative_path)));
         }
         if (all_directories_valid && !external_audio_.player_ship_ambience_source.valid) {
             UE_LOG(LogSandboxAudio,
                    Warning,
                    TEXT("Expected player ship ambience source file is missing: \"%s\" (relative "
                         "path \"%s\")."),
-                   *external_audio_.player_ship_ambience_source.path,
-                   *external_audio_.player_ship_ambience_source.relative_path);
+                   *ioj::to_fstring(
+                       ioj::path_to_utf8(external_audio_.player_ship_ambience_source.path)),
+                   *ioj::to_fstring(ioj::path_to_utf8(
+                       external_audio_.player_ship_ambience_source.relative_path)));
         }
     }
 

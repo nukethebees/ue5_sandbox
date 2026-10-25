@@ -292,7 +292,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     FEntityOverlayTeamColours entity_overlay_team_colours_;
     FEntityOverlayHealthMaximums entity_overlay_maximum_health_;
     TArray<EEntityOverlayObjectiveRole> entity_overlay_objective_roles_;
-    FSoftTargetSelectionSettings soft_target_selection_settings_;
+    ioj::settings::SoftTarget soft_target_selection_settings_;
     float soft_target_pulse_duration_{0.15f};
     float soft_target_fade_out_duration_{0.15f};
     float seconds_per_tick_{0.0f};

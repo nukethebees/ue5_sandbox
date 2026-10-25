@@ -105,7 +105,7 @@ void FHUDManager::initialise(sim::Mission const& new_mission,
     soft_target_instances_ = soft_target_instances;
     warned_multiple_world_target_views_ = false;
     configure_world_soft_target_renderer();
-    radar_settings_ = sanitize_radar_settings(level_config.presentation.radar);
+    radar_settings_ = ioj::presentation::sanitize_radar_settings(level_config.presentation.radar);
     radar_style_.grid_opacity = radar_settings_.grid_opacity;
     radar_style_.core_cell_radius = radar_settings_.core_cell_radius;
     radar_style_.combat_cell_radius = radar_settings_.combat_cell_radius;
@@ -148,16 +148,7 @@ void FHUDManager::initialise(sim::Mission const& new_mission,
         .fighter = level_config.fighters.simulation.health,
         .turret = level_config.turrets.simulation.max_health,
     };
-    soft_target_selection_settings_ = {
-        .acquisition_radius_pixels = overlay.soft_target.acquisition_radius_pixels,
-        .retention_radius_pixels = overlay.soft_target.retention_radius_pixels,
-        .centre_tie_radius_pixels = overlay.soft_target.centre_tie_radius_pixels,
-        .switch_improvement_ratio = overlay.soft_target.switch_improvement_ratio,
-        .range_transition_start_multiplier = overlay.soft_target.range_transition_start_multiplier,
-        .minimum_indicator_radius_pixels = overlay.soft_target.minimum_radius_pixels,
-        .maximum_indicator_radius_pixels = overlay.soft_target.maximum_radius_pixels,
-        .bounds_padding_pixels = overlay.soft_target.bounds_padding_pixels,
-    };
+    soft_target_selection_settings_ = overlay.soft_target;
     soft_target_pulse_duration_ = FMath::Max(overlay.soft_target.pulse_duration, 0.0f);
     soft_target_fade_out_duration_ = FMath::Max(overlay.soft_target.fade_out_duration, 0.0f);
     top_killer_ids_buffer.Reset();
@@ -500,7 +491,7 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
 
     check(entity_ledger);
     auto const batches{display_batches()};
-    FSoftTargetSelectionResult soft_target;
+    ioj::presentation::SoftTargetResult soft_target;
     if (registration.ship_hud.IsValid() && validate_player_ship_for_collection()) {
         auto const firing_transform{player_ship->get_middle_socket()};
         auto const camera_transform{FRotationMatrix{camera_rotation}};

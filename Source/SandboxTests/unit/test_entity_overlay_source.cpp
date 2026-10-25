@@ -84,7 +84,7 @@ auto entity_id(ioj::tests::FDisplayEntityTestData const& entities, int32 const i
 auto select_target(ioj::tests::FDisplayEntityTestData const& entities,
                    EntityTypeRadii const& entity_type_radii,
                    ::ioj::sim::EntityId const current_target = {},
-                   float const weapon_range = 1000.0f) -> FSoftTargetSelectionResult {
+                   float const weapon_range = 1000.0f) -> ioj::presentation::SoftTargetResult {
     std::vector<::ioj::sim::EntityId> ids;
     auto const count{entities.num()};
     for (int32 i{}; i < count; ++i) {
@@ -211,240 +211,25 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Excess health clamps to one"), output[0].health, 1.0f);
     }
 
-    TEST_METHOD(SelectsOnlyTheBestValidHostile)
+    TEST_METHOD(ConvertsCameraProjectionForNativeSelection)
     {
         ioj::tests::FDisplayEntityTestData entities;
-        auto entity_type_radii{make_entity_type_radii()};
+        auto radii{make_entity_type_radii()};
         add_entity(entities,
-                   entity_type_radii,
-                   {1000.0f, 0.0f, 0.0f},
+                   radii,
+                   {1000.f, 0.f, 0.f},
                    20,
-                   ::ioj::sim::EntityType::Turret,
-                   0.0f,
-                   true,
-                   ETestTeam::Green);
-        add_entity(entities,
-                   entity_type_radii,
-                   {1000.0f, 50.0f, 0.0f},
-                   20,
-                   ::ioj::sim::EntityType::Turret,
-                   0.0f,
+                   ioj::sim::EntityType::Turret,
+                   100.f,
                    true,
                    ETestTeam::Red);
-        add_entity(entities,
-                   entity_type_radii,
-                   {1000.0f, 80.0f, 0.0f},
-                   20,
-                   ::ioj::sim::EntityType::Turret,
-                   0.0f,
-                   true,
-                   ETestTeam::Blue);
-        add_entity(entities,
-                   entity_type_radii,
-                   {1000.0f, 0.0f, 0.0f},
-                   20,
-                   ::ioj::sim::EntityType::Turret,
-                   0.0f,
-                   false,
-                   ETestTeam::Red);
-
-        auto const selected{select_target(entities, entity_type_radii)};
-        TestRunner->TestEqual(TEXT("Nearest hostile is selected"),
-                              selected.id.raw_value(),
-                              entity_id(entities, 1).raw_value());
-    }
-
-    TEST_METHOD(RetainsAndSwitchesWithHysteresis)
-    {
-        ioj::tests::FDisplayEntityTestData entities;
-        auto entity_type_radii{make_entity_type_radii()};
-        add_entity(entities,
-                   entity_type_radii,
-                   {1000.0f, 65.0f, 0.0f},
-                   20,
-                   ::ioj::sim::EntityType::Turret,
-                   0.0f,
-                   true,
-                   ETestTeam::Red);
-        add_entity(entities,
-                   entity_type_radii,
-                   {1000.0f, 80.0f, 0.0f},
-                   20,
-                   ::ioj::sim::EntityType::Turret,
-                   0.0f,
-                   true,
-                   ETestTeam::Blue);
-
-        auto const retained{select_target(entities, entity_type_radii, entity_id(entities, 1))};
-        TestRunner->TestEqual(TEXT("Small improvement does not switch"),
-                              retained.id.raw_value(),
-                              entity_id(entities, 1).raw_value());
-
-        entities.motion.get_view().view_locations().ys()[0] = 50.0f;
-        auto const switched{select_target(entities, entity_type_radii, entity_id(entities, 1))};
-        TestRunner->TestEqual(TEXT("Materially better candidate switches"),
-                              switched.id.raw_value(),
+        auto const result{select_target(entities, radii)};
+        TestRunner->TestEqual(TEXT("Adapter preserves entity identity"),
+                              result.id.raw_value(),
                               entity_id(entities, 0).raw_value());
-
-        entities.motion.get_view().view_locations().ys()[0] = 250.0f;
-        entities.motion.get_view().view_locations().ys()[1] = 250.0f;
-        auto const cleared{select_target(entities, entity_type_radii, entity_id(entities, 1))};
-        TestRunner->TestFalse(TEXT("Target outside retention is cleared"), cleared.id.is_valid());
-        TestRunner->TestTrue(TEXT("Valid on-screen lost target may fade"),
-                             cleared.previous_target_can_fade);
-
-        entities.set_health(1, 0);
-        auto const dead{select_target(entities, entity_type_radii, entity_id(entities, 1))};
-        TestRunner->TestFalse(TEXT("Dead target may not fade"), dead.previous_target_can_fade);
-    }
-
-    TEST_METHOD(ProjectedSizeDoesNotLetARearTargetDominate)
-    {
-        ioj::tests::FDisplayEntityTestData entities;
-        auto entity_type_radii{make_entity_type_radii()};
-        add_entity(entities,
-                   entity_type_radii,
-                   {2000.0f, 80.0f, 0.0f},
-                   20,
-                   ::ioj::sim::EntityType::CapitalShip,
-                   800.0f,
-                   true,
-                   ETestTeam::Red);
-        add_entity(entities,
-                   entity_type_radii,
-                   {1000.0f, 20.0f, 0.0f},
-                   20,
-                   ::ioj::sim::EntityType::Turret,
-                   5.0f,
-                   true,
-                   ETestTeam::Blue);
-
-        auto const selected{select_target(entities, entity_type_radii)};
-        TestRunner->TestEqual(TEXT("Better-centred front target wins"),
-                              selected.id.raw_value(),
-                              entity_id(entities, 1).raw_value());
-    }
-
-    TEST_METHOD(NearestSurfaceResolvesCentredTargetsAndHysteresis)
-    {
-        ioj::tests::FDisplayEntityTestData entities;
-        auto entity_type_radii{make_entity_type_radii()};
-        add_entity(entities,
-                   entity_type_radii,
-                   {2000.0f, 0.0f, 0.0f},
-                   20,
-                   ::ioj::sim::EntityType::CapitalShip,
-                   100.0f,
-                   true,
-                   ETestTeam::Red);
-        add_entity(entities,
-                   entity_type_radii,
-                   {1000.0f, 0.0f, 0.0f},
-                   20,
-                   ::ioj::sim::EntityType::Turret,
-                   5.0f,
-                   true,
-                   ETestTeam::Blue);
-
-        auto const selected{select_target(entities, entity_type_radii)};
-        TestRunner->TestEqual(TEXT("Nearest tied centre wins"),
-                              selected.id.raw_value(),
-                              entity_id(entities, 1).raw_value());
-
-        auto const switched{select_target(entities, entity_type_radii, entity_id(entities, 0))};
-        TestRunner->TestEqual(TEXT("Materially nearer tied target replaces rear target"),
-                              switched.id.raw_value(),
-                              entity_id(entities, 1).raw_value());
-    }
-
-    TEST_METHOD(NormalizesRangeAlphaUsingTargetSurfaceDistance)
-    {
-        ioj::tests::FDisplayEntityTestData entities;
-        auto entity_type_radii{make_entity_type_radii()};
-        add_entity(entities,
-                   entity_type_radii,
-                   {5000.0f, 0.0f, 0.0f},
-                   20,
-                   ::ioj::sim::EntityType::Turret,
-                   0.0f,
-                   true,
-                   ETestTeam::Red);
-
-        auto const comfortably_out_of_range{select_target(entities, entity_type_radii)};
-        TestRunner->TestEqual(TEXT("Beyond transition start clamps to zero"),
-                              comfortably_out_of_range.range_alpha,
-                              0.0f);
-
-        entities.motion.get_view().view_locations().xs()[0] = 2500.0f;
-        auto const approaching{select_target(entities, entity_type_radii)};
         TestRunner->TestEqual(
-            TEXT("Mid-transition range alpha is linear"), approaching.range_alpha, 0.5f);
-
-        entities.motion.get_view().view_locations().xs()[0] = 1100.0f;
-        entity_type_radii[::ioj::sim::EntityType::Turret] = 100.0f;
-        auto const at_range_boundary{select_target(entities, entity_type_radii)};
-        TestRunner->TestEqual(TEXT("Surface at range boundary has full range alpha"),
-                              at_range_boundary.range_alpha,
-                              1.0f);
-
-        entities.motion.get_view().view_locations().xs()[0] = 500.0f;
-        auto const inside_range{select_target(entities, entity_type_radii)};
+            TEXT("Adapter preserves camera projection scale"), result.world_units_per_pixel, 2.f);
         TestRunner->TestEqual(
-            TEXT("Inside range remains clamped to one"), inside_range.range_alpha, 1.0f);
-
-        auto const invalid_weapon_range{select_target(entities, entity_type_radii, {}, 0.0f)};
-        TestRunner->TestEqual(TEXT("Missing weapon range produces zero range alpha"),
-                              invalid_weapon_range.range_alpha,
-                              0.0f);
-    }
-
-    TEST_METHOD(RangeAlphaUsesTargetSurfaceRatherThanCentre)
-    {
-        ioj::tests::FDisplayEntityTestData entities;
-        auto entity_type_radii{make_entity_type_radii()};
-        add_entity(entities,
-                   entity_type_radii,
-                   {1100.0f, 0.0f, 0.0f},
-                   20,
-                   ::ioj::sim::EntityType::Turret,
-                   100.0f,
-                   true,
-                   ETestTeam::Red);
-
-        auto const selected{select_target(entities, entity_type_radii)};
-        TestRunner->TestEqual(TEXT("Target surface at weapon range has full range alpha"),
-                              selected.range_alpha,
-                              1.0f);
-    }
-
-    TEST_METHOD(ReportsWorldScaleSeparatelyFromClampedIndicatorRadius)
-    {
-        ioj::tests::FDisplayEntityTestData entities;
-        auto entity_type_radii{make_entity_type_radii()};
-        add_entity(entities,
-                   entity_type_radii,
-                   {1000.0f, 0.0f, 0.0f},
-                   20,
-                   ::ioj::sim::EntityType::Turret,
-                   2.0f,
-                   true,
-                   ETestTeam::Red);
-
-        auto const distant{select_target(entities, entity_type_radii)};
-        TestRunner->TestTrue(TEXT("Projection scale is available for world marker scaling"),
-                             distant.world_units_per_pixel > 0.0f);
-        TestRunner->TestTrue(TEXT("Small projected targets still use the minimum indicator"),
-                             distant.indicator_radius_pixels >
-                                 2.0f / distant.world_units_per_pixel);
-
-        entity_type_radii[::ioj::sim::EntityType::Turret] = 0.0f;
-        auto const zero_radius{select_target(entities, entity_type_radii)};
-        TestRunner->TestTrue(TEXT("Zero-radius targets still have a usable projection scale"),
-                             zero_radius.world_units_per_pixel > 0.0f);
-
-        entities.motion.get_view().view_locations().xs()[0] = 500.0f;
-        auto const nearer{select_target(entities, entity_type_radii)};
-        TestRunner->TestTrue(TEXT("World units per pixel shrink as the target approaches"),
-                             nearer.world_units_per_pixel < distant.world_units_per_pixel);
+            TEXT("Adapter preserves indicator radius"), result.indicator_radius_pixels, 60.f);
     }
 };

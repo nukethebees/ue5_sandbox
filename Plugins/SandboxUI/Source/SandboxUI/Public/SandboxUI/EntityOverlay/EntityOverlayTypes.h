@@ -14,11 +14,7 @@
 #include <cstddef>
 #include <type_traits>
 
-enum class EEntityOverlayObjectiveRole : uint32 {
-    None,
-    Defend,
-    Destroy,
-};
+using EEntityOverlayObjectiveRole = ioj::ui::entity_overlay::ObjectiveRole;
 
 struct SANDBOXUI_API FEntityOverlayInstance {
     FVector3f world_position{FVector3f::ZeroVector};

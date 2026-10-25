@@ -95,6 +95,7 @@ add_subdirectory(ui)
 add_subdirectory(s7)
 add_subdirectory(levels)
 add_subdirectory(simulation)
+add_subdirectory(presentation)
 add_subdirectory(level_authoring)
 add_subdirectory(simulation_benchmark)
 add_subdirectory(image)
@@ -109,6 +110,7 @@ add_custom_target(native-tests
     native-ismc-tests
     native-gfx-tests
     native-ui-tests
+    native-presentation-tests
     native-soa-tests
     native-level-authoring-tests
     native-level-parser-tests

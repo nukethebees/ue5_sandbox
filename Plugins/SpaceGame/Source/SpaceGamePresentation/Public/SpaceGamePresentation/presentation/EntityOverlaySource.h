@@ -1,24 +1,14 @@
 #pragma once
 
+#include "ioj/presentation/agent_display_batch.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/entities/entity_type_radii.h"
 #include "SpaceGamePresentation/entities/TeamColours.h"
-#include "SpaceGamePresentation/presentation/AgentDisplayBatch.h"
+#include <ioj/presentation/soft_target.h>
 
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
 
 #include <span>
-
-struct SPACEGAMEPRESENTATION_API FSoftTargetSelectionSettings {
-    float acquisition_radius_pixels{72.0f};
-    float retention_radius_pixels{96.0f};
-    float centre_tie_radius_pixels{4.0f};
-    float switch_improvement_ratio{0.75f};
-    float range_transition_start_multiplier{4.0f};
-    float minimum_indicator_radius_pixels{28.0f};
-    float maximum_indicator_radius_pixels{96.0f};
-    float bounds_padding_pixels{10.0f};
-};
 
 struct SPACEGAMEPRESENTATION_API FSoftTargetSelectionContext {
     FEntityOverlayView view;
@@ -29,14 +19,6 @@ struct SPACEGAMEPRESENTATION_API FSoftTargetSelectionContext {
     ETestTeam player_team{ETestTeam::White};
     float effective_weapon_range{0.0f};
     float maximum_overlay_range{0.0f};
-};
-
-struct SPACEGAMEPRESENTATION_API FSoftTargetSelectionResult {
-    ::ioj::sim::EntityId id{};
-    float range_alpha{0.0f};
-    float indicator_radius_pixels{0.0f};
-    float world_units_per_pixel{0.0f};
-    bool previous_target_can_fade{false};
 };
 
 struct SPACEGAMEPRESENTATION_API FEntityOverlayHealthMaximums {
@@ -61,8 +43,8 @@ struct SPACEGAMEPRESENTATION_API FEntityOverlayCollectionResult {
                        ::ioj::sim::EntityTypeRadii const& entity_type_radii,
                        TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
                        FSoftTargetSelectionContext const& context,
-                       FSoftTargetSelectionSettings const& settings,
-                       ::ioj::sim::EntityId current_target) -> FSoftTargetSelectionResult;
+                       ioj::settings::SoftTarget const& settings,
+                       ::ioj::sim::EntityId current_target) -> ioj::presentation::SoftTargetResult;
 
 [[nodiscard]] SPACEGAMEPRESENTATION_API auto collect_entity_overlay_instances(
     std::span<::ioj::presentation::AgentDisplayBatch const> batches,

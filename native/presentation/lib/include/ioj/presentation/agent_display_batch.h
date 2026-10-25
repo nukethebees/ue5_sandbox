@@ -19,13 +19,6 @@ using ::ioj::sim::HealthConstView;
 // Borrowed owner columns, valid only until the next structural mutation.
 // Static/indestructible owners omit columns whose values are constant.
 struct AgentDisplayBatch {
-    EntityType type{};
-    std::span<EntityId const> ids;
-    vectors3f::ConstView locations;
-    vectors3f::ConstView velocities;
-    HealthConstView healths;
-    std::span<Team const> teams;
-
     auto num() const noexcept -> std::uint32_t { return locations.num(); }
     auto health(std::uint32_t index) const -> Health {
         return healths.is_empty() ? 1000000 : healths.health(index);
@@ -36,6 +29,13 @@ struct AgentDisplayBatch {
     auto velocity(std::uint32_t index) const -> Vector3f {
         return velocities.num() == 0 ? Vector3f{} : velocities[index];
     }
+
+    EntityType type{};
+    std::span<EntityId const> ids;
+    vectors3f::ConstView locations;
+    vectors3f::ConstView velocities;
+    HealthConstView healths;
+    std::span<Team const> teams;
 };
 inline auto display_entity_count(std::span<AgentDisplayBatch const> batches) -> std::uint32_t {
     std::uint32_t count{};

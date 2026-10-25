@@ -1,7 +1,7 @@
 #pragma once
+#include "ioj/presentation/agent_display_batch.h"
 #include "ioj/sim/entities/entity_id.h"
-#include "SpaceGamePresentation/presentation/AgentDisplayBatch.h"
-#include <ioj/settings/radar.h>
+#include <ioj/presentation/radar.h>
 #include <SpaceGamePresentation/entities/TestTeam.h>
 
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
@@ -17,17 +17,6 @@ struct SPACEGAMEPRESENTATION_API FRadarCollectionResult {
     int32 candidate_count{0};
     int32 visible_count{0};
 };
-
-[[nodiscard]] SPACEGAMEPRESENTATION_API auto sanitize_radar_settings(ioj::settings::Radar settings)
-    -> ioj::settings::Radar;
-
-namespace ioj::radar_source {
-[[nodiscard]] SPACEGAMEPRESENTATION_API auto
-    to_radar_display_radius(float world_distance, ioj::settings::Radar const& settings) -> float;
-[[nodiscard]] SPACEGAMEPRESENTATION_API auto to_radar_position(FVector3f local_delta,
-                                                               ioj::settings::Radar const& settings)
-    -> FVector3f;
-}
 
 [[nodiscard]] SPACEGAMEPRESENTATION_API auto
     collect_radar_instances(std::span<::ioj::presentation::AgentDisplayBatch const> batches,

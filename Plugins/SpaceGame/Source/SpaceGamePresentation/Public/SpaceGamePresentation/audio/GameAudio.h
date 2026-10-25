@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/presentation/boom_audio_library.h>
+
 #include <Components/AudioComponent.h>
 #include <CoreMinimal.h>
 #include <Sound/SoundWave.h>
@@ -10,31 +12,6 @@ class UObject;
 class UGameInstance;
 
 namespace ioj {
-struct SPACEGAMEPRESENTATION_API FAudioSourceRoot {
-    FString path;
-    bool valid{};
-};
-
-struct SPACEGAMEPRESENTATION_API FAudioSourceDirectory {
-    FString relative_directory;
-    FString path;
-    bool valid{};
-};
-
-struct SPACEGAMEPRESENTATION_API FAudioSourceFile {
-    FString relative_path;
-    FString path;
-    bool valid{};
-};
-
-struct SPACEGAMEPRESENTATION_API FExternalAudioLibraryResolution {
-    FAudioSourceRoot root;
-    TArray<FAudioSourceDirectory> directories;
-    FAudioSourceFile menu_ambience_source;
-    FAudioSourceFile menu_button_pressed_source;
-    FAudioSourceFile player_ship_ambience_source;
-};
-
 struct FGameAudio;
 
 class SPACEGAMEPRESENTATION_API FGameAudioFacade {
@@ -67,7 +44,7 @@ struct SPACEGAMEPRESENTATION_API FGameAudio {
     void play_button_pressed();
 
     TWeakObjectPtr<UGameInstance> game_instance_{};
-    FExternalAudioLibraryResolution external_audio_;
+    presentation::AudioLibraryResolution external_audio_;
     TStrongObjectPtr<USoundWave> menu_ambience_sound_;
     TWeakObjectPtr<UAudioComponent> menu_ambience_component_;
     TStrongObjectPtr<USoundWave> menu_button_pressed_sound_;

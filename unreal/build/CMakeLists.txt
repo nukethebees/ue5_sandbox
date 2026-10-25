@@ -8,6 +8,7 @@ set(sandbox_unreal_native_dependency_targets
   native-core
   native-ismc
   native-ui
+  native-presentation
   cpu_features
 )
 set(sandbox_unreal_native_dependencies)

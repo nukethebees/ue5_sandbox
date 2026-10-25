@@ -1,7 +1,7 @@
 #pragma once
 
+#include <ioj/presentation/agent_display_batch.h>
 #include <ioj/sim/fighters/fighter_entity_data.h>
-#include <SpaceGamePresentation/presentation/AgentDisplayBatch.h>
 
 #include <cstdint>
 #include <vector>

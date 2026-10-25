@@ -1,7 +1,10 @@
 #include "SandboxEditor/Commandlets/ImportGameAudioCommandlet.h"
 
+#include <ioj/files.h>
 #include <SpaceGamePresentation/audio/BoomAudioLibrary.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
+
+#include <SandboxCoreEngine/strings.h>
 
 #include <AssetImportTask.h>
 #include <AssetToolsModule.h>
@@ -62,13 +65,13 @@ auto configure_and_save(USoundWave& sound_wave, bool const looping, float const 
     return UPackage::SavePackage(package, &sound_wave, *package_path, save_arguments);
 }
 
-auto import_optional_sound(ioj::FAudioSourceFile const& source,
+auto import_optional_sound(ioj::presentation::AudioSource const& source,
                            TCHAR const* const description,
                            TCHAR const* const asset_name,
                            bool const looping,
                            float const volume) -> bool {
     if (!source.valid) {
-        if (source.path.IsEmpty()) {
+        if (source.path.empty()) {
             UE_LOG(LogSandboxAudio,
                    Warning,
                    TEXT("%s was not imported because BEE_AUDIO_ROOT is unset or invalid."),
@@ -78,18 +81,19 @@ auto import_optional_sound(ioj::FAudioSourceFile const& source,
                    Warning,
                    TEXT("%s was not imported because its source file is unavailable: \"%s\"."),
                    description,
-                   *source.path);
+                   *ioj::to_fstring(ioj::path_to_utf8(source.path)));
         }
         return true;
     }
 
-    auto* const sound_wave{import_sound_wave(source.path, asset_name)};
+    auto* const sound_wave{
+        import_sound_wave(ioj::to_fstring(ioj::path_to_utf8(source.path)), asset_name)};
     if (!IsValid(sound_wave)) {
         UE_LOG(LogSandboxAudio,
                Error,
                TEXT("Failed to import %s source: \"%s\"."),
                description,
-               *source.path);
+               *ioj::to_fstring(ioj::path_to_utf8(source.path)));
         return false;
     }
     if (!configure_and_save(*sound_wave, looping, volume)) {
