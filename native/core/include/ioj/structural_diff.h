@@ -62,11 +62,7 @@ class DiffContext {
     template <typename T>
     void diff(DiffPathComponent component, T const& expected, T const& actual) {
         path_.push_back(component);
-        struct RestorePath {
-            ~RestorePath() { path.pop_back(); }
-
-            std::vector<DiffPathComponent>& path;
-        } restore{path_};
+        RestorePath const restore{path_};
         diff_value(expected, actual, *this);
     }
 
@@ -90,6 +86,12 @@ class DiffContext {
         result_.differences.push_back({std::move(path), describe(expected), describe(actual)});
     }
   private:
+    struct RestorePath {
+        ~RestorePath() { path.pop_back(); }
+
+        std::vector<DiffPathComponent>& path;
+    };
+
     template <typename T>
     static auto describe(T const& value) -> std::string {
         if constexpr (std::is_pointer_v<T> && std::is_convertible_v<T, void const*>) {
