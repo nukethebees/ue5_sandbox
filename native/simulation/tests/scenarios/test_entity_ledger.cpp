@@ -1,7 +1,9 @@
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
+#include <ioj/testing/structural_diff.h>
 
 namespace ioj::sim {
+using ioj::testing::structurally_equal;
 enum class EntityLedgerScenario : std::uint8_t { TeamCounts, OnePlayerKill, TwoPlayerKills };
 
 namespace {
@@ -44,23 +46,13 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
         };
         harness.timeline.finish_at(0.1);
         EXPECT_TRUE(harness.run_until_timeline_finished(1.0)) << "Team-count timeline completes";
-        std::int32_t total_count{};
-        for (auto const count : counts) {
-            total_count += count;
-        }
-        EXPECT_EQ(15, total_count) << "Check entity total";
+        telemetry::EntityCounts expected_type_counts{};
         for (std::int32_t team_index{}; team_index < team_count; ++team_index) {
-            auto const team{static_cast<Team>(team_index)};
-            EXPECT_EQ(expected_team_counts[team_index], counts[team_index])
-                << "Count team " + ::testing::PrintToString(team);
-            std::int32_t type_count{};
-            constexpr auto type_count_limit{enum_count<EntityType>()};
-            for (std::size_t type{}; type < type_count_limit; ++type) {
-                type_count += type_counts[team_index][type];
-            }
-            EXPECT_EQ(counts[team_index], type_count)
-                << "Count team/type matrix for " + ::testing::PrintToString(team);
+            expected_type_counts[team_index][std::to_underlying(EntityType::CapitalShip)] =
+                expected_team_counts[team_index];
         }
+        EXPECT_PRED_FORMAT2(structurally_equal, expected_team_counts, counts);
+        EXPECT_PRED_FORMAT2(structurally_equal, expected_type_counts, type_counts);
         return;
     }
 

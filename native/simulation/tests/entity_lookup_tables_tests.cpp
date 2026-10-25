@@ -58,11 +58,9 @@ TEST(EntityTypeRuns, GroupsWithoutChangingIdsAndOmitsEmptyIds) {
     }
     auto const direct{entity_type_runs(sorted)};
     ASSERT_EQ(direct.num, runs.num);
-    for (std::uint32_t run{}; run < runs.num; ++run) {
-        EXPECT_EQ(direct.types[run], runs.types[run]);
-        EXPECT_EQ(direct.offsets[run], runs.offsets[run]);
-        EXPECT_EQ(direct.counts[run], runs.counts[run]);
-    }
+    EXPECT_PRED_FORMAT2(structurally_equal, runs.types, direct.types);
+    EXPECT_PRED_FORMAT2(structurally_equal, runs.offsets, direct.offsets);
+    EXPECT_PRED_FORMAT2(structurally_equal, runs.counts, direct.counts);
     EXPECT_EQ(group_entity_ids({}, {}).num, 0u);
 #ifndef NDEBUG
     std::array const malformed{EntityId::from_raw(0x06000000)};

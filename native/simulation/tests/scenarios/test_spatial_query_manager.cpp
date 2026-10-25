@@ -1,10 +1,14 @@
 #include "../support/simulation_test_support.h"
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
+#include <ioj/testing/structural_diff.h>
 
+#include <algorithm>
 #include <array>
+#include <vector>
 
 namespace ioj::sim {
+using ioj::testing::structurally_equal;
 TEST(WorldlessSpaceGameSimulation, SpatialQuery_ResolvesLineOfSightBatches) {
     auto const config{tests::make_fixture()};
     alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
@@ -60,11 +64,9 @@ TEST(WorldlessSpaceGameSimulation, SpatialQuery_ResolvesLineOfSightBatches) {
     has_los.resize(static_cast<std::size_t>(ends.num()));
     harness.get_simulation().get_spatial_query_manager().has_line_of_sight_to_targets(
         Vector3f{0.f, 0.f, 0.f}, ends.get_const_view().resolve(), targets, has_los, &query_memory);
-    auto const result_count{static_cast<std::int32_t>(has_los.size())};
-    for (std::int32_t i{}; i < result_count; ++i) {
-        SCOPED_TRACE(::testing::Message() << "index " << i);
-        EXPECT_EQ(LineQueryResult{1}, has_los[i]) << "Clear or target hit has line of sight";
-    }
+    auto expected_visibility{std::vector<LineQueryResult>(targets.size(), 1)};
+    EXPECT_PRED_FORMAT2(structurally_equal, expected_visibility, has_los)
+        << "Clear or target hit has line of sight";
     for (std::int32_t i{}; i < count; ++i) {
         auto const other{expected[(i + 1) % count]};
         targets[i + count] = other;
@@ -72,12 +74,9 @@ TEST(WorldlessSpaceGameSimulation, SpatialQuery_ResolvesLineOfSightBatches) {
     }
     harness.get_simulation().get_spatial_query_manager().has_line_of_sight_to_targets(
         Vector3f{0.f, 0.f, 0.f}, ends.get_const_view().resolve(), targets, has_los, &query_memory);
-    for (std::int32_t i{}; i < count; ++i) {
-        SCOPED_TRACE(::testing::Message() << "index " << i);
-        EXPECT_EQ(LineQueryResult{1}, has_los[i]) << "Clear line remains visible";
-        EXPECT_EQ(LineQueryResult{0}, has_los[i + count]) << "Other target is blocked";
-        EXPECT_EQ(LineQueryResult{0}, has_los[i + 2 * count]) << "Other target past hit is blocked";
-    }
+    std::fill(expected_visibility.begin() + count, expected_visibility.end(), 0);
+    EXPECT_PRED_FORMAT2(structurally_equal, expected_visibility, has_los)
+        << "Clear lines remain visible; other targets at or beyond a hit are blocked";
 }
 
 }
