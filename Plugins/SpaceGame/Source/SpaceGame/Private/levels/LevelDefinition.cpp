@@ -17,8 +17,8 @@ void FLevelBuilder::set_camera(FLevelCameraDefinition const& camera) {
     definition_.camera = camera;
 }
 
-void FLevelBuilder::set_collision_grid(FLevelCollisionGridDefinition const& collision_grid) {
-    definition_.collision_grid = collision_grid;
+void FLevelBuilder::set_settings(settings::Settings const& settings) {
+    definition_.settings = settings;
 }
 
 void FLevelBuilder::set_mission(levels::MissionDefinition const& mission) {

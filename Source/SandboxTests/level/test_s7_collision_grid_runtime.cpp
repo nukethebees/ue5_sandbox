@@ -1,14 +1,14 @@
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/test_setup.h>
-#include <SpaceGame/levels/ExampleLevels.h>
 #include <SpaceGame/levels/LevelLoader.h>
-#include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <CQTest.h>
+
+#include <format>
 
 TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
 {
@@ -46,18 +46,27 @@ TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
             auto check_level = [&](TOptional<FVector3f> const size,
                                    TOptional<FVector3f> const cells,
                                    TCHAR const* const label) {
-                auto definition{ioj::example_levels::make_example_draft()};
-                if (size.IsSet() || cells.IsSet()) {
-                    definition.collision_grid =
-                        ioj::FLevelCollisionGridDefinition{.level_size = size, .cell_size = cells};
-                } else {
-                    definition.collision_grid = NullOpt;
+                std::string grid;
+                auto expected{base->collision_grid};
+                if (size.IsSet()) {
+                    auto const value{size.GetValue()};
+                    grid += std::format(":level-size '({} {} {}) ", value.X, value.Y, value.Z);
+                    expected.grid_size = value;
                 }
+                if (cells.IsSet()) {
+                    auto const value{cells.GetValue()};
+                    grid += std::format(":cell-size '({} {} {}) ", value.X, value.Y, value.Z);
+                    expected.cell_size = value;
+                }
+                ioj::levels::authoring::LevelSource const source{std::format(
+                    R"((level :id 'grid-runtime :title "Grid runtime" :player 'player
+                        :entities (list (entity :id 'player :archetype 'player-fighter
+                                                :team 'blue :position '(0 0 0)))
+                        :settings (settings :collision-grid (collision-grid {}))))",
+                    grid)};
 
                 ioj::FLevelLoader loader{*orchestrator};
-                if (!checks.is_true(static_cast<bool>(loader.load(
-                                        ioj::levels::authoring::to_native(definition).value())),
-                                    label)) {
+                if (!checks.is_true(static_cast<bool>(loader.load(source)), label)) {
                     return;
                 }
                 orchestrator->start_simulation();
@@ -66,7 +75,6 @@ TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
                     return;
                 }
 
-                auto const expected{base->collision_grid.with_dimension_overrides(size, cells)};
                 auto const dimensions{expected.calculate_grid_dimensions()};
                 auto const actual{orchestrator->get_spatial_query_manager().get_grid_geometry()};
                 checks.is_true(actual.dimensions.x() == dimensions.X &&

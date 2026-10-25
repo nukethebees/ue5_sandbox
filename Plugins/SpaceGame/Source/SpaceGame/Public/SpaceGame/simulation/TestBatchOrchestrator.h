@@ -63,6 +63,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto get_level_config() const noexcept -> USpaceGameLevelConfig const* {
         return level_config.Get();
     }
+    auto get_settings_file() const -> FString const& { return settings_file.FilePath; }
     void set_start_mode(EOrchestratorStartMode mode);
     auto get_start_mode() const noexcept -> EOrchestratorStartMode { return start_mode; }
     void set_presentation_enabled(bool enabled);

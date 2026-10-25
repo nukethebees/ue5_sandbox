@@ -63,17 +63,7 @@ auto to_native(FLevelDraft const& definition) -> std::expected<LevelDefinition, 
     }
     result.player_entity_id = EntityId{to_utf8(definition.player_entity_id.value)};
 
-    if (definition.collision_grid.IsSet()) {
-        auto const& grid{definition.collision_grid.GetValue()};
-        LevelCollisionGridDefinition native_grid;
-        if (grid.level_size.IsSet()) {
-            native_grid.level_size = ioj::Vector3d{grid.level_size.GetValue()};
-        }
-        if (grid.cell_size.IsSet()) {
-            native_grid.cell_size = ioj::Vector3d{grid.cell_size.GetValue()};
-        }
-        result.collision_grid = MoveTemp(native_grid);
-    }
+    result.settings = definition.settings;
 
     if (definition.camera.IsSet()) {
         auto const& camera{definition.camera.GetValue()};
@@ -131,17 +121,7 @@ auto to_unreal(LevelDefinition const& level) -> FLevelDraft {
     }
     builder.set_metadata(metadata);
 
-    if (definition.collision_grid()) {
-        auto const& grid{*definition.collision_grid()};
-        FLevelCollisionGridDefinition unreal_grid;
-        if (grid.level_size) {
-            unreal_grid.level_size = ioj::to_unreal(Vector3f{*grid.level_size});
-        }
-        if (grid.cell_size) {
-            unreal_grid.cell_size = ioj::to_unreal(Vector3f{*grid.cell_size});
-        }
-        builder.set_collision_grid(unreal_grid);
-    }
+    builder.set_settings(definition.settings());
 
     for (auto const& level_id : definition.unlock_level_ids()) {
         builder.add_unlock_criterion(FLevelUnlockCriterion{

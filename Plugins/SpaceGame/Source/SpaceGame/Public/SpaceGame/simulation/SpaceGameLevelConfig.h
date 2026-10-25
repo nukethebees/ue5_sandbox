@@ -63,9 +63,6 @@ struct SPACEGAME_API FCollisionGridConfig {
 
     [[nodiscard]] auto calculate_grid_dimensions() const noexcept -> FIntVector3;
     [[nodiscard]] auto is_valid() const noexcept -> bool;
-    [[nodiscard]] auto with_dimension_overrides(TOptional<FVector3f> grid_size_override,
-                                                TOptional<FVector3f> cell_size_override) const
-        -> FCollisionGridConfig;
 
     FVector3f grid_size{2000000.f, 2000000.f, 100000.f};
 

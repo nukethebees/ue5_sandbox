@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ioj/levels/authoring/level_source.h>
+#include <ioj/settings/settings.h>
 #include <ioj/sim/levels/simulation_settings.h>
 
 #include <CoreMinimal.h>
@@ -9,6 +10,12 @@
 
 class USpaceGameLevelConfig;
 
+struct FLoadedSettingsSource {
+    ioj::settings::Settings settings;
+    FString source;
+    FString evaluated_source;
+};
+
 struct FLoadedGameSettings {
     USpaceGameLevelConfig* config{};
     ioj::sim::SimulationSettings simulation;
@@ -16,7 +23,12 @@ struct FLoadedGameSettings {
     std::optional<ioj::levels::LevelDefinition> level;
 };
 
+[[nodiscard]] SPACEGAME_API auto read_game_settings_source(FStringView path,
+                                                           USpaceGameLevelConfig const& resources)
+    -> std::expected<FLoadedSettingsSource, FString>;
+
 // Require an outer that owns the resolved runtime configuration.
+// Prebuilt levels retain their resolved settings, ignore path and return empty source text.
 [[nodiscard]] SPACEGAME_API auto
     read_game_settings(FStringView path,
                        ioj::levels::authoring::LevelSource const* level,

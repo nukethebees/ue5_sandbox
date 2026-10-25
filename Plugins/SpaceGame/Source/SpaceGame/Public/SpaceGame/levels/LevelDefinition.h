@@ -1,5 +1,6 @@
 #pragma once
 #include <ioj/levels/level_definition.h>
+#include <ioj/settings/settings.h>
 #include <ioj/sim/levels/level_capital_spawn_events.h>
 #include <ioj/sim/levels/level_spawn_groups.h>
 #include <ioj/sim/levels/level_spinner_spawn_events.h>
@@ -32,11 +33,6 @@ struct SPACEGAME_API FLevelCameraDefinition {
     double distance{0.0};
 };
 
-struct SPACEGAME_API FLevelCollisionGridDefinition {
-    TOptional<FVector3f> level_size{NullOpt};
-    TOptional<FVector3f> cell_size{NullOpt};
-};
-
 struct SPACEGAME_API FLevelCompletedUnlockCriterion {
     FLevelId level_id{};
 
@@ -51,7 +47,7 @@ struct SPACEGAME_API FLevelDraft {
     TArray<FLevelUnlockCriterion> unlock_criteria{};
     FLevelEntityId player_entity_id{};
     TOptional<FLevelCameraDefinition> camera{NullOpt};
-    TOptional<FLevelCollisionGridDefinition> collision_grid{NullOpt};
+    settings::Settings settings{};
     TOptional<levels::MissionDefinition> mission{NullOpt};
     TArray<FEntitySpawnDefinition> entities{};
 };
@@ -61,7 +57,7 @@ class SPACEGAME_API FLevelBuilder {
     void set_metadata(FLevelMetadata const& metadata);
     void set_player_entity(FLevelEntityId id);
     void set_camera(FLevelCameraDefinition const& camera);
-    void set_collision_grid(FLevelCollisionGridDefinition const& collision_grid);
+    void set_settings(settings::Settings const& settings);
     void set_mission(levels::MissionDefinition const& mission);
     void add_unlock_criterion(FLevelUnlockCriterion criterion);
     auto add_entity(FEntitySpawnDefinition const& entity) -> FLevelEntityId;

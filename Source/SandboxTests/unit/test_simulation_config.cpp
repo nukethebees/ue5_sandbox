@@ -1,6 +1,8 @@
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/sim/collision/entity_world_bounds.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
+#include <SpaceGame/levels/ExampleLevels.h>
+#include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/s7/GameSettingsReader.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -121,7 +123,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
                                       loaded->simulation.fighters.speed,
                                       4500.f);
                 TestRunner->TestEqual(TEXT("Resolved definition uses the same base settings"),
-                                      loaded->level->settings()->fighters.speed,
+                                      loaded->level->settings().fighters.speed,
                                       loaded->simulation.fighters.speed);
             }
             return loaded.transform([](auto const&) {});
@@ -154,29 +156,43 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
                                  .has_value());
     }
 
-    TEST_METHOD(CollisionGridDimensionOverridesKeepUnspecifiedAssetValues)
+    TEST_METHOD(PrebuiltLevelsPreserveResolvedSettings)
     {
-        FCollisionGridConfig source;
-        source.grid_size = FVector3f{2000000.f, 2000000.f, 500000.f};
-        source.cell_size = FVector3f{5000.f, 5000.f, 20000.f};
+        auto const* const resources{ioj::load_default_level_config()};
+        if (!TestRunner->TestNotNull(TEXT("Default level config loads"), resources)) {
+            return;
+        }
 
-        auto const inherited{source.with_dimension_overrides(NullOpt, NullOpt)};
-        TestRunner->TestTrue(TEXT("No overrides preserve asset dimensions"),
-                             inherited.grid_size == source.grid_size &&
-                                 inherited.cell_size == source.cell_size);
+        auto draft{ioj::example_levels::make_example_draft()};
+        draft.settings.fighters.speed = 1234.f;
+        draft.settings.collision_grid.level_size = {2400000.f, 2000000.f, 500000.f};
+        draft.settings.collision_grid.cell_size = {6000.f, 5000.f, 20000.f};
+        auto const definition{ioj::levels::authoring::to_native(draft)};
+        if (!TestRunner->TestTrue(TEXT("Prebuilt level is valid"), definition.has_value())) {
+            return;
+        }
+        TestRunner->TestTrue(TEXT("Unreal conversion preserves all resolved settings"),
+                             ioj::levels::authoring::to_unreal(*definition).settings ==
+                                 draft.settings);
 
-        auto const authored_cells{
-            source.with_dimension_overrides(NullOpt, FVector3f{6000.f, 6000.f, 20000.f})};
-        TestRunner->TestTrue(TEXT("Cell override keeps asset size"),
-                             authored_cells.grid_size == source.grid_size);
-        TestRunner->TestTrue(TEXT("Cell override applies independently"),
-                             authored_cells.cell_size == FVector3f{6000.f, 6000.f, 20000.f});
-
-        source.grid_size.X += 10000.f;
-        auto const updated{
-            source.with_dimension_overrides(NullOpt, FVector3f{6000.f, 6000.f, 20000.f})};
-        TestRunner->TestTrue(TEXT("Inherited size follows changed asset"),
-                             updated.grid_size == source.grid_size);
+        ioj::levels::authoring::LevelSource const source{*definition};
+        auto const loaded{read_game_settings(TEXT("LevelScripts/Settings/missing-unused-base.scm"),
+                                             &source,
+                                             *resources,
+                                             GetTransientPackage())};
+        if (!TestRunner->TestTrue(loaded ? TEXT("Prebuilt level loads") : *loaded.error(),
+                                  loaded.has_value())) {
+            return;
+        }
+        TestRunner->TestTrue(TEXT("System settings do not overwrite resolved level settings"),
+                             loaded->level->settings() == draft.settings);
+        TestRunner->TestTrue(TEXT("Prebuilt settings do not claim unrelated source text"),
+                             loaded->source.IsEmpty());
+        TestRunner->TestEqual(TEXT("Runtime uses resolved fighter speed"),
+                              loaded->simulation.fighters.speed,
+                              draft.settings.fighters.speed);
+        TestRunner->TestTrue(TEXT("Runtime uses resolved collision dimensions"),
+                             loaded->simulation.overlap_response == draft.settings.collision_grid);
     }
 
     TEST_METHOD(DuplicatePreservesNestedValuesAndAssetReferences)
