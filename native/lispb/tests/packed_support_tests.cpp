@@ -19,11 +19,20 @@ constexpr auto check_storage_width() -> bool {
     using Low = ioj::PackedField<Storage, std::uint64_t, 0, 3>;
     using Signed = ioj::PackedField<Storage, std::make_signed_t<Storage>, 0, width>;
     using SignedValue = typename Signed::value_type;
+    constexpr ioj::PackedStorage<Storage, width> storage{maximum};
+    constexpr Full full{};
+    constexpr Signed signed_field{};
+    constexpr Flag flag{};
     constexpr auto minimum{std::numeric_limits<SignedValue>::min()};
     constexpr auto signed_maximum{(std::numeric_limits<SignedValue>::max)()};
 
     static_assert(ioj::valid_packed_storage<Storage, width>());
     static_assert(!ioj::valid_packed_storage<Storage, width + 1>());
+    static_assert(storage.encoded_bits == width && storage.storage_bits == width);
+    static_assert(storage.default_raw_value == maximum);
+    static_assert(full.range.min == 0 && full.range.max == maximum);
+    static_assert(signed_field.range.min == minimum && signed_field.range.max == signed_maximum);
+    static_assert(!flag.range.min && flag.range.max);
     static_assert(Full::value_mask == maximum && Full::mask == maximum);
     static_assert(Top::offset == width - 3 && Top::bits == 3);
     static_assert(Top::value_mask == 7);
@@ -73,7 +82,54 @@ using CvInteger = ioj::PackedField<std::uint16_t, std::uint16_t const volatile, 
 static_assert(CvInteger::value_mask == 0xffff);
 
 TEST(PackedSupport, ExhaustivelyDecodesSignedFieldsAndPreservesOtherBits) {
+    struct Incomplete;
+    struct Untagged {
+        using storage_type = std::uint32_t;
+        [[maybe_unused]] auto raw_value() const noexcept -> storage_type { return raw; }
+        storage_type raw;
+    };
+    struct WrongTag : Untagged {
+        using packed_integer_tag = void;
+    };
+    struct SignedStorage {
+        using packed_integer_tag = ioj::packed::integer_tag;
+        using storage_type = std::int32_t;
+        [[maybe_unused]] auto raw_value() const noexcept -> storage_type { return raw; }
+        storage_type raw;
+    };
+    struct MissingDecodedValue : Untagged {
+        using packed_integer_tag = ioj::packed::scalar_tag;
+    };
+    struct ThrowingRaw {
+        using packed_integer_tag = ioj::packed::integer_tag;
+        using storage_type = std::uint32_t;
+        [[maybe_unused]] auto raw_value() const -> storage_type { return raw; }
+        storage_type raw;
+    };
+    struct Oversized {
+        using packed_integer_tag = ioj::packed::integer_tag;
+        using storage_type = std::uint32_t;
+        [[maybe_unused]] auto raw_value() const noexcept -> storage_type { return raw[0]; }
+        storage_type raw[2];
+    };
+    static_assert(!ioj::PackedInteger<int>);
+    static_assert(!ioj::PackedInteger<Incomplete>);
+    static_assert(!ioj::PackedInteger<Untagged>);
+    static_assert(!ioj::PackedInteger<WrongTag>);
+    static_assert(!ioj::PackedInteger<SignedStorage>);
+    static_assert(!ioj::PackedInteger<MissingDecodedValue>);
+    static_assert(!ioj::PackedInteger<ThrowingRaw>);
+    static_assert(!ioj::PackedInteger<Oversized>);
+    static_assert(!ioj::valid_packed_value_layout<Incomplete>());
+    static_assert(!ioj::valid_packed_value_layout<int>());
+    constexpr ioj::PackedField<std::uint32_t, std::uint32_t, 0, 24> narrow{};
+    static_assert(narrow.range.min == 0 && narrow.range.max == 0xffffff);
+    constexpr EnumField enumeration{};
+    static_assert(enumeration.range.min == State::zero);
+    static_assert(enumeration.range.max == State::maximum);
     using Field = ioj::PackedField<std::uint8_t, std::int16_t, 2, 4>;
+    constexpr Field constrained{{-3, 5}};
+    static_assert(constrained.range.min == -3 && constrained.range.max == 5);
     for (unsigned raw{}; raw <= 0xffu; ++raw) {
         auto const encoded{static_cast<int>((raw >> 2) & 0xfu)};
         auto const expected{encoded >= 8 ? encoded - 16 : encoded};

@@ -151,6 +151,7 @@ class CppIR {
                   std::string_view name,
                   std::optional<Expr> initializer = {}) -> NodeId;
     auto static_assertion(StringId condition, StringId message) -> NodeId;
+    auto static_assertion(Expr condition, StringId message = {}) -> NodeId;
     auto access(Access value = Access::public_,
                 AccessIndentation indentation = AccessIndentation::outdented) -> NodeId;
     auto include(StringId path, IncludeStyle style = IncludeStyle::inferred) -> NodeId;
@@ -254,6 +255,7 @@ class CppIR {
                    std::string_view name = {},
                    std::optional<StringId> default_value = {}) -> FunctionParameterId;
     auto member_initializer(StringId member, StringId value) -> MemberInitializerId;
+    auto member_initializer(StringId member, Expr value) -> MemberInitializerId;
     void set_function_parameters(FunctionId function,
                                  std::span<FunctionParameterId const> parameters);
     void set_function_parameters(FunctionId function,

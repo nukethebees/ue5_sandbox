@@ -1,7 +1,14 @@
 #pragma once
 
+#include <ioj/min_max.h>
+
+#include <concepts>
+#include <cstddef>
+#include <format>
+#include <functional>
 #include <limits>
 #include <type_traits>
+#include <utility>
 
 namespace ioj {
 
@@ -24,12 +31,70 @@ template <typename Enum, int Bits>
 
 template <typename T>
 [[nodiscard]] consteval auto valid_packed_value_layout() noexcept -> bool {
-    static_assert(sizeof(T) == sizeof(typename T::storage_type));
-    static_assert(alignof(T) == alignof(typename T::storage_type));
-    static_assert(std::is_trivially_copyable_v<T>);
-    static_assert(std::is_standard_layout_v<T>);
-    return true;
+    if constexpr (requires {
+                      sizeof(T);
+                      sizeof(typename T::storage_type);
+                      alignof(T);
+                      alignof(typename T::storage_type);
+                  }) {
+        return sizeof(T) == sizeof(typename T::storage_type) &&
+               alignof(T) == alignof(typename T::storage_type) && std::is_trivially_copyable_v<T> &&
+               std::is_standard_layout_v<T>;
+    } else {
+        return false;
+    }
 }
+
+namespace packed {
+struct integer_tag {};
+struct scalar_tag {};
+}
+
+template <typename T>
+concept PackedInteger =
+    requires(T const& value) {
+        typename T::packed_integer_tag;
+        typename T::storage_type;
+        requires std::same_as<typename T::packed_integer_tag, packed::integer_tag> ||
+                     std::same_as<typename T::packed_integer_tag, packed::scalar_tag>;
+        requires std::unsigned_integral<typename T::storage_type>;
+        requires (!std::same_as<typename T::storage_type, bool>);
+        { value.raw_value() } noexcept -> std::same_as<typename T::storage_type>;
+    } && valid_packed_value_layout<T>() &&
+    (std::same_as<typename T::packed_integer_tag, packed::integer_tag> || requires(T const& value) {
+        typename T::value_type;
+        requires std::integral<typename T::value_type>;
+        { value.value() } noexcept -> std::same_as<typename T::value_type>;
+    });
+
+namespace packed {
+template <PackedInteger T>
+[[nodiscard]] constexpr auto comparison_value(T const& value) noexcept {
+    if constexpr (std::same_as<typename T::packed_integer_tag, scalar_tag>) {
+        return value.value();
+    } else {
+        return value.raw_value();
+    }
+}
+
+template <PackedInteger T>
+using comparison_type = decltype(comparison_value(std::declval<T const&>()));
+}
+
+template <typename Storage, int EncodedBits>
+struct PackedStorage {
+    using storage_type = Storage;
+
+    static_assert(valid_packed_storage<Storage, std::numeric_limits<Storage>::digits>(),
+                  "Packed storage requires unsigned integer storage other than bool");
+    static_assert(EncodedBits > 0 && EncodedBits <= std::numeric_limits<Storage>::digits,
+                  "Packed encoding must fit in storage");
+
+    inline static constexpr int encoded_bits{EncodedBits};
+    inline static constexpr int storage_bits{std::numeric_limits<Storage>::digits};
+
+    Storage default_raw_value{};
+};
 
 template <typename Storage, typename Value, int Offset, int Bits>
 struct PackedField {
@@ -76,6 +141,15 @@ struct PackedField {
             return Storage{};
         }
     }()};
+
+    MinMax<Value> range{[] {
+        if constexpr (std::is_signed_v<Value>) {
+            auto const maximum{static_cast<Value>(value_mask >> 1)};
+            return MinMax<Value>{static_cast<Value>(-maximum - Value{1}), maximum};
+        } else {
+            return MinMax<Value>{Value{}, static_cast<Value>(value_mask)};
+        }
+    }()};
 };
 
 template <typename Field>
@@ -116,3 +190,19 @@ template <typename Field>
 }
 
 } // namespace ioj
+
+template <ioj::PackedInteger T>
+struct std::hash<T> {
+    [[nodiscard]] auto operator()(T const& value) const noexcept -> std::size_t {
+        return std::hash<ioj::packed::comparison_type<T>>{}(ioj::packed::comparison_value(value));
+    }
+};
+
+template <ioj::PackedInteger T, typename Char>
+struct std::formatter<T, Char> : std::formatter<ioj::packed::comparison_type<T>, Char> {
+    template <typename FormatContext>
+    auto format(T const& value, FormatContext& context) const -> typename FormatContext::iterator {
+        return std::formatter<ioj::packed::comparison_type<T>, Char>::format(
+            ioj::packed::comparison_value(value), context);
+    }
+};

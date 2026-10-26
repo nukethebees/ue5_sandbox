@@ -219,6 +219,10 @@ auto CppIR::variable(std::string_view type, std::string_view name, std::optional
 }
 
 auto CppIR::static_assertion(StringId condition, StringId message) -> NodeId {
+    return static_assertion(raw_expr(condition), message);
+}
+
+auto CppIR::static_assertion(Expr condition, StringId message) -> NodeId {
     auto const index{static_assert_nodes_.condition.size()};
     static_assert_nodes_.condition.push_back(condition);
     static_assert_nodes_.message.push_back(message);
@@ -457,6 +461,10 @@ auto CppIR::parameter(std::string_view type,
 }
 
 auto CppIR::member_initializer(StringId member, StringId value) -> MemberInitializerId {
+    return member_initializer(member, raw_expr(value));
+}
+
+auto CppIR::member_initializer(StringId member, Expr value) -> MemberInitializerId {
     MemberInitializerId const result{static_cast<std::uint32_t>(initializers_.member.size())};
     initializers_.member.push_back(member);
     initializers_.value.push_back(value);
@@ -978,6 +986,9 @@ void CppIR::collect_dependencies(NodeId node, std::vector<TypeDependencyId>& res
         case NodeKind::raw_lines:
             append(dependency_list(raw_lines_nodes_.dependencies[i]));
             break;
+        case NodeKind::static_assert_:
+            collect_dependencies(static_assert_nodes_.condition[i], result);
+            break;
         case NodeKind::expr_stmt:
             append(dependency_list(expr_stmt_nodes_.dependencies[i]));
             collect_dependencies(expr_stmt_nodes_.expr[i], result);
@@ -1070,6 +1081,16 @@ void CppIR::collect_dependencies(NodeId node, std::vector<TypeDependencyId>& res
             auto const end{range.begin + range.count};
             for (auto p{range.begin}; p < end; ++p) {
                 type(parameters_.type[parameter_references_[p].value]);
+            }
+            auto const implementation{functions_.implementation[id]};
+            if (!function_nodes_.declaration[i] &&
+                implementation.kind() == FunctionImplementationKind::body) {
+                auto const initializers{function_bodies_.initializers[implementation.index()]};
+                auto const initializers_end{initializers.begin + initializers.count};
+                for (auto m{initializers.begin}; m < initializers_end; ++m) {
+                    collect_dependencies(initializers_.value[initializer_references_[m].value],
+                                         result);
+                }
             }
             break;
         }

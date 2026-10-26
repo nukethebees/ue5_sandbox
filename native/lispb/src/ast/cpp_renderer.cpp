@@ -107,15 +107,18 @@ auto binary_precedence(BinaryOperator operation) -> int {
         case BinaryOperator::greater_equal:
         case BinaryOperator::greater:
         case BinaryOperator::less:
+        case BinaryOperator::less_equal:
             return 6;
-        case BinaryOperator::shift_left:
+        case BinaryOperator::three_way:
             return 7;
+        case BinaryOperator::shift_left:
+            return 8;
         case BinaryOperator::subtract:
         case BinaryOperator::add:
-            return 8;
+            return 9;
         case BinaryOperator::multiply:
         case BinaryOperator::divide:
-            return 9;
+            return 10;
     }
     std::unreachable();
 }
@@ -135,6 +138,10 @@ auto binary_spelling(BinaryOperator operation) -> std::string_view {
             return " > ";
         case BinaryOperator::less:
             return " < ";
+        case BinaryOperator::less_equal:
+            return " <= ";
+        case BinaryOperator::three_way:
+            return " <=> ";
         case BinaryOperator::subtract:
             return " - ";
         case BinaryOperator::add:
@@ -572,9 +579,9 @@ auto CppRenderer::expr_precedence(Expr expr) -> int {
             return expr_detail::binary_precedence(ir_.binary_exprs_.operation[expr.index()]);
         case ExprKind::sizeof_type:
         case ExprKind::unary:
-            return 10;
-        default:
             return 11;
+        default:
+            return 12;
     }
 }
 void CppRenderer::append_expr(
@@ -605,7 +612,7 @@ void CppRenderer::append_expr(
             output += ')';
             break;
         case ExprKind::template_id:
-            append_expr(output, ir_.template_id_exprs_.callee[index], context, 11);
+            append_expr(output, ir_.template_id_exprs_.callee[index], context, 12);
             output += '<';
             append_arguments(ir_.template_id_exprs_.arguments[index]);
             output += '>';
@@ -625,31 +632,43 @@ void CppRenderer::append_expr(
             output += ir_.strings.view(ir_.raw_exprs_.text[index]);
             break;
         case ExprKind::call:
-            append_expr(output, ir_.call_exprs_.callee[index], context, 11);
+            append_expr(output, ir_.call_exprs_.callee[index], context, 12);
             output += '(';
             append_arguments(ir_.call_exprs_.arguments[index]);
             output += ')';
             break;
         case ExprKind::member_access:
-            append_expr(output, ir_.member_exprs_.object[index], context, 11);
+            append_expr(output, ir_.member_exprs_.object[index], context, 12);
             output += ir_.member_exprs_.through_pointer[index] ? "->" : ".";
             output += ir_.strings.view(ir_.member_exprs_.member[index]);
             break;
         case ExprKind::subscript:
-            append_expr(output, ir_.subscript_exprs_.object[index], context, 11);
+            append_expr(output, ir_.subscript_exprs_.object[index], context, 12);
             output += '[';
             append_expr(output, ir_.subscript_exprs_.index[index], context, 1);
             output += ']';
             break;
-        case ExprKind::binary:
-            append_expr(output, ir_.binary_exprs_.left[index], context, precedence);
-            output += expr_detail::binary_spelling(ir_.binary_exprs_.operation[index]);
+        case ExprKind::binary: {
+            auto const operation{ir_.binary_exprs_.operation[index]};
+            auto append_operand = [&](Expr operand, bool right) {
+                auto const conjunction{
+                    operation == BinaryOperator::logical_or && operand.kind() == ExprKind::binary &&
+                    ir_.binary_exprs_.operation[operand.index()] == BinaryOperator::logical_and};
+                append_expr(output,
+                            operand,
+                            context,
+                            conjunction ? expr_precedence(operand) : precedence,
+                            right || conjunction);
+            };
+            append_operand(ir_.binary_exprs_.left[index], false);
+            output += expr_detail::binary_spelling(operation);
             if (ir_.binary_exprs_.line_break_after[index]) {
                 output.pop_back();
                 output += "\n    ";
             }
-            append_expr(output, ir_.binary_exprs_.right[index], context, precedence, true);
+            append_operand(ir_.binary_exprs_.right[index], true);
             break;
+        }
         case ExprKind::unary:
             switch (ir_.unary_exprs_.operation[index]) {
                 case UnaryOperator::logical_not:
@@ -667,8 +686,11 @@ void CppRenderer::append_expr(
                 case UnaryOperator::bitwise_not:
                     output += '~';
                     break;
+                case UnaryOperator::negate:
+                    output += '-';
+                    break;
             }
-            append_expr(output, ir_.unary_exprs_.operand[index], context, 10, true);
+            append_expr(output, ir_.unary_exprs_.operand[index], context, 11, true);
             break;
         case ExprKind::static_cast_:
             output += "static_cast<";
@@ -919,8 +941,8 @@ auto CppRenderer::signature(std::uint32_t index,
             output +=
                 ir_.strings.view(ir_.initializers_.member[ir_.initializer_references_[m].value]);
             output += '{';
-            output +=
-                ir_.strings.view(ir_.initializers_.value[ir_.initializer_references_[m].value]);
+            append_expr(
+                output, ir_.initializers_.value[ir_.initializer_references_[m].value], context);
             output += '}';
         }
     }
@@ -1128,7 +1150,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
         case NodeKind::static_assert_:
             indent();
             output += "static_assert(";
-            text(ir_.static_assert_nodes_.condition[i]);
+            expr(ir_.static_assert_nodes_.condition[i]);
             if (auto const message{ir_.strings.view(ir_.static_assert_nodes_.message[i])};
                 !message.empty()) {
                 output += ", \"";

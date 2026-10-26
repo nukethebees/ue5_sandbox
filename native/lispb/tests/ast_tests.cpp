@@ -24,6 +24,7 @@
 #include <codegen/ast/render_context.h>
 #include <codegen/ast/return_syntax.h>
 #include <codegen/ast/type_operation.h>
+#include <codegen/ast/unary_operator.h>
 #include <codegen/schema/declarations.h>
 #include <lispb/compiler_storage.h>
 #include <lispb/indices.h>
@@ -99,6 +100,18 @@ TEST(Ast, RendersStaticAssertionsWithOptionalMessages) {
     EXPECT_EQ(renderer.render(without_message), "static_assert(sizeof(Value) == 16);");
     EXPECT_EQ(renderer.render(with_message),
               "static_assert(valid<Value>, \"Value must be \\\"valid\\\".\");");
+
+    auto const dependency{ir.types.dependency("a::valid", "a/validation.h")};
+    auto const predicate{ir.call(ir.type_reference(ir.types.named("a::valid", {dependency})), {})};
+    auto const assertion{ir.static_assertion(predicate)};
+    auto const shadowed{ir.record(
+        ir.strings.intern("Value"),
+        {ir.instance_member(ir.types.intern("int"), ir.strings.intern("valid")), assertion})};
+    auto const output{
+        renderer.render(ir.namespace_node(ir.strings.intern("a"), {assertion, shadowed}))};
+    EXPECT_NE(output.find("static_assert(valid());"), std::string::npos);
+    EXPECT_NE(output.find("static_assert(a::valid());"), std::string::npos);
+    EXPECT_EQ(collected_dependencies(ir, assertion), std::vector<TypeDependencyId>{dependency});
 }
 
 TEST(Ast, RendersTypedStmts) {
@@ -115,6 +128,30 @@ TEST(Ast, RendersTypedStmts) {
                                           ir.strings.intern("count"),
                                           ir.raw_expr("values.Num()"))),
               "auto const count{values.Num()};");
+
+    auto const left{ir.named("left")};
+    auto const right{ir.named("right")};
+    auto const comparison{ir.binary(BinaryOperator::three_way, left, right)};
+    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::less_equal, comparison, ir.literal("0"))),
+              "left <=> right <= 0");
+    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::three_way,
+                                        ir.binary(BinaryOperator::less_equal, left, right),
+                                        ir.literal("0"))),
+              "(left <= right) <=> 0");
+    EXPECT_EQ(renderer.render(ir.unary(UnaryOperator::negate, comparison)), "-(left <=> right)");
+
+    auto const conjunction{ir.binary(BinaryOperator::logical_and, left, right)};
+    EXPECT_EQ(
+        renderer.render(ir.binary(BinaryOperator::logical_or, conjunction, ir.named("other"))),
+        "(left && right) || other");
+    EXPECT_EQ(
+        renderer.render(ir.binary(BinaryOperator::logical_or, ir.named("other"), conjunction)),
+        "other || (left && right)");
+    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::logical_or, conjunction, conjunction)),
+              "(left && right) || (left && right)");
+    EXPECT_EQ(
+        renderer.render(ir.binary(BinaryOperator::logical_and, conjunction, ir.named("other"))),
+        "left && right && other");
 }
 
 TEST(Ast, TypedStmtsReportDependencies) {
@@ -554,6 +591,23 @@ TEST(Ast, RendersQualifiedTrailingReturnAndDefaultedConstructor) {
     ir.set_function_defaulted(constructor);
     EXPECT_EQ(renderer.render(ir.definition(constructor, ir.types.intern("FValue"))),
               "FValue::FValue() = default;");
+
+    auto const dependency{types.dependency("a::make_value", "a/value.h")};
+    auto const factory{ir.call(ir.type_reference(types.named("a::make_value", {dependency})), {})};
+    auto const initialized{ir.constructor(ir.strings.intern("Initialized"))};
+    ir.set_function_parameters(initialized, {ir.parameter("int", "make_value")});
+    ir.set_function_body(
+        initialized, {}, {ir.member_initializer(ir.strings.intern("value_"), factory)});
+    ir.function_flags(initialized).set_define_in_header(true);
+    auto const record{
+        ir.record(ir.strings.intern("Initialized"),
+                  {ir.header_function(initialized),
+                   ir.instance_member(types.intern("int"), ir.strings.intern("value_"))})};
+    auto const output{renderer.render(ir.namespace_node(ir.strings.intern("a"), {record}))};
+    EXPECT_NE(output.find("value_{a::make_value()}"), std::string::npos) << output;
+    EXPECT_EQ(collected_dependencies(ir, ir.header_function(initialized)),
+              std::vector<TypeDependencyId>{dependency});
+    EXPECT_TRUE(collected_dependencies(ir, ir.declaration(initialized)).empty());
 }
 
 TEST(Ast, RejectsOutOfLineDeletedFunction) {
