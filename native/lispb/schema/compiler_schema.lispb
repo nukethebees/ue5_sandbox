@@ -2,6 +2,7 @@
   :header "declaration_kind.h"
   :namespace lispb::codegen
   (enum DeclarationKind std::uint8_t
+    (projections (cpp))
     :native-api true
     :helpers (try-parse-serialized)
     (value enumeration :serialized-name "enum")
@@ -12,18 +13,37 @@
     (value mini_float :serialized-name "mini-float")
     (value optional_sentinel :serialized-name "optional-sentinel")
     (value optional_presence_bit :serialized-name "optional-presence-bit")
-    (value packed_value :serialized-name "packed-value")
     (value record :serialized-name "record")
     (value union_type :serialized-name "union")
-    (value tagged_union :serialized-name "tagged-union")
     (value soa :serialized-name "struct")
     (value static_table :serialized-name "table")
     (value facade :serialized-name "facade")))
+
+(module compiler_layout_kind
+  :header "layout_kind.h"
+  :namespace lispb::codegen
+  (enum LayoutKind std::uint8_t
+    (projections (cpp))
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value native :serialized-name "native")
+    (value packed :serialized-name "packed")))
+
+(module compiler_child_occurrence_kind
+  :header "child_occurrence_kind.h"
+  :namespace lispb::codegen
+  (enum ChildOccurrenceKind std::uint8_t
+    (projections (cpp))
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value value :serialized-name "value")
+    (value reserved :serialized-name "reserved")))
 
 (module compiler_packed_field_kind
   :header "packed_field_kind.h"
   :namespace lispb::codegen
   (enum PackedFieldKind std::uint8_t
+    (projections (cpp))
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value unsigned_integer :serialized-name "unsigned")
@@ -37,6 +57,7 @@
   :header "soa_member_kind.h"
   :namespace lispb::codegen
   (enum SoaMemberKind std::uint8_t
+    (projections (cpp))
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value array :serialized-name "array")
@@ -46,6 +67,7 @@
   :header "floating_point_format.h"
   :namespace lispb::codegen
   (enum FloatingPointFormat std::uint8_t
+    (projections (cpp))
     :native-api true
     :helpers (try-parse-serialized)
     (value ieee754_binary16 :serialized-name "ieee754-binary16")
@@ -56,27 +78,18 @@
   :header "integer_varint_encoding.h"
   :namespace lispb::codegen
   (enum IntegerVarintEncoding std::uint8_t
+    (projections (cpp))
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value unsigned_varint :serialized-name "unsigned")
     (value signed_varint :serialized-name "signed")
     (value zigzag_varint :serialized-name "zigzag")))
 
-(module compiler_integer_scalar_cpp_emission
-  :header "integer_scalar_cpp_emission.h"
-  :namespace lispb::codegen
-  (enum IntegerScalarCppEmission std::uint8_t
-    :native-api true
-    :helpers (to-serialized-string try-parse-serialized)
-    (value none :serialized-name "none")
-    (value constants :serialized-name "constants")
-    (value constants_with_names :serialized-name "constants-with-names")
-    (value alias :serialized-name "alias")))
-
 (module compiler_record_comparison
   :header "record_comparison.h"
   :namespace lispb::codegen
   (enum RecordComparison std::uint8_t
+    (projections (cpp))
     :native-api true
     :helpers (try-parse-serialized)
     (value none :serialized-name "none")
@@ -87,6 +100,7 @@
   :header "setting_control_kind.h"
   :namespace lispb::codegen
   (enum SettingControlKind std::uint8_t
+    (projections (cpp))
     :native-api true
     :helpers (try-parse-serialized)
     (value toggle :serialized-name "toggle")
@@ -99,6 +113,7 @@
   :header "setting_apply_mode.h"
   :namespace lispb::codegen
   (enum SettingApplyMode std::uint8_t
+    (projections (cpp))
     :native-api true
     :helpers (try-parse-serialized)
     (value immediate :serialized-name "immediate")
@@ -109,6 +124,7 @@
   :header "enum_reflection.h"
   :namespace lispb::codegen
   (enum EnumReflection std::uint8_t
+    (projections (cpp))
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value none :serialized-name "none")
@@ -119,6 +135,7 @@
   :header "semantic_relation_kind.h"
   :namespace lispb::codegen
   (enum SemanticRelationKind std::uint8_t
+    (projections (cpp))
     :native-api true
     :helpers (to-string to-serialized-string try-parse-serialized formatter)
     (value index_into :serialized-name "index_into")
@@ -135,6 +152,7 @@
   :header "enum_conversion.h"
   :namespace lispb::codegen
   (enum EnumConversion std::uint8_t
+    (projections (cpp))
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value lex_to_string :serialized-name "lex-to-string")
@@ -150,6 +168,7 @@
   :header "schema_property.h"
   :namespace lispb::codegen
   (enum SchemaProperty std::uint8_t
+    (projections (cpp))
     :native-api true
     :helpers (to-serialized-string)
     (value api_name :serialized-name "api-name")
@@ -165,6 +184,7 @@
     (value body :serialized-name "body")
     (value byte_order :serialized-name "byte-order")
     (value category :serialized-name "category")
+    (value case_ :serialized-name "case")
     (value clipping :serialized-name "clipping")
     (value columns :serialized-name "columns")
     (value comparison :serialized-name "comparison")
@@ -214,6 +234,7 @@
     (value inline_ :serialized-name "inline")
     (value invalid_value :serialized-name "invalid-value")
     (value kind :serialized-name "kind")
+    (value layout :serialized-name "layout")
     (value layout_only :serialized-name "layout-only")
     (value mask_dimensions :serialized-name "mask-dimensions")
     (value mask_field :serialized-name "mask-field")
@@ -279,6 +300,7 @@
   :header "native_enum_helper.h"
   :namespace lispb::codegen
   (enum NativeEnumHelper std::uint8_t
+    (projections (cpp))
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value to_string :serialized-name "to-string")
@@ -294,6 +316,7 @@
   :header "semantic_relation_unit.h"
   :namespace lispb::codegen
   (enum SemanticRelationUnit std::uint8_t
+    (projections (cpp))
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value elements :serialized-name "elements")
@@ -304,6 +327,7 @@
   :header "packed_byte_order.h"
   :namespace lispb::codegen
   (enum PackedByteOrder std::uint8_t
+    (projections (cpp))
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value little_endian :serialized-name "little")
@@ -314,6 +338,7 @@
   :header "packed_bit_order.h"
   :namespace lispb::codegen
   (enum PackedBitOrder std::uint8_t
+    (projections (cpp))
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value least_significant_first :serialized-name "lsb-first")
@@ -324,6 +349,7 @@
   :header "setting_device.h"
   :namespace lispb::codegen
   (enum SettingDevice std::uint8_t
+    (projections (cpp))
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value shared :serialized-name "shared")
@@ -335,6 +361,7 @@
   :header "quantization_clipping.h"
   :namespace lispb::codegen
   (enum QuantizationClipping std::uint8_t
+    (projections (cpp))
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value reject :serialized-name "reject")
@@ -345,6 +372,7 @@
   :header "fixed_point_rounding.h"
   :namespace lispb::codegen
   (enum FixedPointRounding std::uint8_t
+    (projections (cpp))
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value nearest_even :serialized-name "nearest-even")

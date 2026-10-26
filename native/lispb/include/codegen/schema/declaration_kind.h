@@ -20,10 +20,8 @@ enum class DeclarationKind : DeclarationKindUnderlying {
     mini_float,
     optional_sentinel,
     optional_presence_bit,
-    packed_value,
     record,
     union_type,
-    tagged_union,
     soa,
     static_table,
     facade,
@@ -69,15 +67,6 @@ enum class DeclarationKind : DeclarationKindUnderlying {
         case 11: {
             if (value == "fixed-point") {
                 return DeclarationKind::fixed_point;
-            }
-            return std::nullopt;
-        }
-        case 12: {
-            if (value == "packed-value") {
-                return DeclarationKind::packed_value;
-            }
-            if (value == "tagged-union") {
-                return DeclarationKind::tagged_union;
             }
             return std::nullopt;
         }

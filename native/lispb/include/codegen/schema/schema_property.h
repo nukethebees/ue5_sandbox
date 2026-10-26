@@ -25,6 +25,7 @@ enum class SchemaProperty : SchemaPropertyUnderlying {
     body,
     byte_order,
     category,
+    case_,
     clipping,
     columns,
     comparison,
@@ -74,6 +75,7 @@ enum class SchemaProperty : SchemaPropertyUnderlying {
     inline_,
     invalid_value,
     kind,
+    layout,
     layout_only,
     mask_dimensions,
     mask_field,
@@ -144,7 +146,7 @@ inline constexpr auto ioj::enum_strings<::lispb::codegen::SchemaProperty, ioj::S
     ioj::PackedStrings{
         "api-name\000append-columns\000apply\000availability-provider\000backend\000bias\000bind-"
         "access\000bit-order\000bit-width\000bits\000body\000byte-"
-        "order\000category\000clipping\000columns\000comparison\000comparison-"
+        "order\000category\000case\000clipping\000columns\000comparison\000comparison-"
         "noexcept\000const\000constexpr\000constraint-policy\000conversion-"
         "header\000conversions\000count\000cpp-emission\000cpp-type\000custom-"
         "row\000default\000definition-in-source\000definitions-in-"
@@ -154,7 +156,7 @@ inline constexpr auto ioj::enum_strings<::lispb::codegen::SchemaProperty, ioj::S
         "name\000finite\000fixed-schema\000format\000fractional-bits\000friend-"
         "kind\000friends\000generate-s7-reader\000generate-visitor\000header\000header-"
         "include\000headers\000helper-namespace\000helpers\000hidden\000include-"
-        "order\000initializer\000inline\000invalid-value\000kind\000layout-only\000mask-"
+        "order\000initializer\000inline\000invalid-value\000kind\000layout\000layout-only\000mask-"
         "dimensions\000mask-field\000max\000maximum\000method-"
         "access\000min\000minimum\000mutable\000namespace\000native-api\000native-header-"
         "include\000nested\000nodiscard\000noexcept\000nonempty\000nonnegative\000nonzero\000option"
@@ -167,13 +169,13 @@ inline constexpr auto ioj::enum_strings<::lispb::codegen::SchemaProperty, ioj::S
         "storage\000template-parameters\000tooltip\000total-bits\000trailing-return-"
         "type\000unit\000using-declarations\000validation\000validation-"
         "dependencies\000value\000value-type",
-        std::array<std::uint16_t, 123>{
+        std::array<std::uint16_t, 125>{
             0,    9,    24,   30,   52,   60,   65,   77,   87,   97,   102,  107,  118,  127,
-            136,  144,  155,  175,  181,  191,  209,  227,  239,  245,  258,  267,  278,  286,
-            307,  329,  342,  349,  362,  375,  384,  395,  415,  438,  456,  472,  486,  503,
-            519,  535,  542,  555,  562,  578,  590,  598,  617,  634,  641,  656,  664,  681,
-            689,  696,  710,  722,  729,  743,  748,  760,  776,  787,  791,  799,  813,  817,
-            825,  833,  843,  854,  876,  883,  893,  902,  911,  923,  931,  948,  956,  965,
-            973,  986,  997,  1006, 1015, 1030, 1039, 1054, 1070, 1081, 1089, 1103, 1122, 1129,
-            1138, 1154, 1164, 1171, 1188, 1195, 1204, 1215, 1222, 1227, 1235, 1242, 1246, 1258,
-            1273, 1293, 1301, 1312, 1333, 1338, 1357, 1368, 1392, 1398, 1409}}};
+            132,  141,  149,  160,  180,  186,  196,  214,  232,  244,  250,  263,  272,  283,
+            291,  312,  334,  347,  354,  367,  380,  389,  400,  420,  443,  461,  477,  491,
+            508,  524,  540,  547,  560,  567,  583,  595,  603,  622,  639,  646,  661,  669,
+            686,  694,  701,  715,  727,  734,  748,  753,  760,  772,  788,  799,  803,  811,
+            825,  829,  837,  845,  855,  866,  888,  895,  905,  914,  923,  935,  943,  960,
+            968,  977,  985,  998,  1009, 1018, 1027, 1042, 1051, 1066, 1082, 1093, 1101, 1115,
+            1134, 1141, 1150, 1166, 1176, 1183, 1200, 1207, 1216, 1227, 1234, 1239, 1247, 1254,
+            1258, 1270, 1285, 1305, 1313, 1324, 1345, 1350, 1369, 1380, 1404, 1410, 1421}}};
