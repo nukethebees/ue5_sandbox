@@ -1210,6 +1210,11 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
             indent();
             output += to_serialized_string(ir_.forward_declaration_nodes_.kind[i]);
             output += ' ';
+            if (auto const specifier{ir_.forward_declaration_nodes_.export_specifier[i]};
+                specifier.value != 0) {
+                text(specifier);
+                output += ' ';
+            }
             text(ir_.forward_declaration_nodes_.name[i]);
             output += ';';
             break;

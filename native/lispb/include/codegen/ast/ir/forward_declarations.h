@@ -11,6 +11,7 @@ struct ForwardDeclarations {
     std::vector<StringId> name;
     std::vector<RecordKind> kind;
     std::vector<TemplateId> template_declaration;
+    std::vector<StringId> export_specifier;
 };
 
 } // namespace lispb::codegen::ir

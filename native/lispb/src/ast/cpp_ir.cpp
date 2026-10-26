@@ -247,11 +247,15 @@ auto CppIR::include_dependencies() -> NodeId {
     return ir_detail::node(NodeKind::include_dependencies, 0);
 }
 
-auto CppIR::forward_declaration(StringId name, RecordKind kind, TemplateId declaration) -> NodeId {
+auto CppIR::forward_declaration(StringId name,
+                                RecordKind kind,
+                                TemplateId declaration,
+                                StringId export_specifier) -> NodeId {
     auto const index{forward_declaration_nodes_.name.size()};
     forward_declaration_nodes_.name.push_back(name);
     forward_declaration_nodes_.kind.push_back(kind);
     forward_declaration_nodes_.template_declaration.push_back(declaration);
+    forward_declaration_nodes_.export_specifier.push_back(export_specifier);
     return ir_detail::node(NodeKind::forward_declaration, index);
 }
 

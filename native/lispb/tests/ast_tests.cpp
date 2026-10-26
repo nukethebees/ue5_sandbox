@@ -361,6 +361,9 @@ TEST(Ast, RendersClassInheritanceAndMemberInitializers) {
     ir.set_record_bases(record, {types.intern("FBase")});
     ir.set_record_export_specifier(record, ir.strings.intern("PROJECT_API"));
     auto const rendered{CppRenderer{ir}.render(record)};
+    auto const forward{ir.forward_declaration(
+        ir.strings.intern("FDerived"), RecordKind::class_, {}, ir.strings.intern("PROJECT_API"))};
+    EXPECT_EQ(CppRenderer{ir}.render(forward), "class PROJECT_API FDerived;");
 
     EXPECT_EQ(rendered,
               "class PROJECT_API FDerived : FBase {\n"

@@ -158,7 +158,8 @@ class CppIR {
     auto include_dependencies() -> NodeId;
     auto forward_declaration(StringId name,
                              RecordKind kind = RecordKind::struct_,
-                             TemplateId declaration = {}) -> NodeId;
+                             TemplateId declaration = {},
+                             StringId export_specifier = {}) -> NodeId;
     auto friend_declaration(StringId name,
                             RecordKind kind = RecordKind::class_,
                             TemplateId declaration = {}) -> NodeId;
