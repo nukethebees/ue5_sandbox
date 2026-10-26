@@ -99,6 +99,9 @@ Unreal Engine 5.8 project.
 * Do not guess. Ask questions when things are unclear.
 * Use targeted repository inspection to establish implementation facts.
 * Once enough context exists, implement rather than continuing exploration.
+* Keep answers to the maintainer's questions in the final response after completing the work item,
+  so they are not buried beneath tool output. Use progress updates for work status.
+* Apply obvious improvements within the active scope as you work and report them at the end.
 * Keep README.md files concise and user-oriented. Put detailed usage instructions in local READMEs
   or local `docs/` directories, and architecture information in local `ARCHITECTURE.md` files.
 * For contention other than jobs-board tickets, treat obvious temporary contention for shared resources as a wait condition: do not repeatedly retry across consecutive turns; sleep within the shell/tool invocation before retrying with 10s, then 30s, then 60s backoff (capped at 60s). Investigate and report the failure if persists unreasonably.
@@ -128,8 +131,10 @@ If a new issue invalidates previous validation or requires additional builds/tes
 * Prefer `auto` where the type is obvious.
 * Prefer simple C++ over template metaprogramming.
 * Declare one variable or data member per declaration and per line. Do not combine declarators.
-* Order type declarations as constructors, special member functions, operators, ordinary functions,
-  then data members. Keep data members last and use blank lines between these groups.
+* Order declarations in handwritten and generated types as type aliases and constexpr constants
+  (with supporting nested types), constructors then destructors, copy/move special member functions,
+  operators, ordinary member functions, then data members. Keep data members last and separate
+  each distinct group with a blank line. Static factories belong with ordinary member functions.
 * Declare forward declarations before type definitions and separate the groups with a blank line.
 * Keep headers concise. Do not add inline explanatory comments to routine declarations or members.
   Add a comment only for a non-obvious contract that names and types cannot express; put implementation
@@ -175,6 +180,9 @@ If a new issue invalidates previous validation or requires additional builds/tes
   names and parsing. Keep contextual grammar restrictions explicit; do not create enums for open
   identifiers or property names already owned by record metadata.
 * Keep generated code simple and easy to debug. Share repetitive typed SoA operations using the existing column packs when this reduces total code; retain explicit generation for schema-specific behavior. Avoid additional type-description systems or elaborate template frameworks.
+* Emit compiler-owned C++ symbols through the existing typed CppIR and scope-aware renderer.
+  Do not bypass name resolution with qualified names embedded in generated text or add local
+  namespace-stripping rules. Reserve opaque text for authored C++ and syntax the IR cannot express.
 
 # Formatting
 
