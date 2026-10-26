@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/settings/settings.h>
+
 #include <Toolkits/BaseToolkit.h>
 
 class IDetailsView;
@@ -11,10 +13,6 @@ class AS7LevelAuthoringDocument;
 
 namespace SlateGenerated {
 struct FS7LevelAuthoringModeToolkitBuilder;
-}
-
-namespace ioj::settings {
-struct Settings;
 }
 
 class FS7LevelAuthoringModeToolkit final : public FModeToolkit {

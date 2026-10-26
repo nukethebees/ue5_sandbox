@@ -68,14 +68,14 @@ void FS7LevelAuthoringModeToolkit::refresh(ioj::settings::Settings const* settin
     }
     status_->SetText(mode_->status());
 
-    auto* const document{mode_.IsValid() ? mode_->document() : nullptr};
+    auto* const document{mode_->document()};
     auto* const config{IsValid(document) ? document->level_config.Get() : nullptr};
     if (!IsValid(config)) {
         grid_summary_ = LOCTEXT("NoActiveConfig", "Level config: none");
         return;
     }
 
-    std::expected<ioj::settings::Settings, FString> resolved;
+    std::expected<ioj::settings::Settings, FString> resolved{std::unexpect};
     if (!settings) {
         resolved = ioj::editor::read_s7_document_settings(*document);
         if (!resolved) {
