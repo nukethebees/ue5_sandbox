@@ -12,22 +12,21 @@
 
 namespace ioj {
 
-template <typename Storage, int ExpectedBits>
-[[nodiscard]] constexpr auto valid_packed_storage() noexcept -> bool {
-    return std::is_integral_v<Storage> && std::is_unsigned_v<Storage> &&
-           !std::is_same_v<std::remove_cv_t<Storage>, bool> &&
-           std::numeric_limits<Storage>::digits == ExpectedBits;
-}
+template <typename T>
+concept PackedStorageInteger =
+    std::unsigned_integral<T> && !std::same_as<std::remove_cv_t<T>, bool>;
 
-template <typename Enum, int Bits>
-[[nodiscard]] constexpr auto valid_packed_enum() noexcept -> bool {
-    if constexpr (std::is_enum_v<Enum>) {
-        using Underlying = std::underlying_type_t<Enum>;
-        return std::is_unsigned_v<Underlying> && std::numeric_limits<Underlying>::digits >= Bits;
-    } else {
-        return false;
-    }
-}
+template <typename T, int Bits>
+concept PackedEnumValue =
+    std::is_enum_v<T> && std::unsigned_integral<std::underlying_type_t<T>> && Bits > 0 &&
+    std::numeric_limits<std::underlying_type_t<T>>::digits >= Bits;
+
+template <typename T, int Bits>
+concept PackedFieldValue =
+    Bits > 0 && ((std::same_as<std::remove_cv_t<T>, bool> && Bits == 1) ||
+                 (std::integral<T> && !std::same_as<std::remove_cv_t<T>, bool> &&
+                  std::numeric_limits<T>::digits + (std::signed_integral<T> ? 1 : 0) >= Bits) ||
+                 PackedEnumValue<T, Bits>);
 
 template <typename T>
 [[nodiscard]] consteval auto valid_packed_value_layout() noexcept -> bool {
@@ -48,29 +47,31 @@ template <typename T>
 namespace packed {
 struct integer_tag {};
 struct scalar_tag {};
+
+template <typename T>
+concept RawValue = requires(T const& value) {
+    typename T::packed_integer_tag;
+    requires PackedStorageInteger<typename T::storage_type>;
+    { value.raw_value() } noexcept -> std::same_as<typename T::storage_type>;
+} && valid_packed_value_layout<T>();
+
+template <typename T>
+concept ScalarValue =
+    std::same_as<typename T::packed_integer_tag, scalar_tag> && requires(T const& value) {
+        requires std::integral<typename T::value_type>;
+        { value.value() } noexcept -> std::same_as<typename T::value_type>;
+    };
 }
 
 template <typename T>
 concept PackedInteger =
-    requires(T const& value) {
-        typename T::packed_integer_tag;
-        typename T::storage_type;
-        requires std::same_as<typename T::packed_integer_tag, packed::integer_tag> ||
-                     std::same_as<typename T::packed_integer_tag, packed::scalar_tag>;
-        requires std::unsigned_integral<typename T::storage_type>;
-        requires (!std::same_as<typename T::storage_type, bool>);
-        { value.raw_value() } noexcept -> std::same_as<typename T::storage_type>;
-    } && valid_packed_value_layout<T>() &&
-    (std::same_as<typename T::packed_integer_tag, packed::integer_tag> || requires(T const& value) {
-        typename T::value_type;
-        requires std::integral<typename T::value_type>;
-        { value.value() } noexcept -> std::same_as<typename T::value_type>;
-    });
+    packed::RawValue<T> &&
+    (std::same_as<typename T::packed_integer_tag, packed::integer_tag> || packed::ScalarValue<T>);
 
 namespace packed {
 template <PackedInteger T>
 [[nodiscard]] constexpr auto comparison_value(T const& value) noexcept {
-    if constexpr (std::same_as<typename T::packed_integer_tag, scalar_tag>) {
+    if constexpr (ScalarValue<T>) {
         return value.value();
     } else {
         return value.raw_value();
@@ -81,12 +82,10 @@ template <PackedInteger T>
 using comparison_type = decltype(comparison_value(std::declval<T const&>()));
 }
 
-template <typename Storage, int EncodedBits>
+template <PackedStorageInteger Storage, int EncodedBits>
 struct PackedStorage {
     using storage_type = Storage;
 
-    static_assert(valid_packed_storage<Storage, std::numeric_limits<Storage>::digits>(),
-                  "Packed storage requires unsigned integer storage other than bool");
     static_assert(EncodedBits > 0 && EncodedBits <= std::numeric_limits<Storage>::digits,
                   "Packed encoding must fit in storage");
 
@@ -96,32 +95,16 @@ struct PackedStorage {
     Storage default_raw_value{};
 };
 
-template <typename Storage, typename Value, int Offset, int Bits>
+template <PackedStorageInteger Storage, typename Value, int Offset, int Bits>
 struct PackedField {
     using storage_type = Storage;
     using value_type = Value;
 
-    static_assert(valid_packed_storage<Storage, std::numeric_limits<Storage>::digits>(),
-                  "Packed field requires unsigned integer storage other than bool");
-    static_assert(Bits > 0, "Packed field requires positive width");
-    static_assert(Offset >= 0, "Packed field requires nonnegative offset");
-    static_assert(Bits > 0 && Bits <= std::numeric_limits<Storage>::digits &&
+    static_assert(Offset >= 0 && Bits > 0 && Bits <= std::numeric_limits<Storage>::digits &&
                       Offset <= std::numeric_limits<Storage>::digits - Bits,
                   "Packed field must fit in storage");
     static_assert(
-        []<typename UnqualifiedValue> {
-            if constexpr (std::is_same_v<UnqualifiedValue, bool>) {
-                return Bits == 1;
-            } else if constexpr (std::is_integral_v<UnqualifiedValue>) {
-                return std::numeric_limits<UnqualifiedValue>::digits +
-                           (std::is_signed_v<UnqualifiedValue> ? 1 : 0) >=
-                       Bits;
-            } else if constexpr (std::is_enum_v<UnqualifiedValue>) {
-                return valid_packed_enum<UnqualifiedValue, Bits>();
-            } else {
-                return false;
-            }
-        }.template operator()<std::remove_cv_t<Value>>(),
+        PackedFieldValue<Value, Bits>,
         "Packed field requires an integer, one-bit bool, or unsigned enum value type wide enough "
         "for its bits");
 

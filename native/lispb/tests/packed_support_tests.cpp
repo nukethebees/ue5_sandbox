@@ -26,8 +26,9 @@ constexpr auto check_storage_width() -> bool {
     constexpr auto minimum{std::numeric_limits<SignedValue>::min()};
     constexpr auto signed_maximum{(std::numeric_limits<SignedValue>::max)()};
 
-    static_assert(ioj::valid_packed_storage<Storage, width>());
-    static_assert(!ioj::valid_packed_storage<Storage, width + 1>());
+    static_assert(ioj::PackedStorageInteger<Storage>);
+    static_assert(ioj::PackedFieldValue<Storage, width>);
+    static_assert(!ioj::PackedFieldValue<Storage, width + 1>);
     static_assert(storage.encoded_bits == width && storage.storage_bits == width);
     static_assert(storage.default_raw_value == maximum);
     static_assert(full.range.min == 0 && full.range.max == maximum);
@@ -58,11 +59,22 @@ static_assert(check_storage_width<std::uint8_t>());
 static_assert(check_storage_width<std::uint16_t>());
 static_assert(check_storage_width<std::uint32_t>());
 static_assert(check_storage_width<std::uint64_t>());
-static_assert(!ioj::valid_packed_storage<bool, 1>());
-static_assert(!ioj::valid_packed_storage<bool const, 1>());
-static_assert(!ioj::valid_packed_storage<std::int32_t, 31>());
+static_assert(!ioj::PackedStorageInteger<bool>);
+static_assert(!ioj::PackedStorageInteger<bool const>);
+static_assert(!ioj::PackedStorageInteger<std::int32_t>);
+static_assert(!ioj::PackedStorageInteger<float>);
+static_assert(ioj::PackedFieldValue<bool const volatile, 1>);
+static_assert(!ioj::PackedFieldValue<bool, 2>);
+static_assert(ioj::PackedFieldValue<std::int8_t, 8>);
+static_assert(!ioj::PackedFieldValue<std::uint8_t, 0>);
+static_assert(!ioj::PackedFieldValue<float, 8>);
+static_assert(!ioj::PackedEnumValue<std::uint8_t, 8>);
 
 enum class State : std::uint8_t { zero = 0, maximum = 7 };
+static_assert(ioj::PackedEnumValue<State const, 8>);
+static_assert(!ioj::PackedEnumValue<State, 9>);
+enum class SignedState : std::int8_t { negative = -1 };
+static_assert(!ioj::PackedEnumValue<SignedState, 8>);
 using EnumField = ioj::PackedField<std::uint16_t, State, 13, 3>;
 static_assert(ioj::packed_extract<EnumField>(0xffff) == State::maximum);
 static_assert(ioj::packed_pack<EnumField>(State::maximum) == 0xe000);
