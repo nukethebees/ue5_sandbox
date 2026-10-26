@@ -74,7 +74,7 @@ struct CapitalShipSimConfig {
     float spawn_delay{5.f};
     std::int32_t fighter_spawn_slots{};
     std::vector<ioj::Transform3d> fighter_spawn_slots_relative_transforms{};
-    Health max_health{5000};
+    Health max_health{Health{5000}};
 };
 } // namespace ioj::sim
 namespace ioj {

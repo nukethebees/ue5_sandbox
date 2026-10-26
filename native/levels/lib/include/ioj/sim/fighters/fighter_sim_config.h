@@ -235,7 +235,7 @@ struct FighterSimConfig {
     float steering_memory_duration{0.75f};
     std::int32_t dense_traffic_neighbour_threshold{4};
     LaserWeaponSimConfig laser{};
-    Health health{50};
+    Health health{Health{50}};
     float attack_retry_cooldown{0.15f};
     float attack_engagement_threshold{5000.f};
     float attack_reposition_frequency{10.f};

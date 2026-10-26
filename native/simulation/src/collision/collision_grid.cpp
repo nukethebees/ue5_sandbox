@@ -61,11 +61,13 @@ auto grid_half_size(GridGeometry const geometry) noexcept -> Vector3f {
 }
 
 auto num_cells(GridGeometry const geometry) noexcept -> GridCellCount {
-    return geometry.dimensions.x() * geometry.dimensions.y() * geometry.dimensions.z();
+    return GridCellCount{static_cast<GridCellCount::value_type>(
+        geometry.dimensions.x() * geometry.dimensions.y() * geometry.dimensions.z())};
 }
 auto to_index(GridGeometry const geometry, CellCoord const coordinate) noexcept -> CellIndex {
-    return coordinate.x() + coordinate.y() * geometry.dimensions.x() +
-           coordinate.z() * geometry.dimensions.x() * geometry.dimensions.y();
+    return CellIndex{static_cast<CellIndex::value_type>(
+        coordinate.x() + coordinate.y() * geometry.dimensions.x() +
+        coordinate.z() * geometry.dimensions.x() * geometry.dimensions.y())};
 }
 auto to_cell_coord(float const value, float const cell_dimension, int const grid_dimension) noexcept
     -> int {

@@ -10,10 +10,10 @@
 namespace ioj::sim {
 // Require positive health and maximum; clamp overheal to the highest band.
 [[nodiscard]] inline auto quantise_health(Health const health, Health const maximum) noexcept
-    -> QuantisedHealth {
-    assert(health > 0 && maximum > 0);
+    -> QuantisedHealth::value_type {
+    assert(health.value() > 0 && maximum.value() > 0);
     // Keep exact quarter boundaries in the lower band and clamp overheal.
-    auto const band{(static_cast<std::int64_t>(health) * 4 - 1) / maximum};
-    return static_cast<QuantisedHealth>(std::min<std::int64_t>(band, 3));
+    auto const band{(static_cast<std::int64_t>(health.value()) * 4 - 1) / maximum.value()};
+    return static_cast<QuantisedHealth::value_type>(std::min<std::int64_t>(band, 3));
 }
 }

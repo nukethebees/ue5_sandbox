@@ -134,8 +134,8 @@ void CollisionUniformGrid::rebuild_static_grid() {
         fatal_error(
             std::format("Static collision grid build failed: code={}, AABB={}, cell={}, count={}",
                         std::to_underlying(error.code),
-                        error.aabb_index,
-                        error.cell_index,
+                        error.aabb_index.value(),
+                        error.cell_index.value(),
                         error.count));
     }
 }
@@ -252,7 +252,8 @@ void CollisionUniformGrid::begin_entity_grid() {
     {
         SANDBOX_PROFILE_SCOPE("prepare entity grid");
 
-        for (auto const cell_index : storage.non_empty_cell_indices) {
+        for (auto const encoded_cell_index : storage.non_empty_cell_indices) {
+            auto const cell_index{encoded_cell_index.value()};
             storage.cell_counts[static_cast<std::size_t>(cell_index)] = 0;
         }
         storage.non_empty_cell_indices.clear();
@@ -309,7 +310,8 @@ void CollisionUniformGrid::write_entity_bounds(EntityCellDataWriter const& outpu
             for (auto x{min_coord.x()}; x <= max_x; ++x, ++cell_index) {
                 auto& count{storage.cell_counts[static_cast<std::size_t>(cell_index)]};
                 if (count == 0) {
-                    storage.non_empty_cell_indices.push_back(cell_index);
+                    storage.non_empty_cell_indices.emplace_back(
+                        static_cast<CellIndex::value_type>(cell_index));
                 }
                 ++count;
             }
@@ -327,7 +329,8 @@ void CollisionUniformGrid::finish_entity_grid() {
         SANDBOX_PROFILE_SCOPE("calculate entity cell offsets");
 
         CollisionGridEntityStorage::CellEntryOffset entry_count{};
-        for (auto const cell_index : storage.non_empty_cell_indices) {
+        for (auto const encoded_cell_index : storage.non_empty_cell_indices) {
+            auto const cell_index{encoded_cell_index.value()};
             auto const element{static_cast<std::size_t>(cell_index)};
             storage.cell_offsets[element] = entry_count;
             storage.cell_write_indices[element] = entry_count;
@@ -541,9 +544,11 @@ auto CollisionUniformGrid::overlaps_impl(
                 }
 
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- per-cell geometry.
-                auto const static_indices{static_storage_.aabb_indices_for_cell(cell_index)};
+                auto const static_indices{static_storage_.aabb_indices_for_cell(
+                    CellIndex{static_cast<CellIndex::value_type>(cell_index)})};
                 for (auto const static_index : static_indices) {
-                    auto const static_aabb_index{static_cast<StaticGeometryIndex>(static_index)};
+                    auto const static_aabb_index{
+                        static_cast<StaticGeometryIndex::value_type>(static_index)};
                     if (overlaps_query(Vector3f{static_min_xs[static_aabb_index],
                                                 static_min_ys[static_aabb_index],
                                                 static_min_zs[static_aabb_index]},
@@ -552,7 +557,8 @@ auto CollisionUniformGrid::overlaps_impl(
                                                 static_max_zs[static_aabb_index]})) {
                         if constexpr (Write) {
                             assert(result.static_geometry < out_static_geometry_indices.size());
-                            out_static_geometry_indices[result.static_geometry] = static_aabb_index;
+                            out_static_geometry_indices[result.static_geometry] =
+                                StaticGeometryIndex{static_aabb_index};
                         }
                         ++result.static_geometry;
                     }
@@ -701,7 +707,7 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
             ignored_entity = ignored_entities[output_index];
         }
 
-        auto const trace_cell{[&](CellIndex const cell_index) {
+        auto const trace_cell{[&](CellIndex::value_type const cell_index) {
             auto const element{static_cast<std::size_t>(cell_index)};
             auto const count{entity_storage_.cell_counts[element]};
             auto const entity_count{static_cast<std::uint32_t>(count)};
@@ -739,9 +745,11 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
                 }
             }
 
-            auto const static_indices{static_storage_.aabb_indices_for_cell(cell_index)};
+            auto const static_indices{static_storage_.aabb_indices_for_cell(
+                CellIndex{static_cast<CellIndex::value_type>(cell_index)})};
             for (auto const static_index : static_indices) {
-                auto const static_aabb_index{static_cast<StaticGeometryIndex>(static_index)};
+                auto const static_aabb_index{
+                    static_cast<StaticGeometryIndex::value_type>(static_index)};
                 auto const hit_t{query_aabb(Vector3f{static_min_xs[static_aabb_index],
                                                      static_min_ys[static_aabb_index],
                                                      static_min_zs[static_aabb_index]},
@@ -751,7 +759,7 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
                 if (hit_t < nearest_t) {
                     nearest_t = hit_t;
                     nearest_entity = EntityId{};
-                    nearest_static_index = static_aabb_index;
+                    nearest_static_index = StaticGeometryIndex{static_aabb_index};
                 }
             }
         }};
@@ -769,7 +777,7 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
                                          std::int32_t const y,
                                          std::int32_t const min_z,
                                          std::int32_t const max_z) {
-                auto cell_index{to_index(geometry, {x, y, min_z})};
+                auto cell_index{to_index(geometry, {x, y, min_z}).value()};
                 auto const plane_stride{geometry.dimensions.x() * geometry.dimensions.y()};
                 for (auto z{min_z}; z <= max_z; ++z) {
                     trace_cell(cell_index);
@@ -850,7 +858,7 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
             }
         } else {
             while (true) {
-                trace_cell(to_index(geometry, current_cell));
+                trace_cell(to_index(geometry, current_cell).value());
                 if (!try_advance_traversal()) {
                     break;
                 }

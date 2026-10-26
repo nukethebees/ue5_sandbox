@@ -307,10 +307,10 @@ auto choose_navigation_alternative(Vector3f const fighter_location,
     auto const count{static_cast<std::uint32_t>(choices.size())};
     for (std::uint32_t index{}; index < count; ++index) {
         auto const element{static_cast<std::size_t>(index)};
-        if (in_world[element] == 0) {
+        if (in_world[element].value() == 0) {
             continue;
         }
-        if (hits[element] == 0) {
+        if (hits[element].value() == 0) {
             return choices[element];
         }
 

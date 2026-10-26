@@ -12,7 +12,7 @@
 namespace ioj::sim {
 using ConditionTypeUnderlying = std::uint8_t;
 
-// Logical bit width: 3.
+// Logical bit width: 8.
 enum class ConditionType : ConditionTypeUnderlying {
     EntityDestroyed,
     EntityReachedPosition,

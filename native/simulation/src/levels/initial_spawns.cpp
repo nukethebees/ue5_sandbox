@@ -47,7 +47,7 @@ void initialise_spawns(LevelSimInitData& data,
         set_vector(capital_view_locations, i, spawn.location);
         set_rotation(capital_view_rotations, i, spawn.rotation);
         capital_teams[i] = spawn.team;
-        capital_healths[i] = spawn.health.value_or(data.capital_ships.max_health);
+        capital_healths[i] = Health{spawn.health.value_or(data.capital_ships.max_health.value())};
         capital_initial_fighter_spawn_delays[i] = spawn.initial_spawn_delay.value_or(0.f);
         capital_fighter_spawn_cooldowns[i] =
             spawn.spawn_cooldown.value_or(data.capital_ships.spawn_delay);
@@ -67,7 +67,7 @@ void initialise_spawns(LevelSimInitData& data,
         set_vector(turret_view_locations, i, spawn.location);
         set_rotation(turret_view_rotations, i, spawn.rotation);
         turret_teams[i] = spawn.team;
-        turret_healths[i] = spawn.health.value_or(data.turrets.max_health);
+        turret_healths[i] = Health{spawn.health.value_or(data.turrets.max_health.value())};
         turret_laser_damages[i] = spawn.laser_damage.value_or(data.turrets.laser.damage);
     }
 

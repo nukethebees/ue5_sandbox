@@ -76,7 +76,7 @@ auto ATestSpaceShip::make_spawn_data() const -> ::ioj::sim::player::PlayerSpawnD
         ioj::to_native(ship_mesh ? ship_mesh->GetRelativeTransform() : FTransform::Identity);
     result.laser_mode = initial_.laser_mode;
     result.laser_fire_rate = initial_.laser_fire_rate;
-    result.health = {initial_.health, initial_.health};
+    result.health = {ioj::sim::Health{initial_.health}, ioj::sim::Health{initial_.health}};
     result.flight_models = flight_models_;
 
     if (actor_config) {
@@ -313,7 +313,7 @@ void ATestSpaceShip::set_laser_fire_rate(ETestShipFireRate const value) noexcept
 // Health and collision
 /* **************************************** */
 void ATestSpaceShip::add_health(int32 const added_health) {
-    commands().add_health(added_health);
+    commands().add_health(ioj::sim::Health{added_health});
     if (commands().consume_death_notification()) {
         handle_simulation_death();
     }
@@ -324,7 +324,7 @@ auto ATestSpaceShip::get_health_info() const -> FShipHealth {
         return FShipHealth{initial_.health};
     }
     auto const native_health{bound_simulation->get_health()};
-    return {native_health.health, native_health.max_health};
+    return {native_health.health.value(), native_health.max_health.value()};
 }
 
 auto ATestSpaceShip::is_alive() const noexcept -> bool {

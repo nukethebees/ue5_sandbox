@@ -4,10 +4,12 @@
   (enum LifeState @native_uint8
     (value Alive)
     (value Unknown)
-    (value Combat))
+    (value Combat)
+    (projections (cpp)))
   (enum DeathReason @native_uint8
     :bit-width 2
     (value Unknown
       :value "static_cast<std::uint8_t>(LifeState::Unknown)")
     (value Combat
-      :value "static_cast<std::uint8_t>(LifeState::Combat)")))
+      :value "static_cast<std::uint8_t>(LifeState::Combat)")
+    (projections (cpp))))

@@ -43,12 +43,14 @@
     (value LaserDamage :serialized-name "laser-damage")
     (value InitialSpawnDelay :serialized-name "initial-spawn-delay")
     (value SpawnCooldown :serialized-name "spawn-cooldown")
-    (value Target :serialized-name "target"))
+    (value Target :serialized-name "target")
+    (projections (cpp)))
   (enum ExpressionSyntax @native_uint8
     :native-api true
     :helpers (traits to-serialized-string try-parse-serialized)
     (value Definition :serialized-name "expr")
-    (value Reference :serialized-name "expr-ref"))
+    (value Reference :serialized-name "expr-ref")
+    (projections (cpp)))
   (enum RecordKind @native_uint8
     :native-api true
     :helpers (to-serialized-string)
@@ -62,5 +64,6 @@
     (value CollisionGrid :serialized-name "collision-grid")
     (value Objective :serialized-name "objective")
     (value TeamResult :serialized-name "team-result")
-    (value LevelCompleted :serialized-name "level-completed"))
+    (value LevelCompleted :serialized-name "level-completed")
+    (projections (cpp)))
 )

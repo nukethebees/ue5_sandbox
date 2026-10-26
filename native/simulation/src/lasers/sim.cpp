@@ -251,7 +251,7 @@ void Sim::handle_collisions(ActionInputs const inputs) {
     auto const hit_entities{trace_hits.entities()};
     auto const hit_locations{trace_hits.view_locations().resolve()};
     auto const hit_count{static_cast<std::uint32_t>(
-        std::ranges::count_if(hit_flags, [](auto const hit) { return hit != 0; }))};
+        std::ranges::count_if(hit_flags, [](auto const hit) { return hit.value() != 0; }))};
     to_remove.reserve(hit_count);
     collision_damage_events.reserve(hit_count);
     hit_details.reserve(hit_count);
@@ -261,7 +261,7 @@ void Sim::handle_collisions(ActionInputs const inputs) {
     constexpr float safe_normal_tolerance{1.e-8f};
     for (std::uint32_t entity_index{}; entity_index < n; ++entity_index) {
         auto const element{static_cast<std::size_t>(entity_index)};
-        if (active_rows[element] == 0 || hit_flags[element] == 0) {
+        if (active_rows[element] == 0 || hit_flags[element].value() == 0) {
             continue;
         }
 

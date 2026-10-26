@@ -151,8 +151,8 @@ TEST(NativeSimulation, LaserFrameOutputAccumulatesBatchesAndReusesStorage) {
     second_batch.add(101.f, 3.f, 4.f, 1.f, 0.f, 0.f, {Team::Red, EntityType::CapitalShip});
 
     lasers::FrameOutput output;
-    output.append_hits(first_batch.get_const_view(), 7);
-    output.append_hits(second_batch.get_const_view(), 9);
+    output.append_hits(first_batch.get_const_view(), SimTick{7});
+    output.append_hits(second_batch.get_const_view(), SimTick{9});
 
     auto const accumulated{output.hits.get_const_view()};
     EXPECT_EQ(accumulated.num(), 67) << "All laser-hit batches accumulate";
@@ -168,7 +168,7 @@ TEST(NativeSimulation, LaserFrameOutputAccumulatesBatchesAndReusesStorage) {
     EXPECT_TRUE(output.hit_ticks.empty()) << "Reset clears hit ticks";
     EXPECT_TRUE(output.hit_ordinals.empty()) << "Reset clears hit ordinals";
 
-    output.append_hits(second_batch.get_const_view(), 11);
+    output.append_hits(second_batch.get_const_view(), SimTick{11});
     auto const reused{output.hits.get_const_view()};
     EXPECT_EQ(reused.num(), 2) << "Reset storage can be reused";
     EXPECT_EQ(reused.view_locations().xs()[0], 100.f) << "Reused storage receives new contents";
@@ -186,7 +186,7 @@ TEST(NativeSimulation, LevelEventSingleAllocationStoragePreservesOrderAcrossMove
         capitals.entity_indices()[index] = index;
         set_vector(capitals.view_locations(), index, Vector3f{static_cast<float>(index), 1.f, 2.f});
         capitals.teams()[index] = Team::Green;
-        capitals.healths()[index] = 1000 + index;
+        capitals.healths()[index] = Health{static_cast<Health::value_type>(1000 + index)};
 
         events.schedule.turret_spawns.add_defaulted(1);
         auto const turrets{events.schedule.turret_spawns.get_view()};
@@ -204,7 +204,7 @@ TEST(NativeSimulation, LevelEventSingleAllocationStoragePreservesOrderAcrossMove
     // NOLINTEND(ioj-loop-view-accessor-call)
     events.schedule.add_initial_spawn_group(EntityType::CapitalShip, 0, row_count);
     events.schedule.add_initial_spawn_group(EntityType::TubeSpinner, 0, row_count);
-    events.schedule.execution_ticks = {1};
+    events.schedule.execution_ticks = {SimTick{1}};
     events.schedule.event_group_counts = {{}};
     ASSERT_TRUE(events.schedule.add_spawn_group(EntityType::Turret, 0, row_count));
 

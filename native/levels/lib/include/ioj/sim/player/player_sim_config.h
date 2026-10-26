@@ -122,7 +122,7 @@ struct PlayerSimConfig {
     float turn_bank_angle_max{30.f};
     float turn_bank_speed{2.f};
     LaserWeaponSimConfig laser{};
-    Health health{1000};
+    Health health{Health{1000}};
     ShipLaserMode laser_mode{ShipLaserMode::Single};
     ShipFireRate laser_fire_rate{ShipFireRate::FullAuto};
 };

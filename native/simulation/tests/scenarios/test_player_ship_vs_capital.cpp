@@ -11,7 +11,7 @@ inline constexpr std::int32_t collision_resilient_health{1'000'000};
 TEST(WorldlessSpaceGameSimulation, PlayerShip_VersusCapital) {
     auto const config{tests::make_fixture()};
     auto data{tests::make_simulation_data(config)};
-    data.fighters.health = player_vs_capital_test::collision_resilient_health;
+    data.fighters.health = Health{player_vs_capital_test::collision_resilient_health};
     data.fighters.laser.projectile_speed = 20000.f;
     data.fighters.laser.max_distance = 1.f;
     auto const player_index{tests::add_player_spawn(
@@ -19,7 +19,7 @@ TEST(WorldlessSpaceGameSimulation, PlayerShip_VersusCapital) {
         tests::make_player_spawn(config,
                                  Transform3d{.rotation = to_quaternion(Rotator3d{0.f, -90.f, 0.f}),
                                              .location = Vector3d{19850.f, 1300.f, 980.f}}))};
-    data.player->health.health = player_vs_capital_test::collision_resilient_health;
+    data.player->health.health = Health{player_vs_capital_test::collision_resilient_health};
     tests::add_capital_spawn(
         data, Vector3f{{-22020.f, 2170.f, 4360.f}}, Team::Green, player_index, 0.f, 120.f);
 

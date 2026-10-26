@@ -11,7 +11,7 @@ auto make_world() -> LevelSimInitData {
     data.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.lasers.n_preallocated_instances = 8;
     data.capital_ships.fighter_spawn_slots = 0;
-    data.fighters.health = 100;
+    data.fighters.health = Health{100};
     data.fighters.speed = 0.f;
     data.fighters.laser.damage = 0;
     data.collision.overlap_response.damage_per_overlap_detection = 1;
@@ -72,7 +72,7 @@ class FighterMembershipRefresh : public ::testing::Test {
         EXPECT_EQ(refresh(), 0u);
     }
 
-    void damage(EntityId const victim, Health const amount) {
+    void damage(EntityId const victim, Health::value_type const amount) {
         DirectDamageEvents events;
         events.add(victim, amount, {});
         LevelSimTestAccess::queue_direct_damage_events(simulation, events.get_const_view());
@@ -290,7 +290,7 @@ TEST(FighterMembership, CapitalRegistrationInitializesNewEmptySpan) {
         data.level_events.schedule.capital_spawns.get_view().initial_fighter_spawn_delays(), 0.f);
 
     auto& schedule{data.level_events.schedule};
-    schedule.execution_ticks = {3};
+    schedule.execution_ticks = {SimTick{3}};
     schedule.event_group_counts = {{}};
     auto const payload_offset{schedule.capital_spawns.num()};
     schedule.capital_spawns.add_defaulted(1);
@@ -299,7 +299,7 @@ TEST(FighterMembership, CapitalRegistrationInitializesNewEmptySpan) {
     spawn.target_entity_indices()[0] = invalid_level_entity_index;
     set_vector(spawn.view_locations(), 0, {{3000.f, 0.f, 0.f}});
     spawn.teams()[0] = Team::Green;
-    spawn.healths()[0] = 100;
+    spawn.healths()[0] = Health{100};
     spawn.initial_fighter_spawn_delays()[0] = 60.f;
     ASSERT_TRUE(schedule.add_spawn_group(EntityType::CapitalShip, payload_offset, 1));
 

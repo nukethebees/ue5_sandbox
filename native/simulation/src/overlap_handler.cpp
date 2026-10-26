@@ -3,7 +3,8 @@
 #include <ioj/sim/combat_events.h>
 
 namespace ioj::sim {
-OverlapHandler::OverlapHandler(Positive<Health> const damage_per_overlap_detection) noexcept
+OverlapHandler::OverlapHandler(
+    Positive<Health::value_type> const damage_per_overlap_detection) noexcept
     : damage_per_overlap_detection_{damage_per_overlap_detection} {}
 
 void OverlapHandler::handle(collision::DetectedOverlapsView const overlaps, CombatEvents& events) {

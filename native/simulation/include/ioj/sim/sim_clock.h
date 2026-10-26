@@ -16,14 +16,14 @@ struct SimClock {
 
     void initialise(settings::TickSettings const& settings) {
         tick_loop = {.tick_rate = settings.tick_rate, .time_scale = settings.time_scale};
-        completed_ticks = 0;
+        completed_ticks = SimTick{};
     }
 
-    template <std::integral Counter = tick_type>
+    template <std::integral Counter = tick_type::value_type>
     auto frequency_to_tick_period(Frequency const frequency) const noexcept -> Positive<Counter> {
         return sim::frequency_to_tick_period<Counter>(tick_loop.tick_rate, frequency);
     }
-    template <std::integral Counter = tick_type>
+    template <std::integral Counter = tick_type::value_type>
     auto duration_to_tick_period(Duration const duration) const noexcept -> NonNegative<Counter> {
         return sim::duration_to_tick_period<Counter>(tick_loop.tick_rate, duration);
     }

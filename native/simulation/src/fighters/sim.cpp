@@ -404,7 +404,7 @@ void Sim::plan_movement(ThinkingInputs const inputs) {
         auto const aim_directions{attack_view.view_aim_directions().resolve()};
         auto const planned_directions{attack_view.view_planned_aim_directions().resolve()};
         for (std::uint32_t index{}; index < n_attack; ++index) {
-            auto const choice{choices[index]};
+            auto const choice{choices[index].value()};
             auto const desired_direction{is_avoidance_direction_choice(choice)
                                              ? vector_at(movement_directions, index)
                                              : vector_at(desired_directions, index)};
@@ -751,8 +751,8 @@ void Sim::update_separation_observations(NavigationScratch& scratch, ThinkingInp
                 goal_direction.x(), goal_direction.y(), goal_direction.z(), 1.e-4f) ||
             move_distance <= 0.f) {
             set_vector(separation_steering, fighter_index, Vector3f{});
-            choices[fighter_index] = direct_movement_choice;
-            clear_scan_counts[fighter_index] = 0;
+            choices[fighter_index] = AvoidanceChoice{AvoidanceChoice::DirectMovement};
+            clear_scan_counts[fighter_index] = NavigationScanCount{};
             continue;
         }
 
@@ -779,7 +779,7 @@ void Sim::update_separation_observations(NavigationScratch& scratch, ThinkingInp
         }
 
         auto const previous_memory{vector_at(separation_steering, fighter_index)};
-        auto const current_tier{static_cast<NavigationRiskTier>(risk_tiers[fighter_index])};
+        auto const current_tier{static_cast<NavigationRiskTier>(risk_tiers[fighter_index].value())};
         auto const elapsed_since_scan{static_cast<float>(get_navigation_tick_period(current_tier)) *
                                       simulation_clock.get_tick_period()};
         auto const memory_retention{
@@ -883,21 +883,23 @@ void Sim::scan_preferred_navigation(NavigationScratch& scratch,
         for (std::uint32_t index{}; index < n_direct_traces; ++index) {
             auto const fighter_index{scratch.trace_fighter_indices[index]};
             auto const element{static_cast<std::size_t>(fighter_index)};
-            if (scratch.line_of_sight_results[index] == 0 || hit_flags[index] != 0) {
+            if (scratch.line_of_sight_results[index].value() == 0 ||
+                hit_flags[index].value() != 0) {
                 scratch.blocked_fighter_indices.add(fighter_index);
-                clear_scan_counts[element] = 0;
+                clear_scan_counts[element] = NavigationScanCount{};
                 continue;
             }
-            if (choices[element] == direct_movement_choice) {
-                clear_scan_counts[element] = 0;
+            if (choices[element].value() == AvoidanceChoice::DirectMovement) {
+                clear_scan_counts[element] = NavigationScanCount{};
                 continue;
             }
 
             auto& clear_count{clear_scan_counts[element]};
-            ++clear_count;
-            if (clear_count >= clear_scans_to_end_avoidance) {
-                choices[element] = direct_movement_choice;
-                clear_count = 0;
+            clear_count.set_value(
+                static_cast<NavigationScanCount::value_type>(clear_count.value() + 1));
+            if (clear_count.value() >= clear_scans_to_end_avoidance) {
+                choices[element] = AvoidanceChoice{AvoidanceChoice::DirectMovement};
+                clear_count = NavigationScanCount{};
             }
         }
     }
@@ -940,7 +942,7 @@ void Sim::scan_alternative_navigation(NavigationScratch& scratch,
         std::array<Vector3f, n_avoidance_choices> directions;
         make_avoidance_directions(frame, directions);
         std::array<std::int8_t, n_avoidance_choices> order;
-        make_avoidance_choice_order(integral_biases[element], choices[element], order);
+        make_avoidance_choice_order(integral_biases[element], choices[element].value(), order);
 
         for (auto const choice : order) {
             auto const direction{directions[static_cast<std::size_t>(choice)]};
@@ -1011,10 +1013,10 @@ void Sim::select_navigation_alternatives(NavigationScratch& scratch,
             {scratch.line_of_sight_results.data() + candidate_begin, candidate_count},
             hits.subspan(candidate_begin, candidate_count),
             hit_locations.slice(candidate_begin, n_avoidance_choices),
-            stop_movement_choice)};
+            AvoidanceChoice::StopMovement)};
         // NOLINTEND(ioj-loop-view-construction,ioj-loop-view-accessor-call)
 
-        choices[fighter_index] = chosen_choice;
+        choices[fighter_index] = AvoidanceChoice{chosen_choice};
     }
 }
 void Sim::apply_navigation_choices(NavigationScratch const& scratch) {
@@ -1032,16 +1034,17 @@ void Sim::apply_navigation_choices(NavigationScratch const& scratch) {
     for (auto const index : scratch.ready_fighter_indices) {
         auto const element{static_cast<std::size_t>(index)};
         auto observed{static_cast<NavigationRiskTier>(scratch.observed_risk_tiers[index])};
-        if (choices[element] != direct_movement_choice) {
+        if (choices[element].value() != AvoidanceChoice::DirectMovement) {
             observed = std::max(observed, NavigationRiskTier::Active);
         }
         auto const update{
-            update_navigation_risk(static_cast<NavigationRiskTier>(risk_tiers[element]),
+            update_navigation_risk(static_cast<NavigationRiskTier>(risk_tiers[element].value()),
                                    observed,
-                                   lower_risk_scan_counts[element],
+                                   lower_risk_scan_counts[element].value(),
                                    lower_risk_scans_to_demote)};
-        risk_tiers[element] = static_cast<std::uint8_t>(update.tier);
-        lower_risk_scan_counts[element] = update.lower_risk_scan_count;
+        risk_tiers[element] =
+            NavigationRiskCode{static_cast<NavigationRiskCode::value_type>(update.tier)};
+        lower_risk_scan_counts[element] = NavigationScanCount{update.lower_risk_scan_count};
         auto const period{get_navigation_tick_period(update.tier)};
         countdown_periods[element] = period;
         remaining_ticks[element] = period;
@@ -1060,18 +1063,18 @@ void Sim::apply_navigation_choices(NavigationScratch const& scratch) {
                 ++navigation_telemetry.separating_fighter_count;
                 ++navigation_telemetry.steering_memory_fighter_count;
             }
-            auto const choice{choices[element]};
+            auto const choice{choices[element].value()};
             if (is_avoidance_direction_choice(choice)) {
                 auto const frame{make_avoidance_frame(vector_at(movement_directions, index),
                                                       float_biases[element])};
                 set_vector(movement_directions, index, make_avoidance_direction(frame, choice));
                 ++navigation_telemetry.avoiding_fighter_count;
-            } else if (choice == stop_movement_choice) {
+            } else if (choice == AvoidanceChoice::StopMovement) {
                 set_vector(movement_directions, index, Vector3f{0.f, 0.f, 0.f});
                 ++navigation_telemetry.avoiding_fighter_count;
             }
 
-            switch (static_cast<NavigationRiskTier>(risk_tiers[element])) {
+            switch (static_cast<NavigationRiskTier>(risk_tiers[element].value())) {
                 case NavigationRiskTier::Clear:
                     ++navigation_telemetry.clear_risk_count;
                     break;
@@ -1183,7 +1186,7 @@ auto Sim::find_index(EntityId const fighter) const noexcept -> std::uint32_t {
     auto const ids{entity_buffers.current().get_const_view().entity_ids()};
     auto const found{std::ranges::find(ids, fighter)};
     return found == ids.end() ? get_num_instances()
-                              : static_cast<EntityFrameIndex>(found - ids.begin());
+                              : static_cast<EntityFrameIndex::value_type>(found - ids.begin());
 }
 auto Sim::get_task_span(Task const task) const -> IndexSpan {
     return task_spans[std::to_underlying(task)];
@@ -1374,8 +1377,10 @@ void Sim::commit_spawns() {
     std::ranges::copy(spawns.parents(), new_data.parent_ids().begin());
     std::ranges::copy(spawns.targets(), new_data.target_ids().begin());
     std::ranges::fill(new_data.navigation_risk_tiers(),
-                      static_cast<std::uint8_t>(NavigationRiskTier::Nearby));
-    std::ranges::fill(new_data.avoidance_choice_indices(), direct_movement_choice);
+                      NavigationRiskCode{
+                          static_cast<NavigationRiskCode::value_type>(NavigationRiskTier::Nearby)});
+    std::ranges::fill(new_data.avoidance_choice_indices(),
+                      AvoidanceChoice{AvoidanceChoice::DirectMovement});
     std::ranges::fill(new_data.navigation_update_countdowns_periods(), navigation_period);
 
     auto const aim_directions{new_data.view_aim_directions().resolve()};
@@ -1530,7 +1535,7 @@ void Sim::handle_firing(TaskView data, ThinkingInputs const inputs) {
     for (auto remaining{can_fire.num()}; remaining > 0; --remaining) {
         auto const index{remaining - 1};
         auto const fighter_index{can_fire[index]};
-        if (line_of_sight_results[index] != 0) {
+        if (line_of_sight_results[index].value() != 0) {
             continue;
         }
 
@@ -1590,7 +1595,7 @@ void Sim::handle_firing(TaskView data, ThinkingInputs const inputs) {
 
         for (auto remaining{n_fighters}; remaining > 0; --remaining) {
             auto const index{remaining - 1};
-            if (line_of_sight_results[index] == 0) {
+            if (line_of_sight_results[index].value() == 0) {
                 continue;
             }
 
@@ -1670,10 +1675,11 @@ void Sim::commit_orders() {
             separation_xs[index] = 0.f;
             separation_ys[index] = 0.f;
             separation_zs[index] = 0.f;
-            risk_tiers[index] = static_cast<NavigationRiskCode>(initial_tier);
-            lower_risk_scan_counts[index] = 0;
-            avoidance_choice_indices[index] = direct_movement_choice;
-            avoidance_clear_scan_counts[index] = 0;
+            risk_tiers[index] =
+                NavigationRiskCode{static_cast<NavigationRiskCode::value_type>(initial_tier)};
+            lower_risk_scan_counts[index] = NavigationScanCount{};
+            avoidance_choice_indices[index] = AvoidanceChoice{AvoidanceChoice::DirectMovement};
+            avoidance_clear_scan_counts[index] = NavigationScanCount{};
             update_periods[index] = tick_period;
             remaining_ticks[index] = 0;
         }};

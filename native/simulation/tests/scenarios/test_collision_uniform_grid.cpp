@@ -178,7 +178,7 @@ struct ExpectedTrace {
     char const* name;
     Vector3f start;
     Vector3f end;
-    TraceHit expected_hit;
+    TraceHit::value_type expected_hit;
     Vector3f expected_location{};
     std::int32_t expected_entity_index{};
 };
@@ -203,8 +203,8 @@ void check_traces(TraceFixture const& fixture, std::span<ExpectedTrace const> co
     for (std::int32_t i{}; i < count; ++i) {
         auto const& trace_case{cases[i]};
         SCOPED_TRACE(trace_case.name);
-        EXPECT_EQ(trace_case.expected_hit, hit_flags[i]);
-        if (trace_case.expected_hit == 0 || hit_flags[i] == 0) {
+        EXPECT_EQ(trace_case.expected_hit, hit_flags[i].value());
+        if (trace_case.expected_hit == 0 || hit_flags[i].value() == 0) {
             continue;
         }
 
@@ -402,7 +402,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceAppliesAABBCentre) 
     auto const hits{run_traces(fixture, starts, ends)};
 
     EXPECT_EQ(TraceHit{1}, hits.get_const_view().hits()[0]) << "Trace hits locally centred AABB";
-    if (hits.get_const_view().hits()[0] == 0) {
+    if (hits.get_const_view().hits()[0].value() == 0) {
         return;
     }
 
@@ -463,7 +463,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceAppliesAABBCentre) 
     for (std::int32_t i{}; i < entity_type_count; ++i) {
         SCOPED_TRACE(::testing::Message() << "index " << i);
         EXPECT_EQ(TraceHit{1}, mixed_hit_flags[i]) << "Mixed entity-type trace records a hit";
-        if (mixed_hit_flags[i] == 0) {
+        if (mixed_hit_flags[i].value() == 0) {
             continue;
         }
 
@@ -997,7 +997,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceVariedGridGeometry)
                                            Vector3f{},
                                            single_cell_grid_dims,
                                            single_cell_dims};
-    EXPECT_EQ(1, single_cell_fixture.grid.num_cells()) << "Single-cell grid has one cell";
+    EXPECT_EQ(1, single_cell_fixture.grid.num_cells().value()) << "Single-cell grid has one cell";
     EXPECT_EQ(1, static_cast<std::int32_t>(single_cell_fixture.grid.get_cell_entities({}).size()))
         << "Single-cell grid contains its entity";
 
@@ -1105,7 +1105,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridRebuildLifecycle) {
         }};
         check_traces(authoritative, owner_cases);
         authoritative.owners.health_table.get_view<EntityType::CapitalShip>(owner.num())
-            .set_health(0, 0);
+            .set_health(0, Health{0});
         authoritative.owners.rebuild(authoritative.grid, authoritative.aabbs);
         std::array<ExpectedTrace, 1> const dead_owner_cases{{
             {"Rebuild removes dead owners before subsequent queries",
@@ -1160,7 +1160,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridRebuildLifecycle) {
     auto const replacement_hits{run_traces(fixture, replacement_starts, replacement_ends)};
     EXPECT_EQ(TraceHit{1}, replacement_hits.get_const_view().hits()[0])
         << "Replacement entity is added on rebuild";
-    if (replacement_hits.get_const_view().hits()[0] != 0) {
+    if (replacement_hits.get_const_view().hits()[0].value() != 0) {
         EXPECT_EQ(replacement_handle, replacement_hits.get_const_view().entities()[0])
             << "Trace resolves replacement generation";
     }
@@ -1210,7 +1210,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridRebuildLifecycle) {
         run_traces(sparse_fixture, sparse_replacement_starts, sparse_replacement_ends)};
     EXPECT_EQ(TraceHit{1}, sparse_replacement_hits.get_const_view().hits()[0])
         << "Sparse replacement remains traceable beside surviving entities";
-    if (sparse_replacement_hits.get_const_view().hits()[0] != 0) {
+    if (sparse_replacement_hits.get_const_view().hits()[0].value() != 0) {
         EXPECT_EQ(sparse_replacement_handle, sparse_replacement_hits.get_const_view().entities()[0])
             << "Sparse replacement trace resolves new generation";
     }
@@ -1285,12 +1285,12 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceDeterministicRefere
             }
 
             auto const expected_hit{TraceHit{std::isfinite(nearest_t)}};
-            expected_hit_count += expected_hit;
+            expected_hit_count += expected_hit.value();
             auto const case_index{case_offset + i_trace};
             SCOPED_TRACE(::testing::Message() << "index " << case_index);
             EXPECT_EQ(expected_hit, hit_flags[i_trace])
                 << "Reference sweep trace has expected hit flag";
-            if (expected_hit == 0 || hit_flags[i_trace] == 0) {
+            if (expected_hit.value() == 0 || hit_flags[i_trace].value() == 0) {
                 continue;
             }
 
@@ -1364,7 +1364,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceInvariancePropertie
             for (std::uint32_t i{}; i < count; ++i) {
                 SCOPED_TRACE(::testing::Message() << "index " << i);
                 EXPECT_EQ(baseline_hit_flags[i], candidate_hit_flags[i]) << description;
-                if (baseline_hit_flags[i] == 0 || candidate_hit_flags[i] == 0) {
+                if (baseline_hit_flags[i].value() == 0 || candidate_hit_flags[i].value() == 0) {
                     continue;
                 }
                 EXPECT_EQ(baseline_hits.get_const_view().entities()[i].raw_value(),
@@ -1402,7 +1402,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceInvariancePropertie
         auto const source_index{permutation[i]};
         EXPECT_EQ(baseline_hit_flags[source_index], permuted_hit_flags[i])
             << "Trace permutation preserves hit flag";
-        if (baseline_hit_flags[source_index] == 0 || permuted_hit_flags[i] == 0) {
+        if (baseline_hit_flags[source_index].value() == 0 || permuted_hit_flags[i].value() == 0) {
             continue;
         }
         EXPECT_EQ(baseline_hits.get_const_view().entities()[source_index],
@@ -1427,7 +1427,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceInvariancePropertie
         SCOPED_TRACE(::testing::Message() << "index " << i);
         EXPECT_EQ(baseline_hit_flags[i], reversed_hit_flags[i])
             << "Entity insertion order preserves hit flag";
-        if (baseline_hit_flags[i] != 0 && reversed_hit_flags[i] != 0) {
+        if (baseline_hit_flags[i].value() != 0 && reversed_hit_flags[i].value() != 0) {
             EXPECT_LE(size(baseline_hits.get_const_view().view_locations()[i] -
                            reversed_hits.get_const_view().view_locations()[i]),
                       hit_location_tolerance)
@@ -1454,7 +1454,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceInvariancePropertie
         SCOPED_TRACE(::testing::Message() << "index " << i);
         EXPECT_EQ(baseline_hit_flags[i], translated_hit_flags[i])
             << "Whole-cell translation preserves hit flag";
-        if (baseline_hit_flags[i] != 0 && translated_hit_flags[i] != 0) {
+        if (baseline_hit_flags[i].value() != 0 && translated_hit_flags[i].value() != 0) {
             EXPECT_EQ(baseline_hits.get_const_view().entities()[i].raw_value(),
                       translated_hits.get_const_view().entities()[i].raw_value())
                 << "Whole-cell translation preserves entity";
@@ -1628,7 +1628,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridStaticGeometry) {
     EXPECT_EQ(TraceHit{1}, static_hits.get_const_view().hits()[0]) << "Static AABB is traceable";
     EXPECT_TRUE(!static_hits.get_const_view().entities()[0].is_valid())
         << "Static hit has no dynamic entity";
-    EXPECT_EQ(0, static_hits.get_const_view().static_geometry_indices()[0])
+    EXPECT_EQ(0, static_hits.get_const_view().static_geometry_indices()[0].value())
         << "Static hit identifies canonical static geometry";
     EXPECT_LE(size(Vector3f{{-60.f, 0.f, 0.f}} - static_hits.get_const_view().view_locations()[0]),
               hit_location_tolerance)
@@ -1675,13 +1675,13 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridStaticGeometry) {
         << "Static geometry remains after fighter exclusion";
     EXPECT_TRUE(!static_geometry_hits.get_const_view().entities()[0].is_valid())
         << "Fighter exclusion returns the static obstacle";
-    EXPECT_EQ(0, static_geometry_hits.get_const_view().static_geometry_indices()[0])
+    EXPECT_EQ(0, static_geometry_hits.get_const_view().static_geometry_indices()[0].value())
         << "Fighter exclusion keeps the static obstacle identity";
 
     set_static_aabb({{-60.f, -10.f, -10.f}}, {{-40.f, 10.f, 10.f}});
     fixture.owners.rebuild(fixture.grid, fixture.aabbs);
     auto const rebuilt_static_hits{run_traces(fixture, starts, ends)};
-    EXPECT_EQ(0, rebuilt_static_hits.get_const_view().static_geometry_indices()[0])
+    EXPECT_EQ(0, rebuilt_static_hits.get_const_view().static_geometry_indices()[0].value())
         << "Static geometry survives dynamic rebuild";
 
     set_static_aabb({{140.f, -10.f, -10.f}}, {{160.f, 10.f, 10.f}});
@@ -1696,7 +1696,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridStaticGeometry) {
     auto const ignored_dynamic_hits{run_traces(fixture, starts, ends, ignored_entities)};
     EXPECT_TRUE(!ignored_dynamic_hits.get_const_view().entities()[0].is_valid())
         << "Ignored dynamic entity is not returned";
-    EXPECT_EQ(0, ignored_dynamic_hits.get_const_view().static_geometry_indices()[0])
+    EXPECT_EQ(0, ignored_dynamic_hits.get_const_view().static_geometry_indices()[0].value())
         << "Static geometry behind ignored entity remains traceable";
 
     set_static_aabb({{90.f, -10.f, -10.f}}, {{110.f, 10.f, 10.f}});
@@ -1707,7 +1707,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridStaticGeometry) {
     set_static_aabb({{140.f, -10.f, -10.f}}, {{160.f, 10.f, 10.f}});
     auto const runtime_static_index{
         fixture.grid.add_static_aabb({{-60.f, -10.f, -10.f}}, {{-40.f, 10.f, 10.f}})};
-    EXPECT_EQ(1, runtime_static_index) << "Runtime static AABB receives stable identity";
+    EXPECT_EQ(1, runtime_static_index.value()) << "Runtime static AABB receives stable identity";
     auto const runtime_static_hits{run_traces(fixture, starts, ends)};
     EXPECT_EQ(runtime_static_index,
               runtime_static_hits.get_const_view().static_geometry_indices()[0])

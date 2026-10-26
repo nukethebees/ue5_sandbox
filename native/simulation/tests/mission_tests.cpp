@@ -47,9 +47,9 @@ struct MissionTest : ::testing::Test {
         auto compiled{CompiledMission::compile(definition, names, clock)};
         ASSERT_TRUE(compiled.has_value()) << (compiled ? "" : compiled.error().front());
         mission = Mission{std::move(*compiled)};
-        mission.begin({0, ledger, entities});
+        mission.begin({SimTick{0}, ledger, entities});
     }
-    void tick(SimTick const tick) { mission.tick({tick, ledger, entities}); }
+    void tick(SimTick::value_type const tick) { mission.tick({SimTick{tick}, ledger, entities}); }
 };
 auto timer(double const seconds) -> MissionExpr {
     return {TimeElapsedExpr{.seconds = NonNegativeFinite<double>::make(seconds)}};
@@ -103,7 +103,7 @@ TEST_F(MissionTest, FalseOutcomeLeavesShortCircuitAndAndResolveOrOnlyAfterAllFal
     auto const and_root{compiled->objectives.roots(ObjectiveId{2})[ioj::ObjectiveOutcome::Passed]};
     auto const or_root{compiled->objectives.roots(ObjectiveId{3})[ioj::ObjectiveOutcome::Passed]};
     mission = Mission{std::move(*compiled)};
-    mission.begin({0, ledger, {}});
+    mission.begin({SimTick{0}, ledger, {}});
     tick(10);
     EXPECT_EQ(mission.result(and_root), ExprResult::False);
     EXPECT_EQ(mission.result(or_root), ExprResult::Pending);

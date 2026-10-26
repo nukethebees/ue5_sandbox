@@ -38,7 +38,7 @@ void WorldlessSimulationTest::queue_kills(std::span<EntityId const> const target
     for (auto const target : targets) {
         auto const state{observe_entity(simulation_, target)};
         assert(state);
-        events.add(target, std::max(1, state->health), instigator);
+        events.add(target, std::max(1, state->health.value()), instigator);
     }
     LevelSimTestAccess::queue_direct_damage_events(simulation_, events.get_const_view());
 }
@@ -48,9 +48,10 @@ auto WorldlessSimulationTest::run_until_timeline_finished(time_type const maximu
     assert(simulation_.get_state() == OrchestratorState::Paused);
     simulation_.start();
     auto const tick_period{simulation_.get_clock().get_tick_period()};
-    auto const maximum_ticks{static_cast<SimTick>(std::ceil(maximum_time / tick_period))};
+    auto const maximum_ticks{
+        static_cast<SimTick::value_type>(std::ceil(maximum_time / tick_period))};
     // NOLINTNEXTLINE(ioj-loop-condition-call) -- advancing the simulation can finish the timeline.
-    for (SimTick tick{}; tick < maximum_ticks && !timeline.is_finished(); ++tick) {
+    for (SimTick::value_type tick{}; tick < maximum_ticks && !timeline.is_finished(); ++tick) {
         advance(tick_period);
     }
     simulation_.pause();
@@ -103,7 +104,7 @@ auto add_capital_spawn(LevelSimInitData& data,
     events.target_entity_indices()[row] = target_entity_index;
     set_vector(events.view_locations(), row, location);
     events.teams()[row] = team;
-    events.healths()[row] = health == -1 ? data.capital_ships.max_health : health;
+    events.healths()[row] = health == -1 ? data.capital_ships.max_health : Health{health};
     events.initial_fighter_spawn_delays()[row] = initial_spawn_delay;
     events.fighter_spawn_cooldowns()[row] = spawn_cooldown;
     return entity_index;
@@ -124,7 +125,7 @@ auto add_turret_spawn(LevelSimInitData& data,
     set_vector(events.view_locations(), row, location);
     set_rotation(events.view_rotations(), row, rotation);
     events.teams()[row] = team;
-    events.healths()[row] = health == -1 ? data.turrets.max_health : health;
+    events.healths()[row] = health == -1 ? data.turrets.max_health : Health{health};
     events.laser_damages()[row] = laser_damage == -1 ? data.turrets.laser.damage : laser_damage;
     return entity_index;
 }

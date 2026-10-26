@@ -175,8 +175,8 @@ void UTelemetryDashboardWidget::rebuild_state() {
         TEXT(
             "COMPLETED TICKS  //  %llu\nSIMULATED TIME  //  %.3fs\nFINAL FORCES  //  "
             "ENTITIES %d  LASERS %d\nFINAL COUNTERS  //  SPAWN %d  DESTROY %d  KILLS %d  FIRED %d"),
-        record->run.completion.completed_ticks,
-        static_cast<double>(record->run.completion.completed_ticks) /
+        record->run.completion.completed_ticks.value(),
+        static_cast<double>(record->run.completion.completed_ticks.value()) /
             record->run.tick_rate_hz.get_hz(),
         last_int(record->run.tick_series.active_entities),
         last_int(record->run.tick_series.active_lasers),

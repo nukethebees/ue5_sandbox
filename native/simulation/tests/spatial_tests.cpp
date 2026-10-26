@@ -63,8 +63,9 @@ TEST(NativeSoa, SwapRemovalKeepsTraceHitColumnsAligned) {
         columns.view_locations().ys()[index] = static_cast<float>(index + 10);
         columns.view_locations().zs()[index] = static_cast<float>(index + 20);
         columns.entities()[index] = EntityId::from_raw(static_cast<std::uint32_t>(index + 100));
-        columns.static_geometry_indices()[index] = index + 200;
-        columns.hits()[index] = static_cast<std::uint8_t>(index + 1);
+        columns.static_geometry_indices()[index] = collision::StaticGeometryIndex{
+            static_cast<collision::StaticGeometryIndex::value_type>(index + 200)};
+        columns.hits()[index] = TraceHit{static_cast<TraceHit::value_type>(index % 2)};
     }
     // NOLINTEND(ioj-loop-view-accessor-call)
 
@@ -76,8 +77,8 @@ TEST(NativeSoa, SwapRemovalKeepsTraceHitColumnsAligned) {
     EXPECT_EQ(columns.view_locations().xs()[1], 1.0f);
     EXPECT_EQ(columns.view_locations().xs()[2], 5.0f);
     EXPECT_EQ(columns.entities()[2], EntityId::from_raw(105));
-    EXPECT_EQ(columns.static_geometry_indices()[2], 205);
-    EXPECT_EQ(columns.hits()[2], 6);
+    EXPECT_EQ(columns.static_geometry_indices()[2].value(), 205);
+    EXPECT_EQ(columns.hits()[2].value(), 1);
 }
 
 TEST(CollisionGrid, CalculatesDimensionsFromWorldAndCellSizes) {

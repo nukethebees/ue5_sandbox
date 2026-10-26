@@ -26,8 +26,8 @@ using Field = telemetry::HistoryField;
 using FieldMask = telemetry::HistoryFieldMask;
 
 template <typename Data>
-auto snapshot_with_terminal_sample(Data const& source,
-                                   LevelTelemetryManager::tick_type const completed_tick) -> Data {
+auto snapshot_with_terminal_sample(
+    Data const& source, LevelTelemetryManager::tick_type::value_type const completed_tick) -> Data {
     auto result{source};
     if (!result.is_empty() && result.last_time() < completed_tick) {
         auto const terminal_value{result.last_value()};
@@ -118,8 +118,8 @@ auto LevelTelemetryManager::make_snapshot() const -> LevelTelemetrySnapshot {
     auto const& cumulative_kill_count_data{cumulative_kill_count_data_};
     assert((!active_entity_count_data.is_empty() && !cumulative_kill_count_data.is_empty()) &&
            "Level telemetry must be initialised before creating a snapshot.");
-    assert((active_entity_count_data.last_time() <= completed_tick &&
-            cumulative_kill_count_data.last_time() <= completed_tick) &&
+    assert((active_entity_count_data.last_time() <= completed_tick.value() &&
+            cumulative_kill_count_data.last_time() <= completed_tick.value()) &&
            "Level telemetry cannot contain samples after the snapshot tick.");
     assert((contains_only_nonnegative_values(active_entity_count_data) &&
             contains_only_nonnegative_values(cumulative_kill_count_data) &&
@@ -128,8 +128,8 @@ auto LevelTelemetryManager::make_snapshot() const -> LevelTelemetrySnapshot {
            "Level telemetry snapshots cannot contain negative counts.");
 
     LevelTelemetrySnapshot snapshot;
-    snapshot.elapsed_seconds =
-        Duration::make(static_cast<double>(completed_tick) * tick_rate_hz.period().get_seconds());
+    snapshot.elapsed_seconds = Duration::make(static_cast<double>(completed_tick.value()) *
+                                              tick_rate_hz.period().get_seconds());
     snapshot.tick_rate_hz = tick_rate_hz;
     snapshot.active_entities = current_state_.active_entities;
     snapshot.spawned_entities = current_state_.spawned_entities;
@@ -141,9 +141,9 @@ auto LevelTelemetryManager::make_snapshot() const -> LevelTelemetrySnapshot {
     snapshot.active_lasers = current_state_.active_lasers;
     snapshot.lasers_fired = current_state_.lasers_fired;
     snapshot.active_entity_count_data =
-        snapshot_with_terminal_sample(active_entity_count_data, completed_tick);
+        snapshot_with_terminal_sample(active_entity_count_data, completed_tick.value());
     snapshot.cumulative_kill_count_data =
-        snapshot_with_terminal_sample(cumulative_kill_count_data, completed_tick);
+        snapshot_with_terminal_sample(cumulative_kill_count_data, completed_tick.value());
     return snapshot;
 }
 
@@ -212,7 +212,7 @@ void LevelTelemetryManager::sample_live_series() {
 
     if (mask.has(Field::ActiveEntities)) {
         columns.active_entities()[row] = current_state_.active_entities;
-        active_entity_count_data_.add(tick, current_state_.active_entities);
+        active_entity_count_data_.add(tick.value(), current_state_.active_entities);
     }
     auto const counts_by_type{columns.active_entities_by_type()};
     auto const counts_by_team_and_type{columns.active_entities_by_team_and_type()};
@@ -232,7 +232,7 @@ void LevelTelemetryManager::sample_live_series() {
     }
     if (mask.has(Field::Kills)) {
         columns.kills()[row] = current_state_.kills;
-        cumulative_kill_count_data_.add(tick, current_state_.kills);
+        cumulative_kill_count_data_.add(tick.value(), current_state_.kills);
     }
 
     last_sampled_state_.active_entities = current_state_.active_entities;
@@ -378,39 +378,39 @@ auto LevelTelemetryManager::materialize_tick_series() const -> LevelTelemetryTic
             auto const tick{completed_ticks[row]};
             auto const mask{validity_masks[row]};
             if (mask.has(Field::ActiveEntities)) {
-                result.active_entities.add(tick, active_entities[row]);
+                result.active_entities.add(tick.value(), active_entities[row]);
             }
             for (std::int32_t entity_type_index{}; entity_type_index < entity_type_count;
                  ++entity_type_index) {
                 auto const type_field{FieldMask::active_entities_by_type_field(entity_type_index)};
                 if (mask.has(type_field)) {
                     result.active_entities_by_type[entity_type_index].add(
-                        tick, active_entities_by_type[row][entity_type_index]);
+                        tick.value(), active_entities_by_type[row][entity_type_index]);
                 }
                 for (std::int32_t team_index{}; team_index < team_count; ++team_index) {
                     auto const field{FieldMask::active_entities_by_team_and_type_field(
                         team_index, entity_type_index)};
                     if (mask.has(field)) {
                         result.active_entities_by_team_and_type[team_index][entity_type_index].add(
-                            tick,
+                            tick.value(),
                             active_entities_by_team_and_type[row][team_index][entity_type_index]);
                     }
                 }
             }
             if (mask.has(Field::SpawnedEntities)) {
-                result.spawned_entities.add(tick, spawned_entities[row]);
+                result.spawned_entities.add(tick.value(), spawned_entities[row]);
             }
             if (mask.has(Field::DestroyedEntities)) {
-                result.destroyed_entities.add(tick, destroyed_entities[row]);
+                result.destroyed_entities.add(tick.value(), destroyed_entities[row]);
             }
             if (mask.has(Field::Kills)) {
-                result.kills.add(tick, kills[row]);
+                result.kills.add(tick.value(), kills[row]);
             }
             if (mask.has(Field::ActiveLasers)) {
-                result.active_lasers.add(tick, active_lasers[row]);
+                result.active_lasers.add(tick.value(), active_lasers[row]);
             }
             if (mask.has(Field::LasersFired)) {
-                result.lasers_fired.add(tick, lasers_fired[row]);
+                result.lasers_fired.add(tick.value(), lasers_fired[row]);
             }
         }
     });

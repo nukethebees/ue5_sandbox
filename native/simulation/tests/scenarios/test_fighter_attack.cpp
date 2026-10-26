@@ -27,7 +27,7 @@ TEST(WorldlessSpaceGameSimulation, Fighters_ObstacleAvoidance) {
     Vector3f const obstacle_max{{1000.f, 1500.f, 1500.f}};
 
     auto data{tests::make_simulation_data(config)};
-    data.fighters.health = fighter_navigation_test::collision_resilient_health;
+    data.fighters.health = Health{fighter_navigation_test::collision_resilient_health};
     data.fighters.speed = 4000.f;
     data.fighters.avoidance_update_frequency = 5.f;
     data.fighters.avoidance_lookahead_time = 1.f;
@@ -86,7 +86,7 @@ auto make_fighter_navigation_test_data(tests::SimulationFixture const& config,
                                        Vector3f const source_location,
                                        Vector3f const target_location) -> LevelSimInitData {
     auto data{tests::make_simulation_data(config)};
-    data.fighters.health = fighter_navigation_test::collision_resilient_health;
+    data.fighters.health = Health{fighter_navigation_test::collision_resilient_health};
     data.fighters.speed = 4000.f;
     data.fighters.avoidance_lookahead_time = 1.f;
     data.fighters.laser.max_distance = 2000.f;
@@ -111,7 +111,7 @@ TEST(WorldlessSpaceGameSimulation, Fighters_NavigationCapitalObstruction) {
     Vector3f const obstacle{{0.f, 0.f, 0.f}};
     Vector3f const target{{18000.f, 0.f, 0.f}};
     auto data{tests::make_simulation_data(config)};
-    data.fighters.health = fighter_navigation_test::collision_resilient_health;
+    data.fighters.health = Health{fighter_navigation_test::collision_resilient_health};
     data.fighters.speed = 4000.f;
     data.fighters.avoidance_lookahead_time = 1.f;
     data.fighters.laser.max_distance = 2000.f;
@@ -516,7 +516,7 @@ TEST(WorldlessSpaceGameSimulation, Fighters_AttackCapital) {
     harness.on_end_tick = [&](LevelSim&) {
         if (!observed_spawn && harness.get_time() >= 1.0) {
             observed_spawn = true;
-            initial_health = capitals.get_health(enemy);
+            initial_health = capitals.get_health(enemy).value();
             auto const teams{fighters.get_teams()};
             EXPECT_FALSE(teams.empty()) << "Hero fighters spawned";
             for (auto const team : teams) {
@@ -527,7 +527,7 @@ TEST(WorldlessSpaceGameSimulation, Fighters_AttackCapital) {
     harness.timeline.finish_at(11.0);
     EXPECT_TRUE(harness.run_until_timeline_finished(12.0)) << "Fighter-attack timeline completes";
     ASSERT_TRUE(observed_spawn);
-    EXPECT_LT(capitals.get_health(enemy), initial_health) << "Enemy lost health";
+    EXPECT_LT(capitals.get_health(enemy).value(), initial_health) << "Enemy lost health";
 }
 
 }

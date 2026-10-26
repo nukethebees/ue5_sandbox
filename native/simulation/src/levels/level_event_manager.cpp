@@ -48,10 +48,10 @@ void LevelEventManager::execute_tick(SimTick const tick) {
     }
 
     auto const counts{schedule_.event_group_counts[next_event_index_]};
-    if (counts.spawn_groups != 0) {
-        spawn_manager_.spawn(
-            schedule_.spawn_groups.get_const_view(spawn_group_offset_, counts.spawn_groups));
-        spawn_group_offset_ += counts.spawn_groups;
+    if (counts.spawn_groups.value() != 0) {
+        spawn_manager_.spawn(schedule_.spawn_groups.get_const_view(spawn_group_offset_,
+                                                                   counts.spawn_groups.value()));
+        spawn_group_offset_ += counts.spawn_groups.value();
     }
     ++next_event_index_;
 }
@@ -68,7 +68,7 @@ auto LevelEventManager::has_future_spawns() const noexcept -> bool {
     auto const event_count{schedule_.event_group_counts.size()};
     for (std::uint32_t index{next_event_index_}; static_cast<std::size_t>(index) < event_count;
          ++index) {
-        if (schedule_.event_group_counts[index].spawn_groups != 0) {
+        if (schedule_.event_group_counts[index].spawn_groups.value() != 0) {
             return true;
         }
     }

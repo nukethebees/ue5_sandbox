@@ -18,8 +18,8 @@ TEST(WorldlessSpaceGameSimulation, CapitalCommandFighters_RetargetAfterKills) {
     EntityId second_target;
     SimTick final_kill_tick{};
     harness.on_end_tick = [&](LevelSim& simulation) {
-        if (final_kill_tick != 0 &&
-            simulation.get_clock().get_completed_ticks() == final_kill_tick + 2) {
+        if (final_kill_tick.value() != 0 &&
+            simulation.get_clock().get_completed_ticks() == SimTick{final_kill_tick.value() + 2}) {
             for (auto const task : fighters.get_tasks()) {
                 EXPECT_EQ(Task::Attack, task)
                     << "Capital orders do not change effective tasks in Thinking";

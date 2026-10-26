@@ -34,9 +34,9 @@ TEST(WorldlessSpaceGameSimulation, Capitals_SimultaneousReassignment) {
 
     auto data{tests::make_simulation_data(config)};
     data.capital_ships.spawn_delay = 6000.f;
-    data.capital_ships.max_health = fighter_ownership_test::collision_resilient_health;
+    data.capital_ships.max_health = Health{fighter_ownership_test::collision_resilient_health};
     data.fighters.laser.damage = 0;
-    data.fighters.health = fighter_ownership_test::collision_resilient_health;
+    data.fighters.health = Health{fighter_ownership_test::collision_resilient_health};
     for (std::int32_t i{}; i < 4; ++i) {
         tests::add_capital_spawn(data,
                                  Vector3f{{static_cast<float>((i % 2 == 0 ? -1.0 : 1.0) * 250000.0),
@@ -156,9 +156,9 @@ void run_worldless_fighter_ownership(tests::SimulationFixture const& config,
                                      FighterOwnershipScenario const scenario) {
     auto data{tests::make_simulation_data(config)};
     data.capital_ships.spawn_delay = 10.f;
-    data.capital_ships.max_health = 10000;
+    data.capital_ships.max_health = Health{10000};
     data.fighters.speed = 2000.f;
-    data.fighters.health = fighter_ownership_test::collision_resilient_health;
+    data.fighters.health = Health{fighter_ownership_test::collision_resilient_health};
     data.fighters.laser.damage = 0;
     data.fighters.laser.max_distance = 15000.f;
     auto const green_index{tests::add_capital_spawn(

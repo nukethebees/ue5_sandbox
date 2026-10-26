@@ -92,12 +92,14 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
                     auto const& condition{std::get<levels::TimeElapsedExpr>(expression.payload)};
                     type = ConditionType::TimeElapsed;
                     auto const ticks{condition.seconds.get() * clock.get_tick_rate().get_hz()};
-                    if (ticks >= static_cast<double>(std::numeric_limits<SimTick>::max())) {
+                    if (ticks >=
+                        static_cast<double>(std::numeric_limits<SimTick::value_type>::max())) {
                         return std::unexpected{
                             std::vector<std::string>{"Mission timer exceeds tick range"}};
                     }
-                    rules.durations.push_back(
-                        clock.duration_to_tick_period(Duration::make(condition.seconds.get())));
+                    rules.durations.emplace_back(
+                        clock.duration_to_tick_period(Duration::make(condition.seconds.get()))
+                            .get());
                     break;
                 }
                 case ExprType::ObjectiveResolved: {

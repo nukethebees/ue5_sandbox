@@ -11,7 +11,7 @@ inline constexpr std::int32_t collision_resilient_health{1'000'000};
 TEST(WorldlessSpaceGameSimulation, Fighters_StandbyTransition) {
     auto const config{tests::make_fixture()};
     auto data{tests::make_simulation_data(config)};
-    data.fighters.health = fighters_standby_test::collision_resilient_health;
+    data.fighters.health = Health{fighters_standby_test::collision_resilient_health};
     tests::add_capital_spawn(data,
                              Vector3f{{-4000.f, 0.f, 0.f}},
                              Team::Green,

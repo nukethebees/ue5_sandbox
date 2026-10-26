@@ -27,7 +27,7 @@ void run_worldless_turret_acquisition_regression(
                                 Vector3f{distance, 0.f, 0.f},
                                 {},
                                 friendly ? Team::Blue : Team::Red,
-                                data.turrets.max_health,
+                                data.turrets.max_health.value(),
                                 0);
     }
     tests::WorldlessSimulationTest harness{std::move(data)};

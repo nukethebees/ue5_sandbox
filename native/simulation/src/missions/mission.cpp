@@ -89,7 +89,8 @@ auto Mission::result(ExprRef const expression) const -> ExprResult {
 // Objective progression
 /* **************************************** */
 auto Mission::active(ObjectiveId const id) const -> bool {
-    return data_.objectives.activation_tick(id) != std::numeric_limits<SimTick>::max() &&
+    return data_.objectives.activation_tick(id) !=
+               SimTick{std::numeric_limits<SimTick::value_type>::max()} &&
            !data_.objectives.outcome(id);
 }
 void Mission::remove_member(std::vector<ObjectiveId>& collection, ObjectiveId const id) {
@@ -101,7 +102,8 @@ void Mission::remove_member(std::vector<ObjectiveId>& collection, ObjectiveId co
 }
 void Mission::activate(ObjectiveId const id, SimTick const tick) {
     assert(!data_.objectives.outcome(id) &&
-           data_.objectives.activation_tick(id) == std::numeric_limits<SimTick>::max());
+           data_.objectives.activation_tick(id) ==
+               SimTick{std::numeric_limits<SimTick::value_type>::max()});
 
     remove_member(inactive_, id);
     data_.objectives.membership_position(id) = static_cast<std::uint32_t>(active_.size());
@@ -301,7 +303,7 @@ void Mission::evaluate_elapsed(std::span<RuleId const> const run,
             auto const activated{
                 data_.objectives.activation_tick(data_.leaves.owners[rule_leaf(rule)])};
             assert(inputs.tick >= activated);
-            if (inputs.tick - activated >= rules.durations[rule.index()]) {
+            if (inputs.tick.value() - activated.value() >= rules.durations[rule.index()].value()) {
                 resolve_rule(rule, ExprResult::True);
             }
         }

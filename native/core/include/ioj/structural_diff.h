@@ -106,6 +106,11 @@ class DiffContext {
             return std::format("{}", value);
         } else if constexpr (std::is_enum_v<T>) {
             return std::format("{}", std::to_underlying(value));
+        } else if constexpr (requires {
+                                 T::is_valid_value(value.value());
+                                 value.raw_value();
+                             }) {
+            return std::format("{}", value.value());
         } else {
             return "<unformattable value>";
         }

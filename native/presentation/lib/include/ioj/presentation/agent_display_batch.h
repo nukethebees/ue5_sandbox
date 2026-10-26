@@ -21,7 +21,7 @@ using ::ioj::sim::HealthConstView;
 struct AgentDisplayBatch {
     auto num() const noexcept -> std::uint32_t { return locations.num(); }
     auto health(std::uint32_t index) const -> Health {
-        return healths.is_empty() ? 1000000 : healths.health(index);
+        return healths.is_empty() ? Health{1000000} : healths.health(index);
     }
     auto team(std::uint32_t index) const -> Team {
         return teams.empty() ? Team::White : teams[index];

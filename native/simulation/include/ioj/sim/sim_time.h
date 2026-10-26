@@ -13,7 +13,7 @@ namespace ioj::sim {
 using SimTime = double;
 
 // Require a rounded period representable by Counter. Check before converting to an integer.
-template <std::integral Counter = SimTick>
+template <std::integral Counter = SimTick::value_type>
     requires (!std::same_as<Counter, bool>)
 [[nodiscard]] auto frequency_to_tick_period(Frequency const tick_rate,
                                             Frequency const frequency) noexcept
@@ -26,7 +26,7 @@ template <std::integral Counter = SimTick>
 }
 
 // Allow zero duration. Require a rounded period representable by Counter.
-template <std::integral Counter = SimTick>
+template <std::integral Counter = SimTick::value_type>
     requires (!std::same_as<Counter, bool>)
 [[nodiscard]] auto duration_to_tick_period(Frequency const tick_rate,
                                            Duration const duration) noexcept

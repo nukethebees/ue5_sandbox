@@ -80,7 +80,7 @@ struct TurretSimConfig {
     float target_refresh_frequency{5.f};
     Vector3f fire_point_offset{};
     LaserWeaponSimConfig laser{};
-    Health max_health{20};
+    Health max_health{Health{20}};
 };
 } // namespace ioj::sim
 namespace ioj {

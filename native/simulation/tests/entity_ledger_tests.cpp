@@ -110,7 +110,7 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
     ASSERT_EQ(events.all_events().num(), 3);
 
     std::array ids{victim};
-    std::array<Health, 1> initial_healths{10};
+    std::array<Health, 1> initial_healths{Health{10}};
     HealthTable health_table;
     health_table.initialise_rows<EntityType::Fighter>(0, initial_healths);
     std::vector<std::uint32_t> removals;
@@ -130,7 +130,7 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
                               &frame_memory);
     }
 
-    EXPECT_EQ(health_table.get_const_view<EntityType::Fighter>(ids.size()).health(0), -6);
+    EXPECT_EQ(health_table.get_const_view<EntityType::Fighter>(ids.size()).health(0).value(), -6);
     EXPECT_EQ(removals, std::vector<std::uint32_t>{0});
     ASSERT_EQ(deaths.num(), 1);
     EXPECT_EQ(deaths.get_view().victims()[0], victim);
@@ -152,12 +152,12 @@ TEST(EntityLedger, PreservesHistoricalAccountingAndResetsLevelIdentity) {
     ledger.record_shots(std::array{killer});
     ledger.record_status(std::array{killer, first_victim},
                          std::array{Team::Green, Team::Yellow},
-                         std::array<Health, 2>{1, 1});
+                         std::array<Health, 2>{Health{1}, Health{1}});
     ledger.record_shots(std::array{killer, EntityId{}});
 
     DirectDamageEvents damage;
     damage.add(first_victim, 17, killer);
-    ledger.record_damage(damage.get_const_view(), std::array<Health, 1>{17});
+    ledger.record_damage(damage.get_const_view(), std::array<Health, 1>{Health{17}});
     EntityDeathInfo deaths;
     deaths.add_defaulted(2);
     auto rows{deaths.get_view()};
@@ -167,14 +167,14 @@ TEST(EntityLedger, PreservesHistoricalAccountingAndResetsLevelIdentity) {
     rows.locations()[0] = {1.f, 2.f, 3.f};
     rows.victims()[1] = killer;
     rows.reasons()[1] = DeathReason::Unknown;
-    ledger.record_deaths(deaths.get_const_view(), 4);
+    ledger.record_deaths(deaths.get_const_view(), SimTick{4});
 
     EntityId second_victim;
     ledger.record_spawns(EntityType::Fighter, Team::Blue, Health{1}, {&second_victim, 1});
     deaths.set_num(1);
     rows = deaths.get_view();
     rows.victims()[0] = second_victim;
-    ledger.record_deaths(deaths.get_const_view(), 6);
+    ledger.record_deaths(deaths.get_const_view(), SimTick{6});
 
     EXPECT_EQ(ledger.get_kills(killer), 2u);
     EXPECT_EQ(ledger.count_kills(), 2);

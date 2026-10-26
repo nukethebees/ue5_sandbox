@@ -73,7 +73,7 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
         samples.add(harness.get_time(),
                     Sample{lasers.get_num_instances(),
                            lasers.get_number_spawned(),
-                           target_state ? target_state->health : 0,
+                           target_state ? target_state->health.value() : 0,
                            harness.get_ledger().count_alive(),
                            harness.get_ledger().count_kills()});
     };

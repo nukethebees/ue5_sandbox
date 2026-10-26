@@ -6,28 +6,24 @@
     :minimum 0
     :maximum 4294967294
     :bit-width 32
-    :cpp-type @native_uint32
-    :cpp-emission alias
-    (code Invalid :value 4294967295 :sentinel true))
+    (code Invalid :value 4294967295 :sentinel true)
+    (projections (cpp :storage std::uint32_t)))
   (integer-scalar CellIndex
     :signed false
     :minimum 0
     :maximum 4294967294
     :bit-width 32
-    :cpp-type @native_uint32
-    :cpp-emission alias
-    (code Invalid :value 4294967295 :sentinel true))
+    (code Invalid :value 4294967295 :sentinel true)
+    (projections (cpp :storage std::uint32_t)))
   (integer-scalar GridCellCount
     :signed false
     :minimum 0
     :maximum 4294967295
     :bit-width 32
-    :cpp-type @native_uint32
-    :cpp-emission alias)
+    (projections (cpp :storage std::uint32_t)))
   (integer-scalar SphereInBoundsResult
     :signed false
     :minimum 0
     :maximum 1
     :bit-width 1
-    :cpp-type @native_uint8
-    :cpp-emission alias))
+    (projections (cpp :storage std::uint8_t))))

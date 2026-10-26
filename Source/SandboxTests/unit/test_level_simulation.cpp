@@ -70,7 +70,7 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
 
 auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
     auto data{make_battle()};
-    data.capital_ships.max_health = 100;
+    data.capital_ships.max_health = ::ioj::sim::Health{100};
     data.level_events = {};
     data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
 
@@ -244,7 +244,7 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
         presentation.tick(dt, visible.get_read_access());
         TestEqual(TEXT("Presentation sees the completed simulation"),
                   presentation.get_last_completed_tick(),
-                  visible.get_clock().get_completed_ticks());
+                  visible.get_clock().get_completed_ticks().value());
     }
     TestEqual(TEXT("Both executions record every tick"), headless_samples.num(), tick_count);
     TestEqual(TEXT("Both executions have matching sample counts"),
@@ -307,8 +307,9 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     auto const scheduled_spawns{
         scheduled_battle.level_events.schedule.capital_spawns.get_view(1, 1)};
     scheduled_spawns.view_locations().xs()[0] = -1000.f;
-    scheduled_spawns.healths()[0] = 100;
-    scheduled_battle.level_events.schedule.capital_spawns.get_view().healths()[0] = 10000;
+    scheduled_spawns.healths()[0] = ::ioj::sim::Health{100};
+    scheduled_battle.level_events.schedule.capital_spawns.get_view().healths()[0] =
+        ::ioj::sim::Health{10000};
     scheduled_battle.collision.overlap_response.damage_per_overlap_detection = 100;
     ::ioj::sim::GameMemory simulation_memory;
     ::ioj::sim::LevelSim simulation{simulation_memory, MoveTemp(scheduled_battle)};
@@ -319,7 +320,7 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     simulation.advance(dt * 4.25);
     auto const frame{simulation.get_read_access()};
     TestEqual(TEXT("Four fixed ticks precede presentation"),
-              frame.get_clock().get_completed_ticks(),
+              frame.get_clock().get_completed_ticks().value(),
               uint64{4});
     TestEqual(TEXT("Simulation never ticks presentation"),
               presentation.get_last_completed_tick(),

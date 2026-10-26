@@ -5,13 +5,16 @@
   (record NamedExprInput :generate-s7-reader true :s7-tag "expr" :s7-positional true
     :s7-reader-includes ("ioj/levels/authoring/input_readers.h")
     (member name @input_objective_name :initializer "")
-    (member value @input_expr :initializer ""))
+    (member value @input_expr :initializer "")
+    (projections (cpp)))
   (record UnlockInput :generate-s7-reader true :s7-tag "level-completed" :s7-positional true
     :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
-    (member level @input_level_id :initializer "" :s7-name "level-id"))
+    (member level @input_level_id :initializer "" :s7-name "level-id")
+    (projections (cpp)))
   (record ExprReferenceInput :generate-s7-reader true :s7-tag "expr-ref" :s7-positional true
     :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
-    (member name @input_objective_name :initializer "")))
+    (member name @input_objective_name :initializer "")
+    (projections (cpp))))
 
 (module level_inputs
   :header "native/level_authoring/lib/include/ioj/levels/authoring/level_inputs.h"
@@ -30,7 +33,8 @@
     (member laser_damage @input_optional_int :initializer "")
     (member initial_spawn_delay @input_optional_float :initializer "" :finite true)
     (member spawn_cooldown @input_optional_float :initializer "" :finite true)
-    (member target @input_entity_id :initializer ""))
+    (member target @input_entity_id :initializer "")
+    (projections (cpp)))
   (record ObjectiveInput :generate-s7-reader true :s7-tag "objective"
     (member id @input_objective_name :initializer "" :required true)
     (member title @native_string :initializer "")
@@ -39,11 +43,13 @@
     (member pass @input_optional_expr :initializer "")
     (member fail @input_optional_expr :initializer "")
     (member expire @input_optional_expr :initializer "")
-    (member depends_on @input_dependencies :initializer ""))
+    (member depends_on @input_dependencies :initializer "")
+    (projections (cpp)))
   (record MissionInput :generate-s7-reader true :s7-tag "mission"
     :s7-reader-includes ("ioj/levels/team_result_definition_reader.h")
     (member objectives @input_objectives :initializer "" :required true)
-    (member team_results @input_team_results :initializer ""))
+    (member team_results @input_team_results :initializer "")
+    (projections (cpp)))
   (record LevelInput :generate-s7-reader true :s7-tag "level"
     :s7-reader-includes ("ioj/levels/level_camera_definition_reader.h")
     (member id @input_level_id :initializer "" :required true)
@@ -55,19 +61,23 @@
     (member camera @input_camera :initializer "")
     (member settings @input_settings :initializer "")
     (member mission @input_mission :initializer "")
-    (member entities @input_entities :initializer ""))
+    (member entities @input_entities :initializer "")
+    (projections (cpp)))
   (record IncludedLevelInput :generate-s7-reader true :s7-tag "included-definition"
     (member path @native_string :initializer "" :required true)
     (member value @input_level_value :initializer "")
-    (member error @input_optional_string :initializer ""))
+    (member error @input_optional_string :initializer "")
+    (projections (cpp)))
   (record IncludedCampaignInput :generate-s7-reader true :s7-tag "included-definition"
     :s7-reader-includes ("ioj/levels/campaign_definition_reader.h")
     (member path @native_string :initializer "" :required true)
     (member value @input_campaign_value :initializer "")
-    (member error @input_optional_string :initializer ""))
+    (member error @input_optional_string :initializer "")
+    (projections (cpp)))
   (record CatalogInput :generate-s7-reader true :s7-tag "catalog" :s7-constructor false
     (member levels @input_levels :initializer "")
-    (member campaigns @input_campaigns :initializer "")))
+    (member campaigns @input_campaigns :initializer "")
+    (projections (cpp))))
 
 (module s7_constructors
   :header "native/level_authoring/lib/include/ioj/levels/authoring/record_constructors.h"

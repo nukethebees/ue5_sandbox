@@ -49,7 +49,7 @@ struct PlayerSpawnData {
     ShipLaserMode laser_mode{ShipLaserMode::Single};
     ShipFireRate laser_fire_rate{ShipFireRate::Burst3};
 
-    ShipHealth health{1000};
+    ShipHealth health{Health{1000}};
 };
 
 struct Sim {

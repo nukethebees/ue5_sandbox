@@ -206,7 +206,7 @@ TEST(SimulationBenchmarkWorkload, RoundsRequestedSecondsUpToWholeTicks) {
     auto const ticks{calculate_tick_count(1.001)};
 
     ASSERT_TRUE(ticks.has_value());
-    EXPECT_EQ(*ticks, 61);
+    EXPECT_EQ(ticks->value(), 61);
 }
 
 TEST(SimulationBenchmarkWorkload, RejectsInvalidDurations) {
@@ -220,14 +220,14 @@ TEST(SimulationBenchmarkJson, EmitsStableSchemaAndEscapesStrings) {
     result.level_path = "levels/quote\"test.scm";
     result.level_id = "test";
     result.level_title = "line\nbreak";
-    result.requested_ticks = 60;
-    result.completed_ticks = 60;
+    result.requested_ticks = sim::SimTick{60};
+    result.completed_ticks = sim::SimTick{60};
     result.game_speed = 4;
     result.advance_calls = 15;
     result.elapsed_seconds = 2.0;
     result.total_elapsed_seconds = 3.0;
-    result.measured_ticks = 60;
-    result.total_simulation_ticks = 90;
+    result.measured_ticks = sim::SimTick{60};
+    result.total_simulation_ticks = sim::SimTick{90};
     result.median_tick_microseconds = 25.0;
     result.p95_tick_microseconds = 40.0;
     result.p99_tick_microseconds = 50.0;
@@ -262,8 +262,8 @@ TEST(SimulationBenchmarkRunner, LoadsCompilesAndAdvancesExistingLevel) {
 
     ASSERT_TRUE(result.has_value()) << result.error();
     EXPECT_EQ(result->level_id, "dev-three-second-failure");
-    EXPECT_EQ(result->requested_ticks, 1);
-    EXPECT_EQ(result->completed_ticks, 1);
+    EXPECT_EQ(result->requested_ticks.value(), 1);
+    EXPECT_EQ(result->completed_ticks.value(), 1);
     EXPECT_EQ(result->alive_entities, 1);
 }
 
@@ -274,8 +274,8 @@ TEST(SimulationBenchmarkRunner, AdvancesOneTickPerCallAtAnyRequestedGameSpeed) {
         run_benchmark({.level_path = level_path, .simulated_seconds = 0.05, .game_speed = 2})};
 
     ASSERT_TRUE(result.has_value()) << result.error();
-    EXPECT_EQ(result->requested_ticks, 3);
-    EXPECT_EQ(result->completed_ticks, 3);
+    EXPECT_EQ(result->requested_ticks.value(), 3);
+    EXPECT_EQ(result->completed_ticks.value(), 3);
     EXPECT_EQ(result->advance_calls, 3u);
 }
 
@@ -296,7 +296,7 @@ TEST(SimulationBenchmarkRunner, SaturatesAndMeasuresFighterStressScenario) {
     EXPECT_EQ(result->minimum_measured_fighters, 12);
     EXPECT_EQ(result->maximum_measured_fighters, 12);
     EXPECT_EQ(result->fighter_spawns_during_measurement, 0);
-    EXPECT_EQ(result->measured_ticks, 1);
+    EXPECT_EQ(result->measured_ticks.value(), 1);
     EXPECT_GT(result->total_simulation_ticks, result->measured_ticks);
 }
 } // namespace

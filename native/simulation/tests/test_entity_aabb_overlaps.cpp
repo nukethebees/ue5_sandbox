@@ -199,7 +199,8 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
                                                         &query_memory),
               1);
     EXPECT_EQ(nearby_ids[0], moved);
-    fixture.owners.health_table.get_view<EntityType::CapitalShip>(owner.num()).set_health(0, 0);
+    fixture.owners.health_table.get_view<EntityType::CapitalShip>(owner.num())
+        .set_health(0, Health{0});
     fixture.owners.publish();
     fixture.owners.refresh(fixture.query_manager);
     EXPECT_EQ(queries.collect_non_team_entities_in_range(
@@ -517,8 +518,7 @@ TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
     for (std::uint32_t index{}; index < static_overlap_count; ++index) {
         EXPECT_TRUE(entity_is_alive(fixture.owners, static_entities[index]))
             << "Static overlap entity remains valid";
-        EXPECT_TRUE(static_indices[index] >= 0 &&
-                    static_cast<std::uint32_t>(static_indices[index]) < static_geometry_count)
+        EXPECT_TRUE(static_indices[index].value() < static_geometry_count)
             << "Static overlap index remains valid";
         if (index > 0) {
             auto const previous_entity{static_entities[index - 1]};

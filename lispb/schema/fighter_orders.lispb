@@ -6,8 +6,11 @@
     :enum-array true
     (value Standby :value "0")
     (value MoveToDestination :value "1")
-    (value Attack :value "2"))
-  (packed-value FighterOrder
-    :storage @native_uint8
-    (field task @native_uint8 :bits 1 :default 0)
-    (field target @native_uint8 :bits 1 :default 0)))
+    (value Attack :value "2")
+    (projections (cpp)))
+  (integer-scalar FighterOrderBit :bit-width 1)
+  (record FighterOrder
+    :layout packed :bits 8
+    (member task @FighterOrderBit :default 0)
+    (member target @FighterOrderBit :default 0)
+    (projections (cpp :storage std::uint8_t))))

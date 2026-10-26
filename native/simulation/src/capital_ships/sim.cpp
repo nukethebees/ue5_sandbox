@@ -165,14 +165,14 @@ auto Sim::get_team(EntityId const id) const noexcept -> Team {
     auto const ids{entities.get_const_view().entity_ids()};
     auto const found{std::ranges::find(ids, id)};
     assert(found != ids.end());
-    auto const index{static_cast<EntityFrameIndex>(found - ids.begin())};
+    auto const index{static_cast<EntityFrameIndex::value_type>(found - ids.begin())};
     return entities.get_const_view().teams()[index];
 }
 auto Sim::get_health(EntityId const id) const noexcept -> Health {
     auto const ids{entities.get_const_view().entity_ids()};
     auto const found{std::ranges::find(ids, id)};
     assert(found != ids.end());
-    auto const index{static_cast<EntityFrameIndex>(found - ids.begin())};
+    auto const index{static_cast<EntityFrameIndex::value_type>(found - ids.begin())};
     return entity_tables_.health.get_const_view<EntityType::CapitalShip>(entities.num())
         .health(index);
 }
@@ -449,7 +449,7 @@ void Sim::set_target_id(EntityId const ship_id, EntityId const target_id) {
     auto const ids{entities.get_const_view().entity_ids()};
     auto const found{std::ranges::find(ids, ship_id)};
     assert(found != ids.end());
-    auto const entity_index{static_cast<EntityFrameIndex>(found - ids.begin())};
+    auto const entity_index{static_cast<EntityFrameIndex::value_type>(found - ids.begin())};
     auto const entities{this->entities.get_view()};
     entities.target_ids()[entity_index] = target_id;
 }

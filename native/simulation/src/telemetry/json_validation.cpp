@@ -81,7 +81,7 @@ template <typename Series>
 auto validate_series(Series const& source, std::string_view const path)
     -> std::expected<void, std::string> {
     auto const count{source.num()};
-    SimTick previous_tick{};
+    SimTick::value_type previous_tick{};
     for (std::uint32_t index{}; index < count; ++index) {
         auto const tick_path{std::format("{}.ticks[{}]", path, index)};
         auto const tick{source.time_at(index)};
@@ -117,8 +117,8 @@ auto parse_json_uint64(double const value, std::string_view const path)
 
 auto validate_level_telemetry_json_record(LevelTelemetryRunRecord const& record)
     -> std::expected<void, std::string> {
-    auto const completed_ticks{
-        validate_json_count(record.completion.completed_ticks, "completion.completed_ticks")};
+    auto const completed_ticks{validate_json_count(record.completion.completed_ticks.value(),
+                                                   "completion.completed_ticks")};
     if (!completed_ticks) {
         return completed_ticks;
     }
@@ -162,20 +162,20 @@ auto validate_level_telemetry_json_record(LevelTelemetryRunRecord const& record)
             return validate_counts(values, std::format("{}.{}", path, name));
         }};
 
-        for (auto const& valid :
-             std::array{validate_json_count(sample.completed_tick, path + ".completed_tick"),
-                        counts(sample.alive, "alive"),
-                        counts(cbt.spawned, "combat.spawned"),
-                        counts(cbt.destroyed, "combat.destroyed"),
-                        counts(cbt.shots, "combat.shots"),
-                        counts(cbt.hits, "combat.hits"),
-                        counts(cbt.damage_dealt, "combat.damage_dealt"),
-                        counts(cbt.damage_received, "combat.damage_received"),
-                        counts(cbt.kills, "combat.kills"),
-                        counts(cbt.losses, "combat.losses"),
-                        counts(cbt.kill_matrix, "combat.kill_matrix"),
-                        validate_json_count(sample.active_lasers, path + ".active_lasers"),
-                        validate_json_count(sample.lasers_fired, path + ".lasers_fired")}) {
+        for (auto const& valid : std::array{
+                 validate_json_count(sample.completed_tick.value(), path + ".completed_tick"),
+                 counts(sample.alive, "alive"),
+                 counts(cbt.spawned, "combat.spawned"),
+                 counts(cbt.destroyed, "combat.destroyed"),
+                 counts(cbt.shots, "combat.shots"),
+                 counts(cbt.hits, "combat.hits"),
+                 counts(cbt.damage_dealt, "combat.damage_dealt"),
+                 counts(cbt.damage_received, "combat.damage_received"),
+                 counts(cbt.kills, "combat.kills"),
+                 counts(cbt.losses, "combat.losses"),
+                 counts(cbt.kill_matrix, "combat.kill_matrix"),
+                 validate_json_count(sample.active_lasers, path + ".active_lasers"),
+                 validate_json_count(sample.lasers_fired, path + ".lasers_fired")}) {
             if (!valid) {
                 return valid;
             }

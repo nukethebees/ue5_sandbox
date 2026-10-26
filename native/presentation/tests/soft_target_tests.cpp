@@ -99,7 +99,8 @@ TEST(EntityOverlaySource, SelectsOnlyTheBestValidHostile) {
     add_entity(entities, entity_type_radii, {.position = {1000.0f, 50.0f, 0.0f}});
     add_entity(
         entities, entity_type_radii, {.position = {1000.0f, 80.0f, 0.0f}, .team = Team::Blue});
-    add_entity(entities, entity_type_radii, {.position = {1000.0f, 0.0f, 0.0f}, .health = 0});
+    add_entity(
+        entities, entity_type_radii, {.position = {1000.0f, 0.0f, 0.0f}, .health = sim::Health{0}});
 
     auto const selected{select_target(entities, entity_type_radii)};
     EXPECT_EQ(selected.id.raw_value(), entity_id(entities, 1).raw_value())
@@ -128,7 +129,7 @@ TEST(EntityOverlaySource, RetainsAndSwitchesWithHysteresis) {
     EXPECT_FALSE(cleared.id.is_valid()) << "Target outside retention is cleared";
     EXPECT_TRUE(cleared.previous_target_can_fade) << "Valid on-screen lost target may fade";
 
-    entities.healths[1] = 0;
+    entities.healths[1] = sim::Health{};
     auto const dead{select_target(entities, entity_type_radii, entity_id(entities, 1))};
     EXPECT_FALSE(dead.previous_target_can_fade) << "Dead target may not fade";
 }
@@ -255,7 +256,7 @@ TEST(EntityOverlaySource, ObjectivesBypassRangeButNotProjectionOrHealth) {
     context.aim_direction = {};
     EXPECT_FALSE(select().id.is_valid());
     context.aim_direction = {1.f, 0.f, 0.f};
-    entities.healths[0] = 0;
+    entities.healths[0] = sim::Health{};
     EXPECT_FALSE(select().id.is_valid());
 }
 

@@ -21,7 +21,7 @@ struct LevelTelemetryTickSeries {
     static constexpr std::int32_t entity_type_count{
         static_cast<std::int32_t>(telemetry::entity_type_count)};
 
-    using Int32Data = XYSeriesData<SimTick, std::int32_t>;
+    using Int32Data = XYSeriesData<SimTick::value_type, std::int32_t>;
     using ActiveEntitiesByTypeData = std::array<Int32Data, entity_type_count>;
     using ActiveEntitiesByTeamAndTypeData = std::array<ActiveEntitiesByTypeData, team_count>;
 

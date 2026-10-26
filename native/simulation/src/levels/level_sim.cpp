@@ -30,7 +30,7 @@ LevelSim::LevelSim(GameMemory& game_memory, LevelSimInitData data)
     , frame_memory_{std::span<std::byte>{frame_memory_block_.data(),
                                          frame_memory_block_.size_bytes()}}
     , query_manager_{entity_tables_, &game_memory.memory_resource()}
-    , overlap_handler_{Positive<Health>::make(
+    , overlap_handler_{Positive<Health::value_type>::make(
           data.collision.overlap_response.damage_per_overlap_detection)}
     , lasers_simulation_{clock_, combat_events_}
     , fighters_simulation_{clock_, entity_ledger_, entity_tables_}
@@ -55,7 +55,7 @@ LevelSim::LevelSim(GameMemory& game_memory, LevelSimInitData data)
     // Run initial events
     event_manager_.begin(player_ship_simulation_ ? player_ship_simulation_->unique_entity_id
                                                  : EntityId{});
-    event_manager_.execute_tick(0);
+    event_manager_.execute_tick(SimTick{});
 }
 void LevelSim::finish_initialisation() {
     assert(state_ == OrchestratorState::Uninitialised);
@@ -74,8 +74,11 @@ void LevelSim::finish_initialisation() {
     level_telemetry_manager_.initialise();
     {
         FrameScratchScope scratch_scope{frame_memory_};
-        mission_.begin(
-            {0, entity_ledger_, event_manager_.get_entity_ids(), &query_manager_, &frame_memory_});
+        mission_.begin({SimTick{},
+                        entity_ledger_,
+                        event_manager_.get_entity_ids(),
+                        &query_manager_,
+                        &frame_memory_});
     }
 
     state_ = OrchestratorState::Paused;
@@ -243,7 +246,7 @@ void LevelSim::advance(time_type const dt) {
             // Commit orders and events
             fighters_phase.commit_orders();
             auto const previous_issued_counts{entity_ledger_.get_issued_counts()};
-            event_manager_.execute_tick(clock_.completed_ticks + 1);
+            event_manager_.execute_tick(SimTick{clock_.completed_ticks.value() + 1});
 
             // Commit spawns
             auto const previous_fighter_count{fighters_simulation_.get_num_instances()};
@@ -422,7 +425,7 @@ void LevelSim::advance(time_type const dt) {
             // Evaluate final health and deaths before invalidating row mappings.
             {
                 FrameScratchScope scratch_scope{frame_memory_};
-                mission_.tick({clock_.completed_ticks + 1,
+                mission_.tick({SimTick{clock_.completed_ticks.value() + 1},
                                entity_ledger_,
                                // Spawning updates identities each tick.
                                // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
@@ -457,7 +460,7 @@ void LevelSim::advance(time_type const dt) {
             turrets_phase.finish_action();
             spinners_phase.finish_action();
             lasers_phase.finish_action();
-            ++clock_.completed_ticks;
+            clock_.completed_ticks.set_value(clock_.completed_ticks.value() + 1);
             level_telemetry_manager_.tick();
             combat_events_.reset();
             frame_memory_.reset();

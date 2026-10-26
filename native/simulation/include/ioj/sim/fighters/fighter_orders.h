@@ -4,15 +4,12 @@
 #pragma once
 
 #include "ioj/enum_traits.h"
-#include "ioj/min_max.h"
 #include "ioj/packed_value.h"
 
 #include <cassert>
 #include <compare>
 #include <cstddef>
 #include <cstdint>
-#include <limits>
-#include <type_traits>
 
 namespace ioj::sim {
 using FighterTaskUnderlying = std::uint8_t;
@@ -25,53 +22,74 @@ enum class FighterTask : FighterTaskUnderlying {
 };
 
 struct FighterOrder {
+  public:
     using storage_type = std::uint8_t;
-    static_assert(ioj::valid_packed_storage<storage_type, 8>());
-
-    // task
     using task_type = std::uint8_t;
     using task_field = ioj::PackedField<storage_type, task_type, 0, 1>;
-    static constexpr ioj::MinMax<task_type> task_range{
-        0, static_cast<task_type>(task_field::value_mask)};
-
-    // target
+    struct task_range_type {
+        task_type min;
+        task_type max;
+    };
+    static constexpr task_range_type task_range{static_cast<task_type>(0ULL),
+                                                static_cast<task_type>(1ULL)};
     using target_type = std::uint8_t;
     using target_field = ioj::PackedField<storage_type, target_type, 1, 1>;
-    static constexpr ioj::MinMax<target_type> target_range{
-        0, static_cast<target_type>(target_field::value_mask)};
+    struct target_range_type {
+        target_type min;
+        target_type max;
+    };
+    static constexpr target_range_type target_range{static_cast<target_type>(0ULL),
+                                                    static_cast<target_type>(1ULL)};
 
     constexpr FighterOrder() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> FighterOrder {
-        FighterOrder result;
-        result.value_ = raw;
-        return result;
+    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> FighterOrder {
+        return FighterOrder{RawTag{}, raw};
     }
-
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
     explicit constexpr FighterOrder(task_type const task_value,
-                                    target_type const target_value) noexcept {
-        assert(task_value <= task_range.max);
-        assert(target_value <= target_range.max);
-        value_ = static_cast<storage_type>(ioj::packed_pack<task_field>(task_value) |
-                                           ioj::packed_pack<target_field>(target_value));
+                                    target_type const target_value) noexcept
+        : value_{0} {
+        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 0, 1>>(
+                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint8_t, 0, 1>>(
+                        task_value)) == task_value));
+        value_ = ioj::packed_insert<task_field>(value_, task_value);
+        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 0, 1>>(
+                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint8_t, 0, 1>>(
+                        target_value)) == target_value));
+        value_ = ioj::packed_insert<target_field>(value_, target_value);
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
-
     [[nodiscard]] constexpr auto operator<=>(FighterOrder const&) const noexcept = default;
 
     [[nodiscard]] constexpr auto task() const noexcept -> task_type {
         return ioj::packed_extract<task_field>(value_);
     }
+    constexpr void set_task(task_type const value) noexcept {
+        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 0, 1>>(
+                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint8_t, 0, 1>>(value)) ==
+                value));
+        value_ = ioj::packed_insert<task_field>(value_, value);
+    }
 
     [[nodiscard]] constexpr auto target() const noexcept -> target_type {
         return ioj::packed_extract<target_field>(value_);
     }
+    constexpr void set_target(target_type const value) noexcept {
+        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 0, 1>>(
+                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint8_t, 0, 1>>(value)) ==
+                value));
+        value_ = ioj::packed_insert<target_field>(value_, value);
+    }
   private:
-    storage_type value_{0x0};
+    struct RawTag {};
+    constexpr FighterOrder(RawTag, storage_type raw) noexcept
+        : value_{raw} {}
+    storage_type value_{0ULL};
 };
 static_assert(ioj::valid_packed_value_layout<FighterOrder>());
+
 } // namespace ioj::sim
 namespace ioj {
 template <>

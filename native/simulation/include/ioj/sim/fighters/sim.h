@@ -112,8 +112,6 @@ struct Sim {
     using NavigationScratch = fighters::NavigationScratch;
     using NavigationRiskTier = fighters::NavigationRiskTier;
 
-    inline static constexpr std::int8_t direct_movement_choice{-1};
-    inline static constexpr std::int8_t stop_movement_choice{-2};
     inline static constexpr std::uint32_t n_avoidance_choices{avoidance_direction_count};
     inline static constexpr std::uint8_t clear_scans_to_end_avoidance{2};
     inline static constexpr std::uint8_t lower_risk_scans_to_demote{2};

@@ -32,7 +32,9 @@ struct SPACEGAMEPRESENTATION_API FLevelPresentation {
     auto operator=(FLevelPresentation&&) -> FLevelPresentation& = delete;
 
     void tick(float dt, ::ioj::sim::LevelReadAccess const& view);
-    auto get_last_completed_tick() const -> ::ioj::sim::SimTick { return last_completed_tick_; }
+    auto get_last_completed_tick() const -> ::ioj::sim::SimTick::value_type {
+        return last_completed_tick_.value();
+    }
   private:
     FLevelVisualConfig config_;
   public:

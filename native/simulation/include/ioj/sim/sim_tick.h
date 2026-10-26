@@ -3,8 +3,47 @@
 
 #pragma once
 
+#include "ioj/packed_value.h"
+
+#include <cassert>
+#include <compare>
 #include <cstdint>
 
 namespace ioj::sim {
-using SimTick = std::uint64_t;
+struct SimTick {
+  public:
+    using storage_type = std::uint64_t;
+    using value_type = std::uint64_t;
+    using value_field = ioj::PackedField<storage_type, value_type, 0, 64>;
+
+    constexpr SimTick() noexcept = default;
+    explicit constexpr SimTick(value_type const value) noexcept
+        : value_{ioj::packed_pack<value_field>(value)} {}
+    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> SimTick {
+        SimTick result;
+        result.value_ = raw;
+        return result;
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
+        return ioj::packed_extract<value_field>(value_);
+    }
+    constexpr void set_value(value_type const value) noexcept {
+        value_ = ioj::packed_insert<value_field>(value_, value);
+    }
+    [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
+        return true;
+    }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto operator<=>(SimTick const& other) const noexcept {
+        return value() <=> other.value();
+    }
+    [[nodiscard]] constexpr auto operator==(SimTick const& other) const noexcept -> bool {
+        return value() == other.value();
+    }
+  private:
+    storage_type value_{};
+};
+static_assert(ioj::valid_packed_value_layout<SimTick>());
+
 } // namespace ioj::sim

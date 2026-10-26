@@ -3,64 +3,71 @@
 
 #pragma once
 
-#include "ioj/min_max.h"
 #include "ioj/packed_value.h"
 
 #include <cassert>
 #include <compare>
 #include <cstdint>
-#include <limits>
-#include <type_traits>
 
 namespace ioj::sim {
 struct ExprRef {
+  public:
     using storage_type = std::uint32_t;
-    static_assert(ioj::valid_packed_storage<storage_type, 32>());
-
-    // index
     using index_type = std::uint32_t;
     using index_field = ioj::PackedField<storage_type, index_type, 0, 31>;
-    static constexpr ioj::MinMax<index_type> index_range{
-        0, static_cast<index_type>(index_field::value_mask)};
-
-    // leaf
+    struct index_range_type {
+        index_type min;
+        index_type max;
+    };
+    static constexpr index_range_type index_range{static_cast<index_type>(0ULL),
+                                                  static_cast<index_type>(2147483647ULL)};
     using leaf_type = bool;
     using leaf_field = ioj::PackedField<storage_type, leaf_type, 31, 1>;
-
-    static constexpr storage_type invalid_value{storage_type{0xffffffff}};
+    static constexpr storage_type invalid_value{4294967295ULL};
 
     constexpr ExprRef() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> ExprRef {
-        ExprRef result;
-        result.value_ = raw;
-        return result;
+    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> ExprRef {
+        return ExprRef{RawTag{}, raw};
     }
-
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
-    explicit constexpr ExprRef(index_type const index_value, leaf_type const leaf_value) noexcept {
-        assert(index_value <= index_range.max);
-        auto const raw{static_cast<storage_type>(ioj::packed_pack<index_field>(index_value) |
-                                                 ioj::packed_pack<leaf_field>(leaf_value))};
-        assert(raw != invalid_value);
-        value_ = raw;
+    explicit constexpr ExprRef(index_type const index_value, leaf_type const leaf_value) noexcept
+        : value_{0} {
+        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint32_t, 0, 31>>(
+                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint32_t, 0, 31>>(
+                        index_value)) == index_value));
+        value_ = ioj::packed_insert<index_field>(value_, index_value);
+        value_ = ioj::packed_insert<leaf_field>(value_, leaf_value);
+        assert(value_ != invalid_value);
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return value_ != invalid_value;
+        return value_ != invalid_value && (true);
     }
-
     [[nodiscard]] constexpr auto operator<=>(ExprRef const&) const noexcept = default;
 
     [[nodiscard]] constexpr auto index() const noexcept -> index_type {
         return ioj::packed_extract<index_field>(value_);
     }
+    constexpr void set_index(index_type const value) noexcept {
+        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint32_t, 0, 31>>(
+                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint32_t, 0, 31>>(
+                        value)) == value));
+        value_ = ioj::packed_insert<index_field>(value_, value);
+    }
 
     [[nodiscard]] constexpr auto leaf() const noexcept -> leaf_type {
         return ioj::packed_extract<leaf_field>(value_);
     }
+    constexpr void set_leaf(leaf_type const value) noexcept {
+        value_ = ioj::packed_insert<leaf_field>(value_, value);
+    }
   private:
-    storage_type value_{invalid_value};
+    struct RawTag {};
+    constexpr ExprRef(RawTag, storage_type raw) noexcept
+        : value_{raw} {}
+    storage_type value_{4294967295ULL};
 };
 static_assert(ioj::valid_packed_value_layout<ExprRef>());
+
 } // namespace ioj::sim

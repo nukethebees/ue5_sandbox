@@ -13,7 +13,7 @@ inline constexpr std::int32_t collision_resilient_health{1'000'000};
 TEST(WorldlessSpaceGameSimulation, Fighters_InterceptCapital) {
     auto const config{tests::make_fixture()};
     auto data{tests::make_simulation_data(config)};
-    data.fighters.health = fighters_intercept_test::collision_resilient_health;
+    data.fighters.health = Health{fighters_intercept_test::collision_resilient_health};
     auto const green{tests::add_capital_spawn(data,
                                               {{-61180.f, 2170.f, 4360.f}},
                                               Team::Green,

@@ -3,68 +3,103 @@
 
 #pragma once
 
-#include "ioj/min_max.h"
 #include "ioj/packed_value.h"
 #include "ioj/sim/entities/entity_type.h"
 
 #include <cassert>
 #include <compare>
 #include <cstdint>
-#include <limits>
-#include <type_traits>
 
 namespace ioj::sim {
 struct EntityId {
+  public:
     using storage_type = std::uint32_t;
-    static_assert(ioj::valid_packed_storage<storage_type, 32>());
-
-    // index
     using index_type = std::uint32_t;
     using index_field = ioj::PackedField<storage_type, index_type, 0, 24>;
-    static constexpr ioj::MinMax<index_type> index_range{
-        0, static_cast<index_type>(index_field::value_mask)};
-
-    // entity_type
+    struct index_range_type {
+        index_type min;
+        index_type max;
+    };
+    static constexpr index_range_type index_range{static_cast<index_type>(0ULL),
+                                                  static_cast<index_type>(16777215ULL)};
     using entity_type_type = ioj::sim::EntityType;
-    static_assert(ioj::valid_packed_enum<entity_type_type, 8>());
-    using entity_type_underlying_type = std::underlying_type_t<entity_type_type>;
     using entity_type_field = ioj::PackedField<storage_type, entity_type_type, 24, 8>;
-
-    static constexpr storage_type invalid_value{storage_type{0xffffffff}};
+    static constexpr storage_type invalid_value{4294967295ULL};
 
     constexpr EntityId() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> EntityId {
-        EntityId result;
-        result.value_ = raw;
-        return result;
+    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> EntityId {
+        return EntityId{RawTag{}, raw};
     }
-
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
     explicit constexpr EntityId(index_type const index_value,
-                                entity_type_type const entity_type_value) noexcept {
-        assert(index_value <= index_range.max);
-        assert(static_cast<std::size_t>(entity_type_value) < ioj::enum_count<entity_type_type>());
-        value_ = static_cast<storage_type>(ioj::packed_pack<index_field>(index_value) |
-                                           ioj::packed_pack<entity_type_field>(entity_type_value));
+                                entity_type_type const entity_type_value) noexcept
+        : value_{0} {
+        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
+                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
+                        index_value)) == index_value));
+        value_ = ioj::packed_insert<index_field>(value_, index_value);
+        assert(((static_cast<std::uint64_t>(entity_type_value) == 0ULL) ||
+                (static_cast<std::uint64_t>(entity_type_value) == 1ULL) ||
+                (static_cast<std::uint64_t>(entity_type_value) == 2ULL) ||
+                (static_cast<std::uint64_t>(entity_type_value) == 3ULL) ||
+                (static_cast<std::uint64_t>(entity_type_value) == 4ULL)));
+        value_ = ioj::packed_insert<entity_type_field>(value_, entity_type_value);
+        assert(value_ != invalid_value);
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return value_ != invalid_value &&
-               static_cast<std::size_t>(entity_type()) < ioj::enum_count<entity_type_type>();
+               (((static_cast<std::uint64_t>(
+                      ioj::packed_extract<
+                          ioj::PackedField<storage_type, ioj::sim::EntityType, 24, 8>>(value_)) ==
+                  0ULL) ||
+                 (static_cast<std::uint64_t>(
+                      ioj::packed_extract<
+                          ioj::PackedField<storage_type, ioj::sim::EntityType, 24, 8>>(value_)) ==
+                  1ULL) ||
+                 (static_cast<std::uint64_t>(
+                      ioj::packed_extract<
+                          ioj::PackedField<storage_type, ioj::sim::EntityType, 24, 8>>(value_)) ==
+                  2ULL) ||
+                 (static_cast<std::uint64_t>(
+                      ioj::packed_extract<
+                          ioj::PackedField<storage_type, ioj::sim::EntityType, 24, 8>>(value_)) ==
+                  3ULL) ||
+                 (static_cast<std::uint64_t>(
+                      ioj::packed_extract<
+                          ioj::PackedField<storage_type, ioj::sim::EntityType, 24, 8>>(value_)) ==
+                  4ULL)));
     }
-
     [[nodiscard]] constexpr auto operator<=>(EntityId const&) const noexcept = default;
 
     [[nodiscard]] constexpr auto index() const noexcept -> index_type {
         return ioj::packed_extract<index_field>(value_);
     }
+    constexpr void set_index(index_type const value) noexcept {
+        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
+                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
+                        value)) == value));
+        value_ = ioj::packed_insert<index_field>(value_, value);
+    }
 
     [[nodiscard]] constexpr auto entity_type() const noexcept -> entity_type_type {
         return ioj::packed_extract<entity_type_field>(value_);
     }
+    constexpr void set_entity_type(entity_type_type const value) noexcept {
+        assert(((static_cast<std::uint64_t>(value) == 0ULL) ||
+                (static_cast<std::uint64_t>(value) == 1ULL) ||
+                (static_cast<std::uint64_t>(value) == 2ULL) ||
+                (static_cast<std::uint64_t>(value) == 3ULL) ||
+                (static_cast<std::uint64_t>(value) == 4ULL)));
+        value_ = ioj::packed_insert<entity_type_field>(value_, value);
+    }
   private:
-    storage_type value_{invalid_value};
+    struct RawTag {};
+    constexpr EntityId(RawTag, storage_type raw) noexcept
+        : value_{raw} {}
+    storage_type value_{4294967295ULL};
 };
 static_assert(ioj::valid_packed_value_layout<EntityId>());
+
 } // namespace ioj::sim

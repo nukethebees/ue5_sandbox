@@ -3,7 +3,8 @@
   :header-include "ioj/ismc/quat32.h"
   :namespace ioj::ismc
   (record Quat32
-    (member bits std::uint32_t :initializer "")))
+    (member bits std::uint32_t :initializer "")
+    (projections (cpp))))
 
 (module sandbox_ismc_render
   :header "native/ismc/lib/include/ioj/ismc/render.h"
@@ -13,4 +14,5 @@
   (record PackedTransform
     (member position @ismc_packed_position :initializer "")
     (member reserved std::uint16_t :initializer "")
-    (member rotation ioj::ismc::Quat32 :initializer "")))
+    (member rotation ioj::ismc::Quat32 :initializer "")
+    (projections (cpp))))

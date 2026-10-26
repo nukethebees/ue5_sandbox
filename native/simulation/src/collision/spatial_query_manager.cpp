@@ -101,7 +101,7 @@ auto trace_impl(ioj::sim::collision::CollisionUniformGrid const& uniform_grid,
             .location = hits.view_locations().resolve()[0],
             .entity = hit_entities[0],
             .static_geometry_index = hits.static_geometry_indices()[0],
-            .hit = hit_flags[0] != 0,
+            .hit = hit_flags[0].value() != 0,
         };
     } else {
         if constexpr (Mode == QueryMode::HitEntity) {
@@ -110,12 +110,13 @@ auto trace_impl(ioj::sim::collision::CollisionUniformGrid const& uniform_grid,
             }
         } else if constexpr (Mode == QueryMode::ClearLine) {
             for (std::uint32_t i{}; i < count; ++i) {
-                request.out_flags[i] = static_cast<ioj::sim::LineQueryResult>(hit_flags[i] == 0);
+                request.out_flags[i] =
+                    static_cast<ioj::sim::LineQueryResult>(hit_flags[i].value() == 0);
             }
         } else if constexpr (Mode == QueryMode::TargetLineOfSight) {
             for (std::uint32_t i{}; i < count; ++i) {
                 request.out_flags[i] = static_cast<ioj::sim::LineQueryResult>(
-                    hit_flags[i] == 0 || hit_entities[i] == request.targets[i]);
+                    hit_flags[i].value() == 0 || hit_entities[i] == request.targets[i]);
             }
         }
 

@@ -340,7 +340,7 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
                     for (auto candidate_index{bounds.begin}; candidate_index < bounds.end;
                          ++candidate_index) {
                         auto const element{candidate_index};
-                        if (has_line_of_sight[element] == 0) {
+                        if (has_line_of_sight[element].value() == 0) {
                             continue;
                         }
 

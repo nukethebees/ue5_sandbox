@@ -43,7 +43,7 @@ class HealthConstView {
     }
     [[nodiscard]] auto is_empty() const noexcept -> bool { return values_.empty(); }
     [[nodiscard]] auto values() const noexcept -> std::span<Health const> { return values_; }
-    [[nodiscard]] auto health(EntityFrameIndex const row) const -> Health {
+    [[nodiscard]] auto health(EntityFrameIndex::value_type const row) const -> Health {
         assert(row < values_.size());
         return values_[row];
     }
@@ -62,11 +62,11 @@ class HealthView {
         return static_cast<std::uint32_t>(values_.size());
     }
     [[nodiscard]] auto is_empty() const noexcept -> bool { return values_.empty(); }
-    [[nodiscard]] auto health(EntityFrameIndex const row) const -> Health {
+    [[nodiscard]] auto health(EntityFrameIndex::value_type const row) const -> Health {
         assert(row < values_.size());
         return values_[row];
     }
-    void set_health(EntityFrameIndex const row, Health const value) const {
+    void set_health(EntityFrameIndex::value_type const row, Health const value) const {
         assert(row < values_.size());
         values_[row] = value;
     }
@@ -111,9 +111,10 @@ class HealthTable {
     }
 
     template <EntityType Type>
-    void initialise_rows(EntityFrameIndex const first,
+    void initialise_rows(EntityFrameIndex::value_type const first,
                          std::span<Health const> const initial_values) {
-        [[maybe_unused]] auto const count{static_cast<EntityFrameIndex>(initial_values.size())};
+        [[maybe_unused]] auto const count{
+            static_cast<EntityFrameIndex::value_type>(initial_values.size())};
         assert(range_fits(first,
                           count,
                           EntityInstanceHandle::index_range.min,
@@ -124,8 +125,8 @@ class HealthTable {
     }
 
     template <EntityType Type>
-    void initialise_rows(EntityFrameIndex const first,
-                         EntityFrameIndex const count,
+    void initialise_rows(EntityFrameIndex::value_type const first,
+                         EntityFrameIndex::value_type const count,
                          Health const initial_value) {
         assert(range_fits(first,
                           count,
@@ -137,7 +138,7 @@ class HealthTable {
     }
 
     template <EntityType Type>
-    void remove_rows(std::size_t count, std::span<EntityFrameIndex const> const rows) {
+    void remove_rows(std::size_t count, std::span<EntityFrameIndex::value_type const> const rows) {
         assert(count <= health_storage::layout.capacities[Type]);
         constexpr auto base{health_storage::layout.offsets[Type]};
         [[maybe_unused]] auto previous{count};

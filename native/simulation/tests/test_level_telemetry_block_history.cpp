@@ -19,11 +19,11 @@ TEST(NativeSimulation, LevelTelemetryBlockHistoryTest) {
     GameMemory memory{{.root_capacity_bytes = block_bytes * 8}};
     LevelTelemetryBlockHistory history{memory, {.block_bytes = block_bytes}};
 
-    for (SimTick tick{}; tick < 64; ++tick) {
+    for (SimTick tick{}; tick.value() < 64; tick.set_value(tick.value() + 1)) {
         auto columns{history.append_uninitialized()};
         columns.completed_ticks()[0] = tick;
         columns.validity_masks()[0] = active_entities_mask;
-        columns.active_entities()[0] = static_cast<std::int32_t>(tick);
+        columns.active_entities()[0] = static_cast<std::int32_t>(tick.value());
     }
     EXPECT_EQ(history.retained_block_count(), std::int32_t{1})
         << "An exact-capacity fill retains one block";
@@ -33,7 +33,7 @@ TEST(NativeSimulation, LevelTelemetryBlockHistoryTest) {
     auto const first_value{history.block_view(0).completed_ticks()[0]};
 
     auto next{history.append_uninitialized()};
-    next.completed_ticks()[0] = 64;
+    next.completed_ticks()[0] = SimTick{64};
     next.validity_masks()[0] = active_entities_mask;
     next.active_entities()[0] = 64;
     EXPECT_EQ(history.retained_block_count(), std::int32_t{2})
@@ -47,14 +47,14 @@ TEST(NativeSimulation, LevelTelemetryBlockHistoryTest) {
     history.for_each_block([&expected_tick](auto const block) {
         for (auto const tick : block.completed_ticks()) {
             EXPECT_EQ(tick, expected_tick) << "Block iteration remains chronological";
-            ++expected_tick;
+            expected_tick.set_value(expected_tick.value() + 1);
         }
     });
     EXPECT_EQ(expected_tick, SimTick{65}) << "Chronological iteration visits every row";
 
     history.reset();
     EXPECT_EQ(history.num(), std::int32_t{0}) << "Reset clears logical rows";
-    for (SimTick tick{}; tick < 65; ++tick) {
+    for (SimTick tick{}; tick.value() < 65; tick.set_value(tick.value() + 1)) {
         auto columns{history.append_uninitialized()};
         columns.completed_ticks()[0] = tick;
     }

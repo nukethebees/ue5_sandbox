@@ -56,7 +56,16 @@ auto write_debug_frames(FString const& output_directory) -> bool {
         {12000.0f, 0.0f, 0.0f},
         {-10.0f, -5.0f, -5.0f},
     };
-    ::ioj::sim::Health const health[]{0, 25, 50, 75, 100, 75, 100, 100, 100, 50};
+    ::ioj::sim::Health const health[]{::ioj::sim::Health{0},
+                                      ::ioj::sim::Health{25},
+                                      ::ioj::sim::Health{50},
+                                      ::ioj::sim::Health{75},
+                                      ::ioj::sim::Health{100},
+                                      ::ioj::sim::Health{75},
+                                      ::ioj::sim::Health{100},
+                                      ::ioj::sim::Health{100},
+                                      ::ioj::sim::Health{100},
+                                      ::ioj::sim::Health{50}};
     ::ioj::sim::EntityTypeRadii entity_type_radii;
     for (auto const type : ioj::EnumTraits<::ioj::sim::EntityType>::values) {
         entity_type_radii[type] = 200.0f;

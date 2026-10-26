@@ -142,7 +142,7 @@ void EntityLedger::record_damage(DirectDamageEvents::ConstView const events,
     [[maybe_unused]] auto const life_states{history.life_state()};
 
     for (std::uint32_t index{}; index < count; ++index) {
-        auto const damage{applied_damage[index]};
+        auto const damage{applied_damage[index].value()};
         assert(damage >= 0);
         if (damage == 0) {
             continue;

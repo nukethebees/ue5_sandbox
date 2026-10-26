@@ -120,6 +120,28 @@ struct TypeReader<T> {
     }
 };
 
+template <typename T>
+    requires requires(typename T::value_type value, T const object) {
+        requires std::integral<typename T::value_type>;
+        { T::is_valid_value(value) } -> std::same_as<bool>;
+        { object.value() } -> std::same_as<typename T::value_type>;
+        object.raw_value();
+    }
+struct TypeReader<T> {
+    static auto read(Reader const& reader, NodeIndex const node, std::string_view const path)
+        -> ReadResult<T> {
+        auto value{s7::read<typename T::value_type>(reader, node, path)};
+        if (!value) {
+            return std::unexpected{std::move(value.error())};
+        }
+        if (!T::is_valid_value(*value)) {
+            return read_error(
+                AstErrorCode::InvalidNumber, path, "Integer is outside the scalar domain");
+        }
+        return T{*value};
+    }
+};
+
 template <>
 struct TypeReader<bool> {
     static auto read(Reader const& reader, NodeIndex const node, std::string_view const path)

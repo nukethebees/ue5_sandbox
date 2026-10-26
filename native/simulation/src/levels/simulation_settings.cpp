@@ -50,13 +50,13 @@ auto validate_settings(SimulationSettings const& settings)
         }
     };
 
-    positive(settings.player.health, "player-ship.health");
+    positive(settings.player.health.value(), "player-ship.health");
     nonnegative(settings.lasers.n_preallocated_instances,
                 "laser-projectiles.n-preallocated-instances");
     nonnegative(settings.fighters.max_live_fighters, "fighters.max-live-fighters");
-    positive(settings.capital_ships.max_health, "capital-ships.max-health");
-    positive(settings.fighters.health, "fighters.health");
-    positive(settings.turrets.max_health, "turrets.max-health");
+    positive(settings.capital_ships.max_health.value(), "capital-ships.max-health");
+    positive(settings.fighters.health.value(), "fighters.health");
+    positive(settings.turrets.max_health.value(), "turrets.max-health");
 
     auto const& fighters{settings.fighters};
     check(std::isfinite(fighters.fire_dot_product_threshold) &&

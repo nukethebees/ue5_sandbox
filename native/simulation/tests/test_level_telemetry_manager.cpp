@@ -78,7 +78,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     });
     EXPECT_TRUE(columns_aligned);
 
-    clock.completed_ticks = 1;
+    clock.completed_ticks = SimTick{1};
     telemetry_manager.tick();
     tick_series = telemetry_manager.materialize_tick_series();
     EXPECT_EQ(active_count_data.num(), 1);
@@ -86,13 +86,13 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     EXPECT_EQ(tick_series.active_lasers.num(), 1);
     EXPECT_EQ(telemetry_manager.get_history_stats().used_sample_count, 1);
 
-    clock.completed_ticks = 2;
+    clock.completed_ticks = SimTick{2};
     clock.tick_loop.time_scale = PositiveFinite<double>::make(4.0);
     telemetry_manager.tick();
     tick_series = telemetry_manager.materialize_tick_series();
     EXPECT_EQ(telemetry_manager.get_history_stats().used_sample_count, 1);
 
-    clock.completed_ticks = 5;
+    clock.completed_ticks = SimTick{5};
     clock.tick_loop.tick_rate = ioj::Frequency::make(4.0);
     auto const laser_snapshot{telemetry_manager.make_snapshot()};
     EXPECT_DOUBLE_EQ(laser_snapshot.elapsed_seconds.get_seconds(), 1.25);
@@ -118,7 +118,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     entity_ledger.record_spawns(EntityType::CapitalShip, Team::Red, Health{1}, ids);
     entity_ledger.record_spawns(EntityType::Fighter, Team::Red, Health{1}, ids);
 
-    clock.completed_ticks = 2;
+    clock.completed_ticks = SimTick{2};
     telemetry_manager.tick();
     tick_series = telemetry_manager.materialize_tick_series();
     EXPECT_EQ(active_count_data.last_value(), 3);
@@ -147,7 +147,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     EXPECT_EQ(entity_change_columns.num(), 2);
     EXPECT_EQ(std::popcount(entity_change_columns.validity_masks()[1].value()), 8);
 
-    clock.completed_ticks = 3;
+    clock.completed_ticks = SimTick{3};
     telemetry_manager.tick();
     EXPECT_EQ(active_count_data.num(), 2);
 
@@ -191,7 +191,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     boundary_manager.initialise();
     EXPECT_EQ(boundary_manager.get_history_stats().total_sample_capacity, 64);
     for (std::uint64_t tick{1}; tick <= 64; ++tick) {
-        clock.completed_ticks = tick;
+        clock.completed_ticks = SimTick{tick};
         entity_ledger.record_spawns(EntityType::CapitalShip, Team::Red, Health{1}, ids);
         boundary_manager.tick();
     }

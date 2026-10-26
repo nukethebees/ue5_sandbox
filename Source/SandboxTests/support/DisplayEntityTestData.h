@@ -17,12 +17,16 @@ struct FDisplayEntityTestData {
     }
     auto num() const noexcept -> std::int32_t { return static_cast<std::int32_t>(healths.size()); }
 
-    void add_health(std::int32_t const row, sim::EntityId const owner, sim::Health const health) {
+    void add_health(std::int32_t const row,
+                    sim::EntityId const owner,
+                    sim::Health::value_type const health) {
         entity_ids[row] = owner;
-        healths[row] = health;
+        healths[row] = sim::Health{health};
     }
 
-    void set_health(std::int32_t const row, sim::Health const health) { healths[row] = health; }
+    void set_health(std::int32_t const row, sim::Health::value_type const health) {
+        healths[row] = sim::Health{health};
+    }
 
     sim::FighterEntityData motion;
     std::vector<sim::Health> healths;

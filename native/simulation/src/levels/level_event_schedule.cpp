@@ -62,12 +62,13 @@ void LevelEventSchedule::add_initial_spawn_group(EntityType const type,
         if (initial_spawn_group_count > 0) {
             auto const groups{spawn_groups.get_view()};
             auto const last{initial_spawn_group_count - 1};
-            auto const previous_count{groups.counts()[last]};
+            auto const previous_count{groups.counts()[last].value()};
             if (groups.types()[last] == type && groups.offsets()[last] + previous_count == offset &&
                 previous_count < max_level_event_count) {
                 auto const added{std::min(
                     count, static_cast<std::int32_t>(max_level_event_count - previous_count))};
-                groups.counts()[last] = static_cast<LevelEventCount>(previous_count + added);
+                groups.counts()[last] = LevelEventCount{
+                    static_cast<LevelEventCount::value_type>(previous_count + added)};
                 offset += added;
                 count -= added;
                 continue;
@@ -92,7 +93,7 @@ void LevelEventSchedule::add_initial_spawn_group(EntityType const type,
         auto const index{initial_spawn_group_count};
         types[index] = type;
         offsets[index] = offset;
-        counts[index] = static_cast<LevelEventCount>(added);
+        counts[index] = LevelEventCount{static_cast<LevelEventCount::value_type>(added)};
         ++initial_spawn_group_count;
         offset += added;
         count -= added;
@@ -113,7 +114,7 @@ auto LevelEventSchedule::add_spawn_group(EntityType const type,
     auto& tick_counts{event_group_counts.back()};
     LevelEventCount group_count;
     if (!try_to_level_event_count(count, payload_count) ||
-        !try_to_level_event_count(tick_counts.spawn_groups + 1, group_count)) {
+        !try_to_level_event_count(tick_counts.spawn_groups.value() + 1, group_count)) {
         return false;
     }
 

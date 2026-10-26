@@ -34,7 +34,7 @@ TEST(LevelTelemetryJsonValidation, RejectsInvalidRecordInvariants) {
     EXPECT_FALSE(validate_level_telemetry_json_record(record).has_value());
     record.tick_series.active_entities = {};
 
-    record.battle_samples.push_back({.completed_tick = 9007199254740994ULL});
+    record.battle_samples.push_back({.completed_tick = SimTick{9007199254740994ULL}});
     EXPECT_FALSE(validate_level_telemetry_json_record(record).has_value());
 }
 
@@ -47,11 +47,11 @@ TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
     report.opens_telemetry = true;
     report.run.tick_rate_hz = Frequency::make(120.0);
     report.run.completion.reason = LevelTelemetryRunEndReason::MissionSucceeded;
-    report.run.completion.completed_ticks = 240;
+    report.run.completion.completed_ticks = SimTick{240};
     report.run.tick_series.active_entities.add(0, 2);
     report.run.tick_series.active_entities.add(240, 1);
     LevelTelemetryBattleSample sample;
-    sample.completed_tick = 240;
+    sample.completed_tick = SimTick{240};
     sample.alive[0][0] = 1;
     sample.combat.shots[0][0] = 3;
     sample.combat.damage_dealt[0][0] = 12.5;
@@ -67,7 +67,7 @@ TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
     EXPECT_TRUE(parsed->opens_telemetry);
     EXPECT_EQ(parsed->run.tick_rate_hz.get_hz(), 120.0);
     EXPECT_EQ(parsed->run.completion.reason, LevelTelemetryRunEndReason::MissionSucceeded);
-    EXPECT_EQ(parsed->run.completion.completed_ticks, 240);
+    EXPECT_EQ(parsed->run.completion.completed_ticks.value(), 240);
     EXPECT_EQ(serialized->find("environment"), std::string::npos);
     EXPECT_EQ(serialized->find("presentation_mode"), std::string::npos);
     EXPECT_EQ(serialized->find("winning_team"), std::string::npos);
@@ -110,9 +110,9 @@ TEST(LevelTelemetryJsonValidation, NativeCodecRejectsInvalidInputAndReturnsError
         EXPECT_FALSE(deserialize_level_telemetry_report(invalid));
     }
 
-    report.run.completion.completed_ticks = 9007199254740993ULL;
+    report.run.completion.completed_ticks = SimTick{9007199254740993ULL};
     EXPECT_FALSE(serialize_level_telemetry_report(report).has_value());
-    report.run.completion.completed_ticks = 0;
+    report.run.completion.completed_ticks = SimTick{0};
     report.run.completion.reason = static_cast<LevelTelemetryRunEndReason>(255);
     EXPECT_FALSE(serialize_level_telemetry_report(report).has_value());
 }

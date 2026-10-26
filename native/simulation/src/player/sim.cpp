@@ -172,8 +172,8 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
             continue;
         }
         auto const was_alive{sim::is_alive(health)};
-        auto const applied_damage{std::min(health, requested_damage)};
-        health -= requested_damage;
+        auto const applied_damage{Health{std::min(health.value(), requested_damage)}};
+        health.set_value(health.value() - requested_damage);
         applied_damages[event_index] = applied_damage;
         if (was_alive && is_dead(health)) {
             killer = instigators[element];
@@ -561,7 +561,8 @@ void Sim::add_health(Health const added_health) {
     if (!is_alive()) {
         return;
     }
-    set_health(health_table_.get_const_view<EntityType::PlayerShip>(1).health(0) + added_health);
+    set_health(Health{health_table_.get_const_view<EntityType::PlayerShip>(1).health(0).value() +
+                      added_health.value()});
 }
 
 void Sim::set_health(Health const new_health, EntityId const killer) {
@@ -650,7 +651,8 @@ void Sim::configure_speed_sampling() {
     SimTick const sample_window_ticks{
         simulation_clock.duration_to_tick_period(Duration::make(sample_window_seconds))};
 
-    auto const sample_count{(sample_window_ticks + sample_tick_period - 1) / sample_tick_period};
+    auto const sample_count{(sample_window_ticks.value() + sample_tick_period - 1) /
+                            sample_tick_period};
     assert(std::in_range<std::uint32_t>(sample_count));
 
     speed_sample_index = 0;

@@ -42,7 +42,8 @@ void Sim::begin_play() {
     cooldown_cleaner_ = 0;
 }
 void Sim::update_entity_lookup_table() {
-    entity_tables_.publish<EntityType::TubeSpinner>(entities.get_const_view().entity_ids(), {}, 1);
+    entity_tables_.publish<EntityType::TubeSpinner>(
+        entities.get_const_view().entity_ids(), {}, Health{1});
 }
 void Sim::prepare_tick(float const) {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::prepare_tick");

@@ -46,7 +46,7 @@ void LevelSpawnManager::spawn(LevelSpawnGroups::ConstView const groups) {
     auto const counts{groups.counts()};
     for (std::uint32_t index{}; index < group_count; ++index) {
         auto const offset{offsets[index]};
-        auto const count{counts[index]};
+        auto const count{counts[index].value()};
         switch (types[index]) {
             case EntityType::CapitalShip: {
                 // Spawn groups select distinct payload ranges.
@@ -74,7 +74,7 @@ void LevelSpawnManager::spawn(LevelSpawnGroups::ConstView const groups) {
         if (types[index] == EntityType::CapitalShip) {
             resolve_capital_targets(
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- per-group payload.
-                capital_payloads_.get_const_view(offsets[index], counts[index]));
+                capital_payloads_.get_const_view(offsets[index], counts[index].value()));
         }
     }
 }

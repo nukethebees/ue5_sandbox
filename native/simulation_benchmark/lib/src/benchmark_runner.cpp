@@ -80,11 +80,11 @@ auto calculate_tick_count(double const seconds, Frequency const tick_rate_hz)
     }
 
     auto const ticks{std::ceil(seconds * tick_rate_hz.get_hz())};
-    auto const maximum{static_cast<double>(std::numeric_limits<sim::SimTick>::max())};
+    auto const maximum{static_cast<double>(std::numeric_limits<sim::SimTick::value_type>::max())};
     if (!std::isfinite(ticks) || ticks >= maximum) {
         return std::unexpected{"seconds produces a tick count that is too large"};
     }
-    return sim::duration_to_tick_period(tick_rate_hz, Duration::make(seconds)).get();
+    return sim::SimTick{sim::duration_to_tick_period(tick_rate_hz, Duration::make(seconds)).get()};
 }
 
 auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const profiler_ready)
@@ -172,8 +172,9 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     if (options.fighter_stress_cap.has_value()) {
         data.fighters.max_live_fighters = *options.fighter_stress_cap;
         data.fighters.laser.damage = 0;
-        data.fighters.health = std::numeric_limits<sim::Health>::max() / 2;
-        data.capital_ships.max_health = std::numeric_limits<sim::Health>::max() / 2;
+        data.fighters.health = sim::Health{std::numeric_limits<sim::Health::value_type>::max() / 2};
+        data.capital_ships.max_health =
+            sim::Health{std::numeric_limits<sim::Health::value_type>::max() / 2};
     }
 
     if (level_components.player_entity_id().empty()) {
@@ -187,7 +188,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         player.team = player_definition->team;
         if (player_definition->overrides.health) {
             auto const health{*player_definition->overrides.health};
-            player.health = {health, health};
+            player.health = {sim::Health{health}, sim::Health{health}};
         }
         player.transform.location = player_definition->position;
         player.transform.rotation = to_quaternion(player_definition->rotation);
@@ -259,7 +260,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
             if (!advanced) {
                 return std::unexpected{advanced.error()};
             }
-            ++saturation_ticks;
+            saturation_ticks.set_value(saturation_ticks.value() + 1);
         }
         auto const saturated_count{simulation.get_fighters().get_num_instances()};
         if (saturated_count != cap) {
@@ -272,7 +273,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         }
 
         auto const spawned_at_saturation{simulation.get_capital_ships().get_fighters_spawned()};
-        for (sim::SimTick tick{}; tick < warmup_ticks; ++tick) {
+        for (sim::SimTick tick{}; tick < warmup_ticks; tick.set_value(tick.value() + 1)) {
             auto const advanced{advance_one_tick()};
             if (!advanced) {
                 return std::unexpected{advanced.error()};
@@ -294,12 +295,12 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     auto const lasers_spawned_before_measurement{simulation.get_lasers().get_number_spawned()};
     FrameMemorySummary frame_summary;
     std::vector<double> tick_microseconds;
-    tick_microseconds.reserve(static_cast<std::size_t>(*requested_ticks));
+    tick_microseconds.reserve(static_cast<std::size_t>(requested_ticks->value()));
 
     auto const started_at{std::chrono::steady_clock::now()};
     {
         SANDBOX_PROFILE_SCOPE("Benchmark measured ticks");
-        for (sim::SimTick tick{}; tick < *requested_ticks; ++tick) {
+        for (sim::SimTick tick{}; tick < *requested_ticks; tick.set_value(tick.value() + 1)) {
             auto const tick_started_at{std::chrono::steady_clock::now()};
             auto const advanced{advance_one_tick()};
             if (!advanced) {
@@ -355,7 +356,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         .requested_ticks = *requested_ticks,
         .completed_ticks = *requested_ticks,
         .advance_calls = advance_calls,
-        .completed_seconds = static_cast<double>(*requested_ticks) / tick_rate_hz.get_hz(),
+        .completed_seconds = static_cast<double>(requested_ticks->value()) / tick_rate_hz.get_hz(),
         .elapsed_seconds = elapsed,
         .total_elapsed_seconds = total_elapsed,
         .saturation_ticks = saturation_ticks,
@@ -413,12 +414,12 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
 
 auto to_json(BenchmarkResult const& result) -> std::string {
     auto const ticks_per_second{result.elapsed_seconds > 0.0
-                                    ? static_cast<double>(result.completed_ticks) /
+                                    ? static_cast<double>(result.completed_ticks.value()) /
                                           result.elapsed_seconds
                                     : 0.0};
-    auto const mean_tick_microseconds{result.completed_ticks > 0
+    auto const mean_tick_microseconds{result.completed_ticks.value() > 0
                                           ? result.elapsed_seconds * 1'000'000.0 /
-                                                static_cast<double>(result.completed_ticks)
+                                                static_cast<double>(result.completed_ticks.value())
                                           : 0.0};
     auto const realtime_factor{result.tick_rate_hz > 0.0 ? ticks_per_second / result.tick_rate_hz
                                                          : 0.0};
@@ -436,14 +437,14 @@ auto to_json(BenchmarkResult const& result) -> std::string {
           result.requested_seconds,
           result.tick_rate_hz,
           result.game_speed,
-          result.requested_ticks,
-          result.completed_ticks,
+          result.requested_ticks.value(),
+          result.completed_ticks.value(),
           result.completed_seconds,
           result.advance_calls,
-          result.saturation_ticks,
-          result.warmup_ticks,
-          result.measured_ticks,
-          result.total_simulation_ticks);
+          result.saturation_ticks.value(),
+          result.warmup_ticks.value(),
+          result.measured_ticks.value(),
+          result.total_simulation_ticks.value());
     write(R"(,"timing":{{"elapsed_seconds":{:.17g},"total_elapsed_seconds":{:.17g},)"
           R"("ticks_per_second":{:.17g},"realtime_factor":{:.17g},)"
           R"("mean_tick_microseconds":{:.17g},"median_tick_microseconds":{:.17g},)"

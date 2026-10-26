@@ -51,9 +51,9 @@ static_assert(maximum_fighter_id.index() == EntityId::index_field::value_mask);
 static_assert(maximum_fighter_id.entity_type() == EntityType::Fighter);
 static_assert(!HasTryMake<EntityId>);
 static_assert(!HasTrySetIndex<EntityId>);
-static_assert(!HasSetIndex<EntityId>);
+static_assert(HasSetIndex<EntityId>);
 static_assert(!HasTrySetEntityType<EntityId>);
-static_assert(!HasSetEntityType<EntityId>);
+static_assert(HasSetEntityType<EntityId>);
 
 TEST(EntityId, RoundTripsRepresentativeIndicesAndEntityTypes) {
     constexpr std::array indices{

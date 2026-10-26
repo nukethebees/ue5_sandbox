@@ -37,7 +37,7 @@ TEST(TelemetryAnalysis, DerivesBattleForcesCombatAndProjectileRates) {
     begin.lasers_fired = 10;
     auto& end{samples[1]};
     end = begin;
-    end.completed_tick = 60;
+    end.completed_tick = SimTick{60};
     end.alive[0][0] = 3;
     end.combat.spawned[0][0] = 5;
     end.combat.shots[0][0] = 5;
@@ -72,7 +72,7 @@ TEST(TelemetryAnalysis, DerivesBattleForcesCombatAndProjectileRates) {
 TEST(TelemetryAnalysis, SampledGaugesSurviveRegressingCounterIntervals) {
     std::array<LevelTelemetryBattleSample, 2> samples{};
     auto& begin{samples[0]};
-    begin.completed_tick = 30;
+    begin.completed_tick = SimTick{30};
     begin.alive[0][0] = 7;
     begin.combat.spawned[0][0] = 10;
     begin.combat.destroyed[0][0] = 10;
@@ -80,7 +80,7 @@ TEST(TelemetryAnalysis, SampledGaugesSurviveRegressingCounterIntervals) {
     begin.lasers_fired = 10;
     auto& end{samples[1]};
     end = begin;
-    end.completed_tick = 150;
+    end.completed_tick = SimTick{150};
     end.combat.spawned[0][0] = 5;
     end.combat.destroyed[0][0] = 5;
     end.combat.kills[0][0] = 5;
@@ -97,8 +97,8 @@ TEST(TelemetryAnalysis, SampledGaugesSurviveRegressingCounterIntervals) {
 
 TEST(TelemetryAnalysis, WeightsEntityCountsByIntervalDurationAcrossTeams) {
     std::array<LevelTelemetryBattleSample, 3> samples{};
-    samples[1].completed_tick = 60;
-    samples[2].completed_tick = 240;
+    samples[1].completed_tick = SimTick{60};
+    samples[2].completed_tick = SimTick{240};
     constexpr std::array types{Metric::PlayerShips,
                                Metric::Turrets,
                                Metric::CapitalShips,
@@ -122,10 +122,10 @@ TEST(TelemetryAnalysis, WeightsEntityCountsByIntervalDurationAcrossTeams) {
 
 TEST(TelemetryAnalysis, IgnoresZeroAndRegressingDurationsWithoutLosingSamples) {
     std::array<LevelTelemetryBattleSample, 4> samples{};
-    samples[0].completed_tick = 60;
-    samples[1].completed_tick = 60;
-    samples[2].completed_tick = 30;
-    samples[3].completed_tick = 90;
+    samples[0].completed_tick = SimTick{60};
+    samples[1].completed_tick = SimTick{60};
+    samples[2].completed_tick = SimTick{30};
+    samples[3].completed_tick = SimTick{90};
     auto const analysis{analyze({.battle_samples = samples})};
     EXPECT_EQ(analysis.battle_simulated_seconds, (std::vector<float>{1.f, 1.f, .5f, 1.5f}));
     for (auto const& series : analysis.metrics) {

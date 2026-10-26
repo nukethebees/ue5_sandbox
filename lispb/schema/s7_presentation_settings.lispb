@@ -5,7 +5,8 @@
   (record PlayerPresentation :comparison equality
     :generate-visitor true
     :generate-s7-reader true :s7-tag "player-ship"
-    (member boost_effect_colour_intensity float :initializer 75.f :finite true)))
+    (member boost_effect_colour_intensity float :initializer 75.f :finite true)
+    (projections (cpp))))
 
 (module presentation_lasers
   :header "native/levels/lib/include/ioj/settings/laser_presentation.h"
@@ -15,7 +16,8 @@
     :generate-visitor true
     :generate-s7-reader true :s7-tag "laser-projectiles"
     (member min_cull_distance float :initializer 0.f :finite true)
-    (member max_cull_distance float :initializer 50000.f :finite true)))
+    (member max_cull_distance float :initializer 50000.f :finite true)
+    (projections (cpp))))
 
 (module presentation_capitals
   :header "native/levels/lib/include/ioj/settings/capital_presentation.h"
@@ -29,7 +31,8 @@
     (member min_small_explosion_range @native_vector_3f :initializer "" :finite true)
     (member max_small_explosion_range @native_vector_3f :initializer "1.f, 1.f, 1.f" :finite true)
     (member large_explosion_delay float :initializer 0.f :finite true)
-    (member proxy_arrow_size float :initializer 5.f :finite true)))
+    (member proxy_arrow_size float :initializer 5.f :finite true)
+    (projections (cpp))))
 
 (module presentation_turrets
   :header "native/levels/lib/include/ioj/settings/turret_presentation.h"
@@ -38,7 +41,8 @@
   (record TurretPresentation :comparison equality
     :generate-visitor true
     :generate-s7-reader true :s7-tag "turrets"
-    (member death_effect_scale float :initializer 1.f :finite true)))
+    (member death_effect_scale float :initializer 1.f :finite true)
+    (projections (cpp))))
 
 (module presentation_soft_target
   :header "native/levels/lib/include/ioj/settings/soft_target.h"
@@ -59,7 +63,8 @@
     (member opacity float :initializer 0.70f :finite true)
     (member pulse_opacity_boost float :initializer 0.08f :finite true)
     (member pulse_duration float :initializer 0.15f :finite true)
-    (member fade_out_duration float :initializer 0.15f :finite true)))
+    (member fade_out_duration float :initializer 0.15f :finite true)
+    (projections (cpp))))
 
 (module presentation_entity_overlay
   :header "native/levels/lib/include/ioj/settings/entity_overlay.h"
@@ -79,7 +84,8 @@
     (member objective_frame_pixels float :initializer 3.f :finite true)
     (member objective_bar_height_scale float :initializer 1.4f :finite true)
     (member screen_edge_padding_pixels float :initializer 12.f :finite true)
-    (member soft_target ioj::settings::SoftTarget :initializer "")))
+    (member soft_target ioj::settings::SoftTarget :initializer "")
+    (projections (cpp))))
 
 (module presentation_radar
   :header "native/levels/lib/include/ioj/settings/radar.h"
@@ -101,7 +107,8 @@
     (member glyph_size_scale float :initializer 1.f :finite true)
     (member objective_size_multiplier float :initializer 1.2f :finite true)
     (member objective_ring_padding_pixels float :initializer 3.f :finite true)
-    (member objective_ring_thickness_pixels float :initializer 1.25f :finite true)))
+    (member objective_ring_thickness_pixels float :initializer 1.25f :finite true)
+    (projections (cpp))))
 
 (module presentation_settings
   :header "native/levels/lib/include/ioj/settings/presentation.h"
@@ -115,4 +122,5 @@
     (member capital_ships ioj::settings::CapitalPresentation :initializer "")
     (member turrets ioj::settings::TurretPresentation :initializer "")
     (member entity_overlay ioj::settings::EntityOverlay :initializer "")
-    (member radar ioj::settings::Radar :initializer "")))
+    (member radar ioj::settings::Radar :initializer "")
+    (projections (cpp))))

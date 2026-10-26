@@ -1,8 +1,10 @@
 (module native_entity_id
   :header "native/simulation/include/ioj/sim/entities/entity_id.h"
   :namespace ioj::sim
-  (packed-value EntityId
-    :storage std::uint32_t
+  (integer-scalar EntityIndex :bit-width 24)
+  (record EntityId
+    :layout packed :bits 32
     :invalid-value 0xffffffff
-    (field index std::uint32_t :bits 24)
-    (field entity_type @native_entity_type :bits 8 :kind enum)))
+    (member index @EntityIndex)
+    (member entity_type @native_entity_type :bits 8)
+    (projections (cpp :storage std::uint32_t))))

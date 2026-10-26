@@ -66,7 +66,8 @@ auto add_worldless_capital_spawn(sim::LevelSimInitData& data,
     events.target_entity_indices()[index] = target_entity_index;
     set_vector(events.view_locations(), index, Vector3f{location});
     events.teams()[index] = static_cast<Team>(team);
-    events.healths()[index] = health == INDEX_NONE ? data.capital_ships.max_health : health;
+    events.healths()[index] =
+        health == INDEX_NONE ? data.capital_ships.max_health : ::ioj::sim::Health{health};
     events.initial_fighter_spawn_delays()[index] = initial_spawn_delay;
     events.fighter_spawn_cooldowns()[index] = spawn_cooldown;
     return index;
@@ -80,9 +81,9 @@ void FWorldlessSimulationTest::finish_initialisation() {
 }
 
 void FWorldlessSimulationTest::advance(time_type const dt) {
-    auto const previous_tick{simulation_.get_clock().get_completed_ticks()};
+    auto const previous_tick{simulation_.get_clock().get_completed_ticks().value()};
     simulation_.advance(dt);
-    if (simulation_.get_clock().get_completed_ticks() != previous_tick) {
+    if (simulation_.get_clock().get_completed_ticks().value() != previous_tick) {
         if (on_end_tick) {
             on_end_tick(simulation_);
         }

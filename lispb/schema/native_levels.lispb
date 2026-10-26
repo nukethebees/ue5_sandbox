@@ -7,7 +7,8 @@
     :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
     (member target_entity_ids @native_entity_ids :initializer "" :required true :s7-name "look-at")
     (member offset_direction @native_vector3d :initializer "" :required true)
-    (member distance double :initializer "" :required true)))
+    (member distance double :initializer "" :required true)
+    (projections (cpp))))
 
 (module native_campaign
   :header "native/levels/lib/include/ioj/levels/campaign_definition.h"
@@ -18,7 +19,8 @@
     :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
     (member id @native_campaign_id :initializer "" :required true)
     (member title @native_string :initializer "" :required true)
-    (member level_ids @native_level_ids :initializer "" :required true :s7-name "levels")))
+    (member level_ids @native_level_ids :initializer "" :required true :s7-name "levels")
+    (projections (cpp))))
 
 (module native_team
   :header "native/levels/lib/include/ioj/levels/team.h"
@@ -28,19 +30,21 @@
     :native-api true
     :helpers (to-string traits to-serialized-string try-parse-serialized formatter)
     :enum-array true
-    (unreal-projection ETestTeam
-      :enum-array true
-      :header "Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/entities/TestTeam.h"
-      :header-include "SpaceGamePresentation/entities/TestTeam.h"
-      :conversion-header "Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/entities/TestTeamConversion.h"
-      :native-header-include "ioj/levels/team.h"
-      :reflection uenum)
     (value White :value "0" :serialized-name "white")
     (value Red :value "1" :serialized-name "red")
     (value Green :value "2" :serialized-name "green")
     (value Blue :value "3" :serialized-name "blue")
     (value Orange :value "4" :serialized-name "orange")
-    (value Yellow :value "5" :serialized-name "yellow")))
+    (value Yellow :value "5" :serialized-name "yellow")
+    (projections
+      (cpp)
+      (unreal-projection ETestTeam
+        :enum-array true
+        :header "Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/entities/TestTeam.h"
+        :header-include "SpaceGamePresentation/entities/TestTeam.h"
+        :conversion-header "Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/entities/TestTeamConversion.h"
+        :native-header-include "ioj/levels/team.h"
+        :reflection uenum))))
 
 (module native_team_result
   :header "native/levels/lib/include/ioj/levels/team_result_definition.h"
@@ -51,7 +55,8 @@
     :s7-reader-includes ("ioj/levels/authoring/input_readers.h")
     (member team ioj::Team :initializer "Team::White" :required true)
     (member when @input_dependency :initializer "" :required true)
-    (member result ioj::TeamOutcome :initializer "TeamOutcome::Victory" :required true)))
+    (member result ioj::TeamOutcome :initializer "TeamOutcome::Victory" :required true)
+    (projections (cpp))))
 
 (module native_objective_dependency
   :header "native/levels/lib/include/ioj/levels/objective_dependency.h"
@@ -61,7 +66,8 @@
     :generate-s7-reader true :s7-tag "objective-resolved" :s7-positional true :s7-constructor false
     :s7-reader-includes ("ioj/levels/authoring/identifier_reader.h")
     (member objective @input_objective_name :initializer "")
-    (member outcome ioj::ObjectiveOutcome :initializer "ObjectiveOutcome::Passed")))
+    (member outcome ioj::ObjectiveOutcome :initializer "ObjectiveOutcome::Passed")
+    (projections (cpp))))
 
 (module native_levels_entity_archetype
   :header "native/levels/lib/include/ioj/levels/entity_archetype.h"
@@ -72,7 +78,8 @@
     :helpers (to-string traits to-serialized-string try-parse-serialized formatter)
     (value PlayerFighter :serialized-name "player-fighter")
     (value CapitalShip :serialized-name "capital-ship")
-    (value StaticTurret :serialized-name "static-turret")))
+    (value StaticTurret :serialized-name "static-turret")
+    (projections (cpp))))
 
 (module native_levels_diagnostic_code
   :header "native/levels/lib/include/ioj/levels/diagnostic_code.h"
@@ -130,4 +137,5 @@
     (value DuplicateLevelId)
     (value DuplicateCampaignId)
     (value UnavailableLevel)
-    (value UnlockCycle)))
+    (value UnlockCycle)
+    (projections (cpp))))

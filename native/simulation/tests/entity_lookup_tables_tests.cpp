@@ -71,7 +71,7 @@ TEST(EntityTypeRuns, GroupsWithoutChangingIdsAndOmitsEmptyIds) {
 TEST(EntityLookupTables, PublishedCountIncludesDeadRowsUntilRepublished) {
     EntityLookupTable lookup{EntityType::Fighter};
     std::array const ids{EntityId{0, EntityType::Fighter}, EntityId{1, EntityType::Fighter}};
-    lookup.publish_rows(ids, {}, std::array<Health, 2>{0, 100}, 100);
+    lookup.publish_rows(ids, {}, std::array<Health, 2>{Health{0}, Health{100}}, Health{100});
     EXPECT_EQ(lookup.row_count(), 2u);
     EXPECT_FALSE(lookup.entries()[0].is_valid());
     lookup.retire(std::span{ids}.last(1));
@@ -209,7 +209,7 @@ TEST(EntityLookupTables, ResolutionHealthChangesBeforeHandlesRetire) {
     SimClockTestAccess::set_phase(owners.clock, SimulationPhase::Resolution);
     owners.set(id, {{20, 0, 0}}, {}, 0);
     std::array const ids{id};
-    EXPECT_EQ(owners.health_table.get_const_view<EntityType::Fighter>(1).health(0), 0);
+    EXPECT_EQ(owners.health_table.get_const_view<EntityType::Fighter>(1).health(0).value(), 0);
     EXPECT_TRUE(owners.entity_tables.lookups.for_type(EntityType::Fighter)
                     .entries()[id.index()]
                     .is_valid());

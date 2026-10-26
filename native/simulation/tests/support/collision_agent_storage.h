@@ -40,9 +40,10 @@ struct CollisionAgentStorage {
     auto spawn(EntityType type,
                Vector3f location = {},
                Rotator3f rotation = {},
-               Health health = 100,
+               Health::value_type health_value = 100,
                Team team = Team::Blue) -> EntityId {
         SimClockTestAccess::set_phase(clock, SimulationPhase::Preparation);
+        Health const health{health_value};
         EntityId id;
         ledger.record_spawns(type, team, health, {&id, 1});
         switch (type) {
@@ -104,7 +105,8 @@ struct CollisionAgentStorage {
         return id;
     }
 
-    void set(EntityId id, Vector3f location, Rotator3f rotation, Health health) {
+    void set(EntityId id, Vector3f location, Rotator3f rotation, Health::value_type health_value) {
+        Health const health{health_value};
         auto const row{find_row(id)};
         assert(row != EntityInstanceHandle::invalid_value);
         switch (id.entity_type()) {
@@ -185,17 +187,17 @@ struct CollisionAgentStorage {
         auto const fighter_rows{fighters.get_const_view()};
         auto const turret_rows{turrets.get_const_view()};
         entity_tables.publish<EntityType::CapitalShip>(
-            capital_rows.entity_ids(), capital_rows.teams(), 100);
+            capital_rows.entity_ids(), capital_rows.teams(), Health{100});
         entity_tables.publish<EntityType::Fighter>(
-            fighter_rows.entity_ids(), fighter_rows.teams(), 100);
+            fighter_rows.entity_ids(), fighter_rows.teams(), Health{100});
         entity_tables.publish<EntityType::Turret>(
-            turret_rows.entity_ids(), turret_rows.teams(), 100);
+            turret_rows.entity_ids(), turret_rows.teams(), Health{100});
         entity_tables.publish<EntityType::TubeSpinner>(
-            spinners.get_const_view().entity_ids(), {}, 1);
+            spinners.get_const_view().entity_ids(), {}, Health{1});
         entity_tables.publish<EntityType::PlayerShip>(
             player_ids,
             player_ids.empty() ? std::span<Team const>{} : std::span<Team const>{&player_team, 1},
-            100);
+            Health{100});
         SimClockTestAccess::set_phase(clock, SimulationPhase::Thinking);
     }
 
@@ -384,7 +386,7 @@ inline auto entity_is_alive(CollisionAgentStorage const& source, EntityId const 
 }
 
 inline auto observe_entity_row(CollisionAgentStorage const& source, EntityId const id)
-    -> EntityFrameIndex {
+    -> EntityFrameIndex::value_type {
     auto const entity{observe_entity(source, id)};
     return entity ? entity->row : EntityInstanceHandle::invalid_value;
 }

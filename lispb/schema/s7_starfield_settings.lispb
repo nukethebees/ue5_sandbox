@@ -4,40 +4,50 @@
   :namespace ioj::starfield
   (record GenerationSettings :comparison equality :generate-visitor true :generate-s7-reader true :s7-tag "generation"
     (member star_count @native_int32 :initializer 10000 :minimum 1 :maximum 1000000)
-    (member random_seed @native_int32 :initializer 1337))
+    (member random_seed @native_int32 :initializer 1337)
+    (projections (cpp)))
   (record StarSettings :comparison equality :generate-visitor true :generate-s7-reader true :s7-tag "star"
     (member scale float :initializer 1.0f :finite true :positive true)
     (member size_multiplier float :initializer 1.0f :finite true :nonnegative true)
     (member global_brightness float :initializer 8.0f :finite true)
     (member colour_variation_strength float :initializer 0.35f :finite true)
-    (member parallax_strength float :initializer 0.01f :finite true))
+    (member parallax_strength float :initializer 0.01f :finite true)
+    (projections (cpp)))
   (record GalacticBandSettings :comparison equality :generate-visitor true :generate-s7-reader true :s7-tag "galactic-band"
     (member strength float :initializer 0.65f :finite true)
-    (member width_degrees float :initializer 15.0f :finite true :positive true :maximum 90))
+    (member width_degrees float :initializer 15.0f :finite true :positive true :maximum 90)
+    (projections (cpp)))
   (record StellarClusterSettings :comparison equality :generate-visitor true :generate-s7-reader true :s7-tag "stellar-cluster"
     (member strength float :initializer 0.12f :finite true)
-    (member width_degrees float :initializer 4.0f :finite true :positive true))
+    (member width_degrees float :initializer 4.0f :finite true :positive true)
+    (projections (cpp)))
   (record DustLaneSettings :comparison equality :generate-visitor true :generate-s7-reader true :s7-tag "dust-lane"
     (member strength float :initializer 0.9f :finite true)
     (member width_degrees float :initializer 5.0f :finite true :positive true)
-    (member irregularity float :initializer 0.7f :finite true))
+    (member irregularity float :initializer 0.7f :finite true)
+    (projections (cpp)))
   (record BrightStarSettings :comparison equality :generate-visitor true :generate-s7-reader true :s7-tag "bright-star"
     (member fraction float :initializer 0.01f :finite true)
     (member size_multiplier float :initializer 1.75f :finite true :nonnegative true)
     (member brightness_multiplier float :initializer 2.0f :finite true)
-    (member shape_strength float :initializer 0.25f :finite true))
+    (member shape_strength float :initializer 0.25f :finite true)
+    (projections (cpp)))
   (record TwinkleSettings :comparison equality :generate-visitor true :generate-s7-reader true :s7-tag "twinkle"
     (member strength float :initializer 0.1f :finite true)
-    (member speed float :initializer 0.35f :finite true))
+    (member speed float :initializer 0.35f :finite true)
+    (projections (cpp)))
   (record GalacticHazeSettings :comparison equality :generate-visitor true :generate-s7-reader true :s7-tag "galactic-haze"
     (member strength float :initializer 0.15f :finite true)
-    (member width_degrees float :initializer 18.0f :finite true :positive true))
+    (member width_degrees float :initializer 18.0f :finite true :positive true)
+    (projections (cpp)))
   (record GalacticCoreSettings :comparison equality :generate-visitor true :generate-s7-reader true :s7-tag "galactic-core"
     (member strength float :initializer 0.65f :finite true)
-    (member width_degrees float :initializer 32.0f :finite true :positive true))
+    (member width_degrees float :initializer 32.0f :finite true :positive true)
+    (projections (cpp)))
   (record NebularKnotSettings :comparison equality :generate-visitor true :generate-s7-reader true :s7-tag "nebular-knot"
     (member strength float :initializer 0.18f :finite true)
-    (member size_degrees float :initializer 9.0f :finite true :positive true))
+    (member size_degrees float :initializer 9.0f :finite true :positive true)
+    (projections (cpp)))
   (record Settings :comparison equality :generate-visitor true :generate-s7-reader true :s7-tag "starfield"
     (member generation GenerationSettings :initializer "")
     (member star StarSettings :initializer "")
@@ -48,4 +58,5 @@
     (member twinkle TwinkleSettings :initializer "")
     (member galactic_haze GalacticHazeSettings :initializer "")
     (member galactic_core GalacticCoreSettings :initializer "")
-    (member nebular_knot NebularKnotSettings :initializer "")))
+    (member nebular_knot NebularKnotSettings :initializer "")
+    (projections (cpp))))

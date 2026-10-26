@@ -64,7 +64,7 @@ TEST(WorldlessSpaceGameSimulation, SpatialQuery_ResolvesLineOfSightBatches) {
     has_los.resize(static_cast<std::size_t>(ends.num()));
     harness.get_simulation().get_spatial_query_manager().has_line_of_sight_to_targets(
         Vector3f{0.f, 0.f, 0.f}, ends.get_const_view().resolve(), targets, has_los, &query_memory);
-    auto expected_visibility{std::vector<LineQueryResult>(targets.size(), 1)};
+    auto expected_visibility{std::vector<LineQueryResult>(targets.size(), LineQueryResult{1})};
     EXPECT_PRED_FORMAT2(structurally_equal, expected_visibility, has_los)
         << "Clear or target hit has line of sight";
     for (std::int32_t i{}; i < count; ++i) {
@@ -74,7 +74,7 @@ TEST(WorldlessSpaceGameSimulation, SpatialQuery_ResolvesLineOfSightBatches) {
     }
     harness.get_simulation().get_spatial_query_manager().has_line_of_sight_to_targets(
         Vector3f{0.f, 0.f, 0.f}, ends.get_const_view().resolve(), targets, has_los, &query_memory);
-    std::fill(expected_visibility.begin() + count, expected_visibility.end(), 0);
+    std::fill(expected_visibility.begin() + count, expected_visibility.end(), LineQueryResult{0});
     EXPECT_PRED_FORMAT2(structurally_equal, expected_visibility, has_los)
         << "Clear lines remain visible; other targets at or beyond a hit are blocked";
 }

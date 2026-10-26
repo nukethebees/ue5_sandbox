@@ -144,9 +144,9 @@ void FHUDManager::initialise(sim::Mission const& new_mission,
             UTestTeamVisualData::build_team_colour_cache(level_config.turrets.team_visual_data),
     };
     entity_overlay_maximum_health_ = {
-        .capital_ship = level_config.capital_ships.simulation.max_health,
-        .fighter = level_config.fighters.simulation.health,
-        .turret = level_config.turrets.simulation.max_health,
+        .capital_ship = level_config.capital_ships.simulation.max_health.value(),
+        .fighter = level_config.fighters.simulation.health.value(),
+        .turret = level_config.turrets.simulation.max_health.value(),
     };
     soft_target_selection_settings_ = overlay.soft_target;
     soft_target_pulse_duration_ = FMath::Max(overlay.soft_target.pulse_duration, 0.0f);
@@ -923,7 +923,7 @@ bool FHUDManager::collect_player_status_data() {
     if (validate_player_ship_for_collection()) {
         next_data.has_player_ship = true;
         auto const player_health{player_ship->get_health()};
-        next_data.health = {player_health.health, player_health.max_health};
+        next_data.health = {player_health.health.value(), player_health.max_health.value()};
         next_data.speed = player_ship->get_speed();
         next_data.target_speed =
             player_ship->get_controller_state().persistent_forward_target_speed;

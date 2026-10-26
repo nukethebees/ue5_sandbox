@@ -4,105 +4,210 @@
 #pragma once
 
 #include "ioj/levels/team.h"
-#include "ioj/min_max.h"
 #include "ioj/packed_value.h"
 
 #include <cassert>
 #include <compare>
 #include <cstdint>
-#include <limits>
-#include <type_traits>
 
 namespace ioj::sim {
-using EntityFrameIndex = std::uint32_t;
-
-using QuantisedHealth = std::uint8_t;
-
-struct EntityInstanceHandle {
+struct EntityFrameIndex {
+  public:
     using storage_type = std::uint32_t;
-    static_assert(ioj::valid_packed_storage<storage_type, 32>());
+    using value_type = std::uint32_t;
+    using value_field = ioj::PackedField<storage_type, value_type, 0, 18>;
 
-    // index
-    using index_type = std::uint32_t;
-    using index_field = ioj::PackedField<storage_type, index_type, 0, 18>;
-    static constexpr ioj::MinMax<index_type> index_range{
-        static_cast<index_type>(0), static_cast<index_type>(index_field::value_mask)};
-
-    // team
-    using team_type = ::ioj::Team;
-    static_assert(ioj::valid_packed_enum<team_type, 3>());
-    using team_underlying_type = std::underlying_type_t<team_type>;
-    using team_field = ioj::PackedField<storage_type, team_type, 18, 3>;
-
-    // health_state
-    using health_state_type = std::uint8_t;
-    using health_state_field = ioj::PackedField<storage_type, health_state_type, 21, 2>;
-    static constexpr ioj::MinMax<health_state_type> health_state_range{
-        static_cast<health_state_type>(0),
-        static_cast<health_state_type>(health_state_field::value_mask)};
-
-    static constexpr storage_type invalid_value{storage_type{0xffffffff}};
-
-    constexpr EntityInstanceHandle() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
-        -> EntityInstanceHandle {
-        EntityInstanceHandle result;
+    constexpr EntityFrameIndex() noexcept = default;
+    explicit constexpr EntityFrameIndex(value_type const value) noexcept
+        : value_{ioj::packed_pack<value_field>(value)} {
+        assert((ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value));
+    }
+    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> EntityFrameIndex {
+        EntityFrameIndex result;
         result.value_ = raw;
         return result;
     }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
+        return ioj::packed_extract<value_field>(value_);
+    }
+    constexpr void set_value(value_type const value) noexcept {
+        assert((ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value));
+        value_ = ioj::packed_insert<value_field>(value_, value);
+    }
+    [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
+        return ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value;
+    }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto operator<=>(EntityFrameIndex const& other) const noexcept {
+        return value() <=> other.value();
+    }
+    [[nodiscard]] constexpr auto operator==(EntityFrameIndex const& other) const noexcept -> bool {
+        return value() == other.value();
+    }
+  private:
+    storage_type value_{};
+};
+static_assert(ioj::valid_packed_value_layout<EntityFrameIndex>());
 
+struct QuantisedHealth {
+  public:
+    using storage_type = std::uint8_t;
+    using value_type = std::uint8_t;
+    using value_field = ioj::PackedField<storage_type, value_type, 0, 2>;
+
+    constexpr QuantisedHealth() noexcept = default;
+    explicit constexpr QuantisedHealth(value_type const value) noexcept
+        : value_{ioj::packed_pack<value_field>(value)} {
+        assert((ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value));
+    }
+    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> QuantisedHealth {
+        QuantisedHealth result;
+        result.value_ = raw;
+        return result;
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
+        return ioj::packed_extract<value_field>(value_);
+    }
+    constexpr void set_value(value_type const value) noexcept {
+        assert((ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value));
+        value_ = ioj::packed_insert<value_field>(value_, value);
+    }
+    [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
+        return ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value;
+    }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto operator<=>(QuantisedHealth const& other) const noexcept {
+        return value() <=> other.value();
+    }
+    [[nodiscard]] constexpr auto operator==(QuantisedHealth const& other) const noexcept -> bool {
+        return value() == other.value();
+    }
+  private:
+    storage_type value_{};
+};
+static_assert(ioj::valid_packed_value_layout<QuantisedHealth>());
+
+struct EntityInstanceHandle {
+  public:
+    using storage_type = std::uint32_t;
+    using index_type = std::uint32_t;
+    using index_field = ioj::PackedField<storage_type, index_type, 0, 18>;
+    struct index_range_type {
+        index_type min;
+        index_type max;
+    };
+    static constexpr index_range_type index_range{static_cast<index_type>(0ULL),
+                                                  static_cast<index_type>(262143ULL)};
+    using team_type = ioj::Team;
+    using team_field = ioj::PackedField<storage_type, team_type, 18, 3>;
+    using health_state_type = std::uint8_t;
+    using health_state_field = ioj::PackedField<storage_type, health_state_type, 21, 2>;
+    struct health_state_range_type {
+        health_state_type min;
+        health_state_type max;
+    };
+    static constexpr health_state_range_type health_state_range{
+        static_cast<health_state_type>(0ULL), static_cast<health_state_type>(3ULL)};
+    static constexpr storage_type invalid_value{4294967295ULL};
+
+    constexpr EntityInstanceHandle() noexcept = default;
+    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept
+        -> EntityInstanceHandle {
+        return EntityInstanceHandle{RawTag{}, raw};
+    }
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
     explicit constexpr EntityInstanceHandle(index_type const index_value,
                                             team_type const team_value,
-                                            health_state_type const health_state_value) noexcept {
-        assert((index_value >= index_range.min && index_value <= index_range.max));
-        assert(static_cast<std::size_t>(team_value) < ioj::enum_count<team_type>());
-        assert((health_state_value >= health_state_range.min &&
-                health_state_value <= health_state_range.max));
-        value_ = static_cast<storage_type>(
-            ioj::packed_pack<index_field>(index_value) | ioj::packed_pack<team_field>(team_value) |
-            ioj::packed_pack<health_state_field>(health_state_value));
+                                            health_state_type const health_state_value) noexcept
+        : value_{0} {
+        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint32_t, 0, 18>>(
+                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint32_t, 0, 18>>(
+                        index_value)) == index_value));
+        value_ = ioj::packed_insert<index_field>(value_, index_value);
+        assert((((static_cast<std::uint64_t>(team_value) == 0ULL) ||
+                 (static_cast<std::uint64_t>(team_value) == 1ULL) ||
+                 (static_cast<std::uint64_t>(team_value) == 2ULL) ||
+                 (static_cast<std::uint64_t>(team_value) == 3ULL) ||
+                 (static_cast<std::uint64_t>(team_value) == 4ULL) ||
+                 (static_cast<std::uint64_t>(team_value) == 5ULL)) &&
+                ioj::packed_extract<ioj::PackedField<storage_type, ioj::Team, 0, 3>>(
+                    ioj::packed_pack<ioj::PackedField<storage_type, ioj::Team, 0, 3>>(
+                        team_value)) == team_value));
+        value_ = ioj::packed_insert<team_field>(value_, team_value);
+        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 0, 2>>(
+                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint8_t, 0, 2>>(
+                        health_state_value)) == health_state_value));
+        value_ = ioj::packed_insert<health_state_field>(value_, health_state_value);
+        assert(value_ != invalid_value);
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return value_ != invalid_value &&
-               ((index() >= index_range.min && index() <= index_range.max)) &&
-               static_cast<std::size_t>(team()) < ioj::enum_count<team_type>() &&
-               ((health_state() >= health_state_range.min &&
-                 health_state() <= health_state_range.max));
+               (((static_cast<std::uint64_t>(
+                      ioj::packed_extract<ioj::PackedField<storage_type, ioj::Team, 18, 3>>(
+                          value_)) == 0ULL) ||
+                 (static_cast<std::uint64_t>(
+                      ioj::packed_extract<ioj::PackedField<storage_type, ioj::Team, 18, 3>>(
+                          value_)) == 1ULL) ||
+                 (static_cast<std::uint64_t>(
+                      ioj::packed_extract<ioj::PackedField<storage_type, ioj::Team, 18, 3>>(
+                          value_)) == 2ULL) ||
+                 (static_cast<std::uint64_t>(
+                      ioj::packed_extract<ioj::PackedField<storage_type, ioj::Team, 18, 3>>(
+                          value_)) == 3ULL) ||
+                 (static_cast<std::uint64_t>(
+                      ioj::packed_extract<ioj::PackedField<storage_type, ioj::Team, 18, 3>>(
+                          value_)) == 4ULL) ||
+                 (static_cast<std::uint64_t>(
+                      ioj::packed_extract<ioj::PackedField<storage_type, ioj::Team, 18, 3>>(
+                          value_)) == 5ULL)));
     }
-
     [[nodiscard]] constexpr auto operator<=>(EntityInstanceHandle const&) const noexcept = default;
 
     [[nodiscard]] constexpr auto index() const noexcept -> index_type {
         return ioj::packed_extract<index_field>(value_);
     }
-
     constexpr void set_index(index_type const value) noexcept {
-        assert((value >= index_range.min && value <= index_range.max));
+        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint32_t, 0, 18>>(
+                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint32_t, 0, 18>>(
+                        value)) == value));
         value_ = ioj::packed_insert<index_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto team() const noexcept -> team_type {
         return ioj::packed_extract<team_field>(value_);
     }
-
     constexpr void set_team(team_type const value) noexcept {
-        assert(static_cast<std::size_t>(value) < ioj::enum_count<team_type>());
+        assert((((static_cast<std::uint64_t>(value) == 0ULL) ||
+                 (static_cast<std::uint64_t>(value) == 1ULL) ||
+                 (static_cast<std::uint64_t>(value) == 2ULL) ||
+                 (static_cast<std::uint64_t>(value) == 3ULL) ||
+                 (static_cast<std::uint64_t>(value) == 4ULL) ||
+                 (static_cast<std::uint64_t>(value) == 5ULL)) &&
+                ioj::packed_extract<ioj::PackedField<storage_type, ioj::Team, 0, 3>>(
+                    ioj::packed_pack<ioj::PackedField<storage_type, ioj::Team, 0, 3>>(value)) ==
+                    value));
         value_ = ioj::packed_insert<team_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto health_state() const noexcept -> health_state_type {
         return ioj::packed_extract<health_state_field>(value_);
     }
-
     constexpr void set_health_state(health_state_type const value) noexcept {
-        assert((value >= health_state_range.min && value <= health_state_range.max));
+        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 0, 2>>(
+                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint8_t, 0, 2>>(value)) ==
+                value));
         value_ = ioj::packed_insert<health_state_field>(value_, value);
     }
   private:
-    storage_type value_{invalid_value};
+    struct RawTag {};
+    constexpr EntityInstanceHandle(RawTag, storage_type raw) noexcept
+        : value_{raw} {}
+    storage_type value_{4294967295ULL};
 };
 static_assert(ioj::valid_packed_value_layout<EntityInstanceHandle>());
+
 } // namespace ioj::sim

@@ -19,8 +19,9 @@ void add_worldless_turrets(LevelSimInitData& data,
     assert(static_cast<std::int32_t>(locations.size()) == static_cast<std::int32_t>(teams.size()));
     auto const count{static_cast<std::int32_t>(locations.size())};
     for (std::int32_t i{}; i < count; ++i) {
-        auto const health{blue_health != -1 && teams[i] == Team::Blue ? blue_health
-                                                                      : data.turrets.max_health};
+        auto const health{blue_health != -1 && teams[i] == Team::Blue
+                              ? blue_health
+                              : data.turrets.max_health.value()};
         tests::add_turret_spawn(data, locations[i], {}, teams[i], health, laser_damage);
     }
 }
@@ -46,7 +47,7 @@ void run_worldless_turret_combat(tests::SimulationFixture const& config,
 
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    std::vector<std::int32_t> initial_healths{};
+    std::vector<Health> initial_healths{};
     auto const& initial_view{harness.get_simulation().get_turrets()};
     auto const initial_entities{initial_view.get_entities()};
     auto const initial_count{initial_entities.num()};

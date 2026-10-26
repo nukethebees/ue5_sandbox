@@ -58,7 +58,9 @@ auto required_array(Json const& parent, std::string_view const field, std::strin
 
 template <typename Value>
 auto read_value(Json const& value, std::string_view const path) -> Value {
-    if constexpr (std::is_same_v<Value, std::string>) {
+    if constexpr (std::is_same_v<Value, SimTick>) {
+        return SimTick{read_value<SimTick::value_type>(value, path)};
+    } else if constexpr (std::is_same_v<Value, std::string>) {
         if (!value.is_string()) {
             fail(path, "expected a string");
         }
@@ -213,10 +215,10 @@ void read_series(Json const& parent,
     }
 
     series.reserve(static_cast<std::uint32_t>(count));
-    SimTick previous{};
+    SimTick::value_type previous{};
     for (std::size_t index{}; index < count; ++index) {
-        auto const tick{
-            read_value<SimTick>(ticks[index], std::format("{}.ticks[{}]", location, index))};
+        auto const tick{read_value<SimTick::value_type>(
+            ticks[index], std::format("{}.ticks[{}]", location, index))};
         if (index > 0 && tick <= previous) {
             fail(location, "tick coordinates must be strictly increasing");
         }
@@ -401,12 +403,12 @@ auto serialize_level_telemetry_report(LevelTelemetryReport const& report)
         auto const& result{report.run.completion};
         Json completion{
             {"reason", to_serialized_string(result.reason)},
-            {"completed_ticks", result.completed_ticks},
+            {"completed_ticks", result.completed_ticks.value()},
         };
 
         auto samples = Json::array();
         for (auto const& sample : report.run.battle_samples) {
-            samples.push_back({{"completed_tick", sample.completed_tick},
+            samples.push_back({{"completed_tick", sample.completed_tick.value()},
                                {"alive", write_counts(sample.alive)},
                                {"combat", write_combat(sample.combat)},
                                {"active_lasers", sample.active_lasers},

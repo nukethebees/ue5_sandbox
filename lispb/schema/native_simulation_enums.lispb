@@ -8,7 +8,8 @@
     (value None :value "0")
     (value Boost :value "1")
     (value Brake :value "2")
-    (value EmergencyBrake :value "3")))
+    (value EmergencyBrake :value "3")
+    (projections (cpp))))
 
 (module native_ship_laser_mode
   :header "native/levels/lib/include/ioj/sim/player/ship_laser_mode.h"
@@ -18,7 +19,8 @@
     :helpers (traits to-serialized-string try-parse-serialized)
     (value Single :value "0" :display-name "Single" :serialized-name "single")
     (value Double :value "1" :display-name "Double" :serialized-name "double")
-    (value Hyper :value "2" :display-name "Hyper" :serialized-name "hyper")))
+    (value Hyper :value "2" :display-name "Hyper" :serialized-name "hyper")
+    (projections (cpp))))
 
 (module native_laser_firing_state
   :header "native/simulation/include/ioj/sim/player/laser_firing_state.h"
@@ -26,7 +28,8 @@
   (enum LaserFiringState @native_uint8
     :native-api true
     (value idle :value "0")
-    (value burst :value "1")))
+    (value burst :value "1")
+    (projections (cpp))))
 
 (module native_ship_fire_rate
   :header "native/levels/lib/include/ioj/sim/player/fire_rate.h"
@@ -35,15 +38,17 @@
     :native-api true
     :helpers (traits to-string to-serialized-string try-parse-serialized)
     :enum-array true
-    (unreal-projection ETestShipFireRate
-      :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRate.h"
-      :header-include "SpaceGame/ships/player/TestShipFireRate.h"
-      :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRateConversion.h"
-      :native-header-include "ioj/sim/player/fire_rate.h"
-      :reflection uenum)
     (value Single :value "0" :display-name "Single" :serialized-name "single")
     (value Burst3 :value "1" :display-name "Burst 3" :serialized-name "burst3")
-    (value FullAuto :value "2" :display-name "Full Auto" :serialized-name "full-auto")))
+    (value FullAuto :value "2" :display-name "Full Auto" :serialized-name "full-auto")
+    (projections
+      (cpp)
+      (unreal-projection ETestShipFireRate
+        :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRate.h"
+        :header-include "SpaceGame/ships/player/TestShipFireRate.h"
+        :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRateConversion.h"
+        :native-header-include "ioj/sim/player/fire_rate.h"
+        :reflection uenum))))
 
 (module native_level_telemetry_run_end_reason
   :header "native/simulation/include/ioj/sim/telemetry/run_end_reason.h"
@@ -56,4 +61,5 @@
     (value BattleResolved :value "2" :serialized-name "battle_resolved")
     (value DurationReached :value "3" :serialized-name "duration_reached")
     (value OrchestratorReset :value "4" :serialized-name "orchestrator_reset")
-    (value WorldEnd :value "5" :serialized-name "world_end")))
+    (value WorldEnd :value "5" :serialized-name "world_end")
+    (projections (cpp))))

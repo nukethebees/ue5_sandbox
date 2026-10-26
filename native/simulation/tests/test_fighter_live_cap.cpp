@@ -13,7 +13,7 @@
 namespace ioj::sim::tests {
 
 TEST(SimulationSchema, PreservesHealthAndFighterOrderRepresentations) {
-    static_assert(std::is_same_v<Health, std::int32_t>);
+    static_assert(std::is_same_v<Health::value_type, std::int32_t>);
     static_assert(sizeof(FighterOrder) == 1 && alignof(FighterOrder) == 1);
     static_assert(std::is_trivially_copyable_v<FighterOrder>);
     static_assert(FighterOrder{}.raw_value() == 0);
@@ -28,8 +28,8 @@ TEST(SimulationSchema, PreservesHealthAndFighterOrderRepresentations) {
         EXPECT_EQ((FighterOrder{order.task(), order.target()}).raw_value(), raw);
     }
     EXPECT_EQ(FighterOrder::from_raw(0xfc).raw_value(), 0xfc);
-    EXPECT_TRUE(is_dead(-1));
-    EXPECT_TRUE(is_alive(1));
+    EXPECT_TRUE(is_dead(Health{-1}));
+    EXPECT_TRUE(is_alive(Health{1}));
 }
 
 namespace {
@@ -41,7 +41,7 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
     data.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.lasers.n_preallocated_instances = 32;
     data.collision.overlap_response.damage_per_overlap_detection = 1;
-    data.fighters.health = 1000;
+    data.fighters.health = Health{1000};
     data.fighters.max_live_fighters = max_live_fighters;
     data.capital_ships.fighter_spawn_slots = spawn_slots;
     for (std::int32_t slot_index{}; slot_index < spawn_slots; ++slot_index) {
@@ -155,14 +155,14 @@ TEST(FighterLiveCap, DerivedParticipantsIncludeFutureSpawns) {
 
     auto with_reinforcements{make_cap_battle(capitals, 7, 8)};
     auto& schedule{with_reinforcements.level_events.schedule};
-    schedule.execution_ticks = {100};
+    schedule.execution_ticks = {SimTick{100}};
     schedule.event_group_counts = {{}};
     auto const payload_offset{schedule.turret_spawns.num()};
     schedule.turret_spawns.add_defaulted(1);
     auto const turret{schedule.turret_spawns.get_view(payload_offset, 1)};
     turret.entity_indices()[0] = with_reinforcements.level_events.initialisation.entity_count++;
     turret.teams()[0] = Team::Red;
-    turret.healths()[0] = 100;
+    turret.healths()[0] = Health{100};
     set_vector(turret.view_locations(), 0, {{0.f, 6000.f, 0.f}});
     ASSERT_TRUE(schedule.add_spawn_group(EntityType::Turret, payload_offset, 1));
 

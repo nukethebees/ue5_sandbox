@@ -15,6 +15,6 @@ Objectives::Objectives(std::size_t const count)
     , observers_(count)
     , team_results_(count)
     , outcomes_(count)
-    , activation_ticks_(count, std::numeric_limits<SimTick>::max())
+    , activation_ticks_(count, SimTick{std::numeric_limits<SimTick::value_type>::max()})
     , membership_positions_(count) {}
 }

@@ -6,12 +6,10 @@
     :minimum 0
     :maximum 1
     :bit-width 1
-    :cpp-type @native_uint8
-    :cpp-emission alias)
+    (projections (cpp :storage std::uint8_t)))
   (integer-scalar LineQueryResult
     :signed false
     :minimum 0
     :maximum 1
     :bit-width 1
-    :cpp-type @native_uint8
-    :cpp-emission alias))
+    (projections (cpp :storage std::uint8_t))))

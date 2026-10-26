@@ -48,7 +48,6 @@
       "native/layout/schema/scalar_table.lispb"
       "native/layout/schema/selection_table.lispb"
       "native/layout/schema/soa_column_table.lispb"
-      "native/layout/schema/tag_table.lispb"
       "native/layout/schema/type_analysis_table.lispb"
       "native/layout/schema/workload_table.lispb")
     :output-root (project-path "native/layout/lib"))

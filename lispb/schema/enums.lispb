@@ -4,7 +4,8 @@
     :reflection blueprint
     :enum-array true
     (value FirstPerson :display-name "First Person")
-    (value ThirdPerson :display-name "Third Person")))
+    (value ThirdPerson :display-name "Third Person")
+    (projections (cpp))))
 
 (module game_ui_style_types
   :header "Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/ui/style/GameUiStyleTypes.h"
@@ -29,12 +30,14 @@
       :display-name "HUD Primary")
     (value HudSecondary
       :display-name "HUD Secondary")
-    (value Disabled))
+    (value Disabled)
+    (projections (cpp)))
   (enum EGameButtonStyle uint8
     :reflection uenum
     :enum-array true
     (value Primary)
-    (value Secondary))
+    (value Secondary)
+    (projections (cpp)))
   (enum EGameUiIcon uint8
     :reflection uenum
     :enum-array true
@@ -48,4 +51,5 @@
     (value Accessibility)
     (value System)
     (value LevelIncomplete)
-    (value LevelComplete)))
+    (value LevelComplete)
+    (projections (cpp))))

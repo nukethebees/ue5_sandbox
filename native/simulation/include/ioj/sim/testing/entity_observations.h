@@ -13,7 +13,7 @@ struct EntityObservation {
     Vector3f velocity{};
     Team team{};
     Health health{};
-    EntityFrameIndex row{};
+    EntityFrameIndex::value_type row{};
 };
 
 // Inspect current storage without extending a published frame handle's lifetime.
@@ -28,11 +28,11 @@ inline auto observe_entity_columns(EntityId const id,
     if (found == ids.end()) {
         return {};
     }
-    auto const row{static_cast<EntityFrameIndex>(found - ids.begin())};
+    auto const row{static_cast<EntityFrameIndex::value_type>(found - ids.begin())};
     return EntityObservation{locations[row],
                              velocities.is_empty() ? Vector3f{} : velocities[row],
                              teams.empty() ? Team::White : teams[row],
-                             healths.is_empty() ? 1 : healths.health(row),
+                             healths.is_empty() ? Health{1} : healths.health(row),
                              row};
 }
 
@@ -109,7 +109,8 @@ inline auto entity_is_alive(LevelSim const& source, EntityId const id) -> bool {
     return observe_live_entity(source, id).has_value();
 }
 
-inline auto observe_entity_row(LevelSim const& source, EntityId const id) -> EntityFrameIndex {
+inline auto observe_entity_row(LevelSim const& source, EntityId const id)
+    -> EntityFrameIndex::value_type {
     auto const entity{observe_entity(source, id)};
     return entity ? entity->row : EntityInstanceHandle::invalid_value;
 }

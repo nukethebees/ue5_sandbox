@@ -9,7 +9,14 @@ namespace ioj::s7 {
 namespace constraints {
 template <typename T, typename Predicate>
 auto check(T const& value, Predicate predicate) -> bool {
-    return predicate(value);
+    if constexpr (requires {
+                      T::is_valid_value(value.value());
+                      value.raw_value();
+                  }) {
+        return predicate(value.value());
+    } else {
+        return predicate(value);
+    }
 }
 template <typename T, ConstrainedValuePolicy Policy, typename Predicate>
 auto check(ConstrainedValue<T, Policy> const& value, Predicate predicate) -> bool {

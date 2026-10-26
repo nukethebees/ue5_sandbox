@@ -2,26 +2,33 @@
   :header "native/simulation/include/ioj/sim/missions/condition_type.h"
   :namespace ioj::sim
   (enum ConditionType std::uint8_t
+    :bit-width 8
     :native-api true :enum-array true :helpers (traits)
     (value EntityDestroyed) (value EntityReachedPosition) (value TimeElapsed)
-    (value ObjectiveResolved) (value EntityKillsReached)))
+    (value ObjectiveResolved) (value EntityKillsReached)
+    (projections (cpp))))
 
 (module mission_objective_id
   :header "native/simulation/include/ioj/sim/missions/objective_id.h"
   :namespace ioj::sim
-  (packed-value ObjectiveId :storage std::uint32_t :invalid-value 0xffffffff
-    (field index std::uint32_t :bits 32)))
+  (record ObjectiveId :layout packed :bits 32 :invalid-value 0xffffffff
+    (member index std::uint32_t :bits 32)
+    (projections (cpp :storage std::uint32_t))))
 
 (module mission_expr_ref
   :header "native/simulation/include/ioj/sim/missions/expr_ref.h"
   :namespace ioj::sim
-  (packed-value ExprRef :storage std::uint32_t :invalid-value 0xffffffff
-    (field index std::uint32_t :bits 31)
-    (field leaf bool :bits 1)))
+  (integer-scalar ExpressionIndex :bit-width 31)
+  (record ExprRef :layout packed :bits 32 :invalid-value 0xffffffff
+    (member index @ExpressionIndex)
+    (member leaf bool :bits 1)
+    (projections (cpp :storage std::uint32_t))))
 
 (module mission_rule_id
   :header "native/simulation/include/ioj/sim/missions/rule_id.h"
   :namespace ioj::sim
-  (packed-value RuleId :storage std::uint32_t
-    (field index std::uint32_t :bits 24)
-    (field type @mission_condition_type :bits 8 :kind enum)))
+  (integer-scalar RuleIndex :bit-width 24)
+  (record RuleId :layout packed :bits 32
+    (member index @RuleIndex)
+    (member type @mission_condition_type :bits 8)
+    (projections (cpp :storage std::uint32_t))))

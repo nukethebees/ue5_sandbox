@@ -125,7 +125,7 @@ auto collect_entity_overlay_instances(
             auto const objective_role{objective_roles[output_index]};
             static_cast<void>(collector.try_add_colored(
                 ioj::to_unreal(::ioj::vector_at(batch.locations, index)),
-                static_cast<float>(health) * inverse_health,
+                static_cast<float>(health.value()) * inverse_health,
                 world_radius,
                 team_colour(entity_type, ioj::to_unreal(batch.team(index)), team_colours),
                 objective_role,

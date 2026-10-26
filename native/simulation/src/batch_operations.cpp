@@ -67,8 +67,8 @@ void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
             continue;
         }
         auto health{healths.health(local_index)};
-        auto const applied_damage{std::min(health, requested_damage)};
-        health -= requested_damage;
+        auto const applied_damage{Health{std::min(health.value(), requested_damage)}};
+        health.set_value(health.value() - requested_damage);
         healths.set_health(local_index, health);
         applied_damages[event_index] = applied_damage;
         // The populated prefix grows as this loop discovers deaths.

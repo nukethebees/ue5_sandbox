@@ -40,7 +40,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     GENERATED_BODY()
     friend struct FTestBatchOrchestratorTestAccess;
   public:
-    using tick_type = ioj::sim::SimTick;
+    using tick_type = ioj::sim::SimTick::value_type;
     using time_type = double;
 
     /* **************************************** */
@@ -83,7 +83,9 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
                                          : ioj::sim::OrchestratorState::Uninitialised;
     }
     auto get_completed_ticks() const noexcept -> tick_type {
-        return level_simulation_.IsSet() ? level_simulation_->get_clock().get_completed_ticks() : 0;
+        return level_simulation_.IsSet()
+                 ? level_simulation_->get_clock().get_completed_ticks().value()
+                 : 0;
     }
     auto get_simulation_time() const noexcept -> time_type {
         return level_simulation_.IsSet() ? level_simulation_->get_clock().get_simulation_time()

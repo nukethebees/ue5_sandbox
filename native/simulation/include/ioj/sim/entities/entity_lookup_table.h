@@ -33,7 +33,7 @@ class EntityLookupTable {
     void publish_rows(std::span<EntityId const> const ids,
                       std::span<Team const> const teams,
                       std::span<Health const> const healths = {},
-                      Health const maximum = 1) {
+                      Health const maximum = Health{1}) {
         assert(teams.empty() || teams.size() == ids.size());
         assert(healths.empty() || healths.size() == ids.size());
         assert(range_fits<std::size_t>(0,
@@ -43,7 +43,7 @@ class EntityLookupTable {
         auto const count{ids.size()};
         row_count_ = static_cast<std::uint32_t>(count);
         [[maybe_unused]] auto const handle_count{handles_.size()};
-        for (EntityFrameIndex row{}; row < count; ++row) {
+        for (EntityFrameIndex::value_type row{}; row < count; ++row) {
             auto const id{ids[row]};
             assert(valid_lookup_id(id, type_, handle_count));
             auto& handle{handles_[id.index()]};
@@ -52,7 +52,7 @@ class EntityLookupTable {
                 continue;
             }
             auto const team{teams.empty() ? Team::White : teams[row]};
-            auto const health_state{healths.empty() ? QuantisedHealth{3}
+            auto const health_state{healths.empty() ? QuantisedHealth::value_type{3}
                                                     : quantise_health(healths[row], maximum)};
             handle = EntityInstanceHandle{row, team, health_state};
         }
@@ -67,7 +67,7 @@ class EntityLookupTable {
     }
 
     void retire_rows(std::span<EntityId const> const ids,
-                     std::span<EntityFrameIndex const> const rows) {
+                     std::span<EntityFrameIndex::value_type const> const rows) {
         [[maybe_unused]] auto const handle_count{handles_.size()};
         for (auto const row : rows) {
             auto const id{ids[row]};

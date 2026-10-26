@@ -39,25 +39,25 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
         simulation.start();
         auto const period{simulation.get_clock().get_tick_period()};
         harness.advance(period * 0.5);
-        EXPECT_EQ(std::uint64_t{0}, simulation.get_clock().get_completed_ticks())
+        EXPECT_EQ(std::uint64_t{0}, simulation.get_clock().get_completed_ticks().value())
             << "Half tick is accumulated";
         harness.advance(period * 0.5);
-        EXPECT_EQ(std::uint64_t{1}, simulation.get_clock().get_completed_ticks())
+        EXPECT_EQ(std::uint64_t{1}, simulation.get_clock().get_completed_ticks().value())
             << "Two half ticks advance once";
         EXPECT_EQ(1, end_tick_calls) << "End-tick hook executes once per completed tick";
         harness.advance(period * 3.25);
-        EXPECT_EQ(std::uint64_t{4}, simulation.get_clock().get_completed_ticks())
+        EXPECT_EQ(std::uint64_t{4}, simulation.get_clock().get_completed_ticks().value())
             << "Large delta catches up deterministically";
         EXPECT_EQ(2, end_tick_calls) << "Catch-up is observed once after the completed advance";
         EXPECT_NEAR(period * 4.0, simulation.get_clock().get_simulation_time(), 1.e-9)
             << "Simulation time derives from completed ticks";
         simulation.pause();
         harness.advance(period * 10.0);
-        EXPECT_EQ(std::uint64_t{4}, simulation.get_clock().get_completed_ticks())
+        EXPECT_EQ(std::uint64_t{4}, simulation.get_clock().get_completed_ticks().value())
             << "Paused simulation ignores time";
         simulation.start();
         harness.advance(period * 0.75);
-        EXPECT_EQ(std::uint64_t{5}, simulation.get_clock().get_completed_ticks())
+        EXPECT_EQ(std::uint64_t{5}, simulation.get_clock().get_completed_ticks().value())
             << "Resume preserves accumulated fraction";
         EXPECT_EQ(3, end_tick_calls) << "Resumed tick executes one hook";
         return;
@@ -78,7 +78,7 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
                     DamageSample{
                         .capital_count = level.get_capital_ships().get_num_instances(),
                         .ledger_alive_count = harness.get_ledger().count_alive(),
-                        .health = state ? state->health : 0,
+                        .health = state ? state->health.value() : 0,
                         .telemetry_active_count = telemetry.last_value(),
                     });
     };
@@ -121,8 +121,8 @@ TEST(WorldlessSpaceGameSimulation, Entities_CollisionOverlapDamagesAndKills) {
     data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     tests::add_player_spawn(data, tests::make_player_spawn(config));
-    data.player->health = {collision_damage_test::player_health,
-                           collision_damage_test::player_health};
+    data.player->health = {Health{collision_damage_test::player_health},
+                           Health{collision_damage_test::player_health}};
     data.collision.entity_bounds.set_half_extents(EntityType::PlayerShip, {{1.f, 1.f, 1.f}});
     tests::add_capital_spawn(data,
                              Vector3f{},
@@ -147,8 +147,8 @@ TEST(WorldlessSpaceGameSimulation, Entities_CollisionOverlapDamagesAndKills) {
         auto const capital{observe_entity(level, capital_id)};
         samples.add(harness.get_time(),
                     Sample{
-                        .player_health = player->get_health().health,
-                        .capital_health = capital ? capital->health : 0,
+                        .player_health = player->get_health().health.value(),
+                        .capital_health = capital ? capital->health.value() : 0,
                         .dynamic_overlap_count = events.entity_entity_overlaps.num(),
                         .kill_count = harness.get_ledger().count_kills(),
                         .player_alive = entity_is_alive(level, player_id),
