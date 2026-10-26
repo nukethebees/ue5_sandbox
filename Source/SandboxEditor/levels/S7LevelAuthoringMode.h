@@ -76,7 +76,7 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     void set_status(FText text);
     void clear_preview(
         ioj::levels::authoring::PreviewState state = ioj::levels::authoring::PreviewState::None);
-    void notify_changed();
+    void notify_changed(ioj::settings::Settings const* settings = nullptr);
     void update_document_source_path();
     void save_source_buffer(bool select_path);
     auto prepare_source_replay() -> bool;

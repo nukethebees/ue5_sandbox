@@ -202,19 +202,19 @@ void US7LevelAuthoringMode::Tick(FEditorViewportClient* const viewport_client,
     auto const scene{collect_s7_scene(*level, *document_)};
     if (!scene || !observed_scene_.IsSet() || *scene != *observed_scene_ ||
         observed_actor_count_ != level->Actors.Num()) {
-        auto const source{collect_s7_scene_source(*level, *document_)};
+        auto const source{collect_s7_scene_source(*level, *document_, scene)};
         observed_scene_source_ = source.value_or(FString{});
         observed_scene_ = scene ? TOptional{*scene} : NullOpt;
         observed_actor_count_ = level->Actors.Num();
     }
     state.scene_dirty = scene_has_unsaved_changes(*document_, observed_scene_source_);
     if (preview_.IsSet() && state.preview == PreviewState::Valid) {
-        auto const current{
-            validate_s7_level_authoring_preview(*level, *document_, source_session_, *preview_)};
+        auto const current{validate_s7_level_authoring_preview(
+            *level, *document_, source_session_, *preview_, scene)};
         if (!current) {
             clear_preview(PreviewState::Stale);
             set_status(FText::FromString(current.error().message));
-            notify_changed();
+            notify_changed(scene ? &scene->definition.settings : nullptr);
             return;
         }
     }
@@ -238,7 +238,7 @@ void US7LevelAuthoringMode::Tick(FEditorViewportClient* const viewport_client,
     } else if (was_scene_dirty || was_disk_conflict) {
         set_status(LOCTEXT("StateClean", "There are no scene changes or disk conflicts."));
     }
-    notify_changed();
+    notify_changed(scene ? &scene->definition.settings : nullptr);
 }
 
 void US7LevelAuthoringMode::Render(FSceneView const* const view,
@@ -412,9 +412,12 @@ void US7LevelAuthoringMode::clear_preview(PreviewState const state) {
     source_session_.state().preview = state;
 }
 
-void US7LevelAuthoringMode::notify_changed() {
+void US7LevelAuthoringMode::notify_changed(ioj::settings::Settings const* const settings) {
     if (source_session_.state().preview != PreviewState::Valid) {
         preview_.Reset();
+    }
+    if (Toolkit.IsValid()) {
+        StaticCastSharedPtr<FS7LevelAuthoringModeToolkit>(Toolkit)->refresh(settings);
     }
     changed_.Broadcast();
 }

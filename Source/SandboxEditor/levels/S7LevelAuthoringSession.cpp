@@ -115,7 +115,14 @@ auto emit_s7_scene_source(levels::LevelDefinition const& definition,
 
 auto collect_s7_scene_source(ULevel const& level, AS7LevelAuthoringDocument const& document)
     -> std::expected<FString, FString> {
-    auto const definition{collect_s7_editor_level(level, document)};
+    return collect_s7_scene_source(level, document, collect_s7_scene(level, document));
+}
+
+auto collect_s7_scene_source(ULevel const& level,
+                             AS7LevelAuthoringDocument const& document,
+                             std::expected<levels::authoring::SceneSnapshot, FString> const& scene)
+    -> std::expected<FString, FString> {
+    auto const definition{collect_s7_editor_level(level, document, scene)};
     if (!definition) {
         return std::unexpected{definition.error()};
     }
@@ -314,6 +321,13 @@ auto collect_s7_scene(ULevel const& level, AS7LevelAuthoringDocument const& docu
 
 auto collect_s7_editor_level(ULevel const& level, AS7LevelAuthoringDocument const& document)
     -> std::expected<levels::LevelDefinition, FString> {
+    return collect_s7_editor_level(level, document, collect_s7_scene(level, document));
+}
+
+auto collect_s7_editor_level(ULevel const& level,
+                             AS7LevelAuthoringDocument const& document,
+                             std::expected<levels::authoring::SceneSnapshot, FString> const& scene)
+    -> std::expected<levels::LevelDefinition, FString> {
     using namespace s7_level_authoring_session_detail;
     auto const* const config{document.level_config.Get()};
     auto const* const canonical{s7_level_config::load_canonical()};
@@ -322,7 +336,6 @@ auto collect_s7_editor_level(ULevel const& level, AS7LevelAuthoringDocument cons
         return std::unexpected{
             TEXT("S7 authoring requires the canonical GameRuntime level configuration asset.")};
     }
-    auto scene{collect_s7_scene(level, document)};
     if (!scene) {
         return std::unexpected{scene.error()};
     }
@@ -341,7 +354,7 @@ auto collect_s7_editor_level(ULevel const& level, AS7LevelAuthoringDocument cons
         return std::unexpected{
             TEXT("Every viewpoint and mission reference must identify an adopted entity.")};
     }
-    auto checked{LevelDefinition::make(MoveTemp(scene->definition))};
+    auto checked{LevelDefinition::make(scene->definition)};
     if (!checked) {
         return std::unexpected{to_fstring(format_diagnostics(checked.error()))};
     }

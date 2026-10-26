@@ -13,6 +13,10 @@ namespace SlateGenerated {
 struct FS7LevelAuthoringModeToolkitBuilder;
 }
 
+namespace ioj::settings {
+struct Settings;
+}
+
 class FS7LevelAuthoringModeToolkit final : public FModeToolkit {
     friend struct SlateGenerated::FS7LevelAuthoringModeToolkitBuilder;
   public:
@@ -21,8 +25,8 @@ class FS7LevelAuthoringModeToolkit final : public FModeToolkit {
     auto GetToolkitFName() const -> FName override;
     auto GetBaseToolkitName() const -> FText override;
     auto GetInlineContent() const -> TSharedPtr<SWidget> override;
+    void refresh(ioj::settings::Settings const* settings = nullptr);
   private:
-    void refresh();
     auto grid_summary() const -> FText;
     auto create_document() -> FReply;
     auto repair_and_adopt_entities() -> FReply;
@@ -44,4 +48,5 @@ class FS7LevelAuthoringModeToolkit final : public FModeToolkit {
     TSharedPtr<SEditableTextBox> entity_id_{};
     TSharedPtr<SMultiLineEditableTextBox> status_{};
     TSharedPtr<SWidget> content_{};
+    FText grid_summary_{};
 };

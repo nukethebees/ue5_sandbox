@@ -39,9 +39,6 @@ void FS7LevelAuthoringModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolkit_
         SScrollBox::Slot()[SlateGenerated::FS7LevelAuthoringModeToolkitBuilder{*this}.BuildRoot(
             details_.ToSharedRef())];
 
-    if (mode_.IsValid()) {
-        mode_->on_changed().AddSP(this, &FS7LevelAuthoringModeToolkit::refresh);
-    }
     refresh();
 }
 
@@ -58,28 +55,10 @@ auto FS7LevelAuthoringModeToolkit::GetInlineContent() const -> TSharedPtr<SWidge
 }
 
 auto FS7LevelAuthoringModeToolkit::grid_summary() const -> FText {
-    auto* const document{mode_.IsValid() ? mode_->document() : nullptr};
-    auto* const config{IsValid(document) ? document->level_config.Get() : nullptr};
-    if (!IsValid(config)) {
-        return LOCTEXT("NoActiveConfig", "Level config: none");
-    }
-
-    auto const settings{ioj::editor::read_s7_document_settings(*document)};
-    if (!settings) {
-        return FText::FromString(settings.error());
-    }
-    auto collision_grid{config->collision_grid};
-    collision_grid.grid_size = ioj::to_unreal(settings->collision_grid.level_size);
-    collision_grid.cell_size = ioj::to_unreal(settings->collision_grid.cell_size);
-    auto const dimensions{collision_grid.calculate_grid_dimensions()};
-    auto const half_bounds{ioj::to_unreal(ioj::sim::collision::grid_half_size(
-        {{dimensions.X, dimensions.Y, dimensions.Z}, ioj::Vector3f{collision_grid.cell_size}}))};
-    return FText::FromString(FString::Printf(TEXT("Resources: %s | Resolved grid bounds: +/-%s cm"),
-                                             *config->GetName(),
-                                             *half_bounds.ToString()));
+    return grid_summary_;
 }
 
-void FS7LevelAuthoringModeToolkit::refresh() {
+void FS7LevelAuthoringModeToolkit::refresh(ioj::settings::Settings const* settings) {
     if (!mode_.IsValid()) {
         return;
     }
@@ -88,6 +67,33 @@ void FS7LevelAuthoringModeToolkit::refresh() {
         details_->SetObject(displayed_document_.Get());
     }
     status_->SetText(mode_->status());
+
+    auto* const document{mode_.IsValid() ? mode_->document() : nullptr};
+    auto* const config{IsValid(document) ? document->level_config.Get() : nullptr};
+    if (!IsValid(config)) {
+        grid_summary_ = LOCTEXT("NoActiveConfig", "Level config: none");
+        return;
+    }
+
+    std::expected<ioj::settings::Settings, FString> resolved;
+    if (!settings) {
+        resolved = ioj::editor::read_s7_document_settings(*document);
+        if (!resolved) {
+            grid_summary_ = FText::FromString(resolved.error());
+            return;
+        }
+        settings = &*resolved;
+    }
+    auto collision_grid{config->collision_grid};
+    collision_grid.grid_size = ioj::to_unreal(settings->collision_grid.level_size);
+    collision_grid.cell_size = ioj::to_unreal(settings->collision_grid.cell_size);
+    auto const dimensions{collision_grid.calculate_grid_dimensions()};
+    auto const half_bounds{ioj::to_unreal(ioj::sim::collision::grid_half_size(
+        {{dimensions.X, dimensions.Y, dimensions.Z}, ioj::Vector3f{collision_grid.cell_size}}))};
+    grid_summary_ =
+        FText::FromString(FString::Printf(TEXT("Resources: %s | Resolved grid bounds: +/-%s cm"),
+                                          *config->GetName(),
+                                          *half_bounds.ToString()));
 }
 
 #define FORWARD_ACTION(name)                              \

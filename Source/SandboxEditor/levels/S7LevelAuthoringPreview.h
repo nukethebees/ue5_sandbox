@@ -42,6 +42,13 @@ SANDBOXEDITOR_API auto
                                         FS7LevelSourceSession const& source_session,
                                         FS7LevelAuthoringPreview const& preview)
         -> std::expected<void, FS7LevelPreviewError>;
+SANDBOXEDITOR_API auto validate_s7_level_authoring_preview(
+    ULevel& level,
+    AS7LevelAuthoringDocument& document,
+    FS7LevelSourceSession const& source_session,
+    FS7LevelAuthoringPreview const& preview,
+    std::expected<levels::authoring::SceneSnapshot, FString> const& scene)
+    -> std::expected<void, FS7LevelPreviewError>;
 SANDBOXEDITOR_API auto apply_s7_level_authoring_preview(ULevel& level,
                                                         AS7LevelAuthoringDocument& document,
                                                         FS7LevelSourceSession const& source_session,

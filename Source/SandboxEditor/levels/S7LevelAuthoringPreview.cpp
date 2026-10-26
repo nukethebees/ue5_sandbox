@@ -100,6 +100,17 @@ auto validate_s7_level_authoring_preview(ULevel& level,
                                          FS7LevelSourceSession const& source_session,
                                          FS7LevelAuthoringPreview const& preview)
     -> std::expected<void, FS7LevelPreviewError> {
+    return validate_s7_level_authoring_preview(
+        level, document, source_session, preview, collect_s7_scene(level, document));
+}
+
+auto validate_s7_level_authoring_preview(
+    ULevel& level,
+    AS7LevelAuthoringDocument& document,
+    FS7LevelSourceSession const& source_session,
+    FS7LevelAuthoringPreview const& preview,
+    std::expected<levels::authoring::SceneSnapshot, FString> const& scene)
+    -> std::expected<void, FS7LevelPreviewError> {
     auto const source_changed{source_session.document() != preview.document.Get() ||
                               source_session.revision() != preview.source_revision};
     auto const level_or_document_changed{preview.level.Get() != &level ||
@@ -113,8 +124,7 @@ auto validate_s7_level_authoring_preview(ULevel& level,
         preview.level_config_snapshot !=
             s7_level_authoring_preview_detail::level_config_snapshot(level_config)};
 
-    auto const current_scene{collect_s7_scene(level, document)};
-    auto const scene_changed{!current_scene || *current_scene != preview.plan.scene};
+    auto const scene_changed{!scene || *scene != preview.plan.scene};
     auto const authoring_state_changed{level_or_document_changed || bindings_changed ||
                                        scene_changed};
     if (source_changed || authoring_state_changed || configuration_changed) {
