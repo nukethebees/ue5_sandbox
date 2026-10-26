@@ -16,7 +16,6 @@
 #include <codegen/schema/enumerator_schemas.h>
 #include <codegen/schema/function_schemas.h>
 #include <codegen/schema/indices.h>
-#include <codegen/schema/integer_scalar_cpp_emission.h>
 #include <codegen/schema/integer_scalar_schemas.h>
 #include <codegen/schema/manifest.h>
 #include <codegen/schema/module_settings_store.h>
@@ -87,7 +86,8 @@ TEST(Lowering, PackedEnumOffsetsUseTheSmallestStorageIncludingTheSentinel) {
         CompilerTestContext context;
         auto const source{
             std::format("(module test :header \"Test.h\" (enum State :native-api true "
-                        ":helpers (to-serialized-string) (value Only :serialized-name \"{}\")))",
+                        ":helpers (to-serialized-string) (value Only :serialized-name \"{}\") "
+                        "(projections (cpp))))",
                         std::string(length, 'x'))};
         auto const files{render_test_manifest(context, parse_test_manifest(context, source))};
         ASSERT_EQ(files.size(), 1);
@@ -137,6 +137,7 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
                 normal_modules.declarations[normal_modules_row] =
                     store.range<DeclarationHandle>({[&] {
                         auto const new_enums{enums.append()};
+                        enums.cpp_projection[new_enums] = CppProjection{};
                         auto const enums_row{enums.index(new_enums)};
                         enums.name[enums_row] = strings.intern("NativeState");
                         enums.underlying_type[enums_row] = [&] {
@@ -218,6 +219,7 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
                         normal_modules.declarations[normal_modules_row] =
                             store.range<DeclarationHandle>({[&] {
                                 auto const new_enums{enums.append()};
+                                enums.cpp_projection[new_enums] = CppProjection{};
                                 auto const enums_row{enums.index(new_enums)};
                                 enums.name[enums_row] = strings.intern("State");
                                 enums.values[enums_row] = store.range<EnumeratorId>({[&] {
@@ -259,7 +261,8 @@ TEST(Lowering, EnumFormatterOptInPreservesSourceRoundTrip) {
                                                 std::format(R"(
           (module states :header States.h :namespace example
             (enum State std::uint8_t :native-api true :helpers (to-string {})
-              (value Ready))))",
+              (value Ready)
+    (projections (cpp)))))",
                                                             enabled ? "formatter" : ""))};
         auto const output{render_test_manifest(context, manifest).front().content};
         EXPECT_EQ(output.contains("ioj/enum_formatter.h"), enabled);
@@ -279,7 +282,8 @@ TEST(Lowering, EnumFormatterRequiresNameConversion) {
     auto const manifest{parse_test_manifest(context, R"(
       (module states :header States.h
         (enum State std::uint8_t :native-api true :helpers (formatter)
-          (value Ready))))")};
+          (value Ready)
+    (projections (cpp)))))")};
     try {
         static_cast<void>(render_test_manifest(context, manifest));
         FAIL() << "Expected an invalid formatter declaration";
@@ -317,6 +321,7 @@ TEST(Lowering, DerivesNativeEnumBackingFromSemanticWidthAndSignedness) {
                 normal_modules.declarations[normal_modules_row] =
                     store.range<DeclarationHandle>({[&] {
                         auto const new_enums{enums.append()};
+                        enums.cpp_projection[new_enums] = CppProjection{};
                         auto const enums_row{enums.index(new_enums)};
                         enums.name[enums_row] = strings.intern("SignedState");
                         enums.underlying_type[enums_row] = std::nullopt;
@@ -355,7 +360,7 @@ TEST(Lowering, DerivesNativeEnumBackingFromSemanticWidthAndSignedness) {
     EXPECT_NE(header.find("#include <cstdint>"), std::string::npos);
 }
 
-TEST(Lowering, DerivesUnrealStyleEnumBackingWithoutChangingSemanticWidth) {
+TEST(Lowering, DerivesFixedWidthEnumBackingWithoutNativeHelpers) {
     CompilerTestContext context;
     auto& store{context.storage.declarations};
     auto& strings{context.storage.strings};
@@ -377,6 +382,7 @@ TEST(Lowering, DerivesUnrealStyleEnumBackingWithoutChangingSemanticWidth) {
         }();
         normal_modules.declarations[normal_modules_row] = store.range<DeclarationHandle>({[&] {
             auto const new_enums{enums.append()};
+            enums.cpp_projection[new_enums] = CppProjection{};
             auto const enums_row{enums.index(new_enums)};
             enums.name[enums_row] = strings.intern("EState");
             enums.underlying_type[enums_row] = std::nullopt;
@@ -402,202 +408,27 @@ TEST(Lowering, DerivesUnrealStyleEnumBackingWithoutChangingSemanticWidth) {
         return new_normal_modules;
     }())};
 
-    EXPECT_NE(output.header.find("#include \"CoreMinimal.h\""), std::string::npos);
-    EXPECT_NE(output.header.find("using EStateUnderlying = uint16;"), std::string::npos);
+    EXPECT_NE(output.header.find("#include <cstdint>"), std::string::npos);
+    EXPECT_EQ(output.header.find("#include \"CoreMinimal.h\""), std::string::npos);
+    EXPECT_NE(output.header.find("using EStateUnderlying = std::uint16_t;"), std::string::npos);
     EXPECT_NE(output.header.find("enum class EState : EStateUnderlying"), std::string::npos);
 }
 
-TEST(Lowering, EmitsRequestedNamedScalarConstantsWithoutInventingScalarTypes) {
+TEST(Lowering, EmitsOwningIntegerScalarWithInferredStorage) {
     CompilerTestContext context;
-    auto& store{context.storage.declarations};
-    auto& strings{context.storage.strings};
-    auto& integer_scalars{store.integer_scalars};
-    auto& module_settings_store{store.module_settings_store};
-    auto& normal_modules{store.normal_modules};
-    auto& packed_named_codes{store.packed_named_codes};
-    auto& type_refs{store.type_refs};
-    auto const files{render_test_manifest(
-        context,
-        Manifest{
-            manifest_schema_version,
-            make_test_registry(
-                context,
-                {{"native_uint8",
-                  context.storage.cpp_types.add(
-                      "std::uint8_t",
-                      {context.storage.cpp_types.dependency("std::uint8_t", "cstdint")})},
-                 {"native_int64",
-                  context.storage.cpp_types.add(
-                      "std::int64_t",
-                      {context.storage.cpp_types.dependency("std::int64_t", "cstdint")})},
-                 {"native_uint64",
-                  context.storage.cpp_types.add(
-                      "std::uint64_t",
-                      {context.storage.cpp_types.dependency("std::uint64_t", "cstdint")})}}),
-            store,
-            {[&] {
-                auto const new_normal_modules{normal_modules.append()};
-                auto const normal_modules_row{normal_modules.index(new_normal_modules)};
-                normal_modules.settings[normal_modules_row] = [&] {
-                    auto const new_module_settings_store{module_settings_store.append()};
-                    auto const module_settings_store_row{
-                        module_settings_store.index(new_module_settings_store)};
-                    module_settings_store.name[module_settings_store_row] =
-                        strings.intern("semantic_values");
-                    module_settings_store.header[module_settings_store_row] =
-                        strings.intern("SemanticValues.h");
-                    module_settings_store.namespace_name[module_settings_store_row] =
-                        strings.intern("fixture");
-                    return new_module_settings_store;
-                }();
-                normal_modules.declarations[normal_modules_row] = store.range<DeclarationHandle>(
-                    {[&] {
-                         auto const new_integer_scalars{integer_scalars.append()};
-                         auto const integer_scalars_row{integer_scalars.index(new_integer_scalars)};
-                         integer_scalars.name[integer_scalars_row] = strings.intern("NoOutput");
-                         integer_scalars.signedness[integer_scalars_row] = false;
-                         integer_scalars.minimum_value[integer_scalars_row] = 0;
-                         integer_scalars.maximum_value[integer_scalars_row] = 1;
-                         integer_scalars.bit_width[integer_scalars_row] = std::nullopt;
-                         integer_scalars.named_codes[integer_scalars_row] =
-                             store.range<PackedNamedCodeId>({[&] {
-                                 auto const new_packed_named_codes{packed_named_codes.append()};
-                                 auto const packed_named_codes_row{
-                                     packed_named_codes.index(new_packed_named_codes)};
-                                 packed_named_codes.name[packed_named_codes_row] =
-                                     strings.intern("Zero");
-                                 packed_named_codes.value[packed_named_codes_row] = 0;
-                                 packed_named_codes.sentinel[packed_named_codes_row] = false;
-                                 return new_packed_named_codes;
-                             }()});
-                         return new_integer_scalars;
-                     }(),
-                     [&] {
-                         auto const new_integer_scalars{integer_scalars.append()};
-                         auto const integer_scalars_row{integer_scalars.index(new_integer_scalars)};
-                         integer_scalars.name[integer_scalars_row] = strings.intern("DamageReason");
-                         integer_scalars.signedness[integer_scalars_row] = false;
-                         integer_scalars.minimum_value[integer_scalars_row] = 0;
-                         integer_scalars.maximum_value[integer_scalars_row] = 10;
-                         integer_scalars.bit_width[integer_scalars_row] = std::nullopt;
-                         integer_scalars.named_codes[integer_scalars_row] =
-                             store.range<PackedNamedCodeId>(
-                                 {[&] {
-                                      auto const new_packed_named_codes{
-                                          packed_named_codes.append()};
-                                      auto const packed_named_codes_row{
-                                          packed_named_codes.index(new_packed_named_codes)};
-                                      packed_named_codes.name[packed_named_codes_row] =
-                                          strings.intern("Unknown");
-                                      packed_named_codes.value[packed_named_codes_row] = 0;
-                                      packed_named_codes.sentinel[packed_named_codes_row] = false;
-                                      return new_packed_named_codes;
-                                  }(),
-                                  [&] {
-                                      auto const new_packed_named_codes{
-                                          packed_named_codes.append()};
-                                      auto const packed_named_codes_row{
-                                          packed_named_codes.index(new_packed_named_codes)};
-                                      packed_named_codes.name[packed_named_codes_row] =
-                                          strings.intern("Invalid");
-                                      packed_named_codes.value[packed_named_codes_row] = 255;
-                                      packed_named_codes.sentinel[packed_named_codes_row] = true;
-                                      return new_packed_named_codes;
-                                  }()});
-                         integer_scalars.cpp_emission[integer_scalars_row] =
-                             IntegerScalarCppEmission::constants_with_names;
-                         integer_scalars.cpp_type[integer_scalars_row] = [&] {
-                             auto const new_type_refs{type_refs.append()};
-                             auto const type_refs_row{type_refs.index(new_type_refs)};
-                             type_refs.name[type_refs_row] = strings.intern("@native_uint8");
-                             return new_type_refs;
-                         }();
-                         return new_integer_scalars;
-                     }(),
-                     [&] {
-                         auto const new_integer_scalars{integer_scalars.append()};
-                         auto const integer_scalars_row{integer_scalars.index(new_integer_scalars)};
-                         integer_scalars.name[integer_scalars_row] = strings.intern("SignedLimit");
-                         integer_scalars.signedness[integer_scalars_row] = true;
-                         integer_scalars.minimum_value[integer_scalars_row] =
-                             PackedIntegerValue::from_parts(true, std::uint64_t{1} << 63);
-                         integer_scalars.maximum_value[integer_scalars_row] = 0;
-                         integer_scalars.bit_width[integer_scalars_row] = 64;
-                         integer_scalars.named_codes[integer_scalars_row] =
-                             store.range<PackedNamedCodeId>({[&] {
-                                 auto const new_packed_named_codes{packed_named_codes.append()};
-                                 auto const packed_named_codes_row{
-                                     packed_named_codes.index(new_packed_named_codes)};
-                                 packed_named_codes.name[packed_named_codes_row] =
-                                     strings.intern("Minimum");
-                                 packed_named_codes.value[packed_named_codes_row] =
-                                     PackedIntegerValue::from_parts(true, std::uint64_t{1} << 63);
-                                 packed_named_codes.sentinel[packed_named_codes_row] = false;
-                                 return new_packed_named_codes;
-                             }()});
-                         integer_scalars.cpp_emission[integer_scalars_row] =
-                             IntegerScalarCppEmission::constants;
-                         integer_scalars.cpp_type[integer_scalars_row] = [&] {
-                             auto const new_type_refs{type_refs.append()};
-                             auto const type_refs_row{type_refs.index(new_type_refs)};
-                             type_refs.name[type_refs_row] = strings.intern("@native_int64");
-                             return new_type_refs;
-                         }();
-                         return new_integer_scalars;
-                     }(),
-                     [&] {
-                         auto const new_integer_scalars{integer_scalars.append()};
-                         auto const integer_scalars_row{integer_scalars.index(new_integer_scalars)};
-                         integer_scalars.name[integer_scalars_row] =
-                             strings.intern("UnsignedLimit");
-                         integer_scalars.signedness[integer_scalars_row] = false;
-                         integer_scalars.minimum_value[integer_scalars_row] = 0;
-                         integer_scalars.maximum_value[integer_scalars_row] =
-                             (std::numeric_limits<std::uint64_t>::max)();
-                         integer_scalars.bit_width[integer_scalars_row] = 64;
-                         integer_scalars.named_codes[integer_scalars_row] =
-                             store.range<PackedNamedCodeId>({[&] {
-                                 auto const new_packed_named_codes{packed_named_codes.append()};
-                                 auto const packed_named_codes_row{
-                                     packed_named_codes.index(new_packed_named_codes)};
-                                 packed_named_codes.name[packed_named_codes_row] =
-                                     strings.intern("Maximum");
-                                 packed_named_codes.value[packed_named_codes_row] =
-                                     (std::numeric_limits<std::uint64_t>::max)();
-                                 packed_named_codes.sentinel[packed_named_codes_row] = false;
-                                 return new_packed_named_codes;
-                             }()});
-                         integer_scalars.cpp_emission[integer_scalars_row] =
-                             IntegerScalarCppEmission::constants;
-                         integer_scalars.cpp_type[integer_scalars_row] = [&] {
-                             auto const new_type_refs{type_refs.append()};
-                             auto const type_refs_row{type_refs.index(new_type_refs)};
-                             type_refs.name[type_refs_row] = strings.intern("@native_uint64");
-                             return new_type_refs;
-                         }();
-                         return new_integer_scalars;
-                     }()});
-                return new_normal_modules;
-            }()}})};
-
+    auto const files{render_test_manifest(context, parse_test_manifest(context, R"(
+      (module values :header "Values.h"
+        (integer-scalar Index :bit-width 24 (projections (cpp)))
+        (integer-scalar Logical :bit-width 8))
+    )"))};
     ASSERT_EQ(files.size(), 1U);
-    auto const& header{files.front().content};
-    EXPECT_NE(header.find("#include <cstdint>"), std::string::npos) << header;
-    EXPECT_NE(header.find("namespace fixture"), std::string::npos);
-    EXPECT_NE(header.find("inline constexpr std::uint8_t DamageReason_Unknown"), std::string::npos);
-    EXPECT_NE(header.find("inline constexpr std::uint8_t DamageReason_Invalid"), std::string::npos);
-    EXPECT_NE(header.find("#include <string_view>"), std::string::npos);
-    EXPECT_NE(header.find("constexpr auto DamageReason_name(std::uint8_t const value)"),
-              std::string::npos);
-    EXPECT_NE(header.find("case DamageReason_Unknown"), std::string::npos);
-    EXPECT_NE(header.find("return \"Unknown\""), std::string::npos);
-    EXPECT_NE(header.find("return {};"), std::string::npos);
-    EXPECT_NE(header.find("static_cast<std::int64_t>((-9223372036854775807LL - 1))"),
-              std::string::npos);
-    EXPECT_NE(header.find("static_cast<std::uint64_t>(18446744073709551615ULL)"),
-              std::string::npos);
-    EXPECT_EQ(header.find("NoOutput_Zero"), std::string::npos);
-    EXPECT_EQ(header.find("using DamageReason"), std::string::npos);
+    auto const& output{files.front().content};
+    EXPECT_NE(output.find("using storage_type = std::uint32_t;"), std::string::npos);
+    EXPECT_NE(output.find("using value_type = std::uint32_t;"), std::string::npos);
+    EXPECT_NE(output.find("raw_value()"), std::string::npos);
+    EXPECT_NE(output.find("from_raw("), std::string::npos);
+    EXPECT_NE(output.find("set_value("), std::string::npos);
+    EXPECT_EQ(output.find("struct Logical"), std::string::npos);
 }
 
 TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) {
@@ -639,6 +470,7 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
                 normal_modules
                     .declarations[normal_modules_row] = store.range<DeclarationHandle>({[&] {
                     auto const new_enums{enums.append()};
+                    enums.cpp_projection[new_enums] = CppProjection{};
                     auto const enums_row{enums.index(new_enums)};
                     enums.name[enums_row] = strings.intern("NativeState");
                     enums.underlying_type[enums_row] = [&] {
@@ -744,6 +576,7 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
         }();
         normal_modules.declarations[normal_modules_row] = store.range<DeclarationHandle>({[&] {
             auto const new_enums{enums.append()};
+            enums.cpp_projection[new_enums] = CppProjection{};
             auto const enums_row{enums.index(new_enums)};
             enums.name[enums_row] = strings.intern("EMode");
             enums.underlying_type[enums_row] = [&] {
@@ -855,6 +688,7 @@ TEST(Lowering, EmitsPlainEnumsInTheirNamespace) {
         }();
         normal_modules.declarations[normal_modules_row] = store.range<DeclarationHandle>({[&] {
             auto const new_enums{enums.append()};
+            enums.cpp_projection[new_enums] = CppProjection{};
             auto const enums_row{enums.index(new_enums)};
             enums.name[enums_row] = strings.intern("EState");
             enums.underlying_type[enums_row] = [&] {
@@ -909,6 +743,7 @@ TEST(Lowering, EmitsCountsForEnumArrays) {
         }();
         normal_modules.declarations[normal_modules_row] = store.range<DeclarationHandle>({[&] {
             auto const new_enums{enums.append()};
+            enums.cpp_projection[new_enums] = CppProjection{};
             auto const enums_row{enums.index(new_enums)};
             enums.name[enums_row] = strings.intern("EMode");
             enums.underlying_type[enums_row] = [&] {
@@ -967,6 +802,7 @@ TEST(Lowering, EmitsCountsForReflectedEnumArrays) {
         }();
         normal_modules.declarations[normal_modules_row] = store.range<DeclarationHandle>({[&] {
             auto const new_enums{enums.append()};
+            enums.cpp_projection[new_enums] = CppProjection{};
             auto const enums_row{enums.index(new_enums)};
             enums.name[enums_row] = strings.intern("EMode");
             enums.underlying_type[enums_row] = [&] {
@@ -1024,6 +860,7 @@ TEST(Lowering, EnumDisplayLookupWithoutOverridesFallsBackDirectly) {
         }();
         normal_modules.declarations[normal_modules_row] = store.range<DeclarationHandle>({[&] {
             auto const new_enums{enums.append()};
+            enums.cpp_projection[new_enums] = CppProjection{};
             auto const enums_row{enums.index(new_enums)};
             enums.name[enums_row] = strings.intern("EState");
             enums.underlying_type[enums_row] = [&] {
@@ -1077,6 +914,7 @@ TEST(Lowering, EnumEscapingAndSparseDisplayCasesPreserveFallbacks) {
         }();
         normal_modules.declarations[normal_modules_row] = store.range<DeclarationHandle>({[&] {
             auto const new_enums{enums.append()};
+            enums.cpp_projection[new_enums] = CppProjection{};
             auto const enums_row{enums.index(new_enums)};
             enums.name[enums_row] = strings.intern("EState");
             enums.underlying_type[enums_row] = [&] {
@@ -1160,6 +998,7 @@ TEST(Lowering, EnumCountsUseMlNamespaceForQualifiedHeaderOnlyEnums) {
                      normal_modules.declarations[normal_modules_row] =
                          store.range<DeclarationHandle>({[&] {
                              auto const new_enums{enums.append()};
+                             enums.cpp_projection[new_enums] = CppProjection{};
                              auto const enums_row{enums.index(new_enums)};
                              enums.name[enums_row] = strings.intern("EState");
                              enums.underlying_type[enums_row] = [&] {

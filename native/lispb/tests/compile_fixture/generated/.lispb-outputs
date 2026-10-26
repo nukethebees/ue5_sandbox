@@ -17,7 +17,6 @@ ReaderDependency_reader.h
 Records.h
 Records_reader.h
 ReferenceFacade.h
-Representations.h
 RestrictionRows.h
 ScalarValues.h
 SignatureDefinitions.cpp
@@ -28,5 +27,6 @@ SignatureSecond.cpp
 SignatureSecond.h
 SourceFacade.cpp
 SourceFacade.h
+UnifiedPacked.h
 UnsupportedReader.h
 UnsupportedReader_reader.h

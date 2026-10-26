@@ -25,6 +25,7 @@ template <typename Enum, int Bits>
 template <typename T>
 [[nodiscard]] consteval auto valid_packed_value_layout() noexcept -> bool {
     static_assert(sizeof(T) == sizeof(typename T::storage_type));
+    static_assert(alignof(T) == alignof(typename T::storage_type));
     static_assert(std::is_trivially_copyable_v<T>);
     static_assert(std::is_standard_layout_v<T>);
     return true;

@@ -17,7 +17,6 @@
 #include <codegen/schema/fixed_point_schemas.h>
 #include <codegen/schema/function_schemas.h>
 #include <codegen/schema/indices.h>
-#include <codegen/schema/integer_scalar_cpp_emission.h>
 #include <codegen/schema/integer_scalar_schemas.h>
 #include <codegen/schema/integer_varint_encoding.h>
 #include <codegen/schema/integer_varint_schemas.h>
@@ -31,18 +30,11 @@
 #include <codegen/schema/optional_sentinel_schemas.h>
 #include <codegen/schema/packed_bit_order.h>
 #include <codegen/schema/packed_byte_order.h>
-#include <codegen/schema/packed_field_kind.h>
-#include <codegen/schema/packed_field_schemas.h>
 #include <codegen/schema/packed_integer_value.h>
 #include <codegen/schema/packed_named_code_schemas.h>
-#include <codegen/schema/packed_reserved_bits_schemas.h>
-#include <codegen/schema/packed_segment_id.h>
-#include <codegen/schema/packed_segment_kind.h>
-#include <codegen/schema/packed_value_schemas.h>
 #include <codegen/schema/parameter_schemas.h>
 #include <codegen/schema/quantization_clipping.h>
 #include <codegen/schema/record_comparison.h>
-#include <codegen/schema/record_member_schemas.h>
 #include <codegen/schema/record_schemas.h>
 #include <codegen/schema/schema_range.h>
 #include <codegen/schema/semantic_relation_kind.h>
@@ -56,11 +48,8 @@
 #include <codegen/schema/static_table_group_schemas.h>
 #include <codegen/schema/static_table_row_schemas.h>
 #include <codegen/schema/static_table_schemas.h>
-#include <codegen/schema/tagged_union_alternative_schemas.h>
-#include <codegen/schema/tagged_union_schemas.h>
 #include <codegen/schema/type_refs.h>
 #include <codegen/schema/type_registry.h>
-#include <codegen/schema/union_alternative_schemas.h>
 #include <codegen/schema/union_schemas.h>
 #include <codegen/sexpr/sexpr_renderer.h>
 #include <lispb/indices.h>
@@ -187,9 +176,7 @@ auto CanonicalRenderer::build_enum(codegen::DeclarationHandle const schema) -> E
     for (auto const value : items(enums.values[index])) {
         result.add(build_enum_value(value));
     }
-    if (enums.unreal_projection[index].has_value()) {
-        result.add(build_enum_unreal_projection(*enums.unreal_projection[index]));
-    }
+    add_projections(result, enums.cpp_projection[index], enums.unreal_projection[index]);
     return result.build();
 }
 auto CanonicalRenderer::build_parameter(codegen::ParameterId const parameter) -> Expr {
@@ -243,62 +230,62 @@ auto CanonicalRenderer::build_semantic_relation(codegen::SemanticRelationId cons
     }
     return result.build();
 }
-auto CanonicalRenderer::build_packed_segment(codegen::PackedSegmentId const segment) -> Expr {
-    switch (segment.kind()) {
-        case codegen::PackedSegmentKind::field: {
-            auto const integer{
-                [this](auto value) { return ir_.atom(format_packed_integer(value)); }};
-            auto const& fields{store_.packed_fields};
-            auto const index{fields.index(segment)};
-            auto result{ir_.form(
-                "field", {ir_.atom(fields.name[index]), build_type_ref(fields.type[index])})};
-            result.field("bits",
-                         fields.bits[index].has_value() ? ir_.atom(*fields.bits[index])
-                                                        : ir_.atoms.automatic);
-            if (fields.kind[index] != codegen::PackedFieldKind::unsigned_integer) {
-                result.field("kind", ir_.atom(codegen::to_serialized_string(fields.kind[index])));
-            }
-            result.flag("range-helper", fields.range_helper[index]);
-            result.optional_field("default", fields.default_value[index], integer);
-            result.optional_field("minimum", fields.minimum_value[index], integer);
-            result.optional_field("maximum", fields.maximum_value[index], integer);
-            for (auto const code : items(fields.named_codes[index])) {
-                result.add(build_named_code(code));
-            }
-            if (fields.relationship[index].has_value()) {
-                result.add(build_semantic_relation(*fields.relationship[index]));
-            }
-            return result.build();
-        }
-        case codegen::PackedSegmentKind::reserved: {
-            auto const& reserved_bits{store_.packed_reserved_bits};
-            auto const index{reserved_bits.index(segment)};
-            return ir_.form("reserved", {ir_.atom(reserved_bits.name[index])})
-                .field("bits", reserved_bits.bits[index])
-                .build();
-        }
-        default:
-            std::unreachable();
+void CanonicalRenderer::add_projections(
+    codegen::sexpr::FormBuilder& owner,
+    std::optional<codegen::CppProjection> const& cpp,
+    std::optional<codegen::EnumUnrealProjectionId> const unreal) {
+    if (!cpp && !unreal) {
+        return;
     }
+    auto projections{ir_.form("projections", {})};
+    if (cpp) {
+        auto projection{ir_.form("cpp", {})};
+        if (cpp->storage) {
+            projection.field("storage", build_type_ref(*cpp->storage));
+        }
+        projections.add(projection.build());
+    }
+    if (unreal) {
+        projections.add(build_enum_unreal_projection(*unreal));
+    }
+    owner.add(projections.build());
 }
-auto CanonicalRenderer::build_packed_value(codegen::DeclarationHandle const schema) -> Expr {
-    auto const& values{store_.packed_values};
-    auto const index{values.index(schema)};
-    auto result{ir_.form("packed-value", {ir_.atom(values.name[index])})};
-    result.field("storage", build_type_ref(values.storage_type[index]));
-    if (values.byte_order[index].has_value()) {
-        result.field("byte-order", ir_.atom(to_serialized_string(*values.byte_order[index])));
+auto CanonicalRenderer::build_child(codegen::ChildOccurrenceId const child) -> Expr {
+    auto const& columns{store_.child_occurrences};
+    if (columns.kind[child] == codegen::ChildOccurrenceKind::reserved) {
+        return ir_.form("reserved", {ir_.atom(columns.name[child])})
+            .field("bits", *columns.bits[child])
+            .build();
     }
-    if (values.bit_order[index].has_value()) {
-        result.field("bit-order", ir_.atom(to_serialized_string(*values.bit_order[index])));
+    auto result{
+        ir_.form("member", {ir_.atom(columns.name[child]), build_type_ref(columns.type[child])})};
+    auto const atom{[this](auto value) { return ir_.atom(value); }};
+    auto const integer{[this](auto value) { return ir_.atom(format_packed_integer(value)); }};
+    result.optional_field("count", columns.count[child]);
+    result.optional_field("bits", columns.bits[child]);
+    result.optional_field("tag", columns.tag[child], atom);
+    result.optional_field("case", columns.case_label[child], atom);
+    result.optional_field("default", columns.default_value[child], integer);
+    auto const& s7{columns.s7[child]};
+    result.optional_field("s7-name", s7.name, [this](auto value) { return ir_.string(value); });
+    result.flag("required", s7.required);
+    result.flag("nonzero", s7.nonzero);
+    result.flag("positive", s7.positive);
+    result.flag("nonnegative", s7.nonnegative);
+    result.flag("finite", s7.finite);
+    result.flag("nonempty", s7.nonempty);
+    result.flag("s7-exclude", s7.exclude);
+    if (s7.minimum) {
+        result.field("minimum", ir_.atom(*s7.minimum));
     }
-    result.optional_field("invalid-value", values.invalid_value[index]);
-    if (values.export_specifier[index].value != 0) {
-        result.field("export-specifier", ir_.atom(values.export_specifier[index]));
+    if (s7.maximum) {
+        result.field("maximum", ir_.atom(*s7.maximum));
     }
-    result.flag("mutable", values.mutable_value[index]);
-    for (auto const segment : items(values.segments[index])) {
-        result.add(build_packed_segment(segment));
+    if (columns.initializer[child]) {
+        result.field("initializer", ir_.string(*columns.initializer[child]));
+    }
+    if (columns.relationship[child]) {
+        result.add(build_semantic_relation(*columns.relationship[child]));
     }
     return result.build();
 }
@@ -320,36 +307,34 @@ auto CanonicalRenderer::build_integer_scalar(codegen::DeclarationHandle const sc
         .field("bit-width",
                scalars.bit_width[index].has_value() ? ir_.atom(*scalars.bit_width[index])
                                                     : ir_.atoms.automatic);
-    if (scalars.cpp_emission[index] != codegen::IntegerScalarCppEmission::none) {
-        result.field("cpp-emission", ir_.atom(to_serialized_string(scalars.cpp_emission[index])));
-    }
-    result.optional_field(
-        "cpp-type", scalars.cpp_type[index], [this](auto value) { return build_type_ref(value); });
     for (auto const code : items(scalars.named_codes[index])) {
         result.add(build_named_code(code));
     }
     if (scalars.relationship[index].has_value()) {
         result.add(build_semantic_relation(*scalars.relationship[index]));
     }
+    add_projections(result, scalars.cpp_projection[index]);
     return result.build();
 }
 auto CanonicalRenderer::build_linear_quantized(codegen::DeclarationHandle const schema) -> Expr {
     auto const& values{store_.linear_quantizeds};
     auto const index{values.index(schema)};
-    return ir_.form("linear-quantized", {ir_.atom(values.name[index])})
-        .field("source", build_type_ref(values.source[index]))
+    auto result{ir_.form("linear-quantized", {ir_.atom(values.name[index])})};
+    result.field("source", build_type_ref(values.source[index]))
         .field("bits", values.bit_width[index])
         .field("reserved-codes", values.reserved_codes[index])
-        .field("clipping", ir_.atom(to_serialized_string(values.clipping[index])))
-        .build();
+        .field("clipping", ir_.atom(to_serialized_string(values.clipping[index])));
+    add_projections(result, values.cpp_projection[index]);
+    return result.build();
 }
 auto CanonicalRenderer::build_integer_varint(codegen::DeclarationHandle const schema) -> Expr {
     auto const& values{store_.integer_varints};
     auto const index{values.index(schema)};
-    return ir_.form("integer-varint", {ir_.atom(values.name[index])})
-        .field("source", build_type_ref(values.source[index]))
-        .field("encoding", ir_.atom(to_serialized_string(values.encoding[index])))
-        .build();
+    auto result{ir_.form("integer-varint", {ir_.atom(values.name[index])})};
+    result.field("source", build_type_ref(values.source[index]))
+        .field("encoding", ir_.atom(to_serialized_string(values.encoding[index])));
+    add_projections(result, values.cpp_projection[index]);
+    return result.build();
 }
 auto CanonicalRenderer::build_fixed_point(codegen::DeclarationHandle const schema) -> Expr {
     auto const atom{[this](auto value) { return ir_.atom(value); }};
@@ -362,38 +347,53 @@ auto CanonicalRenderer::build_fixed_point(codegen::DeclarationHandle const schem
         .field("rounding", ir_.atom(to_serialized_string(values.rounding[index])));
     result.optional_field("minimum", values.minimum_value[index], atom);
     result.optional_field("maximum", values.maximum_value[index], atom);
+    add_projections(result, values.cpp_projection[index]);
     return result.build();
 }
 auto CanonicalRenderer::build_mini_float(codegen::DeclarationHandle const schema) -> Expr {
     auto const& values{store_.mini_floats};
     auto const index{values.index(schema)};
-    return ir_.form("mini-float", {ir_.atom(values.name[index])})
-        .field("sign-bits", values.sign_bits[index])
+    auto result{ir_.form("mini-float", {ir_.atom(values.name[index])})};
+    result.field("sign-bits", values.sign_bits[index])
         .field("exponent-bits", values.exponent_bits[index])
         .field("significand-bits", values.significand_bits[index])
-        .field("bias", values.exponent_bias[index])
-        .build();
+        .field("bias", values.exponent_bias[index]);
+    add_projections(result, values.cpp_projection[index]);
+    return result.build();
 }
 auto CanonicalRenderer::build_optional_sentinel(codegen::DeclarationHandle const schema) -> Expr {
     auto const& values{store_.optional_sentinels};
     auto const index{values.index(schema)};
-    return ir_.form("optional-sentinel", {ir_.atom(values.name[index])})
-        .field("source", build_type_ref(values.source[index]))
-        .field("sentinel", ir_.atom(values.sentinel[index]))
-        .build();
+    auto result{ir_.form("optional-sentinel", {ir_.atom(values.name[index])})};
+    result.field("source", build_type_ref(values.source[index]))
+        .field("sentinel", ir_.atom(values.sentinel[index]));
+    add_projections(result, values.cpp_projection[index]);
+    return result.build();
 }
 auto CanonicalRenderer::build_optional_presence_bit(codegen::DeclarationHandle const schema)
     -> Expr {
     auto const& values{store_.optional_presence_bits};
     auto const index{values.index(schema)};
-    return ir_.form("optional-presence-bit", {ir_.atom(values.name[index])})
-        .field("source", build_type_ref(values.source[index]))
-        .build();
+    auto result{ir_.form("optional-presence-bit", {ir_.atom(values.name[index])})};
+    result.field("source", build_type_ref(values.source[index]));
+    add_projections(result, values.cpp_projection[index]);
+    return result.build();
 }
 auto CanonicalRenderer::build_record(codegen::DeclarationHandle const schema) -> Expr {
     auto const& records{store_.records};
     auto const index{records.index(schema)};
     auto result{ir_.form("record", {ir_.atom(records.name[index])})};
+    if (records.layout[index] == codegen::LayoutKind::packed) {
+        result.field("layout", ir_.atom("packed"));
+    }
+    result.optional_field("bits", records.bits[index]);
+    result.optional_field("invalid-value", records.invalid_value[index]);
+    if (records.bit_order[index]) {
+        result.field("bit-order", ir_.atom(to_serialized_string(*records.bit_order[index])));
+    }
+    if (records.byte_order[index]) {
+        result.field("byte-order", ir_.atom(to_serialized_string(*records.byte_order[index])));
+    }
     if (records.export_specifier[index].value != 0) {
         result.field("export-specifier", ir_.atom(records.export_specifier[index]));
     }
@@ -419,47 +419,29 @@ auto CanonicalRenderer::build_record(codegen::DeclarationHandle const schema) ->
                       items(records.s7_reader_includes[index]),
                       [this](auto value) { return ir_.string(value); });
     for (auto const member : items(records.members[index])) {
-        result.add(build_aggregate_child(store_.record_members, "member", member));
+        result.add(build_child(member));
     }
     for (auto const function : items(records.functions[index])) {
         result.add(build_function(function));
     }
+    add_projections(result, records.cpp_projection[index]);
     return result.build();
 }
 auto CanonicalRenderer::build_union(codegen::DeclarationHandle const schema) -> Expr {
     auto const& unions{store_.unions};
     auto const index{unions.index(schema)};
     auto result{ir_.form("union", {ir_.atom(unions.name[index])})};
+    if (unions.layout[index] == codegen::LayoutKind::packed) {
+        result.field("layout", ir_.atom("packed"));
+    }
+    result.optional_field("bits", unions.bits[index]);
     if (unions.export_specifier[index].value != 0) {
         result.field("export-specifier", ir_.atom(unions.export_specifier[index]));
     }
     for (auto const alternative : items(unions.alternatives[index])) {
-        result.add(build_aggregate_child(store_.union_alternatives, "alternative", alternative));
+        result.add(build_child(alternative));
     }
-    return result.build();
-}
-auto CanonicalRenderer::build_tagged_union_alternative(
-    codegen::TaggedUnionAlternativeId const alternative) -> Expr {
-    auto const& alternatives{store_.tagged_union_alternatives};
-    auto const index{alternatives.index(alternative)};
-    auto result{
-        ir_.form("alternative",
-                 {ir_.atom(alternatives.name[index]), build_type_ref(alternatives.type[index])})};
-    result.field("tag", ir_.atom(alternatives.tag[index]));
-    result.optional_field("count", alternatives.count[index]);
-    return result.build();
-}
-auto CanonicalRenderer::build_tagged_union(codegen::DeclarationHandle const schema) -> Expr {
-    auto const& unions{store_.tagged_unions};
-    auto const index{unions.index(schema)};
-    auto result{ir_.form("tagged-union", {ir_.atom(unions.name[index])})};
-    result.field("discriminant", build_type_ref(unions.discriminant[index]));
-    if (unions.export_specifier[index].value != 0) {
-        result.field("export-specifier", ir_.atom(unions.export_specifier[index]));
-    }
-    for (auto const alternative : items(unions.alternatives[index])) {
-        result.add(build_tagged_union_alternative(alternative));
-    }
+    add_projections(result, unions.cpp_projection[index]);
     return result.build();
 }
 auto CanonicalRenderer::build_soa_member(codegen::SoaMemberId const member) -> Expr {
@@ -610,14 +592,10 @@ auto CanonicalRenderer::build_declaration_schema(codegen::DeclarationHandle cons
             return build_optional_presence_bit(declaration);
         case codegen::DeclarationKind::mini_float:
             return build_mini_float(declaration);
-        case codegen::DeclarationKind::packed_value:
-            return build_packed_value(declaration);
         case codegen::DeclarationKind::record:
             return build_record(declaration);
         case codegen::DeclarationKind::union_type:
             return build_union(declaration);
-        case codegen::DeclarationKind::tagged_union:
-            return build_tagged_union(declaration);
         case codegen::DeclarationKind::soa:
             return build_soa(declaration);
         case codegen::DeclarationKind::static_table:
@@ -638,7 +616,9 @@ auto CanonicalRenderer::build_module(codegen::ModuleHandle const module) -> Expr
                     : module.kind() == codegen::ModuleKind::settings ? "settings-module"
                                                                      : "umbrella-module"};
     auto result{ir_.form(head, {ir_.atom(settings_store.name[index])})};
-    result.field("header", ir_.string(settings_store.header[index]));
+    if (settings_store.header[index].value != 0) {
+        result.field("header", ir_.string(settings_store.header[index]));
+    }
     result.optional_field("source", settings_store.source[index], string);
     result.optional_field("header-include", settings_store.header_include[index], string);
     result.optional_field("namespace", settings_store.namespace_name[index], atom);

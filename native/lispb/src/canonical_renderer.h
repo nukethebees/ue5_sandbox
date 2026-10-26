@@ -37,8 +37,10 @@ class CanonicalRenderer {
     auto build_function(codegen::FunctionSchemaId function, std::string_view kind = "function")
         -> Expr;
     auto build_semantic_relation(codegen::SemanticRelationId relationship) -> Expr;
-    auto build_packed_segment(codegen::PackedSegmentId segment) -> Expr;
-    auto build_packed_value(codegen::DeclarationHandle schema) -> Expr;
+    auto build_child(codegen::ChildOccurrenceId child) -> Expr;
+    void add_projections(codegen::sexpr::FormBuilder& owner,
+                         std::optional<codegen::CppProjection> const& cpp,
+                         std::optional<codegen::EnumUnrealProjectionId> unreal = {});
     auto build_named_code(codegen::PackedNamedCodeId code) -> Expr;
     auto build_integer_scalar(codegen::DeclarationHandle schema) -> Expr;
     auto build_linear_quantized(codegen::DeclarationHandle schema) -> Expr;
@@ -47,40 +49,8 @@ class CanonicalRenderer {
     auto build_mini_float(codegen::DeclarationHandle schema) -> Expr;
     auto build_optional_sentinel(codegen::DeclarationHandle schema) -> Expr;
     auto build_optional_presence_bit(codegen::DeclarationHandle schema) -> Expr;
-    template <typename Child>
-    auto build_aggregate_child(auto const& columns, std::string_view head, Child const child)
-        -> Expr {
-        auto const index{columns.index(child)};
-        auto result{
-            ir_.form(head, {ir_.atom(columns.name[index]), build_type_ref(columns.type[index])})};
-        result.optional_field("count", columns.count[index]);
-        if constexpr (std::is_same_v<Child, codegen::RecordMemberId>) {
-            auto const& s7{columns.s7[index]};
-            result.optional_field(
-                "s7-name", s7.name, [this](auto value) { return ir_.string(value); });
-            result.flag("required", s7.required);
-            result.flag("nonzero", s7.nonzero);
-            result.flag("positive", s7.positive);
-            result.flag("nonnegative", s7.nonnegative);
-            result.flag("finite", s7.finite);
-            result.flag("nonempty", s7.nonempty);
-            auto const number{[this](StringId value) { return ir_.atom(value); }};
-            result.optional_field("minimum", s7.minimum, number);
-            result.optional_field("maximum", s7.maximum, number);
-            result.flag("s7-exclude", s7.exclude);
-            if (columns.initializer[index]) {
-                result.field("initializer", ir_.string(*columns.initializer[index]));
-            }
-            if (columns.relationship[index].has_value()) {
-                result.add(build_semantic_relation(*columns.relationship[index]));
-            }
-        }
-        return result.build();
-    }
     auto build_record(codegen::DeclarationHandle schema) -> Expr;
     auto build_union(codegen::DeclarationHandle schema) -> Expr;
-    auto build_tagged_union_alternative(codegen::TaggedUnionAlternativeId alternative) -> Expr;
-    auto build_tagged_union(codegen::DeclarationHandle schema) -> Expr;
     auto build_soa_member(codegen::SoaMemberId member) -> Expr;
     auto build_soa(codegen::DeclarationHandle schema) -> Expr;
     auto build_static_table(codegen::DeclarationHandle schema) -> Expr;

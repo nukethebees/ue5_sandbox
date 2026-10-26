@@ -7,6 +7,9 @@ namespace lispb::schema {
 auto UnionTypes::append() -> TypeDefinitionId {
     auto const row{static_cast<std::uint32_t>(alternatives.size())};
     alternatives.push_back({});
+    layout.push_back(codegen::LayoutKind::native);
+    bits.emplace_back();
+    storage_type.emplace_back();
     return TypeDefinitionId{(static_cast<std::uint32_t>(TypeDefinitionKind::union_type) << 24) |
                             row};
 }
@@ -17,12 +20,12 @@ auto UnionTypes::index(TypeDefinitionId const id) const -> std::uint32_t {
     return row;
 }
 auto UnionTypes::alternatives_of(TypeDefinitionId const id) const
-    -> std::span<UnionAlternativeId const> {
+    -> std::span<ChildOccurrenceId const> {
     auto const range{alternatives[index(id)]};
     return std::span{alternatives_values}.subspan(range.begin, range.count);
 }
 void UnionTypes::set_alternatives(TypeDefinitionId const id,
-                                  std::span<UnionAlternativeId const> const values) {
+                                  std::span<ChildOccurrenceId const> const values) {
     alternatives[index(id)] = {static_cast<std::uint32_t>(alternatives_values.size()),
                                static_cast<std::uint32_t>(values.size())};
     alternatives_values.insert(alternatives_values.end(), values.begin(), values.end());

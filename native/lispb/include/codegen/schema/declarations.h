@@ -1,5 +1,6 @@
 #pragma once
 
+#include <codegen/schema/child_occurrences.h>
 #include <codegen/schema/declaration_handle.h>
 #include <codegen/schema/declaration_kind.h>
 #include <codegen/schema/enum_conversion.h>
@@ -22,14 +23,8 @@
 #include <codegen/schema/normal_module_schemas.h>
 #include <codegen/schema/optional_presence_bit_schemas.h>
 #include <codegen/schema/optional_sentinel_schemas.h>
-#include <codegen/schema/packed_field_schemas.h>
 #include <codegen/schema/packed_named_code_schemas.h>
-#include <codegen/schema/packed_reserved_bits_schemas.h>
-#include <codegen/schema/packed_segment_id.h>
-#include <codegen/schema/packed_segment_kind.h>
-#include <codegen/schema/packed_value_schemas.h>
 #include <codegen/schema/parameter_schemas.h>
-#include <codegen/schema/record_member_schemas.h>
 #include <codegen/schema/record_schemas.h>
 #include <codegen/schema/schema_range.h>
 #include <codegen/schema/semantic_relation_schemas.h>
@@ -44,11 +39,8 @@
 #include <codegen/schema/static_table_group_schemas.h>
 #include <codegen/schema/static_table_row_schemas.h>
 #include <codegen/schema/static_table_schemas.h>
-#include <codegen/schema/tagged_union_alternative_schemas.h>
-#include <codegen/schema/tagged_union_schemas.h>
 #include <codegen/schema/type_refs.h>
 #include <codegen/schema/umbrella_module_schemas.h>
-#include <codegen/schema/union_alternative_schemas.h>
 #include <codegen/schema/union_schemas.h>
 #include <lispb/indices.h>
 
@@ -75,7 +67,6 @@ class Declarations {
     // Clone a version before editing; published handles remain valid for document history.
     auto clone(DeclarationHandle id) -> DeclarationHandle;
     auto clone(ModuleHandle id) -> ModuleHandle;
-    auto clone(PackedSegmentId id) -> PackedSegmentId;
     auto module_settings(ModuleHandle id) const -> ModuleSettingsId;
     void clear();
     template <typename Id>
@@ -103,6 +94,7 @@ class Declarations {
         return range(std::span<Id const>{values.begin(), values.size()});
     }
 
+    ChildOccurrences child_occurrences;
     EnumeratorSchemas enumerators;
     EnumSchemas enums;
     EnumUnrealProjections enum_unreal_projections;
@@ -119,11 +111,7 @@ class Declarations {
     OptionalPresenceBitSchemas optional_presence_bits;
     OptionalSentinelSchemas optional_sentinels;
     PackedNamedCodeSchemas packed_named_codes;
-    PackedFieldSchemas packed_fields;
-    PackedReservedBitsSchemas packed_reserved_bits;
-    PackedValueSchemas packed_values;
     ParameterSchemas parameters;
-    RecordMemberSchemas record_members;
     RecordSchemas records;
     SemanticRelationSchemas semantic_relations;
     SettingCategorySchemas setting_categories;
@@ -137,16 +125,15 @@ class Declarations {
     StaticTableGroupSchemas static_table_groups;
     StaticTableRowSchemas static_table_rows;
     StaticTableSchemas static_tables;
-    TaggedUnionAlternativeSchemas tagged_union_alternatives;
-    TaggedUnionSchemas tagged_unions;
     TypeRefs type_refs;
     UmbrellaModuleSchemas umbrella_modules;
-    UnionAlternativeSchemas union_alternatives;
     UnionSchemas unions;
   private:
     template <typename Id>
     auto item_storage() const -> std::vector<Id> const& {
-        if constexpr (std::same_as<Id, TypeRefId>) {
+        if constexpr (std::same_as<Id, ChildOccurrenceId>) {
+            return child_occurrence_items_;
+        } else if constexpr (std::same_as<Id, TypeRefId>) {
             return type_ref_items_;
         } else if constexpr (std::same_as<Id, DeclarationHandle>) {
             return declaration_handle_items_;
@@ -162,12 +149,8 @@ class Declarations {
             return native_enum_helper_items_;
         } else if constexpr (std::same_as<Id, PackedNamedCodeId>) {
             return packed_named_code_id_items_;
-        } else if constexpr (std::same_as<Id, PackedSegmentId>) {
-            return packed_segment_id_items_;
         } else if constexpr (std::same_as<Id, ParameterId>) {
             return parameter_id_items_;
-        } else if constexpr (std::same_as<Id, RecordMemberId>) {
-            return record_member_id_items_;
         } else if constexpr (std::same_as<Id, SettingCategoryId>) {
             return setting_category_id_items_;
         } else if constexpr (std::same_as<Id, SettingId>) {
@@ -182,12 +165,6 @@ class Declarations {
             return static_table_group_id_items_;
         } else if constexpr (std::same_as<Id, StaticTableRowId>) {
             return static_table_row_id_items_;
-        } else if constexpr (std::same_as<Id, TaggedUnionAlternativeId>) {
-            return tagged_union_alternative_id_items_;
-        } else if constexpr (std::same_as<Id, TypeRefId>) {
-            return type_ref_id_items_;
-        } else if constexpr (std::same_as<Id, UnionAlternativeId>) {
-            return union_alternative_id_items_;
         } else if constexpr (std::same_as<Id, StringId>) {
             return string_id_items_;
         } else {
@@ -201,6 +178,7 @@ class Declarations {
     }
 
     Strings* strings_;
+    std::vector<ChildOccurrenceId> child_occurrence_items_;
     std::vector<TypeRefId> type_ref_items_;
     std::vector<DeclarationHandle> declaration_handle_items_;
     std::vector<EnumConversion> enum_conversion_items_;
@@ -209,9 +187,7 @@ class Declarations {
     std::vector<FunctionSchemaId> function_schema_id_items_;
     std::vector<NativeEnumHelper> native_enum_helper_items_;
     std::vector<PackedNamedCodeId> packed_named_code_id_items_;
-    std::vector<PackedSegmentId> packed_segment_id_items_;
     std::vector<ParameterId> parameter_id_items_;
-    std::vector<RecordMemberId> record_member_id_items_;
     std::vector<SettingCategoryId> setting_category_id_items_;
     std::vector<SettingId> setting_id_items_;
     std::vector<SoaMaskDimensionId> soa_mask_dimension_id_items_;
@@ -219,9 +195,6 @@ class Declarations {
     std::vector<StaticTableColumnId> static_table_column_id_items_;
     std::vector<StaticTableGroupId> static_table_group_id_items_;
     std::vector<StaticTableRowId> static_table_row_id_items_;
-    std::vector<TaggedUnionAlternativeId> tagged_union_alternative_id_items_;
-    std::vector<TypeRefId> type_ref_id_items_;
-    std::vector<UnionAlternativeId> union_alternative_id_items_;
     std::vector<StringId> string_id_items_;
 };
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <codegen/schema/packed_segment_id.h>
+#include <codegen/schema/indices.h>
 
 #include <optional>
 #include <string_view>
@@ -10,16 +10,16 @@ class Declarations;
 
 namespace lispb::schema {
 
-class FieldQuery {
+class ChildQuery {
   public:
-    FieldQuery(codegen::Declarations const& store, std::optional<codegen::PackedSegmentId> field);
+    ChildQuery(codegen::Declarations const& store, std::optional<codegen::ChildOccurrenceId> child);
     auto exists() const -> bool;
     auto name() const -> std::optional<std::string_view>;
-    auto bits() const -> std::optional<int>;
+    auto bits() const -> std::optional<std::uint32_t>;
     auto type() const -> std::optional<std::string_view>;
   private:
     codegen::Declarations const* store_;
-    std::optional<codegen::PackedSegmentId> field_;
+    std::optional<codegen::ChildOccurrenceId> child_;
 };
 
 }

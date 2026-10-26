@@ -2,23 +2,31 @@
   :header "ReadableRecords.h"
   :namespace codegen_compile_fixture
   (enum ReaderEnum std::uint8_t :native-api true :helpers (traits to-serialized-string)
-    (value Mixed :serialized-name "MixedCase"))
-  (record EmptyReadable :generate-s7-reader true :s7-tag "empty")
-  (record EmptyPositional :generate-s7-reader true :s7-tag "empty-position" :s7-positional true)
+    (value Mixed :serialized-name "MixedCase")
+    (projections (cpp)))
+  (record EmptyReadable :generate-s7-reader true :s7-tag "empty"
+    (projections (cpp)))
+  (record EmptyPositional :generate-s7-reader true :s7-tag "empty-position" :s7-positional true
+    (projections (cpp)))
   (record PositionalChild :generate-visitor true :generate-s7-reader true :s7-tag "position" :s7-positional true
     (member name @reader_nonempty_string :required true)
-    (member count int :nonnegative true))
+    (member count int :nonnegative true)
+    (projections (cpp)))
   (record DefaultReadable :generate-visitor true :generate-s7-reader true :s7-tag "default"
     (member count int :initializer 2 :required true)
-    (member maybe @fixture_optional_int :initializer 7))
+    (member maybe @fixture_optional_int :initializer 7)
+    (projections (cpp)))
   (record RecursiveReadable :generate-visitor true :generate-s7-reader true :s7-tag "recursive"
-    (member children @reader_recursive :initializer ""))
+    (member children @reader_recursive :initializer "")
+    (projections (cpp)))
   (record BoundedInteger :generate-s7-reader true :s7-tag "integer"
-    (member value std::int64_t :required true :minimum -9223372036854775808 :maximum 9223372036854775806))
+    (member value std::int64_t :required true :minimum -9223372036854775808 :maximum 9223372036854775806)
+    (projections (cpp)))
   (record ReadableChild :generate-visitor true
     :generate-s7-reader true :s7-tag "child"
     (member name @reader_nonempty_string :required true)
-    (member count int :initializer "2" :nonnegative true))
+    (member count int :initializer "2" :nonnegative true)
+    (projections (cpp)))
   (record ReadableRecord :generate-visitor true :generate-s7-reader true :s7-tag "record"
     (member child ReadableChild :required true)
     (member values @reader_children :initializer "")
@@ -28,46 +36,61 @@
     (member scale float :initializer "1.f" :positive true :finite true :minimum 0.5 :maximum 5)
     (member offset int :initializer "1" :nonzero true)
     (member title @reader_string :initializer "\"untitled\"" :nonempty true)
-    (member mode codegen_compile_fixture::EPlainFixture :initializer "codegen_compile_fixture::EPlainFixture::First")))
+    (member mode codegen_compile_fixture::EPlainFixture :initializer "codegen_compile_fixture::EPlainFixture::First")
+    (projections (cpp))))
 
 (module reader_dependency_fixture
   :header "ReaderDependency.h"
   :namespace codegen_compile_fixture
   (record ReaderDependency :generate-s7-reader true :s7-tag "dependent"
-    (member child codegen_compile_fixture::ReadableChild :required true)))
+    (member child codegen_compile_fixture::ReadableChild :required true)
+    (projections (cpp))))
 
 (module unsupported_reader_fixture
   :header "UnsupportedReader.h"
   :namespace codegen_compile_fixture
   (record UnsupportedReader :generate-s7-reader true :s7-tag "unsupported"
-    (member target @target :initializer "")))
+    (member target @target :initializer "")
+    (projections (cpp))))
 
 (module records_fixture
   :header "Records.h"
   :namespace codegen_compile_fixture
   :prelude ("#include <compile_fixture/range_policy.hpp>")
+  (integer-scalar ReaderHealth :bit-width 8 :minimum 0 :maximum 100
+    (projections (cpp)))
+  (record ScalarSettings :generate-s7-reader true :s7-tag "scalar"
+    (member health @ReaderHealth :required true :minimum 10 :maximum 90)
+    (projections (cpp)))
   (record Range :generate-visitor true :constraint-policy codegen_compile_fixture::range_policy
     :comparison equality :generate-s7-reader true :s7-tag "range"
     (member minimum int :initializer 0 :required true)
-    (member maximum int :initializer 10 :required true))
+    (member maximum int :initializer 10 :required true)
+    (projections (cpp)))
   (record RangeSettings :generate-visitor true
     :generate-s7-reader true :s7-tag "ranges"
     (member range Range :initializer "")
-    (member enabled bool :initializer true))
-  (record ApiPair :generate-visitor true (member x float) (member y float))
+    (member enabled bool :initializer true)
+    (projections (cpp)))
+  (record ApiPair :generate-visitor true (member x float) (member y float)
+    (projections (cpp)))
   (record FormerVisitorNames :generate-visitor true
-    (member Count int) (member field_name int))
-  (record EmptySettings :generate-visitor true :generate-s7-reader true :s7-tag "empty-settings")
+    (member Count int) (member field_name int)
+    (projections (cpp)))
+  (record EmptySettings :generate-visitor true :generate-s7-reader true :s7-tag "empty-settings"
+    (projections (cpp)))
   (record WeaponSettings :generate-visitor true
     :generate-s7-reader true :s7-tag "weapon"
     (member damage int :initializer "5" :required true :nonnegative true)
     (member turn_rate float :initializer "2.f" :s7-name "turn-speed")
-    (member asset_distance float :initializer "9.f" :s7-exclude true))
+    (member asset_distance float :initializer "9.f" :s7-exclude true)
+    (projections (cpp)))
   (record ActorSettings :generate-visitor true
     :generate-s7-reader true :s7-tag "actor"
     (member max_health int :initializer "100")
     (member weapon WeaponSettings :initializer "")
-    (member optional_limit @fixture_optional_int :initializer "3")))
+    (member optional_limit @fixture_optional_int :initializer "3")
+    (projections (cpp))))
 
 (module nested_settings_fixture
   :header "NestedSettings.h"
@@ -76,7 +99,8 @@
     :generate-s7-reader true :s7-tag "settings"
     (member first codegen_compile_fixture::ActorSettings :initializer "")
     (member second codegen_compile_fixture::ActorSettings :initializer "")
-    (member external_value int :initializer 0)))
+    (member external_value int :initializer 0)
+    (projections (cpp))))
 
 (module field_masks_fixture
   :header "FieldMasks.h"
@@ -152,72 +176,78 @@
       :serialized-name first)
     (value ReadableName
       :display-name "Readable Name"
-      :serialized-name readable_name))
+      :serialized-name readable_name)
+    (projections (cpp)))
   (enum ENameOnlyFixture std::int32_t
     :native-api true :helpers (to-string try-parse try-parse-serialized formatter)
     (value First :serialized-name first)
-    (value Second :serialized-name second))
+    (value Second :serialized-name second)
+    (projections (cpp)))
   (enum EReorderedFixture std::uint8_t
     :native-api true :helpers (to-string to-serialized-string try-parse-serialized)
     (value Later :value 2 :serialized-name later)
     (value First :value 0 :serialized-name first)
-    (value Second :serialized-name second))
+    (value Second :serialized-name second)
+    (projections (cpp)))
   (enum EMissingNames std::int32_t
     :native-api true :count Count
     :helpers (to-string to-display-string to-serialized-string traits)
     (value Unnamed :serialized-name unnamed)
     (value Empty :serialized-name empty)
     (value Escaped :display-name "quote\"\\line\n" :serialized-name "2digits")
-    (value Count)))
+    (value Count)
+    (projections (cpp))))
 
 (module packed_enum_fixture
   :header "PackedEnums.h"
   :namespace codegen_compile_fixture
-  (enum PackedState @standard_uint8
+  (enum PackedState @standard_uint8 :bit-width 8
     (value Zero :value "0x00")
     (value AB :value "0xAB")
-    (value Max :value "0xFF"))
-  (enum OpaqueState @standard_uint8
+    (value Max :value "0xFF")
+    (projections (cpp)))
+  (enum OpaqueState @standard_uint8 :bit-width 8
     (value Zero
       :value "static_cast<std::uint8_t>(PackedState::Zero)")
     (value Max
-      :value "static_cast<std::uint8_t>(PackedState::Max)"))
-  (enum TinyState @standard_uint8
+      :value "static_cast<std::uint8_t>(PackedState::Max)")
+    (projections (cpp)))
+  (enum TinyState @standard_uint8 :bit-width 2
     (value Zero :value "0")
     (value One :value "1")
-    (value Max :value "3"))
-  (enum DomainState @standard_uint8
+    (value Max :value "3")
+    (projections (cpp)))
+  (enum DomainState @standard_uint8 :bit-width 8
     :enum-array true
     (value Zero)
-    (value One)))
+    (value One)
+    (projections (cpp))))
 
 (module scalar_fixture
   :header "ScalarValues.h"
   :namespace codegen_compile_fixture
   (integer-scalar RegisteredInt :signed true :minimum -100 :maximum 100
-    :cpp-emission alias :cpp-type @native_int32)
+    (projections (cpp :storage std::uint32_t)))
   (integer-scalar StandardInt :signed true :minimum -100 :maximum 100
-    :cpp-emission alias :cpp-type std::int32_t)
+    (projections (cpp :storage std::uint32_t)))
   (integer-scalar DamageCode :signed false :minimum 0 :maximum 10
-    :cpp-emission constants :cpp-type @standard_uint8
-    (code Laser :value 1))
+    (code Laser :value 1)
+    (projections (cpp :storage @standard_uint8)))
   (integer-scalar DamageReason
     :signed false
     :minimum 0
     :maximum 10
     :bit-width auto
-    :cpp-emission constants-with-names
-    :cpp-type @standard_uint8
     (code Unknown :value 0)
     (code Laser :value 1)
-    (code Invalid :value 255 :sentinel true))
+    (code Invalid :value 255 :sentinel true)
+    (projections (cpp :storage @standard_uint8)))
   (integer-scalar Health
     :signed false
     :minimum 0
     :maximum 1000
     :bit-width auto
-    :cpp-type @standard_uint16
-    :cpp-emission alias))
+    (projections (cpp :storage @standard_uint16))))
 
 (module representation_fixture
   :header "Representations.h"
@@ -246,93 +276,117 @@
 (module packed_value_fixture
   :header "PackedValues.h"
   :namespace codegen_compile_fixture
-  (packed-value Defaults :storage std::uint16_t :mutable true
-    (field low std::uint8_t :bits 3 :default 5)
+  (integer-scalar Defaults_lowEncoding :signed false :bit-width 3)
+        (integer-scalar Defaults_deltaEncoding :signed true :bit-width 5)
+        (record Defaults :layout packed :bits 16
+    (member low @Defaults_lowEncoding :default 5)
     (reserved gap :bits 2)
-    (field delta std::int8_t :bits 5 :kind signed :default -3))
-  (packed-value DefaultsMsb :storage std::uint16_t :bit-order msb-first
-    (field low std::uint8_t :bits 3 :default 5)
+    (member delta @Defaults_deltaEncoding :default -3)
+    (projections (cpp :storage std::uint16_t)))
+  (integer-scalar DefaultsMsb_lowEncoding :signed false :bit-width 3)
+        (integer-scalar DefaultsMsb_deltaEncoding :signed true :bit-width 5)
+        (record DefaultsMsb :layout packed :bits 16 :bit-order msb-first
+    (member low @DefaultsMsb_lowEncoding :default 5)
     (reserved gap :bits 2)
-    (field delta std::int8_t :bits 5 :kind signed :default -3))
-  (packed-value PartialDefaults :storage std::uint8_t :mutable true
-    (field first std::uint8_t :bits 2 :default 1)
-    (field gap std::uint8_t :bits 2)
-    (field last std::uint8_t :bits 2 :default 3))
-  (packed-value PackedSingle
-    :storage std::uint8_t
+    (member delta @DefaultsMsb_deltaEncoding :default -3)
+    (projections (cpp :storage std::uint16_t)))
+  (integer-scalar PartialDefaults_firstEncoding :signed false :bit-width 2)
+        (integer-scalar PartialDefaults_gapEncoding :signed false :bit-width 2)
+        (integer-scalar PartialDefaults_lastEncoding :signed false :bit-width 2)
+        (record PartialDefaults :layout packed :bits 8
+    (member first @PartialDefaults_firstEncoding :default 1)
+    (member gap @PartialDefaults_gapEncoding)
+    (member last @PartialDefaults_lastEncoding :default 3)
+    (projections (cpp :storage std::uint8_t)))
+  (integer-scalar PackedSingle_valueEncoding :signed false :bit-width 4)
+        (record PackedSingle
+    :layout packed :bits 8
     (reserved low :bits 4)
-    (field value std::uint8_t :bits 4))
-  (packed-value FighterState
-    :storage std::uint32_t
-    :mutable true
-    (field entity_index std::uint32_t :bits 24)
-    (field state @packed_state :bits 8 :kind enum))
-  (packed-value PackedByte
-    :storage std::uint8_t
-    :mutable true
-    (field low std::uint8_t :bits 3)
-    (field flag bool :bits 1)
-    (field high std::uint8_t :bits 4))
-  (packed-value NetworkHeader
-    :storage std::uint32_t
-    :mutable true
+    (member value @PackedSingle_valueEncoding)
+    (projections (cpp :storage std::uint8_t)))
+  (integer-scalar FighterState_entity_indexEncoding :signed false :bit-width 24)
+        (record FighterState
+    :layout packed :bits 32
+    (member entity_index @FighterState_entity_indexEncoding)
+    (member state @packed_state :bits 8)
+    (projections (cpp :storage std::uint32_t)))
+  (integer-scalar PackedByte_lowEncoding :signed false :bit-width 3)
+        (integer-scalar PackedByte_highEncoding :signed false :bit-width 4)
+        (record PackedByte
+    :layout packed :bits 8
+    (member low @PackedByte_lowEncoding)
+    (member flag bool :bits 1)
+    (member high @PackedByte_highEncoding)
+    (projections (cpp :storage std::uint8_t)))
+  (integer-scalar NetworkHeader_versionEncoding :signed false :bit-width 4)
+        (record NetworkHeader
+    :layout packed :bits 32
     :byte-order big
     :bit-order msb-first
-    (field version std::uint8_t :bits 4)
-    (field kind std::uint8_t :bits 8)
+    (member version @NetworkHeader_versionEncoding)
+    (member kind std::uint8_t :bits 8)
     (reserved future :bits 4)
-    (field length std::uint16_t :bits 16))
-  (packed-value PackedWide
-    :storage std::uint64_t
-    :mutable true
-    (field value std::uint64_t :bits auto :minimum 0 :maximum 18446744073709551615))
-  (packed-value SignedDelta
-    :storage std::uint32_t
-    :mutable true
-    (field delta std::int32_t :bits 17 :kind signed)
-    (reserved future :bits 15))
-  (packed-value SignedWide
-    :storage std::uint64_t
-    :mutable true
-    (field delta std::int64_t :bits auto :kind signed
-      :minimum -9223372036854775808 :maximum 9223372036854775807))
-  (packed-value SignedTemperature
-    :storage std::uint32_t
-    :mutable true
-    (field temperature std::int16_t :bits auto :kind signed :minimum -100 :maximum 100
-      (code Freezing :value 0)
-      (code Unknown :value -128 :sentinel true))
-    (reserved future :bits 24))
-  (packed-value PackedTinyState
-    :storage std::uint8_t
-    :mutable true
-    (field state @tiny_state :bits 2 :kind enum)
-    (field payload std::uint8_t :bits 6))
-  (packed-value PackedOpaqueState
-    :storage std::uint8_t
-    :mutable true
-    (field state @opaque_state :bits 8 :kind enum))
-  (packed-value CheckedValue
-    :storage std::uint32_t
+    (member length std::uint16_t :bits 16)
+    (projections (cpp :storage std::uint32_t)))
+  (integer-scalar PackedWide_valueEncoding :signed false :minimum 0 :maximum 18446744073709551615)
+        (record PackedWide
+    :layout packed :bits 64
+    (member value @PackedWide_valueEncoding)
+    (projections (cpp :storage std::uint64_t)))
+  (integer-scalar SignedDelta_deltaEncoding :signed true :bit-width 17)
+        (record SignedDelta
+    :layout packed :bits 32
+    (member delta @SignedDelta_deltaEncoding)
+    (reserved future :bits 15)
+    (projections (cpp :storage std::uint32_t)))
+  (integer-scalar SignedWide_deltaEncoding :signed true :minimum -9223372036854775808 :maximum 9223372036854775807)
+        (record SignedWide
+    :layout packed :bits 64
+    (member delta @SignedWide_deltaEncoding)
+    (projections (cpp :storage std::uint64_t)))
+  (integer-scalar SignedTemperature_temperatureEncoding :signed true :minimum -100 :maximum 100 (code Freezing :value 0) (code Unknown :value -128 :sentinel true))
+        (record SignedTemperature
+    :layout packed :bits 32
+    (member temperature @SignedTemperature_temperatureEncoding
+
+      )
+    (reserved future :bits 24)
+    (projections (cpp :storage std::uint32_t)))
+  (integer-scalar PackedTinyState_payloadEncoding :signed false :bit-width 6)
+        (record PackedTinyState
+    :layout packed :bits 8
+    (member state @tiny_state :bits 2)
+    (member payload @PackedTinyState_payloadEncoding)
+    (projections (cpp :storage std::uint8_t)))
+  (record PackedOpaqueState
+    :layout packed :bits 8
+    (member state @opaque_state :bits 8)
+    (projections (cpp :storage std::uint8_t)))
+  (integer-scalar CheckedValue_serialEncoding :signed false :bit-width 24)
+        (record CheckedValue
+    :layout packed :bits 32
     :invalid-value 0x7fffffff
-    (field serial std::uint32_t :bits 24 :range-helper true)
-    (field state @domain_state :bits 8 :kind enum))
-  (packed-value Vitals
-    :storage std::uint16_t
-    :mutable true
-    (field health codegen_compile_fixture::HealthQ8 :bits auto :kind linear-quantized)
-    (field state std::uint8_t :bits 8))
-  (packed-value Motion
-    :storage std::uint32_t
-    :mutable true
-    (field velocity codegen_compile_fixture::VelocityQ8_4 :bits auto :kind fixed-point)
-    (field fraction codegen_compile_fixture::FractionQ0_7 :bits auto :kind fixed-point)
-    (field state std::uint16_t :bits 13))
-  (packed-value PackedMiniFloat
-    :storage std::uint16_t
-    :mutable true
-    (field component codegen_compile_fixture::PositionF12 :bits auto :kind mini-float)
-    (field state std::uint8_t :bits 4)))
+    (member serial @CheckedValue_serialEncoding)
+    (member state @domain_state :bits 8)
+    (projections (cpp :storage std::uint32_t)))
+  (record Vitals
+    :layout packed :bits 16
+    (member health codegen_compile_fixture::HealthQ8 :bits auto)
+    (member state std::uint8_t :bits 8)
+    (projections (cpp :storage std::uint16_t)))
+  (integer-scalar Motion_stateEncoding :signed false :bit-width 13)
+        (record Motion
+    :layout packed :bits 32
+    (member velocity codegen_compile_fixture::VelocityQ8_4 :bits auto)
+    (member fraction codegen_compile_fixture::FractionQ0_7 :bits auto)
+    (member state @Motion_stateEncoding)
+    (projections (cpp :storage std::uint32_t)))
+  (integer-scalar PackedMiniFloat_stateEncoding :signed false :bit-width 4)
+        (record PackedMiniFloat
+    :layout packed :bits 16
+    (member component codegen_compile_fixture::PositionF12 :bits auto)
+    (member state @PackedMiniFloat_stateEncoding)
+    (projections (cpp :storage std::uint16_t))))
 
 (module inline_facade_fixture
   :header "InlineFacade.h"
@@ -377,76 +431,102 @@
   :header "Mixed.h"
   :namespace codegen_compile_fixture::mixed
   (record CrossSettings :generate-visitor true :generate-s7-reader true :s7-tag "cross"
-    (member actor codegen_compile_fixture::ActorSettings :initializer ""))
+    (member actor codegen_compile_fixture::ActorSettings :initializer "")
+    (projections (cpp)))
   (record DefaultArguments
     (function value int (parameter value DefaultValue :default "{}"))
     (function reference int
       (parameter value (type-ref DefaultReference :suffix " const&") :default "{}"))
     (function pointer bool
       (parameter value (type-ref DefaultPointer :suffix "*") :default "nullptr"))
-    (function cross void (parameter value codegen_compile_fixture::second::B :default "{}")))
-  (record DefaultValue (member value int :initializer "7"))
-  (record DefaultReference (member value int :initializer "9"))
-  (record DefaultPointer)
+    (function cross void (parameter value codegen_compile_fixture::second::B :default "{}"))
+    (projections (cpp)))
+  (record DefaultValue (member value int :initializer "7")
+    (projections (cpp)))
+  (record DefaultReference (member value int :initializer "9")
+    (projections (cpp)))
+  (record DefaultPointer
+    (projections (cpp)))
   (record MethodConsumer
     (function make MethodProvider)
     (function accept void (parameter value MethodProvider))
     (function ref auto :trailing-return-type (type-ref MethodProvider :suffix " const&"))
     (function mode Kind)
     (function raw Payload)
-    (function count (type-ref MethodCount :suffix " const&")))
+    (function count (type-ref MethodCount :suffix " const&"))
+    (projections (cpp)))
   (record PointerFactory
     (function empty_pointer "void*" :static true :constexpr true :nodiscard true
       :body ("return nullptr;"))
     (function pointer (type-ref MethodProvider :suffix "*") :body ("return nullptr;"))
     (function ref (type-ref MethodProvider :suffix "&")
-      (parameter value (type-ref MethodProvider :suffix "&")) :body ("return value;")))
+      (parameter value (type-ref MethodProvider :suffix "&")) :body ("return value;"))
+    (projections (cpp)))
   (record ValueFactory
     (function make auto :trailing-return-type MethodProvider :body ("return {};"))
     (function accept void (parameter value MethodArgument) :body ("(void)value;"))
-    (function self ValueFactory :body ("return *this;")))
-  (record MethodProvider (function consumer MethodConsumer))
-  (record MethodArgument)
+    (function self ValueFactory :body ("return *this;"))
+    (projections (cpp)))
+  (record MethodProvider (function consumer MethodConsumer)
+    (projections (cpp)))
+  (record MethodArgument
+    (projections (cpp)))
   (integer-scalar MethodCount :signed false :minimum 0 :maximum 255 :bit-width 8
-    :cpp-emission alias :cpp-type std::uint8_t)
+    (projections (cpp :storage std::uint8_t)))
   (record CrossModuleReader
     (function make codegen_compile_fixture::ApiPair)
     (function accept void
       (parameter value (type-ref codegen_compile_fixture::ApiPair :suffix " const&")))
     (function pointer auto
-      :trailing-return-type (type-ref codegen_compile_fixture::ApiPair :suffix "*")))
-  (record Uninitialized (member value int))
+      :trailing-return-type (type-ref codegen_compile_fixture::ApiPair :suffix "*"))
+    (projections (cpp)))
+  (record Uninitialized (member value int)
+    (projections (cpp)))
   (record ValueDefaults :comparison equality
     (member uninitialized int)
     (member zero int :initializer "")
     (member seven int :initializer "7")
-    (function valid bool :const true :noexcept true :nodiscard true))
+    (function valid bool :const true :noexcept true :nodiscard true)
+    (projections (cpp)))
   (record SpanValue :comparison three-way :comparison-noexcept true
     (member offset std::int32_t :initializer "0")
     (member count std::int32_t :initializer "0")
     (function end std::int32_t :const true :noexcept true :constexpr true :nodiscard true
-      :body ("return offset + count;")))
-  (record Packet (member payload Payload))
-  (tagged-union Event :discriminant Kind
-    (alternative data Packet :tag Data))
-  (union Payload (alternative position Position))
+      :body ("return offset + count;"))
+    (projections (cpp)))
+  (record Packet (member payload Payload)
+    (projections (cpp)))
+  (union EventPayload
+    (member data Packet :case Data)
+    (projections (cpp)))
+  (record Event
+    (member tag Kind)
+    (member payload EventPayload :tag tag)
+    (projections (cpp)))
+  (union Payload (member position Position)
+    (projections (cpp)))
   (record Position
     (member x float)
-    (member y float))
+    (member y float)
+    (projections (cpp)))
   (record NamespaceLookup
     (member local codegen_compile_fixture::mixed::Position :count 2)
     (member parent codegen_compile_fixture::ApiPair)
-    (member sibling codegen_compile_fixture::second::B))
+    (member sibling codegen_compile_fixture::second::B)
+    (projections (cpp)))
   (record HiddenLookup
     (member Position int :initializer "7")
     (member token codegen_compile_fixture::mixed::Position :initializer "")
-    (member mixed int :initializer "0"))
+    (member mixed int :initializer "0")
+    (projections (cpp)))
   (record ParameterLookup
     (function select codegen_compile_fixture::mixed::Position :static true
       (parameter Position int)
       (parameter value codegen_compile_fixture::mixed::Position)
-      :body ("(void)Position;" "return value;")))
-  (enum Kind @standard_uint8 (value Data)))
+      :body ("(void)Position;" "return value;"))
+    (projections (cpp)))
+  (enum Kind @standard_uint8 (value Data)
+    (projections (cpp))))
 
 (module signature_first
   :header "SignatureFirst.h"
@@ -460,7 +540,8 @@
       (parameter value (type-ref codegen_compile_fixture::second::B :suffix " const&")))
     (function move auto :trailing-return-type (type-ref codegen_compile_fixture::second::B :suffix "&&")
       (parameter value (type-ref codegen_compile_fixture::second::B :suffix "&&")))
-    (function payload codegen_compile_fixture::second::Payload)))
+    (function payload codegen_compile_fixture::second::Payload)
+    (projections (cpp))))
 
 (module signature_second
   :header "SignatureSecond.h"
@@ -470,8 +551,10 @@
     (function make auto :trailing-return-type codegen_compile_fixture::first::A)
     (function pointer auto :trailing-return-type (type-ref codegen_compile_fixture::first::A :suffix "*"))
     (function ref auto :trailing-return-type (type-ref codegen_compile_fixture::first::A :suffix " const&")
-      (parameter value (type-ref codegen_compile_fixture::first::A :suffix " const&"))))
-  (union Payload (alternative value int)))
+      (parameter value (type-ref codegen_compile_fixture::first::A :suffix " const&")))
+    (projections (cpp)))
+  (union Payload (member value int)
+    (projections (cpp))))
 
 (module signature_definitions
   :header "SignatureDefinitions.h"
@@ -482,8 +565,78 @@
     (function make_second auto :trailing-return-type codegen_compile_fixture::second::B :body ("return {};"))
     (function accept void (parameter value codegen_compile_fixture::first::A) :body ("(void)value;"))
     (function count codegen_compile_fixture::StandardInt)
-    (function tag codegen_compile_fixture::mixed::Kind)))
+    (function tag codegen_compile_fixture::mixed::Kind)
+    (projections (cpp))))
+
+(module unified_packed_fixture
+  :header "UnifiedPacked.h"
+  :namespace codegen_compile_fixture::unified
+
+  (integer-scalar EntityIndex :bit-width 24 (projections (cpp)))
+  (integer-scalar EntityKind :bit-width 8)
+  (integer-scalar LocationIndex :bit-width 32)
+  (integer-scalar InstructionOffset :bit-width 24)
+  (integer-scalar SignedOffset :bit-width 16 :signed true (projections (cpp)))
+  (enum Opcode :bit-width 6 :native-api true
+    (value KillEntity) (value MoveTo) (value Jump)
+    (projections (cpp)))
+
+  (record EntityId :layout packed
+    (member index @EntityIndex)
+    (member entity_type @EntityKind)
+    (projections (cpp)))
+  (record WideEntityId :layout packed
+    (member index @EntityIndex)
+    (member entity_type @EntityKind)
+    (projections (cpp :storage std::uint64_t)))
+  (record NestedId :layout packed :bits 64
+    (member prefix @EntityKind)
+    (member target @WideEntityId)
+    (projections (cpp)))
+
+  (record KillEntity (member target @EntityId))
+  (record MoveTo (member destination @LocationIndex))
+  (record Jump (member destination @InstructionOffset))
+  (union InstructionPayload @KillEntity @MoveTo @Jump)
+  (union Target :layout packed @EntityIndex @LocationIndex @InstructionOffset
+    (projections (cpp)))
+  (record Instruction :layout packed :bits 64
+    (member opcode @Opcode)
+    (member payload @InstructionPayload :bits 58 :tag opcode)
+    (projections (cpp)))
+  (union SmallPayload (case KillEntity @EntityKind) (case MoveTo @EntityKind))
+  (record IndependentUnions :layout packed :bits 32
+    (member opcode_a @Opcode)
+    (member payload_a @SmallPayload :tag opcode_a)
+    (member opcode_b @Opcode)
+    (member payload_b @SmallPayload :tag opcode_b)
+    (projections (cpp)))
+  (integer-scalar BoundedKind :bit-width 8 :minimum 0 :maximum 10)
+  (record PayloadPointer
+    (member value (type-ref @CheckedPayload :suffix "*"))
+    (projections (cpp)))
+  (union CheckedPayload :layout packed
+    (case KillEntity @BoundedKind)
+    (case MoveTo @EntityKind)
+    (projections (cpp)))
+  (record TaggedProjected :layout packed :bits 32
+    (member opcode @Opcode)
+    (member payload @CheckedPayload :tag opcode)
+    (member unrelated @BoundedKind)
+    (projections (cpp)))
+  (record Sample (member value @EntityKind))
+  (record Samples :layout packed
+    (member samples @Sample :count 4)
+    (projections (cpp)))
+  (integer-scalar OptionalValue :bit-width 8 :minimum 0 :maximum 100
+    (code Absent :value 255 :sentinel true))
+  (optional-sentinel SentinelValue :source @OptionalValue :sentinel Absent)
+  (optional-presence-bit PresentValue :source @OptionalValue)
+  (record Optionals :layout packed
+    (member sentinel @SentinelValue)
+    (member present @PresentValue)
+    (projections (cpp))))
 
 (umbrella-module all_fixture
   :header "Generated.h"
-  :headers ("Records.h" "FieldMasks.h" "RestrictionRows.h" "InlineFacade.h" "SourceFacade.h" "ReferenceFacade.h" "PlainEnums.h" "PackedEnums.h" "ScalarValues.h" "Representations.h" "PackedValues.h" "Mixed.h"))
+  :headers ("Records.h" "FieldMasks.h" "RestrictionRows.h" "InlineFacade.h" "SourceFacade.h" "ReferenceFacade.h" "PlainEnums.h" "PackedEnums.h" "ScalarValues.h" "PackedValues.h" "Mixed.h" "UnifiedPacked.h"))

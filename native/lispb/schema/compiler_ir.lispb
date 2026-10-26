@@ -6,7 +6,8 @@
     :helpers (to-string to-serialized-string try-parse-serialized formatter)
     (value add_element :serialized-name "add-element")
     (value remove_at_swap :serialized-name "remove-at-swap")
-    (value set_element :serialized-name "set-element")))
+    (value set_element :serialized-name "set-element")
+    (projections (cpp))))
 
 (module compiler_record_kind
   :header "record_kind.h"
@@ -16,7 +17,8 @@
     :helpers (to-serialized-string try-parse-serialized)
     (value struct_ :serialized-name "struct")
     (value class_ :serialized-name "class")
-    (value union_ :serialized-name "union")))
+    (value union_ :serialized-name "union")
+    (projections (cpp))))
 
 (module compiler_parameter_passing
   :header "parameter_passing.h"
@@ -25,7 +27,8 @@
     :native-api true
     :helpers (try-parse-serialized)
     (value const_reference :serialized-name "const-ref")
-    (value value :serialized-name "value")))
+    (value value :serialized-name "value")
+    (projections (cpp))))
 
 (module compiler_node_kind
   :header "node_kind.h"
@@ -60,24 +63,27 @@
     (value struct_)
     (value namespace_)
     (value line_directive)
-    (value for_stmt)))
+    (value for_stmt)
+    (projections (cpp))))
 
 (module compiler_function_flags
   :header "function_flags.h"
   :namespace lispb::codegen
-  (packed-value FunctionFlags :storage std::uint8_t :mutable true
-    (field is_constexpr bool :bits 1)
-    (field is_inline bool :bits 1)
-    (field is_nodiscard bool :bits 1)
-    (field define_in_header bool :bits 1)))
+  (record FunctionFlags :layout packed :bits 8
+    (member is_constexpr bool :bits 1)
+    (member is_inline bool :bits 1)
+    (member is_nodiscard bool :bits 1)
+    (member define_in_header bool :bits 1)
+    (projections (cpp :storage std::uint8_t))))
 
 (module compiler_cpp_file_flags
   :header "cpp_file_flags.h"
   :namespace lispb::codegen
-  (packed-value CppFileFlags :storage std::uint8_t :mutable true
-    (field pragma_once bool :bits 1)
-    (field clang_format_off bool :bits 1)
-    (field format_generated bool :bits 1)))
+  (record CppFileFlags :layout packed :bits 8
+    (member pragma_once bool :bits 1)
+    (member clang_format_off bool :bits 1)
+    (member format_generated bool :bits 1)
+    (projections (cpp :storage std::uint8_t))))
 
 (module access
   :header "access.h"
@@ -87,4 +93,5 @@
     :helpers (to-serialized-string try-parse-serialized)
     (value public_ :serialized-name "public")
     (value protected_ :serialized-name "protected")
-    (value private_ :serialized-name "private")))
+    (value private_ :serialized-name "private")
+    (projections (cpp))))

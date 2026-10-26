@@ -2,6 +2,7 @@
 
 #include <codegen/ast/indices.h>
 #include <codegen/schema.h>
+#include <codegen/schema/child_occurrences.h>
 #include <codegen/schema/declaration_handle.h>
 #include <codegen/schema/enum_schemas.h>
 #include <codegen/schema/enumerator_schemas.h>
@@ -22,14 +23,10 @@
 #include <codegen/schema/packed_bit_order.h>
 #include <codegen/schema/packed_byte_order.h>
 #include <codegen/schema/packed_field_kind.h>
-#include <codegen/schema/packed_field_schemas.h>
 #include <codegen/schema/packed_integer_value.h>
 #include <codegen/schema/packed_named_code_schemas.h>
-#include <codegen/schema/packed_segment_id.h>
-#include <codegen/schema/packed_value_schemas.h>
 #include <codegen/schema/physical_type_form.h>
 #include <codegen/schema/quantization_clipping.h>
-#include <codegen/schema/record_member_schemas.h>
 #include <codegen/schema/record_schemas.h>
 #include <codegen/schema/schema_version.h>
 #include <codegen/schema/semantic_relation_kind.h>
@@ -38,16 +35,14 @@
 #include <codegen/schema/soa_member_kind.h>
 #include <codegen/schema/soa_member_schemas.h>
 #include <codegen/schema/soa_schemas.h>
-#include <codegen/schema/tagged_union_alternative_schemas.h>
-#include <codegen/schema/tagged_union_schemas.h>
 #include <codegen/schema/type_refs.h>
-#include <codegen/schema/union_alternative_schemas.h>
 #include <codegen/schema/union_schemas.h>
 #include <codegen/source_loader.h>
 #include <lispb/compiler_storage.h>
 #include <lispb/indices.h>
 #include <lispb/project.h>
 #include <lispb/project_loader.h>
+#include <lispb/schema/child_occurrences.h>
 #include <lispb/schema/enum_types.h>
 #include <lispb/schema/external_types.h>
 #include <lispb/schema/fixed_point_types.h>
@@ -58,18 +53,11 @@
 #include <lispb/schema/mini_float_types.h>
 #include <lispb/schema/optional_presence_bit_types.h>
 #include <lispb/schema/optional_sentinel_types.h>
-#include <lispb/schema/packed_fields.h>
-#include <lispb/schema/packed_segment_id.h>
-#include <lispb/schema/packed_types.h>
-#include <lispb/schema/record_members.h>
 #include <lispb/schema/record_types.h>
 #include <lispb/schema/soa_columns.h>
 #include <lispb/schema/soa_types.h>
-#include <lispb/schema/tagged_union_alternatives.h>
-#include <lispb/schema/tagged_union_types.h>
 #include <lispb/schema/type_graph.h>
 #include <lispb/schema/type_origin.h>
-#include <lispb/schema/union_alternatives.h>
 #include <lispb/schema/union_types.h>
 
 #include <gtest/gtest.h>
@@ -120,7 +108,7 @@ TEST(SemanticTypeGraph, SimulationModelCompositionUsesDeclaredNodesAndStrongScal
     auto& strings{storage.strings};
     auto const graph{production_graph(storage)};
     auto const& records{graph.definitions().records};
-    auto const& record_members{graph.definitions().record_members};
+    auto const& record_members{graph.definitions().children};
     auto const& integer_scalars{graph.definitions().integer_scalars};
     auto const& soas{graph.definitions().soas};
     auto const& soa_columns{graph.definitions().soa_columns};
@@ -288,6 +276,7 @@ TEST(SemanticTypeGraph, PreservesExplicitEnumSemanticWidth) {
                 declarations.range<lispb::codegen::DeclarationHandle>({[&] {
                     auto const new_enums{enums_schemas.append()};
                     auto const new_enums_row{enums_schemas.index(new_enums)};
+                    enums_schemas.cpp_projection[new_enums_row] = lispb::codegen::CppProjection{};
                     enums_schemas.name[new_enums_row] = strings.intern("State");
                     enums_schemas.underlying_type[new_enums_row] =
                         lispb::codegen::make_test_type_ref(context, "std::uint8_t");
@@ -369,6 +358,7 @@ TEST(SemanticTypeGraph, KeepsDerivedEnumBackingOutOfSemanticDependencies) {
                 declarations.range<lispb::codegen::DeclarationHandle>({[&] {
                     auto const new_enums{enums_schemas.append()};
                     auto const new_enums_row{enums_schemas.index(new_enums)};
+                    enums_schemas.cpp_projection[new_enums_row] = lispb::codegen::CppProjection{};
                     enums_schemas.name[new_enums_row] = strings.intern("State");
                     enums_schemas.underlying_type[new_enums_row] = std::nullopt;
                     enums_schemas.values[new_enums_row] =
@@ -844,256 +834,77 @@ TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
 
 TEST(SemanticTypeGraph, ResolvesPackedFieldsAndDependencies) {
     lispb::codegen::CompilerTestContext context;
-    [[maybe_unused]] auto& storage{context.storage};
-    auto const graph{production_graph(storage)};
-    auto const& semantic_packed{graph.definitions().packed};
-    auto const& semantic_packed_fields{graph.definitions().packed_fields};
-    auto const& occurrences{graph.occurrences()};
+    auto const graph{production_graph(context.storage)};
     auto const entity_type{
-        lispb::codegen::find_test_type(graph, "native_entity_type", "EntityType")};
-    auto const unique_id{lispb::codegen::find_test_type(graph, "native_entity_id", "EntityId")};
-    ASSERT_TRUE(entity_type.has_value());
-    ASSERT_TRUE(unique_id.has_value());
-
-    auto const packed{
-        ((graph.definition(*unique_id)).kind() == lispb::schema::TypeDefinitionKind::packed
-             ? std::optional{graph.definition(*unique_id)}
-             : std::nullopt)};
-    ASSERT_TRUE(packed.has_value());
-    EXPECT_EQ(text(storage,
-                   graph.cpp_spelling(occurrences.type[occurrences.index(
-                       semantic_packed.storage_type[semantic_packed.index(*packed)])])),
-              "std::uint32_t");
-    EXPECT_EQ(semantic_packed.invalid_raw_value[semantic_packed.index(*packed)], 0xffffffffU);
-    ASSERT_EQ(semantic_packed.segments_of(*packed).size(), 2U);
-    auto const& index{semantic_packed.segments_of(*packed)[0]};
-    auto const& entity_type_field{semantic_packed.segments_of(*packed)[1]};
-    EXPECT_EQ(text(storage, semantic_packed_fields.name[semantic_packed_fields.index(index)]),
-              "index");
-    EXPECT_EQ(semantic_packed_fields.bit_width[semantic_packed_fields.index(index)], 24U);
-    EXPECT_EQ(
-        text(storage, semantic_packed_fields.name[semantic_packed_fields.index(entity_type_field)]),
-        "entity_type");
-    EXPECT_EQ(semantic_packed_fields.bit_width[semantic_packed_fields.index(entity_type_field)],
-              8U);
-    EXPECT_EQ(
-        occurrences.type[occurrences.index(
-            semantic_packed_fields.semantic_type[semantic_packed_fields.index(entity_type_field)])],
-        *entity_type);
-
-    EXPECT_NE(std::ranges::find(graph.dependencies_of(*unique_id), *entity_type),
-              graph.dependencies_of(*unique_id).end());
-    EXPECT_NE(std::ranges::find(graph.users_of(*entity_type), *unique_id),
-              graph.users_of(*entity_type).end());
+        *lispb::codegen::find_test_type(graph, "native_entity_type", "EntityType")};
+    auto const entity_id{*lispb::codegen::find_test_type(graph, "native_entity_id", "EntityId")};
+    auto const definition{graph.definition(entity_id)};
+    auto const& records{graph.definitions().records};
+    EXPECT_EQ(definition.kind(), TypeDefinitionKind::record);
+    EXPECT_EQ(records.layout[records.index(definition)], lispb::codegen::LayoutKind::packed);
+    EXPECT_EQ(records.invalid_raw_value[records.index(definition)], 0xffffffffU);
+    auto const& layout{graph.bit_layout(entity_id)};
+    EXPECT_EQ(layout.encoded_bits, 32U);
+    EXPECT_EQ(layout.storage_bits, 32U);
+    ASSERT_EQ(layout.placements.size(), 2U);
+    EXPECT_EQ(layout.placements[0].path, "index");
+    EXPECT_EQ(layout.placements[0].offset, 0U);
+    EXPECT_EQ(layout.placements[0].bits, 24U);
+    EXPECT_EQ(layout.placements[1].path, "entity_type");
+    EXPECT_EQ(layout.placements[1].offset, 24U);
+    EXPECT_EQ(layout.placements[1].bits, 8U);
+    EXPECT_EQ(layout.placements[1].type, entity_type);
+    EXPECT_NE(std::ranges::find(graph.dependencies_of(entity_id), entity_type),
+              graph.dependencies_of(entity_id).end());
+    EXPECT_NE(std::ranges::find(graph.users_of(entity_type), entity_id),
+              graph.users_of(entity_type).end());
 }
 
 TEST(SemanticTypeGraph, ResolvesPackedIntegerScalarDomainAndDependency) {
     lispb::codegen::CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
-    auto& normal_modules{declarations.normal_modules};
-    auto& module_settings_store{declarations.module_settings_store};
-    auto& integer_scalars{declarations.integer_scalars};
-    auto& packed_named_codes{declarations.packed_named_codes};
-    auto& packed_values{declarations.packed_values};
-
-    auto& packed_fields_schemas{declarations.packed_fields};
-    auto& strings{context.storage.strings};
-    [[maybe_unused]] auto& storage{context.storage};
-    auto& semantic_declarations{storage.declarations};
-    lispb::codegen::Manifest manifest{
-        lispb::codegen::manifest_schema_version,
-        lispb::codegen::make_test_registry(context),
-        declarations,
-        {[&] {
-             auto const new_normal_modules{normal_modules.append()};
-             auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-             normal_modules.settings[new_normal_modules_row] = [&] {
-                 auto const new_module_settings_store{module_settings_store.append()};
-                 auto const new_module_settings_store_row{
-                     module_settings_store.index(new_module_settings_store)};
-                 module_settings_store.name[new_module_settings_store_row] =
-                     strings.intern("domains");
-                 module_settings_store.header[new_module_settings_store_row] =
-                     strings.intern("Domains.h");
-                 module_settings_store.namespace_name[new_module_settings_store_row] =
-                     strings.intern("project");
-                 return new_module_settings_store;
-             }();
-             normal_modules.declarations[new_normal_modules_row] =
-                 declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-                     auto const new_integer_scalars{integer_scalars.append()};
-                     auto const new_integer_scalars_row{integer_scalars.index(new_integer_scalars)};
-                     integer_scalars.name[new_integer_scalars_row] = strings.intern("Health");
-                     integer_scalars.signedness[new_integer_scalars_row] = false;
-                     integer_scalars.minimum_value[new_integer_scalars_row] = 0;
-                     integer_scalars.maximum_value[new_integer_scalars_row] = 1000;
-                     integer_scalars.bit_width[new_integer_scalars_row] = std::nullopt;
-                     integer_scalars.named_codes[new_integer_scalars_row] =
-                         declarations.range<lispb::codegen::PackedNamedCodeId>({[&] {
-                             auto const new_packed_named_codes{packed_named_codes.append()};
-                             auto const new_packed_named_codes_row{
-                                 packed_named_codes.index(new_packed_named_codes)};
-                             packed_named_codes.name[new_packed_named_codes_row] =
-                                 strings.intern("Invalid");
-                             packed_named_codes.value[new_packed_named_codes_row] = 4095;
-                             packed_named_codes
-                                 .sentinel[packed_named_codes.index(new_packed_named_codes)] = true;
-                             return new_packed_named_codes;
-                         }()});
-                     return new_integer_scalars;
-                 }()});
-             return new_normal_modules;
-         }(),
-         [&] {
-             auto const new_normal_modules{normal_modules.append()};
-             auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-             normal_modules.settings[new_normal_modules_row] = [&] {
-                 auto const new_module_settings_store{module_settings_store.append()};
-                 auto const new_module_settings_store_row{
-                     module_settings_store.index(new_module_settings_store)};
-                 module_settings_store.name[new_module_settings_store_row] =
-                     strings.intern("packed");
-                 module_settings_store.header[new_module_settings_store_row] =
-                     strings.intern("Packed.h");
-                 module_settings_store.namespace_name[new_module_settings_store_row] =
-                     strings.intern("project");
-                 return new_module_settings_store;
-             }();
-             normal_modules.declarations[new_normal_modules_row] =
-                 declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-                     auto const new_packed_values{packed_values.append()};
-                     auto const new_packed_values_row{packed_values.index(new_packed_values)};
-                     packed_values.name[new_packed_values_row] = strings.intern("Status");
-                     packed_values.storage_type[new_packed_values_row] =
-                         lispb::codegen::make_test_type_ref(context, "std::uint16_t");
-                     packed_values.segments[new_packed_values_row] =
-                         declarations.range<lispb::codegen::PackedSegmentId>({[&] {
-                             auto const new_packed_fields{packed_fields_schemas.append()};
-                             auto const new_packed_fields_row{
-                                 packed_fields_schemas.index(new_packed_fields)};
-                             packed_fields_schemas.name[new_packed_fields_row] =
-                                 strings.intern("healt"
-                                                "h");
-                             packed_fields_schemas.type[new_packed_fields_row] =
-                                 lispb::codegen::make_test_type_ref(context,
-                                                                    "pr"
-                                                                    "oj"
-                                                                    "ec"
-                                                                    "t:"
-                                                                    ":H"
-                                                                    "ea"
-                                                                    "lt"
-                                                                    "h");
-                             packed_fields_schemas.bits[new_packed_fields_row] = std::nullopt;
-                             packed_fields_schemas.kind[new_packed_fields_row] =
-                                 lispb::codegen::PackedFieldKind::unsigned_integer;
-                             return new_packed_fields;
-                         }()});
-                     return new_packed_values;
-                 }()});
-             return new_normal_modules;
-         }()}};
-
+    auto const manifest{lispb::codegen::parse_test_manifest(context, R"(
+      (module domains
+        (integer-scalar Health :minimum 0 :maximum 1000
+          (code Invalid :value 4095 :sentinel true)))
+      (module packed :header "Packed.h" :namespace project
+        (record Status :layout packed (member health @domains/Health)
+          (projections (cpp)))))")};
     auto const graph{resolve_type_graph(manifest)};
-    auto const& semantic_packed{graph.definitions().packed};
-    auto const& semantic_packed_fields{graph.definitions().packed_fields};
-    auto const& occurrences{graph.occurrences()};
-    auto const health{lispb::codegen::find_test_type(graph, "domains", "Health")};
-    auto const status{lispb::codegen::find_test_type(graph, "packed", "Status")};
-    ASSERT_TRUE(health.has_value());
-    ASSERT_TRUE(status.has_value());
-
-    auto const& packed{graph.definition(*status)};
-    ASSERT_EQ(semantic_packed.segments_of(packed).size(), 1U);
-    auto const& field{semantic_packed.segments_of(packed).front()};
-    EXPECT_EQ(occurrences.type[occurrences.index(
-                  semantic_packed_fields.semantic_type[semantic_packed_fields.index(field)])],
-              *health);
-    EXPECT_EQ(semantic_packed_fields.bit_width[semantic_packed_fields.index(field)], 12U);
-    EXPECT_TRUE(semantic_packed_fields.bit_width_auto[semantic_packed_fields.index(field)]);
-    EXPECT_EQ(semantic_packed_fields.minimum_value[semantic_packed_fields.index(field)],
-              lispb::codegen::PackedIntegerValue{0});
-    EXPECT_EQ(semantic_packed_fields.maximum_value[semantic_packed_fields.index(field)],
-              lispb::codegen::PackedIntegerValue{1000});
-    ASSERT_EQ(semantic_packed_fields.named_codes[semantic_packed_fields.index(field)].size(), 1U);
-    EXPECT_EQ(
-        text(storage,
-             packed_named_codes.name[packed_named_codes.index(
-                 semantic_declarations
-                     .items(semantic_packed_fields.named_codes[semantic_packed_fields.index(field)])
-                     .front())]),
-        "Invalid");
-    EXPECT_TRUE(packed_named_codes.sentinel[packed_named_codes.index(
-        semantic_declarations
-            .items(semantic_packed_fields.named_codes[semantic_packed_fields.index(field)])
-            .front())]);
-    EXPECT_NE(std::ranges::find(graph.dependencies_of(*status), *health),
-              graph.dependencies_of(*status).end());
-    EXPECT_NE(std::ranges::find(graph.users_of(*health), *status), graph.users_of(*health).end());
+    auto const health{*lispb::codegen::find_test_type(graph, "domains", "Health")};
+    auto const status{*lispb::codegen::find_test_type(graph, "packed", "Status")};
+    auto const& scalars{graph.definitions().integer_scalars};
+    auto const scalar{graph.definition(health)};
+    auto const row{scalars.index(scalar)};
+    EXPECT_EQ(scalars.bit_width[row], 12U);
+    EXPECT_EQ(scalars.minimum_value[row], lispb::codegen::PackedIntegerValue{0});
+    EXPECT_EQ(scalars.maximum_value[row], lispb::codegen::PackedIntegerValue{1000});
+    EXPECT_EQ(scalars.named_codes[row].size(), 1U);
+    EXPECT_FALSE(is_valid(scalars.cpp_representation[row]));
+    auto const& layout{graph.bit_layout(status)};
+    ASSERT_EQ(layout.placements.size(), 1U);
+    EXPECT_EQ(layout.placements[0].type, health);
+    EXPECT_EQ(layout.placements[0].bits, 12U);
+    EXPECT_EQ(layout.storage_bits, 16U);
+    EXPECT_NE(std::ranges::find(graph.dependencies_of(status), health),
+              graph.dependencies_of(status).end());
+    EXPECT_NE(std::ranges::find(graph.users_of(health), status), graph.users_of(health).end());
 }
 
 TEST(SemanticTypeGraph, RetainsPackedPhysicalOrdering) {
     lispb::codegen::CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
-    auto& normal_modules{declarations.normal_modules};
-    auto& module_settings_store{declarations.module_settings_store};
-    auto& packed_values{declarations.packed_values};
-
-    auto& packed_fields{declarations.packed_fields};
-    auto& strings{context.storage.strings};
-    [[maybe_unused]] auto& storage{context.storage};
-    lispb::codegen::Manifest manifest{
-        lispb::codegen::manifest_schema_version,
-        lispb::codegen::make_test_registry(context),
-        declarations,
-        {[&] {
-            auto const new_normal_modules{normal_modules.append()};
-            auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-            normal_modules.settings[new_normal_modules_row] = [&] {
-                auto const new_module_settings_store{module_settings_store.append()};
-                auto const new_module_settings_store_row{
-                    module_settings_store.index(new_module_settings_store)};
-                module_settings_store.name[new_module_settings_store_row] = strings.intern("wire");
-                module_settings_store.header[new_module_settings_store_row] =
-                    strings.intern("Wire.h");
-                return new_module_settings_store;
-            }();
-            normal_modules.declarations[new_normal_modules_row] =
-                declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-                    auto const new_packed_values{packed_values.append()};
-                    auto const new_packed_values_row{packed_values.index(new_packed_values)};
-                    packed_values.name[new_packed_values_row] = strings.intern("Header");
-                    packed_values.storage_type[new_packed_values_row] =
-                        lispb::codegen::make_test_type_ref(context, "std::uint32_t");
-                    packed_values.segments[new_packed_values_row] =
-                        declarations.range<lispb::codegen::PackedSegmentId>({[&] {
-                            auto const new_packed_fields{packed_fields.append()};
-                            auto const new_packed_fields_row{
-                                packed_fields.index(new_packed_fields)};
-                            packed_fields.name[new_packed_fields_row] = strings.intern("kind");
-                            packed_fields.type[new_packed_fields_row] =
-                                lispb::codegen::make_test_type_ref(context, "std::uint8_t");
-                            packed_fields.bits[new_packed_fields_row] = 8;
-                            return new_packed_fields;
-                        }()});
-                    packed_values.byte_order[new_packed_values_row] =
-                        lispb::codegen::PackedByteOrder::big_endian;
-                    packed_values.bit_order[new_packed_values_row] =
-                        lispb::codegen::PackedBitOrder::most_significant_first;
-                    return new_packed_values;
-                }()});
-            return new_normal_modules;
-        }()}};
-
+    auto const manifest{lispb::codegen::parse_test_manifest(context, R"(
+      (module wire :header "Wire.h"
+        (record Header :layout packed :bits 32 :byte-order big :bit-order msb-first
+          (member kind std::uint8_t)
+          (projections (cpp)))))")};
     auto const graph{resolve_type_graph(manifest)};
-    auto const& semantic_packed{graph.definitions().packed};
-    auto const header{lispb::codegen::find_test_type(graph, "wire", "Header")};
-    ASSERT_TRUE(header.has_value());
-    auto const& packed{graph.definition(*header)};
-    EXPECT_EQ(semantic_packed.byte_order[semantic_packed.index(packed)],
-              lispb::codegen::PackedByteOrder::big_endian);
-    EXPECT_EQ(semantic_packed.bit_order[semantic_packed.index(packed)],
-              lispb::codegen::PackedBitOrder::most_significant_first);
+    auto const header{*lispb::codegen::find_test_type(graph, "wire", "Header")};
+    auto const& records{graph.definitions().records};
+    auto const row{records.index(graph.definition(header))};
+    EXPECT_EQ(records.byte_order[row], lispb::codegen::PackedByteOrder::big_endian);
+    EXPECT_EQ(records.bit_order[row], lispb::codegen::PackedBitOrder::most_significant_first);
+    ASSERT_EQ(graph.bit_layout(header).placements.size(), 1U);
+    EXPECT_EQ(graph.bit_layout(header).placements[0].offset, 24U);
 }
 
 TEST(SemanticTypeGraph, ResolvesSoaColumnsAndEquivalentValues) {
@@ -1297,7 +1108,7 @@ TEST(SemanticTypeGraph, ResolvesRecordMembersFixedArraysAndDependencies) {
     auto& normal_modules{declarations.normal_modules};
     auto& module_settings_store{declarations.module_settings_store};
     auto& records_schemas{declarations.records};
-    auto& record_members_schemas{declarations.record_members};
+    auto& record_members_schemas{declarations.child_occurrences};
 
     auto& semantic_relations{declarations.semantic_relations};
     auto& strings{context.storage.strings};
@@ -1324,9 +1135,11 @@ TEST(SemanticTypeGraph, ResolvesRecordMembersFixedArraysAndDependencies) {
                     {[&] {
                          auto const new_records{records_schemas.append()};
                          auto const new_records_row{records_schemas.index(new_records)};
+                         records_schemas.cpp_projection[new_records_row] =
+                             lispb::codegen::CppProjection{};
                          records_schemas.name[new_records_row] = strings.intern("Position");
                          records_schemas.members[new_records_row] =
-                             declarations.range<lispb::codegen::RecordMemberId>({[&] {
+                             declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
                                  auto const new_record_members{record_members_schemas.append()};
                                  auto const new_record_members_row{
                                      record_members_schemas.index(new_record_members)};
@@ -1341,9 +1154,11 @@ TEST(SemanticTypeGraph, ResolvesRecordMembersFixedArraysAndDependencies) {
                      [&] {
                          auto const new_records{records_schemas.append()};
                          auto const new_records_row{records_schemas.index(new_records)};
+                         records_schemas.cpp_projection[new_records_row] =
+                             lispb::codegen::CppProjection{};
                          records_schemas.name[new_records_row] = strings.intern("Table");
                          records_schemas.members[new_records_row] =
-                             declarations.range<lispb::codegen::RecordMemberId>({[&] {
+                             declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
                                  auto const new_record_members{record_members_schemas.append()};
                                  auto const new_record_members_row{
                                      record_members_schemas.index(new_record_members)};
@@ -1358,9 +1173,11 @@ TEST(SemanticTypeGraph, ResolvesRecordMembersFixedArraysAndDependencies) {
                      [&] {
                          auto const new_records{records_schemas.append()};
                          auto const new_records_row{records_schemas.index(new_records)};
+                         records_schemas.cpp_projection[new_records_row] =
+                             lispb::codegen::CppProjection{};
                          records_schemas.name[new_records_row] = strings.intern("Path");
                          records_schemas.members[new_records_row] =
-                             declarations.range<lispb::codegen::RecordMemberId>({[&] {
+                             declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
                                  auto const new_record_members{record_members_schemas.append()};
                                  auto const new_record_members_row{
                                      record_members_schemas.index(new_record_members)};
@@ -1392,7 +1209,7 @@ TEST(SemanticTypeGraph, ResolvesRecordMembersFixedArraysAndDependencies) {
 
     auto const graph{resolve_type_graph(manifest)};
     auto const& records{graph.definitions().records};
-    auto const& record_members{graph.definitions().record_members};
+    auto const& record_members{graph.definitions().children};
     auto const& occurrences{graph.occurrences()};
     auto const position{lispb::codegen::find_test_type(graph, "records", "Position")};
     auto const table{lispb::codegen::find_test_type(graph, "records", "Table")};
@@ -1431,7 +1248,7 @@ TEST(SemanticTypeGraph, RejectsDirectAndIndirectByValueRecordCycles) {
     auto& normal_modules{declarations.normal_modules};
     auto& module_settings_store{declarations.module_settings_store};
     auto& records{declarations.records};
-    auto& record_members{declarations.record_members};
+    auto& record_members{declarations.child_occurrences};
 
     auto& strings{context.storage.strings};
     [[maybe_unused]] auto& storage{context.storage};
@@ -1451,9 +1268,10 @@ TEST(SemanticTypeGraph, RejectsDirectAndIndirectByValueRecordCycles) {
             declarations.range<lispb::codegen::DeclarationHandle>({[&] {
                 auto const new_records{records.append()};
                 auto const new_records_row{records.index(new_records)};
+                records.cpp_projection[new_records_row] = lispb::codegen::CppProjection{};
                 records.name[new_records_row] = strings.intern("Record");
                 records.members[new_records_row] =
-                    declarations.range<lispb::codegen::RecordMemberId>({[&] {
+                    declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
                         auto const new_record_members{record_members.append()};
                         auto const new_record_members_row{record_members.index(new_record_members)};
                         record_members.name[new_record_members_row] = strings.intern("self");
@@ -1476,7 +1294,7 @@ TEST(SemanticTypeGraph, RejectsDirectAndIndirectByValueRecordCycles) {
              auto const new_records{records.append()};
              records.name[records.index(new_records)] = strings.intern("First");
              records.members[records.index(new_records)] =
-                 declarations.range<lispb::codegen::RecordMemberId>({[&] {
+                 declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
                      auto const new_record_members{record_members.append()};
                      auto const new_record_members_row{record_members.index(new_record_members)};
                      record_members.name[new_record_members_row] = strings.intern("second");
@@ -1489,9 +1307,10 @@ TEST(SemanticTypeGraph, RejectsDirectAndIndirectByValueRecordCycles) {
          [&] {
              auto const new_records{records.append()};
              auto const new_records_row{records.index(new_records)};
+             records.cpp_projection[new_records_row] = lispb::codegen::CppProjection{};
              records.name[new_records_row] = strings.intern("Second");
              records.members[new_records_row] =
-                 declarations.range<lispb::codegen::RecordMemberId>({[&] {
+                 declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
                      auto const new_record_members{record_members.append()};
                      auto const new_record_members_row{record_members.index(new_record_members)};
                      record_members.name[new_record_members_row] = strings.intern("first");
@@ -1511,7 +1330,7 @@ TEST(SemanticTypeGraph, PointerSelfReferenceIsNotByValueRecursion) {
     auto& normal_modules{declarations.normal_modules};
     auto& module_settings_store{declarations.module_settings_store};
     auto& records{declarations.records};
-    auto& record_members{declarations.record_members};
+    auto& record_members{declarations.child_occurrences};
     auto& type_refs{declarations.type_refs};
     auto& strings{context.storage.strings};
     [[maybe_unused]] auto& storage{context.storage};
@@ -1536,9 +1355,10 @@ TEST(SemanticTypeGraph, PointerSelfReferenceIsNotByValueRecursion) {
                 declarations.range<lispb::codegen::DeclarationHandle>({[&] {
                     auto const new_records{records.append()};
                     auto const new_records_row{records.index(new_records)};
+                    records.cpp_projection[new_records_row] = lispb::codegen::CppProjection{};
                     records.name[new_records_row] = strings.intern("Node");
                     records.members[new_records_row] =
-                        declarations.range<lispb::codegen::RecordMemberId>({[&] {
+                        declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
                             auto const new_record_members{record_members.append()};
                             auto const new_record_members_row{
                                 record_members.index(new_record_members)};
@@ -1638,7 +1458,7 @@ TEST(SemanticTypeGraph, ResolvesRawUnionAlternativesAndDependencies) {
     auto& normal_modules{declarations.normal_modules};
     auto& module_settings_store{declarations.module_settings_store};
     auto& unions_schemas{declarations.unions};
-    auto& union_alternatives_schemas{declarations.union_alternatives};
+    auto& union_alternatives_schemas{declarations.child_occurrences};
 
     auto& strings{context.storage.strings};
     [[maybe_unused]] auto& storage{context.storage};
@@ -1663,9 +1483,10 @@ TEST(SemanticTypeGraph, ResolvesRawUnionAlternativesAndDependencies) {
                 declarations.range<lispb::codegen::DeclarationHandle>({[&] {
                     auto const new_unions{unions_schemas.append()};
                     auto const new_unions_row{unions_schemas.index(new_unions)};
+                    unions_schemas.cpp_projection[new_unions_row] = lispb::codegen::CppProjection{};
                     unions_schemas.name[new_unions_row] = strings.intern("Payload");
                     unions_schemas.alternatives[new_unions_row] =
-                        declarations.range<lispb::codegen::UnionAlternativeId>(
+                        declarations.range<lispb::codegen::ChildOccurrenceId>(
                             {[&] {
                                  auto const new_union_alternatives{
                                      union_alternatives_schemas.append()};
@@ -1697,7 +1518,7 @@ TEST(SemanticTypeGraph, ResolvesRawUnionAlternativesAndDependencies) {
 
     auto const graph{resolve_type_graph(manifest)};
     auto const& unions{graph.definitions().unions};
-    auto const& union_alternatives{graph.definitions().union_alternatives};
+    auto const& union_alternatives{graph.definitions().children};
     auto const& occurrences{graph.occurrences()};
     auto const payload{lispb::codegen::find_test_type(graph, "payloads", "Payload")};
     ASSERT_TRUE(payload.has_value());
@@ -1722,12 +1543,12 @@ TEST(SemanticTypeGraph, RejectsUnionAndMixedAggregateCycles) {
     lispb::codegen::CompilerTestContext context;
     auto& declarations{context.storage.declarations};
     auto& unions{declarations.unions};
-    auto& union_alternatives{declarations.union_alternatives};
+    auto& union_alternatives{declarations.child_occurrences};
 
     auto& normal_modules{declarations.normal_modules};
     auto& module_settings_store{declarations.module_settings_store};
     auto& records{declarations.records};
-    auto& record_members{declarations.record_members};
+    auto& record_members{declarations.child_occurrences};
     auto& strings{context.storage.strings};
     [[maybe_unused]] auto& storage{context.storage};
     auto& semantic_declarations{storage.declarations};
@@ -1736,7 +1557,7 @@ TEST(SemanticTypeGraph, RejectsUnionAndMixedAggregateCycles) {
     auto const union_schema_row{unions.index(union_schema)};
     unions.name[union_schema_row] = strings.intern("Payload");
     unions.alternatives[union_schema_row] =
-        declarations.range<lispb::codegen::UnionAlternativeId>({[&] {
+        declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
             auto const new_union_alternatives{union_alternatives.append()};
             auto const new_union_alternatives_row{union_alternatives.index(new_union_alternatives)};
             union_alternatives.name[new_union_alternatives_row] = strings.intern("self");
@@ -1777,14 +1598,15 @@ TEST(SemanticTypeGraph, RejectsUnionAndMixedAggregateCycles) {
     auto const record_schema{records.append()};
     auto const record_schema_row{records.index(record_schema)};
     records.name[record_schema_row] = strings.intern("Record");
-    records.members[record_schema_row] = declarations.range<lispb::codegen::RecordMemberId>({[&] {
-        auto const new_record_members{record_members.append()};
-        auto const new_record_members_row{record_members.index(new_record_members)};
-        record_members.name[new_record_members_row] = strings.intern("payload");
-        record_members.type[new_record_members_row] =
-            lispb::codegen::make_test_type_ref(context, "payloads::Payload");
-        return new_record_members;
-    }()});
+    records.members[record_schema_row] =
+        declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
+            auto const new_record_members{record_members.append()};
+            auto const new_record_members_row{record_members.index(new_record_members)};
+            record_members.name[new_record_members_row] = strings.intern("payload");
+            record_members.type[new_record_members_row] =
+                lispb::codegen::make_test_type_ref(context, "payloads::Payload");
+            return new_record_members;
+        }()});
     records.export_specifier[record_schema_row] = {};
     auto const record_module{normal_modules.append()};
     normal_modules.settings[normal_modules.index(record_module)] = [&] {
@@ -1805,153 +1627,102 @@ TEST(SemanticTypeGraph, RejectsUnionAndMixedAggregateCycles) {
 
 TEST(SemanticTypeGraph, ResolvesTaggedUnionDiscriminantMappingsAndDependencies) {
     lispb::codegen::CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
-    auto& normal_modules{declarations.normal_modules};
-    auto& module_settings_store{declarations.module_settings_store};
-    auto& enums_schemas{declarations.enums};
+    auto const manifest{lispb::codegen::parse_test_manifest(context, R"(
+      (module payloads :header "Payloads.h"
+        (enum Kind :bit-width 2 (value Point) (value Samples))
+        (integer-scalar Coordinate :bit-width 8)
+        (record Point (member x @Coordinate) (member y @Coordinate))
+        (record Samples (member values @Coordinate :count 4))
+        (union Payload (case Point @Point) (case Samples @Samples))
+        (record Event :layout packed :bits 64
+          (member tag @Kind)
+          (member payload @Payload :bits 62 :tag tag)
+          (projections (cpp)))))")};
+    auto const graph{resolve_type_graph(manifest)};
+    auto const event{*lispb::codegen::find_test_type(graph, "payloads", "Event")};
+    auto const payload{*lispb::codegen::find_test_type(graph, "payloads", "Payload")};
+    auto const kind{*lispb::codegen::find_test_type(graph, "payloads", "Kind")};
+    auto const& children{graph.definitions().children};
+    auto const members{graph.definitions().records.members_of(graph.definition(event))};
+    ASSERT_EQ(members.size(), 2U);
+    EXPECT_EQ(text(context.storage, children.tag[children.index(members[1])]), "tag");
+    auto const alternatives{graph.definitions().unions.alternatives_of(graph.definition(payload))};
+    ASSERT_EQ(alternatives.size(), 2U);
+    EXPECT_EQ(text(context.storage, children.case_label[children.index(alternatives[0])]), "Point");
+    auto const& layout{graph.bit_layout(event)};
+    EXPECT_EQ(layout.encoded_bits, 64U);
+    auto const leaf{std::ranges::find(layout.placements, "payload_point_x", &BitPlacement::path)};
+    ASSERT_NE(leaf, layout.placements.end());
+    EXPECT_EQ(leaf->offset, 2U);
+    EXPECT_EQ(leaf->bits, 8U);
+    ASSERT_EQ(leaf->guards.size(), 1U);
+    EXPECT_EQ(leaf->guards[0].enumeration, kind);
+    EXPECT_EQ(leaf->guards[0].offset, 0U);
+    EXPECT_EQ(leaf->guards[0].value, 0U);
+    EXPECT_NE(std::ranges::find(graph.dependencies_of(event), payload),
+              graph.dependencies_of(event).end());
+    EXPECT_NE(std::ranges::find(graph.dependencies_of(event), kind),
+              graph.dependencies_of(event).end());
+}
 
-    auto& enumerators{declarations.enumerators};
-    auto& tagged_unions_schemas{declarations.tagged_unions};
-    auto& tagged_union_alternatives_schemas{declarations.tagged_union_alternatives};
-    auto& strings{context.storage.strings};
-    [[maybe_unused]] auto& storage{context.storage};
-    auto const enums{normal_modules.append()};
-    auto const enums_row{normal_modules.index(enums)};
-    normal_modules.settings[enums_row] = [&] {
-        auto const new_module_settings_store{module_settings_store.append()};
-        auto const new_module_settings_store_row{
-            module_settings_store.index(new_module_settings_store)};
-        module_settings_store.name[new_module_settings_store_row] = strings.intern("events");
-        module_settings_store.header[new_module_settings_store_row] = strings.intern("Events.h");
-        module_settings_store.namespace_name[new_module_settings_store_row] =
-            strings.intern("events");
-        return new_module_settings_store;
-    }();
-    normal_modules.declarations[enums_row] =
-        declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-            auto const new_enums{enums_schemas.append()};
-            auto const new_enums_row{enums_schemas.index(new_enums)};
-            enums_schemas.name[new_enums_row] = strings.intern("EventKind");
-            enums_schemas.underlying_type[new_enums_row] =
-                lispb::codegen::make_test_type_ref(context, "std::uint8_t");
-            enums_schemas.values[new_enums_row] = declarations.range<lispb::codegen::EnumeratorId>(
-                {[&] {
-                     auto const new_enumerators{enumerators.append()};
-                     enumerators.name[enumerators.index(new_enumerators)] = strings.intern("Spawn");
-                     return new_enumerators;
-                 }(),
-                 [&] {
-                     auto const new_enumerators{enumerators.append()};
-                     enumerators.name[enumerators.index(new_enumerators)] =
-                         strings.intern("Damage");
-                     return new_enumerators;
-                 }(),
-                 [&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[new_enumerators_row] = strings.intern("Invalid");
-                     enumerators.sentinel[new_enumerators_row] = true;
-                     return new_enumerators;
-                 }()});
-            return new_enums;
-        }()});
-    auto const unions{normal_modules.append()};
-    auto const unions_row{normal_modules.index(unions)};
-    normal_modules.settings[unions_row] = [&] {
-        auto const new_module_settings_store{module_settings_store.append()};
-        auto const new_module_settings_store_row{
-            module_settings_store.index(new_module_settings_store)};
-        module_settings_store.name[new_module_settings_store_row] = strings.intern("payloads");
-        module_settings_store.header[new_module_settings_store_row] = strings.intern("Payloads.h");
-        module_settings_store.namespace_name[new_module_settings_store_row] =
-            strings.intern("payloads");
-        return new_module_settings_store;
-    }();
-    normal_modules
-        .declarations[unions_row] = declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-        auto const new_tagged_unions{tagged_unions_schemas.append()};
-        auto const new_tagged_unions_row{tagged_unions_schemas.index(new_tagged_unions)};
-        tagged_unions_schemas.name[new_tagged_unions_row] = strings.intern("Event");
-        tagged_unions_schemas.discriminant[new_tagged_unions_row] =
-            lispb::codegen::make_test_type_ref(context, "events::EventKind");
-        tagged_unions_schemas.alternatives[new_tagged_unions_row] =
-            declarations.range<lispb::codegen::TaggedUnionAlternativeId>(
-                {[&] {
-                     auto const new_tagged_union_alternatives{
-                         tagged_union_alternatives_schemas.append()};
-                     auto const new_tagged_union_alternatives_row{
-                         tagged_union_alternatives_schemas.index(new_tagged_union_alternatives)};
-                     tagged_union_alternatives_schemas.name[new_tagged_union_alternatives_row] =
-                         strings.intern("spawn");
-                     tagged_union_alternatives_schemas.type[new_tagged_union_alternatives_row] =
-                         lispb::codegen::make_test_type_ref(context, "std::uint32_t");
-                     tagged_union_alternatives_schemas.tag[new_tagged_union_alternatives_row] =
-                         strings.intern("Spawn");
-                     return new_tagged_union_alternatives;
-                 }(),
-                 [&] {
-                     auto const new_tagged_union_alternatives{
-                         tagged_union_alternatives_schemas.append()};
-                     auto const new_tagged_union_alternatives_row{
-                         tagged_union_alternatives_schemas.index(new_tagged_union_alternatives)};
-                     tagged_union_alternatives_schemas.name[new_tagged_union_alternatives_row] =
-                         strings.intern("damage");
-                     tagged_union_alternatives_schemas.type[new_tagged_union_alternatives_row] =
-                         lispb::codegen::make_test_type_ref(context, "std::uint16_t");
-                     tagged_union_alternatives_schemas.count[new_tagged_union_alternatives_row] = 4;
-                     tagged_union_alternatives_schemas.tag[new_tagged_union_alternatives_row] =
-                         strings.intern("Damage");
-                     return new_tagged_union_alternatives;
-                 }()});
-        return new_tagged_unions;
-    }()});
-    lispb::codegen::Manifest manifest{lispb::codegen::manifest_schema_version,
-                                      lispb::codegen::make_test_registry(context),
-                                      declarations,
-                                      {enums, unions}};
-
-    auto graph{resolve_type_graph(manifest)};
-    auto const event{lispb::codegen::find_test_type(graph, "payloads", "Event")};
-    auto const kind{lispb::codegen::find_test_type(graph, "events", "EventKind")};
-    ASSERT_TRUE(event.has_value());
-    ASSERT_TRUE(kind.has_value());
-    auto const& tagged{graph.definition(*event)};
-    EXPECT_EQ(
-        graph.occurrences().type[graph.occurrences().index(
-            graph.definitions()
-                .tagged_unions.discriminant[graph.definitions().tagged_unions.index(tagged)])],
-        *kind);
-    ASSERT_EQ(graph.definitions().tagged_unions.alternatives_of(tagged).size(), 2U);
-    EXPECT_EQ(
-        text(storage,
-             graph.definitions()
-                 .tagged_union_alternatives.tag[graph.definitions().tagged_union_alternatives.index(
-                     graph.definitions().tagged_unions.alternatives_of(tagged)[0])]),
-        "Spawn");
-    EXPECT_EQ(
-        graph.definitions()
-            .tagged_union_alternatives.count[graph.definitions().tagged_union_alternatives.index(
-                graph.definitions().tagged_unions.alternatives_of(tagged)[1])],
-        4);
-    EXPECT_NE(std::ranges::find(graph.dependencies_of(*event), *kind),
-              graph.dependencies_of(*event).end());
-    EXPECT_EQ(graph.users_of(*kind).front(), *event);
-
-    for (auto const tag : {"Missing", "Invalid"}) {
-        auto invalid{lispb::codegen::parse_test_manifest(
-            context,
-            "(module payloads :header \"Payloads.h\" :namespace payloads (tagged-union Event "
-            ":discriminant events::EventKind (alternative missing std::uint32_t :tag " +
-                std::string{tag} + ")))")};
-        manifest.modules = {enums, invalid.modules.front()};
-        EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
+TEST(SemanticTypeGraph, RejectsPackedFixedPointHelperNameCollisions) {
+    for (auto const name : {"distance_value",
+                            "set_distance_value",
+                            "try_encode_distance_value",
+                            "distance_minimum_allowed_raw",
+                            "distance_maximum_allowed_raw"}) {
+        SCOPED_TRACE(name);
+        lispb::codegen::CompilerTestContext context;
+        auto const source{std::string{R"(
+          (module values :header "Values.h"
+            (fixed-point Distance :signed true :total-bits 16 :fractional-bits 4
+              :rounding toward-zero)
+            (record Position :layout packed
+              (member distance @Distance)
+              (member )"} +
+                          name + R"( std::uint8_t)
+              (projections (cpp)))))"};
+        auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
+        EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
     }
-    auto invalid{lispb::codegen::parse_test_manifest(context, R"(
-        (module payloads :header "Payloads.h" :namespace payloads
-          (tagged-union Event :discriminant std::uint8_t
-            (alternative missing std::uint32_t :tag Invalid))))")};
-    manifest.modules = {enums, invalid.modules.front()};
-    EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
+}
+
+TEST(SemanticTypeGraph, RejectsPackedAccessorMatchingOwningTypeName) {
+    for (auto const kind : {"record", "union"}) {
+        SCOPED_TRACE(kind);
+        lispb::codegen::CompilerTestContext context;
+        auto const source{std::string{"(module values :header \"Values.h\" ("} + kind +
+                          " value :layout packed (member value std::uint8_t) "
+                          "(projections (cpp))))"};
+        auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
+        EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
+    }
+}
+
+TEST(SemanticTypeGraph, UnionDefaultsSelectOneCompleteAlternative) {
+    lispb::codegen::CompilerTestContext context;
+    auto const manifest{lispb::codegen::parse_test_manifest(context, R"(
+      (module values :header "Values.h"
+        (integer-scalar Code :bit-width 2 :minimum 1 :maximum 2)
+        (union Choice :layout packed
+          (member first @Code :default 1)
+          (member second @Code :default 2)
+          (projections (cpp)))
+        (union Partial :layout packed
+          (member first @Code)
+          (member second @Code :default 2)
+          (projections (cpp)))
+        (record Nested :layout packed
+          (member choice @Choice)
+          (member suffix @Code :default 2)
+          (projections (cpp)))))")};
+    auto const graph{resolve_type_graph(manifest)};
+    auto const choice{*lispb::codegen::find_test_type(graph, "values", "Choice")};
+    auto const partial{*lispb::codegen::find_test_type(graph, "values", "Partial")};
+    auto const nested{*lispb::codegen::find_test_type(graph, "values", "Nested")};
+    EXPECT_EQ(graph.bit_layout(choice).default_raw_value, 1U);
+    EXPECT_EQ(graph.bit_layout(partial).default_raw_value, 2U);
+    EXPECT_EQ(graph.bit_layout(nested).default_raw_value, 9U);
 }
 
 TEST(SemanticTypeGraph, KeepsUnknownRegisteredTypesAsExternalLeaves) {
@@ -1987,6 +1758,7 @@ TEST(SemanticTypeGraph, KeepsUnknownRegisteredTypesAsExternalLeaves) {
                 declarations.range<lispb::codegen::DeclarationHandle>({[&] {
                     auto const new_enums{enums.append()};
                     auto const new_enums_row{enums.index(new_enums)};
+                    enums.cpp_projection[new_enums_row] = lispb::codegen::CppProjection{};
                     enums.name[new_enums_row] = strings.intern("Mode");
                     enums.underlying_type[new_enums_row] =
                         lispb::codegen::make_test_type_ref(context, "uint8");
@@ -2050,6 +1822,7 @@ TEST(SemanticTypeGraph, RejectsAmbiguousRegisteredDeclarationBindings) {
                 declarations.range<lispb::codegen::DeclarationHandle>({[&] {
                     auto const new_enums{enums.append()};
                     auto const new_enums_row{enums.index(new_enums)};
+                    enums.cpp_projection[new_enums_row] = lispb::codegen::CppProjection{};
                     enums.name[new_enums_row] = strings.intern("Mode");
                     enums.underlying_type[new_enums_row] =
                         lispb::codegen::make_test_type_ref(context, "uint8");
@@ -2173,6 +1946,7 @@ TEST(SemanticTypeGraph, RejectsUnresolvedRegisteredReferences) {
                 declarations.range<lispb::codegen::DeclarationHandle>({[&] {
                     auto const new_enums{enums.append()};
                     auto const new_enums_row{enums.index(new_enums)};
+                    enums.cpp_projection[new_enums_row] = lispb::codegen::CppProjection{};
                     enums.name[new_enums_row] = strings.intern("Mode");
                     enums.underlying_type[new_enums_row] =
                         lispb::codegen::make_test_type_ref(context, "@missing");
@@ -2198,7 +1972,7 @@ TEST(SemanticTypeGraph, ReferenceLookupMatchesResolverBindings) {
     auto& normal_modules_schemas{declarations.normal_modules};
     auto& module_settings_store{declarations.module_settings_store};
     auto& records_schemas{declarations.records};
-    auto& record_members_schemas{declarations.record_members};
+    auto& record_members_schemas{declarations.child_occurrences};
     auto& type_refs{declarations.type_refs};
     auto& strings{context.storage.strings};
     [[maybe_unused]] auto& storage{context.storage};
@@ -2226,9 +2000,11 @@ TEST(SemanticTypeGraph, ReferenceLookupMatchesResolverBindings) {
                      {[&] {
                           auto const new_records{records_schemas.append()};
                           auto const new_records_row{records_schemas.index(new_records)};
+                          records_schemas.cpp_projection[new_records_row] =
+                              lispb::codegen::CppProjection{};
                           records_schemas.name[new_records_row] = strings.intern("Foo");
                           records_schemas.members[new_records_row] =
-                              declarations.range<lispb::codegen::RecordMemberId>({[&] {
+                              declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
                                   auto const new_record_members{record_members_schemas.append()};
                                   auto const new_record_members_row{
                                       record_members_schemas.index(new_record_members)};
@@ -2243,9 +2019,11 @@ TEST(SemanticTypeGraph, ReferenceLookupMatchesResolverBindings) {
                       [&] {
                           auto const new_records{records_schemas.append()};
                           auto const new_records_row{records_schemas.index(new_records)};
+                          records_schemas.cpp_projection[new_records_row] =
+                              lispb::codegen::CppProjection{};
                           records_schemas.name[new_records_row] = strings.intern("Bar");
                           records_schemas.members[new_records_row] =
-                              declarations.range<lispb::codegen::RecordMemberId>({[&] {
+                              declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
                                   auto const new_record_members{record_members_schemas.append()};
                                   auto const new_record_members_row{
                                       record_members_schemas.index(new_record_members)};
@@ -2260,9 +2038,11 @@ TEST(SemanticTypeGraph, ReferenceLookupMatchesResolverBindings) {
                       [&] {
                           auto const new_records{records_schemas.append()};
                           auto const new_records_row{records_schemas.index(new_records)};
+                          records_schemas.cpp_projection[new_records_row] =
+                              lispb::codegen::CppProjection{};
                           records_schemas.name[new_records_row] = strings.intern("User");
                           records_schemas.members[new_records_row] = declarations.range<
-                              lispb::codegen::RecordMemberId>(
+                              lispb::codegen::ChildOccurrenceId>(
                               {[&] {
                                    auto const new_record_members{record_members_schemas.append()};
                                    auto const new_record_members_row{
@@ -2340,9 +2120,11 @@ TEST(SemanticTypeGraph, ReferenceLookupMatchesResolverBindings) {
                  declarations.range<lispb::codegen::DeclarationHandle>({[&] {
                      auto const new_records{records_schemas.append()};
                      auto const new_records_row{records_schemas.index(new_records)};
+                     records_schemas.cpp_projection[new_records_row] =
+                         lispb::codegen::CppProjection{};
                      records_schemas.name[new_records_row] = strings.intern("Foo");
                      records_schemas.members[new_records_row] =
-                         declarations.range<lispb::codegen::RecordMemberId>({[&] {
+                         declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
                              auto const new_record_members{record_members_schemas.append()};
                              auto const new_record_members_row{
                                  record_members_schemas.index(new_record_members)};
@@ -2357,7 +2139,7 @@ TEST(SemanticTypeGraph, ReferenceLookupMatchesResolverBindings) {
              return new_normal_modules;
          }()}};
     auto const graph{resolve_type_graph(manifest)};
-    auto const& semantic_record_members{graph.definitions().record_members};
+    auto const& semantic_record_members{graph.definitions().children};
     auto const& semantic_records{graph.definitions().records};
     auto const& occurrences{graph.occurrences()};
     auto const& store{storage.declarations};
@@ -2367,13 +2149,13 @@ TEST(SemanticTypeGraph, ReferenceLookupMatchesResolverBindings) {
     auto const& user{graph.definition(*lispb::codegen::find_test_type(graph, "A", "User"))};
     auto const bound_member_count{store.records.members[store.records.index(schema)].size() - 1};
     for (std::size_t index{}; index < bound_member_count; ++index) {
-        EXPECT_EQ(
-            graph.find_reference(store.record_members.type[store.record_members.index(store.items(
-                                     store.records.members[store.records.index(schema)])[index])],
-                                 module),
-            occurrences.type[occurrences.index(
-                semantic_record_members.semantic_type[semantic_record_members.index(
-                    semantic_records.members_of(user)[index])])]);
+        EXPECT_EQ(graph.find_reference(
+                      store.child_occurrences.type[store.child_occurrences.index(
+                          store.items(store.records.members[store.records.index(schema)])[index])],
+                      module),
+                  occurrences.type[occurrences.index(
+                      semantic_record_members.semantic_type[semantic_record_members.index(
+                          semantic_records.members_of(user)[index])])]);
     }
     EXPECT_FALSE(
         graph.find_reference(lispb::codegen::make_test_type_ref(context, "game::Foo"), module)
@@ -2459,7 +2241,7 @@ TEST(SemanticTypeGraph, SoaOwnerUsesItsLogicalIdentity) {
     auto& normal_modules{declarations.normal_modules};
     auto& module_settings_store{declarations.module_settings_store};
     auto& records_schemas{declarations.records};
-    auto& record_members_schemas{declarations.record_members};
+    auto& record_members_schemas{declarations.child_occurrences};
     auto& strings{context.storage.strings};
     [[maybe_unused]] auto& storage{context.storage};
     auto& semantic_strings{storage.strings};
@@ -2521,9 +2303,11 @@ TEST(SemanticTypeGraph, SoaOwnerUsesItsLogicalIdentity) {
                      [&] {
                          auto const new_records{records_schemas.append()};
                          auto const new_records_row{records_schemas.index(new_records)};
+                         records_schemas.cpp_projection[new_records_row] =
+                             lispb::codegen::CppProjection{};
                          records_schemas.name[new_records_row] = strings.intern("Reference");
                          records_schemas.members[new_records_row] =
-                             declarations.range<lispb::codegen::RecordMemberId>({[&] {
+                             declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
                                  auto const new_record_members{record_members_schemas.append()};
                                  auto const new_record_members_row{
                                      record_members_schemas.index(new_record_members)};
@@ -2545,7 +2329,7 @@ TEST(SemanticTypeGraph, SoaOwnerUsesItsLogicalIdentity) {
         }()}};
     auto const graph{resolve_type_graph(manifest)};
     auto const& soas{graph.definitions().soas};
-    auto const& record_members{graph.definitions().record_members};
+    auto const& record_members{graph.definitions().children};
     auto const& records{graph.definitions().records};
     auto const& occurrences{graph.occurrences()};
     auto const id{lispb::codegen::find_test_type(graph, "model", "LogicalRows")};
@@ -2575,7 +2359,7 @@ TEST(SemanticTypeGraph, SoaOwnerUsesItsLogicalIdentity) {
         storage.cpp_types.spelling(occurrences.cpp_type[occurrences.index(
             record_members
                 .semantic_type[record_members.index(records.members_of(reference).front())])]),
-        "LogicalRows*");
+        "model::LogicalRows*");
 }
 
 } // namespace

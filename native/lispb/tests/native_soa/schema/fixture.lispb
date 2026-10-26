@@ -8,24 +8,27 @@
     (member count array std::uint32_t))
   (record Pair
     (member x float)
-    (member y float))
+    (member y float)
+    (projections (cpp)))
   (record Node
     (member next (type-ref Node :suffix "*"))
-    (member weight float))
-  (record First (member other (type-ref Second :suffix "*")))
-  (record Second (member other (type-ref First :suffix "*")))
+    (member weight float)
+    (projections (cpp)))
+  (record First (member other (type-ref Second :suffix "*")) (projections (cpp)))
+  (record Second (member other (type-ref First :suffix "*")) (projections (cpp)))
 
   (struct PointerB
     (member others array (type-ref PointerA :suffix "*")))
   (struct PointerA
     (member others array (type-ref PointerB :suffix "*")))
-  (record MixedRecord (member rows (type-ref MixedRows :suffix "*")))
+  (record MixedRecord (member rows (type-ref MixedRows :suffix "*")) (projections (cpp)))
   (struct MixedRows
     (member records array (type-ref MixedRecord :suffix "*")))
   (record Envelope
     (member pairs Pair :count 3)
     (member node Node)
-    (member aligned @aligned32))
+    (member aligned @aligned32)
+    (projections (cpp)))
   (struct PairRows
     (member pairs array Pair)
     (member pointers array (type-ref Node :suffix "*")))
@@ -52,7 +55,7 @@
     (member nested nested VectorGroups)
     (member aligned64 array @aligned64)
     (member aligned256 array @aligned256))
-  (record ApiPair (member x float) (member y float))
+  (record ApiPair (member x float) (member y float) (projections (cpp)))
   (struct ApiCoordinates
     :layout-only true
     :equivalent-type ApiPair
@@ -104,7 +107,7 @@ return result;}cpp#)
     :equivalent-type ApiPair
     (member xs array float :equivalent-member x)
     (member ys array float :equivalent-member y))
-  (record ApiReference (member owner (type-ref ApiOwner :suffix "*")))
+  (record ApiReference (member owner (type-ref ApiOwner :suffix "*")) (projections (cpp)))
   (struct AccessorOwner
     :equivalent-type @vector3
     (member horizontal array float :equivalent-member x :equivalent-accessor true)

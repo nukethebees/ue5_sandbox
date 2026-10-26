@@ -71,8 +71,8 @@ auto ModuleQuery::find(std::string_view name, codegen::DeclarationKind kind) con
     }
     return {};
 }
-auto ModuleQuery::packed_value(std::string_view name) const -> PackedValueQuery {
-    return {*declarations_, find(name, codegen::DeclarationKind::packed_value)};
+auto ModuleQuery::record(std::string_view name) const -> RecordQuery {
+    return {*declarations_, find(name, codegen::DeclarationKind::record)};
 }
 auto ModuleQuery::soa(std::string_view name) const -> SoaQuery {
     return {*declarations_, find(name, codegen::DeclarationKind::soa)};

@@ -4,10 +4,12 @@
 #pragma once
 
 #include "Mixed.h"
-#include "ScalarValues.h"
 #include "SignatureFirst.h"
 #include "SignatureSecond.h"
 
+namespace codegen_compile_fixture {
+struct StandardInt;
+} // namespace codegen_compile_fixture
 namespace codegen_compile_fixture {
 struct CrossModuleFactory {
     first::A make() { return {}; }

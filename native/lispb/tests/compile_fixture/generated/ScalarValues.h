@@ -3,35 +3,238 @@
 
 #pragma once
 
+#include "ioj/packed_value.h"
+
+#include <cassert>
+#include <compare>
 #include <cstdint>
-#include <string_view>
 
 namespace codegen_compile_fixture {
-using RegisteredInt = std::int32_t;
+struct RegisteredInt {
+  public:
+    using storage_type = std::uint32_t;
+    using value_type = std::int8_t;
+    using value_field = ioj::PackedField<storage_type, value_type, 0, 8>;
 
-using StandardInt = std::int32_t;
-
-inline constexpr std::uint8_t DamageCode_Laser{static_cast<std::uint8_t>(1)};
-
-inline constexpr std::uint8_t DamageReason_Unknown{static_cast<std::uint8_t>(0)};
-inline constexpr std::uint8_t DamageReason_Laser{static_cast<std::uint8_t>(1)};
-inline constexpr std::uint8_t DamageReason_Invalid{static_cast<std::uint8_t>(255)};
-[[nodiscard]] constexpr auto DamageReason_name(std::uint8_t const value) noexcept
-    -> std::string_view {
-    switch (value) {
-        case DamageReason_Unknown: {
-            return "Unknown";
-        }
-        case DamageReason_Laser: {
-            return "Laser";
-        }
-        case DamageReason_Invalid: {
-            return "Invalid";
-        }
+    constexpr RegisteredInt() noexcept = default;
+    explicit constexpr RegisteredInt(value_type const value) noexcept
+        : value_{ioj::packed_pack<value_field>(value)} {
+        assert(((value >= static_cast<std::int8_t>(-100LL)) &&
+                (value <= static_cast<std::int8_t>(100ULL))));
     }
+    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> RegisteredInt {
+        RegisteredInt result;
+        result.value_ = raw;
+        return result;
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
+        return ioj::packed_extract<value_field>(value_);
+    }
+    constexpr void set_value(value_type const value) noexcept {
+        assert(((value >= static_cast<std::int8_t>(-100LL)) &&
+                (value <= static_cast<std::int8_t>(100ULL))));
+        value_ = ioj::packed_insert<value_field>(value_, value);
+    }
+    [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
+        return (value >= static_cast<std::int8_t>(-100LL)) &&
+               (value <= static_cast<std::int8_t>(100ULL));
+    }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return (value() >= static_cast<std::int8_t>(-100LL)) &&
+               (value() <= static_cast<std::int8_t>(100ULL));
+    }
+    [[nodiscard]] constexpr auto operator<=>(RegisteredInt const& other) const noexcept {
+        return value() <=> other.value();
+    }
+    [[nodiscard]] constexpr auto operator==(RegisteredInt const& other) const noexcept -> bool {
+        return value() == other.value();
+    }
+  private:
+    storage_type value_{};
+};
+static_assert(ioj::valid_packed_value_layout<RegisteredInt>());
 
-    return {};
-}
+struct StandardInt {
+  public:
+    using storage_type = std::uint32_t;
+    using value_type = std::int8_t;
+    using value_field = ioj::PackedField<storage_type, value_type, 0, 8>;
 
-using Health = std::uint16_t;
+    constexpr StandardInt() noexcept = default;
+    explicit constexpr StandardInt(value_type const value) noexcept
+        : value_{ioj::packed_pack<value_field>(value)} {
+        assert(((value >= static_cast<std::int8_t>(-100LL)) &&
+                (value <= static_cast<std::int8_t>(100ULL))));
+    }
+    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> StandardInt {
+        StandardInt result;
+        result.value_ = raw;
+        return result;
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
+        return ioj::packed_extract<value_field>(value_);
+    }
+    constexpr void set_value(value_type const value) noexcept {
+        assert(((value >= static_cast<std::int8_t>(-100LL)) &&
+                (value <= static_cast<std::int8_t>(100ULL))));
+        value_ = ioj::packed_insert<value_field>(value_, value);
+    }
+    [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
+        return (value >= static_cast<std::int8_t>(-100LL)) &&
+               (value <= static_cast<std::int8_t>(100ULL));
+    }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return (value() >= static_cast<std::int8_t>(-100LL)) &&
+               (value() <= static_cast<std::int8_t>(100ULL));
+    }
+    [[nodiscard]] constexpr auto operator<=>(StandardInt const& other) const noexcept {
+        return value() <=> other.value();
+    }
+    [[nodiscard]] constexpr auto operator==(StandardInt const& other) const noexcept -> bool {
+        return value() == other.value();
+    }
+  private:
+    storage_type value_{};
+};
+static_assert(ioj::valid_packed_value_layout<StandardInt>());
+
+struct DamageCode {
+  public:
+    using storage_type = std::uint8_t;
+    using value_type = std::uint8_t;
+    using value_field = ioj::PackedField<storage_type, value_type, 0, 4>;
+    static constexpr value_type Laser{static_cast<value_type>(1ULL)};
+
+    constexpr DamageCode() noexcept = default;
+    explicit constexpr DamageCode(value_type const value) noexcept
+        : value_{ioj::packed_pack<value_field>(value)} {
+        assert((((value <= static_cast<std::uint8_t>(10ULL))) &&
+                ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value));
+    }
+    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> DamageCode {
+        DamageCode result;
+        result.value_ = raw;
+        return result;
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
+        return ioj::packed_extract<value_field>(value_);
+    }
+    constexpr void set_value(value_type const value) noexcept {
+        assert((((value <= static_cast<std::uint8_t>(10ULL))) &&
+                ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value));
+        value_ = ioj::packed_insert<value_field>(value_, value);
+    }
+    [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
+        return ((value <= static_cast<std::uint8_t>(10ULL))) &&
+               ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value;
+    }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return (value() <= static_cast<std::uint8_t>(10ULL));
+    }
+    [[nodiscard]] constexpr auto operator<=>(DamageCode const& other) const noexcept {
+        return value() <=> other.value();
+    }
+    [[nodiscard]] constexpr auto operator==(DamageCode const& other) const noexcept -> bool {
+        return value() == other.value();
+    }
+  private:
+    storage_type value_{};
+};
+static_assert(ioj::valid_packed_value_layout<DamageCode>());
+
+struct DamageReason {
+  public:
+    using storage_type = std::uint8_t;
+    using value_type = std::uint8_t;
+    using value_field = ioj::PackedField<storage_type, value_type, 0, 8>;
+    static constexpr value_type Unknown{static_cast<value_type>(0ULL)};
+    static constexpr value_type Laser{static_cast<value_type>(1ULL)};
+    static constexpr value_type Invalid{static_cast<value_type>(255ULL)};
+
+    constexpr DamageReason() noexcept = default;
+    explicit constexpr DamageReason(value_type const value) noexcept
+        : value_{ioj::packed_pack<value_field>(value)} {
+        assert((((value <= static_cast<std::uint8_t>(10ULL))) ||
+                value == static_cast<std::uint8_t>(255ULL)));
+    }
+    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> DamageReason {
+        DamageReason result;
+        result.value_ = raw;
+        return result;
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
+        return ioj::packed_extract<value_field>(value_);
+    }
+    constexpr void set_value(value_type const value) noexcept {
+        assert((((value <= static_cast<std::uint8_t>(10ULL))) ||
+                value == static_cast<std::uint8_t>(255ULL)));
+        value_ = ioj::packed_insert<value_field>(value_, value);
+    }
+    [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
+        return ((value <= static_cast<std::uint8_t>(10ULL))) ||
+               value == static_cast<std::uint8_t>(255ULL);
+    }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return ((value() <= static_cast<std::uint8_t>(10ULL))) ||
+               value() == static_cast<std::uint8_t>(255ULL);
+    }
+    [[nodiscard]] constexpr auto operator<=>(DamageReason const& other) const noexcept {
+        return value() <=> other.value();
+    }
+    [[nodiscard]] constexpr auto operator==(DamageReason const& other) const noexcept -> bool {
+        return value() == other.value();
+    }
+  private:
+    storage_type value_{};
+};
+static_assert(ioj::valid_packed_value_layout<DamageReason>());
+
+struct Health {
+  public:
+    using storage_type = std::uint16_t;
+    using value_type = std::uint16_t;
+    using value_field = ioj::PackedField<storage_type, value_type, 0, 10>;
+
+    constexpr Health() noexcept = default;
+    explicit constexpr Health(value_type const value) noexcept
+        : value_{ioj::packed_pack<value_field>(value)} {
+        assert((((value <= static_cast<std::uint16_t>(1000ULL))) &&
+                ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value));
+    }
+    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> Health {
+        Health result;
+        result.value_ = raw;
+        return result;
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
+        return ioj::packed_extract<value_field>(value_);
+    }
+    constexpr void set_value(value_type const value) noexcept {
+        assert((((value <= static_cast<std::uint16_t>(1000ULL))) &&
+                ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value));
+        value_ = ioj::packed_insert<value_field>(value_, value);
+    }
+    [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
+        return ((value <= static_cast<std::uint16_t>(1000ULL))) &&
+               ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value;
+    }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return (value() <= static_cast<std::uint16_t>(1000ULL));
+    }
+    [[nodiscard]] constexpr auto operator<=>(Health const& other) const noexcept {
+        return value() <=> other.value();
+    }
+    [[nodiscard]] constexpr auto operator==(Health const& other) const noexcept -> bool {
+        return value() == other.value();
+    }
+  private:
+    storage_type value_{};
+};
+static_assert(ioj::valid_packed_value_layout<Health>());
+
 } // namespace codegen_compile_fixture

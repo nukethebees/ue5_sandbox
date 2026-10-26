@@ -9,7 +9,8 @@
     (value slate :serialized-name "slate")
     (value kernel :serialized-name "kernel")
     (value material :serialized-name "material")
-    (value group :serialized-name "group")))
+    (value group :serialized-name "group")
+    (projections (cpp))))
 
 (module path_base
   :header "path_base.h"
@@ -18,7 +19,8 @@
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value project :serialized-name "project-path")
-    (value build :serialized-name "build-path")))
+    (value build :serialized-name "build-path")
+    (projections (cpp))))
 
 (module project_property
   :header "project_property.h"
@@ -34,4 +36,5 @@
     (value include_directories :serialized-name "include-directories")
     (value source :serialized-name "source")
     (value artifact :serialized-name "artifact")
-    (value targets :serialized-name "targets")))
+    (value targets :serialized-name "targets")
+    (projections (cpp))))

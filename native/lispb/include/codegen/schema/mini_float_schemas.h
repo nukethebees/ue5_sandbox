@@ -1,5 +1,6 @@
 #pragma once
 
+#include <codegen/schema/cpp_projection.h>
 #include <codegen/schema/declaration_handle.h>
 #include <codegen/schema/declaration_kind.h>
 #include <lispb/indexed_column.h>
@@ -20,6 +21,7 @@ struct MiniFloatSchemas {
     void clear();
 
     Column<StringId> name;
+    Column<std::optional<CppProjection>> cpp_projection;
     Column<std::uint32_t> sign_bits;
     Column<std::uint32_t> exponent_bits;
     Column<std::uint32_t> significand_bits;

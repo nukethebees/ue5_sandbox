@@ -11,10 +11,10 @@
 #include <codegen/ast/indices.h>
 #include <codegen/ast/node_id.h>
 #include <codegen/ast/node_list_builder.h>
+#include <codegen/schema/child_occurrences.h>
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/function_schemas.h>
 #include <codegen/schema/record_comparison.h>
-#include <codegen/schema/record_member_schemas.h>
 #include <codegen/schema/record_schemas.h>
 #include <lispb/indices.h>
 #include <lispb/schema/type_graph.h>
@@ -28,9 +28,9 @@
 namespace lispb::codegen::detail {
 namespace {
 
-auto record_member_type(LoweringContext& context, RecordMemberId member) -> CppTypeId {
+auto record_member_type(LoweringContext& context, ChildOccurrenceId member) -> CppTypeId {
     auto& ir{context.ir};
-    auto const& members{context.declarations.record_members};
+    auto const& members{context.declarations.child_occurrences};
     auto const row{members.index(member)};
     auto const element{context.resolve(members.type[row])};
     auto const count{members.count[row]};
@@ -46,7 +46,7 @@ auto record_visitor(LoweringContext& context, DeclarationHandle record, std::str
     -> Nodes {
     auto& ir{context.ir};
     auto const& records{context.declarations.records};
-    auto const& members{context.declarations.record_members};
+    auto const& members{context.declarations.child_occurrences};
     auto const fields{context.declarations.items(records.members[record])};
     std::vector<EnumValueId> values;
     std::vector<SwitchCaseId> cases;
@@ -144,7 +144,7 @@ auto record_visitor(LoweringContext& context, DeclarationHandle record, std::str
 auto record_node(LoweringContext& context, DeclarationHandle record) -> NodeId {
     auto& ir{context.ir};
     auto const& records{context.declarations.records};
-    auto const& record_members{context.declarations.record_members};
+    auto const& record_members{context.declarations.child_occurrences};
     auto const row{records.index(record)};
     auto const name{context.text(records.name[row]) +
                     (records.constraint_policy[row] ? "Value" : "")};
@@ -205,7 +205,7 @@ auto lower_record(LoweringContext& context, DeclarationHandle schema) -> Declara
         auto const fields{context.declarations.items(records.members[row])};
         std::vector<std::string> names;
         for (auto const field : fields) {
-            names.push_back(context.text(context.declarations.record_members.name[field]));
+            names.push_back(context.text(context.declarations.child_occurrences.name[field]));
         }
         result.header_global.push_back(ir.namespace_node(
             ir.strings.intern("ioj"),

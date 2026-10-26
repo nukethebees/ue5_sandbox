@@ -1,5 +1,6 @@
 #pragma once
 
+#include <codegen/schema/cpp_projection.h>
 #include <codegen/schema/declaration_handle.h>
 #include <codegen/schema/declaration_kind.h>
 #include <codegen/schema/indices.h>
@@ -22,6 +23,7 @@ struct LinearQuantizedSchemas {
     void clear();
 
     Column<StringId> name;
+    Column<std::optional<CppProjection>> cpp_projection;
     Column<TypeRefId> source;
     Column<std::uint32_t> bit_width;
     Column<std::uint64_t> reserved_codes;

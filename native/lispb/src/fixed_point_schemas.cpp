@@ -12,6 +12,7 @@ auto FixedPointSchemas::index(DeclarationHandle id) const -> std::uint32_t {
 auto FixedPointSchemas::append() -> DeclarationHandle {
     auto const index{static_cast<std::uint32_t>(name.size())};
     assert(index < 0x00fffffe);
+    cpp_projection.push_back({});
     name.push_back({});
     signedness.push_back({});
     total_bits.push_back({});
@@ -26,6 +27,7 @@ auto FixedPointSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
     auto const source_index{index(id)};
     auto const result{append()};
     auto const destination{index(result)};
+    cpp_projection[destination] = cpp_projection[source_index];
     name[destination] = name[source_index];
     signedness[destination] = signedness[source_index];
     total_bits[destination] = total_bits[source_index];
@@ -36,6 +38,7 @@ auto FixedPointSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
     return result;
 }
 void FixedPointSchemas::clear() {
+    cpp_projection.clear();
     name.clear();
     signedness.clear();
     total_bits.clear();

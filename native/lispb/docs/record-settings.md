@@ -7,11 +7,13 @@ Keep fields, types and defaults in ordinary records:
   :generate-s7-reader true :s7-tag "weapon"
   (member damage float :initializer 5.f :nonnegative true)
   (member turn_rate float :initializer 2.f :s7-name "turn-speed")
-  (member socket_distance float :initializer 0.f :s7-exclude true))
+  (member socket_distance float :initializer 0.f :s7-exclude true)
+  (projections (cpp)))
 ```
 
-This generates the ordinary `Weapon` and its typed S7 reader. Configuration records contain
-no presence flags or parsing state. There are no companion override structs.
+The explicit C++ projection generates the ordinary `Weapon` and its typed S7 reader.
+Configuration records contain no presence flags or parsing state. There are no companion
+override structs.
 
 Omitted fields preserve the destination; present fields replace it even when equal to
 their defaults. `read_override(reader, node, path, existing)` decodes into a copy of the

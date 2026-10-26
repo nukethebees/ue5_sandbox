@@ -9,12 +9,10 @@
 #include <codegen/schema/indices.h>
 #include <codegen/schema/module_settings_store.h>
 #include <codegen/schema/normal_module_schemas.h>
-#include <codegen/schema/packed_value_schemas.h>
 #include <codegen/schema/record_schemas.h>
 #include <codegen/schema/settings_module_schemas.h>
 #include <codegen/schema/soa_schemas.h>
 #include <codegen/schema/static_table_schemas.h>
-#include <codegen/schema/tagged_union_schemas.h>
 #include <codegen/schema/union_schemas.h>
 #include <lispb/indices.h>
 #include <lispb/schema/indices.h>
@@ -31,8 +29,9 @@ auto assemble_module(LoweringContext& context,
                      std::span<DeclarationEmission> emissions) -> std::vector<ModuleId>;
 auto lower_record(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission;
 auto lower_union(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission;
-auto lower_tagged_union(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission;
 auto lower_static_table(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission;
+auto lower_scalar(LoweringContext& context, DeclarationHandle schema, schema::TypeId semantic_type)
+    -> DeclarationEmission;
 auto lower_packed_value(LoweringContext& context,
                         DeclarationHandle schema,
                         schema::TypeId semantic_type) -> DeclarationEmission;

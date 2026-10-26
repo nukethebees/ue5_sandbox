@@ -13,6 +13,57 @@
 
 namespace ioj::s7 {
 template <>
+struct TypeReader<codegen_compile_fixture::ScalarSettings>
+    : RecordReader<codegen_compile_fixture::ScalarSettings> {
+    static ReadResult<value_type> construct(DecodeContext context) {
+        std::optional<decltype(value_type::health)> value_health{};
+        decode_record<Field>(context,
+                             "scalar",
+                             field_names,
+                             ([&](Field const field, auto const& read) {
+                                 switch (field) {
+                                     case Field::health:
+                                         read.construct(value_health,
+                                                        constraints::minimum(10ULL),
+                                                        constraints::maximum(90ULL));
+                                         break;
+                                 }
+                             }),
+                             required);
+        if (!context.errors.empty()) {
+            return std::unexpected{std::move(context.errors)};
+        }
+
+        value_type result{.health = std::move(*value_health)};
+
+        return result;
+    }
+
+    static void decode(DecodeContext context, value_type& result) {
+        decode_record<Field>(context,
+                             "scalar",
+                             field_names,
+                             ([&](Field const field, auto const& read) {
+                                 switch (field) {
+                                     case Field::health:
+                                         read(result.health,
+                                              constraints::minimum(10ULL),
+                                              constraints::maximum(90ULL));
+                                         break;
+                                 }
+                             }),
+                             required);
+    }
+  private:
+    enum class Field : std::uint8_t {
+        health,
+    };
+
+    static constexpr std::array<std::string_view, 1> field_names{"health"};
+    static constexpr auto required{required_fields<Field, field_names.size()>({Field::health})};
+};
+
+template <>
 struct TypeReader<codegen_compile_fixture::RangeValue>
     : RecordReader<codegen_compile_fixture::RangeValue> {
     static void decode(DecodeContext context, value_type& result) {

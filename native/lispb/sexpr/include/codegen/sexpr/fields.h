@@ -25,7 +25,8 @@ class Fields {
     Fields(Parser const& parser,
            FormId form,
            std::string_view expected_head,
-           std::size_t positionals);
+           std::size_t positionals,
+           bool allow_references = false);
 
     [[nodiscard]] auto positional(std::size_t index) const -> FormId;
     [[nodiscard]] auto optional(std::string_view name) const -> std::optional<FormId>;

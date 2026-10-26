@@ -12,6 +12,12 @@ auto RecordSchemas::index(DeclarationHandle id) const -> std::uint32_t {
 auto RecordSchemas::append() -> DeclarationHandle {
     auto const index{static_cast<std::uint32_t>(name.size())};
     assert(index < 0x00fffffe);
+    cpp_projection.push_back({});
+    layout.push_back(LayoutKind::native);
+    bits.push_back({});
+    invalid_value.push_back({});
+    bit_order.push_back({});
+    byte_order.push_back({});
     name.push_back({});
     constraint_policy.push_back({});
     generate_visitor.push_back(false);
@@ -31,6 +37,12 @@ auto RecordSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
     auto const source_index{index(id)};
     auto const result{append()};
     auto const destination{index(result)};
+    cpp_projection[destination] = cpp_projection[source_index];
+    layout[destination] = layout[source_index];
+    bits[destination] = bits[source_index];
+    invalid_value[destination] = invalid_value[source_index];
+    bit_order[destination] = bit_order[source_index];
+    byte_order[destination] = byte_order[source_index];
     name[destination] = name[source_index];
     constraint_policy[destination] = constraint_policy[source_index];
     generate_visitor[destination] = generate_visitor[source_index];
@@ -46,6 +58,12 @@ auto RecordSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
     return result;
 }
 void RecordSchemas::clear() {
+    cpp_projection.clear();
+    layout.clear();
+    bits.clear();
+    invalid_value.clear();
+    bit_order.clear();
+    byte_order.clear();
     name.clear();
     constraint_policy.clear();
     generate_visitor.clear();

@@ -6,10 +6,12 @@
 #include "ioj/constrained_value.h"
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
+#include "ioj/packed_value.h"
 
 #include <compile_fixture/range_policy.hpp>
 
 #include <cassert>
+#include <compare>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -18,6 +20,51 @@
 #include <utility>
 
 namespace codegen_compile_fixture {
+struct ReaderHealth {
+  public:
+    using storage_type = std::uint8_t;
+    using value_type = std::uint8_t;
+    using value_field = ioj::PackedField<storage_type, value_type, 0, 8>;
+
+    constexpr ReaderHealth() noexcept = default;
+    explicit constexpr ReaderHealth(value_type const value) noexcept
+        : value_{ioj::packed_pack<value_field>(value)} {
+        assert(((value <= static_cast<std::uint8_t>(100ULL))));
+    }
+    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> ReaderHealth {
+        ReaderHealth result;
+        result.value_ = raw;
+        return result;
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
+        return ioj::packed_extract<value_field>(value_);
+    }
+    constexpr void set_value(value_type const value) noexcept {
+        assert(((value <= static_cast<std::uint8_t>(100ULL))));
+        value_ = ioj::packed_insert<value_field>(value_, value);
+    }
+    [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
+        return (value <= static_cast<std::uint8_t>(100ULL));
+    }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return (value() <= static_cast<std::uint8_t>(100ULL));
+    }
+    [[nodiscard]] constexpr auto operator<=>(ReaderHealth const& other) const noexcept {
+        return value() <=> other.value();
+    }
+    [[nodiscard]] constexpr auto operator==(ReaderHealth const& other) const noexcept -> bool {
+        return value() == other.value();
+    }
+  private:
+    storage_type value_{};
+};
+static_assert(ioj::valid_packed_value_layout<ReaderHealth>());
+
+struct ScalarSettings {
+    ReaderHealth health;
+};
+
 struct RangeValue {
     bool operator==(RangeValue const&) const = default;
 

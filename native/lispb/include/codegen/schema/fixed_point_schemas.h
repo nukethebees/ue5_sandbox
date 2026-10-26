@@ -1,5 +1,6 @@
 #pragma once
 
+#include <codegen/schema/cpp_projection.h>
 #include <codegen/schema/declaration_handle.h>
 #include <codegen/schema/declaration_kind.h>
 #include <codegen/schema/fixed_point_rounding.h>
@@ -22,6 +23,7 @@ struct FixedPointSchemas {
     void clear();
 
     Column<StringId> name;
+    Column<std::optional<CppProjection>> cpp_projection;
     Column<std::uint8_t> signedness;
     Column<std::uint32_t> total_bits;
     Column<std::uint32_t> fractional_bits;

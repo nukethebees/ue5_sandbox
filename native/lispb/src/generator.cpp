@@ -22,7 +22,6 @@
 #include <codegen/schema/facade_schemas.h>
 #include <codegen/schema/fixed_point_schemas.h>
 #include <codegen/schema/indices.h>
-#include <codegen/schema/integer_scalar_cpp_emission.h>
 #include <codegen/schema/integer_scalar_schemas.h>
 #include <codegen/schema/integer_varint_schemas.h>
 #include <codegen/schema/linear_quantized_schemas.h>
@@ -35,12 +34,10 @@
 #include <codegen/schema/optional_sentinel_schemas.h>
 #include <codegen/schema/packed_integer_value.h>
 #include <codegen/schema/packed_named_code_schemas.h>
-#include <codegen/schema/packed_value_schemas.h>
 #include <codegen/schema/record_schemas.h>
 #include <codegen/schema/settings_module_schemas.h>
 #include <codegen/schema/soa_schemas.h>
 #include <codegen/schema/static_table_schemas.h>
-#include <codegen/schema/tagged_union_schemas.h>
 #include <codegen/schema/type_reference_kind.h>
 #include <codegen/schema/umbrella_module_schemas.h>
 #include <codegen/schema/union_schemas.h>
@@ -61,16 +58,11 @@
 #include <lispb/schema/mini_float_types.h>
 #include <lispb/schema/optional_presence_bit_types.h>
 #include <lispb/schema/optional_sentinel_types.h>
-#include <lispb/schema/packed_types.h>
-#include <lispb/schema/record_members.h>
 #include <lispb/schema/record_types.h>
 #include <lispb/schema/soa_columns.h>
 #include <lispb/schema/soa_types.h>
 #include <lispb/schema/static_table_types.h>
-#include <lispb/schema/tagged_union_alternatives.h>
-#include <lispb/schema/tagged_union_types.h>
 #include <lispb/schema/type_graph.h>
-#include <lispb/schema/union_alternatives.h>
 #include <lispb/schema/union_types.h>
 #include <lispb/strings.h>
 
@@ -169,15 +161,7 @@ auto declaration_emission_order(Declarations const& store,
                 if (graph.module(node) != module || found == indices.end()) {
                     continue;
                 }
-                auto const scalar{((graph.source_declaration(node)).kind() ==
-                                           lispb::codegen::DeclarationKind::integer_scalar
-                                       ? std::optional{graph.source_declaration(node)}
-                                       : std::nullopt)};
-                if (scalar &&
-                    store.integer_scalars.cpp_emission[store.integer_scalars.index(*scalar)] ==
-                        IntegerScalarCppEmission::alias) {
-                    self(self, found->second);
-                }
+                self(self, found->second);
             }
             for (auto const dependency : complete.of(*type)) {
                 auto const node{dependency};
@@ -273,105 +257,6 @@ auto lower_umbrella(detail::LoweringContext& context, ModuleHandle module) -> Mo
     return ir.modules.append(settings_store.name[row], file);
 }
 
-auto scalar_constant_expression(CppIR& ir, CppTypeId const type, PackedIntegerValue const value)
-    -> Expr {
-    if (value.negative && value.magnitude == (std::uint64_t{1} << 63)) {
-        return ir.static_cast_expr(type,
-                                   ir.parenthesized(ir.binary(BinaryOperator::subtract,
-                                                              ir.literal("-9223372036854775807LL"),
-                                                              ir.literal("1"))));
-    }
-
-    std::string literal{value.negative ? "-" : ""};
-    literal += std::to_string(value.magnitude);
-    if (!value.negative &&
-        value.magnitude > static_cast<std::uint64_t>((std::numeric_limits<std::int64_t>::max)())) {
-        literal += "ULL";
-    }
-    return ir.static_cast_expr(type, ir.literal(literal));
-}
-
-auto scalar_cpp_type(detail::LoweringContext& context, TypeRefId reference) -> CppTypeId {
-    auto type{context.resolve(reference)};
-    auto& cpp{context.ir.types};
-    auto const spelling{std::string{cpp.spelling(type)}};
-    if (cpp.dependencies(type).empty()) {
-        if (spelling.starts_with("std::uint") || spelling.starts_with("std::int")) {
-            type = cpp.derive(type, spelling, std::array{cpp.dependency(spelling, "cstdint")});
-        } else if ((spelling.starts_with("uint") || spelling.starts_with("int")) &&
-                   spelling != "int") {
-            type = cpp.derive(type, spelling, std::array{cpp.dependency(spelling, "CoreTypes.h")});
-        }
-    }
-    return type;
-}
-
-auto lower_scalar(detail::LoweringContext& context, DeclarationHandle scalar)
-    -> detail::DeclarationEmission {
-    auto& ir{context.ir};
-    auto const& scalars{context.declarations.integer_scalars};
-    auto const row{scalars.index(scalar)};
-    auto const& codes{context.declarations.packed_named_codes};
-    auto const scalar_name{context.text(scalars.name[row])};
-    NodeListBuilder declarations{ir};
-    if (scalars.cpp_emission[row] == IntegerScalarCppEmission::alias) {
-        auto const cpp_type{scalar_cpp_type(context, *scalars.cpp_type[row])};
-        declarations.add(ir.using_declaration(ir.strings.intern(scalar_name), cpp_type));
-        return {.header = declarations.build()};
-    }
-    if (scalars.cpp_emission[row] != IntegerScalarCppEmission::none) {
-        assert(scalars.cpp_type[row].has_value());
-        auto const cpp_type{scalar_cpp_type(context, *scalars.cpp_type[row])};
-        auto const constant_type{ir.types.derive(
-            cpp_type, "inline constexpr " + std::string{ir.types.spelling(cpp_type)})};
-        for (auto const code_id : context.declarations.items(scalars.named_codes[row])) {
-            auto const code{code_id};
-            auto const code_row{codes.index(code)};
-            auto const code_name{context.text(codes.name[code_row])};
-            declarations.add(
-                ir.variable(constant_type,
-                            scalar_name + "_" + code_name,
-                            scalar_constant_expression(ir, cpp_type, codes.value[code_row])),
-                1);
-        }
-        if (scalars.cpp_emission[row] == IntegerScalarCppEmission::constants_with_names) {
-            auto const lookup{ir.function(scalar_name + "_name", "auto")};
-            ir.set_function_return_type(
-                lookup,
-                ir.types.intern("std::string_view",
-                                {ir.types.dependency("std::string_view", "string_view")}),
-                ReturnSyntax::trailing);
-            ir.set_function_parameters(
-                lookup,
-                {ir.parameter(
-                    ir.types.derive(cpp_type, std::string{ir.types.spelling(cpp_type)} + " const"),
-                    "value")});
-            auto& flags{ir.function_flags(lookup)};
-            flags.set_define_in_header(true);
-            flags.set_is_constexpr(true);
-            flags.set_is_nodiscard(true);
-            ir.set_function_noexcept(lookup);
-
-            std::vector<SwitchCaseId> cases;
-            for (auto const code_id : context.declarations.items(scalars.named_codes[row])) {
-                auto const code{code_id};
-                auto const code_row{codes.index(code)};
-                auto const code_name{context.text(codes.name[code_row])};
-                cases.push_back(ir.switch_case(
-                    ir.named(scalar_name + '_' + code_name),
-                    ir.block({ir.return_stmt(ir.string_literal(codes.name[code_row]))})));
-            }
-            NodeListBuilder body{ir};
-            body.add(ir.switch_stmt(ir.named("value"), cases), 2)
-                .add(ir.return_stmt(ir.init_list({})));
-            ir.set_function_body(lookup, body.build());
-            declarations.add(ir.header_function(lookup), 2);
-        }
-    }
-
-    return {.header = declarations.build()};
-}
-
 } // namespace
 
 auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph)
@@ -399,31 +284,41 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                         emissions.push_back([&]() -> detail::DeclarationEmission {
                             auto const value{declaration};
                             switch (value.kind()) {
-                                case lispb::codegen::DeclarationKind::integer_scalar: {
-
-                                    return lower_scalar(context, value);
-                                }
-                                case lispb::codegen::DeclarationKind::packed_value: {
-
-                                    return detail::lower_packed_value(
+                                case DeclarationKind::integer_scalar: {
+                                    if (!store.integer_scalars.cpp_projection[value]) {
+                                        return {};
+                                    }
+                                    return detail::lower_scalar(
                                         context,
                                         value,
-                                        *graph.find_declared(
-                                            module_id,
-                                            store.packed_values
-                                                .name[store.packed_values.index(value)]));
+                                        *graph.find_declared(module_id,
+                                                             store.integer_scalars.name[value]));
                                 }
-                                case lispb::codegen::DeclarationKind::record: {
-
+                                case DeclarationKind::record: {
+                                    if (!store.records.cpp_projection[value]) {
+                                        return {};
+                                    }
+                                    if (store.records.layout[value] == LayoutKind::packed) {
+                                        return detail::lower_packed_value(
+                                            context,
+                                            value,
+                                            *graph.find_declared(module_id,
+                                                                 store.records.name[value]));
+                                    }
                                     return detail::lower_record(context, value);
                                 }
-                                case lispb::codegen::DeclarationKind::union_type: {
-
+                                case DeclarationKind::union_type: {
+                                    if (!store.unions.cpp_projection[value]) {
+                                        return {};
+                                    }
+                                    if (store.unions.layout[value] == LayoutKind::packed) {
+                                        return detail::lower_packed_value(
+                                            context,
+                                            value,
+                                            *graph.find_declared(module_id,
+                                                                 store.unions.name[value]));
+                                    }
                                     return detail::lower_union(context, value);
-                                }
-                                case lispb::codegen::DeclarationKind::tagged_union: {
-
-                                    return detail::lower_tagged_union(context, value);
                                 }
                                 case lispb::codegen::DeclarationKind::static_table: {
 
@@ -438,7 +333,10 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                     return detail::lower_facade(context, value);
                                 }
                                 case lispb::codegen::DeclarationKind::enumeration: {
-
+                                    if (!store.enums.cpp_projection[value] &&
+                                        !store.enums.unreal_projection[value]) {
+                                        return {};
+                                    }
                                     return detail::lower_enum(
                                         context,
                                         value,
@@ -452,12 +350,50 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                                                          module)]}
                                             : std::nullopt);
                                 }
-                                case lispb::codegen::DeclarationKind::fixed_point:
-                                case lispb::codegen::DeclarationKind::integer_varint:
-                                case lispb::codegen::DeclarationKind::linear_quantized:
-                                case lispb::codegen::DeclarationKind::mini_float:
-                                case lispb::codegen::DeclarationKind::optional_presence_bit:
-                                case lispb::codegen::DeclarationKind::optional_sentinel:
+                                case DeclarationKind::fixed_point:
+                                    return store.fixed_points.cpp_projection[value]
+                                             ? detail::lower_scalar(
+                                                   context,
+                                                   value,
+                                                   *graph.find_declared(
+                                                       module_id, store.fixed_points.name[value]))
+                                             : detail::DeclarationEmission{};
+                                case DeclarationKind::linear_quantized:
+                                    return store.linear_quantizeds.cpp_projection[value]
+                                             ? detail::lower_scalar(
+                                                   context,
+                                                   value,
+                                                   *graph.find_declared(
+                                                       module_id,
+                                                       store.linear_quantizeds.name[value]))
+                                             : detail::DeclarationEmission{};
+                                case DeclarationKind::mini_float:
+                                    return store.mini_floats.cpp_projection[value]
+                                             ? detail::lower_scalar(
+                                                   context,
+                                                   value,
+                                                   *graph.find_declared(
+                                                       module_id, store.mini_floats.name[value]))
+                                             : detail::DeclarationEmission{};
+                                case DeclarationKind::optional_presence_bit:
+                                    return store.optional_presence_bits.cpp_projection[value]
+                                             ? detail::lower_scalar(
+                                                   context,
+                                                   value,
+                                                   *graph.find_declared(
+                                                       module_id,
+                                                       store.optional_presence_bits.name[value]))
+                                             : detail::DeclarationEmission{};
+                                case DeclarationKind::optional_sentinel:
+                                    return store.optional_sentinels.cpp_projection[value]
+                                             ? detail::lower_scalar(
+                                                   context,
+                                                   value,
+                                                   *graph.find_declared(
+                                                       module_id,
+                                                       store.optional_sentinels.name[value]))
+                                             : detail::DeclarationEmission{};
+                                case DeclarationKind::integer_varint:
                                     return {};
                                 default:
                                     std::unreachable();

@@ -25,16 +25,12 @@ auto Declarations::clone(DeclarationHandle id) -> DeclarationHandle {
             return optional_presence_bits.clone(id);
         case DeclarationKind::optional_sentinel:
             return optional_sentinels.clone(id);
-        case DeclarationKind::packed_value:
-            return packed_values.clone(id);
         case DeclarationKind::record:
             return records.clone(id);
         case DeclarationKind::soa:
             return soas.clone(id);
         case DeclarationKind::static_table:
             return static_tables.clone(id);
-        case DeclarationKind::tagged_union:
-            return tagged_unions.clone(id);
         case DeclarationKind::union_type:
             return unions.clone(id);
     }
@@ -53,16 +49,6 @@ auto Declarations::clone(ModuleHandle id) -> ModuleHandle {
     assert(false);
     std::unreachable();
 }
-auto Declarations::clone(PackedSegmentId id) -> PackedSegmentId {
-    switch (id.kind()) {
-        case PackedSegmentKind::field:
-            return packed_fields.clone(id);
-        case PackedSegmentKind::reserved:
-            return packed_reserved_bits.clone(id);
-    }
-    assert(false);
-    std::unreachable();
-}
 auto Declarations::module_settings(ModuleHandle id) const -> ModuleSettingsId {
     switch (id.kind()) {
         case ModuleKind::normal:
@@ -76,6 +62,8 @@ auto Declarations::module_settings(ModuleHandle id) const -> ModuleSettingsId {
     std::unreachable();
 }
 void Declarations::clear() {
+    child_occurrences.clear();
+    child_occurrence_items_.clear();
     enumerators.clear();
     enums.clear();
     enum_unreal_projections.clear();
@@ -92,11 +80,7 @@ void Declarations::clear() {
     optional_presence_bits.clear();
     optional_sentinels.clear();
     packed_named_codes.clear();
-    packed_fields.clear();
-    packed_reserved_bits.clear();
-    packed_values.clear();
     parameters.clear();
-    record_members.clear();
     records.clear();
     semantic_relations.clear();
     setting_categories.clear();
@@ -110,11 +94,8 @@ void Declarations::clear() {
     static_table_groups.clear();
     static_table_rows.clear();
     static_tables.clear();
-    tagged_union_alternatives.clear();
-    tagged_unions.clear();
     type_refs.clear();
     umbrella_modules.clear();
-    union_alternatives.clear();
     unions.clear();
     type_ref_items_.clear();
     declaration_handle_items_.clear();
@@ -124,9 +105,7 @@ void Declarations::clear() {
     function_schema_id_items_.clear();
     native_enum_helper_items_.clear();
     packed_named_code_id_items_.clear();
-    packed_segment_id_items_.clear();
     parameter_id_items_.clear();
-    record_member_id_items_.clear();
     setting_category_id_items_.clear();
     setting_id_items_.clear();
     soa_mask_dimension_id_items_.clear();
@@ -134,9 +113,6 @@ void Declarations::clear() {
     static_table_column_id_items_.clear();
     static_table_group_id_items_.clear();
     static_table_row_id_items_.clear();
-    tagged_union_alternative_id_items_.clear();
-    type_ref_id_items_.clear();
-    union_alternative_id_items_.clear();
     string_id_items_.clear();
 }
 

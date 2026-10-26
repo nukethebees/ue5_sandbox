@@ -1,5 +1,6 @@
 #pragma once
 
+#include <codegen/schema/cpp_projection.h>
 #include <codegen/schema/indices.h>
 #include <codegen/sexpr/parser.h>
 #include <lispb/indices.h>
@@ -22,7 +23,6 @@ class RegisteredTypes;
 struct TypeRegistry;
 struct DeclarationHandle;
 struct ModuleHandle;
-struct PackedSegmentId;
 struct PackedIntegerValue;
 struct ExternalScalarId;
 enum class Access : std::uint8_t;
@@ -84,12 +84,11 @@ class SchemaParser {
     auto parse_semantic_relation_unit(sexpr::FormId const form) -> SemanticRelationUnit;
     auto parse_packed_byte_order(sexpr::FormId const form) -> PackedByteOrder;
     auto parse_packed_bit_order(sexpr::FormId const form) -> PackedBitOrder;
-    auto parse_packed_field(Declarations& declarations, sexpr::FormId const form)
-        -> PackedSegmentId;
-    auto parse_packed_reserved_bits(Declarations& declarations, sexpr::FormId const form)
-        -> PackedSegmentId;
-    auto parse_packed_value(Declarations& declarations, sexpr::FormId const form)
-        -> DeclarationHandle;
+    auto parse_reserved(Declarations& declarations, sexpr::FormId form) -> ChildOccurrenceId;
+    auto parse_projections(Declarations& declarations,
+                           sexpr::Fields const& owner,
+                           std::optional<EnumUnrealProjectionId>* unreal = nullptr)
+        -> std::optional<CppProjection>;
     auto parse_enum(Declarations& declarations, sexpr::FormId const form) -> DeclarationHandle;
     auto parse_table(Declarations& declarations, sexpr::FormId const form) -> DeclarationHandle;
     auto parse_facade_target_storage(sexpr::FormId const form) -> bool;
@@ -100,15 +99,9 @@ class SchemaParser {
     auto parse_control(Declarations& declarations, sexpr::FormId const form) -> SettingControlId;
     auto parse_setting(Declarations& declarations, sexpr::FormId const form) -> SettingId;
     auto parse_record_member(Declarations& declarations, sexpr::FormId const form)
-        -> RecordMemberId;
+        -> ChildOccurrenceId;
     auto parse_record(Declarations& declarations, sexpr::FormId const form) -> DeclarationHandle;
-    auto parse_union_alternative(Declarations& declarations, sexpr::FormId const form)
-        -> UnionAlternativeId;
-    auto parse_union(Declarations& declarations, sexpr::FormId const form) -> DeclarationHandle;
-    auto parse_tagged_union_alternative(Declarations& declarations, sexpr::FormId const form)
-        -> TaggedUnionAlternativeId;
-    auto parse_tagged_union(Declarations& declarations, sexpr::FormId const form)
-        -> DeclarationHandle;
+    auto parse_union(Declarations& declarations, sexpr::FormId form) -> DeclarationHandle;
     auto parse_integer_scalar(Declarations& declarations, sexpr::FormId const form)
         -> DeclarationHandle;
     auto parse_linear_quantized(Declarations& declarations, sexpr::FormId const form)

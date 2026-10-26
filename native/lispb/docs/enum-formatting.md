@@ -6,10 +6,12 @@ Opt in through the existing helper list:
 (enum State std::uint8_t
   :native-api true
   :helpers (to-string to-serialized-string to-display-string formatter)
-  (value Ready :serialized-name "ready" :display-name "Ready to start"))
+  (value Ready :serialized-name "ready" :display-name "Ready to start")
+  (projections (cpp)))
 ```
 
-This emits a `std::formatter<State>` specialization inheriting `ioj::EnumFormatter<State>`.
+The explicit C++ projection emits `State` and a `std::formatter<State>` specialization
+inheriting `ioj::EnumFormatter<State>`.
 The shared formatter calls existing string helpers; no string tables or value switches are
 duplicated. Enums without `formatter` retain their existing output and dependencies.
 

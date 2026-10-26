@@ -6,7 +6,8 @@
     :helpers (to-serialized-string try-parse-serialized)
     (value nan :serialized-name "nan")
     (value infinity :serialized-name "infinity")
-    (value negative_infinity :serialized-name "negative-infinity")))
+    (value negative_infinity :serialized-name "negative-infinity")
+    (projections (cpp))))
 
 (module binary_operator
   :header "binary_operator.h"
@@ -17,7 +18,8 @@
     (value add :serialized-name "+")
     (value subtract :serialized-name "-")
     (value multiply :serialized-name "*")
-    (value divide :serialized-name "/")))
+    (value divide :serialized-name "/")
+    (projections (cpp))))
 
 (module storage_kind
   :header "storage_kind.h"
@@ -26,7 +28,8 @@
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value array :serialized-name "array")
-    (value scalar :serialized-name "scalar")))
+    (value scalar :serialized-name "scalar")
+    (projections (cpp))))
 
 (module variant_kind
   :header "variant_kind.h"
@@ -35,7 +38,8 @@
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value out_of_place :serialized-name "out-of-place")
-    (value in_place :serialized-name "in-place")))
+    (value in_place :serialized-name "in-place")
+    (projections (cpp))))
 
 (module operation_kind
   :header "operation_kind.h"
@@ -44,7 +48,8 @@
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value map :serialized-name "map")
-    (value component_map :serialized-name "component-map")))
+    (value component_map :serialized-name "component-map")
+    (projections (cpp))))
 
 (module aliasing
   :header "aliasing.h"
@@ -53,7 +58,8 @@
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value output_disjoint :serialized-name "output-disjoint")
-    (value pairwise_disjoint :serialized-name "pairwise-disjoint")))
+    (value pairwise_disjoint :serialized-name "pairwise-disjoint")
+    (projections (cpp))))
 
 (module scalar_type
   :header "scalar_type.h"
@@ -64,7 +70,8 @@
     (value int32 :serialized-name "int32")
     (value uint32 :serialized-name "uint32")
     (value float32 :serialized-name "float")
-    (value float64 :serialized-name "double")))
+    (value float64 :serialized-name "double")
+    (projections (cpp))))
 
 (module operation_field
   :header "operation_field.h"
@@ -79,7 +86,8 @@
     (value output :serialized-name "output")
     (value expression :serialized-name "expression")
     (value variants :serialized-name "variants")
-    (value aliasing :serialized-name "aliasing")))
+    (value aliasing :serialized-name "aliasing")
+    (projections (cpp))))
 
 (module emission_field
   :header "emission_field.h"
@@ -91,4 +99,5 @@
     (value source :serialized-name "source")
     (value tests :serialized-name "tests")
     (value header_include :serialized-name "header-include")
-    (value namespace_ :serialized-name "namespace")))
+    (value namespace_ :serialized-name "namespace")
+    (projections (cpp))))

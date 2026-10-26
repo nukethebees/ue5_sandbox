@@ -9,6 +9,7 @@
 #include <codegen/schema/type_reference_kind.h>
 #include <codegen/schema/type_reference_role.h>
 #include <lispb/indices.h>
+#include <lispb/schema/bit_layout.h>
 #include <lispb/schema/enum_domains.h>
 #include <lispb/schema/indices.h>
 #include <lispb/schema/relationships.h>
@@ -48,6 +49,7 @@ class TypeGraph {
     auto enum_domains() const -> EnumDomains const& { return enum_domains_; }
     auto occurrences() const -> ResolvedOccurrences const& { return occurrences_; }
     auto relationships() const -> Relationships const& { return relationships_; }
+    auto bit_layout(TypeId id) const -> BitLayout const& { return bit_layouts_[index(id)]; }
     auto declarations() const -> codegen::Declarations& { return *declarations_; }
     auto strings() const -> Strings&;
     auto cpp_types() const -> codegen::CppTypes& { return *cpp_types_; }
@@ -99,6 +101,7 @@ class TypeGraph {
     EnumDomains enum_domains_;
     ResolvedOccurrences occurrences_;
     Relationships relationships_;
+    std::vector<BitLayout> bit_layouts_;
     codegen::Declarations* declarations_{};
     codegen::CppTypes* cpp_types_{};
     std::vector<TypeOrigin> origins_;

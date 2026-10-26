@@ -425,6 +425,9 @@ auto native_enum_name(LoweringContext& context, ModuleSettingsId settings, Decla
 auto enum_underlying_type(LoweringContext& context, DeclarationHandle schema) -> CppTypeId {
     auto& ir{context.ir};
     auto const& enums{context.declarations.enums};
+    if (auto const& projection{enums.cpp_projection[schema]}; projection && projection->storage) {
+        return context.resolve(*projection->storage);
+    }
     if (enums.underlying_type[schema].has_value()) {
         return context.resolve(*enums.underlying_type[schema]);
     }
@@ -439,13 +442,9 @@ auto enum_underlying_type(LoweringContext& context, DeclarationHandle schema) ->
     }
 
     auto const prefix{requirement->signedness ? "int" : "uint"};
-    auto const spelling{enums.native_api[schema]
-                            ? "std::" + std::string{prefix} +
-                                  std::to_string(requirement->bit_width) + "_t"
-                            : std::string{prefix} + std::to_string(requirement->bit_width)};
-    return ir.types.intern(
-        spelling,
-        {ir.types.dependency(spelling, enums.native_api[schema] ? "cstdint" : "CoreMinimal.h")});
+    auto const spelling{"std::" + std::string{prefix} + std::to_string(requirement->bit_width) +
+                        "_t"};
+    return ir.types.intern(spelling, {ir.types.dependency(spelling, "cstdint")});
 }
 
 auto enum_bit_width_comment(LoweringContext& context, DeclarationHandle const schema) -> NodeId {
@@ -728,6 +727,9 @@ auto lower_enum(LoweringContext& context,
     auto const& enumerators{context.declarations.enumerators};
     auto const& settings_store{context.declarations.module_settings_store};
     DeclarationEmission emission;
+    if (!enums.cpp_projection[schema]) {
+        return emission;
+    }
     emission.source_dependencies = false;
     if (enums.native_api[schema]) {
         NodeListBuilder prefix{ir};

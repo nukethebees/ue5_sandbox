@@ -1,8 +1,10 @@
 #pragma once
 
+#include <codegen/schema/cpp_projection.h>
 #include <codegen/schema/declaration_handle.h>
 #include <codegen/schema/declaration_kind.h>
 #include <codegen/schema/indices.h>
+#include <codegen/schema/layout_kind.h>
 #include <codegen/schema/schema_range.h>
 #include <lispb/indexed_column.h>
 #include <lispb/indices.h>
@@ -19,8 +21,11 @@ struct UnionSchemas {
     [[nodiscard]] auto index(DeclarationHandle id) const -> std::uint32_t;
     void clear();
 
+    Column<LayoutKind> layout;
+    Column<std::optional<std::uint32_t>> bits;
     Column<StringId> name;
-    Column<SchemaRange<UnionAlternativeId>> alternatives;
+    Column<std::optional<CppProjection>> cpp_projection;
+    Column<SchemaRange<ChildOccurrenceId>> alternatives;
     Column<StringId> export_specifier;
 };
 

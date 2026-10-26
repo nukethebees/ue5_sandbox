@@ -30,6 +30,23 @@ auto assemble_module(LoweringContext& context,
                      std::span<DeclarationEmission> emissions) -> std::vector<ModuleId> {
     auto& ir{context.ir};
     auto const& settings_store{context.declarations.module_settings_store};
+    auto const has_output{std::ranges::any_of(emissions, [](DeclarationEmission const& emission) {
+        return !emission.header.empty() || !emission.header_prefix.empty() ||
+               !emission.header_generated_include.empty() || !emission.header_after.empty() ||
+               !emission.header_global.empty() || !emission.header_tail.empty() ||
+               !emission.source.empty() || !emission.source_global.empty() ||
+               !emission.source_tail.empty() || !emission.reader_declarations.empty();
+    })};
+    if (!has_output) {
+        std::vector<ModuleId> additional;
+        for (auto const& emission : emissions) {
+            additional.insert(additional.end(),
+                              emission.additional_modules.begin(),
+                              emission.additional_modules.end());
+        }
+        return additional;
+    }
+
     NodeListBuilder header{ir};
     NodeListBuilder source{ir};
     header.add(ir.include_dependencies(), 2);

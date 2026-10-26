@@ -268,7 +268,7 @@ TEST_P(ConflictingSoaModuleDeclaration, RejectsSharedViewTypeCollisions) {
         (module owner :header "Owner.h" :namespace example
           (struct Rows (member values array float)))
         (module collision :header "Collision.h" :namespace example::rows
-          (record )"} + GetParam() + "))")};
+          (record )"} + GetParam() + " (projections (cpp))))")};
     EXPECT_THROW(render_test_manifest(context, manifest), std::invalid_argument);
 }
 

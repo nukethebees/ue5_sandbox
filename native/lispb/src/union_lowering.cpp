@@ -8,11 +8,9 @@
 #include <codegen/ast/node_id.h>
 #include <codegen/ast/node_list_builder.h>
 #include <codegen/ast/record_kind.h>
+#include <codegen/schema/child_occurrences.h>
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/indices.h>
-#include <codegen/schema/tagged_union_alternative_schemas.h>
-#include <codegen/schema/tagged_union_schemas.h>
-#include <codegen/schema/union_alternative_schemas.h>
 #include <codegen/schema/union_schemas.h>
 #include <lispb/indices.h>
 #include <lispb/strings.h>
@@ -42,7 +40,7 @@ auto alternative_type(LoweringContext& context,
 auto union_node(LoweringContext& context, DeclarationHandle schema) -> NodeId {
     auto& ir{context.ir};
     auto const& unions{context.declarations.unions};
-    auto const& schemas{context.declarations.union_alternatives};
+    auto const& schemas{context.declarations.child_occurrences};
     auto const row{unions.index(schema)};
     NodeListBuilder alternatives{ir};
     for (auto const alternative : context.declarations.items(unions.alternatives[row])) {
@@ -58,39 +56,10 @@ auto union_node(LoweringContext& context, DeclarationHandle schema) -> NodeId {
     return created_record;
 }
 
-auto tagged_union_node(LoweringContext& context, DeclarationHandle schema) -> NodeId {
-    auto& ir{context.ir};
-    auto const& unions{context.declarations.tagged_unions};
-    auto const& schemas{context.declarations.tagged_union_alternatives};
-    auto const row{unions.index(schema)};
-    NodeListBuilder alternatives{ir};
-    for (auto const alternative : context.declarations.items(unions.alternatives[row])) {
-        auto const alternative_row{schemas.index(alternative)};
-        alternatives.add(ir.line_comment("tag: " + context.text(schemas.tag[alternative_row])));
-        alternatives.add(ir.instance_member(alternative_type(context,
-                                                             schemas.type[alternative_row],
-                                                             schemas.count[alternative_row]),
-                                            schemas.name[alternative_row]));
-    }
-
-    NodeListBuilder members{ir};
-    members.add(
-        ir.instance_member(context.resolve(unions.discriminant[row]), ir.strings.intern("tag")));
-    members.add(ir.record(ir.strings.intern("Payload"), alternatives.build(), RecordKind::union_));
-    members.add(ir.instance_member(ir.types.intern("Payload"), ir.strings.intern("payload")));
-    auto const created_record{ir.record(unions.name[row], members.build(), RecordKind::struct_)};
-    ir.set_record_export_specifier(created_record, unions.export_specifier[row]);
-    return created_record;
-}
-
 } // namespace
 
 auto lower_union(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission {
     return {.header = {union_node(context, schema)}};
-}
-
-auto lower_tagged_union(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission {
-    return {.header = {tagged_union_node(context, schema)}};
 }
 
 } // namespace lispb::codegen::detail

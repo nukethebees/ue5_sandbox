@@ -114,18 +114,15 @@ reference parameters; default expressions are not analyzed. Other signature uses
 Across modules, bodyless record signatures emit these declarations in the target namespace before
 the owning namespace, without adding a generated-header include. Explicit registered header
 dependencies are retained. Header-defined by-value uses and record members still require the target
-header; enums and aliases also retain their normal definition dependencies.
-Aliases and enums precede their users, and complete-definition cycles are rejected across modules
+header; enums and scalar wrappers also retain their normal definition dependencies.
+Projected scalar types and enums precede their users, and complete-definition cycles are rejected across modules
 as well as within a header. These emission dependencies do not reorder authored declarations.
 Record and SoA owner/view functions share qualifier, return-type, parameter, overload and dependency
 validation, with receiver-specific restrictions applied separately.
 
-The simulation schema owns aggregate data, enums, and ordinary scalar aliases. Strong wrappers
-such as `HealthIndex` remain C++ declarations because their constructors,
-private representation or nested constants are outside this record model; external integer
-registrations expose their domains and invalid sentinels. Telemetry `std::array` aliases also
-remain handwritten: record fixed counts generate member arrays, which do not declare these aliases. Their physical facts can
-still be supplied through the planner's existing ABI profile/probe system.
+The simulation schema owns aggregate data, enums, and projected scalar wrappers. Handwritten
+wrappers with custom lifetime or constructor policies remain external declarations. Registry
+integer contracts expose their domains and invalid sentinels to the same resolver.
 
 Lispb parses constrained declarative input and emits checked source assets; it is not a general Lisp
 runtime or an escape hatch for arbitrary C++. Each DSL owns its grammar, semantic validation, and
@@ -143,8 +140,7 @@ See [README.md](README.md) for entry points.
 
 A normal `(module name ...)` is one source and C++ output context, not a declaration family.
 Its row in `NormalModuleSchemas` has one ordered range of `DeclarationHandle` values. Enums, integer
-scalars, the six physical-representation declarations, packed values, records, ordinary and
-tagged unions, SoAs, static tables, and facades can coexist.
+scalars and reusable encodings, records, unions, SoAs, static tables, and facades can coexist.
 The sequence is the source of truth for declaration indices and canonical source order.
 Enum helper namespace, header/source paths, C++ namespace,
 includes, and prelude remain module-wide policies. Settings modules remain special because they
@@ -167,7 +163,7 @@ include order, prelude, namespace, and output envelopes. Explicit declaration-sp
 operations remain visible in their lowerers. The CLI calls the target compiler library to
 compile and publish targets; compiler selection is not embedded in argument parsing.
 Emission places same-module record and union physical dependencies before their users, including
-tagged-union discriminants. This leaves source declaration indices unchanged and does not order
+discriminator enum types. This leaves source declaration indices unchanged and does not order
 declarations by semantic navigation relationships.
 
 Declaration metadata is exhaustive: semantic-TypeGraph contribution, canonical source rendering,
@@ -187,56 +183,65 @@ files, preserves comments and authored literal contents, and retains each file's
 Whitespace and unchanged token spelling are not persistence contracts. No inverse-edit or
 token-patching implementation remains in the schema library.
 
-## Packed C++ values
+## Logical composition and packed C++ values
 
-Packed values store one unsigned fixed-width integer. The schema defines offsets, widths, and
-bit order; C++ lowering uses explicit masks and shifts through `ioj::PackedField` and the
-`packed_extract`, `packed_pack`, and `packed_insert` helpers in `ioj/packed_value.h`.
-Each field exposes `<name>_field::{offset,bits,value_mask,mask}` instead of four separate
-`<name>_offset`, `<name>_bits`, `<name>_value_mask`, and `<name>_mask` constants.
-Storage checks share `valid_packed_storage`. `PackedField` also requires a value representation
-wide enough for its bits: integral types, one-bit bool, or enums with unsigned underlying types.
-Wider value types may represent narrower fields. Semantic ranges, enumerator membership, and
-sentinel validation remain in generated code. Standard fixed-width integer spellings remain unchanged.
+`RecordSchemas` and `UnionSchemas` share authored `ChildOccurrences`. An occurrence carries its
+name, type reference, optional count and extent, discriminator or case mapping, and native member
+metadata. Reserved occurrences carry only a name and width. Resolved records and unions share
+semantic children in `TypeDefinitions`; scalar encodings remain independent reusable definitions.
+There are no separate packed-field, packed-value, tagged-union, or alternative stores.
 
-An explicit field-value constructor replaces `make(...)`. `Type::from_raw(raw)` replaces
-the raw-storage constructor and preserves all bits without validation. Default construction
-produces zero or the schema's invalid value when no field defaults are declared. Constructors and
-mutable setters assert their input contracts; neither mutable nor immutable types expose
-`try_make` or `try_set_*`. Immutable types have no setters. Invalid constructor/setter inputs
-are programming errors, not recoverable failures. Storage layout, comparison, and serialization
-are unchanged.
+A record concatenates its child encodings; a union overlaps alternatives. `:layout packed` selects
+integer-backed C++ lowering. Ordinary records retain C++ object layout and lifetime semantics.
+Native unions remain native unions: LispB does not synthesize lifetime management or type punning.
+A union member can bind a sibling enum using `:tag`; the mapping belongs to the occurrence rather
+than the reusable payload type. Cases infer enum names from their referenced types or supply an
+explicit case label.
 
-Packed fields accept numeric `:default` values, for example
-`(field task std::uint8_t :bits 1 :default 0)`. Values use the field constructor's units:
-integer/enum codes, fixed-point raw integers, or quantized/mini-float encodings. Explicit defaults
-must fit the field's domain and width. When every non-reserved field has a default, default
-construction packs those values with zero reserved bits; the result must not equal `:invalid-value`.
-An incomplete explicit default set is valid authoring state but deletes the C++ default constructor.
-Full-field constructors and `from_raw` remain usable. Removing every explicit default
-restores implicit zero initialization, with `:invalid-value` taking precedence where declared.
+`TypeGraph::bit_layout()` owns resolved widths, absolute offsets, parent placements, and active-tag
+guards. `resolve_bit_layout()` applies layout-planner extent/storage overrides through the same
+resolver. Lowering and native-layout analysis consume these placements instead of calculating
+independent offsets. Encoded width, allocated occurrence extent, and owning C++ storage width are
+separate. Extra extent is padding; a larger C++ storage type does not enlarge embedded encodings.
+Packed C++ owners require 1–64 encoded bits. Native object padding never enters packed composition.
 
-## Integer scalar C++ emission
+The C++ generator emits flat full-path getters and setters using `ioj::PackedField` with constant
+offsets and widths. It emits a whole-child accessor when that child has a packed C++ projection;
+logical-only children contribute their reachable fields. Fixed arrays expand into named indexed
+paths. The resolver rejects flattened-name collisions. Packed access never constructs mutable
+views or calculates offsets at runtime.
 
-An integer scalar retains its own semantic identity, domain, named codes, and relationships.
-Its one-of-N `:cpp-emission` policy is `none`, `constants`, `constants-with-names`, or `alias`.
-`alias` requires an explicit supported integer `:cpp-type` whose range contains the scalar domain
-and named codes; it needs no named codes and emits no constant helpers. Width does not infer a C++ type.
+Packed owners expose `storage_type`, `raw_value()`, and unchecked `from_raw()`. They are standard
+layout and trivially copyable, with the size and alignment of their integer storage. Typed
+construction clears unused bits; setters preserve bits outside the addressed field. Raw loading
+preserves every storage bit, including unused bits, and `is_valid()` checks logical values.
+Factories named `make_<alternative path>` establish a tagged alternative together with its payload.
+Other independent union regions are complete inputs: projected packed values when available,
+otherwise encoded integers together with their discriminator inputs. Factories validate the
+completed record in debug builds, without generating a Cartesian product of case combinations.
+Discriminators have no independent setter. Alternative getters/setters assert their guards in debug
+builds; release access consists of integer operations. Untagged union validity accepts any valid
+alternative. Tagged owners without a complete default have a deleted default constructor.
 
-```lisp
-(integer-scalar Health :signed false :minimum 0 :maximum 65535 :bit-width 16
-  :cpp-type @native_uint16 :cpp-emission alias)
-```
+`fixed-point`, `linear-quantized`, `mini-float`, and optional encodings participate in the same
+layout. Fixed-point fields expose raw integers and explicit floating conversion helpers. Quantized,
+mini-float, and optional fields expose encoded integers. Variable-length integer encodings have no
+fixed-width packed C++ projection.
 
-With `native_uint16` registered as `std::uint16_t` from `cstdint`, this emits
-`using Health = std::uint16_t;` in the module namespace, with the normal include dependency.
-Only alias emission supplies `IntegerScalarType` with a resolved representation reference and
-dependency for physical layout analysis. Constants modes use `:cpp-type` only to type their
-emitted constants; they leave the scalar purely semantic. All scalar emission modes share C++
-type dependency resolution, including `CoreTypes.h` for raw Unreal integer spellings.
-The emission policy remains schema/backend metadata. `using Health = std::uint16_t;` and
-`using Armour = std::uint16_t;` describe distinct LispB semantic types but interchangeable C++ types.
-Alias emission provides no strong typing or runtime domain checking.
+## C++ projections and integer scalars
+
+Logical scalar, enum, record and union declarations emit C++ only with `(projections (cpp))`.
+SoA, settings, static-table and facade declarations retain their own output contracts. A module
+containing only logical declarations does not need an output header. Unreal enum projection is
+enum-specific and independent of requesting the native C++ enum.
+
+`(cpp :storage auto)` is the default; `std::uint8_t`, `std::uint16_t`, `std::uint32_t` or
+`std::uint64_t` can select wider owning storage. The storage must contain the full encoding.
+An integer declaration defaults to unsigned and infers its domain from `:bit-width`; explicit
+minimum/maximum values can restrict that domain. Projected integer scalars are distinct owning
+C++ types with unsigned `storage_type`, decoded `value_type`, explicit construction, `value()`,
+`set_value()`, `is_valid_value()`, and raw access. Signed comparisons use decoded values. Named
+codes are scoped constants on the wrapper. No alias or constants-only emission modes remain.
 
 ## External scalar registry
 
@@ -255,9 +260,8 @@ integer scalars. Floating-point formats are `ieee754-binary16`, `ieee754-binary3
 ABI size or alignment. Integer representations accept external integer sources, while floating
 point and opaque external types remain ineligible for integer-only representations.
 
-External packed fields with `:bits auto` use the registered domain. Explicit-width external
-fields (including `@` aliases) retain their field-local range, so existing narrow fields such
-as a 24-bit `uint32` do not change when primitive metadata is included.
+Packed occurrences use the referenced integer domain and encoding width. A narrower encoding
+requires a narrower logical scalar; occurrence extents may only enlarge the encoded region.
 
 Registry `(include "relative/path.lispb")` forms load each canonical file once, reject cycles,
 and contribute the entire closure to generator dependencies. The source store retains registry

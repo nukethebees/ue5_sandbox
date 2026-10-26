@@ -19,7 +19,7 @@ enum class PackedState : PackedStateUnderlying {
 
 using OpaqueStateUnderlying = std::uint8_t;
 
-// Logical bit width depends on the enumerator expressions.
+// Logical bit width: 8.
 enum class OpaqueState : OpaqueStateUnderlying {
     Zero = static_cast<std::uint8_t>(PackedState::Zero),
     Max = static_cast<std::uint8_t>(PackedState::Max),
@@ -36,7 +36,7 @@ enum class TinyState : TinyStateUnderlying {
 
 using DomainStateUnderlying = std::uint8_t;
 
-// Logical bit width: 1.
+// Logical bit width: 8.
 enum class DomainState : DomainStateUnderlying {
     Zero,
     One,

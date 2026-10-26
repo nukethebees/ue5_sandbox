@@ -6,7 +6,8 @@
     :helpers (to-serialized-string try-parse-serialized)
     (value ui :serialized-name "ui")
     (value surface :serialized-name "surface")
-    (value post_process :serialized-name "post-process")))
+    (value post_process :serialized-name "post-process")
+    (projections (cpp))))
 
 (module blend_mode
   :header "BlendMode.h"
@@ -18,7 +19,8 @@
     (value translucent :serialized-name "translucent")
     (value opaque :serialized-name "opaque")
     (value masked :serialized-name "masked")
-    (value alpha_composite :serialized-name "alpha-composite")))
+    (value alpha_composite :serialized-name "alpha-composite")
+    (projections (cpp))))
 
 (module shading_model
   :header "ShadingModel.h"
@@ -27,7 +29,8 @@
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value default_lit :serialized-name "default-lit")
-    (value unlit :serialized-name "unlit")))
+    (value unlit :serialized-name "unlit")
+    (projections (cpp))))
 
 (module texture_sampler_type
   :header "TextureSamplerType.h"
@@ -36,7 +39,8 @@
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value linear_color :serialized-name "linear-color")
-    (value linear_grayscale :serialized-name "linear-grayscale")))
+    (value linear_grayscale :serialized-name "linear-grayscale")
+    (projections (cpp))))
 
 (module position_space
   :header "PositionSpace.h"
@@ -45,7 +49,8 @@
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value world :serialized-name "world")
-    (value local :serialized-name "local")))
+    (value local :serialized-name "local")
+    (projections (cpp))))
 
 (module scene_texture
   :header "SceneTexture.h"
@@ -54,7 +59,8 @@
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value post_process_input0 :serialized-name "post-process-input0")
-    (value scene_depth :serialized-name "scene-depth")))
+    (value scene_depth :serialized-name "scene-depth")
+    (projections (cpp))))
 
 (module material_clause
   :header "MaterialClause.h"
@@ -77,7 +83,8 @@
     (value opacity :serialized-name "opacity")
     (value base_color :serialized-name "base-color")
     (value opacity_mask :serialized-name "opacity-mask")
-    (value world_position_offset :serialized-name "world-position-offset")))
+    (value world_position_offset :serialized-name "world-position-offset")
+    (projections (cpp))))
 
 (module material_operator
   :header "MaterialOperator.h"
@@ -113,4 +120,5 @@
     (value transform_position :serialized-name "transform-position")
     (value scene_texture :serialized-name "scene-texture")
     (value shader_call :serialized-name "shader-call")
-    (value custom :serialized-name "custom")))
+    (value custom :serialized-name "custom")
+    (projections (cpp))))

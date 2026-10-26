@@ -30,9 +30,12 @@ TEST(RecordLowering, GeneratesUniqueConstructorsAndPreservesSpecialForms) {
     CompilerTestContext context;
     auto manifest{parse_test_manifest(context, R"(
       (module constructors :header "Constructors.h" :s7-constructors true
-        (record First :generate-s7-reader true :s7-tag "shared")
-        (record Second :generate-s7-reader true :s7-tag "shared")
-        (record Special :generate-s7-reader true :s7-tag "special" :s7-constructor false)))")};
+        (record First :generate-s7-reader true :s7-tag "shared"
+    (projections (cpp)))
+        (record Second :generate-s7-reader true :s7-tag "shared"
+    (projections (cpp)))
+        (record Special :generate-s7-reader true :s7-tag "special" :s7-constructor false
+    (projections (cpp)))))")};
     auto const files{render_test_manifest(context, manifest)};
     auto const& output{files.front().content};
     auto const constructor{output.find("(define (shared . arguments)")};
@@ -52,12 +55,14 @@ TEST_P(InvalidConstructorTags, RejectsUnsafeAndConflictingConstructorTags) {
     EXPECT_THROW(static_cast<void>(render_test_manifest(context, manifest)), std::invalid_argument);
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    RecordLowering,
-    InvalidConstructorTags,
-    testing::Values(R"((record Bad :generate-s7-reader true :s7-tag "a) (bad"))",
-                    R"((record First :generate-s7-reader true :s7-tag "shared")
-           (record Second :generate-s7-reader true :s7-tag "shared" :s7-constructor false))"));
+INSTANTIATE_TEST_SUITE_P(RecordLowering,
+                         InvalidConstructorTags,
+                         testing::Values(R"((record Bad :generate-s7-reader true :s7-tag "a) (bad"
+    (projections (cpp))))",
+                                         R"((record First :generate-s7-reader true :s7-tag "shared"
+    (projections (cpp)))
+           (record Second :generate-s7-reader true :s7-tag "shared" :s7-constructor false
+    (projections (cpp))))"));
 
 TEST(RecordLowering, GeneratesSemanticMembersAndFixedArrays) {
     CompilerTestContext context;
@@ -65,9 +70,11 @@ TEST(RecordLowering, GeneratesSemanticMembersAndFixedArrays) {
         context,
         R"(
         (module records :header "Records.h" :namespace project
-            (record Position (member x float) (member y float))
+            (record Position (member x float) (member y float)
+    (projections (cpp)))
             (record Sample :export-specifier PROJECT_API
-                (member position Position) (member values @value :count 3))))",
+                (member position Position) (member values @value :count 3)
+    (projections (cpp)))))",
         {{"value",
           context.storage.cpp_types.add(
               "Value", {context.storage.cpp_types.dependency("Value", "Project/Value.h")})}})};
@@ -98,15 +105,25 @@ TEST_P(InvalidRecordDeclaration, RejectsDeclaration) {
 INSTANTIATE_TEST_SUITE_P(
     SettingsBindingsAndConstrainedNames,
     InvalidRecordDeclaration,
-    testing::Values(R"((record Config (member speed float :s7-name "")))",
-                    R"((record Config :constraint-policy example::policy) (record ConfigValue))",
-                    R"((record Config :generate-visitor true (member Field int)))",
-                    R"((record Config :generate-visitor true (member visit_field int)))",
-                    R"((record Config :generate-visitor true (member get_field int)))",
-                    R"((record Config :generate-visitor true (member invoke_field int)))",
-                    R"((record Selected :generate-visitor true))",
-                    R"((record Field :generate-visitor true))",
-                    R"((record Self :generate-visitor true))"));
+    testing::Values(R"((record Config (member speed float :s7-name "")
+    (projections (cpp))))",
+                    R"((record Config :constraint-policy example::policy
+    (projections (cpp))) (record ConfigValue
+    (projections (cpp))))",
+                    R"((record Config :generate-visitor true (member Field int)
+    (projections (cpp))))",
+                    R"((record Config :generate-visitor true (member visit_field int)
+    (projections (cpp))))",
+                    R"((record Config :generate-visitor true (member get_field int)
+    (projections (cpp))))",
+                    R"((record Config :generate-visitor true (member invoke_field int)
+    (projections (cpp))))",
+                    R"((record Selected :generate-visitor true
+    (projections (cpp))))",
+                    R"((record Field :generate-visitor true
+    (projections (cpp))))",
+                    R"((record Self :generate-visitor true
+    (projections (cpp))))"));
 
 INSTANTIATE_TEST_SUITE_P(
     DuplicateAndZeroCountMembers,
@@ -137,7 +154,8 @@ TEST(RecordLowering, SettingsMetadataDoesNotChangeOrdinaryRecordOutput) {
         auto manifest{
             parse_test_manifest(context,
                                 std::format(R"((module records :header "Records.h" (record Config
-                (member max_speed float :initializer 2.f {}))))",
+                (member max_speed float :initializer 2.f {})
+    (projections (cpp)))))",
                                             options))};
         return render_test_manifest(context, manifest).front().content;
     }};
@@ -150,11 +168,13 @@ TEST(RecordLowering, SettingsOptionsSurviveSourceRoundTrip) {
         (module records :header "Records.h"
           (record Config :generate-visitor true
             (member max_speed float :initializer "2.f" :s7-name "speed")
-            (member asset float :s7-exclude true))
+            (member asset float :s7-exclude true)
+    (projections (cpp)))
           (record Range :constraint-policy example::policy
             :generate-s7-reader true :s7-tag "range"
             (member minimum int :initializer 0 :required true)
-            (member maximum int :initializer 1 :required true))
+            (member maximum int :initializer 1 :required true)
+    (projections (cpp)))
 ))")};
     auto const source{
         schema::render_module_source(manifest.declarations, manifest.modules.front())};
@@ -175,7 +195,8 @@ TEST(RecordLowering, ReaderOptionsSurviveRoundTripAndLeaveOrdinaryOutputUnchange
         auto const manifest{parse_test_manifest(
             context,
             std::format(R"((module records :header "Records.h" :namespace example
-                (record Config {} (member max_speed float :initializer "2.f"))))",
+                (record Config {} (member max_speed float :initializer "2.f")
+    (projections (cpp)))))",
                         options))};
         auto const source{
             schema::render_module_source(manifest.declarations, manifest.modules.front())};
@@ -207,7 +228,8 @@ TEST(RecordLowering, RetainsReaderConstraintsInCanonicalSource) {
             :s7-reader-includes ("CustomReader.h")
             (member value int :s7-name renamed :required true :nonzero true
               :positive true :nonnegative true :finite true :minimum -9223372036854775808 :maximum 9)
-            (member text int :nonempty true))))")};
+            (member text int :nonempty true)
+    (projections (cpp)))))")};
     auto const source{
         schema::render_module_source(manifest.declarations, manifest.modules.front())};
     CompilerTestContext reparsed;
@@ -237,22 +259,31 @@ INSTANTIATE_TEST_SUITE_P(
     RecordLowering,
     InvalidRecordReader,
     testing::Values(
-        R"((record Config :generate-s7-reader true))",
-        R"((record Config :s7-tag config))",
-        R"((record Config :s7-positional true))",
+        R"((record Config :generate-s7-reader true
+    (projections (cpp))))",
+        R"((record Config :s7-tag config
+    (projections (cpp))))",
+        R"((record Config :s7-positional true
+    (projections (cpp))))",
         R"((record Config :generate-s7-reader true :s7-tag config
-            (member first int :s7-name same) (member second int :s7-name same)))",
-        R"((record Config :generate-s7-reader true :s7-tag config (member value int :s7-name "")))",
-        R"((record Config :generate-s7-reader true :s7-tag config (member value int :minimum 4 :maximum 2)))",
-        R"((record Config :generate-s7-reader true :s7-tag config (member value int :minimum "1;bad")))",
-        R"((record Config :generate-s7-reader true :s7-tag config (member value int :minimum -9223372036854775809)))"));
+            (member first int :s7-name same) (member second int :s7-name same)
+    (projections (cpp))))",
+        R"((record Config :generate-s7-reader true :s7-tag config (member value int :s7-name "")
+    (projections (cpp))))",
+        R"((record Config :generate-s7-reader true :s7-tag config (member value int :minimum 4 :maximum 2)
+    (projections (cpp))))",
+        R"((record Config :generate-s7-reader true :s7-tag config (member value int :minimum "1;bad")
+    (projections (cpp))))",
+        R"((record Config :generate-s7-reader true :s7-tag config (member value int :minimum -9223372036854775809)
+    (projections (cpp))))"));
 
 TEST(RecordLowering, AllowsEmptyAndNonemptyRecords) {
     CompilerTestContext context;
     auto record = [&](std::string_view members) {
-        return parse_test_manifest(context,
-                                   R"((module records :header "Records.h" (record Record )" +
-                                       std::string{members} + "))");
+        return parse_test_manifest(
+            context,
+            R"((module records :header "Records.h" (record Record (projections (cpp)) )" +
+                std::string{members} + "))");
     };
     EXPECT_NO_THROW(
         static_cast<void>(lower_test_manifest(context, record("(member value float)"))));
@@ -265,8 +296,10 @@ TEST(RecordLowering, EmitsByValueDependenciesBeforeTheirUsers) {
     CompilerTestContext context;
     auto manifest{parse_test_manifest(context, R"(
         (module records :header "Records.h"
-            (record Sample (member position Position))
-            (record Position (member x float))))")};
+            (record Sample (member position Position)
+    (projections (cpp)))
+            (record Position (member x float)
+    (projections (cpp)))))")};
 
     auto const files{render_test_manifest(context, manifest)};
     auto const& output{files.front().content};
@@ -277,8 +310,10 @@ TEST(RecordLowering, ForwardDeclaresMutuallyReferringPointerRecords) {
     CompilerTestContext context;
     auto manifest{parse_test_manifest(context, R"(
         (module records :header "Records.h"
-            (record First (member next (type-ref Second :suffix "*")))
-            (record Second (member next (type-ref First :suffix "*")))))")};
+            (record First (member next (type-ref Second :suffix "*"))
+    (projections (cpp)))
+            (record Second (member next (type-ref First :suffix "*"))
+    (projections (cpp)))))")};
     auto const files{render_test_manifest(context, manifest)};
     auto const& output{files.front().content};
     EXPECT_NE(output.find("struct First;"), std::string::npos);
@@ -321,7 +356,7 @@ TEST(RecordLowering, ForwardDeclarationsMatchGeneratedRecordKindsAndExcludeAlias
     CompilerTestContext context;
     std::string source{
         R"((module kinds :header "Kinds.h" :source "Kinds.cpp" :header-include "Kinds.h"
-        (record Uses )"};
+        (record Uses (projections (cpp)) )"};
     for (auto const name : {"Record",
                             "Raw",
                             "Tagged",
@@ -336,16 +371,22 @@ TEST(RecordLowering, ForwardDeclarationsMatchGeneratedRecordKindsAndExcludeAlias
     }
     source += R"((member facade_reference (type-ref Facade :suffix "&")))
         (struct LayoutOnly :layout-only true (member values array float))
-        (record Record)
-        (union Raw (alternative value float))
-        (enum Tag std::uint8_t (value Value))
-        (tagged-union Tagged :discriminant Tag (alternative value float :tag Value))
-        (packed-value Packed :storage std::uint8_t (field value std::uint8_t :bits 8))
+        (record Record
+    (projections (cpp)))
+        (union Raw (member value float)
+    (projections (cpp)))
+        (enum Tag std::uint8_t (value Value)
+    (projections (cpp)))
+        (union TaggedPayload (member value float :case Value) (projections (cpp)))
+        (record Tagged (member tag Tag) (member payload TaggedPayload :tag tag)
+          (projections (cpp)))
+        (record Packed :layout packed :bits 8 (member value std::uint8_t :bits 8)
+    (projections (cpp :storage std::uint8_t)))
         (table Table (row row) (column value float))
         (facade Facade External target (method reset void))
         (struct Values (member xs array float) (member ys array float))
         (integer-scalar Alias :signed false :minimum 0 :maximum 255 :bit-width 8
-            :cpp-emission alias :cpp-type std::uint8_t)))";
+    (projections (cpp :storage std::uint8_t)))))";
     auto manifest{parse_test_manifest(context, source)};
     auto const output{render_test_manifest(context, manifest).front().content};
     for (auto const name : {"Record", "Tagged", "Packed", "Table", "Values"}) {
@@ -354,10 +395,10 @@ TEST(RecordLowering, ForwardDeclarationsMatchGeneratedRecordKindsAndExcludeAlias
     EXPECT_NE(output.find("union Raw;"), std::string::npos);
     EXPECT_NE(output.find("class Facade;"), std::string::npos);
     EXPECT_EQ(output.find("struct Facade;"), std::string::npos);
-    for (auto const name : {"Alias", "Tag", "External", "LayoutOnly"}) {
+    for (auto const name : {"Tag", "External", "LayoutOnly"}) {
         EXPECT_EQ(output.find(std::string{"struct "} + name + ";"), std::string::npos) << name;
     }
-    EXPECT_LT(output.find("using Alias ="), output.find("struct Uses"));
+    EXPECT_NE(output.find("struct Alias;"), std::string::npos);
 }
 
 } // namespace

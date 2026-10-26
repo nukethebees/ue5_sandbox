@@ -39,8 +39,8 @@ auto bound_literal(LoweringContext& context, StringId const bound) -> std::strin
     return text + (text.starts_with('-') ? "LL" : "ULL");
 }
 
-auto field_name(LoweringContext& context, RecordMemberId const member) -> std::string {
-    auto const& members{context.declarations.record_members};
+auto field_name(LoweringContext& context, ChildOccurrenceId const member) -> std::string {
+    auto const& members{context.declarations.child_occurrences};
     auto const row{members.index(member)};
     if (members.s7[row].name) {
         return context.text(*members.s7[row].name);
@@ -51,20 +51,20 @@ auto field_name(LoweringContext& context, RecordMemberId const member) -> std::s
 }
 
 auto reader_fields(LoweringContext& context, DeclarationHandle record)
-    -> std::vector<RecordMemberId> {
+    -> std::vector<ChildOccurrenceId> {
     auto const& declarations{context.declarations};
     auto const& records{declarations.records};
-    std::vector<RecordMemberId> result;
+    std::vector<ChildOccurrenceId> result;
     for (auto field : declarations.items(records.members[record])) {
-        if (!declarations.record_members.s7[field].exclude) {
+        if (!declarations.child_occurrences.s7[field].exclude) {
             result.push_back(field);
         }
     }
     return result;
 }
 
-auto constraint_arguments(LoweringContext& context, RecordMemberId field) -> std::string {
-    auto const& members{context.declarations.record_members};
+auto constraint_arguments(LoweringContext& context, ChildOccurrenceId field) -> std::string {
+    auto const& members{context.declarations.child_occurrences};
     auto const& options{members.s7[members.index(field)]};
     std::string checks;
     ioj::FormatWriter write{std::back_inserter(checks)};
@@ -95,7 +95,7 @@ auto constraint_arguments(LoweringContext& context, RecordMemberId field) -> std
 
 auto member_reader(LoweringContext& context, DeclarationHandle record) -> std::string {
     auto const& records{context.declarations.records};
-    auto const& members{context.declarations.record_members};
+    auto const& members{context.declarations.child_occurrences};
     auto const fields{reader_fields(context, record)};
     std::map<std::string, std::vector<std::string>> groups;
     for (auto const field : context.declarations.items(records.members[record])) {
@@ -128,7 +128,7 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
     auto& ir{context.ir};
     auto const& records{context.declarations.records};
     auto const row{records.index(record)};
-    auto const& members{context.declarations.record_members};
+    auto const& members{context.declarations.child_occurrences};
     auto const fields{reader_fields(context, record)};
     auto const positional{records.s7_positional[row] != 0};
     NodeListBuilder body{ir};
@@ -257,7 +257,7 @@ void lower_record_reader(LoweringContext& context,
     auto const name{context.text(context.semantic.cpp_spelling(type))};
     auto const config_type{ir.types.named(name + (records.constraint_policy[row] ? "Value" : ""))};
     auto const value_type{config_type};
-    auto const& members{context.declarations.record_members};
+    auto const& members{context.declarations.child_occurrences};
     if (std::ranges::any_of(fields, [&](auto field) {
             auto const& options{members.s7[members.index(field)]};
             return options.nonzero || options.positive || options.nonnegative || options.finite ||
@@ -330,7 +330,7 @@ void lower_record_reader(LoweringContext& context,
         std::vector<Expr> required;
         auto const named_fields{records.generate_visitor[row]
                                     ? context.declarations.items(records.members[row])
-                                    : std::span<RecordMemberId const>{fields}};
+                                    : std::span<ChildOccurrenceId const>{fields}};
         for (auto const field : named_fields) {
             auto const index{members.index(field)};
             if (std::ranges::find(fields, field) == fields.end()) {

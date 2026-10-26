@@ -8,7 +8,8 @@ interpreter dependency to their normal header:
   (record Example :generate-s7-reader true :s7-tag "example"
     (member count int :initializer "2" :nonnegative true)
     (member scale float :initializer "1.f" :positive true :finite true)
-    (member label @string :required true :nonempty true :s7-name "name")))
+    (member label @string :required true :nonempty true :s7-name "name")
+    (projections (cpp))))
 ```
 
 A module with `:s7-constructors true` emits `s7_record_constructors()`, containing Scheme
@@ -32,8 +33,9 @@ non-default-constructible constrained types.
 
 Add `:s7-positional true` for fixed positional records. Members consume arguments in
 declaration order: `(record Pair :generate-s7-reader true :s7-tag pair :s7-positional true
-(member first int) (member second int))` reads `(:pair 1 2)`. The tag and exact arity are
-checked before decoding; diagnostics still use member names. Every argument must be present,
+(member first int) (member second int) (projections (cpp)))` reads `(:pair 1 2)`.
+The tag and exact arity are checked before decoding; diagnostics still use member names.
+Every argument must be present,
 including an optional-valued argument (use `:none` to disengage it). Variadic expression
 composition and tagged-alternative selection remain handwritten.
 

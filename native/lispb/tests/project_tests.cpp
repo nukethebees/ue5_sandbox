@@ -54,7 +54,8 @@ TEST(Compiler, RecompilesChangedSourcesAndRetainsProjectAndOverlays) {
     files.write("project.lispb", R"((lispb-project :language-version 1 :project-root "."
       (cpp-schema test :types "types.lispb" :sources ("values.lispb")
         :output-root (project-path "generated"))))");
-    files.write("values.lispb", R"((module values :header "Values.h" (record Before)))");
+    files.write("values.lispb", R"((module values :header "Values.h" (record Before
+    (projections (cpp)))))");
 
     Compiler compiler;
     auto& storage{compiler.storage()};
@@ -66,15 +67,17 @@ TEST(Compiler, RecompilesChangedSourcesAndRetainsProjectAndOverlays) {
     }};
     EXPECT_NE(compile_text().find("struct Before"), std::string::npos);
 
-    files.write("values.lispb", R"((module values :header "Values.h" (record After)))");
+    files.write("values.lispb", R"((module values :header "Values.h" (record After
+    (projections (cpp)))))");
     auto const changed{compile_text()};
     EXPECT_NE(changed.find("struct After"), std::string::npos);
     EXPECT_EQ(compile_text(), changed);
     EXPECT_TRUE(compiler.compile(project, target, files.path("build"), CompileMode::validate)
                     .compilation.artifacts.empty());
 
-    static_cast<void>(storage.sources.overlay(
-        files.path("values.lispb"), R"((module values :header "Values.h" (record Unsaved)))"));
+    static_cast<void>(storage.sources.overlay(files.path("values.lispb"),
+                                              R"((module values :header "Values.h" (record Unsaved
+    (projections (cpp)))))"));
     EXPECT_NE(compile_text().find("struct Unsaved"), std::string::npos);
     EXPECT_EQ(project.target_name(target), "test");
     EXPECT_FALSE(std::filesystem::exists(files.path("generated/Values.h")));

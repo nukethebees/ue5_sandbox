@@ -4,6 +4,38 @@ Lispb generates native C++ schemas and SoA containers, SandboxCore kernels, Slat
 Unreal material assets. Use the repository CMake generation targets. Generated headers and sources
 are checked in beside handwritten code in their normal public include and source directories.
 
+Records, unions, enums and scalar encodings are logical declarations. Add `(projections (cpp))`
+to request an owning C++ type. Native records use ordinary C++ members; packed records and unions
+use one unsigned integer and compile-time bit offsets:
+
+```lisp
+(integer-scalar EntityIndex :bit-width 24)
+(integer-scalar EntityType :bit-width 8)
+(record EntityId :layout packed
+  (member index @EntityIndex)
+  (member entity_type @EntityType)
+  (projections (cpp)))
+```
+
+`EntityId` occupies four bytes. Its C++ API has `storage_type`, `raw_value()`, `from_raw()`,
+`index()`, `set_index()`, and corresponding accessors for `entity_type`. Nested packed accessors
+use the full path, such as `payload_kill_entity_target_index()`. There are no packed view proxies.
+`(cpp :storage std::uint64_t)` requests wider owning storage without changing the encoded width
+used when the type is embedded. Logical records without a projection can also compose into packed
+records. `:bits` reserves a larger enclosing extent; it cannot truncate a child's encoding.
+
+An unsigned `integer-scalar` infers its full domain from `:bit-width`; `:signed true` selects a
+signed domain. Optional `:minimum` and `:maximum` narrow the domain. A projected integer scalar is
+an explicit C++ wrapper with `value_type`, `value()`, `set_value()` and checked typed construction.
+`from_raw()` preserves all storage bits without validation; `is_valid()` checks the logical domain.
+
+Unions contain references, for example `(union Target @EntityIndex @LocationIndex)`. A record
+member binds a discriminator with `(member payload @Payload :tag opcode)`, where `opcode` is a
+sibling enum member. Union alternatives infer enum names from their type names, or use
+`(case KillEntity @AttackPayload)` for explicit mapping. Packed factories such as
+`Instruction::make_payload_kill_entity(target)` set the tag and payload together. Alternative
+getters and setters assert the active tag in debug builds; setters do not change it.
+
 An ordinary `struct` declares ordered SoA columns. Each dynamic owner uses one allocation, one row
 count, and one capacity. Nested members reference another declared SoA through their type:
 
@@ -43,7 +75,8 @@ Native enums emit only the helpers selected with `:helpers`:
   :native-api true
   :helpers (to-string traits)
   (value Idle :value "0")
-  (value Active :value "1"))
+  (value Active :value "1")
+  (projections (cpp)))
 ```
 
 Available helpers are `to-string`, `try-parse`, `to-display-string`, `to-serialized-string`,

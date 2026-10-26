@@ -28,17 +28,4 @@ auto integer_domain(TypeGraph const& graph, TypeId const type) -> std::optional<
     return std::nullopt;
 }
 
-auto packed_integer_domain(TypeGraph const& graph,
-                           TypeId const type,
-                           codegen::PackedSegmentId const field)
-    -> std::optional<TypeDefinitionId> {
-    if (graph.declarations()
-            .packed_fields.bits[graph.declarations().packed_fields.index(field)]
-            .has_value() &&
-        !((graph.definition(type)).kind() == lispb::schema::TypeDefinitionKind::integer_scalar)) {
-        return std::nullopt;
-    }
-    return integer_domain(graph, type);
-}
-
 }

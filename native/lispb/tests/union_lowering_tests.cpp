@@ -25,8 +25,9 @@ TEST(UnionLowering, GeneratesRawAlternativesAndFixedArrays) {
         R"(
         (module unions :header "Unions.h" :namespace project
             (union Payload :export-specifier PROJECT_API
-                (alternative identifier std::uint32_t)
-                (alternative values @value :count 3))))",
+                (member identifier std::uint32_t)
+                (member values @value :count 3)
+    (projections (cpp)))))",
         {{"value", types.add("Value", {types.dependency("Value", "Project/Value.h")})}})};
 
     auto const files{render_test_manifest(context, manifest)};
@@ -45,8 +46,10 @@ TEST(UnionLowering, EmitsByValueDependenciesBeforeTheirUsers) {
     CompilerTestContext context;
     auto manifest{parse_test_manifest(context, R"(
         (module unions :header "Unions.h"
-            (union Outer (alternative inner Inner))
-            (union Inner (alternative value float))))")};
+            (union Outer (member inner Inner)
+    (projections (cpp)))
+            (union Inner (member value float)
+    (projections (cpp)))))")};
 
     auto const files{render_test_manifest(context, manifest)};
     auto const& output{files.front().content};
@@ -60,11 +63,17 @@ TEST(UnionLowering, GeneratesTaggedAggregateWithExplicitPayloadUnion) {
         context,
         R"(
         (module events :header "Events.h" :namespace events
-            (enum EventKind std::uint8_t (value Spawn) (value Damage)))
+            (enum EventKind std::uint8_t (value Spawn) (value Damage)
+    (projections (cpp))))
         (module unions :header "Unions.h" :namespace events
-            (tagged-union Event :export-specifier PROJECT_API :discriminant @event_kind
-                (alternative spawn std::uint32_t :tag Spawn)
-                (alternative damage std::uint16_t :count 4 :tag Damage))))",
+            (union EventPayload
+                (member spawn std::uint32_t :case Spawn)
+                (member damage std::uint16_t :count 4 :case Damage)
+                (projections (cpp)))
+            (record Event :export-specifier PROJECT_API
+                (member tag @event_kind)
+                (member payload @EventPayload :tag tag)
+                (projections (cpp)))))",
         {{"event_kind",
           types.add("events::EventKind", {types.dependency("events::EventKind", "Events.h")})}})};
 
@@ -75,11 +84,10 @@ TEST(UnionLowering, GeneratesTaggedAggregateWithExplicitPayloadUnion) {
     EXPECT_NE(output.find("#include \"Events.h\""), std::string::npos);
     EXPECT_NE(output.find("struct PROJECT_API Event"), std::string::npos);
     EXPECT_NE(output.find("EventKind tag;"), std::string::npos);
-    EXPECT_NE(output.find("union Payload"), std::string::npos);
-    EXPECT_NE(output.find("// tag: Spawn"), std::string::npos);
+    EXPECT_NE(output.find("union EventPayload"), std::string::npos);
     EXPECT_NE(output.find("std::uint32_t spawn;"), std::string::npos);
     EXPECT_NE(output.find("std::array<std::uint16_t, 4> damage;"), std::string::npos);
-    EXPECT_NE(output.find("Payload payload;"), std::string::npos);
+    EXPECT_NE(output.find("EventPayload payload;"), std::string::npos);
 }
 
 } // namespace

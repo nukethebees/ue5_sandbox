@@ -36,15 +36,12 @@ enum class SchemaProperty : SchemaPropertyUnderlying {
     conversion_header,
     conversions,
     count,
-    cpp_emission,
-    cpp_type,
     custom_row,
     default_,
     definition_in_source,
     definitions_in_source,
     dependencies,
     device,
-    discriminant,
     display_name,
     encoding,
     enum_array,
@@ -84,7 +81,6 @@ enum class SchemaProperty : SchemaPropertyUnderlying {
     method_access,
     min,
     minimum,
-    mutable_,
     namespace_,
     native_api,
     native_header_include,
@@ -98,7 +94,6 @@ enum class SchemaProperty : SchemaPropertyUnderlying {
     pass_by,
     positive,
     prelude,
-    range_helper,
     reflection,
     required,
     requires_,
@@ -142,40 +137,37 @@ using ioj::to_serialized_string;
 
 } // namespace lispb::codegen
 template <>
-inline constexpr auto ioj::enum_strings<::lispb::codegen::SchemaProperty, ioj::Serialized>{
-    ioj::PackedStrings{
-        "api-name\000append-columns\000apply\000availability-provider\000backend\000bias\000bind-"
-        "access\000bit-order\000bit-width\000bits\000body\000byte-"
-        "order\000category\000case\000clipping\000columns\000comparison\000comparison-"
-        "noexcept\000const\000constexpr\000constraint-policy\000conversion-"
-        "header\000conversions\000count\000cpp-emission\000cpp-type\000custom-"
-        "row\000default\000definition-in-source\000definitions-in-"
-        "source\000dependencies\000device\000discriminant\000display-name\000encoding\000enum-"
-        "array\000equivalent-accessor\000equivalent-constructor\000equivalent-member\000equivalent-"
-        "type\000exponent-bits\000export-specifier\000field-enum-name\000field-mask-"
-        "name\000finite\000fixed-schema\000format\000fractional-bits\000friend-"
-        "kind\000friends\000generate-s7-reader\000generate-visitor\000header\000header-"
-        "include\000headers\000helper-namespace\000helpers\000hidden\000include-"
-        "order\000initializer\000inline\000invalid-value\000kind\000layout\000layout-only\000mask-"
-        "dimensions\000mask-field\000max\000maximum\000method-"
-        "access\000min\000minimum\000mutable\000namespace\000native-api\000native-header-"
-        "include\000nested\000nodiscard\000noexcept\000nonempty\000nonnegative\000nonzero\000option"
-        "s-provider\000pass-by\000positive\000prelude\000range-"
-        "helper\000reflection\000required\000requires\000reserved-codes\000rounding\000s7-"
-        "constructor\000s7-constructors\000s7-exclude\000s7-name\000s7-positional\000s7-reader-"
-        "includes\000s7-tag\000sentinel\000serialized-name\000sign-bits\000signed\000significand-"
-        "bits\000source\000spelling\000state-"
-        "name\000static\000step\000storage\000suffix\000tag\000target-name\000target-"
-        "storage\000template-parameters\000tooltip\000total-bits\000trailing-return-"
-        "type\000unit\000using-declarations\000validation\000validation-"
-        "dependencies\000value\000value-type",
-        std::array<std::uint16_t, 125>{
-            0,    9,    24,   30,   52,   60,   65,   77,   87,   97,   102,  107,  118,  127,
-            132,  141,  149,  160,  180,  186,  196,  214,  232,  244,  250,  263,  272,  283,
-            291,  312,  334,  347,  354,  367,  380,  389,  400,  420,  443,  461,  477,  491,
-            508,  524,  540,  547,  560,  567,  583,  595,  603,  622,  639,  646,  661,  669,
-            686,  694,  701,  715,  727,  734,  748,  753,  760,  772,  788,  799,  803,  811,
-            825,  829,  837,  845,  855,  866,  888,  895,  905,  914,  923,  935,  943,  960,
-            968,  977,  985,  998,  1009, 1018, 1027, 1042, 1051, 1066, 1082, 1093, 1101, 1115,
-            1134, 1141, 1150, 1166, 1176, 1183, 1200, 1207, 1216, 1227, 1234, 1239, 1247, 1254,
-            1258, 1270, 1285, 1305, 1313, 1324, 1345, 1350, 1369, 1380, 1404, 1410, 1421}}};
+inline constexpr auto ioj::enum_strings<::lispb::codegen::SchemaProperty,
+                                        ioj::Serialized>{ioj::PackedStrings{
+    "api-name\000append-columns\000apply\000availability-provider\000backend\000bias\000bind-"
+    "access\000bit-order\000bit-width\000bits\000body\000byte-"
+    "order\000category\000case\000clipping\000columns\000comparison\000comparison-"
+    "noexcept\000const\000constexpr\000constraint-policy\000conversion-"
+    "header\000conversions\000count\000custom-row\000default\000definition-in-"
+    "source\000definitions-in-source\000dependencies\000device\000display-name\000encoding\000enum-"
+    "array\000equivalent-accessor\000equivalent-constructor\000equivalent-member\000equivalent-"
+    "type\000exponent-bits\000export-specifier\000field-enum-name\000field-mask-"
+    "name\000finite\000fixed-schema\000format\000fractional-bits\000friend-"
+    "kind\000friends\000generate-s7-reader\000generate-visitor\000header\000header-"
+    "include\000headers\000helper-namespace\000helpers\000hidden\000include-"
+    "order\000initializer\000inline\000invalid-value\000kind\000layout\000layout-only\000mask-"
+    "dimensions\000mask-field\000max\000maximum\000method-"
+    "access\000min\000minimum\000namespace\000native-api\000native-header-"
+    "include\000nested\000nodiscard\000noexcept\000nonempty\000nonnegative\000nonzero\000options-"
+    "provider\000pass-by\000positive\000prelude\000reflection\000required\000requires\000reserved-"
+    "codes\000rounding\000s7-constructor\000s7-constructors\000s7-exclude\000s7-name\000s7-"
+    "positional\000s7-reader-includes\000s7-tag\000sentinel\000serialized-name\000sign-"
+    "bits\000signed\000significand-bits\000source\000spelling\000state-"
+    "name\000static\000step\000storage\000suffix\000tag\000target-name\000target-"
+    "storage\000template-parameters\000tooltip\000total-bits\000trailing-return-"
+    "type\000unit\000using-declarations\000validation\000validation-dependencies\000value\000value-"
+    "type",
+    std::array<std::uint16_t, 120>{
+        0,    9,    24,   30,   52,   60,   65,   77,   87,   97,   102,  107,  118,  127,  132,
+        141,  149,  160,  180,  186,  196,  214,  232,  244,  250,  261,  269,  290,  312,  325,
+        332,  345,  354,  365,  385,  408,  426,  442,  456,  473,  489,  505,  512,  525,  532,
+        548,  560,  568,  587,  604,  611,  626,  634,  651,  659,  666,  680,  692,  699,  713,
+        718,  725,  737,  753,  764,  768,  776,  790,  794,  802,  812,  823,  845,  852,  862,
+        871,  880,  892,  900,  917,  925,  934,  942,  953,  962,  971,  986,  995,  1010, 1026,
+        1037, 1045, 1059, 1078, 1085, 1094, 1110, 1120, 1127, 1144, 1151, 1160, 1171, 1178, 1183,
+        1191, 1198, 1202, 1214, 1229, 1249, 1257, 1268, 1289, 1294, 1313, 1324, 1348, 1354, 1365}}};

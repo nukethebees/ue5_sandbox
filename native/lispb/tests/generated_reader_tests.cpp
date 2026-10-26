@@ -54,6 +54,17 @@ TEST(RecordSettings, AppliesPartialLayersAndDistinguishesExplicitEmptyOptional) 
     EXPECT_PRED_FORMAT2(structurally_equal, (ActorSettings{100, {20, 4.f}, 3}), target);
 }
 
+TEST(GeneratedS7Reader, OwningScalarChecksDomainBeforeConstructionAndFieldConstraints) {
+    auto const valid{read_source<ScalarSettings>("'(:scalar :health 42)")};
+    ASSERT_TRUE(valid);
+    EXPECT_EQ(valid->health.value(), 42);
+    EXPECT_FALSE(read_source<ScalarSettings>("'(:scalar :health -1)"));
+    EXPECT_FALSE(read_source<ScalarSettings>("'(:scalar :health 256)"));
+    EXPECT_FALSE(read_source<ScalarSettings>("'(:scalar :health 101)"));
+    EXPECT_FALSE(read_source<ScalarSettings>("'(:scalar :health 9)"));
+    EXPECT_FALSE(read_source<ScalarSettings>("'(:scalar :health 91)"));
+}
+
 TEST(RecordSettings, AppliesCrossNamespaceNestedOverridesAndEmptyPatches) {
     auto result{override_source<mixed::CrossSettings>(
         "'(:cross :actor (:actor :weapon (:weapon :damage 41)))")};

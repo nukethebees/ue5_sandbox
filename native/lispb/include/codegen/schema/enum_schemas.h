@@ -1,5 +1,6 @@
 #pragma once
 
+#include <codegen/schema/cpp_projection.h>
 #include <codegen/schema/declaration_handle.h>
 #include <codegen/schema/declaration_kind.h>
 #include <codegen/schema/enum_conversion.h>
@@ -27,6 +28,7 @@ struct EnumSchemas {
     void clear();
 
     Column<StringId> name;
+    Column<std::optional<CppProjection>> cpp_projection;
     Column<std::optional<TypeRefId>> underlying_type;
     Column<SchemaRange<EnumeratorId>> values;
     Column<std::optional<StringId>> count;

@@ -23,11 +23,19 @@ using codegen::sexpr::Syntax;
 using codegen::sexpr::TokenKind;
 
 auto named_key(Syntax const& syntax, FormId const form) -> std::string {
+    if (!syntax.is_list(form) && syntax.text(form).starts_with('@')) {
+        auto name{syntax.text(form).substr(1)};
+        if (auto const slash{name.find_last_of('/')}; slash != std::string_view::npos) {
+            name.remove_prefix(slash + 1);
+        }
+        return std::string{"member"} + '\0' + std::string{name};
+    }
     auto const children{syntax.children(form)};
     if (!syntax.is_list(form) || children.size() < 2 || syntax.is_list(children[1])) {
         return {};
     }
-    return std::string{syntax.head(form)} + '\0' + std::string{syntax.text(children[1])};
+    auto const head{syntax.head(form) == "case" ? std::string_view{"member"} : syntax.head(form)};
+    return std::string{head} + '\0' + std::string{syntax.text(children[1])};
 }
 
 auto module_name(codegen::Declarations const& declarations, codegen::ModuleHandle const module)
@@ -307,8 +315,15 @@ auto SourceComments::apply(CompilerStorage const& storage,
                     }
                 }
                 auto const found{std::ranges::find_if(source_children, [&](FormId const child) {
-                    return !used.contains(child) && source_syntax.is_list(child) &&
-                           named_key(source_syntax, child) == key;
+                    return !used.contains(child) && named_key(source_syntax, child) == key;
+                })};
+                if (found != source_children.end()) {
+                    source_child = *found;
+                }
+            } else if (target_syntax.text(target_child).starts_with('@')) {
+                auto const key{named_key(target_syntax, target_child)};
+                auto const found{std::ranges::find_if(source_children, [&](FormId const child) {
+                    return !used.contains(child) && named_key(source_syntax, child) == key;
                 })};
                 if (found != source_children.end()) {
                     source_child = *found;

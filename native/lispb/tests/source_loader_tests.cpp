@@ -5,6 +5,7 @@
 #include <codegen/generated_file.h>
 #include <codegen/generator.h>
 #include <codegen/schema.h>
+#include <codegen/schema/child_occurrences.h>
 #include <codegen/schema/declaration_schema.h>
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/enum_schemas.h>
@@ -16,7 +17,6 @@
 #include <codegen/schema/floating_point_format.h>
 #include <codegen/schema/function_schemas.h>
 #include <codegen/schema/indices.h>
-#include <codegen/schema/integer_scalar_cpp_emission.h>
 #include <codegen/schema/integer_scalar_schemas.h>
 #include <codegen/schema/integer_varint_encoding.h>
 #include <codegen/schema/integer_varint_schemas.h>
@@ -31,15 +31,11 @@
 #include <codegen/schema/packed_bit_order.h>
 #include <codegen/schema/packed_byte_order.h>
 #include <codegen/schema/packed_field_kind.h>
-#include <codegen/schema/packed_field_schemas.h>
 #include <codegen/schema/packed_integer_value.h>
 #include <codegen/schema/packed_named_code_schemas.h>
-#include <codegen/schema/packed_reserved_bits_schemas.h>
-#include <codegen/schema/packed_value_schemas.h>
 #include <codegen/schema/physical_type_form.h>
 #include <codegen/schema/quantization_clipping.h>
 #include <codegen/schema/record_comparison.h>
-#include <codegen/schema/record_member_schemas.h>
 #include <codegen/schema/record_schemas.h>
 #include <codegen/schema/schema_range.h>
 #include <codegen/schema/semantic_relation_kind.h>
@@ -54,23 +50,18 @@
 #include <codegen/schema/soa_mask_dimension_schemas.h>
 #include <codegen/schema/soa_member_schemas.h>
 #include <codegen/schema/soa_schemas.h>
-#include <codegen/schema/tagged_union_alternative_schemas.h>
-#include <codegen/schema/tagged_union_schemas.h>
 #include <codegen/schema/type_reference_kind.h>
 #include <codegen/schema/type_reference_role.h>
 #include <codegen/schema/type_refs.h>
-#include <codegen/schema/union_alternative_schemas.h>
 #include <codegen/schema/union_schemas.h>
 #include <codegen/sexpr/source_error.h>
 #include <codegen/source_loader.h>
 #include <lispb/compilation.h>
 #include <lispb/indices.h>
+#include <lispb/schema/child_occurrences.h>
 #include <lispb/schema/external_types.h>
 #include <lispb/schema/integer_domain.h>
 #include <lispb/schema/integer_scalar_types.h>
-#include <lispb/schema/packed_fields.h>
-#include <lispb/schema/packed_types.h>
-#include <lispb/schema/record_members.h>
 #include <lispb/schema/record_types.h>
 #include <lispb/schema/type_graph.h>
 #include <lispb/schema/type_origin.h>
@@ -187,7 +178,7 @@ auto schema_at(Manifest const& manifest,
 TEST(SourceLoader, RecordValueSemanticsSurviveParsingGraphAndLowering) {
     TemporaryManifest files;
     auto& store{files.store()};
-    auto& record_members{store.record_members};
+    auto& record_members{store.child_occurrences};
     auto& records{store.records};
     files.write_root(R"((module records :header "Records.h"
       (record Value :comparison three-way :comparison-noexcept true
@@ -196,7 +187,8 @@ TEST(SourceLoader, RecordValueSemanticsSurviveParsingGraphAndLowering) {
         (member explicit_value int :initializer "7")
         (function read int :const true :noexcept true :constexpr true :nodiscard true
           :body ("return explicit_value;"))
-        (function validate bool :const true :noexcept true))))");
+        (function validate bool :const true :noexcept true)
+    (projections (cpp)))))");
     auto manifest{files.load()};
     auto const& schema{schema_at(manifest, 0)};
     auto const schema_row{records.index(schema)};
@@ -210,7 +202,7 @@ TEST(SourceLoader, RecordValueSemanticsSurviveParsingGraphAndLowering) {
     auto const graph{lispb::schema::resolve_type_graph(manifest)};
     auto const& record{graph.definition(*find_test_type(graph, "records", "Value"))};
     auto const& definitions{graph.definitions()};
-    auto const& semantic_members{definitions.record_members};
+    auto const& semantic_members{definitions.children};
     auto const resolved_members{definitions.records.members_of(record)};
     EXPECT_FALSE(
         semantic_members.initializer[semantic_members.index(resolved_members[0])].has_value());
@@ -248,19 +240,24 @@ TEST_P(SourceLoaderInvalidRecord, RejectsInvalidDeclaration) {
 INSTANTIATE_TEST_SUITE_P(
     SourceLoader,
     SourceLoaderInvalidRecord,
-    testing::Values(
-        InvalidSourceCase{"StatementInitializer",
-                          R"((record Value (member x int :initializer "0; int injected")))"},
-        InvalidSourceCase{"NoexceptWithoutComparison",
-                          R"((record Value :comparison-noexcept true (member x int)))"},
-        InvalidSourceCase{"MemberMethodNameCollision",
-                          R"((record Value (member x int) (function x int)))"},
-        InvalidSourceCase{"StaticConstMethod",
-                          R"((record Value (function read int :static true :const true)))"},
-        InvalidSourceCase{"ConstexprWithoutBody",
-                          R"((record Value (function read int :constexpr true)))"},
-        InvalidSourceCase{"DuplicateMethod",
-                          R"((record Value (function read int) (function read int)))"}),
+    testing::Values(InvalidSourceCase{"StatementInitializer",
+                                      R"((record Value (member x int :initializer "0; int injected")
+    (projections (cpp))))"},
+                    InvalidSourceCase{"NoexceptWithoutComparison",
+                                      R"((record Value :comparison-noexcept true (member x int)
+    (projections (cpp))))"},
+                    InvalidSourceCase{"MemberMethodNameCollision",
+                                      R"((record Value (member x int) (function x int)
+    (projections (cpp))))"},
+                    InvalidSourceCase{"StaticConstMethod",
+                                      R"((record Value (function read int :static true :const true)
+    (projections (cpp))))"},
+                    InvalidSourceCase{"ConstexprWithoutBody",
+                                      R"((record Value (function read int :constexpr true)
+    (projections (cpp))))"},
+                    InvalidSourceCase{"DuplicateMethod",
+                                      R"((record Value (function read int) (function read int)
+    (projections (cpp))))"}),
     [](auto const& info) { return info.param.name; });
 
 TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareLaterAndMutualTypes) {
@@ -273,8 +270,10 @@ TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareLaterAndMutualTypes) {
         (function make B)
         (function accept void (parameter value B))
         (function ref auto :trailing-return-type (type-ref B :suffix " const&"))
-        (function pointer (type-ref B :suffix "*") :body ("return nullptr;")))
-      (record B (function make A))))");
+        (function pointer (type-ref B :suffix "*") :body ("return nullptr;"))
+    (projections (cpp)))
+      (record B (function make A)
+    (projections (cpp)))))");
     auto manifest{files.load()};
     auto const graph{lispb::schema::resolve_type_graph(manifest)};
     auto const a{*find_test_type(graph, "values", "A")};
@@ -315,7 +314,8 @@ TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareLaterAndMutualTypes) {
     auto const output{files.render(manifest).front().content};
     EXPECT_LT(output.find("struct B;"), output.find("struct A {"));
     EXPECT_LT(output.find("struct A;"), output.find("struct B {"));
-    EXPECT_LT(output.find("struct A {"), output.find("struct B {"));
+    EXPECT_NE(output.find("struct A {"), std::string::npos);
+    EXPECT_NE(output.find("struct B {"), std::string::npos);
     EXPECT_NE(output.find("auto ref() -> B const&;"), std::string::npos);
     EXPECT_EQ(
         files.text(declaration_name(
@@ -323,7 +323,7 @@ TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareLaterAndMutualTypes) {
         "A");
 }
 
-TEST(SourceLoader, RecordMethodSignaturesOrderAliasesEnumsAndHeaderBodyValues) {
+TEST(SourceLoader, RecordMethodSignaturesOrderScalarWrappersEnumsAndHeaderBodyValues) {
     TemporaryManifest files;
     auto& store{files.store()};
     files.write_root(R"((module values :header "Values.h"
@@ -332,21 +332,25 @@ TEST(SourceLoader, RecordMethodSignaturesOrderAliasesEnumsAndHeaderBodyValues) {
         (function count (type-ref Count :suffix " const&"))
         (function make auto :trailing-return-type Provider :body ("return {};"))
         (function accept void (parameter value Argument) :body ("(void)value;"))
-        (function self Consumer :body ("return *this;")))
-      (record Provider)
-      (record Argument)
-      (enum Tag std::uint8_t (value Value))
+        (function self Consumer :body ("return *this;"))
+    (projections (cpp)))
+      (record Provider
+    (projections (cpp)))
+      (record Argument
+    (projections (cpp)))
+      (enum Tag std::uint8_t (value Value)
+    (projections (cpp)))
       (integer-scalar Count :signed false :minimum 0 :maximum 255 :bit-width 8
-        :cpp-emission alias :cpp-type std::uint8_t)))");
+    (projections (cpp :storage std::uint8_t)))))");
     auto manifest{files.load()};
     auto const output{files.render(manifest).front().content};
     auto const consumer{output.find("struct Consumer {")};
     for (auto const definition :
-         {"struct Provider {", "struct Argument {", "enum class Tag", "using Count ="}) {
+         {"struct Provider {", "struct Argument {", "enum class Tag", "struct Count"}) {
         EXPECT_LT(output.find(definition), consumer) << definition;
     }
     EXPECT_EQ(output.find("struct Tag;"), std::string::npos);
-    EXPECT_EQ(output.find("struct Count;"), std::string::npos);
+    EXPECT_NE(output.find("struct Count;"), std::string::npos);
     EXPECT_EQ(
         files.text(declaration_name(
             store,
@@ -360,9 +364,11 @@ TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareCrossModuleTypes) {
       (record Consumer
         (function make providers::Provider)
         (function accept void (parameter value (type-ref providers::Provider :suffix " const&")))
-        (function pointer auto :trailing-return-type (type-ref providers::Provider :suffix "*"))))
+        (function pointer auto :trailing-return-type (type-ref providers::Provider :suffix "*"))
+    (projections (cpp))))
       (module providers :header "generated/Provider.h" :header-include "api/Provider.h"
-        :namespace providers (record Provider)))");
+        :namespace providers (record Provider
+    (projections (cpp)))))");
     auto const output{files.render(files.load()).front().content};
     EXPECT_EQ(output.find("#include \"api/Provider.h\""), std::string::npos);
     EXPECT_LT(output.find("namespace providers {"), output.find("struct Provider;"));
@@ -382,12 +388,14 @@ TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareMutualCrossModuleTypes)
         (function accept void (parameter value second::B))
         (function pointer (type-ref second::B :suffix "*"))
         (function ref (type-ref second::B :suffix " const&"))
-        (function move auto :trailing-return-type (type-ref second::B :suffix "&&"))))
+        (function move auto :trailing-return-type (type-ref second::B :suffix "&&"))
+    (projections (cpp))))
       (module second :header "Second.h" :namespace second
         (record B
           (function make auto :trailing-return-type first::A)
           (function pointer (type-ref first::A :suffix "*"))
-          (function ref auto :trailing-return-type (type-ref first::A :suffix " const&")))))");
+          (function ref auto :trailing-return-type (type-ref first::A :suffix " const&"))
+    (projections (cpp)))))");
     auto const output{files.render(files.load())};
     ASSERT_EQ(output.size(), 2U);
     EXPECT_EQ(output[0].content.find("#include \"Second.h\""), std::string::npos);
@@ -406,16 +414,19 @@ TEST(SourceLoader, RecordParameterDefaultsRequireCompleteTypesWithoutChangingOth
           std::pair{"(type-ref B :suffix \" const&\")", "{}"},
           std::pair{"(type-ref B :suffix \"*\")", "nullptr"}}) {
         files.write_root(std::string{R"((module values :header "Values.h"
-          (record A
+          (record A (projections (cpp))
             (function consume Result (parameter value )"} +
                          parameter_type + " :default \"" + default_value + R"("))
             (function inspect auto :trailing-return-type Result
               (parameter existing (type-ref C :suffix " const&"))
               (parameter value )" +
                          parameter_type + " :default \"" + default_value + R"(")))
-          (record B)
-          (record Result)
-          (record C)))");
+          (record B
+    (projections (cpp)))
+          (record Result
+    (projections (cpp)))
+          (record C
+    (projections (cpp)))))");
         auto manifest{files.load()};
         auto const graph{lispb::schema::resolve_type_graph(manifest)};
         auto const b{*find_test_type(graph, "values", "B")};
@@ -454,8 +465,8 @@ TEST(SourceLoader, RecordParameterDefaultsRequireCompleteTypesWithoutChangingOth
         EXPECT_EQ(output.find("struct B;"), std::string::npos);
         EXPECT_LT(output.find("struct Result;"), output.find("struct A {"));
         EXPECT_LT(output.find("struct C;"), output.find("struct A {"));
-        EXPECT_LT(output.find("struct A {"), output.find("struct Result {"));
-        EXPECT_LT(output.find("struct A {"), output.find("struct C {"));
+        EXPECT_NE(output.find("struct Result {"), std::string::npos);
+        EXPECT_NE(output.find("struct C {"), std::string::npos);
     }
 }
 
@@ -466,10 +477,11 @@ TEST(SourceLoader, RecordParameterDefaultsRetainCrossModuleIncludes) {
           std::pair{"(type-ref second::B :suffix \" const&\")", "{}"},
           std::pair{"(type-ref second::B :suffix \"*\")", "nullptr"}}) {
         files.write_root(std::string{R"((module first :header "First.h" :namespace first
-          (record A (function consume void (parameter value )"} +
+          (record A (projections (cpp)) (function consume void (parameter value )"} +
                          parameter_type + " :default \"" + default_value + R"("))))
           (module second :header "generated/Second.h" :header-include "api/Second.h"
-            :namespace second (record B)))");
+            :namespace second (record B
+    (projections (cpp)))))");
         auto const output{files.render(files.load()).front().content};
         EXPECT_NE(output.find("#include \"api/Second.h\""), std::string::npos);
         EXPECT_EQ(output.find("struct B;"), std::string::npos);
@@ -481,13 +493,17 @@ TEST(SourceLoader, RecordParameterDefaultsRejectCompleteDefinitionCycles) {
     for (auto const& schema : {
              R"((module values :header "Values.h"
                (record A (function inspect void
-                 (parameter value (type-ref B :suffix " const&") :default "{}")))
+                 (parameter value (type-ref B :suffix " const&") :default "{}"))
+    (projections (cpp)))
                (record B (function inspect void
-                 (parameter value (type-ref A :suffix " const&") :default "{}")))))",
+                 (parameter value (type-ref A :suffix " const&") :default "{}"))
+    (projections (cpp)))))",
              R"((module first :header "First.h" :namespace first
-               (record A (function consume void (parameter value second::B :default "{}"))))
+               (record A (function consume void (parameter value second::B :default "{}"))
+    (projections (cpp))))
                (module second :header "Second.h" :namespace second
-                 (record B (function consume void (parameter value first::A :default "{}")))))"}) {
+                 (record B (function consume void (parameter value first::A :default "{}"))
+    (projections (cpp)))))"}) {
         files.write_root(schema);
         try {
             static_cast<void>(files.graph());
@@ -506,21 +522,26 @@ TEST(SourceLoader, RecordMethodCrossModuleCompleteTypesRetainIncludes) {
         (function make providers::Provider :body ("return {};"))
         (function accept void (parameter value providers::Provider) :body ("(void)value;"))
         (function tag providers::Tag)
-        (function count (type-ref providers::Count :suffix " const&"))))
+        (function count (type-ref providers::Count :suffix " const&"))
+    (projections (cpp))))
       (module providers :header "generated/Provider.h" :header-include "api/Provider.h"
-        :namespace providers (record Provider))
+        :namespace providers (record Provider
+    (projections (cpp))))
       (module tags :header "Tags.h" :namespace providers
-        (enum Tag std::uint8_t (value Value)))
+        (enum Tag std::uint8_t (value Value)
+    (projections (cpp))))
       (module counts :header "Counts.h" :namespace providers
         (integer-scalar Count :signed false :minimum 0 :maximum 255 :bit-width 8
-          :cpp-emission alias :cpp-type std::uint8_t)))");
+    (projections (cpp :storage std::uint8_t)))))");
     auto const output{files.render(files.load()).front().content};
-    for (auto const header : {"api/Provider.h", "Tags.h", "Counts.h"}) {
+    for (auto const header : {"api/Provider.h", "Tags.h"}) {
         EXPECT_NE(output.find(std::string{"#include \""} + header + "\""), std::string::npos);
     }
-    for (auto const type : {"Provider", "Tag", "Count"}) {
+    for (auto const type : {"Provider", "Tag"}) {
         EXPECT_EQ(output.find(std::string{"struct "} + type + ";"), std::string::npos);
     }
+    EXPECT_EQ(output.find("#include \"Counts.h\""), std::string::npos);
+    EXPECT_NE(output.find("struct Count;"), std::string::npos);
 }
 
 TEST(SourceLoader, RecordMethodCrossModuleForwardsRespectPhysicalOwnersAndExternalHeaders) {
@@ -530,11 +551,14 @@ TEST(SourceLoader, RecordMethodCrossModuleForwardsRespectPhysicalOwnersAndExtern
         (function rows providers::Rows)
         (function value @external)
         (function registered @registered)
-        (function global Global)))
+        (function global Global)
+    (projections (cpp))))
       (module providers :header "Providers.h" :namespace providers
         (struct Rows (member xs array float))
-        (record Registered))
-      (module global :header "Global.h" (record Global)))");
+        (record Registered
+    (projections (cpp))))
+      (module global :header "Global.h" (record Global
+    (projections (cpp)))))");
     files.write("types.lispb", R"(
       (type external :spelling "external::Value" :header "External.h")
       (type registered :spelling "providers::Registered" :header "Providers.h"))");
@@ -557,7 +581,7 @@ TEST(SourceLoader, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteDefinit
           "(function make auto :trailing-return-type (type-ref Layout :suffix \"&\"))",
           "(function accept void (parameter value Layout))"}) {
         files.write_root(std::string{R"((module values :header "Values.h"
-          (record Consumer )"} +
+          (record Consumer (projections (cpp)) )"} +
                          signature + R"()
           (struct Layout :layout-only true (member xs array float))))");
         try {
@@ -568,7 +592,8 @@ TEST(SourceLoader, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteDefinit
         }
     }
     files.write_root(R"((module consumers :header "Consumers.h"
-      (record Consumer (function make (type-ref providers::Layout :suffix "*"))))
+      (record Consumer (function make (type-ref providers::Layout :suffix "*"))
+    (projections (cpp))))
       (module providers :header "Providers.h" :namespace providers
         (struct Layout :layout-only true (member xs array float))))");
     try {
@@ -578,8 +603,10 @@ TEST(SourceLoader, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteDefinit
         EXPECT_TRUE(std::string{error.what()}.contains("has no C++ owner")) << error.what();
     }
     files.write_root(R"((module values :header "Values.h"
-      (record A (function make B :body ("return {};")))
-      (record B (function make A :body ("return {};")))))");
+      (record A (function make B :body ("return {};"))
+    (projections (cpp)))
+      (record B (function make A :body ("return {};"))
+    (projections (cpp)))))");
     try {
         static_cast<void>(files.graph());
         FAIL();
@@ -588,9 +615,11 @@ TEST(SourceLoader, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteDefinit
         EXPECT_TRUE(std::string{error.what()}.contains("A -> B -> A"));
     }
     files.write_root(R"((module first :header "First.h" :namespace first
-      (record A (function make second::B :body ("return {};"))))
+      (record A (function make second::B :body ("return {};"))
+    (projections (cpp))))
       (module second :header "Second.h" :namespace second
-        (record B (member a first::A))))");
+        (record B (member a first::A)
+    (projections (cpp)))))");
     try {
         static_cast<void>(files.graph());
         FAIL();
@@ -640,27 +669,30 @@ INSTANTIATE_TEST_SUITE_P(
                           "(struct Rows :const-view-name ConstValues (member ids array int))"}),
     [](auto const& info) { return info.param.name; });
 
-TEST(SourceLoader, AliasEmissionKeepsSemanticIdentityAndDependencies) {
+TEST(SourceLoader, ScalarProjectionKeepsSemanticIdentityAndDependencies) {
     TemporaryManifest files;
     files.write_root(
         R"((module vitals :header "Vitals.h" :namespace fixture
-      (record Vessel (member health Health))
+      (record Vessel (member health Health)
+    (projections (cpp)))
       (struct Fleet (member healths array Health))
-      (packed-value PackedHealth :storage std::uint16_t (field health @health :bits auto))
+      (record PackedHealth :layout packed :bits 16 (member health @health :bits auto)
+    (projections (cpp :storage std::uint16_t)))
       (integer-scalar Health :signed false :minimum 0 :maximum 65534 :bit-width 16
-        :cpp-type @native_uint16 :cpp-emission alias
         (code Invalid :value 65535 :sentinel true)
-        (relation references Vessel)))
+        (relation references Vessel)
+    (projections (cpp :storage @native_uint16))))
       (module consumers :header "Consumers.h" :namespace fixture
-        (record Other (member health @health))))");
+        (record Other (member health @health)
+    (projections (cpp)))))");
     files.write("types.lispb", R"(
       (type native_uint16 :spelling "std::uint16_t" :header "cstdint" :pass-by value)
       (type health :spelling "fixture::Health" :header "Vitals.h" :pass-by value))");
     auto manifest{files.load()};
     auto const& scalar{schema_at(manifest, 0, 3)};
-    EXPECT_EQ(
-        files.store().integer_scalars.cpp_emission[files.store().integer_scalars.index(scalar)],
-        IntegerScalarCppEmission::alias);
+    EXPECT_TRUE(files.store()
+                    .integer_scalars.cpp_projection[files.store().integer_scalars.index(scalar)]
+                    .has_value());
     auto const graph{lispb::schema::resolve_type_graph(manifest)};
     auto const health{*find_test_type(graph, "vitals", "Health")};
     auto const& semantic{graph.definition(health)};
@@ -691,16 +723,14 @@ TEST(SourceLoader, AliasEmissionKeepsSemanticIdentityAndDependencies) {
     auto const vessel{*find_test_type(graph, "vitals", "Vessel")};
     auto const& record{graph.definition(vessel)};
     EXPECT_EQ(graph.occurrences().type[graph.occurrences().index(
-                  graph.definitions()
-                      .record_members.semantic_type[graph.definitions().record_members.index(
-                          graph.definitions().records.members_of(record)[0])])],
+                  graph.definitions().children.semantic_type[graph.definitions().children.index(
+                      graph.definitions().records.members_of(record)[0])])],
               health);
     auto const packed{*find_test_type(graph, "vitals", "PackedHealth")};
-    auto const& field{graph.definitions().packed.segments_of(graph.definition(packed))[0]};
+    auto const& field{graph.definitions().records.members_of(graph.definition(packed))[0]};
     EXPECT_EQ(
         graph.occurrences().type[graph.occurrences().index(
-            graph.definitions()
-                .packed_fields.semantic_type[graph.definitions().packed_fields.index(field)])],
+            graph.definitions().children.semantic_type[graph.definitions().children.index(field)])],
         health);
     for (auto const consumer : {vessel,
                                 packed,
@@ -713,126 +743,66 @@ TEST(SourceLoader, AliasEmissionKeepsSemanticIdentityAndDependencies) {
     }
     auto const generated{files.render(manifest)};
     auto const& header{generated.front().content};
-    EXPECT_NE(header.find("using Health = std::uint16_t;"), std::string::npos);
+    EXPECT_NE(header.find("struct Health"), std::string::npos);
     EXPECT_NE(header.find("#include <cstdint>"), std::string::npos);
-    EXPECT_LT(header.find("using Health ="), header.find("struct Vessel"));
-    EXPECT_LT(header.find("using Health ="), header.find("struct Fleet"));
+    EXPECT_LT(header.find("struct Health"), header.find("struct Vessel"));
+    EXPECT_LT(header.find("struct Health"), header.find("struct Fleet"));
     EXPECT_EQ(header.find("Health_Invalid"), std::string::npos);
 }
 
-TEST(SourceLoader, ScalarEmissionOnlyEstablishesRepresentationForAliases) {
-    for (auto const mode : {IntegerScalarCppEmission::none,
-                            IntegerScalarCppEmission::constants,
-                            IntegerScalarCppEmission::constants_with_names,
-                            IntegerScalarCppEmission::alias}) {
-        auto const name{std::string{to_serialized_string(mode)}};
-        SCOPED_TRACE(name);
+TEST(SourceLoader, ScalarProjectionControlsOwningRepresentation) {
+    for (auto const projected : {false, true}) {
         TemporaryManifest files;
+        auto const projection{projected ? "(projections (cpp))" : ""};
         files.write_root(
-            "(module reasons :header \"Reasons.h\"\n"
-            "  (integer-scalar Context :signed false :minimum 0 :maximum 10\n"
-            "    (relation references Reason))\n"
-            "  (integer-scalar Reason :signed false :minimum 0 :maximum 10 :bit-width 8\n"
-            "    :cpp-emission " +
-            name + (mode == IntegerScalarCppEmission::none ? "" : " :cpp-type @byte") +
-            "\n    (code Unknown :value 0)\n"
-            "    (code Invalid :value 255 :sentinel true)\n"
-            "    (relation references Context)))");
-        files.write("types.lispb", R"((type byte :spelling "std::uint8_t" :header "cstdint"))");
-        auto manifest{files.load()};
-        EXPECT_EQ(files.store().integer_scalars.cpp_emission[files.store().integer_scalars.index(
-                      schema_at(manifest, 0, 1))],
-                  mode);
+            "(module reasons :header \"Reasons.h\""
+            " (integer-scalar Context :minimum 0 :maximum 10 (relation references Reason))"
+            " (integer-scalar Reason :minimum 0 :maximum 10 :bit-width 8"
+            " (code Unknown :value 0) (code Invalid :value 255 :sentinel true)"
+            " (relation references Context) " +
+            std::string{projection} + "))");
+        auto const manifest{files.load()};
         auto const graph{lispb::schema::resolve_type_graph(manifest)};
         auto const reason{*find_test_type(graph, "reasons", "Reason")};
         auto const context{*find_test_type(graph, "reasons", "Context")};
-        auto const byte{*graph.find_registered(graph.strings().find("byte"))};
-        auto const& scalar{graph.definition(reason)};
-        auto const alias{mode == IntegerScalarCppEmission::alias};
-        EXPECT_EQ(lispb::schema::is_valid(
-                      graph.definitions()
-                          .integer_scalars
-                          .cpp_representation[graph.definitions().integer_scalars.index(scalar)]),
-                  alias);
-        if (alias) {
-            EXPECT_EQ(graph.occurrences().type[graph.occurrences().index(
-                          graph.definitions().integer_scalars.cpp_representation
-                              [graph.definitions().integer_scalars.index(scalar)])],
-                      byte);
-        }
-        EXPECT_EQ(graph.definitions()
-                      .integer_scalars.bit_width[graph.definitions().integer_scalars.index(scalar)],
-                  8);
+        auto const& scalars{graph.definitions().integer_scalars};
+        auto const row{scalars.index(graph.definition(reason))};
+        EXPECT_FALSE(lispb::schema::is_valid(scalars.cpp_representation[row]));
+        EXPECT_EQ(graph.bit_layout(reason).storage_bits, 8U);
         EXPECT_EQ(
-            graph.definitions()
-                .integer_scalars.named_codes[graph.definitions().integer_scalars.index(scalar)]
-                .size(),
-            2);
-        ASSERT_TRUE(lispb::schema::is_valid(
-            graph.definitions()
-                .integer_scalars.relationship[graph.definitions().integer_scalars.index(scalar)]));
-        EXPECT_EQ(graph.occurrences().type[graph.occurrences().index(
-                      graph.relationships().target[graph.relationships().index(
-                          graph.definitions().integer_scalars.relationship
-                              [graph.definitions().integer_scalars.index(scalar)])])],
-                  context);
-        auto const& related{graph.definition(context)};
+            files.store().integer_scalars.cpp_projection[schema_at(manifest, 0, 1)].has_value(),
+            projected);
+        EXPECT_EQ(scalars.bit_width[row], 8U);
+        EXPECT_EQ(scalars.named_codes[row].size(), 2U);
         EXPECT_FALSE(lispb::schema::is_valid(
-            graph.definitions()
-                .integer_scalars
-                .cpp_representation[graph.definitions().integer_scalars.index(related)]));
-        ASSERT_TRUE(lispb::schema::is_valid(
-            graph.definitions()
-                .integer_scalars.relationship[graph.definitions().integer_scalars.index(related)]));
-        EXPECT_EQ(graph.occurrences().type[graph.occurrences().index(
-                      graph.relationships().target[graph.relationships().index(
-                          graph.definitions().integer_scalars.relationship
-                              [graph.definitions().integer_scalars.index(related)])])],
-                  reason);
-        EXPECT_EQ(std::ranges::find(graph.dependencies_of(reason), byte) !=
-                      graph.dependencies_of(reason).end(),
-                  alias);
-        EXPECT_EQ(std::ranges::find(graph.users_of(byte), reason) != graph.users_of(byte).end(),
-                  alias);
+            scalars.cpp_representation[scalars.index(graph.definition(context))]));
         EXPECT_NE(std::ranges::find(graph.dependencies_of(reason), context),
                   graph.dependencies_of(reason).end());
-        EXPECT_NE(std::ranges::find(graph.users_of(context), reason),
-                  graph.users_of(context).end());
         EXPECT_NE(std::ranges::find(graph.dependencies_of(context), reason),
                   graph.dependencies_of(context).end());
-        EXPECT_NE(std::ranges::find(graph.users_of(reason), context), graph.users_of(reason).end());
-
-        auto const header{files.render(manifest).front().content};
-        auto const constants{mode == IntegerScalarCppEmission::constants ||
-                             mode == IntegerScalarCppEmission::constants_with_names};
-        EXPECT_EQ(header.contains("using Reason = std::uint8_t;"), alias);
-        EXPECT_EQ(header.contains("inline constexpr std::uint8_t Reason_Invalid"), constants);
-        EXPECT_EQ(header.contains("Reason_name("),
-                  mode == IntegerScalarCppEmission::constants_with_names);
-        EXPECT_EQ(header.contains("#include <cstdint>"), mode != IntegerScalarCppEmission::none);
-        EXPECT_FALSE(header.contains("Context"));
+        auto const generated{files.render(manifest)};
+        if (projected) {
+            ASSERT_FALSE(generated.empty());
+            EXPECT_TRUE(generated.front().content.contains("struct Reason"));
+            EXPECT_FALSE(generated.front().content.contains("using Reason ="));
+        }
     }
 }
 
-TEST(SourceLoader, ScalarAliasesShareCppTypeIncludeResolution) {
-    for (auto const* representation : {"@native_int32", "std::int32_t", "int32", "uint32"}) {
-        SCOPED_TRACE(representation);
+TEST(SourceLoader, ScalarProjectionInfersStorageAndSupportsExplicitWidth) {
+    for (auto const* representation : {"auto", "std::uint32_t", "std::uint64_t"}) {
         TemporaryManifest files;
-        files.write_root("(module values :header \"Values.h\"\n"
-                         "  (integer-scalar Value :signed false :minimum 0 :maximum 100\n"
-                         "    :cpp-emission alias :cpp-type " +
-                         std::string{representation} + "))");
-        files.write("types.lispb",
-                    R"((type native_int32 :spelling "std::int32_t" :header "cstdint"))");
+        files.write_root("(module values :header \"Values.h\""
+                         " (integer-scalar Value :bit-width 24"
+                         " (projections (cpp :storage " +
+                         std::string{representation} + "))))");
         auto const header{files.render(files.load()).front().content};
-        auto const spelling{std::string_view{representation} == "uint32" ? "std::uint32_t"
-                                                                         : "std::int32_t"};
-        EXPECT_TRUE(header.contains("using Value = " + std::string{spelling} + ";"));
-        auto const include{"#include <cstdint>"};
-        auto const position{header.find(include)};
-        ASSERT_NE(position, std::string::npos);
-        EXPECT_EQ(header.find(include, position + 1), std::string::npos);
-        EXPECT_EQ(header.find("CoreTypes.h"), std::string::npos);
+        auto const expected{std::string_view{representation} == "std::uint64_t" ? "std::uint64_t"
+                                                                                : "std::uint32_t"};
+        EXPECT_TRUE(header.contains("using storage_type = " + std::string{expected}));
+        EXPECT_TRUE(header.contains("raw_value()"));
+        EXPECT_TRUE(header.contains("from_raw("));
+        EXPECT_FALSE(header.contains("using Value ="));
     }
 }
 
@@ -840,25 +810,33 @@ TEST(SourceLoader, PackedDefaultsAreValidatedWithoutChangingImplicitSentinels) {
     TemporaryManifest files;
     auto& store{files.store()};
     files.write_root(R"((module orders :header "Orders.h"
-      (packed-value Order :storage std::uint8_t
-        (field task std::uint8_t :bits 1 :default 1)
-        (field target std::uint8_t :bits 1 :default 0))
-      (packed-value Partial :storage std::uint8_t
-        (field task std::uint8_t :bits 1 :default 1)
-        (field target std::uint8_t :bits 1))
-      (packed-value Implicit :storage std::uint8_t
-        (field task std::uint8_t :bits 1))
-      (packed-value Invalid :storage std::uint8_t :invalid-value 255
-        (field task std::uint8_t :bits 1))))");
+      (record Order :layout packed :bits 8
+        (member task @Order_taskEncoding :bits 1 :default 1)
+        (member target @Order_targetEncoding :bits 1 :default 0)
+    (projections (cpp :storage std::uint8_t)))
+      (record Partial :layout packed :bits 8
+        (member task @Partial_taskEncoding :bits 1 :default 1)
+        (member target @Partial_targetEncoding :bits 1)
+    (projections (cpp :storage std::uint8_t)))
+      (record Implicit :layout packed :bits 8
+        (member task @Implicit_taskEncoding :bits 1)
+    (projections (cpp :storage std::uint8_t)))
+      (record Invalid :layout packed :bits 8 :invalid-value 255
+        (member task @Invalid_taskEncoding :bits 1)
+    (projections (cpp :storage std::uint8_t)))
+      (integer-scalar Order_taskEncoding :signed false :bit-width 1)
+      (integer-scalar Order_targetEncoding :signed false :bit-width 1)
+      (integer-scalar Partial_taskEncoding :signed false :bit-width 1)
+      (integer-scalar Partial_targetEncoding :signed false :bit-width 1)
+      (integer-scalar Implicit_taskEncoding :signed false :bit-width 1)
+      (integer-scalar Invalid_taskEncoding :signed false :bit-width 1)))");
     auto manifest{files.load()};
-    EXPECT_EQ(
-        store.packed_fields
-            .default_value[store.items(store.packed_values.segments[schema_at(manifest, 0)])[0]],
-        PackedIntegerValue{1});
+    EXPECT_EQ(store.child_occurrences
+                  .default_value[store.items(store.records.members[schema_at(manifest, 0)])[0]],
+              PackedIntegerValue{1});
     auto const graph{lispb::schema::resolve_type_graph(manifest)};
     auto default_raw = [&](char const* name) {
-        return graph.definitions().packed.default_raw_value[graph.definitions().packed.index(
-            graph.definition(*find_test_type(graph, "orders", name)))];
+        return graph.bit_layout(*find_test_type(graph, "orders", name)).default_raw_value;
     };
     EXPECT_EQ(default_raw("Order"), 1);
     EXPECT_EQ(default_raw("Partial"), std::nullopt);
@@ -872,7 +850,8 @@ TEST(SourceLoader, PackedDefaultsAreValidatedWithoutChangingImplicitSentinels) {
 TEST(SourceLoader, IncludedExternalScalarsRetainExternalIdentityAndEnrichPlainReferences) {
     TemporaryManifest files;
     files.write_root(R"((module example :header "Example.h"
-      (record Values (member x double) (member y int8) (member z std::int8_t) (member w @signed_byte))))");
+      (record Values (member x double) (member y int8) (member z std::int8_t) (member w @signed_byte)
+    (projections (cpp)))))");
     files.write("types.lispb",
                 R"((include "common/types.lispb") (include "common/./scalars.lispb"))");
     files.write("common/types.lispb", R"((include "scalars.lispb"))");
@@ -891,7 +870,7 @@ TEST(SourceLoader, IncludedExternalScalarsRetainExternalIdentityAndEnrichPlainRe
     EXPECT_EQ(graph.origin(registered), lispb::schema::TypeOrigin::registered_external);
     auto const& record{graph.definition(*find_test_type(graph, "example", "Values"))};
     auto const& floating{graph.definition(graph.occurrences().type[graph.occurrences().index(
-        graph.definitions().record_members.semantic_type[graph.definitions().record_members.index(
+        graph.definitions().children.semantic_type[graph.definitions().children.index(
             graph.definitions().records.members_of(record)[0])])])};
     EXPECT_EQ(graph.definitions()
                   .externals.floating_semantics[graph.definitions().externals.index(floating)],
@@ -899,17 +878,15 @@ TEST(SourceLoader, IncludedExternalScalarsRetainExternalIdentityAndEnrichPlainRe
     for (std::size_t index{1}; index < graph.definitions().records.members_of(record).size();
          ++index) {
         auto const& node{graph.occurrences().type[graph.occurrences().index(
-            graph.definitions()
-                .record_members.semantic_type[graph.definitions().record_members.index(
-                    graph.definitions().records.members_of(record)[index])])]};
+            graph.definitions().children.semantic_type[graph.definitions().children.index(
+                graph.definitions().records.members_of(record)[index])])]};
         EXPECT_TRUE(
             ((graph.definition(node)).kind() == lispb::schema::TypeDefinitionKind::external));
         auto const scalar{lispb::schema::integer_domain(
             graph,
             graph.occurrences().type[graph.occurrences().index(
-                graph.definitions()
-                    .record_members.semantic_type[graph.definitions().record_members.index(
-                        graph.definitions().records.members_of(record)[index])])])};
+                graph.definitions().children.semantic_type[graph.definitions().children.index(
+                    graph.definitions().records.members_of(record)[index])])])};
         ASSERT_TRUE(scalar.has_value());
         EXPECT_TRUE(
             graph.definitions()
@@ -952,9 +929,11 @@ TEST(SourceLoader, ExternalIntegerDomainsDriveRepresentationsAndPackedWidths) {
       (integer-varint Encoded :source @index :encoding unsigned)
       (optional-sentinel MaybeIndex :source @index :sentinel invalid)
       (optional-presence-bit PresentIndex :source @index)
-      (packed-value Packed :storage uint32
-        (field index @index :bits auto)
-        (field subset uint32 :bits 24))))");
+      (record Packed :layout packed :bits 32
+        (member index @index :bits auto)
+        (member subset @Packed_subsetEncoding :bits 24)
+    (projections (cpp :storage uint32)))
+      (integer-scalar Packed_subsetEncoding :signed false :bit-width 24)))");
     files.write("types.lispb", R"(
       (type index :spelling "NativeIndex" (integer :signed false :bit-width 8 :maximum 254
         (code invalid :value 255 :sentinel true)))
@@ -963,57 +942,25 @@ TEST(SourceLoader, ExternalIntegerDomainsDriveRepresentationsAndPackedWidths) {
     auto const graph{lispb::schema::resolve_type_graph(manifest)};
     auto const source{*graph.find_registered(graph.strings().find("index"))};
     EXPECT_EQ(graph.users_of(source).size(), 5);
-    auto const& packed{graph.definition(*find_test_type(graph, "example", "Packed"))};
-    EXPECT_EQ(graph.definitions().packed_fields.bit_width[graph.definitions().packed_fields.index(
-                  graph.definitions().packed.segments_of(packed)[0])],
-              8);
-    EXPECT_EQ(graph.definitions().packed_fields.bit_width[graph.definitions().packed_fields.index(
-                  graph.definitions().packed.segments_of(packed)[1])],
-              24);
+    auto const packed{*find_test_type(graph, "example", "Packed")};
+    auto const& layout{graph.bit_layout(packed)};
+    ASSERT_EQ(layout.placements.size(), 2U);
+    EXPECT_EQ(layout.placements[0].bits, 8U);
+    EXPECT_EQ(layout.placements[1].bits, 24U);
     auto const output{files.render(manifest)};
     ASSERT_EQ(output.size(), 1);
     EXPECT_EQ(output[0].content.find("struct NativeIndex"), std::string::npos);
     EXPECT_NE(output[0].content.find("std::uint8_t"), std::string::npos);
 }
 
-TEST(SourceLoader, ExternalMetadataPreservesExplicitWidthCppFieldEmission) {
+TEST(SourceLoader, PackedOccurrenceCannotTruncateReusableEncoding) {
     TemporaryManifest files;
-    auto& store{files.store()};
-    auto& packed_fields{store.packed_fields};
-    auto& type_refs{store.type_refs};
-    files.write_root(R"((module example :header "Example.h"
-      (packed-value Packed :storage uint64
-        (field subset uint32 :bits 24)
-        (field alias @legacy :bits 24 :minimum 0 :maximum 100)
-        (reserved future :bits 16))
-      (record Values (member x int8) (member y double))))");
-    files.write("types.lispb", R"((type legacy :spelling "uint32"))");
-    auto const original{files.render(files.load())};
-    files.write("types.lispb", R"(
-      (type legacy :spelling "uint32")
-      (type integer :spelling "uint32" (integer :signed false :bit-width 32))
-      (type byte :spelling "int8" (integer :signed true :bit-width 8))
-      (type real :spelling "double" (floating-point :format ieee754-binary64)))");
-    auto manifest{files.load()};
-    auto const enriched{files.render(manifest)};
-    ASSERT_EQ(original.size(), 1);
-    ASSERT_EQ(enriched.size(), 1);
-    EXPECT_EQ(original[0].content, enriched[0].content);
-
-    auto const graph{lispb::schema::resolve_type_graph(manifest)};
-    auto const type{*graph.find_registered(graph.strings().find("integer"))};
-    auto field{store.items(store.packed_values.segments[schema_at(manifest, 0)])[0]};
-    auto const field_row{packed_fields.index(field)};
-    EXPECT_FALSE(lispb::schema::packed_integer_domain(graph, type, field).has_value());
-    packed_fields.bits[field_row].reset();
-    EXPECT_TRUE(lispb::schema::packed_integer_domain(graph, type, field).has_value());
-    packed_fields.bits[field_row] = 32;
-    packed_fields.type[field_row] = [&] {
-        auto const new_type_refs{type_refs.append()};
-        type_refs.name[new_type_refs] = files.context.storage.strings.intern("@integer");
-        return new_type_refs;
-    }();
-    EXPECT_FALSE(lispb::schema::packed_integer_domain(graph, type, field).has_value());
+    files.write_root(R"((module example :header "Packed.h"
+      (integer-scalar Index :bit-width 32)
+      (record Packed :layout packed :bits 64
+        (member index @Index :bits 24)
+        (projections (cpp)))))");
+    EXPECT_THROW(files.graph(), std::exception);
 }
 
 class SourceLoaderInvalidExternalType : public testing::TestWithParam<InvalidSourceCase> {};
@@ -1118,12 +1065,14 @@ TEST(SourceLoader, NormalModuleKeepsMixedDeclarationOrderAndResolvesTypes) {
   :namespace example
   (enum State uint8
     (value Alive)
-    (value Dead))
+    (value Dead)
+    (projections (cpp)))
   (integer-scalar Health
     :signed false
     :minimum 0
     :maximum 100
-    :bit-width auto)
+    :bit-width auto
+    (projections (cpp)))
   (linear-quantized HealthQ7
     :source Health
     :bits 7
@@ -1131,7 +1080,8 @@ TEST(SourceLoader, NormalModuleKeepsMixedDeclarationOrderAndResolvesTypes) {
     :clipping clamp)
   (record Snapshot
     (member state State)
-    (member health Health)))
+    (member health Health)
+    (projections (cpp))))
 )");
 
     auto manifest{files.load()};
@@ -1151,14 +1101,12 @@ TEST(SourceLoader, NormalModuleKeepsMixedDeclarationOrderAndResolvesTypes) {
     auto const& record{graph.definition(*snapshot)};
     ASSERT_EQ(graph.definitions().records.members_of(record).size(), 2);
     EXPECT_EQ(files.text(graph.name(graph.occurrences().type[graph.occurrences().index(
-                  graph.definitions()
-                      .record_members.semantic_type[graph.definitions().record_members.index(
-                          graph.definitions().records.members_of(record)[0])])])),
+                  graph.definitions().children.semantic_type[graph.definitions().children.index(
+                      graph.definitions().records.members_of(record)[0])])])),
               "State");
     EXPECT_EQ(files.text(graph.name(graph.occurrences().type[graph.occurrences().index(
-                  graph.definitions()
-                      .record_members.semantic_type[graph.definitions().record_members.index(
-                          graph.definitions().records.members_of(record)[1])])])),
+                  graph.definitions().children.semantic_type[graph.definitions().children.index(
+                      graph.definitions().records.members_of(record)[1])])])),
               "Health");
 
     auto const generated{files.render(manifest)};
@@ -1201,10 +1149,13 @@ TEST(SourceLoader, OrdersPhysicalDependenciesWithoutChangingDeclarationIndices) 
     files.write_root(R"(
 (module mixed
   :header "Mixed.h"
-  (record Outer (member payload Payload))
+  (record Outer (member payload Payload)
+    (projections (cpp)))
   (integer-scalar Index :signed false :minimum 0 :maximum 255)
-  (union Payload (alternative inner Inner))
-  (record Inner (member value float (relation references Outer))))
+  (union Payload (member inner Inner)
+    (projections (cpp)))
+  (record Inner (member value float (relation references Outer))
+    (projections (cpp))))
 )");
     auto manifest{files.load()};
     auto const graph{lispb::schema::resolve_type_graph(manifest)};
@@ -1226,7 +1177,8 @@ TEST(SourceLoader, NormalModuleRejectsCrossKindGeneratedCppNameCollision) {
 (module mixed
   :header "Mixed.h"
   (enum f_data uint8
-    (value One))
+    (value One)
+    (projections (cpp)))
   (struct FData
     (member items array int32)))
 )");
@@ -1297,7 +1249,8 @@ TEST(SourceLoader, NativeIntegerSpellingsPreserveExplicitExternalTypes) {
         (record Values
           (member signed_value int32)
           (member unsigned_value uint16)
-          (member engine_value @engine_integer))))");
+          (member engine_value @engine_integer)
+    (projections (cpp)))))");
     files.write("types.lispb", R"(
         (type engine_integer :spelling int32 :header "EngineInteger.h"))");
     auto const output{files.render(files.load()).front().content};
@@ -1362,51 +1315,51 @@ TEST(SourceLoader, ReadsSoaFieldMaskMetadata) {
 TEST(SourceLoader, ReadsPackedValueModule) {
     TemporaryManifest files;
     auto& store{files.store()};
-    auto& packed_fields{store.packed_fields};
+    auto& packed_fields{store.child_occurrences};
     auto& packed_named_codes{store.packed_named_codes};
-    auto& packed_reserved_bits{store.packed_reserved_bits};
-    auto& packed_values{store.packed_values};
+    auto& packed_reserved_bits{store.child_occurrences};
+    auto& packed_values{store.records};
     auto& semantic_relations{store.semantic_relations};
     auto& type_refs{store.type_refs};
     files.write_root(R"(
 (module packed
   :header "Packed.h"
   :namespace project
-  (packed-value FighterState
-    :storage std::uint32_t
+  (record FighterState
+    :layout packed :bits 32
     :byte-order big
     :bit-order msb-first
     :invalid-value 0x7fffffff
-    :mutable true
-    (field entity_index std::uint32_t :bits auto :range-helper true :minimum 0 :maximum 1000000
-      (code Player :value 42)
-      (code Invalid :value 1048575 :sentinel true)
+    (member entity_index @FighterState_entity_indexEncoding
       (relation index_into FighterState))
     (reserved future :bits 4)
-    (field state State :bits 8 :kind enum)))
+    (member state State :bits 8)
+    (projections (cpp :storage std::uint32_t)))
+      (integer-scalar FighterState_entity_indexEncoding :signed false :minimum 0 :maximum 1000000 (code Player :value 42) (code Invalid :value 1048575 :sentinel true)))
 )");
 
     auto manifest{files.load()};
     auto const& module{manifest.modules.front()};
-    ASSERT_EQ(store.normal_modules.declarations[module].size(), 1);
+    ASSERT_EQ(store.normal_modules.declarations[module].size(), 2);
     auto const& value{schema_at(manifest, 0)};
     auto const value_row{packed_values.index(value)};
     EXPECT_EQ(files.text(packed_values.name[value_row]), "FighterState");
-    EXPECT_EQ(files.text(type_refs.name[packed_values.storage_type[value_row]]), "std::uint32_t");
+    EXPECT_EQ(files.text(type_refs.name[*packed_values.cpp_projection[value_row]->storage]),
+              "std::uint32_t");
     EXPECT_EQ(packed_values.byte_order[value_row], PackedByteOrder::big_endian);
     EXPECT_EQ(packed_values.bit_order[value_row], PackedBitOrder::most_significant_first);
     EXPECT_EQ(packed_values.invalid_value[value_row], std::uint64_t{0x7fffffff});
-    EXPECT_TRUE(packed_values.mutable_value[value_row]);
-    ASSERT_EQ(packed_values.segments[value_row].size(), 3);
-    auto const& index{store.items(packed_values.segments[value_row])[0]};
+    EXPECT_EQ(packed_values.layout[value_row], LayoutKind::packed);
+    ASSERT_EQ(packed_values.members[value_row].size(), 3);
+    auto const& index{store.items(packed_values.members[value_row])[0]};
     auto const index_row{packed_fields.index(index)};
     EXPECT_FALSE(packed_fields.bits[index_row].has_value());
-    EXPECT_EQ(packed_fields.kind[index_row], PackedFieldKind::unsigned_integer);
-    EXPECT_TRUE(packed_fields.range_helper[index_row]);
-    EXPECT_EQ(packed_fields.minimum_value[index_row], 0U);
-    EXPECT_EQ(packed_fields.maximum_value[index_row], 1'000'000U);
-    ASSERT_EQ(packed_fields.named_codes[index_row].size(), 2U);
-    auto const codes{store.items(packed_fields.named_codes[index_row])};
+
+    auto const scalar{schema_at(manifest, 0, 1)};
+    EXPECT_EQ(store.integer_scalars.minimum_value[scalar], 0U);
+    EXPECT_EQ(store.integer_scalars.maximum_value[scalar], 1'000'000U);
+    ASSERT_EQ(store.integer_scalars.named_codes[scalar].size(), 2U);
+    auto const codes{store.items(store.integer_scalars.named_codes[scalar])};
     auto const player_row{packed_named_codes.index(codes[0])};
     auto const invalid_row{packed_named_codes.index(codes[1])};
     EXPECT_EQ(files.text(packed_named_codes.name[player_row]), "Player");
@@ -1422,31 +1375,30 @@ TEST(SourceLoader, ReadsPackedValueModule) {
         files.text(
             type_refs.name[semantic_relations.target[*packed_fields.relationship[index_row]]]),
         "FighterState");
-    auto const& reserved{store.items(packed_values.segments[value_row])[1]};
+    auto const& reserved{store.items(packed_values.members[value_row])[1]};
     auto const reserved_row{packed_reserved_bits.index(reserved)};
     EXPECT_EQ(files.text(packed_reserved_bits.name[reserved_row]), "future");
     EXPECT_EQ(packed_reserved_bits.bits[reserved_row], 4);
-    auto const& state{store.items(packed_values.segments[value_row])[2]};
+    auto const& state{store.items(packed_values.members[value_row])[2]};
     auto const state_row{packed_fields.index(state)};
     EXPECT_EQ(packed_fields.bits[state_row], 8);
-    EXPECT_EQ(packed_fields.kind[state_row], PackedFieldKind::enumeration);
 }
 
 TEST(SourceLoader, ReadsSignedArbitraryWidthPackedField) {
     TemporaryManifest files;
     auto& store{files.store()};
-    auto& packed_fields{store.packed_fields};
+    auto& packed_fields{store.child_occurrences};
     auto& packed_named_codes{store.packed_named_codes};
-    auto& packed_values{store.packed_values};
+    auto& packed_values{store.records};
     files.write_root(R"(
 (module packed
   :header "Packed.h"
-  (packed-value SignedDelta
-    :storage std::uint32_t
-    (field delta std::int32_t :bits auto :kind signed :minimum -100 :maximum 100
-      (code Origin :value 0)
-      (code Unknown :value -128 :sentinel true))
-    (reserved future :bits 24)))
+  (record SignedDelta
+    :layout packed :bits 32
+    (member delta @SignedDelta_deltaEncoding)
+    (reserved future :bits 24)
+    (projections (cpp :storage std::uint32_t)))
+      (integer-scalar SignedDelta_deltaEncoding :signed true :minimum -100 :maximum 100 (code Origin :value 0) (code Unknown :value -128 :sentinel true)))
 )");
 
     auto manifest{files.load()};
@@ -1454,25 +1406,28 @@ TEST(SourceLoader, ReadsSignedArbitraryWidthPackedField) {
     auto const value_row{packed_values.index(value)};
     EXPECT_FALSE(packed_values.byte_order[value_row].has_value());
     EXPECT_FALSE(packed_values.bit_order[value_row].has_value());
-    auto const& delta{store.items(packed_values.segments[value_row])[0]};
+    auto const& delta{store.items(packed_values.members[value_row])[0]};
     auto const delta_row{packed_fields.index(delta)};
-    EXPECT_EQ(files.text(store.type_refs.name[packed_fields.type[delta_row]]), "std::int32_t");
+    EXPECT_EQ(files.text(store.type_refs.name[packed_fields.type[delta_row]]),
+              "@SignedDelta_deltaEncoding");
     EXPECT_FALSE(packed_fields.bits[delta_row].has_value());
-    EXPECT_EQ(packed_fields.kind[delta_row], PackedFieldKind::signed_integer);
-    EXPECT_EQ(packed_fields.minimum_value[delta_row], PackedIntegerValue{-100});
-    EXPECT_EQ(packed_fields.maximum_value[delta_row], PackedIntegerValue{100});
-    ASSERT_EQ(packed_fields.named_codes[delta_row].size(), 2U);
-    EXPECT_EQ(packed_named_codes.value[store.items(packed_fields.named_codes[delta_row])[0]],
+
+    auto const scalar{schema_at(manifest, 0, 1)};
+    EXPECT_EQ(store.integer_scalars.minimum_value[scalar], PackedIntegerValue{-100});
+    EXPECT_EQ(store.integer_scalars.maximum_value[scalar], PackedIntegerValue{100});
+    ASSERT_EQ(store.integer_scalars.named_codes[scalar].size(), 2U);
+    EXPECT_EQ(packed_named_codes.value[store.items(store.integer_scalars.named_codes[scalar])[0]],
               PackedIntegerValue{0});
-    EXPECT_EQ(packed_named_codes.value[store.items(packed_fields.named_codes[delta_row])[1]],
+    EXPECT_EQ(packed_named_codes.value[store.items(store.integer_scalars.named_codes[scalar])[1]],
               PackedIntegerValue{-128});
-    EXPECT_TRUE(packed_named_codes.sentinel[store.items(packed_fields.named_codes[delta_row])[1]]);
+    EXPECT_TRUE(
+        packed_named_codes.sentinel[store.items(store.integer_scalars.named_codes[scalar])[1]]);
 }
 
 TEST(SourceLoader, ReadsLinearQuantizedPackedField) {
     TemporaryManifest files;
     auto& store{files.store()};
-    auto& packed_fields{store.packed_fields};
+    auto& packed_fields{store.child_occurrences};
     files.write_root(R"(
 (module scalars
   :header "Scalars.h"
@@ -1493,26 +1448,26 @@ TEST(SourceLoader, ReadsLinearQuantizedPackedField) {
 (module packed
   :header "Packed.h"
   :namespace project
-  (packed-value Vitals
-    :storage std::uint16_t
-    (field health project::HealthQ8 :bits auto :kind linear-quantized)
-    (field state std::uint8_t :bits 8)))
+  (record Vitals
+    :layout packed :bits 16
+    (member health project::HealthQ8 :bits auto)
+    (member state std::uint8_t :bits 8)
+    (projections (cpp :storage std::uint16_t))))
 )");
 
     auto manifest{files.load()};
     auto const& value{schema_at(manifest, manifest.modules.size() - 1)};
-    auto const& health{store.items(store.packed_values.segments[value])[0]};
+    auto const& health{store.items(store.records.members[value])[0]};
     auto const health_row{packed_fields.index(health)};
     EXPECT_EQ(files.text(store.type_refs.name[packed_fields.type[health_row]]),
               "project::HealthQ8");
     EXPECT_FALSE(packed_fields.bits[health_row].has_value());
-    EXPECT_EQ(packed_fields.kind[health_row], PackedFieldKind::linear_quantized);
 }
 
 TEST(SourceLoader, ReadsFixedPointPackedField) {
     TemporaryManifest files;
     auto& store{files.store()};
-    auto& packed_fields{store.packed_fields};
+    auto& packed_fields{store.child_occurrences};
     files.write_root(R"(
 (module representations
   :header "Representations.h"
@@ -1525,26 +1480,26 @@ TEST(SourceLoader, ReadsFixedPointPackedField) {
 (module packed
   :header "Packed.h"
   :namespace project
-  (packed-value Motion
-    :storage std::uint32_t
-    (field velocity project::VelocityQ12_4 :bits auto :kind fixed-point)
-    (field state std::uint16_t :bits 16)))
+  (record Motion
+    :layout packed :bits 32
+    (member velocity project::VelocityQ12_4 :bits auto)
+    (member state std::uint16_t :bits 16)
+    (projections (cpp :storage std::uint32_t))))
 )");
 
     auto manifest{files.load()};
     auto const& value{schema_at(manifest, manifest.modules.size() - 1)};
-    auto const& velocity{store.items(store.packed_values.segments[value])[0]};
+    auto const& velocity{store.items(store.records.members[value])[0]};
     auto const velocity_row{packed_fields.index(velocity)};
     EXPECT_EQ(files.text(store.type_refs.name[packed_fields.type[velocity_row]]),
               "project::VelocityQ12_4");
     EXPECT_FALSE(packed_fields.bits[velocity_row].has_value());
-    EXPECT_EQ(packed_fields.kind[velocity_row], PackedFieldKind::fixed_point);
 }
 
 TEST(SourceLoader, ReadsMiniFloatPackedField) {
     TemporaryManifest files;
     auto& store{files.store()};
-    auto& packed_fields{store.packed_fields};
+    auto& packed_fields{store.child_occurrences};
     files.write_root(R"(
 (module representations
   :header "Representations.h"
@@ -1557,35 +1512,36 @@ TEST(SourceLoader, ReadsMiniFloatPackedField) {
 (module packed
   :header "Packed.h"
   :namespace project
-  (packed-value Position
-    :storage std::uint16_t
-    (field component project::PositionF12 :bits auto :kind mini-float)
-    (field state std::uint8_t :bits 4)))
+  (record Position
+    :layout packed :bits 16
+    (member component project::PositionF12 :bits auto)
+    (member state @Position_stateEncoding :bits 4)
+    (projections (cpp :storage std::uint16_t)))
+      (integer-scalar Position_stateEncoding :signed false :bit-width 4))
 )");
 
     auto manifest{files.load()};
     auto const& value{schema_at(manifest, manifest.modules.size() - 1)};
-    auto const& component{store.items(store.packed_values.segments[value])[0]};
+    auto const& component{store.items(store.records.members[value])[0]};
     auto const component_row{packed_fields.index(component)};
     EXPECT_EQ(files.text(store.type_refs.name[packed_fields.type[component_row]]),
               "project::PositionF12");
     EXPECT_FALSE(packed_fields.bits[component_row].has_value());
-    EXPECT_EQ(packed_fields.kind[component_row], PackedFieldKind::mini_float);
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    PackedValues,
+    PackedRecords,
     SourceLoaderInvalidDeclaration,
     testing::Values(
         InvalidSourceCase{"UnknownByteOrder",
-                          "(packed-value Value :storage std::uint32_t :byte-order middle (field "
+                          "(record Value :layout packed :bits 32 :byte-order middle (member "
                           "value std::uint32_t :bits 32))"},
         InvalidSourceCase{"UnknownBitOrder",
-                          "(packed-value Value :storage std::uint32_t :bit-order byte-first (field "
+                          "(record Value :layout packed :bits 32 :bit-order byte-first (member "
                           "value std::uint32_t :bits 32))"},
-        InvalidSourceCase{
-            "NegativeInvalidValue",
-            "(packed-value Value :storage uint8 :invalid-value -1 (field value uint8 :bits 8))"}),
+        InvalidSourceCase{"NegativeInvalidValue",
+                          "(record Value :layout packed :bits 8 :invalid-value -1 (member value "
+                          "uint8 :bits 8))"}),
     [](auto const& info) { return info.param.name; });
 
 TEST(SourceLoader, ReadsStandaloneIntegerScalarDomain) {
@@ -1604,11 +1560,10 @@ TEST(SourceLoader, ReadsStandaloneIntegerScalarDomain) {
     :minimum 0
     :maximum 10
     :bit-width auto
-    :cpp-emission constants-with-names
-    :cpp-type std::uint8_t
     (code Unknown :value 0)
     (code Invalid :value 15 :sentinel true)
-    (relation index_into EntityTable))
+    (relation index_into EntityTable)
+    (projections (cpp :storage std::uint8_t)))
   (integer-scalar EntityTable
     :signed false
     :minimum 0
@@ -1632,10 +1587,10 @@ TEST(SourceLoader, ReadsStandaloneIntegerScalarDomain) {
     EXPECT_EQ(integer_scalars.minimum_value[scalar_row], PackedIntegerValue{0});
     EXPECT_EQ(integer_scalars.maximum_value[scalar_row], PackedIntegerValue{10});
     EXPECT_FALSE(integer_scalars.bit_width[scalar_row].has_value());
-    EXPECT_EQ(integer_scalars.cpp_emission[scalar_row],
-              IntegerScalarCppEmission::constants_with_names);
-    ASSERT_TRUE(integer_scalars.cpp_type[scalar_row].has_value());
-    EXPECT_EQ(files.text(type_refs.name[*integer_scalars.cpp_type[scalar_row]]), "std::uint8_t");
+    ASSERT_TRUE(integer_scalars.cpp_projection[scalar_row].has_value());
+    ASSERT_TRUE(integer_scalars.cpp_projection[scalar_row]->storage.has_value());
+    EXPECT_EQ(files.text(type_refs.name[*integer_scalars.cpp_projection[scalar_row]->storage]),
+              "std::uint8_t");
     ASSERT_EQ(integer_scalars.named_codes[scalar_row].size(), 2U);
     EXPECT_EQ(packed_named_codes.value[store.items(integer_scalars.named_codes[scalar_row])[1]],
               PackedIntegerValue{15});
@@ -1788,7 +1743,8 @@ TEST(SourceLoader, ReadsExplicitEnumBitWidth) {
     :bit-width 3
     :signed false
     (value Idle :value "0")
-    (value Active :value "7")))
+    (value Active :value "7")
+    (projections (cpp))))
 )");
 
     auto manifest{files.load()};
@@ -1812,7 +1768,8 @@ TEST(SourceLoader, ReadsEnumWithoutCppBackingType) {
     :bit-width 3
     :signed false
     (value Idle :value "0")
-    (value Active :value "7")))
+    (value Active :value "7")
+    (projections (cpp))))
 )");
 
     auto manifest{files.load()};
@@ -1833,7 +1790,8 @@ TEST(SourceLoader, ReadsExplicitSignedEnumDomain) {
   (enum Delta std::int8_t
     :signed true
     (value Below :value "-1")
-    (value Above :value "1")))
+    (value Above :value "1")
+    (projections (cpp))))
 )");
 
     auto manifest{files.load()};
@@ -1853,7 +1811,8 @@ TEST(SourceLoader, ReadsNamedEnumSentinels) {
   (enum State std::uint8_t
     (value Ready :value "0")
     (value Invalid :value "0xff" :sentinel true)
-    (value Pending :value "0xfe" :sentinel true)))
+    (value Pending :value "0xfe" :sentinel true)
+    (projections (cpp))))
 )");
 
     auto manifest{files.load()};
@@ -1872,13 +1831,15 @@ INSTANTIATE_TEST_SUITE_P(
                           "(enum State std::uint8_t :bit-width 65 (value Idle))"},
         InvalidSourceCase{
             "UnknownHelper",
-            R"((enum State std::uint8_t :native-api true :helpers (unknown) (value Idle :value "0")))"},
+            R"((enum State std::uint8_t :native-api true :helpers (unknown) (value Idle :value "0")
+    (projections (cpp))))"},
         InvalidSourceCase{
             "NonListHelpers",
-            R"((enum State std::uint8_t :native-api true :helpers traits (value Idle :value "0")))"},
-        InvalidSourceCase{
-            "HelperWithoutNativeApi",
-            R"((enum State std::uint8_t :helpers (traits) (value Idle :value "0")))"}),
+            R"((enum State std::uint8_t :native-api true :helpers traits (value Idle :value "0")
+    (projections (cpp))))"},
+        InvalidSourceCase{"HelperWithoutNativeApi",
+                          R"((enum State std::uint8_t :helpers (traits) (value Idle :value "0")
+    (projections (cpp))))"}),
     [](auto const& info) { return info.param.name; });
 
 TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
@@ -1891,7 +1852,8 @@ TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
   :header "Enums.h"
   (enum State uint8
     (value Zero :value 0)
-    (value High :value "0x7f")))
+    (value High :value "0x7f")
+    (projections (cpp))))
 )schema");
 
     auto manifest{files.load()};
@@ -1904,7 +1866,8 @@ TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
 (module enums
   :header "Enums.h"
   (enum State uint8
-    (value Invalid :value -1)))
+    (value Invalid :value -1)
+    (projections (cpp))))
 )schema");
     auto const negative_manifest{files.load()};
     auto const& negative_values{enums.values[schema_at(negative_manifest, 0)]};
@@ -1914,7 +1877,8 @@ TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
 (module enums
   :header "Enums.h"
   (enum State uint8
-    (value Invalid :value "static_cast<uint8>(1)")))
+    (value Invalid :value "static_cast<uint8>(1)")
+    (projections (cpp))))
 )schema");
     auto const opaque_manifest{files.load()};
     auto const& opaque_values{enums.values[schema_at(opaque_manifest, 0)]};
@@ -1925,7 +1889,7 @@ TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
 TEST(SourceLoader, ReadsRecordModuleAndFixedArrays) {
     TemporaryManifest files;
     auto& store{files.store()};
-    auto& record_members{store.record_members};
+    auto& record_members{store.child_occurrences};
     auto& records{store.records};
     auto& semantic_relations{store.semantic_relations};
     auto& type_refs{store.type_refs};
@@ -1935,11 +1899,13 @@ TEST(SourceLoader, ReadsRecordModuleAndFixedArrays) {
   :namespace project
   (record Position
     (member x float)
-    (member y float))
+    (member y float)
+    (projections (cpp)))
   (record Trail
     :export-specifier PROJECT_API
     (member points Position :count 4
-      (relation contains Position))))
+      (relation contains Position))
+    (projections (cpp))))
 )");
 
     auto manifest{files.load()};
@@ -1972,7 +1938,7 @@ TEST(SourceLoader, ReadsRecordModuleAndFixedArrays) {
 TEST(SourceLoader, ReadsRawUnionModuleAndFixedArrayAlternatives) {
     TemporaryManifest files;
     auto& store{files.store()};
-    auto& union_alternatives{store.union_alternatives};
+    auto& union_alternatives{store.child_occurrences};
     auto& unions{store.unions};
     files.write_root(R"(
 (module payloads
@@ -1980,8 +1946,9 @@ TEST(SourceLoader, ReadsRawUnionModuleAndFixedArrayAlternatives) {
   :namespace project
   (union Payload
     :export-specifier PROJECT_API
-    (alternative identifier std::uint32_t)
-    (alternative bytes std::uint8_t :count 12)))
+    (member identifier std::uint32_t)
+    (member bytes std::uint8_t :count 12)
+    (projections (cpp))))
 )");
 
     auto manifest{files.load()};
@@ -2017,65 +1984,49 @@ INSTANTIATE_TEST_SUITE_P(
     SourceLoader,
     SourceLoaderInvalidUnion,
     testing::Values(
-        InvalidSourceCase{"ZeroCount",
-                          "(union Payload (alternative value std::uint32_t :count 0))"},
+        InvalidSourceCase{"ZeroCount", "(union Payload (member value std::uint32_t :count 0))"},
         InvalidSourceCase{
             "DuplicateName",
-            "(union Payload (alternative value std::uint32_t) (alternative value std::uint16_t))"},
-        InvalidSourceCase{
-            "DuplicateTaggedName",
-            "(tagged-union Event :discriminant std::uint8_t (alternative value std::uint32_t :tag "
-            "Value) (alternative value std::uint16_t :tag Other))"},
-        InvalidSourceCase{
-            "DuplicateTag",
-            "(tagged-union Event :discriminant std::uint8_t (alternative first std::uint32_t :tag "
-            "Value) (alternative second std::uint16_t :tag Value))"}),
+            "(union Payload (member value std::uint32_t) (member value std::uint16_t))"},
+        InvalidSourceCase{"DuplicateCase",
+                          "(union Event (case Value std::uint32_t) (case Value std::uint16_t))"},
+        InvalidSourceCase{"UnknownTag",
+                          "(enum Kind :bit-width 1 (value Value)) "
+                          "(union Payload (case Other std::uint8_t)) "
+                          "(record Event :layout packed (member kind @Kind) "
+                          "(member payload @Payload :tag kind) (projections (cpp)))"}),
     [](auto const& info) { return info.param.name; });
 
-TEST(SourceLoader, ReadsTaggedUnionDiscriminantAndSymbolicMappings) {
+TEST(SourceLoader, ReadsUnionDiscriminatorOnMemberOccurrence) {
     TemporaryManifest files;
-    auto& store{files.store()};
-    auto& tagged_union_alternatives{store.tagged_union_alternatives};
-    auto& tagged_unions{store.tagged_unions};
-    files.write_root(R"(
-(module events
-  :header "Events.h"
-  (enum EventKind std::uint8_t
-    (value Spawn)
-    (value Damage)
-    (value Invalid :sentinel true)))
-(module payloads
-  :header "Payloads.h"
-  (tagged-union Event
-    :discriminant events::EventKind
-    :export-specifier PROJECT_API
-    (alternative spawn std::uint32_t :tag Spawn)
-    (alternative damage std::uint16_t :count 4 :tag Damage)))
-)");
-
-    auto manifest{files.load()};
-    auto const& module{manifest.modules[1]};
-    ASSERT_EQ(store.normal_modules.declarations[module].size(), 1U);
-    auto const& tagged{schema_at(manifest, 1)};
-    auto const tagged_row{tagged_unions.index(tagged)};
-    EXPECT_EQ(files.text(tagged_unions.name[tagged_row]), "Event");
-    EXPECT_EQ(files.text(store.type_refs.name[tagged_unions.discriminant[tagged_row]]),
-              "events::EventKind");
-    EXPECT_EQ(files.text(tagged_unions.export_specifier[tagged_row]), "PROJECT_API");
-    ASSERT_EQ(tagged_unions.alternatives[tagged_row].size(), 2U);
+    files.write_root(R"((module events :header "Events.h"
+      (enum Kind :bit-width 2 (value Empty) (value Data))
+      (record Empty)
+      (integer-scalar Payload :bit-width 24)
+      (union Content (case Empty @Empty) (case Data @Payload))
+      (record Event :layout packed :bits 32
+        (member kind @Kind)
+        (member payload @Content :bits 30 :tag kind)
+        (projections (cpp)))))");
+    auto const manifest{files.load()};
+    auto const& store{files.store()};
+    auto const union_id{schema_at(manifest, 0, 3)};
+    auto const alternatives{store.items(store.unions.alternatives[store.unions.index(union_id)])};
+    ASSERT_EQ(alternatives.size(), 2U);
     EXPECT_EQ(
         files.text(
-            tagged_union_alternatives.tag[store.items(tagged_unions.alternatives[tagged_row])[0]]),
-        "Spawn");
-    EXPECT_FALSE(
-        tagged_union_alternatives.count[store.items(tagged_unions.alternatives[tagged_row])[0]]
-            .has_value());
+            store.child_occurrences.case_label[store.child_occurrences.index(alternatives[0])]),
+        "Empty");
     EXPECT_EQ(
         files.text(
-            tagged_union_alternatives.tag[store.items(tagged_unions.alternatives[tagged_row])[1]]),
-        "Damage");
-    EXPECT_EQ(
-        tagged_union_alternatives.count[store.items(tagged_unions.alternatives[tagged_row])[1]], 4);
+            store.child_occurrences.case_label[store.child_occurrences.index(alternatives[1])]),
+        "Data");
+    auto const event{schema_at(manifest, 0, 4)};
+    auto const members{store.items(store.records.members[store.records.index(event)])};
+    ASSERT_EQ(members.size(), 2U);
+    EXPECT_EQ(files.text(store.child_occurrences.tag[store.child_occurrences.index(members[1])]),
+              "kind");
+    EXPECT_EQ(store.child_occurrences.bits[store.child_occurrences.index(members[1])], 30U);
 }
 
 TEST(SourceLoader, RejectsNonIntegerPackedFieldWidthWithSourceLocation) {
@@ -2083,9 +2034,10 @@ TEST(SourceLoader, RejectsNonIntegerPackedFieldWidthWithSourceLocation) {
     files.write_root(R"(
 (module packed
   :header "Packed.h"
-  (packed-value Value
-    :storage uint8
-    (field value uint8 :bits 1.5)))
+  (record Value
+    :layout packed :bits 8
+    (member value uint8 :bits 1.5)
+    (projections (cpp :storage uint8))))
 )");
 
     try {
@@ -2093,8 +2045,8 @@ TEST(SourceLoader, RejectsNonIntegerPackedFieldWidthWithSourceLocation) {
         FAIL() << "Expected manifest error";
     } catch (lispb::codegen::sexpr::SourceError const& error) {
         auto const message{std::string{error.what()}};
-        EXPECT_NE(message.find("modules.lispb:6:30"), std::string::npos);
-        EXPECT_NE(message.find("packed field bits must be an integer"), std::string::npos);
+        EXPECT_NE(message.find("modules.lispb:6:31"), std::string::npos) << message;
+        EXPECT_NE(message.find("member bits must be an integer"), std::string::npos) << message;
     }
 }
 

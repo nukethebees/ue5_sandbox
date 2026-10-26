@@ -32,7 +32,6 @@ auto LoweringStorage::items(SchemaRange<TypeDependencyId> range) const
     return std::span{dependencies_}.subspan(range.offset, range.count);
 }
 void LoweringStorage::clear() {
-    packed_field_layouts.clear();
     dependencies_.clear();
     single_allocation_models.clear();
     column_lookup.clear();

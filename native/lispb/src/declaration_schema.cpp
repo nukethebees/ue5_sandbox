@@ -4,7 +4,6 @@
 #include <ioj/is_any.h>
 
 #include <codegen/schema/declarations.h>
-#include <codegen/schema/integer_scalar_cpp_emission.h>
 #include <codegen/schema/soa_member_kind.h>
 #include <codegen/schema/type_reference_part.h>
 #include <lispb/strings.h>
@@ -146,6 +145,11 @@ auto traverse_references(Store& store, DeclarationHandle declaration, Visitor co
     };
     auto children = [&](auto& columns, auto& values, TypeReferenceCategory category) {
         return rewrite_range(store, values, [&](auto& value, std::uint32_t index) {
+            if constexpr (requires { columns.case_label; }) {
+                if (columns.kind[value] == ChildOccurrenceKind::reserved) {
+                    return false;
+                }
+            }
             return rewrite_row(columns, value, [&](auto field, auto row) {
                 auto const location{role(category, columns.name[row], index)};
                 field(columns.type, [&](auto& type) { return reference(location, type); });
@@ -163,8 +167,16 @@ auto traverse_references(Store& store, DeclarationHandle declaration, Visitor co
             });
         });
     };
+    auto projection = [&](auto& columns) {
+        rewrite_row(columns, declaration, [&](auto field, auto) {
+            field(columns.cpp_projection, [&](auto& value) {
+                return value && optional(role(TypeReferenceCategory::storage), value->storage);
+            });
+        });
+    };
     switch (declaration.kind()) {
         case DeclarationKind::enumeration:
+            projection(store.enums);
             rewrite_row(store.enums, declaration, [&](auto field, auto row) {
                 static_cast<void>(row);
                 field(store.enums.underlying_type, [&](auto& value) {
@@ -184,64 +196,42 @@ auto traverse_references(Store& store, DeclarationHandle declaration, Visitor co
             });
             break;
         case DeclarationKind::fixed_point:
+            projection(store.fixed_points);
             break;
         case DeclarationKind::integer_scalar:
+            projection(store.integer_scalars);
             rewrite_row(store.integer_scalars, declaration, [&](auto field, auto row) {
                 static_cast<void>(row);
-                field(store.integer_scalars.cpp_type, [&](auto& value) {
-                    return optional(role(TypeReferenceCategory::cpp_type), value);
-                });
                 field(store.integer_scalars.relationship, [&](auto& value) {
                     return relationship(role(TypeReferenceCategory::value), value);
                 });
             });
             break;
         case DeclarationKind::integer_varint:
+            projection(store.integer_varints);
             source(store.integer_varints);
             break;
         case DeclarationKind::linear_quantized:
+            projection(store.linear_quantizeds);
             source(store.linear_quantizeds);
             break;
         case DeclarationKind::mini_float:
+            projection(store.mini_floats);
             break;
         case DeclarationKind::optional_presence_bit:
+            projection(store.optional_presence_bits);
             source(store.optional_presence_bits);
             break;
         case DeclarationKind::optional_sentinel:
+            projection(store.optional_sentinels);
             source(store.optional_sentinels);
             break;
-        case DeclarationKind::packed_value:
-            rewrite_row(store.packed_values, declaration, [&](auto field, auto row) {
-                static_cast<void>(row);
-                field(store.packed_values.storage_type, [&](auto& value) {
-                    return reference(role(TypeReferenceCategory::storage), value);
-                });
-                field(store.packed_values.segments, [&](auto& segments) {
-                    return rewrite_range(
-                        store, segments, [&](PackedSegmentId& segment, std::uint32_t index) {
-                            if (segment.kind() != PackedSegmentKind::field) {
-                                return false;
-                            }
-                            return rewrite_row(
-                                store.packed_fields, segment, [&](auto field, auto row) {
-                                    auto const location{role(TypeReferenceCategory::field,
-                                                             store.packed_fields.name[row],
-                                                             index)};
-                                    field(store.packed_fields.type,
-                                          [&](auto& value) { return reference(location, value); });
-                                    field(store.packed_fields.relationship, [&](auto& value) {
-                                        return relationship(location, value);
-                                    });
-                                });
-                        });
-                });
-            });
-            break;
         case DeclarationKind::record:
+            projection(store.records);
             rewrite_row(store.records, declaration, [&](auto field, auto row) {
                 static_cast<void>(row);
                 field(store.records.members, [&](auto& value) {
-                    return children(store.record_members, value, TypeReferenceCategory::member);
+                    return children(store.child_occurrences, value, TypeReferenceCategory::member);
                 });
                 field(store.records.functions, [&](auto& value) {
                     return functions(store.functions, TypeReferenceCategory::function, value);
@@ -281,24 +271,13 @@ auto traverse_references(Store& store, DeclarationHandle declaration, Visitor co
                 });
             });
             break;
-        case DeclarationKind::tagged_union:
-            rewrite_row(store.tagged_unions, declaration, [&](auto field, auto row) {
-                static_cast<void>(row);
-                field(store.tagged_unions.discriminant, [&](auto& value) {
-                    return reference(role(TypeReferenceCategory::discriminant), value);
-                });
-                field(store.tagged_unions.alternatives, [&](auto& value) {
-                    return children(
-                        store.tagged_union_alternatives, value, TypeReferenceCategory::alternative);
-                });
-            });
-            break;
         case DeclarationKind::union_type:
+            projection(store.unions);
             rewrite_row(store.unions, declaration, [&](auto field, auto row) {
                 static_cast<void>(row);
                 field(store.unions.alternatives, [&](auto& value) {
                     return children(
-                        store.union_alternatives, value, TypeReferenceCategory::alternative);
+                        store.child_occurrences, value, TypeReferenceCategory::alternative);
                 });
             });
             break;
@@ -396,16 +375,12 @@ auto declaration_name(Declarations const& declarations, DeclarationHandle declar
             return name(declarations.optional_presence_bits);
         case DeclarationKind::optional_sentinel:
             return name(declarations.optional_sentinels);
-        case DeclarationKind::packed_value:
-            return name(declarations.packed_values);
         case DeclarationKind::record:
             return name(declarations.records);
         case DeclarationKind::soa:
             return name(declarations.soas);
         case DeclarationKind::static_table:
             return name(declarations.static_tables);
-        case DeclarationKind::tagged_union:
-            return name(declarations.tagged_unions);
         case DeclarationKind::union_type:
             return name(declarations.unions);
     }
@@ -420,36 +395,45 @@ auto generated_cpp_names(Declarations const& declarations, DeclarationHandle dec
     auto const name{text(id)};
     switch (declaration.kind()) {
         case DeclarationKind::enumeration:
-            return {id, strings.intern(name + "Underlying")};
+            return declarations.enums.cpp_projection[declaration]
+                     ? std::vector<StringId>{id, strings.intern(name + "Underlying")}
+                     : std::vector<StringId>{};
         case DeclarationKind::record:
+            if (!declarations.records.cpp_projection[declaration]) {
+                return {};
+            }
             if (declarations.records.constraint_policy[declaration]) {
                 return {id, strings.intern(name + "Value")};
             }
             return {id};
-        case DeclarationKind::packed_value:
         case DeclarationKind::union_type:
-        case DeclarationKind::tagged_union:
+            return declarations.unions.cpp_projection[declaration] ? std::vector<StringId>{id}
+                                                                   : std::vector<StringId>{};
         case DeclarationKind::static_table:
         case DeclarationKind::facade:
             return {id};
-        case DeclarationKind::integer_scalar: {
-            auto const& scalars{declarations.integer_scalars};
-            auto const row{scalars.index(declaration)};
-            std::vector<StringId> result;
-            if (scalars.cpp_emission[row] == IntegerScalarCppEmission::alias) {
-                return {id};
-            }
-            if (scalars.cpp_emission[row] != IntegerScalarCppEmission::none) {
-                for (auto const code : declarations.items(scalars.named_codes[row])) {
-                    result.push_back(strings.intern(
-                        name + "_" + text(declarations.packed_named_codes.name[code])));
-                }
-                if (scalars.cpp_emission[row] == IntegerScalarCppEmission::constants_with_names) {
-                    result.push_back(strings.intern(name + "_name"));
-                }
-            }
-            return result;
-        }
+        case DeclarationKind::integer_scalar:
+            return declarations.integer_scalars.cpp_projection[declaration]
+                     ? std::vector<StringId>{id}
+                     : std::vector<StringId>{};
+        case DeclarationKind::fixed_point:
+            return declarations.fixed_points.cpp_projection[declaration] ? std::vector<StringId>{id}
+                                                                         : std::vector<StringId>{};
+        case DeclarationKind::linear_quantized:
+            return declarations.linear_quantizeds.cpp_projection[declaration]
+                     ? std::vector<StringId>{id}
+                     : std::vector<StringId>{};
+        case DeclarationKind::mini_float:
+            return declarations.mini_floats.cpp_projection[declaration] ? std::vector<StringId>{id}
+                                                                        : std::vector<StringId>{};
+        case DeclarationKind::optional_sentinel:
+            return declarations.optional_sentinels.cpp_projection[declaration]
+                     ? std::vector<StringId>{id}
+                     : std::vector<StringId>{};
+        case DeclarationKind::optional_presence_bit:
+            return declarations.optional_presence_bits.cpp_projection[declaration]
+                     ? std::vector<StringId>{id}
+                     : std::vector<StringId>{};
         case DeclarationKind::soa:
             return soa_generated_cpp_names(declarations, declaration);
         default:

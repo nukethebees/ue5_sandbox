@@ -20,7 +20,8 @@ namespace lispb::codegen::sexpr {
 Fields::Fields(Parser const& parser,
                FormId form,
                std::string_view const expected_head,
-               std::size_t const positionals)
+               std::size_t const positionals,
+               bool const allow_references)
     : syntax_{parser.syntax()}
     , form_{form}
     , parser_{parser} {
@@ -54,7 +55,8 @@ Fields::Fields(Parser const& parser,
             index += 2;
             continue;
         }
-        if (!syntax_.is_list(child)) {
+        if (!syntax_.is_list(child) &&
+            !(allow_references && syntax_.text(child).starts_with('@'))) {
             parser_.fail(syntax_.token_span(child), "expected a property or nested declaration");
         }
         declarations_.push_back(child);
@@ -106,6 +108,9 @@ void Fields::validate_names(std::span<std::string_view const> const properties,
 
     for (auto const id : declarations_) {
         auto const declaration{id};
+        if (!syntax_.is_list(declaration) && syntax_.text(declaration).starts_with('@')) {
+            continue;
+        }
         auto const head{syntax_.head(declaration)};
         if (head.empty()) {
             parser_.fail(syntax_.token_span(declaration),

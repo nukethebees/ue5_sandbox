@@ -5,6 +5,7 @@
 
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
+#include "ioj/packed_value.h"
 #include "Records.h"
 #include "SignatureSecond.h"
 
@@ -24,6 +25,8 @@ namespace codegen_compile_fixture::mixed {
 struct MethodConsumer;
 
 struct MethodProvider;
+
+struct MethodCount;
 
 union Payload;
 
@@ -59,7 +62,7 @@ struct CrossSettings {
         std::unreachable();
     }
 
-    ActorSettings actor{};
+    codegen_compile_fixture::ActorSettings actor{};
 };
 
 struct DefaultValue {
@@ -79,10 +82,12 @@ struct DefaultArguments {
 
     bool pointer(DefaultPointer* value = nullptr);
 
-    void cross(second::B value = {});
+    void cross(codegen_compile_fixture::second::B value = {});
 };
 
-using MethodCount = std::uint8_t;
+struct MethodProvider {
+    MethodConsumer consumer();
+};
 
 using KindUnderlying = std::uint8_t;
 
@@ -90,6 +95,51 @@ using KindUnderlying = std::uint8_t;
 enum class Kind : KindUnderlying {
     Data,
 };
+
+struct Position {
+    float x;
+    float y;
+};
+
+union Payload {
+    Position position;
+};
+
+struct MethodCount {
+  public:
+    using storage_type = std::uint8_t;
+    using value_type = std::uint8_t;
+    using value_field = ioj::PackedField<storage_type, value_type, 0, 8>;
+
+    constexpr MethodCount() noexcept = default;
+    explicit constexpr MethodCount(value_type const value) noexcept
+        : value_{ioj::packed_pack<value_field>(value)} {}
+    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> MethodCount {
+        MethodCount result;
+        result.value_ = raw;
+        return result;
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
+        return ioj::packed_extract<value_field>(value_);
+    }
+    constexpr void set_value(value_type const value) noexcept {
+        value_ = ioj::packed_insert<value_field>(value_, value);
+    }
+    [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
+        return true;
+    }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto operator<=>(MethodCount const& other) const noexcept {
+        return value() <=> other.value();
+    }
+    [[nodiscard]] constexpr auto operator==(MethodCount const& other) const noexcept -> bool {
+        return value() == other.value();
+    }
+  private:
+    storage_type value_{};
+};
+static_assert(ioj::valid_packed_value_layout<MethodCount>());
 
 struct MethodConsumer {
     MethodProvider make();
@@ -113,10 +163,6 @@ struct PointerFactory {
     MethodProvider& ref(MethodProvider& value) { return value; }
 };
 
-struct MethodProvider {
-    MethodConsumer consumer();
-};
-
 struct MethodArgument {};
 
 struct ValueFactory {
@@ -128,11 +174,11 @@ struct ValueFactory {
 };
 
 struct CrossModuleReader {
-    ApiPair make();
+    codegen_compile_fixture::ApiPair make();
 
-    void accept(ApiPair const& value);
+    void accept(codegen_compile_fixture::ApiPair const& value);
 
-    auto pointer() -> ApiPair*;
+    auto pointer() -> codegen_compile_fixture::ApiPair*;
 };
 
 struct Uninitialized {
@@ -158,35 +204,23 @@ struct SpanValue {
     std::int32_t count{0};
 };
 
-struct Position {
-    float x;
-    float y;
-};
-
-union Payload {
-    Position position;
-};
-
 struct Packet {
     Payload payload;
 };
 
+union EventPayload {
+    Packet data;
+};
+
 struct Event {
     Kind tag;
-
-    union Payload {
-        // tag: Data
-
-        Packet data;
-    };
-
-    Payload payload;
+    EventPayload payload;
 };
 
 struct NamespaceLookup {
     std::array<Position, 2> local;
-    ApiPair parent;
-    second::B sibling;
+    codegen_compile_fixture::ApiPair parent;
+    codegen_compile_fixture::second::B sibling;
 };
 
 struct HiddenLookup {
@@ -196,7 +230,7 @@ struct HiddenLookup {
 };
 
 struct ParameterLookup {
-    static Position select(int Position, mixed::Position value) {
+    static Position select(int Position, codegen_compile_fixture::mixed::Position value) {
         (void)Position;
         return value;
     }

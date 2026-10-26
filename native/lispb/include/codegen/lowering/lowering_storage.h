@@ -1,6 +1,5 @@
 #pragma once
 #include <codegen/lowering/lowering_paths.h>
-#include <codegen/lowering/packed_field_layouts.h>
 #include <codegen/lowering/single_allocation_columns.h>
 #include <codegen/lowering/single_allocation_models.h>
 
@@ -11,7 +10,6 @@
 namespace lispb::codegen {
 class LoweringStorage {
   public:
-    PackedFieldLayouts packed_field_layouts;
     SingleAllocationModels single_allocation_models;
     std::map<std::pair<SingleAllocationModelId, LoweringPathId>, SingleAllocationColumnId>
         column_lookup;

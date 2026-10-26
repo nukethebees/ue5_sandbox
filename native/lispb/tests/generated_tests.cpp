@@ -3,6 +3,7 @@
 #include "ScalarValues.h"
 #include "SignatureDefinitions.h"
 #include <ioj/enum_array.h>
+#include <ioj/range_fits.h>
 
 #include <gtest/gtest.h>
 
@@ -185,16 +186,17 @@ TEST(GeneratedRecords, CrossModuleSignaturesSupportOutOfLineDefinitions) {
     static_assert(std::is_same_v<decltype(factory.tag()), mixed::Kind>);
 }
 
-TEST(GeneratedScalarAlias, UsesConfiguredCppType) {
-    static_assert(std::is_same_v<Health, std::uint16_t>);
-    static_assert(std::is_same_v<RegisteredInt, std::int32_t>);
-    static_assert(std::is_same_v<StandardInt, std::int32_t>);
+TEST(GeneratedScalar, UsesConfiguredStorageAndTypedValues) {
+    static_assert(std::is_same_v<Health::storage_type, std::uint16_t>);
+    static_assert(std::is_same_v<RegisteredInt::storage_type, std::uint32_t>);
+    static_assert(std::is_same_v<StandardInt::storage_type, std::uint32_t>);
+    static_assert(std::is_signed_v<RegisteredInt::value_type>);
+    static_assert(std::is_trivially_copyable_v<Health>);
+    static_assert(!std::is_convertible_v<int, Health>);
     Health const health{1000};
-    EXPECT_EQ(health, 1000);
-    EXPECT_EQ(DamageCode_Laser, 1);
-    EXPECT_EQ(DamageReason_Laser, 1);
-    EXPECT_EQ(DamageReason_name(DamageReason_Laser), "Laser");
-    EXPECT_EQ(DamageReason_name(42), "");
+    EXPECT_EQ(health.value(), 1000);
+    EXPECT_EQ(RegisteredInt{-100}.value(), -100);
+    EXPECT_EQ(StandardInt{100}.value(), 100);
 }
 
 TEST(GeneratedPackedDefaults, ConstructsDefaultsAndSupportsPartialRawConstruction) {
@@ -480,8 +482,7 @@ TEST(GeneratedPackedValue, EnforcesSignedSemanticRangeAndSentinel) {
 }
 
 TEST(GeneratedPackedValue, RoundTripsLinearQuantizedEncodedCodes) {
-    static_assert(Vitals::health_field::bits == 8);
-    static_assert(Vitals::health_maximum_encoded == 253);
+    static_assert(Vitals::health_encoded_field::bits == 8);
 
     Vitals value;
     value.set_health_encoded(253);
@@ -502,12 +503,12 @@ TEST(GeneratedPackedValue, RoundTripsLinearQuantizedEncodedCodes) {
 }
 
 TEST(GeneratedPackedValue, RoundTripsFixedPointRawCodes) {
-    static_assert(Motion::velocity_field::bits == 12);
-    static_assert(Motion::velocity_minimum_raw == -2048);
-    static_assert(Motion::velocity_maximum_raw == 2047);
-    static_assert(Motion::fraction_field::bits == 7);
-    static_assert(Motion::fraction_minimum_raw == 0);
-    static_assert(Motion::fraction_maximum_raw == 127);
+    static_assert(Motion::velocity_raw_field::bits == 12);
+    static_assert(Motion::velocity_minimum_allowed_raw == -2048);
+    static_assert(Motion::velocity_maximum_allowed_raw == 2047);
+    static_assert(Motion::fraction_raw_field::bits == 7);
+    static_assert(Motion::fraction_minimum_allowed_raw == 0);
+    static_assert(Motion::fraction_maximum_allowed_raw == 127);
 
     Motion value;
     value.set_velocity_raw(-2048);
@@ -546,8 +547,7 @@ TEST(GeneratedPackedValue, RoundTripsFixedPointRawCodes) {
 }
 
 TEST(GeneratedPackedValue, RoundTripsMiniFloatEncodedCodes) {
-    static_assert(PackedMiniFloat::component_field::bits == 12);
-    static_assert(PackedMiniFloat::component_maximum_encoded == 0xfff);
+    static_assert(PackedMiniFloat::component_encoded_field::bits == 12);
 
     PackedMiniFloat value;
     value.set_component_encoded(0xfff);
@@ -565,12 +565,18 @@ TEST(GeneratedPackedValue, RoundTripsMiniFloatEncodedCodes) {
     EXPECT_EQ(made.state(), 3);
 }
 
-TEST(GeneratedPackedValue, GeneratesConstructionValidationAndRangeHelpers) {
+TEST(GeneratedPackedValue, GeneratesConstructionValidationAndScalarRanges) {
     static_assert(CheckedValue::invalid_value == 0x7fffffffu);
     static_assert(CheckedValue::serial_range.min == 0);
     static_assert(CheckedValue::serial_range.max == CheckedValue::serial_field::value_mask);
-    static_assert(CheckedValue::serial_range_fits(0, CheckedValue::serial_field::value_mask + 1));
-    static_assert(!CheckedValue::serial_range_fits(CheckedValue::serial_field::value_mask, 2));
+    static_assert(ioj::range_fits(0u,
+                                  CheckedValue::serial_range.max + 1,
+                                  CheckedValue::serial_range.min,
+                                  CheckedValue::serial_range.max));
+    static_assert(!ioj::range_fits(CheckedValue::serial_range.max,
+                                   2u,
+                                   CheckedValue::serial_range.min,
+                                   CheckedValue::serial_range.max));
     static_assert(ioj::range_fits(10u, 11u, 10u, 20u));
     static_assert(!ioj::range_fits(9u, 1u, 10u, 20u));
     static_assert(!ioj::range_fits(10u, 12u, 10u, 20u));
@@ -703,13 +709,163 @@ TEST(GeneratedEnum, PackedStringsShareLookupAcrossCharacterAndOffsetTypes) {
     EXPECT_EQ(utf32(Value::Second).data()[utf32(Value::Second).size()], U'\0');
 }
 
-TEST(GeneratedIntegerScalar, ConstantsAndNameLookup) {
-    static_assert(DamageReason_Unknown == 0);
-    static_assert(DamageReason_Laser == 1);
-    static_assert(DamageReason_Invalid == 255);
-    static_assert(DamageReason_name(DamageReason_Unknown) == "Unknown");
-    static_assert(DamageReason_name(DamageReason_Laser) == "Laser");
-    static_assert(DamageReason_name(10).empty());
+TEST(GeneratedIntegerScalar, PreservesRawSentinelsWithoutImplicitConversions) {
+    constexpr auto invalid{DamageReason::from_raw(255)};
+    static_assert(invalid.raw_value() == 255);
+    static_assert(invalid.value() == 255);
+    EXPECT_TRUE(invalid.is_valid());
+    EXPECT_FALSE(DamageReason::from_raw(42).is_valid());
+    EXPECT_TRUE(DamageReason{1}.is_valid());
+}
+
+TEST(UnifiedPacked, ScalarWidthsDomainsAndSignedValuesAreIndependentOfStorage) {
+    using unified::EntityIndex;
+    using unified::SignedOffset;
+    static_assert(sizeof(EntityIndex) == 4);
+    static_assert(std::is_same_v<EntityIndex::storage_type, std::uint32_t>);
+    static_assert(std::is_same_v<EntityIndex::value_type, std::uint32_t>);
+    static_assert(std::is_trivially_copyable_v<EntityIndex>);
+    static_assert(std::is_standard_layout_v<EntityIndex>);
+    constexpr EntityIndex index{0xabcdef};
+    static_assert(index.value() == 0xabcdef);
+    static_assert(index.raw_value() == 0xabcdef);
+    static_assert(EntityIndex::from_raw(0xffabcdef).raw_value() == 0xffabcdef);
+    constexpr SignedOffset negative{-123};
+    static_assert(negative.value() == -123);
+    static_assert(SignedOffset{-123} < SignedOffset{1});
+    EXPECT_TRUE(EntityIndex::from_raw(0xffffffff).is_valid());
+    EXPECT_EQ(EntityIndex::from_raw(0xffffffff).value(), 0xffffffU);
+}
+
+TEST(UnifiedPacked, NestedAccessorsUseLogicalWidthAndPreserveOutsideBits) {
+    using unified::EntityId;
+    using unified::NestedId;
+    using unified::WideEntityId;
+    static_assert(sizeof(EntityId) == 4);
+    static_assert(sizeof(WideEntityId) == 8);
+    static_assert(sizeof(NestedId) == 8);
+    static_assert(alignof(NestedId) == alignof(std::uint64_t));
+    static_assert(std::is_trivially_copyable_v<NestedId>);
+    static_assert(std::is_standard_layout_v<NestedId>);
+    constexpr auto nested{NestedId{0x12, WideEntityId{0x345678, 0x9a}}};
+    static_assert(nested.raw_value() == 0x9a34567812ULL);
+    static_assert(nested.target_index() == 0x345678);
+    static_assert(nested.target_entity_type() == 0x9a);
+    static_assert(nested.target().raw_value() == 0x9a345678ULL);
+    auto value{NestedId::from_raw(0xffffff9a34567812ULL)};
+    value.set_target_index(0xabcdef);
+    EXPECT_EQ(value.raw_value(), 0xffffff9aabcdef12ULL);
+    value.set_target(WideEntityId{0x123456, 0x78});
+    EXPECT_EQ(value.raw_value(), 0xffffff7812345612ULL);
+}
+
+TEST(UnifiedPacked, InstructionFactoriesSetTagAndClearInactivePayload) {
+    using unified::EntityId;
+    using unified::Instruction;
+    using unified::Opcode;
+    static_assert(sizeof(Instruction) == 8);
+    static_assert(alignof(Instruction) == alignof(std::uint64_t));
+    static_assert(std::is_trivially_copyable_v<Instruction>);
+    static_assert(std::is_standard_layout_v<Instruction>);
+    static_assert(!std::is_default_constructible_v<Instruction>);
+    constexpr auto kill{Instruction::make_payload_kill_entity(EntityId{0x123456, 7})};
+    static_assert(kill.opcode() == Opcode::KillEntity);
+    static_assert(kill.payload_kill_entity_target_index() == 0x123456);
+    static_assert(kill.payload_kill_entity_target_entity_type() == 7);
+    static_assert(kill.payload_kill_entity_target().raw_value() == 0x07123456);
+    static_assert(kill.raw_value() == (0x07123456ULL << 6));
+    constexpr auto move{Instruction::make_payload_move_to(0xabcdef12)};
+    static_assert(move.opcode() == Opcode::MoveTo);
+    static_assert(move.payload_move_to_destination() == 0xabcdef12);
+    static_assert(move.raw_value() == (0xabcdef12ULL << 6) + 1);
+    constexpr auto jump{Instruction::make_payload_jump(0x654321)};
+    static_assert(jump.opcode() == Opcode::Jump);
+    static_assert(jump.payload_jump_destination() == 0x654321);
+    static_assert(jump.raw_value() == (0x654321ULL << 6) + 2);
+    EXPECT_TRUE(kill.is_valid());
+    EXPECT_TRUE(move.is_valid());
+    EXPECT_TRUE(jump.is_valid());
+    EXPECT_FALSE(Instruction::from_raw(63).is_valid());
+}
+
+TEST(UnifiedPacked, AlternativeMutationPreservesTagOtherFieldsAndUnusedBits) {
+    using unified::EntityId;
+    using unified::Instruction;
+    using unified::Opcode;
+    auto value{Instruction::from_raw(0xffffffc000000000ULL | (0x07123456ULL << 6))};
+    value.set_payload_kill_entity_target_index(42);
+    EXPECT_EQ(value.opcode(), Opcode::KillEntity);
+    EXPECT_EQ(value.payload_kill_entity_target_entity_type(), 7);
+    EXPECT_EQ(value.raw_value(), 0xffffffc000000000ULL | (0x0700002aULL << 6));
+    value.set_payload_kill_entity_target(EntityId{19, 3});
+    EXPECT_EQ(value.raw_value(), 0xffffffc000000000ULL | (0x03000013ULL << 6));
+#ifndef NDEBUG
+    auto jump{Instruction::make_payload_jump(1)};
+    EXPECT_DEATH(jump.set_payload_kill_entity_target_index(2), "");
+    EXPECT_DEATH(static_cast<void>(jump.payload_kill_entity_target()), "");
+#endif
+}
+
+TEST(UnifiedPacked, FactoriesPreserveAnIndependentUnionWithoutCartesianOverloads) {
+    using unified::IndependentUnions;
+    using unified::Opcode;
+    constexpr auto value{IndependentUnions::make_payload_a_kill_entity(17, Opcode::MoveTo, 42)};
+    static_assert(value.opcode_a() == Opcode::KillEntity);
+    static_assert(value.payload_a_kill_entity() == 17);
+    static_assert(value.opcode_b() == Opcode::MoveTo);
+    static_assert(value.payload_b_move_to() == 42);
+    static_assert(value.raw_value() == (17U << 6) + (1U << 14) + (42U << 20));
+    EXPECT_TRUE(value.is_valid());
+}
+
+TEST(UnifiedPacked, UntaggedAlternativesShareStorageAndArraysUseFlatAccessors) {
+    auto target{unified::Target::from_raw(0xabcdef12)};
+    EXPECT_EQ(target.location_index(), 0xabcdef12U);
+    EXPECT_EQ(target.entity_index(), 0xcdef12U);
+    target.set_entity_index(0x123456);
+    EXPECT_EQ(target.raw_value(), 0xab123456U);
+    auto samples{unified::Samples::from_raw(0x04030201)};
+    EXPECT_EQ(samples.samples_0_value(), 1);
+    EXPECT_EQ(samples.samples_3_value(), 4);
+    samples.set_samples_2_value(0xff);
+    EXPECT_EQ(samples.raw_value(), 0x04ff0201U);
+}
+
+TEST(UnifiedPacked, WholeUnionSetterValidatesTheActiveCaseIndependently) {
+    using unified::CheckedPayload;
+    using unified::Opcode;
+    using unified::TaggedProjected;
+    static_assert(std::is_same_v<decltype(unified::PayloadPointer::value), CheckedPayload*>);
+    auto value{TaggedProjected::from_raw(255U << 14)};
+    value.set_payload(CheckedPayload::make_kill_entity(7));
+    EXPECT_EQ(value.opcode(), Opcode::KillEntity);
+    EXPECT_EQ(value.payload_kill_entity(), 7);
+    EXPECT_EQ(value.unrelated(), 255);
+    EXPECT_FALSE(value.is_valid());
+#ifndef NDEBUG
+    EXPECT_DEATH(value.set_payload(CheckedPayload::make_move_to(200)), "");
+#endif
+    auto move{TaggedProjected::from_raw(1U | (255U << 14))};
+    move.set_payload(CheckedPayload::make_move_to(200));
+    EXPECT_EQ(move.opcode(), Opcode::MoveTo);
+    EXPECT_EQ(move.payload_move_to(), 200);
+    EXPECT_EQ(move.unrelated(), 255);
+}
+
+TEST(UnifiedPacked, OptionalEncodingsComposeWithPresenceAboveThePayload) {
+    using unified::Optionals;
+    static_assert(Optionals::sentinel_encoded_field::bits == 8);
+    static_assert(Optionals::present_encoded_field::offset == 8);
+    static_assert(Optionals::present_encoded_field::bits == 9);
+    auto value{Optionals::from_raw(255)};
+    EXPECT_TRUE(value.is_valid());
+    value.set_present_encoded(0x100 | 42);
+    EXPECT_EQ(value.present_encoded(), 0x100 | 42);
+    EXPECT_EQ(value.sentinel_encoded(), 255);
+    EXPECT_TRUE(value.is_valid());
+    EXPECT_FALSE(Optionals::from_raw(101).is_valid());
+    EXPECT_FALSE(Optionals::from_raw((0x100U | 101U) << 8).is_valid());
+    EXPECT_TRUE(Optionals::from_raw(101U << 8).is_valid());
 }
 
 } // namespace

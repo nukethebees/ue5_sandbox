@@ -8,6 +8,7 @@
 #include <codegen/ast/record_kind.h>
 #include <codegen/complete_dependencies.h>
 #include <codegen/schema.h>
+#include <codegen/schema/child_occurrences.h>
 #include <codegen/schema/declaration_handle.h>
 #include <codegen/schema/declaration_kind.h>
 #include <codegen/schema/declaration_schema.h>
@@ -22,7 +23,6 @@
 #include <codegen/schema/fixed_point_value.h>
 #include <codegen/schema/function_schemas.h>
 #include <codegen/schema/indices.h>
-#include <codegen/schema/integer_scalar_cpp_emission.h>
 #include <codegen/schema/integer_scalar_schemas.h>
 #include <codegen/schema/integer_varint_schemas.h>
 #include <codegen/schema/linear_quantized_schemas.h>
@@ -35,15 +35,11 @@
 #include <codegen/schema/optional_presence_bit_schemas.h>
 #include <codegen/schema/optional_sentinel_schemas.h>
 #include <codegen/schema/packed_bit_order.h>
-#include <codegen/schema/packed_field_schemas.h>
 #include <codegen/schema/packed_integer_value.h>
 #include <codegen/schema/packed_named_code_schemas.h>
-#include <codegen/schema/packed_reserved_bits_schemas.h>
-#include <codegen/schema/packed_value_schemas.h>
 #include <codegen/schema/parameter_schemas.h>
 #include <codegen/schema/physical_type_form.h>
 #include <codegen/schema/physical_type_use.h>
-#include <codegen/schema/record_member_schemas.h>
 #include <codegen/schema/record_schemas.h>
 #include <codegen/schema/registered_types.h>
 #include <codegen/schema/schema_range.h>
@@ -57,8 +53,6 @@
 #include <codegen/schema/static_table_group_schemas.h>
 #include <codegen/schema/static_table_row_schemas.h>
 #include <codegen/schema/static_table_schemas.h>
-#include <codegen/schema/tagged_union_alternative_schemas.h>
-#include <codegen/schema/tagged_union_schemas.h>
 #include <codegen/schema/type_reference_category.h>
 #include <codegen/schema/type_reference_kind.h>
 #include <codegen/schema/type_reference_part.h>
@@ -66,9 +60,9 @@
 #include <codegen/schema/type_refs.h>
 #include <codegen/schema/type_registry.h>
 #include <codegen/schema/umbrella_module_schemas.h>
-#include <codegen/schema/union_alternative_schemas.h>
 #include <codegen/schema/union_schemas.h>
 #include <lispb/indices.h>
+#include <lispb/schema/child_occurrences.h>
 #include <lispb/schema/enum_types.h>
 #include <lispb/schema/external_types.h>
 #include <lispb/schema/facade_types.h>
@@ -81,23 +75,15 @@
 #include <lispb/schema/mini_float_types.h>
 #include <lispb/schema/optional_presence_bit_types.h>
 #include <lispb/schema/optional_sentinel_types.h>
-#include <lispb/schema/packed_fields.h>
-#include <lispb/schema/packed_reserved_segments.h>
-#include <lispb/schema/packed_segment_id.h>
-#include <lispb/schema/packed_types.h>
-#include <lispb/schema/record_members.h>
 #include <lispb/schema/record_types.h>
 #include <lispb/schema/soa_columns.h>
 #include <lispb/schema/soa_types.h>
 #include <lispb/schema/static_table_types.h>
-#include <lispb/schema/tagged_union_alternatives.h>
-#include <lispb/schema/tagged_union_types.h>
 #include <lispb/schema/type_definition_id.h>
 #include <lispb/schema/type_definition_kind.h>
 #include <lispb/schema/type_definitions.h>
 #include <lispb/schema/type_identity.h>
 #include <lispb/schema/type_origin.h>
-#include <lispb/schema/union_alternatives.h>
 #include <lispb/schema/union_types.h>
 #include <lispb/strings.h>
 
@@ -135,7 +121,10 @@ auto forward_declaration_kind(TypeId const node, TypeGraph const& graph)
     }
     switch (graph.definition(node).kind()) {
         case TypeDefinitionKind::union_type:
-            return codegen::RecordKind::union_;
+            return graph.declarations().unions.layout[graph.source_declaration(node)] ==
+                           codegen::LayoutKind::packed
+                     ? codegen::RecordKind::struct_
+                     : codegen::RecordKind::union_;
         case TypeDefinitionKind::facade:
             return codegen::RecordKind::class_;
         case TypeDefinitionKind::soa:
@@ -144,8 +133,12 @@ auto forward_declaration_kind(TypeId const node, TypeGraph const& graph)
             }
             [[fallthrough]];
         case TypeDefinitionKind::record:
-        case TypeDefinitionKind::tagged_union:
-        case TypeDefinitionKind::packed:
+        case TypeDefinitionKind::integer_scalar:
+        case TypeDefinitionKind::fixed_point:
+        case TypeDefinitionKind::linear_quantized:
+        case TypeDefinitionKind::mini_float:
+        case TypeDefinitionKind::optional_sentinel:
+        case TypeDefinitionKind::optional_presence_bit:
         case TypeDefinitionKind::static_table:
             return codegen::RecordKind::struct_;
         default:
@@ -197,6 +190,11 @@ class TypeGraphBuilder {
         codegen::detail::validate_manifest(manifest_, graph_);
         resolve_definitions(false);
         validate_aggregate_cycles();
+        validate_discriminators();
+        graph_.bit_layouts_.reserve(graph_.types().size());
+        for (auto const type : graph_.types()) {
+            graph_.bit_layouts_.push_back(resolve_bit_layout(graph_, type));
+        }
         build_edges();
         codegen::detail::validate_complete_definition_cycles(
             graph_, codegen::detail::complete_dependencies(graph_));
@@ -365,14 +363,7 @@ class TypeGraphBuilder {
                                  << 24) |
                                 0xffffffu};
                         }
-                        case lispb::codegen::DeclarationKind::packed_value: {
 
-                            return lispb::schema::TypeDefinitionId{
-                                (static_cast<std::uint32_t>(
-                                     lispb::schema::TypeDefinitionKind::packed)
-                                 << 24) |
-                                0xffffffu};
-                        }
                         case lispb::codegen::DeclarationKind::record: {
 
                             return lispb::schema::TypeDefinitionId{
@@ -389,14 +380,7 @@ class TypeGraphBuilder {
                                  << 24) |
                                 0xffffffu};
                         }
-                        case lispb::codegen::DeclarationKind::tagged_union: {
 
-                            return lispb::schema::TypeDefinitionId{
-                                (static_cast<std::uint32_t>(
-                                     lispb::schema::TypeDefinitionKind::tagged_union)
-                                 << 24) |
-                                0xffffffu};
-                        }
                         case lispb::codegen::DeclarationKind::static_table: {
 
                             return lispb::schema::TypeDefinitionId{
@@ -425,6 +409,60 @@ class TypeGraphBuilder {
                     }
                 }()};
                 std::optional<StringId> physical;
+                switch (source.kind()) {
+                    case codegen::DeclarationKind::record:
+                        if (!store_.records.cpp_projection[source]) {
+                            physical = StringId{};
+                        }
+                        break;
+                    case codegen::DeclarationKind::union_type:
+                        if (!store_.unions.cpp_projection[source]) {
+                            physical = StringId{};
+                        }
+                        break;
+                    case codegen::DeclarationKind::enumeration:
+                        if (!store_.enums.cpp_projection[source]) {
+                            physical = StringId{};
+                        }
+                        break;
+                    case codegen::DeclarationKind::integer_scalar:
+                        if (!store_.integer_scalars.cpp_projection[source]) {
+                            physical = StringId{};
+                        }
+                        break;
+                    case codegen::DeclarationKind::linear_quantized:
+                        if (!store_.linear_quantizeds.cpp_projection[source]) {
+                            physical = StringId{};
+                        }
+                        break;
+                    case codegen::DeclarationKind::fixed_point:
+                        if (!store_.fixed_points.cpp_projection[source]) {
+                            physical = StringId{};
+                        }
+                        break;
+                    case codegen::DeclarationKind::mini_float:
+                        if (!store_.mini_floats.cpp_projection[source]) {
+                            physical = StringId{};
+                        }
+                        break;
+                    case codegen::DeclarationKind::integer_varint:
+                        if (!store_.integer_varints.cpp_projection[source]) {
+                            physical = StringId{};
+                        }
+                        break;
+                    case codegen::DeclarationKind::optional_sentinel:
+                        if (!store_.optional_sentinels.cpp_projection[source]) {
+                            physical = StringId{};
+                        }
+                        break;
+                    case codegen::DeclarationKind::optional_presence_bit:
+                        if (!store_.optional_presence_bits.cpp_projection[source]) {
+                            physical = StringId{};
+                        }
+                        break;
+                    default:
+                        break;
+                }
                 if (auto const soa{((source).kind() == lispb::codegen::DeclarationKind::soa
                                         ? std::optional{source}
                                         : std::nullopt)}) {
@@ -572,41 +610,47 @@ class TypeGraphBuilder {
             return graph_.resolved(module, reference_id);
         }
         auto const reference{reference_id};
-        auto resolved{codegen::resolve_type_use(reference_id, manifest_.types)};
         auto const found{graph_.find_reference(reference_id, module)};
-        auto const type{found.value_or(TypeId{})};
-        auto semantic_type{type};
+        codegen::ResolvedCppTypeUse resolved;
+        TypeId semantic_type;
         if (found) {
-            auto const node{type};
-            if (((graph_.definition(node)).kind() == lispb::schema::TypeDefinitionKind::soa)) {
-                auto const module_settings{store_.module_settings(graph_.module(node))};
-                if (graph_.cpp_spelling(node) !=
-                    qualified_name(module_settings, graph_.name(node))) {
-                    if (store_.strings().view(graph_.cpp_spelling(node)).empty()) {
-                        resolved.cpp_type = manifest_.types.cpp_types.intern("");
-                    } else {
-                        auto& types{manifest_.types.cpp_types};
-                        auto const original{resolved.cpp_type};
-                        auto physical_type{types.reference(
-                            types.derive(original, str(graph_.cpp_spelling(node))))};
-                        std::string suffix;
-                        if (store_.type_refs.nested[reference]) {
-                            suffix += "::" + str(*store_.type_refs.nested[reference]);
-                        }
-                        suffix += str(store_.type_refs.suffix[reference]);
-                        resolved.cpp_type = suffix.empty()
-                                              ? physical_type
-                                              : types.decorate(physical_type, "", suffix);
-                        auto const names_semantic_type{resolved.physical.names_semantic_type};
-                        resolved.physical =
-                            codegen::classify_physical_type_use(types, resolved.cpp_type);
-                        resolved.physical.names_semantic_type = names_semantic_type;
+            semantic_type = *found;
+            auto const spelling{str(graph_.cpp_spelling(*found))};
+            auto& types{manifest_.types.cpp_types};
+            if (spelling.empty()) {
+                resolved.cpp_type = types.intern("");
+                auto const plain{!store_.type_refs.nested[reference] &&
+                                 str(store_.type_refs.suffix[reference]).empty()};
+                resolved.physical.form = plain ? codegen::PhysicalTypeForm::value
+                                               : codegen::PhysicalTypeForm::unsupported;
+                resolved.physical.names_semantic_type = plain;
+            } else {
+                auto base{types.reference(types.intern(spelling))};
+                auto const authored_name{store_.strings().view(store_.type_refs.name[reference])};
+                if (authored_name.starts_with('@') &&
+                    manifest_.types.find(authored_name.substr(1))) {
+                    base = codegen::resolve_type_use(reference, manifest_.types).cpp_type;
+                } else {
+                    std::string suffix;
+                    if (store_.type_refs.nested[reference]) {
+                        suffix += "::" + str(*store_.type_refs.nested[reference]);
+                    }
+                    suffix += str(store_.type_refs.suffix[reference]);
+                    if (!suffix.empty()) {
+                        base = types.decorate(base, "", suffix);
                     }
                 }
+                resolved.cpp_type = base;
+                resolved.physical = codegen::classify_physical_type_use(types, base);
+                resolved.physical.names_semantic_type =
+                    !store_.type_refs.nested[reference].has_value();
             }
-
         } else {
-            assert(!store_.strings().view(store_.type_refs.name[reference]).starts_with('@'));
+            if (store_.strings().view(store_.type_refs.name[reference]).starts_with('@')) {
+                throw std::invalid_argument{"Unknown logical type reference: " +
+                                            str(store_.type_refs.name[reference])};
+            }
+            resolved = codegen::resolve_type_use(reference, manifest_.types);
             semantic_type = raw_external(store_.type_refs.name[reference]);
         }
         auto const result{add_occurrence(semantic_type, resolved.cpp_type, resolved.physical)};
@@ -639,9 +683,10 @@ class TypeGraphBuilder {
                 "Logical layout schema '" + str(graph_.name(node)) + "' has no C++ owner for " +
                 codegen::type_reference_role_text(store_.strings(), location)};
         }
-        auto const reference{reference_id};
-        if (graph_.module(node) == module ||
-            store_.strings().view(store_.type_refs.name[reference]).starts_with('@') ||
+        auto const authored_name{store_.strings().view(store_.type_refs.name[reference_id])};
+        auto const registered_reference{authored_name.starts_with('@') &&
+                                        manifest_.types.find(authored_name.substr(1)).has_value()};
+        if (graph_.module(node) == module || registered_reference ||
             (record_signature &&
              uses_cross_module_signature_forward_declaration(target, kind, graph_))) {
             return target;
@@ -711,6 +756,30 @@ class TypeGraphBuilder {
                                 graph_.bindings_.contains({module_id, reference})};
                             auto target{bind_reference(reference, module_id)};
                             auto emitted{role.part != codegen::TypeReferencePart::relationship};
+                            if (declaration.kind() == codegen::DeclarationKind::record) {
+                                emitted =
+                                    emitted &&
+                                    store_.records.cpp_projection[declaration].has_value() &&
+                                    (store_.records.layout[declaration] !=
+                                         codegen::LayoutKind::packed ||
+                                     role.category == codegen::TypeReferenceCategory::function);
+                            } else if (declaration.kind() == codegen::DeclarationKind::union_type) {
+                                emitted = emitted &&
+                                          store_.unions.cpp_projection[declaration].has_value() &&
+                                          store_.unions.layout[declaration] !=
+                                              codegen::LayoutKind::packed;
+                            } else if (declaration.kind() ==
+                                           codegen::DeclarationKind::integer_scalar ||
+                                       declaration.kind() ==
+                                           codegen::DeclarationKind::linear_quantized ||
+                                       declaration.kind() ==
+                                           codegen::DeclarationKind::integer_varint ||
+                                       declaration.kind() ==
+                                           codegen::DeclarationKind::optional_sentinel ||
+                                       declaration.kind() ==
+                                           codegen::DeclarationKind::optional_presence_bit) {
+                                emitted = false;
+                            }
                             if (declaration.kind() == codegen::DeclarationKind::soa &&
                                 role.category == codegen::TypeReferenceCategory::member &&
                                 role.part == codegen::TypeReferencePart::direct) {
@@ -904,10 +973,9 @@ class TypeGraphBuilder {
                     scalars.named_codes[scalar_index] = schemas.named_codes[source];
                     scalars.relationship[scalar_index] =
                         relationship(schemas.relationship[source], module_id, "Integer scalar");
-                    if (schemas.cpp_emission[source] == codegen::IntegerScalarCppEmission::alias &&
-                        schemas.cpp_type[source]) {
+                    if (schemas.cpp_projection[source] && schemas.cpp_projection[source]->storage) {
                         scalars.cpp_representation[scalar_index] =
-                            resolve_ref(*schemas.cpp_type[source], module_id);
+                            resolve_ref(*schemas.cpp_projection[source]->storage, module_id);
                     }
                     return result;
                 }
@@ -1064,197 +1132,69 @@ class TypeGraphBuilder {
                         1;
                     return new_optional_presence_bits_9;
                 }
-                case lispb::codegen::DeclarationKind::packed_value: {
-                    auto& fields{definitions.packed_fields};
-                    auto const& schemas{store_.packed_fields};
-                    auto& packed{definitions.packed};
 
-                    std::vector<PackedSegmentId> segments;
-                    for (auto const segment_id :
-                         store_.items(store_.packed_values.segments[source])) {
-                        if (auto const value{
-                                ((segment_id).kind() == lispb::codegen::PackedSegmentKind::field
-                                     ? std::optional{segment_id}
-                                     : std::nullopt)}) {
-                            auto const scalar{codegen::detail::find_packed_integer_domain(
-                                *value, graph_, module_id)};
-                            auto const new_packed_fields_10{fields.append()};
-                            auto const row{fields.index(new_packed_fields_10)};
-                            fields.source[row] = segment_id;
-                            fields.name[row] = schemas.name[*value];
-                            fields.semantic_type[row] =
-                                resolve_ref(schemas.type[*value], module_id);
-                            fields.bit_width[row] = static_cast<std::uint32_t>(
-                                *codegen::detail::derive_packed_field_width(
-                                    *value, manifest_, graph_, module_id));
-                            fields.bit_width_auto[row] = !schemas.bits[*value];
-                            fields.kind[row] = schemas.kind[*value];
-                            fields.range_helper[row] = schemas.range_helper[*value];
-                            fields.minimum_value[row] =
-                                scalar
-                                    ? std::optional{definitions.integer_scalars
-                                                        .minimum_value[definitions.integer_scalars
-                                                                           .index(*scalar)]}
-                                    : schemas.minimum_value[*value];
-                            fields.maximum_value[row] =
-                                scalar
-                                    ? std::optional{definitions.integer_scalars
-                                                        .maximum_value[definitions.integer_scalars
-                                                                           .index(*scalar)]}
-                                    : schemas.maximum_value[*value];
-                            fields.named_codes[row] =
-                                scalar
-                                    ? definitions.integer_scalars
-                                          .named_codes[definitions.integer_scalars.index(*scalar)]
-                                    : schemas.named_codes[*value];
-                            fields.relationship[row] = relationship(
-                                schemas.relationship[*value], module_id, "Packed field");
-                            fields.default_value[row] = schemas.default_value[*value];
-                            segments.push_back(new_packed_fields_10);
-                        } else {
-                            auto const reserved{segment_id};
-                            auto const new_packed_reserved_bits_11{
-                                definitions.packed_reserved_bits.append()};
-                            definitions.packed_reserved_bits
-                                .name[definitions.packed_reserved_bits.index(
-                                    new_packed_reserved_bits_11)] =
-                                store_.packed_reserved_bits.name[reserved];
-                            definitions.packed_reserved_bits
-                                .bit_width[definitions.packed_reserved_bits.index(
-                                    new_packed_reserved_bits_11)] =
-                                static_cast<std::uint32_t>(
-                                    store_.packed_reserved_bits.bits[reserved]);
-                            segments.push_back(new_packed_reserved_bits_11);
+                case codegen::DeclarationKind::record:
+                case codegen::DeclarationKind::union_type: {
+                    auto const record{source.kind() == codegen::DeclarationKind::record};
+                    auto const children{record ? store_.records.members[source]
+                                               : store_.unions.alternatives[source]};
+                    std::vector<ChildOccurrenceId> resolved_children;
+                    auto& values{definitions.children};
+                    auto const& authored{store_.child_occurrences};
+                    for (auto const child : store_.items(children)) {
+                        auto const id{values.append()};
+                        auto const row{values.index(id)};
+                        values.source[row] = child;
+                        values.name[row] = authored.name[child];
+                        values.reserved[row] =
+                            authored.kind[child] == codegen::ChildOccurrenceKind::reserved;
+                        if (!values.reserved[row]) {
+                            values.semantic_type[row] =
+                                resolve_ref(authored.type[child], module_id);
+                            if (!values.name[row].value) {
+                                values.name[row] = graph_.name(
+                                    graph_.occurrences().type[graph_.occurrences().index(
+                                        values.semantic_type[row])]);
+                            }
                         }
+                        values.count[row] = authored.count[child];
+                        values.relationship[row] = relationship(
+                            authored.relationship[child], module_id, "Child occurrence");
+                        values.initializer[row] = authored.initializer[child];
+                        values.bits[row] = authored.bits[child];
+                        values.case_label[row] = authored.case_label[child];
+                        values.tag[row] = authored.tag[child];
+                        values.default_value[row] = authored.default_value[child];
+                        resolved_children.push_back(id);
                     }
-                    auto const new_packed_12{packed.append()};
-                    auto const row{packed.index(new_packed_12)};
-                    packed.storage_type[row] =
-                        resolve_ref(store_.packed_values.storage_type[source], module_id);
-                    packed.set_segments(new_packed_12, segments);
-                    packed.invalid_raw_value[row] = store_.packed_values.invalid_value[source];
-                    packed.byte_order[row] = store_.packed_values.byte_order[source];
-                    packed.bit_order[row] = store_.packed_values.bit_order[source].value_or(
-                        codegen::PackedBitOrder::least_significant_first);
-                    packed.default_raw_value[row] =
-                        codegen::detail::packed_default_value(source, manifest_, graph_, module_id);
-                    return new_packed_12;
-                }
-                case lispb::codegen::DeclarationKind::record: {
-                    auto& member_definitions{definitions.record_members};
-                    auto const& schemas{store_.record_members};
-
-                    std::vector<RecordMemberId> members;
-                    for (auto const member_id : store_.items(store_.records.members[source])) {
-                        auto const member{member_id};
-                        auto const new_record_members_13{member_definitions.append()};
-                        auto const row{member_definitions.index(new_record_members_13)};
-                        member_definitions.name[row] = schemas.name[member];
-                        member_definitions.semantic_type[row] =
-                            resolve_ref(schemas.type[member], module_id);
-                        member_definitions.count[row] = schemas.count[member];
-                        member_definitions.relationship[row] =
-                            relationship(schemas.relationship[member], module_id, "Record member");
-                        member_definitions.initializer[row] = schemas.initializer[member];
-                        members.push_back(new_record_members_13);
-                    }
-                    auto const new_records_14{definitions.records.append()};
-                    definitions.records.set_members(new_records_14, members);
-                    return new_records_14;
-                }
-                case lispb::codegen::DeclarationKind::union_type: {
-
-                    std::vector<UnionAlternativeId> alternatives;
-                    for (auto const alternative_id :
-                         store_.items(store_.unions.alternatives[source])) {
-                        auto const alternative{alternative_id};
-                        auto const new_union_alternatives_15{
-                            definitions.union_alternatives.append()};
-                        definitions.union_alternatives
-                            .name[definitions.union_alternatives.index(new_union_alternatives_15)] =
-                            store_.union_alternatives.name[alternative];
-                        definitions.union_alternatives
-                            .semantic_type[definitions.union_alternatives.index(
-                                new_union_alternatives_15)] =
-                            resolve_ref(store_.union_alternatives.type[alternative], module_id);
-                        definitions.union_alternatives.count[definitions.union_alternatives.index(
-                            new_union_alternatives_15)] =
-                            store_.union_alternatives.count[alternative];
-                        alternatives.push_back(new_union_alternatives_15);
-                    }
-                    auto const new_unions_16{definitions.unions.append()};
-                    definitions.unions.set_alternatives(new_unions_16, alternatives);
-                    return new_unions_16;
-                }
-                case lispb::codegen::DeclarationKind::tagged_union: {
-
-                    auto const discriminant{
-                        resolve_ref(store_.tagged_unions.discriminant[source], module_id)};
-                    auto const definition{graph_.definition(
-                        graph_.occurrences().type[graph_.occurrences().index(discriminant)])};
-                    if (!((definition).kind() == lispb::schema::TypeDefinitionKind::enumeration)) {
-                        throw std::invalid_argument{
-                            "Tagged union '" + str(store_.tagged_unions.name[source]) +
-                            "' discriminant must resolve to an enum declaration"};
-                    }
-                    auto const enumeration{definition};
-                    auto const domain{
-                        definitions.enums.domain[definitions.enums.index(enumeration)]};
-                    auto const enumerators{graph_.enum_domains_.values(domain)};
-                    std::vector<TaggedUnionAlternativeId> alternatives;
-                    for (auto const alternative_id :
-                         store_.items(store_.tagged_unions.alternatives[source])) {
-                        auto const alternative{alternative_id};
-                        auto const tag{std::ranges::find_if(enumerators, [&](auto id) {
-                            return store_.enumerators.name[id] ==
-                                   store_.tagged_union_alternatives.tag[alternative];
-                        })};
-                        if (tag == enumerators.end()) {
-                            throw std::invalid_argument{
-                                "Tagged union '" + str(store_.tagged_unions.name[source]) +
-                                "' alternative '" +
-                                str(store_.tagged_union_alternatives.name[alternative]) +
-                                "' maps unknown discriminant tag '" +
-                                str(store_.tagged_union_alternatives.tag[alternative]) + "'"};
+                    auto set_layout = [&](auto& types,
+                                          auto const& schemas,
+                                          TypeDefinitionId const id) {
+                        auto const row{types.index(id)};
+                        types.layout[row] = schemas.layout[source];
+                        types.bits[row] = schemas.bits[source];
+                        auto const projection{schemas.cpp_projection[source]};
+                        if (projection && projection->storage) {
+                            types.storage_type[row] = resolve_ref(*projection->storage, module_id);
                         }
-                        auto const value{*tag};
-                        if (store_.enumerators.sentinel[value] ||
-                            value == graph_.enum_domains_
-                                         .count_value[graph_.enum_domains_.index(domain)]) {
-                            throw std::invalid_argument{
-                                "Tagged union '" + str(store_.tagged_unions.name[source]) +
-                                "' alternative '" +
-                                str(store_.tagged_union_alternatives.name[alternative]) +
-                                "' cannot map sentinel tag '" +
-                                str(store_.tagged_union_alternatives.tag[alternative]) + "'"};
-                        }
-                        auto const new_tagged_union_alternatives_17{
-                            definitions.tagged_union_alternatives.append()};
-                        definitions.tagged_union_alternatives
-                            .name[definitions.tagged_union_alternatives.index(
-                                new_tagged_union_alternatives_17)] =
-                            store_.tagged_union_alternatives.name[alternative];
-                        definitions.tagged_union_alternatives
-                            .semantic_type[definitions.tagged_union_alternatives.index(
-                                new_tagged_union_alternatives_17)] =
-                            resolve_ref(store_.tagged_union_alternatives.type[alternative],
-                                        module_id);
-                        definitions.tagged_union_alternatives
-                            .count[definitions.tagged_union_alternatives.index(
-                                new_tagged_union_alternatives_17)] =
-                            store_.tagged_union_alternatives.count[alternative];
-                        definitions.tagged_union_alternatives
-                            .tag[definitions.tagged_union_alternatives.index(
-                                new_tagged_union_alternatives_17)] =
-                            store_.tagged_union_alternatives.tag[alternative];
-                        alternatives.push_back(new_tagged_union_alternatives_17);
+                    };
+                    if (record) {
+                        auto const id{definitions.records.append()};
+                        definitions.records.set_members(id, resolved_children);
+                        set_layout(definitions.records, store_.records, id);
+                        auto const row{definitions.records.index(id)};
+                        definitions.records.invalid_raw_value[row] =
+                            store_.records.invalid_value[source];
+                        definitions.records.bit_order[row] =
+                            store_.records.bit_order[source].value_or(
+                                codegen::PackedBitOrder::least_significant_first);
+                        definitions.records.byte_order[row] = store_.records.byte_order[source];
+                        return id;
                     }
-                    auto const new_tagged_unions_18{definitions.tagged_unions.append()};
-                    definitions.tagged_unions
-                        .discriminant[definitions.tagged_unions.index(new_tagged_unions_18)] =
-                        discriminant;
-                    definitions.tagged_unions.set_alternatives(new_tagged_unions_18, alternatives);
-                    return new_tagged_unions_18;
+                    auto const id{definitions.unions.append()};
+                    definitions.unions.set_alternatives(id, resolved_children);
+                    set_layout(definitions.unions, store_.unions, id);
+                    return id;
                 }
                 case lispb::codegen::DeclarationKind::soa: {
                     auto& column_definitions{definitions.soa_columns};
@@ -1381,7 +1321,7 @@ class TypeGraphBuilder {
         auto const& definitions{graph_.definitions_};
         auto const definition{graph_.definition(type)};
         auto follow = [&](ResolvedOccurrenceId const reference) {
-            if (occurrences.contains_value(reference)) {
+            if (is_valid(reference) && occurrences.contains_value(reference)) {
                 validate_aggregate_cycle(
                     occurrences.type[occurrences.index(reference)], states, path);
             }
@@ -1389,25 +1329,17 @@ class TypeGraphBuilder {
         switch ((definition).kind()) {
             case lispb::schema::TypeDefinitionKind::record: {
                 for (auto const id : definitions.records.members_of(definition)) {
-                    follow(definitions.record_members
-                               .semantic_type[definitions.record_members.index(id)]);
+                    follow(definitions.children.semantic_type[definitions.children.index(id)]);
                 }
                 break;
             }
             case lispb::schema::TypeDefinitionKind::union_type: {
                 for (auto const id : definitions.unions.alternatives_of(definition)) {
-                    follow(definitions.union_alternatives
-                               .semantic_type[definitions.union_alternatives.index(id)]);
+                    follow(definitions.children.semantic_type[definitions.children.index(id)]);
                 }
                 break;
             }
-            case lispb::schema::TypeDefinitionKind::tagged_union: {
-                for (auto const id : definitions.tagged_unions.alternatives_of(definition)) {
-                    follow(definitions.tagged_union_alternatives
-                               .semantic_type[definitions.tagged_union_alternatives.index(id)]);
-                }
-                break;
-            }
+
             case lispb::schema::TypeDefinitionKind::static_table: {
                 auto const source{
                     definitions.static_tables.source[definitions.static_tables.index(definition)]};
@@ -1430,6 +1362,70 @@ class TypeGraphBuilder {
         std::vector<TypeId> path;
         for (std::uint32_t index{}; index < count; ++index) {
             validate_aggregate_cycle(TypeId{index}, states, path);
+        }
+    }
+
+    void validate_discriminators() const {
+        auto const& definitions{graph_.definitions()};
+        auto const& children{definitions.children};
+        auto type_of = [&](ChildOccurrenceId const child) {
+            auto const occurrence{children.semantic_type[children.index(child)]};
+            return graph_.occurrences().type[graph_.occurrences().index(occurrence)];
+        };
+        for (auto const owner : graph_.types()) {
+            auto const definition{graph_.definition(owner)};
+            if (definition.kind() != TypeDefinitionKind::record) {
+                continue;
+            }
+            auto const members{definitions.records.members_of(definition)};
+            for (auto const member : members) {
+                auto const row{children.index(member)};
+                if (!children.tag[row]) {
+                    continue;
+                }
+                if (children.reserved[row] || children.count[row]) {
+                    throw std::invalid_argument{
+                        "A discriminator requires a scalar union occurrence: " +
+                        str(children.name[row])};
+                }
+                auto const union_type{type_of(member)};
+                if (graph_.definition(union_type).kind() != TypeDefinitionKind::union_type) {
+                    throw std::invalid_argument{"Only a union member can bind a discriminator: " +
+                                                str(children.name[row])};
+                }
+                auto const tag{std::ranges::find_if(members, [&](auto const sibling) {
+                    return children.name[children.index(sibling)] == *children.tag[row];
+                })};
+                if (tag == members.end() || children.reserved[children.index(*tag)] ||
+                    children.count[children.index(*tag)] ||
+                    graph_.definition(type_of(*tag)).kind() != TypeDefinitionKind::enumeration) {
+                    throw std::invalid_argument{
+                        "Union discriminator must name a scalar enum sibling: " +
+                        str(*children.tag[row])};
+                }
+                auto const domain{
+                    definitions.enums
+                        .domain[definitions.enums.index(graph_.definition(type_of(*tag)))]};
+                auto const enumerators{graph_.enum_domains().values(domain)};
+                std::set<StringId> mappings;
+                for (auto const alternative :
+                     definitions.unions.alternatives_of(graph_.definition(union_type))) {
+                    auto const alternative_row{children.index(alternative)};
+                    auto const label{children.case_label[alternative_row].value_or(
+                        graph_.name(type_of(alternative)))};
+                    auto const value{std::ranges::find_if(enumerators, [&](auto const enumerator) {
+                        return store_.enumerators.name[enumerator] == label;
+                    })};
+                    if (value == enumerators.end() || store_.enumerators.sentinel[*value] ||
+                        *value == graph_.enum_domains()
+                                      .count_value[graph_.enum_domains().index(domain)] ||
+                        !mappings.insert(label).second) {
+                        throw std::invalid_argument{
+                            "Union case must uniquely map a live discriminator enumerator: " +
+                            str(label)};
+                    }
+                }
+            }
         }
     }
 
@@ -1531,31 +1527,15 @@ class TypeGraphBuilder {
                             .source[definitions.optional_presence_bits.index(definition)])]);
                     break;
                 }
-                case lispb::schema::TypeDefinitionKind::packed: {
-                    auto const& fields{definitions.packed_fields};
-                    add(occurrences.type[occurrences.index(
-                        definitions.packed.storage_type[definitions.packed.index(definition)])]);
-                    for (auto const id : definitions.packed.segments_of(definition)) {
-                        if (auto const field{((id).kind() == lispb::schema::PackedSegmentKind::field
-                                                  ? std::optional{id}
-                                                  : std::nullopt)}) {
-                            add(occurrences.type[occurrences.index(
-                                fields.semantic_type[fields.index(*field)])]);
-                            if (is_valid(fields.relationship[fields.index(*field)])) {
-                                add(occurrences.type[occurrences.index(
-                                    relationships.target[relationships.index(
-                                        fields.relationship[fields.index(*field)])])]);
-                            }
-                        }
-                    }
-                    break;
-                }
+
                 case lispb::schema::TypeDefinitionKind::record: {
-                    auto const& members{definitions.record_members};
+                    auto const& members{definitions.children};
                     for (auto const id : definitions.records.members_of(definition)) {
                         auto const member{id};
-                        add(occurrences.type[occurrences.index(
-                            members.semantic_type[members.index(member)])]);
+                        if (!members.reserved[members.index(member)]) {
+                            add(occurrences.type[occurrences.index(
+                                members.semantic_type[members.index(member)])]);
+                        }
                         if (is_valid(members.relationship[members.index(member)])) {
                             add(occurrences.type[occurrences.index(
                                 relationships.target[relationships.index(
@@ -1567,22 +1547,11 @@ class TypeGraphBuilder {
                 case lispb::schema::TypeDefinitionKind::union_type: {
                     for (auto const id : definitions.unions.alternatives_of(definition)) {
                         add(occurrences.type[occurrences.index(
-                            definitions.union_alternatives
-                                .semantic_type[definitions.union_alternatives.index(id)])]);
+                            definitions.children.semantic_type[definitions.children.index(id)])]);
                     }
                     break;
                 }
-                case lispb::schema::TypeDefinitionKind::tagged_union: {
-                    add(occurrences.type[occurrences.index(
-                        definitions.tagged_unions
-                            .discriminant[definitions.tagged_unions.index(definition)])]);
-                    for (auto const id : definitions.tagged_unions.alternatives_of(definition)) {
-                        add(occurrences.type[occurrences.index(
-                            definitions.tagged_union_alternatives
-                                .semantic_type[definitions.tagged_union_alternatives.index(id)])]);
-                    }
-                    break;
-                }
+
                 case lispb::schema::TypeDefinitionKind::soa: {
                     auto const& columns{definitions.soa_columns};
                     if (is_valid(
@@ -1744,7 +1713,27 @@ auto TypeGraph::find_named(StringId const identifier, codegen::ModuleHandle cons
     -> std::optional<TypeId> {
     auto const name{strings().view(identifier)};
     if (name.starts_with('@')) {
-        return find_registered(strings().find(name.substr(1)));
+        auto const logical{name.substr(1)};
+        if (auto const separator{logical.find('/')}; separator != std::string_view::npos) {
+            auto const module_name{logical.substr(0, separator)};
+            auto const type_name{logical.substr(separator + 1)};
+            for (auto const type : types()) {
+                if (origin(type) == TypeOrigin::declaration &&
+                    strings().view(this->module_name(type)) == module_name &&
+                    strings().view(this->name(type)) == type_name) {
+                    return type;
+                }
+            }
+            return std::nullopt;
+        }
+        auto const id{strings().find(logical)};
+        auto const local{find_declared(module, id)};
+        auto const registered{find_registered(id)};
+        if (local && registered && local != registered) {
+            throw std::invalid_argument{"Ambiguous logical and registered type: " +
+                                        std::string{name}};
+        }
+        return local ? local : registered;
     }
     if (auto const local{find_declared(module, identifier)}) {
         return local;

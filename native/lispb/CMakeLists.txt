@@ -65,6 +65,9 @@ target_sources(lispb-schema PRIVATE
   src/ast/cpp_types.cpp
   src/declaration_schema.cpp
   src/declarations.cpp
+  src/child_occurrences.cpp
+  src/resolved_children.cpp
+  src/bit_layout.cpp
   src/enumerator_schemas.cpp
   src/enum_schemas.cpp
   src/enum_unreal_projections.cpp
@@ -81,11 +84,7 @@ target_sources(lispb-schema PRIVATE
   src/optional_presence_bit_schemas.cpp
   src/optional_sentinel_schemas.cpp
   src/packed_named_code_schemas.cpp
-  src/packed_field_schemas.cpp
-  src/packed_reserved_bits_schemas.cpp
-  src/packed_value_schemas.cpp
   src/parameter_schemas.cpp
-  src/record_member_schemas.cpp
   src/record_schemas.cpp
   src/semantic_relation_schemas.cpp
   src/setting_category_schemas.cpp
@@ -99,17 +98,14 @@ target_sources(lispb-schema PRIVATE
   src/static_table_group_schemas.cpp
   src/static_table_row_schemas.cpp
   src/static_table_schemas.cpp
-  src/tagged_union_alternative_schemas.cpp
-  src/tagged_union_schemas.cpp
   src/type_refs.cpp
   src/umbrella_module_schemas.cpp
-  src/union_alternative_schemas.cpp
   src/union_schemas.cpp
   src/declaration_query.cpp
   src/document_query.cpp
-  src/field_query.cpp
+  src/child_query.cpp
   src/member_query.cpp
-  src/packed_value_query.cpp
+  src/record_query.cpp
   src/soa_query.cpp
   src/module_query.cpp
   src/manifest.cpp
@@ -140,19 +136,12 @@ target_sources(lispb-schema PRIVATE
   src/mini_float_types.cpp
   src/optional_sentinel_types.cpp
   src/optional_presence_bit_types.cpp
-  src/packed_types.cpp
   src/record_types.cpp
   src/union_types.cpp
-  src/tagged_union_types.cpp
   src/soa_types.cpp
   src/static_table_types.cpp
   src/facade_types.cpp
-  src/record_members.cpp
-  src/union_alternatives.cpp
-  src/tagged_union_alternatives.cpp
   src/soa_columns.cpp
-  src/packed_fields.cpp
-  src/packed_reserved_segments.cpp
   src/type_graph.cpp
   src/resolved_occurrences.cpp
   src/relationships.cpp
@@ -177,7 +166,6 @@ target_sources(codegen-lib PRIVATE
   src/lowering/lowering_storage.cpp
   src/lowering/single_allocation_columns.cpp
   src/lowering/single_allocation_models.cpp
-  src/lowering/packed_field_layouts.cpp
   src/ast/cpp_ir.cpp
   src/ast/cpp_renderer.cpp
   src/ast/cpp_declaration_id.cpp
@@ -265,8 +253,8 @@ set(CODEGEN_COMPILE_FIXTURE_HEADERS
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/PlainEnums.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/PackedEnums.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/ScalarValues.h"
-  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Representations.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/PackedValues.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/UnifiedPacked.h"
 )
 set(CODEGEN_COMPILE_FIXTURE_SOURCES
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/SignatureFirst.cpp"

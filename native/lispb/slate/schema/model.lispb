@@ -7,7 +7,8 @@
     (value value :serialized-name "value")
     (value callback :serialized-name "callback")
     (value factory :serialized-name "factory")
-    (value existing :serialized-name "existing")))
+    (value existing :serialized-name "existing")
+    (projections (cpp))))
 
 (module structural_form
   :header "structural_form.h"
@@ -27,7 +28,8 @@
     (value existing :serialized-name "existing")
     (value call :serialized-name "call")
     (value let_ :serialized-name "let")
-    (value params :serialized-name "params")))
+    (value params :serialized-name "params")
+    (projections (cpp))))
 
 (module slot_option
   :header "slot_option.h"
@@ -38,4 +40,5 @@
     (value weight :serialized-name "weight")
     (value padding :serialized-name "padding")
     (value halign :serialized-name "halign")
-    (value valign :serialized-name "valign")))
+    (value valign :serialized-name "valign")
+    (projections (cpp))))

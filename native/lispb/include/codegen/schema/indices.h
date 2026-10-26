@@ -11,7 +11,7 @@ struct FunctionSchemas;
 struct ModuleSettingsStore;
 struct PackedNamedCodeSchemas;
 struct ParameterSchemas;
-struct RecordMemberSchemas;
+struct ChildOccurrences;
 class RegisteredTypes;
 struct SemanticRelationSchemas;
 struct SettingCategorySchemas;
@@ -22,9 +22,7 @@ struct SoaMemberSchemas;
 struct StaticTableColumnSchemas;
 struct StaticTableGroupSchemas;
 struct StaticTableRowSchemas;
-struct TaggedUnionAlternativeSchemas;
 struct TypeRefs;
-struct UnionAlternativeSchemas;
 
 using EnumUnrealProjectionId = Index<EnumUnrealProjections>;
 using EnumeratorId = Index<EnumeratorSchemas>;
@@ -33,7 +31,7 @@ using FunctionSchemaId = Index<FunctionSchemas>;
 using ModuleSettingsId = Index<ModuleSettingsStore>;
 using PackedNamedCodeId = Index<PackedNamedCodeSchemas>;
 using ParameterId = Index<ParameterSchemas>;
-using RecordMemberId = Index<RecordMemberSchemas>;
+using ChildOccurrenceId = Index<ChildOccurrences>;
 using RegisteredTypeId = Index<RegisteredTypes>;
 using SemanticRelationId = Index<SemanticRelationSchemas>;
 using SettingCategoryId = Index<SettingCategorySchemas>;
@@ -44,8 +42,6 @@ using SoaMemberId = Index<SoaMemberSchemas>;
 using StaticTableColumnId = Index<StaticTableColumnSchemas>;
 using StaticTableGroupId = Index<StaticTableGroupSchemas>;
 using StaticTableRowId = Index<StaticTableRowSchemas>;
-using TaggedUnionAlternativeId = Index<TaggedUnionAlternativeSchemas>;
 using TypeRefId = Index<TypeRefs>;
-using UnionAlternativeId = Index<UnionAlternativeSchemas>;
 
 }

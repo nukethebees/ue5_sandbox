@@ -2,15 +2,11 @@
 
 #include <codegen/schema/type_reference_kind.h>
 #include <codegen/type_dependency_edge.h>
-#include <lispb/schema/record_members.h>
 #include <lispb/schema/record_types.h>
 #include <lispb/schema/soa_columns.h>
 #include <lispb/schema/soa_types.h>
-#include <lispb/schema/tagged_union_alternatives.h>
-#include <lispb/schema/tagged_union_types.h>
 #include <lispb/schema/type_definition_kind.h>
 #include <lispb/schema/type_graph.h>
-#include <lispb/schema/union_alternatives.h>
 #include <lispb/schema/union_types.h>
 #include <lispb/strings.h>
 
@@ -41,16 +37,36 @@ auto complete_dependencies(schema::TypeGraph const& graph) -> CompleteDependenci
     for (std::uint32_t index{}; index < count; ++index) {
         auto const owner{TypeId{index}};
         auto dependency = [&](ResolvedOccurrenceId reference) {
-            if (!uses_forward_declaration(reference, graph)) {
+            if (is_valid(reference) && !graph.strings().view(graph.cpp_spelling(owner)).empty() &&
+                !graph.strings()
+                     .view(graph.cpp_spelling(
+                         graph.occurrences().type[graph.occurrences().index(reference)]))
+                     .empty() &&
+                !uses_forward_declaration(reference, graph)) {
                 edges.push_back(
                     {owner, graph.occurrences().type[graph.occurrences().index(reference)]});
             }
         };
+        if (is_packed_projection(graph, owner)) {
+            for (auto const& placement : graph.bit_layout(owner).placements) {
+                if (placement.reserved) {
+                    continue;
+                }
+                auto const kind{graph.definition(placement.type).kind()};
+                if (kind == TypeDefinitionKind::enumeration ||
+                    ((kind == TypeDefinitionKind::record ||
+                      kind == TypeDefinitionKind::union_type) &&
+                     is_packed_projection(graph, placement.type))) {
+                    dependency(definitions.children
+                                   .semantic_type[definitions.children.index(placement.child)]);
+                }
+            }
+            continue;
+        }
         switch (graph.definition(owner).kind()) {
             case TypeDefinitionKind::record: {
                 for (auto const id : definitions.records.members_of(graph.definition(owner))) {
-                    dependency(definitions.record_members
-                                   .semantic_type[definitions.record_members.index(id)]);
+                    dependency(definitions.children.semantic_type[definitions.children.index(id)]);
                 }
                 break;
             }
@@ -63,22 +79,11 @@ auto complete_dependencies(schema::TypeGraph const& graph) -> CompleteDependenci
             }
             case TypeDefinitionKind::union_type: {
                 for (auto const id : definitions.unions.alternatives_of(graph.definition(owner))) {
-                    dependency(definitions.union_alternatives
-                                   .semantic_type[definitions.union_alternatives.index(id)]);
+                    dependency(definitions.children.semantic_type[definitions.children.index(id)]);
                 }
                 break;
             }
-            case TypeDefinitionKind::tagged_union: {
-                dependency(
-                    definitions.tagged_unions
-                        .discriminant[definitions.tagged_unions.index(graph.definition(owner))]);
-                for (auto const id :
-                     definitions.tagged_unions.alternatives_of(graph.definition(owner))) {
-                    dependency(definitions.tagged_union_alternatives
-                                   .semantic_type[definitions.tagged_union_alternatives.index(id)]);
-                }
-                break;
-            }
+
             default:
                 break;
         }

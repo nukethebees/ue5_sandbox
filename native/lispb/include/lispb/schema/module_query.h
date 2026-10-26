@@ -2,7 +2,7 @@
 
 #include <codegen/schema/module_handle.h>
 #include <lispb/schema/declaration_query.h>
-#include <lispb/schema/packed_value_query.h>
+#include <lispb/schema/record_query.h>
 #include <lispb/schema/soa_query.h>
 
 #include <span>
@@ -19,7 +19,7 @@ class ModuleQuery {
     auto name() const -> std::string_view;
     auto declarations() const -> std::vector<DeclarationQuery>;
     auto declaration(std::string_view name) const -> DeclarationQuery;
-    auto packed_value(std::string_view name) const -> PackedValueQuery;
+    auto record(std::string_view name) const -> RecordQuery;
     auto soa(std::string_view name) const -> SoaQuery;
   private:
     auto find(std::string_view name, codegen::DeclarationKind kind) const

@@ -19,19 +19,25 @@ domains or IEEE floating-point formats without changing external identity or sup
 facts. Matching plain C++ references also receive this metadata. See the
 [external scalar registry](ARCHITECTURE.md#external-scalar-registry) for syntax and include rules.
 
-The graph keeps logical meaning separate from physical representation. An enum node references its
-underlying type, an alias-emitted integer scalar references its configured C++ representation
-(constants-only emission does not establish one),
-and a packed node references both its storage and the logical type of every bit field,
-a record node references each member type, and a SoA node references each column type. Packed
-fields, integer scalars, record members, and SoA columns may also carry explicit labeled semantic
-relationships
-to declared nodes. Those relationships participate in graph navigation and reference safety but do
-not independently create storage. ABI and layout consumers follow physical type references to
-derive sizes; they do not replace an enum or packed value with its storage type in the semantic
-model. `dependencies_of` and `users_of` expose the resulting directed graph.
+The graph keeps logical meaning separate from C++ projections. Records and unions reference common
+child occurrences; the record concatenates children and the union overlaps alternatives. A tag
+binding belongs to a union occurrence in its enclosing record. Scalar definitions describe domains
+and reusable encodings without requiring a C++ representation. A missing projection leaves the
+logical type available for composition and relationships while omitting its standalone C++ output.
 
-Each `ResolvedOccurrenceId` names shared semantic type, C++ type, and `PhysicalTypeUse` columns.
+`BitLayout` records encoded width, owning storage width, and flat placements with absolute offsets,
+allocated extents, parent indices, and active-tag guards. One resolver computes these facts for
+code generation and layout analysis, including planner overrides. Embedding follows logical width,
+not the size or alignment of a standalone C++ projection. Native records and unions retain ABI
+analysis over the same children. Packed generation consumes placements directly and emits only
+flat constant-offset accessors.
+
+Children, integer scalars and SoA columns can carry labeled semantic relationships. Relationships
+participate in graph navigation and reference safety without creating storage. `dependencies_of`
+and `users_of` expose the directed graph; C++ complete-definition dependencies remain a separate
+consumer concern. Logical-only dependencies do not require fabricated C++ spellings or headers.
+
+Each `ResolvedOccurrenceId` names shared semantic type, optional C++ type, and `PhysicalTypeUse` columns.
 Bindings, type uses and semantic children retain the same four-byte handle. A `Node*` member
 navigates to canonical `Node`, while its physical form is an object pointer.
 Only value containment participates in aggregate cycle validation. C++ dependency ordering uses

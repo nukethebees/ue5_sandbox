@@ -12,6 +12,7 @@ auto EnumSchemas::index(DeclarationHandle id) const -> std::uint32_t {
 auto EnumSchemas::append() -> DeclarationHandle {
     auto const index{static_cast<std::uint32_t>(name.size())};
     assert(index < 0x00fffffe);
+    cpp_projection.push_back({});
     name.push_back({});
     underlying_type.push_back({});
     values.push_back({});
@@ -32,6 +33,7 @@ auto EnumSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
     auto const source_index{index(id)};
     auto const result{append()};
     auto const destination{index(result)};
+    cpp_projection[destination] = cpp_projection[source_index];
     name[destination] = name[source_index];
     underlying_type[destination] = underlying_type[source_index];
     values[destination] = values[source_index];
@@ -48,6 +50,7 @@ auto EnumSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
     return result;
 }
 void EnumSchemas::clear() {
+    cpp_projection.clear();
     name.clear();
     underlying_type.clear();
     values.clear();

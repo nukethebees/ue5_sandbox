@@ -6,6 +6,7 @@
 #include <codegen/ast/modules.h>
 #include <codegen/ast/type_operation.h>
 #include <codegen/generator.h>
+#include <codegen/schema/child_occurrences.h>
 #include <codegen/schema/declaration_handle.h>
 #include <codegen/schema/enum_conversion.h>
 #include <codegen/schema/enum_reflection.h>
@@ -18,7 +19,6 @@
 #include <codegen/schema/fixed_point_schemas.h>
 #include <codegen/schema/function_schemas.h>
 #include <codegen/schema/indices.h>
-#include <codegen/schema/integer_scalar_cpp_emission.h>
 #include <codegen/schema/integer_scalar_schemas.h>
 #include <codegen/schema/integer_varint_encoding.h>
 #include <codegen/schema/integer_varint_schemas.h>
@@ -33,7 +33,6 @@
 #include <codegen/schema/packed_named_code_schemas.h>
 #include <codegen/schema/parameter_schemas.h>
 #include <codegen/schema/quantization_clipping.h>
-#include <codegen/schema/record_member_schemas.h>
 #include <codegen/schema/record_schemas.h>
 #include <codegen/schema/schema_version.h>
 #include <codegen/schema/semantic_relation_kind.h>
@@ -106,10 +105,10 @@ TEST(Validation, EnumStringTablesRequireKnownDenseZeroBasedCodes) {
             SCOPED_TRACE(values);
             SCOPED_TRACE(options);
             CompilerTestContext context;
-            auto const source{std::format(
-                "(module test :header \"Test.h\" :source \"Test.cpp\" (enum State int {} {}))",
-                options,
-                values)};
+            auto const source{std::format("(module test :header \"Test.h\" :source \"Test.cpp\" "
+                                          "(enum State int {} {} (projections (cpp))))",
+                                          options,
+                                          values)};
             try {
                 render_test_manifest(context, parse_test_manifest(context, source));
                 FAIL() << "Expected dense enum diagnostic";
@@ -150,6 +149,7 @@ TEST(Validation, FunctionQualifiersAreSharedByRecordsAndAllSoaReceivers) {
                 normal_modules.declarations[module] =
                     declarations.range<lispb::codegen::DeclarationHandle>({[&] {
                         auto const new_records{records.append()};
+                        records.cpp_projection[new_records] = CppProjection{};
                         auto const new_records_row{records.index(new_records)};
                         records.name[new_records_row] = strings.intern("Record");
                         records.functions[new_records_row] =
@@ -326,6 +326,7 @@ auto valid_enum_module(CompilerTestContext& context) -> lispb::codegen::ModuleHa
         normal_modules.declarations[new_normal_modules_row] =
             declarations.range<lispb::codegen::DeclarationHandle>({[&] {
                 auto const new_enums{enums.append()};
+                enums.cpp_projection[new_enums] = CppProjection{};
                 auto const new_enums_row{enums.index(new_enums)};
                 enums.name[new_enums_row] = strings.intern("EMode");
                 enums.underlying_type[new_enums_row] = make_test_type_ref(context, "uint8");
@@ -371,6 +372,7 @@ auto valid_native_enum_module(CompilerTestContext& context) -> lispb::codegen::M
         normal_modules.declarations[new_normal_modules_row] =
             declarations.range<lispb::codegen::DeclarationHandle>({[&] {
                 auto const new_enums{enums.append()};
+                enums.cpp_projection[new_enums] = CppProjection{};
                 auto const new_enums_row{enums.index(new_enums)};
                 enums.name[new_enums_row] = strings.intern("NativeMode");
                 enums.underlying_type[new_enums_row] = make_test_type_ref(context, "std::uint8_t");
@@ -427,7 +429,7 @@ auto valid_linear_quantized_manifest(CompilerTestContext& context) -> Manifest {
             auto const new_linear_quantizeds_row{linear_quantizeds.index(new_linear_quantizeds)};
             linear_quantizeds.name[new_linear_quantizeds_row] = strings.intern("DamageReasonQ4");
             linear_quantizeds.source[new_linear_quantizeds_row] =
-                make_test_type_ref(context, "DamageReason");
+                make_test_type_ref(context, "@scalars/DamageReason");
             linear_quantizeds.bit_width[new_linear_quantizeds_row] = 4;
             linear_quantizeds.reserved_codes[new_linear_quantizeds_row] = 1;
             linear_quantizeds.clipping[new_linear_quantizeds_row] = QuantizationClipping::reject;
@@ -510,7 +512,7 @@ auto valid_integer_varint_manifest(
             auto const new_integer_varints_row{integer_varints.index(new_integer_varints)};
             integer_varints.name[new_integer_varints_row] = strings.intern("DamageReasonVarint");
             integer_varints.source[new_integer_varints_row] =
-                make_test_type_ref(context, "DamageReason");
+                make_test_type_ref(context, "@scalars/DamageReason");
             integer_varints.encoding[new_integer_varints_row] = encoding;
             return new_integer_varints;
         }()});
@@ -587,7 +589,7 @@ auto valid_optional_sentinel_manifest(CompilerTestContext& context) -> Manifest 
             optional_sentinels.name[new_optional_sentinels_row] =
                 strings.intern("OptionalDamageReason");
             optional_sentinels.source[new_optional_sentinels_row] =
-                make_test_type_ref(context, "DamageReason");
+                make_test_type_ref(context, "@scalars/DamageReason");
             optional_sentinels.sentinel[new_optional_sentinels_row] = strings.intern("Invalid");
             return new_optional_sentinels;
         }()});
@@ -624,7 +626,7 @@ auto valid_optional_presence_bit_manifest(CompilerTestContext& context) -> Manif
             optional_presence_bits.name[new_optional_presence_bits_row] =
                 strings.intern("PresentDamageReason");
             optional_presence_bits.source[new_optional_presence_bits_row] =
-                make_test_type_ref(context, "DamageReason");
+                make_test_type_ref(context, "@scalars/DamageReason");
             return new_optional_presence_bits;
         }()});
     return lispb::codegen::Manifest{manifest_schema_version,
@@ -689,55 +691,21 @@ auto valid_static_table_module(CompilerTestContext& context) -> lispb::codegen::
     }();
 }
 
-TEST(Validation, IntegerAliasRequiresAUsableRepresentationButNoNamedCodes) {
-    CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
-    auto& integer_scalars{declarations.integer_scalars};
-
-    auto& normal_modules{declarations.normal_modules};
-    auto& module_settings_store{declarations.module_settings_store};
-    auto& strings{context.storage.strings};
-    auto const scalar{integer_scalars.append()};
-    auto const scalar_row{integer_scalars.index(scalar)};
-    integer_scalars.name[scalar_row] = strings.intern("Health");
-    integer_scalars.minimum_value[scalar_row] = 0;
-    integer_scalars.maximum_value[scalar_row] = 65535;
-    integer_scalars.bit_width[scalar_row] = 16;
-    integer_scalars.cpp_emission[scalar_row] = IntegerScalarCppEmission::alias;
-    integer_scalars.cpp_type[scalar_row] = make_test_type_ref(context, "std::uint16_t");
-    auto make_manifest = [&] {
-        return manifest_with(context, [&] {
-            auto const new_normal_modules{normal_modules.append()};
-            auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-            normal_modules.settings[new_normal_modules_row] = [&] {
-                auto const new_module_settings_store{module_settings_store.append()};
-                auto const new_module_settings_store_row{
-                    module_settings_store.index(new_module_settings_store)};
-                module_settings_store.name[new_module_settings_store_row] =
-                    strings.intern("health");
-                module_settings_store.header[new_module_settings_store_row] =
-                    strings.intern("Health.h");
-                return new_module_settings_store;
-            }();
-            normal_modules.declarations[new_normal_modules_row] =
-                declarations.range<lispb::codegen::DeclarationHandle>({scalar});
-            return new_normal_modules;
-        }());
-    };
-    EXPECT_NO_THROW(lispb::schema::resolve_type_graph(make_manifest()));
-    for (auto const* representation : {"", "@missing", "float", "std::uint8_t", "std::uint16_t*"}) {
-        integer_scalars.cpp_type[scalar_row] = make_test_type_ref(context, representation);
-        EXPECT_THROW(lispb::schema::resolve_type_graph(make_manifest()), std::invalid_argument)
-            << representation;
+TEST(Validation, IntegerProjectionRequiresUnsignedSufficientStorage) {
+    for (auto const storage : {"std::uint8_t", "std::int32_t", "float"}) {
+        CompilerTestContext context;
+        auto const source{
+            std::format("(module values :header \"Values.h\" (integer-scalar Index :bit-width 24 "
+                        "(projections (cpp :storage {}))))",
+                        storage)};
+        EXPECT_THROW(render_test_manifest(context, parse_test_manifest(context, source)),
+                     std::invalid_argument);
     }
-    integer_scalars.cpp_type[scalar_row].reset();
-    EXPECT_THROW(lispb::schema::resolve_type_graph(make_manifest()), std::invalid_argument);
-    integer_scalars.cpp_type[scalar_row] = make_test_type_ref(context, "std::uint16_t");
-    integer_scalars.minimum_value[scalar_row] = -1;
-    EXPECT_THROW(lispb::schema::resolve_type_graph(make_manifest()), std::invalid_argument);
-    integer_scalars.minimum_value[scalar_row] = 0;
-    integer_scalars.bit_width[scalar_row] = 8;
-    EXPECT_THROW(lispb::schema::resolve_type_graph(make_manifest()), std::invalid_argument);
+    CompilerTestContext context;
+    EXPECT_NO_THROW(render_test_manifest(context, parse_test_manifest(context, R"(
+      (module values :header "Values.h"
+        (integer-scalar Index :bit-width 24 (projections (cpp :storage std::uint64_t))))
+    )")));
 }
 
 TEST(Validation, RejectsEmptyModuleNames) {
@@ -1313,233 +1281,21 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
 
     module = valid_integer_scalar_module(context);
     auto const lowered{lower_test_manifest(context, manifest_with(context, module))};
-    ASSERT_EQ(lowered.size(), 1U);
-    auto const header{context.ir.modules.header[context.ir.modules.index(lowered.front())]};
-    ASSERT_NE(header.value, 0U);
-    EXPECT_EQ(strings.view(context.ir.files.path[context.ir.files.index(header)]), "Scalars.h");
-    EXPECT_EQ(render_modules(context.ir, lowered).front().content.find("struct "),
-              std::string::npos);
+    EXPECT_TRUE(lowered.empty());
+    EXPECT_TRUE(render_modules(context.ir, lowered).empty());
 }
 
-TEST(Validation, ValidatesIntegerScalarCppConstantsPolicy) {
+TEST(Validation, LogicalScalarNeedsNoCppProjectionOrNamedCodes) {
     CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
-    auto& normal_modules{declarations.normal_modules};
-    auto& integer_scalars{declarations.integer_scalars};
-
-    auto& packed_named_codes{declarations.packed_named_codes};
-    auto& strings{context.storage.strings};
-    auto module{valid_integer_scalar_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_type[row_0] = make_test_type_ref(context, "std::uint8_t");
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
-
-    module = valid_integer_scalar_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_emission[row_0] = IntegerScalarCppEmission::constants;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
-
-    module = valid_integer_scalar_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_emission[row_0] = IntegerScalarCppEmission::constants;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_type[row_0] = make_test_type_ref(context, "std::uint8_t");
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
-
-    module = valid_integer_scalar_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_emission[row_0] = IntegerScalarCppEmission::constants;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_type[row_0] = make_test_type_ref(context, "std::int8_t");
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.maximum_value[row_0] = 127;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{integer_scalars.clone(rows_3.front())};
-            auto const row_2_row{integer_scalars.index(row_2)};
-            integer_scalars.named_codes[row_2_row] = [&] {
-                auto const original_items{
-                    declarations.items(integer_scalars.named_codes[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1[1] = [&] {
-                    auto row_0{packed_named_codes.clone(rows_1[1])};
-                    packed_named_codes.value[row_0] = 128;
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
-
-    module = valid_integer_scalar_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_emission[row_0] = IntegerScalarCppEmission::constants;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_type[row_0] = make_test_type_ref(context, "float");
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
-
-    module = valid_integer_scalar_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_emission[row_0] = IntegerScalarCppEmission::constants;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_type[row_0] = make_test_type_ref(context, "std::uint8_t");
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.named_codes[row_0] = {};
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
-
-    module = valid_integer_scalar_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_emission[row_0] = IntegerScalarCppEmission::constants_with_names;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
-            integer_scalars.cpp_type[row_0] = make_test_type_ref(context, "std::uint8_t");
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{integer_scalars.clone(rows_3.front())};
-            auto const row_2_row{integer_scalars.index(row_2)};
-            integer_scalars.named_codes[row_2_row] = [&] {
-                auto const original_items{
-                    declarations.items(integer_scalars.named_codes[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{packed_named_codes.clone(rows_1.front())};
-                    packed_named_codes.name[row_0] = strings.intern("name");
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    EXPECT_NO_THROW(schema::resolve_type_graph(parse_test_manifest(context, R"(
+      (module values
+        (integer-scalar Index :bit-width 24)
+        (integer-scalar Delta :bit-width 16 :signed true)
+        (integer-scalar Health :bit-width 8 :minimum 0 :maximum 100))
+    )")));
 }
 
-TEST(Validation, AllowsEmptyEditableModulesToRemainGenerationDestinations) {
+TEST(Validation, EmptyEditableModulesDoNotEmitCppWithoutDeclarations) {
     CompilerTestContext context;
     auto& declarations{context.storage.declarations};
     auto& module_settings_store{declarations.module_settings_store};
@@ -1571,7 +1327,7 @@ TEST(Validation, AllowsEmptyEditableModulesToRemainGenerationDestinations) {
     EXPECT_EQ(
         render_modules(context.ir, lower_test_manifest(context, manifest_with(context, module)))
             .size(),
-        2U);
+        0U);
 }
 
 TEST(Validation, ValidatesRecordMemberRelationshipUnits) {
@@ -1580,7 +1336,7 @@ TEST(Validation, ValidatesRecordMemberRelationshipUnits) {
     auto& normal_modules{declarations.normal_modules};
     auto& module_settings_store{declarations.module_settings_store};
     auto& records{declarations.records};
-    auto& record_members{declarations.record_members};
+    auto& record_members{declarations.child_occurrences};
 
     auto& semantic_relations{declarations.semantic_relations};
     auto& strings{context.storage.strings};
@@ -1600,10 +1356,11 @@ TEST(Validation, ValidatesRecordMemberRelationshipUnits) {
             declarations.range<lispb::codegen::DeclarationHandle>(
                 {[&] {
                      auto const new_records{records.append()};
+                     records.cpp_projection[new_records] = CppProjection{};
                      auto const new_records_row{records.index(new_records)};
                      records.name[new_records_row] = strings.intern("Target");
                      records.members[new_records_row] =
-                         declarations.range<lispb::codegen::RecordMemberId>({[&] {
+                         declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
                              auto const new_record_members{record_members.append()};
                              auto const new_record_members_row{
                                  record_members.index(new_record_members)};
@@ -1616,10 +1373,11 @@ TEST(Validation, ValidatesRecordMemberRelationshipUnits) {
                  }(),
                  [&] {
                      auto const new_records{records.append()};
+                     records.cpp_projection[new_records] = CppProjection{};
                      auto const new_records_row{records.index(new_records)};
                      records.name[new_records_row] = strings.intern("User");
                      records.members[new_records_row] =
-                         declarations.range<lispb::codegen::RecordMemberId>({[&] {
+                         declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
                              auto const new_record_members{record_members.append()};
                              auto const new_record_members_row{
                                  record_members.index(new_record_members)};
@@ -1974,7 +1732,7 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
                         semantic_relations.index(new_semantic_relations)};
                     semantic_relations.kind[new_semantic_relations_row] = kind;
                     semantic_relations.target[new_semantic_relations_row] =
-                        make_test_type_ref(context, "DamageReason");
+                        make_test_type_ref(context, "@scalars/DamageReason");
                     semantic_relations.unit[new_semantic_relations_row] =
                         kind == SemanticRelationKind::offset_into
                             ? std::optional{SemanticRelationUnit::bytes}
@@ -2002,7 +1760,7 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
                 semantic_relations.kind[new_semantic_relations_row] =
                     SemanticRelationKind::references;
                 semantic_relations.target[new_semantic_relations_row] =
-                    make_test_type_ref(context, "DamageReason");
+                    make_test_type_ref(context, "@scalars/DamageReason");
                 semantic_relations.unit[new_semantic_relations_row] = std::nullopt;
                 return new_semantic_relations;
             }();
@@ -2025,7 +1783,7 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
                 semantic_relations.kind[new_semantic_relations_row] =
                     SemanticRelationKind::offset_into;
                 semantic_relations.target[new_semantic_relations_row] =
-                    make_test_type_ref(context, "DamageReason");
+                    make_test_type_ref(context, "@scalars/DamageReason");
                 semantic_relations.unit[new_semantic_relations_row] = std::nullopt;
                 return new_semantic_relations;
             }();
@@ -2049,7 +1807,7 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
                 semantic_relations.kind[new_semantic_relations_row] =
                     SemanticRelationKind::index_into;
                 semantic_relations.target[new_semantic_relations_row] =
-                    make_test_type_ref(context, "DamageReason");
+                    make_test_type_ref(context, "@scalars/DamageReason");
                 semantic_relations.unit[new_semantic_relations_row] =
                     SemanticRelationUnit::elements;
                 return new_semantic_relations;
@@ -2074,7 +1832,7 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
                 semantic_relations.kind[new_semantic_relations_row] =
                     SemanticRelationKind::offset_into;
                 semantic_relations.target[new_semantic_relations_row] =
-                    make_test_type_ref(context, "DamageReason");
+                    make_test_type_ref(context, "@scalars/DamageReason");
                 semantic_relations.unit[new_semantic_relations_row] = SemanticRelationUnit::bytes;
                 return new_semantic_relations;
             }();
@@ -2085,7 +1843,7 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 }
 
-TEST(Validation, ValidatesLinearQuantizedRepresentationsAndEmitsOnlyConfiguredHeader) {
+TEST(Validation, ValidatesLogicalLinearQuantizedRepresentationsWithoutCppOutput) {
     CompilerTestContext context;
     auto& declarations{context.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
@@ -2094,12 +1852,7 @@ TEST(Validation, ValidatesLinearQuantizedRepresentationsAndEmitsOnlyConfiguredHe
     auto& strings{context.storage.strings};
     auto manifest{valid_linear_quantized_manifest(context)};
     auto lowered{lower_test_manifest(context, manifest)};
-    ASSERT_EQ(lowered.size(), 2U);
-    auto const header{context.ir.modules.header[context.ir.modules.index(lowered[1])]};
-    ASSERT_NE(header.value, 0U);
-    EXPECT_EQ(strings.view(context.ir.files.path[context.ir.files.index(header)]),
-              "Representations.h");
-    EXPECT_EQ(render_modules(context.ir, lowered)[1].content.find("struct "), std::string::npos);
+    EXPECT_TRUE(lowered.empty());
 
     manifest = valid_linear_quantized_manifest(context);
 
@@ -2266,7 +2019,7 @@ TEST(Validation, ValidatesLinearQuantizedRepresentationsAndEmitsOnlyConfiguredHe
         }();
         return row_1;
     }();
-    EXPECT_EQ(render_modules(context.ir, lower_test_manifest(context, manifest)).size(), 3U);
+    EXPECT_TRUE(render_modules(context.ir, lower_test_manifest(context, manifest)).empty());
 }
 
 TEST(Validation, ValidatesIntegerVarintSourceAndSignedness) {
@@ -2333,7 +2086,7 @@ TEST(Validation, ValidatesIntegerVarintSourceAndSignedness) {
                         .name[declarations.items(normal_modules.declarations[manifest.modules[1]])
                                   .front()];
                 linear_quantizeds.source[new_linear_quantizeds_row] =
-                    make_test_type_ref(context, "DamageReason");
+                    make_test_type_ref(context, "@scalars/DamageReason");
                 linear_quantizeds.bit_width[new_linear_quantizeds_row] = 4;
                 linear_quantizeds.reserved_codes[new_linear_quantizeds_row] = 0;
                 linear_quantizeds.clipping[new_linear_quantizeds_row] =
@@ -2347,20 +2100,14 @@ TEST(Validation, ValidatesIntegerVarintSourceAndSignedness) {
     EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
 }
 
-TEST(Validation, ValidatesFixedPointWidthsAndEmitsOnlyConfiguredHeader) {
+TEST(Validation, ValidatesLogicalFixedPointWidthsWithoutCppOutput) {
     CompilerTestContext context;
     auto& declarations{context.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto& fixed_points{declarations.fixed_points};
     auto manifest{valid_fixed_point_manifest(context)};
     auto lowered{lower_test_manifest(context, manifest)};
-    ASSERT_EQ(lowered.size(), 1U);
-    auto const header{context.ir.modules.header[context.ir.modules.index(lowered.front())]};
-    ASSERT_NE(header.value, 0U);
-    EXPECT_EQ(context.storage.strings.view(context.ir.files.path[context.ir.files.index(header)]),
-              "Representations.h");
-    EXPECT_EQ(render_modules(context.ir, lowered).front().content.find("struct "),
-              std::string::npos);
+    EXPECT_TRUE(lowered.empty());
 
     manifest = valid_fixed_point_manifest(context, false);
 
@@ -2457,13 +2204,7 @@ TEST(Validation, ValidatesMiniFloatEncodingAndEmitsNoPhysicalType) {
     auto& modules{declarations.normal_modules};
     auto manifest{valid_mini_float_manifest(context)};
     auto lowered{lower_test_manifest(context, manifest)};
-    ASSERT_EQ(lowered.size(), 1U);
-    auto const header{context.ir.modules.header[context.ir.modules.index(lowered.front())]};
-    ASSERT_NE(header.value, 0U);
-    EXPECT_EQ(context.storage.strings.view(context.ir.files.path[context.ir.files.index(header)]),
-              "Representations.h");
-    EXPECT_EQ(render_modules(context.ir, lowered).front().content.find("struct "),
-              std::string::npos);
+    EXPECT_TRUE(lowered.empty());
 
     auto invalidate = [&](auto edit) {
         auto invalid{valid_mini_float_manifest(context)};
@@ -2671,7 +2412,7 @@ TEST(Validation, ValidatesOptionalPresenceBitSourceAndSharedNames) {
                         .name[declarations.items(normal_modules.declarations[manifest.modules[1]])
                                   .front()];
                 optional_sentinels.source[new_optional_sentinels_row] =
-                    make_test_type_ref(context, "DamageReason");
+                    make_test_type_ref(context, "@scalars/DamageReason");
                 optional_sentinels.sentinel[new_optional_sentinels_row] = strings.intern("Invalid");
                 return new_optional_sentinels;
             }());
@@ -5631,7 +5372,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
 
     auto& enumerators{declarations.enumerators};
     auto& records{declarations.records};
-    auto& record_members{declarations.record_members};
+    auto& record_members{declarations.child_occurrences};
     auto& soas{declarations.soas};
     auto& soa_members{declarations.soa_members};
     auto& strings{context.storage.strings};
@@ -5641,6 +5382,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
         {vector,
          [&] {
              auto const new_enums{enums.append()};
+             enums.cpp_projection[new_enums] = CppProjection{};
              auto const new_enums_row{enums.index(new_enums)};
              enums.name[new_enums_row] = strings.intern("foo");
              enums.underlying_type[new_enums_row] = make_test_type_ref(context, "uint8");
@@ -5660,10 +5402,11 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
         {vector,
          [&] {
              auto const new_records{records.append()};
+             records.cpp_projection[new_records] = CppProjection{};
              auto const new_records_row{records.index(new_records)};
              records.name[new_records_row] = strings.intern("foo");
              records.members[new_records_row] =
-                 declarations.range<lispb::codegen::RecordMemberId>({[&] {
+                 declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
                      auto const new_record_members{record_members.append()};
                      auto const new_record_members_row{record_members.index(new_record_members)};
                      record_members.name[new_record_members_row] = strings.intern("value");
@@ -5695,6 +5438,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
                            {soa,
                             [&] {
                                 auto const new_enums{enums.append()};
+                                enums.cpp_projection[new_enums] = CppProjection{};
                                 auto const new_enums_row{enums.index(new_enums)};
                                 enums.name[new_enums_row] = strings.intern("data");
                                 enums.underlying_type[new_enums_row] =
@@ -5715,6 +5459,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
         context,
         {[&] {
              auto const new_enums{enums.append()};
+             enums.cpp_projection[new_enums] = CppProjection{};
              auto const new_enums_row{enums.index(new_enums)};
              enums.name[new_enums_row] = strings.intern("State");
              enums.underlying_type[new_enums_row] = make_test_type_ref(context, "uint8");
@@ -5727,10 +5472,11 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
          }(),
          [&] {
              auto const new_records{records.append()};
+             records.cpp_projection[new_records] = CppProjection{};
              auto const new_records_row{records.index(new_records)};
              records.name[new_records_row] = strings.intern("Snapshot");
              records.members[new_records_row] =
-                 declarations.range<lispb::codegen::RecordMemberId>({[&] {
+                 declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
                      auto const new_record_members{record_members.append()};
                      auto const new_record_members_row{record_members.index(new_record_members)};
                      record_members.name[new_record_members_row] = strings.intern("value");
@@ -5787,6 +5533,7 @@ TEST(Validation, NormalModuleCanMixIndependentEnumApis) {
         context,
         {[&] {
              auto const new_enums{enums.append()};
+             enums.cpp_projection[new_enums] = CppProjection{};
              auto const new_enums_row{enums.index(new_enums)};
              enums.name[new_enums_row] = strings.intern("NativeMode");
              enums.underlying_type[new_enums_row] = make_test_type_ref(context, "uint8");
@@ -5800,6 +5547,7 @@ TEST(Validation, NormalModuleCanMixIndependentEnumApis) {
          }(),
          [&] {
              auto const new_enums{enums.append()};
+             enums.cpp_projection[new_enums] = CppProjection{};
              auto const new_enums_row{enums.index(new_enums)};
              enums.name[new_enums_row] = strings.intern("UnrealMode");
              enums.underlying_type[new_enums_row] = make_test_type_ref(context, "uint8");

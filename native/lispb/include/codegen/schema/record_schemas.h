@@ -1,8 +1,12 @@
 #pragma once
 
+#include <codegen/schema/cpp_projection.h>
 #include <codegen/schema/declaration_handle.h>
 #include <codegen/schema/declaration_kind.h>
 #include <codegen/schema/indices.h>
+#include <codegen/schema/layout_kind.h>
+#include <codegen/schema/packed_bit_order.h>
+#include <codegen/schema/packed_byte_order.h>
 #include <codegen/schema/record_comparison.h>
 #include <codegen/schema/schema_range.h>
 #include <lispb/indexed_column.h>
@@ -29,8 +33,14 @@ struct RecordSchemas {
     Column<std::uint8_t> s7_positional;
     Column<std::uint8_t> s7_constructor;
     Column<SchemaRange<StringId>> s7_reader_includes;
+    Column<std::optional<std::uint64_t>> invalid_value;
+    Column<std::optional<PackedBitOrder>> bit_order;
+    Column<std::optional<PackedByteOrder>> byte_order;
+    Column<LayoutKind> layout;
+    Column<std::optional<std::uint32_t>> bits;
     Column<StringId> name;
-    Column<SchemaRange<RecordMemberId>> members;
+    Column<std::optional<CppProjection>> cpp_projection;
+    Column<SchemaRange<ChildOccurrenceId>> members;
     Column<StringId> export_specifier;
     Column<RecordComparison> comparison;
     Column<std::uint8_t> comparison_noexcept;

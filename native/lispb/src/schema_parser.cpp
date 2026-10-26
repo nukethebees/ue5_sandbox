@@ -7,6 +7,7 @@
 #include <codegen/ast/record_kind.h>
 #include <codegen/ast/type_operation.h>
 #include <codegen/schema.h>
+#include <codegen/schema/cpp_projection.h>
 #include <codegen/schema/declaration_handle.h>
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/enum_conversion.h>
@@ -16,15 +17,12 @@
 #include <codegen/schema/fixed_point_rounding.h>
 #include <codegen/schema/floating_point_format.h>
 #include <codegen/schema/indices.h>
-#include <codegen/schema/integer_scalar_cpp_emission.h>
 #include <codegen/schema/integer_varint_encoding.h>
 #include <codegen/schema/module_handle.h>
 #include <codegen/schema/native_enum_helper.h>
 #include <codegen/schema/packed_bit_order.h>
 #include <codegen/schema/packed_byte_order.h>
-#include <codegen/schema/packed_field_kind.h>
 #include <codegen/schema/packed_integer_value.h>
-#include <codegen/schema/packed_segment_id.h>
 #include <codegen/schema/quantization_clipping.h>
 #include <codegen/schema/record_comparison.h>
 #include <codegen/schema/registered_types.h>
@@ -479,7 +477,7 @@ auto SchemaParser::parse_module_settings(Declarations& declarations, sexpr::Fiel
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
     records.name[record_index] = parser_.identifier(fields.positional(0), "module name");
-    records.header[record_index] = parser_.text_id(fields.required(P::header), "module header");
+    records.header[record_index] = optional_text_id(fields, P::header).value_or(StringId{});
     records.source[record_index] = source;
     records.header_include[record_index] = optional_text_id(fields, P::header_include);
     records.namespace_name[record_index] = optional_identifier(fields, P::namespace_);
@@ -573,135 +571,60 @@ auto SchemaParser::parse_packed_bit_order(sexpr::FormId const form) -> PackedBit
     parser_.fail(form, "packed bit order must be 'lsb-first' or 'msb-first'");
 }
 
-auto SchemaParser::parse_packed_field(Declarations& declarations, sexpr::FormId const form)
-    -> PackedSegmentId {
-    Fields const fields{parser_, form, "field", 2};
-    fields.validate({P::bits, P::kind, P::range_helper, P::minimum, P::maximum, P::default_},
-                    {"code", "relation"});
-
-    auto kind{PackedFieldKind::unsigned_integer};
-    if (auto const value{fields.optional(P::kind)}) {
-        kind = parse_keyword(
-            parser_, *value, "packed field kind", try_parse_serialized_packed_field_kind);
-    }
-
-    auto const minimum{fields.optional(P::minimum)};
-    auto const maximum{fields.optional(P::maximum)};
-    auto const& bits_form{fields.required(P::bits)};
-    auto const bits_text{std::string{parser_.text(bits_form, "packed field bits")}};
-    auto const bits{bits_text == "auto"
-                        ? std::optional<int>{}
-                        : std::optional<int>{parser_.integer(bits_form, "packed field bits")}};
-    std::vector<PackedNamedCodeId> named_codes;
-    named_codes.reserve(fields.declarations().size());
-    std::optional<SemanticRelationId> relationship;
-    for (auto const declaration_id : fields.declarations()) {
-        auto const declaration{declaration_id};
-        if (syntax_.head(declaration) == "relation") {
-            if (relationship.has_value()) {
-                parser_.fail(declaration, "packed field may have only one relationship");
-            }
-            relationship = parse_relation(declarations, declaration);
-            continue;
-        }
-        Fields const code{parser_, declaration, "code", 1};
-        code.validate({P::value, P::sentinel});
-        {
-            auto& records{declarations.packed_named_codes};
-            auto const record_id{records.append()};
-            auto const record_index{records.index(record_id)};
-            records.name[record_index] =
-                parser_.identifier(code.positional(0), "packed named code name");
-            records.value[record_index] =
-                packed_integer(code.required(P::value), "packed named code value");
-            records.sentinel[record_index] = boolean_or(code, P::sentinel);
-            named_codes.push_back(record_id);
-        }
-    }
-    auto& records{declarations.packed_fields};
-    auto const record_id{records.append()};
-    auto const record_index{records.index(record_id)};
-    records.name[record_index] = parser_.identifier(fields.positional(0), "packed field name");
-    records.type[record_index] = parse_type_ref(declarations, fields.positional(1));
-    records.bits[record_index] = bits;
-    records.kind[record_index] = kind;
-    records.range_helper[record_index] = boolean_or(fields, P::range_helper);
-    records.minimum_value[record_index] =
-        !minimum.has_value()
-            ? std::nullopt
-            : std::optional<PackedIntegerValue>{packed_integer(*minimum, "packed field minimum")};
-    records.maximum_value[record_index] =
-        !maximum.has_value()
-            ? std::nullopt
-            : std::optional<PackedIntegerValue>{packed_integer(*maximum, "packed field maximum")};
-    records.named_codes[record_index] = declarations.range(named_codes);
-    records.relationship[record_index] = relationship;
-    records.default_value[record_index] =
-        !fields.optional(P::default_).has_value()
-            ? std::nullopt
-            : std::optional{packed_integer(*fields.optional(P::default_), "packed field default")};
-    return record_id;
-}
-
-auto SchemaParser::parse_packed_reserved_bits(Declarations& declarations, sexpr::FormId const form)
-    -> PackedSegmentId {
+auto SchemaParser::parse_reserved(Declarations& declarations, sexpr::FormId const form)
+    -> ChildOccurrenceId {
     Fields const fields{parser_, form, "reserved", 1};
     fields.validate({P::bits});
-    auto& records{declarations.packed_reserved_bits};
-    auto const record_id{records.append()};
-    auto const record_index{records.index(record_id)};
-    records.name[record_index] =
-        parser_.identifier(fields.positional(0), "packed reserved-region name");
-    records.bits[record_index] =
-        parser_.integer(fields.required(P::bits), "packed reserved-region bits");
-    return record_id;
+    auto& children{declarations.child_occurrences};
+    auto const child{children.append()};
+    children.kind[child] = ChildOccurrenceKind::reserved;
+    children.name[child] = parser_.identifier(fields.positional(0), "reserved region name");
+    children.bits[child] = static_cast<std::uint32_t>(
+        bounded_integer(parser_, fields.required(P::bits), "reserved width", 1, 64));
+    return child;
 }
 
-auto SchemaParser::parse_packed_value(Declarations& declarations, sexpr::FormId const form)
-    -> DeclarationHandle {
-    Fields const fields{parser_, form, "packed-value", 1};
-    fields.validate({P::storage,
-                     P::invalid_value,
-                     P::export_specifier,
-                     P::mutable_,
-                     P::byte_order,
-                     P::bit_order},
-                    {"field", "reserved"});
-    auto const invalid_value{fields.optional(P::invalid_value)};
-    auto const byte_order{fields.optional(P::byte_order)};
-    auto const bit_order{fields.optional(P::bit_order)};
-
-    std::vector<PackedSegmentId> segments;
-    segments.reserve(fields.declarations().size());
-    for (auto const declaration_id : fields.declarations()) {
-        auto const declaration{declaration_id};
-        if (syntax_.head(declaration) == "field") {
-            segments.emplace_back(parse_packed_field(declarations, declaration));
-        } else {
-            segments.emplace_back(parse_packed_reserved_bits(declarations, declaration));
+auto SchemaParser::parse_projections(Declarations& declarations,
+                                     sexpr::Fields const& owner,
+                                     std::optional<EnumUnrealProjectionId>* unreal)
+    -> std::optional<CppProjection> {
+    std::optional<CppProjection> result;
+    bool seen{};
+    for (auto const form : owner.declarations()) {
+        if (!syntax_.is_list(form) || syntax_.head(form) != "projections") {
+            continue;
+        }
+        if (seen) {
+            parser_.fail(form, "only one projections form is permitted");
+        }
+        seen = true;
+        Fields const projections{parser_, form, "projections", 0};
+        projections.validate({}, {"cpp", "unreal-projection"});
+        for (auto const projection : projections.declarations()) {
+            if (syntax_.head(projection) == "unreal-projection") {
+                if (!unreal) {
+                    parser_.fail(projection, "Unreal projections require an enum");
+                }
+                if (unreal->has_value()) {
+                    parser_.fail(projection, "only one Unreal projection is permitted");
+                }
+                *unreal = parse_enum_unreal_projection(declarations, projection);
+                continue;
+            }
+            if (result) {
+                parser_.fail(projection, "only one C++ projection is permitted");
+            }
+            Fields const cpp{parser_, projection, "cpp", 0};
+            cpp.validate({P::storage});
+            result.emplace();
+            if (auto const storage{cpp.optional(P::storage)}) {
+                if (parser_.text(*storage, "C++ storage") != "auto") {
+                    result->storage = parse_type_ref(declarations, *storage);
+                }
+            }
         }
     }
-
-    auto& records{declarations.packed_values};
-    auto const record_id{records.append()};
-    auto const record_index{records.index(record_id)};
-    records.name[record_index] = parser_.identifier(fields.positional(0), "packed value name");
-    records.storage_type[record_index] = parse_type_ref(declarations, fields.required(P::storage));
-    records.segments[record_index] = declarations.range(segments);
-    records.invalid_value[record_index] =
-        !invalid_value.has_value() ? std::nullopt
-                                   : std::optional<std::uint64_t>{
-                                         unsigned_integer(*invalid_value, "packed invalid value")};
-    records.export_specifier[record_index] = parse_export_specifier(fields);
-    records.mutable_value[record_index] = boolean_or(fields, P::mutable_);
-    records.byte_order[record_index] =
-        !byte_order.has_value()
-            ? std::nullopt
-            : std::optional<PackedByteOrder>{parse_packed_byte_order(*byte_order)};
-    records.bit_order[record_index] =
-        !bit_order.has_value() ? std::nullopt
-                               : std::optional<PackedBitOrder>{parse_packed_bit_order(*bit_order)};
-    return record_id;
+    return result;
 }
 
 auto SchemaParser::parse_enum(Declarations& declarations, sexpr::FormId const form)
@@ -721,9 +644,10 @@ auto SchemaParser::parse_enum(Declarations& declarations, sexpr::FormId const fo
                      P::helpers,
                      P::bit_width,
                      P::signed_},
-                    {"value", "unreal-projection"});
+                    {"value", "projections"});
     std::vector<EnumeratorId> values;
     std::optional<EnumUnrealProjectionId> unreal_projection;
+    auto const cpp_projection{parse_projections(declarations, fields, &unreal_projection)};
     for (auto const declaration_id : fields.declarations()) {
         auto const declaration{declaration_id};
         if (syntax_.head(declaration) == "value") {
@@ -742,11 +666,6 @@ auto SchemaParser::parse_enum(Declarations& declarations, sexpr::FormId const fo
                 records.sentinel[record_index] = boolean_or(value, P::sentinel);
                 values.push_back(record_id);
             }
-        } else {
-            if (unreal_projection.has_value()) {
-                parser_.fail(declaration, "enum may define only one Unreal projection");
-            }
-            unreal_projection = parse_enum_unreal_projection(declarations, declaration);
         }
     }
     std::vector<NativeEnumHelper> helpers;
@@ -796,6 +715,7 @@ auto SchemaParser::parse_enum(Declarations& declarations, sexpr::FormId const fo
     records.conversions[record_index] = declarations.range(conversions);
     records.export_specifier[record_index] = parse_export_specifier(fields);
     records.unreal_projection[record_index] = unreal_projection;
+    records.cpp_projection[record_index] = cpp_projection;
     records.bit_width[record_index] = bit_width;
     records.reflection[record_index] = reflection;
     records.signedness[record_index] = schema::EnumSignedness::unspecified;
@@ -1036,9 +956,13 @@ auto SchemaParser::parse_setting(Declarations& declarations, sexpr::FormId const
 }
 
 auto SchemaParser::parse_record_member(Declarations& declarations, sexpr::FormId const form)
-    -> RecordMemberId {
+    -> ChildOccurrenceId {
     Fields const fields{parser_, form, "member", 2};
     fields.validate({P::count,
+                     P::bits,
+                     P::tag,
+                     P::case_,
+                     P::default_,
                      P::initializer,
                      P::s7_exclude,
                      P::s7_name,
@@ -1053,14 +977,13 @@ auto SchemaParser::parse_record_member(Declarations& declarations, sexpr::FormId
                     {"relation"});
     auto const count{fields.optional(P::count)};
     std::optional<SemanticRelationId> relationship;
-    for (auto const declaration_id : fields.declarations()) {
-        auto const declaration{declaration_id};
-        if (relationship.has_value()) {
-            parser_.fail(declaration, "record member may have only one relationship");
+    for (auto const declaration : fields.declarations()) {
+        if (relationship) {
+            parser_.fail(declaration, "member may have only one relationship");
         }
         relationship = parse_relation(declarations, declaration);
     }
-    auto& records{declarations.record_members};
+    auto& records{declarations.child_occurrences};
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
     records.name[record_index] = parser_.identifier(fields.positional(0), "record member name");
@@ -1071,6 +994,17 @@ auto SchemaParser::parse_record_member(Declarations& declarations, sexpr::FormId
             : std::optional<std::uint64_t>{unsigned_integer(*count, "record member count")};
     records.relationship[record_index] = relationship;
     records.initializer[record_index] = optional_text_id(fields, P::initializer);
+    records.tag[record_index] = optional_identifier(fields, P::tag);
+    records.case_label[record_index] = optional_identifier(fields, P::case_);
+    if (auto const bits{fields.optional(P::bits)}) {
+        if (parser_.text(*bits, "member bits") != "auto") {
+            records.bits[record_index] =
+                static_cast<std::uint32_t>(bounded_integer(parser_, *bits, "member bits", 1, 64));
+        }
+    }
+    if (auto const value{fields.optional(P::default_)}) {
+        records.default_value[record_index] = packed_integer(*value, "member default");
+    }
     auto& s7{records.s7[record_index]};
     s7.name = optional_text_id(fields, P::s7_name);
     s7.exclude = boolean_or(fields, P::s7_exclude);
@@ -1092,7 +1026,8 @@ auto SchemaParser::parse_record_member(Declarations& declarations, sexpr::FormId
         }
         auto const text{parser_.text(*value, name)};
         std::string spelling;
-        if (text.find_first_of(".eE") == std::string_view::npos) {
+        if (text.find_first_of(".eE") == std::string_view::npos ||
+            text.find_first_of("xX") != std::string_view::npos) {
             auto const integer{packed_integer(*value, name)};
             if (integer.negative && !packed_integer_as_signed(integer)) {
                 parser_.fail(*value, "S7 integer bound is below the signed 64-bit range");
@@ -1116,7 +1051,12 @@ auto SchemaParser::parse_record_member(Declarations& declarations, sexpr::FormId
 auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "record", 1};
-    fields.validate({P::export_specifier,
+    fields.validate({P::layout,
+                     P::bits,
+                     P::invalid_value,
+                     P::bit_order,
+                     P::byte_order,
+                     P::export_specifier,
                      P::constraint_policy,
                      P::comparison,
                      P::comparison_noexcept,
@@ -1126,7 +1066,7 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
                      P::s7_positional,
                      P::s7_constructor,
                      P::s7_reader_includes},
-                    {"member", "function"});
+                    {"member", "function", "reserved", "projections"});
     auto comparison{RecordComparison::none};
     if (auto const value{fields.optional(P::comparison)}) {
         comparison = parse_keyword(
@@ -1136,13 +1076,15 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
         }
     }
     std::vector<FunctionSchemaId> functions;
-    std::vector<RecordMemberId> members;
+    std::vector<ChildOccurrenceId> members;
     members.reserve(fields.declarations().size());
     for (auto const declaration_id : fields.declarations()) {
         auto const declaration{declaration_id};
         if (syntax_.head(declaration) == "function") {
             functions.push_back(parse_function(declarations, declaration));
-        } else {
+        } else if (syntax_.head(declaration) == "reserved") {
+            members.push_back(parse_reserved(declarations, declaration));
+        } else if (syntax_.head(declaration) == "member") {
             members.push_back(parse_record_member(declarations, declaration));
         }
     }
@@ -1151,6 +1093,24 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
     auto const record_index{records.index(record_id)};
     records.name[record_index] = parser_.identifier(fields.positional(0), "record name");
     records.members[record_index] = declarations.range(members);
+    records.cpp_projection[record_index] = parse_projections(declarations, fields);
+    if (auto const layout{fields.optional(P::layout)}) {
+        records.layout[record_index] =
+            parse_keyword(parser_, *layout, "layout", try_parse_serialized_layout_kind);
+    }
+    if (auto const bits{fields.optional(P::bits)}) {
+        records.bits[record_index] =
+            static_cast<std::uint32_t>(bounded_integer(parser_, *bits, "record bits", 1, 64));
+    }
+    if (auto const invalid{fields.optional(P::invalid_value)}) {
+        records.invalid_value[record_index] = unsigned_integer(*invalid, "invalid value");
+    }
+    if (auto const order{fields.optional(P::bit_order)}) {
+        records.bit_order[record_index] = parse_packed_bit_order(*order);
+    }
+    if (auto const order{fields.optional(P::byte_order)}) {
+        records.byte_order[record_index] = parse_packed_byte_order(*order);
+    }
     records.export_specifier[record_index] = parse_export_specifier(fields);
     records.comparison[record_index] = comparison;
     records.comparison_noexcept[record_index] = boolean_or(fields, P::comparison_noexcept);
@@ -1170,90 +1130,68 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
     return record_id;
 }
 
-auto SchemaParser::parse_union_alternative(Declarations& declarations, sexpr::FormId const form)
-    -> UnionAlternativeId {
-    Fields const fields{parser_, form, "alternative", 2};
-    fields.validate({P::count});
-    auto const count{fields.optional(P::count)};
-    auto& records{declarations.union_alternatives};
-    auto const record_id{records.append()};
-    auto const record_index{records.index(record_id)};
-    records.name[record_index] = parser_.identifier(fields.positional(0), "union alternative name");
-    records.type[record_index] = parse_type_ref(declarations, fields.positional(1));
-    records.count[record_index] =
-        !count.has_value()
-            ? std::nullopt
-            : std::optional<std::uint64_t>{unsigned_integer(*count, "union alternative count")};
-    return record_id;
-}
-
 auto SchemaParser::parse_union(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
-    Fields const fields{parser_, form, "union", 1};
-    fields.validate({P::export_specifier}, {"alternative"});
-    std::vector<UnionAlternativeId> alternatives;
-    alternatives.reserve(fields.declarations().size());
-    for (auto const declaration_id : fields.declarations()) {
-        auto const declaration{declaration_id};
-        alternatives.push_back(parse_union_alternative(declarations, declaration));
+    Fields const fields{parser_, form, "union", 1, true};
+    fields.validate({P::layout, P::bits, P::export_specifier}, {"member", "case", "projections"});
+    std::vector<ChildOccurrenceId> alternatives;
+    for (auto const declaration : fields.declarations()) {
+        if (syntax_.is_list(declaration) && syntax_.head(declaration) == "projections") {
+            continue;
+        }
+        if (syntax_.is_list(declaration) && syntax_.head(declaration) == "member") {
+            alternatives.push_back(parse_record_member(declarations, declaration));
+            continue;
+        }
+        auto& children{declarations.child_occurrences};
+        auto const child{children.append()};
+        if (syntax_.is_list(declaration)) {
+            Fields const alternative{parser_, declaration, "case", 2};
+            alternative.validate({P::bits, P::count});
+            children.case_label[child] =
+                parser_.identifier(alternative.positional(0), "case label");
+            children.name[child] = *children.case_label[child];
+            children.type[child] = parse_type_ref(declarations, alternative.positional(1));
+            if (auto const bits{alternative.optional(P::bits)}) {
+                children.bits[child] =
+                    static_cast<std::uint32_t>(bounded_integer(parser_, *bits, "case bits", 1, 64));
+            }
+            if (auto const count{alternative.optional(P::count)}) {
+                children.count[child] = unsigned_integer(*count, "case count");
+            }
+        } else {
+            children.type[child] = parse_type_ref(declarations, declaration);
+            auto name{parser_.text(declaration, "union type reference")};
+            name.remove_prefix(1);
+            if (auto const slash{name.find_last_of('/')}; slash != std::string_view::npos) {
+                name.remove_prefix(slash + 1);
+            }
+            children.name[child] = declarations.strings().intern(name);
+        }
+        alternatives.push_back(child);
     }
     auto& records{declarations.unions};
     auto const record_id{records.append()};
-    auto const record_index{records.index(record_id)};
-    records.name[record_index] = parser_.identifier(fields.positional(0), "union name");
-    records.alternatives[record_index] = declarations.range(alternatives);
-    records.export_specifier[record_index] = parse_export_specifier(fields);
-    return record_id;
-}
-
-auto SchemaParser::parse_tagged_union_alternative(Declarations& declarations,
-                                                  sexpr::FormId const form)
-    -> TaggedUnionAlternativeId {
-    Fields const fields{parser_, form, "alternative", 2};
-    fields.validate({P::count, P::tag});
-    auto const count{fields.optional(P::count)};
-    auto& records{declarations.tagged_union_alternatives};
-    auto const record_id{records.append()};
-    auto const record_index{records.index(record_id)};
-    records.name[record_index] =
-        parser_.identifier(fields.positional(0), "tagged union alternative name");
-    records.type[record_index] = parse_type_ref(declarations, fields.positional(1));
-    records.count[record_index] =
-        !count.has_value() ? std::nullopt
-                           : std::optional<std::uint64_t>{
-                                 unsigned_integer(*count, "tagged union alternative count")};
-    records.tag[record_index] =
-        parser_.identifier(fields.required(P::tag), "tagged union alternative tag");
-    return record_id;
-}
-
-auto SchemaParser::parse_tagged_union(Declarations& declarations, sexpr::FormId const form)
-    -> DeclarationHandle {
-    Fields const fields{parser_, form, "tagged-union", 1};
-    fields.validate({P::discriminant, P::export_specifier}, {"alternative"});
-    std::vector<TaggedUnionAlternativeId> alternatives;
-    alternatives.reserve(fields.declarations().size());
-    for (auto const declaration_id : fields.declarations()) {
-        auto const declaration{declaration_id};
-        alternatives.push_back(parse_tagged_union_alternative(declarations, declaration));
+    records.name[record_id] = parser_.identifier(fields.positional(0), "union name");
+    records.alternatives[record_id] = declarations.range(alternatives);
+    records.export_specifier[record_id] = parse_export_specifier(fields);
+    records.cpp_projection[record_id] = parse_projections(declarations, fields);
+    if (auto const layout{fields.optional(P::layout)}) {
+        records.layout[record_id] =
+            parse_keyword(parser_, *layout, "layout", try_parse_serialized_layout_kind);
     }
-    auto& records{declarations.tagged_unions};
-    auto const record_id{records.append()};
-    auto const record_index{records.index(record_id)};
-    records.name[record_index] = parser_.identifier(fields.positional(0), "tagged union name");
-    records.discriminant[record_index] =
-        parse_type_ref(declarations, fields.required(P::discriminant));
-    records.alternatives[record_index] = declarations.range(alternatives);
-    records.export_specifier[record_index] = parse_export_specifier(fields);
+    if (auto const bits{fields.optional(P::bits)}) {
+        records.bits[record_id] =
+            static_cast<std::uint32_t>(bounded_integer(parser_, *bits, "union bits", 1, 64));
+    }
     return record_id;
 }
 
 auto SchemaParser::parse_integer_scalar(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "integer-scalar", 1};
-    fields.validate(
-        {P::signed_, P::minimum, P::maximum, P::bit_width, P::cpp_emission, P::cpp_type},
-        {"code", "relation"});
+    fields.validate({P::signed_, P::minimum, P::maximum, P::bit_width},
+                    {"code", "relation", "projections"});
 
     std::optional<std::uint32_t> bit_width;
     if (auto const width{fields.optional(P::bit_width)}) {
@@ -1267,20 +1205,14 @@ auto SchemaParser::parse_integer_scalar(Declarations& declarations, sexpr::FormI
         }
     }
 
-    auto cpp_emission{IntegerScalarCppEmission::none};
-    if (auto const emission{fields.optional(P::cpp_emission)}) {
-        cpp_emission = parse_keyword(parser_,
-                                     *emission,
-                                     "integer scalar C++ emission policy",
-                                     try_parse_serialized_integer_scalar_cpp_emission);
-    }
-    auto const cpp_type{fields.optional(P::cpp_type)};
-
     std::vector<PackedNamedCodeId> named_codes;
     named_codes.reserve(fields.declarations().size());
     std::optional<SemanticRelationId> relationship;
     for (auto const declaration_id : fields.declarations()) {
         auto const declaration{declaration_id};
+        if (syntax_.head(declaration) == "projections") {
+            continue;
+        }
         if (syntax_.head(declaration) == "relation") {
             if (relationship.has_value()) {
                 parser_.fail(declaration, "integer scalar may have only one relationship");
@@ -1307,26 +1239,35 @@ auto SchemaParser::parse_integer_scalar(Declarations& declarations, sexpr::FormI
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
     records.name[record_index] = parser_.identifier(fields.positional(0), "integer scalar name");
-    records.signedness[record_index] =
-        parser_.boolean(fields.required(P::signed_), "integer scalar signedness");
+    auto const signedness{boolean_or(fields, P::signed_)};
+    records.signedness[record_index] = signedness;
+    if (!bit_width && (!fields.optional(P::minimum) || !fields.optional(P::maximum))) {
+        parser_.fail(form, "integer scalar requires :bit-width or both :minimum and :maximum");
+    }
+    auto const width{bit_width.value_or(64)};
+    auto const magnitude_bits{width - (signedness ? 1U : 0U)};
+    auto const maximum{magnitude_bits == 64 ? std::numeric_limits<std::uint64_t>::max()
+                                            : (std::uint64_t{1} << magnitude_bits) - 1};
     records.minimum_value[record_index] =
-        packed_integer(fields.required(P::minimum), "integer scalar minimum");
+        fields.optional(P::minimum)
+            ? packed_integer(*fields.optional(P::minimum), "integer scalar minimum")
+            : PackedIntegerValue::from_parts(signedness,
+                                             signedness ? std::uint64_t{1} << magnitude_bits : 0);
     records.maximum_value[record_index] =
-        packed_integer(fields.required(P::maximum), "integer scalar maximum");
+        fields.optional(P::maximum)
+            ? packed_integer(*fields.optional(P::maximum), "integer scalar maximum")
+            : PackedIntegerValue{maximum};
     records.bit_width[record_index] = bit_width;
     records.named_codes[record_index] = declarations.range(named_codes);
     records.relationship[record_index] = relationship;
-    records.cpp_emission[record_index] = cpp_emission;
-    records.cpp_type[record_index] = !cpp_type.has_value()
-                                       ? std::nullopt
-                                       : std::optional{parse_type_ref(declarations, *cpp_type)};
+    records.cpp_projection[record_index] = parse_projections(declarations, fields);
     return record_id;
 }
 
 auto SchemaParser::parse_linear_quantized(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "linear-quantized", 1};
-    fields.validate({P::source, P::bits, P::reserved_codes, P::clipping});
+    fields.validate({P::source, P::bits, P::reserved_codes, P::clipping}, {"projections"});
 
     auto clipping{QuantizationClipping::reject};
     if (auto const value{fields.optional(P::clipping)}) {
@@ -1356,13 +1297,14 @@ auto SchemaParser::parse_linear_quantized(Declarations& declarations, sexpr::For
             ? unsigned_integer(*reserved, "linear quantization reserved code count")
             : 0;
     records.clipping[record_index] = clipping;
+    records.cpp_projection[record_index] = parse_projections(declarations, fields);
     return record_id;
 }
 
 auto SchemaParser::parse_integer_varint(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "integer-varint", 1};
-    fields.validate({P::source, P::encoding});
+    fields.validate({P::source, P::encoding}, {"projections"});
 
     auto const encoding{parse_keyword(parser_,
                                       fields.required(P::encoding),
@@ -1375,6 +1317,7 @@ auto SchemaParser::parse_integer_varint(Declarations& declarations, sexpr::FormI
     records.name[record_index] = parser_.identifier(fields.positional(0), "integer varint name");
     records.source[record_index] = parse_type_ref(declarations, fields.required(P::source));
     records.encoding[record_index] = encoding;
+    records.cpp_projection[record_index] = parse_projections(declarations, fields);
     return record_id;
 }
 
@@ -1382,7 +1325,8 @@ auto SchemaParser::parse_fixed_point(Declarations& declarations, sexpr::FormId c
     -> DeclarationHandle {
     Fields const fields{parser_, form, "fixed-point", 1};
     fields.validate(
-        {P::signed_, P::total_bits, P::fractional_bits, P::rounding, P::minimum, P::maximum});
+        {P::signed_, P::total_bits, P::fractional_bits, P::rounding, P::minimum, P::maximum},
+        {"projections"});
 
     auto const total_bits{
         parser_.integer(fields.required(P::total_bits), "fixed-point total width")};
@@ -1424,13 +1368,15 @@ auto SchemaParser::parse_fixed_point(Declarations& declarations, sexpr::FormId c
     records.maximum_value[record_index] =
         !maximum.has_value() ? std::nullopt
                              : std::optional{parser_.text_id(*maximum, "fixed-point maximum")};
+    records.cpp_projection[record_index] = parse_projections(declarations, fields);
     return record_id;
 }
 
 auto SchemaParser::parse_mini_float(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "mini-float", 1};
-    fields.validate({P::sign_bits, P::exponent_bits, P::significand_bits, P::bias});
+    fields.validate({P::sign_bits, P::exponent_bits, P::significand_bits, P::bias},
+                    {"projections"});
 
     auto const sign_bits{
         bounded_integer(parser_, fields.required(P::sign_bits), "mini-float sign width", 0, 1)};
@@ -1452,13 +1398,14 @@ auto SchemaParser::parse_mini_float(Declarations& declarations, sexpr::FormId co
     records.exponent_bits[record_index] = static_cast<std::uint32_t>(exponent_bits);
     records.significand_bits[record_index] = static_cast<std::uint32_t>(significand_bits);
     records.exponent_bias[record_index] = exponent_bias;
+    records.cpp_projection[record_index] = parse_projections(declarations, fields);
     return record_id;
 }
 
 auto SchemaParser::parse_optional_sentinel(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "optional-sentinel", 1};
-    fields.validate({P::source, P::sentinel});
+    fields.validate({P::source, P::sentinel}, {"projections"});
 
     auto& records{declarations.optional_sentinels};
     auto const record_id{records.append()};
@@ -1467,13 +1414,14 @@ auto SchemaParser::parse_optional_sentinel(Declarations& declarations, sexpr::Fo
     records.source[record_index] = parse_type_ref(declarations, fields.required(P::source));
     records.sentinel[record_index] =
         parser_.identifier(fields.required(P::sentinel), "optional sentinel code");
+    records.cpp_projection[record_index] = parse_projections(declarations, fields);
     return record_id;
 }
 
 auto SchemaParser::parse_optional_presence_bit(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "optional-presence-bit", 1};
-    fields.validate({P::source});
+    fields.validate({P::source}, {"projections"});
 
     auto& records{declarations.optional_presence_bits};
     auto const record_id{records.append()};
@@ -1481,6 +1429,7 @@ auto SchemaParser::parse_optional_presence_bit(Declarations& declarations, sexpr
     records.name[record_index] =
         parser_.identifier(fields.positional(0), "optional presence-bit name");
     records.source[record_index] = parse_type_ref(declarations, fields.required(P::source));
+    records.cpp_projection[record_index] = parse_projections(declarations, fields);
     return record_id;
 }
 
@@ -1506,14 +1455,10 @@ auto SchemaParser::parse_normal_declaration(Declarations& declarations, sexpr::F
                 return parse_optional_sentinel(declarations, form);
             case DeclarationKind::optional_presence_bit:
                 return parse_optional_presence_bit(declarations, form);
-            case DeclarationKind::packed_value:
-                return parse_packed_value(declarations, form);
             case DeclarationKind::record:
                 return parse_record(declarations, form);
             case DeclarationKind::union_type:
                 return parse_union(declarations, form);
-            case DeclarationKind::tagged_union:
-                return parse_tagged_union(declarations, form);
             case DeclarationKind::soa:
                 return parse_soa(declarations, form);
             case DeclarationKind::static_table:
@@ -1546,10 +1491,8 @@ auto SchemaParser::parse_module(Declarations& declarations, sexpr::FormId const 
                          "mini-float",
                          "optional-sentinel",
                          "optional-presence-bit",
-                         "packed-value",
                          "record",
                          "union",
-                         "tagged-union",
                          "struct",
                          "layout",
                          "table",

@@ -8,58 +8,43 @@
 #include <cassert>
 #include <compare>
 #include <cstdint>
-#include <limits>
-#include <type_traits>
 
 namespace lispb::codegen {
 struct FunctionFlags {
+  public:
     using storage_type = std::uint8_t;
-    static_assert(ioj::valid_packed_storage<storage_type, 8>());
-
-    // is_constexpr
     using is_constexpr_type = bool;
     using is_constexpr_field = ioj::PackedField<storage_type, is_constexpr_type, 0, 1>;
-
-    // is_inline
     using is_inline_type = bool;
     using is_inline_field = ioj::PackedField<storage_type, is_inline_type, 1, 1>;
-
-    // is_nodiscard
     using is_nodiscard_type = bool;
     using is_nodiscard_field = ioj::PackedField<storage_type, is_nodiscard_type, 2, 1>;
-
-    // define_in_header
     using define_in_header_type = bool;
     using define_in_header_field = ioj::PackedField<storage_type, define_in_header_type, 3, 1>;
 
     constexpr FunctionFlags() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> FunctionFlags {
-        FunctionFlags result;
-        result.value_ = raw;
-        return result;
+    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> FunctionFlags {
+        return FunctionFlags{RawTag{}, raw};
     }
-
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
     explicit constexpr FunctionFlags(is_constexpr_type const is_constexpr_value,
                                      is_inline_type const is_inline_value,
                                      is_nodiscard_type const is_nodiscard_value,
-                                     define_in_header_type const define_in_header_value) noexcept {
-        value_ = static_cast<storage_type>(
-            ioj::packed_pack<is_constexpr_field>(is_constexpr_value) |
-            ioj::packed_pack<is_inline_field>(is_inline_value) |
-            ioj::packed_pack<is_nodiscard_field>(is_nodiscard_value) |
-            ioj::packed_pack<define_in_header_field>(define_in_header_value));
+                                     define_in_header_type const define_in_header_value) noexcept
+        : value_{0} {
+        value_ = ioj::packed_insert<is_constexpr_field>(value_, is_constexpr_value);
+        value_ = ioj::packed_insert<is_inline_field>(value_, is_inline_value);
+        value_ = ioj::packed_insert<is_nodiscard_field>(value_, is_nodiscard_value);
+        value_ = ioj::packed_insert<define_in_header_field>(value_, define_in_header_value);
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
-
     [[nodiscard]] constexpr auto operator<=>(FunctionFlags const&) const noexcept = default;
 
     [[nodiscard]] constexpr auto is_constexpr() const noexcept -> is_constexpr_type {
         return ioj::packed_extract<is_constexpr_field>(value_);
     }
-
     constexpr void set_is_constexpr(is_constexpr_type const value) noexcept {
         value_ = ioj::packed_insert<is_constexpr_field>(value_, value);
     }
@@ -67,7 +52,6 @@ struct FunctionFlags {
     [[nodiscard]] constexpr auto is_inline() const noexcept -> is_inline_type {
         return ioj::packed_extract<is_inline_field>(value_);
     }
-
     constexpr void set_is_inline(is_inline_type const value) noexcept {
         value_ = ioj::packed_insert<is_inline_field>(value_, value);
     }
@@ -75,7 +59,6 @@ struct FunctionFlags {
     [[nodiscard]] constexpr auto is_nodiscard() const noexcept -> is_nodiscard_type {
         return ioj::packed_extract<is_nodiscard_field>(value_);
     }
-
     constexpr void set_is_nodiscard(is_nodiscard_type const value) noexcept {
         value_ = ioj::packed_insert<is_nodiscard_field>(value_, value);
     }
@@ -83,12 +66,15 @@ struct FunctionFlags {
     [[nodiscard]] constexpr auto define_in_header() const noexcept -> define_in_header_type {
         return ioj::packed_extract<define_in_header_field>(value_);
     }
-
     constexpr void set_define_in_header(define_in_header_type const value) noexcept {
         value_ = ioj::packed_insert<define_in_header_field>(value_, value);
     }
   private:
-    storage_type value_{};
+    struct RawTag {};
+    constexpr FunctionFlags(RawTag, storage_type raw) noexcept
+        : value_{raw} {}
+    storage_type value_{0ULL};
 };
 static_assert(ioj::valid_packed_value_layout<FunctionFlags>());
+
 } // namespace lispb::codegen
