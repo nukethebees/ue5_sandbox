@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <exception>
 #include <string>
+#include <vector>
 
 namespace ioj::layout::analysis_detail {
 namespace {
@@ -90,6 +91,31 @@ void
     auto const& children{types.definitions().children};
     std::uint64_t payload_mask{};
     std::uint64_t reserved_mask{};
+    std::vector<std::uint64_t> child_payload(layout.placements.size());
+    std::vector<std::uint64_t> child_reserved(layout.placements.size());
+    for (auto index{layout.placements.size()}; index != 0;) {
+        --index;
+        auto const& placement{layout.placements[index]};
+        if (placement.offset >= 64 || placement.extent > 64 - placement.offset) {
+            continue;
+        }
+        auto const mask{placement.extent == 64
+                            ? ~std::uint64_t{}
+                            : ((std::uint64_t{1} << placement.extent) - 1) << placement.offset};
+        if (placement.reserved) {
+            child_reserved[index] |= mask;
+        } else {
+            // Exclude nested reserved regions unless another alternative uses their bits.
+            child_payload[index] |= mask & ~(child_reserved[index] & ~child_payload[index]);
+        }
+        if (placement.parent) {
+            child_payload[*placement.parent] |= child_payload[index];
+            child_reserved[*placement.parent] |= child_reserved[index];
+        } else {
+            payload_mask |= child_payload[index];
+            reserved_mask |= child_reserved[index];
+        }
+    }
     for (auto const& placement : layout.placements) {
         auto const child{children.index(placement.child)};
         auto const row{fields.append()};
@@ -116,16 +142,6 @@ void
         columns.least_significant_bit()[row] = placement.offset;
         if (placement.extent != 0) {
             columns.most_significant_bit()[row] = placement.offset + placement.extent - 1;
-        }
-        if (placement.offset < 64 && placement.extent <= 64 - placement.offset) {
-            auto const mask{placement.extent == 64
-                                ? ~std::uint64_t{}
-                                : ((std::uint64_t{1} << placement.extent) - 1) << placement.offset};
-            if (placement.reserved) {
-                reserved_mask |= mask;
-            } else {
-                payload_mask |= mask;
-            }
         }
         if (placement.reserved) {
             continue;

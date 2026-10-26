@@ -157,10 +157,11 @@ TEST(WorkspaceVariants, NestedArrayPathsFollowRootMemberRenames) {
     EditorSession editor;
     auto doc{editor.from_source(R"((module game
         (integer-scalar Value :bit-width 4)
-        (record Sample (member value @Value))
+        (record Sample (member value @Value) (member value_extra @Value))
         (record Storage :layout packed
             (member samples @Sample :count 2)
-            (member samples_extra @Value))))")};
+            (member samples_extra @Value)
+            (member again_payload @Sample))))")};
     ASSERT_TRUE(doc.valid()) << diagnostic_messages(editor);
     auto create{doc.transaction()};
     create.create_variant("Expanded");
@@ -169,21 +170,65 @@ TEST(WorkspaceVariants, NestedArrayPathsFollowRootMemberRenames) {
     auto edit{doc.transaction()};
     edit.set_variant_field_bits(variant, "game", "Storage", "samples.value", 6);
     edit.set_variant_field_bits(variant, "game", "Storage", "samples_extra", 8);
+    edit.set_variant_field_bits(variant, "game", "Storage", "again_payload.value", 6);
+    edit.set_access_set("game",
+                        "Storage",
+                        {{"samples_0_value", AccessOperation::read},
+                         {"samples_1_value", AccessOperation::write},
+                         {"samples_0_value_extra", AccessOperation::read},
+                         {"samples_extra", AccessOperation::write},
+                         {"again_payload_value", AccessOperation::read}});
     edit.rename_member("game", "Storage", "samples", "items");
+    edit.rename_member("game", "Sample", "value", "code");
     ASSERT_TRUE(doc.commit(edit)) << diagnostic_messages(editor);
     auto const& settings{doc.variants().settings(variant)};
-    ASSERT_EQ(settings.field_names.size(), 2);
-    EXPECT_EQ(doc.types().strings().view(settings.field_names[0]), "items.value");
+    ASSERT_EQ(settings.field_names.size(), 3);
+    EXPECT_EQ(doc.types().strings().view(settings.field_names[0]), "items.code");
     EXPECT_EQ(doc.types().strings().view(settings.field_names[1]), "samples_extra");
+    EXPECT_EQ(doc.types().strings().view(settings.field_names[2]), "again_payload.code");
+    auto const owner{
+        doc.find_declaration(doc.types().identity(*doc.find_type("game", "Storage"))).value()};
+    auto const& accesses{doc.analysis_settings().access_sets.at(owner)};
+    EXPECT_TRUE(accesses.contains("items_0_code"));
+    EXPECT_TRUE(accesses.contains("items_1_code"));
+    EXPECT_TRUE(accesses.contains("items_0_value_extra"));
+    EXPECT_TRUE(accesses.contains("samples_extra"));
+    EXPECT_TRUE(accesses.contains("again_payload_code"));
+    EXPECT_EQ(accesses.size(), 5);
     auto invalid{doc.transaction()};
     invalid.set_variant_field_bits(variant, "game", "Storage", "items_0_value", 7);
     EXPECT_FALSE(doc.commit(invalid));
-    EXPECT_EQ(doc.variants().settings(variant).field_names.size(), 2);
+    EXPECT_EQ(doc.variants().settings(variant).field_names.size(), 3);
     auto erase{doc.transaction()};
     erase.delete_member("game", "Storage", "items");
     ASSERT_TRUE(doc.commit(erase)) << diagnostic_messages(editor);
-    ASSERT_EQ(doc.variants().settings(variant).field_names.size(), 1);
+    ASSERT_EQ(doc.variants().settings(variant).field_names.size(), 2);
     EXPECT_EQ(doc.types().strings().view(doc.variants().settings(variant).field_names[0]),
               "samples_extra");
+    EXPECT_EQ(doc.analysis_settings().access_sets.at(owner).size(), 2);
+    auto erase_nested{doc.transaction()};
+    erase_nested.delete_member("game", "Sample", "code");
+    ASSERT_TRUE(doc.commit(erase_nested)) << diagnostic_messages(editor);
+    EXPECT_EQ(doc.variants().settings(variant).field_names.size(), 1);
+    EXPECT_EQ(doc.analysis_settings().access_sets.at(owner).size(), 1);
+    ASSERT_TRUE(doc.undo());
+    EXPECT_EQ(doc.variants().settings(variant).field_names.size(), 2);
+    ASSERT_TRUE(doc.redo());
+    EXPECT_EQ(doc.variants().settings(variant).field_names.size(), 1);
+
+    auto union_doc{editor.from_source(R"((module options
+        (integer-scalar Value :bit-width 4)
+        (union Choice :layout packed (member option @Value))))")};
+    ASSERT_TRUE(union_doc.valid()) << diagnostic_messages(editor);
+    auto create_union_variant{union_doc.transaction()};
+    create_union_variant.create_variant("Expanded");
+    ASSERT_TRUE(union_doc.commit(create_union_variant));
+    auto const union_variant{union_doc.variants().ids().back()};
+    auto union_edit{union_doc.transaction()};
+    union_edit.set_variant_packed_storage(union_variant, "options", "Choice", "std::uint16_t");
+    union_edit.set_variant_field_bits(union_variant, "options", "Choice", "option", 8);
+    ASSERT_TRUE(union_doc.commit(union_edit)) << diagnostic_messages(editor);
+    EXPECT_EQ(union_doc.variants().settings(union_variant).field_widths,
+              (std::vector<std::uint32_t>{8}));
 }
 } // namespace ioj::layout::workspace_tests

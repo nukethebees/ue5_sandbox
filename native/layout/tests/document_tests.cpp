@@ -690,9 +690,9 @@ TEST(DocumentEdit, DiscriminatorRenamesPreserveCaseBindings) {
     auto doc{editor.from_source(R"(
         (module instructions
             (integer-scalar Index :bit-width 24)
-            (enum Opcode :bit-width 2 (value Kill))
+            (enum Opcode :bit-width 2 (value Kill) (value Target))
             (record Target (member index @Index))
-            (union Payload (case Kill @Target))
+            (union Payload (case Kill @Target) (member custom @Target))
             (record Instruction :layout packed
                 (member opcode @Opcode)
                 (member payload @Payload :tag opcode))))")};
@@ -701,10 +701,14 @@ TEST(DocumentEdit, DiscriminatorRenamesPreserveCaseBindings) {
 
     auto edit{doc.transaction()};
     edit.rename_member("instructions", "Instruction", "opcode", "operation");
+    edit.rename_member("instructions", "Payload", "custom", "renamed");
     edit.rename_enumerator("instructions", "Opcode", "Kill", "Destroy");
+    edit.rename_enumerator("instructions", "Opcode", "Target", "Aim");
     ASSERT_TRUE(doc.commit(edit)) << diagnostic_messages(editor);
     EXPECT_TRUE(doc.declaration_source("instructions", "Instruction")->contains(":tag operation"));
     EXPECT_TRUE(doc.declaration_source("instructions", "Payload")->contains(":case Destroy"));
+    EXPECT_TRUE(doc.declaration_source("instructions", "Payload")->contains("member renamed"));
+    EXPECT_TRUE(doc.declaration_source("instructions", "Payload")->contains(":case Aim"));
     ASSERT_TRUE(doc.undo());
     EXPECT_EQ(doc.declaration_source("instructions", "Payload"), original);
     ASSERT_TRUE(doc.redo()) << diagnostic_messages(editor);

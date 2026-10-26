@@ -52,6 +52,9 @@ INSTANTIATE_TEST_SUITE_P(
                        "(record Value :layout packed (member bits @LayoutEditValue :bits 8)\n    "
                        "(projections (cpp :storage std::uint8_t)))",
                        {DeclarationKind::packed, true, true, true, true}},
+        CapabilityCase{"PackedUnion",
+                       "(union Value :layout packed @LayoutEditValue (projections (cpp)))",
+                       {DeclarationKind::packed, true, true, true, true}},
         CapabilityCase{"StandardSoa",
                        "(struct Value (member values array float))",
                        {DeclarationKind::soa, true, true, true, true}}),

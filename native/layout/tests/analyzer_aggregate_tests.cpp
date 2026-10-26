@@ -6,6 +6,26 @@ namespace ioj::layout::analyzer_aggregate_tests {
 
 class AggregateAnalysisTest : public AnalysisTest {};
 
+TEST(AggregateAnalysis, LogicalOnlyRecordsAndUnionsReportUnavailableAccessLayout) {
+    EditorSession editor;
+    auto const document{editor.from_source(R"((module game
+        (record LogicalRecord (member value std::uint8_t))
+        (union LogicalUnion (member value std::uint8_t))))")};
+    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
+    AnalysisStorage storage;
+    AnalysisContext context{document, storage};
+    AccessSet const accesses{{"value", AccessOperation::read}};
+    for (auto const name : {"LogicalRecord", "LogicalUnion"}) {
+        auto const run{run_analysis(context, name, {.accesses = &accesses}, true)};
+        ASSERT_TRUE(run.access);
+        EXPECT_EQ(storage.workloads.selections()[run.access->value].count, 0);
+        EXPECT_FALSE(storage.workloads.storage_bytes()[run.access->value]);
+        EXPECT_FALSE(storage.types.aggregate()[run.analysis.value]);
+        EXPECT_TRUE(diagnostic_messages(editor).contains(
+            "Access analysis requires a physical layout projection."));
+    }
+}
+
 TEST_P(AggregateAnalysisTest, ReportsLayoutAndAccessFacts) {
     verify_case();
 }

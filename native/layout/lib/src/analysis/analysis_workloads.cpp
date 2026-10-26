@@ -200,7 +200,11 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
     auto const& packed{storage.types.packed()[analysis.value]};
     auto const& aggregate{storage.types.aggregate()[analysis.value]};
     auto const& soa{storage.types.soa()[analysis.value]};
-    assert(packed || aggregate || soa);
+    if (!packed && !aggregate && !soa) {
+        context.report({DiagnosticSeverity::warning,
+                        "Access analysis requires a physical layout projection."});
+        return id;
+    }
     assert(request.abi != nullptr);
     auto const& memory{request.abi->memory_facts()};
     auto const cache_size{memory.cache_line_bytes && *memory.cache_line_bytes != 0

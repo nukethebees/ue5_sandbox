@@ -40,20 +40,23 @@ auto declaration_capabilities(lispb::schema::TypeGraph const& types,
         case optional_presence_bit: {
             return physical(DeclarationKind::optional_presence_bit);
         }
-        case record: {
+        case record:
+        case union_type: {
             auto const definition{types.definition(node)};
-            if (types.definitions().records.layout[types.definitions().records.index(definition)] ==
-                lispb::codegen::LayoutKind::packed) {
+            auto const& definitions{types.definitions()};
+            auto const layout{
+                definition.kind() == record
+                    ? definitions.records.layout[definitions.records.index(definition)]
+                    : definitions.unions.layout[definitions.unions.index(definition)]};
+            if (layout == lispb::codegen::LayoutKind::packed) {
                 return {.kind = DeclarationKind::packed,
                         .inspectable = true,
                         .editable = true,
                         .physical_analysis_available = true,
                         .supports_variant_overrides = true};
             }
-            return physical(DeclarationKind::record);
-        }
-        case union_type: {
-            return physical(DeclarationKind::union_);
+            return physical(definition.kind() == record ? DeclarationKind::record
+                                                        : DeclarationKind::union_);
         }
         case static_table: {
             return {.kind = DeclarationKind::static_table, .inspectable = true, .editable = true};

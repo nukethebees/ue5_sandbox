@@ -11,6 +11,8 @@
 
 #include <algorithm>
 #include <cassert>
+#include <charconv>
+#include <set>
 #include <stdexcept>
 #include <type_traits>
 
@@ -202,6 +204,154 @@ auto references_declaration(Manifest const& manifest,
         manifest, namespace_name(store, current), spelling, namespace_name(store, target), name);
 }
 
+struct ReferencedDeclaration {
+    ModuleHandle module;
+    DeclarationHandle declaration;
+};
+auto referenced_declaration(Manifest const& manifest, ModuleHandle module, TypeRefId reference)
+    -> std::optional<ReferencedDeclaration> {
+    for (auto const target_module : manifest.modules) {
+        if (target_module.kind() != ModuleKind::normal) {
+            continue;
+        }
+        for (auto const target : declarations_of(manifest.declarations, target_module)) {
+            if (references_declaration(manifest, module, reference, target_module, target)) {
+                return ReferencedDeclaration{target_module, target};
+            }
+        }
+    }
+    return {};
+}
+auto packed_declaration(Declarations const& store, DeclarationHandle declaration) -> bool {
+    return (declaration.kind() == DeclarationKind::record &&
+            store.records.layout[declaration] == LayoutKind::packed) ||
+           (declaration.kind() == DeclarationKind::union_type &&
+            store.unions.layout[declaration] == LayoutKind::packed);
+}
+
+void repair_member_metadata(DocumentState& state,
+                            Manifest const& manifest,
+                            DeclarationHandle changed,
+                            std::string_view before,
+                            std::optional<std::string_view> after) {
+    auto& store{manifest.declarations};
+    auto& strings{store.strings()};
+    auto const& children{store.child_occurrences};
+    auto update = [&](auto owner,
+                      std::string const& path,
+                      std::string const& renamed,
+                      std::string const& source,
+                      std::string const& renamed_source) {
+        if (after) {
+            state.analysis_settings.rename_member(owner, path, renamed);
+            state.variants.rename_member(strings,
+                                         owner,
+                                         strings.intern_retained(source),
+                                         strings.intern_retained(renamed_source));
+        } else {
+            state.analysis_settings.erase_member(owner, path);
+            state.variants.erase_member(strings, owner, strings.intern_retained(source));
+        }
+    };
+    auto const join = [](std::string const& prefix, std::string_view name, char separator) {
+        return prefix.empty() ? std::string{name} : prefix + separator + std::string{name};
+    };
+    for (auto const module : manifest.modules) {
+        if (module.kind() != ModuleKind::normal) {
+            continue;
+        }
+        for (auto const root : declarations_of(store, module)) {
+            auto const owner{state.declaration_ids.at(root)};
+            if (!packed_declaration(store, root)) {
+                if (root == changed) {
+                    update(owner,
+                           std::string{before},
+                           std::string{after.value_or(before)},
+                           std::string{before},
+                           std::string{after.value_or(before)});
+                }
+                continue;
+            }
+            std::vector<DeclarationHandle> active;
+            auto walk = [&](auto&& self,
+                            ReferencedDeclaration current,
+                            std::string path,
+                            std::string renamed_path,
+                            std::string source,
+                            std::string renamed_source,
+                            bool affected) -> void {
+                if (std::ranges::find(active, current.declaration) != active.end()) {
+                    return;
+                }
+                auto const kind{current.declaration.kind()};
+                if (kind != DeclarationKind::record && kind != DeclarationKind::union_type) {
+                    return;
+                }
+                active.push_back(current.declaration);
+                auto const range{kind == DeclarationKind::record
+                                     ? store.records.members[current.declaration]
+                                     : store.unions.alternatives[current.declaration]};
+                for (auto const child : store.items(range)) {
+                    auto const name{std::string{strings.view(children.name[child])}};
+                    auto const matches{current.declaration == changed && name == before};
+                    auto const renamed{matches && after ? std::string{*after} : name};
+                    auto const child_source{join(source, name, '.')};
+                    auto const renamed_child_source{join(renamed_source, renamed, '.')};
+                    std::set<std::uint64_t> elements{0};
+                    if (children.count[child]) {
+                        auto const accesses{state.analysis_settings.access_sets.find(owner)};
+                        auto const prefix{join(path, soa_namespace_name(name), '_') + "_"};
+                        if (accesses != state.analysis_settings.access_sets.end()) {
+                            for (auto const& [key, operation] : accesses->second) {
+                                if (!key.starts_with(prefix)) {
+                                    continue;
+                                }
+                                std::uint64_t element{};
+                                auto const end{key.data() + key.size()};
+                                auto const parsed{
+                                    std::from_chars(key.data() + prefix.size(), end, element)};
+                                if (parsed.ec == std::errc{} &&
+                                    (parsed.ptr == end || *parsed.ptr == '_') &&
+                                    element < *children.count[child]) {
+                                    elements.insert(element);
+                                }
+                            }
+                        }
+                    }
+                    for (auto const element : elements) {
+                        auto const suffix{children.count[child] ? "_" + std::to_string(element)
+                                                                : ""};
+                        auto const child_path{join(path, soa_namespace_name(name), '_') + suffix};
+                        auto const renamed_child_path{
+                            join(renamed_path, soa_namespace_name(renamed), '_') + suffix};
+                        if (affected || matches) {
+                            update(owner,
+                                   child_path,
+                                   renamed_child_path,
+                                   child_source,
+                                   renamed_child_source);
+                        }
+                        if (children.kind[child] != ChildOccurrenceKind::reserved) {
+                            if (auto const target{referenced_declaration(
+                                    manifest, current.module, children.type[child])}) {
+                                self(self,
+                                     *target,
+                                     child_path,
+                                     renamed_child_path,
+                                     child_source,
+                                     renamed_child_source,
+                                     affected || matches);
+                            }
+                        }
+                    }
+                }
+                active.pop_back();
+            };
+            walk(walk, {module, root}, {}, {}, {}, {}, false);
+        }
+    }
+}
+
 void rename_discriminator_case(DocumentState& state,
                                Manifest& manifest,
                                ModuleHandle enum_module,
@@ -270,8 +420,20 @@ void rename_discriminator_case(DocumentState& state,
             bool renamed_case{};
             for (auto& alternative : alternatives) {
                 auto const row{children.index(alternative)};
-                auto const label{children.case_label[row].value_or(children.name[row])};
-                if (store.strings().view(label) == before) {
+                auto label{children.case_label[row]};
+                if (!label) {
+                    if (auto const target{
+                            referenced_declaration(manifest, module, children.type[row])}) {
+                        label = declaration_name(store, target->declaration);
+                    } else {
+                        auto name{store.strings().view(store.type_refs.name[children.type[row]])};
+                        if (name.starts_with('@')) {
+                            name.remove_prefix(1);
+                        }
+                        label = store.strings().intern(name);
+                    }
+                }
+                if (store.strings().view(*label) == before) {
                     alternative = children.clone(alternative);
                     children.case_label[children.index(alternative)] =
                         store.strings().intern(after);
@@ -888,9 +1050,8 @@ void Transaction::apply(DocumentState& state, Manifest& manifest, std::size_t en
             auto const identity{state.declaration_ids.at(declaration)};
             if (kind == TransactionKind::variant_packed_storage ||
                 kind == TransactionKind::variant_field_bits) {
-                if (declaration.kind() != DeclarationKind::record ||
-                    store.records.layout[store.records.index(declaration)] != LayoutKind::packed) {
-                    throw std::invalid_argument{"Expected a packed record declaration"};
+                if (!packed_declaration(store, declaration)) {
+                    throw std::invalid_argument{"Expected a packed record or union declaration"};
                 }
                 if (kind == TransactionKind::variant_field_bits) {
                     state.variants.set_field_width(
@@ -1094,11 +1255,11 @@ void Transaction::apply(DocumentState& state, Manifest& manifest, std::size_t en
         }
         auto replacement{previous};
         if (kind == TransactionKind::packed_storage) {
+            if (!packed_declaration(store, previous)) {
+                throw std::invalid_argument{"Expected a packed record or union declaration"};
+            }
             auto edit_storage = [&](auto& schemas) {
                 auto const row{schemas.index(previous)};
-                if (schemas.layout[row] != LayoutKind::packed) {
-                    throw std::invalid_argument{"Expected a packed layout"};
-                }
                 auto const& old{schemas.cpp_projection[row]};
                 if (old &&
                     ((!old->storage && text == "auto") ||
@@ -1244,11 +1405,6 @@ void Transaction::apply(DocumentState& state, Manifest& manifest, std::size_t en
                             columns.kind[row] = SoaMemberKind::array;
                         }
                     } else {
-                        if (kind == TransactionKind::rename_member &&
-                            previous.kind() == DeclarationKind::union_type &&
-                            !columns.case_label[row]) {
-                            columns.case_label[row] = strings.intern(child_name);
-                        }
                         if (kind == TransactionKind::member_bits &&
                             columns.bits[columns.index(*found)] == number) {
                             return;
@@ -1291,19 +1447,10 @@ void Transaction::apply(DocumentState& state, Manifest& manifest, std::size_t en
         if (replacement != previous) {
             state.inherit_declaration(previous, replacement);
             if (kind == TransactionKind::rename_member) {
-                state.analysis_settings.rename_member(
-                    state.declaration_ids.at(previous), child_name, text);
-                state.variants.rename_member(strings,
-                                             state.declaration_ids.at(previous),
-                                             strings.intern_retained(child_name),
-                                             strings.intern_retained(text));
+                repair_member_metadata(state, manifest, previous, child_name, text);
             }
             if (kind == TransactionKind::delete_member) {
-                state.analysis_settings.erase_member(state.declaration_ids.at(previous),
-                                                     child_name);
-                state.variants.erase_member(strings,
-                                            state.declaration_ids.at(previous),
-                                            strings.intern_retained(child_name));
+                repair_member_metadata(state, manifest, previous, child_name, {});
             }
             if (kind == TransactionKind::rename_member) {
                 state.comments.rename_child(replacement, "member", child_name, text);

@@ -48,6 +48,29 @@ TEST(AnalysisStrings, RetainsInternedTextAcrossGrowthAndReanalysis) {
 
 class PackedAnalysisTest : public AnalysisTest {};
 
+TEST(PackedAnalysis, NestedReservedBitsRemainReservedUnlessAnotherAlternativeUsesThem) {
+    EditorSession editor;
+    auto const document{editor.from_source(R"((module game :header "Game.h"
+        (integer-scalar Code :bit-width 4)
+        (record Inner :layout packed (member code @Code) (reserved future :bits 4))
+        (record Value :layout packed (member inner @Inner) (projections (cpp)))
+        (union Choices (member padded @Inner) (member full std::uint8_t))
+        (record Overlapping :layout packed (member choice @Choices) (projections (cpp)))))")};
+    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
+    AnalysisStorage storage;
+    AnalysisContext context{document, storage};
+    auto const run{run_analysis(context)};
+    auto const& result{storage.types.packed()[run.analysis.value].value()};
+    EXPECT_EQ(result.payload_bits, 4);
+    EXPECT_EQ(result.reserved_bits, 4);
+    EXPECT_EQ(result.unused_bits, 0);
+    auto const overlapping{run_analysis(context, "Overlapping")};
+    auto const& union_result{storage.types.packed()[overlapping.analysis.value].value()};
+    EXPECT_EQ(union_result.payload_bits, 8);
+    EXPECT_EQ(union_result.reserved_bits, 0);
+    EXPECT_EQ(union_result.unused_bits, 0);
+}
+
 TEST(PackedAnalysis, UsesResolvedNestedPlacementsAndDeduplicatesOverlappingAccesses) {
     EditorSession editor;
     auto const document{editor.from_source(R"((module game :header "Game.h"
