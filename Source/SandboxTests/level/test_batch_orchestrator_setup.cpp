@@ -190,10 +190,10 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
         auto report{orchestrator.take_finalized_telemetry_report()};
         if (checks.is_true(report.IsSet(), TEXT("Terminal frame produces a telemetry report"))) {
             checks.are_equal(uint64{8},
-                             report->run.completion.completed_ticks,
+                             report->run.completion.completed_ticks.value(),
                              TEXT("Telemetry retains the final resolved tick"));
             checks.is_true(!report->run.battle_samples.empty() &&
-                               report->run.battle_samples.back().completed_tick == 8,
+                               report->run.battle_samples.back().completed_tick.value() == 8,
                            TEXT("Terminal battle sample observes the final resolved tick"));
         }
         checks.is_true(!orchestrator.take_finalized_telemetry_report().IsSet(),

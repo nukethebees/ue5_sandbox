@@ -108,7 +108,7 @@ void FWorldlessSimulationTest::queue_kills(std::span<sim::EntityId const> const 
     for (auto const target : targets) {
         auto const state{sim::observe_entity(simulation_, target)};
         check(state);
-        events.add(target, FMath::Max(1, state->health), instigator);
+        events.add(target, FMath::Max(1, state->health.value()), instigator);
     }
     sim::LevelSimTestAccess::queue_direct_damage_events(simulation_, events.get_const_view());
 }

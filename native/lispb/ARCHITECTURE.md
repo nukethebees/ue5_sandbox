@@ -222,18 +222,28 @@ completed record in debug builds, without generating a Cartesian product of case
 Discriminators have no independent setter. Alternative getters/setters assert their guards in debug
 builds; release access consists of integer operations. Untagged union validity accepts any valid
 alternative. Tagged owners without a complete default have a deleted default constructor.
+Explicit untagged-union defaults select the first complete alternative; overlapping alternative
+defaults are never combined. Ordinary zero/invalid-sentinel defaults retain their existing behavior.
 
 `fixed-point`, `linear-quantized`, `mini-float`, and optional encodings participate in the same
 layout. Fixed-point fields expose raw integers and explicit floating conversion helpers. Quantized,
 mini-float, and optional fields expose encoded integers. Variable-length integer encodings have no
 fixed-width packed C++ projection.
 
+`tests/packed_performance_probes.cpp` compares generated nested access, mutation, factories and array
+loops with handwritten masks. Compile it with optimization, `NDEBUG`, and LTO disabled, then run
+`python native/lispb/tests/check_packed_assembly.py <assembly files>`. The checker accepts Clang/GCC
+Intel assembly and MSVC `/FA` output, rejects calls, branches, memory accesses and spills in scalar
+probes, and checks array vectorization. It reports instruction and memory-operand counts without
+requiring identical assembly. `tests/entity_id_performance_probes.cpp` supports historical production
+comparisons using the checker's `--entity-id-baseline` and `--entity-id-candidate` arguments.
+
 ## C++ projections and integer scalars
 
 Logical scalar, enum, record and union declarations emit C++ only with `(projections (cpp))`.
 SoA, settings, static-table and facade declarations retain their own output contracts. A module
-containing only logical declarations does not need an output header. Unreal enum projection is
-enum-specific and independent of requesting the native C++ enum.
+containing only logical declarations does not need an output header. Unreal enum projection remains
+enum-specific and requires the native C++ projection used by its conversion helpers.
 
 `(cpp :storage auto)` is the default; `std::uint8_t`, `std::uint16_t`, `std::uint32_t` or
 `std::uint64_t` can select wider owning storage. The storage must contain the full encoding.

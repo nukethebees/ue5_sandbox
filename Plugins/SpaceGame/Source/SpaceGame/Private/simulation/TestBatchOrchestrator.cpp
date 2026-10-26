@@ -454,8 +454,8 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
             if (groups.types()[group] != ::ioj::sim::EntityType::Turret) {
                 continue;
             }
-            auto const turrets{schedule.turret_spawns.get_const_view(groups.offsets()[group],
-                                                                     groups.counts()[group])};
+            auto const turrets{schedule.turret_spawns.get_const_view(
+                groups.offsets()[group], groups.counts()[group].value())};
             auto const turret_count{static_cast<int32>(turrets.num())};
             for (int32 i{}; i < turret_count; ++i) {
                 initial_turret_transforms_.Emplace(

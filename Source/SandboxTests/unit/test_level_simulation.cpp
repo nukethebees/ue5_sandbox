@@ -52,12 +52,17 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
     data.capital_ships.fighter_spawn_slots = 0;
     auto& spawn_storage{data.level_events.schedule.capital_spawns};
     data.level_events.schedule.add_initial_spawn_group(::ioj::sim::EntityType::CapitalShip, 0, 2);
-    auto const add_capital{[&](ioj::sim::LevelEntityIndex const entity,
-                               ioj::Team const team,
-                               float const x) {
-        spawn_storage.add(
-            entity, ioj::sim::invalid_level_entity_index, {x, 0.f, 0.f}, {}, team, 100, 60.f, 60.f);
-    }};
+    auto const add_capital{
+        [&](ioj::sim::LevelEntityIndex const entity, ioj::Team const team, float const x) {
+            spawn_storage.add(entity,
+                              ioj::sim::invalid_level_entity_index,
+                              {x, 0.f, 0.f},
+                              {},
+                              team,
+                              ioj::sim::Health{100},
+                              60.f,
+                              60.f);
+        }};
     add_capital(0, ioj::Team::Green, -1000.f);
     add_capital(1, ioj::Team::White, 1000.f);
 
@@ -719,8 +724,8 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
                   round_trip->run.metadata.run_id,
                   report.run.metadata.run_id);
         TestEqual(TEXT("Round trip preserves completed ticks"),
-                  round_trip->run.completion.completed_ticks,
-                  report.run.completion.completed_ticks);
+                  round_trip->run.completion.completed_ticks.value(),
+                  report.run.completion.completed_ticks.value());
         auto const& actual{round_trip->run.battle_samples};
         auto const& expected{report.run.battle_samples};
         TestTrue(TEXT("Round trip preserves force and combat history"),
@@ -815,7 +820,8 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     completion_json->SetField(TEXT("completed_ticks"), original_completed_ticks);
 
     auto precision_unsafe_report{report};
-    precision_unsafe_report.run.completion.completed_ticks = 9007199254740994ULL;
+    precision_unsafe_report.run.completion.completed_ticks =
+        ::ioj::sim::SimTick{9007199254740994ULL};
     TestTrue(TEXT("Serialization rejects precision-unsafe uint64 values"),
              !ioj::sim::serialize_level_telemetry_report(precision_unsafe_report).has_value());
 

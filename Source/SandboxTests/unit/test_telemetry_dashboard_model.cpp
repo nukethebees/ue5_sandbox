@@ -46,7 +46,7 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
     TEST_METHOD(MissingBattleSamplesDoNotInventMetrics)
     {
         ioj::sim::LevelTelemetryReport record;
-        record.run.completion.completed_ticks = 270;
+        record.run.completion.completed_ticks = ioj::sim::SimTick{270};
         record.run.tick_series.spawned_entities.add(0, 0);
         record.run.tick_series.spawned_entities.add(90, 10);
         record.run.tick_series.spawned_entities.add(150, 20);

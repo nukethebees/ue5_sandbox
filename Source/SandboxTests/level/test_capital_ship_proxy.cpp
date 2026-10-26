@@ -30,7 +30,7 @@ void FTestCapitalShipProxyScenario::spawn_proxies(UWorld& world,
                                                   USpaceGameLevelConfig const& config) {
     auto const* const capital_config{&config.capital_ships};
 
-    default_health = capital_config->simulation.max_health;
+    default_health = capital_config->simulation.max_health.value();
     overridden_health = default_health + 1234;
 
     spawn_capital_proxy(world, config, checks, default_health_capital_name, FVector::ZeroVector);
@@ -83,10 +83,10 @@ void FTestCapitalShipProxyScenario::check_proxy_healths() {
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
     checks.are_equal(default_health,
-                     sim::observe_entity(simulation, default_health_id)->health,
+                     sim::observe_entity(simulation, default_health_id)->health.value(),
                      TEXT("Nullopt proxy health uses the capital-ship config"));
     checks.are_equal(overridden_health,
-                     sim::observe_entity(simulation, overridden_health_id)->health,
+                     sim::observe_entity(simulation, overridden_health_id)->health.value(),
                      TEXT("Proxy health overrides the capital-ship config"));
 
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
