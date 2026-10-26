@@ -783,38 +783,51 @@ auto US7LevelAuthoringMode::prepare_source_replay() -> bool {
 }
 
 auto US7LevelAuthoringMode::apply_current_source(bool const require_review) -> bool {
-    auto previous{preview_};
-    if (require_review && previous.IsSet()) {
+    struct ReviewedInputs {
+        FString evaluated_source;
+        FString evaluated_base_settings_source;
+        ioj::settings::Settings settings;
+    };
+    TOptional<ReviewedInputs> previous_inputs;
+    if (require_review && preview_.IsSet()) {
         auto* const level{current_level()};
         if (!IsValid(level) || !document_.IsValid()) {
             return false;
         }
         auto const current{
-            validate_s7_level_authoring_preview(*level, *document_, source_session_, *previous)};
+            validate_s7_level_authoring_preview(*level, *document_, source_session_, *preview_)};
         if (!current) {
             clear_preview(PreviewState::Stale);
             set_status(FText::FromString(current.error().message));
             notify_changed();
             return false;
         }
+        if (preview_->plan.sources.IsSet()) {
+            previous_inputs = ReviewedInputs{preview_->plan.sources->evaluated_source,
+                                             preview_->plan.sources->evaluated_base_settings_source,
+                                             preview_->plan.definition.settings()};
+        }
     }
+
     preview_apply();
     auto* const level{current_level()};
     if (!IsValid(level) || !document_.IsValid() || !preview_.IsSet()) {
         return false;
     }
-    auto const changed_inputs{
-        !previous.IsSet() || !previous->plan.sources.IsSet() ||
-        previous->plan.sources->evaluated_source != preview_->plan.sources->evaluated_source ||
-        previous->plan.sources->evaluated_base_settings_source !=
-            preview_->plan.sources->evaluated_base_settings_source ||
-        previous->plan.definition.settings() != preview_->plan.definition.settings()};
-    if (require_review && changed_inputs) {
-        set_status(LOCTEXT(
-            "ReplayChangedPreview",
-            "The saved source inputs changed. Review the refreshed preview, then apply it."));
-        notify_changed();
-        return false;
+    if (require_review) {
+        auto const changed_inputs{
+            !previous_inputs.IsSet() ||
+            previous_inputs->evaluated_source != preview_->plan.sources->evaluated_source ||
+            previous_inputs->evaluated_base_settings_source !=
+                preview_->plan.sources->evaluated_base_settings_source ||
+            previous_inputs->settings != preview_->plan.definition.settings()};
+        if (changed_inputs) {
+            set_status(LOCTEXT(
+                "ReplayChangedPreview",
+                "The saved source inputs changed. Review the refreshed preview, then apply it."));
+            notify_changed();
+            return false;
+        }
     }
     if (!require_review) {
         auto const candidate{
