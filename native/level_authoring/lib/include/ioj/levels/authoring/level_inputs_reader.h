@@ -40,6 +40,7 @@ struct TypeReader<levels::authoring::EntityInput> : RecordReader<levels::authori
             }),
             required);
     }
+
   private:
     using Field = value_type::Field;
 
@@ -95,6 +96,7 @@ struct TypeReader<levels::authoring::ObjectiveInput>
                              }),
                              required);
     }
+
   private:
     enum class Field : std::uint8_t {
         id,
@@ -131,6 +133,7 @@ struct TypeReader<levels::authoring::MissionInput> : RecordReader<levels::author
                              }),
                              required);
     }
+
   private:
     enum class Field : std::uint8_t {
         objectives,
@@ -183,6 +186,7 @@ struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authorin
                              }),
                              required);
     }
+
   private:
     enum class Field : std::uint8_t {
         id,
@@ -233,6 +237,7 @@ struct TypeReader<levels::authoring::IncludedLevelInput>
                              }),
                              required);
     }
+
   private:
     enum class Field : std::uint8_t {
         path,
@@ -266,6 +271,7 @@ struct TypeReader<levels::authoring::IncludedCampaignInput>
                              }),
                              required);
     }
+
   private:
     enum class Field : std::uint8_t {
         path,
@@ -292,6 +298,7 @@ struct TypeReader<levels::authoring::CatalogInput> : RecordReader<levels::author
                 }
             }));
     }
+
   private:
     enum class Field : std::uint8_t {
         levels,

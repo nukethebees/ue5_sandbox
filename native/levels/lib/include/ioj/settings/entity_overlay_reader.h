@@ -36,6 +36,7 @@ struct TypeReader<settings::EntityOverlay> : RecordReader<settings::EntityOverla
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 

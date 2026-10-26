@@ -844,7 +844,8 @@ TEST(SourceLoader, PackedDefaultsAreValidatedWithoutChangingImplicitSentinels) {
     EXPECT_EQ(default_raw("Invalid"), 255);
     auto const header{files.render(manifest).front().content};
     EXPECT_NE(header.find("Partial() noexcept = delete"), std::string::npos);
-    EXPECT_NE(header.find("return Partial{RawTag{}, raw}"), std::string::npos);
+    EXPECT_NE(header.find("return std::bit_cast<Partial>(raw)"), std::string::npos);
+    EXPECT_EQ(header.find("RawTag"), std::string::npos);
 }
 
 TEST(SourceLoader, IncludedExternalScalarsRetainExternalIdentityAndEnrichPlainReferences) {

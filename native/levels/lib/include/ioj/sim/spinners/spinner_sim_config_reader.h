@@ -29,6 +29,7 @@ struct TypeReader<sim::SpinnerSimConfig> : RecordReader<sim::SpinnerSimConfig> {
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 

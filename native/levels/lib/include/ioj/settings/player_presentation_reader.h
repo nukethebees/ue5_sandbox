@@ -22,6 +22,7 @@ struct TypeReader<settings::PlayerPresentation> : RecordReader<settings::PlayerP
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 

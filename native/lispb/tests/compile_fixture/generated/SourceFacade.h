@@ -15,6 +15,7 @@ class FSourceFacade {
     void set_value(std::int32_t const value);
 
     std::int32_t get() const;
+
   private:
     FTarget* target{nullptr};
 };

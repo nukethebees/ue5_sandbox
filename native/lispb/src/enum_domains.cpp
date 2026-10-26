@@ -128,6 +128,36 @@ auto EnumDomains::code(EnumDomainId const id, std::size_t const ordinal) const
     assert(ordinal < values_[row].size());
     return codes_[code_offsets_[row] + ordinal];
 }
+
+auto EnumDomains::contiguous_value_range(EnumDomainId const id) const
+    -> std::optional<ioj::MinMax<std::uint64_t>> {
+    auto const enumerators{values(id)};
+    auto const count{count_value[index(id)]};
+    std::vector<std::uint64_t> codes;
+    codes.reserve(enumerators.size());
+    auto const size{enumerators.size()};
+    for (std::size_t ordinal{}; ordinal < size; ++ordinal) {
+        if (enumerators[ordinal] == count) {
+            continue;
+        }
+        auto const value{code(id, ordinal)};
+        if (!value || value->negative) {
+            return std::nullopt;
+        }
+        codes.push_back(value->magnitude);
+    }
+    if (codes.empty()) {
+        return std::nullopt;
+    }
+    std::ranges::sort(codes);
+    auto const last{std::unique(codes.begin(), codes.end())};
+    auto const distinct{static_cast<std::uint64_t>(last - codes.begin())};
+    auto const maximum{*(last - 1)};
+    if (maximum - codes.front() != distinct - 1) {
+        return std::nullopt;
+    }
+    return ioj::MinMax<std::uint64_t>{codes.front(), maximum};
+}
 auto EnumDomains::issue_count(EnumDomainId const id) const -> std::uint32_t {
     return issue_ranges_[index(id)].count;
 }

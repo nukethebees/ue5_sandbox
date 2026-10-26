@@ -10,13 +10,12 @@
 #include "SignatureSecond.h"
 
 #include <array>
+#include <bit>
 #include <cassert>
 #include <compare>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
-#include <format>
-#include <functional>
 #include <type_traits>
 #include <utility>
 
@@ -64,7 +63,7 @@ struct CrossSettings {
         std::unreachable();
     }
 
-    codegen_compile_fixture::ActorSettings actor{};
+    ActorSettings actor{};
 };
 
 struct DefaultValue {
@@ -84,7 +83,7 @@ struct DefaultArguments {
 
     bool pointer(DefaultPointer* value = nullptr);
 
-    void cross(codegen_compile_fixture::second::B value = {});
+    void cross(second::B value = {});
 };
 
 struct MethodProvider {
@@ -109,43 +108,39 @@ union Payload {
 
 struct MethodCount {
   public:
+    // Storage and value
     using storage_type = std::uint8_t;
+    using packed_integer_tag = ioj::packed::scalar_tag;
+    static constexpr ioj::PackedStorage<storage_type, 8> storage{0};
     using value_type = std::uint8_t;
-    static constexpr int encoded_bits{8};
-    static constexpr int storage_bits{8};
-    static constexpr storage_type default_raw_value{};
-    using value_field = ioj::PackedField<storage_type, value_type, 0, encoded_bits>;
-    static constexpr value_type minimum_value{static_cast<value_type>(0ULL)};
-    static constexpr value_type maximum_value{static_cast<value_type>(255ULL)};
+    static constexpr ioj::PackedField<storage_type, value_type, 0, storage.encoded_bits>
+        value_layout{};
 
     constexpr MethodCount() noexcept = default;
-    explicit constexpr MethodCount(value_type const value) noexcept
-        : value_{ioj::packed_pack<value_field>(value)} {
-        assert(is_valid_value(value));
-    }
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> MethodCount {
-        MethodCount result;
-        result.value_ = raw;
-        return result;
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
-        return ioj::packed_extract<value_field>(value_);
-    }
-    constexpr void set_value(value_type const value) noexcept {
-        assert(is_valid_value(value));
-        value_ = ioj::packed_insert<value_field>(value_, value);
-    }
+    constexpr explicit MethodCount(value_type const value) noexcept
+        : value_{ioj::packed_pack<decltype(value_layout)>(value)} {}
+
+    [[nodiscard]] constexpr auto operator<=>(MethodCount const&) const noexcept = default;
+
     [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
         return true;
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return is_valid_value(value());
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> MethodCount {
+        return std::bit_cast<MethodCount>(raw);
     }
-    [[nodiscard]] constexpr auto operator<=>(MethodCount const&) const noexcept = default;
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
+        return ioj::packed_extract<decltype(value_layout)>(value_);
+    }
+    constexpr void set_value(value_type const value) noexcept {
+        value_ = ioj::packed_insert<decltype(value_layout)>(value_, value);
+    }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+
   private:
-    storage_type value_{default_raw_value};
+    storage_type value_{storage.default_raw_value};
 };
+
 static_assert(ioj::valid_packed_value_layout<MethodCount>());
 
 struct MethodConsumer {
@@ -181,11 +176,11 @@ struct ValueFactory {
 };
 
 struct CrossModuleReader {
-    codegen_compile_fixture::ApiPair make();
+    ApiPair make();
 
-    void accept(codegen_compile_fixture::ApiPair const& value);
+    void accept(ApiPair const& value);
 
-    auto pointer() -> codegen_compile_fixture::ApiPair*;
+    auto pointer() -> ApiPair*;
 };
 
 struct Uninitialized {
@@ -226,8 +221,8 @@ struct Event {
 
 struct NamespaceLookup {
     std::array<Position, 2> local;
-    codegen_compile_fixture::ApiPair parent;
-    codegen_compile_fixture::second::B sibling;
+    ApiPair parent;
+    second::B sibling;
 };
 
 struct HiddenLookup {
@@ -237,7 +232,7 @@ struct HiddenLookup {
 };
 
 struct ParameterLookup {
-    static Position select(int Position, codegen_compile_fixture::mixed::Position value) {
+    static Position select(int Position, mixed::Position value) {
         (void)Position;
         return value;
     }
@@ -254,24 +249,3 @@ template <>
 inline constexpr auto
     ioj::enum_strings<::codegen_compile_fixture::mixed::CrossSettings::Field, ioj::Name>{
         ioj::PackedStrings{"actor", std::array<std::uint8_t, 2>{0, 6}}};
-
-namespace std {
-template <typename Char>
-struct formatter<::codegen_compile_fixture::mixed::MethodCount, Char>
-    : formatter<::codegen_compile_fixture::mixed::MethodCount::value_type, Char> {
-    template <typename FormatContext>
-    auto format(::codegen_compile_fixture::mixed::MethodCount const& value,
-                FormatContext& context) const -> typename FormatContext::iterator {
-        return formatter<::codegen_compile_fixture::mixed::MethodCount::value_type, Char>::format(
-            value.value(), context);
-    }
-};
-template <>
-struct hash<::codegen_compile_fixture::mixed::MethodCount> {
-    [[nodiscard]] auto
-        operator()(::codegen_compile_fixture::mixed::MethodCount const& value) const noexcept
-        -> size_t {
-        return hash<::codegen_compile_fixture::mixed::MethodCount::value_type>{}(value.value());
-    }
-};
-}

@@ -25,6 +25,7 @@ struct TypeReader<levels::CampaignDefinition> : RecordReader<levels::CampaignDef
             }),
             required);
     }
+
   private:
     using Field = value_type::Field;
 

@@ -5,83 +5,49 @@
 
 #include "ioj/packed_value.h"
 
+#include <bit>
 #include <cassert>
 #include <compare>
-#include <cstddef>
 #include <cstdint>
-#include <format>
-#include <functional>
 
 namespace ioj::sim {
 struct ObjectiveId {
   public:
+    // Storage
     using storage_type = std::uint32_t;
-    static constexpr int encoded_bits{32};
-    static constexpr int storage_bits{32};
-    static constexpr storage_type default_raw_value{4294967295ULL};
-    using index_type = std::uint32_t;
-    using index_field = ioj::PackedField<storage_type, index_type, 0, 32>;
-    struct index_range_type {
-        index_type min;
-        index_type max;
-    };
-    static constexpr index_range_type index_range{static_cast<index_type>(0ULL),
-                                                  static_cast<index_type>(4294967295ULL)};
-    [[nodiscard]] static constexpr auto is_valid_index(index_type const) noexcept -> bool {
-        return true;
-    }
-    static constexpr storage_type invalid_value{4294967295ULL};
+    using packed_integer_tag = packed::integer_tag;
+    static constexpr PackedStorage<storage_type, 32> storage{4294967295};
+    static constexpr storage_type invalid_value{4294967295};
+
+    // index
+    static constexpr PackedField<storage_type, std::uint32_t, 0, 32> index_layout{};
 
     constexpr ObjectiveId() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> ObjectiveId {
-        return ObjectiveId{RawTag{}, raw};
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-
-    explicit constexpr ObjectiveId(index_type const index_value) noexcept
+    constexpr explicit ObjectiveId(decltype(index_layout)::value_type const index_value) noexcept
         : value_{0} {
-        assert((is_valid_index(index_value)));
-        value_ = ioj::packed_insert<index_field>(value_, index_value);
-        assert(value_ != invalid_value);
+        value_ = packed_insert<decltype(index_layout)>(value_, index_value);
+        assert((value_ != invalid_value));
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return value_ != invalid_value &&
-               ((is_valid_index(ioj::packed_extract<index_field>(value_))));
-    }
     [[nodiscard]] constexpr auto operator<=>(ObjectiveId const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto index() const noexcept -> index_type {
-        return ioj::packed_extract<index_field>(value_);
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> ObjectiveId {
+        return std::bit_cast<ObjectiveId>(raw);
     }
-    constexpr void set_index(index_type const value) noexcept {
-        assert((is_valid_index(value)));
-        value_ = ioj::packed_insert<index_field>(value_, value);
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return value_ != invalid_value;
     }
-  private:
-    struct RawTag {};
-    constexpr ObjectiveId(RawTag, storage_type raw) noexcept
-        : value_{raw} {}
-    storage_type value_{default_raw_value};
-};
-static_assert(ioj::valid_packed_value_layout<ObjectiveId>());
+    [[nodiscard]] constexpr auto index() const noexcept -> decltype(index_layout)::value_type {
+        return packed_extract<decltype(index_layout)>(value_);
+    }
+    constexpr void set_index(decltype(index_layout)::value_type const value) noexcept {
+        value_ = packed_insert<decltype(index_layout)>(value_, value);
+    }
 
+  private:
+    storage_type value_{storage.default_raw_value};
+};
+
+static_assert(valid_packed_value_layout<ObjectiveId>());
 } // namespace ioj::sim
-namespace std {
-template <typename Char>
-struct formatter<::ioj::sim::ObjectiveId, Char>
-    : formatter<::ioj::sim::ObjectiveId::storage_type, Char> {
-    template <typename FormatContext>
-    auto format(::ioj::sim::ObjectiveId const& value, FormatContext& context) const ->
-        typename FormatContext::iterator {
-        return formatter<::ioj::sim::ObjectiveId::storage_type, Char>::format(value.raw_value(),
-                                                                              context);
-    }
-};
-template <>
-struct hash<::ioj::sim::ObjectiveId> {
-    [[nodiscard]] auto operator()(::ioj::sim::ObjectiveId const& value) const noexcept -> size_t {
-        return hash<::ioj::sim::ObjectiveId::storage_type>{}(value.raw_value());
-    }
-};
-}

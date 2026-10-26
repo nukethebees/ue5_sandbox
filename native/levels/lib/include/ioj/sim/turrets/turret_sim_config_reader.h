@@ -30,6 +30,7 @@ struct TypeReader<sim::TurretSimConfig> : RecordReader<sim::TurretSimConfig> {
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 

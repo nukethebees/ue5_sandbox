@@ -10,13 +10,12 @@
 
 #include <compile_fixture/range_policy.hpp>
 
+#include <bit>
 #include <cassert>
 #include <compare>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
-#include <format>
-#include <functional>
 #include <optional>
 #include <type_traits>
 #include <utility>
@@ -24,43 +23,44 @@
 namespace codegen_compile_fixture {
 struct ReaderHealth {
   public:
+    // Storage and value
     using storage_type = std::uint8_t;
+    using packed_integer_tag = ioj::packed::scalar_tag;
+    static constexpr ioj::PackedStorage<storage_type, 8> storage{0};
     using value_type = std::uint8_t;
-    static constexpr int encoded_bits{8};
-    static constexpr int storage_bits{8};
-    static constexpr storage_type default_raw_value{};
-    using value_field = ioj::PackedField<storage_type, value_type, 0, encoded_bits>;
-    static constexpr value_type minimum_value{static_cast<value_type>(0ULL)};
-    static constexpr value_type maximum_value{static_cast<value_type>(100ULL)};
+    static constexpr ioj::PackedField<storage_type, value_type, 0, storage.encoded_bits>
+        value_layout{{static_cast<value_type>(0ULL), static_cast<value_type>(100ULL)}};
 
     constexpr ReaderHealth() noexcept = default;
-    explicit constexpr ReaderHealth(value_type const value) noexcept
-        : value_{ioj::packed_pack<value_field>(value)} {
-        assert(is_valid_value(value));
+    constexpr explicit ReaderHealth(value_type const value) noexcept
+        : value_{ioj::packed_pack<decltype(value_layout)>(value)} {
+        assert((is_valid_value(value)));
     }
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> ReaderHealth {
-        ReaderHealth result;
-        result.value_ = raw;
-        return result;
+
+    [[nodiscard]] constexpr auto operator<=>(ReaderHealth const&) const noexcept = default;
+
+    [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
+        return value <= value_layout.range.max;
+    }
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> ReaderHealth {
+        return std::bit_cast<ReaderHealth>(raw);
     }
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
-        return ioj::packed_extract<value_field>(value_);
+        return ioj::packed_extract<decltype(value_layout)>(value_);
     }
     constexpr void set_value(value_type const value) noexcept {
-        assert(is_valid_value(value));
-        value_ = ioj::packed_insert<value_field>(value_, value);
-    }
-    [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
-        return (value <= maximum_value);
+        assert((is_valid_value(value)));
+        value_ = ioj::packed_insert<decltype(value_layout)>(value_, value);
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return is_valid_value(value());
     }
-    [[nodiscard]] constexpr auto operator<=>(ReaderHealth const&) const noexcept = default;
+
   private:
-    storage_type value_{default_raw_value};
+    storage_type value_{storage.default_raw_value};
 };
+
 static_assert(ioj::valid_packed_value_layout<ReaderHealth>());
 
 struct ScalarSettings {
@@ -363,26 +363,6 @@ struct ActorSettings {
     std::optional<int> optional_limit{3};
 };
 } // namespace codegen_compile_fixture
-namespace std {
-template <typename Char>
-struct formatter<::codegen_compile_fixture::ReaderHealth, Char>
-    : formatter<::codegen_compile_fixture::ReaderHealth::value_type, Char> {
-    template <typename FormatContext>
-    auto format(::codegen_compile_fixture::ReaderHealth const& value, FormatContext& context) const
-        -> typename FormatContext::iterator {
-        return formatter<::codegen_compile_fixture::ReaderHealth::value_type, Char>::format(
-            value.value(), context);
-    }
-};
-template <>
-struct hash<::codegen_compile_fixture::ReaderHealth> {
-    [[nodiscard]] auto
-        operator()(::codegen_compile_fixture::ReaderHealth const& value) const noexcept -> size_t {
-        return hash<::codegen_compile_fixture::ReaderHealth::value_type>{}(value.value());
-    }
-};
-}
-
 namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::RangeValue::Field>() noexcept

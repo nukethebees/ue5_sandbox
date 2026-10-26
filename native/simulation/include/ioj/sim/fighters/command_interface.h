@@ -46,6 +46,7 @@ class CommandInterface {
     }
 
     std::span<EntityId const> get_target_ids() const noexcept { return fighters.get_target_ids(); }
+
   private:
     Sim& fighters;
 };

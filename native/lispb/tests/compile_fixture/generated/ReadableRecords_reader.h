@@ -18,6 +18,7 @@ struct TypeReader<codegen_compile_fixture::EmptyReadable>
     static void decode(DecodeContext context, value_type&) {
         decode_record<Field>(context, "empty", field_names, ([](Field, auto const&) {}));
     }
+
   private:
     enum class Field : std::uint8_t {
 
@@ -109,6 +110,7 @@ struct TypeReader<codegen_compile_fixture::DefaultReadable>
             }),
             required);
     }
+
   private:
     using Field = value_type::Field;
 
@@ -126,6 +128,7 @@ struct TypeReader<codegen_compile_fixture::RecursiveReadable>
                     result, selected, [&]<Field field>(auto& member) { read(member); });
             }));
     }
+
   private:
     using Field = value_type::Field;
 
@@ -175,6 +178,7 @@ struct TypeReader<codegen_compile_fixture::BoundedInteger>
                              }),
                              required);
     }
+
   private:
     enum class Field : std::uint8_t {
         value,
@@ -234,6 +238,7 @@ struct TypeReader<codegen_compile_fixture::ReadableChild>
                              }),
                              required);
     }
+
   private:
     using Field = value_type::Field;
 
@@ -355,6 +360,7 @@ struct TypeReader<codegen_compile_fixture::ReadableRecord>
             }),
             required);
     }
+
   private:
     using Field = value_type::Field;
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/min_max.h>
+
 #include <codegen/schema/declaration_handle.h>
 #include <codegen/schema/indices.h>
 #include <codegen/schema/schema_range.h>
@@ -32,6 +34,9 @@ struct EnumDomains {
     auto index(EnumDomainId id) const -> std::uint32_t;
     auto values(EnumDomainId id) const -> std::span<codegen::EnumeratorId const>;
     auto code(EnumDomainId id, std::size_t ordinal) const -> std::optional<EnumCode>;
+    // Include sentinel codes, exclude the count enumerator; gaps, unknowns and negatives have no
+    // range.
+    auto contiguous_value_range(EnumDomainId id) const -> std::optional<ioj::MinMax<std::uint64_t>>;
     auto issue_count(EnumDomainId id) const -> std::uint32_t;
     auto issue_severity(EnumDomainId id, std::size_t ordinal) const -> EnumDomainIssueSeverity;
     auto issue_message(EnumDomainId id, std::size_t ordinal) const -> std::string;

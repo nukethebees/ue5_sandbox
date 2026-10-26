@@ -28,6 +28,7 @@ struct TypeReader<sim::LaserWeaponSimConfig> : RecordReader<sim::LaserWeaponSimC
                                      });
                              }));
     }
+
   private:
     using Field = value_type::Field;
 

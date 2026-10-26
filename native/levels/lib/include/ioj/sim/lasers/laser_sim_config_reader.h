@@ -20,6 +20,7 @@ struct TypeReader<sim::LaserSimConfig> : RecordReader<sim::LaserSimConfig> {
                     result, selected, [&]<Field field>(auto& member) { read(member); });
             }));
     }
+
   private:
     using Field = value_type::Field;
 

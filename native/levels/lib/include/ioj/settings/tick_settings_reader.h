@@ -21,6 +21,7 @@ struct TypeReader<settings::TickSettings> : RecordReader<settings::TickSettings>
                     result, selected, [&]<Field field>(auto& member) { read(member); });
             }));
     }
+
   private:
     using Field = value_type::Field;
 

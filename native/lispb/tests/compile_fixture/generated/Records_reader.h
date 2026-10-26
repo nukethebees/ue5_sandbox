@@ -54,6 +54,7 @@ struct TypeReader<codegen_compile_fixture::ScalarSettings>
                              }),
                              required);
     }
+
   private:
     enum class Field : std::uint8_t {
         health,
@@ -77,6 +78,7 @@ struct TypeReader<codegen_compile_fixture::RangeValue>
             }),
             required);
     }
+
   private:
     using Field = value_type::Field;
 
@@ -95,6 +97,7 @@ struct TypeReader<codegen_compile_fixture::RangeSettings>
                     result, selected, [&]<Field field>(auto& member) { read(member); });
             }));
     }
+
   private:
     using Field = value_type::Field;
 
@@ -107,6 +110,7 @@ struct TypeReader<codegen_compile_fixture::EmptySettings>
     static void decode(DecodeContext context, value_type&) {
         decode_record<Field>(context, "empty-settings", field_names, ([](Field, auto const&) {}));
     }
+
   private:
     using Field = value_type::Field;
 
@@ -134,6 +138,7 @@ struct TypeReader<codegen_compile_fixture::WeaponSettings>
                              }),
                              required);
     }
+
   private:
     using Field = value_type::Field;
 
@@ -151,6 +156,7 @@ struct TypeReader<codegen_compile_fixture::ActorSettings>
                     result, selected, [&]<Field field>(auto& member) { read(member); });
             }));
     }
+
   private:
     using Field = value_type::Field;
 

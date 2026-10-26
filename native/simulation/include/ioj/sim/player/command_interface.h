@@ -72,6 +72,7 @@ class CommandInterface {
     void add_health(Health added_health) { simulation.add_health(added_health); }
 
     bool consume_death_notification() noexcept { return simulation.consume_death_notification(); }
+
   private:
     Sim& simulation;
 };

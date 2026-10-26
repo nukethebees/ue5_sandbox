@@ -26,6 +26,7 @@ struct TypeReader<sim::OverlapResponseConfig> : RecordReader<sim::OverlapRespons
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 

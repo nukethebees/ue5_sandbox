@@ -50,6 +50,7 @@ struct TypeReader<codegen_compile_fixture::ReaderDependency>
                              }),
                              required);
     }
+
   private:
     enum class Field : std::uint8_t {
         child,

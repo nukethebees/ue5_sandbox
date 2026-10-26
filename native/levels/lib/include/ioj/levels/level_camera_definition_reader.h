@@ -25,6 +25,7 @@ struct TypeReader<levels::LevelCameraDefinition> : RecordReader<levels::LevelCam
             }),
             required);
     }
+
   private:
     using Field = value_type::Field;
 

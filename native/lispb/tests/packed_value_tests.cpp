@@ -68,6 +68,38 @@ TEST(PackedRecord, LogicalRecordsAndArraysHaveFlatConstantOffsets) {
     ASSERT_EQ(files.size(), 1U);
     EXPECT_EQ(files.front().content.find("struct Sample\n"), std::string::npos);
     EXPECT_NE(files.front().content.find("samples_2_value()"), std::string::npos);
+
+    for (auto const name_space : {"ioj", "ioj::packed_lookup_fixture", "game"}) {
+        SCOPED_TRACE(name_space);
+        CompilerTestContext lookup_context;
+        auto const source{std::string{R"((module lookup :header "Lookup.h" :namespace )"} +
+                          name_space + R"(
+          (integer-scalar Byte :bit-width 8 (projections (cpp)))
+          (record Value :layout packed (member data @Byte) (projections (cpp)))))"};
+        auto const lookup_files{
+            render_test_manifest(lookup_context, parse_test_manifest(lookup_context, source))};
+        ASSERT_EQ(lookup_files.size(), 1U);
+        auto const& output{lookup_files.front().content};
+        auto const inside_ioj{std::string_view{name_space}.starts_with("ioj")};
+        for (auto const symbol :
+             {"PackedField<", "packed_extract<", "packed_insert<", "packed_pack<"}) {
+            SCOPED_TRACE(symbol);
+            EXPECT_TRUE(output.contains(symbol));
+            EXPECT_EQ(output.contains("ioj::" + std::string{symbol}), !inside_ioj);
+        }
+
+        CompilerTestContext hidden_context;
+        auto const hidden_source{std::string{R"((module hidden :header "Hidden.h" :namespace )"} +
+                                 name_space + R"(
+          (record Hidden :layout packed
+            (member packed_insert std::uint8_t) (member packed_extract std::uint8_t)
+            (projections (cpp)))))"};
+        auto const hidden_files{render_test_manifest(
+            hidden_context, parse_test_manifest(hidden_context, hidden_source))};
+        ASSERT_EQ(hidden_files.size(), 1U);
+        EXPECT_TRUE(hidden_files.front().content.contains("ioj::packed_insert<"));
+        EXPECT_TRUE(hidden_files.front().content.contains("ioj::packed_extract<"));
+    }
 }
 
 TEST(PackedRecord, QualifiedLogicalReferencesNeedNoCppSpelling) {
@@ -211,15 +243,86 @@ TEST(PackedRecord, SharesTypedValidationHelpersAcrossConstructionMutationAndVali
     auto const files{render_test_manifest(context, parse_test_manifest(context, R"(
       (module values :header "Values.h"
         (integer-scalar Health :bit-width 8 :minimum 0 :maximum 100 (projections (cpp)))
-        (record State :layout packed (member health @Health) (projections (cpp))))
+        (integer-scalar Index :bit-width 24 (projections (cpp)))
+        (integer-scalar Byte :bit-width 8 (projections (cpp)))
+        (integer-scalar Limited :bit-width 12 :maximum 100 (projections (cpp)))
+        (record State :layout packed (member health @Health) (projections (cpp)))
+        (record Handle :layout packed (member index @Index) (member byte @Byte)
+          (projections (cpp)))
+        (record Constrained :layout packed (member limited @Limited) (projections (cpp))))
     )"))};
     ASSERT_EQ(files.size(), 1U);
     auto const& output{files.front().content};
     EXPECT_GE(occurrences(output, "is_valid_value("), 4U);
     EXPECT_GE(occurrences(output, "is_valid_health("), 4U);
     EXPECT_NE(output.find("value_type const value"), std::string::npos);
-    EXPECT_NE(output.find("health_type const value"), std::string::npos);
-    EXPECT_EQ(output.find("static_cast<std::uint8_t>"), std::string::npos);
+    EXPECT_NE(output.find("decltype(health_layout)::value_type const value"), std::string::npos);
+    EXPECT_EQ(output.find("RawTag"), std::string::npos);
+    EXPECT_TRUE(output.contains("using packed_integer_tag = ioj::packed::scalar_tag;"));
+    EXPECT_TRUE(output.contains("using packed_integer_tag = ioj::packed::integer_tag;"));
+    EXPECT_FALSE(output.contains("struct std::hash"));
+    EXPECT_FALSE(output.contains("struct std::formatter"));
+    EXPECT_FALSE(output.contains("using health_type"));
+    EXPECT_FALSE(output.contains("using health_field"));
+    EXPECT_FALSE(output.contains("using value_field"));
+    EXPECT_TRUE(output.contains("packed_extract<decltype(health_layout)>"));
+    auto class_output = [&](std::string_view name) {
+        auto const begin{output.find("struct " + std::string{name} + " {")};
+        EXPECT_NE(begin, std::string::npos);
+        if (begin == std::string::npos) {
+            return std::string_view{};
+        }
+        return std::string_view{output}.substr(begin, output.find("\n};", begin) - begin);
+    };
+    auto method_body = [](std::string_view type, std::string_view signature) {
+        auto const method{type.find(signature)};
+        EXPECT_NE(method, std::string_view::npos);
+        if (method == std::string_view::npos) {
+            return std::string_view{};
+        }
+        auto const begin{type.find('{', method)};
+        return type.substr(begin, type.find('}', begin) - begin);
+    };
+    for (auto const name :
+         {"Health", "Index", "Byte", "Limited", "State", "Handle", "Constrained"}) {
+        SCOPED_TRACE(name);
+        auto const type{class_output(name)};
+        auto const constructor{type.find("constexpr " + std::string{name} + "()")};
+        auto const comparison{type.find("operator<=>")};
+        auto const from_raw{type.find("from_raw(")};
+        EXPECT_LT(type.find("using storage_type"), constructor);
+        EXPECT_LT(type.find("PackedStorage<"), constructor);
+        EXPECT_EQ(type.substr(constructor).find("static_cast<std::uint8_t>"),
+                  std::string_view::npos);
+        EXPECT_LT(constructor, comparison);
+        EXPECT_LT(comparison, from_raw);
+        EXPECT_LT(from_raw, type.find("storage_type value_"));
+        EXPECT_TRUE(method_body(type, "from_raw(")
+                        .contains("std::bit_cast<" + std::string{name} + ">(raw)"));
+    }
+    auto const index{class_output("Index")};
+    auto const index_constructor{index.find("Index(value_type")};
+    ASSERT_NE(index_constructor, std::string_view::npos);
+    EXPECT_TRUE(index.substr(index_constructor, index.find("operator<=>") - index_constructor)
+                    .contains("is_valid_value(value)"));
+    EXPECT_TRUE(method_body(index, "set_value(").contains("is_valid_value(value)"));
+    EXPECT_TRUE(method_body(index, "is_valid() const").contains("return true;"));
+    auto const handle{class_output("Handle")};
+    EXPECT_TRUE(method_body(handle, "is_valid() const").contains("return true;"));
+    EXPECT_TRUE(method_body(handle, "set_index(").contains("is_valid_index(value)"));
+    EXPECT_FALSE(method_body(handle, "set_byte(").contains("assert("));
+    EXPECT_FALSE(handle.contains("is_valid_byte("));
+    auto const byte{class_output("Byte")};
+    EXPECT_FALSE(byte.contains("assert("));
+    EXPECT_TRUE(method_body(byte, "is_valid_value(").contains("return true;"));
+    EXPECT_TRUE(method_body(byte, "is_valid() const").contains("return true;"));
+    auto const limited{class_output("Limited")};
+    EXPECT_TRUE(method_body(limited, "is_valid() const").contains("is_valid_value("));
+    EXPECT_FALSE(limited.contains("is_valid_value_domain("));
+    auto const constrained{class_output("Constrained")};
+    EXPECT_TRUE(method_body(constrained, "is_valid() const").contains("is_valid_limited("));
+    EXPECT_FALSE(constrained.contains("is_valid_limited_domain("));
+    EXPECT_TRUE(method_body(constrained, "set_limited(").contains("is_valid_limited(value)"));
 }
 
 TEST(PackedRecord, DefaultsScalarComparisonOnlyWhenStorageOrderMatchesLogicalValues) {

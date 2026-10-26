@@ -11,6 +11,7 @@ class PhaseInterface {
   public:
     PhaseInterface(Sim& new_target)
         : simulation{new_target} {}
+
   private:
     void begin_play() { simulation.begin_play(); }
 

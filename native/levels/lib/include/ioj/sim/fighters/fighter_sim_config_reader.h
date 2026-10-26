@@ -50,6 +50,7 @@ struct TypeReader<sim::FighterSimConfig> : RecordReader<sim::FighterSimConfig> {
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 

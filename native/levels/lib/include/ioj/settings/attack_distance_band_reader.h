@@ -25,6 +25,7 @@ struct TypeReader<settings::AttackDistanceBandValue>
             }),
             required);
     }
+
   private:
     using Field = value_type::Field;
 

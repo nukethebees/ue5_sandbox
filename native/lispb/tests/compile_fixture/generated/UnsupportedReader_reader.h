@@ -24,6 +24,7 @@ struct TypeReader<codegen_compile_fixture::UnsupportedReader>
                 }
             }));
     }
+
   private:
     enum class Field : std::uint8_t {
         target,

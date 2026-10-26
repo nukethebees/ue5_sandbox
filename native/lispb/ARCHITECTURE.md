@@ -211,10 +211,27 @@ logical-only children contribute their reachable fields. Fixed arrays expand int
 paths. The resolver rejects flattened-name collisions. Packed access never constructs mutable
 views or calculates offsets at runtime.
 
-Generated `encoded_bits`, `storage_bits`, field aliases, domain bounds and tag codes name the
-layout constants. `PackedField` aliases expose each field's offset, width and masks. Constructors,
+The constexpr `storage` descriptor uses shared `PackedStorage` metadata for encoded width,
+storage width and default bits. Each field has one constexpr `PackedField` descriptor whose `MinMax`
+range holds its domain bounds. The descriptor also supplies its types, constant offsets, widths and
+masks; generated code derives these from the descriptor instead of repeating field aliases.
+Dense enum domains use range checks; sparse domains retain explicit membership checks. Constructors,
 setters and validity queries share typed `is_valid_<field>()` helpers instead of repeating domain
 expressions. Scalar wrappers use `is_valid_value(value_type)` for the same purpose.
+Stored-value validation omits width checks guaranteed by extraction; constrained partial-width
+values share a private domain check with their input validator. Metadata is grouped by field before
+constructors, operators and member functions.
+
+Packed owners and scalar wrappers use typed CppIR nodes.
+Library references pass through the renderer's scope-aware name resolution, including names hidden
+by generated members. Raw construction uses `std::bit_cast` without a tag constructor or changes to
+default-construction availability.
+
+An explicit `packed_integer_tag` opts generated types into shared constrained `std::hash` and
+`std::formatter` implementations in `ioj/packed_value.h`. Packed records use their raw integer;
+scalar wrappers use their decoded value, preserving signed ordering and equality across padding
+bits. The concept also checks the integer interface and packed layout. A full specialization can
+override either default for an individual type.
 
 Packed owners expose `storage_type`, `raw_value()`, and unchecked `from_raw()`. They are standard
 layout and trivially copyable, with the size and alignment of their integer storage. Typed

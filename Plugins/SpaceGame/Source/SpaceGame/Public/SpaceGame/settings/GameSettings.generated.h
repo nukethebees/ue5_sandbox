@@ -429,6 +429,7 @@ class TGameSettingsAccess {
         derived().set_setting(EGameSetting::InvertGamepadVerticalTranslation,
                               FGameSettingValue{value});
     }
+
   private:
     auto derived() -> Derived& { return static_cast<Derived&>(*this); }
     auto derived() const -> Derived const& { return static_cast<Derived const&>(*this); }

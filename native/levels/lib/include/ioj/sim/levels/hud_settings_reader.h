@@ -22,6 +22,7 @@ struct TypeReader<sim::HudSettings> : RecordReader<sim::HudSettings> {
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 

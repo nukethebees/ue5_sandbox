@@ -29,6 +29,7 @@ struct TypeReader<sim::CapitalShipSimConfig> : RecordReader<sim::CapitalShipSimC
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 

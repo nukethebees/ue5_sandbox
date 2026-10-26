@@ -497,10 +497,9 @@ class BitLayoutResolver {
         }
     }
     void validate_names(BitLayout const& result, TypeId const type) const {
-        std::set<std::string> names{"storage_type",
-                                    "encoded_bits",
-                                    "storage_bits",
-                                    "default_raw_value",
+        std::set<std::string> names{"storage",
+                                    "storage_type",
+                                    "packed_integer_tag",
                                     "raw_value",
                                     "from_raw",
                                     "is_valid",
@@ -510,35 +509,22 @@ class BitLayoutResolver {
         auto const root_kind{root_definition.kind()};
         if (root_kind == TypeDefinitionKind::record ||
             root_kind == TypeDefinitionKind::union_type) {
-            names.insert("RawTag");
             if (root_kind == TypeDefinitionKind::record &&
                 definitions_.records
                     .invalid_raw_value[definitions_.records.index(root_definition)]) {
                 names.insert("invalid_value");
             }
         } else {
-            names.insert({"value_type", "value_field", "value", "set_value", "is_valid_value"});
+            names.insert({"value_type",
+                          "value_layout",
+                          "value",
+                          "set_value",
+                          "is_valid_value",
+                          "is_valid_value_domain"});
             switch (root_kind) {
-                case TypeDefinitionKind::integer_scalar:
-                    names.insert({"minimum_value", "maximum_value"});
-                    break;
-                case TypeDefinitionKind::fixed_point: {
-                    auto const row{definitions_.fixed_points.index(root_definition)};
-                    if (definitions_.fixed_points.minimum_raw_value[row]) {
-                        names.insert("minimum_value");
-                    }
-                    if (definitions_.fixed_points.maximum_raw_value[row]) {
-                        names.insert("maximum_value");
-                    }
-                    break;
-                }
-                case TypeDefinitionKind::linear_quantized:
-                    names.insert("maximum_encoded");
-                    break;
                 case TypeDefinitionKind::optional_sentinel:
                 case TypeDefinitionKind::optional_presence_bit: {
-                    names.insert(
-                        {"payload_type", "payload_field", "payload_minimum", "payload_maximum"});
+                    names.insert("payload_layout");
                     names.insert(root_kind == TypeDefinitionKind::optional_sentinel
                                      ? "sentinel"
                                      : "presence_mask");
@@ -609,10 +595,8 @@ class BitLayoutResolver {
             for (auto const& name : {accessor,
                                      "set_" + accessor,
                                      "is_valid_" + accessor,
-                                     accessor + "_type",
-                                     accessor + "_field",
-                                     accessor + "_range_type",
-                                     accessor + "_range"}) {
+                                     "is_valid_" + accessor + "_domain",
+                                     accessor + "_layout"}) {
                 add_name(name);
             }
             if (kind == TypeDefinitionKind::fixed_point) {
@@ -620,35 +604,16 @@ class BitLayoutResolver {
                                          "set_" + value.path + "_value",
                                          "try_encode_" + value.path + "_value",
                                          value.path + "_fractional_bits",
-                                         value.path + "_magnitude_bits",
-                                         value.path + "_minimum_allowed_raw",
-                                         value.path + "_maximum_allowed_raw"}) {
+                                         value.path + "_magnitude_bits"}) {
                     add_name(name);
                 }
-            }
-            if (kind == TypeDefinitionKind::enumeration) {
-                auto const domain{
-                    definitions_.enums
-                        .domain[definitions_.enums.index(graph_.definition(value.type))]};
-                for (auto const enumerator : graph_.enum_domains().values(domain)) {
-                    add_name(accessor + "_" +
-                             std::string{
-                                 graph_.strings().view(declarations.enumerators.name[enumerator])} +
-                             "_code");
-                }
-            }
-            if (kind == TypeDefinitionKind::linear_quantized) {
-                add_name(accessor + "_maximum_encoded");
             }
             if (kind == TypeDefinitionKind::optional_sentinel ||
                 kind == TypeDefinitionKind::optional_presence_bit) {
                 add_name(accessor + (kind == TypeDefinitionKind::optional_sentinel
                                          ? "_sentinel"
                                          : "_presence_mask"));
-                for (auto const suffix :
-                     {"_payload_type", "_payload_field", "_payload_minimum", "_payload_maximum"}) {
-                    add_name(accessor + suffix);
-                }
+                add_name(accessor + "_payload_layout");
                 auto const definition{graph_.definition(value.type)};
                 auto const source{
                     kind == TypeDefinitionKind::optional_sentinel

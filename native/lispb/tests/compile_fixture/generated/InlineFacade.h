@@ -22,6 +22,7 @@ class FInlineFacade {
         assert(target != nullptr);
         target->clear();
     }
+
   private:
     FTarget* target{nullptr};
 };

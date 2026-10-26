@@ -6,1088 +6,940 @@
 #include "ioj/packed_value.h"
 #include "PackedEnums.h"
 
+#include <bit>
 #include <cassert>
 #include <cmath>
 #include <compare>
-#include <cstddef>
 #include <cstdint>
-#include <format>
-#include <functional>
+#include <utility>
 
 namespace codegen_compile_fixture {
 struct Defaults {
   public:
+    // Storage
     using storage_type = std::uint16_t;
-    static constexpr int encoded_bits{16};
-    static constexpr int storage_bits{16};
-    static constexpr storage_type default_raw_value{933ULL};
-    using low_type = std::uint8_t;
-    using low_field = ioj::PackedField<storage_type, low_type, 0, 3>;
-    struct low_range_type {
-        low_type min;
-        low_type max;
-    };
-    static constexpr low_range_type low_range{static_cast<low_type>(0ULL),
-                                              static_cast<low_type>(7ULL)};
-    using delta_type = std::int8_t;
-    using delta_field = ioj::PackedField<storage_type, delta_type, 5, 5>;
-    struct delta_range_type {
-        delta_type min;
-        delta_type max;
-    };
-    static constexpr delta_range_type delta_range{static_cast<delta_type>(-16LL),
-                                                  static_cast<delta_type>(15ULL)};
-    [[nodiscard]] static constexpr auto is_valid_low(low_type const value) noexcept -> bool {
-        return static_cast<storage_type>(value) <= low_field::value_mask;
-    }
-    [[nodiscard]] static constexpr auto is_valid_delta(delta_type const value) noexcept -> bool {
-        return ioj::packed_extract<delta_field>(ioj::packed_pack<delta_field>(value)) == value;
-    }
+    using packed_integer_tag = ioj::packed::integer_tag;
+    static constexpr ioj::PackedStorage<storage_type, 16> storage{933};
+
+    // low
+    static constexpr ioj::PackedField<storage_type, std::uint8_t, 0, 3> low_layout{};
+
+    // delta
+    static constexpr ioj::PackedField<storage_type, std::int8_t, 5, 5> delta_layout{};
 
     constexpr Defaults() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> Defaults {
-        return Defaults{RawTag{}, raw};
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-
-    explicit constexpr Defaults(low_type const low_value, delta_type const delta_value) noexcept
+    constexpr explicit Defaults(decltype(low_layout)::value_type const low_value,
+                                decltype(delta_layout)::value_type const delta_value) noexcept
         : value_{0} {
         assert((is_valid_low(low_value)));
-        value_ = ioj::packed_insert<low_field>(value_, low_value);
+        value_ = ioj::packed_insert<decltype(low_layout)>(value_, low_value);
         assert((is_valid_delta(delta_value)));
-        value_ = ioj::packed_insert<delta_field>(value_, delta_value);
+        value_ = ioj::packed_insert<decltype(delta_layout)>(value_, delta_value);
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (is_valid_low(ioj::packed_extract<low_field>(value_))) &&
-               (is_valid_delta(ioj::packed_extract<delta_field>(value_)));
-    }
     [[nodiscard]] constexpr auto operator<=>(Defaults const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto low() const noexcept -> low_type {
-        return ioj::packed_extract<low_field>(value_);
+    [[nodiscard]] static constexpr auto
+        is_valid_low(decltype(low_layout)::value_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= low_layout.value_mask;
     }
-    constexpr void set_low(low_type const value) noexcept {
+    [[nodiscard]] static constexpr auto
+        is_valid_delta(decltype(delta_layout)::value_type const value) noexcept -> bool {
+        return ioj::packed_extract<decltype(delta_layout)>(
+                   ioj::packed_pack<decltype(delta_layout)>(value)) == value;
+    }
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> Defaults {
+        return std::bit_cast<Defaults>(raw);
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto low() const noexcept -> decltype(low_layout)::value_type {
+        return ioj::packed_extract<decltype(low_layout)>(value_);
+    }
+    constexpr void set_low(decltype(low_layout)::value_type const value) noexcept {
         assert((is_valid_low(value)));
-        value_ = ioj::packed_insert<low_field>(value_, value);
+        value_ = ioj::packed_insert<decltype(low_layout)>(value_, value);
+    }
+    [[nodiscard]] constexpr auto delta() const noexcept -> decltype(delta_layout)::value_type {
+        return ioj::packed_extract<decltype(delta_layout)>(value_);
+    }
+    constexpr void set_delta(decltype(delta_layout)::value_type const value) noexcept {
+        assert((is_valid_delta(value)));
+        value_ = ioj::packed_insert<decltype(delta_layout)>(value_, value);
     }
 
-    [[nodiscard]] constexpr auto delta() const noexcept -> delta_type {
-        return ioj::packed_extract<delta_field>(value_);
-    }
-    constexpr void set_delta(delta_type const value) noexcept {
-        assert((is_valid_delta(value)));
-        value_ = ioj::packed_insert<delta_field>(value_, value);
-    }
   private:
-    struct RawTag {};
-    constexpr Defaults(RawTag, storage_type raw) noexcept
-        : value_{raw} {}
-    storage_type value_{default_raw_value};
+    storage_type value_{storage.default_raw_value};
 };
+
 static_assert(ioj::valid_packed_value_layout<Defaults>());
 
 struct DefaultsMsb {
   public:
+    // Storage
     using storage_type = std::uint16_t;
-    static constexpr int encoded_bits{16};
-    static constexpr int storage_bits{16};
-    static constexpr storage_type default_raw_value{42816ULL};
-    using low_type = std::uint8_t;
-    using low_field = ioj::PackedField<storage_type, low_type, 13, 3>;
-    struct low_range_type {
-        low_type min;
-        low_type max;
-    };
-    static constexpr low_range_type low_range{static_cast<low_type>(0ULL),
-                                              static_cast<low_type>(7ULL)};
-    using delta_type = std::int8_t;
-    using delta_field = ioj::PackedField<storage_type, delta_type, 6, 5>;
-    struct delta_range_type {
-        delta_type min;
-        delta_type max;
-    };
-    static constexpr delta_range_type delta_range{static_cast<delta_type>(-16LL),
-                                                  static_cast<delta_type>(15ULL)};
-    [[nodiscard]] static constexpr auto is_valid_low(low_type const value) noexcept -> bool {
-        return static_cast<storage_type>(value) <= low_field::value_mask;
-    }
-    [[nodiscard]] static constexpr auto is_valid_delta(delta_type const value) noexcept -> bool {
-        return ioj::packed_extract<delta_field>(ioj::packed_pack<delta_field>(value)) == value;
-    }
+    using packed_integer_tag = ioj::packed::integer_tag;
+    static constexpr ioj::PackedStorage<storage_type, 16> storage{42816};
+
+    // low
+    static constexpr ioj::PackedField<storage_type, std::uint8_t, 13, 3> low_layout{};
+
+    // delta
+    static constexpr ioj::PackedField<storage_type, std::int8_t, 6, 5> delta_layout{};
 
     constexpr DefaultsMsb() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> DefaultsMsb {
-        return DefaultsMsb{RawTag{}, raw};
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-
-    explicit constexpr DefaultsMsb(low_type const low_value, delta_type const delta_value) noexcept
+    constexpr explicit DefaultsMsb(decltype(low_layout)::value_type const low_value,
+                                   decltype(delta_layout)::value_type const delta_value) noexcept
         : value_{0} {
         assert((is_valid_low(low_value)));
-        value_ = ioj::packed_insert<low_field>(value_, low_value);
+        value_ = ioj::packed_insert<decltype(low_layout)>(value_, low_value);
         assert((is_valid_delta(delta_value)));
-        value_ = ioj::packed_insert<delta_field>(value_, delta_value);
+        value_ = ioj::packed_insert<decltype(delta_layout)>(value_, delta_value);
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (is_valid_low(ioj::packed_extract<low_field>(value_))) &&
-               (is_valid_delta(ioj::packed_extract<delta_field>(value_)));
-    }
     [[nodiscard]] constexpr auto operator<=>(DefaultsMsb const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto low() const noexcept -> low_type {
-        return ioj::packed_extract<low_field>(value_);
+    [[nodiscard]] static constexpr auto
+        is_valid_low(decltype(low_layout)::value_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= low_layout.value_mask;
     }
-    constexpr void set_low(low_type const value) noexcept {
+    [[nodiscard]] static constexpr auto
+        is_valid_delta(decltype(delta_layout)::value_type const value) noexcept -> bool {
+        return ioj::packed_extract<decltype(delta_layout)>(
+                   ioj::packed_pack<decltype(delta_layout)>(value)) == value;
+    }
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> DefaultsMsb {
+        return std::bit_cast<DefaultsMsb>(raw);
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto low() const noexcept -> decltype(low_layout)::value_type {
+        return ioj::packed_extract<decltype(low_layout)>(value_);
+    }
+    constexpr void set_low(decltype(low_layout)::value_type const value) noexcept {
         assert((is_valid_low(value)));
-        value_ = ioj::packed_insert<low_field>(value_, value);
+        value_ = ioj::packed_insert<decltype(low_layout)>(value_, value);
+    }
+    [[nodiscard]] constexpr auto delta() const noexcept -> decltype(delta_layout)::value_type {
+        return ioj::packed_extract<decltype(delta_layout)>(value_);
+    }
+    constexpr void set_delta(decltype(delta_layout)::value_type const value) noexcept {
+        assert((is_valid_delta(value)));
+        value_ = ioj::packed_insert<decltype(delta_layout)>(value_, value);
     }
 
-    [[nodiscard]] constexpr auto delta() const noexcept -> delta_type {
-        return ioj::packed_extract<delta_field>(value_);
-    }
-    constexpr void set_delta(delta_type const value) noexcept {
-        assert((is_valid_delta(value)));
-        value_ = ioj::packed_insert<delta_field>(value_, value);
-    }
   private:
-    struct RawTag {};
-    constexpr DefaultsMsb(RawTag, storage_type raw) noexcept
-        : value_{raw} {}
-    storage_type value_{default_raw_value};
+    storage_type value_{storage.default_raw_value};
 };
+
 static_assert(ioj::valid_packed_value_layout<DefaultsMsb>());
 
 struct PartialDefaults {
   public:
+    // Storage
     using storage_type = std::uint8_t;
-    static constexpr int encoded_bits{8};
-    static constexpr int storage_bits{8};
-    static constexpr storage_type default_raw_value{0ULL};
-    using first_type = std::uint8_t;
-    using first_field = ioj::PackedField<storage_type, first_type, 0, 2>;
-    struct first_range_type {
-        first_type min;
-        first_type max;
-    };
-    static constexpr first_range_type first_range{static_cast<first_type>(0ULL),
-                                                  static_cast<first_type>(3ULL)};
-    using gap_type = std::uint8_t;
-    using gap_field = ioj::PackedField<storage_type, gap_type, 2, 2>;
-    struct gap_range_type {
-        gap_type min;
-        gap_type max;
-    };
-    static constexpr gap_range_type gap_range{static_cast<gap_type>(0ULL),
-                                              static_cast<gap_type>(3ULL)};
-    using last_type = std::uint8_t;
-    using last_field = ioj::PackedField<storage_type, last_type, 4, 2>;
-    struct last_range_type {
-        last_type min;
-        last_type max;
-    };
-    static constexpr last_range_type last_range{static_cast<last_type>(0ULL),
-                                                static_cast<last_type>(3ULL)};
-    [[nodiscard]] static constexpr auto is_valid_first(first_type const value) noexcept -> bool {
-        return static_cast<storage_type>(value) <= first_field::value_mask;
-    }
-    [[nodiscard]] static constexpr auto is_valid_gap(gap_type const value) noexcept -> bool {
-        return static_cast<storage_type>(value) <= gap_field::value_mask;
-    }
-    [[nodiscard]] static constexpr auto is_valid_last(last_type const value) noexcept -> bool {
-        return static_cast<storage_type>(value) <= last_field::value_mask;
-    }
+    using packed_integer_tag = ioj::packed::integer_tag;
+    static constexpr ioj::PackedStorage<storage_type, 8> storage{0};
+
+    // first
+    static constexpr ioj::PackedField<storage_type, std::uint8_t, 0, 2> first_layout{};
+
+    // gap
+    static constexpr ioj::PackedField<storage_type, std::uint8_t, 2, 2> gap_layout{};
+
+    // last
+    static constexpr ioj::PackedField<storage_type, std::uint8_t, 4, 2> last_layout{};
 
     constexpr PartialDefaults() noexcept = delete;
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> PartialDefaults {
-        return PartialDefaults{RawTag{}, raw};
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-
-    explicit constexpr PartialDefaults(first_type const first_value,
-                                       gap_type const gap_value,
-                                       last_type const last_value) noexcept
+    constexpr explicit PartialDefaults(decltype(first_layout)::value_type const first_value,
+                                       decltype(gap_layout)::value_type const gap_value,
+                                       decltype(last_layout)::value_type const last_value) noexcept
         : value_{0} {
         assert((is_valid_first(first_value)));
-        value_ = ioj::packed_insert<first_field>(value_, first_value);
+        value_ = ioj::packed_insert<decltype(first_layout)>(value_, first_value);
         assert((is_valid_gap(gap_value)));
-        value_ = ioj::packed_insert<gap_field>(value_, gap_value);
+        value_ = ioj::packed_insert<decltype(gap_layout)>(value_, gap_value);
         assert((is_valid_last(last_value)));
-        value_ = ioj::packed_insert<last_field>(value_, last_value);
+        value_ = ioj::packed_insert<decltype(last_layout)>(value_, last_value);
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (is_valid_first(ioj::packed_extract<first_field>(value_))) &&
-               (is_valid_gap(ioj::packed_extract<gap_field>(value_))) &&
-               (is_valid_last(ioj::packed_extract<last_field>(value_)));
-    }
     [[nodiscard]] constexpr auto operator<=>(PartialDefaults const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto first() const noexcept -> first_type {
-        return ioj::packed_extract<first_field>(value_);
+    [[nodiscard]] static constexpr auto
+        is_valid_first(decltype(first_layout)::value_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= first_layout.value_mask;
     }
-    constexpr void set_first(first_type const value) noexcept {
+    [[nodiscard]] static constexpr auto
+        is_valid_gap(decltype(gap_layout)::value_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= gap_layout.value_mask;
+    }
+    [[nodiscard]] static constexpr auto
+        is_valid_last(decltype(last_layout)::value_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= last_layout.value_mask;
+    }
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
+        -> PartialDefaults {
+        return std::bit_cast<PartialDefaults>(raw);
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto first() const noexcept -> decltype(first_layout)::value_type {
+        return ioj::packed_extract<decltype(first_layout)>(value_);
+    }
+    constexpr void set_first(decltype(first_layout)::value_type const value) noexcept {
         assert((is_valid_first(value)));
-        value_ = ioj::packed_insert<first_field>(value_, value);
+        value_ = ioj::packed_insert<decltype(first_layout)>(value_, value);
     }
-
-    [[nodiscard]] constexpr auto gap() const noexcept -> gap_type {
-        return ioj::packed_extract<gap_field>(value_);
+    [[nodiscard]] constexpr auto gap() const noexcept -> decltype(gap_layout)::value_type {
+        return ioj::packed_extract<decltype(gap_layout)>(value_);
     }
-    constexpr void set_gap(gap_type const value) noexcept {
+    constexpr void set_gap(decltype(gap_layout)::value_type const value) noexcept {
         assert((is_valid_gap(value)));
-        value_ = ioj::packed_insert<gap_field>(value_, value);
+        value_ = ioj::packed_insert<decltype(gap_layout)>(value_, value);
+    }
+    [[nodiscard]] constexpr auto last() const noexcept -> decltype(last_layout)::value_type {
+        return ioj::packed_extract<decltype(last_layout)>(value_);
+    }
+    constexpr void set_last(decltype(last_layout)::value_type const value) noexcept {
+        assert((is_valid_last(value)));
+        value_ = ioj::packed_insert<decltype(last_layout)>(value_, value);
     }
 
-    [[nodiscard]] constexpr auto last() const noexcept -> last_type {
-        return ioj::packed_extract<last_field>(value_);
-    }
-    constexpr void set_last(last_type const value) noexcept {
-        assert((is_valid_last(value)));
-        value_ = ioj::packed_insert<last_field>(value_, value);
-    }
   private:
-    struct RawTag {};
-    constexpr PartialDefaults(RawTag, storage_type raw) noexcept
-        : value_{raw} {}
-    storage_type value_{default_raw_value};
+    storage_type value_{storage.default_raw_value};
 };
+
 static_assert(ioj::valid_packed_value_layout<PartialDefaults>());
 
 struct PackedSingle {
   public:
+    // Storage
     using storage_type = std::uint8_t;
-    static constexpr int encoded_bits{8};
-    static constexpr int storage_bits{8};
-    static constexpr storage_type default_raw_value{0ULL};
-    using value_type = std::uint8_t;
-    using value_field = ioj::PackedField<storage_type, value_type, 4, 4>;
-    struct value_range_type {
-        value_type min;
-        value_type max;
-    };
-    static constexpr value_range_type value_range{static_cast<value_type>(0ULL),
-                                                  static_cast<value_type>(15ULL)};
-    [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
-        return static_cast<storage_type>(value) <= value_field::value_mask;
-    }
+    using packed_integer_tag = ioj::packed::integer_tag;
+    static constexpr ioj::PackedStorage<storage_type, 8> storage{0};
+
+    // value
+    static constexpr ioj::PackedField<storage_type, std::uint8_t, 4, 4> value_layout{};
 
     constexpr PackedSingle() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> PackedSingle {
-        return PackedSingle{RawTag{}, raw};
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-
-    explicit constexpr PackedSingle(value_type const value_value) noexcept
+    constexpr explicit PackedSingle(decltype(value_layout)::value_type const value_value) noexcept
         : value_{0} {
         assert((is_valid_value(value_value)));
-        value_ = ioj::packed_insert<value_field>(value_, value_value);
+        value_ = ioj::packed_insert<decltype(value_layout)>(value_, value_value);
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (is_valid_value(ioj::packed_extract<value_field>(value_)));
-    }
     [[nodiscard]] constexpr auto operator<=>(PackedSingle const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
-        return ioj::packed_extract<value_field>(value_);
+    [[nodiscard]] static constexpr auto
+        is_valid_value(decltype(value_layout)::value_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= value_layout.value_mask;
     }
-    constexpr void set_value(value_type const value) noexcept {
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> PackedSingle {
+        return std::bit_cast<PackedSingle>(raw);
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto value() const noexcept -> decltype(value_layout)::value_type {
+        return ioj::packed_extract<decltype(value_layout)>(value_);
+    }
+    constexpr void set_value(decltype(value_layout)::value_type const value) noexcept {
         assert((is_valid_value(value)));
-        value_ = ioj::packed_insert<value_field>(value_, value);
+        value_ = ioj::packed_insert<decltype(value_layout)>(value_, value);
     }
+
   private:
-    struct RawTag {};
-    constexpr PackedSingle(RawTag, storage_type raw) noexcept
-        : value_{raw} {}
-    storage_type value_{default_raw_value};
+    storage_type value_{storage.default_raw_value};
 };
+
 static_assert(ioj::valid_packed_value_layout<PackedSingle>());
 
 struct FighterState {
   public:
+    // Storage
     using storage_type = std::uint32_t;
-    static constexpr int encoded_bits{32};
-    static constexpr int storage_bits{32};
-    static constexpr storage_type default_raw_value{0ULL};
-    using entity_index_type = std::uint32_t;
-    using entity_index_field = ioj::PackedField<storage_type, entity_index_type, 0, 24>;
-    struct entity_index_range_type {
-        entity_index_type min;
-        entity_index_type max;
-    };
-    static constexpr entity_index_range_type entity_index_range{
-        static_cast<entity_index_type>(0ULL), static_cast<entity_index_type>(16777215ULL)};
-    using state_type = codegen_compile_fixture::PackedState;
-    using state_field = ioj::PackedField<storage_type, state_type, 24, 8>;
-    [[nodiscard]] static constexpr auto
-        is_valid_entity_index(entity_index_type const value) noexcept -> bool {
-        return static_cast<storage_type>(value) <= entity_index_field::value_mask;
-    }
-    [[nodiscard]] static constexpr auto is_valid_state(state_type const value) noexcept -> bool {
-        return (value == state_Zero_code) || (value == state_AB_code) || (value == state_Max_code);
-    }
+    using packed_integer_tag = ioj::packed::integer_tag;
+    static constexpr ioj::PackedStorage<storage_type, 32> storage{0};
+
+    // entity_index
+    static constexpr ioj::PackedField<storage_type, std::uint32_t, 0, 24> entity_index_layout{};
+
+    // state
+    static constexpr ioj::PackedField<storage_type, PackedState, 24, 8> state_layout{};
 
     constexpr FighterState() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> FighterState {
-        return FighterState{RawTag{}, raw};
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-
-    explicit constexpr FighterState(entity_index_type const entity_index_value,
-                                    state_type const state_value) noexcept
+    constexpr explicit FighterState(
+        decltype(entity_index_layout)::value_type const entity_index_value,
+        decltype(state_layout)::value_type const state_value) noexcept
         : value_{0} {
         assert((is_valid_entity_index(entity_index_value)));
-        value_ = ioj::packed_insert<entity_index_field>(value_, entity_index_value);
+        value_ = ioj::packed_insert<decltype(entity_index_layout)>(value_, entity_index_value);
         assert((is_valid_state(state_value)));
-        value_ = ioj::packed_insert<state_field>(value_, state_value);
+        value_ = ioj::packed_insert<decltype(state_layout)>(value_, state_value);
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (is_valid_entity_index(ioj::packed_extract<entity_index_field>(value_))) &&
-               (is_valid_state(ioj::packed_extract<state_field>(value_)));
-    }
     [[nodiscard]] constexpr auto operator<=>(FighterState const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto entity_index() const noexcept -> entity_index_type {
-        return ioj::packed_extract<entity_index_field>(value_);
+    [[nodiscard]] static constexpr auto
+        is_valid_entity_index(decltype(entity_index_layout)::value_type const value) noexcept
+        -> bool {
+        return static_cast<storage_type>(value) <= entity_index_layout.value_mask;
     }
-    constexpr void set_entity_index(entity_index_type const value) noexcept {
+    [[nodiscard]] static constexpr auto
+        is_valid_state(decltype(state_layout)::value_type const value) noexcept -> bool {
+        return value == codegen_compile_fixture::PackedState::Zero ||
+               value == codegen_compile_fixture::PackedState::AB ||
+               value == codegen_compile_fixture::PackedState::Max;
+    }
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> FighterState {
+        return std::bit_cast<FighterState>(raw);
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return is_valid_state(ioj::packed_extract<decltype(state_layout)>(value_));
+    }
+    [[nodiscard]] constexpr auto entity_index() const noexcept
+        -> decltype(entity_index_layout)::value_type {
+        return ioj::packed_extract<decltype(entity_index_layout)>(value_);
+    }
+    constexpr void
+        set_entity_index(decltype(entity_index_layout)::value_type const value) noexcept {
         assert((is_valid_entity_index(value)));
-        value_ = ioj::packed_insert<entity_index_field>(value_, value);
+        value_ = ioj::packed_insert<decltype(entity_index_layout)>(value_, value);
+    }
+    [[nodiscard]] constexpr auto state() const noexcept -> decltype(state_layout)::value_type {
+        return ioj::packed_extract<decltype(state_layout)>(value_);
+    }
+    constexpr void set_state(decltype(state_layout)::value_type const value) noexcept {
+        assert((is_valid_state(value)));
+        value_ = ioj::packed_insert<decltype(state_layout)>(value_, value);
     }
 
-    [[nodiscard]] constexpr auto state() const noexcept -> state_type {
-        return ioj::packed_extract<state_field>(value_);
-    }
-    constexpr void set_state(state_type const value) noexcept {
-        assert((is_valid_state(value)));
-        value_ = ioj::packed_insert<state_field>(value_, value);
-    }
-    static constexpr state_type state_Zero_code{static_cast<state_type>(0ULL)};
-    static constexpr state_type state_AB_code{static_cast<state_type>(171ULL)};
-    static constexpr state_type state_Max_code{static_cast<state_type>(255ULL)};
   private:
-    struct RawTag {};
-    constexpr FighterState(RawTag, storage_type raw) noexcept
-        : value_{raw} {}
-    storage_type value_{default_raw_value};
+    storage_type value_{storage.default_raw_value};
 };
+
 static_assert(ioj::valid_packed_value_layout<FighterState>());
 
 struct PackedByte {
   public:
+    // Storage
     using storage_type = std::uint8_t;
-    static constexpr int encoded_bits{8};
-    static constexpr int storage_bits{8};
-    static constexpr storage_type default_raw_value{0ULL};
-    using low_type = std::uint8_t;
-    using low_field = ioj::PackedField<storage_type, low_type, 0, 3>;
-    struct low_range_type {
-        low_type min;
-        low_type max;
-    };
-    static constexpr low_range_type low_range{static_cast<low_type>(0ULL),
-                                              static_cast<low_type>(7ULL)};
-    using flag_type = bool;
-    using flag_field = ioj::PackedField<storage_type, flag_type, 3, 1>;
-    using high_type = std::uint8_t;
-    using high_field = ioj::PackedField<storage_type, high_type, 4, 4>;
-    struct high_range_type {
-        high_type min;
-        high_type max;
-    };
-    static constexpr high_range_type high_range{static_cast<high_type>(0ULL),
-                                                static_cast<high_type>(15ULL)};
-    [[nodiscard]] static constexpr auto is_valid_low(low_type const value) noexcept -> bool {
-        return static_cast<storage_type>(value) <= low_field::value_mask;
-    }
-    [[nodiscard]] static constexpr auto is_valid_flag(flag_type const) noexcept -> bool {
-        return true;
-    }
-    [[nodiscard]] static constexpr auto is_valid_high(high_type const value) noexcept -> bool {
-        return static_cast<storage_type>(value) <= high_field::value_mask;
-    }
+    using packed_integer_tag = ioj::packed::integer_tag;
+    static constexpr ioj::PackedStorage<storage_type, 8> storage{0};
+
+    // low
+    static constexpr ioj::PackedField<storage_type, std::uint8_t, 0, 3> low_layout{};
+
+    // flag
+    static constexpr ioj::PackedField<storage_type, bool, 3, 1> flag_layout{};
+
+    // high
+    static constexpr ioj::PackedField<storage_type, std::uint8_t, 4, 4> high_layout{};
 
     constexpr PackedByte() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> PackedByte {
-        return PackedByte{RawTag{}, raw};
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-
-    explicit constexpr PackedByte(low_type const low_value,
-                                  flag_type const flag_value,
-                                  high_type const high_value) noexcept
+    constexpr explicit PackedByte(decltype(low_layout)::value_type const low_value,
+                                  decltype(flag_layout)::value_type const flag_value,
+                                  decltype(high_layout)::value_type const high_value) noexcept
         : value_{0} {
         assert((is_valid_low(low_value)));
-        value_ = ioj::packed_insert<low_field>(value_, low_value);
-        assert((is_valid_flag(flag_value)));
-        value_ = ioj::packed_insert<flag_field>(value_, flag_value);
+        value_ = ioj::packed_insert<decltype(low_layout)>(value_, low_value);
+        value_ = ioj::packed_insert<decltype(flag_layout)>(value_, flag_value);
         assert((is_valid_high(high_value)));
-        value_ = ioj::packed_insert<high_field>(value_, high_value);
+        value_ = ioj::packed_insert<decltype(high_layout)>(value_, high_value);
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (is_valid_low(ioj::packed_extract<low_field>(value_))) &&
-               (is_valid_flag(ioj::packed_extract<flag_field>(value_))) &&
-               (is_valid_high(ioj::packed_extract<high_field>(value_)));
-    }
     [[nodiscard]] constexpr auto operator<=>(PackedByte const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto low() const noexcept -> low_type {
-        return ioj::packed_extract<low_field>(value_);
+    [[nodiscard]] static constexpr auto
+        is_valid_low(decltype(low_layout)::value_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= low_layout.value_mask;
     }
-    constexpr void set_low(low_type const value) noexcept {
+    [[nodiscard]] static constexpr auto
+        is_valid_high(decltype(high_layout)::value_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= high_layout.value_mask;
+    }
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> PackedByte {
+        return std::bit_cast<PackedByte>(raw);
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto low() const noexcept -> decltype(low_layout)::value_type {
+        return ioj::packed_extract<decltype(low_layout)>(value_);
+    }
+    constexpr void set_low(decltype(low_layout)::value_type const value) noexcept {
         assert((is_valid_low(value)));
-        value_ = ioj::packed_insert<low_field>(value_, value);
+        value_ = ioj::packed_insert<decltype(low_layout)>(value_, value);
     }
-
-    [[nodiscard]] constexpr auto flag() const noexcept -> flag_type {
-        return ioj::packed_extract<flag_field>(value_);
+    [[nodiscard]] constexpr auto flag() const noexcept -> decltype(flag_layout)::value_type {
+        return ioj::packed_extract<decltype(flag_layout)>(value_);
     }
-    constexpr void set_flag(flag_type const value) noexcept {
-        assert((is_valid_flag(value)));
-        value_ = ioj::packed_insert<flag_field>(value_, value);
+    constexpr void set_flag(decltype(flag_layout)::value_type const value) noexcept {
+        value_ = ioj::packed_insert<decltype(flag_layout)>(value_, value);
     }
-
-    [[nodiscard]] constexpr auto high() const noexcept -> high_type {
-        return ioj::packed_extract<high_field>(value_);
+    [[nodiscard]] constexpr auto high() const noexcept -> decltype(high_layout)::value_type {
+        return ioj::packed_extract<decltype(high_layout)>(value_);
     }
-    constexpr void set_high(high_type const value) noexcept {
+    constexpr void set_high(decltype(high_layout)::value_type const value) noexcept {
         assert((is_valid_high(value)));
-        value_ = ioj::packed_insert<high_field>(value_, value);
+        value_ = ioj::packed_insert<decltype(high_layout)>(value_, value);
     }
+
   private:
-    struct RawTag {};
-    constexpr PackedByte(RawTag, storage_type raw) noexcept
-        : value_{raw} {}
-    storage_type value_{default_raw_value};
+    storage_type value_{storage.default_raw_value};
 };
+
 static_assert(ioj::valid_packed_value_layout<PackedByte>());
 
 struct NetworkHeader {
   public:
+    // Storage
     using storage_type = std::uint32_t;
-    static constexpr int encoded_bits{32};
-    static constexpr int storage_bits{32};
-    static constexpr storage_type default_raw_value{0ULL};
-    using version_type = std::uint8_t;
-    using version_field = ioj::PackedField<storage_type, version_type, 28, 4>;
-    struct version_range_type {
-        version_type min;
-        version_type max;
-    };
-    static constexpr version_range_type version_range{static_cast<version_type>(0ULL),
-                                                      static_cast<version_type>(15ULL)};
-    using kind_type = std::uint8_t;
-    using kind_field = ioj::PackedField<storage_type, kind_type, 20, 8>;
-    using length_type = std::uint16_t;
-    using length_field = ioj::PackedField<storage_type, length_type, 0, 16>;
-    [[nodiscard]] static constexpr auto is_valid_version(version_type const value) noexcept
-        -> bool {
-        return static_cast<storage_type>(value) <= version_field::value_mask;
-    }
-    [[nodiscard]] static constexpr auto is_valid_kind(kind_type const) noexcept -> bool {
-        return true;
-    }
-    [[nodiscard]] static constexpr auto is_valid_length(length_type const) noexcept -> bool {
-        return true;
-    }
+    using packed_integer_tag = ioj::packed::integer_tag;
+    static constexpr ioj::PackedStorage<storage_type, 32> storage{0};
+
+    // version
+    static constexpr ioj::PackedField<storage_type, std::uint8_t, 28, 4> version_layout{};
+
+    // kind
+    static constexpr ioj::PackedField<storage_type, std::uint8_t, 20, 8> kind_layout{};
+
+    // length
+    static constexpr ioj::PackedField<storage_type, std::uint16_t, 0, 16> length_layout{};
 
     constexpr NetworkHeader() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> NetworkHeader {
-        return NetworkHeader{RawTag{}, raw};
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-
-    explicit constexpr NetworkHeader(version_type const version_value,
-                                     kind_type const kind_value,
-                                     length_type const length_value) noexcept
+    constexpr explicit NetworkHeader(
+        decltype(version_layout)::value_type const version_value,
+        decltype(kind_layout)::value_type const kind_value,
+        decltype(length_layout)::value_type const length_value) noexcept
         : value_{0} {
         assert((is_valid_version(version_value)));
-        value_ = ioj::packed_insert<version_field>(value_, version_value);
-        assert((is_valid_kind(kind_value)));
-        value_ = ioj::packed_insert<kind_field>(value_, kind_value);
-        assert((is_valid_length(length_value)));
-        value_ = ioj::packed_insert<length_field>(value_, length_value);
+        value_ = ioj::packed_insert<decltype(version_layout)>(value_, version_value);
+        value_ = ioj::packed_insert<decltype(kind_layout)>(value_, kind_value);
+        value_ = ioj::packed_insert<decltype(length_layout)>(value_, length_value);
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (is_valid_version(ioj::packed_extract<version_field>(value_))) &&
-               (is_valid_kind(ioj::packed_extract<kind_field>(value_))) &&
-               (is_valid_length(ioj::packed_extract<length_field>(value_)));
-    }
     [[nodiscard]] constexpr auto operator<=>(NetworkHeader const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto version() const noexcept -> version_type {
-        return ioj::packed_extract<version_field>(value_);
+    [[nodiscard]] static constexpr auto
+        is_valid_version(decltype(version_layout)::value_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= version_layout.value_mask;
     }
-    constexpr void set_version(version_type const value) noexcept {
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> NetworkHeader {
+        return std::bit_cast<NetworkHeader>(raw);
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto version() const noexcept -> decltype(version_layout)::value_type {
+        return ioj::packed_extract<decltype(version_layout)>(value_);
+    }
+    constexpr void set_version(decltype(version_layout)::value_type const value) noexcept {
         assert((is_valid_version(value)));
-        value_ = ioj::packed_insert<version_field>(value_, value);
+        value_ = ioj::packed_insert<decltype(version_layout)>(value_, value);
+    }
+    [[nodiscard]] constexpr auto kind() const noexcept -> decltype(kind_layout)::value_type {
+        return ioj::packed_extract<decltype(kind_layout)>(value_);
+    }
+    constexpr void set_kind(decltype(kind_layout)::value_type const value) noexcept {
+        value_ = ioj::packed_insert<decltype(kind_layout)>(value_, value);
+    }
+    [[nodiscard]] constexpr auto length() const noexcept -> decltype(length_layout)::value_type {
+        return ioj::packed_extract<decltype(length_layout)>(value_);
+    }
+    constexpr void set_length(decltype(length_layout)::value_type const value) noexcept {
+        value_ = ioj::packed_insert<decltype(length_layout)>(value_, value);
     }
 
-    [[nodiscard]] constexpr auto kind() const noexcept -> kind_type {
-        return ioj::packed_extract<kind_field>(value_);
-    }
-    constexpr void set_kind(kind_type const value) noexcept {
-        assert((is_valid_kind(value)));
-        value_ = ioj::packed_insert<kind_field>(value_, value);
-    }
-
-    [[nodiscard]] constexpr auto length() const noexcept -> length_type {
-        return ioj::packed_extract<length_field>(value_);
-    }
-    constexpr void set_length(length_type const value) noexcept {
-        assert((is_valid_length(value)));
-        value_ = ioj::packed_insert<length_field>(value_, value);
-    }
   private:
-    struct RawTag {};
-    constexpr NetworkHeader(RawTag, storage_type raw) noexcept
-        : value_{raw} {}
-    storage_type value_{default_raw_value};
+    storage_type value_{storage.default_raw_value};
 };
+
 static_assert(ioj::valid_packed_value_layout<NetworkHeader>());
 
 struct PackedWide {
   public:
+    // Storage
     using storage_type = std::uint64_t;
-    static constexpr int encoded_bits{64};
-    static constexpr int storage_bits{64};
-    static constexpr storage_type default_raw_value{0ULL};
-    using value_type = std::uint64_t;
-    using value_field = ioj::PackedField<storage_type, value_type, 0, 64>;
-    struct value_range_type {
-        value_type min;
-        value_type max;
-    };
-    static constexpr value_range_type value_range{static_cast<value_type>(0ULL),
-                                                  static_cast<value_type>(18446744073709551615ULL)};
-    [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
-        return true;
-    }
+    using packed_integer_tag = ioj::packed::integer_tag;
+    static constexpr ioj::PackedStorage<storage_type, 64> storage{0};
+
+    // value
+    static constexpr ioj::PackedField<storage_type, std::uint64_t, 0, 64> value_layout{};
 
     constexpr PackedWide() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> PackedWide {
-        return PackedWide{RawTag{}, raw};
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-
-    explicit constexpr PackedWide(value_type const value_value) noexcept
+    constexpr explicit PackedWide(decltype(value_layout)::value_type const value_value) noexcept
         : value_{0} {
-        assert((is_valid_value(value_value)));
-        value_ = ioj::packed_insert<value_field>(value_, value_value);
+        value_ = ioj::packed_insert<decltype(value_layout)>(value_, value_value);
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (is_valid_value(ioj::packed_extract<value_field>(value_)));
-    }
     [[nodiscard]] constexpr auto operator<=>(PackedWide const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
-        return ioj::packed_extract<value_field>(value_);
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> PackedWide {
+        return std::bit_cast<PackedWide>(raw);
     }
-    constexpr void set_value(value_type const value) noexcept {
-        assert((is_valid_value(value)));
-        value_ = ioj::packed_insert<value_field>(value_, value);
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto value() const noexcept -> decltype(value_layout)::value_type {
+        return ioj::packed_extract<decltype(value_layout)>(value_);
     }
+    constexpr void set_value(decltype(value_layout)::value_type const value) noexcept {
+        value_ = ioj::packed_insert<decltype(value_layout)>(value_, value);
+    }
+
   private:
-    struct RawTag {};
-    constexpr PackedWide(RawTag, storage_type raw) noexcept
-        : value_{raw} {}
-    storage_type value_{default_raw_value};
+    storage_type value_{storage.default_raw_value};
 };
+
 static_assert(ioj::valid_packed_value_layout<PackedWide>());
 
 struct SignedDelta {
   public:
+    // Storage
     using storage_type = std::uint32_t;
-    static constexpr int encoded_bits{32};
-    static constexpr int storage_bits{32};
-    static constexpr storage_type default_raw_value{0ULL};
-    using delta_type = std::int32_t;
-    using delta_field = ioj::PackedField<storage_type, delta_type, 0, 17>;
-    struct delta_range_type {
-        delta_type min;
-        delta_type max;
-    };
-    static constexpr delta_range_type delta_range{static_cast<delta_type>(-65536LL),
-                                                  static_cast<delta_type>(65535ULL)};
-    [[nodiscard]] static constexpr auto is_valid_delta(delta_type const value) noexcept -> bool {
-        return ioj::packed_extract<delta_field>(ioj::packed_pack<delta_field>(value)) == value;
-    }
+    using packed_integer_tag = ioj::packed::integer_tag;
+    static constexpr ioj::PackedStorage<storage_type, 32> storage{0};
+
+    // delta
+    static constexpr ioj::PackedField<storage_type, std::int32_t, 0, 17> delta_layout{};
 
     constexpr SignedDelta() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> SignedDelta {
-        return SignedDelta{RawTag{}, raw};
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-
-    explicit constexpr SignedDelta(delta_type const delta_value) noexcept
+    constexpr explicit SignedDelta(decltype(delta_layout)::value_type const delta_value) noexcept
         : value_{0} {
         assert((is_valid_delta(delta_value)));
-        value_ = ioj::packed_insert<delta_field>(value_, delta_value);
+        value_ = ioj::packed_insert<decltype(delta_layout)>(value_, delta_value);
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (is_valid_delta(ioj::packed_extract<delta_field>(value_)));
-    }
     [[nodiscard]] constexpr auto operator<=>(SignedDelta const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto delta() const noexcept -> delta_type {
-        return ioj::packed_extract<delta_field>(value_);
+    [[nodiscard]] static constexpr auto
+        is_valid_delta(decltype(delta_layout)::value_type const value) noexcept -> bool {
+        return ioj::packed_extract<decltype(delta_layout)>(
+                   ioj::packed_pack<decltype(delta_layout)>(value)) == value;
     }
-    constexpr void set_delta(delta_type const value) noexcept {
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> SignedDelta {
+        return std::bit_cast<SignedDelta>(raw);
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto delta() const noexcept -> decltype(delta_layout)::value_type {
+        return ioj::packed_extract<decltype(delta_layout)>(value_);
+    }
+    constexpr void set_delta(decltype(delta_layout)::value_type const value) noexcept {
         assert((is_valid_delta(value)));
-        value_ = ioj::packed_insert<delta_field>(value_, value);
+        value_ = ioj::packed_insert<decltype(delta_layout)>(value_, value);
     }
+
   private:
-    struct RawTag {};
-    constexpr SignedDelta(RawTag, storage_type raw) noexcept
-        : value_{raw} {}
-    storage_type value_{default_raw_value};
+    storage_type value_{storage.default_raw_value};
 };
+
 static_assert(ioj::valid_packed_value_layout<SignedDelta>());
 
 struct SignedWide {
   public:
+    // Storage
     using storage_type = std::uint64_t;
-    static constexpr int encoded_bits{64};
-    static constexpr int storage_bits{64};
-    static constexpr storage_type default_raw_value{0ULL};
-    using delta_type = std::int64_t;
-    using delta_field = ioj::PackedField<storage_type, delta_type, 0, 64>;
-    struct delta_range_type {
-        delta_type min;
-        delta_type max;
-    };
-    static constexpr delta_range_type delta_range{
-        static_cast<delta_type>((-9223372036854775807LL - 1)),
-        static_cast<delta_type>(9223372036854775807ULL)};
-    [[nodiscard]] static constexpr auto is_valid_delta(delta_type const) noexcept -> bool {
-        return true;
-    }
+    using packed_integer_tag = ioj::packed::integer_tag;
+    static constexpr ioj::PackedStorage<storage_type, 64> storage{0};
+
+    // delta
+    static constexpr ioj::PackedField<storage_type, std::int64_t, 0, 64> delta_layout{};
 
     constexpr SignedWide() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> SignedWide {
-        return SignedWide{RawTag{}, raw};
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-
-    explicit constexpr SignedWide(delta_type const delta_value) noexcept
+    constexpr explicit SignedWide(decltype(delta_layout)::value_type const delta_value) noexcept
         : value_{0} {
-        assert((is_valid_delta(delta_value)));
-        value_ = ioj::packed_insert<delta_field>(value_, delta_value);
+        value_ = ioj::packed_insert<decltype(delta_layout)>(value_, delta_value);
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (is_valid_delta(ioj::packed_extract<delta_field>(value_)));
-    }
     [[nodiscard]] constexpr auto operator<=>(SignedWide const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto delta() const noexcept -> delta_type {
-        return ioj::packed_extract<delta_field>(value_);
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> SignedWide {
+        return std::bit_cast<SignedWide>(raw);
     }
-    constexpr void set_delta(delta_type const value) noexcept {
-        assert((is_valid_delta(value)));
-        value_ = ioj::packed_insert<delta_field>(value_, value);
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto delta() const noexcept -> decltype(delta_layout)::value_type {
+        return ioj::packed_extract<decltype(delta_layout)>(value_);
     }
+    constexpr void set_delta(decltype(delta_layout)::value_type const value) noexcept {
+        value_ = ioj::packed_insert<decltype(delta_layout)>(value_, value);
+    }
+
   private:
-    struct RawTag {};
-    constexpr SignedWide(RawTag, storage_type raw) noexcept
-        : value_{raw} {}
-    storage_type value_{default_raw_value};
+    storage_type value_{storage.default_raw_value};
 };
+
 static_assert(ioj::valid_packed_value_layout<SignedWide>());
 
 struct SignedTemperature {
   public:
+    // Storage
     using storage_type = std::uint32_t;
-    static constexpr int encoded_bits{32};
-    static constexpr int storage_bits{32};
-    static constexpr storage_type default_raw_value{0ULL};
-    using temperature_type = std::int8_t;
-    using temperature_field = ioj::PackedField<storage_type, temperature_type, 0, 8>;
-    struct temperature_range_type {
-        temperature_type min;
-        temperature_type max;
-    };
-    static constexpr temperature_range_type temperature_range{
-        static_cast<temperature_type>(-100LL), static_cast<temperature_type>(100ULL)};
-    static constexpr temperature_type temperature_Freezing{static_cast<temperature_type>(0ULL)};
-    static constexpr temperature_type temperature_Unknown{static_cast<temperature_type>(-128LL)};
-    [[nodiscard]] static constexpr auto is_valid_temperature(temperature_type const value) noexcept
-        -> bool {
-        return ((value >= temperature_range.min) && (value <= temperature_range.max)) ||
-               value == temperature_Unknown;
-    }
+    using packed_integer_tag = ioj::packed::integer_tag;
+    static constexpr ioj::PackedStorage<storage_type, 32> storage{0};
+
+    // temperature
+    static constexpr ioj::PackedField<storage_type, std::int8_t, 0, 8> temperature_layout{
+        {static_cast<std::int8_t>(-100LL), static_cast<std::int8_t>(100ULL)}};
+    static constexpr decltype(temperature_layout)::value_type temperature_Freezing{
+        static_cast<decltype(temperature_layout)::value_type>(0ULL)};
+    static constexpr decltype(temperature_layout)::value_type temperature_Unknown{
+        static_cast<decltype(temperature_layout)::value_type>(-128LL)};
 
     constexpr SignedTemperature() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> SignedTemperature {
-        return SignedTemperature{RawTag{}, raw};
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-
-    explicit constexpr SignedTemperature(temperature_type const temperature_value) noexcept
+    constexpr explicit SignedTemperature(
+        decltype(temperature_layout)::value_type const temperature_value) noexcept
         : value_{0} {
         assert((is_valid_temperature(temperature_value)));
-        value_ = ioj::packed_insert<temperature_field>(value_, temperature_value);
+        value_ = ioj::packed_insert<decltype(temperature_layout)>(value_, temperature_value);
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (is_valid_temperature(ioj::packed_extract<temperature_field>(value_)));
-    }
     [[nodiscard]] constexpr auto operator<=>(SignedTemperature const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto temperature() const noexcept -> temperature_type {
-        return ioj::packed_extract<temperature_field>(value_);
+    [[nodiscard]] static constexpr auto
+        is_valid_temperature(decltype(temperature_layout)::value_type const value) noexcept
+        -> bool {
+        return (value >= temperature_layout.range.min && value <= temperature_layout.range.max) ||
+               value == temperature_Unknown;
     }
-    constexpr void set_temperature(temperature_type const value) noexcept {
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
+        -> SignedTemperature {
+        return std::bit_cast<SignedTemperature>(raw);
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return is_valid_temperature(ioj::packed_extract<decltype(temperature_layout)>(value_));
+    }
+    [[nodiscard]] constexpr auto temperature() const noexcept
+        -> decltype(temperature_layout)::value_type {
+        return ioj::packed_extract<decltype(temperature_layout)>(value_);
+    }
+    constexpr void set_temperature(decltype(temperature_layout)::value_type const value) noexcept {
         assert((is_valid_temperature(value)));
-        value_ = ioj::packed_insert<temperature_field>(value_, value);
+        value_ = ioj::packed_insert<decltype(temperature_layout)>(value_, value);
     }
+
   private:
-    struct RawTag {};
-    constexpr SignedTemperature(RawTag, storage_type raw) noexcept
-        : value_{raw} {}
-    storage_type value_{default_raw_value};
+    storage_type value_{storage.default_raw_value};
 };
+
 static_assert(ioj::valid_packed_value_layout<SignedTemperature>());
 
 struct PackedTinyState {
   public:
+    // Storage
     using storage_type = std::uint8_t;
-    static constexpr int encoded_bits{8};
-    static constexpr int storage_bits{8};
-    static constexpr storage_type default_raw_value{0ULL};
-    using state_type = codegen_compile_fixture::TinyState;
-    using state_field = ioj::PackedField<storage_type, state_type, 0, 2>;
-    using payload_type = std::uint8_t;
-    using payload_field = ioj::PackedField<storage_type, payload_type, 2, 6>;
-    struct payload_range_type {
-        payload_type min;
-        payload_type max;
-    };
-    static constexpr payload_range_type payload_range{static_cast<payload_type>(0ULL),
-                                                      static_cast<payload_type>(63ULL)};
-    [[nodiscard]] static constexpr auto is_valid_state(state_type const value) noexcept -> bool {
-        return ((value == state_Zero_code) || (value == state_One_code) ||
-                (value == state_Max_code)) &&
-               static_cast<storage_type>(value) <= state_field::value_mask;
-    }
-    [[nodiscard]] static constexpr auto is_valid_payload(payload_type const value) noexcept
-        -> bool {
-        return static_cast<storage_type>(value) <= payload_field::value_mask;
-    }
+    using packed_integer_tag = ioj::packed::integer_tag;
+    static constexpr ioj::PackedStorage<storage_type, 8> storage{0};
+
+    // state
+    static constexpr ioj::PackedField<storage_type, TinyState, 0, 2> state_layout{};
+
+    // payload
+    static constexpr ioj::PackedField<storage_type, std::uint8_t, 2, 6> payload_layout{};
 
     constexpr PackedTinyState() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> PackedTinyState {
-        return PackedTinyState{RawTag{}, raw};
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-
-    explicit constexpr PackedTinyState(state_type const state_value,
-                                       payload_type const payload_value) noexcept
+    constexpr explicit PackedTinyState(
+        decltype(state_layout)::value_type const state_value,
+        decltype(payload_layout)::value_type const payload_value) noexcept
         : value_{0} {
         assert((is_valid_state(state_value)));
-        value_ = ioj::packed_insert<state_field>(value_, state_value);
+        value_ = ioj::packed_insert<decltype(state_layout)>(value_, state_value);
         assert((is_valid_payload(payload_value)));
-        value_ = ioj::packed_insert<payload_field>(value_, payload_value);
+        value_ = ioj::packed_insert<decltype(payload_layout)>(value_, payload_value);
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (is_valid_state(ioj::packed_extract<state_field>(value_))) &&
-               (is_valid_payload(ioj::packed_extract<payload_field>(value_)));
-    }
     [[nodiscard]] constexpr auto operator<=>(PackedTinyState const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto state() const noexcept -> state_type {
-        return ioj::packed_extract<state_field>(value_);
+    [[nodiscard]] static constexpr auto
+        is_valid_state(decltype(state_layout)::value_type const value) noexcept -> bool {
+        return value == codegen_compile_fixture::TinyState::Zero ||
+               value == codegen_compile_fixture::TinyState::One ||
+               value == codegen_compile_fixture::TinyState::Max;
     }
-    constexpr void set_state(state_type const value) noexcept {
+    [[nodiscard]] static constexpr auto
+        is_valid_payload(decltype(payload_layout)::value_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= payload_layout.value_mask;
+    }
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
+        -> PackedTinyState {
+        return std::bit_cast<PackedTinyState>(raw);
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return is_valid_state(ioj::packed_extract<decltype(state_layout)>(value_));
+    }
+    [[nodiscard]] constexpr auto state() const noexcept -> decltype(state_layout)::value_type {
+        return ioj::packed_extract<decltype(state_layout)>(value_);
+    }
+    constexpr void set_state(decltype(state_layout)::value_type const value) noexcept {
         assert((is_valid_state(value)));
-        value_ = ioj::packed_insert<state_field>(value_, value);
+        value_ = ioj::packed_insert<decltype(state_layout)>(value_, value);
+    }
+    [[nodiscard]] constexpr auto payload() const noexcept -> decltype(payload_layout)::value_type {
+        return ioj::packed_extract<decltype(payload_layout)>(value_);
+    }
+    constexpr void set_payload(decltype(payload_layout)::value_type const value) noexcept {
+        assert((is_valid_payload(value)));
+        value_ = ioj::packed_insert<decltype(payload_layout)>(value_, value);
     }
 
-    [[nodiscard]] constexpr auto payload() const noexcept -> payload_type {
-        return ioj::packed_extract<payload_field>(value_);
-    }
-    constexpr void set_payload(payload_type const value) noexcept {
-        assert((is_valid_payload(value)));
-        value_ = ioj::packed_insert<payload_field>(value_, value);
-    }
-    static constexpr state_type state_Zero_code{static_cast<state_type>(0ULL)};
-    static constexpr state_type state_One_code{static_cast<state_type>(1ULL)};
-    static constexpr state_type state_Max_code{static_cast<state_type>(3ULL)};
   private:
-    struct RawTag {};
-    constexpr PackedTinyState(RawTag, storage_type raw) noexcept
-        : value_{raw} {}
-    storage_type value_{default_raw_value};
+    storage_type value_{storage.default_raw_value};
 };
+
 static_assert(ioj::valid_packed_value_layout<PackedTinyState>());
 
 struct PackedOpaqueState {
   public:
+    // Storage
     using storage_type = std::uint8_t;
-    static constexpr int encoded_bits{8};
-    static constexpr int storage_bits{8};
-    static constexpr storage_type default_raw_value{0ULL};
-    using state_type = codegen_compile_fixture::OpaqueState;
-    using state_field = ioj::PackedField<storage_type, state_type, 0, 8>;
-    [[nodiscard]] static constexpr auto is_valid_state(state_type const value) noexcept -> bool {
-        return (value == state_Zero_code) || (value == state_Max_code);
-    }
+    using packed_integer_tag = ioj::packed::integer_tag;
+    static constexpr ioj::PackedStorage<storage_type, 8> storage{0};
+
+    // state
+    static constexpr ioj::PackedField<storage_type, OpaqueState, 0, 8> state_layout{};
 
     constexpr PackedOpaqueState() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> PackedOpaqueState {
-        return PackedOpaqueState{RawTag{}, raw};
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-
-    explicit constexpr PackedOpaqueState(state_type const state_value) noexcept
+    constexpr explicit PackedOpaqueState(
+        decltype(state_layout)::value_type const state_value) noexcept
         : value_{0} {
         assert((is_valid_state(state_value)));
-        value_ = ioj::packed_insert<state_field>(value_, state_value);
+        value_ = ioj::packed_insert<decltype(state_layout)>(value_, state_value);
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (is_valid_state(ioj::packed_extract<state_field>(value_)));
-    }
     [[nodiscard]] constexpr auto operator<=>(PackedOpaqueState const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto state() const noexcept -> state_type {
-        return ioj::packed_extract<state_field>(value_);
+    [[nodiscard]] static constexpr auto
+        is_valid_state(decltype(state_layout)::value_type const value) noexcept -> bool {
+        return is_valid_state_domain(value) && std::to_underlying(value) <= state_layout.value_mask;
     }
-    constexpr void set_state(state_type const value) noexcept {
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
+        -> PackedOpaqueState {
+        return std::bit_cast<PackedOpaqueState>(raw);
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return is_valid_state_domain(ioj::packed_extract<decltype(state_layout)>(value_));
+    }
+    [[nodiscard]] constexpr auto state() const noexcept -> decltype(state_layout)::value_type {
+        return ioj::packed_extract<decltype(state_layout)>(value_);
+    }
+    constexpr void set_state(decltype(state_layout)::value_type const value) noexcept {
         assert((is_valid_state(value)));
-        value_ = ioj::packed_insert<state_field>(value_, value);
+        value_ = ioj::packed_insert<decltype(state_layout)>(value_, value);
     }
-    static constexpr state_type state_Zero_code{state_type::Zero};
-    static constexpr state_type state_Max_code{state_type::Max};
+
   private:
-    struct RawTag {};
-    constexpr PackedOpaqueState(RawTag, storage_type raw) noexcept
-        : value_{raw} {}
-    storage_type value_{default_raw_value};
+    [[nodiscard]] static constexpr auto
+        is_valid_state_domain(decltype(state_layout)::value_type const value) noexcept -> bool {
+        return value == codegen_compile_fixture::OpaqueState::Zero ||
+               value == codegen_compile_fixture::OpaqueState::Max;
+    }
+
+    storage_type value_{storage.default_raw_value};
 };
+
 static_assert(ioj::valid_packed_value_layout<PackedOpaqueState>());
 
 struct CheckedValue {
   public:
+    // Storage
     using storage_type = std::uint32_t;
-    static constexpr int encoded_bits{32};
-    static constexpr int storage_bits{32};
-    static constexpr storage_type default_raw_value{2147483647ULL};
-    using serial_type = std::uint32_t;
-    using serial_field = ioj::PackedField<storage_type, serial_type, 0, 24>;
-    struct serial_range_type {
-        serial_type min;
-        serial_type max;
-    };
-    static constexpr serial_range_type serial_range{static_cast<serial_type>(0ULL),
-                                                    static_cast<serial_type>(16777215ULL)};
-    using state_type = codegen_compile_fixture::DomainState;
-    using state_field = ioj::PackedField<storage_type, state_type, 24, 8>;
-    [[nodiscard]] static constexpr auto is_valid_serial(serial_type const value) noexcept -> bool {
-        return static_cast<storage_type>(value) <= serial_field::value_mask;
-    }
-    [[nodiscard]] static constexpr auto is_valid_state(state_type const value) noexcept -> bool {
-        return (value == state_Zero_code) || (value == state_One_code);
-    }
-    static constexpr storage_type invalid_value{2147483647ULL};
+    using packed_integer_tag = ioj::packed::integer_tag;
+    static constexpr ioj::PackedStorage<storage_type, 32> storage{2147483647};
+    static constexpr storage_type invalid_value{2147483647};
+
+    // serial
+    static constexpr ioj::PackedField<storage_type, std::uint32_t, 0, 24> serial_layout{};
+
+    // state
+    static constexpr ioj::PackedField<storage_type, DomainState, 24, 8> state_layout{
+        {static_cast<DomainState>(0ULL), static_cast<DomainState>(1ULL)}};
 
     constexpr CheckedValue() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> CheckedValue {
-        return CheckedValue{RawTag{}, raw};
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-
-    explicit constexpr CheckedValue(serial_type const serial_value,
-                                    state_type const state_value) noexcept
+    constexpr explicit CheckedValue(decltype(serial_layout)::value_type const serial_value,
+                                    decltype(state_layout)::value_type const state_value) noexcept
         : value_{0} {
         assert((is_valid_serial(serial_value)));
-        value_ = ioj::packed_insert<serial_field>(value_, serial_value);
+        value_ = ioj::packed_insert<decltype(serial_layout)>(value_, serial_value);
         assert((is_valid_state(state_value)));
-        value_ = ioj::packed_insert<state_field>(value_, state_value);
-        assert(value_ != invalid_value);
+        value_ = ioj::packed_insert<decltype(state_layout)>(value_, state_value);
+        assert((value_ != invalid_value));
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return value_ != invalid_value &&
-               ((is_valid_serial(ioj::packed_extract<serial_field>(value_))) &&
-                (is_valid_state(ioj::packed_extract<state_field>(value_))));
-    }
     [[nodiscard]] constexpr auto operator<=>(CheckedValue const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto serial() const noexcept -> serial_type {
-        return ioj::packed_extract<serial_field>(value_);
+    [[nodiscard]] static constexpr auto
+        is_valid_serial(decltype(serial_layout)::value_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= serial_layout.value_mask;
     }
-    constexpr void set_serial(serial_type const value) noexcept {
+    [[nodiscard]] static constexpr auto
+        is_valid_state(decltype(state_layout)::value_type const value) noexcept -> bool {
+        return value <= state_layout.range.max;
+    }
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> CheckedValue {
+        return std::bit_cast<CheckedValue>(raw);
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return value_ != invalid_value &&
+               is_valid_state(ioj::packed_extract<decltype(state_layout)>(value_));
+    }
+    [[nodiscard]] constexpr auto serial() const noexcept -> decltype(serial_layout)::value_type {
+        return ioj::packed_extract<decltype(serial_layout)>(value_);
+    }
+    constexpr void set_serial(decltype(serial_layout)::value_type const value) noexcept {
         assert((is_valid_serial(value)));
-        value_ = ioj::packed_insert<serial_field>(value_, value);
+        value_ = ioj::packed_insert<decltype(serial_layout)>(value_, value);
+    }
+    [[nodiscard]] constexpr auto state() const noexcept -> decltype(state_layout)::value_type {
+        return ioj::packed_extract<decltype(state_layout)>(value_);
+    }
+    constexpr void set_state(decltype(state_layout)::value_type const value) noexcept {
+        assert((is_valid_state(value)));
+        value_ = ioj::packed_insert<decltype(state_layout)>(value_, value);
     }
 
-    [[nodiscard]] constexpr auto state() const noexcept -> state_type {
-        return ioj::packed_extract<state_field>(value_);
-    }
-    constexpr void set_state(state_type const value) noexcept {
-        assert((is_valid_state(value)));
-        value_ = ioj::packed_insert<state_field>(value_, value);
-    }
-    static constexpr state_type state_Zero_code{static_cast<state_type>(0ULL)};
-    static constexpr state_type state_One_code{static_cast<state_type>(1ULL)};
   private:
-    struct RawTag {};
-    constexpr CheckedValue(RawTag, storage_type raw) noexcept
-        : value_{raw} {}
-    storage_type value_{default_raw_value};
+    storage_type value_{storage.default_raw_value};
 };
+
 static_assert(ioj::valid_packed_value_layout<CheckedValue>());
 
 struct Vitals {
   public:
+    // Storage
     using storage_type = std::uint16_t;
-    static constexpr int encoded_bits{16};
-    static constexpr int storage_bits{16};
-    static constexpr storage_type default_raw_value{0ULL};
-    using health_encoded_type = std::uint8_t;
-    using health_encoded_field = ioj::PackedField<storage_type, health_encoded_type, 0, 8>;
-    using state_type = std::uint8_t;
-    using state_field = ioj::PackedField<storage_type, state_type, 8, 8>;
-    [[nodiscard]] static constexpr auto
-        is_valid_health_encoded(health_encoded_type const value) noexcept -> bool {
-        return value <= health_encoded_maximum_encoded;
-    }
-    [[nodiscard]] static constexpr auto is_valid_state(state_type const) noexcept -> bool {
-        return true;
-    }
+    using packed_integer_tag = ioj::packed::integer_tag;
+    static constexpr ioj::PackedStorage<storage_type, 16> storage{0};
+
+    // health
+    static constexpr ioj::PackedField<storage_type, std::uint8_t, 0, 8> health_encoded_layout{
+        {static_cast<std::uint8_t>(0ULL), static_cast<std::uint8_t>(253ULL)}};
+
+    // state
+    static constexpr ioj::PackedField<storage_type, std::uint8_t, 8, 8> state_layout{};
 
     constexpr Vitals() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> Vitals {
-        return Vitals{RawTag{}, raw};
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-
-    explicit constexpr Vitals(health_encoded_type const health_encoded_value,
-                              state_type const state_value) noexcept
+    constexpr explicit Vitals(
+        decltype(health_encoded_layout)::value_type const health_encoded_value,
+        decltype(state_layout)::value_type const state_value) noexcept
         : value_{0} {
         assert((is_valid_health_encoded(health_encoded_value)));
-        value_ = ioj::packed_insert<health_encoded_field>(value_, health_encoded_value);
-        assert((is_valid_state(state_value)));
-        value_ = ioj::packed_insert<state_field>(value_, state_value);
+        value_ = ioj::packed_insert<decltype(health_encoded_layout)>(value_, health_encoded_value);
+        value_ = ioj::packed_insert<decltype(state_layout)>(value_, state_value);
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (is_valid_health_encoded(ioj::packed_extract<health_encoded_field>(value_))) &&
-               (is_valid_state(ioj::packed_extract<state_field>(value_)));
-    }
     [[nodiscard]] constexpr auto operator<=>(Vitals const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto health_encoded() const noexcept -> health_encoded_type {
-        return ioj::packed_extract<health_encoded_field>(value_);
+    [[nodiscard]] static constexpr auto
+        is_valid_health_encoded(decltype(health_encoded_layout)::value_type const value) noexcept
+        -> bool {
+        return value <= health_encoded_layout.range.max;
     }
-    constexpr void set_health_encoded(health_encoded_type const value) noexcept {
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> Vitals {
+        return std::bit_cast<Vitals>(raw);
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return is_valid_health_encoded(
+            ioj::packed_extract<decltype(health_encoded_layout)>(value_));
+    }
+    [[nodiscard]] constexpr auto health_encoded() const noexcept
+        -> decltype(health_encoded_layout)::value_type {
+        return ioj::packed_extract<decltype(health_encoded_layout)>(value_);
+    }
+    constexpr void
+        set_health_encoded(decltype(health_encoded_layout)::value_type const value) noexcept {
         assert((is_valid_health_encoded(value)));
-        value_ = ioj::packed_insert<health_encoded_field>(value_, value);
+        value_ = ioj::packed_insert<decltype(health_encoded_layout)>(value_, value);
+    }
+    [[nodiscard]] constexpr auto state() const noexcept -> decltype(state_layout)::value_type {
+        return ioj::packed_extract<decltype(state_layout)>(value_);
+    }
+    constexpr void set_state(decltype(state_layout)::value_type const value) noexcept {
+        value_ = ioj::packed_insert<decltype(state_layout)>(value_, value);
     }
 
-    [[nodiscard]] constexpr auto state() const noexcept -> state_type {
-        return ioj::packed_extract<state_field>(value_);
-    }
-    constexpr void set_state(state_type const value) noexcept {
-        assert((is_valid_state(value)));
-        value_ = ioj::packed_insert<state_field>(value_, value);
-    }
-    static constexpr health_encoded_type health_encoded_maximum_encoded{
-        static_cast<health_encoded_type>(253ULL)};
   private:
-    struct RawTag {};
-    constexpr Vitals(RawTag, storage_type raw) noexcept
-        : value_{raw} {}
-    storage_type value_{default_raw_value};
+    storage_type value_{storage.default_raw_value};
 };
+
 static_assert(ioj::valid_packed_value_layout<Vitals>());
 
 struct Motion {
   public:
+    // Storage
     using storage_type = std::uint32_t;
-    static constexpr int encoded_bits{32};
-    static constexpr int storage_bits{32};
-    static constexpr storage_type default_raw_value{0ULL};
-    using velocity_raw_type = std::int16_t;
-    using velocity_raw_field = ioj::PackedField<storage_type, velocity_raw_type, 0, 12>;
-    using fraction_raw_type = std::uint8_t;
-    using fraction_raw_field = ioj::PackedField<storage_type, fraction_raw_type, 12, 7>;
-    using state_type = std::uint16_t;
-    using state_field = ioj::PackedField<storage_type, state_type, 19, 13>;
-    struct state_range_type {
-        state_type min;
-        state_type max;
-    };
-    static constexpr state_range_type state_range{static_cast<state_type>(0ULL),
-                                                  static_cast<state_type>(8191ULL)};
-    [[nodiscard]] static constexpr auto
-        is_valid_velocity_raw(velocity_raw_type const value) noexcept -> bool {
-        return ioj::packed_extract<velocity_raw_field>(
-                   ioj::packed_pack<velocity_raw_field>(value)) == value;
-    }
-    [[nodiscard]] static constexpr auto
-        is_valid_fraction_raw(fraction_raw_type const value) noexcept -> bool {
-        return static_cast<storage_type>(value) <= fraction_raw_field::value_mask;
-    }
-    [[nodiscard]] static constexpr auto is_valid_state(state_type const value) noexcept -> bool {
-        return static_cast<storage_type>(value) <= state_field::value_mask;
-    }
+    using packed_integer_tag = ioj::packed::integer_tag;
+    static constexpr ioj::PackedStorage<storage_type, 32> storage{0};
+
+    // velocity
+    static constexpr ioj::PackedField<storage_type, std::int16_t, 0, 12> velocity_raw_layout{};
+    static constexpr int velocity_fractional_bits{4};
+    static constexpr int velocity_magnitude_bits{11};
+
+    // fraction
+    static constexpr ioj::PackedField<storage_type, std::uint8_t, 12, 7> fraction_raw_layout{};
+    static constexpr int fraction_fractional_bits{7};
+    static constexpr int fraction_magnitude_bits{7};
+
+    // state
+    static constexpr ioj::PackedField<storage_type, std::uint16_t, 19, 13> state_layout{};
 
     constexpr Motion() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> Motion {
-        return Motion{RawTag{}, raw};
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-
-    explicit constexpr Motion(velocity_raw_type const velocity_raw_value,
-                              fraction_raw_type const fraction_raw_value,
-                              state_type const state_value) noexcept
+    constexpr explicit Motion(decltype(velocity_raw_layout)::value_type const velocity_raw_value,
+                              decltype(fraction_raw_layout)::value_type const fraction_raw_value,
+                              decltype(state_layout)::value_type const state_value) noexcept
         : value_{0} {
         assert((is_valid_velocity_raw(velocity_raw_value)));
-        value_ = ioj::packed_insert<velocity_raw_field>(value_, velocity_raw_value);
+        value_ = ioj::packed_insert<decltype(velocity_raw_layout)>(value_, velocity_raw_value);
         assert((is_valid_fraction_raw(fraction_raw_value)));
-        value_ = ioj::packed_insert<fraction_raw_field>(value_, fraction_raw_value);
+        value_ = ioj::packed_insert<decltype(fraction_raw_layout)>(value_, fraction_raw_value);
         assert((is_valid_state(state_value)));
-        value_ = ioj::packed_insert<state_field>(value_, state_value);
+        value_ = ioj::packed_insert<decltype(state_layout)>(value_, state_value);
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (is_valid_velocity_raw(ioj::packed_extract<velocity_raw_field>(value_))) &&
-               (is_valid_fraction_raw(ioj::packed_extract<fraction_raw_field>(value_))) &&
-               (is_valid_state(ioj::packed_extract<state_field>(value_)));
-    }
     [[nodiscard]] constexpr auto operator<=>(Motion const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto velocity_raw() const noexcept -> velocity_raw_type {
-        return ioj::packed_extract<velocity_raw_field>(value_);
+    [[nodiscard]] static constexpr auto
+        is_valid_velocity_raw(decltype(velocity_raw_layout)::value_type const value) noexcept
+        -> bool {
+        return ioj::packed_extract<decltype(velocity_raw_layout)>(
+                   ioj::packed_pack<decltype(velocity_raw_layout)>(value)) == value;
     }
-    constexpr void set_velocity_raw(velocity_raw_type const value) noexcept {
+    [[nodiscard]] static constexpr auto
+        is_valid_fraction_raw(decltype(fraction_raw_layout)::value_type const value) noexcept
+        -> bool {
+        return static_cast<storage_type>(value) <= fraction_raw_layout.value_mask;
+    }
+    [[nodiscard]] static constexpr auto
+        is_valid_state(decltype(state_layout)::value_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= state_layout.value_mask;
+    }
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> Motion {
+        return std::bit_cast<Motion>(raw);
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto velocity_raw() const noexcept
+        -> decltype(velocity_raw_layout)::value_type {
+        return ioj::packed_extract<decltype(velocity_raw_layout)>(value_);
+    }
+    constexpr void
+        set_velocity_raw(decltype(velocity_raw_layout)::value_type const value) noexcept {
         assert((is_valid_velocity_raw(value)));
-        value_ = ioj::packed_insert<velocity_raw_field>(value_, value);
+        value_ = ioj::packed_insert<decltype(velocity_raw_layout)>(value_, value);
     }
-    static constexpr velocity_raw_type velocity_minimum_allowed_raw{
-        static_cast<velocity_raw_type>(-2048LL)};
-    static constexpr velocity_raw_type velocity_maximum_allowed_raw{
-        static_cast<velocity_raw_type>(2047ULL)};
     [[nodiscard]] auto velocity_value() const noexcept -> double {
         return std::ldexp(static_cast<double>(velocity_raw()), -velocity_fractional_bits);
     }
-    [[nodiscard]] static auto try_encode_velocity_value(double value,
-                                                        velocity_raw_type& out_raw) noexcept
-        -> bool {
+    [[nodiscard]] static auto try_encode_velocity_value(
+        double const value, decltype(velocity_raw_layout)::value_type& out_raw) noexcept -> bool {
         if (!std::isfinite(value) ||
-            value < std::ldexp(static_cast<double>(velocity_minimum_allowed_raw),
+            value < std::ldexp(static_cast<double>(velocity_raw_layout.range.min),
                                -velocity_fractional_bits) ||
-            value > std::ldexp(static_cast<double>(velocity_maximum_allowed_raw),
+            value > std::ldexp(static_cast<double>(velocity_raw_layout.range.max),
                                -velocity_fractional_bits)) {
             return false;
         }
@@ -1095,50 +947,47 @@ struct Motion {
         if (!std::isfinite(scaled)) {
             return false;
         }
-        auto const lower{std::floor(scaled)};
-        auto const fraction{scaled - lower};
-        auto const rounded{fraction > 0.5 || (fraction == 0.5 && std::fmod(lower, 2.0) != 0.0)
-                               ? lower + 1.0
-                               : lower};
+        auto rounded{std::floor(scaled)};
+        auto const fraction{scaled - rounded};
+        if (fraction > 0.5 || (fraction == 0.5 && std::fmod(rounded, 2.0) != 0.0)) {
+            rounded = rounded + 1.0;
+        }
         if (rounded >= std::ldexp(1.0, velocity_magnitude_bits) ||
             rounded < -std::ldexp(1.0, velocity_magnitude_bits)) {
             return false;
         }
-        auto const raw{static_cast<velocity_raw_type>(rounded)};
-        if (raw < velocity_minimum_allowed_raw || raw > velocity_maximum_allowed_raw) {
+        decltype(velocity_raw_layout)::value_type const raw{
+            static_cast<decltype(velocity_raw_layout)::value_type>(rounded)};
+        if (!is_valid_velocity_raw(raw)) {
             return false;
         }
         out_raw = raw;
         return true;
     }
-    void set_velocity_value(double value) noexcept {
-        velocity_raw_type raw{};
+    void set_velocity_value(double const value) noexcept {
+        decltype(velocity_raw_layout)::value_type raw{};
         [[maybe_unused]] auto const success{try_encode_velocity_value(value, raw)};
-        assert(success);
+        assert((success));
         set_velocity_raw(raw);
     }
-
-    [[nodiscard]] constexpr auto fraction_raw() const noexcept -> fraction_raw_type {
-        return ioj::packed_extract<fraction_raw_field>(value_);
+    [[nodiscard]] constexpr auto fraction_raw() const noexcept
+        -> decltype(fraction_raw_layout)::value_type {
+        return ioj::packed_extract<decltype(fraction_raw_layout)>(value_);
     }
-    constexpr void set_fraction_raw(fraction_raw_type const value) noexcept {
+    constexpr void
+        set_fraction_raw(decltype(fraction_raw_layout)::value_type const value) noexcept {
         assert((is_valid_fraction_raw(value)));
-        value_ = ioj::packed_insert<fraction_raw_field>(value_, value);
+        value_ = ioj::packed_insert<decltype(fraction_raw_layout)>(value_, value);
     }
-    static constexpr fraction_raw_type fraction_minimum_allowed_raw{
-        static_cast<fraction_raw_type>(0ULL)};
-    static constexpr fraction_raw_type fraction_maximum_allowed_raw{
-        static_cast<fraction_raw_type>(127ULL)};
     [[nodiscard]] auto fraction_value() const noexcept -> double {
         return std::ldexp(static_cast<double>(fraction_raw()), -fraction_fractional_bits);
     }
-    [[nodiscard]] static auto try_encode_fraction_value(double value,
-                                                        fraction_raw_type& out_raw) noexcept
-        -> bool {
+    [[nodiscard]] static auto try_encode_fraction_value(
+        double const value, decltype(fraction_raw_layout)::value_type& out_raw) noexcept -> bool {
         if (!std::isfinite(value) ||
-            value < std::ldexp(static_cast<double>(fraction_minimum_allowed_raw),
+            value < std::ldexp(static_cast<double>(fraction_raw_layout.range.min),
                                -fraction_fractional_bits) ||
-            value > std::ldexp(static_cast<double>(fraction_maximum_allowed_raw),
+            value > std::ldexp(static_cast<double>(fraction_raw_layout.range.max),
                                -fraction_fractional_bits)) {
             return false;
         }
@@ -1150,451 +999,96 @@ struct Motion {
         if (rounded >= std::ldexp(1.0, fraction_magnitude_bits) || rounded < 0.0) {
             return false;
         }
-        auto const raw{static_cast<fraction_raw_type>(rounded)};
-        if (raw < fraction_minimum_allowed_raw || raw > fraction_maximum_allowed_raw) {
+        decltype(fraction_raw_layout)::value_type const raw{
+            static_cast<decltype(fraction_raw_layout)::value_type>(rounded)};
+        if (!is_valid_fraction_raw(raw)) {
             return false;
         }
         out_raw = raw;
         return true;
     }
-    void set_fraction_value(double value) noexcept {
-        fraction_raw_type raw{};
+    void set_fraction_value(double const value) noexcept {
+        decltype(fraction_raw_layout)::value_type raw{};
         [[maybe_unused]] auto const success{try_encode_fraction_value(value, raw)};
-        assert(success);
+        assert((success));
         set_fraction_raw(raw);
     }
-
-    [[nodiscard]] constexpr auto state() const noexcept -> state_type {
-        return ioj::packed_extract<state_field>(value_);
+    [[nodiscard]] constexpr auto state() const noexcept -> decltype(state_layout)::value_type {
+        return ioj::packed_extract<decltype(state_layout)>(value_);
     }
-    constexpr void set_state(state_type const value) noexcept {
+    constexpr void set_state(decltype(state_layout)::value_type const value) noexcept {
         assert((is_valid_state(value)));
-        value_ = ioj::packed_insert<state_field>(value_, value);
+        value_ = ioj::packed_insert<decltype(state_layout)>(value_, value);
     }
-    static constexpr int velocity_fractional_bits{4};
-    static constexpr int velocity_magnitude_bits{11};
-    static constexpr int fraction_fractional_bits{7};
-    static constexpr int fraction_magnitude_bits{7};
+
   private:
-    struct RawTag {};
-    constexpr Motion(RawTag, storage_type raw) noexcept
-        : value_{raw} {}
-    storage_type value_{default_raw_value};
+    storage_type value_{storage.default_raw_value};
 };
+
 static_assert(ioj::valid_packed_value_layout<Motion>());
 
 struct PackedMiniFloat {
   public:
+    // Storage
     using storage_type = std::uint16_t;
-    static constexpr int encoded_bits{16};
-    static constexpr int storage_bits{16};
-    static constexpr storage_type default_raw_value{0ULL};
-    using component_encoded_type = std::uint16_t;
-    using component_encoded_field = ioj::PackedField<storage_type, component_encoded_type, 0, 12>;
-    using state_type = std::uint8_t;
-    using state_field = ioj::PackedField<storage_type, state_type, 12, 4>;
-    struct state_range_type {
-        state_type min;
-        state_type max;
-    };
-    static constexpr state_range_type state_range{static_cast<state_type>(0ULL),
-                                                  static_cast<state_type>(15ULL)};
-    [[nodiscard]] static constexpr auto
-        is_valid_component_encoded(component_encoded_type const value) noexcept -> bool {
-        return static_cast<storage_type>(value) <= component_encoded_field::value_mask;
-    }
-    [[nodiscard]] static constexpr auto is_valid_state(state_type const value) noexcept -> bool {
-        return static_cast<storage_type>(value) <= state_field::value_mask;
-    }
+    using packed_integer_tag = ioj::packed::integer_tag;
+    static constexpr ioj::PackedStorage<storage_type, 16> storage{0};
+
+    // component
+    static constexpr ioj::PackedField<storage_type, std::uint16_t, 0, 12>
+        component_encoded_layout{};
+
+    // state
+    static constexpr ioj::PackedField<storage_type, std::uint8_t, 12, 4> state_layout{};
 
     constexpr PackedMiniFloat() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> PackedMiniFloat {
-        return PackedMiniFloat{RawTag{}, raw};
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-
-    explicit constexpr PackedMiniFloat(component_encoded_type const component_encoded_value,
-                                       state_type const state_value) noexcept
+    constexpr explicit PackedMiniFloat(
+        decltype(component_encoded_layout)::value_type const component_encoded_value,
+        decltype(state_layout)::value_type const state_value) noexcept
         : value_{0} {
         assert((is_valid_component_encoded(component_encoded_value)));
-        value_ = ioj::packed_insert<component_encoded_field>(value_, component_encoded_value);
+        value_ =
+            ioj::packed_insert<decltype(component_encoded_layout)>(value_, component_encoded_value);
         assert((is_valid_state(state_value)));
-        value_ = ioj::packed_insert<state_field>(value_, state_value);
+        value_ = ioj::packed_insert<decltype(state_layout)>(value_, state_value);
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (is_valid_component_encoded(ioj::packed_extract<component_encoded_field>(value_))) &&
-               (is_valid_state(ioj::packed_extract<state_field>(value_)));
-    }
     [[nodiscard]] constexpr auto operator<=>(PackedMiniFloat const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto component_encoded() const noexcept -> component_encoded_type {
-        return ioj::packed_extract<component_encoded_field>(value_);
+    [[nodiscard]] static constexpr auto is_valid_component_encoded(
+        decltype(component_encoded_layout)::value_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= component_encoded_layout.value_mask;
     }
-    constexpr void set_component_encoded(component_encoded_type const value) noexcept {
+    [[nodiscard]] static constexpr auto
+        is_valid_state(decltype(state_layout)::value_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= state_layout.value_mask;
+    }
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
+        -> PackedMiniFloat {
+        return std::bit_cast<PackedMiniFloat>(raw);
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto component_encoded() const noexcept
+        -> decltype(component_encoded_layout)::value_type {
+        return ioj::packed_extract<decltype(component_encoded_layout)>(value_);
+    }
+    constexpr void
+        set_component_encoded(decltype(component_encoded_layout)::value_type const value) noexcept {
         assert((is_valid_component_encoded(value)));
-        value_ = ioj::packed_insert<component_encoded_field>(value_, value);
+        value_ = ioj::packed_insert<decltype(component_encoded_layout)>(value_, value);
     }
-
-    [[nodiscard]] constexpr auto state() const noexcept -> state_type {
-        return ioj::packed_extract<state_field>(value_);
+    [[nodiscard]] constexpr auto state() const noexcept -> decltype(state_layout)::value_type {
+        return ioj::packed_extract<decltype(state_layout)>(value_);
     }
-    constexpr void set_state(state_type const value) noexcept {
+    constexpr void set_state(decltype(state_layout)::value_type const value) noexcept {
         assert((is_valid_state(value)));
-        value_ = ioj::packed_insert<state_field>(value_, value);
+        value_ = ioj::packed_insert<decltype(state_layout)>(value_, value);
     }
+
   private:
-    struct RawTag {};
-    constexpr PackedMiniFloat(RawTag, storage_type raw) noexcept
-        : value_{raw} {}
-    storage_type value_{default_raw_value};
+    storage_type value_{storage.default_raw_value};
 };
+
 static_assert(ioj::valid_packed_value_layout<PackedMiniFloat>());
-
 } // namespace codegen_compile_fixture
-namespace std {
-template <typename Char>
-struct formatter<::codegen_compile_fixture::Defaults, Char>
-    : formatter<::codegen_compile_fixture::Defaults::storage_type, Char> {
-    template <typename FormatContext>
-    auto format(::codegen_compile_fixture::Defaults const& value, FormatContext& context) const ->
-        typename FormatContext::iterator {
-        return formatter<::codegen_compile_fixture::Defaults::storage_type, Char>::format(
-            value.raw_value(), context);
-    }
-};
-template <>
-struct hash<::codegen_compile_fixture::Defaults> {
-    [[nodiscard]] auto operator()(::codegen_compile_fixture::Defaults const& value) const noexcept
-        -> size_t {
-        return hash<::codegen_compile_fixture::Defaults::storage_type>{}(value.raw_value());
-    }
-};
-}
-
-namespace std {
-template <typename Char>
-struct formatter<::codegen_compile_fixture::DefaultsMsb, Char>
-    : formatter<::codegen_compile_fixture::DefaultsMsb::storage_type, Char> {
-    template <typename FormatContext>
-    auto format(::codegen_compile_fixture::DefaultsMsb const& value, FormatContext& context) const
-        -> typename FormatContext::iterator {
-        return formatter<::codegen_compile_fixture::DefaultsMsb::storage_type, Char>::format(
-            value.raw_value(), context);
-    }
-};
-template <>
-struct hash<::codegen_compile_fixture::DefaultsMsb> {
-    [[nodiscard]] auto
-        operator()(::codegen_compile_fixture::DefaultsMsb const& value) const noexcept -> size_t {
-        return hash<::codegen_compile_fixture::DefaultsMsb::storage_type>{}(value.raw_value());
-    }
-};
-}
-
-namespace std {
-template <typename Char>
-struct formatter<::codegen_compile_fixture::PartialDefaults, Char>
-    : formatter<::codegen_compile_fixture::PartialDefaults::storage_type, Char> {
-    template <typename FormatContext>
-    auto format(::codegen_compile_fixture::PartialDefaults const& value,
-                FormatContext& context) const -> typename FormatContext::iterator {
-        return formatter<::codegen_compile_fixture::PartialDefaults::storage_type, Char>::format(
-            value.raw_value(), context);
-    }
-};
-template <>
-struct hash<::codegen_compile_fixture::PartialDefaults> {
-    [[nodiscard]] auto
-        operator()(::codegen_compile_fixture::PartialDefaults const& value) const noexcept
-        -> size_t {
-        return hash<::codegen_compile_fixture::PartialDefaults::storage_type>{}(value.raw_value());
-    }
-};
-}
-
-namespace std {
-template <typename Char>
-struct formatter<::codegen_compile_fixture::PackedSingle, Char>
-    : formatter<::codegen_compile_fixture::PackedSingle::storage_type, Char> {
-    template <typename FormatContext>
-    auto format(::codegen_compile_fixture::PackedSingle const& value, FormatContext& context) const
-        -> typename FormatContext::iterator {
-        return formatter<::codegen_compile_fixture::PackedSingle::storage_type, Char>::format(
-            value.raw_value(), context);
-    }
-};
-template <>
-struct hash<::codegen_compile_fixture::PackedSingle> {
-    [[nodiscard]] auto
-        operator()(::codegen_compile_fixture::PackedSingle const& value) const noexcept -> size_t {
-        return hash<::codegen_compile_fixture::PackedSingle::storage_type>{}(value.raw_value());
-    }
-};
-}
-
-namespace std {
-template <typename Char>
-struct formatter<::codegen_compile_fixture::FighterState, Char>
-    : formatter<::codegen_compile_fixture::FighterState::storage_type, Char> {
-    template <typename FormatContext>
-    auto format(::codegen_compile_fixture::FighterState const& value, FormatContext& context) const
-        -> typename FormatContext::iterator {
-        return formatter<::codegen_compile_fixture::FighterState::storage_type, Char>::format(
-            value.raw_value(), context);
-    }
-};
-template <>
-struct hash<::codegen_compile_fixture::FighterState> {
-    [[nodiscard]] auto
-        operator()(::codegen_compile_fixture::FighterState const& value) const noexcept -> size_t {
-        return hash<::codegen_compile_fixture::FighterState::storage_type>{}(value.raw_value());
-    }
-};
-}
-
-namespace std {
-template <typename Char>
-struct formatter<::codegen_compile_fixture::PackedByte, Char>
-    : formatter<::codegen_compile_fixture::PackedByte::storage_type, Char> {
-    template <typename FormatContext>
-    auto format(::codegen_compile_fixture::PackedByte const& value, FormatContext& context) const ->
-        typename FormatContext::iterator {
-        return formatter<::codegen_compile_fixture::PackedByte::storage_type, Char>::format(
-            value.raw_value(), context);
-    }
-};
-template <>
-struct hash<::codegen_compile_fixture::PackedByte> {
-    [[nodiscard]] auto operator()(::codegen_compile_fixture::PackedByte const& value) const noexcept
-        -> size_t {
-        return hash<::codegen_compile_fixture::PackedByte::storage_type>{}(value.raw_value());
-    }
-};
-}
-
-namespace std {
-template <typename Char>
-struct formatter<::codegen_compile_fixture::NetworkHeader, Char>
-    : formatter<::codegen_compile_fixture::NetworkHeader::storage_type, Char> {
-    template <typename FormatContext>
-    auto format(::codegen_compile_fixture::NetworkHeader const& value, FormatContext& context) const
-        -> typename FormatContext::iterator {
-        return formatter<::codegen_compile_fixture::NetworkHeader::storage_type, Char>::format(
-            value.raw_value(), context);
-    }
-};
-template <>
-struct hash<::codegen_compile_fixture::NetworkHeader> {
-    [[nodiscard]] auto
-        operator()(::codegen_compile_fixture::NetworkHeader const& value) const noexcept -> size_t {
-        return hash<::codegen_compile_fixture::NetworkHeader::storage_type>{}(value.raw_value());
-    }
-};
-}
-
-namespace std {
-template <typename Char>
-struct formatter<::codegen_compile_fixture::PackedWide, Char>
-    : formatter<::codegen_compile_fixture::PackedWide::storage_type, Char> {
-    template <typename FormatContext>
-    auto format(::codegen_compile_fixture::PackedWide const& value, FormatContext& context) const ->
-        typename FormatContext::iterator {
-        return formatter<::codegen_compile_fixture::PackedWide::storage_type, Char>::format(
-            value.raw_value(), context);
-    }
-};
-template <>
-struct hash<::codegen_compile_fixture::PackedWide> {
-    [[nodiscard]] auto operator()(::codegen_compile_fixture::PackedWide const& value) const noexcept
-        -> size_t {
-        return hash<::codegen_compile_fixture::PackedWide::storage_type>{}(value.raw_value());
-    }
-};
-}
-
-namespace std {
-template <typename Char>
-struct formatter<::codegen_compile_fixture::SignedDelta, Char>
-    : formatter<::codegen_compile_fixture::SignedDelta::storage_type, Char> {
-    template <typename FormatContext>
-    auto format(::codegen_compile_fixture::SignedDelta const& value, FormatContext& context) const
-        -> typename FormatContext::iterator {
-        return formatter<::codegen_compile_fixture::SignedDelta::storage_type, Char>::format(
-            value.raw_value(), context);
-    }
-};
-template <>
-struct hash<::codegen_compile_fixture::SignedDelta> {
-    [[nodiscard]] auto
-        operator()(::codegen_compile_fixture::SignedDelta const& value) const noexcept -> size_t {
-        return hash<::codegen_compile_fixture::SignedDelta::storage_type>{}(value.raw_value());
-    }
-};
-}
-
-namespace std {
-template <typename Char>
-struct formatter<::codegen_compile_fixture::SignedWide, Char>
-    : formatter<::codegen_compile_fixture::SignedWide::storage_type, Char> {
-    template <typename FormatContext>
-    auto format(::codegen_compile_fixture::SignedWide const& value, FormatContext& context) const ->
-        typename FormatContext::iterator {
-        return formatter<::codegen_compile_fixture::SignedWide::storage_type, Char>::format(
-            value.raw_value(), context);
-    }
-};
-template <>
-struct hash<::codegen_compile_fixture::SignedWide> {
-    [[nodiscard]] auto operator()(::codegen_compile_fixture::SignedWide const& value) const noexcept
-        -> size_t {
-        return hash<::codegen_compile_fixture::SignedWide::storage_type>{}(value.raw_value());
-    }
-};
-}
-
-namespace std {
-template <typename Char>
-struct formatter<::codegen_compile_fixture::SignedTemperature, Char>
-    : formatter<::codegen_compile_fixture::SignedTemperature::storage_type, Char> {
-    template <typename FormatContext>
-    auto format(::codegen_compile_fixture::SignedTemperature const& value,
-                FormatContext& context) const -> typename FormatContext::iterator {
-        return formatter<::codegen_compile_fixture::SignedTemperature::storage_type, Char>::format(
-            value.raw_value(), context);
-    }
-};
-template <>
-struct hash<::codegen_compile_fixture::SignedTemperature> {
-    [[nodiscard]] auto
-        operator()(::codegen_compile_fixture::SignedTemperature const& value) const noexcept
-        -> size_t {
-        return hash<::codegen_compile_fixture::SignedTemperature::storage_type>{}(
-            value.raw_value());
-    }
-};
-}
-
-namespace std {
-template <typename Char>
-struct formatter<::codegen_compile_fixture::PackedTinyState, Char>
-    : formatter<::codegen_compile_fixture::PackedTinyState::storage_type, Char> {
-    template <typename FormatContext>
-    auto format(::codegen_compile_fixture::PackedTinyState const& value,
-                FormatContext& context) const -> typename FormatContext::iterator {
-        return formatter<::codegen_compile_fixture::PackedTinyState::storage_type, Char>::format(
-            value.raw_value(), context);
-    }
-};
-template <>
-struct hash<::codegen_compile_fixture::PackedTinyState> {
-    [[nodiscard]] auto
-        operator()(::codegen_compile_fixture::PackedTinyState const& value) const noexcept
-        -> size_t {
-        return hash<::codegen_compile_fixture::PackedTinyState::storage_type>{}(value.raw_value());
-    }
-};
-}
-
-namespace std {
-template <typename Char>
-struct formatter<::codegen_compile_fixture::PackedOpaqueState, Char>
-    : formatter<::codegen_compile_fixture::PackedOpaqueState::storage_type, Char> {
-    template <typename FormatContext>
-    auto format(::codegen_compile_fixture::PackedOpaqueState const& value,
-                FormatContext& context) const -> typename FormatContext::iterator {
-        return formatter<::codegen_compile_fixture::PackedOpaqueState::storage_type, Char>::format(
-            value.raw_value(), context);
-    }
-};
-template <>
-struct hash<::codegen_compile_fixture::PackedOpaqueState> {
-    [[nodiscard]] auto
-        operator()(::codegen_compile_fixture::PackedOpaqueState const& value) const noexcept
-        -> size_t {
-        return hash<::codegen_compile_fixture::PackedOpaqueState::storage_type>{}(
-            value.raw_value());
-    }
-};
-}
-
-namespace std {
-template <typename Char>
-struct formatter<::codegen_compile_fixture::CheckedValue, Char>
-    : formatter<::codegen_compile_fixture::CheckedValue::storage_type, Char> {
-    template <typename FormatContext>
-    auto format(::codegen_compile_fixture::CheckedValue const& value, FormatContext& context) const
-        -> typename FormatContext::iterator {
-        return formatter<::codegen_compile_fixture::CheckedValue::storage_type, Char>::format(
-            value.raw_value(), context);
-    }
-};
-template <>
-struct hash<::codegen_compile_fixture::CheckedValue> {
-    [[nodiscard]] auto
-        operator()(::codegen_compile_fixture::CheckedValue const& value) const noexcept -> size_t {
-        return hash<::codegen_compile_fixture::CheckedValue::storage_type>{}(value.raw_value());
-    }
-};
-}
-
-namespace std {
-template <typename Char>
-struct formatter<::codegen_compile_fixture::Vitals, Char>
-    : formatter<::codegen_compile_fixture::Vitals::storage_type, Char> {
-    template <typename FormatContext>
-    auto format(::codegen_compile_fixture::Vitals const& value, FormatContext& context) const ->
-        typename FormatContext::iterator {
-        return formatter<::codegen_compile_fixture::Vitals::storage_type, Char>::format(
-            value.raw_value(), context);
-    }
-};
-template <>
-struct hash<::codegen_compile_fixture::Vitals> {
-    [[nodiscard]] auto operator()(::codegen_compile_fixture::Vitals const& value) const noexcept
-        -> size_t {
-        return hash<::codegen_compile_fixture::Vitals::storage_type>{}(value.raw_value());
-    }
-};
-}
-
-namespace std {
-template <typename Char>
-struct formatter<::codegen_compile_fixture::Motion, Char>
-    : formatter<::codegen_compile_fixture::Motion::storage_type, Char> {
-    template <typename FormatContext>
-    auto format(::codegen_compile_fixture::Motion const& value, FormatContext& context) const ->
-        typename FormatContext::iterator {
-        return formatter<::codegen_compile_fixture::Motion::storage_type, Char>::format(
-            value.raw_value(), context);
-    }
-};
-template <>
-struct hash<::codegen_compile_fixture::Motion> {
-    [[nodiscard]] auto operator()(::codegen_compile_fixture::Motion const& value) const noexcept
-        -> size_t {
-        return hash<::codegen_compile_fixture::Motion::storage_type>{}(value.raw_value());
-    }
-};
-}
-
-namespace std {
-template <typename Char>
-struct formatter<::codegen_compile_fixture::PackedMiniFloat, Char>
-    : formatter<::codegen_compile_fixture::PackedMiniFloat::storage_type, Char> {
-    template <typename FormatContext>
-    auto format(::codegen_compile_fixture::PackedMiniFloat const& value,
-                FormatContext& context) const -> typename FormatContext::iterator {
-        return formatter<::codegen_compile_fixture::PackedMiniFloat::storage_type, Char>::format(
-            value.raw_value(), context);
-    }
-};
-template <>
-struct hash<::codegen_compile_fixture::PackedMiniFloat> {
-    [[nodiscard]] auto
-        operator()(::codegen_compile_fixture::PackedMiniFloat const& value) const noexcept
-        -> size_t {
-        return hash<::codegen_compile_fixture::PackedMiniFloat::storage_type>{}(value.raw_value());
-    }
-};
-}

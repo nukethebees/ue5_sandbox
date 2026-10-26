@@ -7,6 +7,7 @@
 #include "InlineFacade.h"
 #include "Mixed.h"
 #include "PackedEnums.h"
+#include "PackedLookup.h"
 #include "PackedValues.h"
 #include "PlainEnums.h"
 #include "Records.h"

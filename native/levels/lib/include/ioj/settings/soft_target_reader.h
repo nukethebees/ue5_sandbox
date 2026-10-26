@@ -22,6 +22,7 @@ struct TypeReader<settings::SoftTarget> : RecordReader<settings::SoftTarget> {
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 

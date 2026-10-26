@@ -17,6 +17,23 @@
 #include <unordered_set>
 #include <utility>
 
+template <>
+struct std::hash<ioj::packed_lookup_fixture::CustomByte> {
+    auto operator()(ioj::packed_lookup_fixture::CustomByte const& value) const noexcept
+        -> std::size_t {
+        return 200U + value.value();
+    }
+};
+
+template <>
+struct std::formatter<ioj::packed_lookup_fixture::CustomByte> : std::formatter<unsigned> {
+    template <typename FormatContext>
+    auto format(ioj::packed_lookup_fixture::CustomByte const& value, FormatContext& context) const
+        -> typename FormatContext::iterator {
+        return std::formatter<unsigned>::format(100U + value.value(), context);
+    }
+};
+
 namespace codegen_compile_fixture {
 
 auto first::A::make() -> second::B {
@@ -208,6 +225,10 @@ TEST(GeneratedPackedDefaults, ConstructsDefaultsAndSupportsPartialRawConstructio
     static_assert(!std::is_default_constructible_v<PartialDefaults>);
     constexpr Defaults value{};
     static_assert(value.low() == 5 && value.delta() == -3);
+    static_assert(Defaults::from_raw(0).raw_value() == 0);
+    static_assert(Defaults::from_raw(0xffff).raw_value() == 0xffff);
+    static_assert(Defaults::from_raw(Defaults::storage.default_raw_value) == value);
+    static_assert(noexcept(Defaults::from_raw(0)));
     EXPECT_EQ(value.raw_value(), 5U | (29U << 5));
     constexpr DefaultsMsb msb{};
     static_assert(msb.low() == 5 && msb.delta() == -3);
@@ -320,7 +341,7 @@ TEST(GeneratedPackedValue, ConstructorsDistinguishFieldValuesFromRawStorage) {
     static_assert(std::is_trivially_copyable_v<PackedSingle>);
     static_assert(std::is_standard_layout_v<PackedSingle>);
     static_assert(!std::is_convertible_v<std::uint8_t, PackedSingle>);
-    static_assert(std::is_same_v<PackedSingle::value_type, std::uint8_t>);
+    static_assert(std::is_same_v<decltype(PackedSingle::value_layout)::value_type, std::uint8_t>);
     static_assert(std::is_same_v<Vitals::storage_type, std::uint16_t>);
     static_assert(std::is_same_v<FighterState::storage_type, std::uint32_t>);
     static_assert(std::is_same_v<PackedWide::storage_type, std::uint64_t>);
@@ -397,9 +418,9 @@ TEST(GeneratedPackedValue, ExhaustivelyRoundTripsUint8Storage) {
 }
 
 TEST(GeneratedPackedValue, RoundTripsMostSignificantFirstFields) {
-    static_assert(NetworkHeader::version_field::offset == 28);
-    static_assert(NetworkHeader::kind_field::offset == 20);
-    static_assert(NetworkHeader::length_field::offset == 0);
+    static_assert(NetworkHeader::version_layout.offset == 28);
+    static_assert(NetworkHeader::kind_layout.offset == 20);
+    static_assert(NetworkHeader::length_layout.offset == 0);
 
     NetworkHeader header;
     header.set_version(std::uint8_t{0xa});
@@ -415,7 +436,7 @@ TEST(GeneratedPackedValue, RoundTripsMostSignificantFirstFields) {
 
 TEST(GeneratedPackedValue, HandlesFullWidthStorageAndNarrowEnums) {
     auto const maximum{std::numeric_limits<std::uint64_t>::max()};
-    static_assert(PackedWide::value_field::bits == 64);
+    static_assert(PackedWide::value_layout.bits == 64);
     PackedWide wide;
     wide.set_value(maximum);
     EXPECT_EQ(wide.value(), maximum);
@@ -436,7 +457,7 @@ TEST(GeneratedPackedValue, HandlesFullWidthStorageAndNarrowEnums) {
 }
 
 TEST(GeneratedPackedValue, RoundTripsSignedArbitraryWidthBoundaries) {
-    static_assert(SignedWide::delta_field::bits == 64);
+    static_assert(SignedWide::delta_layout.bits == 64);
     SignedDelta delta;
     delta.set_delta(-65'536);
     EXPECT_EQ(delta.delta(), -65'536);
@@ -464,7 +485,7 @@ TEST(GeneratedPackedValue, RoundTripsSignedArbitraryWidthBoundaries) {
 }
 
 TEST(GeneratedPackedValue, EnforcesSignedSemanticRangeAndSentinel) {
-    static_assert(SignedTemperature::temperature_field::bits == 8);
+    static_assert(SignedTemperature::temperature_layout.bits == 8);
     static_assert(SignedTemperature::temperature_Freezing == 0);
     static_assert(SignedTemperature::temperature_Unknown == -128);
 
@@ -486,7 +507,7 @@ TEST(GeneratedPackedValue, EnforcesSignedSemanticRangeAndSentinel) {
 }
 
 TEST(GeneratedPackedValue, RoundTripsLinearQuantizedEncodedCodes) {
-    static_assert(Vitals::health_encoded_field::bits == 8);
+    static_assert(Vitals::health_encoded_layout.bits == 8);
 
     Vitals value;
     value.set_health_encoded(253);
@@ -507,12 +528,12 @@ TEST(GeneratedPackedValue, RoundTripsLinearQuantizedEncodedCodes) {
 }
 
 TEST(GeneratedPackedValue, RoundTripsFixedPointRawCodes) {
-    static_assert(Motion::velocity_raw_field::bits == 12);
-    static_assert(Motion::velocity_minimum_allowed_raw == -2048);
-    static_assert(Motion::velocity_maximum_allowed_raw == 2047);
-    static_assert(Motion::fraction_raw_field::bits == 7);
-    static_assert(Motion::fraction_minimum_allowed_raw == 0);
-    static_assert(Motion::fraction_maximum_allowed_raw == 127);
+    static_assert(Motion::velocity_raw_layout.bits == 12);
+    static_assert(Motion::velocity_raw_layout.range.min == -2048);
+    static_assert(Motion::velocity_raw_layout.range.max == 2047);
+    static_assert(Motion::fraction_raw_layout.bits == 7);
+    static_assert(Motion::fraction_raw_layout.range.min == 0);
+    static_assert(Motion::fraction_raw_layout.range.max == 127);
 
     Motion value;
     value.set_velocity_raw(-2048);
@@ -525,7 +546,7 @@ TEST(GeneratedPackedValue, RoundTripsFixedPointRawCodes) {
     EXPECT_EQ(value.velocity_value(), -128.0);
     EXPECT_EQ(value.fraction_value(), 127.0 / 128.0);
 
-    Motion::velocity_raw_type converted{};
+    decltype(Motion::velocity_raw_layout)::value_type converted{};
     EXPECT_TRUE(Motion::try_encode_velocity_value(1.5, converted));
     EXPECT_EQ(converted, 24);
     EXPECT_TRUE(Motion::try_encode_velocity_value(0.03125, converted));
@@ -551,7 +572,7 @@ TEST(GeneratedPackedValue, RoundTripsFixedPointRawCodes) {
 }
 
 TEST(GeneratedPackedValue, RoundTripsMiniFloatEncodedCodes) {
-    static_assert(PackedMiniFloat::component_encoded_field::bits == 12);
+    static_assert(PackedMiniFloat::component_encoded_layout.bits == 12);
 
     PackedMiniFloat value;
     value.set_component_encoded(0xfff);
@@ -570,17 +591,46 @@ TEST(GeneratedPackedValue, RoundTripsMiniFloatEncodedCodes) {
 }
 
 TEST(GeneratedPackedValue, GeneratesConstructionValidationAndScalarRanges) {
+    using ioj::packed_lookup_fixture::CountedState;
+    using ioj::packed_lookup_fixture::CountedValue;
+    static_assert(CountedValue::is_valid_state(CountedState::First));
+    static_assert(CountedValue::is_valid_state(CountedState::Last));
+    static_assert(!CountedValue::is_valid_state(CountedState::Count));
+    static_assert(!CountedValue::from_raw(2).is_valid());
+    static_assert(CheckedValue::state_layout.range.min == DomainState::Zero);
+    static_assert(CheckedValue::state_layout.range.max == DomainState::One);
+    static_assert(CheckedValue::is_valid_state(DomainState::Zero));
+    static_assert(CheckedValue::is_valid_state(DomainState::One));
+    static_assert(!CheckedValue::is_valid_state(static_cast<DomainState>(2)));
+    static_assert(ioj::enum_count<DomainState>() == 2);
+    static_assert(PackedTinyState::is_valid_state(TinyState::Max));
+    static_assert(!PackedTinyState::is_valid_state(static_cast<TinyState>(2)));
+    static_assert(sizeof(OpaqueState) == sizeof(std::uint32_t));
+    static_assert(sizeof(PackedOpaqueState) == 1);
+    static_assert(PackedOpaqueState::is_valid_state(static_cast<OpaqueState>(255)));
+    static_assert(!PackedOpaqueState::is_valid_state(static_cast<OpaqueState>(256)));
+    static_assert(PackedOpaqueState::from_raw(255).is_valid());
+#ifndef NDEBUG
+    EXPECT_DEATH(static_cast<void>(PackedOpaqueState{static_cast<OpaqueState>(256)}), "");
+    auto opaque{PackedOpaqueState::from_raw(0)};
+    EXPECT_DEATH(opaque.set_state(static_cast<OpaqueState>(256)), "");
+#endif
+    for (unsigned code{}; code <= 255; ++code) {
+        EXPECT_EQ(CheckedValue::from_raw(code << 24).is_valid(), code <= 1);
+        EXPECT_EQ(FighterState::from_raw(code << 24).is_valid(),
+                  code == 0 || code == 0xab || code == 0xff);
+    }
     static_assert(CheckedValue::invalid_value == 0x7fffffffu);
-    static_assert(CheckedValue::serial_range.min == 0);
-    static_assert(CheckedValue::serial_range.max == CheckedValue::serial_field::value_mask);
+    static_assert(CheckedValue::serial_layout.range.min == 0);
+    static_assert(CheckedValue::serial_layout.range.max == CheckedValue::serial_layout.value_mask);
     static_assert(ioj::range_fits(0u,
-                                  CheckedValue::serial_range.max + 1,
-                                  CheckedValue::serial_range.min,
-                                  CheckedValue::serial_range.max));
-    static_assert(!ioj::range_fits(CheckedValue::serial_range.max,
+                                  CheckedValue::serial_layout.range.max + 1,
+                                  CheckedValue::serial_layout.range.min,
+                                  CheckedValue::serial_layout.range.max));
+    static_assert(!ioj::range_fits(CheckedValue::serial_layout.range.max,
                                    2u,
-                                   CheckedValue::serial_range.min,
-                                   CheckedValue::serial_range.max));
+                                   CheckedValue::serial_layout.range.min,
+                                   CheckedValue::serial_layout.range.max));
     static_assert(ioj::range_fits(10u, 11u, 10u, 20u));
     static_assert(!ioj::range_fits(9u, 1u, 10u, 20u));
     static_assert(!ioj::range_fits(10u, 12u, 10u, 20u));
@@ -737,6 +787,8 @@ TEST(GeneratedIntegerScalar, FormatsDecodedNumbersWithStandardNumericSpecificati
 }
 
 TEST(GeneratedIntegerScalar, HashesDecodedValuesConsistentlyWithEquality) {
+    static_assert(ioj::PackedInteger<RegisteredInt>);
+    static_assert(std::same_as<RegisteredInt::packed_integer_tag, ioj::packed::scalar_tag>);
     constexpr RegisteredInt canonical{-42};
     constexpr auto padded{RegisteredInt::from_raw(0xabcdefd6)};
     static_assert(canonical == padded);
@@ -778,36 +830,62 @@ TEST(UnifiedPacked, SharedValidationHelpersRetainRangeAndEncodingBoundaries) {
     static_assert(!SignedTemperature::is_valid_temperature(101));
     static_assert(Vitals::is_valid_health_encoded(253));
     static_assert(!Vitals::is_valid_health_encoded(254));
+    static_assert(unified::EntityIndex::is_valid_value(0xffffff));
+    static_assert(!unified::EntityIndex::is_valid_value(0x1000000));
+    static_assert(unified::EntityId::is_valid_index(0xffffff));
+    static_assert(!unified::EntityId::is_valid_index(0x1000000));
+    static_assert(unified::EntityId::from_raw(0xffffffff).is_valid());
+    static_assert(!Health::from_raw(1001).is_valid());
+#ifndef NDEBUG
+    EXPECT_DEATH(static_cast<void>(unified::EntityIndex{0x1000000}), "");
+    auto index{unified::EntityIndex::from_raw(0xff000001)};
+    EXPECT_DEATH(index.set_value(0x1000000), "");
+    auto entity{unified::EntityId::from_raw(0xffffffff)};
+    EXPECT_DEATH(entity.set_index(0x1000000), "");
+    EXPECT_DEATH(static_cast<void>(Health{1001}), "");
+    auto health{Health::from_raw(0)};
+    EXPECT_DEATH(health.set_value(1001), "");
+#endif
 }
 
 TEST(UnifiedPacked, ExposesCompileTimeEncodingStorageDomainsAndDefaults) {
-    static_assert(unified::EntityIndex::encoded_bits == 24);
-    static_assert(unified::EntityIndex::storage_bits == 32);
-    static_assert(unified::EntityIndex::minimum_value == 0);
-    static_assert(unified::EntityIndex::maximum_value == 0xffffff);
-    static_assert(RegisteredInt::minimum_value == -100);
-    static_assert(RegisteredInt::maximum_value == 100);
-    static_assert(Health::minimum_value == 0);
-    static_assert(Health::maximum_value == 1000);
-    static_assert(unified::WideEntityId::encoded_bits == 32);
-    static_assert(unified::WideEntityId::storage_bits == 64);
-    static_assert(unified::NestedId::encoded_bits == 64);
-    static_assert(unified::NestedId::target_field::offset == 8);
-    static_assert(unified::NestedId::target_field::bits == 32);
-    static_assert(unified::NestedId::target_field::mask == 0xffffffff00ULL);
-    static_assert(unified::Instruction::encoded_bits == 64);
-    static_assert(unified::Instruction::storage_bits == 64);
-    static_assert(unified::Instruction::opcode_field::bits == 6);
-    static_assert(unified::Instruction::payload_kill_entity_target_index_field::offset == 6);
-    static_assert(unified::Instruction::payload_kill_entity_target_index_field::bits == 24);
-    static_assert(unified::Instruction::payload_kill_entity_target_index_field::mask ==
+    static_assert(unified::EntityIndex::storage.encoded_bits == 24);
+    static_assert(unified::EntityIndex::storage.storage_bits == 32);
+    static_assert(unified::EntityIndex::value_layout.range.min == 0);
+    static_assert(unified::EntityIndex::value_layout.range.max == 0xffffff);
+    static_assert(unified::EntityIndex::value_layout.offset == 0);
+    static_assert(unified::EntityIndex::value_layout.bits == 24);
+    static_assert(unified::EntityIndex::value_layout.mask == 0xffffff);
+    static_assert(RegisteredInt::value_layout.range.min == -100);
+    static_assert(RegisteredInt::value_layout.range.max == 100);
+    static_assert(Health::value_layout.range.min == 0);
+    static_assert(Health::value_layout.range.max == 1000);
+    static_assert(unified::WideEntityId::storage.encoded_bits == 32);
+    static_assert(unified::WideEntityId::storage.storage_bits == 64);
+    static_assert(unified::NestedId::storage.encoded_bits == 64);
+    static_assert(unified::NestedId::target_layout.offset == 8);
+    static_assert(unified::NestedId::target_layout.bits == 32);
+    static_assert(unified::NestedId::target_layout.mask == 0xffffffff00ULL);
+    static_assert(unified::NestedId::target_index_layout.range.min == 0);
+    static_assert(unified::NestedId::target_index_layout.range.max == 0xffffff);
+    static_assert(unified::NestedId::target_index_layout.offset == 8);
+    static_assert(unified::Instruction::storage.encoded_bits == 64);
+    static_assert(unified::Instruction::storage.storage_bits == 64);
+    static_assert(unified::Instruction::opcode_layout.bits == 6);
+    static_assert(unified::Instruction::payload_kill_entity_target_index_layout.offset == 6);
+    static_assert(unified::Instruction::payload_kill_entity_target_index_layout.bits == 24);
+    static_assert(unified::Instruction::payload_kill_entity_target_index_layout.mask ==
                   (0xffffffULL << 6));
-    static_assert(unified::Target::encoded_bits == 32);
-    static_assert(unified::Target::entity_index_field::offset == 0);
-    static_assert(unified::Target::entity_index_field::bits == 24);
-    static_assert(Defaults::default_raw_value == (5U | (29U << 5)));
-    static_assert(DefaultsMsb::default_raw_value == ((5U << 13) | (29U << 6)));
-    static_assert(CheckedValue::default_raw_value == CheckedValue::invalid_value);
+    static_assert(unified::Target::storage.encoded_bits == 32);
+    static_assert(unified::Target::entity_index_layout.offset == 0);
+    static_assert(unified::Target::entity_index_layout.bits == 24);
+    static_assert(Defaults::storage.default_raw_value == (5U | (29U << 5)));
+    static_assert(DefaultsMsb::storage.default_raw_value == ((5U << 13) | (29U << 6)));
+    static_assert(CheckedValue::storage.default_raw_value == CheckedValue::invalid_value);
+    static_assert(CheckedValue{}.raw_value() == CheckedValue::invalid_value);
+    static_assert(CheckedValue::from_raw(0).raw_value() == 0);
+    static_assert(CheckedValue::from_raw(CheckedValue::invalid_value).raw_value() ==
+                  CheckedValue::invalid_value);
 }
 
 TEST(UnifiedPacked, FormatsRecordAndUnionRawStorageIncludingUnusedBits) {
@@ -822,6 +900,8 @@ TEST(UnifiedPacked, FormatsRecordAndUnionRawStorageIncludingUnusedBits) {
 
 TEST(UnifiedPacked, HashesEveryStorageBitConsistentlyWithRawEquality) {
     using unified::WideEntityId;
+    static_assert(ioj::PackedInteger<WideEntityId>);
+    static_assert(std::same_as<WideEntityId::packed_integer_tag, ioj::packed::integer_tag>);
     constexpr auto canonical{WideEntityId::from_raw(42)};
     constexpr auto padded{WideEntityId::from_raw(0xabcd00000000002aULL)};
     static_assert(canonical.index() == padded.index());
@@ -890,6 +970,10 @@ TEST(UnifiedPacked, InstructionFactoriesSetTagAndClearInactivePayload) {
     static_assert(std::is_trivially_copyable_v<Instruction>);
     static_assert(std::is_standard_layout_v<Instruction>);
     static_assert(!std::is_default_constructible_v<Instruction>);
+    constexpr auto invalid{Instruction::from_raw(0xffffffffffffffffULL)};
+    static_assert(invalid.raw_value() == 0xffffffffffffffffULL);
+    static_assert(!invalid.is_valid());
+    static_assert(noexcept(Instruction::from_raw(0)));
     constexpr auto kill{Instruction::make_payload_kill_entity(EntityId{0x123456, 7})};
     static_assert(kill.opcode() == Opcode::KillEntity);
     static_assert(kill.payload_kill_entity_target_index() == 0x123456);
@@ -941,6 +1025,28 @@ TEST(UnifiedPacked, FactoriesPreserveAnIndependentUnionWithoutCartesianOverloads
 }
 
 TEST(UnifiedPacked, UntaggedAlternativesShareStorageAndArraysUseFlatAccessors) {
+    using ioj::packed_lookup_fixture::LookupByte;
+    using ioj::packed_lookup_fixture::PackedLookup;
+    constexpr PackedLookup lookup{0x12, 0x34};
+    static_assert(lookup.raw_value() == 0x3412);
+    static_assert(lookup.packed_insert() == 0x12);
+    static_assert(lookup.packed_extract() == 0x34);
+    auto changed{PackedLookup::from_raw(0xabcd)};
+    changed.set_packed_insert(0x56);
+    changed.set_packed_extract(0x78);
+    EXPECT_EQ(changed.raw_value(), 0x7856);
+    EXPECT_EQ(std::format("{:04x}", changed), "7856");
+    EXPECT_EQ(std::hash<PackedLookup>{}(changed),
+              std::hash<PackedLookup::storage_type>{}(changed.raw_value()));
+    constexpr LookupByte byte{42};
+    static_assert(byte.value() == 42);
+    static_assert(byte.is_valid());
+    static_assert(LookupByte::from_raw(255).is_valid());
+    EXPECT_EQ(std::format("{}", byte), "42");
+    constexpr ioj::packed_lookup_fixture::CustomByte custom{7};
+    EXPECT_EQ(std::format("{:04}", custom), "0107");
+    EXPECT_EQ(std::hash<ioj::packed_lookup_fixture::CustomByte>{}(custom), 207U);
+
     auto target{unified::Target::from_raw(0xabcdef12)};
     EXPECT_EQ(target.location_index(), 0xabcdef12U);
     EXPECT_EQ(target.entity_index(), 0xcdef12U);
@@ -976,9 +1082,9 @@ TEST(UnifiedPacked, WholeUnionSetterValidatesTheActiveCaseIndependently) {
 
 TEST(UnifiedPacked, OptionalEncodingsComposeWithPresenceAboveThePayload) {
     using unified::Optionals;
-    static_assert(Optionals::sentinel_encoded_field::bits == 8);
-    static_assert(Optionals::present_encoded_field::offset == 8);
-    static_assert(Optionals::present_encoded_field::bits == 9);
+    static_assert(Optionals::sentinel_encoded_layout.bits == 8);
+    static_assert(Optionals::present_encoded_layout.offset == 8);
+    static_assert(Optionals::present_encoded_layout.bits == 9);
     auto value{Optionals::from_raw(255)};
     EXPECT_TRUE(value.is_valid());
     value.set_present_encoded(0x100 | 42);

@@ -34,6 +34,7 @@ struct TypeReader<sim::PlayerSimConfig> : RecordReader<sim::PlayerSimConfig> {
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 

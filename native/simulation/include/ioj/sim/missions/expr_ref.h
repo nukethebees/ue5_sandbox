@@ -5,98 +5,66 @@
 
 #include "ioj/packed_value.h"
 
+#include <bit>
 #include <cassert>
 #include <compare>
-#include <cstddef>
 #include <cstdint>
-#include <format>
-#include <functional>
 
 namespace ioj::sim {
 struct ExprRef {
   public:
+    // Storage
     using storage_type = std::uint32_t;
-    static constexpr int encoded_bits{32};
-    static constexpr int storage_bits{32};
-    static constexpr storage_type default_raw_value{4294967295ULL};
-    using index_type = std::uint32_t;
-    using index_field = ioj::PackedField<storage_type, index_type, 0, 31>;
-    struct index_range_type {
-        index_type min;
-        index_type max;
-    };
-    static constexpr index_range_type index_range{static_cast<index_type>(0ULL),
-                                                  static_cast<index_type>(2147483647ULL)};
-    using leaf_type = bool;
-    using leaf_field = ioj::PackedField<storage_type, leaf_type, 31, 1>;
-    [[nodiscard]] static constexpr auto is_valid_index(index_type const value) noexcept -> bool {
-        return static_cast<storage_type>(value) <= index_field::value_mask;
-    }
-    [[nodiscard]] static constexpr auto is_valid_leaf(leaf_type const) noexcept -> bool {
-        return true;
-    }
-    static constexpr storage_type invalid_value{4294967295ULL};
+    using packed_integer_tag = packed::integer_tag;
+    static constexpr PackedStorage<storage_type, 32> storage{4294967295};
+    static constexpr storage_type invalid_value{4294967295};
+
+    // index
+    static constexpr PackedField<storage_type, std::uint32_t, 0, 31> index_layout{};
+
+    // leaf
+    static constexpr PackedField<storage_type, bool, 31, 1> leaf_layout{};
 
     constexpr ExprRef() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> ExprRef {
-        return ExprRef{RawTag{}, raw};
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-
-    explicit constexpr ExprRef(index_type const index_value, leaf_type const leaf_value) noexcept
+    constexpr explicit ExprRef(decltype(index_layout)::value_type const index_value,
+                               decltype(leaf_layout)::value_type const leaf_value) noexcept
         : value_{0} {
         assert((is_valid_index(index_value)));
-        value_ = ioj::packed_insert<index_field>(value_, index_value);
-        assert((is_valid_leaf(leaf_value)));
-        value_ = ioj::packed_insert<leaf_field>(value_, leaf_value);
-        assert(value_ != invalid_value);
+        value_ = packed_insert<decltype(index_layout)>(value_, index_value);
+        value_ = packed_insert<decltype(leaf_layout)>(value_, leaf_value);
+        assert((value_ != invalid_value));
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return value_ != invalid_value &&
-               ((is_valid_index(ioj::packed_extract<index_field>(value_))) &&
-                (is_valid_leaf(ioj::packed_extract<leaf_field>(value_))));
-    }
     [[nodiscard]] constexpr auto operator<=>(ExprRef const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto index() const noexcept -> index_type {
-        return ioj::packed_extract<index_field>(value_);
+    [[nodiscard]] static constexpr auto
+        is_valid_index(decltype(index_layout)::value_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= index_layout.value_mask;
     }
-    constexpr void set_index(index_type const value) noexcept {
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> ExprRef {
+        return std::bit_cast<ExprRef>(raw);
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return value_ != invalid_value;
+    }
+    [[nodiscard]] constexpr auto index() const noexcept -> decltype(index_layout)::value_type {
+        return packed_extract<decltype(index_layout)>(value_);
+    }
+    constexpr void set_index(decltype(index_layout)::value_type const value) noexcept {
         assert((is_valid_index(value)));
-        value_ = ioj::packed_insert<index_field>(value_, value);
+        value_ = packed_insert<decltype(index_layout)>(value_, value);
+    }
+    [[nodiscard]] constexpr auto leaf() const noexcept -> decltype(leaf_layout)::value_type {
+        return packed_extract<decltype(leaf_layout)>(value_);
+    }
+    constexpr void set_leaf(decltype(leaf_layout)::value_type const value) noexcept {
+        value_ = packed_insert<decltype(leaf_layout)>(value_, value);
     }
 
-    [[nodiscard]] constexpr auto leaf() const noexcept -> leaf_type {
-        return ioj::packed_extract<leaf_field>(value_);
-    }
-    constexpr void set_leaf(leaf_type const value) noexcept {
-        assert((is_valid_leaf(value)));
-        value_ = ioj::packed_insert<leaf_field>(value_, value);
-    }
   private:
-    struct RawTag {};
-    constexpr ExprRef(RawTag, storage_type raw) noexcept
-        : value_{raw} {}
-    storage_type value_{default_raw_value};
+    storage_type value_{storage.default_raw_value};
 };
-static_assert(ioj::valid_packed_value_layout<ExprRef>());
 
+static_assert(valid_packed_value_layout<ExprRef>());
 } // namespace ioj::sim
-namespace std {
-template <typename Char>
-struct formatter<::ioj::sim::ExprRef, Char> : formatter<::ioj::sim::ExprRef::storage_type, Char> {
-    template <typename FormatContext>
-    auto format(::ioj::sim::ExprRef const& value, FormatContext& context) const ->
-        typename FormatContext::iterator {
-        return formatter<::ioj::sim::ExprRef::storage_type, Char>::format(value.raw_value(),
-                                                                          context);
-    }
-};
-template <>
-struct hash<::ioj::sim::ExprRef> {
-    [[nodiscard]] auto operator()(::ioj::sim::ExprRef const& value) const noexcept -> size_t {
-        return hash<::ioj::sim::ExprRef::storage_type>{}(value.raw_value());
-    }
-};
-}

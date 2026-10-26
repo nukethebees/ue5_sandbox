@@ -6,12 +6,11 @@
 #include "ioj/enum_traits.h"
 #include "ioj/packed_value.h"
 
+#include <bit>
 #include <cassert>
 #include <compare>
 #include <cstddef>
 #include <cstdint>
-#include <format>
-#include <functional>
 
 namespace ioj::sim {
 using FighterTaskUnderlying = std::uint8_t;
@@ -25,77 +24,62 @@ enum class FighterTask : FighterTaskUnderlying {
 
 struct FighterOrder {
   public:
+    // Storage
     using storage_type = std::uint8_t;
-    static constexpr int encoded_bits{8};
-    static constexpr int storage_bits{8};
-    static constexpr storage_type default_raw_value{0ULL};
-    using task_type = std::uint8_t;
-    using task_field = ioj::PackedField<storage_type, task_type, 0, 1>;
-    struct task_range_type {
-        task_type min;
-        task_type max;
-    };
-    static constexpr task_range_type task_range{static_cast<task_type>(0ULL),
-                                                static_cast<task_type>(1ULL)};
-    using target_type = std::uint8_t;
-    using target_field = ioj::PackedField<storage_type, target_type, 1, 1>;
-    struct target_range_type {
-        target_type min;
-        target_type max;
-    };
-    static constexpr target_range_type target_range{static_cast<target_type>(0ULL),
-                                                    static_cast<target_type>(1ULL)};
-    [[nodiscard]] static constexpr auto is_valid_task(task_type const value) noexcept -> bool {
-        return static_cast<storage_type>(value) <= task_field::value_mask;
-    }
-    [[nodiscard]] static constexpr auto is_valid_target(target_type const value) noexcept -> bool {
-        return static_cast<storage_type>(value) <= target_field::value_mask;
-    }
+    using packed_integer_tag = packed::integer_tag;
+    static constexpr PackedStorage<storage_type, 8> storage{0};
+
+    // task
+    static constexpr PackedField<storage_type, std::uint8_t, 0, 1> task_layout{};
+
+    // target
+    static constexpr PackedField<storage_type, std::uint8_t, 1, 1> target_layout{};
 
     constexpr FighterOrder() noexcept = default;
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> FighterOrder {
-        return FighterOrder{RawTag{}, raw};
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-
-    explicit constexpr FighterOrder(task_type const task_value,
-                                    target_type const target_value) noexcept
+    constexpr explicit FighterOrder(decltype(task_layout)::value_type const task_value,
+                                    decltype(target_layout)::value_type const target_value) noexcept
         : value_{0} {
         assert((is_valid_task(task_value)));
-        value_ = ioj::packed_insert<task_field>(value_, task_value);
+        value_ = packed_insert<decltype(task_layout)>(value_, task_value);
         assert((is_valid_target(target_value)));
-        value_ = ioj::packed_insert<target_field>(value_, target_value);
+        value_ = packed_insert<decltype(target_layout)>(value_, target_value);
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (is_valid_task(ioj::packed_extract<task_field>(value_))) &&
-               (is_valid_target(ioj::packed_extract<target_field>(value_)));
-    }
     [[nodiscard]] constexpr auto operator<=>(FighterOrder const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto task() const noexcept -> task_type {
-        return ioj::packed_extract<task_field>(value_);
+    [[nodiscard]] static constexpr auto
+        is_valid_task(decltype(task_layout)::value_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= task_layout.value_mask;
     }
-    constexpr void set_task(task_type const value) noexcept {
+    [[nodiscard]] static constexpr auto
+        is_valid_target(decltype(target_layout)::value_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= target_layout.value_mask;
+    }
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> FighterOrder {
+        return std::bit_cast<FighterOrder>(raw);
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto task() const noexcept -> decltype(task_layout)::value_type {
+        return packed_extract<decltype(task_layout)>(value_);
+    }
+    constexpr void set_task(decltype(task_layout)::value_type const value) noexcept {
         assert((is_valid_task(value)));
-        value_ = ioj::packed_insert<task_field>(value_, value);
+        value_ = packed_insert<decltype(task_layout)>(value_, value);
     }
-
-    [[nodiscard]] constexpr auto target() const noexcept -> target_type {
-        return ioj::packed_extract<target_field>(value_);
+    [[nodiscard]] constexpr auto target() const noexcept -> decltype(target_layout)::value_type {
+        return packed_extract<decltype(target_layout)>(value_);
     }
-    constexpr void set_target(target_type const value) noexcept {
+    constexpr void set_target(decltype(target_layout)::value_type const value) noexcept {
         assert((is_valid_target(value)));
-        value_ = ioj::packed_insert<target_field>(value_, value);
+        value_ = packed_insert<decltype(target_layout)>(value_, value);
     }
-  private:
-    struct RawTag {};
-    constexpr FighterOrder(RawTag, storage_type raw) noexcept
-        : value_{raw} {}
-    storage_type value_{default_raw_value};
-};
-static_assert(ioj::valid_packed_value_layout<FighterOrder>());
 
+  private:
+    storage_type value_{storage.default_raw_value};
+};
+
+static_assert(valid_packed_value_layout<FighterOrder>());
 } // namespace ioj::sim
 namespace ioj {
 template <>
@@ -103,22 +87,3 @@ template <>
     return 3;
 }
 } // namespace ioj
-
-namespace std {
-template <typename Char>
-struct formatter<::ioj::sim::FighterOrder, Char>
-    : formatter<::ioj::sim::FighterOrder::storage_type, Char> {
-    template <typename FormatContext>
-    auto format(::ioj::sim::FighterOrder const& value, FormatContext& context) const ->
-        typename FormatContext::iterator {
-        return formatter<::ioj::sim::FighterOrder::storage_type, Char>::format(value.raw_value(),
-                                                                               context);
-    }
-};
-template <>
-struct hash<::ioj::sim::FighterOrder> {
-    [[nodiscard]] auto operator()(::ioj::sim::FighterOrder const& value) const noexcept -> size_t {
-        return hash<::ioj::sim::FighterOrder::storage_type>{}(value.raw_value());
-    }
-};
-}

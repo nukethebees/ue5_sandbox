@@ -5,175 +5,140 @@
 
 #include "ioj/packed_value.h"
 
+#include <bit>
 #include <cassert>
 #include <compare>
-#include <cstddef>
 #include <cstdint>
-#include <format>
-#include <functional>
 
 namespace ioj::sim::collision {
 struct StaticGeometryIndex {
   public:
+    // Storage and value
     using storage_type = std::uint32_t;
+    using packed_integer_tag = packed::scalar_tag;
+    static constexpr PackedStorage<storage_type, 32> storage{0};
     using value_type = std::uint32_t;
-    static constexpr int encoded_bits{32};
-    static constexpr int storage_bits{32};
-    static constexpr storage_type default_raw_value{};
-    using value_field = ioj::PackedField<storage_type, value_type, 0, encoded_bits>;
+    static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{
+        {static_cast<value_type>(0ULL), static_cast<value_type>(4294967294ULL)}};
     static constexpr value_type Invalid{static_cast<value_type>(4294967295ULL)};
-    static constexpr value_type minimum_value{static_cast<value_type>(0ULL)};
-    static constexpr value_type maximum_value{static_cast<value_type>(4294967294ULL)};
 
     constexpr StaticGeometryIndex() noexcept = default;
-    explicit constexpr StaticGeometryIndex(value_type const value) noexcept
-        : value_{ioj::packed_pack<value_field>(value)} {
-        assert(is_valid_value(value));
-    }
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> StaticGeometryIndex {
-        StaticGeometryIndex result;
-        result.value_ = raw;
-        return result;
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
-        return ioj::packed_extract<value_field>(value_);
-    }
-    constexpr void set_value(value_type const value) noexcept {
-        assert(is_valid_value(value));
-        value_ = ioj::packed_insert<value_field>(value_, value);
-    }
+    constexpr explicit StaticGeometryIndex(value_type const value) noexcept
+        : value_{packed_pack<decltype(value_layout)>(value)} {}
+
+    [[nodiscard]] constexpr auto operator<=>(StaticGeometryIndex const&) const noexcept = default;
+
     [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
         return true;
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return is_valid_value(value());
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
+        -> StaticGeometryIndex {
+        return std::bit_cast<StaticGeometryIndex>(raw);
     }
-    [[nodiscard]] constexpr auto operator<=>(StaticGeometryIndex const&) const noexcept = default;
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
+        return packed_extract<decltype(value_layout)>(value_);
+    }
+    constexpr void set_value(value_type const value) noexcept {
+        value_ = packed_insert<decltype(value_layout)>(value_, value);
+    }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+
   private:
-    storage_type value_{default_raw_value};
+    storage_type value_{storage.default_raw_value};
 };
-static_assert(ioj::valid_packed_value_layout<StaticGeometryIndex>());
+
+static_assert(valid_packed_value_layout<StaticGeometryIndex>());
 
 struct CellIndex {
   public:
+    // Storage and value
     using storage_type = std::uint32_t;
+    using packed_integer_tag = packed::scalar_tag;
+    static constexpr PackedStorage<storage_type, 32> storage{0};
     using value_type = std::uint32_t;
-    static constexpr int encoded_bits{32};
-    static constexpr int storage_bits{32};
-    static constexpr storage_type default_raw_value{};
-    using value_field = ioj::PackedField<storage_type, value_type, 0, encoded_bits>;
+    static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{
+        {static_cast<value_type>(0ULL), static_cast<value_type>(4294967294ULL)}};
     static constexpr value_type Invalid{static_cast<value_type>(4294967295ULL)};
-    static constexpr value_type minimum_value{static_cast<value_type>(0ULL)};
-    static constexpr value_type maximum_value{static_cast<value_type>(4294967294ULL)};
 
     constexpr CellIndex() noexcept = default;
-    explicit constexpr CellIndex(value_type const value) noexcept
-        : value_{ioj::packed_pack<value_field>(value)} {
-        assert(is_valid_value(value));
-    }
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> CellIndex {
-        CellIndex result;
-        result.value_ = raw;
-        return result;
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
-        return ioj::packed_extract<value_field>(value_);
-    }
-    constexpr void set_value(value_type const value) noexcept {
-        assert(is_valid_value(value));
-        value_ = ioj::packed_insert<value_field>(value_, value);
-    }
+    constexpr explicit CellIndex(value_type const value) noexcept
+        : value_{packed_pack<decltype(value_layout)>(value)} {}
+
+    [[nodiscard]] constexpr auto operator<=>(CellIndex const&) const noexcept = default;
+
     [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
         return true;
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return is_valid_value(value());
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> CellIndex {
+        return std::bit_cast<CellIndex>(raw);
     }
-    [[nodiscard]] constexpr auto operator<=>(CellIndex const&) const noexcept = default;
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
+        return packed_extract<decltype(value_layout)>(value_);
+    }
+    constexpr void set_value(value_type const value) noexcept {
+        value_ = packed_insert<decltype(value_layout)>(value_, value);
+    }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+
   private:
-    storage_type value_{default_raw_value};
+    storage_type value_{storage.default_raw_value};
 };
-static_assert(ioj::valid_packed_value_layout<CellIndex>());
+
+static_assert(valid_packed_value_layout<CellIndex>());
 
 struct GridCellCount {
   public:
+    // Storage and value
     using storage_type = std::uint32_t;
+    using packed_integer_tag = packed::scalar_tag;
+    static constexpr PackedStorage<storage_type, 32> storage{0};
     using value_type = std::uint32_t;
-    static constexpr int encoded_bits{32};
-    static constexpr int storage_bits{32};
-    static constexpr storage_type default_raw_value{};
-    using value_field = ioj::PackedField<storage_type, value_type, 0, encoded_bits>;
-    static constexpr value_type minimum_value{static_cast<value_type>(0ULL)};
-    static constexpr value_type maximum_value{static_cast<value_type>(4294967295ULL)};
+    static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{};
 
     constexpr GridCellCount() noexcept = default;
-    explicit constexpr GridCellCount(value_type const value) noexcept
-        : value_{ioj::packed_pack<value_field>(value)} {
-        assert(is_valid_value(value));
-    }
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> GridCellCount {
-        GridCellCount result;
-        result.value_ = raw;
-        return result;
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
-        return ioj::packed_extract<value_field>(value_);
-    }
-    constexpr void set_value(value_type const value) noexcept {
-        assert(is_valid_value(value));
-        value_ = ioj::packed_insert<value_field>(value_, value);
-    }
+    constexpr explicit GridCellCount(value_type const value) noexcept
+        : value_{packed_pack<decltype(value_layout)>(value)} {}
+
+    [[nodiscard]] constexpr auto operator<=>(GridCellCount const&) const noexcept = default;
+
     [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
         return true;
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return is_valid_value(value());
-    }
-    [[nodiscard]] constexpr auto operator<=>(GridCellCount const&) const noexcept = default;
-  private:
-    storage_type value_{default_raw_value};
-};
-static_assert(ioj::valid_packed_value_layout<GridCellCount>());
-
-struct SphereInBoundsResult {
-  public:
-    using storage_type = std::uint8_t;
-    using value_type = std::uint8_t;
-    static constexpr int encoded_bits{1};
-    static constexpr int storage_bits{8};
-    static constexpr storage_type default_raw_value{};
-    using value_field = ioj::PackedField<storage_type, value_type, 0, encoded_bits>;
-    static constexpr value_type minimum_value{static_cast<value_type>(0ULL)};
-    static constexpr value_type maximum_value{static_cast<value_type>(1ULL)};
-
-    constexpr SphereInBoundsResult() noexcept = default;
-    explicit constexpr SphereInBoundsResult(value_type const value) noexcept
-        : value_{ioj::packed_pack<value_field>(value)} {
-        assert(is_valid_value(value));
-    }
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept
-        -> SphereInBoundsResult {
-        SphereInBoundsResult result;
-        result.value_ = raw;
-        return result;
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> GridCellCount {
+        return std::bit_cast<GridCellCount>(raw);
     }
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
-        return ioj::packed_extract<value_field>(value_);
+        return packed_extract<decltype(value_layout)>(value_);
     }
     constexpr void set_value(value_type const value) noexcept {
-        assert(is_valid_value(value));
-        value_ = ioj::packed_insert<value_field>(value_, value);
+        value_ = packed_insert<decltype(value_layout)>(value_, value);
     }
-    [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
-        return static_cast<storage_type>(value) <= value_field::value_mask;
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+
+  private:
+    storage_type value_{storage.default_raw_value};
+};
+
+static_assert(valid_packed_value_layout<GridCellCount>());
+
+struct SphereInBoundsResult {
+  public:
+    // Storage and value
+    using storage_type = std::uint8_t;
+    using packed_integer_tag = packed::scalar_tag;
+    static constexpr PackedStorage<storage_type, 1> storage{0};
+    using value_type = std::uint8_t;
+    static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{};
+
+    constexpr SphereInBoundsResult() noexcept = default;
+    constexpr explicit SphereInBoundsResult(value_type const value) noexcept
+        : value_{packed_pack<decltype(value_layout)>(value)} {
+        assert((is_valid_value(value)));
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return is_valid_value(value());
-    }
+
     [[nodiscard]] constexpr auto operator<=>(SphereInBoundsResult const& other) const noexcept {
         return value() <=> other.value();
     }
@@ -181,90 +146,27 @@ struct SphereInBoundsResult {
         -> bool {
         return value() == other.value();
     }
+
+    [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= value_layout.value_mask;
+    }
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
+        -> SphereInBoundsResult {
+        return std::bit_cast<SphereInBoundsResult>(raw);
+    }
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
+        return packed_extract<decltype(value_layout)>(value_);
+    }
+    constexpr void set_value(value_type const value) noexcept {
+        assert((is_valid_value(value)));
+        value_ = packed_insert<decltype(value_layout)>(value_, value);
+    }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+
   private:
-    storage_type value_{default_raw_value};
+    storage_type value_{storage.default_raw_value};
 };
-static_assert(ioj::valid_packed_value_layout<SphereInBoundsResult>());
 
+static_assert(valid_packed_value_layout<SphereInBoundsResult>());
 } // namespace ioj::sim::collision
-namespace std {
-template <typename Char>
-struct formatter<::ioj::sim::collision::StaticGeometryIndex, Char>
-    : formatter<::ioj::sim::collision::StaticGeometryIndex::value_type, Char> {
-    template <typename FormatContext>
-    auto format(::ioj::sim::collision::StaticGeometryIndex const& value,
-                FormatContext& context) const -> typename FormatContext::iterator {
-        return formatter<::ioj::sim::collision::StaticGeometryIndex::value_type, Char>::format(
-            value.value(), context);
-    }
-};
-template <>
-struct hash<::ioj::sim::collision::StaticGeometryIndex> {
-    [[nodiscard]] auto
-        operator()(::ioj::sim::collision::StaticGeometryIndex const& value) const noexcept
-        -> size_t {
-        return hash<::ioj::sim::collision::StaticGeometryIndex::value_type>{}(value.value());
-    }
-};
-}
-
-namespace std {
-template <typename Char>
-struct formatter<::ioj::sim::collision::CellIndex, Char>
-    : formatter<::ioj::sim::collision::CellIndex::value_type, Char> {
-    template <typename FormatContext>
-    auto format(::ioj::sim::collision::CellIndex const& value, FormatContext& context) const ->
-        typename FormatContext::iterator {
-        return formatter<::ioj::sim::collision::CellIndex::value_type, Char>::format(value.value(),
-                                                                                     context);
-    }
-};
-template <>
-struct hash<::ioj::sim::collision::CellIndex> {
-    [[nodiscard]] auto operator()(::ioj::sim::collision::CellIndex const& value) const noexcept
-        -> size_t {
-        return hash<::ioj::sim::collision::CellIndex::value_type>{}(value.value());
-    }
-};
-}
-
-namespace std {
-template <typename Char>
-struct formatter<::ioj::sim::collision::GridCellCount, Char>
-    : formatter<::ioj::sim::collision::GridCellCount::value_type, Char> {
-    template <typename FormatContext>
-    auto format(::ioj::sim::collision::GridCellCount const& value, FormatContext& context) const ->
-        typename FormatContext::iterator {
-        return formatter<::ioj::sim::collision::GridCellCount::value_type, Char>::format(
-            value.value(), context);
-    }
-};
-template <>
-struct hash<::ioj::sim::collision::GridCellCount> {
-    [[nodiscard]] auto operator()(::ioj::sim::collision::GridCellCount const& value) const noexcept
-        -> size_t {
-        return hash<::ioj::sim::collision::GridCellCount::value_type>{}(value.value());
-    }
-};
-}
-
-namespace std {
-template <typename Char>
-struct formatter<::ioj::sim::collision::SphereInBoundsResult, Char>
-    : formatter<::ioj::sim::collision::SphereInBoundsResult::value_type, Char> {
-    template <typename FormatContext>
-    auto format(::ioj::sim::collision::SphereInBoundsResult const& value,
-                FormatContext& context) const -> typename FormatContext::iterator {
-        return formatter<::ioj::sim::collision::SphereInBoundsResult::value_type, Char>::format(
-            value.value(), context);
-    }
-};
-template <>
-struct hash<::ioj::sim::collision::SphereInBoundsResult> {
-    [[nodiscard]] auto
-        operator()(::ioj::sim::collision::SphereInBoundsResult const& value) const noexcept
-        -> size_t {
-        return hash<::ioj::sim::collision::SphereInBoundsResult::value_type>{}(value.value());
-    }
-};
-}

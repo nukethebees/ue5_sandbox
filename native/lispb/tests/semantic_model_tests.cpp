@@ -328,6 +328,44 @@ TEST(SemanticTypeGraph, PreservesExplicitEnumSemanticWidth) {
               graph.enum_domains().values(enums.domain[enums.index(type)])[1]);
 }
 
+TEST(SemanticTypeGraph, FindsContiguousEnumValidationRangesWithoutChangingCodes) {
+    auto const check = [](std::string_view body,
+                          std::optional<ioj::MinMax<std::uint64_t>> expected) {
+        SCOPED_TRACE(body);
+        lispb::codegen::CompilerTestContext context;
+        auto const source{std::string{"(module values :header \"Values.h\" (enum State "} +
+                          std::string{body} + "))"};
+        auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
+        auto const& declarations{context.storage.declarations};
+        auto const enumeration{
+            declarations.items(declarations.normal_modules.declarations[manifest.modules.front()])
+                .front()};
+        auto const domains{lispb::schema::analyze_enum_domains(manifest)};
+        EXPECT_EQ(domains.contiguous_value_range(domains.find(enumeration)), expected);
+    };
+    check("(value First) (value Second) (value Third)", ioj::MinMax<std::uint64_t>{0, 2});
+    check("(value Last :value 9) (value First :value 7) (value Middle :value 8) "
+          "(value Alias :value 8)",
+          ioj::MinMax<std::uint64_t>{7, 9});
+    check(":count COUNT (value First) (value Second) (value COUNT)",
+          ioj::MinMax<std::uint64_t>{0, 1});
+    check("(value First :value 4) (value Reserved :value 5 :sentinel true) (value Last :value 6)",
+          ioj::MinMax<std::uint64_t>{4, 6});
+    check(":count COUNT (value First :value 7) (value COUNT :value 8) (value Last :value 8)",
+          ioj::MinMax<std::uint64_t>{7, 8});
+    check("(value First :value 18446744073709551614) (value Last)",
+          ioj::MinMax<std::uint64_t>{18446744073709551614ULL, 18446744073709551615ULL});
+    check("(value Last :value 18446744073709551615)",
+          ioj::MinMax<std::uint64_t>{18446744073709551615ULL, 18446744073709551615ULL});
+    check(":count COUNT (value First) (value COUNT :value EXTERNAL)",
+          ioj::MinMax<std::uint64_t>{0, 0});
+    check("(value First :value 0) (value Last :value 2)", std::nullopt);
+    check("(value First :value -1) (value Last)", std::nullopt);
+    check("(value First :value EXTERNAL)", std::nullopt);
+    check(":count COUNT (value COUNT)", std::nullopt);
+    check("", std::nullopt);
+}
+
 TEST(SemanticTypeGraph, KeepsDerivedEnumBackingOutOfSemanticDependencies) {
     lispb::codegen::CompilerTestContext context;
     auto& declarations{context.storage.declarations};
@@ -1669,8 +1707,9 @@ TEST(SemanticTypeGraph, RejectsPackedFixedPointHelperNameCollisions) {
     for (auto const name : {"distance_value",
                             "set_distance_value",
                             "try_encode_distance_value",
-                            "distance_minimum_allowed_raw",
-                            "distance_maximum_allowed_raw"}) {
+                            "distance_fractional_bits",
+                            "distance_magnitude_bits",
+                            "distance_raw_layout"}) {
         SCOPED_TRACE(name);
         lispb::codegen::CompilerTestContext context;
         auto const source{std::string{R"(
@@ -1700,7 +1739,7 @@ TEST(SemanticTypeGraph, RejectsPackedAccessorMatchingOwningTypeName) {
 }
 
 TEST(SemanticTypeGraph, RejectsPackedRootMetadataNameCollisions) {
-    for (auto const name : {"encoded_bits", "storage_bits", "default_raw_value"}) {
+    for (auto const name : {"storage", "storage_type", "packed_integer_tag"}) {
         SCOPED_TRACE(name);
         lispb::codegen::CompilerTestContext context;
         auto const source{std::string{R"((module values :header "Values.h"
@@ -1710,14 +1749,12 @@ TEST(SemanticTypeGraph, RejectsPackedRootMetadataNameCollisions) {
         EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
     }
     for (auto const kind : {"record", "union"}) {
-        for (auto const name : {"storage_type",
-                                "encoded_bits",
-                                "storage_bits",
-                                "default_raw_value",
+        for (auto const name : {"storage",
+                                "storage_type",
+                                "packed_integer_tag",
                                 "raw_value",
                                 "from_raw",
                                 "is_valid",
-                                "RawTag",
                                 "value_"}) {
             SCOPED_TRACE(kind);
             SCOPED_TRACE(name);
@@ -1728,11 +1765,17 @@ TEST(SemanticTypeGraph, RejectsPackedRootMetadataNameCollisions) {
             auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
             EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
         }
+        lispb::codegen::CompilerTestContext context;
+        auto const source{
+            std::string{"(module values :header \"Values.h\" ("} + kind +
+            " RawTag :layout packed (member data std::uint8_t) (projections (cpp))))"};
+        auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
+        EXPECT_NO_THROW(resolve_type_graph(manifest));
     }
 }
 
 TEST(SemanticTypeGraph, RejectsScalarNamedCodesCollidingWithDomainMetadata) {
-    for (auto const name : {"minimum_value", "maximum_value"}) {
+    for (auto const name : {"storage", "packed_integer_tag", "value_layout"}) {
         SCOPED_TRACE(name);
         lispb::codegen::CompilerTestContext context;
         auto const source{std::string{R"((module values :header "Values.h"
@@ -1741,17 +1784,14 @@ TEST(SemanticTypeGraph, RejectsScalarNamedCodesCollidingWithDomainMetadata) {
         auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
         EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
     }
-    for (auto const name : {"storage_type",
+    for (auto const name : {"storage",
+                            "storage_type",
+                            "packed_integer_tag",
                             "value_type",
-                            "value_field",
+                            "value_layout",
                             "value",
                             "set_value",
                             "is_valid_value",
-                            "encoded_bits",
-                            "storage_bits",
-                            "default_raw_value",
-                            "minimum_value",
-                            "maximum_value",
                             "raw_value",
                             "from_raw",
                             "is_valid",
@@ -1774,37 +1814,31 @@ TEST(SemanticTypeGraph, RejectsPackedValidationAndEncodingMetadataCollisions) {
              R"((module values :header "Values.h"
                (enum Mode :bit-width 8 (value first) (projections (cpp)))
                (record Value :layout packed (member mode @Mode)
-                 (member mode_first_code std::uint8_t) (projections (cpp)))))",
+                 (member mode_layout std::uint8_t) (projections (cpp)))))",
              R"((module values :header "Values.h"
                (integer-scalar Health :bit-width 8 :minimum 0 :maximum 100)
                (optional-presence-bit MaybeHealth :source @Health)
                (record Value :layout packed (member maybe @MaybeHealth)
-                 (member maybe_encoded_payload_minimum std::uint8_t) (projections (cpp)))))",
+                 (member maybe_encoded_payload_layout std::uint8_t) (projections (cpp)))))",
              R"((module values :header "Values.h"
                (record invalid_value :layout packed :invalid-value 255
                  (member data std::uint8_t) (projections (cpp)))))",
              R"((module values :header "Values.h"
-               (fixed-point minimum_value :signed false :total-bits 8 :fractional-bits 0 :minimum 0
+               (fixed-point value_layout :signed false :total-bits 8 :fractional-bits 0 :minimum 0
                  (projections (cpp)))))",
              R"((module values :header "Values.h"
-               (fixed-point maximum_value :signed false :total-bits 8 :fractional-bits 0 :maximum 100
+               (fixed-point packed_integer_tag :signed false :total-bits 8 :fractional-bits 0 :maximum 100
                  (projections (cpp)))))",
              R"((module values :header "Values.h"
                (integer-scalar Source :bit-width 8)
-               (linear-quantized maximum_encoded :source @Source :bits 6 :reserved-codes 1
+               (linear-quantized value_layout :source @Source :bits 6 :reserved-codes 1
                  :clipping clamp (projections (cpp)))))",
              R"((module values :header "Values.h"
                (integer-scalar Source :bit-width 8)
-               (optional-presence-bit payload_type :source @Source (projections (cpp)))))",
+               (optional-presence-bit payload_layout :source @Source (projections (cpp)))))",
              R"((module values :header "Values.h"
                (integer-scalar Source :bit-width 8)
-               (optional-presence-bit payload_field :source @Source (projections (cpp)))))",
-             R"((module values :header "Values.h"
-               (integer-scalar Source :bit-width 8)
-               (optional-presence-bit payload_minimum :source @Source (projections (cpp)))))",
-             R"((module values :header "Values.h"
-               (integer-scalar Source :bit-width 8)
-               (optional-presence-bit payload_maximum :source @Source (projections (cpp)))))",
+               (optional-presence-bit value_layout :source @Source (projections (cpp)))))",
              R"((module values :header "Values.h"
                (integer-scalar Source :bit-width 8)
                (optional-presence-bit presence_mask :source @Source (projections (cpp)))))",
@@ -1823,10 +1857,38 @@ TEST(SemanticTypeGraph, RejectsPackedValidationAndEncodingMetadataCollisions) {
              R"((module values :header "Values.h"
                (record value_type :layout packed (member data std::uint8_t) (projections (cpp)))
                (record invalid_value :layout packed (member data std::uint8_t) (projections (cpp)))
+               (integer-scalar value_field :bit-width 8 (projections (cpp)))
                (integer-scalar RawTag :bit-width 8 (projections (cpp)))))",
              R"((module values :header "Values.h"
-               (fixed-point minimum_value :signed false :total-bits 8 :fractional-bits 0 (projections (cpp)))
-               (fixed-point maximum_value :signed false :total-bits 8 :fractional-bits 0 (projections (cpp)))))"}) {
+               (integer-scalar Source :bit-width 8)
+               (optional-presence-bit payload_type :source @Source (projections (cpp)))
+               (optional-presence-bit payload_field :source @Source (projections (cpp)))
+               (record Value :layout packed
+                 (member maybe @payload_type)
+                 (member maybe_encoded_payload_type std::uint8_t)
+                 (member maybe_encoded_payload_field std::uint8_t)
+                 (projections (cpp)))))",
+             R"((module values :header "Values.h"
+               (fixed-point minimum_value :signed false :total-bits 8 :fractional-bits 0 :minimum 0 (projections (cpp)))
+               (fixed-point maximum_value :signed false :total-bits 8 :fractional-bits 0 :maximum 100 (projections (cpp)))))",
+             R"((module values :header "Values.h"
+               (enum Mode :bit-width 8 (value first) (projections (cpp)))
+               (record Value :layout packed (member mode @Mode)
+                 (member mode_first_code std::uint8_t)
+                 (member mode_range std::uint8_t)
+                 (member mode_range_type std::uint8_t)
+                 (member mode_type std::uint8_t)
+                 (member mode_field std::uint8_t)
+                 (projections (cpp)))))",
+             R"((module values :header "Values.h"
+               (integer-scalar Value :bit-width 8
+                 (code minimum_value :value 1) (code maximum_value :value 2)
+                 (projections (cpp)))
+               (record Metadata :layout packed
+                 (member encoded_bits std::uint8_t)
+                 (member storage_bits std::uint8_t)
+                 (member default_raw_value std::uint8_t)
+                 (projections (cpp)))))"}) {
         SCOPED_TRACE(source);
         lispb::codegen::CompilerTestContext context;
         auto const manifest{lispb::codegen::parse_test_manifest(context, source)};

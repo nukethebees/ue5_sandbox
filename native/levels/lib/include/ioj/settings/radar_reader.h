@@ -38,6 +38,7 @@ struct TypeReader<settings::Radar> : RecordReader<settings::Radar> {
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 

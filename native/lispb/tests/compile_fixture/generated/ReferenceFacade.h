@@ -16,6 +16,7 @@ class FReferenceFacade {
     std::int32_t get() const { return target.get(); }
 
     void set_value(std::int32_t const value) { target.set(value); }
+
   private:
     FTarget& target;
 };

@@ -22,6 +22,7 @@ struct TypeReader<settings::LaserPresentation> : RecordReader<settings::LaserPre
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 

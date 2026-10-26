@@ -17,7 +17,7 @@ enum class PackedState : PackedStateUnderlying {
     Max = 0xFF,
 };
 
-using OpaqueStateUnderlying = std::uint8_t;
+using OpaqueStateUnderlying = std::uint32_t;
 
 // Logical bit width: 8.
 enum class OpaqueState : OpaqueStateUnderlying {

@@ -34,6 +34,7 @@ struct TypeReader<levels::TeamResultDefinition> : RecordReader<levels::TeamResul
                              }),
                              required);
     }
+
   private:
     enum class Field : std::uint8_t {
         team,

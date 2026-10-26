@@ -30,6 +30,7 @@ struct TypeReader<settings::CapitalPresentation> : RecordReader<settings::Capita
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 

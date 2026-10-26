@@ -5,69 +5,44 @@
 
 #include "ioj/packed_value.h"
 
-#include <cassert>
+#include <bit>
 #include <compare>
-#include <cstddef>
 #include <cstdint>
-#include <format>
-#include <functional>
 
 namespace ioj::sim {
 struct SimTick {
   public:
+    // Storage and value
     using storage_type = std::uint64_t;
+    using packed_integer_tag = packed::scalar_tag;
+    static constexpr PackedStorage<storage_type, 64> storage{0};
     using value_type = std::uint64_t;
-    static constexpr int encoded_bits{64};
-    static constexpr int storage_bits{64};
-    static constexpr storage_type default_raw_value{};
-    using value_field = ioj::PackedField<storage_type, value_type, 0, encoded_bits>;
-    static constexpr value_type minimum_value{static_cast<value_type>(0ULL)};
-    static constexpr value_type maximum_value{static_cast<value_type>(18446744073709551615ULL)};
+    static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{};
 
     constexpr SimTick() noexcept = default;
-    explicit constexpr SimTick(value_type const value) noexcept
-        : value_{ioj::packed_pack<value_field>(value)} {
-        assert(is_valid_value(value));
-    }
-    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> SimTick {
-        SimTick result;
-        result.value_ = raw;
-        return result;
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
-        return ioj::packed_extract<value_field>(value_);
-    }
-    constexpr void set_value(value_type const value) noexcept {
-        assert(is_valid_value(value));
-        value_ = ioj::packed_insert<value_field>(value_, value);
-    }
+    constexpr explicit SimTick(value_type const value) noexcept
+        : value_{packed_pack<decltype(value_layout)>(value)} {}
+
+    [[nodiscard]] constexpr auto operator<=>(SimTick const&) const noexcept = default;
+
     [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
         return true;
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return is_valid_value(value());
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> SimTick {
+        return std::bit_cast<SimTick>(raw);
     }
-    [[nodiscard]] constexpr auto operator<=>(SimTick const&) const noexcept = default;
-  private:
-    storage_type value_{default_raw_value};
-};
-static_assert(ioj::valid_packed_value_layout<SimTick>());
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
+        return packed_extract<decltype(value_layout)>(value_);
+    }
+    constexpr void set_value(value_type const value) noexcept {
+        value_ = packed_insert<decltype(value_layout)>(value_, value);
+    }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
 
+  private:
+    storage_type value_{storage.default_raw_value};
+};
+
+static_assert(valid_packed_value_layout<SimTick>());
 } // namespace ioj::sim
-namespace std {
-template <typename Char>
-struct formatter<::ioj::sim::SimTick, Char> : formatter<::ioj::sim::SimTick::value_type, Char> {
-    template <typename FormatContext>
-    auto format(::ioj::sim::SimTick const& value, FormatContext& context) const ->
-        typename FormatContext::iterator {
-        return formatter<::ioj::sim::SimTick::value_type, Char>::format(value.value(), context);
-    }
-};
-template <>
-struct hash<::ioj::sim::SimTick> {
-    [[nodiscard]] auto operator()(::ioj::sim::SimTick const& value) const noexcept -> size_t {
-        return hash<::ioj::sim::SimTick::value_type>{}(value.value());
-    }
-};
-}

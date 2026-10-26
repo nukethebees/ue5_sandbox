@@ -26,6 +26,7 @@ struct TypeReader<starfield::GenerationSettings> : RecordReader<starfield::Gener
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 
@@ -50,6 +51,7 @@ struct TypeReader<starfield::StarSettings> : RecordReader<starfield::StarSetting
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 
@@ -77,6 +79,7 @@ struct TypeReader<starfield::GalacticBandSettings> : RecordReader<starfield::Gal
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 
@@ -98,6 +101,7 @@ struct TypeReader<starfield::StellarClusterSettings>
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 
@@ -118,6 +122,7 @@ struct TypeReader<starfield::DustLaneSettings> : RecordReader<starfield::DustLan
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 
@@ -141,6 +146,7 @@ struct TypeReader<starfield::BrightStarSettings> : RecordReader<starfield::Brigh
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 
@@ -158,6 +164,7 @@ struct TypeReader<starfield::TwinkleSettings> : RecordReader<starfield::TwinkleS
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 
@@ -178,6 +185,7 @@ struct TypeReader<starfield::GalacticHazeSettings> : RecordReader<starfield::Gal
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 
@@ -198,6 +206,7 @@ struct TypeReader<starfield::GalacticCoreSettings> : RecordReader<starfield::Gal
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 
@@ -218,6 +227,7 @@ struct TypeReader<starfield::NebularKnotSettings> : RecordReader<starfield::Nebu
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 
@@ -233,6 +243,7 @@ struct TypeReader<starfield::Settings> : RecordReader<starfield::Settings> {
                     result, selected, [&]<Field field>(auto& member) { read(member); });
             }));
     }
+
   private:
     using Field = value_type::Field;
 

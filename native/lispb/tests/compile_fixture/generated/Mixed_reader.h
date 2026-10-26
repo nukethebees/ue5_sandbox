@@ -22,6 +22,7 @@ struct TypeReader<codegen_compile_fixture::mixed::CrossSettings>
                     result, selected, [&]<Field field>(auto& member) { read(member); });
             }));
     }
+
   private:
     using Field = value_type::Field;
 

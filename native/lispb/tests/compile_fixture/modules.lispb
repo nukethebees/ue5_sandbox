@@ -206,7 +206,7 @@
     (value AB :value "0xAB")
     (value Max :value "0xFF")
     (projections (cpp)))
-  (enum OpaqueState @standard_uint8 :bit-width 8
+  (enum OpaqueState std::uint32_t :bit-width 8
     (value Zero
       :value "static_cast<std::uint8_t>(PackedState::Zero)")
     (value Max
@@ -637,6 +637,22 @@
     (member present @PresentValue)
     (projections (cpp))))
 
+(module packed_lookup_fixture
+  :header "PackedLookup.h"
+  :namespace ioj::packed_lookup_fixture
+  (integer-scalar LookupByte :bit-width 8 (projections (cpp)))
+  (integer-scalar CustomByte :bit-width 8 (projections (cpp)))
+  (enum CountedState :bit-width 8 :count Count
+    (value First) (value Last) (value Count)
+    (projections (cpp)))
+  (record CountedValue :layout packed
+    (member state @CountedState)
+    (projections (cpp)))
+  (record PackedLookup :layout packed
+    (member packed_insert @LookupByte)
+    (member packed_extract @LookupByte)
+    (projections (cpp))))
+
 (umbrella-module all_fixture
   :header "Generated.h"
-  :headers ("Records.h" "FieldMasks.h" "RestrictionRows.h" "InlineFacade.h" "SourceFacade.h" "ReferenceFacade.h" "PlainEnums.h" "PackedEnums.h" "ScalarValues.h" "PackedValues.h" "Mixed.h" "UnifiedPacked.h"))
+  :headers ("Records.h" "FieldMasks.h" "RestrictionRows.h" "InlineFacade.h" "SourceFacade.h" "ReferenceFacade.h" "PlainEnums.h" "PackedEnums.h" "ScalarValues.h" "PackedValues.h" "Mixed.h" "UnifiedPacked.h" "PackedLookup.h"))

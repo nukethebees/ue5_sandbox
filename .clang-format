@@ -51,7 +51,7 @@ AlwaysBreakTemplateDeclarations: Yes
 Cpp11BracedListStyle: true
 
 EmptyLineAfterAccessModifier: Never
-EmptyLineBeforeAccessModifier: Never
+EmptyLineBeforeAccessModifier: Leave
 
 FixNamespaceComments: false
 

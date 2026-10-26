@@ -2,7 +2,6 @@
 #include "lowering.h"
 #include "lowering_context.h"
 #include "packed_value_internal.h"
-#include <ioj/format_writer.h>
 
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
@@ -11,13 +10,13 @@
 #include <codegen/schema/enumerator_schemas.h>
 #include <codegen/schema/packed_named_code_schemas.h>
 #include <lispb/schema/bit_layout.h>
+#include <lispb/schema/enum_storage_requirement.h>
 #include <lispb/schema/integer_domain.h>
 #include <lispb/schema/type_graph.h>
 
 #include <algorithm>
 #include <cstdint>
 #include <format>
-#include <iterator>
 #include <limits>
 #include <map>
 #include <optional>
@@ -45,22 +44,6 @@ auto literal(PackedIntegerValue value) -> std::string {
 auto mask(std::uint32_t bits) -> std::uint64_t {
     return bits == 64 ? (std::numeric_limits<std::uint64_t>::max)()
                       : (std::uint64_t{1} << bits) - 1;
-}
-
-auto combine(std::vector<std::string> const& checks,
-             std::string_view operation,
-             std::string_view empty) -> std::string {
-    std::string result;
-    for (auto const& check : checks) {
-        if ((operation == " && " && check == "true") || (operation == " || " && check == "false")) {
-            continue;
-        }
-        if (!result.empty()) {
-            result += operation;
-        }
-        result += '(' + check + ')';
-    }
-    return result.empty() ? std::string{empty} : result;
 }
 
 auto composite(schema::TypeDefinitionKind kind) -> bool {
@@ -100,31 +83,6 @@ auto value_type(LoweringContext& context, schema::TypeId type, std::uint32_t bit
     return integer_type(bits);
 }
 
-auto field_type(std::string const& value, std::uint32_t offset, std::uint32_t bits) -> std::string {
-    return std::format("ioj::PackedField<storage_type, {}, {}, {}>", value, offset, bits);
-}
-
-using NamedDeclarations = std::vector<std::pair<std::string, std::string>>;
-
-auto named_declaration(NamedDeclarations& declarations, std::string name, std::string declaration)
-    -> std::string {
-    if (std::ranges::none_of(declarations,
-                             [&](auto const& entry) { return entry.first == name; })) {
-        declarations.emplace_back(name, std::move(declaration));
-    }
-    return name;
-}
-
-auto named_constant(NamedDeclarations& declarations,
-                    std::string name,
-                    std::string const& type,
-                    std::string const& expression) -> std::string {
-    return named_declaration(
-        declarations,
-        name,
-        std::format("    static constexpr {} {}{{{}}};\n", type, name, expression));
-}
-
 auto consecutive(PackedIntegerValue left, PackedIntegerValue right) -> bool {
     if (left.negative) {
         return left.magnitude == 1 ? right.magnitude == 0
@@ -132,196 +90,6 @@ auto consecutive(PackedIntegerValue left, PackedIntegerValue right) -> bool {
     }
     return !right.negative && left.magnitude != (std::numeric_limits<std::uint64_t>::max)() &&
            right.magnitude == left.magnitude + 1;
-}
-
-auto scalar_validity(LoweringContext& context,
-                     schema::TypeId type,
-                     std::uint32_t bits,
-                     std::string const& expression,
-                     std::string const& prefix,
-                     std::string const& decoded,
-                     NamedDeclarations& constants,
-                     bool field_range = false) -> std::string {
-    auto const& graph{context.semantic};
-    auto const definition{graph.definition(type)};
-    auto const& definitions{graph.definitions()};
-    auto const qualify = [&](std::string_view suffix) {
-        return prefix.empty() ? std::string{suffix} : prefix + "_" + std::string{suffix};
-    };
-    auto const bound = [&](std::string_view suffix, PackedIntegerValue value) {
-        return named_constant(constants,
-                              qualify(suffix),
-                              decoded,
-                              "static_cast<" + decoded + ">(" + literal(value) + ')');
-    };
-    if (auto const domain{schema::integer_domain(graph, type)}) {
-        auto const& scalars{definitions.integer_scalars};
-        auto const row{scalars.index(*domain)};
-        auto const signedness{scalars.signedness[row] != 0};
-        auto const representable_minimum{PackedIntegerValue::from_parts(
-            signedness, signedness ? std::uint64_t{1} << (bits - 1) : 0)};
-        auto const representable_maximum{PackedIntegerValue{mask(bits - (signedness ? 1 : 0))}};
-        auto const minimum{field_range ? prefix + "_range.min"
-                                       : bound(prefix.empty() ? "minimum_value" : "minimum",
-                                               scalars.minimum_value[row])};
-        auto const maximum{field_range ? prefix + "_range.max"
-                                       : bound(prefix.empty() ? "maximum_value" : "maximum",
-                                               scalars.maximum_value[row])};
-        auto lower{scalars.minimum_value[row]};
-        auto upper{scalars.maximum_value[row]};
-        auto const& codes{context.declarations.packed_named_codes};
-        auto const named{context.declarations.items(scalars.named_codes[row])};
-        for (std::size_t pass{}; pass < named.size(); ++pass) {
-            for (auto const id : named) {
-                if (!codes.sentinel[id]) {
-                    continue;
-                }
-                if (consecutive(codes.value[id], lower)) {
-                    lower = codes.value[id];
-                }
-                if (consecutive(upper, codes.value[id])) {
-                    upper = codes.value[id];
-                }
-            }
-        }
-        if (!packed_integer_less(representable_minimum, lower) &&
-            !packed_integer_less(upper, representable_maximum)) {
-            return "true";
-        }
-        std::vector<std::string> bounds;
-        if (packed_integer_less(representable_minimum, scalars.minimum_value[row])) {
-            bounds.push_back(expression + " >= " + minimum);
-        }
-        if (packed_integer_less(scalars.maximum_value[row], representable_maximum)) {
-            bounds.push_back(expression + " <= " + maximum);
-        }
-        auto range{combine(bounds, " && ", "true")};
-        if (range == "true") {
-            return range;
-        }
-        for (auto const id : context.declarations.items(scalars.named_codes[row])) {
-            if (codes.sentinel[id]) {
-                auto const name{qualify(context.text(codes.name[id]))};
-                if (!field_range && !prefix.empty()) {
-                    bound(context.text(codes.name[id]), codes.value[id]);
-                }
-                range = '(' + range + ") || " + expression + " == " + name;
-            }
-        }
-        return range;
-    }
-    switch (definition.kind()) {
-        case schema::TypeDefinitionKind::enumeration: {
-            auto const& enums{definitions.enums};
-            auto const domain{enums.domain[enums.index(definition)]};
-            auto const& domains{graph.enum_domains()};
-            auto const values{domains.values(domain)};
-            auto const count_value{domains.count_value[domains.index(domain)]};
-            std::vector<std::string> checks;
-            auto const count{values.size()};
-            for (std::size_t ordinal{}; ordinal < count; ++ordinal) {
-                if (values[ordinal] == count_value) {
-                    continue;
-                }
-                auto const enumerator{
-                    context.text(context.declarations.enumerators.name[values[ordinal]])};
-                auto const code{domains.code(domain, ordinal)};
-                auto const initializer{code ? "static_cast<" + decoded + ">(" +
-                                                  literal(PackedIntegerValue::from_parts(
-                                                      code->negative, code->magnitude)) +
-                                                  ')'
-                                            : decoded + "::" + enumerator};
-                auto const name{
-                    named_constant(constants, qualify(enumerator + "_code"), decoded, initializer)};
-                checks.push_back(expression + " == " + name);
-            }
-            return combine(checks, " || ", "false");
-        }
-        case schema::TypeDefinitionKind::fixed_point: {
-            auto const& fixed{definitions.fixed_points};
-            auto const row{fixed.index(definition)};
-            std::vector<std::string> checks;
-            if (fixed.minimum_raw_value[row]) {
-                auto const minimum{
-                    field_range ? prefix.substr(0, prefix.size() - 4) + "_minimum_allowed_raw"
-                                : bound("minimum_value", *fixed.minimum_raw_value[row])};
-                checks.push_back(expression + " >= " + minimum);
-            }
-            if (fixed.maximum_raw_value[row]) {
-                auto const maximum{
-                    field_range ? prefix.substr(0, prefix.size() - 4) + "_maximum_allowed_raw"
-                                : bound("maximum_value", *fixed.maximum_raw_value[row])};
-                checks.push_back(expression + " <= " + maximum);
-            }
-            return combine(checks, " && ", "true");
-        }
-        case schema::TypeDefinitionKind::linear_quantized: {
-            auto const& quantized{definitions.linear_quantized};
-            auto const row{quantized.index(definition)};
-            return expression + " <= " +
-                   bound("maximum_encoded",
-                         PackedIntegerValue{mask(bits) - quantized.reserved_codes[row]});
-        }
-        case schema::TypeDefinitionKind::optional_sentinel: {
-            auto const& optional{definitions.optional_sentinels};
-            auto const row{optional.index(definition)};
-            auto const source{
-                graph.occurrences().type[graph.occurrences().index(optional.source[row])]};
-            auto const payload{qualify("payload")};
-            auto const payload_alias{payload + "_type"};
-            named_declaration(constants,
-                              payload_alias,
-                              "    using " + payload_alias + " = " +
-                                  value_type(context, source, bits) + ";\n");
-            auto const payload_field{payload + "_field"};
-            named_declaration(constants,
-                              payload_field,
-                              "    using " + payload_field + " = " +
-                                  field_type(payload_alias, 0, bits) + ";\n");
-            auto const decoded_source{"ioj::packed_extract<" + payload_field +
-                                      ">(static_cast<storage_type>(" + expression + "))"};
-            return expression + " == " + bound("sentinel", optional.sentinel_value[row]) + " || (" +
-                   scalar_validity(
-                       context, source, bits, decoded_source, payload, payload_alias, constants) +
-                   ')';
-        }
-        case schema::TypeDefinitionKind::optional_presence_bit: {
-            auto const& optional{definitions.optional_presence_bits};
-            auto const row{optional.index(definition)};
-            auto const source{
-                graph.occurrences().type[graph.occurrences().index(optional.source[row])]};
-            auto const payload_bits{optional.payload_bits[row]};
-            auto const payload{qualify("payload")};
-            auto const payload_alias{payload + "_type"};
-            named_declaration(constants,
-                              payload_alias,
-                              "    using " + payload_alias + " = " +
-                                  value_type(context, source, payload_bits) + ";\n");
-            auto const payload_field{payload + "_field"};
-            named_declaration(constants,
-                              payload_field,
-                              "    using " + payload_field + " = " +
-                                  field_type(payload_alias, 0, payload_bits) + ";\n");
-            auto const decoded_source{"ioj::packed_extract<" + payload_field +
-                                      ">(static_cast<storage_type>(" + expression + "))"};
-            auto const presence{named_constant(constants,
-                                               qualify("presence_mask"),
-                                               "storage_type",
-                                               "static_cast<storage_type>(storage_type{1} << " +
-                                                   payload_field + "::bits)")};
-            return "(static_cast<storage_type>(" + expression + ") & " + presence + ") == 0 || (" +
-                   scalar_validity(context,
-                                   source,
-                                   payload_bits,
-                                   decoded_source,
-                                   payload,
-                                   payload_alias,
-                                   constants) +
-                   ')';
-        }
-        default:
-            return "true";
-    }
 }
 
 auto accessor_name(LoweringContext& context, schema::BitPlacement const& placement) -> std::string {
@@ -352,301 +120,949 @@ void append_dependencies(LoweringContext& context,
     dependencies.insert(dependencies.end(), required.begin(), required.end());
 }
 
-auto base_dependencies(LoweringContext& context) -> std::vector<TypeDependencyId> {
-    auto& types{context.ir.types};
-    return {types.dependency("ioj::PackedField", "ioj/packed_value.h"),
-            types.dependency("std::uint64_t", "cstdint"),
-            types.dependency("assert", "cassert"),
-            types.dependency("auto", "compare")};
-}
-
-auto standard_value_support(LoweringContext& context, schema::TypeId type, bool scalar) -> NodeId {
-    auto qualified{context.text(context.semantic.cpp_spelling(type))};
-    if (!qualified.starts_with("::")) {
-        qualified = "::" + qualified;
-    }
-    auto const integer{qualified + (scalar ? "::value_type" : "::storage_type")};
-    auto const accessor{scalar ? "value" : "raw_value"};
-    auto const text{std::format(
-        "namespace std {{\n"
-        "template <typename Char>\n"
-        "struct formatter<{0}, Char> : formatter<{1}, Char> {{\n"
-        "    template <typename FormatContext>\n"
-        "    auto format({0} const& value, FormatContext& context) const -> typename "
-        "FormatContext::iterator {{\n"
-        "        return formatter<{1}, Char>::format(value.{2}(), context);\n    }}\n}};\n"
-        "template <>\nstruct hash<{0}> {{\n"
-        "    [[nodiscard]] auto operator()({0} const& value) const noexcept -> size_t {{\n"
-        "        return hash<{1}>{{}}(value.{2}());\n    }}\n}};\n}}\n",
-        qualified,
-        integer,
-        accessor)};
-    auto& types{context.ir.types};
-    return context.ir.raw(text,
-                          {types.dependency("std::formatter", "format"),
-                           types.dependency("std::hash", "functional"),
-                           types.dependency("std::size_t", "cstddef")});
-}
-
 class PackedEmitter {
   public:
     PackedEmitter(LoweringContext& context, schema::TypeId type)
         : context_{context}
+        , ir_{context.ir}
+        , graph_{context.semantic}
         , type_{type}
-        , layout_{context.semantic.bit_layout(type)}
-        , dependencies_{base_dependencies(context)} {}
+        , layout_{graph_.bit_layout(type)}
+        , name_{context.text(graph_.name(type))}
+        , field_metadata_(layout_.placements.size()) {}
 
-    auto emit() -> NodeId {
-        auto const& graph{context_.semantic};
-        auto const name{context_.text(graph.name(type_))};
-        auto const definition{graph.definition(type_)};
-        auto const& definitions{graph.definitions()};
-        auto const invalid{
-            definition.kind() == schema::TypeDefinitionKind::record
-                ? definitions.records.invalid_raw_value[definitions.records.index(definition)]
-                : std::optional<std::uint64_t>{}};
-        ioj::FormatWriter write{std::back_inserter(output_)};
-        auto const declaration{graph.source_declaration(type_)};
-        auto const export_specifier{
-            definition.kind() == schema::TypeDefinitionKind::record
-                ? context_.declarations.records.export_specifier[declaration]
-                : context_.declarations.unions.export_specifier[declaration]};
-        auto const export_text{context_.text(export_specifier)};
-        write("struct {}{} {{\n  public:\n    using storage_type = {};\n",
-              export_text.empty() ? "" : export_text + ' ',
-              name,
-              integer_type(layout_.storage_bits));
-        write("    static constexpr int encoded_bits{{{}}};\n"
-              "    static constexpr int storage_bits{{{}}};\n"
-              "    static constexpr storage_type default_raw_value{{{}ULL}};\n",
-              *layout_.encoded_bits,
-              layout_.storage_bits,
-              layout_.default_raw_value.value_or(0));
+    auto emit() -> Nodes {
+        auto const scalar{!composite(graph_.definition(type_).kind())};
+        metadata_.push_back(ir_.line_comment(scalar ? "Storage and value" : "Storage"));
+        alias(metadata_, "storage_type", integer_type(layout_.storage_bits));
+        metadata_.push_back(ir_.using_declaration(
+            text("packed_integer_tag"),
+            ir_.types.named(scalar ? "ioj::packed::scalar_tag" : "ioj::packed::integer_tag",
+                            {ir_.types.dependency("ioj::PackedStorage", "ioj/packed_value.h")})));
+        metadata_.push_back(ir_.constexpr_member(
+            ir_.types.template_type(
+                ir_.types.named("ioj::PackedStorage",
+                                {ir_.types.dependency("ioj::PackedStorage", "ioj/packed_value.h")}),
+                {type("storage_type"), ir_.types.intern(std::to_string(*layout_.encoded_bits))}),
+            text("storage"),
+            number(layout_.default_raw_value.value_or(0))));
+        if (scalar) {
+            scalar_members();
+        } else {
+            packed_members();
+        }
+        Nodes members{ir_.access()};
+        members.push_back(ir_.lines(1));
+        append(members, metadata_);
+        auto const count{layout_.placements.size()};
+        for (std::size_t index{}; index < count; ++index) {
+            if (!field_metadata_[index].empty()) {
+                members.push_back(ir_.lines(2));
+                members.push_back(ir_.line_comment(layout_.placements[index].path));
+                members.push_back(ir_.lines(1));
+                append(members, field_metadata_[index]);
+            }
+        }
+        for (auto const* group : {&constructors_, &operators_, &functions_}) {
+            if (!group->empty()) {
+                members.push_back(ir_.lines(2));
+                append(members, *group);
+            }
+        }
+        members.push_back(ir_.lines(2));
+        members.push_back(ir_.access(Access::private_));
+        members.push_back(ir_.lines(1));
+        append(members, private_functions_);
+        if (!private_functions_.empty()) {
+            members.push_back(ir_.lines(2));
+        }
+        members.push_back(
+            ir_.instance_member(type("storage_type"),
+                                text("value_"),
+                                ir_.member_access(ir_.named("storage"), "default_raw_value")));
+        auto const record{ir_.record(text(name_), members)};
+        auto const declaration{graph_.source_declaration(type_)};
+        auto const kind{graph_.definition(type_).kind()};
+        if (kind == schema::TypeDefinitionKind::record) {
+            ir_.set_record_export_specifier(
+                record, context_.declarations.records.export_specifier[declaration]);
+        } else if (kind == schema::TypeDefinitionKind::union_type) {
+            ir_.set_record_export_specifier(
+                record, context_.declarations.unions.export_specifier[declaration]);
+        }
+        ir_.set_record_dependencies(record, dependencies_);
+        return {record,
+                ir_.static_assertion(template_call(
+                    "ioj::valid_packed_value_layout", "ioj/packed_value.h", {type(name_)}, {}))};
+    }
+  private:
+    using Predicate = std::optional<Expr>;
+    struct Validation {
+        bool input_required{};
+        std::optional<std::string> stored_helper;
+    };
+
+    void append(Nodes& target, Nodes const& source) {
+        bool first{true};
+        for (auto const node : source) {
+            if (!first) {
+                target.push_back(ir_.lines(1));
+            }
+            target.push_back(node);
+            first = false;
+        }
+    }
+    auto text(std::string_view value) -> StringId { return ir_.store_text(value); }
+    auto type(std::string_view value) -> CppTypeId {
+        return ir_.types.named(
+            value,
+            value.starts_with("std::")
+                ? std::initializer_list<TypeDependencyId>{ir_.types.dependency(value, "cstdint")}
+                : std::initializer_list<TypeDependencyId>{});
+    }
+    auto number(std::uint64_t value) -> Expr {
+        return ir_.literal(
+            std::to_string(value) +
+            (value > static_cast<std::uint64_t>((std::numeric_limits<std::int64_t>::max)()) ? "ULL"
+                                                                                            : ""));
+    }
+    auto integer(PackedIntegerValue value) -> Expr { return ir_.literal(literal(value)); }
+    auto value() -> Expr { return ir_.named("value"); }
+    auto raw() -> Expr { return ir_.named("value_"); }
+    auto external(std::string_view name, std::string_view header) -> Expr {
+        return ir_.type_reference(ir_.types.named(name, {ir_.types.dependency(name, header)}));
+    }
+    auto invoke(std::string_view name, std::initializer_list<Expr> args = {}) -> Expr {
+        return ir_.call(ir_.named(name), args);
+    }
+    auto library_call(std::string_view name,
+                      std::string_view header,
+                      std::initializer_list<Expr> args) -> Expr {
+        return ir_.call(external(name, header), args);
+    }
+    auto template_call(std::string_view name,
+                       std::string_view header,
+                       std::initializer_list<CppTypeId> types,
+                       std::initializer_list<Expr> args) -> Expr {
+        std::vector<Expr> arguments;
+        for (auto const item : types) {
+            arguments.push_back(ir_.type_reference(item));
+        }
+        return ir_.call(ir_.template_id(external(name, header), arguments), args);
+    }
+    auto extract(std::string const& field, Expr source) -> Expr {
+        return template_call(
+            "ioj::packed_extract", "ioj/packed_value.h", {descriptor_type(field)}, {source});
+    }
+    auto insert(std::string const& field, Expr target, Expr source) -> Expr {
+        return template_call(
+            "ioj::packed_insert", "ioj/packed_value.h", {descriptor_type(field)}, {target, source});
+    }
+    auto pack(std::string const& field, Expr source) -> Expr {
+        return template_call(
+            "ioj::packed_pack", "ioj/packed_value.h", {descriptor_type(field)}, {source});
+    }
+    auto descriptor_type(std::string const& name) -> CppTypeId {
+        return ir_.types.decorate(ir_.types.intern(name), "decltype(", ")");
+    }
+    auto descriptor_value(std::string const& name) -> CppTypeId {
+        return ir_.types.decorate(descriptor_type(name), "", "::value_type");
+    }
+    auto cast(CppTypeId target, Expr source) -> Expr {
+        return ir_.static_cast_expr(target, source);
+    }
+    auto cast(std::string const& target, Expr source) -> Expr {
+        return ir_.static_cast_expr(type(target), source);
+    }
+    auto member_call(Expr target,
+                     std::string_view member,
+                     std::initializer_list<Expr> arguments = {}) -> Expr {
+        return ir_.call(ir_.member_access(target, member), arguments);
+    }
+    auto binary(BinaryOperator op, Expr left, Expr right) -> Expr {
+        return ir_.binary(op, left, right);
+    }
+    auto all(std::span<Predicate const> predicates) -> Predicate {
+        Predicate result;
+        for (auto const predicate : predicates) {
+            if (predicate) {
+                result =
+                    result ? binary(BinaryOperator::logical_and, *result, *predicate) : *predicate;
+            }
+        }
+        return result;
+    }
+    auto all(std::initializer_list<Predicate> predicates) -> Predicate {
+        return all(std::span<Predicate const>{predicates});
+    }
+    auto any(std::span<Predicate const> predicates) -> Predicate {
+        Predicate result;
+        for (auto const predicate : predicates) {
+            if (!predicate) {
+                return {};
+            }
+            result = result ? binary(BinaryOperator::logical_or, *result, *predicate) : *predicate;
+        }
+        return result.value_or(ir_.literal("false"));
+    }
+    auto boolean(Predicate predicate) -> Expr { return predicate.value_or(ir_.literal("true")); }
+    auto assertion(Expr condition) -> NodeId {
+        return ir_.expr_stmt(
+            ir_.call(ir_.named("assert", {ir_.types.dependency("assert", "cassert")}),
+                     {ir_.parenthesized(condition)}));
+    }
+    void assert_if(Nodes& body, Predicate predicate) {
+        if (predicate) {
+            body.push_back(assertion(*predicate));
+        }
+    }
+    void alias(Nodes& nodes, std::string const& name, std::string const& target) {
+        nodes.push_back(ir_.using_declaration(text(name), type(target)));
+    }
+    auto constant(Nodes& nodes, std::string const& name, CppTypeId target, Expr initializer)
+        -> Expr {
+        if (constants_.insert(name).second) {
+            nodes.push_back(ir_.constexpr_member(target, text(name), initializer));
+        }
+        return ir_.named(name);
+    }
+    auto
+        constant(Nodes& nodes, std::string const& name, std::string const& target, Expr initializer)
+            -> Expr {
+        return constant(nodes, name, type(target), initializer);
+    }
+    void field_layout(Nodes& metadata,
+                      std::string const& name,
+                      schema::TypeId logical,
+                      std::uint32_t bits,
+                      CppTypeId decoded,
+                      std::uint32_t offset = 0) {
+        auto const& definitions{graph_.definitions()};
+        auto const definition{graph_.definition(logical)};
+        std::optional<PackedIntegerValue> minimum;
+        std::optional<PackedIntegerValue> maximum;
+        if (auto const domain{schema::integer_domain(graph_, logical)}) {
+            auto const row{definitions.integer_scalars.index(*domain)};
+            minimum = definitions.integer_scalars.minimum_value[row];
+            maximum = definitions.integer_scalars.maximum_value[row];
+        } else if (definition.kind() == schema::TypeDefinitionKind::enumeration) {
+            auto const domain{definitions.enums.domain[definitions.enums.index(definition)]};
+            if (auto const range{graph_.enum_domains().contiguous_value_range(domain)}) {
+                minimum = PackedIntegerValue{range->min};
+                maximum = PackedIntegerValue{range->max};
+            }
+        } else if (definition.kind() == schema::TypeDefinitionKind::fixed_point) {
+            auto const row{definitions.fixed_points.index(definition)};
+            minimum = definitions.fixed_points.minimum_raw_value[row];
+            maximum = definitions.fixed_points.maximum_raw_value[row];
+        } else if (definition.kind() == schema::TypeDefinitionKind::linear_quantized) {
+            maximum = PackedIntegerValue{
+                mask(bits) - definitions.linear_quantized
+                                 .reserved_codes[definitions.linear_quantized.index(definition)]};
+        }
+        auto initializer{ir_.init_list({})};
+        auto const signedness{value_type(context_, logical, bits).starts_with("std::int")};
+        auto const physical_min{PackedIntegerValue::from_parts(
+            signedness, signedness ? std::uint64_t{1} << (bits - 1) : 0)};
+        auto const physical_max{PackedIntegerValue{mask(bits - (signedness ? 1 : 0))}};
+        auto const lower{minimum.value_or(physical_min)};
+        auto const upper{maximum.value_or(physical_max)};
+        if (lower != physical_min || upper != physical_max) {
+            initializer = ir_.init_list(
+                {ir_.init_list({cast(decoded, integer(lower)), cast(decoded, integer(upper))})});
+        }
+        auto const packed{ir_.types.named(
+            "ioj::PackedField", {ir_.types.dependency("ioj::PackedField", "ioj/packed_value.h")})};
+        auto const descriptor{ir_.types.template_type(
+            packed,
+            {type("storage_type"),
+             decoded,
+             ir_.types.intern(std::to_string(offset)),
+             ir_.types.intern(logical == type_ && !composite(graph_.definition(type_).kind())
+                                  ? "storage.encoded_bits"
+                                  : std::to_string(bits))})};
+        constant(metadata, name, descriptor, initializer);
+    }
+    auto range_bound(std::string const& layout, std::string_view bound) -> Expr {
+        return ir_.member_access(ir_.member_access(ir_.named(layout), "range"), bound);
+    }
+    auto parameter(CppTypeId alias, std::string_view name) -> FunctionParameterId {
+        return ir_.parameter(ir_.types.decorate(alias, "", " const"), name);
+    }
+    auto parameter(std::string const& alias, std::string_view name) -> FunctionParameterId {
+        return parameter(type(alias), name);
+    }
+    auto function(std::string const& name,
+                  CppTypeId result,
+                  FunctionReceiver receiver,
+                  std::span<FunctionParameterId const> parameters,
+                  Nodes const& body,
+                  bool constexpr_ = true) -> NodeId {
+        auto const fn{ir_.function(name, result)};
+        ir_.set_function_receiver(fn, receiver);
+        ir_.set_function_noexcept(fn);
+        ir_.set_function_parameters(fn, parameters);
+        ir_.set_function_return_type(fn,
+                                     result,
+                                     ir_.types.spelling(result) == "void" ? ReturnSyntax::direct
+                                                                          : ReturnSyntax::trailing);
+        ir_.function_flags(fn).set_is_constexpr(constexpr_);
+        ir_.function_flags(fn).set_is_nodiscard(ir_.types.spelling(result) != "void");
+        ir_.function_flags(fn).set_define_in_header(true);
+        ir_.set_function_body(fn, body);
+        return ir_.header_function(fn);
+    }
+    auto function(std::string const& name,
+                  CppTypeId result,
+                  FunctionReceiver receiver,
+                  std::initializer_list<FunctionParameterId> parameters,
+                  Nodes const& body,
+                  bool constexpr_ = true) -> NodeId {
+        return function(name,
+                        result,
+                        receiver,
+                        std::span<FunctionParameterId const>{parameters},
+                        body,
+                        constexpr_);
+    }
+    auto function(std::string const& name,
+                  std::string const& result,
+                  FunctionReceiver receiver,
+                  std::span<FunctionParameterId const> parameters,
+                  Nodes const& body,
+                  bool constexpr_ = true) -> NodeId {
+        return function(name, type(result), receiver, parameters, body, constexpr_);
+    }
+    auto function(std::string const& name,
+                  std::string const& result,
+                  FunctionReceiver receiver,
+                  std::initializer_list<FunctionParameterId> parameters,
+                  Nodes const& body,
+                  bool constexpr_ = true) -> NodeId {
+        return function(name,
+                        type(result),
+                        receiver,
+                        std::span<FunctionParameterId const>{parameters},
+                        body,
+                        constexpr_);
+    }
+    auto default_constructor(bool available) -> NodeId {
+        auto const fn{ir_.constructor(text(name_))};
+        ir_.function_flags(fn).set_is_constexpr(true);
+        ir_.function_flags(fn).set_define_in_header(true);
+        ir_.set_function_noexcept(fn);
+        if (available) {
+            ir_.set_function_defaulted(fn);
+        } else {
+            ir_.set_function_deleted(fn);
+        }
+        return ir_.header_function(fn);
+    }
+    void comparison(bool defaulted) {
+        auto const fn{ir_.function(
+            "operator<=>", ir_.types.intern("auto", {ir_.types.dependency("auto", "compare")}))};
+        ir_.set_function_receiver(fn, FunctionReceiver::const_);
+        ir_.set_function_noexcept(fn);
+        ir_.function_flags(fn).set_is_constexpr(true);
+        ir_.function_flags(fn).set_define_in_header(true);
+        ir_.function_flags(fn).set_is_nodiscard(true);
+        auto const owner{ir_.types.decorate(type(name_), "", " const&")};
+        ir_.set_function_parameters(fn, {ir_.parameter(owner, defaulted ? "" : "other")});
+        if (defaulted) {
+            ir_.set_function_defaulted(fn);
+        } else {
+            ir_.set_function_body(
+                fn,
+                {ir_.return_stmt(binary(BinaryOperator::three_way,
+                                        invoke("value"),
+                                        member_call(ir_.named("other"), "value")))});
+        }
+        operators_.push_back(ir_.header_function(fn));
+        if (!defaulted) {
+            operators_.push_back(
+                function("operator==",
+                         "bool",
+                         FunctionReceiver::const_,
+                         {ir_.parameter(owner, "other")},
+                         {ir_.return_stmt(binary(BinaryOperator::equal,
+                                                 invoke("value"),
+                                                 member_call(ir_.named("other"), "value")))}));
+        }
+    }
+    void raw_members() {
+        functions_.push_back(
+            function("from_raw",
+                     name_,
+                     FunctionReceiver::static_,
+                     {parameter("storage_type", "raw")},
+                     {ir_.return_stmt(template_call(
+                         "std::bit_cast", "bit", {type(name_)}, {ir_.named("raw")}))}));
+        functions_.push_back(function(
+            "raw_value", "storage_type", FunctionReceiver::const_, {}, {ir_.return_stmt(raw())}));
+    }
+
+    auto scalar_domain(schema::TypeId scalar,
+                       std::uint32_t bits,
+                       Expr expression,
+                       std::string const& prefix,
+                       CppTypeId decoded,
+                       Nodes& metadata,
+                       bool field_range = false) -> Predicate {
+        auto const& definitions{graph_.definitions()};
+        auto const definition{graph_.definition(scalar)};
+        auto const qualify = [&](std::string_view suffix) {
+            return prefix.empty() ? std::string{suffix} : prefix + "_" + std::string{suffix};
+        };
+        auto const bound = [&](std::string_view suffix, PackedIntegerValue value) {
+            return constant(metadata, qualify(suffix), decoded, cast(decoded, integer(value)));
+        };
+        auto const layout{prefix.empty() ? "value_layout" : prefix + "_layout"};
+        if (auto const domain{schema::integer_domain(graph_, scalar)}) {
+            auto const& scalars{definitions.integer_scalars};
+            auto const row{scalars.index(*domain)};
+            auto const signedness{scalars.signedness[row] != 0};
+            auto const representable_minimum{PackedIntegerValue::from_parts(
+                signedness, signedness ? std::uint64_t{1} << (bits - 1) : 0)};
+            auto const representable_maximum{PackedIntegerValue{mask(bits - (signedness ? 1 : 0))}};
+            auto const minimum{range_bound(layout, "min")};
+            auto const maximum{range_bound(layout, "max")};
+            auto lower{scalars.minimum_value[row]};
+            auto upper{scalars.maximum_value[row]};
+            auto const& codes{context_.declarations.packed_named_codes};
+            auto const named{context_.declarations.items(scalars.named_codes[row])};
+            for (std::size_t pass{}; pass < named.size(); ++pass) {
+                for (auto const id : named) {
+                    if (!codes.sentinel[id]) {
+                        continue;
+                    }
+                    if (consecutive(codes.value[id], lower)) {
+                        lower = codes.value[id];
+                    }
+                    if (consecutive(upper, codes.value[id])) {
+                        upper = codes.value[id];
+                    }
+                }
+            }
+            if (!packed_integer_less(representable_minimum, lower) &&
+                !packed_integer_less(upper, representable_maximum)) {
+                return {};
+            }
+            std::vector<Predicate> bounds;
+            if (packed_integer_less(representable_minimum, scalars.minimum_value[row])) {
+                bounds.push_back(binary(BinaryOperator::greater_equal, expression, minimum));
+            }
+            if (packed_integer_less(scalars.maximum_value[row], representable_maximum)) {
+                bounds.push_back(binary(BinaryOperator::less_equal, expression, maximum));
+            }
+            std::vector<Predicate> alternatives{all(bounds)};
+            for (auto const id : named) {
+                if (codes.sentinel[id]) {
+                    auto const name{qualify(context_.text(codes.name[id]))};
+                    if (!field_range && !prefix.empty()) {
+                        bound(context_.text(codes.name[id]), codes.value[id]);
+                    }
+                    alternatives.push_back(
+                        binary(BinaryOperator::equal, expression, ir_.named(name)));
+                }
+            }
+            return any(alternatives);
+        }
+        switch (definition.kind()) {
+            case schema::TypeDefinitionKind::enumeration: {
+                auto const domain{definitions.enums.domain[definitions.enums.index(definition)]};
+                auto const& domains{graph_.enum_domains()};
+                if (auto const range{domains.contiguous_value_range(domain)}) {
+                    std::vector<Predicate> checks;
+                    if (range->min != 0) {
+                        checks.push_back(binary(
+                            BinaryOperator::greater_equal, expression, range_bound(layout, "min")));
+                    }
+                    if (range->max != mask(bits)) {
+                        checks.push_back(binary(
+                            BinaryOperator::less_equal, expression, range_bound(layout, "max")));
+                    }
+                    return all(checks);
+                }
+                auto const enumerators{domains.values(domain)};
+                auto const count_value{domains.count_value[domains.index(domain)]};
+                std::vector<Predicate> checks;
+                auto const count{enumerators.size()};
+                for (std::size_t ordinal{}; ordinal < count; ++ordinal) {
+                    if (enumerators[ordinal] == count_value) {
+                        continue;
+                    }
+                    auto const enumerator{context_.text(
+                        context_.declarations.enumerators.name[enumerators[ordinal]])};
+                    auto const code{domains.code(domain, ordinal)};
+                    auto const declaration{graph_.source_declaration(scalar)};
+                    auto const projected{
+                        context_.declarations.enums.cpp_projection[declaration].has_value()};
+                    auto const enumerator_value{
+                        projected ? ir_.named(context_.text(graph_.cpp_spelling(scalar)) +
+                                              "::" + enumerator)
+                                  : cast(decoded,
+                                         integer(PackedIntegerValue::from_parts(code->negative,
+                                                                                code->magnitude)))};
+                    checks.push_back(binary(BinaryOperator::equal, expression, enumerator_value));
+                }
+                return any(checks);
+            }
+            case schema::TypeDefinitionKind::fixed_point: {
+                auto const& fixed{definitions.fixed_points};
+                auto const row{fixed.index(definition)};
+                std::vector<Predicate> checks;
+                if (fixed.minimum_raw_value[row]) {
+                    auto const minimum{range_bound(layout, "min")};
+                    checks.push_back(binary(BinaryOperator::greater_equal, expression, minimum));
+                }
+                if (fixed.maximum_raw_value[row]) {
+                    auto const maximum{range_bound(layout, "max")};
+                    checks.push_back(binary(BinaryOperator::less_equal, expression, maximum));
+                }
+                return all(checks);
+            }
+            case schema::TypeDefinitionKind::linear_quantized: {
+                auto const& quantized{definitions.linear_quantized};
+                auto const reserved{quantized.reserved_codes[quantized.index(definition)]};
+                auto const maximum{range_bound(layout, "max")};
+                return reserved ? Predicate{binary(BinaryOperator::less_equal, expression, maximum)}
+                                : Predicate{};
+            }
+            case schema::TypeDefinitionKind::optional_sentinel:
+            case schema::TypeDefinitionKind::optional_presence_bit: {
+                auto const sentinel{definition.kind() ==
+                                    schema::TypeDefinitionKind::optional_sentinel};
+                auto const source_occurrence{
+                    sentinel ? definitions.optional_sentinels
+                                   .source[definitions.optional_sentinels.index(definition)]
+                             : definitions.optional_presence_bits
+                                   .source[definitions.optional_presence_bits.index(definition)]};
+                auto const source{
+                    graph_.occurrences().type[graph_.occurrences().index(source_occurrence)]};
+                auto const payload_bits{
+                    sentinel
+                        ? bits
+                        : definitions.optional_presence_bits
+                              .payload_bits[definitions.optional_presence_bits.index(definition)]};
+                auto const payload{qualify("payload")};
+                field_layout(metadata,
+                             payload + "_layout",
+                             source,
+                             payload_bits,
+                             type(value_type(context_, source, payload_bits)));
+                auto const payload_alias{descriptor_value(payload + "_layout")};
+                auto const decoded_source{
+                    extract(payload + "_layout", cast("storage_type", expression))};
+                auto const source_check{scalar_domain(
+                    source, payload_bits, decoded_source, payload, payload_alias, metadata)};
+                Expr absent;
+                if (sentinel) {
+                    absent = binary(
+                        BinaryOperator::equal,
+                        expression,
+                        bound(
+                            "sentinel",
+                            definitions.optional_sentinels
+                                .sentinel_value[definitions.optional_sentinels.index(definition)]));
+                } else {
+                    auto const presence{constant(
+                        metadata,
+                        qualify("presence_mask"),
+                        "storage_type",
+                        cast("storage_type",
+                             binary(BinaryOperator::shift_left,
+                                    ir_.init_list({number(1)}, type("storage_type")),
+                                    ir_.member_access(ir_.named(payload + "_layout"), "bits"))))};
+                    absent = binary(BinaryOperator::equal,
+                                    binary(BinaryOperator::bitwise_and,
+                                           cast("storage_type", expression),
+                                           presence),
+                                    number(0));
+                }
+                return source_check
+                         ? Predicate{binary(BinaryOperator::logical_or, absent, *source_check)}
+                         : Predicate{};
+            }
+            default:
+                return {};
+        }
+    }
+
+    auto domain_implies_width(schema::TypeId logical, std::uint32_t bits) const -> bool {
+        auto const& definitions{graph_.definitions()};
+        if (auto const domain{schema::integer_domain(graph_, logical)}) {
+            auto const& scalars{definitions.integer_scalars};
+            auto const row{scalars.index(*domain)};
+            auto const signedness{scalars.signedness[row] != 0};
+            auto const minimum{PackedIntegerValue::from_parts(
+                signedness, signedness ? std::uint64_t{1} << (bits - 1) : 0)};
+            auto const maximum{PackedIntegerValue{mask(bits - (signedness ? 1 : 0))}};
+            // The stored-domain predicate omits representable endpoints.
+            return packed_integer_less(scalars.maximum_value[row], maximum) &&
+                   (!signedness || packed_integer_less(minimum, scalars.minimum_value[row]));
+        }
+        auto const definition{graph_.definition(logical)};
+        if (definition.kind() == schema::TypeDefinitionKind::enumeration) {
+            auto const domain{definitions.enums.domain[definitions.enums.index(definition)]};
+            auto const& domains{graph_.enum_domains()};
+            auto const enumerators{domains.values(domain)};
+            auto const count_value{domains.count_value[domains.index(domain)]};
+            auto const count{enumerators.size()};
+            for (std::size_t ordinal{}; ordinal < count; ++ordinal) {
+                if (enumerators[ordinal] == count_value) {
+                    continue;
+                }
+                auto const code{domains.code(domain, ordinal)};
+                if (!code || code->negative || code->magnitude > mask(bits)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        if (definition.kind() == schema::TypeDefinitionKind::fixed_point) {
+            auto const& fixed{definitions.fixed_points};
+            auto const row{fixed.index(definition)};
+            return fixed.maximum_raw_value[row].has_value() &&
+                   (fixed.signedness[row] == 0 || fixed.minimum_raw_value[row].has_value());
+        }
+        return definition.kind() == schema::TypeDefinitionKind::linear_quantized;
+    }
+    auto representation(schema::TypeId logical,
+                        std::string const& decoded,
+                        std::string const& field,
+                        std::uint32_t bits,
+                        bool checked_domain) -> Predicate {
+        if (graph_.definition(logical).kind() == schema::TypeDefinitionKind::enumeration) {
+            auto const declaration{graph_.source_declaration(logical)};
+            auto const& enums{context_.declarations.enums};
+            if (auto const& projection{enums.cpp_projection[declaration]}) {
+                std::optional<std::uint32_t> underlying_bits;
+                auto const explicit_type{projection->storage ? projection->storage
+                                                             : enums.underlying_type[declaration]};
+                if (explicit_type) {
+                    auto const occurrence{graph_.resolved(graph_.module(logical), *explicit_type)};
+                    auto const& occurrences{graph_.occurrences()};
+                    auto const underlying{occurrences.cpp_type[occurrences.index(occurrence)]};
+                    if (auto const width{packed_unsigned_width(ir_.types.spelling(underlying))}) {
+                        underlying_bits = static_cast<std::uint32_t>(*width);
+                    }
+                } else {
+                    auto const& domains{graph_.enum_domains()};
+                    if (auto const requirement{schema::derive_enum_storage_requirement(
+                            domains, domains.find(declaration), enums.bit_width[declaration])}) {
+                        underlying_bits = requirement->bit_width;
+                    }
+                }
+                if ((underlying_bits && *underlying_bits <= bits) ||
+                    (checked_domain && domain_implies_width(logical, bits))) {
+                    return {};
+                }
+                return binary(BinaryOperator::less_equal,
+                              library_call("std::to_underlying", "utility", {value()}),
+                              ir_.member_access(ir_.named(field), "value_mask"));
+            }
+        }
+        if (decoded == "bool" || bits == 8 || bits == 16 || bits == 32 || bits == 64) {
+            return {};
+        }
+        if (checked_domain && domain_implies_width(logical, bits)) {
+            return {};
+        }
+        return decoded.starts_with("std::int")
+                 ? binary(BinaryOperator::equal, extract(field, pack(field, value())), value())
+                 : binary(BinaryOperator::less_equal,
+                          cast("storage_type", value()),
+                          ir_.member_access(ir_.named(field), "value_mask"));
+    }
+    auto validator(std::string const& name, CppTypeId alias, Predicate domain, Predicate width)
+        -> Validation {
+        Validation result{.input_required = domain.has_value() || width.has_value()};
+        if (!result.input_required && composite(graph_.definition(type_).kind())) {
+            return result;
+        }
+        if (domain) {
+            result.stored_helper = width ? name + "_domain" : name;
+            if (width) {
+                private_functions_.push_back(function(*result.stored_helper,
+                                                      "bool",
+                                                      FunctionReceiver::static_,
+                                                      {parameter(alias, "value")},
+                                                      {ir_.return_stmt(*domain)}));
+                domain = invoke(*result.stored_helper, {value()});
+            }
+        }
+        functions_.push_back(function(name,
+                                      "bool",
+                                      FunctionReceiver::static_,
+                                      {parameter(alias, result.input_required ? "value" : "")},
+                                      {ir_.return_stmt(boolean(all({domain, width})))}));
+        return result;
+    }
+
+    void scalar_members() {
+        auto const bits{*layout_.encoded_bits};
+        auto const decoded{value_type(context_, type_, bits)};
+        alias(metadata_, "value_type", decoded);
+        field_layout(metadata_, "value_layout", type_, bits, type("value_type"));
+        auto const declaration{graph_.source_declaration(type_)};
+        if (declaration.kind() == DeclarationKind::integer_scalar) {
+            auto const& scalars{context_.declarations.integer_scalars};
+            auto const& codes{context_.declarations.packed_named_codes};
+            for (auto const code : context_.declarations.items(scalars.named_codes[declaration])) {
+                constant(metadata_,
+                         context_.text(codes.name[code]),
+                         "value_type",
+                         cast("value_type", integer(codes.value[code])));
+            }
+        }
+        auto const domain{scalar_domain(type_, bits, value(), "", type("value_type"), metadata_)};
+        auto const check{
+            validator("is_valid_value",
+                      type("value_type"),
+                      domain,
+                      representation(type_, decoded, "value_layout", bits, domain.has_value()))};
+        constructors_.push_back(default_constructor(true));
+        auto const ctor{ir_.constructor(text(name_), true)};
+        ir_.function_flags(ctor).set_is_constexpr(true);
+        ir_.function_flags(ctor).set_define_in_header(true);
+        ir_.set_function_noexcept(ctor);
+        ir_.set_function_parameters(ctor, {parameter("value_type", "value")});
+        Nodes body;
+        if (check.input_required) {
+            body.push_back(assertion(invoke("is_valid_value", {value()})));
+        }
+        ir_.set_function_body(
+            ctor, body, {ir_.member_initializer(text("value_"), pack("value_layout", value()))});
+        constructors_.push_back(ir_.header_function(ctor));
+        comparison(decoded.starts_with("std::uint") && bits == layout_.storage_bits);
+        raw_members();
+        functions_.push_back(function("value",
+                                      "value_type",
+                                      FunctionReceiver::const_,
+                                      {},
+                                      {ir_.return_stmt(extract("value_layout", raw()))}));
+        body.push_back(ir_.assignment(raw(), insert("value_layout", raw(), value())));
+        functions_.push_back(function("set_value",
+                                      "void",
+                                      FunctionReceiver::unqualified,
+                                      {parameter("value_type", "value")},
+                                      body));
+        functions_.push_back(function(
+            "is_valid",
+            "bool",
+            FunctionReceiver::const_,
+            {},
+            {ir_.return_stmt(check.stored_helper ? invoke(*check.stored_helper, {invoke("value")})
+                                                 : ir_.literal("true"))}));
+    }
+
+    auto aggregate(schema::BitPlacement const& placement) const -> bool {
+        return composite(graph_.definition(placement.type).kind());
+    }
+    auto addressable(schema::BitPlacement const& placement) const -> bool {
+        return !placement.reserved && placement.bits != 0 &&
+               (!aggregate(placement) || schema::is_packed_projection(graph_, placement.type));
+    }
+    auto access_type(schema::BitPlacement const& placement) -> CppTypeId {
+        return aggregate(placement) && schema::is_packed_projection(graph_, placement.type)
+                 ? type(context_.text(graph_.cpp_spelling(placement.type)))
+                 : descriptor_value(accessor_name(context_, placement) + "_layout");
+    }
+    auto record_invalid(schema::TypeId record) const -> std::optional<std::uint64_t> {
+        auto const definition{graph_.definition(record)};
+        if (definition.kind() != schema::TypeDefinitionKind::record) {
+            return {};
+        }
+        auto const& records{graph_.definitions().records};
+        return records.invalid_raw_value[records.index(definition)];
+    }
+    void integer_constants(schema::BitPlacement const& placement,
+                           std::string const& accessor,
+                           Nodes& metadata) {
+        auto const domain{schema::integer_domain(graph_, placement.type)};
+        if (!domain) {
+            return;
+        }
+        auto const& scalars{graph_.definitions().integer_scalars};
+        auto const row{scalars.index(*domain)};
+        auto const& codes{context_.declarations.packed_named_codes};
+        for (auto const code : context_.declarations.items(scalars.named_codes[row])) {
+            constant(metadata,
+                     accessor + "_" + context_.text(codes.name[code]),
+                     descriptor_value(accessor + "_layout"),
+                     cast(descriptor_value(accessor + "_layout"), integer(codes.value[code])));
+        }
+    }
+    void packed_members() {
+        if (auto const invalid{record_invalid(type_)}) {
+            constant(metadata_, "invalid_value", "storage_type", number(*invalid));
+        }
         auto const count{layout_.placements.size()};
         for (std::size_t index{}; index < count; ++index) {
             auto const& placement{layout_.placements[index]};
             if (placement.reserved || placement.bits == 0) {
                 continue;
             }
+            auto& metadata{field_metadata_[index]};
             auto const accessor{accessor_name(context_, placement)};
             auto const decoded{addressable(placement)
                                    ? value_type(context_, placement.type, placement.bits)
                                    : "storage_type"};
             if (addressable(placement) &&
-                (aggregate(placement) || graph.definition(placement.type).kind() ==
+                (aggregate(placement) || graph_.definition(placement.type).kind() ==
                                              schema::TypeDefinitionKind::enumeration)) {
                 append_dependencies(context_, placement.child, dependencies_);
             }
-            write("    using {}_type = {};\n", accessor, decoded);
-            write("    using {}_field = {};\n",
-                  accessor,
-                  field_type(aggregate(placement) ? "storage_type" : accessor + "_type",
-                             placement.offset,
-                             placement.bits));
-            append_constants(placement, accessor);
-        }
-        for (auto const& placement : layout_.placements) {
-            if (addressable(placement) && !aggregate(placement)) {
-                append_validator(placement);
+            field_layout(metadata,
+                         accessor + "_layout",
+                         placement.type,
+                         placement.bits,
+                         type(aggregate(placement) ? "storage_type" : decoded),
+                         placement.offset);
+            integer_constants(placement, accessor, metadata);
+            if (!aggregate(placement)) {
+                auto const domain{scalar_domain(placement.type,
+                                                placement.bits,
+                                                value(),
+                                                accessor,
+                                                descriptor_value(accessor + "_layout"),
+                                                metadata,
+                                                true)};
+                checks_[accessor] = validator("is_valid_" + accessor,
+                                              descriptor_value(accessor + "_layout"),
+                                              domain,
+                                              representation(placement.type,
+                                                             decoded,
+                                                             accessor + "_layout",
+                                                             placement.bits,
+                                                             domain.has_value()));
             }
         }
-        if (invalid) {
-            write("    static constexpr storage_type invalid_value{{{}ULL}};\n", *invalid);
+        constructors_.push_back(default_constructor(layout_.default_raw_value.has_value()));
+        if (!std::ranges::any_of(layout_.placements,
+                                 [](auto const& placement) { return placement.alternative; })) {
+            constructor(std::nullopt);
         }
-        write("\n    constexpr {}() noexcept = {};\n",
-              name,
-              layout_.default_raw_value ? "default" : "delete");
-        write(
-            "    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> {} {{\n"
-            "        return {}{{RawTag{{}}, raw}};\n    }}\n"
-            "    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type {{\n"
-            "        return value_;\n    }}\n",
-            name,
-            name);
-
-        auto const has_alternatives{std::ranges::any_of(
-            layout_.placements, [](auto const& placement) { return placement.alternative; })};
-        if (!has_alternatives) {
-            append_constructor(name, std::nullopt);
-        }
-        std::set<std::pair<std::optional<std::uint32_t>, schema::ChildOccurrenceId>>
-            emitted_alternatives;
+        comparison(true);
+        raw_members();
+        std::set<std::pair<std::optional<std::uint32_t>, schema::ChildOccurrenceId>> alternatives;
         for (std::size_t index{}; index < count; ++index) {
             auto const& placement{layout_.placements[index]};
             if (placement.alternative &&
-                emitted_alternatives.emplace(placement.parent, placement.child).second) {
-                append_constructor(name, static_cast<std::uint32_t>(index));
+                alternatives.emplace(placement.parent, placement.child).second) {
+                constructor(static_cast<std::uint32_t>(index));
             }
         }
-        auto validity{valid_children(std::nullopt, type_)};
-        if (invalid) {
-            validity = "value_ != invalid_value && (" + validity + ')';
+        auto validity{valid_children(std::nullopt, type_, raw())};
+        if (record_invalid(type_)) {
+            validity = all(
+                {binary(BinaryOperator::not_equal, raw(), ir_.named("invalid_value")), validity});
         }
-        write("\n    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {{\n"
-              "        return {};\n    }}\n",
-              validity);
-        write("    [[nodiscard]] constexpr auto operator<=>({} const&) const noexcept = default;\n",
-              name);
-        for (auto const& placement : layout_.placements) {
-            if (addressable(placement)) {
-                append_accessor(placement);
+        functions_.push_back(function("is_valid",
+                                      "bool",
+                                      FunctionReceiver::const_,
+                                      {},
+                                      {ir_.return_stmt(boolean(validity))}));
+        for (std::size_t index{}; index < count; ++index) {
+            if (addressable(layout_.placements[index])) {
+                accessor(static_cast<std::uint32_t>(index));
             }
         }
-        for (auto const& entry : constants_) {
-            output_ += entry.second;
-        }
-        write("\n  private:\n    struct RawTag {{}};\n"
-              "    constexpr {}(RawTag, storage_type raw) noexcept : value_{{raw}} {{}}\n"
-              "    storage_type value_{{default_raw_value}};\n}};\n"
-              "static_assert(ioj::valid_packed_value_layout<{}>());\n",
-              name,
-              name);
-        return context_.ir.raw(output_, std::move(dependencies_));
     }
-  private:
-    auto guard_code(schema::BitGuard const& guard) const -> std::string {
-        auto const definition{context_.semantic.definition(guard.enumeration)};
-        auto const& enums{context_.semantic.definitions().enums};
+    auto guard_code(schema::BitGuard const& guard) -> Expr {
+        auto const declaration{graph_.source_declaration(guard.enumeration)};
+        if (!context_.declarations.enums.cpp_projection[declaration]) {
+            return cast(descriptor_value(guard.path + "_layout"), number(guard.value));
+        }
+        auto const definition{graph_.definition(guard.enumeration)};
+        auto const& enums{graph_.definitions().enums};
         auto const domain{enums.domain[enums.index(definition)]};
-        auto const& domains{context_.semantic.enum_domains()};
+        auto const& domains{graph_.enum_domains()};
         auto const values{domains.values(domain)};
-        for (std::size_t ordinal{}; ordinal < values.size(); ++ordinal) {
+        auto const count{values.size()};
+        for (std::size_t ordinal{}; ordinal < count; ++ordinal) {
             auto const code{domains.code(domain, ordinal)};
             if (code && !code->negative && code->magnitude == guard.value) {
-                return guard.path + "_" +
-                       context_.text(context_.declarations.enumerators.name[values[ordinal]]) +
-                       "_code";
+                return ir_.named(
+                    context_.text(graph_.cpp_spelling(guard.enumeration)) +
+                    "::" + context_.text(context_.declarations.enumerators.name[values[ordinal]]));
             }
         }
         std::unreachable();
     }
-
-    auto guard_expression(schema::BitGuard const& guard, std::string_view raw = "value_") const
-        -> std::string {
-        return "ioj::packed_extract<" + guard.path + "_field>(" + std::string{raw} +
-               ") == " + guard_code(guard);
+    auto guard_check(schema::BitGuard const& guard, Expr source) -> Expr {
+        return binary(
+            BinaryOperator::equal, extract(guard.path + "_layout", source), guard_code(guard));
     }
-
-    auto aggregate(schema::BitPlacement const& placement) const -> bool {
-        return composite(context_.semantic.definition(placement.type).kind());
-    }
-
-    auto addressable(schema::BitPlacement const& placement) const -> bool {
-        return !placement.reserved && placement.bits != 0 &&
-               (!aggregate(placement) ||
-                schema::is_packed_projection(context_.semantic, placement.type));
-    }
-
-    auto value_check(schema::BitPlacement const& placement, std::string const& value)
-        -> std::string {
+    auto value_check(schema::BitPlacement const& placement, Expr expression, bool stored = false)
+        -> Predicate {
         if (aggregate(placement)) {
-            return value + ".is_valid()";
+            return member_call(expression, "is_valid");
         }
-        return "is_valid_" + accessor_name(context_, placement) + '(' + value + ')';
-    }
-
-    void append_validator(schema::BitPlacement const& placement) {
         auto const accessor{accessor_name(context_, placement)};
-        auto const alias{accessor + "_type"};
-        auto check{scalar_validity(
-            context_, placement.type, placement.bits, "value", accessor, alias, constants_, true)};
-        auto const decoded{value_type(context_, placement.type, placement.bits)};
-        auto const full_width{placement.bits == 8 || placement.bits == 16 || placement.bits == 32 ||
-                              placement.bits == 64};
-        if (decoded != "bool" && !full_width) {
-            auto const field{accessor + "_field"};
-            auto const representation{decoded.starts_with("std::int")
-                                          ? "ioj::packed_extract<" + field + ">(ioj::packed_pack<" +
-                                                field + ">(value)) == value"
-                                          : "static_cast<storage_type>(value) <= " + field +
-                                                "::value_mask"};
-            check = check == "true" ? representation : '(' + check + ") && " + representation;
+        auto const& check{checks_.at(accessor)};
+        if (stored) {
+            return check.stored_helper ? Predicate{invoke(*check.stored_helper, {expression})}
+                                       : Predicate{};
         }
-        ioj::FormatWriter write{std::back_inserter(output_)};
-        write(
-            "    [[nodiscard]] static constexpr auto is_valid_{}({} const {}) noexcept -> bool {{\n"
-            "        return {};\n    }}\n",
-            accessor,
-            alias,
-            check == "true" ? "" : "value",
-            check);
+        return check.input_required ? Predicate{invoke("is_valid_" + accessor, {expression})}
+                                    : Predicate{};
     }
-
-    void append_constants(schema::BitPlacement const& placement, std::string const& accessor) {
-        auto const domain{schema::integer_domain(context_.semantic, placement.type)};
-        if (!domain) {
-            return;
-        }
-
-        ioj::FormatWriter write{std::back_inserter(output_)};
-        auto const& scalars{context_.semantic.definitions().integer_scalars};
-        auto const row{scalars.index(*domain)};
-        write("    struct {0}_range_type {{ {0}_type min; {0}_type max; }};\n"
-              "    static constexpr {0}_range_type {0}_range{{static_cast<{0}_type>({1}), "
-              "static_cast<{0}_type>({2})}};\n",
-              accessor,
-              literal(scalars.minimum_value[row]),
-              literal(scalars.maximum_value[row]));
-        for (auto const code : context_.declarations.items(scalars.named_codes[row])) {
-            auto const& named{context_.declarations.packed_named_codes};
-            write("    static constexpr {0}_type {0}_{1}{{static_cast<{0}_type>({2})}};\n",
-                  accessor,
-                  context_.text(named.name[code]),
-                  literal(named.value[code]));
-        }
-    }
-
-    auto valid_children(std::optional<std::uint32_t> parent,
-                        schema::TypeId type,
-                        std::string_view raw = "value_") -> std::string {
-        std::vector<std::string> checks;
-        std::map<schema::ChildOccurrenceId, std::vector<std::string>> alternatives;
-        auto const is_union{context_.semantic.definition(type).kind() ==
-                            schema::TypeDefinitionKind::union_type};
+    auto valid_children(std::optional<std::uint32_t> parent, schema::TypeId child_type, Expr source)
+        -> Predicate {
+        auto const union_{graph_.definition(child_type).kind() ==
+                          schema::TypeDefinitionKind::union_type};
+        std::vector<Predicate> checks;
+        std::map<schema::ChildOccurrenceId, std::vector<Predicate>> alternatives;
         auto const count{layout_.placements.size()};
         for (std::size_t index{}; index < count; ++index) {
             auto const& placement{layout_.placements[index]};
             if (placement.parent != parent || placement.reserved) {
                 continue;
             }
-            auto check{aggregate(placement)
-                           ? valid_children(static_cast<std::uint32_t>(index), placement.type, raw)
-                           : value_check(placement,
-                                         "ioj::packed_extract<" +
-                                             accessor_name(context_, placement) + "_field>(" +
-                                             std::string{raw} + ')')};
+            auto check{
+                aggregate(placement)
+                    ? valid_children(static_cast<std::uint32_t>(index), placement.type, source)
+                    : value_check(placement,
+                                  extract(accessor_name(context_, placement) + "_layout", source),
+                                  true)};
             for (auto const& guard : placement.guards) {
-                check = '(' + guard_expression(guard, raw) + ") && (" + check + ')';
+                if (parent && std::ranges::any_of(layout_.placements[*parent].guards,
+                                                  [&](auto const& inherited) {
+                                                      return inherited.offset == guard.offset &&
+                                                             inherited.bits == guard.bits &&
+                                                             inherited.value == guard.value;
+                                                  })) {
+                    continue;
+                }
+                check = all({guard_check(guard, source), check});
             }
-            if (is_union) {
-                alternatives[placement.child].push_back(std::move(check));
+            if (union_) {
+                alternatives[placement.child].push_back(check);
             } else {
-                checks.push_back(std::move(check));
+                checks.push_back(check);
             }
         }
         for (auto const& [child, elements] : alternatives) {
-            checks.push_back(combine(elements, " && ", "true"));
+            checks.push_back(all(elements));
         }
-        auto result{combine(checks, is_union ? " || " : " && ", is_union ? "false" : "true")};
-        auto const definition{context_.semantic.definition(type)};
-        if (parent && definition.kind() == schema::TypeDefinitionKind::record) {
-            auto const& records{context_.semantic.definitions().records};
-            if (auto const invalid{records.invalid_raw_value[records.index(definition)]}) {
+        auto result{union_ ? any(checks) : all(checks)};
+        if (parent) {
+            if (auto const invalid{record_invalid(child_type)}) {
                 auto const& placement{layout_.placements[*parent]};
-                auto const constant{named_constant(constants_,
-                                                   placement.path + "_invalid_value",
-                                                   "storage_type",
-                                                   literal(PackedIntegerValue{*invalid}))};
-                result = std::format("ioj::packed_extract<{}_field>({}) != {} && ({})",
-                                     accessor_name(context_, placement),
-                                     raw,
-                                     constant,
-                                     result);
+                auto const constant_{constant(field_metadata_[*parent],
+                                              placement.path + "_invalid_value",
+                                              "storage_type",
+                                              number(*invalid))};
+                result =
+                    all({binary(BinaryOperator::not_equal,
+                                extract(accessor_name(context_, placement) + "_layout", source),
+                                constant_),
+                         result});
             }
         }
         return result;
     }
-
     auto selected(std::uint32_t index, std::optional<std::uint32_t> choice) const -> bool {
         auto const& placement{layout_.placements[index]};
         if (!placement.alternative) {
@@ -661,7 +1077,6 @@ class PackedEmitter {
         }
         return false;
     }
-
     void parameters(std::optional<std::uint32_t> parent,
                     std::optional<std::uint32_t> choice,
                     std::vector<std::uint32_t>& result) const {
@@ -685,305 +1100,270 @@ class PackedEmitter {
                     break;
                 }
             }
-            auto const union_region{context_.semantic.definition(placement.type).kind() ==
+            auto const union_region{graph_.definition(placement.type).kind() ==
                                     schema::TypeDefinitionKind::union_type};
             if ((addressable(placement) && (!contains_choice || choice == index)) ||
-                (union_region && !contains_choice)) {
-                result.push_back(static_cast<std::uint32_t>(index));
-            } else if (addressable(placement) && !aggregate(placement)) {
+                (union_region && !contains_choice) ||
+                (addressable(placement) && !aggregate(placement))) {
                 result.push_back(static_cast<std::uint32_t>(index));
             } else {
                 parameters(static_cast<std::uint32_t>(index), choice, result);
             }
         }
     }
-
-    void append_constructor(std::string const& name, std::optional<std::uint32_t> choice) {
+    void constructor(std::optional<std::uint32_t> choice) {
         std::vector<std::uint32_t> inputs;
         parameters(std::nullopt, choice, inputs);
         if (inputs.empty() && !choice) {
             return;
         }
-        ioj::FormatWriter write{std::back_inserter(output_)};
+        std::vector<FunctionParameterId> params;
+        Nodes body;
+        auto const result{ir_.named("result")};
+        auto const target{choice ? ir_.member_access(result, "value_") : raw()};
         if (choice) {
-            auto const& placement{layout_.placements[*choice]};
-            auto path{placement.path};
-            auto const& children{context_.semantic.definitions().children};
-            if (children.count[children.index(placement.child)]) {
-                path.resize(path.rfind('_'));
-            }
-            write("\n    [[nodiscard]] static constexpr auto make_{}(", path);
-        } else {
-            write("\n    explicit constexpr {}(", name);
-        }
-        for (std::size_t index{}; index < inputs.size(); ++index) {
-            if (index) {
-                output_ += ", ";
-            }
-            auto const& input{layout_.placements[inputs[index]]};
-            auto const accessor{accessor_name(context_, input)};
-            if (addressable(input)) {
-                write("{0}_type const {0}_value", accessor);
-            } else {
-                write("{0}_type const {0}_encoded", accessor);
-            }
-        }
-        if (choice) {
-            write(") noexcept -> {} {{\n        auto result{{from_raw(0)}};\n", name);
-        } else {
-            output_ += ") noexcept : value_{0} {\n";
-        }
-        auto const target{choice ? "result.value_" : "value_"};
-        if (choice) {
+            body.push_back(ir_.variable("auto", "result", invoke("from_raw", {number(0)})));
             for (auto const& guard : layout_.placements[*choice].guards) {
-                write("        {0} = ioj::packed_insert<{1}_field>({0}, {2});\n",
-                      target,
-                      guard.path,
-                      guard_code(guard));
+                body.push_back(ir_.assignment(
+                    target, insert(guard.path + "_layout", target, guard_code(guard))));
             }
         }
         bool validate_record{};
-        for (auto const input_index : inputs) {
-            auto const& input{layout_.placements[input_index]};
-            auto const accessor{accessor_name(context_, input)};
+        for (auto const index : inputs) {
+            auto const& input{layout_.placements[index]};
+            auto const name{accessor_name(context_, input)};
+            auto const argument{ir_.named(name + (addressable(input) ? "_value" : "_encoded"))};
+            params.push_back(
+                parameter(access_type(input), name + (addressable(input) ? "_value" : "_encoded")));
             validate_record = validate_record || input.discriminator;
             if (!addressable(input)) {
                 validate_record = true;
                 if (input.bits < layout_.storage_bits) {
-                    write("        assert({0}_encoded <= {0}_field::value_mask);\n", accessor);
+                    body.push_back(assertion(
+                        binary(BinaryOperator::less_equal,
+                               argument,
+                               ir_.member_access(ir_.named(name + "_layout"), "value_mask"))));
                 }
-                write("        {0} = ioj::packed_insert<{1}>({0}, "
-                      "static_cast<storage_type>({2}_encoded));\n",
-                      target,
-                      accessor + "_field",
-                      accessor);
-                continue;
+                body.push_back(ir_.assignment(
+                    target, insert(name + "_layout", target, cast("storage_type", argument))));
+            } else {
+                assert_if(body, value_check(input, argument));
+                body.push_back(ir_.assignment(
+                    target,
+                    insert(name + "_layout",
+                           target,
+                           aggregate(input)
+                               ? cast("storage_type", member_call(argument, "raw_value"))
+                               : argument)));
             }
-            auto const argument{accessor + "_value"};
-            if (auto const check{value_check(input, argument)}; check != "true") {
-                write("        assert(({}));\n", check);
-            }
-            write("        {0} = ioj::packed_insert<{1}_field>({0}, {2});\n",
-                  target,
-                  accessor,
-                  aggregate(input) ? "static_cast<storage_type>(" + argument + ".raw_value())"
-                                   : argument);
         }
         if (validate_record) {
-            output_ +=
-                choice ? "        assert(result.is_valid());\n" : "        assert(is_valid());\n";
+            body.push_back(
+                assertion(choice ? member_call(result, "is_valid") : invoke("is_valid")));
         }
-        auto const definition{context_.semantic.definition(type_)};
-        if (definition.kind() == schema::TypeDefinitionKind::record) {
-            auto const& records{context_.semantic.definitions().records};
-            if (records.invalid_raw_value[records.index(definition)]) {
-                write("        assert({} != invalid_value);\n", target);
+        if (record_invalid(type_)) {
+            body.push_back(
+                assertion(binary(BinaryOperator::not_equal, target, ir_.named("invalid_value"))));
+        }
+        if (choice) {
+            body.push_back(ir_.return_stmt(result));
+            auto const& placement{layout_.placements[*choice]};
+            auto path{placement.path};
+            auto const& children{graph_.definitions().children};
+            if (children.count[children.index(placement.child)]) {
+                path.resize(path.rfind('_'));
             }
-        }
-        output_ += choice ? "        return result;\n    }\n" : "    }\n";
-    }
-
-    void append_accessor(schema::BitPlacement const& placement) {
-        ioj::FormatWriter write{std::back_inserter(output_)};
-        auto const accessor{accessor_name(context_, placement)};
-        write("\n    [[nodiscard]] constexpr auto {0}() const noexcept -> {0}_type {{\n", accessor);
-        for (auto const& guard : placement.guards) {
-            write("        assert(({}));\n", guard_expression(guard));
-        }
-        if (aggregate(placement)) {
-            write("        return {0}_type::from_raw(static_cast<{0}_type::storage_type>("
-                  "ioj::packed_extract<{0}_field>(value_)));\n    }}\n",
-                  accessor);
+            functions_.push_back(
+                function("make_" + path, name_, FunctionReceiver::static_, params, body));
         } else {
-            write("        return ioj::packed_extract<{}_field>(value_);\n    }}\n", accessor);
+            auto const ctor{ir_.constructor(text(name_), true)};
+            ir_.function_flags(ctor).set_is_constexpr(true);
+            ir_.function_flags(ctor).set_define_in_header(true);
+            ir_.set_function_noexcept(ctor);
+            ir_.set_function_parameters(ctor, params);
+            ir_.set_function_body(ctor, body, {ir_.member_initializer(text("value_"), number(0))});
+            constructors_.push_back(ir_.header_function(ctor));
         }
+    }
+    void accessor(std::uint32_t index) {
+        auto const& placement{layout_.placements[index]};
+        auto const name{accessor_name(context_, placement)};
+        Nodes guards;
+        for (auto const& guard : placement.guards) {
+            guards.push_back(assertion(guard_check(guard, raw())));
+        }
+        auto body{guards};
+        auto const decoded{extract(name + "_layout", raw())};
+        auto const decoded_type{access_type(placement)};
+        body.push_back(ir_.return_stmt(
+            aggregate(placement)
+                ? ir_.call(ir_.type_reference(ir_.types.decorate(decoded_type, "", "::from_raw")),
+                           {cast(ir_.types.decorate(decoded_type, "", "::storage_type"), decoded)})
+                : decoded));
+        functions_.push_back(function(name, decoded_type, FunctionReceiver::const_, {}, body));
         if (placement.discriminator) {
             return;
         }
-        write("    constexpr void set_{0}({0}_type const value) noexcept {{\n", accessor);
-        for (auto const& guard : placement.guards) {
-            write("        assert(({}));\n", guard_expression(guard));
-        }
-        if (auto const check{value_check(placement, "value")}; check != "true") {
-            write("        assert(({}));\n", check);
-        }
-        auto const& children{context_.semantic.definitions().children};
+        body = std::move(guards);
+        assert_if(body, value_check(placement, value()));
+        auto const updated{insert(name + "_layout",
+                                  raw(),
+                                  aggregate(placement)
+                                      ? cast("storage_type", member_call(value(), "raw_value"))
+                                      : value())};
+        auto const& children{graph_.definitions().children};
         if (children.tag[children.index(placement.child)]) {
-            auto const index{static_cast<std::uint32_t>(&placement - layout_.placements.data())};
-            write("        auto const updated{{ioj::packed_insert<{}_field>(value_, "
-                  "static_cast<storage_type>(value.raw_value()))}};\n"
-                  "        assert(({}));\n"
-                  "        value_ = updated;\n    }}\n",
-                  accessor,
-                  valid_children(index, placement.type, "updated"));
+            body.push_back(ir_.variable("auto const", "updated", updated));
+            assert_if(body, valid_children(index, placement.type, ir_.named("updated")));
+            body.push_back(ir_.assignment(raw(), ir_.named("updated")));
         } else {
-            write("        value_ = ioj::packed_insert<{}_field>(value_, {});\n    }}\n",
-                  accessor,
-                  aggregate(placement) ? "static_cast<storage_type>(value.raw_value())" : "value");
+            body.push_back(ir_.assignment(raw(), updated));
         }
-        auto const definition{context_.semantic.definition(placement.type)};
-        if (definition.kind() == schema::TypeDefinitionKind::fixed_point) {
-            append_fixed_conversion(placement, definition);
+        functions_.push_back(function("set_" + name,
+                                      "void",
+                                      FunctionReceiver::unqualified,
+                                      {parameter(decoded_type, "value")},
+                                      body));
+        if (graph_.definition(placement.type).kind() == schema::TypeDefinitionKind::fixed_point) {
+            fixed_conversion(index);
         }
     }
 
-    void append_fixed_conversion(schema::BitPlacement const& placement,
-                                 schema::TypeDefinitionId definition) {
-        auto const& fixed{context_.semantic.definitions().fixed_points};
+    void fixed_conversion(std::uint32_t index) {
+        auto const& placement{layout_.placements[index]};
+        auto const definition{graph_.definition(placement.type)};
+        auto const& fixed{graph_.definitions().fixed_points};
         auto const row{fixed.index(definition)};
-        auto const fractional{fixed.fractional_bits[row]};
         auto const signedness{fixed.signedness[row] != 0};
-        auto const maximum{signedness ? mask(placement.bits - 1) : mask(placement.bits)};
-        auto const minimum{
-            PackedIntegerValue::from_parts(signedness, signedness ? maximum + 1 : 0)};
-        auto const lower{fixed.minimum_raw_value[row].value_or(minimum)};
-        auto const upper{fixed.maximum_raw_value[row].value_or(PackedIntegerValue{maximum})};
         auto const& path{placement.path};
-        named_constant(constants_, path + "_fractional_bits", "int", std::to_string(fractional));
-        named_constant(constants_,
-                       path + "_magnitude_bits",
-                       "int",
-                       std::to_string(placement.bits - (signedness ? 1 : 0)));
-        dependencies_.push_back(context_.ir.types.dependency("std::ldexp", "cmath"));
-        ioj::FormatWriter write{std::back_inserter(output_)};
-        write("    static constexpr {0}_raw_type "
-              "{0}_minimum_allowed_raw{{static_cast<{0}_raw_type>({1})}};\n"
-              "    static constexpr {0}_raw_type "
-              "{0}_maximum_allowed_raw{{static_cast<{0}_raw_type>({2})}};\n"
-              "    [[nodiscard]] auto {0}_value() const noexcept -> double {{\n"
-              "        return std::ldexp(static_cast<double>({0}_raw()), -{3});\n    }}\n"
-              "    [[nodiscard]] static auto try_encode_{0}_value(double value, {0}_raw_type& "
-              "out_raw) noexcept -> bool {{\n"
-              "        if (!std::isfinite(value) || value < "
-              "std::ldexp(static_cast<double>({0}_minimum_allowed_raw), -{3}) ||\n"
-              "            value > std::ldexp(static_cast<double>({0}_maximum_allowed_raw), -{3})) "
-              "{{ return false; }}\n"
-              "        auto const scaled{{std::ldexp(value, {3})}};\n"
-              "        if (!std::isfinite(scaled)) {{ return false; }}\n",
-              path,
-              literal(lower),
-              literal(upper),
-              path + "_fractional_bits");
+        auto& metadata{field_metadata_[index]};
+        auto const fractional{constant(
+            metadata, path + "_fractional_bits", "int", number(fixed.fractional_bits[row]))};
+        auto const magnitude{constant(metadata,
+                                      path + "_magnitude_bits",
+                                      "int",
+                                      number(placement.bits - (signedness ? 1 : 0)))};
+        auto const lower{range_bound(path + "_raw_layout", "min")};
+        auto const upper{range_bound(path + "_raw_layout", "max")};
+        auto const negative_fractional{ir_.unary(UnaryOperator::negate, fractional)};
+        auto const ldexp = [&](Expr mantissa, Expr exponent) {
+            return library_call("std::ldexp", "cmath", {mantissa, exponent});
+        };
+        auto const not_finite = [&](Expr value) {
+            return ir_.unary(UnaryOperator::logical_not,
+                             library_call("std::isfinite", "cmath", {value}));
+        };
+        auto const fail_if = [&](Expr condition) {
+            return ir_.if_stmt(condition, ir_.block({ir_.return_stmt(ir_.literal("false"))}));
+        };
+        functions_.push_back(function(
+            path + "_value",
+            "double",
+            FunctionReceiver::const_,
+            {},
+            {ir_.return_stmt(ldexp(cast("double", invoke(path + "_raw")), negative_fractional))},
+            false));
+        std::vector<Predicate> invalid_inputs{
+            not_finite(value()),
+            binary(
+                BinaryOperator::less, value(), ldexp(cast("double", lower), negative_fractional)),
+            binary(BinaryOperator::greater,
+                   value(),
+                   ldexp(cast("double", upper), negative_fractional))};
+        Nodes body{fail_if(boolean(any(invalid_inputs))),
+                   ir_.variable("auto const", "scaled", ldexp(value(), fractional)),
+                   fail_if(not_finite(ir_.named("scaled")))};
+        auto const scaled{ir_.named("scaled")};
+        auto const rounded{ir_.named("rounded")};
         if (fixed.rounding[row] == FixedPointRounding::toward_zero) {
-            output_ += "        auto const rounded{std::trunc(scaled)};\n";
+            body.push_back(ir_.variable(
+                "auto const", "rounded", library_call("std::trunc", "cmath", {scaled})));
         } else {
-            output_ += "        auto const lower{std::floor(scaled)};\n"
-                       "        auto const fraction{scaled - lower};\n"
-                       "        auto const rounded{fraction > 0.5 || (fraction == 0.5 && "
-                       "std::fmod(lower, 2.0) != 0.0) ? lower + 1.0 : lower};\n";
+            body.push_back(
+                ir_.variable("auto", "rounded", library_call("std::floor", "cmath", {scaled})));
+            body.push_back(ir_.variable(
+                "auto const", "fraction", binary(BinaryOperator::subtract, scaled, rounded)));
+            auto const fraction{ir_.named("fraction")};
+            auto const tie{
+                binary(BinaryOperator::logical_and,
+                       binary(BinaryOperator::equal, fraction, ir_.literal("0.5")),
+                       binary(BinaryOperator::not_equal,
+                              library_call("std::fmod", "cmath", {rounded, ir_.literal("2.0")}),
+                              ir_.literal("0.0")))};
+            auto const round_up{
+                binary(BinaryOperator::logical_or,
+                       binary(BinaryOperator::greater, fraction, ir_.literal("0.5")),
+                       tie)};
+            body.push_back(ir_.if_stmt(
+                round_up,
+                ir_.block({ir_.assignment(
+                    rounded, binary(BinaryOperator::add, rounded, ir_.literal("1.0")))})));
         }
-        write("        if (rounded >= std::ldexp(1.0, {}) || rounded < {}) {{ return false; }}\n"
-              "        auto const raw{{static_cast<{}_raw_type>(rounded)}};\n"
-              "        if (raw < {}_minimum_allowed_raw || raw > {}_maximum_allowed_raw) {{ return "
-              "false; }}\n"
-              "        out_raw = raw;\n        return true;\n    }}\n",
-              path + "_magnitude_bits",
-              signedness ? std::format("-std::ldexp(1.0, {}_magnitude_bits)", path) : "0.0",
-              path,
-              path,
-              path);
-        write("    void set_{0}_value(double value) noexcept {{\n"
-              "        {0}_raw_type raw{{}};\n"
-              "        [[maybe_unused]] auto const success{{try_encode_{0}_value(value, raw)}};\n"
-              "        assert(success);\n        set_{0}_raw(raw);\n    }}\n",
-              path);
+        auto const range{ldexp(ir_.literal("1.0"), magnitude)};
+        body.push_back(fail_if(binary(
+            BinaryOperator::logical_or,
+            binary(BinaryOperator::greater_equal, rounded, range),
+            binary(BinaryOperator::less,
+                   rounded,
+                   signedness ? ir_.unary(UnaryOperator::negate, range) : ir_.literal("0.0")))));
+        auto const raw_type{descriptor_value(path + "_raw_layout")};
+        body.push_back(ir_.variable(
+            ir_.types.decorate(raw_type, "", " const"), "raw", cast(raw_type, rounded)));
+        if (auto const valid{value_check(placement, ir_.named("raw"))}) {
+            body.push_back(fail_if(ir_.unary(UnaryOperator::logical_not, *valid)));
+        }
+        body.push_back(ir_.assignment(ir_.named("out_raw"), ir_.named("raw")));
+        body.push_back(ir_.return_stmt(ir_.literal("true")));
+        functions_.push_back(
+            function("try_encode_" + path + "_value",
+                     "bool",
+                     FunctionReceiver::static_,
+                     {parameter("double", "value"),
+                      ir_.parameter(ir_.types.decorate(raw_type, "", "&"), "out_raw")},
+                     body,
+                     false));
+        functions_.push_back(function(
+            "set_" + path + "_value",
+            "void",
+            FunctionReceiver::unqualified,
+            {parameter("double", "value")},
+            {ir_.variable(raw_type, "raw", ir_.init_list({})),
+             ir_.variable(
+                 ir_.types.decorate(ir_.types.intern("auto"), "[[maybe_unused]] ", " const"),
+                 "success",
+                 invoke("try_encode_" + path + "_value", {value(), ir_.named("raw")})),
+             assertion(ir_.named("success")),
+             ir_.expr_stmt(invoke("set_" + path + "_raw", {ir_.named("raw")}))},
+            false));
     }
 
     LoweringContext& context_;
+    CppIR& ir_;
+    schema::TypeGraph const& graph_;
     schema::TypeId type_;
     schema::BitLayout const& layout_;
+    std::string name_;
+    Nodes metadata_;
+    std::vector<Nodes> field_metadata_;
+    Nodes constructors_;
+    Nodes operators_;
+    Nodes functions_;
+    Nodes private_functions_;
     std::vector<TypeDependencyId> dependencies_;
-    NamedDeclarations constants_;
-    std::string output_;
+    std::set<std::string> constants_;
+    std::map<std::string, Validation> checks_;
 };
 
 } // namespace
 
 auto lower_packed_value(LoweringContext& context, DeclarationHandle, schema::TypeId type)
     -> DeclarationEmission {
-    return {.header = {PackedEmitter{context, type}.emit()},
-            .header_global = {standard_value_support(context, type, false)}};
+    return {.header = PackedEmitter{context, type}.emit()};
 }
 
-auto lower_scalar(LoweringContext& context, DeclarationHandle declaration, schema::TypeId type)
+auto lower_scalar(LoweringContext& context, DeclarationHandle, schema::TypeId type)
     -> DeclarationEmission {
-    auto const& graph{context.semantic};
-    auto const& layout{graph.bit_layout(type)};
-    auto const bits{*layout.encoded_bits};
-    auto const name{context.text(graph.name(type))};
-    auto const decoded{value_type(context, type, bits)};
-    NamedDeclarations constants;
-    auto input_validity{scalar_validity(context, type, bits, "value", "", "value_type", constants)};
-    if (bits != 8 && bits != 16 && bits != 32 && bits != 64) {
-        auto const representation{
-            decoded.starts_with("std::int")
-                ? "ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value"
-                : "static_cast<storage_type>(value) <= value_field::value_mask"};
-        input_validity = input_validity == "true" ? representation
-                                                  : '(' + input_validity + ") && " + representation;
-    }
-    std::string output;
-    ioj::FormatWriter write{std::back_inserter(output)};
-    write("struct {0} {{\n  public:\n    using storage_type = {1};\n    using value_type = {2};\n"
-          "    static constexpr int encoded_bits{{{3}}};\n"
-          "    static constexpr int storage_bits{{{4}}};\n"
-          "    static constexpr storage_type default_raw_value{{}};\n"
-          "    using value_field = ioj::PackedField<storage_type, value_type, 0, encoded_bits>;\n",
-          name,
-          integer_type(layout.storage_bits),
-          decoded,
-          bits,
-          layout.storage_bits);
-    if (declaration.kind() == DeclarationKind::integer_scalar) {
-        auto const& scalars{context.declarations.integer_scalars};
-        auto const& codes{context.declarations.packed_named_codes};
-        for (auto const code : context.declarations.items(scalars.named_codes[declaration])) {
-            write("    static constexpr value_type {}{{static_cast<value_type>({})}};\n",
-                  context.text(codes.name[code]),
-                  literal(codes.value[code]));
-        }
-    }
-    for (auto const& entry : constants) {
-        output += entry.second;
-    }
-    write(
-        "\n    constexpr {0}() noexcept = default;\n"
-        "    explicit constexpr {0}(value_type const value) noexcept\n"
-        "        : value_{{ioj::packed_pack<value_field>(value)}} {{\n"
-        "        assert(is_valid_value(value));\n    }}\n"
-        "    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> {0} {{\n"
-        "        {0} result;\n        result.value_ = raw;\n        return result;\n    }}\n"
-        "    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type {{ return "
-        "value_; }}\n"
-        "    [[nodiscard]] constexpr auto value() const noexcept -> value_type {{\n"
-        "        return ioj::packed_extract<value_field>(value_);\n    }}\n"
-        "    constexpr void set_value(value_type const value) noexcept {{\n"
-        "        assert(is_valid_value(value));\n        value_ = "
-        "ioj::packed_insert<value_field>(value_, value);\n    }}\n"
-        "    [[nodiscard]] static constexpr auto is_valid_value(value_type const {2}) noexcept -> "
-        "bool {{\n"
-        "        return {1};\n    }}\n"
-        "    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {{ return "
-        "is_valid_value(value()); }}\n",
-        name,
-        input_validity,
-        input_validity == "true" ? "" : "value");
-    if (decoded.starts_with("std::uint") && bits == layout.storage_bits) {
-        write("    [[nodiscard]] constexpr auto operator<=>({} const&) const noexcept = default;\n",
-              name);
-    } else {
-        write("    [[nodiscard]] constexpr auto operator<=>({0} const& other) const noexcept {{\n"
-              "        return value() <=> other.value();\n    }}\n"
-              "    [[nodiscard]] constexpr auto operator==({0} const& other) const noexcept -> "
-              "bool {{\n"
-              "        return value() == other.value();\n    }}\n",
-              name);
-    }
-    write("  private:\n    storage_type value_{{default_raw_value}};\n}};\n"
-          "static_assert(ioj::valid_packed_value_layout<{}>());\n",
-          name);
-    return {.header = {context.ir.raw(output, base_dependencies(context))},
-            .header_global = {standard_value_support(context, type, true)}};
+    return {.header = PackedEmitter{context, type}.emit()};
 }
 
 } // namespace lispb::codegen::detail

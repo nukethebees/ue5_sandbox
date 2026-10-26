@@ -22,6 +22,7 @@ struct TypeReader<settings::TurretPresentation> : RecordReader<settings::TurretP
                 });
             }));
     }
+
   private:
     using Field = value_type::Field;
 
