@@ -545,11 +545,12 @@ void US7LevelAuthoringMode::open_level_config() {
     auto* const assets{GEditor ? GEditor->GetEditorSubsystem<UAssetEditorSubsystem>() : nullptr};
     if (!IsValid(config) || !IsValid(assets) || !assets->OpenEditorForAsset(config)) {
         set_status(
-            LOCTEXT("OpenLevelConfigFailed", "Assign a level config in the document first."));
+            LOCTEXT("OpenLevelConfigFailed",
+                    "Could not open Edit Resources. Check the document's shared resource asset."));
     } else {
         set_status(LOCTEXT("OpenLevelConfig",
-                           "Edit Collision Grid > Grid Size in the level config asset. "
-                           "This asset may be shared by other levels."));
+                           "Edit shared resource assets here. Configure the collision grid in "
+                           "the S7 source. Resources may be shared by other levels."));
     }
     notify_changed();
 }
