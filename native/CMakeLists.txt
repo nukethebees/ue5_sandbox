@@ -15,6 +15,7 @@ target_link_libraries(sandbox_native_defaults INTERFACE
   ioj::cxx_conformance
   ioj::native_abi
   ioj::asan
+  ioj::build_profiling
 )
 
 enable_language(C)

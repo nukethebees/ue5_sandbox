@@ -30,6 +30,45 @@ Otherwise tools come from PATH. CMake captures this selection for child tools/te
 compiler, archive, inspection and dependency-scanning tools. Missing tools are not auto-installed.
 Set `IOJ_WITH_UNREAL=OFF` for standalone native configurations.
 
+### Compiler cache
+
+Clang-cl presets use ccache through CMake's standard C/C++ compiler launchers.
+Install ccache on PATH; its default cache directory and user settings are respected.
+Use `CCACHE_MAXSIZE=100G` to set a 100 GB limit; `SCCACHE_CACHE_SIZE` does not affect ccache.
+Set `CMAKE_C_COMPILER_LAUNCHER` and `CMAKE_CXX_COMPILER_LAUNCHER` to empty strings
+to disable caching. Unreal compilation is separately managed by UBT/UBA.
+
+C++ launchers set `sloppiness=pch_defines,time_macros` for PCH caching. Avoid
+time-dependent macros in PCHs. Clang-cl uses `/showIncludes` dependencies and
+timestamp-free PCHs so both PCH creation and consuming objects can be cached.
+
+### Compiler build profiling
+
+Configure with `-DIOJ_ENABLE_BUILD_PROFILING=ON` to enable compiler timing on targets
+using `sandbox::native_defaults`. Other targets can link `ioj::build_profiling`
+privately, or propagate it through their own interface libraries. The option defaults
+to `OFF` and is separate from `IOJ_ENABLE_PROFILING`, which controls runtime Tracy
+instrumentation. It does not change Unreal's UBT compiler settings.
+
+Clang and clang-cl emit `-ftime-trace` JSON beside object files. MSVC emits front-end
+and back-end timing in the build output using `/Bt+`; it does not produce Clang JSON.
+Other compilers receive no additional flags.
+
+For a fresh native capture, disable compiler launchers and rebuild the relevant targets:
+
+```powershell
+cmake --preset native -DIOJ_ENABLE_BUILD_PROFILING=ON -DCMAKE_C_COMPILER_LAUNCHER= -DCMAKE_CXX_COMPILER_LAUNCHER=
+cmake --build --preset native --target native-core --clean-first
+ClangBuildAnalyzer.exe --all out/build/native .local/native-build-profile.bin
+ClangBuildAnalyzer.exe --analyze .local/native-build-profile.bin
+```
+
+`ClangBuildAnalyzer.exe` is available on PATH on the development machine. Use a fresh
+trace directory, or its `--start` / `--stop` capture workflow, to exclude stale traces.
+Reconfigure with `cmake --preset native -DIOJ_ENABLE_BUILD_PROFILING=OFF` afterward;
+the preset also restores its compiler launchers. A cache hit is not a fresh compiler
+measurement.
+
 ## Native iteration
 
 Build affected targets and select tests by subsystem:

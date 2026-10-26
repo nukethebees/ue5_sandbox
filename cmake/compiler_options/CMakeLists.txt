@@ -1,3 +1,17 @@
+option(IOJ_ENABLE_BUILD_PROFILING "Enable compiler build timing for participating targets" OFF)
+
+add_library(ioj_build_profiling INTERFACE)
+add_library(ioj::build_profiling ALIAS ioj_build_profiling)
+if(IOJ_ENABLE_BUILD_PROFILING)
+  target_compile_options(ioj_build_profiling
+    INTERFACE
+      "$<$<COMPILE_LANG_AND_ID:C,Clang,AppleClang>:-ftime-trace>"
+      "$<$<COMPILE_LANG_AND_ID:CXX,Clang,AppleClang>:-ftime-trace>"
+      "$<$<COMPILE_LANG_AND_ID:C,MSVC>:/Bt+>"
+      "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/Bt+>"
+  )
+endif()
+
 add_library(ioj_cxx_standard INTERFACE)
 add_library(ioj::cxx_standard ALIAS ioj_cxx_standard)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
