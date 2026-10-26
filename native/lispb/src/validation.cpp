@@ -120,7 +120,7 @@ class Validator {
     auto text(lispb::StringId id) const -> std::string { return std::string{strings_.view(id)}; }
 
     auto view(lispb::StringId id) const -> std::string_view { return strings_.view(id); }
-    auto resolved_type(TypeRefId id, TypeRegistry const&) const -> CppTypeId {
+    auto resolved_type(TypeRefId id) const -> CppTypeId {
         auto const occurrence{graph_.resolved(module_, id)};
         auto const& occurrences{graph_.occurrences()};
         return occurrences.cpp_type[occurrences.index(occurrence)];
@@ -367,19 +367,18 @@ class Validator {
         }
     }
 
-    void validate_type(TypeRefId reference, TypeRegistry const& types, std::string const& context) {
+    void validate_type(TypeRefId reference, std::string const& context) {
         auto const type{reference};
         require_value(text(declarations_.type_refs.name[type]), context + " type");
         if (declarations_.type_refs.nested[type].has_value()) {
             require_value(*declarations_.type_refs.nested[type], context + " nested type");
         }
-        static_cast<void>(resolved_type(reference, types));
+        static_cast<void>(resolved_type(reference));
     }
 
     void validate_semantic_relation(lispb::codegen::SemanticRelationId const& relationship,
-                                    TypeRegistry const& types,
                                     std::string const& context) {
-        validate_type(declarations_.semantic_relations.target[relationship], types, context);
+        validate_type(declarations_.semantic_relations.target[relationship], context);
         auto const offset_relation{declarations_.semantic_relations.kind[relationship] ==
                                    SemanticRelationKind::offset_into};
         if (offset_relation != declarations_.semantic_relations.unit[relationship].has_value()) {
@@ -428,10 +427,9 @@ class Validator {
             auto const name{text(parameter_schemas.name[parameter])};
             names.push_back(name);
             require_identifier(name, context + " parameter name");
-            validate_type(
-                parameter_schemas.type[parameter], types, context + " parameter '" + name + "'");
+            validate_type(parameter_schemas.type[parameter], context + " parameter '" + name + "'");
             type_names.push_back(std::string{
-                types.cpp_types.spelling(resolved_type(parameter_schemas.type[parameter], types))});
+                types.cpp_types.spelling(resolved_type(parameter_schemas.type[parameter]))});
             if (parameter_schemas.default_value[parameter].has_value()) {
                 require_non_blank_value(*parameter_schemas.default_value[parameter],
                                         context + " parameter '" + name + "' default");
@@ -513,15 +511,14 @@ class Validator {
         }
 
         auto const return_type{functions.return_type[function]};
-        validate_type(return_type, types, context + " return");
+        validate_type(return_type, context + " return");
         if (functions.trailing_return_type[function]) {
             if (view(type_refs.name[return_type]) != "auto" ||
                 !view(type_refs.suffix[return_type]).empty() || type_refs.nested[return_type]) {
                 throw std::invalid_argument{context +
                                             " trailing return type requires an auto return"};
             }
-            validate_type(
-                *functions.trailing_return_type[function], types, context + " trailing return");
+            validate_type(*functions.trailing_return_type[function], context + " trailing return");
         }
         auto const effective_return{functions.trailing_return_type[function]
                                         ? *functions.trailing_return_type[function]
@@ -620,8 +617,8 @@ class Validator {
         auto const domain_row{domains.index(domain)};
         std::optional<EnumStorageDomain> storage_domain;
         if (enums.underlying_type[schema].has_value()) {
-            validate_type(*enums.underlying_type[schema], types, "Enum '" + name + "' underlying");
-            auto const underlying{resolved_type(*enums.underlying_type[schema], types)};
+            validate_type(*enums.underlying_type[schema], "Enum '" + name + "' underlying");
+            auto const underlying{resolved_type(*enums.underlying_type[schema])};
             storage_domain = enum_storage_domain(std::string{types.cpp_types.spelling(underlying)});
         } else {
             auto const derived{lispb::schema::derive_enum_storage_requirement(
@@ -878,8 +875,8 @@ class Validator {
         require_identifier(text(values.name[value]), "Packed value name");
 
         validate_export_specifier(values.export_specifier[value], context + " export specifier");
-        validate_type(values.storage_type[value], types, context + " storage");
-        auto const storage{resolved_type(values.storage_type[value], types)};
+        validate_type(values.storage_type[value], context + " storage");
+        auto const storage{resolved_type(values.storage_type[value])};
         auto const storage_width{
             packed_unsigned_width(std::string{types.cpp_types.spelling(storage)})};
         if (!storage_width.has_value()) {
@@ -1001,7 +998,7 @@ class Validator {
             auto const field_name{text(fields.name[*field])};
             auto const field_context{context + " field '" + field_name + "'"};
             require_identifier(field_name, context + " field name");
-            validate_type(fields.type[*field], types, field_context);
+            validate_type(fields.type[*field], field_context);
             if (fields.relationship[*field].has_value()) {
                 if (quantized.has_value() || fixed.has_value() || mini.has_value()) {
                     throw std::invalid_argument{
@@ -1015,8 +1012,8 @@ class Validator {
                              : " mini-float representation cannot carry an integer-field "
                                "semantic relationship")};
                 }
-                validate_semantic_relation(
-                    *fields.relationship[*field], types, field_context + " relationship");
+                validate_semantic_relation(*fields.relationship[*field],
+                                           field_context + " relationship");
                 auto const relation_kind{
                     declarations_.semantic_relations.kind[*fields.relationship[*field]]};
                 auto const requires_integer{relation_kind == SemanticRelationKind::index_into ||
@@ -1035,7 +1032,7 @@ class Validator {
                 }
             }
 
-            auto const field_type{resolved_type(fields.type[*field], types)};
+            auto const field_type{resolved_type(fields.type[*field])};
             if ((scalar.has_value() || quantized.has_value() || fixed.has_value() ||
                  mini.has_value()) &&
                 (fields.minimum_value[*field].has_value() ||
@@ -1415,10 +1412,10 @@ class Validator {
                                text(members.name[member]) + "'"};
             require_identifier(text(members.name[member]),
                                "Record '" + text(records.name[record]) + "' member name");
-            validate_type(members.type[member], types, context);
+            validate_type(members.type[member], context);
             if (members.relationship[member].has_value()) {
-                validate_semantic_relation(
-                    *members.relationship[member], types, context + " relationship");
+                validate_semantic_relation(*members.relationship[member],
+                                           context + " relationship");
             }
             if (members.count[member] == 0) {
                 throw std::invalid_argument{context + " count must be greater than zero"};
@@ -1462,8 +1459,7 @@ class Validator {
         }
     }
 
-    void validate_union(lispb::codegen::DeclarationHandle const& schema,
-                        TypeRegistry const& types) {
+    void validate_union(lispb::codegen::DeclarationHandle const& schema) {
         require_identifier(text(declarations_.unions.name[schema]), "Union name");
         validate_export_specifier(declarations_.unions.export_specifier[schema],
                                   "Union '" + text(declarations_.unions.name[schema]) +
@@ -1483,7 +1479,7 @@ class Validator {
             require_identifier(text(declarations_.union_alternatives.name[alternative]),
                                "Union '" + text(declarations_.unions.name[schema]) +
                                    "' alternative name");
-            validate_type(declarations_.union_alternatives.type[alternative], types, context);
+            validate_type(declarations_.union_alternatives.type[alternative], context);
             if (declarations_.union_alternatives.count[alternative] == 0) {
                 throw std::invalid_argument{context + " count must be greater than zero"};
             }
@@ -1494,15 +1490,13 @@ class Validator {
                                  "' alternatives");
     }
 
-    void validate_tagged_union(lispb::codegen::DeclarationHandle const& schema,
-                               TypeRegistry const& types) {
+    void validate_tagged_union(lispb::codegen::DeclarationHandle const& schema) {
         require_identifier(text(declarations_.tagged_unions.name[schema]), "Tagged union name");
         validate_export_specifier(declarations_.tagged_unions.export_specifier[schema],
                                   "Tagged union '" +
                                       text(declarations_.tagged_unions.name[schema]) +
                                       "' export specifier");
         validate_type(declarations_.tagged_unions.discriminant[schema],
-                      types,
                       "Tagged union '" + text(declarations_.tagged_unions.name[schema]) +
                           "' discriminant");
         if (declarations_.tagged_unions.alternatives[schema].empty()) {
@@ -1526,8 +1520,7 @@ class Validator {
                                    "' alternative name");
             require_identifier(text(declarations_.tagged_union_alternatives.tag[alternative]),
                                context + " tag");
-            validate_type(
-                declarations_.tagged_union_alternatives.type[alternative], types, context);
+            validate_type(declarations_.tagged_union_alternatives.type[alternative], context);
             if (declarations_.tagged_union_alternatives.count[alternative] == 0) {
                 throw std::invalid_argument{context + " count must be greater than zero"};
             }
@@ -1626,7 +1619,6 @@ class Validator {
 
         if (declarations_.integer_scalars.relationship[scalar].has_value()) {
             validate_semantic_relation(*declarations_.integer_scalars.relationship[scalar],
-                                       types,
                                        context + " relationship");
             auto const relation_kind{
                 declarations_.semantic_relations
@@ -1672,9 +1664,8 @@ class Validator {
                                         " constants emission requires at least one named code"};
         }
         validate_type(*declarations_.integer_scalars.cpp_type[scalar],
-                      types,
                       context + " C++ representation");
-        auto const cpp_type{resolved_type(*declarations_.integer_scalars.cpp_type[scalar], types)};
+        auto const cpp_type{resolved_type(*declarations_.integer_scalars.cpp_type[scalar])};
         auto const storage_domain{
             enum_storage_domain(std::string{types.cpp_types.spelling(cpp_type)})};
         if (!storage_domain.has_value()) {
@@ -1695,16 +1686,14 @@ class Validator {
         }
     }
 
-    void validate_linear_quantized(lispb::codegen::DeclarationHandle const& representation,
-                                   TypeRegistry const& types) {
+    void validate_linear_quantized(lispb::codegen::DeclarationHandle const& representation) {
         auto const& integer_scalars{graph_.definitions().integer_scalars};
         auto const context{"Linear quantization '" +
                            text(declarations_.linear_quantizeds.name[representation]) + "'"};
         require_identifier(text(declarations_.linear_quantizeds.name[representation]),
                            "Linear quantization name");
 
-        validate_type(
-            declarations_.linear_quantizeds.source[representation], types, context + " source");
+        validate_type(declarations_.linear_quantizeds.source[representation], context + " source");
         auto const source{find_integer_domain(
             declarations_.linear_quantizeds.source[representation], graph_, module_)};
         if (!source.has_value()) {
@@ -1732,16 +1721,14 @@ class Validator {
         }
     }
 
-    void validate_integer_varint(lispb::codegen::DeclarationHandle const& representation,
-                                 TypeRegistry const& types) {
+    void validate_integer_varint(lispb::codegen::DeclarationHandle const& representation) {
         auto const& integer_scalars{graph_.definitions().integer_scalars};
         auto const context{"Integer varint '" +
                            text(declarations_.integer_varints.name[representation]) + "'"};
         require_identifier(text(declarations_.integer_varints.name[representation]),
                            "Integer varint name");
 
-        validate_type(
-            declarations_.integer_varints.source[representation], types, context + " source");
+        validate_type(declarations_.integer_varints.source[representation], context + " source");
         auto const source{find_integer_domain(
             declarations_.integer_varints.source[representation], graph_, module_)};
         if (!source.has_value()) {
@@ -1847,16 +1834,14 @@ class Validator {
         }
     }
 
-    void validate_optional_sentinel(lispb::codegen::DeclarationHandle const& representation,
-                                    TypeRegistry const& types) {
+    void validate_optional_sentinel(lispb::codegen::DeclarationHandle const& representation) {
         auto const& integer_scalars{graph_.definitions().integer_scalars};
         auto const context{"Optional sentinel representation '" +
                            text(declarations_.optional_sentinels.name[representation]) + "'"};
         require_identifier(text(declarations_.optional_sentinels.name[representation]),
                            "Optional sentinel representation name");
 
-        validate_type(
-            declarations_.optional_sentinels.source[representation], types, context + " source");
+        validate_type(declarations_.optional_sentinels.source[representation], context + " source");
         auto const source{find_integer_domain(
             declarations_.optional_sentinels.source[representation], graph_, module_)};
         if (!source.has_value()) {
@@ -1887,15 +1872,13 @@ class Validator {
         }
     }
 
-    void validate_optional_presence_bit(lispb::codegen::DeclarationHandle const& representation,
-                                        TypeRegistry const& types) {
+    void validate_optional_presence_bit(lispb::codegen::DeclarationHandle const& representation) {
         auto const context{"Optional presence-bit representation '" +
                            text(declarations_.optional_presence_bits.name[representation]) + "'"};
         require_identifier(text(declarations_.optional_presence_bits.name[representation]),
                            "Optional presence-bit representation name");
 
         validate_type(declarations_.optional_presence_bits.source[representation],
-                      types,
                       context + " source");
         if (!find_integer_domain(
                  declarations_.optional_presence_bits.source[representation], graph_, module_)
@@ -1964,10 +1947,10 @@ class Validator {
                                    "SOA '" + schema_name + "' member name");
                 reject_generated_name_collision(
                     text(members.name[member]), "SOA '" + schema_name + "' member name", true);
-                validate_type(members.type[member], types, context);
+                validate_type(members.type[member], context);
                 if (members.relationship[member].has_value()) {
-                    validate_semantic_relation(
-                        *members.relationship[member], types, context + " relationship");
+                    validate_semantic_relation(*members.relationship[member],
+                                               context + " relationship");
                 }
                 if (soas.field_mask_name[schema].has_value() &&
                     declarations_.type_refs.name[members.type[member]] ==
@@ -2036,8 +2019,8 @@ class Validator {
                 require_non_blank_value(declaration, "SOA '" + schema_name + "' using declaration");
             }
             if (soas.equivalent_type[schema].has_value()) {
-                validate_type(
-                    *soas.equivalent_type[schema], types, "SOA '" + schema_name + "' equivalent");
+                validate_type(*soas.equivalent_type[schema],
+                              "SOA '" + schema_name + "' equivalent");
             }
             auto validate_functions = [&](SchemaRange<FunctionSchemaId> function_ids,
                                           std::set<std::string>& function_signatures,
@@ -2145,8 +2128,7 @@ class Validator {
         }
     }
 
-    void validate_static_table(lispb::codegen::DeclarationHandle const& table,
-                               TypeRegistry const& types) {
+    void validate_static_table(lispb::codegen::DeclarationHandle const& table) {
         auto const& tables{declarations_.static_tables};
         auto const& rows{declarations_.static_table_rows};
         auto const& columns{declarations_.static_table_columns};
@@ -2190,7 +2172,6 @@ class Validator {
             }
             column_names.push_back(text(columns.name[column]));
             validate_type(columns.type[column],
-                          types,
                           "Static table '" + text(tables.name[table]) + "' column '" +
                               text(columns.name[column]) + "'");
         }
@@ -2211,7 +2192,7 @@ class Validator {
                 throw std::invalid_argument{"Duplicate static table group name: " +
                                             text(groups.name[group])};
             }
-            validate_type(groups.type[group], types, context + " type");
+            validate_type(groups.type[group], context + " type");
             if (groups.columns[group].empty()) {
                 throw std::invalid_argument{context + " must have columns"};
             }
@@ -2243,7 +2224,6 @@ class Validator {
         require_identifier(text(facades.target_member_name[facade]),
                            "Facade '" + text(facades.name[facade]) + "' target member");
         validate_type(facades.target_type[facade],
-                      types,
                       "Facade '" + text(facades.name[facade]) + "' target");
         if (facades.methods[facade].empty()) {
             throw std::invalid_argument{"Facade '" + text(facades.name[facade]) +
@@ -2280,11 +2260,11 @@ class Validator {
         }
         std::set<std::string> method_signatures;
         if (!facades.reference_target[facade]) {
-            method_signatures.insert(signature(strings_.intern("bind"),
-                                               {std::string{types.cpp_types.spelling(resolved_type(
-                                                    facades.target_type[facade], types))} +
-                                                "&"},
-                                               false));
+            method_signatures.insert(signature(
+                strings_.intern("bind"),
+                {std::string{types.cpp_types.spelling(resolved_type(facades.target_type[facade]))} +
+                 "&"},
+                false));
         }
         for (auto const method_id : declarations_.items(facades.methods[facade])) {
             auto const method{method_id};
@@ -2302,7 +2282,6 @@ class Validator {
                                        "' method target name");
             }
             validate_type(methods.return_type[method],
-                          types,
                           "Facade '" + text(facades.name[facade]) + "' method '" +
                               text(methods.name[method]) + "' return");
             auto const context{"Facade '" + text(facades.name[facade]) + "' method '" +
@@ -2369,7 +2348,7 @@ class Validator {
                 throw std::invalid_argument{
                     setting_context + " has unknown category: " + text(settings.category[setting])};
             }
-            validate_type(settings.value_type[setting], types, setting_context + " value");
+            validate_type(settings.value_type[setting], setting_context + " value");
             require_identifier(text(settings.backend[setting]), setting_context + " backend");
             if (controls.options_provider[control].has_value()) {
                 require_identifier(*controls.options_provider[control],
@@ -2413,8 +2392,8 @@ class Validator {
             } else if (controls.custom_row[control].has_value()) {
                 throw std::invalid_argument{setting_context + " non-custom control has custom_row"};
             }
-            auto const type{std::string{
-                types.cpp_types.spelling(resolved_type(settings.value_type[setting], types))}};
+            auto const type{
+                std::string{types.cpp_types.spelling(resolved_type(settings.value_type[setting]))}};
             if (controls.kind[control] == SettingControlKind::toggle && type != "bool") {
                 throw std::invalid_argument{setting_context + " toggle value type must be bool"};
             }
@@ -2486,12 +2465,12 @@ class Validator {
                     }
                     case lispb::codegen::DeclarationKind::union_type: {
 
-                        validate_union(value, manifest.types);
+                        validate_union(value);
                         break;
                     }
                     case lispb::codegen::DeclarationKind::tagged_union: {
 
-                        validate_tagged_union(value, manifest.types);
+                        validate_tagged_union(value);
                         break;
                     }
                     case lispb::codegen::DeclarationKind::integer_scalar: {
@@ -2501,12 +2480,12 @@ class Validator {
                     }
                     case lispb::codegen::DeclarationKind::linear_quantized: {
 
-                        validate_linear_quantized(value, manifest.types);
+                        validate_linear_quantized(value);
                         break;
                     }
                     case lispb::codegen::DeclarationKind::integer_varint: {
 
-                        validate_integer_varint(value, manifest.types);
+                        validate_integer_varint(value);
                         break;
                     }
                     case lispb::codegen::DeclarationKind::fixed_point: {
@@ -2521,17 +2500,17 @@ class Validator {
                     }
                     case lispb::codegen::DeclarationKind::optional_sentinel: {
 
-                        validate_optional_sentinel(value, manifest.types);
+                        validate_optional_sentinel(value);
                         break;
                     }
                     case lispb::codegen::DeclarationKind::optional_presence_bit: {
 
-                        validate_optional_presence_bit(value, manifest.types);
+                        validate_optional_presence_bit(value);
                         break;
                     }
                     case lispb::codegen::DeclarationKind::static_table: {
 
-                        validate_static_table(value, manifest.types);
+                        validate_static_table(value);
                         break;
                     }
                     case lispb::codegen::DeclarationKind::facade: {
