@@ -5,6 +5,8 @@ mod format;
 
 mod benchmark;
 
+mod profile_build;
+
 mod unreal;
 
 mod git;
@@ -29,7 +31,7 @@ mod workspace;
 
 mod codex;
 
-const USAGE: &str = "Usage: coj <command>\n\nCommands:\n  presets [--check]      Generate/check CMake presets\n  tidy [options]        Run LLVM analysis\n  unreal <operation>    Generate project files or authored assets\n  editor [options]      Build and launch the editor\n  run-staged [options]  Launch an existing staged game\n  benchmark <operation> Delegate to revision-local benchmark-tools\n  format [options]      Format sources using revision-local policy\n  unreal-build [options] Invoke the Unreal build script\n  prepare-worktree       Initialize the current worktree, retaining builds\n  install <tool>         Install/update canonical per-user build tools\n  codex <command>        Launch, inspect, or clean named Codex sessions\n  jobs <command>         Cooperative jobs board (coj jobs --help)\n  git <command>          Run supported feature Git operations (coj git --help)\n  integrate [--keep-branch]  Privileged dev transaction; explicit user authorization required";
+const USAGE: &str = "Usage: coj <command>\n\nCommands:\n  presets [--check]      Generate/check CMake presets\n  tidy [options]        Run LLVM analysis\n  unreal <operation>    Generate project files or authored assets\n  editor [options]      Build and launch the editor\n  run-staged [options]  Launch an existing staged game\n  benchmark <operation> Delegate to revision-local benchmark-tools\n  profile-build <profile> Time builds and analyze Clang traces\n  format [options]      Format sources using revision-local policy\n  unreal-build [options] Invoke the Unreal build script\n  prepare-worktree       Initialize the current worktree, retaining builds\n  install <tool>         Install/update canonical per-user build tools\n  codex <command>        Launch, inspect, or clean named Codex sessions\n  jobs <command>         Cooperative jobs board (coj jobs --help)\n  git <command>          Run supported feature Git operations (coj git --help)\n  integrate [--keep-branch]  Privileged dev transaction; explicit user authorization required";
 
 fn worktree_root() -> Result<PathBuf, String> {
     let output = Command::new("git")
@@ -120,6 +122,7 @@ fn main() -> ExitCode {
                     | "editor"
                     | "run-staged"
                     | "benchmark"
+                    | "profile-build"
                     | "install"
             )
         )
@@ -132,6 +135,7 @@ fn main() -> ExitCode {
             "editor" => unreal::editor(&arguments[1..]),
             "run-staged" => unreal::run_staged(&arguments[1..]),
             "benchmark" => benchmark::run(&arguments[1..]),
+            "profile-build" => profile_build::run(&arguments[1..]),
             "install" => install::run(&arguments[1..]),
             _ => unreal_build::run(&arguments[1..]),
         };

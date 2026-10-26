@@ -1,0 +1,19 @@
+# Native outputs are fresh. Unreal retains its normal project intermediates;
+# this profile measures the resulting editor build, not a clean Unreal rebuild.
+trace_directory = "{output}/build"
+
+[environment]
+UnrealBuildTool_UnrealBuildAccelerator__Cache = ""
+UnrealBuildTool_UnrealBuildAccelerator__WriteCache = "False"
+
+[[steps]]
+name = "Configure DebugGame"
+command = ["cmake", "--preset", "debug-game", "-B", "{output}/build", "-DIOJ_ENABLE_BUILD_PROFILING=ON", "-DIOJ_ENABLE_UBA_CACHE=OFF"]
+
+[[steps]]
+name = "Build native prerequisites"
+command = ["cmake", "--build", "{output}/build", "--target", "unreal-native-dependencies", "unreal-generated-inputs"]
+
+[[steps]]
+name = "Build Unreal editor"
+command = ["cmake", "--build", "{output}/build", "--target", "editor"]

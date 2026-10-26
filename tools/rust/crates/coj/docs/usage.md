@@ -69,6 +69,45 @@ automatic). LLVM_ROOT/bin is exclusive when set; otherwise PATH supplies the too
 and LispB analysis use checked-in generated inputs without building fixtures. Logs stay in the analysis tree.
 Use `--checks=-clang-analyzer-*` to omit static-analyzer checks for one run without changing policy.
 
+## Build profiling
+
+```powershell
+coj profile-build native-core
+coj profile-build native
+coj profile-build debug-game
+coj profile-build .local/my-build.toml
+```
+
+Profiles live in `cmake/profiles/*.toml`. Each `[[steps]]` entry has a `name` and a
+`command` argument array, executed from the worktree root without a shell. Commands
+can invoke CMake workflows or individual configure/build phases. `{output}` expands
+to a unique run directory under the gitignored `.local/build-profiles/` directory.
+An optional `[environment]` table sets child-process environment variables.
+
+The runner streams output to the terminal and numbered logs, and writes `report.md`
+and `results.json` containing commands, wall times, exit codes, revision and worktree
+status. It stops on the first failure and keeps the results collected so far.
+`CCACHE_DISABLE=1` bypasses ccache for the run without clearing the shared cache.
+Other caches are controlled by the profile's commands and environment.
+
+Set `trace_directory` to the directory containing Clang time-trace JSON to wrap the
+steps with ClangBuildAnalyzer's `--start`, `--stop` and `--analyze`. The analyzer must
+be on PATH. Commands must enable `IOJ_ENABLE_BUILD_PROFILING=ON` for compiler traces;
+the runner does not alter compiler flags itself. Omit `trace_directory` for timing
+only. Analyzer output is the final numbered log; its capture is `clang.bin`.
+
+The supplied profiles use fresh CMake trees inside each run directory, retaining
+their cache, Ninja log and raw traces without modifying the normal native build tree.
+`native` builds test binaries but does not run tests. `debug-game` bypasses the UBA
+result cache and measures native prerequisites and the editor separately. Unreal's
+project intermediates are retained, so it is **not a clean Unreal rebuild**. Its Clang
+analysis covers native compilation; the current MSVC Unreal compilation is in the
+build log, not the Clang report. Unreal's normal published native binaries are updated.
+
+Use the existing exclusive jobs-board workflow around a measurement. The runner
+does not acquire tickets. Compiler instrumentation adds overhead; use these captures
+to locate costs and compare equivalent settings, not as uninstrumented benchmarks.
+
 ## Unreal operations and benchmarks
 
 `coj unreal project-files` uses `UE_ROOT`, or `--ue-root <engine-root>`, without a CMake

@@ -90,7 +90,7 @@ fn source_filter(root: &Path, scope: &str) -> Result<String, String> {
     Ok(format!("{scope_filter}^{native}[/\\\\]{relative_filter}"))
 }
 
-fn tee(reader: impl std::io::Read, log: &Mutex<File>) -> std::io::Result<()> {
+pub(super) fn tee(reader: impl std::io::Read, log: &Mutex<File>) -> std::io::Result<()> {
     let mut reader = BufReader::new(reader);
     let mut line = Vec::new();
     while reader.read_until(b'\n', &mut line)? != 0 {

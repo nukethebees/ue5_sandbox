@@ -1,0 +1,9 @@
+trace_directory = "{output}/build"
+
+[[steps]]
+name = "Configure native"
+command = ["cmake", "--preset", "native-lean", "-B", "{output}/build", "-DIOJ_ENABLE_BUILD_PROFILING=ON"]
+
+[[steps]]
+name = "Build native core"
+command = ["cmake", "--build", "{output}/build", "--target", "native-core"]
