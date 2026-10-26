@@ -82,7 +82,6 @@ using DescendingOrder = testing::TestWithParam<DescendingOrderCase>;
 
 TEST_P(DescendingOrder, RecognisesDescendingOrder) {
     auto const& test{GetParam()};
-    SCOPED_TRACE(test.name);
     EXPECT_EQ(ioj::kernel::is_sorted_desc(test.input.data(),
                                           static_cast<std::int32_t>(test.input.size())),
               test.expected);
@@ -95,4 +94,5 @@ DescendingOrderCase const descending_order_cases[]{
     {"Ascending", {-3, -2, -1}, false}};
 INSTANTIATE_TEST_SUITE_P(NativeCoreArrayUtils,
                          DescendingOrder,
-                         testing::ValuesIn(descending_order_cases));
+                         testing::ValuesIn(descending_order_cases),
+                         [](auto const& info) { return std::string{info.param.name}; });

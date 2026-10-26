@@ -52,7 +52,6 @@ TEST_P(NearestTime, FindsNearestValueAndResolvesTiesEarlier) {
     data.add(40, 400);
 
     auto const test{GetParam()};
-    SCOPED_TRACE(test.name);
     EXPECT_EQ(data.nearest_index(test.input), test.expected.index);
     EXPECT_EQ(data.nearest_time(test.input), test.expected.time);
     EXPECT_EQ(data.nearest_value(test.input), test.expected.value);
@@ -63,7 +62,10 @@ constexpr NearestTimeCase nearest_time_cases[]{{"BeforeFirst", 0, {0, 10, 100}},
                                                {"TieChoosesEarlier", 15, {0, 10, 100}},
                                                {"NearestMiddle", 18, {1, 20, 200}},
                                                {"AfterLast", 50, {2, 40, 400}}};
-INSTANTIATE_TEST_SUITE_P(TimeSeriesData, NearestTime, testing::ValuesIn(nearest_time_cases));
+INSTANTIATE_TEST_SUITE_P(TimeSeriesData,
+                         NearestTime,
+                         testing::ValuesIn(nearest_time_cases),
+                         [](auto const& info) { return std::string{info.param.name}; });
 
 TEST(TimeSeriesData, ReportsCapacityAndAllocatedBytes) {
     ioj::TimeSeriesData<std::int32_t> data;

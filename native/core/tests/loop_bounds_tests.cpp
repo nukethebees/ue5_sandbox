@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <string>
 #include <vector>
 
 namespace {
@@ -42,7 +43,6 @@ using RotatedLoopBounds = testing::TestWithParam<LoopBoundsCase>;
 
 TEST_P(RotatedLoopBounds, ReturnsExpectedBounds) {
     auto const test{GetParam()};
-    SCOPED_TRACE(test.name);
     auto const input{test.input};
     auto const expected{test.expected};
     auto const bounds{ioj::make_rotated_loop_bounds(input.begin, input.end, input.offset)};
@@ -68,7 +68,8 @@ constexpr LoopBoundsCase loop_bounds_cases[]{
 };
 INSTANTIATE_TEST_SUITE_P(NativeCoreLoopBounds,
                          RotatedLoopBounds,
-                         testing::ValuesIn(loop_bounds_cases));
+                         testing::ValuesIn(loop_bounds_cases),
+                         [](auto const& info) { return std::string{info.param.name}; });
 
 TEST(NativeCoreLoopBounds, MatchesModuloReference) {
     for (std::int32_t offset{}; offset < 24; ++offset) {

@@ -6,6 +6,7 @@
 #include <gtest/gtest.h>
 
 #include <limits>
+#include <string>
 
 namespace numeric_conversion_test {
 template <auto Count>
@@ -202,7 +203,6 @@ using VectorDimensions = testing::TestWithParam<VectorDimensionsCase>;
 
 TEST_P(VectorDimensions, ChecksFinitePositiveDimensions) {
     auto const& test{GetParam()};
-    SCOPED_TRACE(test.name);
     EXPECT_EQ(ioj::is_finite(test.input), test.expected.finite);
     EXPECT_EQ(ioj::is_positive_finite(test.input), test.expected.positive_finite);
 }
@@ -215,7 +215,10 @@ constexpr VectorDimensionsCase dimension_cases[]{
     {"PositiveInfinity", {std::numeric_limits<double>::infinity(), 2, 3}, {false, false}},
     {"NotANumber", {1, std::numeric_limits<double>::quiet_NaN(), 3}, {false, false}},
     {"NegativeInfinity", {1, 2, -std::numeric_limits<double>::infinity()}, {false, false}}};
-INSTANTIATE_TEST_SUITE_P(NativeCoreVector3d, VectorDimensions, testing::ValuesIn(dimension_cases));
+INSTANTIATE_TEST_SUITE_P(NativeCoreVector3d,
+                         VectorDimensions,
+                         testing::ValuesIn(dimension_cases),
+                         [](auto const& info) { return std::string{info.param.name}; });
 
 TEST(NativeCoreVector3d, NaNComparisonIsUnordered) {
     auto const nan{std::numeric_limits<double>::quiet_NaN()};
