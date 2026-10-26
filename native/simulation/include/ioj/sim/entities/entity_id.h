@@ -14,7 +14,9 @@ namespace ioj::sim {
 struct EntityId;
 
 namespace detail {
-using EntityIdBase = PackedValueBase<EntityId, std::uint32_t, 4294967295ULL>;
+inline constexpr std::uint32_t entity_id_default_raw_value{4294967295};
+
+using EntityIdBase = PackedValueBase<EntityId, std::uint32_t, entity_id_default_raw_value>;
 } // namespace detail
 
 struct EntityId : detail::EntityIdBase {
@@ -23,8 +25,8 @@ struct EntityId : detail::EntityIdBase {
     using Base = detail::EntityIdBase;
     using storage_type = Base::storage_type;
     using packed_integer_tag = packed::integer_tag;
-    static constexpr PackedStorage<storage_type, 32> storage{4294967295};
-    static constexpr storage_type invalid_value{4294967295};
+    static constexpr PackedStorage<storage_type, 32> storage{detail::entity_id_default_raw_value};
+    static constexpr storage_type invalid_value{storage.default_raw_value};
 
     // index
     static constexpr PackedField<storage_type, std::uint32_t, 0, 24> index_layout{};

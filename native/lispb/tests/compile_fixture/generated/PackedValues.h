@@ -16,7 +16,9 @@ namespace codegen_compile_fixture {
 struct Defaults;
 
 namespace detail {
-using DefaultsBase = ioj::PackedValueBase<Defaults, std::uint16_t, 933ULL>;
+inline constexpr std::uint16_t defaults_default_raw_value{933};
+
+using DefaultsBase = ioj::PackedValueBase<Defaults, std::uint16_t, defaults_default_raw_value>;
 } // namespace detail
 
 struct Defaults : detail::DefaultsBase {
@@ -25,7 +27,8 @@ struct Defaults : detail::DefaultsBase {
     using Base = detail::DefaultsBase;
     using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 16> storage{933};
+    static constexpr ioj::PackedStorage<storage_type, 16> storage{
+        detail::defaults_default_raw_value};
 
     // low
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 0, 3> low_layout{};
@@ -75,7 +78,10 @@ static_assert(ioj::valid_packed_value_layout<Defaults>());
 struct DefaultsMsb;
 
 namespace detail {
-using DefaultsMsbBase = ioj::PackedValueBase<DefaultsMsb, std::uint16_t, 42816ULL>;
+inline constexpr std::uint16_t defaults_msb_default_raw_value{42816};
+
+using DefaultsMsbBase =
+    ioj::PackedValueBase<DefaultsMsb, std::uint16_t, defaults_msb_default_raw_value>;
 } // namespace detail
 
 struct DefaultsMsb : detail::DefaultsMsbBase {
@@ -84,7 +90,8 @@ struct DefaultsMsb : detail::DefaultsMsbBase {
     using Base = detail::DefaultsMsbBase;
     using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 16> storage{42816};
+    static constexpr ioj::PackedStorage<storage_type, 16> storage{
+        detail::defaults_msb_default_raw_value};
 
     // low
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 13, 3> low_layout{};
@@ -721,7 +728,10 @@ static_assert(ioj::valid_packed_value_layout<PackedOpaqueState>());
 struct CheckedValue;
 
 namespace detail {
-using CheckedValueBase = ioj::PackedValueBase<CheckedValue, std::uint32_t, 2147483647ULL>;
+inline constexpr std::uint32_t checked_value_default_raw_value{2147483647};
+
+using CheckedValueBase =
+    ioj::PackedValueBase<CheckedValue, std::uint32_t, checked_value_default_raw_value>;
 } // namespace detail
 
 struct CheckedValue : detail::CheckedValueBase {
@@ -730,8 +740,9 @@ struct CheckedValue : detail::CheckedValueBase {
     using Base = detail::CheckedValueBase;
     using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 32> storage{2147483647};
-    static constexpr storage_type invalid_value{2147483647};
+    static constexpr ioj::PackedStorage<storage_type, 32> storage{
+        detail::checked_value_default_raw_value};
+    static constexpr storage_type invalid_value{storage.default_raw_value};
 
     // serial
     static constexpr ioj::PackedField<storage_type, std::uint32_t, 0, 24> serial_layout{};

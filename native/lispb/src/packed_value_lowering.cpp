@@ -6,6 +6,7 @@
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
 #include <codegen/schema/child_occurrences.h>
+#include <codegen/schema/declaration_schema.h>
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/enumerator_schemas.h>
 #include <codegen/schema/packed_named_code_schemas.h>
@@ -140,20 +141,31 @@ class PackedEmitter {
     }
 
     auto emit() -> Nodes {
+        auto const owner_namespace{context_.text(graph_.namespace_name(type_))};
+        auto const detail_namespace{(owner_namespace.empty() ? "" : owner_namespace + "::") +
+                                    "detail::"};
+        Nodes detail_members;
+        auto default_value{number(0)};
         auto const base{
             ir_.types.named("ioj::PackedValueBase",
                             {ir_.types.dependency("ioj::PackedValueBase", "ioj/packed_value.h")})};
         std::vector<CppTypeId> base_arguments{type(name_),
                                               type(integer_type(layout_.storage_bits))};
         if (layout_.default_raw_value.value_or(0) != 0) {
-            base_arguments.push_back(
-                ir_.types.intern(literal(PackedIntegerValue{*layout_.default_raw_value})));
+            auto const default_name{soa_namespace_name(name_) + "_default_raw_value"};
+            auto const default_symbol{type(detail_namespace + default_name)};
+            detail_members.push_back(
+                ir_.variable(ir_.types.decorate(
+                                 type(integer_type(layout_.storage_bits)), "inline constexpr ", ""),
+                             text(default_name),
+                             number(*layout_.default_raw_value)));
+            base_arguments.push_back(default_symbol);
+            default_value = ir_.type_reference(default_symbol);
         }
         auto const base_type{ir_.types.template_type(base, base_arguments)};
         auto const base_name{name_ + "Base"};
-        auto const owner_namespace{context_.text(graph_.namespace_name(type_))};
-        auto const base_alias{
-            type((owner_namespace.empty() ? "" : owner_namespace + "::") + "detail::" + base_name)};
+        auto const base_alias{type(detail_namespace + base_name)};
+        detail_members.push_back(ir_.using_declaration(text(base_name), base_type));
         metadata_.push_back(ir_.line_comment("Storage"));
         metadata_.push_back(ir_.using_declaration(text("Base"), base_alias));
         metadata_.push_back(ir_.using_declaration(
@@ -168,7 +180,7 @@ class PackedEmitter {
                                 {ir_.types.dependency("ioj::PackedStorage", "ioj/packed_value.h")}),
                 {type("storage_type"), ir_.types.intern(std::to_string(*layout_.encoded_bits))}),
             text("storage"),
-            number(layout_.default_raw_value.value_or(0))));
+            default_value));
         packed_members();
         Nodes members{ir_.access()};
         members.push_back(ir_.lines(1));
@@ -212,12 +224,11 @@ class PackedEmitter {
         }
         ir_.set_record_export_specifier(record, export_specifier);
         ir_.set_record_dependencies(record, dependencies_);
-        return {
-            ir_.forward_declaration(text(name_), RecordKind::struct_, {}, export_specifier),
-            ir_.namespace_node(text("detail"), {ir_.using_declaration(text(base_name), base_type)}),
-            record,
-            ir_.static_assertion(template_call(
-                "ioj::valid_packed_value_layout", "ioj/packed_value.h", {type(name_)}, {}))};
+        return {ir_.forward_declaration(text(name_), RecordKind::struct_, {}, export_specifier),
+                ir_.namespace_node(text("detail"), detail_members),
+                record,
+                ir_.static_assertion(template_call(
+                    "ioj::valid_packed_value_layout", "ioj/packed_value.h", {type(name_)}, {}))};
     }
   private:
     using Predicate = std::optional<Expr>;
@@ -865,7 +876,12 @@ class PackedEmitter {
     }
     void packed_members() {
         if (auto const invalid{record_invalid(type_)}) {
-            constant(metadata_, "invalid_value", "storage_type", number(*invalid));
+            constant(metadata_,
+                     "invalid_value",
+                     "storage_type",
+                     layout_.default_raw_value == invalid
+                         ? ir_.member_access(ir_.named("storage"), "default_raw_value")
+                         : number(*invalid));
         }
         auto const count{layout_.placements.size()};
         for (std::size_t index{}; index < count; ++index) {

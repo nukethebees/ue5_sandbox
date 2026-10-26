@@ -227,16 +227,46 @@ TEST(PackedRecord, FixedEncodingsComposeWithoutStandaloneProjection) {
 
 TEST(PackedRecord, DefaultsIncludeSignedValuesAndReservedBits) {
     CompilerTestContext context;
-    auto const graph{schema::resolve_type_graph(parse_test_manifest(context, R"(
+    auto const manifest{parse_test_manifest(context, R"(
       (module values :header "Values.h"
         (integer-scalar Low :bit-width 3)
         (integer-scalar Delta :bit-width 5 :signed true)
         (record Defaults :layout packed :bits 16
           (member low @Low :default 5) (reserved gap :bits 2)
-          (member delta @Delta :default -3) (projections (cpp))))
-    )"))};
+          (member delta @Delta :default -3) (projections (cpp)))
+        (record SameInvalid :layout packed :invalid-value 253
+          (member data std::uint8_t) (projections (cpp)))
+        (record DistinctInvalid :layout packed :invalid-value 254
+          (member data std::uint8_t :default 7) (projections (cpp))))
+    )")};
+    auto const graph{schema::resolve_type_graph(manifest)};
     auto const& layout{graph.bit_layout(*find_test_type(graph, "values", "Defaults"))};
     EXPECT_EQ(layout.default_raw_value, std::uint64_t{5U | (29U << 5)});
+    EXPECT_EQ(graph.bit_layout(*find_test_type(graph, "values", "SameInvalid")).default_raw_value,
+              253U);
+    EXPECT_EQ(
+        graph.bit_layout(*find_test_type(graph, "values", "DistinctInvalid")).default_raw_value,
+        7U);
+    auto const files{render_test_manifest(context, manifest)};
+    ASSERT_EQ(files.size(), 1U);
+    auto const& output{files.front().content};
+    EXPECT_EQ(occurrences(output, "933"), 1U);
+    EXPECT_EQ(occurrences(output, "253"), 1U);
+    for (auto const name : {"defaults", "same_invalid", "distinct_invalid"}) {
+        EXPECT_EQ(occurrences(output, std::string{name} + "_default_raw_value"), 3U);
+        EXPECT_TRUE(
+            output.contains("storage{detail::" + std::string{name} + "_default_raw_value}"));
+    }
+    auto const same_begin{output.find("struct SameInvalid :")};
+    ASSERT_NE(same_begin, std::string::npos);
+    auto const same{output.substr(same_begin, output.find("\n};", same_begin) - same_begin)};
+    EXPECT_TRUE(same.contains("invalid_value{storage.default_raw_value}"));
+    auto const distinct_begin{output.find("struct DistinctInvalid :")};
+    ASSERT_NE(distinct_begin, std::string::npos);
+    auto const distinct{
+        output.substr(distinct_begin, output.find("\n};", distinct_begin) - distinct_begin)};
+    EXPECT_TRUE(distinct.contains("invalid_value{254"));
+    EXPECT_FALSE(distinct.contains("invalid_value{storage.default_raw_value}"));
 }
 
 TEST(PackedRecord, SharesTypedValidationHelpersAcrossConstructionMutationAndValidation) {

@@ -13,7 +13,9 @@ namespace ioj::sim {
 struct ObjectiveId;
 
 namespace detail {
-using ObjectiveIdBase = PackedValueBase<ObjectiveId, std::uint32_t, 4294967295ULL>;
+inline constexpr std::uint32_t objective_id_default_raw_value{4294967295};
+
+using ObjectiveIdBase = PackedValueBase<ObjectiveId, std::uint32_t, objective_id_default_raw_value>;
 } // namespace detail
 
 struct ObjectiveId : detail::ObjectiveIdBase {
@@ -22,8 +24,9 @@ struct ObjectiveId : detail::ObjectiveIdBase {
     using Base = detail::ObjectiveIdBase;
     using storage_type = Base::storage_type;
     using packed_integer_tag = packed::integer_tag;
-    static constexpr PackedStorage<storage_type, 32> storage{4294967295};
-    static constexpr storage_type invalid_value{4294967295};
+    static constexpr PackedStorage<storage_type, 32> storage{
+        detail::objective_id_default_raw_value};
+    static constexpr storage_type invalid_value{storage.default_raw_value};
 
     // index
     static constexpr PackedField<storage_type, std::uint32_t, 0, 32> index_layout{};

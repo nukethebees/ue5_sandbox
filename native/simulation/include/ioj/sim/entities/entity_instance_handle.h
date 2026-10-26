@@ -104,8 +104,10 @@ static_assert(valid_packed_value_layout<QuantisedHealth>());
 struct EntityInstanceHandle;
 
 namespace detail {
+inline constexpr std::uint32_t entity_instance_handle_default_raw_value{4294967295};
+
 using EntityInstanceHandleBase =
-    PackedValueBase<EntityInstanceHandle, std::uint32_t, 4294967295ULL>;
+    PackedValueBase<EntityInstanceHandle, std::uint32_t, entity_instance_handle_default_raw_value>;
 } // namespace detail
 
 struct EntityInstanceHandle : detail::EntityInstanceHandleBase {
@@ -114,8 +116,9 @@ struct EntityInstanceHandle : detail::EntityInstanceHandleBase {
     using Base = detail::EntityInstanceHandleBase;
     using storage_type = Base::storage_type;
     using packed_integer_tag = packed::integer_tag;
-    static constexpr PackedStorage<storage_type, 32> storage{4294967295};
-    static constexpr storage_type invalid_value{4294967295};
+    static constexpr PackedStorage<storage_type, 32> storage{
+        detail::entity_instance_handle_default_raw_value};
+    static constexpr storage_type invalid_value{storage.default_raw_value};
 
     // index
     static constexpr PackedField<storage_type, std::uint32_t, 0, 18> index_layout{};

@@ -13,7 +13,9 @@ namespace ioj::sim {
 struct ExprRef;
 
 namespace detail {
-using ExprRefBase = PackedValueBase<ExprRef, std::uint32_t, 4294967295ULL>;
+inline constexpr std::uint32_t expr_ref_default_raw_value{4294967295};
+
+using ExprRefBase = PackedValueBase<ExprRef, std::uint32_t, expr_ref_default_raw_value>;
 } // namespace detail
 
 struct ExprRef : detail::ExprRefBase {
@@ -22,8 +24,8 @@ struct ExprRef : detail::ExprRefBase {
     using Base = detail::ExprRefBase;
     using storage_type = Base::storage_type;
     using packed_integer_tag = packed::integer_tag;
-    static constexpr PackedStorage<storage_type, 32> storage{4294967295};
-    static constexpr storage_type invalid_value{4294967295};
+    static constexpr PackedStorage<storage_type, 32> storage{detail::expr_ref_default_raw_value};
+    static constexpr storage_type invalid_value{storage.default_raw_value};
 
     // index
     static constexpr PackedField<storage_type, std::uint32_t, 0, 31> index_layout{};
