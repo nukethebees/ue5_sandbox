@@ -25,12 +25,13 @@ TEST(SimulationSettingsReader, AppliesSparseNestedLayersIncludingExplicitDefault
     ASSERT_TRUE(source);
     settings::Settings expected;
     expected.fighters.laser.damage = 31;
-    expected.fighters.laser.max_distance = 50000;
+    expected.fighters.laser.max_distance = ::ioj::PositiveFinite<float>::make(50000);
     expected.turrets.laser.damage = 23;
     EXPECT_PRED_FORMAT2(structurally_equal, expected, *source);
     auto const resolved{s7::resolve_simulation_settings(*source)};
     ASSERT_TRUE(resolved) << resolved.error().front().message;
-    FighterSimConfig const expected_fighters{.laser = {.damage = 31, .max_distance = 50000}};
+    FighterSimConfig const expected_fighters{
+        .laser = {.damage = 31, .max_distance = PositiveFinite<float>{50000.f}}};
     EXPECT_PRED_FORMAT2(structurally_equal, expected_fighters, resolved->fighters);
     EXPECT_PRED_FORMAT2(
         structurally_equal, TurretSimConfig{.laser = {.damage = 23}}, resolved->turrets);
@@ -187,7 +188,7 @@ TEST(SimulationSettingsReader, RetainsUnknownFieldConversionAndFinalValidationEr
           Case{"(settings :fighters (fighters :speed 'fast))", InvalidType, "fighters.speed"},
           Case{"(settings :fighters (fighters :speed 1e100))", InvalidNumber, "fighters.speed"},
           Case{"(settings :fighters (fighters :health 1.5))", InvalidNumber, "fighters.health"},
-          Case{"(settings :fighters (fighters :health -1))", InvalidNumber, "fighters.health"},
+          Case{"(settings :fighters (fighters :health -1))", InvalidType, "fighters.health"},
           Case{"(settings :tick (tick :time-scale 0))", InvalidNumber, "tick.time-scale"},
           Case{"(settings :tick (tick :tick-rate 0))", InvalidNumber, "tick.tick-rate"},
           Case{"(settings :tick (tick :tick-rate -1))", InvalidNumber, "tick.tick-rate"}}) {

@@ -84,14 +84,12 @@ TEST(SimulationClock, InitialisesRuntimeStateFromStaticSettings) {
 }
 
 TEST(SimulationSettings, RequiresFinitePositiveFrequencies) {
-    auto check_frequency = [](auto assign) {
+    auto check_frequency = [](auto const value) {
         for (auto const invalid : {0.f,
                                    -1.f,
                                    std::numeric_limits<float>::infinity(),
                                    std::numeric_limits<float>::quiet_NaN()}) {
-            SimulationSettings settings;
-            assign(settings, invalid);
-            EXPECT_FALSE(validate_settings(settings));
+            EXPECT_FALSE(decltype(value)::try_make(invalid));
         }
     };
     SimulationSettings fast;
@@ -101,12 +99,12 @@ TEST(SimulationSettings, RequiresFinitePositiveFrequencies) {
                               &FighterSimConfig::avoidance_update_frequency,
                               &FighterSimConfig::avoidance_active_update_frequency,
                               &FighterSimConfig::avoidance_immediate_update_frequency}) {
-        check_frequency([=](auto& settings, float value) { settings.fighters.*member = value; });
-        fast.fighters.*member = std::numeric_limits<float>::max();
+        check_frequency(fast.fighters.*member);
+        fast.fighters.*member = PositiveFinite<float>{std::numeric_limits<float>::max()};
     }
-    check_frequency(
-        [](auto& settings, float value) { settings.turrets.target_refresh_frequency = value; });
-    fast.turrets.target_refresh_frequency = std::numeric_limits<float>::max();
+    check_frequency(fast.turrets.target_refresh_frequency);
+    fast.turrets.target_refresh_frequency =
+        ::ioj::PositiveFinite<float>::make(std::numeric_limits<float>::max());
     EXPECT_TRUE(validate_settings(fast));
 }
 
@@ -114,7 +112,8 @@ TEST(SimulationSettings, ChecksCountdownFrequencyBoundsBeforeNarrowing) {
     auto check_boundary = [](auto assign, double const maximum, std::string_view const path) {
         SimulationSettings settings;
         settings.clock.tick_rate = Frequency::make(maximum);
-        settings.fighters.awareness_scan_frequency = static_cast<float>(maximum);
+        settings.fighters.awareness_scan_frequency =
+            ::ioj::PositiveFinite<float>::make(static_cast<float>(maximum));
         assign(settings, 1.f);
         EXPECT_TRUE(validate_settings(settings));
 
@@ -124,19 +123,30 @@ TEST(SimulationSettings, ChecksCountdownFrequencyBoundsBeforeNarrowing) {
         EXPECT_TRUE(std::ranges::any_of(
             result.error(), [&](auto const& error) { return error.node_path == path; }));
     };
-    check_boundary([](auto& s, float value) { s.fighters.awareness_scan_frequency = value; },
-                   std::numeric_limits<std::int8_t>::max(),
-                   "fighters.awareness-scan-frequency");
-    check_boundary([](auto& s, float value) { s.fighters.attack_reposition_frequency = value; },
-                   std::numeric_limits<std::int16_t>::max(),
-                   "fighters.attack-reposition-frequency");
     check_boundary(
-        [](auto& s, float value) { s.fighters.avoidance_clear_update_frequency = value; },
+        [](auto& s, float value) {
+            s.fighters.awareness_scan_frequency = ::ioj::PositiveFinite<float>::make(value);
+        },
+        std::numeric_limits<std::int8_t>::max(),
+        "fighters.awareness-scan-frequency");
+    check_boundary(
+        [](auto& s, float value) {
+            s.fighters.attack_reposition_frequency = ::ioj::PositiveFinite<float>::make(value);
+        },
+        std::numeric_limits<std::int16_t>::max(),
+        "fighters.attack-reposition-frequency");
+    check_boundary(
+        [](auto& s, float value) {
+            s.fighters.avoidance_clear_update_frequency = ::ioj::PositiveFinite<float>::make(value);
+        },
         std::numeric_limits<std::int16_t>::max(),
         "fighters.avoidance-clear-update-frequency");
-    check_boundary([](auto& s, float value) { s.turrets.target_refresh_frequency = value; },
-                   std::numeric_limits<std::int16_t>::max(),
-                   "turrets.target-refresh-frequency");
+    check_boundary(
+        [](auto& s, float value) {
+            s.turrets.target_refresh_frequency = ::ioj::PositiveFinite<float>::make(value);
+        },
+        std::numeric_limits<std::int16_t>::max(),
+        "turrets.target-refresh-frequency");
 }
 
 TEST(SimulationSettings, ChecksCountdownDurationBoundsBeforeNarrowing) {
@@ -147,15 +157,22 @@ TEST(SimulationSettings, ChecksCountdownDurationBoundsBeforeNarrowing) {
         EXPECT_TRUE(validate_settings(settings));
         assign(settings, 32767.5f);
         EXPECT_FALSE(validate_settings(settings));
-        assign(settings, -1.f);
-        EXPECT_FALSE(validate_settings(settings));
+        EXPECT_FALSE(NonNegativeFinite<float>::try_make(-1.f));
         assign(settings, 0.f);
         EXPECT_TRUE(validate_settings(settings));
     };
-    check_boundary([](auto& s, float value) { s.fighters.laser.fire_cooldown = value; });
-    check_boundary([](auto& s, float value) { s.fighters.attack_retry_cooldown = value; });
-    check_boundary([](auto& s, float value) { s.turrets.laser.fire_cooldown = value; });
-    check_boundary([](auto& s, float value) { s.spinners.laser.fire_cooldown = value; });
+    check_boundary([](auto& s, float value) {
+        s.fighters.laser.fire_cooldown = ::ioj::NonNegativeFinite<float>::make(value);
+    });
+    check_boundary([](auto& s, float value) {
+        s.fighters.attack_retry_cooldown = ::ioj::NonNegativeFinite<float>::make(value);
+    });
+    check_boundary([](auto& s, float value) {
+        s.turrets.laser.fire_cooldown = ::ioj::NonNegativeFinite<float>::make(value);
+    });
+    check_boundary([](auto& s, float value) {
+        s.spinners.laser.fire_cooldown = ::ioj::NonNegativeFinite<float>::make(value);
+    });
 }
 
 } // namespace tests

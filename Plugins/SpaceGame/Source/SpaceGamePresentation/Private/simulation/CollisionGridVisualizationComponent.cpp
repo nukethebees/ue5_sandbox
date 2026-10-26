@@ -1,7 +1,7 @@
 #include "SpaceGamePresentation/simulation/CollisionGridVisualizationComponent.h"
 
 #include <ioj/sim/collision/collision_grid.h>
-#include <ioj/sim/collision/entity_cell_data_operations.h>
+#include <ioj/sim/collision/entity_cell_data.h>
 #include <ioj/sim/collision/world_aabbs.h>
 
 #include <SandboxCoreEngine/VectorConversion.h>
@@ -321,25 +321,22 @@ void UCollisionGridVisualizationComponent::update_collision_bounds(
     }
 
     auto const entity_count{static_cast<int32>(entity_aabbs.num())};
+    auto const entity_min_points{entity_aabbs.view_min_points().resolve()};
+    auto const entity_max_points{entity_aabbs.view_max_points().resolve()};
     entity_bounds_.Reset();
     entity_bounds_.Reserve(entity_count);
     for (int32 i{}; i < entity_count; ++i) {
-        entity_bounds_.Emplace(
-            ioj::to_unreal(::ioj::sim::collision::min_point_at(entity_aabbs, i)),
-            ioj::to_unreal(::ioj::sim::collision::max_point_at(entity_aabbs, i)));
+        entity_bounds_.Emplace(ioj::to_unreal(entity_min_points[i]),
+                               ioj::to_unreal(entity_max_points[i]));
     }
 
     auto const static_count{static_cast<int32>(static_aabbs.num())};
-    auto const static_min_xs{static_aabbs.min_xs()};
-    auto const static_min_ys{static_aabbs.min_ys()};
-    auto const static_min_zs{static_aabbs.min_zs()};
-    auto const static_max_xs{static_aabbs.max_xs()};
-    auto const static_max_ys{static_aabbs.max_ys()};
-    auto const static_max_zs{static_aabbs.max_zs()};
+    auto const static_min_points{static_aabbs.view_min_points().resolve()};
+    auto const static_max_points{static_aabbs.view_max_points().resolve()};
     static_bounds_.SetNumUninitialized(static_count, EAllowShrinking::No);
     for (int32 i{}; i < static_count; ++i) {
-        static_bounds_[i] = FBox3f{FVector3f{static_min_xs[i], static_min_ys[i], static_min_zs[i]},
-                                   FVector3f{static_max_xs[i], static_max_ys[i], static_max_zs[i]}};
+        static_bounds_[i] =
+            FBox3f{ioj::to_unreal(static_min_points[i]), ioj::to_unreal(static_max_points[i])};
     }
 
     if (settings_changed) {

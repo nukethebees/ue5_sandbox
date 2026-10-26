@@ -17,7 +17,7 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/deterministic_bias.h
   ../include/ioj/sim/direct_damage_events.h
   ../include/ioj/sim/collision/entity_aabbs.h
-  ../include/ioj/sim/collision/entity_cell_data_operations.h
+  ../include/ioj/sim/collision/cell_coords.h
   ../include/ioj/sim/collision/entity_cell_data.h
   ../include/ioj/sim/entities/entity_death_info.h
   ../include/ioj/sim/entities/entity_history.h
@@ -78,7 +78,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/testing/spatial_query_manager_test_access.h
   ../include/ioj/sim/collision/trace_hits.h
   ../include/ioj/sim/turrets/turret_entity_data.h
-  ../include/ioj/sim/collision/world_aabb_operations.h
   ../include/ioj/sim/collision/world_aabbs.h
   batch_operations.cpp
   collision/collision_events.cpp

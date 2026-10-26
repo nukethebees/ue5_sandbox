@@ -61,7 +61,9 @@ class SPACEGAME_API ATestSpaceShip
     auto get_test_name() const noexcept -> FName { return TEXT("PlayerShip"); }
     auto get_team() const noexcept -> ETestTeam;
     void set_team(ETestTeam new_team) noexcept;
-    void set_initial_health(int32 value) noexcept { initial_.health.set_value(value); }
+    void set_initial_health(int32 value) noexcept {
+        initial_.health = ::ioj::settings::PositiveHealth::make(::ioj::sim::Health{value});
+    }
 
     void set_actor_config(FPlayerShipConfig const* new_config) noexcept;
     auto get_kills() const -> int32;

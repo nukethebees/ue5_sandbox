@@ -30,7 +30,7 @@ void FTestCapitalShipProxyScenario::spawn_proxies(UWorld& world,
                                                   USpaceGameLevelConfig const& config) {
     auto const* const capital_config{&config.capital_ships};
 
-    default_health = capital_config->simulation.max_health.value();
+    default_health = capital_config->simulation.max_health.get().value();
     overridden_health = default_health + 1234;
 
     spawn_capital_proxy(world, config, checks, default_health_capital_name, FVector::ZeroVector);

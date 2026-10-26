@@ -278,7 +278,7 @@ TEST(NativeSettings, AccumulatesStructuralAndNestedErrorsWithoutChangingTheBase)
 TEST(NativeLevelAuthoringReader, ResolvesSourceAgainstBaseAndAcceptsPreparedDefinitions) {
     settings::Settings base;
     base.fighters.speed = 7000.f;
-    base.fighters.health = sim::Health{17};
+    base.fighters.health = settings::PositiveHealth{sim::Health{17}};
     auto const original{base};
     DefinitionReader reader;
     LevelSource source{std::string{R"((level :id 'resolved :title "Resolved"

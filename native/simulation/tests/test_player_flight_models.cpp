@@ -31,7 +31,7 @@ auto slot_for(player::FlightModelPreset const preset) -> player::FlightModelSlot
 auto make_data(player::FlightModelPreset const preset) -> LevelSimInitData {
     LevelSimInitData data;
     data.collision.grid_geometry = {{16, 16, 4}, {{100000.f, 100000.f, 100000.f}}};
-    data.lasers.n_preallocated_instances = 16;
+    data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(16);
     data.frame_memory_capacity_bytes = 1024 * 1024;
     data.capital_ships.fighter_spawn_slots = 0;
     data.clock_settings.tick_rate = ioj::Frequency::make(60.0);

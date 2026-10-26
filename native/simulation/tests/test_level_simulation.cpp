@@ -2,7 +2,7 @@
 #include "support/simulation_checks.h"
 #include <ioj/column_math.h>
 #include <ioj/levels/authoring/definition_reader.h>
-#include <ioj/sim/collision/world_aabb_operations.h>
+#include <ioj/sim/collision/world_aabbs.h>
 #include <ioj/sim/levels/initial_spawns.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/missions/compiled_mission.h>
@@ -49,7 +49,7 @@ namespace {
 auto make_battle() -> LevelSimInitData {
     LevelSimInitData data;
     data.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
-    data.lasers.n_preallocated_instances = 16;
+    data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(16);
     data.capital_ships.fighter_spawn_slots = 0;
     data.level_events.initialisation.entity_count = 2;
     std::array capitals{InitialCapital{.entity = 0,
@@ -75,7 +75,7 @@ auto make_battle() -> LevelSimInitData {
 
 auto make_scheduled_battle() -> LevelSimInitData {
     auto data{make_battle()};
-    data.capital_ships.max_health = Health{100};
+    data.capital_ships.max_health = ::ioj::settings::PositiveHealth::make(Health{100});
     data.clock_settings.tick_rate = Frequency::make(10.0);
     auto definition{levels::authoring::DefinitionReader{}.read_level_source(R"(
         (level :id 'scheduled-battle :title "Scheduled Battle"
@@ -186,7 +186,7 @@ TEST(NativeSimulation, ScheduledSpawnsAndObjectivesUseSimulationTicks) {
 TEST(NativeSimulation, ScheduledSpawnQueryableInThinkingSameTick) {
     auto data{make_scheduled_battle()};
     data.frame_memory_capacity_bytes = 16 * 1024 * 1024;
-    data.turrets.target_refresh_frequency = 10.f;
+    data.turrets.target_refresh_frequency = ::ioj::PositiveFinite<float>::make(10.f);
     // Keep the muzzle outside the turret's collision bounds so it cannot block its own query.
     data.turrets.fire_point_offset = Vector3f{20.f, 0.f, 0.f};
     auto& initial_storage{data.level_events.schedule.turret_spawns};
@@ -301,7 +301,7 @@ TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimu
     ASSERT_TRUE(authored);
     auto data{make_battle()};
     data.clock_settings.tick_rate = Frequency::make(10.0);
-    data.capital_ships.max_health = Health{100};
+    data.capital_ships.max_health = ::ioj::settings::PositiveHealth::make(Health{100});
     SimClock clock;
     clock.initialise(data.clock_settings);
     auto compiled{levels::compile_level(*authored, clock, data.capital_ships, data.turrets)};
@@ -513,8 +513,8 @@ TEST(NativeSimulation, LevelSimCollisionBoundsTest) {
     simulation.advance(simulation.get_clock().get_tick_period());
     auto const current_static_bounds{queries.get_static_collision_bounds()};
     ASSERT_EQ(current_static_bounds.num(), 1);
-    EXPECT_EQ(current_static_bounds.min_ys()[0], 490.f);
-    EXPECT_EQ(current_static_bounds.max_ys()[0], 510.f);
+    EXPECT_EQ(current_static_bounds.view_min_points()[0].y(), 490.f);
+    EXPECT_EQ(current_static_bounds.view_max_points()[0].y(), 510.f);
 }
 
 TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
@@ -586,7 +586,7 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     data.capital_ships.fighter_spawn_slots_relative_transforms.resize(2);
     data.capital_ships.fighter_spawn_slots_relative_transforms[0].location.y() = -100.0;
     data.capital_ships.fighter_spawn_slots_relative_transforms[1].location.y() = 100.0;
-    data.fighters.health = Health{100};
+    data.fighters.health = ::ioj::settings::PositiveHealth::make(Health{100});
     data.fighters.speed = 0.f;
     auto const capital_events{data.level_events.schedule.capital_spawns.get_view()};
     capital_events.target_entity_indices()[0] = capital_events.entity_indices()[1];

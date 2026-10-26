@@ -2,7 +2,6 @@
 
 #include <ioj/frame_array.h>
 #include <ioj/frame_memory_resource.h>
-#include <ioj/sim/collision/entity_cell_data_operations.h>
 #include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/soa_permutation.h>
@@ -92,6 +91,8 @@ void CollisionSystem::collect_overlaps_for_candidates(
     auto const runs{entity_tables_.lookups.lookup_handles(overlap_candidates, order, handles)};
     auto const built{uniform_grid_.get_entity_world_bounds()};
     auto const built_ids{built.entity_ids()};
+    auto const min_points{built.view_min_points().resolve()};
+    auto const max_points{built.view_max_points().resolve()};
     for (std::uint32_t run{}; run < runs.num; ++run) {
         // Bind the row mapping once for each populated entity-type run.
         // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
@@ -108,7 +109,7 @@ void CollisionSystem::collect_overlaps_for_candidates(
                 built_ids[row] != overlap_candidates[candidate]) {
                 continue;
             }
-            bounds[candidate] = {min_point_at(built, row), max_point_at(built, row)};
+            bounds[candidate] = {min_points[row], max_points[row]};
             present[candidate] = 1;
         }
     }

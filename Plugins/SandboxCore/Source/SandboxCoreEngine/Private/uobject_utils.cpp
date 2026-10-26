@@ -4,7 +4,7 @@
 #include <SandboxCore/log_categories.h>
 
 #include "Containers/UnrealString.h"
-#include "UObject/UObjectGlobals.h"
+#include "UObject/Object.h"
 
 namespace ioj {
 auto report_invalid_uobject_ptrs(std::initializer_list<NamedUObjectPtr> ptrs) -> FErrorMsg {

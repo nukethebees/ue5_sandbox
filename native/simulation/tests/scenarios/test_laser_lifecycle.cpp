@@ -1,6 +1,6 @@
 #include "../support/simulation_test_support.h"
 #include <ioj/column_math.h>
-#include <ioj/sim/collision/world_aabb_operations.h>
+#include <ioj/sim/collision/world_aabbs.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/laser_spawns.h>
@@ -49,8 +49,7 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
                                  : normal_target_health);
     if (scenario == LaserLifecycleScenario::WorldBlocker) {
         data.collision.static_bounds.add_defaulted(1);
-        collision::set(
-            data.collision.static_bounds, 0, {{-1100.f, -100.f, -100.f}}, {{-900.f, 100.f, 100.f}});
+        data.collision.static_bounds.set(0, {{-1100.f, -100.f, -100.f}}, {{-900.f, 100.f, 100.f}});
     }
 
     tests::WorldlessSimulationTest harness{std::move(data)};

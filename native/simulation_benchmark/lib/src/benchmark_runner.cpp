@@ -170,11 +170,13 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     reference.player.config = settings.player;
     data.clock_settings.time_scale = PositiveFinite<double>::make(1.0);
     if (options.fighter_stress_cap.has_value()) {
-        data.fighters.max_live_fighters = *options.fighter_stress_cap;
+        data.fighters.max_live_fighters =
+            NonNegative<std::int32_t>::make(*options.fighter_stress_cap);
         data.fighters.laser.damage = 0;
-        data.fighters.health = sim::Health{std::numeric_limits<sim::Health::value_type>::max() / 2};
-        data.capital_ships.max_health =
-            sim::Health{std::numeric_limits<sim::Health::value_type>::max() / 2};
+        auto const health{settings::PositiveHealth{
+            sim::Health{std::numeric_limits<sim::Health::value_type>::max() / 2}}};
+        data.fighters.health = health;
+        data.capital_ships.max_health = health;
     }
 
     if (level_components.player_entity_id().empty()) {

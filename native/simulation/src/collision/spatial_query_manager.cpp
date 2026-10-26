@@ -6,6 +6,7 @@
 #include <ioj/sim/collision/line_trace_batch.h>
 #include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/levels/level_read_access.h>
+#include <ioj/sim/phase_checks.h>
 #include <ioj/sim/profiling.h>
 
 #include <algorithm>
@@ -407,7 +408,7 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
 
 auto SpatialQueryManager::get_any_non_team_entity(Team const team,
                                                   EntityType const entity_type) const -> EntityId {
-    assert(entity_tables_.lookups.permits_lookup());
+    assert(is_lookup_allowed(entity_tables_.lookups.clock()));
     auto const handles{entity_tables_.lookups.for_type(entity_type).entries()};
     auto const count{static_cast<std::uint32_t>(handles.size())};
     for (std::uint32_t index{}; index < count; ++index) {

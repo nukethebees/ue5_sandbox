@@ -1,7 +1,7 @@
 #include <ioj/sim/testing/sim_clock_test_access.h>
 #pragma once
 #include <ioj/column_math.h>
-#include <ioj/sim/collision/entity_cell_data_operations.h>
+#include <ioj/sim/collision/entity_cell_data.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_tables.h>
@@ -26,7 +26,7 @@ struct CollisionGridTestAccess {
         auto& data{grid.entity_storage_.rebuild_entity_data};
         auto const output_row{data.num()};
         data.add_uninitialised(1);
-        collision::EntityCellDataWriter const output{data.get_view()};
+        auto const output{data.get_view().resolve()};
         grid.entity_storage_.entity_row_to_aabb_row[id.entity_type()][row] = output_row;
         grid.write_entity_bounds(output, output_row, id, bounds);
     }

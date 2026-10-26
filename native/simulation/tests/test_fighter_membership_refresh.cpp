@@ -9,9 +9,9 @@ namespace ioj::sim::tests::fighter_membership_refresh {
 auto make_world() -> LevelSimInitData {
     LevelSimInitData data;
     data.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
-    data.lasers.n_preallocated_instances = 8;
+    data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(8);
     data.capital_ships.fighter_spawn_slots = 0;
-    data.fighters.health = Health{100};
+    data.fighters.health = ::ioj::settings::PositiveHealth::make(Health{100});
     data.fighters.speed = 0.f;
     data.fighters.laser.damage = 0;
     data.collision.overlap_response.damage_per_overlap_detection = 1;

@@ -1,6 +1,6 @@
 #include <ioj/column_math.h>
 #include <ioj/levels/team.h>
-#include <ioj/sim/collision/world_aabb_operations.h>
+#include <ioj/sim/collision/world_aabbs.h>
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/levels/level_compilation.h>
@@ -48,7 +48,7 @@ namespace {
 auto make_battle() -> ::ioj::sim::LevelSimInitData {
     ::ioj::sim::LevelSimInitData data;
     data.collision.grid_geometry = {{16, 16, 4}, {1000.f, 1000.f, 1000.f}};
-    data.lasers.n_preallocated_instances = 16;
+    data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(16);
     data.capital_ships.fighter_spawn_slots = 0;
     auto& spawn_storage{data.level_events.schedule.capital_spawns};
     data.level_events.schedule.add_initial_spawn_group(::ioj::sim::EntityType::CapitalShip, 0, 2);
@@ -75,7 +75,7 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
 
 auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
     auto data{make_battle()};
-    data.capital_ships.max_health = ::ioj::sim::Health{100};
+    data.capital_ships.max_health = ::ioj::settings::PositiveHealth::make(::ioj::sim::Health{100});
     data.level_events = {};
     data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
 

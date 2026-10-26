@@ -12,6 +12,8 @@ namespace ioj {
 template <typename T, std::size_t N>
     requires (N > 0)
 struct Vector {
+    using value_type = T;
+
     constexpr Vector() = default;
     constexpr Vector(std::array<T, N> const values)
         : elements{values} {}
@@ -87,6 +89,15 @@ struct Vector {
         requires (N >= 4)
     {
         return elements[3];
+    }
+
+    template <typename Product = value_type>
+    [[nodiscard]] constexpr auto product() const noexcept -> Product {
+        auto result{static_cast<Product>(elements[0])};
+        for (std::size_t index{1}; index < N; ++index) {
+            result *= static_cast<Product>(elements[index]);
+        }
+        return result;
     }
 
     std::array<T, N> elements{};

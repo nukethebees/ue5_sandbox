@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/constrained_numbers.h"
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 
@@ -49,7 +50,7 @@ struct LaserSimConfig {
         std::unreachable();
     }
 
-    std::int32_t n_preallocated_instances{5000};
+    ioj::NonNegative<std::int32_t> n_preallocated_instances{5000};
 };
 } // namespace ioj::sim
 namespace ioj {

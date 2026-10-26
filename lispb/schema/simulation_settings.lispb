@@ -23,7 +23,7 @@
     (member turn_bank_angle_max float :initializer 30.f :finite true)
     (member turn_bank_speed float :initializer 2.f :finite true)
     (member laser ioj::sim::LaserWeaponSimConfig :initializer "")
-    (member health @native_health :initializer "Health{1000}")
+    (member health @settings_positive_health :initializer "Health{1000}")
     (member laser_mode ioj::sim::ShipLaserMode :initializer "ShipLaserMode::Single")
     (member laser_fire_rate ioj::sim::ShipFireRate :initializer "ShipFireRate::FullAuto")
     (projections (cpp))))
@@ -38,7 +38,7 @@
     (member spawn_delay float :initializer 5.f :finite true)
     (member fighter_spawn_slots std::int32_t :initializer "" :s7-exclude true)
     (member fighter_spawn_slots_relative_transforms @settings_spawn_transforms :initializer "" :s7-exclude true)
-    (member max_health @native_health :initializer "Health{5000}")
+    (member max_health @settings_positive_health :initializer "Health{5000}")
     (projections (cpp))))
 
 (module turret_sim_config
@@ -48,10 +48,10 @@
   (record TurretSimConfig :comparison equality :generate-visitor true
     :generate-s7-reader true :s7-tag "turrets"
     (member detection_radius float :initializer 3000.f :finite true)
-    (member target_refresh_frequency float :initializer 5.f :finite true)
+    (member target_refresh_frequency @settings_positive_float :initializer 5.f)
     (member fire_point_offset @native_vector_3f :initializer "" :s7-exclude true)
     (member laser ioj::sim::LaserWeaponSimConfig :initializer "")
-    (member max_health @native_health :initializer "Health{20}")
+    (member max_health @settings_positive_health :initializer "Health{20}")
     (projections (cpp))))
 
 (module spinner_sim_config
@@ -72,9 +72,9 @@
   :namespace ioj::sim
   (record HudSettings :comparison equality :generate-visitor true
     :generate-s7-reader true :s7-tag "hud"
-    (member player_status_update_period float :initializer 0.25f :finite true :nonnegative true)
-    (member entity_count_update_period float :initializer 0.25f :finite true :nonnegative true)
-    (member mission_status_update_period float :initializer 0.25f :finite true :nonnegative true)
+    (member player_status_update_period @settings_nonnegative_float :initializer 0.25f)
+    (member entity_count_update_period @settings_nonnegative_float :initializer 0.25f)
+    (member mission_status_update_period @settings_nonnegative_float :initializer 0.25f)
     (projections (cpp))))
 
 (module settings_values

@@ -82,6 +82,7 @@ native/levels/lib/include/ioj/sim/turrets/turret_sim_config_reader.h
 native/simulation/include/ioj/sim/capital_ships/capital_entity_data.h
 native/simulation/include/ioj/sim/capital_ships/phase_interface.h
 native/simulation/include/ioj/sim/collision/cell_coord_bounds.h
+native/simulation/include/ioj/sim/collision/cell_coords.h
 native/simulation/include/ioj/sim/collision/collision_scalar_types.h
 native/simulation/include/ioj/sim/collision/entity_cell_data.h
 native/simulation/include/ioj/sim/collision/entity_overlaps.h

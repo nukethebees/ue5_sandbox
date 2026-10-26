@@ -21,27 +21,28 @@ struct TypeReader<sim::FighterSimConfig> : RecordReader<sim::FighterSimConfig> {
             context, "fighters", field_names, ([&](Field selected, auto const& read) {
                 value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
                     if constexpr (field == Field::max_live_fighters ||
+                                  field == Field::fire_dot_product_threshold ||
+                                  field == Field::avoidance_clear_update_frequency ||
+                                  field == Field::avoidance_update_frequency ||
+                                  field == Field::avoidance_active_update_frequency ||
+                                  field == Field::avoidance_immediate_update_frequency ||
+                                  field == Field::avoidance_lookahead_time ||
+                                  field == Field::avoidance_clearance_buffer ||
+                                  field == Field::separation_radius ||
+                                  field == Field::separation_strength ||
+                                  field == Field::steering_memory_duration ||
                                   field == Field::dense_traffic_neighbour_threshold ||
                                   field == Field::laser || field == Field::health ||
-                                  field == Field::attack_distance_band) {
+                                  field == Field::attack_retry_cooldown ||
+                                  field == Field::attack_reposition_frequency ||
+                                  field == Field::attack_distance_band ||
+                                  field == Field::awareness_scan_frequency) {
                         read(member);
                     } else if constexpr (
-                        field == Field::fire_dot_product_threshold || field == Field::speed ||
-                        field == Field::turn_speed_unitless ||
-                        field == Field::avoidance_clear_update_frequency ||
-                        field == Field::avoidance_update_frequency ||
-                        field == Field::avoidance_active_update_frequency ||
-                        field == Field::avoidance_immediate_update_frequency ||
-                        field == Field::avoidance_lookahead_time ||
-                        field == Field::avoidance_clearance_buffer ||
-                        field == Field::separation_radius || field == Field::separation_strength ||
-                        field == Field::steering_memory_duration ||
-                        field == Field::attack_retry_cooldown ||
+                        field == Field::speed || field == Field::turn_speed_unitless ||
                         field == Field::attack_engagement_threshold ||
-                        field == Field::attack_reposition_frequency ||
                         field == Field::arrival_distance || field == Field::los_check_buffer ||
                         field == Field::awareness_radius ||
-                        field == Field::awareness_scan_frequency ||
                         field == Field::minimum_opportunistic_intercept_deviation_dot_product) {
                         read(member, constraints::finite);
                     } else if constexpr (field == Field::fire_point_distance) {

@@ -294,6 +294,7 @@
   (integer :signed false :bit-width 32))
 
 (type native_cell_coord :spelling "ioj::sim::collision::CellCoord" :header "ioj/sim/collision/cell_coord.h")
+(type native_cell_coords :spelling "ioj::sim::collision::CellCoords" :header "ioj/sim/collision/cell_coords.h")
 
 (type turrets_thinking_inputs
   :spelling "ThinkingInputs"
@@ -371,6 +372,11 @@
 (type settings_frequency :spelling "ioj::Frequency" :header "ioj/frequency.h")
 (type settings_positive_double :spelling "ioj::PositiveFinite<double>" :header "ioj/constrained_numbers.h")
 (type settings_positive_float :spelling "ioj::PositiveFinite<float>" :header "ioj/constrained_numbers.h")
+(type settings_nonnegative_float :spelling "ioj::NonNegativeFinite<float>" :header "ioj/constrained_numbers.h")
+(type settings_nonnegative_int :spelling "ioj::NonNegative<std::int32_t>" :header "ioj/constrained_numbers.h")
+(type settings_positive_health :spelling "ioj::settings::PositiveHealth" :header "ioj/settings/simulation_constraints.h")
+(type settings_dot_product :spelling "ioj::settings::DotProduct" :header "ioj/settings/simulation_constraints.h")
+(type settings_neighbour_threshold :spelling "ioj::settings::NeighbourThreshold" :header "ioj/settings/simulation_constraints.h")
 (type settings_spawn_transforms :spelling "std::vector<ioj::Transform3d>"
   :header "ioj/transform3d.h")
 (type settings_fire_points :spelling "std::vector<ioj::sim::FirePoint>"

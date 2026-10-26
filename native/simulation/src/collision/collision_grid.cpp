@@ -54,15 +54,11 @@ auto calculate_grid_dimensions(Vector3f const grid_size, Vector3f const cell_siz
             levels::grid_axis_count(grid_size.z(), cell_size.z())};
 }
 auto grid_half_size(GridGeometry const geometry) noexcept -> Vector3f {
-    return Vector3f{
-        static_cast<float>(geometry.dimensions.x()) * geometry.cell_dimensions.x() * 0.5f,
-        static_cast<float>(geometry.dimensions.y()) * geometry.cell_dimensions.y() * 0.5f,
-        static_cast<float>(geometry.dimensions.z()) * geometry.cell_dimensions.z() * 0.5f};
+    return Vector3f{geometry.dimensions} * geometry.cell_dimensions * 0.5f;
 }
 
 auto num_cells(GridGeometry const geometry) noexcept -> GridCellCount {
-    return GridCellCount{static_cast<GridCellCount::value_type>(
-        geometry.dimensions.x() * geometry.dimensions.y() * geometry.dimensions.z())};
+    return GridCellCount{geometry.dimensions.product<GridCellCount::value_type>()};
 }
 auto to_index(GridGeometry const geometry, CellCoord const coordinate) noexcept -> CellIndex {
     return CellIndex{static_cast<CellIndex::value_type>(
@@ -76,22 +72,22 @@ auto to_cell_coord(float const value, float const cell_dimension, int const grid
 }
 auto to_cell_coord(GridGeometry const geometry, Vector3f const position) noexcept -> CellCoord {
     auto const half_size{grid_half_size(geometry)};
-    return {
-        to_cell(position.x(), geometry.cell_dimensions.x(), half_size.x()),
-        to_cell(position.y(), geometry.cell_dimensions.y(), half_size.y()),
-        to_cell(position.z(), geometry.cell_dimensions.z(), half_size.z()),
-    };
+    CellCoord result;
+    for (std::size_t axis{}; axis < axis_count; ++axis) {
+        result[axis] = to_cell(position[axis], geometry.cell_dimensions[axis], half_size[axis]);
+    }
+    return result;
 }
 auto to_max_cell_coord(GridGeometry const geometry, Vector3f const position) noexcept -> CellCoord {
     auto const half_size{grid_half_size(geometry)};
-    return {
-        to_closed_max_cell(
-            position.x(), geometry.cell_dimensions.x(), geometry.dimensions.x(), half_size.x()),
-        to_closed_max_cell(
-            position.y(), geometry.cell_dimensions.y(), geometry.dimensions.y(), half_size.y()),
-        to_closed_max_cell(
-            position.z(), geometry.cell_dimensions.z(), geometry.dimensions.z(), half_size.z()),
-    };
+    CellCoord result;
+    for (std::size_t axis{}; axis < axis_count; ++axis) {
+        result[axis] = to_closed_max_cell(position[axis],
+                                          geometry.cell_dimensions[axis],
+                                          geometry.dimensions[axis],
+                                          half_size[axis]);
+    }
+    return result;
 }
 auto to_cell_coord_bounds(GridGeometry const geometry,
                           Vector3f const min_point,
@@ -105,18 +101,10 @@ auto to_cell_min(int const coordinate,
     return static_cast<float>(coordinate) * cell_dimension - half_extent;
 }
 auto to_cell_min(GridGeometry const geometry, CellCoord const coordinate) noexcept -> Vector3f {
-    auto const half_size{grid_half_size(geometry)};
-    return Vector3f{
-        static_cast<float>(coordinate.x()) * geometry.cell_dimensions.x() - half_size.x(),
-        static_cast<float>(coordinate.y()) * geometry.cell_dimensions.y() - half_size.y(),
-        static_cast<float>(coordinate.z()) * geometry.cell_dimensions.z() - half_size.z()};
+    return Vector3f{coordinate} * geometry.cell_dimensions - grid_half_size(geometry);
 }
 auto to_cell_centre(GridGeometry const geometry, CellCoord const coordinate) noexcept -> Vector3f {
-    auto result{to_cell_min(geometry, coordinate)};
-    result.x() += geometry.cell_dimensions.x() * 0.5f;
-    result.y() += geometry.cell_dimensions.y() * 0.5f;
-    result.z() += geometry.cell_dimensions.z() * 0.5f;
-    return result;
+    return to_cell_min(geometry, coordinate) + geometry.cell_dimensions * 0.5f;
 }
 
 /* **************************************** */

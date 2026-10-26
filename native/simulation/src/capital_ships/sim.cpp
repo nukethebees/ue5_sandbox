@@ -13,6 +13,7 @@
 #include <ioj/sim/entities/health.h>
 #include <ioj/sim/fighters/fighter_spawn_queue.h>
 #include <ioj/sim/fighters/sim.h>
+#include <ioj/sim/phase_checks.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/sim_clock.h>
 
@@ -119,7 +120,7 @@ void Sim::publish_deaths(ResolutionInputs const inputs) {
 }
 
 void Sim::remove_components() {
-    entity_tables_.lookups.assert_removal_allowed();
+    assert(is_removal_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::remove_components");
 
     sort_and_deduplicate_removal_indices(local_indices_to_remove);
@@ -131,7 +132,7 @@ void Sim::remove_components() {
                                                                local_indices_to_remove);
 }
 void Sim::remove_entities() {
-    entity_tables_.lookups.assert_removal_allowed();
+    assert(is_removal_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::remove_entities");
 
     handle_dead_entities();
@@ -228,7 +229,7 @@ auto Sim::register_ships(LevelCapitalSpawnEvents::ConstView const spawn_data)
     return new_ids;
 }
 void Sim::spawn_ships(LevelCapitalSpawnEvents::ConstView const spawn_data) {
-    entity_tables_.lookups.assert_preparation_mutation_allowed();
+    assert(is_preparation_mutation_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::spawn_ships");
     spawn_data.validate();
     auto const n_to_add{spawn_data.num()};

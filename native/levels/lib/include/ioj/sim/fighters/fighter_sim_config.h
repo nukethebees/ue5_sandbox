@@ -3,10 +3,11 @@
 
 #pragma once
 
+#include "ioj/constrained_numbers.h"
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "ioj/settings/attack_distance_band.h"
-#include "ioj/sim/entities/health.h"
+#include "ioj/settings/simulation_constraints.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 
 #include <cassert>
@@ -219,31 +220,31 @@ struct FighterSimConfig {
         std::unreachable();
     }
 
-    std::int32_t max_live_fighters{2000};
+    ioj::NonNegative<std::int32_t> max_live_fighters{2000};
     float fire_point_distance{};
-    float fire_dot_product_threshold{0.95f};
+    settings::DotProduct fire_dot_product_threshold{0.95f};
     float speed{2000.f};
     float turn_speed_unitless{1.f};
-    float avoidance_clear_update_frequency{2.f};
-    float avoidance_update_frequency{5.f};
-    float avoidance_active_update_frequency{12.f};
-    float avoidance_immediate_update_frequency{30.f};
-    float avoidance_lookahead_time{1.f};
-    float avoidance_clearance_buffer{100.f};
-    float separation_radius{2000.f};
-    float separation_strength{1.f};
-    float steering_memory_duration{0.75f};
-    std::int32_t dense_traffic_neighbour_threshold{4};
+    ioj::PositiveFinite<float> avoidance_clear_update_frequency{2.f};
+    ioj::PositiveFinite<float> avoidance_update_frequency{5.f};
+    ioj::PositiveFinite<float> avoidance_active_update_frequency{12.f};
+    ioj::PositiveFinite<float> avoidance_immediate_update_frequency{30.f};
+    ioj::NonNegativeFinite<float> avoidance_lookahead_time{1.f};
+    ioj::NonNegativeFinite<float> avoidance_clearance_buffer{100.f};
+    ioj::PositiveFinite<float> separation_radius{2000.f};
+    ioj::NonNegativeFinite<float> separation_strength{1.f};
+    ioj::NonNegativeFinite<float> steering_memory_duration{0.75f};
+    settings::NeighbourThreshold dense_traffic_neighbour_threshold{4};
     LaserWeaponSimConfig laser{};
-    Health health{Health{50}};
-    float attack_retry_cooldown{0.15f};
+    settings::PositiveHealth health{Health{50}};
+    ioj::NonNegativeFinite<float> attack_retry_cooldown{0.15f};
     float attack_engagement_threshold{5000.f};
-    float attack_reposition_frequency{10.f};
+    ioj::PositiveFinite<float> attack_reposition_frequency{10.f};
     settings::AttackDistanceBand attack_distance_band{};
     float arrival_distance{500.f};
     float los_check_buffer{100.f};
     float awareness_radius{10000.f};
-    float awareness_scan_frequency{6.f};
+    ioj::PositiveFinite<float> awareness_scan_frequency{6.f};
     float minimum_opportunistic_intercept_deviation_dot_product{0.5f};
 };
 } // namespace ioj::sim

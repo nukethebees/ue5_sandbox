@@ -7,7 +7,7 @@
 #include "ioj/constrained_numbers.h"
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
-#include "ioj/sim/entities/health.h"
+#include "ioj/settings/simulation_constraints.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 #include "ship_laser_mode.h"
 
@@ -122,7 +122,7 @@ struct PlayerSimConfig {
     float turn_bank_angle_max{30.f};
     float turn_bank_speed{2.f};
     LaserWeaponSimConfig laser{};
-    Health health{Health{1000}};
+    settings::PositiveHealth health{Health{1000}};
     ShipLaserMode laser_mode{ShipLaserMode::Single};
     ShipFireRate laser_fire_rate{ShipFireRate::FullAuto};
 };

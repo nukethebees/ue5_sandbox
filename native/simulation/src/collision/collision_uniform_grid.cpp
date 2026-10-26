@@ -4,7 +4,6 @@
 #include <ioj/diagnostics.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/collision/collision_grid.h>
-#include <ioj/sim/collision/entity_cell_data_operations.h>
 #include <ioj/sim/collision/grid_traversal.h>
 #include <ioj/sim/collision/line_trace_batch.h>
 #include <ioj/sim/collision/trace_hits.h>
@@ -157,7 +156,7 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
                                 turrets.num() + spinners.num() + (player ? 1u : 0u)};
     assert(max_entity_count <= EntityCellData::max_capacity);
     storage.rebuild_entity_data.add_uninitialised(static_cast<std::uint32_t>(max_entity_count));
-    EntityCellDataWriter const output{storage.rebuild_entity_data.get_view()};
+    auto const output{storage.rebuild_entity_data.get_view().resolve()};
     std::uint32_t output_row{};
 
     auto const append_batch{[&](EntityType const type,
@@ -258,9 +257,7 @@ void CollisionUniformGrid::begin_entity_grid() {
         }
         storage.non_empty_cell_indices.clear();
 
-        auto const cell_count{static_cast<std::size_t>(dimensions.x()) *
-                              static_cast<std::size_t>(dimensions.y()) *
-                              static_cast<std::size_t>(dimensions.z())};
+        auto const cell_count{dimensions.product<std::size_t>()};
         if (storage.cell_counts.size() != cell_count) {
             storage.cell_counts.assign(cell_count, CollisionGridEntityStorage::CellEntryCount{});
         }
@@ -269,7 +266,7 @@ void CollisionUniformGrid::begin_entity_grid() {
         storage.rebuild_entity_data.reset();
     }
 }
-void CollisionUniformGrid::write_entity_bounds(EntityCellDataWriter const& output,
+void CollisionUniformGrid::write_entity_bounds(entity_cell_data::ResolvedView const& output,
                                                std::uint32_t const output_row,
                                                EntityId const id,
                                                WorldAABB const bounds) {
@@ -349,37 +346,19 @@ void CollisionUniformGrid::finish_entity_grid() {
         auto const entity_count{rebuild_entity_data.num()};
 
         auto const output{storage.aabbs.get_view()};
-        auto const min_point_xs{rebuild_entity_data.min_point_xs()};
-        auto const min_point_ys{rebuild_entity_data.min_point_ys()};
-        auto const min_point_zs{rebuild_entity_data.min_point_zs()};
-        auto const min_cell_xs{rebuild_entity_data.min_cell_xs()};
-        auto const min_cell_ys{rebuild_entity_data.min_cell_ys()};
-        auto const min_cell_zs{rebuild_entity_data.min_cell_zs()};
-        auto const output_min_xs{output.min_xs()};
-        auto const output_min_ys{output.min_ys()};
-        auto const output_min_zs{output.min_zs()};
-        auto const max_point_xs{rebuild_entity_data.max_point_xs()};
-        auto const max_point_ys{rebuild_entity_data.max_point_ys()};
-        auto const max_point_zs{rebuild_entity_data.max_point_zs()};
-        auto const max_cell_xs{rebuild_entity_data.max_cell_xs()};
-        auto const max_cell_ys{rebuild_entity_data.max_cell_ys()};
-        auto const max_cell_zs{rebuild_entity_data.max_cell_zs()};
-        auto const output_max_xs{output.max_xs()};
-        auto const output_max_ys{output.max_ys()};
-        auto const output_max_zs{output.max_zs()};
+        auto const min_points{rebuild_entity_data.view_min_points().resolve()};
+        auto const max_points{rebuild_entity_data.view_max_points().resolve()};
+        auto const min_cells{rebuild_entity_data.view_min_cells().resolve()};
+        auto const max_cells{rebuild_entity_data.view_max_cells().resolve()};
+        auto const output_min_points{output.view_min_points().resolve()};
+        auto const output_max_points{output.view_max_points().resolve()};
         auto const entity_ids{rebuild_entity_data.entity_ids()};
 
         for (std::uint32_t entity_index{}; entity_index < entity_count; ++entity_index) {
-            auto const min_cell{CellCoord{
-                min_cell_xs[entity_index], min_cell_ys[entity_index], min_cell_zs[entity_index]}};
-            auto const max_cell{CellCoord{
-                max_cell_xs[entity_index], max_cell_ys[entity_index], max_cell_zs[entity_index]}};
-            auto const min_point{Vector3f{min_point_xs[entity_index],
-                                          min_point_ys[entity_index],
-                                          min_point_zs[entity_index]}};
-            auto const max_point{Vector3f{max_point_xs[entity_index],
-                                          max_point_ys[entity_index],
-                                          max_point_zs[entity_index]}};
+            auto const min_cell{min_cells[entity_index]};
+            auto const max_cell{max_cells[entity_index]};
+            auto const min_point{min_points[entity_index]};
+            auto const max_point{max_points[entity_index]};
 
             auto plane_index{min_cell.x() + min_cell.y() * row_stride +
                              min_cell.z() * plane_stride};
@@ -396,12 +375,8 @@ void CollisionUniformGrid::finish_entity_grid() {
                         auto const destination{write_index++};
                         storage.entities[static_cast<std::size_t>(destination)] =
                             entity_ids[entity_index];
-                        output_min_xs[destination] = min_point.x();
-                        output_min_ys[destination] = min_point.y();
-                        output_min_zs[destination] = min_point.z();
-                        output_max_xs[destination] = max_point.x();
-                        output_max_ys[destination] = max_point.y();
-                        output_max_zs[destination] = max_point.z();
+                        output_min_points.set(destination, min_point);
+                        output_max_points.set(destination, max_point);
                     }
                     row_index += row_stride;
                 }
@@ -483,18 +458,10 @@ auto CollisionUniformGrid::overlaps_impl(
         }};
     auto const static_aabbs{static_storage_.aabbs().get_const_view()};
     auto const entity_aabbs{entity_storage_.aabbs.get_const_view()};
-    auto const static_min_xs{static_aabbs.min_xs()};
-    auto const static_min_ys{static_aabbs.min_ys()};
-    auto const static_min_zs{static_aabbs.min_zs()};
-    auto const static_max_xs{static_aabbs.max_xs()};
-    auto const static_max_ys{static_aabbs.max_ys()};
-    auto const static_max_zs{static_aabbs.max_zs()};
-    auto const entity_min_xs{entity_aabbs.min_xs()};
-    auto const entity_min_ys{entity_aabbs.min_ys()};
-    auto const entity_min_zs{entity_aabbs.min_zs()};
-    auto const entity_max_xs{entity_aabbs.max_xs()};
-    auto const entity_max_ys{entity_aabbs.max_ys()};
-    auto const entity_max_zs{entity_aabbs.max_zs()};
+    auto const static_min_points{static_aabbs.view_min_points().resolve()};
+    auto const static_max_points{static_aabbs.view_max_points().resolve()};
+    auto const entity_min_points{entity_aabbs.view_min_points().resolve()};
+    auto const entity_max_points{entity_aabbs.view_max_points().resolve()};
 
     auto const row_stride{geometry_.dimensions.x()};
     auto const plane_stride{row_stride * geometry_.dimensions.y()};
@@ -528,12 +495,8 @@ auto CollisionUniformGrid::overlaps_impl(
                         }
 
                         auto const aabb_index{aabb_offset + entity_index};
-                        if (overlaps_query(Vector3f{entity_min_xs[aabb_index],
-                                                    entity_min_ys[aabb_index],
-                                                    entity_min_zs[aabb_index]},
-                                           Vector3f{entity_max_xs[aabb_index],
-                                                    entity_max_ys[aabb_index],
-                                                    entity_max_zs[aabb_index]})) {
+                        if (overlaps_query(entity_min_points[aabb_index],
+                                           entity_max_points[aabb_index])) {
                             if constexpr (Write) {
                                 assert(result.entities < out_entities.size());
                                 out_entities[result.entities] = id;
@@ -549,12 +512,8 @@ auto CollisionUniformGrid::overlaps_impl(
                 for (auto const static_index : static_indices) {
                     auto const static_aabb_index{
                         static_cast<StaticGeometryIndex::value_type>(static_index)};
-                    if (overlaps_query(Vector3f{static_min_xs[static_aabb_index],
-                                                static_min_ys[static_aabb_index],
-                                                static_min_zs[static_aabb_index]},
-                                       Vector3f{static_max_xs[static_aabb_index],
-                                                static_max_ys[static_aabb_index],
-                                                static_max_zs[static_aabb_index]})) {
+                    if (overlaps_query(static_min_points[static_aabb_index],
+                                       static_max_points[static_aabb_index])) {
                         if constexpr (Write) {
                             assert(result.static_geometry < out_static_geometry_indices.size());
                             out_static_geometry_indices[result.static_geometry] =
@@ -641,18 +600,10 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
     auto const max_cell_coord{get_max_grid_coord()};
     auto const static_aabbs{static_storage_.aabbs().get_const_view()};
     auto const entity_aabbs{entity_storage_.aabbs.get_const_view()};
-    auto const static_min_xs{static_aabbs.min_xs()};
-    auto const static_min_ys{static_aabbs.min_ys()};
-    auto const static_min_zs{static_aabbs.min_zs()};
-    auto const static_max_xs{static_aabbs.max_xs()};
-    auto const static_max_ys{static_aabbs.max_ys()};
-    auto const static_max_zs{static_aabbs.max_zs()};
-    auto const entity_min_xs{entity_aabbs.min_xs()};
-    auto const entity_min_ys{entity_aabbs.min_ys()};
-    auto const entity_min_zs{entity_aabbs.min_zs()};
-    auto const entity_max_xs{entity_aabbs.max_xs()};
-    auto const entity_max_ys{entity_aabbs.max_ys()};
-    auto const entity_max_zs{entity_aabbs.max_zs()};
+    auto const static_min_points{static_aabbs.view_min_points().resolve()};
+    auto const static_max_points{static_aabbs.view_max_points().resolve()};
+    auto const entity_min_points{entity_aabbs.view_min_points().resolve()};
+    auto const entity_max_points{entity_aabbs.view_max_points().resolve()};
 
     CellCoord cell_padding{};
     if constexpr (Kind == TraceKind::Sweep) {
@@ -730,12 +681,8 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
                     }
 
                     auto const aabb_index{aabb_offset + entity_index};
-                    auto const hit_t{query_aabb(Vector3f{entity_min_xs[aabb_index],
-                                                         entity_min_ys[aabb_index],
-                                                         entity_min_zs[aabb_index]},
-                                                Vector3f{entity_max_xs[aabb_index],
-                                                         entity_max_ys[aabb_index],
-                                                         entity_max_zs[aabb_index]})};
+                    auto const hit_t{
+                        query_aabb(entity_min_points[aabb_index], entity_max_points[aabb_index])};
                     if (hit_t < nearest_t ||
                         (std::isfinite(hit_t) && hit_t == nearest_t && id < nearest_entity)) {
                         nearest_t = hit_t;
@@ -750,12 +697,8 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
             for (auto const static_index : static_indices) {
                 auto const static_aabb_index{
                     static_cast<StaticGeometryIndex::value_type>(static_index)};
-                auto const hit_t{query_aabb(Vector3f{static_min_xs[static_aabb_index],
-                                                     static_min_ys[static_aabb_index],
-                                                     static_min_zs[static_aabb_index]},
-                                            Vector3f{static_max_xs[static_aabb_index],
-                                                     static_max_ys[static_aabb_index],
-                                                     static_max_zs[static_aabb_index]})};
+                auto const hit_t{query_aabb(static_min_points[static_aabb_index],
+                                            static_max_points[static_aabb_index])};
                 if (hit_t < nearest_t) {
                     nearest_t = hit_t;
                     nearest_entity = EntityId{};

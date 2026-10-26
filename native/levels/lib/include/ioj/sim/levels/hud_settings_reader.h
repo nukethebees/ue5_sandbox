@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
 #include "ioj/sim/levels/hud_settings.h"
 #include <ioj/s7/field_reader.h>
@@ -17,9 +16,8 @@ struct TypeReader<sim::HudSettings> : RecordReader<sim::HudSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
             context, "hud", field_names, ([&](Field selected, auto const& read) {
-                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
-                    read(member, constraints::nonnegative, constraints::finite);
-                });
+                value_type::visit_field(
+                    result, selected, [&]<Field field>(auto& member) { read(member); });
             }));
     }
 

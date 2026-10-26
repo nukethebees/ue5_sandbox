@@ -4,10 +4,9 @@
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/collision/collision_system.h>
 #include <ioj/sim/collision/collision_uniform_grid.h>
-#include <ioj/sim/collision/entity_cell_data_operations.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/collision/trace_hits.h>
-#include <ioj/sim/collision/world_aabb_operations.h>
+#include <ioj/sim/collision/world_aabbs.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/spatial_query_manager_test_access.h>
@@ -370,7 +369,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceAppliesAABBCentre) 
               0.001f)
         << "Sweep expands rotated world bounds";
     auto const cached{rotated.grid.get_entity_world_bounds()};
-    EXPECT_LE(size(Vector3f{{-5.f, 130.f, -10.f}} - collision::min_point_at(cached, 0)), 0.001f)
+    EXPECT_LE(size(Vector3f{{-5.f, 130.f, -10.f}} - cached.view_min_points()[0]), 0.001f)
         << "Visualisation reads the same rotated cached bounds";
 
     rotated.update_entities(std::array{Vector3f{}}, std::array{std::uint8_t{1}});
@@ -1617,7 +1616,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridStaticGeometry) {
 
     auto set_static_aabb{[&fixture](Vector3f const min_point, Vector3f const max_point) {
         collision::WorldAABBs static_aabbs;
-        collision::add(static_aabbs, min_point, max_point);
+        static_aabbs.add(min_point, max_point);
         fixture.grid.set_static_aabbs(std::move(static_aabbs));
     }};
     std::array<Vector3f, 1> const starts{{{{-200.f, 0.f, 0.f}}}};
@@ -1658,7 +1657,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridStaticGeometry) {
                                  fighter_types};
     fighter_fixture.set_entity_aabb(EntityType::Fighter, Vector3f{}, half_extents);
     collision::WorldAABBs blocked_static_aabbs;
-    collision::add(blocked_static_aabbs, {{50.f, -10.f, -10.f}}, {{70.f, 10.f, 10.f}});
+    blocked_static_aabbs.add({{50.f, -10.f, -10.f}}, {{70.f, 10.f, 10.f}});
     fighter_fixture.grid.set_static_aabbs(std::move(blocked_static_aabbs));
 
     auto const fighter_masked_hits{

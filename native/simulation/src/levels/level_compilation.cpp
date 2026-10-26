@@ -122,37 +122,37 @@ auto compile_level(LevelDefinition const& level,
     std::int32_t capital_end{};
     std::int32_t turret_end{};
 
-    auto const append_entity = [&, capital_events, turret_events](
-                                   sim::LevelEntityIndex const entity_index_value) {
-        auto const& entity{definition.entities()[static_cast<std::size_t>(entity_index_value)]};
-        if (entity.archetype == EntityArchetype::CapitalShip) {
-            auto const row{capital_end++};
-            capital_events.entity_indices()[row] = entity_index_value;
-            capital_events.target_entity_indices()[row] =
-                entity.overrides.target_entity_id.empty()
-                    ? sim::invalid_level_entity_index
-                    : entity_index(definition, entity.overrides.target_entity_id);
-            set_vector(capital_events.view_locations(), row, Vector3f{entity.position});
-            set_rotation(capital_events.view_rotations(), row, Rotator3f{entity.rotation});
-            capital_events.teams()[row] = entity.team;
-            capital_events.healths()[row] =
-                sim::Health{entity.overrides.health.value_or(capital_config.max_health.value())};
-            capital_events.initial_fighter_spawn_delays()[row] =
-                entity.overrides.initial_spawn_delay.value_or(0.0f);
-            capital_events.fighter_spawn_cooldowns()[row] =
-                entity.overrides.spawn_cooldown.value_or(capital_config.spawn_delay);
-        } else if (entity.archetype == EntityArchetype::StaticTurret) {
-            auto const row{turret_end++};
-            turret_events.entity_indices()[row] = entity_index_value;
-            set_vector(turret_events.view_locations(), row, Vector3f{entity.position});
-            set_rotation(turret_events.view_rotations(), row, Rotator3f{entity.rotation});
-            turret_events.teams()[row] = entity.team;
-            turret_events.healths()[row] =
-                sim::Health{entity.overrides.health.value_or(turret_config.max_health.value())};
-            turret_events.laser_damages()[row] =
-                entity.overrides.laser_damage.value_or(turret_config.laser.damage);
-        }
-    };
+    auto const append_entity =
+        [&, capital_events, turret_events](sim::LevelEntityIndex const entity_index_value) {
+            auto const& entity{definition.entities()[static_cast<std::size_t>(entity_index_value)]};
+            if (entity.archetype == EntityArchetype::CapitalShip) {
+                auto const row{capital_end++};
+                capital_events.entity_indices()[row] = entity_index_value;
+                capital_events.target_entity_indices()[row] =
+                    entity.overrides.target_entity_id.empty()
+                        ? sim::invalid_level_entity_index
+                        : entity_index(definition, entity.overrides.target_entity_id);
+                set_vector(capital_events.view_locations(), row, Vector3f{entity.position});
+                set_rotation(capital_events.view_rotations(), row, Rotator3f{entity.rotation});
+                capital_events.teams()[row] = entity.team;
+                capital_events.healths()[row] = sim::Health{
+                    entity.overrides.health.value_or(capital_config.max_health.get().value())};
+                capital_events.initial_fighter_spawn_delays()[row] =
+                    entity.overrides.initial_spawn_delay.value_or(0.0f);
+                capital_events.fighter_spawn_cooldowns()[row] =
+                    entity.overrides.spawn_cooldown.value_or(capital_config.spawn_delay);
+            } else if (entity.archetype == EntityArchetype::StaticTurret) {
+                auto const row{turret_end++};
+                turret_events.entity_indices()[row] = entity_index_value;
+                set_vector(turret_events.view_locations(), row, Vector3f{entity.position});
+                set_rotation(turret_events.view_rotations(), row, Rotator3f{entity.rotation});
+                turret_events.teams()[row] = entity.team;
+                turret_events.healths()[row] = sim::Health{
+                    entity.overrides.health.value_or(turret_config.max_health.get().value())};
+                turret_events.laser_damages()[row] =
+                    entity.overrides.laser_damage.value_or(turret_config.laser.damage);
+            }
+        };
 
     for (auto const source : sources) {
         if (source.execution_tick.value() != 0) {

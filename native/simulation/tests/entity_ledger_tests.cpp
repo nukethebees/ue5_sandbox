@@ -4,7 +4,7 @@
 #include <ioj/sim/damage_queue.h>
 #include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_ledger.h>
-#include <ioj/sim/entities/entity_lookup_table.h>
+#include <ioj/sim/entities/entity_lookup_tables.h>
 #include <ioj/vectors3f.h>
 
 #include <gtest/gtest.h>

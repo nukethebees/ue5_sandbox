@@ -77,7 +77,7 @@ void FHUDManager::initialise(sim::Mission const& new_mission,
                              settings_.mission_status_update_period};
     auto const n_periods{periods.size()};
     for (std::size_t i{}; i < n_periods; ++i) {
-        if (!valid_periods(periods[i])) {
+        if (!valid_periods(periods[i].get())) {
             UE_LOG(LogSandboxUI, Fatal, TEXT("FHUDManager::initialise: Invalid update period."));
         }
 
@@ -144,9 +144,9 @@ void FHUDManager::initialise(sim::Mission const& new_mission,
             UTestTeamVisualData::build_team_colour_cache(level_config.turrets.team_visual_data),
     };
     entity_overlay_maximum_health_ = {
-        .capital_ship = level_config.capital_ships.simulation.max_health.value(),
-        .fighter = level_config.fighters.simulation.health.value(),
-        .turret = level_config.turrets.simulation.max_health.value(),
+        .capital_ship = level_config.capital_ships.simulation.max_health.get().value(),
+        .fighter = level_config.fighters.simulation.health.get().value(),
+        .turret = level_config.turrets.simulation.max_health.get().value(),
     };
     soft_target_selection_settings_ = overlay.soft_target;
     soft_target_pulse_duration_ = FMath::Max(overlay.soft_target.pulse_duration, 0.0f);

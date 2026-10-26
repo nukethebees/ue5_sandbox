@@ -5,7 +5,7 @@
 
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
-#include "ioj/sim/entities/health.h"
+#include "ioj/settings/simulation_constraints.h"
 #include "ioj/transform3d.h"
 
 #include <cassert>
@@ -74,7 +74,7 @@ struct CapitalShipSimConfig {
     float spawn_delay{5.f};
     std::int32_t fighter_spawn_slots{};
     std::vector<ioj::Transform3d> fighter_spawn_slots_relative_transforms{};
-    Health max_health{Health{5000}};
+    settings::PositiveHealth max_health{Health{5000}};
 };
 } // namespace ioj::sim
 namespace ioj {

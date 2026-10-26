@@ -11,9 +11,10 @@ inline constexpr std::int32_t collision_resilient_health{1'000'000};
 TEST(WorldlessSpaceGameSimulation, PlayerShip_VersusCapital) {
     auto const config{tests::make_fixture()};
     auto data{tests::make_simulation_data(config)};
-    data.fighters.health = Health{player_vs_capital_test::collision_resilient_health};
-    data.fighters.laser.projectile_speed = 20000.f;
-    data.fighters.laser.max_distance = 1.f;
+    data.fighters.health = ::ioj::settings::PositiveHealth::make(
+        Health{player_vs_capital_test::collision_resilient_health});
+    data.fighters.laser.projectile_speed = ::ioj::PositiveFinite<float>::make(20000.f);
+    data.fighters.laser.max_distance = ::ioj::PositiveFinite<float>::make(1.f);
     auto const player_index{tests::add_player_spawn(
         data,
         tests::make_player_spawn(config,

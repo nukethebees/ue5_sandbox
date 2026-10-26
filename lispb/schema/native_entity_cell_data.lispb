@@ -1,18 +1,20 @@
+(module native_cell_coords
+  :header "native/simulation/include/ioj/sim/collision/cell_coords.h"
+  :header-include "ioj/sim/collision/cell_coords.h"
+  :namespace ioj::sim::collision
+  (struct CellCoords
+    :equivalent-type @native_cell_coord
+    (member xs array int32 :equivalent-member x :equivalent-accessor true)
+    (member ys array int32 :equivalent-member y :equivalent-accessor true)
+    (member zs array int32 :equivalent-member z :equivalent-accessor true)))
+
 (module native_entity_cell_data
   :header "native/simulation/include/ioj/sim/collision/entity_cell_data.h"
   :namespace ioj::sim::collision
   (struct EntityCellData
-    (member min_point_xs array float)
-    (member min_point_ys array float)
-    (member min_point_zs array float)
-    (member max_point_xs array float)
-    (member max_point_ys array float)
-    (member max_point_zs array float)
-    (member min_cell_xs array int32)
-    (member min_cell_ys array int32)
-    (member min_cell_zs array int32)
-    (member max_cell_xs array int32)
-    (member max_cell_ys array int32)
-    (member max_cell_zs array int32)
+    (member min_points nested @native_vectors_3f)
+    (member max_points nested @native_vectors_3f)
+    (member min_cells nested @native_cell_coords)
+    (member max_cells nested @native_cell_coords)
     (member entity_ids array @native_unique_id)
 ))

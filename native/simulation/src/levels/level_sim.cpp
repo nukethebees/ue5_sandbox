@@ -2,7 +2,7 @@
 
 #include <ioj/diagnostics.h>
 #include <ioj/sim/capital_ships/phase_interface.h>
-#include <ioj/sim/collision/world_aabb_operations.h>
+#include <ioj/sim/collision/world_aabbs.h>
 #include <ioj/sim/fighters/phase_interface.h>
 #include <ioj/sim/lasers/phase_interface.h>
 #include <ioj/sim/player/phase_interface.h>
@@ -148,7 +148,7 @@ void LevelSim::set_static_collision(std::span<collision::WorldAABB const> bounds
     collision::WorldAABBs storage;
     storage.reserve(static_cast<std::uint32_t>(bounds.size()));
     for (auto const& bound : bounds) {
-        collision::add(storage, bound.min, bound.max);
+        storage.add(bound.min, bound.max);
     }
     query_manager_.set_static_collision(std::move(storage));
 }

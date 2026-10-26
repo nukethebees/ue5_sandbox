@@ -11,6 +11,7 @@
 #include "SandboxUI/slate/SlateSlots.h"
 #include "SandboxUI/widgets/SSectionPanel.h"
 
+#include "Editor.h"
 #include "Engine/Engine.h"
 #include "Layout/Margin.h"
 #include "Selection.h"

@@ -3,9 +3,11 @@
 
 #pragma once
 
+#include "ioj/math_types.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
+#include "ioj/vectors3f.h"
 
 #include <cassert>
 #include <memory_resource>
@@ -23,12 +25,12 @@ struct ResolvedConstView;
 /* **************************************** */
 struct Layout
     : ioj::single_allocation_layout::ColumnLayouts<float, float, float, float, float, float> {
-    static constexpr std::size_t min_xs_column{0};
-    static constexpr std::size_t min_ys_column{1};
-    static constexpr std::size_t min_zs_column{2};
-    static constexpr std::size_t max_xs_column{3};
-    static constexpr std::size_t max_ys_column{4};
-    static constexpr std::size_t max_zs_column{5};
+    static constexpr std::size_t min_points_xs_column{0};
+    static constexpr std::size_t min_points_ys_column{1};
+    static constexpr std::size_t min_points_zs_column{2};
+    static constexpr std::size_t max_points_xs_column{3};
+    static constexpr std::size_t max_points_ys_column{4};
+    static constexpr std::size_t max_points_zs_column{5};
 };
 
 /* **************************************** */
@@ -38,27 +40,34 @@ template <typename Byte>
 struct DataPointers {
     template <typename T>
     using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-    Element<float>* min_xs{};
-    Element<float>* min_ys{};
-    Element<float>* min_zs{};
-    Element<float>* max_xs{};
-    Element<float>* max_ys{};
-    Element<float>* max_zs{};
+    Element<float>* min_points_xs{};
+    Element<float>* min_points_ys{};
+    Element<float>* min_points_zs{};
+    Element<float>* max_points_xs{};
+    Element<float>* max_points_ys{};
+    Element<float>* max_points_zs{};
     template <typename Self, typename Func>
     static decltype(auto) with_columns(Self& self, Func&& func) {
-        return func(self.min_xs, self.min_ys, self.min_zs, self.max_xs, self.max_ys, self.max_zs);
+        return func(self.min_points_xs,
+                    self.min_points_ys,
+                    self.min_points_zs,
+                    self.max_points_xs,
+                    self.max_points_ys,
+                    self.max_points_zs);
     }
 };
 
 struct Schema {
     template <typename Columns, typename Func>
     static auto with_columns(Columns const& source, Func&& func) {
-        return func(source.min_xs(),
-                    source.min_ys(),
-                    source.min_zs(),
-                    source.max_xs(),
-                    source.max_ys(),
-                    source.max_zs());
+        auto const& min_points_view{source.view_min_points()};
+        auto const& max_points_view{source.view_max_points()};
+        return func(min_points_view.xs(),
+                    min_points_view.ys(),
+                    min_points_view.zs(),
+                    max_points_view.xs(),
+                    max_points_view.ys(),
+                    max_points_view.zs());
     }
 };
 
@@ -79,12 +88,20 @@ struct ResolvedViewImpl
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto min_xs() const { return this->column(this->columns_.min_xs); }
-    auto min_ys() const { return this->column(this->columns_.min_ys); }
-    auto min_zs() const { return this->column(this->columns_.min_zs); }
-    auto max_xs() const { return this->column(this->columns_.max_xs); }
-    auto max_ys() const { return this->column(this->columns_.max_ys); }
-    auto max_zs() const { return this->column(this->columns_.max_zs); }
+    auto view_min_points() const -> std::
+        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
+        return {this->columns_.min_points_xs,
+                this->columns_.min_points_ys,
+                this->columns_.min_points_zs,
+                this->num()};
+    }
+    auto view_max_points() const -> std::
+        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
+        return {this->columns_.max_points_xs,
+                this->columns_.max_points_ys,
+                this->columns_.max_points_zs,
+                this->num()};
+    }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -101,6 +118,11 @@ struct ResolvedView
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
+    void set(size_type index, Vector3f const new_min_points, Vector3f const new_max_points) const {
+        assert(index < num());
+        this->view_min_points().set(index, new_min_points);
+        this->view_max_points().set(index, new_max_points);
+    }
 };
 
 /* **************************************** */
@@ -123,17 +145,19 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
                                      ioj::soa_storage_detail::StorageState>;
     ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
         : Base{ioj::soa_storage_detail::make_strided_view<Base, Layout>(
-              state, offset, count, Layout::min_xs_column, Layout::min_ys_column)} {}
+              state, offset, count, Layout::min_points_xs_column, Layout::min_points_ys_column)} {}
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto min_xs() const { return this->column(0); }
-    auto min_ys() const { return this->column(1); }
-    auto min_zs() const { return this->column(2); }
-    auto max_xs() const { return this->column(3); }
-    auto max_ys() const { return this->column(4); }
-    auto max_zs() const { return this->column(5); }
+    auto view_min_points() const
+        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
+        return {this->column(0).data(), this->byte_stride(), this->num()};
+    }
+    auto view_max_points() const
+        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
+        return {this->column(3).data(), this->byte_stride(), this->num()};
+    }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -151,6 +175,11 @@ struct View
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
+    void set(size_type index, Vector3f const new_min_points, Vector3f const new_max_points) const {
+        assert(index < num());
+        this->view_min_points().set(index, new_min_points);
+        this->view_max_points().set(index, new_max_points);
+    }
 };
 static_assert(std::is_trivially_copyable_v<View>);
 
@@ -160,12 +189,12 @@ static_assert(std::is_trivially_copyable_v<View>);
 // Owner
 /* **************************************** */
 // Columns:
-// min_xs: float
-// min_ys: float
-// min_zs: float
-// max_xs: float
-// max_ys: float
-// max_zs: float
+// min_points_xs: float
+// min_points_ys: float
+// min_points_zs: float
+// max_points_xs: float
+// max_points_ys: float
+// max_points_zs: float
 struct WorldAABBs
     : protected ioj::native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<
@@ -212,18 +241,25 @@ struct WorldAABBs
     template <typename Byte>
     using DataPointers = ::ioj::sim::collision::world_aab_bs::DataPointers<Byte>;
   public:
-    auto min_xs(this auto& self) { return self.get_view().min_xs(); }
-    auto min_ys(this auto& self) { return self.get_view().min_ys(); }
-    auto min_zs(this auto& self) { return self.get_view().min_zs(); }
-    auto max_xs(this auto& self) { return self.get_view().max_xs(); }
-    auto max_ys(this auto& self) { return self.get_view().max_ys(); }
-    auto max_zs(this auto& self) { return self.get_view().max_zs(); }
+    auto view_min_points(this auto& self) { return self.get_view().view_min_points(); }
+    auto view_max_points(this auto& self) { return self.get_view().view_max_points(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         WorldAABBs,
         ::ioj::sim::collision::world_aab_bs::Layout::column_types,
         ioj::native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
+    void set(size_type index, Vector3f const new_min_points, Vector3f const new_max_points) {
+        assert(index < num());
+        get_view().view_min_points().set(index, new_min_points);
+        get_view().view_max_points().set(index, new_max_points);
+    }
+    size_type add(Vector3f const new_min_points, Vector3f const new_max_points) {
+        auto const index{num()};
+        add_uninitialised(1);
+        set(index, new_min_points, new_max_points);
+        return index;
+    }
   private:
     friend Operations;
     friend ::ioj::soa_storage_detail::StorageRequirements;

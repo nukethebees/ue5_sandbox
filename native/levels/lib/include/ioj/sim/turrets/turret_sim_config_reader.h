@@ -19,10 +19,10 @@ struct TypeReader<sim::TurretSimConfig> : RecordReader<sim::TurretSimConfig> {
         decode_record<Field>(
             context, "turrets", field_names, ([&](Field selected, auto const& read) {
                 value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
-                    if constexpr (field == Field::laser || field == Field::max_health) {
+                    if constexpr (field == Field::target_refresh_frequency ||
+                                  field == Field::laser || field == Field::max_health) {
                         read(member);
-                    } else if constexpr (field == Field::detection_radius ||
-                                         field == Field::target_refresh_frequency) {
+                    } else if constexpr (field == Field::detection_radius) {
                         read(member, constraints::finite);
                     } else if constexpr (field == Field::fire_point_offset) {
                         std::unreachable();

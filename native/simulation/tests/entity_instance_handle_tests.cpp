@@ -1,4 +1,5 @@
 #include <ioj/sim/entities/entity_instance_handle.h>
+#include <ioj/sim/phase_checks.h>
 #include <ioj/sim/sim_clock.h>
 
 #include <gtest/gtest.h>
@@ -42,31 +43,31 @@ TEST(SimulationPhases, RejectsBackwardsTransitionsAndSkippedStages) {
 
 TEST(SimulationPhases, AllowsStableSetupAndSuccessiveTicks) {
     SimClock clock;
-    EXPECT_FALSE(clock.permits_lookup());
+    EXPECT_FALSE(is_lookup_allowed(clock));
     clock.transition_to(SimulationPhase::StableSetup);
-    EXPECT_TRUE(clock.permits_lookup());
-    EXPECT_FALSE(clock.permits_structural_mutation());
+    EXPECT_TRUE(is_lookup_allowed(clock));
+    EXPECT_FALSE(is_structural_mutation_allowed(clock));
     clock.transition_to(SimulationPhase::BetweenTicks);
-    EXPECT_FALSE(clock.permits_lookup());
+    EXPECT_FALSE(is_lookup_allowed(clock));
     for (int tick{}; tick < 2; ++tick) {
         clock.transition_to(SimulationPhase::Preparation);
-        EXPECT_FALSE(clock.permits_lookup());
-        EXPECT_TRUE(clock.permits_preparation_mutation());
+        EXPECT_FALSE(is_lookup_allowed(clock));
+        EXPECT_TRUE(is_preparation_mutation_allowed(clock));
         clock.transition_to(SimulationPhase::Thinking);
-        EXPECT_TRUE(clock.permits_lookup());
-        EXPECT_FALSE(clock.permits_structural_mutation());
+        EXPECT_TRUE(is_lookup_allowed(clock));
+        EXPECT_FALSE(is_structural_mutation_allowed(clock));
         clock.transition_to(SimulationPhase::Action);
-        EXPECT_TRUE(clock.permits_lookup());
-        EXPECT_FALSE(clock.permits_structural_mutation());
+        EXPECT_TRUE(is_lookup_allowed(clock));
+        EXPECT_FALSE(is_structural_mutation_allowed(clock));
         clock.transition_to(SimulationPhase::Resolution);
-        EXPECT_TRUE(clock.permits_lookup());
-        EXPECT_FALSE(clock.permits_structural_mutation());
+        EXPECT_TRUE(is_lookup_allowed(clock));
+        EXPECT_FALSE(is_structural_mutation_allowed(clock));
         clock.transition_to(SimulationPhase::ResolutionCommit);
-        EXPECT_FALSE(clock.permits_lookup());
-        EXPECT_TRUE(clock.permits_structural_mutation());
+        EXPECT_FALSE(is_lookup_allowed(clock));
+        EXPECT_TRUE(is_structural_mutation_allowed(clock));
         clock.transition_to(SimulationPhase::BetweenTicks);
-        EXPECT_FALSE(clock.permits_lookup());
-        EXPECT_FALSE(clock.permits_structural_mutation());
+        EXPECT_FALSE(is_lookup_allowed(clock));
+        EXPECT_FALSE(is_structural_mutation_allowed(clock));
     }
 }
 

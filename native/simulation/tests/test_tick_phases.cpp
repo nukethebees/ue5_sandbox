@@ -13,7 +13,7 @@ auto make_world() -> LevelSimInitData {
     data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
     data.collision.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.capital_ships.fighter_spawn_slots = 0;
-    data.lasers.n_preallocated_instances = 8;
+    data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(8);
     data.collision.overlap_response.damage_per_overlap_detection = 25;
 
     for (auto const type : EnumTraits<EntityType>::values) {
@@ -62,7 +62,7 @@ TEST(TickPhases, CompletedBurstsStopUntilTheNextFirePress) {
         auto data{make_world()};
         add_moving_player(data);
         data.player->laser_fire_rate = rate;
-        data.player->config.laser.fire_cooldown = 0.05f;
+        data.player->config.laser.fire_cooldown = ::ioj::NonNegativeFinite<float>::make(0.05f);
 
         GameMemory simulation_memory;
         LevelSim simulation{simulation_memory, std::move(data)};
@@ -89,7 +89,7 @@ TEST(TickPhases, AutomaticFireContinuesUntilReleased) {
     auto data{make_world()};
     add_moving_player(data);
     data.player->laser_fire_rate = ShipFireRate::FullAuto;
-    data.player->config.laser.fire_cooldown = 0.05f;
+    data.player->config.laser.fire_cooldown = ::ioj::NonNegativeFinite<float>::make(0.05f);
 
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
@@ -160,7 +160,7 @@ TEST(TickPhases, CarrierSpawnIsDeferredAndParticipatesInLaunchOverlaps) {
     target_indices[1] = first;
     data.capital_ships.fighter_spawn_slots = 1;
     data.capital_ships.fighter_spawn_slots_relative_transforms = {{}};
-    data.fighters.health = Health{100};
+    data.fighters.health = ::ioj::settings::PositiveHealth::make(Health{100});
     data.fighters.speed = 0.f;
 
     GameMemory simulation_memory;
@@ -377,9 +377,9 @@ TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndBoundsAdvanceAfterwa
     auto const ids{bounds.entity_ids()};
     auto const found{std::ranges::find(ids, player->unique_entity_id)};
     ASSERT_NE(found, ids.end());
-    auto const row{static_cast<std::size_t>(found - ids.begin())};
-    EXPECT_NEAR(bounds.min_point_ys()[row], 190.f, 0.001f);
-    EXPECT_NEAR(bounds.max_point_ys()[row], 210.f, 0.001f);
+    auto const row{static_cast<std::uint32_t>(found - ids.begin())};
+    EXPECT_NEAR(bounds.view_min_points()[row].y(), 190.f, 0.001f);
+    EXPECT_NEAR(bounds.view_max_points()[row].y(), 210.f, 0.001f);
 }
 
 TEST(TickPhases, AcceptedFireSurvivesShooterDeathAndDeathCannotBeHealed) {

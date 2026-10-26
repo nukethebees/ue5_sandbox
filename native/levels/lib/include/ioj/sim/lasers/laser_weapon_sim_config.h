@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/constrained_numbers.h"
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 
@@ -67,9 +68,9 @@ struct LaserWeaponSimConfig {
     }
 
     std::int32_t damage{5};
-    float projectile_speed{10000.f};
-    float max_distance{10000.f};
-    float fire_cooldown{0.33f};
+    ioj::PositiveFinite<float> projectile_speed{10000.f};
+    ioj::PositiveFinite<float> max_distance{10000.f};
+    ioj::NonNegativeFinite<float> fire_cooldown{0.33f};
 };
 } // namespace ioj::sim
 namespace ioj {

@@ -3,10 +3,11 @@
 
 #pragma once
 
+#include "ioj/constrained_numbers.h"
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "ioj/math_types.h"
-#include "ioj/sim/entities/health.h"
+#include "ioj/settings/simulation_constraints.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 
 #include <cassert>
@@ -77,10 +78,10 @@ struct TurretSimConfig {
     }
 
     float detection_radius{3000.f};
-    float target_refresh_frequency{5.f};
+    ioj::PositiveFinite<float> target_refresh_frequency{5.f};
     Vector3f fire_point_offset{};
     LaserWeaponSimConfig laser{};
-    Health max_health{Health{20}};
+    settings::PositiveHealth max_health{Health{20}};
 };
 } // namespace ioj::sim
 namespace ioj {

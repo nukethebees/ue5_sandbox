@@ -15,6 +15,7 @@
 #include <ioj/sim/deterministic_bias.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/lasers/sim.h>
+#include <ioj/sim/phase_checks.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/turrets/turret_sim_config.h>
 #include <ioj/tick_countdown.h>
@@ -48,7 +49,7 @@ Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_table
 auto Sim::register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data)
     -> std::vector<EntityId> {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::register_turrets");
-    entity_tables_.lookups.assert_preparation_mutation_allowed();
+    assert(is_preparation_mutation_allowed(entity_tables_.lookups.clock()));
     spawn_data.validate();
     auto const n_to_add{spawn_data.num()};
     if (n_to_add == 0) {
@@ -223,7 +224,7 @@ void Sim::publish_deaths() {
 }
 
 void Sim::remove_components() {
-    entity_tables_.lookups.assert_removal_allowed();
+    assert(is_removal_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("turrets::Sim::remove_components");
 
     sort_and_deduplicate_removal_indices(local_indices_to_remove);
@@ -234,7 +235,7 @@ void Sim::remove_components() {
     entity_tables_.health.remove_rows<EntityType::Turret>(entities.num(), local_indices_to_remove);
 }
 void Sim::remove_entities() {
-    entity_tables_.lookups.assert_removal_allowed();
+    assert(is_removal_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("turrets::Sim::remove_entities");
 
     handle_dead_entities();

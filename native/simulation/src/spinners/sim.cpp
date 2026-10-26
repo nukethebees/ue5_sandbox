@@ -6,6 +6,7 @@
 #include <ioj/rotator_math.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/lasers/sim.h>
+#include <ioj/sim/phase_checks.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/spinners/spinner_sim_config.h>
 #include <ioj/tick_countdown.h>
@@ -87,7 +88,7 @@ auto Sim::spawn_instances(vectors3f::ResolvedConstView const new_locations,
                           std::span<std::int32_t const> const new_fire_point_indices)
     -> std::span<EntityId const> {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::spawn_instances");
-    assert(simulation_clock.permits_preparation_mutation());
+    assert(is_preparation_mutation_allowed(simulation_clock));
 
     auto const n{new_locations.num()};
 

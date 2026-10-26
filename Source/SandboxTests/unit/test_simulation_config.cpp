@@ -216,8 +216,8 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
                               copy->capital_ships.fighter_spawn_slots_relative_transforms.Num(),
                               source->capital_ships.fighter_spawn_slots_relative_transforms.Num());
         TestRunner->TestEqual(TEXT("Turret projectile speed is preserved"),
-                              copy->turrets.simulation.laser.projectile_speed,
-                              source->turrets.simulation.laser.projectile_speed);
+                              copy->turrets.simulation.laser.projectile_speed.get(),
+                              source->turrets.simulation.laser.projectile_speed.get());
         TestRunner->TestTrue(TEXT("Player team visual remains shared"),
                              copy->player_ship.team_visual_data ==
                                  source->player_ship.team_visual_data);

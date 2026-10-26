@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/constrained_numbers.h"
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 
@@ -63,9 +64,9 @@ struct HudSettings {
         std::unreachable();
     }
 
-    float player_status_update_period{0.25f};
-    float entity_count_update_period{0.25f};
-    float mission_status_update_period{0.25f};
+    ioj::NonNegativeFinite<float> player_status_update_period{0.25f};
+    ioj::NonNegativeFinite<float> entity_count_update_period{0.25f};
+    ioj::NonNegativeFinite<float> mission_status_update_period{0.25f};
 };
 } // namespace ioj::sim
 namespace ioj {

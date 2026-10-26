@@ -70,16 +70,6 @@ struct SimClock {
         phase_ = next;
     }
 
-    auto permits_structural_mutation() const noexcept -> bool {
-        return permits_preparation_mutation() || phase_ == SimulationPhase::ResolutionCommit;
-    }
-    [[nodiscard]] auto permits_lookup() const noexcept -> bool {
-        // Keep lookup-valid phases below the generated boundary.
-        return std::to_underlying(phase_) < std::to_underlying(SimulationPhase::Initialisation);
-    }
-    auto permits_preparation_mutation() const noexcept -> bool {
-        return phase_ == SimulationPhase::Initialisation || phase_ == SimulationPhase::Preparation;
-    }
   private:
     friend struct SimClockTestAccess;
     SimulationPhase phase_{SimulationPhase::Initialisation};

@@ -18,6 +18,7 @@
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/lasers/sim.h>
+#include <ioj/sim/phase_checks.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/tick_countdown.h>
 #include <ioj/vector_math.h>
@@ -124,7 +125,7 @@ void Sim::set_config(FighterSimConfig const& new_config,
     assert(std::in_range<std::uint32_t>(level_data.participating_teams.size()));
     auto const participant_count{static_cast<std::uint32_t>(level_data.participating_teams.size())};
     per_team_limit =
-        participant_count == 0 ? 0 : std::max(0, config.max_live_fighters) / participant_count;
+        participant_count == 0 ? 0 : config.max_live_fighters.get() / participant_count;
 }
 Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_tables) noexcept
     : simulation_clock{clock}
@@ -585,7 +586,7 @@ void Sim::publish_deaths() {
 }
 
 void Sim::remove_components() {
-    entity_tables_.lookups.assert_removal_allowed();
+    assert(is_removal_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("fighters::Sim::remove_components");
 
     sort_and_deduplicate_removal_indices(local_indices_to_remove);
@@ -597,7 +598,7 @@ void Sim::remove_components() {
                                                            local_indices_to_remove);
 }
 void Sim::remove_entities() {
-    entity_tables_.lookups.assert_removal_allowed();
+    assert(is_removal_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("fighters::Sim::remove_entities");
 
     remove_dead_entities();
@@ -667,7 +668,7 @@ void Sim::update_navigation_steering(ThinkingInputs const inputs) {
     auto const clearance{collision_radius_ + config.avoidance_clearance_buffer};
     auto const minimum_lookahead_distance{collision_radius_ * 2.f};
     auto const avoidance_lookahead_time{
-        std::max(config.avoidance_lookahead_time, minimum_navigation_lookahead_time)};
+        std::max(config.avoidance_lookahead_time.get(), minimum_navigation_lookahead_time)};
     auto const active_update_interval{
         static_cast<float>(get_navigation_tick_period(NavigationRiskTier::Active) *
                            simulation_clock.get_tick_period())};
@@ -1261,7 +1262,7 @@ bool Sim::tasks_are_contiguous() const noexcept {
     return true;
 }
 void Sim::refresh_layout() {
-    entity_tables_.lookups.assert_structural_mutation_allowed();
+    assert(is_structural_mutation_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("fighters::Sim::refresh_layout");
 
     auto const task_counts{get_task_counts()};
@@ -1352,7 +1353,7 @@ void Sim::reassign_pending_spawns(EntityId const parent, EntityId const replacem
     }
 }
 void Sim::commit_spawns() {
-    entity_tables_.lookups.assert_preparation_mutation_allowed();
+    assert(is_preparation_mutation_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("fighters::Sim::commit_spawns");
 
     auto const n_cur{get_num_instances()};

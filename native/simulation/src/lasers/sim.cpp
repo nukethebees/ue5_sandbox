@@ -9,6 +9,7 @@
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/lasers/laser_hit_details.h>
+#include <ioj/sim/phase_checks.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/vectors3f.h>
 
@@ -47,7 +48,7 @@ void Sim::begin_play() {
 }
 
 void Sim::commit_spawns() {
-    assert(simulation_clock.permits_preparation_mutation());
+    assert(is_preparation_mutation_allowed(simulation_clock));
     SANDBOX_PROFILE_SCOPE("lasers::Sim::commit_spawns");
     process_pending_spawns();
     clear_spawn_buffers();

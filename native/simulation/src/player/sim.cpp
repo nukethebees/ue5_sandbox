@@ -627,7 +627,7 @@ auto Sim::get_middle_socket() const -> Transform3d {
 }
 
 auto Sim::get_laser_effective_range() const noexcept -> float {
-    return std::max(config.laser.max_distance, 0.0f);
+    return config.laser.max_distance;
 }
 
 /* **************************************** */

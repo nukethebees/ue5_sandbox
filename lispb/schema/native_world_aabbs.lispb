@@ -2,10 +2,6 @@
   :header "native/simulation/include/ioj/sim/collision/world_aabbs.h"
   :namespace ioj::sim::collision
   (struct WorldAABBs
-    (member min_xs array float)
-    (member min_ys array float)
-    (member min_zs array float)
-    (member max_xs array float)
-    (member max_ys array float)
-    (member max_zs array float)
+    (member min_points nested @native_vectors_3f)
+    (member max_points nested @native_vectors_3f)
 ))

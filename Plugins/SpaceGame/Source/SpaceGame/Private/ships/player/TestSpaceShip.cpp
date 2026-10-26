@@ -321,7 +321,7 @@ void ATestSpaceShip::add_health(int32 const added_health) {
 
 auto ATestSpaceShip::get_health_info() const -> FShipHealth {
     if (!bound_simulation) {
-        return FShipHealth{initial_.health.value()};
+        return FShipHealth{initial_.health.get().value()};
     }
     auto const native_health{bound_simulation->get_health()};
     return {native_health.health.value(), native_health.max_health.value()};

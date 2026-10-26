@@ -1,5 +1,5 @@
 #include "../support/simulation_test_support.h"
-#include <ioj/sim/collision/world_aabb_operations.h>
+#include <ioj/sim/collision/world_aabbs.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
@@ -21,7 +21,7 @@ void add_worldless_turrets(LevelSimInitData& data,
     for (std::int32_t i{}; i < count; ++i) {
         auto const health{blue_health != -1 && teams[i] == Team::Blue
                               ? blue_health
-                              : data.turrets.max_health.value()};
+                              : data.turrets.max_health.get().value()};
         tests::add_turret_spawn(data, locations[i], {}, teams[i], health, laser_damage);
     }
 }
@@ -115,8 +115,7 @@ TEST(WorldlessSpaceGameSimulation, Turrets_SearchRequiresLineOfSight) {
         {{-1000.f, 0.f, 0.f}}, {{1000.f, 0.f, 0.f}}, {{1000.f, 1000.f, 0.f}}};
     std::vector<Team> const teams{Team::Blue, Team::Red, Team::Red};
     add_worldless_turrets(data, locations, teams, 0);
-    collision::add(
-        data.collision.static_bounds, {{-100.f, -300.f, -3000.f}}, {{100.f, 300.f, 3000.f}});
+    data.collision.static_bounds.add({{-100.f, -300.f, -3000.f}}, {{100.f, 300.f, 3000.f}});
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     harness.timeline.finish_at(1.0);
