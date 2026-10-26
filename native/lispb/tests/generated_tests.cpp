@@ -599,7 +599,9 @@ TEST(GeneratedFacade, Operations) {
     target.value = 5;
 
     FInlineFacade inline_facade;
+#ifndef NDEBUG
     EXPECT_DEATH(static_cast<void>(inline_facade.get()), "");
+#endif
     inline_facade.bind(target);
     EXPECT_TRUE(inline_facade.get() == 5);
     EXPECT_TRUE(inline_facade.get(3) == 8);
