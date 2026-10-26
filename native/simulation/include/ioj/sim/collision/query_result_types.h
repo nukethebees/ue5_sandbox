@@ -7,19 +7,27 @@
 
 #include <cassert>
 #include <compare>
+#include <cstddef>
 #include <cstdint>
+#include <format>
+#include <functional>
 
 namespace ioj::sim {
 struct TraceHit {
   public:
     using storage_type = std::uint8_t;
     using value_type = std::uint8_t;
-    using value_field = ioj::PackedField<storage_type, value_type, 0, 1>;
+    static constexpr int encoded_bits{1};
+    static constexpr int storage_bits{8};
+    static constexpr storage_type default_raw_value{};
+    using value_field = ioj::PackedField<storage_type, value_type, 0, encoded_bits>;
+    static constexpr value_type minimum_value{static_cast<value_type>(0ULL)};
+    static constexpr value_type maximum_value{static_cast<value_type>(1ULL)};
 
     constexpr TraceHit() noexcept = default;
     explicit constexpr TraceHit(value_type const value) noexcept
         : value_{ioj::packed_pack<value_field>(value)} {
-        assert((ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value));
+        assert(is_valid_value(value));
     }
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> TraceHit {
         TraceHit result;
@@ -31,13 +39,15 @@ struct TraceHit {
         return ioj::packed_extract<value_field>(value_);
     }
     constexpr void set_value(value_type const value) noexcept {
-        assert((ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value));
+        assert(is_valid_value(value));
         value_ = ioj::packed_insert<value_field>(value_, value);
     }
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
-        return ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value;
+        return static_cast<storage_type>(value) <= value_field::value_mask;
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return is_valid_value(value());
+    }
     [[nodiscard]] constexpr auto operator<=>(TraceHit const& other) const noexcept {
         return value() <=> other.value();
     }
@@ -45,7 +55,7 @@ struct TraceHit {
         return value() == other.value();
     }
   private:
-    storage_type value_{};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<TraceHit>());
 
@@ -53,12 +63,17 @@ struct LineQueryResult {
   public:
     using storage_type = std::uint8_t;
     using value_type = std::uint8_t;
-    using value_field = ioj::PackedField<storage_type, value_type, 0, 1>;
+    static constexpr int encoded_bits{1};
+    static constexpr int storage_bits{8};
+    static constexpr storage_type default_raw_value{};
+    using value_field = ioj::PackedField<storage_type, value_type, 0, encoded_bits>;
+    static constexpr value_type minimum_value{static_cast<value_type>(0ULL)};
+    static constexpr value_type maximum_value{static_cast<value_type>(1ULL)};
 
     constexpr LineQueryResult() noexcept = default;
     explicit constexpr LineQueryResult(value_type const value) noexcept
         : value_{ioj::packed_pack<value_field>(value)} {
-        assert((ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value));
+        assert(is_valid_value(value));
     }
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> LineQueryResult {
         LineQueryResult result;
@@ -70,13 +85,15 @@ struct LineQueryResult {
         return ioj::packed_extract<value_field>(value_);
     }
     constexpr void set_value(value_type const value) noexcept {
-        assert((ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value));
+        assert(is_valid_value(value));
         value_ = ioj::packed_insert<value_field>(value_, value);
     }
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
-        return ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value;
+        return static_cast<storage_type>(value) <= value_field::value_mask;
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return is_valid_value(value());
+    }
     [[nodiscard]] constexpr auto operator<=>(LineQueryResult const& other) const noexcept {
         return value() <=> other.value();
     }
@@ -84,8 +101,44 @@ struct LineQueryResult {
         return value() == other.value();
     }
   private:
-    storage_type value_{};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<LineQueryResult>());
 
 } // namespace ioj::sim
+namespace std {
+template <typename Char>
+struct formatter<::ioj::sim::TraceHit, Char> : formatter<::ioj::sim::TraceHit::value_type, Char> {
+    template <typename FormatContext>
+    auto format(::ioj::sim::TraceHit const& value, FormatContext& context) const ->
+        typename FormatContext::iterator {
+        return formatter<::ioj::sim::TraceHit::value_type, Char>::format(value.value(), context);
+    }
+};
+template <>
+struct hash<::ioj::sim::TraceHit> {
+    [[nodiscard]] auto operator()(::ioj::sim::TraceHit const& value) const noexcept -> size_t {
+        return hash<::ioj::sim::TraceHit::value_type>{}(value.value());
+    }
+};
+}
+
+namespace std {
+template <typename Char>
+struct formatter<::ioj::sim::LineQueryResult, Char>
+    : formatter<::ioj::sim::LineQueryResult::value_type, Char> {
+    template <typename FormatContext>
+    auto format(::ioj::sim::LineQueryResult const& value, FormatContext& context) const ->
+        typename FormatContext::iterator {
+        return formatter<::ioj::sim::LineQueryResult::value_type, Char>::format(value.value(),
+                                                                                context);
+    }
+};
+template <>
+struct hash<::ioj::sim::LineQueryResult> {
+    [[nodiscard]] auto operator()(::ioj::sim::LineQueryResult const& value) const noexcept
+        -> size_t {
+        return hash<::ioj::sim::LineQueryResult::value_type>{}(value.value());
+    }
+};
+}

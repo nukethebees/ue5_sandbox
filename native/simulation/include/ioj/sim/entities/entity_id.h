@@ -8,12 +8,18 @@
 
 #include <cassert>
 #include <compare>
+#include <cstddef>
 #include <cstdint>
+#include <format>
+#include <functional>
 
 namespace ioj::sim {
 struct EntityId {
   public:
     using storage_type = std::uint32_t;
+    static constexpr int encoded_bits{32};
+    static constexpr int storage_bits{32};
+    static constexpr storage_type default_raw_value{4294967295ULL};
     using index_type = std::uint32_t;
     using index_field = ioj::PackedField<storage_type, index_type, 0, 24>;
     struct index_range_type {
@@ -24,6 +30,15 @@ struct EntityId {
                                                   static_cast<index_type>(16777215ULL)};
     using entity_type_type = ioj::sim::EntityType;
     using entity_type_field = ioj::PackedField<storage_type, entity_type_type, 24, 8>;
+    [[nodiscard]] static constexpr auto is_valid_index(index_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= index_field::value_mask;
+    }
+    [[nodiscard]] static constexpr auto is_valid_entity_type(entity_type_type const value) noexcept
+        -> bool {
+        return (value == entity_type_PlayerShip_code) || (value == entity_type_Turret_code) ||
+               (value == entity_type_CapitalShip_code) || (value == entity_type_Fighter_code) ||
+               (value == entity_type_TubeSpinner_code);
+    }
     static constexpr storage_type invalid_value{4294967295ULL};
 
     constexpr EntityId() noexcept = default;
@@ -35,41 +50,17 @@ struct EntityId {
     explicit constexpr EntityId(index_type const index_value,
                                 entity_type_type const entity_type_value) noexcept
         : value_{0} {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                        index_value)) == index_value));
+        assert((is_valid_index(index_value)));
         value_ = ioj::packed_insert<index_field>(value_, index_value);
-        assert(((static_cast<std::uint64_t>(entity_type_value) == 0ULL) ||
-                (static_cast<std::uint64_t>(entity_type_value) == 1ULL) ||
-                (static_cast<std::uint64_t>(entity_type_value) == 2ULL) ||
-                (static_cast<std::uint64_t>(entity_type_value) == 3ULL) ||
-                (static_cast<std::uint64_t>(entity_type_value) == 4ULL)));
+        assert((is_valid_entity_type(entity_type_value)));
         value_ = ioj::packed_insert<entity_type_field>(value_, entity_type_value);
         assert(value_ != invalid_value);
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return value_ != invalid_value &&
-               (((static_cast<std::uint64_t>(
-                      ioj::packed_extract<
-                          ioj::PackedField<storage_type, ioj::sim::EntityType, 24, 8>>(value_)) ==
-                  0ULL) ||
-                 (static_cast<std::uint64_t>(
-                      ioj::packed_extract<
-                          ioj::PackedField<storage_type, ioj::sim::EntityType, 24, 8>>(value_)) ==
-                  1ULL) ||
-                 (static_cast<std::uint64_t>(
-                      ioj::packed_extract<
-                          ioj::PackedField<storage_type, ioj::sim::EntityType, 24, 8>>(value_)) ==
-                  2ULL) ||
-                 (static_cast<std::uint64_t>(
-                      ioj::packed_extract<
-                          ioj::PackedField<storage_type, ioj::sim::EntityType, 24, 8>>(value_)) ==
-                  3ULL) ||
-                 (static_cast<std::uint64_t>(
-                      ioj::packed_extract<
-                          ioj::PackedField<storage_type, ioj::sim::EntityType, 24, 8>>(value_)) ==
-                  4ULL)));
+               ((is_valid_index(ioj::packed_extract<index_field>(value_))) &&
+                (is_valid_entity_type(ioj::packed_extract<entity_type_field>(value_))));
     }
     [[nodiscard]] constexpr auto operator<=>(EntityId const&) const noexcept = default;
 
@@ -77,9 +68,7 @@ struct EntityId {
         return ioj::packed_extract<index_field>(value_);
     }
     constexpr void set_index(index_type const value) noexcept {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                        value)) == value));
+        assert((is_valid_index(value)));
         value_ = ioj::packed_insert<index_field>(value_, value);
     }
 
@@ -87,19 +76,40 @@ struct EntityId {
         return ioj::packed_extract<entity_type_field>(value_);
     }
     constexpr void set_entity_type(entity_type_type const value) noexcept {
-        assert(((static_cast<std::uint64_t>(value) == 0ULL) ||
-                (static_cast<std::uint64_t>(value) == 1ULL) ||
-                (static_cast<std::uint64_t>(value) == 2ULL) ||
-                (static_cast<std::uint64_t>(value) == 3ULL) ||
-                (static_cast<std::uint64_t>(value) == 4ULL)));
+        assert((is_valid_entity_type(value)));
         value_ = ioj::packed_insert<entity_type_field>(value_, value);
     }
+    static constexpr entity_type_type entity_type_PlayerShip_code{
+        static_cast<entity_type_type>(0ULL)};
+    static constexpr entity_type_type entity_type_Turret_code{static_cast<entity_type_type>(1ULL)};
+    static constexpr entity_type_type entity_type_CapitalShip_code{
+        static_cast<entity_type_type>(2ULL)};
+    static constexpr entity_type_type entity_type_Fighter_code{static_cast<entity_type_type>(3ULL)};
+    static constexpr entity_type_type entity_type_TubeSpinner_code{
+        static_cast<entity_type_type>(4ULL)};
   private:
     struct RawTag {};
     constexpr EntityId(RawTag, storage_type raw) noexcept
         : value_{raw} {}
-    storage_type value_{4294967295ULL};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<EntityId>());
 
 } // namespace ioj::sim
+namespace std {
+template <typename Char>
+struct formatter<::ioj::sim::EntityId, Char> : formatter<::ioj::sim::EntityId::storage_type, Char> {
+    template <typename FormatContext>
+    auto format(::ioj::sim::EntityId const& value, FormatContext& context) const ->
+        typename FormatContext::iterator {
+        return formatter<::ioj::sim::EntityId::storage_type, Char>::format(value.raw_value(),
+                                                                           context);
+    }
+};
+template <>
+struct hash<::ioj::sim::EntityId> {
+    [[nodiscard]] auto operator()(::ioj::sim::EntityId const& value) const noexcept -> size_t {
+        return hash<::ioj::sim::EntityId::storage_type>{}(value.raw_value());
+    }
+};
+}

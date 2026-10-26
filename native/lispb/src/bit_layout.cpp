@@ -498,17 +498,77 @@ class BitLayoutResolver {
     }
     void validate_names(BitLayout const& result, TypeId const type) const {
         std::set<std::string> names{"storage_type",
+                                    "encoded_bits",
+                                    "storage_bits",
+                                    "default_raw_value",
                                     "raw_value",
                                     "from_raw",
                                     "is_valid",
-                                    "invalid_value",
-                                    "RawTag",
-                                    "value_",
-                                    std::string{graph_.strings().view(graph_.name(type))}};
+                                    "value_"};
         auto const& declarations{graph_.declarations()};
         auto const root_definition{graph_.definition(type)};
-        if (root_definition.kind() == TypeDefinitionKind::integer_scalar) {
+        auto const root_kind{root_definition.kind()};
+        if (root_kind == TypeDefinitionKind::record ||
+            root_kind == TypeDefinitionKind::union_type) {
+            names.insert("RawTag");
+            if (root_kind == TypeDefinitionKind::record &&
+                definitions_.records
+                    .invalid_raw_value[definitions_.records.index(root_definition)]) {
+                names.insert("invalid_value");
+            }
+        } else {
             names.insert({"value_type", "value_field", "value", "set_value", "is_valid_value"});
+            switch (root_kind) {
+                case TypeDefinitionKind::integer_scalar:
+                    names.insert({"minimum_value", "maximum_value"});
+                    break;
+                case TypeDefinitionKind::fixed_point: {
+                    auto const row{definitions_.fixed_points.index(root_definition)};
+                    if (definitions_.fixed_points.minimum_raw_value[row]) {
+                        names.insert("minimum_value");
+                    }
+                    if (definitions_.fixed_points.maximum_raw_value[row]) {
+                        names.insert("maximum_value");
+                    }
+                    break;
+                }
+                case TypeDefinitionKind::linear_quantized:
+                    names.insert("maximum_encoded");
+                    break;
+                case TypeDefinitionKind::optional_sentinel:
+                case TypeDefinitionKind::optional_presence_bit: {
+                    names.insert(
+                        {"payload_type", "payload_field", "payload_minimum", "payload_maximum"});
+                    names.insert(root_kind == TypeDefinitionKind::optional_sentinel
+                                     ? "sentinel"
+                                     : "presence_mask");
+                    auto const source{
+                        root_kind == TypeDefinitionKind::optional_sentinel
+                            ? definitions_.optional_sentinels
+                                  .source[definitions_.optional_sentinels.index(root_definition)]
+                            : definitions_.optional_presence_bits
+                                  .source[definitions_.optional_presence_bits.index(
+                                      root_definition)]};
+                    auto const source_type{
+                        graph_.occurrences().type[graph_.occurrences().index(source)]};
+                    auto const domain{*integer_domain(graph_, source_type)};
+                    auto const& scalars{definitions_.integer_scalars};
+                    auto const row{scalars.index(domain)};
+                    for (auto const code : declarations.items(scalars.named_codes[row])) {
+                        names.insert("payload_" + std::string{graph_.strings().view(
+                                                      declarations.packed_named_codes.name[code])});
+                    }
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+        auto const owner_name{std::string{graph_.strings().view(graph_.name(type))}};
+        if (!names.insert(owner_name).second) {
+            fail("Owning type name collides with generated C++ member: " + owner_name, type);
+        }
+        if (root_kind == TypeDefinitionKind::integer_scalar) {
             for (auto const code : declarations.items(
                      definitions_.integer_scalars
                          .named_codes[definitions_.integer_scalars.index(root_definition)])) {
@@ -535,26 +595,76 @@ class BitLayoutResolver {
                 kind == TypeDefinitionKind::optional_presence_bit) {
                 accessor += "_encoded";
             }
-            for (auto const& name : {accessor,
-                                     "set_" + accessor,
-                                     accessor + "_type",
-                                     accessor + "_field",
-                                     accessor + "_range_type",
-                                     accessor + "_range"}) {
+            auto const add_name = [&](std::string const& name) {
                 if (!names.insert(name).second) {
                     fail("Flattened packed C++ name collision at '" + value.path + "': " + name,
                          type);
                 }
+            };
+            if (kind == TypeDefinitionKind::record &&
+                definitions_.records
+                    .invalid_raw_value[definitions_.records.index(graph_.definition(value.type))]) {
+                add_name(accessor + "_invalid_value");
+            }
+            for (auto const& name : {accessor,
+                                     "set_" + accessor,
+                                     "is_valid_" + accessor,
+                                     accessor + "_type",
+                                     accessor + "_field",
+                                     accessor + "_range_type",
+                                     accessor + "_range"}) {
+                add_name(name);
             }
             if (kind == TypeDefinitionKind::fixed_point) {
                 for (auto const& name : {value.path + "_value",
                                          "set_" + value.path + "_value",
                                          "try_encode_" + value.path + "_value",
+                                         value.path + "_fractional_bits",
+                                         value.path + "_magnitude_bits",
                                          value.path + "_minimum_allowed_raw",
                                          value.path + "_maximum_allowed_raw"}) {
-                    if (!names.insert(name).second) {
-                        fail("Flattened packed C++ name collision at '" + value.path + "': " + name,
-                             type);
+                    add_name(name);
+                }
+            }
+            if (kind == TypeDefinitionKind::enumeration) {
+                auto const domain{
+                    definitions_.enums
+                        .domain[definitions_.enums.index(graph_.definition(value.type))]};
+                for (auto const enumerator : graph_.enum_domains().values(domain)) {
+                    add_name(accessor + "_" +
+                             std::string{
+                                 graph_.strings().view(declarations.enumerators.name[enumerator])} +
+                             "_code");
+                }
+            }
+            if (kind == TypeDefinitionKind::linear_quantized) {
+                add_name(accessor + "_maximum_encoded");
+            }
+            if (kind == TypeDefinitionKind::optional_sentinel ||
+                kind == TypeDefinitionKind::optional_presence_bit) {
+                add_name(accessor + (kind == TypeDefinitionKind::optional_sentinel
+                                         ? "_sentinel"
+                                         : "_presence_mask"));
+                for (auto const suffix :
+                     {"_payload_type", "_payload_field", "_payload_minimum", "_payload_maximum"}) {
+                    add_name(accessor + suffix);
+                }
+                auto const definition{graph_.definition(value.type)};
+                auto const source{
+                    kind == TypeDefinitionKind::optional_sentinel
+                        ? definitions_.optional_sentinels
+                              .source[definitions_.optional_sentinels.index(definition)]
+                        : definitions_.optional_presence_bits
+                              .source[definitions_.optional_presence_bits.index(definition)]};
+                auto const source_type{
+                    graph_.occurrences().type[graph_.occurrences().index(source)]};
+                if (auto const domain{integer_domain(graph_, source_type)}) {
+                    for (auto const code : declarations.items(
+                             definitions_.integer_scalars
+                                 .named_codes[definitions_.integer_scalars.index(*domain)])) {
+                        add_name(accessor + "_payload_" +
+                                 std::string{graph_.strings().view(
+                                     declarations.packed_named_codes.name[code])});
                     }
                 }
             }
@@ -565,10 +675,7 @@ class BitLayoutResolver {
                     auto const name{accessor + "_" +
                                     std::string{graph_.strings().view(
                                         declarations.packed_named_codes.name[code])}};
-                    if (!names.insert(name).second) {
-                        fail("Flattened packed C++ name collision at '" + value.path + "': " + name,
-                             type);
-                    }
+                    add_name(name);
                 }
             }
             if (value.alternative && factories.emplace(value.child, value.parent).second) {

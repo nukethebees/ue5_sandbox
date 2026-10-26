@@ -7,7 +7,10 @@
 
 #include <cassert>
 #include <compare>
+#include <cstddef>
 #include <cstdint>
+#include <format>
+#include <functional>
 
 namespace codegen_compile_fixture::unified {
 struct CheckedPayload;
@@ -16,12 +19,17 @@ struct EntityIndex {
   public:
     using storage_type = std::uint32_t;
     using value_type = std::uint32_t;
-    using value_field = ioj::PackedField<storage_type, value_type, 0, 24>;
+    static constexpr int encoded_bits{24};
+    static constexpr int storage_bits{32};
+    static constexpr storage_type default_raw_value{};
+    using value_field = ioj::PackedField<storage_type, value_type, 0, encoded_bits>;
+    static constexpr value_type minimum_value{static_cast<value_type>(0ULL)};
+    static constexpr value_type maximum_value{static_cast<value_type>(16777215ULL)};
 
     constexpr EntityIndex() noexcept = default;
     explicit constexpr EntityIndex(value_type const value) noexcept
         : value_{ioj::packed_pack<value_field>(value)} {
-        assert((ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value));
+        assert(is_valid_value(value));
     }
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> EntityIndex {
         EntityIndex result;
@@ -33,13 +41,15 @@ struct EntityIndex {
         return ioj::packed_extract<value_field>(value_);
     }
     constexpr void set_value(value_type const value) noexcept {
-        assert((ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value));
+        assert(is_valid_value(value));
         value_ = ioj::packed_insert<value_field>(value_, value);
     }
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
-        return ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value;
+        return static_cast<storage_type>(value) <= value_field::value_mask;
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return is_valid_value(value());
+    }
     [[nodiscard]] constexpr auto operator<=>(EntityIndex const& other) const noexcept {
         return value() <=> other.value();
     }
@@ -47,7 +57,7 @@ struct EntityIndex {
         return value() == other.value();
     }
   private:
-    storage_type value_{};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<EntityIndex>());
 
@@ -55,11 +65,18 @@ struct SignedOffset {
   public:
     using storage_type = std::uint16_t;
     using value_type = std::int16_t;
-    using value_field = ioj::PackedField<storage_type, value_type, 0, 16>;
+    static constexpr int encoded_bits{16};
+    static constexpr int storage_bits{16};
+    static constexpr storage_type default_raw_value{};
+    using value_field = ioj::PackedField<storage_type, value_type, 0, encoded_bits>;
+    static constexpr value_type minimum_value{static_cast<value_type>(-32768LL)};
+    static constexpr value_type maximum_value{static_cast<value_type>(32767ULL)};
 
     constexpr SignedOffset() noexcept = default;
     explicit constexpr SignedOffset(value_type const value) noexcept
-        : value_{ioj::packed_pack<value_field>(value)} {}
+        : value_{ioj::packed_pack<value_field>(value)} {
+        assert(is_valid_value(value));
+    }
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> SignedOffset {
         SignedOffset result;
         result.value_ = raw;
@@ -70,12 +87,15 @@ struct SignedOffset {
         return ioj::packed_extract<value_field>(value_);
     }
     constexpr void set_value(value_type const value) noexcept {
+        assert(is_valid_value(value));
         value_ = ioj::packed_insert<value_field>(value_, value);
     }
     [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
         return true;
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return is_valid_value(value());
+    }
     [[nodiscard]] constexpr auto operator<=>(SignedOffset const& other) const noexcept {
         return value() <=> other.value();
     }
@@ -83,7 +103,7 @@ struct SignedOffset {
         return value() == other.value();
     }
   private:
-    storage_type value_{};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<SignedOffset>());
 
@@ -99,6 +119,9 @@ enum class Opcode : OpcodeUnderlying {
 struct EntityId {
   public:
     using storage_type = std::uint32_t;
+    static constexpr int encoded_bits{32};
+    static constexpr int storage_bits{32};
+    static constexpr storage_type default_raw_value{0ULL};
     using index_type = std::uint32_t;
     using index_field = ioj::PackedField<storage_type, index_type, 0, 24>;
     struct index_range_type {
@@ -115,6 +138,13 @@ struct EntityId {
     };
     static constexpr entity_type_range_type entity_type_range{
         static_cast<entity_type_type>(0ULL), static_cast<entity_type_type>(255ULL)};
+    [[nodiscard]] static constexpr auto is_valid_index(index_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= index_field::value_mask;
+    }
+    [[nodiscard]] static constexpr auto is_valid_entity_type(entity_type_type const) noexcept
+        -> bool {
+        return true;
+    }
 
     constexpr EntityId() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> EntityId {
@@ -125,23 +155,23 @@ struct EntityId {
     explicit constexpr EntityId(index_type const index_value,
                                 entity_type_type const entity_type_value) noexcept
         : value_{0} {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                        index_value)) == index_value));
+        assert((is_valid_index(index_value)));
         value_ = ioj::packed_insert<index_field>(value_, index_value);
+        assert((is_valid_entity_type(entity_type_value)));
         value_ = ioj::packed_insert<entity_type_field>(value_, entity_type_value);
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return (is_valid_index(ioj::packed_extract<index_field>(value_))) &&
+               (is_valid_entity_type(ioj::packed_extract<entity_type_field>(value_)));
+    }
     [[nodiscard]] constexpr auto operator<=>(EntityId const&) const noexcept = default;
 
     [[nodiscard]] constexpr auto index() const noexcept -> index_type {
         return ioj::packed_extract<index_field>(value_);
     }
     constexpr void set_index(index_type const value) noexcept {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                        value)) == value));
+        assert((is_valid_index(value)));
         value_ = ioj::packed_insert<index_field>(value_, value);
     }
 
@@ -149,19 +179,23 @@ struct EntityId {
         return ioj::packed_extract<entity_type_field>(value_);
     }
     constexpr void set_entity_type(entity_type_type const value) noexcept {
+        assert((is_valid_entity_type(value)));
         value_ = ioj::packed_insert<entity_type_field>(value_, value);
     }
   private:
     struct RawTag {};
     constexpr EntityId(RawTag, storage_type raw) noexcept
         : value_{raw} {}
-    storage_type value_{0ULL};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<EntityId>());
 
 struct WideEntityId {
   public:
     using storage_type = std::uint64_t;
+    static constexpr int encoded_bits{32};
+    static constexpr int storage_bits{64};
+    static constexpr storage_type default_raw_value{0ULL};
     using index_type = std::uint32_t;
     using index_field = ioj::PackedField<storage_type, index_type, 0, 24>;
     struct index_range_type {
@@ -178,6 +212,13 @@ struct WideEntityId {
     };
     static constexpr entity_type_range_type entity_type_range{
         static_cast<entity_type_type>(0ULL), static_cast<entity_type_type>(255ULL)};
+    [[nodiscard]] static constexpr auto is_valid_index(index_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= index_field::value_mask;
+    }
+    [[nodiscard]] static constexpr auto is_valid_entity_type(entity_type_type const) noexcept
+        -> bool {
+        return true;
+    }
 
     constexpr WideEntityId() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> WideEntityId {
@@ -188,23 +229,23 @@ struct WideEntityId {
     explicit constexpr WideEntityId(index_type const index_value,
                                     entity_type_type const entity_type_value) noexcept
         : value_{0} {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                        index_value)) == index_value));
+        assert((is_valid_index(index_value)));
         value_ = ioj::packed_insert<index_field>(value_, index_value);
+        assert((is_valid_entity_type(entity_type_value)));
         value_ = ioj::packed_insert<entity_type_field>(value_, entity_type_value);
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return (is_valid_index(ioj::packed_extract<index_field>(value_))) &&
+               (is_valid_entity_type(ioj::packed_extract<entity_type_field>(value_)));
+    }
     [[nodiscard]] constexpr auto operator<=>(WideEntityId const&) const noexcept = default;
 
     [[nodiscard]] constexpr auto index() const noexcept -> index_type {
         return ioj::packed_extract<index_field>(value_);
     }
     constexpr void set_index(index_type const value) noexcept {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                        value)) == value));
+        assert((is_valid_index(value)));
         value_ = ioj::packed_insert<index_field>(value_, value);
     }
 
@@ -212,19 +253,23 @@ struct WideEntityId {
         return ioj::packed_extract<entity_type_field>(value_);
     }
     constexpr void set_entity_type(entity_type_type const value) noexcept {
+        assert((is_valid_entity_type(value)));
         value_ = ioj::packed_insert<entity_type_field>(value_, value);
     }
   private:
     struct RawTag {};
     constexpr WideEntityId(RawTag, storage_type raw) noexcept
         : value_{raw} {}
-    storage_type value_{0ULL};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<WideEntityId>());
 
 struct NestedId {
   public:
     using storage_type = std::uint64_t;
+    static constexpr int encoded_bits{64};
+    static constexpr int storage_bits{64};
+    static constexpr storage_type default_raw_value{0ULL};
     using prefix_type = std::uint8_t;
     using prefix_field = ioj::PackedField<storage_type, prefix_type, 0, 8>;
     struct prefix_range_type {
@@ -251,6 +296,17 @@ struct NestedId {
     };
     static constexpr target_entity_type_range_type target_entity_type_range{
         static_cast<target_entity_type_type>(0ULL), static_cast<target_entity_type_type>(255ULL)};
+    [[nodiscard]] static constexpr auto is_valid_prefix(prefix_type const) noexcept -> bool {
+        return true;
+    }
+    [[nodiscard]] static constexpr auto
+        is_valid_target_index(target_index_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= target_index_field::value_mask;
+    }
+    [[nodiscard]] static constexpr auto
+        is_valid_target_entity_type(target_entity_type_type const) noexcept -> bool {
+        return true;
+    }
 
     constexpr NestedId() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> NestedId {
@@ -261,19 +317,26 @@ struct NestedId {
     explicit constexpr NestedId(prefix_type const prefix_value,
                                 target_type const target_value) noexcept
         : value_{0} {
+        assert((is_valid_prefix(prefix_value)));
         value_ = ioj::packed_insert<prefix_field>(value_, prefix_value);
         assert((target_value.is_valid()));
         value_ = ioj::packed_insert<target_field>(
             value_, static_cast<storage_type>(target_value.raw_value()));
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return (is_valid_prefix(ioj::packed_extract<prefix_field>(value_))) &&
+               ((is_valid_target_index(ioj::packed_extract<target_index_field>(value_))) &&
+                (is_valid_target_entity_type(
+                    ioj::packed_extract<target_entity_type_field>(value_))));
+    }
     [[nodiscard]] constexpr auto operator<=>(NestedId const&) const noexcept = default;
 
     [[nodiscard]] constexpr auto prefix() const noexcept -> prefix_type {
         return ioj::packed_extract<prefix_field>(value_);
     }
     constexpr void set_prefix(prefix_type const value) noexcept {
+        assert((is_valid_prefix(value)));
         value_ = ioj::packed_insert<prefix_field>(value_, value);
     }
 
@@ -291,9 +354,7 @@ struct NestedId {
         return ioj::packed_extract<target_index_field>(value_);
     }
     constexpr void set_target_index(target_index_type const value) noexcept {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                        value)) == value));
+        assert((is_valid_target_index(value)));
         value_ = ioj::packed_insert<target_index_field>(value_, value);
     }
 
@@ -301,19 +362,23 @@ struct NestedId {
         return ioj::packed_extract<target_entity_type_field>(value_);
     }
     constexpr void set_target_entity_type(target_entity_type_type const value) noexcept {
+        assert((is_valid_target_entity_type(value)));
         value_ = ioj::packed_insert<target_entity_type_field>(value_, value);
     }
   private:
     struct RawTag {};
     constexpr NestedId(RawTag, storage_type raw) noexcept
         : value_{raw} {}
-    storage_type value_{0ULL};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<NestedId>());
 
 struct Target {
   public:
     using storage_type = std::uint32_t;
+    static constexpr int encoded_bits{32};
+    static constexpr int storage_bits{32};
+    static constexpr storage_type default_raw_value{0ULL};
     using entity_index_type = std::uint32_t;
     using entity_index_field = ioj::PackedField<storage_type, entity_index_type, 0, 24>;
     struct entity_index_range_type {
@@ -339,6 +404,18 @@ struct Target {
     static constexpr instruction_offset_range_type instruction_offset_range{
         static_cast<instruction_offset_type>(0ULL),
         static_cast<instruction_offset_type>(16777215ULL)};
+    [[nodiscard]] static constexpr auto
+        is_valid_entity_index(entity_index_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= entity_index_field::value_mask;
+    }
+    [[nodiscard]] static constexpr auto is_valid_location_index(location_index_type const) noexcept
+        -> bool {
+        return true;
+    }
+    [[nodiscard]] static constexpr auto
+        is_valid_instruction_offset(instruction_offset_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= instruction_offset_field::value_mask;
+    }
 
     constexpr Target() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> Target {
@@ -349,9 +426,7 @@ struct Target {
     [[nodiscard]] static constexpr auto
         make_entity_index(entity_index_type const entity_index_value) noexcept -> Target {
         auto result{from_raw(0)};
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                        entity_index_value)) == entity_index_value));
+        assert((is_valid_entity_index(entity_index_value)));
         result.value_ = ioj::packed_insert<entity_index_field>(result.value_, entity_index_value);
         return result;
     }
@@ -359,6 +434,7 @@ struct Target {
     [[nodiscard]] static constexpr auto
         make_location_index(location_index_type const location_index_value) noexcept -> Target {
         auto result{from_raw(0)};
+        assert((is_valid_location_index(location_index_value)));
         result.value_ =
             ioj::packed_insert<location_index_field>(result.value_, location_index_value);
         return result;
@@ -368,16 +444,17 @@ struct Target {
         make_instruction_offset(instruction_offset_type const instruction_offset_value) noexcept
         -> Target {
         auto result{from_raw(0)};
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                        instruction_offset_value)) == instruction_offset_value));
+        assert((is_valid_instruction_offset(instruction_offset_value)));
         result.value_ =
             ioj::packed_insert<instruction_offset_field>(result.value_, instruction_offset_value);
         return result;
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (true) || (true) || (true);
+        return ((is_valid_entity_index(ioj::packed_extract<entity_index_field>(value_)))) ||
+               ((is_valid_location_index(ioj::packed_extract<location_index_field>(value_)))) ||
+               ((is_valid_instruction_offset(
+                   ioj::packed_extract<instruction_offset_field>(value_))));
     }
     [[nodiscard]] constexpr auto operator<=>(Target const&) const noexcept = default;
 
@@ -385,9 +462,7 @@ struct Target {
         return ioj::packed_extract<entity_index_field>(value_);
     }
     constexpr void set_entity_index(entity_index_type const value) noexcept {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                        value)) == value));
+        assert((is_valid_entity_index(value)));
         value_ = ioj::packed_insert<entity_index_field>(value_, value);
     }
 
@@ -395,6 +470,7 @@ struct Target {
         return ioj::packed_extract<location_index_field>(value_);
     }
     constexpr void set_location_index(location_index_type const value) noexcept {
+        assert((is_valid_location_index(value)));
         value_ = ioj::packed_insert<location_index_field>(value_, value);
     }
 
@@ -402,24 +478,33 @@ struct Target {
         return ioj::packed_extract<instruction_offset_field>(value_);
     }
     constexpr void set_instruction_offset(instruction_offset_type const value) noexcept {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                        value)) == value));
+        assert((is_valid_instruction_offset(value)));
         value_ = ioj::packed_insert<instruction_offset_field>(value_, value);
     }
   private:
     struct RawTag {};
     constexpr Target(RawTag, storage_type raw) noexcept
         : value_{raw} {}
-    storage_type value_{0ULL};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<Target>());
 
 struct Instruction {
   public:
     using storage_type = std::uint64_t;
+    static constexpr int encoded_bits{64};
+    static constexpr int storage_bits{64};
+    static constexpr storage_type default_raw_value{0ULL};
     using opcode_type = codegen_compile_fixture::unified::Opcode;
     using opcode_field = ioj::PackedField<storage_type, opcode_type, 0, 6>;
+    using payload_type = storage_type;
+    using payload_field = ioj::PackedField<storage_type, storage_type, 6, 32>;
+    using payload_kill_entity_type = storage_type;
+    using payload_kill_entity_field = ioj::PackedField<storage_type, storage_type, 6, 32>;
+    using payload_move_to_type = storage_type;
+    using payload_move_to_field = ioj::PackedField<storage_type, storage_type, 6, 32>;
+    using payload_jump_type = storage_type;
+    using payload_jump_field = ioj::PackedField<storage_type, storage_type, 6, 24>;
     using payload_kill_entity_target_type = codegen_compile_fixture::unified::EntityId;
     using payload_kill_entity_target_field = ioj::PackedField<storage_type, storage_type, 6, 32>;
     using payload_kill_entity_target_index_type = std::uint32_t;
@@ -464,6 +549,30 @@ struct Instruction {
     static constexpr payload_jump_destination_range_type payload_jump_destination_range{
         static_cast<payload_jump_destination_type>(0ULL),
         static_cast<payload_jump_destination_type>(16777215ULL)};
+    [[nodiscard]] static constexpr auto is_valid_opcode(opcode_type const value) noexcept -> bool {
+        return ((value == opcode_KillEntity_code) || (value == opcode_MoveTo_code) ||
+                (value == opcode_Jump_code)) &&
+               static_cast<storage_type>(value) <= opcode_field::value_mask;
+    }
+    [[nodiscard]] static constexpr auto is_valid_payload_kill_entity_target_index(
+        payload_kill_entity_target_index_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <=
+               payload_kill_entity_target_index_field::value_mask;
+    }
+    [[nodiscard]] static constexpr auto is_valid_payload_kill_entity_target_entity_type(
+        payload_kill_entity_target_entity_type_type const) noexcept -> bool {
+        return true;
+    }
+    [[nodiscard]] static constexpr auto
+        is_valid_payload_move_to_destination(payload_move_to_destination_type const) noexcept
+        -> bool {
+        return true;
+    }
+    [[nodiscard]] static constexpr auto
+        is_valid_payload_jump_destination(payload_jump_destination_type const value) noexcept
+        -> bool {
+        return static_cast<storage_type>(value) <= payload_jump_destination_field::value_mask;
+    }
 
     constexpr Instruction() noexcept = delete;
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> Instruction {
@@ -475,8 +584,7 @@ struct Instruction {
         payload_kill_entity_target_type const payload_kill_entity_target_value) noexcept
         -> Instruction {
         auto result{from_raw(0)};
-        result.value_ = ioj::packed_insert<ioj::PackedField<storage_type, storage_type, 0, 6>>(
-            result.value_, static_cast<storage_type>(0ULL));
+        result.value_ = ioj::packed_insert<opcode_field>(result.value_, opcode_KillEntity_code);
         assert((payload_kill_entity_target_value.is_valid()));
         result.value_ = ioj::packed_insert<payload_kill_entity_target_field>(
             result.value_, static_cast<storage_type>(payload_kill_entity_target_value.raw_value()));
@@ -487,8 +595,8 @@ struct Instruction {
         payload_move_to_destination_type const payload_move_to_destination_value) noexcept
         -> Instruction {
         auto result{from_raw(0)};
-        result.value_ = ioj::packed_insert<ioj::PackedField<storage_type, storage_type, 0, 6>>(
-            result.value_, static_cast<storage_type>(1ULL));
+        result.value_ = ioj::packed_insert<opcode_field>(result.value_, opcode_MoveTo_code);
+        assert((is_valid_payload_move_to_destination(payload_move_to_destination_value)));
         result.value_ = ioj::packed_insert<payload_move_to_destination_field>(
             result.value_, payload_move_to_destination_value);
         return result;
@@ -498,52 +606,32 @@ struct Instruction {
         payload_jump_destination_type const payload_jump_destination_value) noexcept
         -> Instruction {
         auto result{from_raw(0)};
-        result.value_ = ioj::packed_insert<ioj::PackedField<storage_type, storage_type, 0, 6>>(
-            result.value_, static_cast<storage_type>(2ULL));
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                        payload_jump_destination_value)) == payload_jump_destination_value));
+        result.value_ = ioj::packed_insert<opcode_field>(result.value_, opcode_Jump_code);
+        assert((is_valid_payload_jump_destination(payload_jump_destination_value)));
         result.value_ = ioj::packed_insert<payload_jump_destination_field>(
             result.value_, payload_jump_destination_value);
         return result;
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return ((static_cast<std::uint64_t>(
-                     ioj::packed_extract<ioj::PackedField<storage_type,
-                                                          codegen_compile_fixture::unified::Opcode,
-                                                          0,
-                                                          6>>(value_)) == 0ULL) ||
-                (static_cast<std::uint64_t>(
-                     ioj::packed_extract<ioj::PackedField<storage_type,
-                                                          codegen_compile_fixture::unified::Opcode,
-                                                          0,
-                                                          6>>(value_)) == 1ULL) ||
-                (static_cast<std::uint64_t>(
-                     ioj::packed_extract<ioj::PackedField<storage_type,
-                                                          codegen_compile_fixture::unified::Opcode,
-                                                          0,
-                                                          6>>(value_)) == 2ULL)) &&
-               ((((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(
-                       value_) == 0ULL) &&
-                  (((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(
-                         value_) == 0ULL) &&
-                    (((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(
-                           value_) == 0ULL) &&
-                      (true)) &&
-                     ((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(
-                           value_) == 0ULL) &&
-                      (true))))))) ||
-                (((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(
-                       value_) == 1ULL) &&
-                  (((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(
-                         value_) == 1ULL) &&
-                    (true))))) ||
-                (((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(
-                       value_) == 2ULL) &&
-                  (((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(
-                         value_) == 2ULL) &&
-                    (true))))));
+        return (is_valid_opcode(ioj::packed_extract<opcode_field>(value_))) &&
+               ((((ioj::packed_extract<opcode_field>(value_) == opcode_KillEntity_code) &&
+                  (((ioj::packed_extract<opcode_field>(value_) == opcode_KillEntity_code) &&
+                    (((ioj::packed_extract<opcode_field>(value_) == opcode_KillEntity_code) &&
+                      (is_valid_payload_kill_entity_target_index(
+                          ioj::packed_extract<payload_kill_entity_target_index_field>(value_)))) &&
+                     ((ioj::packed_extract<opcode_field>(value_) == opcode_KillEntity_code) &&
+                      (is_valid_payload_kill_entity_target_entity_type(
+                          ioj::packed_extract<payload_kill_entity_target_entity_type_field>(
+                              value_))))))))) ||
+                (((ioj::packed_extract<opcode_field>(value_) == opcode_MoveTo_code) &&
+                  (((ioj::packed_extract<opcode_field>(value_) == opcode_MoveTo_code) &&
+                    (is_valid_payload_move_to_destination(
+                        ioj::packed_extract<payload_move_to_destination_field>(value_))))))) ||
+                (((ioj::packed_extract<opcode_field>(value_) == opcode_Jump_code) &&
+                  (((ioj::packed_extract<opcode_field>(value_) == opcode_Jump_code) &&
+                    (is_valid_payload_jump_destination(
+                        ioj::packed_extract<payload_jump_destination_field>(value_))))))));
     }
     [[nodiscard]] constexpr auto operator<=>(Instruction const&) const noexcept = default;
 
@@ -553,16 +641,14 @@ struct Instruction {
 
     [[nodiscard]] constexpr auto payload_kill_entity_target() const noexcept
         -> payload_kill_entity_target_type {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(value_) ==
-                0ULL));
+        assert((ioj::packed_extract<opcode_field>(value_) == opcode_KillEntity_code));
         return payload_kill_entity_target_type::from_raw(
             static_cast<payload_kill_entity_target_type::storage_type>(
                 ioj::packed_extract<payload_kill_entity_target_field>(value_)));
     }
     constexpr void
         set_payload_kill_entity_target(payload_kill_entity_target_type const value) noexcept {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(value_) ==
-                0ULL));
+        assert((ioj::packed_extract<opcode_field>(value_) == opcode_KillEntity_code));
         assert((value.is_valid()));
         value_ = ioj::packed_insert<payload_kill_entity_target_field>(
             value_, static_cast<storage_type>(value.raw_value()));
@@ -570,76 +656,76 @@ struct Instruction {
 
     [[nodiscard]] constexpr auto payload_kill_entity_target_index() const noexcept
         -> payload_kill_entity_target_index_type {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(value_) ==
-                0ULL));
+        assert((ioj::packed_extract<opcode_field>(value_) == opcode_KillEntity_code));
         return ioj::packed_extract<payload_kill_entity_target_index_field>(value_);
     }
     constexpr void set_payload_kill_entity_target_index(
         payload_kill_entity_target_index_type const value) noexcept {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(value_) ==
-                0ULL));
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                        value)) == value));
+        assert((ioj::packed_extract<opcode_field>(value_) == opcode_KillEntity_code));
+        assert((is_valid_payload_kill_entity_target_index(value)));
         value_ = ioj::packed_insert<payload_kill_entity_target_index_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto payload_kill_entity_target_entity_type() const noexcept
         -> payload_kill_entity_target_entity_type_type {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(value_) ==
-                0ULL));
+        assert((ioj::packed_extract<opcode_field>(value_) == opcode_KillEntity_code));
         return ioj::packed_extract<payload_kill_entity_target_entity_type_field>(value_);
     }
     constexpr void set_payload_kill_entity_target_entity_type(
         payload_kill_entity_target_entity_type_type const value) noexcept {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(value_) ==
-                0ULL));
+        assert((ioj::packed_extract<opcode_field>(value_) == opcode_KillEntity_code));
+        assert((is_valid_payload_kill_entity_target_entity_type(value)));
         value_ = ioj::packed_insert<payload_kill_entity_target_entity_type_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto payload_move_to_destination() const noexcept
         -> payload_move_to_destination_type {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(value_) ==
-                1ULL));
+        assert((ioj::packed_extract<opcode_field>(value_) == opcode_MoveTo_code));
         return ioj::packed_extract<payload_move_to_destination_field>(value_);
     }
     constexpr void
         set_payload_move_to_destination(payload_move_to_destination_type const value) noexcept {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(value_) ==
-                1ULL));
+        assert((ioj::packed_extract<opcode_field>(value_) == opcode_MoveTo_code));
+        assert((is_valid_payload_move_to_destination(value)));
         value_ = ioj::packed_insert<payload_move_to_destination_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto payload_jump_destination() const noexcept
         -> payload_jump_destination_type {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(value_) ==
-                2ULL));
+        assert((ioj::packed_extract<opcode_field>(value_) == opcode_Jump_code));
         return ioj::packed_extract<payload_jump_destination_field>(value_);
     }
     constexpr void
         set_payload_jump_destination(payload_jump_destination_type const value) noexcept {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(value_) ==
-                2ULL));
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                        value)) == value));
+        assert((ioj::packed_extract<opcode_field>(value_) == opcode_Jump_code));
+        assert((is_valid_payload_jump_destination(value)));
         value_ = ioj::packed_insert<payload_jump_destination_field>(value_, value);
     }
+    static constexpr opcode_type opcode_KillEntity_code{static_cast<opcode_type>(0ULL)};
+    static constexpr opcode_type opcode_MoveTo_code{static_cast<opcode_type>(1ULL)};
+    static constexpr opcode_type opcode_Jump_code{static_cast<opcode_type>(2ULL)};
   private:
     struct RawTag {};
     constexpr Instruction(RawTag, storage_type raw) noexcept
         : value_{raw} {}
-    storage_type value_{0ULL};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<Instruction>());
 
 struct IndependentUnions {
   public:
     using storage_type = std::uint32_t;
+    static constexpr int encoded_bits{32};
+    static constexpr int storage_bits{32};
+    static constexpr storage_type default_raw_value{0ULL};
     using opcode_a_type = codegen_compile_fixture::unified::Opcode;
     using opcode_a_field = ioj::PackedField<storage_type, opcode_a_type, 0, 6>;
+    using payload_a_type = storage_type;
+    using payload_a_field = ioj::PackedField<storage_type, storage_type, 6, 8>;
     using opcode_b_type = codegen_compile_fixture::unified::Opcode;
     using opcode_b_field = ioj::PackedField<storage_type, opcode_b_type, 14, 6>;
+    using payload_b_type = storage_type;
+    using payload_b_field = ioj::PackedField<storage_type, storage_type, 20, 8>;
     using payload_a_kill_entity_type = std::uint8_t;
     using payload_a_kill_entity_field =
         ioj::PackedField<storage_type, payload_a_kill_entity_type, 6, 8>;
@@ -676,6 +762,34 @@ struct IndependentUnions {
     };
     static constexpr payload_b_move_to_range_type payload_b_move_to_range{
         static_cast<payload_b_move_to_type>(0ULL), static_cast<payload_b_move_to_type>(255ULL)};
+    [[nodiscard]] static constexpr auto is_valid_opcode_a(opcode_a_type const value) noexcept
+        -> bool {
+        return ((value == opcode_a_KillEntity_code) || (value == opcode_a_MoveTo_code) ||
+                (value == opcode_a_Jump_code)) &&
+               static_cast<storage_type>(value) <= opcode_a_field::value_mask;
+    }
+    [[nodiscard]] static constexpr auto is_valid_opcode_b(opcode_b_type const value) noexcept
+        -> bool {
+        return ((value == opcode_b_KillEntity_code) || (value == opcode_b_MoveTo_code) ||
+                (value == opcode_b_Jump_code)) &&
+               static_cast<storage_type>(value) <= opcode_b_field::value_mask;
+    }
+    [[nodiscard]] static constexpr auto
+        is_valid_payload_a_kill_entity(payload_a_kill_entity_type const) noexcept -> bool {
+        return true;
+    }
+    [[nodiscard]] static constexpr auto
+        is_valid_payload_a_move_to(payload_a_move_to_type const) noexcept -> bool {
+        return true;
+    }
+    [[nodiscard]] static constexpr auto
+        is_valid_payload_b_kill_entity(payload_b_kill_entity_type const) noexcept -> bool {
+        return true;
+    }
+    [[nodiscard]] static constexpr auto
+        is_valid_payload_b_move_to(payload_b_move_to_type const) noexcept -> bool {
+        return true;
+    }
 
     constexpr IndependentUnions() noexcept = delete;
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> IndependentUnions {
@@ -686,24 +800,17 @@ struct IndependentUnions {
     [[nodiscard]] static constexpr auto
         make_payload_a_kill_entity(payload_a_kill_entity_type const payload_a_kill_entity_value,
                                    opcode_b_type const opcode_b_value,
-                                   std::uint8_t const payload_b_encoded) noexcept
+                                   payload_b_type const payload_b_encoded) noexcept
         -> IndependentUnions {
         auto result{from_raw(0)};
-        result.value_ = ioj::packed_insert<ioj::PackedField<storage_type, storage_type, 0, 6>>(
-            result.value_, static_cast<storage_type>(0ULL));
+        result.value_ = ioj::packed_insert<opcode_a_field>(result.value_, opcode_a_KillEntity_code);
+        assert((is_valid_payload_a_kill_entity(payload_a_kill_entity_value)));
         result.value_ = ioj::packed_insert<payload_a_kill_entity_field>(
             result.value_, payload_a_kill_entity_value);
-        assert((
-            ((static_cast<std::uint64_t>(opcode_b_value) == 0ULL) ||
-             (static_cast<std::uint64_t>(opcode_b_value) == 1ULL) ||
-             (static_cast<std::uint64_t>(opcode_b_value) == 2ULL)) &&
-            ioj::packed_extract<
-                ioj::PackedField<storage_type, codegen_compile_fixture::unified::Opcode, 0, 6>>(
-                ioj::packed_pack<
-                    ioj::PackedField<storage_type, codegen_compile_fixture::unified::Opcode, 0, 6>>(
-                    opcode_b_value)) == opcode_b_value));
+        assert((is_valid_opcode_b(opcode_b_value)));
         result.value_ = ioj::packed_insert<opcode_b_field>(result.value_, opcode_b_value);
-        result.value_ = ioj::packed_insert<ioj::PackedField<storage_type, storage_type, 20, 8>>(
+        assert(payload_b_encoded <= payload_b_field::value_mask);
+        result.value_ = ioj::packed_insert<payload_b_field>(
             result.value_, static_cast<storage_type>(payload_b_encoded));
         assert(result.is_valid());
         return result;
@@ -712,23 +819,17 @@ struct IndependentUnions {
     [[nodiscard]] static constexpr auto
         make_payload_a_move_to(payload_a_move_to_type const payload_a_move_to_value,
                                opcode_b_type const opcode_b_value,
-                               std::uint8_t const payload_b_encoded) noexcept -> IndependentUnions {
+                               payload_b_type const payload_b_encoded) noexcept
+        -> IndependentUnions {
         auto result{from_raw(0)};
-        result.value_ = ioj::packed_insert<ioj::PackedField<storage_type, storage_type, 0, 6>>(
-            result.value_, static_cast<storage_type>(1ULL));
+        result.value_ = ioj::packed_insert<opcode_a_field>(result.value_, opcode_a_MoveTo_code);
+        assert((is_valid_payload_a_move_to(payload_a_move_to_value)));
         result.value_ =
             ioj::packed_insert<payload_a_move_to_field>(result.value_, payload_a_move_to_value);
-        assert((
-            ((static_cast<std::uint64_t>(opcode_b_value) == 0ULL) ||
-             (static_cast<std::uint64_t>(opcode_b_value) == 1ULL) ||
-             (static_cast<std::uint64_t>(opcode_b_value) == 2ULL)) &&
-            ioj::packed_extract<
-                ioj::PackedField<storage_type, codegen_compile_fixture::unified::Opcode, 0, 6>>(
-                ioj::packed_pack<
-                    ioj::PackedField<storage_type, codegen_compile_fixture::unified::Opcode, 0, 6>>(
-                    opcode_b_value)) == opcode_b_value));
+        assert((is_valid_opcode_b(opcode_b_value)));
         result.value_ = ioj::packed_insert<opcode_b_field>(result.value_, opcode_b_value);
-        result.value_ = ioj::packed_insert<ioj::PackedField<storage_type, storage_type, 20, 8>>(
+        assert(payload_b_encoded <= payload_b_field::value_mask);
+        result.value_ = ioj::packed_insert<payload_b_field>(
             result.value_, static_cast<storage_type>(payload_b_encoded));
         assert(result.is_valid());
         return result;
@@ -736,24 +837,17 @@ struct IndependentUnions {
 
     [[nodiscard]] static constexpr auto make_payload_b_kill_entity(
         opcode_a_type const opcode_a_value,
-        std::uint8_t const payload_a_encoded,
+        payload_a_type const payload_a_encoded,
         payload_b_kill_entity_type const payload_b_kill_entity_value) noexcept
         -> IndependentUnions {
         auto result{from_raw(0)};
-        result.value_ = ioj::packed_insert<ioj::PackedField<storage_type, storage_type, 14, 6>>(
-            result.value_, static_cast<storage_type>(0ULL));
-        assert((
-            ((static_cast<std::uint64_t>(opcode_a_value) == 0ULL) ||
-             (static_cast<std::uint64_t>(opcode_a_value) == 1ULL) ||
-             (static_cast<std::uint64_t>(opcode_a_value) == 2ULL)) &&
-            ioj::packed_extract<
-                ioj::PackedField<storage_type, codegen_compile_fixture::unified::Opcode, 0, 6>>(
-                ioj::packed_pack<
-                    ioj::PackedField<storage_type, codegen_compile_fixture::unified::Opcode, 0, 6>>(
-                    opcode_a_value)) == opcode_a_value));
+        result.value_ = ioj::packed_insert<opcode_b_field>(result.value_, opcode_b_KillEntity_code);
+        assert((is_valid_opcode_a(opcode_a_value)));
         result.value_ = ioj::packed_insert<opcode_a_field>(result.value_, opcode_a_value);
-        result.value_ = ioj::packed_insert<ioj::PackedField<storage_type, storage_type, 6, 8>>(
+        assert(payload_a_encoded <= payload_a_field::value_mask);
+        result.value_ = ioj::packed_insert<payload_a_field>(
             result.value_, static_cast<storage_type>(payload_a_encoded));
+        assert((is_valid_payload_b_kill_entity(payload_b_kill_entity_value)));
         result.value_ = ioj::packed_insert<payload_b_kill_entity_field>(
             result.value_, payload_b_kill_entity_value);
         assert(result.is_valid());
@@ -762,24 +856,17 @@ struct IndependentUnions {
 
     [[nodiscard]] static constexpr auto
         make_payload_b_move_to(opcode_a_type const opcode_a_value,
-                               std::uint8_t const payload_a_encoded,
+                               payload_a_type const payload_a_encoded,
                                payload_b_move_to_type const payload_b_move_to_value) noexcept
         -> IndependentUnions {
         auto result{from_raw(0)};
-        result.value_ = ioj::packed_insert<ioj::PackedField<storage_type, storage_type, 14, 6>>(
-            result.value_, static_cast<storage_type>(1ULL));
-        assert((
-            ((static_cast<std::uint64_t>(opcode_a_value) == 0ULL) ||
-             (static_cast<std::uint64_t>(opcode_a_value) == 1ULL) ||
-             (static_cast<std::uint64_t>(opcode_a_value) == 2ULL)) &&
-            ioj::packed_extract<
-                ioj::PackedField<storage_type, codegen_compile_fixture::unified::Opcode, 0, 6>>(
-                ioj::packed_pack<
-                    ioj::PackedField<storage_type, codegen_compile_fixture::unified::Opcode, 0, 6>>(
-                    opcode_a_value)) == opcode_a_value));
+        result.value_ = ioj::packed_insert<opcode_b_field>(result.value_, opcode_b_MoveTo_code);
+        assert((is_valid_opcode_a(opcode_a_value)));
         result.value_ = ioj::packed_insert<opcode_a_field>(result.value_, opcode_a_value);
-        result.value_ = ioj::packed_insert<ioj::PackedField<storage_type, storage_type, 6, 8>>(
+        assert(payload_a_encoded <= payload_a_field::value_mask);
+        result.value_ = ioj::packed_insert<payload_a_field>(
             result.value_, static_cast<storage_type>(payload_a_encoded));
+        assert((is_valid_payload_b_move_to(payload_b_move_to_value)));
         result.value_ =
             ioj::packed_insert<payload_b_move_to_field>(result.value_, payload_b_move_to_value);
         assert(result.is_valid());
@@ -787,48 +874,20 @@ struct IndependentUnions {
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return ((static_cast<std::uint64_t>(
-                     ioj::packed_extract<ioj::PackedField<storage_type,
-                                                          codegen_compile_fixture::unified::Opcode,
-                                                          0,
-                                                          6>>(value_)) == 0ULL) ||
-                (static_cast<std::uint64_t>(
-                     ioj::packed_extract<ioj::PackedField<storage_type,
-                                                          codegen_compile_fixture::unified::Opcode,
-                                                          0,
-                                                          6>>(value_)) == 1ULL) ||
-                (static_cast<std::uint64_t>(
-                     ioj::packed_extract<ioj::PackedField<storage_type,
-                                                          codegen_compile_fixture::unified::Opcode,
-                                                          0,
-                                                          6>>(value_)) == 2ULL)) &&
-               ((((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(
-                       value_) == 0ULL) &&
-                  (true))) ||
-                (((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(
-                       value_) == 1ULL) &&
-                  (true)))) &&
-               ((static_cast<std::uint64_t>(
-                     ioj::packed_extract<ioj::PackedField<storage_type,
-                                                          codegen_compile_fixture::unified::Opcode,
-                                                          14,
-                                                          6>>(value_)) == 0ULL) ||
-                (static_cast<std::uint64_t>(
-                     ioj::packed_extract<ioj::PackedField<storage_type,
-                                                          codegen_compile_fixture::unified::Opcode,
-                                                          14,
-                                                          6>>(value_)) == 1ULL) ||
-                (static_cast<std::uint64_t>(
-                     ioj::packed_extract<ioj::PackedField<storage_type,
-                                                          codegen_compile_fixture::unified::Opcode,
-                                                          14,
-                                                          6>>(value_)) == 2ULL)) &&
-               ((((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 14, 6>>(
-                       value_) == 0ULL) &&
-                  (true))) ||
-                (((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 14, 6>>(
-                       value_) == 1ULL) &&
-                  (true))));
+        return (is_valid_opcode_a(ioj::packed_extract<opcode_a_field>(value_))) &&
+               ((((ioj::packed_extract<opcode_a_field>(value_) == opcode_a_KillEntity_code) &&
+                  (is_valid_payload_a_kill_entity(
+                      ioj::packed_extract<payload_a_kill_entity_field>(value_))))) ||
+                (((ioj::packed_extract<opcode_a_field>(value_) == opcode_a_MoveTo_code) &&
+                  (is_valid_payload_a_move_to(
+                      ioj::packed_extract<payload_a_move_to_field>(value_)))))) &&
+               (is_valid_opcode_b(ioj::packed_extract<opcode_b_field>(value_))) &&
+               ((((ioj::packed_extract<opcode_b_field>(value_) == opcode_b_KillEntity_code) &&
+                  (is_valid_payload_b_kill_entity(
+                      ioj::packed_extract<payload_b_kill_entity_field>(value_))))) ||
+                (((ioj::packed_extract<opcode_b_field>(value_) == opcode_b_MoveTo_code) &&
+                  (is_valid_payload_b_move_to(
+                      ioj::packed_extract<payload_b_move_to_field>(value_))))));
     }
     [[nodiscard]] constexpr auto operator<=>(IndependentUnions const&) const noexcept = default;
 
@@ -842,60 +901,65 @@ struct IndependentUnions {
 
     [[nodiscard]] constexpr auto payload_a_kill_entity() const noexcept
         -> payload_a_kill_entity_type {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(value_) ==
-                0ULL));
+        assert((ioj::packed_extract<opcode_a_field>(value_) == opcode_a_KillEntity_code));
         return ioj::packed_extract<payload_a_kill_entity_field>(value_);
     }
     constexpr void set_payload_a_kill_entity(payload_a_kill_entity_type const value) noexcept {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(value_) ==
-                0ULL));
+        assert((ioj::packed_extract<opcode_a_field>(value_) == opcode_a_KillEntity_code));
+        assert((is_valid_payload_a_kill_entity(value)));
         value_ = ioj::packed_insert<payload_a_kill_entity_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto payload_a_move_to() const noexcept -> payload_a_move_to_type {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(value_) ==
-                1ULL));
+        assert((ioj::packed_extract<opcode_a_field>(value_) == opcode_a_MoveTo_code));
         return ioj::packed_extract<payload_a_move_to_field>(value_);
     }
     constexpr void set_payload_a_move_to(payload_a_move_to_type const value) noexcept {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(value_) ==
-                1ULL));
+        assert((ioj::packed_extract<opcode_a_field>(value_) == opcode_a_MoveTo_code));
+        assert((is_valid_payload_a_move_to(value)));
         value_ = ioj::packed_insert<payload_a_move_to_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto payload_b_kill_entity() const noexcept
         -> payload_b_kill_entity_type {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 14, 6>>(value_) ==
-                0ULL));
+        assert((ioj::packed_extract<opcode_b_field>(value_) == opcode_b_KillEntity_code));
         return ioj::packed_extract<payload_b_kill_entity_field>(value_);
     }
     constexpr void set_payload_b_kill_entity(payload_b_kill_entity_type const value) noexcept {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 14, 6>>(value_) ==
-                0ULL));
+        assert((ioj::packed_extract<opcode_b_field>(value_) == opcode_b_KillEntity_code));
+        assert((is_valid_payload_b_kill_entity(value)));
         value_ = ioj::packed_insert<payload_b_kill_entity_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto payload_b_move_to() const noexcept -> payload_b_move_to_type {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 14, 6>>(value_) ==
-                1ULL));
+        assert((ioj::packed_extract<opcode_b_field>(value_) == opcode_b_MoveTo_code));
         return ioj::packed_extract<payload_b_move_to_field>(value_);
     }
     constexpr void set_payload_b_move_to(payload_b_move_to_type const value) noexcept {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 14, 6>>(value_) ==
-                1ULL));
+        assert((ioj::packed_extract<opcode_b_field>(value_) == opcode_b_MoveTo_code));
+        assert((is_valid_payload_b_move_to(value)));
         value_ = ioj::packed_insert<payload_b_move_to_field>(value_, value);
     }
+    static constexpr opcode_a_type opcode_a_KillEntity_code{static_cast<opcode_a_type>(0ULL)};
+    static constexpr opcode_a_type opcode_a_MoveTo_code{static_cast<opcode_a_type>(1ULL)};
+    static constexpr opcode_a_type opcode_a_Jump_code{static_cast<opcode_a_type>(2ULL)};
+    static constexpr opcode_b_type opcode_b_KillEntity_code{static_cast<opcode_b_type>(0ULL)};
+    static constexpr opcode_b_type opcode_b_MoveTo_code{static_cast<opcode_b_type>(1ULL)};
+    static constexpr opcode_b_type opcode_b_Jump_code{static_cast<opcode_b_type>(2ULL)};
   private:
     struct RawTag {};
     constexpr IndependentUnions(RawTag, storage_type raw) noexcept
         : value_{raw} {}
-    storage_type value_{0ULL};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<IndependentUnions>());
 
 struct CheckedPayload {
   public:
     using storage_type = std::uint8_t;
+    static constexpr int encoded_bits{8};
+    static constexpr int storage_bits{8};
+    static constexpr storage_type default_raw_value{0ULL};
     using kill_entity_type = std::uint8_t;
     using kill_entity_field = ioj::PackedField<storage_type, kill_entity_type, 0, 8>;
     struct kill_entity_range_type {
@@ -912,6 +976,13 @@ struct CheckedPayload {
     };
     static constexpr move_to_range_type move_to_range{static_cast<move_to_type>(0ULL),
                                                       static_cast<move_to_type>(255ULL)};
+    [[nodiscard]] static constexpr auto is_valid_kill_entity(kill_entity_type const value) noexcept
+        -> bool {
+        return (value <= kill_entity_range.max);
+    }
+    [[nodiscard]] static constexpr auto is_valid_move_to(move_to_type const) noexcept -> bool {
+        return true;
+    }
 
     constexpr CheckedPayload() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> CheckedPayload {
@@ -922,7 +993,7 @@ struct CheckedPayload {
     [[nodiscard]] static constexpr auto
         make_kill_entity(kill_entity_type const kill_entity_value) noexcept -> CheckedPayload {
         auto result{from_raw(0)};
-        assert(((kill_entity_value <= static_cast<std::uint8_t>(10ULL))));
+        assert((is_valid_kill_entity(kill_entity_value)));
         result.value_ = ioj::packed_insert<kill_entity_field>(result.value_, kill_entity_value);
         return result;
     }
@@ -930,14 +1001,14 @@ struct CheckedPayload {
     [[nodiscard]] static constexpr auto make_move_to(move_to_type const move_to_value) noexcept
         -> CheckedPayload {
         auto result{from_raw(0)};
+        assert((is_valid_move_to(move_to_value)));
         result.value_ = ioj::packed_insert<move_to_field>(result.value_, move_to_value);
         return result;
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (((ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 0, 8>>(value_) <=
-                  static_cast<std::uint8_t>(10ULL)))) ||
-               (true);
+        return ((is_valid_kill_entity(ioj::packed_extract<kill_entity_field>(value_)))) ||
+               ((is_valid_move_to(ioj::packed_extract<move_to_field>(value_))));
     }
     [[nodiscard]] constexpr auto operator<=>(CheckedPayload const&) const noexcept = default;
 
@@ -945,7 +1016,7 @@ struct CheckedPayload {
         return ioj::packed_extract<kill_entity_field>(value_);
     }
     constexpr void set_kill_entity(kill_entity_type const value) noexcept {
-        assert(((value <= static_cast<std::uint8_t>(10ULL))));
+        assert((is_valid_kill_entity(value)));
         value_ = ioj::packed_insert<kill_entity_field>(value_, value);
     }
 
@@ -953,13 +1024,14 @@ struct CheckedPayload {
         return ioj::packed_extract<move_to_field>(value_);
     }
     constexpr void set_move_to(move_to_type const value) noexcept {
+        assert((is_valid_move_to(value)));
         value_ = ioj::packed_insert<move_to_field>(value_, value);
     }
   private:
     struct RawTag {};
     constexpr CheckedPayload(RawTag, storage_type raw) noexcept
         : value_{raw} {}
-    storage_type value_{0ULL};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<CheckedPayload>());
 
@@ -970,6 +1042,9 @@ struct PayloadPointer {
 struct TaggedProjected {
   public:
     using storage_type = std::uint32_t;
+    static constexpr int encoded_bits{32};
+    static constexpr int storage_bits{32};
+    static constexpr storage_type default_raw_value{0ULL};
     using opcode_type = codegen_compile_fixture::unified::Opcode;
     using opcode_field = ioj::PackedField<storage_type, opcode_type, 0, 6>;
     using payload_type = codegen_compile_fixture::unified::CheckedPayload;
@@ -999,6 +1074,23 @@ struct TaggedProjected {
     };
     static constexpr payload_move_to_range_type payload_move_to_range{
         static_cast<payload_move_to_type>(0ULL), static_cast<payload_move_to_type>(255ULL)};
+    [[nodiscard]] static constexpr auto is_valid_opcode(opcode_type const value) noexcept -> bool {
+        return ((value == opcode_KillEntity_code) || (value == opcode_MoveTo_code) ||
+                (value == opcode_Jump_code)) &&
+               static_cast<storage_type>(value) <= opcode_field::value_mask;
+    }
+    [[nodiscard]] static constexpr auto is_valid_unrelated(unrelated_type const value) noexcept
+        -> bool {
+        return (value <= unrelated_range.max);
+    }
+    [[nodiscard]] static constexpr auto
+        is_valid_payload_kill_entity(payload_kill_entity_type const value) noexcept -> bool {
+        return (value <= payload_kill_entity_range.max);
+    }
+    [[nodiscard]] static constexpr auto
+        is_valid_payload_move_to(payload_move_to_type const) noexcept -> bool {
+        return true;
+    }
 
     constexpr TaggedProjected() noexcept = delete;
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> TaggedProjected {
@@ -1010,12 +1102,11 @@ struct TaggedProjected {
         make_payload_kill_entity(payload_kill_entity_type const payload_kill_entity_value,
                                  unrelated_type const unrelated_value) noexcept -> TaggedProjected {
         auto result{from_raw(0)};
-        result.value_ = ioj::packed_insert<ioj::PackedField<storage_type, storage_type, 0, 6>>(
-            result.value_, static_cast<storage_type>(0ULL));
-        assert(((payload_kill_entity_value <= static_cast<std::uint8_t>(10ULL))));
+        result.value_ = ioj::packed_insert<opcode_field>(result.value_, opcode_KillEntity_code);
+        assert((is_valid_payload_kill_entity(payload_kill_entity_value)));
         result.value_ =
             ioj::packed_insert<payload_kill_entity_field>(result.value_, payload_kill_entity_value);
-        assert(((unrelated_value <= static_cast<std::uint8_t>(10ULL))));
+        assert((is_valid_unrelated(unrelated_value)));
         result.value_ = ioj::packed_insert<unrelated_field>(result.value_, unrelated_value);
         return result;
     }
@@ -1024,40 +1115,24 @@ struct TaggedProjected {
         make_payload_move_to(payload_move_to_type const payload_move_to_value,
                              unrelated_type const unrelated_value) noexcept -> TaggedProjected {
         auto result{from_raw(0)};
-        result.value_ = ioj::packed_insert<ioj::PackedField<storage_type, storage_type, 0, 6>>(
-            result.value_, static_cast<storage_type>(1ULL));
+        result.value_ = ioj::packed_insert<opcode_field>(result.value_, opcode_MoveTo_code);
+        assert((is_valid_payload_move_to(payload_move_to_value)));
         result.value_ =
             ioj::packed_insert<payload_move_to_field>(result.value_, payload_move_to_value);
-        assert(((unrelated_value <= static_cast<std::uint8_t>(10ULL))));
+        assert((is_valid_unrelated(unrelated_value)));
         result.value_ = ioj::packed_insert<unrelated_field>(result.value_, unrelated_value);
         return result;
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return ((static_cast<std::uint64_t>(
-                     ioj::packed_extract<ioj::PackedField<storage_type,
-                                                          codegen_compile_fixture::unified::Opcode,
-                                                          0,
-                                                          6>>(value_)) == 0ULL) ||
-                (static_cast<std::uint64_t>(
-                     ioj::packed_extract<ioj::PackedField<storage_type,
-                                                          codegen_compile_fixture::unified::Opcode,
-                                                          0,
-                                                          6>>(value_)) == 1ULL) ||
-                (static_cast<std::uint64_t>(
-                     ioj::packed_extract<ioj::PackedField<storage_type,
-                                                          codegen_compile_fixture::unified::Opcode,
-                                                          0,
-                                                          6>>(value_)) == 2ULL)) &&
-               ((((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(
-                       value_) == 0ULL) &&
-                  ((ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 6, 8>>(
-                        value_) <= static_cast<std::uint8_t>(10ULL))))) ||
-                (((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(
-                       value_) == 1ULL) &&
-                  (true)))) &&
-               ((ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 14, 8>>(value_) <=
-                 static_cast<std::uint8_t>(10ULL)));
+        return (is_valid_opcode(ioj::packed_extract<opcode_field>(value_))) &&
+               ((((ioj::packed_extract<opcode_field>(value_) == opcode_KillEntity_code) &&
+                  (is_valid_payload_kill_entity(
+                      ioj::packed_extract<payload_kill_entity_field>(value_))))) ||
+                (((ioj::packed_extract<opcode_field>(value_) == opcode_MoveTo_code) &&
+                  (is_valid_payload_move_to(
+                      ioj::packed_extract<payload_move_to_field>(value_)))))) &&
+               (is_valid_unrelated(ioj::packed_extract<unrelated_field>(value_)));
     }
     [[nodiscard]] constexpr auto operator<=>(TaggedProjected const&) const noexcept = default;
 
@@ -1074,13 +1149,11 @@ struct TaggedProjected {
         auto const updated{ioj::packed_insert<payload_field>(
             value_, static_cast<storage_type>(value.raw_value()))};
         assert(
-            ((((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(updated) ==
-                0ULL) &&
-               ((ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 6, 8>>(updated) <=
-                 static_cast<std::uint8_t>(10ULL))))) ||
-             (((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(updated) ==
-                1ULL) &&
-               (true)))));
+            ((((ioj::packed_extract<opcode_field>(updated) == opcode_KillEntity_code) &&
+               (is_valid_payload_kill_entity(
+                   ioj::packed_extract<payload_kill_entity_field>(updated))))) ||
+             (((ioj::packed_extract<opcode_field>(updated) == opcode_MoveTo_code) &&
+               (is_valid_payload_move_to(ioj::packed_extract<payload_move_to_field>(updated)))))));
         value_ = updated;
     }
 
@@ -1088,43 +1161,54 @@ struct TaggedProjected {
         return ioj::packed_extract<unrelated_field>(value_);
     }
     constexpr void set_unrelated(unrelated_type const value) noexcept {
-        assert(((value <= static_cast<std::uint8_t>(10ULL))));
+        assert((is_valid_unrelated(value)));
         value_ = ioj::packed_insert<unrelated_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto payload_kill_entity() const noexcept -> payload_kill_entity_type {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(value_) ==
-                0ULL));
+        assert((ioj::packed_extract<opcode_field>(value_) == opcode_KillEntity_code));
         return ioj::packed_extract<payload_kill_entity_field>(value_);
     }
     constexpr void set_payload_kill_entity(payload_kill_entity_type const value) noexcept {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(value_) ==
-                0ULL));
-        assert(((value <= static_cast<std::uint8_t>(10ULL))));
+        assert((ioj::packed_extract<opcode_field>(value_) == opcode_KillEntity_code));
+        assert((is_valid_payload_kill_entity(value)));
         value_ = ioj::packed_insert<payload_kill_entity_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto payload_move_to() const noexcept -> payload_move_to_type {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(value_) ==
-                1ULL));
+        assert((ioj::packed_extract<opcode_field>(value_) == opcode_MoveTo_code));
         return ioj::packed_extract<payload_move_to_field>(value_);
     }
     constexpr void set_payload_move_to(payload_move_to_type const value) noexcept {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, storage_type, 0, 6>>(value_) ==
-                1ULL));
+        assert((ioj::packed_extract<opcode_field>(value_) == opcode_MoveTo_code));
+        assert((is_valid_payload_move_to(value)));
         value_ = ioj::packed_insert<payload_move_to_field>(value_, value);
     }
+    static constexpr opcode_type opcode_KillEntity_code{static_cast<opcode_type>(0ULL)};
+    static constexpr opcode_type opcode_MoveTo_code{static_cast<opcode_type>(1ULL)};
+    static constexpr opcode_type opcode_Jump_code{static_cast<opcode_type>(2ULL)};
   private:
     struct RawTag {};
     constexpr TaggedProjected(RawTag, storage_type raw) noexcept
         : value_{raw} {}
-    storage_type value_{0ULL};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<TaggedProjected>());
 
 struct Samples {
   public:
     using storage_type = std::uint32_t;
+    static constexpr int encoded_bits{32};
+    static constexpr int storage_bits{32};
+    static constexpr storage_type default_raw_value{0ULL};
+    using samples_0_type = storage_type;
+    using samples_0_field = ioj::PackedField<storage_type, storage_type, 0, 8>;
+    using samples_1_type = storage_type;
+    using samples_1_field = ioj::PackedField<storage_type, storage_type, 8, 8>;
+    using samples_2_type = storage_type;
+    using samples_2_field = ioj::PackedField<storage_type, storage_type, 16, 8>;
+    using samples_3_type = storage_type;
+    using samples_3_field = ioj::PackedField<storage_type, storage_type, 24, 8>;
     using samples_0_value_type = std::uint8_t;
     using samples_0_value_field = ioj::PackedField<storage_type, samples_0_value_type, 0, 8>;
     struct samples_0_value_range_type {
@@ -1157,6 +1241,22 @@ struct Samples {
     };
     static constexpr samples_3_value_range_type samples_3_value_range{
         static_cast<samples_3_value_type>(0ULL), static_cast<samples_3_value_type>(255ULL)};
+    [[nodiscard]] static constexpr auto
+        is_valid_samples_0_value(samples_0_value_type const) noexcept -> bool {
+        return true;
+    }
+    [[nodiscard]] static constexpr auto
+        is_valid_samples_1_value(samples_1_value_type const) noexcept -> bool {
+        return true;
+    }
+    [[nodiscard]] static constexpr auto
+        is_valid_samples_2_value(samples_2_value_type const) noexcept -> bool {
+        return true;
+    }
+    [[nodiscard]] static constexpr auto
+        is_valid_samples_3_value(samples_3_value_type const) noexcept -> bool {
+        return true;
+    }
 
     constexpr Samples() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> Samples {
@@ -1169,19 +1269,29 @@ struct Samples {
                                samples_2_value_type const samples_2_value_value,
                                samples_3_value_type const samples_3_value_value) noexcept
         : value_{0} {
+        assert((is_valid_samples_0_value(samples_0_value_value)));
         value_ = ioj::packed_insert<samples_0_value_field>(value_, samples_0_value_value);
+        assert((is_valid_samples_1_value(samples_1_value_value)));
         value_ = ioj::packed_insert<samples_1_value_field>(value_, samples_1_value_value);
+        assert((is_valid_samples_2_value(samples_2_value_value)));
         value_ = ioj::packed_insert<samples_2_value_field>(value_, samples_2_value_value);
+        assert((is_valid_samples_3_value(samples_3_value_value)));
         value_ = ioj::packed_insert<samples_3_value_field>(value_, samples_3_value_value);
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return ((is_valid_samples_0_value(ioj::packed_extract<samples_0_value_field>(value_)))) &&
+               ((is_valid_samples_1_value(ioj::packed_extract<samples_1_value_field>(value_)))) &&
+               ((is_valid_samples_2_value(ioj::packed_extract<samples_2_value_field>(value_)))) &&
+               ((is_valid_samples_3_value(ioj::packed_extract<samples_3_value_field>(value_))));
+    }
     [[nodiscard]] constexpr auto operator<=>(Samples const&) const noexcept = default;
 
     [[nodiscard]] constexpr auto samples_0_value() const noexcept -> samples_0_value_type {
         return ioj::packed_extract<samples_0_value_field>(value_);
     }
     constexpr void set_samples_0_value(samples_0_value_type const value) noexcept {
+        assert((is_valid_samples_0_value(value)));
         value_ = ioj::packed_insert<samples_0_value_field>(value_, value);
     }
 
@@ -1189,6 +1299,7 @@ struct Samples {
         return ioj::packed_extract<samples_1_value_field>(value_);
     }
     constexpr void set_samples_1_value(samples_1_value_type const value) noexcept {
+        assert((is_valid_samples_1_value(value)));
         value_ = ioj::packed_insert<samples_1_value_field>(value_, value);
     }
 
@@ -1196,6 +1307,7 @@ struct Samples {
         return ioj::packed_extract<samples_2_value_field>(value_);
     }
     constexpr void set_samples_2_value(samples_2_value_type const value) noexcept {
+        assert((is_valid_samples_2_value(value)));
         value_ = ioj::packed_insert<samples_2_value_field>(value_, value);
     }
 
@@ -1203,23 +1315,44 @@ struct Samples {
         return ioj::packed_extract<samples_3_value_field>(value_);
     }
     constexpr void set_samples_3_value(samples_3_value_type const value) noexcept {
+        assert((is_valid_samples_3_value(value)));
         value_ = ioj::packed_insert<samples_3_value_field>(value_, value);
     }
   private:
     struct RawTag {};
     constexpr Samples(RawTag, storage_type raw) noexcept
         : value_{raw} {}
-    storage_type value_{0ULL};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<Samples>());
 
 struct Optionals {
   public:
     using storage_type = std::uint32_t;
+    static constexpr int encoded_bits{17};
+    static constexpr int storage_bits{32};
+    static constexpr storage_type default_raw_value{0ULL};
     using sentinel_encoded_type = std::uint8_t;
     using sentinel_encoded_field = ioj::PackedField<storage_type, sentinel_encoded_type, 0, 8>;
     using present_encoded_type = std::uint16_t;
     using present_encoded_field = ioj::PackedField<storage_type, present_encoded_type, 8, 9>;
+    [[nodiscard]] static constexpr auto
+        is_valid_sentinel_encoded(sentinel_encoded_type const value) noexcept -> bool {
+        return value == sentinel_encoded_sentinel ||
+               (((ioj::packed_extract<sentinel_encoded_payload_field>(
+                      static_cast<storage_type>(value)) <= sentinel_encoded_payload_maximum)) ||
+                ioj::packed_extract<sentinel_encoded_payload_field>(
+                    static_cast<storage_type>(value)) == sentinel_encoded_payload_Absent);
+    }
+    [[nodiscard]] static constexpr auto
+        is_valid_present_encoded(present_encoded_type const value) noexcept -> bool {
+        return ((static_cast<storage_type>(value) & present_encoded_presence_mask) == 0 ||
+                (((ioj::packed_extract<present_encoded_payload_field>(
+                       static_cast<storage_type>(value)) <= present_encoded_payload_maximum)) ||
+                 ioj::packed_extract<present_encoded_payload_field>(
+                     static_cast<storage_type>(value)) == present_encoded_payload_Absent)) &&
+               static_cast<storage_type>(value) <= present_encoded_field::value_mask;
+    }
 
     constexpr Optionals() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> Optionals {
@@ -1230,50 +1363,15 @@ struct Optionals {
     explicit constexpr Optionals(sentinel_encoded_type const sentinel_encoded_value,
                                  present_encoded_type const present_encoded_value) noexcept
         : value_{0} {
-        assert((sentinel_encoded_value == static_cast<std::uint8_t>(255ULL) ||
-                (((ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 0, 8>>(
-                       static_cast<storage_type>(sentinel_encoded_value)) <=
-                   static_cast<std::uint8_t>(100ULL))) ||
-                 ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 0, 8>>(
-                     static_cast<storage_type>(sentinel_encoded_value)) ==
-                     static_cast<std::uint8_t>(255ULL))));
+        assert((is_valid_sentinel_encoded(sentinel_encoded_value)));
         value_ = ioj::packed_insert<sentinel_encoded_field>(value_, sentinel_encoded_value);
-        assert((((static_cast<storage_type>(present_encoded_value) & 256ULL) == 0 ||
-                 (((ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 0, 8>>(
-                        static_cast<storage_type>(present_encoded_value)) <=
-                    static_cast<std::uint8_t>(100ULL))) ||
-                  ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 0, 8>>(
-                      static_cast<storage_type>(present_encoded_value)) ==
-                      static_cast<std::uint8_t>(255ULL))) &&
-                ioj::packed_extract<ioj::PackedField<storage_type, std::uint16_t, 0, 9>>(
-                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint16_t, 0, 9>>(
-                        present_encoded_value)) == present_encoded_value));
+        assert((is_valid_present_encoded(present_encoded_value)));
         value_ = ioj::packed_insert<present_encoded_field>(value_, present_encoded_value);
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 0, 8>>(value_) ==
-                    static_cast<std::uint8_t>(255ULL) ||
-                (((ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 0, 8>>(
-                       static_cast<storage_type>(
-                           ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 0, 8>>(
-                               value_))) <= static_cast<std::uint8_t>(100ULL))) ||
-                 ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 0, 8>>(
-                     static_cast<storage_type>(
-                         ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 0, 8>>(
-                             value_))) == static_cast<std::uint8_t>(255ULL))) &&
-               ((static_cast<storage_type>(
-                     ioj::packed_extract<ioj::PackedField<storage_type, std::uint16_t, 8, 9>>(
-                         value_)) &
-                 256ULL) == 0 ||
-                (((ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 0, 8>>(
-                       static_cast<storage_type>(
-                           ioj::packed_extract<ioj::PackedField<storage_type, std::uint16_t, 8, 9>>(
-                               value_))) <= static_cast<std::uint8_t>(100ULL))) ||
-                 ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 0, 8>>(
-                     static_cast<storage_type>(
-                         ioj::packed_extract<ioj::PackedField<storage_type, std::uint16_t, 8, 9>>(
-                             value_))) == static_cast<std::uint8_t>(255ULL)));
+        return (is_valid_sentinel_encoded(ioj::packed_extract<sentinel_encoded_field>(value_))) &&
+               (is_valid_present_encoded(ioj::packed_extract<present_encoded_field>(value_)));
     }
     [[nodiscard]] constexpr auto operator<=>(Optionals const&) const noexcept = default;
 
@@ -1281,11 +1379,7 @@ struct Optionals {
         return ioj::packed_extract<sentinel_encoded_field>(value_);
     }
     constexpr void set_sentinel_encoded(sentinel_encoded_type const value) noexcept {
-        assert((value == static_cast<std::uint8_t>(255ULL) ||
-                (((ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 0, 8>>(
-                       static_cast<storage_type>(value)) <= static_cast<std::uint8_t>(100ULL))) ||
-                 ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 0, 8>>(
-                     static_cast<storage_type>(value)) == static_cast<std::uint8_t>(255ULL))));
+        assert((is_valid_sentinel_encoded(value)));
         value_ = ioj::packed_insert<sentinel_encoded_field>(value_, value);
     }
 
@@ -1293,22 +1387,296 @@ struct Optionals {
         return ioj::packed_extract<present_encoded_field>(value_);
     }
     constexpr void set_present_encoded(present_encoded_type const value) noexcept {
-        assert((((static_cast<storage_type>(value) & 256ULL) == 0 ||
-                 (((ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 0, 8>>(
-                        static_cast<storage_type>(value)) <= static_cast<std::uint8_t>(100ULL))) ||
-                  ioj::packed_extract<ioj::PackedField<storage_type, std::uint8_t, 0, 8>>(
-                      static_cast<storage_type>(value)) == static_cast<std::uint8_t>(255ULL))) &&
-                ioj::packed_extract<ioj::PackedField<storage_type, std::uint16_t, 0, 9>>(
-                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint16_t, 0, 9>>(value)) ==
-                    value));
+        assert((is_valid_present_encoded(value)));
         value_ = ioj::packed_insert<present_encoded_field>(value_, value);
     }
+    using sentinel_encoded_payload_type = std::uint8_t;
+    using sentinel_encoded_payload_field =
+        ioj::PackedField<storage_type, sentinel_encoded_payload_type, 0, 8>;
+    static constexpr sentinel_encoded_payload_type sentinel_encoded_payload_minimum{
+        static_cast<sentinel_encoded_payload_type>(0ULL)};
+    static constexpr sentinel_encoded_payload_type sentinel_encoded_payload_maximum{
+        static_cast<sentinel_encoded_payload_type>(100ULL)};
+    static constexpr sentinel_encoded_payload_type sentinel_encoded_payload_Absent{
+        static_cast<sentinel_encoded_payload_type>(255ULL)};
+    static constexpr sentinel_encoded_type sentinel_encoded_sentinel{
+        static_cast<sentinel_encoded_type>(255ULL)};
+    using present_encoded_payload_type = std::uint8_t;
+    using present_encoded_payload_field =
+        ioj::PackedField<storage_type, present_encoded_payload_type, 0, 8>;
+    static constexpr storage_type present_encoded_presence_mask{
+        static_cast<storage_type>(storage_type{1} << present_encoded_payload_field::bits)};
+    static constexpr present_encoded_payload_type present_encoded_payload_minimum{
+        static_cast<present_encoded_payload_type>(0ULL)};
+    static constexpr present_encoded_payload_type present_encoded_payload_maximum{
+        static_cast<present_encoded_payload_type>(100ULL)};
+    static constexpr present_encoded_payload_type present_encoded_payload_Absent{
+        static_cast<present_encoded_payload_type>(255ULL)};
   private:
     struct RawTag {};
     constexpr Optionals(RawTag, storage_type raw) noexcept
         : value_{raw} {}
-    storage_type value_{0ULL};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<Optionals>());
 
 } // namespace codegen_compile_fixture::unified
+namespace std {
+template <typename Char>
+struct formatter<::codegen_compile_fixture::unified::EntityIndex, Char>
+    : formatter<::codegen_compile_fixture::unified::EntityIndex::value_type, Char> {
+    template <typename FormatContext>
+    auto format(::codegen_compile_fixture::unified::EntityIndex const& value,
+                FormatContext& context) const -> typename FormatContext::iterator {
+        return formatter<::codegen_compile_fixture::unified::EntityIndex::value_type, Char>::format(
+            value.value(), context);
+    }
+};
+template <>
+struct hash<::codegen_compile_fixture::unified::EntityIndex> {
+    [[nodiscard]] auto
+        operator()(::codegen_compile_fixture::unified::EntityIndex const& value) const noexcept
+        -> size_t {
+        return hash<::codegen_compile_fixture::unified::EntityIndex::value_type>{}(value.value());
+    }
+};
+}
+
+namespace std {
+template <typename Char>
+struct formatter<::codegen_compile_fixture::unified::SignedOffset, Char>
+    : formatter<::codegen_compile_fixture::unified::SignedOffset::value_type, Char> {
+    template <typename FormatContext>
+    auto format(::codegen_compile_fixture::unified::SignedOffset const& value,
+                FormatContext& context) const -> typename FormatContext::iterator {
+        return formatter<::codegen_compile_fixture::unified::SignedOffset::value_type,
+                         Char>::format(value.value(), context);
+    }
+};
+template <>
+struct hash<::codegen_compile_fixture::unified::SignedOffset> {
+    [[nodiscard]] auto
+        operator()(::codegen_compile_fixture::unified::SignedOffset const& value) const noexcept
+        -> size_t {
+        return hash<::codegen_compile_fixture::unified::SignedOffset::value_type>{}(value.value());
+    }
+};
+}
+
+namespace std {
+template <typename Char>
+struct formatter<::codegen_compile_fixture::unified::EntityId, Char>
+    : formatter<::codegen_compile_fixture::unified::EntityId::storage_type, Char> {
+    template <typename FormatContext>
+    auto format(::codegen_compile_fixture::unified::EntityId const& value,
+                FormatContext& context) const -> typename FormatContext::iterator {
+        return formatter<::codegen_compile_fixture::unified::EntityId::storage_type, Char>::format(
+            value.raw_value(), context);
+    }
+};
+template <>
+struct hash<::codegen_compile_fixture::unified::EntityId> {
+    [[nodiscard]] auto
+        operator()(::codegen_compile_fixture::unified::EntityId const& value) const noexcept
+        -> size_t {
+        return hash<::codegen_compile_fixture::unified::EntityId::storage_type>{}(
+            value.raw_value());
+    }
+};
+}
+
+namespace std {
+template <typename Char>
+struct formatter<::codegen_compile_fixture::unified::WideEntityId, Char>
+    : formatter<::codegen_compile_fixture::unified::WideEntityId::storage_type, Char> {
+    template <typename FormatContext>
+    auto format(::codegen_compile_fixture::unified::WideEntityId const& value,
+                FormatContext& context) const -> typename FormatContext::iterator {
+        return formatter<::codegen_compile_fixture::unified::WideEntityId::storage_type,
+                         Char>::format(value.raw_value(), context);
+    }
+};
+template <>
+struct hash<::codegen_compile_fixture::unified::WideEntityId> {
+    [[nodiscard]] auto
+        operator()(::codegen_compile_fixture::unified::WideEntityId const& value) const noexcept
+        -> size_t {
+        return hash<::codegen_compile_fixture::unified::WideEntityId::storage_type>{}(
+            value.raw_value());
+    }
+};
+}
+
+namespace std {
+template <typename Char>
+struct formatter<::codegen_compile_fixture::unified::NestedId, Char>
+    : formatter<::codegen_compile_fixture::unified::NestedId::storage_type, Char> {
+    template <typename FormatContext>
+    auto format(::codegen_compile_fixture::unified::NestedId const& value,
+                FormatContext& context) const -> typename FormatContext::iterator {
+        return formatter<::codegen_compile_fixture::unified::NestedId::storage_type, Char>::format(
+            value.raw_value(), context);
+    }
+};
+template <>
+struct hash<::codegen_compile_fixture::unified::NestedId> {
+    [[nodiscard]] auto
+        operator()(::codegen_compile_fixture::unified::NestedId const& value) const noexcept
+        -> size_t {
+        return hash<::codegen_compile_fixture::unified::NestedId::storage_type>{}(
+            value.raw_value());
+    }
+};
+}
+
+namespace std {
+template <typename Char>
+struct formatter<::codegen_compile_fixture::unified::Target, Char>
+    : formatter<::codegen_compile_fixture::unified::Target::storage_type, Char> {
+    template <typename FormatContext>
+    auto format(::codegen_compile_fixture::unified::Target const& value,
+                FormatContext& context) const -> typename FormatContext::iterator {
+        return formatter<::codegen_compile_fixture::unified::Target::storage_type, Char>::format(
+            value.raw_value(), context);
+    }
+};
+template <>
+struct hash<::codegen_compile_fixture::unified::Target> {
+    [[nodiscard]] auto
+        operator()(::codegen_compile_fixture::unified::Target const& value) const noexcept
+        -> size_t {
+        return hash<::codegen_compile_fixture::unified::Target::storage_type>{}(value.raw_value());
+    }
+};
+}
+
+namespace std {
+template <typename Char>
+struct formatter<::codegen_compile_fixture::unified::Instruction, Char>
+    : formatter<::codegen_compile_fixture::unified::Instruction::storage_type, Char> {
+    template <typename FormatContext>
+    auto format(::codegen_compile_fixture::unified::Instruction const& value,
+                FormatContext& context) const -> typename FormatContext::iterator {
+        return formatter<::codegen_compile_fixture::unified::Instruction::storage_type,
+                         Char>::format(value.raw_value(), context);
+    }
+};
+template <>
+struct hash<::codegen_compile_fixture::unified::Instruction> {
+    [[nodiscard]] auto
+        operator()(::codegen_compile_fixture::unified::Instruction const& value) const noexcept
+        -> size_t {
+        return hash<::codegen_compile_fixture::unified::Instruction::storage_type>{}(
+            value.raw_value());
+    }
+};
+}
+
+namespace std {
+template <typename Char>
+struct formatter<::codegen_compile_fixture::unified::IndependentUnions, Char>
+    : formatter<::codegen_compile_fixture::unified::IndependentUnions::storage_type, Char> {
+    template <typename FormatContext>
+    auto format(::codegen_compile_fixture::unified::IndependentUnions const& value,
+                FormatContext& context) const -> typename FormatContext::iterator {
+        return formatter<::codegen_compile_fixture::unified::IndependentUnions::storage_type,
+                         Char>::format(value.raw_value(), context);
+    }
+};
+template <>
+struct hash<::codegen_compile_fixture::unified::IndependentUnions> {
+    [[nodiscard]] auto operator()(
+        ::codegen_compile_fixture::unified::IndependentUnions const& value) const noexcept
+        -> size_t {
+        return hash<::codegen_compile_fixture::unified::IndependentUnions::storage_type>{}(
+            value.raw_value());
+    }
+};
+}
+
+namespace std {
+template <typename Char>
+struct formatter<::codegen_compile_fixture::unified::CheckedPayload, Char>
+    : formatter<::codegen_compile_fixture::unified::CheckedPayload::storage_type, Char> {
+    template <typename FormatContext>
+    auto format(::codegen_compile_fixture::unified::CheckedPayload const& value,
+                FormatContext& context) const -> typename FormatContext::iterator {
+        return formatter<::codegen_compile_fixture::unified::CheckedPayload::storage_type,
+                         Char>::format(value.raw_value(), context);
+    }
+};
+template <>
+struct hash<::codegen_compile_fixture::unified::CheckedPayload> {
+    [[nodiscard]] auto
+        operator()(::codegen_compile_fixture::unified::CheckedPayload const& value) const noexcept
+        -> size_t {
+        return hash<::codegen_compile_fixture::unified::CheckedPayload::storage_type>{}(
+            value.raw_value());
+    }
+};
+}
+
+namespace std {
+template <typename Char>
+struct formatter<::codegen_compile_fixture::unified::TaggedProjected, Char>
+    : formatter<::codegen_compile_fixture::unified::TaggedProjected::storage_type, Char> {
+    template <typename FormatContext>
+    auto format(::codegen_compile_fixture::unified::TaggedProjected const& value,
+                FormatContext& context) const -> typename FormatContext::iterator {
+        return formatter<::codegen_compile_fixture::unified::TaggedProjected::storage_type,
+                         Char>::format(value.raw_value(), context);
+    }
+};
+template <>
+struct hash<::codegen_compile_fixture::unified::TaggedProjected> {
+    [[nodiscard]] auto
+        operator()(::codegen_compile_fixture::unified::TaggedProjected const& value) const noexcept
+        -> size_t {
+        return hash<::codegen_compile_fixture::unified::TaggedProjected::storage_type>{}(
+            value.raw_value());
+    }
+};
+}
+
+namespace std {
+template <typename Char>
+struct formatter<::codegen_compile_fixture::unified::Samples, Char>
+    : formatter<::codegen_compile_fixture::unified::Samples::storage_type, Char> {
+    template <typename FormatContext>
+    auto format(::codegen_compile_fixture::unified::Samples const& value,
+                FormatContext& context) const -> typename FormatContext::iterator {
+        return formatter<::codegen_compile_fixture::unified::Samples::storage_type, Char>::format(
+            value.raw_value(), context);
+    }
+};
+template <>
+struct hash<::codegen_compile_fixture::unified::Samples> {
+    [[nodiscard]] auto
+        operator()(::codegen_compile_fixture::unified::Samples const& value) const noexcept
+        -> size_t {
+        return hash<::codegen_compile_fixture::unified::Samples::storage_type>{}(value.raw_value());
+    }
+};
+}
+
+namespace std {
+template <typename Char>
+struct formatter<::codegen_compile_fixture::unified::Optionals, Char>
+    : formatter<::codegen_compile_fixture::unified::Optionals::storage_type, Char> {
+    template <typename FormatContext>
+    auto format(::codegen_compile_fixture::unified::Optionals const& value,
+                FormatContext& context) const -> typename FormatContext::iterator {
+        return formatter<::codegen_compile_fixture::unified::Optionals::storage_type, Char>::format(
+            value.raw_value(), context);
+    }
+};
+template <>
+struct hash<::codegen_compile_fixture::unified::Optionals> {
+    [[nodiscard]] auto
+        operator()(::codegen_compile_fixture::unified::Optionals const& value) const noexcept
+        -> size_t {
+        return hash<::codegen_compile_fixture::unified::Optionals::storage_type>{}(
+            value.raw_value());
+    }
+};
+}

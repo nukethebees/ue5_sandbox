@@ -1699,6 +1699,141 @@ TEST(SemanticTypeGraph, RejectsPackedAccessorMatchingOwningTypeName) {
     }
 }
 
+TEST(SemanticTypeGraph, RejectsPackedRootMetadataNameCollisions) {
+    for (auto const name : {"encoded_bits", "storage_bits", "default_raw_value"}) {
+        SCOPED_TRACE(name);
+        lispb::codegen::CompilerTestContext context;
+        auto const source{std::string{R"((module values :header "Values.h"
+          (record Value :layout packed (member )"} +
+                          name + " std::uint8_t) (projections (cpp))))"};
+        auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
+        EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
+    }
+    for (auto const kind : {"record", "union"}) {
+        for (auto const name : {"storage_type",
+                                "encoded_bits",
+                                "storage_bits",
+                                "default_raw_value",
+                                "raw_value",
+                                "from_raw",
+                                "is_valid",
+                                "RawTag",
+                                "value_"}) {
+            SCOPED_TRACE(kind);
+            SCOPED_TRACE(name);
+            lispb::codegen::CompilerTestContext context;
+            auto const source{std::string{"(module values :header \"Values.h\" ("} + kind + ' ' +
+                              name +
+                              " :layout packed (member data std::uint8_t) (projections (cpp))))"};
+            auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
+            EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
+        }
+    }
+}
+
+TEST(SemanticTypeGraph, RejectsScalarNamedCodesCollidingWithDomainMetadata) {
+    for (auto const name : {"minimum_value", "maximum_value"}) {
+        SCOPED_TRACE(name);
+        lispb::codegen::CompilerTestContext context;
+        auto const source{std::string{R"((module values :header "Values.h"
+          (integer-scalar Value :bit-width 8 (code )"} +
+                          name + " :value 1) (projections (cpp))))"};
+        auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
+        EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
+    }
+    for (auto const name : {"storage_type",
+                            "value_type",
+                            "value_field",
+                            "value",
+                            "set_value",
+                            "is_valid_value",
+                            "encoded_bits",
+                            "storage_bits",
+                            "default_raw_value",
+                            "minimum_value",
+                            "maximum_value",
+                            "raw_value",
+                            "from_raw",
+                            "is_valid",
+                            "value_"}) {
+        SCOPED_TRACE(name);
+        lispb::codegen::CompilerTestContext context;
+        auto const source{std::string{"(module values :header \"Values.h\" (integer-scalar "} +
+                          name + " :bit-width 8 (projections (cpp))))"};
+        auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
+        EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
+    }
+}
+
+TEST(SemanticTypeGraph, RejectsPackedValidationAndEncodingMetadataCollisions) {
+    for (auto const source : {
+             R"((module values :header "Values.h"
+               (integer-scalar Health :bit-width 8 :minimum 0 :maximum 100)
+               (record Value :layout packed (member health @Health)
+                 (member is_valid_health std::uint8_t) (projections (cpp)))))",
+             R"((module values :header "Values.h"
+               (enum Mode :bit-width 8 (value first) (projections (cpp)))
+               (record Value :layout packed (member mode @Mode)
+                 (member mode_first_code std::uint8_t) (projections (cpp)))))",
+             R"((module values :header "Values.h"
+               (integer-scalar Health :bit-width 8 :minimum 0 :maximum 100)
+               (optional-presence-bit MaybeHealth :source @Health)
+               (record Value :layout packed (member maybe @MaybeHealth)
+                 (member maybe_encoded_payload_minimum std::uint8_t) (projections (cpp)))))",
+             R"((module values :header "Values.h"
+               (record invalid_value :layout packed :invalid-value 255
+                 (member data std::uint8_t) (projections (cpp)))))",
+             R"((module values :header "Values.h"
+               (fixed-point minimum_value :signed false :total-bits 8 :fractional-bits 0 :minimum 0
+                 (projections (cpp)))))",
+             R"((module values :header "Values.h"
+               (fixed-point maximum_value :signed false :total-bits 8 :fractional-bits 0 :maximum 100
+                 (projections (cpp)))))",
+             R"((module values :header "Values.h"
+               (integer-scalar Source :bit-width 8)
+               (linear-quantized maximum_encoded :source @Source :bits 6 :reserved-codes 1
+                 :clipping clamp (projections (cpp)))))",
+             R"((module values :header "Values.h"
+               (integer-scalar Source :bit-width 8)
+               (optional-presence-bit payload_type :source @Source (projections (cpp)))))",
+             R"((module values :header "Values.h"
+               (integer-scalar Source :bit-width 8)
+               (optional-presence-bit payload_field :source @Source (projections (cpp)))))",
+             R"((module values :header "Values.h"
+               (integer-scalar Source :bit-width 8)
+               (optional-presence-bit payload_minimum :source @Source (projections (cpp)))))",
+             R"((module values :header "Values.h"
+               (integer-scalar Source :bit-width 8)
+               (optional-presence-bit payload_maximum :source @Source (projections (cpp)))))",
+             R"((module values :header "Values.h"
+               (integer-scalar Source :bit-width 8)
+               (optional-presence-bit presence_mask :source @Source (projections (cpp)))))",
+             R"((module values :header "Values.h"
+               (integer-scalar Source :bit-width 8 :minimum 0 :maximum 100 (code Absent :value 255 :sentinel true))
+               (optional-sentinel sentinel :source @Source :sentinel Absent (projections (cpp)))))",
+             R"((module values :header "Values.h"
+               (integer-scalar Source :bit-width 8 :minimum 0 :maximum 100 (code Invalid :value 255 :sentinel true))
+               (optional-sentinel payload_Invalid :source @Source :sentinel Invalid (projections (cpp)))))"}) {
+        SCOPED_TRACE(source);
+        lispb::codegen::CompilerTestContext context;
+        auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
+        EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
+    }
+    for (auto const source : {
+             R"((module values :header "Values.h"
+               (record value_type :layout packed (member data std::uint8_t) (projections (cpp)))
+               (record invalid_value :layout packed (member data std::uint8_t) (projections (cpp)))
+               (integer-scalar RawTag :bit-width 8 (projections (cpp)))))",
+             R"((module values :header "Values.h"
+               (fixed-point minimum_value :signed false :total-bits 8 :fractional-bits 0 (projections (cpp)))
+               (fixed-point maximum_value :signed false :total-bits 8 :fractional-bits 0 (projections (cpp)))))"}) {
+        SCOPED_TRACE(source);
+        lispb::codegen::CompilerTestContext context;
+        auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
+        EXPECT_NO_THROW(resolve_type_graph(manifest));
+    }
+}
+
 TEST(SemanticTypeGraph, UnionDefaultsSelectOneCompleteAlternative) {
     lispb::codegen::CompilerTestContext context;
     auto const manifest{lispb::codegen::parse_test_manifest(context, R"(

@@ -211,6 +211,11 @@ logical-only children contribute their reachable fields. Fixed arrays expand int
 paths. The resolver rejects flattened-name collisions. Packed access never constructs mutable
 views or calculates offsets at runtime.
 
+Generated `encoded_bits`, `storage_bits`, field aliases, domain bounds and tag codes name the
+layout constants. `PackedField` aliases expose each field's offset, width and masks. Constructors,
+setters and validity queries share typed `is_valid_<field>()` helpers instead of repeating domain
+expressions. Scalar wrappers use `is_valid_value(value_type)` for the same purpose.
+
 Packed owners expose `storage_type`, `raw_value()`, and unchecked `from_raw()`. They are standard
 layout and trivially copyable, with the size and alignment of their integer storage. Typed
 construction clears unused bits; setters preserve bits outside the addressed field. Raw loading
@@ -252,6 +257,12 @@ minimum/maximum values can restrict that domain. Projected integer scalars are d
 C++ types with unsigned `storage_type`, decoded `value_type`, explicit construction, `value()`,
 `set_value()`, `is_valid_value()`, and raw access. Signed comparisons use decoded values. Named
 codes are scoped constants on the wrapper. No alias or constants-only emission modes remain.
+
+Unsigned scalars occupying all storage bits use defaulted comparison. Signed or narrower scalars
+compare decoded values so numeric ordering and equality ignore preserved padding bits. Packed
+records and unions compare their complete raw storage. Generated `std::hash` and `std::formatter`
+specializations use those same decoded/raw values; formatting delegates to the integer formatter
+and supports its standard format specifications and character types.
 
 ## External scalar registry
 

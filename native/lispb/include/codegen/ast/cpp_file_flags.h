@@ -7,18 +7,36 @@
 
 #include <cassert>
 #include <compare>
+#include <cstddef>
 #include <cstdint>
+#include <format>
+#include <functional>
 
 namespace lispb::codegen {
 struct CppFileFlags {
   public:
     using storage_type = std::uint8_t;
+    static constexpr int encoded_bits{8};
+    static constexpr int storage_bits{8};
+    static constexpr storage_type default_raw_value{0ULL};
     using pragma_once_type = bool;
     using pragma_once_field = ioj::PackedField<storage_type, pragma_once_type, 0, 1>;
     using clang_format_off_type = bool;
     using clang_format_off_field = ioj::PackedField<storage_type, clang_format_off_type, 1, 1>;
     using format_generated_type = bool;
     using format_generated_field = ioj::PackedField<storage_type, format_generated_type, 2, 1>;
+    [[nodiscard]] static constexpr auto is_valid_pragma_once(pragma_once_type const) noexcept
+        -> bool {
+        return true;
+    }
+    [[nodiscard]] static constexpr auto
+        is_valid_clang_format_off(clang_format_off_type const) noexcept -> bool {
+        return true;
+    }
+    [[nodiscard]] static constexpr auto
+        is_valid_format_generated(format_generated_type const) noexcept -> bool {
+        return true;
+    }
 
     constexpr CppFileFlags() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> CppFileFlags {
@@ -30,18 +48,26 @@ struct CppFileFlags {
                                     clang_format_off_type const clang_format_off_value,
                                     format_generated_type const format_generated_value) noexcept
         : value_{0} {
+        assert((is_valid_pragma_once(pragma_once_value)));
         value_ = ioj::packed_insert<pragma_once_field>(value_, pragma_once_value);
+        assert((is_valid_clang_format_off(clang_format_off_value)));
         value_ = ioj::packed_insert<clang_format_off_field>(value_, clang_format_off_value);
+        assert((is_valid_format_generated(format_generated_value)));
         value_ = ioj::packed_insert<format_generated_field>(value_, format_generated_value);
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return (is_valid_pragma_once(ioj::packed_extract<pragma_once_field>(value_))) &&
+               (is_valid_clang_format_off(ioj::packed_extract<clang_format_off_field>(value_))) &&
+               (is_valid_format_generated(ioj::packed_extract<format_generated_field>(value_)));
+    }
     [[nodiscard]] constexpr auto operator<=>(CppFileFlags const&) const noexcept = default;
 
     [[nodiscard]] constexpr auto pragma_once() const noexcept -> pragma_once_type {
         return ioj::packed_extract<pragma_once_field>(value_);
     }
     constexpr void set_pragma_once(pragma_once_type const value) noexcept {
+        assert((is_valid_pragma_once(value)));
         value_ = ioj::packed_insert<pragma_once_field>(value_, value);
     }
 
@@ -49,6 +75,7 @@ struct CppFileFlags {
         return ioj::packed_extract<clang_format_off_field>(value_);
     }
     constexpr void set_clang_format_off(clang_format_off_type const value) noexcept {
+        assert((is_valid_clang_format_off(value)));
         value_ = ioj::packed_insert<clang_format_off_field>(value_, value);
     }
 
@@ -56,14 +83,34 @@ struct CppFileFlags {
         return ioj::packed_extract<format_generated_field>(value_);
     }
     constexpr void set_format_generated(format_generated_type const value) noexcept {
+        assert((is_valid_format_generated(value)));
         value_ = ioj::packed_insert<format_generated_field>(value_, value);
     }
   private:
     struct RawTag {};
     constexpr CppFileFlags(RawTag, storage_type raw) noexcept
         : value_{raw} {}
-    storage_type value_{0ULL};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<CppFileFlags>());
 
 } // namespace lispb::codegen
+namespace std {
+template <typename Char>
+struct formatter<::lispb::codegen::CppFileFlags, Char>
+    : formatter<::lispb::codegen::CppFileFlags::storage_type, Char> {
+    template <typename FormatContext>
+    auto format(::lispb::codegen::CppFileFlags const& value, FormatContext& context) const ->
+        typename FormatContext::iterator {
+        return formatter<::lispb::codegen::CppFileFlags::storage_type, Char>::format(
+            value.raw_value(), context);
+    }
+};
+template <>
+struct hash<::lispb::codegen::CppFileFlags> {
+    [[nodiscard]] auto operator()(::lispb::codegen::CppFileFlags const& value) const noexcept
+        -> size_t {
+        return hash<::lispb::codegen::CppFileFlags::storage_type>{}(value.raw_value());
+    }
+};
+}

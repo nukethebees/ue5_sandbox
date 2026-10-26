@@ -7,20 +7,27 @@
 
 #include <cassert>
 #include <compare>
+#include <cstddef>
 #include <cstdint>
+#include <format>
+#include <functional>
 
 namespace codegen_compile_fixture {
 struct RegisteredInt {
   public:
     using storage_type = std::uint32_t;
     using value_type = std::int8_t;
-    using value_field = ioj::PackedField<storage_type, value_type, 0, 8>;
+    static constexpr int encoded_bits{8};
+    static constexpr int storage_bits{32};
+    static constexpr storage_type default_raw_value{};
+    using value_field = ioj::PackedField<storage_type, value_type, 0, encoded_bits>;
+    static constexpr value_type minimum_value{static_cast<value_type>(-100LL)};
+    static constexpr value_type maximum_value{static_cast<value_type>(100ULL)};
 
     constexpr RegisteredInt() noexcept = default;
     explicit constexpr RegisteredInt(value_type const value) noexcept
         : value_{ioj::packed_pack<value_field>(value)} {
-        assert(((value >= static_cast<std::int8_t>(-100LL)) &&
-                (value <= static_cast<std::int8_t>(100ULL))));
+        assert(is_valid_value(value));
     }
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> RegisteredInt {
         RegisteredInt result;
@@ -32,17 +39,14 @@ struct RegisteredInt {
         return ioj::packed_extract<value_field>(value_);
     }
     constexpr void set_value(value_type const value) noexcept {
-        assert(((value >= static_cast<std::int8_t>(-100LL)) &&
-                (value <= static_cast<std::int8_t>(100ULL))));
+        assert(is_valid_value(value));
         value_ = ioj::packed_insert<value_field>(value_, value);
     }
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
-        return (value >= static_cast<std::int8_t>(-100LL)) &&
-               (value <= static_cast<std::int8_t>(100ULL));
+        return (value >= minimum_value) && (value <= maximum_value);
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (value() >= static_cast<std::int8_t>(-100LL)) &&
-               (value() <= static_cast<std::int8_t>(100ULL));
+        return is_valid_value(value());
     }
     [[nodiscard]] constexpr auto operator<=>(RegisteredInt const& other) const noexcept {
         return value() <=> other.value();
@@ -51,7 +55,7 @@ struct RegisteredInt {
         return value() == other.value();
     }
   private:
-    storage_type value_{};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<RegisteredInt>());
 
@@ -59,13 +63,17 @@ struct StandardInt {
   public:
     using storage_type = std::uint32_t;
     using value_type = std::int8_t;
-    using value_field = ioj::PackedField<storage_type, value_type, 0, 8>;
+    static constexpr int encoded_bits{8};
+    static constexpr int storage_bits{32};
+    static constexpr storage_type default_raw_value{};
+    using value_field = ioj::PackedField<storage_type, value_type, 0, encoded_bits>;
+    static constexpr value_type minimum_value{static_cast<value_type>(-100LL)};
+    static constexpr value_type maximum_value{static_cast<value_type>(100ULL)};
 
     constexpr StandardInt() noexcept = default;
     explicit constexpr StandardInt(value_type const value) noexcept
         : value_{ioj::packed_pack<value_field>(value)} {
-        assert(((value >= static_cast<std::int8_t>(-100LL)) &&
-                (value <= static_cast<std::int8_t>(100ULL))));
+        assert(is_valid_value(value));
     }
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> StandardInt {
         StandardInt result;
@@ -77,17 +85,14 @@ struct StandardInt {
         return ioj::packed_extract<value_field>(value_);
     }
     constexpr void set_value(value_type const value) noexcept {
-        assert(((value >= static_cast<std::int8_t>(-100LL)) &&
-                (value <= static_cast<std::int8_t>(100ULL))));
+        assert(is_valid_value(value));
         value_ = ioj::packed_insert<value_field>(value_, value);
     }
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
-        return (value >= static_cast<std::int8_t>(-100LL)) &&
-               (value <= static_cast<std::int8_t>(100ULL));
+        return (value >= minimum_value) && (value <= maximum_value);
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (value() >= static_cast<std::int8_t>(-100LL)) &&
-               (value() <= static_cast<std::int8_t>(100ULL));
+        return is_valid_value(value());
     }
     [[nodiscard]] constexpr auto operator<=>(StandardInt const& other) const noexcept {
         return value() <=> other.value();
@@ -96,7 +101,7 @@ struct StandardInt {
         return value() == other.value();
     }
   private:
-    storage_type value_{};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<StandardInt>());
 
@@ -104,14 +109,18 @@ struct DamageCode {
   public:
     using storage_type = std::uint8_t;
     using value_type = std::uint8_t;
-    using value_field = ioj::PackedField<storage_type, value_type, 0, 4>;
+    static constexpr int encoded_bits{4};
+    static constexpr int storage_bits{8};
+    static constexpr storage_type default_raw_value{};
+    using value_field = ioj::PackedField<storage_type, value_type, 0, encoded_bits>;
     static constexpr value_type Laser{static_cast<value_type>(1ULL)};
+    static constexpr value_type minimum_value{static_cast<value_type>(0ULL)};
+    static constexpr value_type maximum_value{static_cast<value_type>(10ULL)};
 
     constexpr DamageCode() noexcept = default;
     explicit constexpr DamageCode(value_type const value) noexcept
         : value_{ioj::packed_pack<value_field>(value)} {
-        assert((((value <= static_cast<std::uint8_t>(10ULL))) &&
-                ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value));
+        assert(is_valid_value(value));
     }
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> DamageCode {
         DamageCode result;
@@ -123,16 +132,15 @@ struct DamageCode {
         return ioj::packed_extract<value_field>(value_);
     }
     constexpr void set_value(value_type const value) noexcept {
-        assert((((value <= static_cast<std::uint8_t>(10ULL))) &&
-                ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value));
+        assert(is_valid_value(value));
         value_ = ioj::packed_insert<value_field>(value_, value);
     }
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
-        return ((value <= static_cast<std::uint8_t>(10ULL))) &&
-               ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value;
+        return ((value <= maximum_value)) &&
+               static_cast<storage_type>(value) <= value_field::value_mask;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (value() <= static_cast<std::uint8_t>(10ULL));
+        return is_valid_value(value());
     }
     [[nodiscard]] constexpr auto operator<=>(DamageCode const& other) const noexcept {
         return value() <=> other.value();
@@ -141,7 +149,7 @@ struct DamageCode {
         return value() == other.value();
     }
   private:
-    storage_type value_{};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<DamageCode>());
 
@@ -149,16 +157,20 @@ struct DamageReason {
   public:
     using storage_type = std::uint8_t;
     using value_type = std::uint8_t;
-    using value_field = ioj::PackedField<storage_type, value_type, 0, 8>;
+    static constexpr int encoded_bits{8};
+    static constexpr int storage_bits{8};
+    static constexpr storage_type default_raw_value{};
+    using value_field = ioj::PackedField<storage_type, value_type, 0, encoded_bits>;
     static constexpr value_type Unknown{static_cast<value_type>(0ULL)};
     static constexpr value_type Laser{static_cast<value_type>(1ULL)};
     static constexpr value_type Invalid{static_cast<value_type>(255ULL)};
+    static constexpr value_type minimum_value{static_cast<value_type>(0ULL)};
+    static constexpr value_type maximum_value{static_cast<value_type>(10ULL)};
 
     constexpr DamageReason() noexcept = default;
     explicit constexpr DamageReason(value_type const value) noexcept
         : value_{ioj::packed_pack<value_field>(value)} {
-        assert((((value <= static_cast<std::uint8_t>(10ULL))) ||
-                value == static_cast<std::uint8_t>(255ULL)));
+        assert(is_valid_value(value));
     }
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> DamageReason {
         DamageReason result;
@@ -170,26 +182,18 @@ struct DamageReason {
         return ioj::packed_extract<value_field>(value_);
     }
     constexpr void set_value(value_type const value) noexcept {
-        assert((((value <= static_cast<std::uint8_t>(10ULL))) ||
-                value == static_cast<std::uint8_t>(255ULL)));
+        assert(is_valid_value(value));
         value_ = ioj::packed_insert<value_field>(value_, value);
     }
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
-        return ((value <= static_cast<std::uint8_t>(10ULL))) ||
-               value == static_cast<std::uint8_t>(255ULL);
+        return ((value <= maximum_value)) || value == Invalid;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return ((value() <= static_cast<std::uint8_t>(10ULL))) ||
-               value() == static_cast<std::uint8_t>(255ULL);
+        return is_valid_value(value());
     }
-    [[nodiscard]] constexpr auto operator<=>(DamageReason const& other) const noexcept {
-        return value() <=> other.value();
-    }
-    [[nodiscard]] constexpr auto operator==(DamageReason const& other) const noexcept -> bool {
-        return value() == other.value();
-    }
+    [[nodiscard]] constexpr auto operator<=>(DamageReason const&) const noexcept = default;
   private:
-    storage_type value_{};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<DamageReason>());
 
@@ -197,13 +201,17 @@ struct Health {
   public:
     using storage_type = std::uint16_t;
     using value_type = std::uint16_t;
-    using value_field = ioj::PackedField<storage_type, value_type, 0, 10>;
+    static constexpr int encoded_bits{10};
+    static constexpr int storage_bits{16};
+    static constexpr storage_type default_raw_value{};
+    using value_field = ioj::PackedField<storage_type, value_type, 0, encoded_bits>;
+    static constexpr value_type minimum_value{static_cast<value_type>(0ULL)};
+    static constexpr value_type maximum_value{static_cast<value_type>(1000ULL)};
 
     constexpr Health() noexcept = default;
     explicit constexpr Health(value_type const value) noexcept
         : value_{ioj::packed_pack<value_field>(value)} {
-        assert((((value <= static_cast<std::uint16_t>(1000ULL))) &&
-                ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value));
+        assert(is_valid_value(value));
     }
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> Health {
         Health result;
@@ -215,16 +223,15 @@ struct Health {
         return ioj::packed_extract<value_field>(value_);
     }
     constexpr void set_value(value_type const value) noexcept {
-        assert((((value <= static_cast<std::uint16_t>(1000ULL))) &&
-                ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value));
+        assert(is_valid_value(value));
         value_ = ioj::packed_insert<value_field>(value_, value);
     }
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
-        return ((value <= static_cast<std::uint16_t>(1000ULL))) &&
-               ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value;
+        return ((value <= maximum_value)) &&
+               static_cast<storage_type>(value) <= value_field::value_mask;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (value() <= static_cast<std::uint16_t>(1000ULL));
+        return is_valid_value(value());
     }
     [[nodiscard]] constexpr auto operator<=>(Health const& other) const noexcept {
         return value() <=> other.value();
@@ -233,8 +240,107 @@ struct Health {
         return value() == other.value();
     }
   private:
-    storage_type value_{};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<Health>());
 
 } // namespace codegen_compile_fixture
+namespace std {
+template <typename Char>
+struct formatter<::codegen_compile_fixture::RegisteredInt, Char>
+    : formatter<::codegen_compile_fixture::RegisteredInt::value_type, Char> {
+    template <typename FormatContext>
+    auto format(::codegen_compile_fixture::RegisteredInt const& value, FormatContext& context) const
+        -> typename FormatContext::iterator {
+        return formatter<::codegen_compile_fixture::RegisteredInt::value_type, Char>::format(
+            value.value(), context);
+    }
+};
+template <>
+struct hash<::codegen_compile_fixture::RegisteredInt> {
+    [[nodiscard]] auto
+        operator()(::codegen_compile_fixture::RegisteredInt const& value) const noexcept -> size_t {
+        return hash<::codegen_compile_fixture::RegisteredInt::value_type>{}(value.value());
+    }
+};
+}
+
+namespace std {
+template <typename Char>
+struct formatter<::codegen_compile_fixture::StandardInt, Char>
+    : formatter<::codegen_compile_fixture::StandardInt::value_type, Char> {
+    template <typename FormatContext>
+    auto format(::codegen_compile_fixture::StandardInt const& value, FormatContext& context) const
+        -> typename FormatContext::iterator {
+        return formatter<::codegen_compile_fixture::StandardInt::value_type, Char>::format(
+            value.value(), context);
+    }
+};
+template <>
+struct hash<::codegen_compile_fixture::StandardInt> {
+    [[nodiscard]] auto
+        operator()(::codegen_compile_fixture::StandardInt const& value) const noexcept -> size_t {
+        return hash<::codegen_compile_fixture::StandardInt::value_type>{}(value.value());
+    }
+};
+}
+
+namespace std {
+template <typename Char>
+struct formatter<::codegen_compile_fixture::DamageCode, Char>
+    : formatter<::codegen_compile_fixture::DamageCode::value_type, Char> {
+    template <typename FormatContext>
+    auto format(::codegen_compile_fixture::DamageCode const& value, FormatContext& context) const ->
+        typename FormatContext::iterator {
+        return formatter<::codegen_compile_fixture::DamageCode::value_type, Char>::format(
+            value.value(), context);
+    }
+};
+template <>
+struct hash<::codegen_compile_fixture::DamageCode> {
+    [[nodiscard]] auto operator()(::codegen_compile_fixture::DamageCode const& value) const noexcept
+        -> size_t {
+        return hash<::codegen_compile_fixture::DamageCode::value_type>{}(value.value());
+    }
+};
+}
+
+namespace std {
+template <typename Char>
+struct formatter<::codegen_compile_fixture::DamageReason, Char>
+    : formatter<::codegen_compile_fixture::DamageReason::value_type, Char> {
+    template <typename FormatContext>
+    auto format(::codegen_compile_fixture::DamageReason const& value, FormatContext& context) const
+        -> typename FormatContext::iterator {
+        return formatter<::codegen_compile_fixture::DamageReason::value_type, Char>::format(
+            value.value(), context);
+    }
+};
+template <>
+struct hash<::codegen_compile_fixture::DamageReason> {
+    [[nodiscard]] auto
+        operator()(::codegen_compile_fixture::DamageReason const& value) const noexcept -> size_t {
+        return hash<::codegen_compile_fixture::DamageReason::value_type>{}(value.value());
+    }
+};
+}
+
+namespace std {
+template <typename Char>
+struct formatter<::codegen_compile_fixture::Health, Char>
+    : formatter<::codegen_compile_fixture::Health::value_type, Char> {
+    template <typename FormatContext>
+    auto format(::codegen_compile_fixture::Health const& value, FormatContext& context) const ->
+        typename FormatContext::iterator {
+        return formatter<::codegen_compile_fixture::Health::value_type, Char>::format(value.value(),
+                                                                                      context);
+    }
+};
+template <>
+struct hash<::codegen_compile_fixture::Health> {
+    [[nodiscard]] auto operator()(::codegen_compile_fixture::Health const& value) const noexcept
+        -> size_t {
+        return hash<::codegen_compile_fixture::Health::value_type>{}(value.value());
+    }
+};
+}

@@ -8,12 +8,18 @@
 
 #include <cassert>
 #include <compare>
+#include <cstddef>
 #include <cstdint>
+#include <format>
+#include <functional>
 
 namespace ioj::sim {
 struct RuleId {
   public:
     using storage_type = std::uint32_t;
+    static constexpr int encoded_bits{32};
+    static constexpr int storage_bits{32};
+    static constexpr storage_type default_raw_value{0ULL};
     using index_type = std::uint32_t;
     using index_field = ioj::PackedField<storage_type, index_type, 0, 24>;
     struct index_range_type {
@@ -24,6 +30,14 @@ struct RuleId {
                                                   static_cast<index_type>(16777215ULL)};
     using type_type = ioj::sim::ConditionType;
     using type_field = ioj::PackedField<storage_type, type_type, 24, 8>;
+    [[nodiscard]] static constexpr auto is_valid_index(index_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= index_field::value_mask;
+    }
+    [[nodiscard]] static constexpr auto is_valid_type(type_type const value) noexcept -> bool {
+        return (value == type_EntityDestroyed_code) || (value == type_EntityReachedPosition_code) ||
+               (value == type_TimeElapsed_code) || (value == type_ObjectiveResolved_code) ||
+               (value == type_EntityKillsReached_code);
+    }
 
     constexpr RuleId() noexcept = default;
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> RuleId {
@@ -33,39 +47,15 @@ struct RuleId {
 
     explicit constexpr RuleId(index_type const index_value, type_type const type_value) noexcept
         : value_{0} {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                        index_value)) == index_value));
+        assert((is_valid_index(index_value)));
         value_ = ioj::packed_insert<index_field>(value_, index_value);
-        assert(((static_cast<std::uint64_t>(type_value) == 0ULL) ||
-                (static_cast<std::uint64_t>(type_value) == 1ULL) ||
-                (static_cast<std::uint64_t>(type_value) == 2ULL) ||
-                (static_cast<std::uint64_t>(type_value) == 3ULL) ||
-                (static_cast<std::uint64_t>(type_value) == 4ULL)));
+        assert((is_valid_type(type_value)));
         value_ = ioj::packed_insert<type_field>(value_, type_value);
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return ((static_cast<std::uint64_t>(
-                     ioj::packed_extract<
-                         ioj::PackedField<storage_type, ioj::sim::ConditionType, 24, 8>>(value_)) ==
-                 0ULL) ||
-                (static_cast<std::uint64_t>(
-                     ioj::packed_extract<
-                         ioj::PackedField<storage_type, ioj::sim::ConditionType, 24, 8>>(value_)) ==
-                 1ULL) ||
-                (static_cast<std::uint64_t>(
-                     ioj::packed_extract<
-                         ioj::PackedField<storage_type, ioj::sim::ConditionType, 24, 8>>(value_)) ==
-                 2ULL) ||
-                (static_cast<std::uint64_t>(
-                     ioj::packed_extract<
-                         ioj::PackedField<storage_type, ioj::sim::ConditionType, 24, 8>>(value_)) ==
-                 3ULL) ||
-                (static_cast<std::uint64_t>(
-                     ioj::packed_extract<
-                         ioj::PackedField<storage_type, ioj::sim::ConditionType, 24, 8>>(value_)) ==
-                 4ULL));
+        return (is_valid_index(ioj::packed_extract<index_field>(value_))) &&
+               (is_valid_type(ioj::packed_extract<type_field>(value_)));
     }
     [[nodiscard]] constexpr auto operator<=>(RuleId const&) const noexcept = default;
 
@@ -73,9 +63,7 @@ struct RuleId {
         return ioj::packed_extract<index_field>(value_);
     }
     constexpr void set_index(index_type const value) noexcept {
-        assert((ioj::packed_extract<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                    ioj::packed_pack<ioj::PackedField<storage_type, std::uint32_t, 0, 24>>(
-                        value)) == value));
+        assert((is_valid_index(value)));
         value_ = ioj::packed_insert<index_field>(value_, value);
     }
 
@@ -83,19 +71,37 @@ struct RuleId {
         return ioj::packed_extract<type_field>(value_);
     }
     constexpr void set_type(type_type const value) noexcept {
-        assert(((static_cast<std::uint64_t>(value) == 0ULL) ||
-                (static_cast<std::uint64_t>(value) == 1ULL) ||
-                (static_cast<std::uint64_t>(value) == 2ULL) ||
-                (static_cast<std::uint64_t>(value) == 3ULL) ||
-                (static_cast<std::uint64_t>(value) == 4ULL)));
+        assert((is_valid_type(value)));
         value_ = ioj::packed_insert<type_field>(value_, value);
     }
+    static constexpr type_type type_EntityDestroyed_code{static_cast<type_type>(0ULL)};
+    static constexpr type_type type_EntityReachedPosition_code{static_cast<type_type>(1ULL)};
+    static constexpr type_type type_TimeElapsed_code{static_cast<type_type>(2ULL)};
+    static constexpr type_type type_ObjectiveResolved_code{static_cast<type_type>(3ULL)};
+    static constexpr type_type type_EntityKillsReached_code{static_cast<type_type>(4ULL)};
   private:
     struct RawTag {};
     constexpr RuleId(RawTag, storage_type raw) noexcept
         : value_{raw} {}
-    storage_type value_{0ULL};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<RuleId>());
 
 } // namespace ioj::sim
+namespace std {
+template <typename Char>
+struct formatter<::ioj::sim::RuleId, Char> : formatter<::ioj::sim::RuleId::storage_type, Char> {
+    template <typename FormatContext>
+    auto format(::ioj::sim::RuleId const& value, FormatContext& context) const ->
+        typename FormatContext::iterator {
+        return formatter<::ioj::sim::RuleId::storage_type, Char>::format(value.raw_value(),
+                                                                         context);
+    }
+};
+template <>
+struct hash<::ioj::sim::RuleId> {
+    [[nodiscard]] auto operator()(::ioj::sim::RuleId const& value) const noexcept -> size_t {
+        return hash<::ioj::sim::RuleId::storage_type>{}(value.raw_value());
+    }
+};
+}

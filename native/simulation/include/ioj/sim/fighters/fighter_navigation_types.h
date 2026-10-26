@@ -10,6 +10,8 @@
 #include <compare>
 #include <cstddef>
 #include <cstdint>
+#include <format>
+#include <functional>
 namespace ioj::sim::fighters {
 using NavigationRiskTierUnderlying = std::uint8_t;
 
@@ -25,12 +27,17 @@ struct NavigationRiskCode {
   public:
     using storage_type = std::uint8_t;
     using value_type = std::uint8_t;
-    using value_field = ioj::PackedField<storage_type, value_type, 0, 2>;
+    static constexpr int encoded_bits{2};
+    static constexpr int storage_bits{8};
+    static constexpr storage_type default_raw_value{};
+    using value_field = ioj::PackedField<storage_type, value_type, 0, encoded_bits>;
+    static constexpr value_type minimum_value{static_cast<value_type>(0ULL)};
+    static constexpr value_type maximum_value{static_cast<value_type>(3ULL)};
 
     constexpr NavigationRiskCode() noexcept = default;
     explicit constexpr NavigationRiskCode(value_type const value) noexcept
         : value_{ioj::packed_pack<value_field>(value)} {
-        assert((ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value));
+        assert(is_valid_value(value));
     }
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> NavigationRiskCode {
         NavigationRiskCode result;
@@ -42,13 +49,15 @@ struct NavigationRiskCode {
         return ioj::packed_extract<value_field>(value_);
     }
     constexpr void set_value(value_type const value) noexcept {
-        assert((ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value));
+        assert(is_valid_value(value));
         value_ = ioj::packed_insert<value_field>(value_, value);
     }
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
-        return ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value;
+        return static_cast<storage_type>(value) <= value_field::value_mask;
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return is_valid_value(value());
+    }
     [[nodiscard]] constexpr auto operator<=>(NavigationRiskCode const& other) const noexcept {
         return value() <=> other.value();
     }
@@ -57,7 +66,7 @@ struct NavigationRiskCode {
         return value() == other.value();
     }
   private:
-    storage_type value_{};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<NavigationRiskCode>());
 
@@ -65,11 +74,18 @@ struct NavigationScanCount {
   public:
     using storage_type = std::uint8_t;
     using value_type = std::uint8_t;
-    using value_field = ioj::PackedField<storage_type, value_type, 0, 8>;
+    static constexpr int encoded_bits{8};
+    static constexpr int storage_bits{8};
+    static constexpr storage_type default_raw_value{};
+    using value_field = ioj::PackedField<storage_type, value_type, 0, encoded_bits>;
+    static constexpr value_type minimum_value{static_cast<value_type>(0ULL)};
+    static constexpr value_type maximum_value{static_cast<value_type>(255ULL)};
 
     constexpr NavigationScanCount() noexcept = default;
     explicit constexpr NavigationScanCount(value_type const value) noexcept
-        : value_{ioj::packed_pack<value_field>(value)} {}
+        : value_{ioj::packed_pack<value_field>(value)} {
+        assert(is_valid_value(value));
+    }
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> NavigationScanCount {
         NavigationScanCount result;
         result.value_ = raw;
@@ -80,21 +96,18 @@ struct NavigationScanCount {
         return ioj::packed_extract<value_field>(value_);
     }
     constexpr void set_value(value_type const value) noexcept {
+        assert(is_valid_value(value));
         value_ = ioj::packed_insert<value_field>(value_, value);
     }
     [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
         return true;
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
-    [[nodiscard]] constexpr auto operator<=>(NavigationScanCount const& other) const noexcept {
-        return value() <=> other.value();
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return is_valid_value(value());
     }
-    [[nodiscard]] constexpr auto operator==(NavigationScanCount const& other) const noexcept
-        -> bool {
-        return value() == other.value();
-    }
+    [[nodiscard]] constexpr auto operator<=>(NavigationScanCount const&) const noexcept = default;
   private:
-    storage_type value_{};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<NavigationScanCount>());
 
@@ -102,17 +115,19 @@ struct AvoidanceChoice {
   public:
     using storage_type = std::uint8_t;
     using value_type = std::int8_t;
-    using value_field = ioj::PackedField<storage_type, value_type, 0, 8>;
+    static constexpr int encoded_bits{8};
+    static constexpr int storage_bits{8};
+    static constexpr storage_type default_raw_value{};
+    using value_field = ioj::PackedField<storage_type, value_type, 0, encoded_bits>;
     static constexpr value_type DirectMovement{static_cast<value_type>(-1LL)};
     static constexpr value_type StopMovement{static_cast<value_type>(-2LL)};
+    static constexpr value_type minimum_value{static_cast<value_type>(0ULL)};
+    static constexpr value_type maximum_value{static_cast<value_type>(7ULL)};
 
     constexpr AvoidanceChoice() noexcept = default;
     explicit constexpr AvoidanceChoice(value_type const value) noexcept
         : value_{ioj::packed_pack<value_field>(value)} {
-        assert(((((value >= static_cast<std::int8_t>(0ULL)) &&
-                  (value <= static_cast<std::int8_t>(7ULL))) ||
-                 value == static_cast<std::int8_t>(-1LL)) ||
-                value == static_cast<std::int8_t>(-2LL)));
+        assert(is_valid_value(value));
     }
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> AvoidanceChoice {
         AvoidanceChoice result;
@@ -124,23 +139,16 @@ struct AvoidanceChoice {
         return ioj::packed_extract<value_field>(value_);
     }
     constexpr void set_value(value_type const value) noexcept {
-        assert(((((value >= static_cast<std::int8_t>(0ULL)) &&
-                  (value <= static_cast<std::int8_t>(7ULL))) ||
-                 value == static_cast<std::int8_t>(-1LL)) ||
-                value == static_cast<std::int8_t>(-2LL)));
+        assert(is_valid_value(value));
         value_ = ioj::packed_insert<value_field>(value_, value);
     }
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
-        return (((value >= static_cast<std::int8_t>(0ULL)) &&
-                 (value <= static_cast<std::int8_t>(7ULL))) ||
-                value == static_cast<std::int8_t>(-1LL)) ||
-               value == static_cast<std::int8_t>(-2LL);
+        return (((value >= minimum_value) && (value <= maximum_value)) ||
+                value == DirectMovement) ||
+               value == StopMovement;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return (((value() >= static_cast<std::int8_t>(0ULL)) &&
-                 (value() <= static_cast<std::int8_t>(7ULL))) ||
-                value() == static_cast<std::int8_t>(-1LL)) ||
-               value() == static_cast<std::int8_t>(-2LL);
+        return is_valid_value(value());
     }
     [[nodiscard]] constexpr auto operator<=>(AvoidanceChoice const& other) const noexcept {
         return value() <=> other.value();
@@ -149,7 +157,7 @@ struct AvoidanceChoice {
         return value() == other.value();
     }
   private:
-    storage_type value_{};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<AvoidanceChoice>());
 
@@ -161,3 +169,64 @@ template <>
     return 4;
 }
 } // namespace ioj
+
+namespace std {
+template <typename Char>
+struct formatter<::ioj::sim::fighters::NavigationRiskCode, Char>
+    : formatter<::ioj::sim::fighters::NavigationRiskCode::value_type, Char> {
+    template <typename FormatContext>
+    auto format(::ioj::sim::fighters::NavigationRiskCode const& value, FormatContext& context) const
+        -> typename FormatContext::iterator {
+        return formatter<::ioj::sim::fighters::NavigationRiskCode::value_type, Char>::format(
+            value.value(), context);
+    }
+};
+template <>
+struct hash<::ioj::sim::fighters::NavigationRiskCode> {
+    [[nodiscard]] auto
+        operator()(::ioj::sim::fighters::NavigationRiskCode const& value) const noexcept -> size_t {
+        return hash<::ioj::sim::fighters::NavigationRiskCode::value_type>{}(value.value());
+    }
+};
+}
+
+namespace std {
+template <typename Char>
+struct formatter<::ioj::sim::fighters::NavigationScanCount, Char>
+    : formatter<::ioj::sim::fighters::NavigationScanCount::value_type, Char> {
+    template <typename FormatContext>
+    auto format(::ioj::sim::fighters::NavigationScanCount const& value,
+                FormatContext& context) const -> typename FormatContext::iterator {
+        return formatter<::ioj::sim::fighters::NavigationScanCount::value_type, Char>::format(
+            value.value(), context);
+    }
+};
+template <>
+struct hash<::ioj::sim::fighters::NavigationScanCount> {
+    [[nodiscard]] auto
+        operator()(::ioj::sim::fighters::NavigationScanCount const& value) const noexcept
+        -> size_t {
+        return hash<::ioj::sim::fighters::NavigationScanCount::value_type>{}(value.value());
+    }
+};
+}
+
+namespace std {
+template <typename Char>
+struct formatter<::ioj::sim::fighters::AvoidanceChoice, Char>
+    : formatter<::ioj::sim::fighters::AvoidanceChoice::value_type, Char> {
+    template <typename FormatContext>
+    auto format(::ioj::sim::fighters::AvoidanceChoice const& value, FormatContext& context) const ->
+        typename FormatContext::iterator {
+        return formatter<::ioj::sim::fighters::AvoidanceChoice::value_type, Char>::format(
+            value.value(), context);
+    }
+};
+template <>
+struct hash<::ioj::sim::fighters::AvoidanceChoice> {
+    [[nodiscard]] auto operator()(::ioj::sim::fighters::AvoidanceChoice const& value) const noexcept
+        -> size_t {
+        return hash<::ioj::sim::fighters::AvoidanceChoice::value_type>{}(value.value());
+    }
+};
+}

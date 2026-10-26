@@ -15,6 +15,8 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <format>
+#include <functional>
 #include <type_traits>
 #include <utility>
 
@@ -109,11 +111,18 @@ struct MethodCount {
   public:
     using storage_type = std::uint8_t;
     using value_type = std::uint8_t;
-    using value_field = ioj::PackedField<storage_type, value_type, 0, 8>;
+    static constexpr int encoded_bits{8};
+    static constexpr int storage_bits{8};
+    static constexpr storage_type default_raw_value{};
+    using value_field = ioj::PackedField<storage_type, value_type, 0, encoded_bits>;
+    static constexpr value_type minimum_value{static_cast<value_type>(0ULL)};
+    static constexpr value_type maximum_value{static_cast<value_type>(255ULL)};
 
     constexpr MethodCount() noexcept = default;
     explicit constexpr MethodCount(value_type const value) noexcept
-        : value_{ioj::packed_pack<value_field>(value)} {}
+        : value_{ioj::packed_pack<value_field>(value)} {
+        assert(is_valid_value(value));
+    }
     [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> MethodCount {
         MethodCount result;
         result.value_ = raw;
@@ -124,20 +133,18 @@ struct MethodCount {
         return ioj::packed_extract<value_field>(value_);
     }
     constexpr void set_value(value_type const value) noexcept {
+        assert(is_valid_value(value));
         value_ = ioj::packed_insert<value_field>(value_, value);
     }
     [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
         return true;
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
-    [[nodiscard]] constexpr auto operator<=>(MethodCount const& other) const noexcept {
-        return value() <=> other.value();
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return is_valid_value(value());
     }
-    [[nodiscard]] constexpr auto operator==(MethodCount const& other) const noexcept -> bool {
-        return value() == other.value();
-    }
+    [[nodiscard]] constexpr auto operator<=>(MethodCount const&) const noexcept = default;
   private:
-    storage_type value_{};
+    storage_type value_{default_raw_value};
 };
 static_assert(ioj::valid_packed_value_layout<MethodCount>());
 
@@ -247,3 +254,24 @@ template <>
 inline constexpr auto
     ioj::enum_strings<::codegen_compile_fixture::mixed::CrossSettings::Field, ioj::Name>{
         ioj::PackedStrings{"actor", std::array<std::uint8_t, 2>{0, 6}}};
+
+namespace std {
+template <typename Char>
+struct formatter<::codegen_compile_fixture::mixed::MethodCount, Char>
+    : formatter<::codegen_compile_fixture::mixed::MethodCount::value_type, Char> {
+    template <typename FormatContext>
+    auto format(::codegen_compile_fixture::mixed::MethodCount const& value,
+                FormatContext& context) const -> typename FormatContext::iterator {
+        return formatter<::codegen_compile_fixture::mixed::MethodCount::value_type, Char>::format(
+            value.value(), context);
+    }
+};
+template <>
+struct hash<::codegen_compile_fixture::mixed::MethodCount> {
+    [[nodiscard]] auto
+        operator()(::codegen_compile_fixture::mixed::MethodCount const& value) const noexcept
+        -> size_t {
+        return hash<::codegen_compile_fixture::mixed::MethodCount::value_type>{}(value.value());
+    }
+};
+}

@@ -29,6 +29,10 @@ signed domain. Optional `:minimum` and `:maximum` narrow the domain. A projected
 an explicit C++ wrapper with `value_type`, `value()`, `set_value()` and checked typed construction.
 `from_raw()` preserves all storage bits without validation; `is_valid()` checks the logical domain.
 
+Projected scalars and packed owners support `std::format` and `std::hash` automatically. Scalars
+format and hash their decoded value; packed records and unions use their raw integer, matching
+their equality semantics. Standard integer format specifications, including hexadecimal, apply.
+
 Unions contain references, for example `(union Target @EntityIndex @LocationIndex)`. A record
 member binds a discriminator with `(member payload @Payload :tag opcode)`, where `opcode` is a
 sibling enum member. Union alternatives infer enum names from their type names, or use

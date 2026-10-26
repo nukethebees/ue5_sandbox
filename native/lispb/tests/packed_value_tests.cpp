@@ -206,6 +206,40 @@ TEST(PackedRecord, DefaultsIncludeSignedValuesAndReservedBits) {
     EXPECT_EQ(layout.default_raw_value, std::uint64_t{5U | (29U << 5)});
 }
 
+TEST(PackedRecord, SharesTypedValidationHelpersAcrossConstructionMutationAndValidation) {
+    CompilerTestContext context;
+    auto const files{render_test_manifest(context, parse_test_manifest(context, R"(
+      (module values :header "Values.h"
+        (integer-scalar Health :bit-width 8 :minimum 0 :maximum 100 (projections (cpp)))
+        (record State :layout packed (member health @Health) (projections (cpp))))
+    )"))};
+    ASSERT_EQ(files.size(), 1U);
+    auto const& output{files.front().content};
+    EXPECT_GE(occurrences(output, "is_valid_value("), 4U);
+    EXPECT_GE(occurrences(output, "is_valid_health("), 4U);
+    EXPECT_NE(output.find("value_type const value"), std::string::npos);
+    EXPECT_NE(output.find("health_type const value"), std::string::npos);
+    EXPECT_EQ(output.find("static_cast<std::uint8_t>"), std::string::npos);
+}
+
+TEST(PackedRecord, DefaultsScalarComparisonOnlyWhenStorageOrderMatchesLogicalValues) {
+    CompilerTestContext context;
+    auto const files{render_test_manifest(context, parse_test_manifest(context, R"(
+      (module values :header "Values.h"
+        (integer-scalar Full :bit-width 8 (projections (cpp)))
+        (integer-scalar Padded :bit-width 24 (projections (cpp)))
+        (integer-scalar Signed :bit-width 8 :signed true (projections (cpp))))
+    )"))};
+    ASSERT_EQ(files.size(), 1U);
+    auto const& output{files.front().content};
+    EXPECT_NE(output.find("operator<=>(Full const&) const noexcept = default"), std::string::npos);
+    EXPECT_EQ(output.find("operator<=>(Padded const&) const noexcept = default"),
+              std::string::npos);
+    EXPECT_EQ(output.find("operator<=>(Signed const&) const noexcept = default"),
+              std::string::npos);
+    EXPECT_EQ(occurrences(output, "return value() <=> other.value();"), 2U);
+}
+
 class InvalidPackedRecord : public testing::TestWithParam<char const*> {};
 
 TEST_P(InvalidPackedRecord, RejectsInvalidSchemaBeforeEmission) {

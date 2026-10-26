@@ -23,6 +23,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace lispb::codegen::detail {
@@ -103,21 +104,56 @@ auto field_type(std::string const& value, std::uint32_t offset, std::uint32_t bi
     return std::format("ioj::PackedField<storage_type, {}, {}, {}>", value, offset, bits);
 }
 
-auto extract(std::string const& value,
-             std::uint32_t offset,
-             std::uint32_t bits,
-             std::string_view raw = "value_") -> std::string {
-    return std::format("ioj::packed_extract<{}>({})", field_type(value, offset, bits), raw);
+using NamedDeclarations = std::vector<std::pair<std::string, std::string>>;
+
+auto named_declaration(NamedDeclarations& declarations, std::string name, std::string declaration)
+    -> std::string {
+    if (std::ranges::none_of(declarations,
+                             [&](auto const& entry) { return entry.first == name; })) {
+        declarations.emplace_back(name, std::move(declaration));
+    }
+    return name;
+}
+
+auto named_constant(NamedDeclarations& declarations,
+                    std::string name,
+                    std::string const& type,
+                    std::string const& expression) -> std::string {
+    return named_declaration(
+        declarations,
+        name,
+        std::format("    static constexpr {} {}{{{}}};\n", type, name, expression));
+}
+
+auto consecutive(PackedIntegerValue left, PackedIntegerValue right) -> bool {
+    if (left.negative) {
+        return left.magnitude == 1 ? right.magnitude == 0
+                                   : right.negative && right.magnitude == left.magnitude - 1;
+    }
+    return !right.negative && left.magnitude != (std::numeric_limits<std::uint64_t>::max)() &&
+           right.magnitude == left.magnitude + 1;
 }
 
 auto scalar_validity(LoweringContext& context,
                      schema::TypeId type,
                      std::uint32_t bits,
-                     std::string const& expression) -> std::string {
+                     std::string const& expression,
+                     std::string const& prefix,
+                     std::string const& decoded,
+                     NamedDeclarations& constants,
+                     bool field_range = false) -> std::string {
     auto const& graph{context.semantic};
     auto const definition{graph.definition(type)};
     auto const& definitions{graph.definitions()};
-    auto const decoded{value_type(context, type, bits)};
+    auto const qualify = [&](std::string_view suffix) {
+        return prefix.empty() ? std::string{suffix} : prefix + "_" + std::string{suffix};
+    };
+    auto const bound = [&](std::string_view suffix, PackedIntegerValue value) {
+        return named_constant(constants,
+                              qualify(suffix),
+                              decoded,
+                              "static_cast<" + decoded + ">(" + literal(value) + ')');
+    };
     if (auto const domain{schema::integer_domain(graph, type)}) {
         auto const& scalars{definitions.integer_scalars};
         auto const row{scalars.index(*domain)};
@@ -125,31 +161,51 @@ auto scalar_validity(LoweringContext& context,
         auto const representable_minimum{PackedIntegerValue::from_parts(
             signedness, signedness ? std::uint64_t{1} << (bits - 1) : 0)};
         auto const representable_maximum{PackedIntegerValue{mask(bits - (signedness ? 1 : 0))}};
+        auto const minimum{field_range ? prefix + "_range.min"
+                                       : bound(prefix.empty() ? "minimum_value" : "minimum",
+                                               scalars.minimum_value[row])};
+        auto const maximum{field_range ? prefix + "_range.max"
+                                       : bound(prefix.empty() ? "maximum_value" : "maximum",
+                                               scalars.maximum_value[row])};
+        auto lower{scalars.minimum_value[row]};
+        auto upper{scalars.maximum_value[row]};
+        auto const& codes{context.declarations.packed_named_codes};
+        auto const named{context.declarations.items(scalars.named_codes[row])};
+        for (std::size_t pass{}; pass < named.size(); ++pass) {
+            for (auto const id : named) {
+                if (!codes.sentinel[id]) {
+                    continue;
+                }
+                if (consecutive(codes.value[id], lower)) {
+                    lower = codes.value[id];
+                }
+                if (consecutive(upper, codes.value[id])) {
+                    upper = codes.value[id];
+                }
+            }
+        }
+        if (!packed_integer_less(representable_minimum, lower) &&
+            !packed_integer_less(upper, representable_maximum)) {
+            return "true";
+        }
         std::vector<std::string> bounds;
         if (packed_integer_less(representable_minimum, scalars.minimum_value[row])) {
-            bounds.push_back(std::format("{} >= static_cast<{}>({})",
-                                         expression,
-                                         decoded,
-                                         literal(scalars.minimum_value[row])));
+            bounds.push_back(expression + " >= " + minimum);
         }
         if (packed_integer_less(scalars.maximum_value[row], representable_maximum)) {
-            bounds.push_back(std::format("{} <= static_cast<{}>({})",
-                                         expression,
-                                         decoded,
-                                         literal(scalars.maximum_value[row])));
+            bounds.push_back(expression + " <= " + maximum);
         }
         auto range{combine(bounds, " && ", "true")};
         if (range == "true") {
             return range;
         }
-        auto const& codes{context.declarations.packed_named_codes};
         for (auto const id : context.declarations.items(scalars.named_codes[row])) {
             if (codes.sentinel[id]) {
-                range = std::format("({}) || {} == static_cast<{}>({})",
-                                    range,
-                                    expression,
-                                    decoded,
-                                    literal(codes.value[id]));
+                auto const name{qualify(context.text(codes.name[id]))};
+                if (!field_range && !prefix.empty()) {
+                    bound(context.text(codes.name[id]), codes.value[id]);
+                }
+                range = '(' + range + ") || " + expression + " == " + name;
             }
         }
         return range;
@@ -167,18 +223,17 @@ auto scalar_validity(LoweringContext& context,
                 if (values[ordinal] == count_value) {
                     continue;
                 }
-                if (auto const code{domains.code(domain, ordinal)}) {
-                    checks.push_back(std::format(
-                        "static_cast<std::uint64_t>({}) == {}",
-                        expression,
-                        literal(PackedIntegerValue::from_parts(code->negative, code->magnitude))));
-                } else {
-                    checks.push_back(std::format(
-                        "{} == {}::{}",
-                        expression,
-                        decoded,
-                        context.text(context.declarations.enumerators.name[values[ordinal]])));
-                }
+                auto const enumerator{
+                    context.text(context.declarations.enumerators.name[values[ordinal]])};
+                auto const code{domains.code(domain, ordinal)};
+                auto const initializer{code ? "static_cast<" + decoded + ">(" +
+                                                  literal(PackedIntegerValue::from_parts(
+                                                      code->negative, code->magnitude)) +
+                                                  ')'
+                                            : decoded + "::" + enumerator};
+                auto const name{
+                    named_constant(constants, qualify(enumerator + "_code"), decoded, initializer)};
+                checks.push_back(expression + " == " + name);
             }
             return combine(checks, " || ", "false");
         }
@@ -187,35 +242,48 @@ auto scalar_validity(LoweringContext& context,
             auto const row{fixed.index(definition)};
             std::vector<std::string> checks;
             if (fixed.minimum_raw_value[row]) {
-                checks.push_back(expression + " >= static_cast<" + decoded + ">(" +
-                                 literal(*fixed.minimum_raw_value[row]) + ')');
+                auto const minimum{
+                    field_range ? prefix.substr(0, prefix.size() - 4) + "_minimum_allowed_raw"
+                                : bound("minimum_value", *fixed.minimum_raw_value[row])};
+                checks.push_back(expression + " >= " + minimum);
             }
             if (fixed.maximum_raw_value[row]) {
-                checks.push_back(expression + " <= static_cast<" + decoded + ">(" +
-                                 literal(*fixed.maximum_raw_value[row]) + ')');
+                auto const maximum{
+                    field_range ? prefix.substr(0, prefix.size() - 4) + "_maximum_allowed_raw"
+                                : bound("maximum_value", *fixed.maximum_raw_value[row])};
+                checks.push_back(expression + " <= " + maximum);
             }
             return combine(checks, " && ", "true");
         }
         case schema::TypeDefinitionKind::linear_quantized: {
             auto const& quantized{definitions.linear_quantized};
             auto const row{quantized.index(definition)};
-            return std::format(
-                "{} <= {}ULL", expression, mask(bits) - quantized.reserved_codes[row]);
+            return expression + " <= " +
+                   bound("maximum_encoded",
+                         PackedIntegerValue{mask(bits) - quantized.reserved_codes[row]});
         }
         case schema::TypeDefinitionKind::optional_sentinel: {
             auto const& optional{definitions.optional_sentinels};
             auto const row{optional.index(definition)};
             auto const source{
                 graph.occurrences().type[graph.occurrences().index(optional.source[row])]};
-            auto const decoded_source{extract(value_type(context, source, bits),
-                                              0,
-                                              bits,
-                                              "static_cast<storage_type>(" + expression + ')')};
-            return std::format("{} == static_cast<{}>({}) || ({})",
-                               expression,
-                               decoded,
-                               literal(optional.sentinel_value[row]),
-                               scalar_validity(context, source, bits, decoded_source));
+            auto const payload{qualify("payload")};
+            auto const payload_alias{payload + "_type"};
+            named_declaration(constants,
+                              payload_alias,
+                              "    using " + payload_alias + " = " +
+                                  value_type(context, source, bits) + ";\n");
+            auto const payload_field{payload + "_field"};
+            named_declaration(constants,
+                              payload_field,
+                              "    using " + payload_field + " = " +
+                                  field_type(payload_alias, 0, bits) + ";\n");
+            auto const decoded_source{"ioj::packed_extract<" + payload_field +
+                                      ">(static_cast<storage_type>(" + expression + "))"};
+            return expression + " == " + bound("sentinel", optional.sentinel_value[row]) + " || (" +
+                   scalar_validity(
+                       context, source, bits, decoded_source, payload, payload_alias, constants) +
+                   ')';
         }
         case schema::TypeDefinitionKind::optional_presence_bit: {
             auto const& optional{definitions.optional_presence_bits};
@@ -223,24 +291,37 @@ auto scalar_validity(LoweringContext& context,
             auto const source{
                 graph.occurrences().type[graph.occurrences().index(optional.source[row])]};
             auto const payload_bits{optional.payload_bits[row]};
-            auto const decoded_source{extract(value_type(context, source, payload_bits),
-                                              0,
-                                              payload_bits,
-                                              "static_cast<storage_type>(" + expression + ')')};
-            return std::format("(static_cast<storage_type>({}) & {}ULL) == 0 || ({})",
-                               expression,
-                               std::uint64_t{1} << payload_bits,
-                               scalar_validity(context, source, payload_bits, decoded_source));
+            auto const payload{qualify("payload")};
+            auto const payload_alias{payload + "_type"};
+            named_declaration(constants,
+                              payload_alias,
+                              "    using " + payload_alias + " = " +
+                                  value_type(context, source, payload_bits) + ";\n");
+            auto const payload_field{payload + "_field"};
+            named_declaration(constants,
+                              payload_field,
+                              "    using " + payload_field + " = " +
+                                  field_type(payload_alias, 0, payload_bits) + ";\n");
+            auto const decoded_source{"ioj::packed_extract<" + payload_field +
+                                      ">(static_cast<storage_type>(" + expression + "))"};
+            auto const presence{named_constant(constants,
+                                               qualify("presence_mask"),
+                                               "storage_type",
+                                               "static_cast<storage_type>(storage_type{1} << " +
+                                                   payload_field + "::bits)")};
+            return "(static_cast<storage_type>(" + expression + ") & " + presence + ") == 0 || (" +
+                   scalar_validity(context,
+                                   source,
+                                   payload_bits,
+                                   decoded_source,
+                                   payload,
+                                   payload_alias,
+                                   constants) +
+                   ')';
         }
         default:
             return "true";
     }
-}
-
-auto guard_expression(schema::BitGuard const& guard, std::string_view raw = "value_")
-    -> std::string {
-    return std::format(
-        "{} == {}ULL", extract("storage_type", guard.offset, guard.bits, raw), guard.value);
 }
 
 auto accessor_name(LoweringContext& context, schema::BitPlacement const& placement) -> std::string {
@@ -279,6 +360,34 @@ auto base_dependencies(LoweringContext& context) -> std::vector<TypeDependencyId
             types.dependency("auto", "compare")};
 }
 
+auto standard_value_support(LoweringContext& context, schema::TypeId type, bool scalar) -> NodeId {
+    auto qualified{context.text(context.semantic.cpp_spelling(type))};
+    if (!qualified.starts_with("::")) {
+        qualified = "::" + qualified;
+    }
+    auto const integer{qualified + (scalar ? "::value_type" : "::storage_type")};
+    auto const accessor{scalar ? "value" : "raw_value"};
+    auto const text{std::format(
+        "namespace std {{\n"
+        "template <typename Char>\n"
+        "struct formatter<{0}, Char> : formatter<{1}, Char> {{\n"
+        "    template <typename FormatContext>\n"
+        "    auto format({0} const& value, FormatContext& context) const -> typename "
+        "FormatContext::iterator {{\n"
+        "        return formatter<{1}, Char>::format(value.{2}(), context);\n    }}\n}};\n"
+        "template <>\nstruct hash<{0}> {{\n"
+        "    [[nodiscard]] auto operator()({0} const& value) const noexcept -> size_t {{\n"
+        "        return hash<{1}>{{}}(value.{2}());\n    }}\n}};\n}}\n",
+        qualified,
+        integer,
+        accessor)};
+    auto& types{context.ir.types};
+    return context.ir.raw(text,
+                          {types.dependency("std::formatter", "format"),
+                           types.dependency("std::hash", "functional"),
+                           types.dependency("std::size_t", "cstddef")});
+}
+
 class PackedEmitter {
   public:
     PackedEmitter(LoweringContext& context, schema::TypeId type)
@@ -307,16 +416,25 @@ class PackedEmitter {
               export_text.empty() ? "" : export_text + ' ',
               name,
               integer_type(layout_.storage_bits));
+        write("    static constexpr int encoded_bits{{{}}};\n"
+              "    static constexpr int storage_bits{{{}}};\n"
+              "    static constexpr storage_type default_raw_value{{{}ULL}};\n",
+              *layout_.encoded_bits,
+              layout_.storage_bits,
+              layout_.default_raw_value.value_or(0));
         auto const count{layout_.placements.size()};
         for (std::size_t index{}; index < count; ++index) {
             auto const& placement{layout_.placements[index]};
-            if (!addressable(placement)) {
+            if (placement.reserved || placement.bits == 0) {
                 continue;
             }
             auto const accessor{accessor_name(context_, placement)};
-            auto const decoded{value_type(context_, placement.type, placement.bits)};
-            if (aggregate(placement) || graph.definition(placement.type).kind() ==
-                                            schema::TypeDefinitionKind::enumeration) {
+            auto const decoded{addressable(placement)
+                                   ? value_type(context_, placement.type, placement.bits)
+                                   : "storage_type"};
+            if (addressable(placement) &&
+                (aggregate(placement) || graph.definition(placement.type).kind() ==
+                                             schema::TypeDefinitionKind::enumeration)) {
                 append_dependencies(context_, placement.child, dependencies_);
             }
             write("    using {}_type = {};\n", accessor, decoded);
@@ -326,6 +444,11 @@ class PackedEmitter {
                              placement.offset,
                              placement.bits));
             append_constants(placement, accessor);
+        }
+        for (auto const& placement : layout_.placements) {
+            if (addressable(placement) && !aggregate(placement)) {
+                append_validator(placement);
+            }
         }
         if (invalid) {
             write("    static constexpr storage_type invalid_value{{{}ULL}};\n", *invalid);
@@ -369,16 +492,41 @@ class PackedEmitter {
                 append_accessor(placement);
             }
         }
+        for (auto const& entry : constants_) {
+            output_ += entry.second;
+        }
         write("\n  private:\n    struct RawTag {{}};\n"
               "    constexpr {}(RawTag, storage_type raw) noexcept : value_{{raw}} {{}}\n"
-              "    storage_type value_{{{}ULL}};\n}};\n"
+              "    storage_type value_{{default_raw_value}};\n}};\n"
               "static_assert(ioj::valid_packed_value_layout<{}>());\n",
               name,
-              layout_.default_raw_value.value_or(0),
               name);
         return context_.ir.raw(output_, std::move(dependencies_));
     }
   private:
+    auto guard_code(schema::BitGuard const& guard) const -> std::string {
+        auto const definition{context_.semantic.definition(guard.enumeration)};
+        auto const& enums{context_.semantic.definitions().enums};
+        auto const domain{enums.domain[enums.index(definition)]};
+        auto const& domains{context_.semantic.enum_domains()};
+        auto const values{domains.values(domain)};
+        for (std::size_t ordinal{}; ordinal < values.size(); ++ordinal) {
+            auto const code{domains.code(domain, ordinal)};
+            if (code && !code->negative && code->magnitude == guard.value) {
+                return guard.path + "_" +
+                       context_.text(context_.declarations.enumerators.name[values[ordinal]]) +
+                       "_code";
+            }
+        }
+        std::unreachable();
+    }
+
+    auto guard_expression(schema::BitGuard const& guard, std::string_view raw = "value_") const
+        -> std::string {
+        return "ioj::packed_extract<" + guard.path + "_field>(" + std::string{raw} +
+               ") == " + guard_code(guard);
+    }
+
     auto aggregate(schema::BitPlacement const& placement) const -> bool {
         return composite(context_.semantic.definition(placement.type).kind());
     }
@@ -389,23 +537,39 @@ class PackedEmitter {
                 schema::is_packed_projection(context_.semantic, placement.type));
     }
 
-    auto value_check(schema::BitPlacement const& placement,
-                     std::string const& value,
-                     bool check_representation = true) -> std::string {
+    auto value_check(schema::BitPlacement const& placement, std::string const& value)
+        -> std::string {
         if (aggregate(placement)) {
             return value + ".is_valid()";
         }
-        auto const check{scalar_validity(context_, placement.type, placement.bits, value)};
+        return "is_valid_" + accessor_name(context_, placement) + '(' + value + ')';
+    }
+
+    void append_validator(schema::BitPlacement const& placement) {
+        auto const accessor{accessor_name(context_, placement)};
+        auto const alias{accessor + "_type"};
+        auto check{scalar_validity(
+            context_, placement.type, placement.bits, "value", accessor, alias, constants_, true)};
         auto const decoded{value_type(context_, placement.type, placement.bits)};
         auto const full_width{placement.bits == 8 || placement.bits == 16 || placement.bits == 32 ||
                               placement.bits == 64};
-        if (!check_representation || decoded == "bool" || full_width) {
-            return check;
+        if (decoded != "bool" && !full_width) {
+            auto const field{accessor + "_field"};
+            auto const representation{decoded.starts_with("std::int")
+                                          ? "ioj::packed_extract<" + field + ">(ioj::packed_pack<" +
+                                                field + ">(value)) == value"
+                                          : "static_cast<storage_type>(value) <= " + field +
+                                                "::value_mask"};
+            check = check == "true" ? representation : '(' + check + ") && " + representation;
         }
-        auto const field{field_type(decoded, 0, placement.bits)};
-        auto const representation{std::format(
-            "ioj::packed_extract<{}>(ioj::packed_pack<{}>({})) == {}", field, field, value, value)};
-        return check == "true" ? representation : '(' + check + ") && " + representation;
+        ioj::FormatWriter write{std::back_inserter(output_)};
+        write(
+            "    [[nodiscard]] static constexpr auto is_valid_{}({} const {}) noexcept -> bool {{\n"
+            "        return {};\n    }}\n",
+            accessor,
+            alias,
+            check == "true" ? "" : "value",
+            check);
     }
 
     void append_constants(schema::BitPlacement const& placement, std::string const& accessor) {
@@ -445,15 +609,12 @@ class PackedEmitter {
             if (placement.parent != parent || placement.reserved) {
                 continue;
             }
-            auto check{
-                aggregate(placement)
-                    ? valid_children(static_cast<std::uint32_t>(index), placement.type, raw)
-                    : value_check(placement,
-                                  extract(value_type(context_, placement.type, placement.bits),
-                                          placement.offset,
-                                          placement.bits,
-                                          raw),
-                                  false)};
+            auto check{aggregate(placement)
+                           ? valid_children(static_cast<std::uint32_t>(index), placement.type, raw)
+                           : value_check(placement,
+                                         "ioj::packed_extract<" +
+                                             accessor_name(context_, placement) + "_field>(" +
+                                             std::string{raw} + ')')};
             for (auto const& guard : placement.guards) {
                 check = '(' + guard_expression(guard, raw) + ") && (" + check + ')';
             }
@@ -472,9 +633,14 @@ class PackedEmitter {
             auto const& records{context_.semantic.definitions().records};
             if (auto const invalid{records.invalid_raw_value[records.index(definition)]}) {
                 auto const& placement{layout_.placements[*parent]};
-                result = std::format("{} != {}ULL && ({})",
-                                     extract("storage_type", placement.offset, placement.bits, raw),
-                                     *invalid,
+                auto const constant{named_constant(constants_,
+                                                   placement.path + "_invalid_value",
+                                                   "storage_type",
+                                                   literal(PackedIntegerValue{*invalid}))};
+                result = std::format("ioj::packed_extract<{}_field>({}) != {} && ({})",
+                                     accessor_name(context_, placement),
+                                     raw,
+                                     constant,
                                      result);
             }
         }
@@ -559,7 +725,7 @@ class PackedEmitter {
             if (addressable(input)) {
                 write("{0}_type const {0}_value", accessor);
             } else {
-                write("{} const {}_encoded", integer_type(input.bits), accessor);
+                write("{0}_type const {0}_encoded", accessor);
             }
         }
         if (choice) {
@@ -570,11 +736,10 @@ class PackedEmitter {
         auto const target{choice ? "result.value_" : "value_"};
         if (choice) {
             for (auto const& guard : layout_.placements[*choice].guards) {
-                write("        {0} = ioj::packed_insert<{1}>({0}, "
-                      "static_cast<storage_type>({2}ULL));\n",
+                write("        {0} = ioj::packed_insert<{1}_field>({0}, {2});\n",
                       target,
-                      field_type("storage_type", guard.offset, guard.bits),
-                      guard.value);
+                      guard.path,
+                      guard_code(guard));
             }
         }
         bool validate_record{};
@@ -584,13 +749,13 @@ class PackedEmitter {
             validate_record = validate_record || input.discriminator;
             if (!addressable(input)) {
                 validate_record = true;
-                if (input.bits != 8 && input.bits != 16 && input.bits != 32 && input.bits != 64) {
-                    write("        assert({}_encoded <= {}ULL);\n", accessor, mask(input.bits));
+                if (input.bits < layout_.storage_bits) {
+                    write("        assert({0}_encoded <= {0}_field::value_mask);\n", accessor);
                 }
                 write("        {0} = ioj::packed_insert<{1}>({0}, "
                       "static_cast<storage_type>({2}_encoded));\n",
                       target,
-                      field_type("storage_type", input.offset, input.bits),
+                      accessor + "_field",
                       accessor);
                 continue;
             }
@@ -674,6 +839,11 @@ class PackedEmitter {
         auto const lower{fixed.minimum_raw_value[row].value_or(minimum)};
         auto const upper{fixed.maximum_raw_value[row].value_or(PackedIntegerValue{maximum})};
         auto const& path{placement.path};
+        named_constant(constants_, path + "_fractional_bits", "int", std::to_string(fractional));
+        named_constant(constants_,
+                       path + "_magnitude_bits",
+                       "int",
+                       std::to_string(placement.bits - (signedness ? 1 : 0)));
         dependencies_.push_back(context_.ir.types.dependency("std::ldexp", "cmath"));
         ioj::FormatWriter write{std::back_inserter(output_)};
         write("    static constexpr {0}_raw_type "
@@ -693,7 +863,7 @@ class PackedEmitter {
               path,
               literal(lower),
               literal(upper),
-              fractional);
+              path + "_fractional_bits");
         if (fixed.rounding[row] == FixedPointRounding::toward_zero) {
             output_ += "        auto const rounded{std::trunc(scaled)};\n";
         } else {
@@ -707,8 +877,8 @@ class PackedEmitter {
               "        if (raw < {}_minimum_allowed_raw || raw > {}_maximum_allowed_raw) {{ return "
               "false; }}\n"
               "        out_raw = raw;\n        return true;\n    }}\n",
-              placement.bits - (signedness ? 1 : 0),
-              signedness ? std::format("-std::ldexp(1.0, {})", placement.bits - 1) : "0.0",
+              path + "_magnitude_bits",
+              signedness ? std::format("-std::ldexp(1.0, {}_magnitude_bits)", path) : "0.0",
               path,
               path,
               path);
@@ -723,6 +893,7 @@ class PackedEmitter {
     schema::TypeId type_;
     schema::BitLayout const& layout_;
     std::vector<TypeDependencyId> dependencies_;
+    NamedDeclarations constants_;
     std::string output_;
 };
 
@@ -730,7 +901,8 @@ class PackedEmitter {
 
 auto lower_packed_value(LoweringContext& context, DeclarationHandle, schema::TypeId type)
     -> DeclarationEmission {
-    return {.header = {PackedEmitter{context, type}.emit()}};
+    return {.header = {PackedEmitter{context, type}.emit()},
+            .header_global = {standard_value_support(context, type, false)}};
 }
 
 auto lower_scalar(LoweringContext& context, DeclarationHandle declaration, schema::TypeId type)
@@ -740,24 +912,28 @@ auto lower_scalar(LoweringContext& context, DeclarationHandle declaration, schem
     auto const bits{*layout.encoded_bits};
     auto const name{context.text(graph.name(type))};
     auto const decoded{value_type(context, type, bits)};
-    auto const validity{scalar_validity(context, type, bits, "value()")};
-    auto input_validity{scalar_validity(context, type, bits, "value")};
+    NamedDeclarations constants;
+    auto input_validity{scalar_validity(context, type, bits, "value", "", "value_type", constants)};
     if (bits != 8 && bits != 16 && bits != 32 && bits != 64) {
-        auto const representation{"ioj::packed_extract<value_field>("
-                                  "ioj::packed_pack<value_field>(value)) == value"};
+        auto const representation{
+            decoded.starts_with("std::int")
+                ? "ioj::packed_extract<value_field>(ioj::packed_pack<value_field>(value)) == value"
+                : "static_cast<storage_type>(value) <= value_field::value_mask"};
         input_validity = input_validity == "true" ? representation
                                                   : '(' + input_validity + ") && " + representation;
     }
-    auto const assertion{input_validity == "true" ? ""
-                                                  : "        assert((" + input_validity + "));\n"};
     std::string output;
     ioj::FormatWriter write{std::back_inserter(output)};
     write("struct {0} {{\n  public:\n    using storage_type = {1};\n    using value_type = {2};\n"
-          "    using value_field = ioj::PackedField<storage_type, value_type, 0, {3}>;\n",
+          "    static constexpr int encoded_bits{{{3}}};\n"
+          "    static constexpr int storage_bits{{{4}}};\n"
+          "    static constexpr storage_type default_raw_value{{}};\n"
+          "    using value_field = ioj::PackedField<storage_type, value_type, 0, encoded_bits>;\n",
           name,
           integer_type(layout.storage_bits),
           decoded,
-          bits);
+          bits,
+          layout.storage_bits);
     if (declaration.kind() == DeclarationKind::integer_scalar) {
         auto const& scalars{context.declarations.integer_scalars};
         auto const& codes{context.declarations.packed_named_codes};
@@ -767,11 +943,14 @@ auto lower_scalar(LoweringContext& context, DeclarationHandle declaration, schem
                   literal(codes.value[code]));
         }
     }
+    for (auto const& entry : constants) {
+        output += entry.second;
+    }
     write(
         "\n    constexpr {0}() noexcept = default;\n"
         "    explicit constexpr {0}(value_type const value) noexcept\n"
         "        : value_{{ioj::packed_pack<value_field>(value)}} {{\n"
-        "{3}    }}\n"
+        "        assert(is_valid_value(value));\n    }}\n"
         "    [[nodiscard]] static constexpr auto from_raw(storage_type raw) noexcept -> {0} {{\n"
         "        {0} result;\n        result.value_ = raw;\n        return result;\n    }}\n"
         "    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type {{ return "
@@ -779,23 +958,32 @@ auto lower_scalar(LoweringContext& context, DeclarationHandle declaration, schem
         "    [[nodiscard]] constexpr auto value() const noexcept -> value_type {{\n"
         "        return ioj::packed_extract<value_field>(value_);\n    }}\n"
         "    constexpr void set_value(value_type const value) noexcept {{\n"
-        "{3}        value_ = ioj::packed_insert<value_field>(value_, value);\n    }}\n"
-        "    [[nodiscard]] static constexpr auto is_valid_value(value_type const {4}) noexcept -> "
+        "        assert(is_valid_value(value));\n        value_ = "
+        "ioj::packed_insert<value_field>(value_, value);\n    }}\n"
+        "    [[nodiscard]] static constexpr auto is_valid_value(value_type const {2}) noexcept -> "
         "bool {{\n"
         "        return {1};\n    }}\n"
-        "    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {{ return {2}; }}\n"
-        "    [[nodiscard]] constexpr auto operator<=>( {0} const& other) const noexcept {{\n"
-        "        return value() <=> other.value();\n    }}\n"
-        "    [[nodiscard]] constexpr auto operator==( {0} const& other) const noexcept -> bool {{\n"
-        "        return value() == other.value();\n    }}\n"
-        "  private:\n    storage_type value_{{}};\n}};\n"
-        "static_assert(ioj::valid_packed_value_layout<{0}>());\n",
+        "    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {{ return "
+        "is_valid_value(value()); }}\n",
         name,
         input_validity,
-        validity,
-        assertion,
         input_validity == "true" ? "" : "value");
-    return {.header = {context.ir.raw(output, base_dependencies(context))}};
+    if (decoded.starts_with("std::uint") && bits == layout.storage_bits) {
+        write("    [[nodiscard]] constexpr auto operator<=>({} const&) const noexcept = default;\n",
+              name);
+    } else {
+        write("    [[nodiscard]] constexpr auto operator<=>({0} const& other) const noexcept {{\n"
+              "        return value() <=> other.value();\n    }}\n"
+              "    [[nodiscard]] constexpr auto operator==({0} const& other) const noexcept -> "
+              "bool {{\n"
+              "        return value() == other.value();\n    }}\n",
+              name);
+    }
+    write("  private:\n    storage_type value_{{default_raw_value}};\n}};\n"
+          "static_assert(ioj::valid_packed_value_layout<{}>());\n",
+          name);
+    return {.header = {context.ir.raw(output, base_dependencies(context))},
+            .header_global = {standard_value_support(context, type, true)}};
 }
 
 } // namespace lispb::codegen::detail
