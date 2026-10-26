@@ -7,9 +7,13 @@
 #include <fstream>
 #include <ios>
 #include <iterator>
+#include <map>
+#include <memory>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <system_error>
+#include <vector>
 
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
@@ -101,12 +105,12 @@ auto quote_argument(std::wstring const& argument) -> std::wstring {
 }
 #endif
 
-void run_formatter(std::filesystem::path const& input, std::filesystem::path const& style) {
+void run_formatter(std::filesystem::path const& file_list, std::filesystem::path const& style) {
     std::filesystem::path const executable{IOJ_CLANG_FORMAT_EXECUTABLE};
 #if defined(_WIN32)
     auto command{quote_argument(executable.wstring()) + L" -i " +
                  quote_argument(L"--style=file:" + style.wstring()) + L" " +
-                 quote_argument(input.wstring())};
+                 quote_argument(L"--files=" + file_list.wstring())};
     STARTUPINFOW startup{};
     startup.cb = sizeof(startup);
     PROCESS_INFORMATION process{};
@@ -133,7 +137,7 @@ void run_formatter(std::filesystem::path const& input, std::filesystem::path con
 #else
     auto const executable_string{executable.string()};
     auto const style_argument{"--style=file:" + style.string()};
-    auto const input_string{input.string()};
+    auto const files_argument{"--files=" + file_list.string()};
     auto const child{fork()};
     if (child == -1) {
         throw std::runtime_error{"Cannot launch clang-format"};
@@ -143,7 +147,7 @@ void run_formatter(std::filesystem::path const& input, std::filesystem::path con
               executable_string.c_str(),
               "-i",
               style_argument.c_str(),
-              input_string.c_str(),
+              files_argument.c_str(),
               nullptr);
         _exit(127);
     }
@@ -160,27 +164,52 @@ void run_formatter(std::filesystem::path const& input, std::filesystem::path con
 
 }
 
-auto format_generated(std::string const& content, std::filesystem::path const& destination)
-    -> std::string {
-    auto const style{style_path(destination)};
-    // Preserve the basename so clang-format recognizes the source's matching header.
-    FormatTemporary temporary{destination};
-    {
-        std::ofstream output{temporary.path(), std::ios::binary};
+auto format_generated(std::span<FormatInput const> files) -> std::vector<std::string> {
+    std::vector<std::unique_ptr<FormatTemporary>> temporaries;
+    std::map<std::filesystem::path, std::vector<std::size_t>> batches;
+    auto const file_count{files.size()};
+    temporaries.reserve(file_count);
+    for (std::size_t index{}; index < file_count; ++index) {
+        auto const& file{files[index]};
+        batches[style_path(file.destination)].push_back(index);
+        // Preserve the basename so clang-format recognizes the source's matching header.
+        auto& temporary{
+            temporaries.emplace_back(std::make_unique<FormatTemporary>(file.destination))};
+        std::ofstream output{temporary->path(), std::ios::binary};
+        auto const content{file.content};
         output.write(content.data(), static_cast<std::streamsize>(content.size()));
         output.close();
         if (!output) {
             throw std::runtime_error{"Cannot write temporary clang-format input"};
         }
     }
-    run_formatter(temporary.path(), style);
-    std::ifstream input{temporary.path(), std::ios::binary};
-    if (!input) {
-        throw std::runtime_error{"Cannot read formatted generated output"};
+    for (auto const& [style, indices] : batches) {
+        FormatTemporary file_list{"files.txt"};
+        std::ofstream output{file_list.path(), std::ios::binary};
+        for (auto const index : indices) {
+            auto const path{temporaries[index]->path().generic_u8string()};
+            output.write(reinterpret_cast<char const*>(path.data()),
+                         static_cast<std::streamsize>(path.size()));
+            output.put('\n');
+        }
+        output.close();
+        if (!output) {
+            throw std::runtime_error{"Cannot write temporary clang-format file list"};
+        }
+        run_formatter(file_list.path(), style);
     }
-    auto const formatted{
-        std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}}};
-    return normalize_line_endings(formatted);
+    std::vector<std::string> formatted;
+    formatted.reserve(file_count);
+    for (auto const& temporary : temporaries) {
+        std::ifstream input{temporary->path(), std::ios::binary};
+        if (!input) {
+            throw std::runtime_error{"Cannot read formatted generated output"};
+        }
+        auto const content{
+            std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}}};
+        formatted.push_back(normalize_line_endings(content));
+    }
+    return formatted;
 }
 
 }

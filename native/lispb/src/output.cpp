@@ -22,6 +22,8 @@
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <utility>
+#include <vector>
 
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
@@ -191,6 +193,26 @@ auto is_generated_file(std::filesystem::path const& path) -> bool {
 
 } // namespace
 
+static void format_text_artifacts(Compilation& compilation,
+                                  std::filesystem::path const& path_base,
+                                  std::filesystem::path const& style_root) {
+    std::vector<ArtifactId> artifacts;
+    std::vector<codegen::detail::FormatInput> inputs;
+    for (auto const id : compilation.artifacts) {
+        if (id.kind() == ArtifactKind::text && compilation.needs_formatting(id)) {
+            artifacts.push_back(id);
+            inputs.push_back(
+                {compilation.text(id),
+                 style_root / safe_relative_output_path(compilation.path(id), path_base)});
+        }
+    }
+    auto formatted{codegen::detail::format_generated(inputs)};
+    auto const count{artifacts.size()};
+    for (std::size_t index{}; index < count; ++index) {
+        compilation.set_formatted_text(artifacts[index], std::move(formatted[index]));
+    }
+}
+
 static auto publish_text_artifacts(Compilation& compilation,
                                    std::filesystem::path const& project_root,
                                    std::filesystem::path const& output_root,
@@ -211,15 +233,7 @@ static auto publish_text_artifacts(Compilation& compilation,
     }
 
     // Format before comparing or changing any destinations, including in --check mode.
-    for (auto const id : compilation.artifacts) {
-        if (compilation.needs_formatting(id)) {
-            compilation.set_formatted_text(
-                id,
-                lispb::codegen::detail::format_generated(
-                    compilation.text(id),
-                    project_root / safe_relative_output_path(compilation.path(id), project_root)));
-        }
-    }
+    format_text_artifacts(compilation, project_root, project_root);
 
     std::set<std::string> expected_paths;
     for (auto const& [unused, id] : expected) {
@@ -299,6 +313,7 @@ auto publish(Compilation& compilation, PublicationOptions const& options) -> int
             compilation, options.path_base, options.output_root, options.check_only);
     }
 
+    format_text_artifacts(compilation, options.path_base, options.output_root);
     bool stale{false};
     std::set<std::string> paths;
     for (auto const artifact : compilation.artifacts) {
@@ -314,11 +329,6 @@ auto publish(Compilation& compilation, PublicationOptions const& options) -> int
         auto const current{read_file(destination)};
         std::string_view content;
         if (artifact.kind() == ArtifactKind::text) {
-            if (compilation.needs_formatting(artifact)) {
-                compilation.set_formatted_text(artifact,
-                                               lispb::codegen::detail::format_generated(
-                                                   compilation.text(artifact), destination));
-            }
             content = compilation.text(artifact);
         } else {
             auto const bytes{compilation.binary(artifact)};
