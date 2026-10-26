@@ -10,7 +10,6 @@
 
 #include <compile_fixture/range_policy.hpp>
 
-#include <bit>
 #include <cassert>
 #include <compare>
 #include <concepts>
@@ -21,20 +20,29 @@
 #include <utility>
 
 namespace codegen_compile_fixture {
-struct ReaderHealth {
+struct ReaderHealth;
+
+namespace detail {
+using ReaderHealthBase = ioj::PackedValueBase<ReaderHealth, std::uint8_t>;
+} // namespace detail
+
+struct ReaderHealth : detail::ReaderHealthBase {
   public:
-    // Storage and value
-    using storage_type = std::uint8_t;
+    // Storage
+    using Base = detail::ReaderHealthBase;
+    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::scalar_tag;
     static constexpr ioj::PackedStorage<storage_type, 8> storage{0};
+
+    // value
     using value_type = std::uint8_t;
     static constexpr ioj::PackedField<storage_type, value_type, 0, storage.encoded_bits>
         value_layout{{static_cast<value_type>(0ULL), static_cast<value_type>(100ULL)}};
 
     constexpr ReaderHealth() noexcept = default;
-    constexpr explicit ReaderHealth(value_type const value) noexcept
-        : value_{ioj::packed_pack<decltype(value_layout)>(value)} {
+    constexpr explicit ReaderHealth(value_type const value) noexcept {
         assert((is_valid_value(value)));
+        insert<decltype(value_layout)>(value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(ReaderHealth const&) const noexcept = default;
@@ -42,23 +50,16 @@ struct ReaderHealth {
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
         return value <= value_layout.range.max;
     }
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> ReaderHealth {
-        return std::bit_cast<ReaderHealth>(raw);
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return is_valid_value(extract<decltype(value_layout)>());
     }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
-        return ioj::packed_extract<decltype(value_layout)>(value_);
+        return extract<decltype(value_layout)>();
     }
     constexpr void set_value(value_type const value) noexcept {
         assert((is_valid_value(value)));
-        value_ = ioj::packed_insert<decltype(value_layout)>(value_, value);
+        insert<decltype(value_layout)>(value);
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return is_valid_value(value());
-    }
-
-  private:
-    storage_type value_{storage.default_raw_value};
 };
 
 static_assert(ioj::valid_packed_value_layout<ReaderHealth>());

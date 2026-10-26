@@ -5,15 +5,21 @@
 
 #include "ioj/packed_value.h"
 
-#include <bit>
 #include <compare>
 #include <cstdint>
 
 namespace lispb::codegen {
-struct FunctionFlags {
+struct FunctionFlags;
+
+namespace detail {
+using FunctionFlagsBase = ioj::PackedValueBase<FunctionFlags, std::uint8_t>;
+} // namespace detail
+
+struct FunctionFlags : detail::FunctionFlagsBase {
   public:
     // Storage
-    using storage_type = std::uint8_t;
+    using Base = detail::FunctionFlagsBase;
+    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
     static constexpr ioj::PackedStorage<storage_type, 8> storage{0};
 
@@ -34,56 +40,46 @@ struct FunctionFlags {
         decltype(is_constexpr_layout)::value_type const is_constexpr_value,
         decltype(is_inline_layout)::value_type const is_inline_value,
         decltype(is_nodiscard_layout)::value_type const is_nodiscard_value,
-        decltype(define_in_header_layout)::value_type const define_in_header_value) noexcept
-        : value_{0} {
-        value_ = ioj::packed_insert<decltype(is_constexpr_layout)>(value_, is_constexpr_value);
-        value_ = ioj::packed_insert<decltype(is_inline_layout)>(value_, is_inline_value);
-        value_ = ioj::packed_insert<decltype(is_nodiscard_layout)>(value_, is_nodiscard_value);
-        value_ =
-            ioj::packed_insert<decltype(define_in_header_layout)>(value_, define_in_header_value);
+        decltype(define_in_header_layout)::value_type const define_in_header_value) noexcept {
+        insert<decltype(is_constexpr_layout)>(is_constexpr_value);
+        insert<decltype(is_inline_layout)>(is_inline_value);
+        insert<decltype(is_nodiscard_layout)>(is_nodiscard_value);
+        insert<decltype(define_in_header_layout)>(define_in_header_value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(FunctionFlags const&) const noexcept = default;
 
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> FunctionFlags {
-        return std::bit_cast<FunctionFlags>(raw);
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
     [[nodiscard]] constexpr auto is_constexpr() const noexcept
         -> decltype(is_constexpr_layout)::value_type {
-        return ioj::packed_extract<decltype(is_constexpr_layout)>(value_);
+        return extract<decltype(is_constexpr_layout)>();
     }
     constexpr void
         set_is_constexpr(decltype(is_constexpr_layout)::value_type const value) noexcept {
-        value_ = ioj::packed_insert<decltype(is_constexpr_layout)>(value_, value);
+        insert<decltype(is_constexpr_layout)>(value);
     }
     [[nodiscard]] constexpr auto is_inline() const noexcept
         -> decltype(is_inline_layout)::value_type {
-        return ioj::packed_extract<decltype(is_inline_layout)>(value_);
+        return extract<decltype(is_inline_layout)>();
     }
     constexpr void set_is_inline(decltype(is_inline_layout)::value_type const value) noexcept {
-        value_ = ioj::packed_insert<decltype(is_inline_layout)>(value_, value);
+        insert<decltype(is_inline_layout)>(value);
     }
     [[nodiscard]] constexpr auto is_nodiscard() const noexcept
         -> decltype(is_nodiscard_layout)::value_type {
-        return ioj::packed_extract<decltype(is_nodiscard_layout)>(value_);
+        return extract<decltype(is_nodiscard_layout)>();
     }
     constexpr void
         set_is_nodiscard(decltype(is_nodiscard_layout)::value_type const value) noexcept {
-        value_ = ioj::packed_insert<decltype(is_nodiscard_layout)>(value_, value);
+        insert<decltype(is_nodiscard_layout)>(value);
     }
     [[nodiscard]] constexpr auto define_in_header() const noexcept
         -> decltype(define_in_header_layout)::value_type {
-        return ioj::packed_extract<decltype(define_in_header_layout)>(value_);
+        return extract<decltype(define_in_header_layout)>();
     }
     constexpr void
         set_define_in_header(decltype(define_in_header_layout)::value_type const value) noexcept {
-        value_ = ioj::packed_insert<decltype(define_in_header_layout)>(value_, value);
+        insert<decltype(define_in_header_layout)>(value);
     }
-
-  private:
-    storage_type value_{storage.default_raw_value};
 };
 
 static_assert(ioj::valid_packed_value_layout<FunctionFlags>());

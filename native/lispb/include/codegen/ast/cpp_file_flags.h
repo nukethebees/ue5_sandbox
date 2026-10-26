@@ -5,15 +5,21 @@
 
 #include "ioj/packed_value.h"
 
-#include <bit>
 #include <compare>
 #include <cstdint>
 
 namespace lispb::codegen {
-struct CppFileFlags {
+struct CppFileFlags;
+
+namespace detail {
+using CppFileFlagsBase = ioj::PackedValueBase<CppFileFlags, std::uint8_t>;
+} // namespace detail
+
+struct CppFileFlags : detail::CppFileFlagsBase {
   public:
     // Storage
-    using storage_type = std::uint8_t;
+    using Base = detail::CppFileFlagsBase;
+    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
     static constexpr ioj::PackedStorage<storage_type, 8> storage{0};
 
@@ -30,48 +36,37 @@ struct CppFileFlags {
     constexpr explicit CppFileFlags(
         decltype(pragma_once_layout)::value_type const pragma_once_value,
         decltype(clang_format_off_layout)::value_type const clang_format_off_value,
-        decltype(format_generated_layout)::value_type const format_generated_value) noexcept
-        : value_{0} {
-        value_ = ioj::packed_insert<decltype(pragma_once_layout)>(value_, pragma_once_value);
-        value_ =
-            ioj::packed_insert<decltype(clang_format_off_layout)>(value_, clang_format_off_value);
-        value_ =
-            ioj::packed_insert<decltype(format_generated_layout)>(value_, format_generated_value);
+        decltype(format_generated_layout)::value_type const format_generated_value) noexcept {
+        insert<decltype(pragma_once_layout)>(pragma_once_value);
+        insert<decltype(clang_format_off_layout)>(clang_format_off_value);
+        insert<decltype(format_generated_layout)>(format_generated_value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(CppFileFlags const&) const noexcept = default;
 
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> CppFileFlags {
-        return std::bit_cast<CppFileFlags>(raw);
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
     [[nodiscard]] constexpr auto pragma_once() const noexcept
         -> decltype(pragma_once_layout)::value_type {
-        return ioj::packed_extract<decltype(pragma_once_layout)>(value_);
+        return extract<decltype(pragma_once_layout)>();
     }
     constexpr void set_pragma_once(decltype(pragma_once_layout)::value_type const value) noexcept {
-        value_ = ioj::packed_insert<decltype(pragma_once_layout)>(value_, value);
+        insert<decltype(pragma_once_layout)>(value);
     }
     [[nodiscard]] constexpr auto clang_format_off() const noexcept
         -> decltype(clang_format_off_layout)::value_type {
-        return ioj::packed_extract<decltype(clang_format_off_layout)>(value_);
+        return extract<decltype(clang_format_off_layout)>();
     }
     constexpr void
         set_clang_format_off(decltype(clang_format_off_layout)::value_type const value) noexcept {
-        value_ = ioj::packed_insert<decltype(clang_format_off_layout)>(value_, value);
+        insert<decltype(clang_format_off_layout)>(value);
     }
     [[nodiscard]] constexpr auto format_generated() const noexcept
         -> decltype(format_generated_layout)::value_type {
-        return ioj::packed_extract<decltype(format_generated_layout)>(value_);
+        return extract<decltype(format_generated_layout)>();
     }
     constexpr void
         set_format_generated(decltype(format_generated_layout)::value_type const value) noexcept {
-        value_ = ioj::packed_insert<decltype(format_generated_layout)>(value_, value);
+        insert<decltype(format_generated_layout)>(value);
     }
-
-  private:
-    storage_type value_{storage.default_raw_value};
 };
 
 static_assert(ioj::valid_packed_value_layout<CppFileFlags>());

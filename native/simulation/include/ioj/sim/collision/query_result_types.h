@@ -5,25 +5,33 @@
 
 #include "ioj/packed_value.h"
 
-#include <bit>
 #include <cassert>
 #include <compare>
 #include <cstdint>
 
 namespace ioj::sim {
-struct TraceHit {
+struct TraceHit;
+
+namespace detail {
+using TraceHitBase = PackedValueBase<TraceHit, std::uint8_t>;
+} // namespace detail
+
+struct TraceHit : detail::TraceHitBase {
   public:
-    // Storage and value
-    using storage_type = std::uint8_t;
+    // Storage
+    using Base = detail::TraceHitBase;
+    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
     static constexpr PackedStorage<storage_type, 1> storage{0};
+
+    // value
     using value_type = std::uint8_t;
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{};
 
     constexpr TraceHit() noexcept = default;
-    constexpr explicit TraceHit(value_type const value) noexcept
-        : value_{packed_pack<decltype(value_layout)>(value)} {
+    constexpr explicit TraceHit(value_type const value) noexcept {
         assert((is_valid_value(value)));
+        insert<decltype(value_layout)>(value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(TraceHit const& other) const noexcept {
@@ -36,38 +44,39 @@ struct TraceHit {
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= value_layout.value_mask;
     }
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> TraceHit {
-        return std::bit_cast<TraceHit>(raw);
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
-        return packed_extract<decltype(value_layout)>(value_);
+        return extract<decltype(value_layout)>();
     }
     constexpr void set_value(value_type const value) noexcept {
         assert((is_valid_value(value)));
-        value_ = packed_insert<decltype(value_layout)>(value_, value);
+        insert<decltype(value_layout)>(value);
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
-
-  private:
-    storage_type value_{storage.default_raw_value};
 };
 
 static_assert(valid_packed_value_layout<TraceHit>());
 
-struct LineQueryResult {
+struct LineQueryResult;
+
+namespace detail {
+using LineQueryResultBase = PackedValueBase<LineQueryResult, std::uint8_t>;
+} // namespace detail
+
+struct LineQueryResult : detail::LineQueryResultBase {
   public:
-    // Storage and value
-    using storage_type = std::uint8_t;
+    // Storage
+    using Base = detail::LineQueryResultBase;
+    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
     static constexpr PackedStorage<storage_type, 1> storage{0};
+
+    // value
     using value_type = std::uint8_t;
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{};
 
     constexpr LineQueryResult() noexcept = default;
-    constexpr explicit LineQueryResult(value_type const value) noexcept
-        : value_{packed_pack<decltype(value_layout)>(value)} {
+    constexpr explicit LineQueryResult(value_type const value) noexcept {
         assert((is_valid_value(value)));
+        insert<decltype(value_layout)>(value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(LineQueryResult const& other) const noexcept {
@@ -80,22 +89,13 @@ struct LineQueryResult {
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= value_layout.value_mask;
     }
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
-        -> LineQueryResult {
-        return std::bit_cast<LineQueryResult>(raw);
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
-        return packed_extract<decltype(value_layout)>(value_);
+        return extract<decltype(value_layout)>();
     }
     constexpr void set_value(value_type const value) noexcept {
         assert((is_valid_value(value)));
-        value_ = packed_insert<decltype(value_layout)>(value_, value);
+        insert<decltype(value_layout)>(value);
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
-
-  private:
-    storage_type value_{storage.default_raw_value};
 };
 
 static_assert(valid_packed_value_layout<LineQueryResult>());

@@ -6,7 +6,6 @@
 #include "ioj/enum_traits.h"
 #include "ioj/packed_value.h"
 
-#include <bit>
 #include <cassert>
 #include <compare>
 #include <cstddef>
@@ -22,10 +21,17 @@ enum class FighterTask : FighterTaskUnderlying {
     Attack = 2,
 };
 
-struct FighterOrder {
+struct FighterOrder;
+
+namespace detail {
+using FighterOrderBase = PackedValueBase<FighterOrder, std::uint8_t>;
+} // namespace detail
+
+struct FighterOrder : detail::FighterOrderBase {
   public:
     // Storage
-    using storage_type = std::uint8_t;
+    using Base = detail::FighterOrderBase;
+    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::integer_tag;
     static constexpr PackedStorage<storage_type, 8> storage{0};
 
@@ -36,13 +42,13 @@ struct FighterOrder {
     static constexpr PackedField<storage_type, std::uint8_t, 1, 1> target_layout{};
 
     constexpr FighterOrder() noexcept = default;
-    constexpr explicit FighterOrder(decltype(task_layout)::value_type const task_value,
-                                    decltype(target_layout)::value_type const target_value) noexcept
-        : value_{0} {
+    constexpr explicit FighterOrder(
+        decltype(task_layout)::value_type const task_value,
+        decltype(target_layout)::value_type const target_value) noexcept {
         assert((is_valid_task(task_value)));
-        value_ = packed_insert<decltype(task_layout)>(value_, task_value);
+        insert<decltype(task_layout)>(task_value);
         assert((is_valid_target(target_value)));
-        value_ = packed_insert<decltype(target_layout)>(value_, target_value);
+        insert<decltype(target_layout)>(target_value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(FighterOrder const&) const noexcept = default;
@@ -55,28 +61,20 @@ struct FighterOrder {
         is_valid_target(decltype(target_layout)::value_type const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= target_layout.value_mask;
     }
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> FighterOrder {
-        return std::bit_cast<FighterOrder>(raw);
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
     [[nodiscard]] constexpr auto task() const noexcept -> decltype(task_layout)::value_type {
-        return packed_extract<decltype(task_layout)>(value_);
+        return extract<decltype(task_layout)>();
     }
     constexpr void set_task(decltype(task_layout)::value_type const value) noexcept {
         assert((is_valid_task(value)));
-        value_ = packed_insert<decltype(task_layout)>(value_, value);
+        insert<decltype(task_layout)>(value);
     }
     [[nodiscard]] constexpr auto target() const noexcept -> decltype(target_layout)::value_type {
-        return packed_extract<decltype(target_layout)>(value_);
+        return extract<decltype(target_layout)>();
     }
     constexpr void set_target(decltype(target_layout)::value_type const value) noexcept {
         assert((is_valid_target(value)));
-        value_ = packed_insert<decltype(target_layout)>(value_, value);
+        insert<decltype(target_layout)>(value);
     }
-
-  private:
-    storage_type value_{storage.default_raw_value};
 };
 
 static_assert(valid_packed_value_layout<FighterOrder>());

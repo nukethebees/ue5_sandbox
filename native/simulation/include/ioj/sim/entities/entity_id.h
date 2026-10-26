@@ -6,16 +6,22 @@
 #include "ioj/packed_value.h"
 #include "ioj/sim/entities/entity_type.h"
 
-#include <bit>
 #include <cassert>
 #include <compare>
 #include <cstdint>
 
 namespace ioj::sim {
-struct EntityId {
+struct EntityId;
+
+namespace detail {
+using EntityIdBase = PackedValueBase<EntityId, std::uint32_t, 4294967295ULL>;
+} // namespace detail
+
+struct EntityId : detail::EntityIdBase {
   public:
     // Storage
-    using storage_type = std::uint32_t;
+    using Base = detail::EntityIdBase;
+    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::integer_tag;
     static constexpr PackedStorage<storage_type, 32> storage{4294967295};
     static constexpr storage_type invalid_value{4294967295};
@@ -30,12 +36,12 @@ struct EntityId {
     constexpr EntityId() noexcept = default;
     constexpr explicit EntityId(
         decltype(index_layout)::value_type const index_value,
-        decltype(entity_type_layout)::value_type const entity_type_value) noexcept
-        : value_{0} {
+        decltype(entity_type_layout)::value_type const entity_type_value) noexcept {
+        value_ = 0;
         assert((is_valid_index(index_value)));
-        value_ = packed_insert<decltype(index_layout)>(value_, index_value);
+        insert<decltype(index_layout)>(index_value);
         assert((is_valid_entity_type(entity_type_value)));
-        value_ = packed_insert<decltype(entity_type_layout)>(value_, entity_type_value);
+        insert<decltype(entity_type_layout)>(entity_type_value);
         assert((value_ != invalid_value));
     }
 
@@ -50,32 +56,25 @@ struct EntityId {
         -> bool {
         return value <= entity_type_layout.range.max;
     }
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> EntityId {
-        return std::bit_cast<EntityId>(raw);
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return value_ != invalid_value &&
-               is_valid_entity_type(packed_extract<decltype(entity_type_layout)>(value_));
+               is_valid_entity_type(extract<decltype(entity_type_layout)>());
     }
     [[nodiscard]] constexpr auto index() const noexcept -> decltype(index_layout)::value_type {
-        return packed_extract<decltype(index_layout)>(value_);
+        return extract<decltype(index_layout)>();
     }
     constexpr void set_index(decltype(index_layout)::value_type const value) noexcept {
         assert((is_valid_index(value)));
-        value_ = packed_insert<decltype(index_layout)>(value_, value);
+        insert<decltype(index_layout)>(value);
     }
     [[nodiscard]] constexpr auto entity_type() const noexcept
         -> decltype(entity_type_layout)::value_type {
-        return packed_extract<decltype(entity_type_layout)>(value_);
+        return extract<decltype(entity_type_layout)>();
     }
     constexpr void set_entity_type(decltype(entity_type_layout)::value_type const value) noexcept {
         assert((is_valid_entity_type(value)));
-        value_ = packed_insert<decltype(entity_type_layout)>(value_, value);
+        insert<decltype(entity_type_layout)>(value);
     }
-
-  private:
-    storage_type value_{storage.default_raw_value};
 };
 
 static_assert(valid_packed_value_layout<EntityId>());

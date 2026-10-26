@@ -129,15 +129,38 @@ class PackedEmitter {
         , type_{type}
         , layout_{graph_.bit_layout(type)}
         , name_{context.text(graph_.name(type))}
-        , field_metadata_(layout_.placements.size()) {}
+        , scalar_{!composite(graph_.definition(type).kind())} {
+        if (scalar_) {
+            layout_.placements.push_back({.type = type_,
+                                          .path = "value",
+                                          .bits = *layout_.encoded_bits,
+                                          .extent = *layout_.encoded_bits});
+        }
+        field_metadata_.resize(layout_.placements.size());
+    }
 
     auto emit() -> Nodes {
-        auto const scalar{!composite(graph_.definition(type_).kind())};
-        metadata_.push_back(ir_.line_comment(scalar ? "Storage and value" : "Storage"));
-        alias(metadata_, "storage_type", integer_type(layout_.storage_bits));
+        auto const base{
+            ir_.types.named("ioj::PackedValueBase",
+                            {ir_.types.dependency("ioj::PackedValueBase", "ioj/packed_value.h")})};
+        std::vector<CppTypeId> base_arguments{type(name_),
+                                              type(integer_type(layout_.storage_bits))};
+        if (layout_.default_raw_value.value_or(0) != 0) {
+            base_arguments.push_back(
+                ir_.types.intern(literal(PackedIntegerValue{*layout_.default_raw_value})));
+        }
+        auto const base_type{ir_.types.template_type(base, base_arguments)};
+        auto const base_name{name_ + "Base"};
+        auto const owner_namespace{context_.text(graph_.namespace_name(type_))};
+        auto const base_alias{
+            type((owner_namespace.empty() ? "" : owner_namespace + "::") + "detail::" + base_name)};
+        metadata_.push_back(ir_.line_comment("Storage"));
+        metadata_.push_back(ir_.using_declaration(text("Base"), base_alias));
+        metadata_.push_back(ir_.using_declaration(
+            text("storage_type"), ir_.types.decorate(type("Base"), "", "::storage_type")));
         metadata_.push_back(ir_.using_declaration(
             text("packed_integer_tag"),
-            ir_.types.named(scalar ? "ioj::packed::scalar_tag" : "ioj::packed::integer_tag",
+            ir_.types.named(scalar_ ? "ioj::packed::scalar_tag" : "ioj::packed::integer_tag",
                             {ir_.types.dependency("ioj::PackedStorage", "ioj/packed_value.h")})));
         metadata_.push_back(ir_.constexpr_member(
             ir_.types.template_type(
@@ -146,11 +169,7 @@ class PackedEmitter {
                 {type("storage_type"), ir_.types.intern(std::to_string(*layout_.encoded_bits))}),
             text("storage"),
             number(layout_.default_raw_value.value_or(0))));
-        if (scalar) {
-            scalar_members();
-        } else {
-            packed_members();
-        }
+        packed_members();
         Nodes members{ir_.access()};
         members.push_back(ir_.lines(1));
         append(members, metadata_);
@@ -169,31 +188,36 @@ class PackedEmitter {
                 append(members, *group);
             }
         }
-        members.push_back(ir_.lines(2));
-        members.push_back(ir_.access(Access::private_));
-        members.push_back(ir_.lines(1));
-        append(members, private_functions_);
         if (!private_functions_.empty()) {
             members.push_back(ir_.lines(2));
+            members.push_back(ir_.access(Access::private_));
+            members.push_back(ir_.lines(1));
+            append(members, private_functions_);
         }
-        members.push_back(
-            ir_.instance_member(type("storage_type"),
-                                text("value_"),
-                                ir_.member_access(ir_.named("storage"), "default_raw_value")));
         auto const record{ir_.record(text(name_), members)};
+        ir_.set_record_bases(record, {base_alias});
+        std::vector<StringId> inherited;
+        for (auto const name :
+             {"storage_type", "raw_value", "from_raw", "is_valid", "extract", "insert", "value_"}) {
+            inherited.push_back(text(name));
+        }
+        ir_.set_scope_bindings(record, inherited);
         auto const declaration{graph_.source_declaration(type_)};
         auto const kind{graph_.definition(type_).kind()};
+        StringId export_specifier{};
         if (kind == schema::TypeDefinitionKind::record) {
-            ir_.set_record_export_specifier(
-                record, context_.declarations.records.export_specifier[declaration]);
+            export_specifier = context_.declarations.records.export_specifier[declaration];
         } else if (kind == schema::TypeDefinitionKind::union_type) {
-            ir_.set_record_export_specifier(
-                record, context_.declarations.unions.export_specifier[declaration]);
+            export_specifier = context_.declarations.unions.export_specifier[declaration];
         }
+        ir_.set_record_export_specifier(record, export_specifier);
         ir_.set_record_dependencies(record, dependencies_);
-        return {record,
-                ir_.static_assertion(template_call(
-                    "ioj::valid_packed_value_layout", "ioj/packed_value.h", {type(name_)}, {}))};
+        return {
+            ir_.forward_declaration(text(name_), RecordKind::struct_, {}, export_specifier),
+            ir_.namespace_node(text("detail"), {ir_.using_declaration(text(base_name), base_type)}),
+            record,
+            ir_.static_assertion(template_call(
+                "ioj::valid_packed_value_layout", "ioj/packed_value.h", {type(name_)}, {}))};
     }
   private:
     using Predicate = std::optional<Expr>;
@@ -250,9 +274,21 @@ class PackedEmitter {
         }
         return ir_.call(ir_.template_id(external(name, header), arguments), args);
     }
-    auto extract(std::string const& field, Expr source) -> Expr {
-        return template_call(
-            "ioj::packed_extract", "ioj/packed_value.h", {descriptor_type(field)}, {source});
+    auto extract(std::string const& field, std::optional<Expr> source = {}) -> Expr {
+        return source ? template_call("ioj::packed_extract",
+                                      "ioj/packed_value.h",
+                                      {descriptor_type(field)},
+                                      {*source})
+                      : ir_.call(ir_.template_id(ir_.named("extract"),
+                                                 {ir_.type_reference(descriptor_type(field))}),
+                                 {});
+    }
+    auto insert_member(std::string const& field, Expr source, std::optional<Expr> target = {})
+        -> NodeId {
+        return ir_.expr_stmt(ir_.call(
+            ir_.template_id(target ? ir_.member_access(*target, "insert") : ir_.named("insert"),
+                            {ir_.type_reference(descriptor_type(field))}),
+            {source}));
     }
     auto insert(std::string const& field, Expr target, Expr source) -> Expr {
         return template_call(
@@ -489,18 +525,6 @@ class PackedEmitter {
                                                  member_call(ir_.named("other"), "value")))}));
         }
     }
-    void raw_members() {
-        functions_.push_back(
-            function("from_raw",
-                     name_,
-                     FunctionReceiver::static_,
-                     {parameter("storage_type", "raw")},
-                     {ir_.return_stmt(template_call(
-                         "std::bit_cast", "bit", {type(name_)}, {ir_.named("raw")}))}));
-        functions_.push_back(function(
-            "raw_value", "storage_type", FunctionReceiver::const_, {}, {ir_.return_stmt(raw())}));
-    }
-
     auto scalar_domain(schema::TypeId scalar,
                        std::uint32_t bits,
                        Expr expression,
@@ -665,14 +689,10 @@ class PackedEmitter {
                             definitions.optional_sentinels
                                 .sentinel_value[definitions.optional_sentinels.index(definition)]));
                 } else {
-                    auto const presence{constant(
-                        metadata,
-                        qualify("presence_mask"),
-                        "storage_type",
-                        cast("storage_type",
-                             binary(BinaryOperator::shift_left,
-                                    ir_.init_list({number(1)}, type("storage_type")),
-                                    ir_.member_access(ir_.named(payload + "_layout"), "bits"))))};
+                    auto const presence{
+                        binary(BinaryOperator::shift_left,
+                               ir_.init_list({number(1)}, type("storage_type")),
+                               ir_.member_access(ir_.named(payload + "_layout"), "bits"))};
                     absent = binary(BinaryOperator::equal,
                                     binary(BinaryOperator::bitwise_and,
                                            cast("storage_type", expression),
@@ -799,63 +819,9 @@ class PackedEmitter {
         return result;
     }
 
-    void scalar_members() {
-        auto const bits{*layout_.encoded_bits};
-        auto const decoded{value_type(context_, type_, bits)};
-        alias(metadata_, "value_type", decoded);
-        field_layout(metadata_, "value_layout", type_, bits, type("value_type"));
-        auto const declaration{graph_.source_declaration(type_)};
-        if (declaration.kind() == DeclarationKind::integer_scalar) {
-            auto const& scalars{context_.declarations.integer_scalars};
-            auto const& codes{context_.declarations.packed_named_codes};
-            for (auto const code : context_.declarations.items(scalars.named_codes[declaration])) {
-                constant(metadata_,
-                         context_.text(codes.name[code]),
-                         "value_type",
-                         cast("value_type", integer(codes.value[code])));
-            }
-        }
-        auto const domain{scalar_domain(type_, bits, value(), "", type("value_type"), metadata_)};
-        auto const check{
-            validator("is_valid_value",
-                      type("value_type"),
-                      domain,
-                      representation(type_, decoded, "value_layout", bits, domain.has_value()))};
-        constructors_.push_back(default_constructor(true));
-        auto const ctor{ir_.constructor(text(name_), true)};
-        ir_.function_flags(ctor).set_is_constexpr(true);
-        ir_.function_flags(ctor).set_define_in_header(true);
-        ir_.set_function_noexcept(ctor);
-        ir_.set_function_parameters(ctor, {parameter("value_type", "value")});
-        Nodes body;
-        if (check.input_required) {
-            body.push_back(assertion(invoke("is_valid_value", {value()})));
-        }
-        ir_.set_function_body(
-            ctor, body, {ir_.member_initializer(text("value_"), pack("value_layout", value()))});
-        constructors_.push_back(ir_.header_function(ctor));
-        comparison(decoded.starts_with("std::uint") && bits == layout_.storage_bits);
-        raw_members();
-        functions_.push_back(function("value",
-                                      "value_type",
-                                      FunctionReceiver::const_,
-                                      {},
-                                      {ir_.return_stmt(extract("value_layout", raw()))}));
-        body.push_back(ir_.assignment(raw(), insert("value_layout", raw(), value())));
-        functions_.push_back(function("set_value",
-                                      "void",
-                                      FunctionReceiver::unqualified,
-                                      {parameter("value_type", "value")},
-                                      body));
-        functions_.push_back(function(
-            "is_valid",
-            "bool",
-            FunctionReceiver::const_,
-            {},
-            {ir_.return_stmt(check.stored_helper ? invoke(*check.stored_helper, {invoke("value")})
-                                                 : ir_.literal("true"))}));
+    auto field_name(schema::BitPlacement const& placement) -> std::string {
+        return scalar_ ? "value" : accessor_name(context_, placement);
     }
-
     auto aggregate(schema::BitPlacement const& placement) const -> bool {
         return composite(graph_.definition(placement.type).kind());
     }
@@ -864,9 +830,12 @@ class PackedEmitter {
                (!aggregate(placement) || schema::is_packed_projection(graph_, placement.type));
     }
     auto access_type(schema::BitPlacement const& placement) -> CppTypeId {
+        if (scalar_) {
+            return type("value_type");
+        }
         return aggregate(placement) && schema::is_packed_projection(graph_, placement.type)
                  ? type(context_.text(graph_.cpp_spelling(placement.type)))
-                 : descriptor_value(accessor_name(context_, placement) + "_layout");
+                 : descriptor_value(field_name(placement) + "_layout");
     }
     auto record_invalid(schema::TypeId record) const -> std::optional<std::uint64_t> {
         auto const definition{graph_.definition(record)};
@@ -886,11 +855,12 @@ class PackedEmitter {
         auto const& scalars{graph_.definitions().integer_scalars};
         auto const row{scalars.index(*domain)};
         auto const& codes{context_.declarations.packed_named_codes};
+        auto const decoded{access_type(placement)};
         for (auto const code : context_.declarations.items(scalars.named_codes[row])) {
             constant(metadata,
-                     accessor + "_" + context_.text(codes.name[code]),
-                     descriptor_value(accessor + "_layout"),
-                     cast(descriptor_value(accessor + "_layout"), integer(codes.value[code])));
+                     (scalar_ ? "" : accessor + "_") + context_.text(codes.name[code]),
+                     decoded,
+                     cast(decoded, integer(codes.value[code])));
         }
     }
     void packed_members() {
@@ -904,32 +874,37 @@ class PackedEmitter {
                 continue;
             }
             auto& metadata{field_metadata_[index]};
-            auto const accessor{accessor_name(context_, placement)};
+            auto const accessor{field_name(placement)};
             auto const decoded{addressable(placement)
                                    ? value_type(context_, placement.type, placement.bits)
                                    : "storage_type"};
-            if (addressable(placement) &&
+            if (!scalar_ && addressable(placement) &&
                 (aggregate(placement) || graph_.definition(placement.type).kind() ==
                                              schema::TypeDefinitionKind::enumeration)) {
                 append_dependencies(context_, placement.child, dependencies_);
+            }
+            if (scalar_) {
+                alias(metadata, "value_type", decoded);
             }
             field_layout(metadata,
                          accessor + "_layout",
                          placement.type,
                          placement.bits,
-                         type(aggregate(placement) ? "storage_type" : decoded),
+                         type(scalar_                ? "value_type"
+                              : aggregate(placement) ? "storage_type"
+                                                     : decoded),
                          placement.offset);
             integer_constants(placement, accessor, metadata);
             if (!aggregate(placement)) {
                 auto const domain{scalar_domain(placement.type,
                                                 placement.bits,
                                                 value(),
-                                                accessor,
-                                                descriptor_value(accessor + "_layout"),
+                                                scalar_ ? "" : accessor,
+                                                access_type(placement),
                                                 metadata,
-                                                true)};
+                                                !scalar_)};
                 checks_[accessor] = validator("is_valid_" + accessor,
-                                              descriptor_value(accessor + "_layout"),
+                                              access_type(placement),
                                               domain,
                                               representation(placement.type,
                                                              decoded,
@@ -938,13 +913,15 @@ class PackedEmitter {
                                                              domain.has_value()));
             }
         }
-        constructors_.push_back(default_constructor(layout_.default_raw_value.has_value()));
+        constructors_.push_back(
+            default_constructor(scalar_ || layout_.default_raw_value.has_value()));
         if (!std::ranges::any_of(layout_.placements,
                                  [](auto const& placement) { return placement.alternative; })) {
             constructor(std::nullopt);
         }
-        comparison(true);
-        raw_members();
+        comparison(!scalar_ ||
+                   (value_type(context_, type_, *layout_.encoded_bits).starts_with("std::uint") &&
+                    *layout_.encoded_bits == layout_.storage_bits));
         std::set<std::pair<std::optional<std::uint32_t>, schema::ChildOccurrenceId>> alternatives;
         for (std::size_t index{}; index < count; ++index) {
             auto const& placement{layout_.placements[index]};
@@ -953,16 +930,15 @@ class PackedEmitter {
                 constructor(static_cast<std::uint32_t>(index));
             }
         }
-        auto validity{valid_children(std::nullopt, type_, raw())};
+        auto validity{valid_children(std::nullopt, type_, std::nullopt)};
         if (record_invalid(type_)) {
             validity = all(
                 {binary(BinaryOperator::not_equal, raw(), ir_.named("invalid_value")), validity});
         }
-        functions_.push_back(function("is_valid",
-                                      "bool",
-                                      FunctionReceiver::const_,
-                                      {},
-                                      {ir_.return_stmt(boolean(validity))}));
+        if (validity) {
+            functions_.push_back(function(
+                "is_valid", "bool", FunctionReceiver::const_, {}, {ir_.return_stmt(*validity)}));
+        }
         for (std::size_t index{}; index < count; ++index) {
             if (addressable(layout_.placements[index])) {
                 accessor(static_cast<std::uint32_t>(index));
@@ -990,7 +966,7 @@ class PackedEmitter {
         }
         std::unreachable();
     }
-    auto guard_check(schema::BitGuard const& guard, Expr source) -> Expr {
+    auto guard_check(schema::BitGuard const& guard, std::optional<Expr> source = {}) -> Expr {
         return binary(
             BinaryOperator::equal, extract(guard.path + "_layout", source), guard_code(guard));
     }
@@ -999,7 +975,7 @@ class PackedEmitter {
         if (aggregate(placement)) {
             return member_call(expression, "is_valid");
         }
-        auto const accessor{accessor_name(context_, placement)};
+        auto const accessor{field_name(placement)};
         auto const& check{checks_.at(accessor)};
         if (stored) {
             return check.stored_helper ? Predicate{invoke(*check.stored_helper, {expression})}
@@ -1008,8 +984,9 @@ class PackedEmitter {
         return check.input_required ? Predicate{invoke("is_valid_" + accessor, {expression})}
                                     : Predicate{};
     }
-    auto valid_children(std::optional<std::uint32_t> parent, schema::TypeId child_type, Expr source)
-        -> Predicate {
+    auto valid_children(std::optional<std::uint32_t> parent,
+                        schema::TypeId child_type,
+                        std::optional<Expr> source) -> Predicate {
         auto const union_{graph_.definition(child_type).kind() ==
                           schema::TypeDefinitionKind::union_type};
         std::vector<Predicate> checks;
@@ -1023,9 +1000,8 @@ class PackedEmitter {
             auto check{
                 aggregate(placement)
                     ? valid_children(static_cast<std::uint32_t>(index), placement.type, source)
-                    : value_check(placement,
-                                  extract(accessor_name(context_, placement) + "_layout", source),
-                                  true)};
+                    : value_check(
+                          placement, extract(field_name(placement) + "_layout", source), true)};
             for (auto const& guard : placement.guards) {
                 if (parent && std::ranges::any_of(layout_.placements[*parent].guards,
                                                   [&](auto const& inherited) {
@@ -1054,11 +1030,10 @@ class PackedEmitter {
                                               placement.path + "_invalid_value",
                                               "storage_type",
                                               number(*invalid))};
-                result =
-                    all({binary(BinaryOperator::not_equal,
-                                extract(accessor_name(context_, placement) + "_layout", source),
-                                constant_),
-                         result});
+                result = all({binary(BinaryOperator::not_equal,
+                                     extract(field_name(placement) + "_layout", source),
+                                     constant_),
+                              result});
             }
         }
         return result;
@@ -1124,17 +1099,19 @@ class PackedEmitter {
         if (choice) {
             body.push_back(ir_.variable("auto", "result", invoke("from_raw", {number(0)})));
             for (auto const& guard : layout_.placements[*choice].guards) {
-                body.push_back(ir_.assignment(
-                    target, insert(guard.path + "_layout", target, guard_code(guard))));
+                body.push_back(insert_member(guard.path + "_layout", guard_code(guard), result));
             }
+        } else if (layout_.default_raw_value.value_or(0) != 0) {
+            body.push_back(ir_.assignment(raw(), number(0)));
         }
         bool validate_record{};
         for (auto const index : inputs) {
             auto const& input{layout_.placements[index]};
-            auto const name{accessor_name(context_, input)};
-            auto const argument{ir_.named(name + (addressable(input) ? "_value" : "_encoded"))};
-            params.push_back(
-                parameter(access_type(input), name + (addressable(input) ? "_value" : "_encoded")));
+            auto const name{field_name(input)};
+            auto const argument_name{scalar_ ? "value"
+                                             : name + (addressable(input) ? "_value" : "_encoded")};
+            auto const argument{ir_.named(argument_name)};
+            params.push_back(parameter(access_type(input), argument_name));
             validate_record = validate_record || input.discriminator;
             if (!addressable(input)) {
                 validate_record = true;
@@ -1144,17 +1121,16 @@ class PackedEmitter {
                                argument,
                                ir_.member_access(ir_.named(name + "_layout"), "value_mask"))));
                 }
-                body.push_back(ir_.assignment(
-                    target, insert(name + "_layout", target, cast("storage_type", argument))));
+                body.push_back(insert_member(name + "_layout",
+                                             cast("storage_type", argument),
+                                             choice ? std::optional<Expr>{result} : std::nullopt));
             } else {
                 assert_if(body, value_check(input, argument));
-                body.push_back(ir_.assignment(
-                    target,
-                    insert(name + "_layout",
-                           target,
-                           aggregate(input)
-                               ? cast("storage_type", member_call(argument, "raw_value"))
-                               : argument)));
+                body.push_back(insert_member(
+                    name + "_layout",
+                    aggregate(input) ? cast("storage_type", member_call(argument, "raw_value"))
+                                     : argument,
+                    choice ? std::optional<Expr>{result} : std::nullopt));
             }
         }
         if (validate_record) {
@@ -1181,19 +1157,19 @@ class PackedEmitter {
             ir_.function_flags(ctor).set_define_in_header(true);
             ir_.set_function_noexcept(ctor);
             ir_.set_function_parameters(ctor, params);
-            ir_.set_function_body(ctor, body, {ir_.member_initializer(text("value_"), number(0))});
+            ir_.set_function_body(ctor, body);
             constructors_.push_back(ir_.header_function(ctor));
         }
     }
     void accessor(std::uint32_t index) {
         auto const& placement{layout_.placements[index]};
-        auto const name{accessor_name(context_, placement)};
+        auto const name{field_name(placement)};
         Nodes guards;
         for (auto const& guard : placement.guards) {
-            guards.push_back(assertion(guard_check(guard, raw())));
+            guards.push_back(assertion(guard_check(guard)));
         }
         auto body{guards};
-        auto const decoded{extract(name + "_layout", raw())};
+        auto const decoded{extract(name + "_layout")};
         auto const decoded_type{access_type(placement)};
         body.push_back(ir_.return_stmt(
             aggregate(placement)
@@ -1206,25 +1182,25 @@ class PackedEmitter {
         }
         body = std::move(guards);
         assert_if(body, value_check(placement, value()));
-        auto const updated{insert(name + "_layout",
-                                  raw(),
-                                  aggregate(placement)
-                                      ? cast("storage_type", member_call(value(), "raw_value"))
-                                      : value())};
+        auto const encoded{aggregate(placement)
+                               ? cast("storage_type", member_call(value(), "raw_value"))
+                               : value()};
         auto const& children{graph_.definitions().children};
-        if (children.tag[children.index(placement.child)]) {
-            body.push_back(ir_.variable("auto const", "updated", updated));
+        if (!scalar_ && children.tag[children.index(placement.child)]) {
+            body.push_back(
+                ir_.variable("auto const", "updated", insert(name + "_layout", raw(), encoded)));
             assert_if(body, valid_children(index, placement.type, ir_.named("updated")));
             body.push_back(ir_.assignment(raw(), ir_.named("updated")));
         } else {
-            body.push_back(ir_.assignment(raw(), updated));
+            body.push_back(insert_member(name + "_layout", encoded));
         }
         functions_.push_back(function("set_" + name,
                                       "void",
                                       FunctionReceiver::unqualified,
                                       {parameter(decoded_type, "value")},
                                       body));
-        if (graph_.definition(placement.type).kind() == schema::TypeDefinitionKind::fixed_point) {
+        if (!scalar_ &&
+            graph_.definition(placement.type).kind() == schema::TypeDefinitionKind::fixed_point) {
             fixed_conversion(index);
         }
     }
@@ -1239,10 +1215,7 @@ class PackedEmitter {
         auto& metadata{field_metadata_[index]};
         auto const fractional{constant(
             metadata, path + "_fractional_bits", "int", number(fixed.fractional_bits[row]))};
-        auto const magnitude{constant(metadata,
-                                      path + "_magnitude_bits",
-                                      "int",
-                                      number(placement.bits - (signedness ? 1 : 0)))};
+        auto const magnitude{ir_.member_access(ir_.named(path + "_raw_layout"), "magnitude_bits")};
         auto const lower{range_bound(path + "_raw_layout", "min")};
         auto const upper{range_bound(path + "_raw_layout", "max")};
         auto const negative_fractional{ir_.unary(UnaryOperator::negate, fractional)};
@@ -1341,8 +1314,9 @@ class PackedEmitter {
     CppIR& ir_;
     schema::TypeGraph const& graph_;
     schema::TypeId type_;
-    schema::BitLayout const& layout_;
+    schema::BitLayout layout_;
     std::string name_;
+    bool scalar_;
     Nodes metadata_;
     std::vector<Nodes> field_metadata_;
     Nodes constructors_;
@@ -1357,11 +1331,6 @@ class PackedEmitter {
 } // namespace
 
 auto lower_packed_value(LoweringContext& context, DeclarationHandle, schema::TypeId type)
-    -> DeclarationEmission {
-    return {.header = PackedEmitter{context, type}.emit()};
-}
-
-auto lower_scalar(LoweringContext& context, DeclarationHandle, schema::TypeId type)
     -> DeclarationEmission {
     return {.header = PackedEmitter{context, type}.emit()};
 }

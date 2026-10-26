@@ -497,7 +497,10 @@ class BitLayoutResolver {
         }
     }
     void validate_names(BitLayout const& result, TypeId const type) const {
-        std::set<std::string> names{"storage",
+        std::set<std::string> names{"Base",
+                                    "extract",
+                                    "insert",
+                                    "storage",
                                     "storage_type",
                                     "packed_integer_tag",
                                     "raw_value",
@@ -525,9 +528,9 @@ class BitLayoutResolver {
                 case TypeDefinitionKind::optional_sentinel:
                 case TypeDefinitionKind::optional_presence_bit: {
                     names.insert("payload_layout");
-                    names.insert(root_kind == TypeDefinitionKind::optional_sentinel
-                                     ? "sentinel"
-                                     : "presence_mask");
+                    if (root_kind == TypeDefinitionKind::optional_sentinel) {
+                        names.insert("sentinel");
+                    }
                     auto const source{
                         root_kind == TypeDefinitionKind::optional_sentinel
                             ? definitions_.optional_sentinels
@@ -603,16 +606,15 @@ class BitLayoutResolver {
                 for (auto const& name : {value.path + "_value",
                                          "set_" + value.path + "_value",
                                          "try_encode_" + value.path + "_value",
-                                         value.path + "_fractional_bits",
-                                         value.path + "_magnitude_bits"}) {
+                                         value.path + "_fractional_bits"}) {
                     add_name(name);
                 }
             }
             if (kind == TypeDefinitionKind::optional_sentinel ||
                 kind == TypeDefinitionKind::optional_presence_bit) {
-                add_name(accessor + (kind == TypeDefinitionKind::optional_sentinel
-                                         ? "_sentinel"
-                                         : "_presence_mask"));
+                if (kind == TypeDefinitionKind::optional_sentinel) {
+                    add_name(accessor + "_sentinel");
+                }
                 add_name(accessor + "_payload_layout");
                 auto const definition{graph_.definition(value.type)};
                 auto const source{

@@ -5,16 +5,22 @@
 
 #include "ioj/packed_value.h"
 
-#include <bit>
 #include <cassert>
 #include <compare>
 #include <cstdint>
 
 namespace ioj::sim {
-struct ObjectiveId {
+struct ObjectiveId;
+
+namespace detail {
+using ObjectiveIdBase = PackedValueBase<ObjectiveId, std::uint32_t, 4294967295ULL>;
+} // namespace detail
+
+struct ObjectiveId : detail::ObjectiveIdBase {
   public:
     // Storage
-    using storage_type = std::uint32_t;
+    using Base = detail::ObjectiveIdBase;
+    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::integer_tag;
     static constexpr PackedStorage<storage_type, 32> storage{4294967295};
     static constexpr storage_type invalid_value{4294967295};
@@ -23,30 +29,23 @@ struct ObjectiveId {
     static constexpr PackedField<storage_type, std::uint32_t, 0, 32> index_layout{};
 
     constexpr ObjectiveId() noexcept = default;
-    constexpr explicit ObjectiveId(decltype(index_layout)::value_type const index_value) noexcept
-        : value_{0} {
-        value_ = packed_insert<decltype(index_layout)>(value_, index_value);
+    constexpr explicit ObjectiveId(decltype(index_layout)::value_type const index_value) noexcept {
+        value_ = 0;
+        insert<decltype(index_layout)>(index_value);
         assert((value_ != invalid_value));
     }
 
     [[nodiscard]] constexpr auto operator<=>(ObjectiveId const&) const noexcept = default;
 
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> ObjectiveId {
-        return std::bit_cast<ObjectiveId>(raw);
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return value_ != invalid_value;
     }
     [[nodiscard]] constexpr auto index() const noexcept -> decltype(index_layout)::value_type {
-        return packed_extract<decltype(index_layout)>(value_);
+        return extract<decltype(index_layout)>();
     }
     constexpr void set_index(decltype(index_layout)::value_type const value) noexcept {
-        value_ = packed_insert<decltype(index_layout)>(value_, value);
+        insert<decltype(index_layout)>(value);
     }
-
-  private:
-    storage_type value_{storage.default_raw_value};
 };
 
 static_assert(valid_packed_value_layout<ObjectiveId>());

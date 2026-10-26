@@ -6,7 +6,6 @@
 #include "ioj/enum_traits.h"
 #include "ioj/packed_value.h"
 
-#include <bit>
 #include <cassert>
 #include <compare>
 #include <cstddef>
@@ -22,19 +21,28 @@ enum class NavigationRiskTier : NavigationRiskTierUnderlying {
     Immediate = 3,
 };
 
-struct NavigationRiskCode {
+struct NavigationRiskCode;
+
+namespace detail {
+using NavigationRiskCodeBase = PackedValueBase<NavigationRiskCode, std::uint8_t>;
+} // namespace detail
+
+struct NavigationRiskCode : detail::NavigationRiskCodeBase {
   public:
-    // Storage and value
-    using storage_type = std::uint8_t;
+    // Storage
+    using Base = detail::NavigationRiskCodeBase;
+    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
     static constexpr PackedStorage<storage_type, 2> storage{0};
+
+    // value
     using value_type = std::uint8_t;
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{};
 
     constexpr NavigationRiskCode() noexcept = default;
-    constexpr explicit NavigationRiskCode(value_type const value) noexcept
-        : value_{packed_pack<decltype(value_layout)>(value)} {
+    constexpr explicit NavigationRiskCode(value_type const value) noexcept {
         assert((is_valid_value(value)));
+        insert<decltype(value_layout)>(value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(NavigationRiskCode const& other) const noexcept {
@@ -48,69 +56,70 @@ struct NavigationRiskCode {
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= value_layout.value_mask;
     }
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
-        -> NavigationRiskCode {
-        return std::bit_cast<NavigationRiskCode>(raw);
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
-        return packed_extract<decltype(value_layout)>(value_);
+        return extract<decltype(value_layout)>();
     }
     constexpr void set_value(value_type const value) noexcept {
         assert((is_valid_value(value)));
-        value_ = packed_insert<decltype(value_layout)>(value_, value);
+        insert<decltype(value_layout)>(value);
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
-
-  private:
-    storage_type value_{storage.default_raw_value};
 };
 
 static_assert(valid_packed_value_layout<NavigationRiskCode>());
 
-struct NavigationScanCount {
+struct NavigationScanCount;
+
+namespace detail {
+using NavigationScanCountBase = PackedValueBase<NavigationScanCount, std::uint8_t>;
+} // namespace detail
+
+struct NavigationScanCount : detail::NavigationScanCountBase {
   public:
-    // Storage and value
-    using storage_type = std::uint8_t;
+    // Storage
+    using Base = detail::NavigationScanCountBase;
+    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
     static constexpr PackedStorage<storage_type, 8> storage{0};
+
+    // value
     using value_type = std::uint8_t;
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{};
 
     constexpr NavigationScanCount() noexcept = default;
-    constexpr explicit NavigationScanCount(value_type const value) noexcept
-        : value_{packed_pack<decltype(value_layout)>(value)} {}
+    constexpr explicit NavigationScanCount(value_type const value) noexcept {
+        insert<decltype(value_layout)>(value);
+    }
 
     [[nodiscard]] constexpr auto operator<=>(NavigationScanCount const&) const noexcept = default;
 
     [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
         return true;
     }
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
-        -> NavigationScanCount {
-        return std::bit_cast<NavigationScanCount>(raw);
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
-        return packed_extract<decltype(value_layout)>(value_);
+        return extract<decltype(value_layout)>();
     }
     constexpr void set_value(value_type const value) noexcept {
-        value_ = packed_insert<decltype(value_layout)>(value_, value);
+        insert<decltype(value_layout)>(value);
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
-
-  private:
-    storage_type value_{storage.default_raw_value};
 };
 
 static_assert(valid_packed_value_layout<NavigationScanCount>());
 
-struct AvoidanceChoice {
+struct AvoidanceChoice;
+
+namespace detail {
+using AvoidanceChoiceBase = PackedValueBase<AvoidanceChoice, std::uint8_t>;
+} // namespace detail
+
+struct AvoidanceChoice : detail::AvoidanceChoiceBase {
   public:
-    // Storage and value
-    using storage_type = std::uint8_t;
+    // Storage
+    using Base = detail::AvoidanceChoiceBase;
+    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
     static constexpr PackedStorage<storage_type, 8> storage{0};
+
+    // value
     using value_type = std::int8_t;
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{
         {static_cast<value_type>(0ULL), static_cast<value_type>(7ULL)}};
@@ -118,9 +127,9 @@ struct AvoidanceChoice {
     static constexpr value_type StopMovement{static_cast<value_type>(-2LL)};
 
     constexpr AvoidanceChoice() noexcept = default;
-    constexpr explicit AvoidanceChoice(value_type const value) noexcept
-        : value_{packed_pack<decltype(value_layout)>(value)} {
+    constexpr explicit AvoidanceChoice(value_type const value) noexcept {
         assert((is_valid_value(value)));
+        insert<decltype(value_layout)>(value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(AvoidanceChoice const& other) const noexcept {
@@ -134,24 +143,16 @@ struct AvoidanceChoice {
         return (value >= value_layout.range.min && value <= value_layout.range.max) ||
                value == DirectMovement || value == StopMovement;
     }
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
-        -> AvoidanceChoice {
-        return std::bit_cast<AvoidanceChoice>(raw);
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return is_valid_value(extract<decltype(value_layout)>());
     }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
-        return packed_extract<decltype(value_layout)>(value_);
+        return extract<decltype(value_layout)>();
     }
     constexpr void set_value(value_type const value) noexcept {
         assert((is_valid_value(value)));
-        value_ = packed_insert<decltype(value_layout)>(value_, value);
+        insert<decltype(value_layout)>(value);
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return is_valid_value(value());
-    }
-
-  private:
-    storage_type value_{storage.default_raw_value};
 };
 
 static_assert(valid_packed_value_layout<AvoidanceChoice>());

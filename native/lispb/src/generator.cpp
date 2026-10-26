@@ -288,7 +288,7 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                     if (!store.integer_scalars.cpp_projection[value]) {
                                         return {};
                                     }
-                                    return detail::lower_scalar(
+                                    return detail::lower_packed_value(
                                         context,
                                         value,
                                         *graph.find_declared(module_id,
@@ -352,7 +352,7 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                 }
                                 case DeclarationKind::fixed_point:
                                     return store.fixed_points.cpp_projection[value]
-                                             ? detail::lower_scalar(
+                                             ? detail::lower_packed_value(
                                                    context,
                                                    value,
                                                    *graph.find_declared(
@@ -360,7 +360,7 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                              : detail::DeclarationEmission{};
                                 case DeclarationKind::linear_quantized:
                                     return store.linear_quantizeds.cpp_projection[value]
-                                             ? detail::lower_scalar(
+                                             ? detail::lower_packed_value(
                                                    context,
                                                    value,
                                                    *graph.find_declared(
@@ -369,7 +369,7 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                              : detail::DeclarationEmission{};
                                 case DeclarationKind::mini_float:
                                     return store.mini_floats.cpp_projection[value]
-                                             ? detail::lower_scalar(
+                                             ? detail::lower_packed_value(
                                                    context,
                                                    value,
                                                    *graph.find_declared(
@@ -377,7 +377,7 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                              : detail::DeclarationEmission{};
                                 case DeclarationKind::optional_presence_bit:
                                     return store.optional_presence_bits.cpp_projection[value]
-                                             ? detail::lower_scalar(
+                                             ? detail::lower_packed_value(
                                                    context,
                                                    value,
                                                    *graph.find_declared(
@@ -386,7 +386,7 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                              : detail::DeclarationEmission{};
                                 case DeclarationKind::optional_sentinel:
                                     return store.optional_sentinels.cpp_projection[value]
-                                             ? detail::lower_scalar(
+                                             ? detail::lower_packed_value(
                                                    context,
                                                    value,
                                                    *graph.find_declared(

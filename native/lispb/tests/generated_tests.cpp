@@ -223,6 +223,9 @@ TEST(GeneratedScalar, UsesConfiguredStorageAndTypedValues) {
 TEST(GeneratedPackedDefaults, ConstructsDefaultsAndSupportsPartialRawConstruction) {
     static_assert(std::is_default_constructible_v<Defaults>);
     static_assert(!std::is_default_constructible_v<PartialDefaults>);
+    static_assert(ioj::valid_packed_value_layout<Defaults>());
+    static_assert(ioj::valid_packed_value_layout<DefaultsMsb>());
+    static_assert(ioj::valid_packed_value_layout<PartialDefaults>());
     constexpr Defaults value{};
     static_assert(value.low() == 5 && value.delta() == -3);
     static_assert(Defaults::from_raw(0).raw_value() == 0);
@@ -529,9 +532,11 @@ TEST(GeneratedPackedValue, RoundTripsLinearQuantizedEncodedCodes) {
 
 TEST(GeneratedPackedValue, RoundTripsFixedPointRawCodes) {
     static_assert(Motion::velocity_raw_layout.bits == 12);
+    static_assert(Motion::velocity_raw_layout.magnitude_bits == 11);
     static_assert(Motion::velocity_raw_layout.range.min == -2048);
     static_assert(Motion::velocity_raw_layout.range.max == 2047);
     static_assert(Motion::fraction_raw_layout.bits == 7);
+    static_assert(Motion::fraction_raw_layout.magnitude_bits == 7);
     static_assert(Motion::fraction_raw_layout.range.min == 0);
     static_assert(Motion::fraction_raw_layout.range.max == 127);
 

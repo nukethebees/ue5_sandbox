@@ -1708,7 +1708,6 @@ TEST(SemanticTypeGraph, RejectsPackedFixedPointHelperNameCollisions) {
                             "set_distance_value",
                             "try_encode_distance_value",
                             "distance_fractional_bits",
-                            "distance_magnitude_bits",
                             "distance_raw_layout"}) {
         SCOPED_TRACE(name);
         lispb::codegen::CompilerTestContext context;
@@ -1739,7 +1738,7 @@ TEST(SemanticTypeGraph, RejectsPackedAccessorMatchingOwningTypeName) {
 }
 
 TEST(SemanticTypeGraph, RejectsPackedRootMetadataNameCollisions) {
-    for (auto const name : {"storage", "storage_type", "packed_integer_tag"}) {
+    for (auto const name : {"extract", "insert", "storage", "storage_type", "packed_integer_tag"}) {
         SCOPED_TRACE(name);
         lispb::codegen::CompilerTestContext context;
         auto const source{std::string{R"((module values :header "Values.h"
@@ -1749,7 +1748,10 @@ TEST(SemanticTypeGraph, RejectsPackedRootMetadataNameCollisions) {
         EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
     }
     for (auto const kind : {"record", "union"}) {
-        for (auto const name : {"storage",
+        for (auto const name : {"Base",
+                                "extract",
+                                "insert",
+                                "storage",
                                 "storage_type",
                                 "packed_integer_tag",
                                 "raw_value",
@@ -1768,14 +1770,15 @@ TEST(SemanticTypeGraph, RejectsPackedRootMetadataNameCollisions) {
         lispb::codegen::CompilerTestContext context;
         auto const source{
             std::string{"(module values :header \"Values.h\" ("} + kind +
-            " RawTag :layout packed (member data std::uint8_t) (projections (cpp))))"};
+            " RawTag :layout packed (member Base std::uint8_t) (projections (cpp))))"};
         auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
         EXPECT_NO_THROW(resolve_type_graph(manifest));
     }
 }
 
 TEST(SemanticTypeGraph, RejectsScalarNamedCodesCollidingWithDomainMetadata) {
-    for (auto const name : {"storage", "packed_integer_tag", "value_layout"}) {
+    for (auto const name :
+         {"Base", "extract", "insert", "storage", "packed_integer_tag", "value_layout"}) {
         SCOPED_TRACE(name);
         lispb::codegen::CompilerTestContext context;
         auto const source{std::string{R"((module values :header "Values.h"
@@ -1784,7 +1787,10 @@ TEST(SemanticTypeGraph, RejectsScalarNamedCodesCollidingWithDomainMetadata) {
         auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
         EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
     }
-    for (auto const name : {"storage",
+    for (auto const name : {"Base",
+                            "extract",
+                            "insert",
+                            "storage",
                             "storage_type",
                             "packed_integer_tag",
                             "value_type",
@@ -1840,9 +1846,6 @@ TEST(SemanticTypeGraph, RejectsPackedValidationAndEncodingMetadataCollisions) {
                (integer-scalar Source :bit-width 8)
                (optional-presence-bit value_layout :source @Source (projections (cpp)))))",
              R"((module values :header "Values.h"
-               (integer-scalar Source :bit-width 8)
-               (optional-presence-bit presence_mask :source @Source (projections (cpp)))))",
-             R"((module values :header "Values.h"
                (integer-scalar Source :bit-width 8 :minimum 0 :maximum 100 (code Absent :value 255 :sentinel true))
                (optional-sentinel sentinel :source @Source :sentinel Absent (projections (cpp)))))",
              R"((module values :header "Values.h"
@@ -1854,6 +1857,16 @@ TEST(SemanticTypeGraph, RejectsPackedValidationAndEncodingMetadataCollisions) {
         EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
     }
     for (auto const source : {
+             R"((module values :header "Values.h"
+               (integer-scalar Source :bit-width 8)
+               (optional-presence-bit presence_mask :source @Source (projections (cpp)))
+               (fixed-point Distance :signed true :total-bits 16 :fractional-bits 4)
+               (record Position :layout packed
+                 (member distance @Distance)
+                 (member distance_magnitude_bits std::uint8_t)
+                 (member maybe @presence_mask)
+                 (member maybe_encoded_presence_mask std::uint8_t)
+                 (projections (cpp)))))",
              R"((module values :header "Values.h"
                (record value_type :layout packed (member data std::uint8_t) (projections (cpp)))
                (record invalid_value :layout packed (member data std::uint8_t) (projections (cpp)))

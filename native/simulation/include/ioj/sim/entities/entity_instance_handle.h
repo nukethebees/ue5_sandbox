@@ -6,25 +6,33 @@
 #include "ioj/levels/team.h"
 #include "ioj/packed_value.h"
 
-#include <bit>
 #include <cassert>
 #include <compare>
 #include <cstdint>
 
 namespace ioj::sim {
-struct EntityFrameIndex {
+struct EntityFrameIndex;
+
+namespace detail {
+using EntityFrameIndexBase = PackedValueBase<EntityFrameIndex, std::uint32_t>;
+} // namespace detail
+
+struct EntityFrameIndex : detail::EntityFrameIndexBase {
   public:
-    // Storage and value
-    using storage_type = std::uint32_t;
+    // Storage
+    using Base = detail::EntityFrameIndexBase;
+    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
     static constexpr PackedStorage<storage_type, 18> storage{0};
+
+    // value
     using value_type = std::uint32_t;
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{};
 
     constexpr EntityFrameIndex() noexcept = default;
-    constexpr explicit EntityFrameIndex(value_type const value) noexcept
-        : value_{packed_pack<decltype(value_layout)>(value)} {
+    constexpr explicit EntityFrameIndex(value_type const value) noexcept {
         assert((is_valid_value(value)));
+        insert<decltype(value_layout)>(value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(EntityFrameIndex const& other) const noexcept {
@@ -37,39 +45,39 @@ struct EntityFrameIndex {
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= value_layout.value_mask;
     }
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
-        -> EntityFrameIndex {
-        return std::bit_cast<EntityFrameIndex>(raw);
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
-        return packed_extract<decltype(value_layout)>(value_);
+        return extract<decltype(value_layout)>();
     }
     constexpr void set_value(value_type const value) noexcept {
         assert((is_valid_value(value)));
-        value_ = packed_insert<decltype(value_layout)>(value_, value);
+        insert<decltype(value_layout)>(value);
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
-
-  private:
-    storage_type value_{storage.default_raw_value};
 };
 
 static_assert(valid_packed_value_layout<EntityFrameIndex>());
 
-struct QuantisedHealth {
+struct QuantisedHealth;
+
+namespace detail {
+using QuantisedHealthBase = PackedValueBase<QuantisedHealth, std::uint8_t>;
+} // namespace detail
+
+struct QuantisedHealth : detail::QuantisedHealthBase {
   public:
-    // Storage and value
-    using storage_type = std::uint8_t;
+    // Storage
+    using Base = detail::QuantisedHealthBase;
+    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
     static constexpr PackedStorage<storage_type, 2> storage{0};
+
+    // value
     using value_type = std::uint8_t;
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{};
 
     constexpr QuantisedHealth() noexcept = default;
-    constexpr explicit QuantisedHealth(value_type const value) noexcept
-        : value_{packed_pack<decltype(value_layout)>(value)} {
+    constexpr explicit QuantisedHealth(value_type const value) noexcept {
         assert((is_valid_value(value)));
+        insert<decltype(value_layout)>(value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(QuantisedHealth const& other) const noexcept {
@@ -82,30 +90,29 @@ struct QuantisedHealth {
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= value_layout.value_mask;
     }
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
-        -> QuantisedHealth {
-        return std::bit_cast<QuantisedHealth>(raw);
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
-        return packed_extract<decltype(value_layout)>(value_);
+        return extract<decltype(value_layout)>();
     }
     constexpr void set_value(value_type const value) noexcept {
         assert((is_valid_value(value)));
-        value_ = packed_insert<decltype(value_layout)>(value_, value);
+        insert<decltype(value_layout)>(value);
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
-
-  private:
-    storage_type value_{storage.default_raw_value};
 };
 
 static_assert(valid_packed_value_layout<QuantisedHealth>());
 
-struct EntityInstanceHandle {
+struct EntityInstanceHandle;
+
+namespace detail {
+using EntityInstanceHandleBase =
+    PackedValueBase<EntityInstanceHandle, std::uint32_t, 4294967295ULL>;
+} // namespace detail
+
+struct EntityInstanceHandle : detail::EntityInstanceHandleBase {
   public:
     // Storage
-    using storage_type = std::uint32_t;
+    using Base = detail::EntityInstanceHandleBase;
+    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::integer_tag;
     static constexpr PackedStorage<storage_type, 32> storage{4294967295};
     static constexpr storage_type invalid_value{4294967295};
@@ -124,14 +131,14 @@ struct EntityInstanceHandle {
     constexpr explicit EntityInstanceHandle(
         decltype(index_layout)::value_type const index_value,
         decltype(team_layout)::value_type const team_value,
-        decltype(health_state_layout)::value_type const health_state_value) noexcept
-        : value_{0} {
+        decltype(health_state_layout)::value_type const health_state_value) noexcept {
+        value_ = 0;
         assert((is_valid_index(index_value)));
-        value_ = packed_insert<decltype(index_layout)>(value_, index_value);
+        insert<decltype(index_layout)>(index_value);
         assert((is_valid_team(team_value)));
-        value_ = packed_insert<decltype(team_layout)>(value_, team_value);
+        insert<decltype(team_layout)>(team_value);
         assert((is_valid_health_state(health_state_value)));
-        value_ = packed_insert<decltype(health_state_layout)>(value_, health_state_value);
+        insert<decltype(health_state_layout)>(health_state_value);
         assert((value_ != invalid_value));
     }
 
@@ -150,41 +157,32 @@ struct EntityInstanceHandle {
         -> bool {
         return static_cast<storage_type>(value) <= health_state_layout.value_mask;
     }
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
-        -> EntityInstanceHandle {
-        return std::bit_cast<EntityInstanceHandle>(raw);
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return value_ != invalid_value &&
-               is_valid_team(packed_extract<decltype(team_layout)>(value_));
+        return value_ != invalid_value && is_valid_team(extract<decltype(team_layout)>());
     }
     [[nodiscard]] constexpr auto index() const noexcept -> decltype(index_layout)::value_type {
-        return packed_extract<decltype(index_layout)>(value_);
+        return extract<decltype(index_layout)>();
     }
     constexpr void set_index(decltype(index_layout)::value_type const value) noexcept {
         assert((is_valid_index(value)));
-        value_ = packed_insert<decltype(index_layout)>(value_, value);
+        insert<decltype(index_layout)>(value);
     }
     [[nodiscard]] constexpr auto team() const noexcept -> decltype(team_layout)::value_type {
-        return packed_extract<decltype(team_layout)>(value_);
+        return extract<decltype(team_layout)>();
     }
     constexpr void set_team(decltype(team_layout)::value_type const value) noexcept {
         assert((is_valid_team(value)));
-        value_ = packed_insert<decltype(team_layout)>(value_, value);
+        insert<decltype(team_layout)>(value);
     }
     [[nodiscard]] constexpr auto health_state() const noexcept
         -> decltype(health_state_layout)::value_type {
-        return packed_extract<decltype(health_state_layout)>(value_);
+        return extract<decltype(health_state_layout)>();
     }
     constexpr void
         set_health_state(decltype(health_state_layout)::value_type const value) noexcept {
         assert((is_valid_health_state(value)));
-        value_ = packed_insert<decltype(health_state_layout)>(value_, value);
+        insert<decltype(health_state_layout)>(value);
     }
-
-  private:
-    storage_type value_{storage.default_raw_value};
 };
 
 static_assert(valid_packed_value_layout<EntityInstanceHandle>());

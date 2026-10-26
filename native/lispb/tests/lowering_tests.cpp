@@ -423,10 +423,11 @@ TEST(Lowering, EmitsOwningIntegerScalarWithInferredStorage) {
     )"))};
     ASSERT_EQ(files.size(), 1U);
     auto const& output{files.front().content};
-    EXPECT_NE(output.find("using storage_type = std::uint32_t;"), std::string::npos);
+    EXPECT_NE(output.find("PackedValueBase<Index, std::uint32_t>"), std::string::npos);
+    EXPECT_NE(output.find("using storage_type = Base::storage_type;"), std::string::npos);
     EXPECT_NE(output.find("using value_type = std::uint32_t;"), std::string::npos);
-    EXPECT_NE(output.find("raw_value()"), std::string::npos);
-    EXPECT_NE(output.find("from_raw("), std::string::npos);
+    EXPECT_EQ(output.find("raw_value() const"), std::string::npos);
+    EXPECT_EQ(output.find("from_raw(storage_type"), std::string::npos);
     EXPECT_NE(output.find("set_value("), std::string::npos);
     EXPECT_EQ(output.find("struct Logical"), std::string::npos);
 }

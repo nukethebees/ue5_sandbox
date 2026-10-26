@@ -30,8 +30,6 @@ auto assemble_module(LoweringContext& context,
 auto lower_record(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission;
 auto lower_union(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission;
 auto lower_static_table(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission;
-auto lower_scalar(LoweringContext& context, DeclarationHandle schema, schema::TypeId semantic_type)
-    -> DeclarationEmission;
 auto lower_packed_value(LoweringContext& context,
                         DeclarationHandle schema,
                         schema::TypeId semantic_type) -> DeclarationEmission;

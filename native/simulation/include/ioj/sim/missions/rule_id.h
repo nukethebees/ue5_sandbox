@@ -6,16 +6,22 @@
 #include "ioj/packed_value.h"
 #include "ioj/sim/missions/condition_type.h"
 
-#include <bit>
 #include <cassert>
 #include <compare>
 #include <cstdint>
 
 namespace ioj::sim {
-struct RuleId {
+struct RuleId;
+
+namespace detail {
+using RuleIdBase = PackedValueBase<RuleId, std::uint32_t>;
+} // namespace detail
+
+struct RuleId : detail::RuleIdBase {
   public:
     // Storage
-    using storage_type = std::uint32_t;
+    using Base = detail::RuleIdBase;
+    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::integer_tag;
     static constexpr PackedStorage<storage_type, 32> storage{0};
 
@@ -28,12 +34,11 @@ struct RuleId {
 
     constexpr RuleId() noexcept = default;
     constexpr explicit RuleId(decltype(index_layout)::value_type const index_value,
-                              decltype(type_layout)::value_type const type_value) noexcept
-        : value_{0} {
+                              decltype(type_layout)::value_type const type_value) noexcept {
         assert((is_valid_index(index_value)));
-        value_ = packed_insert<decltype(index_layout)>(value_, index_value);
+        insert<decltype(index_layout)>(index_value);
         assert((is_valid_type(type_value)));
-        value_ = packed_insert<decltype(type_layout)>(value_, type_value);
+        insert<decltype(type_layout)>(type_value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(RuleId const&) const noexcept = default;
@@ -46,30 +51,23 @@ struct RuleId {
         is_valid_type(decltype(type_layout)::value_type const value) noexcept -> bool {
         return value <= type_layout.range.max;
     }
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> RuleId {
-        return std::bit_cast<RuleId>(raw);
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return is_valid_type(packed_extract<decltype(type_layout)>(value_));
+        return is_valid_type(extract<decltype(type_layout)>());
     }
     [[nodiscard]] constexpr auto index() const noexcept -> decltype(index_layout)::value_type {
-        return packed_extract<decltype(index_layout)>(value_);
+        return extract<decltype(index_layout)>();
     }
     constexpr void set_index(decltype(index_layout)::value_type const value) noexcept {
         assert((is_valid_index(value)));
-        value_ = packed_insert<decltype(index_layout)>(value_, value);
+        insert<decltype(index_layout)>(value);
     }
     [[nodiscard]] constexpr auto type() const noexcept -> decltype(type_layout)::value_type {
-        return packed_extract<decltype(type_layout)>(value_);
+        return extract<decltype(type_layout)>();
     }
     constexpr void set_type(decltype(type_layout)::value_type const value) noexcept {
         assert((is_valid_type(value)));
-        value_ = packed_insert<decltype(type_layout)>(value_, value);
+        insert<decltype(type_layout)>(value);
     }
-
-  private:
-    storage_type value_{storage.default_raw_value};
 };
 
 static_assert(valid_packed_value_layout<RuleId>());

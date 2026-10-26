@@ -5,138 +5,151 @@
 
 #include "ioj/packed_value.h"
 
-#include <bit>
 #include <cassert>
 #include <compare>
 #include <cstdint>
 
 namespace ioj::sim::collision {
-struct StaticGeometryIndex {
+struct StaticGeometryIndex;
+
+namespace detail {
+using StaticGeometryIndexBase = PackedValueBase<StaticGeometryIndex, std::uint32_t>;
+} // namespace detail
+
+struct StaticGeometryIndex : detail::StaticGeometryIndexBase {
   public:
-    // Storage and value
-    using storage_type = std::uint32_t;
+    // Storage
+    using Base = detail::StaticGeometryIndexBase;
+    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
     static constexpr PackedStorage<storage_type, 32> storage{0};
+
+    // value
     using value_type = std::uint32_t;
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{
         {static_cast<value_type>(0ULL), static_cast<value_type>(4294967294ULL)}};
     static constexpr value_type Invalid{static_cast<value_type>(4294967295ULL)};
 
     constexpr StaticGeometryIndex() noexcept = default;
-    constexpr explicit StaticGeometryIndex(value_type const value) noexcept
-        : value_{packed_pack<decltype(value_layout)>(value)} {}
+    constexpr explicit StaticGeometryIndex(value_type const value) noexcept {
+        insert<decltype(value_layout)>(value);
+    }
 
     [[nodiscard]] constexpr auto operator<=>(StaticGeometryIndex const&) const noexcept = default;
 
     [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
         return true;
     }
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
-        -> StaticGeometryIndex {
-        return std::bit_cast<StaticGeometryIndex>(raw);
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
-        return packed_extract<decltype(value_layout)>(value_);
+        return extract<decltype(value_layout)>();
     }
     constexpr void set_value(value_type const value) noexcept {
-        value_ = packed_insert<decltype(value_layout)>(value_, value);
+        insert<decltype(value_layout)>(value);
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
-
-  private:
-    storage_type value_{storage.default_raw_value};
 };
 
 static_assert(valid_packed_value_layout<StaticGeometryIndex>());
 
-struct CellIndex {
+struct CellIndex;
+
+namespace detail {
+using CellIndexBase = PackedValueBase<CellIndex, std::uint32_t>;
+} // namespace detail
+
+struct CellIndex : detail::CellIndexBase {
   public:
-    // Storage and value
-    using storage_type = std::uint32_t;
+    // Storage
+    using Base = detail::CellIndexBase;
+    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
     static constexpr PackedStorage<storage_type, 32> storage{0};
+
+    // value
     using value_type = std::uint32_t;
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{
         {static_cast<value_type>(0ULL), static_cast<value_type>(4294967294ULL)}};
     static constexpr value_type Invalid{static_cast<value_type>(4294967295ULL)};
 
     constexpr CellIndex() noexcept = default;
-    constexpr explicit CellIndex(value_type const value) noexcept
-        : value_{packed_pack<decltype(value_layout)>(value)} {}
+    constexpr explicit CellIndex(value_type const value) noexcept {
+        insert<decltype(value_layout)>(value);
+    }
 
     [[nodiscard]] constexpr auto operator<=>(CellIndex const&) const noexcept = default;
 
     [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
         return true;
     }
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> CellIndex {
-        return std::bit_cast<CellIndex>(raw);
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
-        return packed_extract<decltype(value_layout)>(value_);
+        return extract<decltype(value_layout)>();
     }
     constexpr void set_value(value_type const value) noexcept {
-        value_ = packed_insert<decltype(value_layout)>(value_, value);
+        insert<decltype(value_layout)>(value);
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
-
-  private:
-    storage_type value_{storage.default_raw_value};
 };
 
 static_assert(valid_packed_value_layout<CellIndex>());
 
-struct GridCellCount {
+struct GridCellCount;
+
+namespace detail {
+using GridCellCountBase = PackedValueBase<GridCellCount, std::uint32_t>;
+} // namespace detail
+
+struct GridCellCount : detail::GridCellCountBase {
   public:
-    // Storage and value
-    using storage_type = std::uint32_t;
+    // Storage
+    using Base = detail::GridCellCountBase;
+    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
     static constexpr PackedStorage<storage_type, 32> storage{0};
+
+    // value
     using value_type = std::uint32_t;
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{};
 
     constexpr GridCellCount() noexcept = default;
-    constexpr explicit GridCellCount(value_type const value) noexcept
-        : value_{packed_pack<decltype(value_layout)>(value)} {}
+    constexpr explicit GridCellCount(value_type const value) noexcept {
+        insert<decltype(value_layout)>(value);
+    }
 
     [[nodiscard]] constexpr auto operator<=>(GridCellCount const&) const noexcept = default;
 
     [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
         return true;
     }
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> GridCellCount {
-        return std::bit_cast<GridCellCount>(raw);
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
-        return packed_extract<decltype(value_layout)>(value_);
+        return extract<decltype(value_layout)>();
     }
     constexpr void set_value(value_type const value) noexcept {
-        value_ = packed_insert<decltype(value_layout)>(value_, value);
+        insert<decltype(value_layout)>(value);
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
-
-  private:
-    storage_type value_{storage.default_raw_value};
 };
 
 static_assert(valid_packed_value_layout<GridCellCount>());
 
-struct SphereInBoundsResult {
+struct SphereInBoundsResult;
+
+namespace detail {
+using SphereInBoundsResultBase = PackedValueBase<SphereInBoundsResult, std::uint8_t>;
+} // namespace detail
+
+struct SphereInBoundsResult : detail::SphereInBoundsResultBase {
   public:
-    // Storage and value
-    using storage_type = std::uint8_t;
+    // Storage
+    using Base = detail::SphereInBoundsResultBase;
+    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
     static constexpr PackedStorage<storage_type, 1> storage{0};
+
+    // value
     using value_type = std::uint8_t;
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{};
 
     constexpr SphereInBoundsResult() noexcept = default;
-    constexpr explicit SphereInBoundsResult(value_type const value) noexcept
-        : value_{packed_pack<decltype(value_layout)>(value)} {
+    constexpr explicit SphereInBoundsResult(value_type const value) noexcept {
         assert((is_valid_value(value)));
+        insert<decltype(value_layout)>(value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(SphereInBoundsResult const& other) const noexcept {
@@ -150,22 +163,13 @@ struct SphereInBoundsResult {
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= value_layout.value_mask;
     }
-    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
-        -> SphereInBoundsResult {
-        return std::bit_cast<SphereInBoundsResult>(raw);
-    }
-    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
-        return packed_extract<decltype(value_layout)>(value_);
+        return extract<decltype(value_layout)>();
     }
     constexpr void set_value(value_type const value) noexcept {
         assert((is_valid_value(value)));
-        value_ = packed_insert<decltype(value_layout)>(value_, value);
+        insert<decltype(value_layout)>(value);
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
-
-  private:
-    storage_type value_{storage.default_raw_value};
 };
 
 static_assert(valid_packed_value_layout<SphereInBoundsResult>());
