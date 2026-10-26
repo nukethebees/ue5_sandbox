@@ -2,6 +2,8 @@
 #include <ioj/layout/abi_profile.hpp>
 #include <ioj/layout/editor_session.hpp>
 #include <ioj/layout/resolved_variant.hpp>
+#include <ioj/layout/transaction.hpp>
+#include <ioj/layout/variants.hpp>
 #include <ioj/single_allocation/layout.h>
 
 namespace ioj::layout::analyzer_packed_tests {
@@ -16,9 +18,10 @@ static_assert(single_allocation_layout::supported_leaf<std::optional<OptionalSen
 TEST(AnalysisStrings, RetainsInternedTextAcrossGrowthAndReanalysis) {
     EditorSession editor;
     auto const document{editor.from_source(R"((module game :header "Game.h"
-        (packed-value Value :storage std::uint32_t
-          (field first std::uint8_t :bits 8)
-          (field second std::uint8_t :bits 8))))")};
+        (record Value :layout packed :bits 32
+          (member first std::uint8_t :bits 8)
+          (member second std::uint8_t :bits 8)
+    (projections (cpp :storage std::uint32_t)))))")};
     ASSERT_TRUE(document.valid());
     AnalysisStorage storage;
     AnalysisContext context{document, storage};
@@ -45,6 +48,64 @@ TEST(AnalysisStrings, RetainsInternedTextAcrossGrowthAndReanalysis) {
 
 class PackedAnalysisTest : public AnalysisTest {};
 
+TEST(PackedAnalysis, UsesResolvedNestedPlacementsAndDeduplicatesOverlappingAccesses) {
+    EditorSession editor;
+    auto const document{editor.from_source(R"((module game :header "Game.h"
+        (integer-scalar Code :bit-width 4)
+        (record Inner (member code @Code))
+        (union Choices (member first @Inner) (member second @Inner))
+        (record Value :layout packed :bits 16
+          (member present bool)
+          (member payload @Choices :bits 8)
+          (projections (cpp)))))")};
+    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
+    AnalysisStorage storage;
+    AnalysisContext context{document, storage};
+    AccessSet const accesses{{"payload", AccessOperation::read},
+                             {"payload_first_code", AccessOperation::read}};
+    auto const run{run_analysis(context, "Value", {.element_count = 10, .accesses = &accesses})};
+    auto const& result{storage.types.packed()[run.analysis.value].value()};
+    auto const type{document.find_type("game", "Value").value()};
+    auto const& resolved{document.types().bit_layout(type)};
+    ASSERT_EQ(result.fields.count, resolved.placements.size());
+    for (std::size_t index{}; index < resolved.placements.size(); ++index) {
+        auto const row{result.fields.begin + index};
+        EXPECT_EQ(storage.fields.name()[row], resolved.placements[index].path);
+        EXPECT_EQ(storage.fields.least_significant_bit()[row], resolved.placements[index].offset);
+        EXPECT_EQ(storage.fields.bit_width()[row], resolved.placements[index].extent);
+    }
+    EXPECT_EQ(storage.workloads.bits()[run.access->value].useful, 80);
+    EXPECT_EQ(storage.workloads.packed_waste()[run.access->value].unselected_field_bits, 10);
+    EXPECT_EQ(result.unused_bits, 7);
+}
+
+TEST(PackedAnalysis, ResolvesWiderAllocationAndStorageTogether) {
+    EditorSession editor;
+    auto document{editor.from_source(R"((module game :header "Game.h"
+        (integer-scalar Code :bit-width 4)
+        (record Value :layout packed
+          (member code @Code :bits 8)
+          (projections (cpp :storage std::uint8_t)))))")};
+    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
+    auto create{document.transaction()};
+    create.create_variant("Wider");
+    ASSERT_TRUE(document.commit(create));
+    auto const variant{document.variants().ids().back()};
+    auto edit{document.transaction()};
+    edit.set_variant_field_bits(variant, "game", "Value", "code", 16);
+    edit.set_variant_packed_storage(variant, "game", "Value", "std::uint32_t");
+    ASSERT_TRUE(document.commit(edit));
+    AnalysisStorage storage;
+    AnalysisContext context{document, storage};
+    auto const run{run_analysis(context, "Value", {.variant = variant})};
+    auto const& result{storage.types.packed()[run.analysis.value].value()};
+    EXPECT_EQ(result.storage_bits, 32);
+    EXPECT_EQ(result.bits_used, 16);
+    EXPECT_EQ(storage.fields.bit_width()[result.fields.begin], 16);
+    EXPECT_EQ(document.types().bit_layout(document.find_type("game", "Value").value()).encoded_bits,
+              8);
+}
+
 TEST_P(PackedAnalysisTest, ReportsPhysicalAndSemanticFacts) {
     verify_case();
 }
@@ -52,9 +113,12 @@ TEST_P(PackedAnalysisTest, ReportsPhysicalAndSemanticFacts) {
 AnalysisCase const cases[]{
     {"ReservedAndUnused",
      R"((module game :header "Game.h"
-        (packed-value Value :storage std::uint32_t
-          (field index std::uint32_t :bits 20)
-          (reserved future :bits 4) (field kind std::uint8_t :bits 4))))",
+        (integer-scalar Value_indexEncoding :signed false :bit-width 20)
+        (integer-scalar Value_kindEncoding :signed false :bit-width 4)
+        (record Value :layout packed :bits 32
+          (member index @Value_indexEncoding)
+          (reserved future :bits 4) (member kind @Value_kindEncoding)
+    (projections (cpp :storage std::uint32_t)))))",
      [](AnalysisContext& context) {
          auto const run{run_analysis(context, "Value", {.element_count = 100})};
          auto const& result{context.storage.types.packed()[run.analysis.value].value()};
@@ -74,9 +138,11 @@ AnalysisCase const cases[]{
      }},
     {"MostSignificantFirst",
      R"((module game :header "Game.h"
-        (packed-value Value :storage std::uint32_t :byte-order big :bit-order msb-first
-          (field index std::uint32_t :bits 20) (reserved future :bits 4)
-          (field kind std::uint8_t :bits 8))))",
+        (integer-scalar Value_indexEncoding :signed false :bit-width 20)
+        (record Value :layout packed :bits 32 :byte-order big :bit-order msb-first
+          (member index @Value_indexEncoding) (reserved future :bits 4)
+          (member kind std::uint8_t :bits 8)
+    (projections (cpp :storage std::uint32_t)))))",
      [](AnalysisContext& context) {
          auto const run{run_analysis(context)};
          auto const& result{context.storage.types.packed()[run.analysis.value].value()};
@@ -89,9 +155,11 @@ AnalysisCase const cases[]{
      }},
     {"SignedDomain",
      R"((module game :header "Game.h"
-        (packed-value Value :storage std::uint32_t
-          (field delta std::int32_t :bits auto :kind signed :minimum -100 :maximum 100
-            (code Invalid :value -128 :sentinel true)))))",
+        (integer-scalar Value_deltaEncoding :signed true :minimum -100 :maximum 100 (code Invalid :value -128 :sentinel true))
+        (record Value :layout packed :bits 32
+          (member delta @Value_deltaEncoding
+            )
+    (projections (cpp :storage std::uint32_t)))))",
      [](AnalysisContext& context) {
          auto const run{run_analysis(context)};
          auto const field{context.storage.types.packed()[run.analysis.value]->fields.begin};
@@ -108,9 +176,10 @@ AnalysisCase const cases[]{
         (integer-scalar Health :signed false :minimum 0 :maximum 1000)
         (linear-quantized Quantized :source Health :bits 8 :reserved-codes 2 :clipping clamp)
         (fixed-point Velocity :signed true :total-bits 12 :fractional-bits 4 :rounding toward-zero)
-        (packed-value Value :storage std::uint32_t
-          (field health Quantized :bits auto :kind linear-quantized)
-          (field speed Velocity :bits auto :kind fixed-point))))",
+        (record Value :layout packed :bits 32
+          (member health @Quantized)
+          (member speed @Velocity)
+    (projections (cpp :storage std::uint32_t)))))",
      [](AnalysisContext& context) {
          auto const run{run_analysis(context)};
          auto const& result{context.storage.types.packed()[run.analysis.value].value()};
@@ -127,7 +196,9 @@ AnalysisCase const cases[]{
      }},
     {"TargetComparison",
      R"((module game :header "Game.h"
-        (packed-value Value :storage std::uint32_t (field value std::uint32_t :bits 24))))",
+        (integer-scalar Value_valueEncoding :signed false :bit-width 24)
+        (record Value :layout packed :bits 32 (member value @Value_valueEncoding)
+    (projections (cpp :storage std::uint32_t)))))",
      [](AnalysisContext& context) {
          auto const type{context.document.find_type("game", "Value").value()};
          auto const abi{AbiProfile::host_common()};
@@ -163,9 +234,11 @@ AnalysisCase const cases[]{
      }},
     {"SelectedAccess",
      R"((module game :header "Game.h"
-        (packed-value Value :storage std::uint32_t
-          (field index std::uint32_t :bits 20) (reserved future :bits 4)
-          (field kind std::uint8_t :bits 8))))",
+        (integer-scalar Value_indexEncoding :signed false :bit-width 20)
+        (record Value :layout packed :bits 32
+          (member index @Value_indexEncoding) (reserved future :bits 4)
+          (member kind std::uint8_t :bits 8)
+    (projections (cpp :storage std::uint32_t)))))",
      [](AnalysisContext& context) {
          AccessSet const accesses{{"kind", AccessOperation::read}};
          auto const run{run_analysis(
@@ -207,8 +280,10 @@ TEST_P(RelationshipCapacityTest, DerivesWidthFromTargetExtent) {
     auto const& test{GetParam()};
     auto const source{std::string{R"((module game :header "Game.h"
         (struct Entities (member values array std::uint8_t))
-        (packed-value Handle :storage std::uint64_t
-          (field index std::uint64_t :bits 8 (relation )"} +
+        (integer-scalar Index :bit-width 8)
+        (record Handle :layout packed :bits 64
+          (projections (cpp :storage std::uint64_t))
+          (member index @Index (relation )"} +
                       std::string{test.relation} + " Entities))))"};
     auto const document{editor.from_source(source)};
     ASSERT_TRUE(document.valid());

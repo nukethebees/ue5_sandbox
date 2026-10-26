@@ -17,7 +17,7 @@
 (type optional_uint64_t :spelling "std::optional<std::uint64_t>" :header "cstdint")
 (type optional_size_t :spelling "std::optional<std::size_t>" :header "cstddef")
 (type optional_long_double :spelling "std::optional<long double>" :header "optional")
-(type packed_segment_id :spelling "lispb::schema::PackedSegmentId" :header "lispb/schema/packed_segment_id.h")
+(type child_occurrence_id :spelling "lispb::schema::ChildOccurrenceId" :header "lispb/schema/indices.h")
 (type optional_type_id :spelling "std::optional<lispb::schema::TypeId>" :header "lispb/schema/indices.h")
 (type string_id :spelling "lispb::StringId" :header "lispb/indices.h")
 (type packed_field_kind :spelling "lispb::codegen::PackedFieldKind" :header "codegen/schema/packed_field_kind.h")

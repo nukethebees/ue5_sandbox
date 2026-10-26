@@ -100,15 +100,14 @@ struct PhysicalCase {
     char const* name;
     char const* spelling;
     bool known;
-    char const* declaration{""};
 };
 class PhysicalSpelling : public testing::TestWithParam<PhysicalCase> {};
 TEST_P(PhysicalSpelling, DoesNotGuessUnsupportedOrMissingRepresentations) {
     EditorSession editor;
     auto const& test{GetParam()};
-    auto document{editor.from_source(std::string{R"((module test :header "Test.h" )"} +
-                                     test.declaration + R"((record Value (member value ")" +
-                                     test.spelling + "\")))")};
+    auto document{editor.from_source(
+        std::string{R"((module test :header "Test.h" (record Value (member value ")"} +
+        test.spelling + "\") (projections (cpp))))")};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto const profile{AbiProfile::host_common()};
     std::array requests{
@@ -119,27 +118,32 @@ TEST_P(PhysicalSpelling, DoesNotGuessUnsupportedOrMissingRepresentations) {
     auto const& facts{storage.types.physical()[storage.runs.front().analysis.value]};
     EXPECT_EQ(facts.has_value(), test.known);
 }
-INSTANTIATE_TEST_SUITE_P(
-    Uses,
-    PhysicalSpelling,
-    testing::Values(PhysicalCase{"Pointer", "Opaque*", true},
-                    PhysicalCase{"UnknownValue", "Opaque", false},
-                    PhysicalCase{"Array", "float[3]", false},
-                    PhysicalCase{"FunctionPointer", "float(*)()", false},
-                    PhysicalCase{"Reference", "float&", false},
-                    PhysicalCase{"RvalueReference", "float&&", false},
-                    PhysicalCase{"MemberPointer", "float Owner::*", false},
-                    PhysicalCase{"NestedUnknown", "Owner::Inner", false},
-                    PhysicalCase{"LogicalValue",
-                                 "Logical",
-                                 false,
-                                 "(integer-scalar Logical :signed false :minimum 0 :maximum 100)"}),
-    [](auto const& info) { return info.param.name; });
+INSTANTIATE_TEST_SUITE_P(Uses,
+                         PhysicalSpelling,
+                         testing::Values(PhysicalCase{"Pointer", "Opaque*", true},
+                                         PhysicalCase{"UnknownValue", "Opaque", false},
+                                         PhysicalCase{"Array", "float[3]", false},
+                                         PhysicalCase{"FunctionPointer", "float(*)()", false},
+                                         PhysicalCase{"Reference", "float&", false},
+                                         PhysicalCase{"RvalueReference", "float&&", false},
+                                         PhysicalCase{"MemberPointer", "float Owner::*", false},
+                                         PhysicalCase{"NestedUnknown", "Owner::Inner", false}),
+                         [](auto const& info) { return info.param.name; });
+
+TEST(PhysicalFacts, NativeProjectionRejectsLogicalOnlyMember) {
+    EditorSession editor;
+    auto const document{editor.from_source(R"((module test :header "Test.h"
+        (integer-scalar Logical :bit-width 7)
+        (record Value (member value @Logical) (projections (cpp)))))")};
+    EXPECT_FALSE(document.valid());
+    EXPECT_TRUE(diagnostic_messages(editor).contains("has no C++ owner for member value"));
+}
 
 TEST(PhysicalFacts, PointerPolicyRetainsManualEvidence) {
     EditorSession editor;
     auto document{editor.from_source(
-        R"((module test :header "Test.h" (record Value (member value "Opaque*"))))")};
+        R"((module test :header "Test.h" (record Value (member value "Opaque*")
+    (projections (cpp)))))")};
     ASSERT_TRUE(document.valid());
     AbiProfile profile{"assumed target"};
     TypeFacts pointer{};
@@ -166,7 +170,8 @@ TEST(PhysicalFacts, PointerPolicyRetainsManualEvidence) {
 TEST(PhysicalFacts, SuppliedFactsCannotSilentlyReplaceGeneratedLayout) {
     EditorSession editor;
     auto document{editor.from_source(
-        R"((module test :header "Test.h" (record Value (member value float))))")};
+        R"((module test :header "Test.h" (record Value (member value float)
+    (projections (cpp)))))")};
     ASSERT_TRUE(document.valid());
     auto profile{AbiProfile::host_common()};
     TypeFacts incorrect{};

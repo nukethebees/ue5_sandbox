@@ -1,5 +1,7 @@
 #include <ioj/layout/variants.hpp>
 
+#include <lispb/strings.h>
+
 #include <algorithm>
 #include <cassert>
 #include <utility>
@@ -155,14 +157,21 @@ void Variants::set_capacity(VariantId const id,
     }
 }
 
-void Variants::rename_member(lispb::schema::DeclarationId const type,
+void Variants::rename_member(lispb::Strings& strings,
+                             lispb::schema::DeclarationId const type,
                              lispb::StringId const old_name,
                              lispb::StringId const new_name) {
     for (auto& columns : settings_) {
         auto const fields{columns.field_types.size()};
         for (std::size_t row{}; row < fields; ++row) {
-            if (columns.field_types[row] == type && columns.field_names[row] == old_name) {
-                columns.field_names[row] = new_name;
+            if (columns.field_types[row] == type) {
+                auto const name{strings.view(columns.field_names[row])};
+                auto const before{strings.view(old_name)};
+                if (name == before || name.starts_with(std::string{before} + ".")) {
+                    columns.field_names[row] =
+                        strings.intern_retained(std::string{strings.view(new_name)} +
+                                                std::string{name.substr(before.size())});
+                }
             }
         }
         auto const columns_count{columns.column_types.size()};
@@ -173,10 +182,20 @@ void Variants::rename_member(lispb::schema::DeclarationId const type,
         }
     }
 }
-void Variants::erase_member(lispb::schema::DeclarationId const type, lispb::StringId const name) {
+void Variants::erase_member(lispb::Strings const& strings,
+                            lispb::schema::DeclarationId const type,
+                            lispb::StringId const name) {
     auto const count{ids_.size()};
     for (std::size_t row{1}; row < count; ++row) {
-        set_field_width(ids_[row], type, name, std::nullopt);
+        auto& columns{settings_[row]};
+        for (auto field{columns.field_names.size()}; field > 0; --field) {
+            auto const field_name{strings.view(columns.field_names[field - 1])};
+            auto const before{strings.view(name)};
+            if (columns.field_types[field - 1] == type &&
+                (field_name == before || field_name.starts_with(std::string{before} + "."))) {
+                set_field_width(ids_[row], type, columns.field_names[field - 1], std::nullopt);
+            }
+        }
         set_column_type(ids_[row], type, name, std::nullopt);
     }
 }

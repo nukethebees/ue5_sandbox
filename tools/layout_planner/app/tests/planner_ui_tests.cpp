@@ -66,11 +66,12 @@ TEST_F(PlannerUiTest, ChangedDocumentRequiresCloseConfirmation) {
     layout::EditorSession editor;
     auto document{editor.from_source(R"(
         (module game :header "Game.h"
-            (packed-value ShipState :storage std::uint16_t
-                (field health std::uint16_t :bits 8))))")};
+            (record ShipState :layout packed
+                (member health @LayoutEditValue :bits 8)
+    (projections (cpp :storage std::uint16_t))) (integer-scalar LayoutEditValue :bit-width 1)))")};
     ASSERT_TRUE(document.valid());
     auto transaction{document.transaction()};
-    transaction.set_field_bits("game", "ShipState", "health", 4);
+    transaction.set_member_bits("game", "ShipState", "health", 4);
     ASSERT_TRUE(document.commit(transaction));
     PlannerUi ui{editor, std::move(document)};
     draw(ui);
@@ -83,7 +84,8 @@ TEST_F(PlannerUiTest, ChangedDocumentRequiresCloseConfirmation) {
 TEST_F(PlannerUiTest, UnchangedFramesDoNotRepeatAnalysisDiagnostics) {
     layout::EditorSession editor;
     auto document{editor.from_source(R"((module game :header "Game.h"
-        (record Value (member value UnknownExternal))))")};
+        (record Value (member value UnknownExternal)
+    (projections (cpp)))))")};
     ASSERT_TRUE(document.valid());
     PlannerUi ui{editor, std::move(document)};
     draw(ui);

@@ -13,7 +13,6 @@
 #include "codegen/schema/packed_integer_value.h"
 #include "lispb/indices.h"
 #include "lispb/schema/indices.h"
-#include "lispb/schema/packed_segment_id.h"
 
 #include <cassert>
 #include <cstddef>
@@ -36,7 +35,7 @@ struct ResolvedConstView;
 struct Layout
     : ioj::single_allocation_layout::ColumnLayouts<
           AnalysisId,
-          lispb::schema::PackedSegmentId,
+          lispb::schema::ChildOccurrenceId,
           std::string_view,
           std::optional<lispb::schema::TypeId>,
           lispb::StringId,
@@ -93,7 +92,7 @@ struct DataPointers {
     template <typename T>
     using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
     Element<AnalysisId>* parent{};
-    Element<lispb::schema::PackedSegmentId>* segment{};
+    Element<lispb::schema::ChildOccurrenceId>* segment{};
     Element<std::string_view>* name{};
     Element<std::optional<lispb::schema::TypeId>>* semantic_type{};
     Element<lispb::StringId>* logical_type{};
@@ -266,7 +265,7 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         : Base{other} {}
     auto parent() const { return this->template column<AnalysisId>(Layout::parent_column); }
     auto segment() const {
-        return this->template column<lispb::schema::PackedSegmentId>(Layout::segment_column);
+        return this->template column<lispb::schema::ChildOccurrenceId>(Layout::segment_column);
     }
     auto name() const { return this->template column<std::string_view>(Layout::name_column); }
     auto semantic_type() const {
@@ -364,7 +363,7 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 /* **************************************** */
 // Columns:
 // parent: ioj::layout::AnalysisId
-// segment: lispb::schema::PackedSegmentId
+// segment: lispb::schema::ChildOccurrenceId
 // name: std::string_view
 // semantic_type: std::optional<lispb::schema::TypeId>
 // logical_type: lispb::StringId

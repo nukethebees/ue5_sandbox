@@ -9,7 +9,6 @@ include/ioj/layout/analysis/relationship_table.hpp
 include/ioj/layout/analysis/scalar_table.hpp
 include/ioj/layout/analysis/selection_table.hpp
 include/ioj/layout/analysis/soa_column_table.hpp
-include/ioj/layout/analysis/tag_table.hpp
 include/ioj/layout/analysis/type_analysis_table.hpp
 include/ioj/layout/analysis/workload_table.hpp
 src/analysis/code_table.cpp
@@ -22,6 +21,5 @@ src/analysis/relationship_table.cpp
 src/analysis/scalar_table.cpp
 src/analysis/selection_table.cpp
 src/analysis/soa_column_table.cpp
-src/analysis/tag_table.cpp
 src/analysis/type_analysis_table.cpp
 src/analysis/workload_table.cpp

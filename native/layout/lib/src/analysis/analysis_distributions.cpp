@@ -135,13 +135,16 @@ auto analyze_distribution(AnalysisContext& context,
                          0);
         }
     } else {
-        auto const tagged{kind == lispb::schema::TypeDefinitionKind::tagged_union};
-        assert(tagged || kind == lispb::schema::TypeDefinitionKind::union_type);
+        assert(kind == lispb::schema::TypeDefinitionKind::union_type);
         auto const& aggregate{storage.types.aggregate()[analysis.value]};
-        assert(aggregate.has_value());
+        if (!aggregate) {
+            context.report({DiagnosticSeverity::warning,
+                            "Union distribution requires a native C++ union projection."});
+            return id;
+        }
         auto const range{aggregate->members};
         auto const& components{storage.components};
-        auto const names{tagged ? components.tag() : components.name()};
+        auto const names{components.name()};
         StringSet seen;
         auto add_alternative = [&](std::string const& name, std::uint64_t weight) {
             if (!seen.insert(name).second) {
@@ -158,19 +161,6 @@ auto analyze_distribution(AnalysisContext& context,
             }
             if (component == end) {
                 auto role{std::string{"unknown"}};
-                if (tagged) {
-                    auto const& tags{storage.tags};
-                    auto const tags_end{aggregate->tags.begin + aggregate->tags.count};
-                    for (auto tag{aggregate->tags.begin}; tag != tags_end; ++tag) {
-                        if (tags.name()[tag] != name) {
-                            continue;
-                        }
-                        role = tags.count_sentinel()[tag] ? "count sentinel"
-                             : tags.sentinel()[tag]       ? "sentinel"
-                                                          : "unmapped live";
-                        break;
-                    }
-                }
                 context.report({DiagnosticSeverity::error,
                                 "Distribution alternative '" + name + "' is " + role +
                                     " and has no payload alternative."});
@@ -182,14 +172,8 @@ auto analyze_distribution(AnalysisContext& context,
                          components.extent_bytes()[component],
                          components.slack_bytes()[component]);
         };
-        if (tagged) {
-            for (auto const& entry : request.tagged_union_distribution) {
-                add_alternative(entry.tag, entry.weight);
-            }
-        } else {
-            for (auto const& entry : request.union_distribution) {
-                add_alternative(entry.alternative_name, entry.weight);
-            }
+        for (auto const& entry : request.union_distribution) {
+            add_alternative(entry.alternative_name, entry.weight);
         }
     }
 

@@ -4,11 +4,42 @@
 
 #include <codegen/sexpr/source_error.h>
 
+#include <algorithm>
 #include <cassert>
 #include <stdexcept>
 #include <utility>
 
 namespace ioj::layout {
+namespace {
+void validate_variant_paths(DocumentState const& state) {
+    auto const& types{state.types};
+    auto const& strings{state.storage().strings};
+    for (auto const variant : state.variants.ids()) {
+        auto const& settings{state.variants.settings(variant)};
+        auto const count{settings.field_types.size()};
+        for (std::size_t row{}; row < count; ++row) {
+            auto const path{strings.view(settings.field_names[row])};
+            bool found{};
+            for (auto const type : types.types()) {
+                auto const declaration{state.declaration_ids.find(types.source_declaration(type))};
+                if (declaration == state.declaration_ids.end() ||
+                    declaration->second != settings.field_types[row]) {
+                    continue;
+                }
+                auto const& placements{types.bit_layout(type).placements};
+                found = std::ranges::any_of(placements, [&](auto const& placement) {
+                    return !placement.reserved && placement.source_path == path;
+                });
+                break;
+            }
+            if (!found) {
+                throw std::invalid_argument{"Unknown packed member path '" + std::string{path} +
+                                            "'"};
+            }
+        }
+    }
+}
+}
 Document::Document(EditorSession& session, DocumentId id)
     : session_{&session}
     , id_{id} {}
@@ -121,6 +152,7 @@ auto Document::replay(std::size_t position) -> bool {
     try {
         auto candidate{reconstruct(position)};
         current.types = lispb::schema::resolve_type_graph(candidate);
+        validate_variant_paths(current);
         current.modules = std::move(candidate.modules);
         current.position = position;
         current.valid = true;
@@ -156,6 +188,7 @@ auto Document::commit(Transaction const& transaction) -> bool {
         auto const changed{current.changed || candidate.modules != previous_modules ||
                            current.source_order != previous_sources};
         current.types = lispb::schema::resolve_type_graph(candidate);
+        validate_variant_paths(current);
         current.modules = std::move(candidate.modules);
         current.valid = true;
         session_->capture_diagnostics(id_);

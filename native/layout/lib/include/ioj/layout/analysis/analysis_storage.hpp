@@ -11,7 +11,6 @@
 #include <ioj/layout/analysis/scalar_table.hpp>
 #include <ioj/layout/analysis/selection_table.hpp>
 #include <ioj/layout/analysis/soa_column_table.hpp>
-#include <ioj/layout/analysis/tag_table.hpp>
 #include <ioj/layout/analysis/type_analysis_table.hpp>
 #include <ioj/layout/analysis/workload_table.hpp>
 
@@ -34,7 +33,6 @@ struct AnalysisStorage {
     PackedFieldTable fields;
     SoaColumnTable columns;
     RelationshipTable relationships;
-    TagTable tags;
     WorkloadTable workloads;
     SelectionTable selections;
     DistributionTable distributions;

@@ -1,7 +1,6 @@
 #pragma once
 #include <ioj/layout/access_set.hpp>
 #include <ioj/layout/analyzer/integer_varint_distribution_entry.hpp>
-#include <ioj/layout/analyzer/tagged_union_distribution_entry.hpp>
 #include <ioj/layout/analyzer/union_distribution_entry.hpp>
 #include <ioj/layout/variant_id.hpp>
 
@@ -22,6 +21,5 @@ struct AnalysisRequest {
     bool distribution_requested{};
     std::span<IntegerVarintDistributionEntry const> varint_distribution{};
     std::span<UnionDistributionEntry const> union_distribution{};
-    std::span<TaggedUnionDistributionEntry const> tagged_union_distribution{};
 };
 }

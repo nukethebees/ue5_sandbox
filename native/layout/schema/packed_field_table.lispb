@@ -6,7 +6,7 @@
   :prelude #cpp{#include <optional>}cpp#
   (struct PackedFieldTable
     (member parent array @analysis_id)
-    (member segment array @packed_segment_id)
+    (member segment array @child_occurrence_id)
     (member name array @string_view)
     (member semantic_type array @optional_type_id)
     (member logical_type array @string_id)

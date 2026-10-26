@@ -9,6 +9,10 @@
 #include <string>
 #include <vector>
 
+namespace lispb {
+class Strings;
+}
+
 namespace ioj::layout {
 
 // Authored variants in SoA form. Member identifiers belong to the owning Document's strings.
@@ -38,10 +42,13 @@ class Variants {
     void set_capacity(VariantId id,
                       lispb::schema::DeclarationId type,
                       std::optional<std::uint64_t> value);
-    void rename_member(lispb::schema::DeclarationId type,
+    void rename_member(lispb::Strings& strings,
+                       lispb::schema::DeclarationId type,
                        lispb::StringId old_name,
                        lispb::StringId new_name);
-    void erase_member(lispb::schema::DeclarationId type, lispb::StringId name);
+    void erase_member(lispb::Strings const& strings,
+                      lispb::schema::DeclarationId type,
+                      lispb::StringId name);
     void erase_declaration(lispb::schema::DeclarationId type);
     auto operator==(Variants const&) const -> bool = default;
   private:

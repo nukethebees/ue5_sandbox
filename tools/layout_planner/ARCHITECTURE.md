@@ -48,12 +48,14 @@ Independent facts, such as cache and page coverage, remain independent.
 
 LispB schemas in `native/layout/schema` define the analysis tables. The
 `layout-analysis` generation target emits their vector storage, views and
-accessors into the build directory. Generated reset operations clear all
-columns while retaining capacity. Numerical passes remain ordinary C++.
+accessors into `native/layout/lib/include` and `native/layout/lib/src`.
+Generated reset operations clear all columns while retaining capacity.
+Numerical passes remain ordinary C++.
 
 `Analyzer` borrows its inputs, output tables and diagnostic context. Ordered
-passes resolve dependencies, calculate layouts, then evaluate relationships and
-workloads. Identical requests share rows within one run. Each run clears and
+passes resolve dependencies, consume LispB's resolved bit layouts and calculate
+native ABI layouts, then evaluate relationships and workloads. Identical
+requests share rows within one run. Each run clears and
 rebuilds the tables; comparisons read existing rows instead of copying results.
 
 Missing ABI facts remain unknown. Semantic widths do not imply object sizes.

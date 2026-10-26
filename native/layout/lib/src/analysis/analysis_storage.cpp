@@ -10,7 +10,6 @@ void AnalysisStorage::clear() {
     fields.reset();
     columns.reset();
     relationships.reset();
-    tags.reset();
     workloads.reset();
     selections.reset();
     distributions.reset();

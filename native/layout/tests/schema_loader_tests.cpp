@@ -26,8 +26,9 @@ class DocumentFiles {
             (cpp-schema game :types "types.lispb" :sources ("game.lispb")
                 :output-root (project-path "generated"))))");
         write("game.lispb", R"((module game :header "Game.h"
-            (packed-value State :storage std::uint16_t
-                (field health std::uint16_t :bits 8))))");
+            (record State :layout packed
+                (member health @LayoutEditValue :bits 8)
+    (projections (cpp :storage std::uint16_t))) (integer-scalar LayoutEditValue :bit-width 1)))");
     }
     ~DocumentFiles() {
         std::error_code ignored;
@@ -54,21 +55,21 @@ TEST(DocumentFiles, SavesReloadsAndUndoesAcrossSaveBoundary) {
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     EXPECT_FALSE(document.dirty());
     auto tx{document.transaction()};
-    tx.set_field_bits("game", "State", "health", 12);
+    tx.set_member_bits("game", "State", "health", 12);
     ASSERT_TRUE(document.commit(tx)) << diagnostic_messages(editor);
     EXPECT_TRUE(document.dirty());
     ASSERT_TRUE(document.save());
     EXPECT_FALSE(document.dirty());
     auto reloaded{editor.load(files.path("project.lispb"), "game")};
     ASSERT_TRUE(reloaded.valid()) << diagnostic_messages(editor);
-    EXPECT_EQ(reloaded.query().module("game").packed_value("State").field("health").bits(), 12);
+    EXPECT_EQ(reloaded.query().module("game").record("State").member("health").bits(), 12);
     ASSERT_TRUE(document.undo());
     EXPECT_TRUE(document.dirty());
-    EXPECT_EQ(document.query().module("game").packed_value("State").field("health").bits(), 8);
+    EXPECT_EQ(document.query().module("game").record("State").member("health").bits(), 8);
     ASSERT_TRUE(document.save());
     ASSERT_TRUE(document.redo());
     EXPECT_TRUE(document.dirty());
-    EXPECT_EQ(document.query().module("game").packed_value("State").field("health").bits(), 12);
+    EXPECT_EQ(document.query().module("game").record("State").member("health").bits(), 12);
 }
 
 TEST(DocumentFiles, DetectsExternalChangesWithoutDiscardingDraft) {
@@ -77,7 +78,7 @@ TEST(DocumentFiles, DetectsExternalChangesWithoutDiscardingDraft) {
     auto document{editor.load(files.path("project.lispb"), "game")};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto tx{document.transaction()};
-    tx.set_field_bits("game", "State", "health", 12);
+    tx.set_member_bits("game", "State", "health", 12);
     ASSERT_TRUE(document.commit(tx)) << diagnostic_messages(editor);
     auto const external{files.read("game.lispb") + "\n; external edit\n"};
     files.write("game.lispb", external);
@@ -85,7 +86,7 @@ TEST(DocumentFiles, DetectsExternalChangesWithoutDiscardingDraft) {
     EXPECT_EQ(files.read("game.lispb"), external);
     EXPECT_TRUE(document.dirty());
     EXPECT_TRUE(document.can_undo());
-    EXPECT_EQ(document.query().module("game").packed_value("State").field("health").bits(), 12);
+    EXPECT_EQ(document.query().module("game").record("State").member("health").bits(), 12);
     EXPECT_GT(editor.diagnostics().size(), editor.last_diagnostic_begin());
 }
 
@@ -95,15 +96,16 @@ TEST(DocumentFiles, SourceAdditionSharesSchemaHistoryAndPublishesProject) {
     auto document{editor.load(files.path("project.lispb"), "game")};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto tx{document.transaction()};
-    tx.add_source("extra.lispb", R"((module extra :header "Extra.h" (record Added)))");
+    tx.add_source("extra.lispb", R"((module extra :header "Extra.h" (record Added
+    (projections (cpp)))))");
     tx.add_member("extra", "Added", "value", "std::uint32_t");
-    tx.set_field_bits("game", "State", "health", 12);
+    tx.set_member_bits("game", "State", "health", 12);
     ASSERT_TRUE(document.commit(tx)) << diagnostic_messages(editor);
     EXPECT_TRUE(document.find_type("extra", "Added"));
     EXPECT_FALSE(std::filesystem::exists(files.path("extra.lispb")));
     ASSERT_TRUE(document.undo());
     EXPECT_FALSE(document.find_type("extra", "Added"));
-    EXPECT_EQ(document.query().module("game").packed_value("State").field("health").bits(), 8);
+    EXPECT_EQ(document.query().module("game").record("State").member("health").bits(), 8);
     ASSERT_TRUE(document.redo());
     ASSERT_TRUE(document.save());
     EXPECT_TRUE(std::filesystem::exists(files.path("extra.lispb")));
@@ -122,7 +124,8 @@ TEST(DocumentFiles, UnregistersSourceWithoutDeletingOriginalFile) {
     auto const original{files.read("game.lispb")};
     auto tx{document.transaction()};
     tx.add_source("replacement.lispb",
-                  R"((module replacement :header "Replacement.h" (record New)))");
+                  R"((module replacement :header "Replacement.h" (record New
+    (projections (cpp)))))");
     tx.remove_source("game.lispb");
     ASSERT_TRUE(document.commit(tx)) << diagnostic_messages(editor);
     EXPECT_FALSE(document.find_type("game", "State"));
@@ -141,14 +144,14 @@ TEST(DocumentFiles, RenamesSourceAndRetainsItsEditedContents) {
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto tx{document.transaction()};
     tx.rename_source("game.lispb", "schema/renamed.lispb");
-    tx.set_field_bits("game", "State", "health", 12);
+    tx.set_member_bits("game", "State", "health", 12);
     ASSERT_TRUE(document.commit(tx)) << diagnostic_messages(editor);
     ASSERT_TRUE(document.save());
     EXPECT_TRUE(std::filesystem::exists(files.path("schema/renamed.lispb")));
     EXPECT_FALSE(std::filesystem::exists(files.path("game.lispb")));
     auto reloaded{editor.load(files.path("project.lispb"), "game")};
     ASSERT_TRUE(reloaded.valid()) << diagnostic_messages(editor);
-    EXPECT_EQ(reloaded.query().module("game").packed_value("State").field("health").bits(), 12);
+    EXPECT_EQ(reloaded.query().module("game").record("State").member("health").bits(), 12);
     ASSERT_TRUE(document.undo());
     ASSERT_TRUE(document.save());
     EXPECT_TRUE(std::filesystem::exists(files.path("game.lispb")));
@@ -159,7 +162,8 @@ TEST(DocumentFiles, SavesInMemorySourcesAndRegistryAsIndependentProject) {
     EditorSession editor;
     DocumentFiles files;
     auto document{editor.from_source(
-        R"((module game :header "Game.h" (record Entity (member value @external))))",
+        R"((module game :header "Game.h" (record Entity (member value @external)
+    (projections (cpp)))))",
         R"((type external :spelling "External" :header "External.h"))")};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto tx{document.transaction()};
@@ -200,8 +204,9 @@ TEST(DocumentFiles, FailedStagingPreservesPublishedFilesAndDraftHistory) {
     auto document{editor.load(files.path("project.lispb"), "game")};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto tx{document.transaction()};
-    tx.set_field_bits("game", "State", "health", 12);
-    tx.add_source("blocked/new.lispb", R"((module added :header "Added.h" (record New)))");
+    tx.set_member_bits("game", "State", "health", 12);
+    tx.add_source("blocked/new.lispb", R"((module added :header "Added.h" (record New
+    (projections (cpp)))))");
     ASSERT_TRUE(document.commit(tx)) << diagnostic_messages(editor);
     EXPECT_FALSE(document.save());
     EXPECT_EQ(files.read("game.lispb"), original_schema);
@@ -242,7 +247,7 @@ TEST(DocumentFiles, LeavesUneditedFilesAndRegistryIncludesUntouched) {
     auto document{editor.load(files.path("project.lispb"), "game")};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto tx{document.transaction()};
-    tx.set_field_bits("game", "State", "health", 12);
+    tx.set_member_bits("game", "State", "health", 12);
     ASSERT_TRUE(document.commit(tx)) << diagnostic_messages(editor);
     ASSERT_TRUE(document.save());
     EXPECT_EQ(files.read("types.lispb"), registry);
@@ -256,7 +261,8 @@ TEST(DocumentFiles, HistoryUsesCapturedInputsAfterProjectAndRegistryFilesChange)
     files.write("common/scalars.lispb", R"((type byte :spelling "std::uint8_t"
         (integer :signed false :bit-width 8)))");
     files.write("game.lispb", R"((module game :header "Game.h"
-        (record Value (member code @byte))))");
+        (record Value (member code @byte)
+    (projections (cpp)))))");
     auto document{editor.load(files.path("project.lispb"), "game")};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto const original{document.declaration_source("game", "Value")};

@@ -5,7 +5,6 @@ void AnalysisSettings::erase_declaration(lispb::schema::DeclarationId declaratio
     access_sets.erase(declaration);
     varint_distributions.erase(declaration);
     union_distributions.erase(declaration);
-    tagged_union_distributions.erase(declaration);
 }
 void AnalysisSettings::rename_member(lispb::schema::DeclarationId declaration,
                                      std::string_view before,

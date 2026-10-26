@@ -14,7 +14,6 @@ enum class DeclarationKind {
     packed,
     record,
     union_,
-    tagged_union,
     soa,
     static_table,
     facade,

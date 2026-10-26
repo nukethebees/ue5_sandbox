@@ -3,7 +3,6 @@
 #include <ioj/layout/abi_profile.hpp>
 #include <ioj/layout/access_set.hpp>
 #include <ioj/layout/analyzer/integer_varint_distribution_entry.hpp>
-#include <ioj/layout/analyzer/tagged_union_distribution_entry.hpp>
 #include <ioj/layout/analyzer/union_distribution_entry.hpp>
 
 #include <lispb/schema/indices.h>
@@ -32,6 +31,5 @@ struct AnalysisSettings {
     DeclIdMap<AccessSet> access_sets{};
     DeclIdMap<std::vector<IntegerVarintDistributionEntry>> varint_distributions{};
     DeclIdMap<std::vector<UnionDistributionEntry>> union_distributions{};
-    DeclIdMap<std::vector<TaggedUnionDistributionEntry>> tagged_union_distributions{};
 };
 }

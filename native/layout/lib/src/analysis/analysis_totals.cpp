@@ -44,19 +44,11 @@ auto compute_element_totals(AnalysisContext& context,
         result.total_storage_bytes = scale(element_bytes, "Storage bytes");
     }
     if (aggregate) {
-        result.total_payload_bytes =
-            scale(aggregate->payload_size_bytes ? aggregate->payload_size_bytes
-                                                : aggregate->payload_bytes,
-                  "Payload bytes");
+        result.total_payload_bytes = scale(aggregate->payload_bytes, "Payload bytes");
         result.total_internal_padding_bytes =
             scale(aggregate->internal_padding_bytes, "Internal padding bytes");
         result.total_tail_padding_bytes =
             scale(aggregate->tail_padding_bytes, "Tail padding bytes");
-        result.total_discriminant_bytes =
-            scale(aggregate->discriminant_facts.transform([&](PhysicalFactId fact) {
-                return storage.physical_facts.size_bytes()[fact.value];
-            }),
-                  "Discriminant bytes");
         if (result.total_internal_padding_bytes && result.total_tail_padding_bytes) {
             result.total_padding_bytes =
                 checked_add(*result.total_internal_padding_bytes, *result.total_tail_padding_bytes);

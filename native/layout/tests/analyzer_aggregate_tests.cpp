@@ -14,7 +14,8 @@ AnalysisCase const cases[]{
     {"RecordPadding",
      R"((module game :header "Game.h"
         (record Value (member small std::uint8_t) (member wide std::uint32_t)
-          (member tail std::uint8_t))))",
+          (member tail std::uint8_t)
+    (projections (cpp)))))",
      [](AnalysisContext& context) {
          auto const run{run_analysis(context, "Value", {.element_count = 100})};
          auto const& result{context.storage.types.aggregate()[run.analysis.value].value()};
@@ -32,8 +33,10 @@ AnalysisCase const cases[]{
      }},
     {"NestedFixedArrays",
      R"((module game :header "Game.h"
-        (record Pair (member x float) (member y float))
-        (record Value (member pairs Pair :count 3) (member marker std::uint8_t))))",
+        (record Pair (member x float) (member y float)
+    (projections (cpp)))
+        (record Value (member pairs Pair :count 3) (member marker std::uint8_t)
+    (projections (cpp)))))",
      [](AnalysisContext& context) {
          auto const run{run_analysis(context)};
          auto const& result{context.storage.types.aggregate()[run.analysis.value].value()};
@@ -43,10 +46,12 @@ AnalysisCase const cases[]{
      }},
     {"PointerAndSemanticAlias",
      R"((module game :header "Game.h"
-        (record Pair (member x float) (member y float))
+        (record Pair (member x float) (member y float)
+    (projections (cpp)))
         (integer-scalar Count :signed false :minimum 0 :maximum 100
-          :cpp-emission alias :cpp-type std::uint16_t)
-        (record Value (member pointer (type-ref Pair :suffix "*")) (member count Count))))",
+    (projections (cpp :storage std::uint16_t)))
+        (record Value (member pointer (type-ref Pair :suffix "*")) (member count Count)
+    (projections (cpp)))))",
      [](AnalysisContext& context) {
          auto const run{run_analysis(context)};
          auto const members{context.storage.types.aggregate()[run.analysis.value]->members};
@@ -56,7 +61,8 @@ AnalysisCase const cases[]{
     {"UnknownMemberPreservesPrefix",
      R"((module game :header "Game.h"
         (record Value (member first std::uint32_t) (member unknown Opaque)
-          (member last double))))",
+          (member last double)
+    (projections (cpp)))))",
      [](AnalysisContext& context) {
          auto const run{run_analysis(context, "Value", {}, true)};
          auto const& result{context.storage.types.aggregate()[run.analysis.value].value()};
@@ -67,7 +73,8 @@ AnalysisCase const cases[]{
      }},
     {"AggregateOverflow",
      R"((module game :header "Game.h"
-        (record Value (member items std::uint64_t :count 18446744073709551615))))",
+        (record Value (member items std::uint64_t :count 18446744073709551615)
+    (projections (cpp)))))",
      [](AnalysisContext& context) {
          auto const run{run_analysis(context, "Value", {}, true)};
          auto const& result{context.storage.types.aggregate()[run.analysis.value].value()};
@@ -76,7 +83,8 @@ AnalysisCase const cases[]{
      }},
     {"RecordTargetsAndWorkload",
      R"((module game :header "Game.h"
-        (record Value (member small std::uint8_t) (member wide std::uint32_t))))",
+        (record Value (member small std::uint8_t) (member wide std::uint32_t)
+    (projections (cpp)))))",
      [](AnalysisContext& context) {
          auto const type{context.document.find_type("game", "Value").value()};
          auto const abi{AbiProfile::host_common()};
@@ -114,8 +122,9 @@ AnalysisCase const cases[]{
      }},
     {"UnionSlackAndDistribution",
      R"((module game :header "Game.h"
-        (union Value (alternative word std::uint32_t)
-          (alternative bytes std::uint8_t :count 10))))",
+        (union Value (member word std::uint32_t)
+          (member bytes std::uint8_t :count 10)
+    (projections (cpp)))))",
      [](AnalysisContext& context) {
          std::array const entries{UnionDistributionEntry{"word", 3},
                                   UnionDistributionEntry{"bytes", 1}};
@@ -138,8 +147,10 @@ AnalysisCase const cases[]{
      }},
     {"NestedUnion",
      R"((module game :header "Game.h"
-        (record Pair (member x double) (member y double))
-        (union Value (alternative pair Pair) (alternative byte std::uint8_t))))",
+        (record Pair (member x double) (member y double)
+    (projections (cpp)))
+        (union Value (member pair Pair) (member byte std::uint8_t)
+    (projections (cpp)))))",
      [](AnalysisContext& context) {
          auto const run{run_analysis(
              context, "Value", {.element_count = std::numeric_limits<std::uint64_t>::max()}, true)};
@@ -148,28 +159,27 @@ AnalysisCase const cases[]{
          EXPECT_EQ(result.alignment_bytes, 8);
          EXPECT_FALSE(context.storage.totals[0].total_storage_bytes);
      }},
-    {"TaggedUnion",
+    {"DiscriminatedUnionRecord",
      R"((module game :header "Game.h"
         (enum Kind std::uint8_t :count Count
-          (value Small) (value Bytes) (value Spare) (value Invalid :sentinel true) (value Count))
-        (tagged-union Value :discriminant Kind
-          (alternative small std::uint32_t :tag Small)
-          (alternative bytes std::uint8_t :tag Bytes :count 10))))",
+          (value Small) (value Bytes) (value Spare) (value Invalid :sentinel true) (value Count)
+    (projections (cpp)))
+        (union Payload
+          (member small std::uint32_t :case Small)
+          (member bytes std::uint8_t :case Bytes :count 10)
+          (projections (cpp)))
+        (record Value
+          (member tag @Kind)
+          (member payload @Payload :tag tag)
+          (projections (cpp)))))",
      [](AnalysisContext& context) {
          auto const run{run_analysis(context, "Value", {.element_count = 100})};
          auto const& result{context.storage.types.aggregate()[run.analysis.value].value()};
-         EXPECT_EQ(result.payload_offset_bytes, 4);
-         EXPECT_EQ(result.payload_size_bytes, 12);
+         EXPECT_EQ(context.storage.components.offset_bytes()[result.members.begin + 1], 4);
+         EXPECT_EQ(context.storage.components.extent_bytes()[result.members.begin + 1], 12);
          EXPECT_EQ(result.internal_padding_bytes, 3);
          EXPECT_EQ(result.size_bytes, 16);
          EXPECT_EQ(context.storage.totals[0].total_storage_bytes, 1600);
-         auto const& tags{context.storage.tags};
-         EXPECT_TRUE(tags.mapped()[result.tags.begin]);
-         EXPECT_TRUE(tags.mapped()[result.tags.begin + 1]);
-         EXPECT_EQ(tags.name()[result.tags.begin + 2], "Spare");
-         EXPECT_FALSE(tags.mapped()[result.tags.begin + 2]);
-         EXPECT_EQ(tags.name()[result.tags.begin + 3], "Invalid");
-         EXPECT_TRUE(tags.sentinel()[result.tags.begin + 3]);
      }}};
 
 INSTANTIATE_TEST_SUITE_P(Source,

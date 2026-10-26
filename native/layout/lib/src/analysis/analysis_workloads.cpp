@@ -9,6 +9,7 @@
 #include <ioj/layout/analysis/analysis_storage.hpp>
 
 #include <algorithm>
+#include <bit>
 #include <cassert>
 #include <string>
 #include <utility>
@@ -230,6 +231,17 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
     bool writes_complete{true};
     bool has_reads{};
     bool has_writes{};
+    std::uint64_t selected_bits{};
+    std::uint64_t read_bits{};
+    std::uint64_t written_bits{};
+    auto const packed_mask = [&](std::size_t field) {
+        auto const offset{storage.fields.least_significant_bit()[field]};
+        auto const bits{storage.fields.bit_width()[field]};
+        if (offset >= 64 || bits > 64 - offset) {
+            return std::uint64_t{};
+        }
+        return bits == 64 ? ~std::uint64_t{} : ((std::uint64_t{1} << bits) - 1) << offset;
+    };
 
     if (soa) {
         table.storage_bytes()[row] = soa->total_allocation_bytes;
@@ -290,6 +302,14 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
             accumulate_payload(context, payload, selected_payload);
 
             if (packed) {
+                auto const mask{packed_mask(child)};
+                selected_bits |= mask;
+                if (access_includes_read(operation)) {
+                    read_bits |= mask;
+                }
+                if (access_includes_write(operation)) {
+                    written_bits |= mask;
+                }
                 continue;
             }
             auto const offset{soa ? storage.columns.allocation_offset_bytes()[child]
@@ -350,6 +370,14 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
         return id;
     }
 
+    if (packed) {
+        payload.useful = multiply(
+            context, std::popcount(selected_bits), request.element_count, "Selected field bits");
+        payload.read =
+            multiply(context, std::popcount(read_bits), request.element_count, "Read field bits");
+        payload.write = multiply(
+            context, std::popcount(written_bits), request.element_count, "Written field bits");
+    }
     finish_payload(context, payload, request.multiplicity);
     if (packed) {
         auto& waste{table.packed_waste()[row]};
@@ -360,19 +388,18 @@ auto analyze_access(AnalysisContext& context, AnalysisRequest const& request, An
             error(context, "Selected useful bits exceed the packed physical storage footprint.");
         }
         if (packed->unused_bits && waste.storage_bits) {
-            Quantity unselected{0};
+            std::uint64_t unselected{};
             auto const end{range.begin + range.count};
             for (auto field{range.begin}; field != end; ++field) {
                 if (!storage.fields.reserved()[field] &&
                     !request.accesses->contains(storage.fields.name()[field])) {
-                    accumulate(context,
-                               unselected,
-                               storage.fields.bit_width()[field],
-                               "Unselected field bits");
+                    unselected |= packed_mask(field);
                 }
             }
-            waste.unselected_field_bits =
-                multiply(context, unselected, request.element_count, "Unselected field bits");
+            waste.unselected_field_bits = multiply(context,
+                                                   std::popcount(unselected & ~selected_bits),
+                                                   request.element_count,
+                                                   "Unselected field bits");
             waste.reserved_bits = multiply(
                 context, packed->reserved_bits, request.element_count, "Reserved region bits");
             waste.unused_bits = multiply(

@@ -158,7 +158,8 @@ type "void*" 8 8 non-integer unknown "generic target representation" compiler-pr
     ASSERT_TRUE(profile);
     ASSERT_FALSE(profile->object_pointer_representation());
     auto const document{editor.from_source(R"((module test :header "Test.h"
-        (record Value (member exact "Opaque*") (member deep "Opaque**"))))")};
+        (record Value (member exact "Opaque*") (member deep "Opaque**")
+          (projections (cpp)))))")};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     std::array requests{
         AnalysisRequest{.type = *document.find_type("test", "Value"), .abi = &*profile}};

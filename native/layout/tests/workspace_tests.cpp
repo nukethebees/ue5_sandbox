@@ -1,3 +1,4 @@
+#include "document_test_support.hpp"
 #include <ioj/layout/document.hpp>
 #include <ioj/layout/editor_session.hpp>
 
@@ -13,8 +14,9 @@
 
 namespace ioj::layout::workspace_tests {
 constexpr std::string_view source{R"((module game :header "Game.h"
-    (packed-value State :storage std::uint16_t (field health std::uint16_t :bits 8))
-    (struct Ships (member values array std::uint32_t))))"};
+    (record State :layout packed (member health @LayoutEditValue :bits 8)
+    (projections (cpp :storage std::uint16_t)))
+    (struct Ships (member values array std::uint32_t)) (integer-scalar LayoutEditValue :bit-width 1)))"};
 
 TEST(DocumentVariants, CreatesDuplicatesRenamesResetsAndDeletesThroughHistory) {
     EditorSession editor;
@@ -58,7 +60,7 @@ TEST(DocumentVariants, MixedSchemaAndVariantEditsUndoAsOneTransaction) {
     ASSERT_TRUE(doc.commit(create));
     auto const variant{doc.variants().ids().back()};
     auto edit{doc.transaction()};
-    edit.set_field_bits("game", "State", "health", 12);
+    edit.set_member_bits("game", "State", "health", 12);
     edit.set_variant_packed_storage(variant, "game", "State", "std::uint32_t");
     edit.set_variant_field_bits(variant, "game", "State", "health", 20);
     edit.set_variant_member_type(variant, "game", "Ships", "values", "std::uint16_t");
@@ -70,10 +72,10 @@ TEST(DocumentVariants, MixedSchemaAndVariantEditsUndoAsOneTransaction) {
     EXPECT_EQ(settings.column_spelling, (std::vector<std::string>{"std::uint16_t"}));
     EXPECT_EQ(settings.capacities, (std::vector<std::uint64_t>{42}));
     ASSERT_TRUE(doc.undo());
-    EXPECT_EQ(doc.query().module("game").packed_value("State").field("health").bits(), 8);
+    EXPECT_EQ(doc.query().module("game").record("State").member("health").bits(), 8);
     EXPECT_EQ(doc.variants().settings(variant), VariantSettings{});
     ASSERT_TRUE(doc.redo());
-    EXPECT_EQ(doc.query().module("game").packed_value("State").field("health").bits(), 12);
+    EXPECT_EQ(doc.query().module("game").record("State").member("health").bits(), 12);
 }
 
 TEST(DocumentVariants, ResolvesOverridesAfterRenameAndAllowsSpeculativeOverflow) {
@@ -92,7 +94,7 @@ TEST(DocumentVariants, ResolvesOverridesAfterRenameAndAllowsSpeculativeOverflow)
     auto const declaration{doc.find_declaration(doc.types().identity(renamed)).value()};
     EXPECT_EQ(doc.variants().settings(variant).field_types.front(), declaration);
     EXPECT_EQ(doc.variants().settings(variant).field_widths.front(), 24);
-    EXPECT_EQ(doc.query().module("game").packed_value("Renamed").field("health").bits(), 8);
+    EXPECT_EQ(doc.query().module("game").record("Renamed").member("health").bits(), 8);
 }
 
 TEST(DocumentSettings, AllAnalysisInputsShareSchemaHistory) {
@@ -129,7 +131,8 @@ TEST(DocumentSettings, AllAnalysisInputsShareSchemaHistory) {
 TEST(DocumentSettings, DistributionOwnersSurviveRenameAndRestoreAfterDeletion) {
     EditorSession editor;
     auto doc{editor.from_source(R"((module game :header "Game.h"
-        (union Payload (alternative small std::uint8_t) (alternative large std::uint32_t))))")};
+        (union Payload (member small std::uint8_t) (member large std::uint32_t)
+    (projections (cpp)))))")};
     ASSERT_TRUE(doc.valid());
     auto const type{doc.find_type("game", "Payload").value()};
     auto const owner{doc.find_declaration(doc.types().identity(type)).value()};
@@ -149,5 +152,38 @@ TEST(DocumentSettings, DistributionOwnersSurviveRenameAndRestoreAfterDeletion) {
     ASSERT_TRUE(doc.undo());
     EXPECT_TRUE(doc.analysis_settings().union_distributions.empty());
     EXPECT_TRUE(doc.find_type("game", "Payload"));
+}
+TEST(WorkspaceVariants, NestedArrayPathsFollowRootMemberRenames) {
+    EditorSession editor;
+    auto doc{editor.from_source(R"((module game
+        (integer-scalar Value :bit-width 4)
+        (record Sample (member value @Value))
+        (record Storage :layout packed
+            (member samples @Sample :count 2)
+            (member samples_extra @Value))))")};
+    ASSERT_TRUE(doc.valid()) << diagnostic_messages(editor);
+    auto create{doc.transaction()};
+    create.create_variant("Expanded");
+    ASSERT_TRUE(doc.commit(create));
+    auto const variant{doc.variants().ids().back()};
+    auto edit{doc.transaction()};
+    edit.set_variant_field_bits(variant, "game", "Storage", "samples.value", 6);
+    edit.set_variant_field_bits(variant, "game", "Storage", "samples_extra", 8);
+    edit.rename_member("game", "Storage", "samples", "items");
+    ASSERT_TRUE(doc.commit(edit)) << diagnostic_messages(editor);
+    auto const& settings{doc.variants().settings(variant)};
+    ASSERT_EQ(settings.field_names.size(), 2);
+    EXPECT_EQ(doc.types().strings().view(settings.field_names[0]), "items.value");
+    EXPECT_EQ(doc.types().strings().view(settings.field_names[1]), "samples_extra");
+    auto invalid{doc.transaction()};
+    invalid.set_variant_field_bits(variant, "game", "Storage", "items_0_value", 7);
+    EXPECT_FALSE(doc.commit(invalid));
+    EXPECT_EQ(doc.variants().settings(variant).field_names.size(), 2);
+    auto erase{doc.transaction()};
+    erase.delete_member("game", "Storage", "items");
+    ASSERT_TRUE(doc.commit(erase)) << diagnostic_messages(editor);
+    ASSERT_EQ(doc.variants().settings(variant).field_names.size(), 1);
+    EXPECT_EQ(doc.types().strings().view(doc.variants().settings(variant).field_names[0]),
+              "samples_extra");
 }
 } // namespace ioj::layout::workspace_tests

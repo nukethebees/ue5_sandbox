@@ -2,6 +2,7 @@
 
 #include "../checked_arithmetic.hpp"
 #include "../enum_backing.hpp"
+#include "../variant_projection.hpp"
 #include <ioj/layout/abi_profile.hpp>
 #include <ioj/layout/analysis/analysis_context.hpp>
 #include <ioj/layout/analysis/analysis_request.hpp>
@@ -15,15 +16,14 @@
 #include <lispb/schema/enum_types.h>
 #include <lispb/schema/external_types.h>
 #include <lispb/schema/integer_scalar_types.h>
-#include <lispb/schema/packed_types.h>
 #include <lispb/schema/record_types.h>
-#include <lispb/schema/tagged_union_types.h>
 #include <lispb/schema/type_graph.h>
 #include <lispb/schema/union_types.h>
 #include <lispb/strings.h>
 
 #include <algorithm>
 #include <cassert>
+#include <exception>
 #include <string>
 #include <vector>
 
@@ -182,75 +182,24 @@ void aggregate_layout(AnalysisContext& context,
     auto& components{context.storage.components};
     AggregateLayout result;
     result.members.begin = components.num();
-    if (kind == Kind::record) {
-        auto const& schema{types.definitions().record_members};
-        for (auto const member : types.definitions().records.members_of(definition)) {
-            auto const row{schema.index(member)};
-            append_component(context,
-                             id,
-                             scenario,
-                             abi,
-                             types.strings().view(schema.name[row]),
-                             {},
-                             schema.semantic_type[row],
-                             schema.count[row].value_or(1));
+    auto const& schema{types.definitions().children};
+    auto const children{kind == Kind::record
+                            ? types.definitions().records.members_of(definition)
+                            : types.definitions().unions.alternatives_of(definition)};
+    for (auto const child : children) {
+        auto const row{schema.index(child)};
+        if (schema.reserved[row]) {
+            continue;
         }
-    } else if (kind == Kind::union_type) {
-        auto const& schema{types.definitions().union_alternatives};
-        for (auto const member : types.definitions().unions.alternatives_of(definition)) {
-            auto const row{schema.index(member)};
-            append_component(context,
-                             id,
-                             scenario,
-                             abi,
-                             types.strings().view(schema.name[row]),
-                             {},
-                             schema.semantic_type[row],
-                             schema.count[row].value_or(1));
-        }
-    } else {
-        auto const& schema{types.definitions().tagged_union_alternatives};
-        for (auto const member : types.definitions().tagged_unions.alternatives_of(definition)) {
-            auto const row{schema.index(member)};
-            append_component(context,
-                             id,
-                             scenario,
-                             abi,
-                             types.strings().view(schema.name[row]),
-                             types.strings().view(schema.tag[row]),
-                             schema.semantic_type[row],
-                             schema.count[row].value_or(1));
-        }
-        auto const discriminant{
-            types.definitions()
-                .tagged_unions.discriminant[types.definitions().tagged_unions.index(definition)]};
-        result.discriminant_facts = physical_occurrence(context, scenario, abi, discriminant);
-        auto const enum_type{types.occurrences().type[types.occurrences().index(discriminant)]};
-        if (types.definition(enum_type).kind() == Kind::enumeration) {
-            auto const enum_definition{types.definition(enum_type)};
-            auto const domain{
-                types.definitions().enums.domain[types.definitions().enums.index(enum_definition)]};
-            auto const& domains{types.enum_domains()};
-            auto& tags{context.storage.tags};
-            result.tags.begin = tags.num();
-            auto const& enumerators{types.declarations().enumerators};
-            auto const component_count{components.num()};
-            auto const component_tags{components.tag()};
-            for (auto const enumerator : domains.values(domain)) {
-                auto const row{enumerators.index(enumerator)};
-                auto const name{types.strings().view(enumerators.name[row])};
-                auto mapped{false};
-                for (auto member = result.members.begin; member < component_count; ++member) {
-                    mapped = mapped || component_tags[member] == name;
-                }
-                tags.add(name,
-                         static_cast<std::uint8_t>(mapped),
-                         enumerators.sentinel[row],
-                         static_cast<std::uint8_t>(enumerator ==
-                                                   domains.count_value[domains.index(domain)]));
-            }
-            result.tags.count = tags.num() - result.tags.begin;
-        }
+        append_component(context,
+                         id,
+                         scenario,
+                         abi,
+                         types.strings().view(schema.name[row]),
+                         schema.case_label[row] ? types.strings().view(*schema.case_label[row])
+                                                : std::string_view{},
+                         schema.semantic_type[row],
+                         schema.count[row].value_or(1));
     }
     result.members.count = components.num() - result.members.begin;
 
@@ -320,34 +269,9 @@ void aggregate_layout(AnalysisContext& context,
             for (auto row = result.members.begin; row < end; ++row) {
                 components.slack_bytes()[row] = *size - *components.extent_bytes()[row];
             }
-            if (kind == Kind::union_type) {
-                result.size_bytes = size;
-                result.alignment_bytes = alignment;
-                result.tail_padding_bytes = *size - largest;
-            } else {
-                result.payload_size_bytes = size;
-                result.payload_alignment_bytes = alignment;
-                if (result.discriminant_facts) {
-                    auto const discriminant{result.discriminant_facts->value};
-                    auto const discriminant_size{facts.size_bytes()[discriminant]};
-                    auto const payload_offset{align_up(discriminant_size, alignment)};
-                    auto const content_end{payload_offset ? checked_add(*payload_offset, *size)
-                                                          : std::nullopt};
-                    auto const object_alignment{std::max(alignments[discriminant], alignment)};
-                    auto const object_size{content_end ? align_up(*content_end, object_alignment)
-                                                       : std::nullopt};
-                    if (!object_size) {
-                        context.report({DiagnosticSeverity::error,
-                                        "Tagged union object layout arithmetic overflows uint64."});
-                    } else {
-                        result.size_bytes = object_size;
-                        result.alignment_bytes = object_alignment;
-                        result.payload_offset_bytes = payload_offset;
-                        result.internal_padding_bytes = *payload_offset - discriminant_size;
-                        result.tail_padding_bytes = *object_size - *content_end;
-                    }
-                }
-            }
+            result.size_bytes = size;
+            result.alignment_bytes = alignment;
+            result.tail_padding_bytes = *size - largest;
         }
     }
     auto const spelling{types.strings().view(types.cpp_spelling(type))};
@@ -378,34 +302,33 @@ void aggregate_layout(AnalysisContext& context,
     context.storage.types.aggregate()[id.value] = result;
 }
 
-auto physical_inputs(AnalysisContext& context,
-                     lispb::schema::TypeId type,
-                     ResolvedVariant const& variant)
+auto physical_inputs(AnalysisContext& context, lispb::schema::TypeId type, ResolvedVariant const&)
     -> std::vector<lispb::schema::ResolvedOccurrenceId> {
     auto const& types{context.types};
     auto const definition{types.definition(type)};
     auto const& tables{types.definitions()};
     using Kind = lispb::schema::TypeDefinitionKind;
     std::vector<lispb::schema::ResolvedOccurrenceId> uses;
+    if (types.strings().view(types.cpp_spelling(type)).empty()) {
+        return uses;
+    }
     switch (definition.kind()) {
         case Kind::record:
+            if (tables.records.layout[tables.records.index(definition)] ==
+                lispb::codegen::LayoutKind::packed) {
+                break;
+            }
             for (auto member : tables.records.members_of(definition)) {
-                uses.push_back(
-                    tables.record_members.semantic_type[tables.record_members.index(member)]);
+                uses.push_back(tables.children.semantic_type[tables.children.index(member)]);
             }
             break;
         case Kind::union_type:
-            for (auto member : tables.unions.alternatives_of(definition)) {
-                uses.push_back(tables.union_alternatives
-                                   .semantic_type[tables.union_alternatives.index(member)]);
+            if (tables.unions.layout[tables.unions.index(definition)] ==
+                lispb::codegen::LayoutKind::packed) {
+                break;
             }
-            break;
-        case Kind::tagged_union:
-            uses.push_back(
-                tables.tagged_unions.discriminant[tables.tagged_unions.index(definition)]);
-            for (auto member : tables.tagged_unions.alternatives_of(definition)) {
-                uses.push_back(tables.tagged_union_alternatives
-                                   .semantic_type[tables.tagged_union_alternatives.index(member)]);
+            for (auto member : tables.unions.alternatives_of(definition)) {
+                uses.push_back(tables.children.semantic_type[tables.children.index(member)]);
             }
             break;
         case Kind::enumeration:
@@ -414,11 +337,6 @@ auto physical_inputs(AnalysisContext& context,
         case Kind::integer_scalar:
             uses.push_back(tables.integer_scalars
                                .cpp_representation[tables.integer_scalars.index(definition)]);
-            break;
-        case Kind::packed:
-            if (!variant.overrides.packed_storage_types.contains(type)) {
-                uses.push_back(tables.packed.storage_type[tables.packed.index(definition)]);
-            }
             break;
         default:
             break;
@@ -438,11 +356,28 @@ void derive_leaf(AnalysisContext& context,
     auto const& definitions{types.definitions()};
     using Kind = lispb::schema::TypeDefinitionKind;
     auto& facts{context.storage.types.physical()[id.value]};
+    if (lispb::schema::is_packed_projection(types, type)) {
+        try {
+            facts = physical_spelling(context,
+                                      scenario,
+                                      abi,
+                                      effective_storage_type(types, type, definition, variant),
+                                      types.module(type));
+        } catch (std::exception const& error) {
+            context.report({DiagnosticSeverity::error, error.what()});
+        }
+        return;
+    }
+    if (types.origin(type) == lispb::schema::TypeOrigin::declaration &&
+        types.strings().view(types.cpp_spelling(type)).empty()) {
+        return;
+    }
     switch (definition.kind()) {
         case Kind::record:
         case Kind::union_type:
-        case Kind::tagged_union:
-            aggregate_layout(context, id, scenario, abi);
+            if (!types.strings().view(types.cpp_spelling(type)).empty()) {
+                aggregate_layout(context, id, scenario, abi);
+            }
             return;
         case Kind::external: {
             auto const cpp{definitions.externals.cpp_type[definitions.externals.index(definition)]};
@@ -451,19 +386,6 @@ void derive_leaf(AnalysisContext& context,
                 context, scenario, abi, type, cpp, physical.form, physical.object_spelling, false);
             return;
         }
-        case Kind::packed:
-            if (auto const override = variant.overrides.packed_storage_types.find(type);
-                override != variant.overrides.packed_storage_types.end()) {
-                facts =
-                    physical_spelling(context, scenario, abi, override->second, types.module(type));
-            } else {
-                facts = physical_occurrence(
-                    context,
-                    scenario,
-                    abi,
-                    definitions.packed.storage_type[definitions.packed.index(definition)]);
-            }
-            return;
         case Kind::enumeration: {
             auto const occurrence{
                 definitions.enums.underlying_type[definitions.enums.index(definition)]};
@@ -473,16 +395,6 @@ void derive_leaf(AnalysisContext& context,
                 facts = lookup_physical(context, abi, *backing);
             }
             return;
-        }
-        case Kind::integer_scalar: {
-            auto const occurrence{
-                definitions.integer_scalars
-                    .cpp_representation[definitions.integer_scalars.index(definition)]};
-            if (lispb::schema::is_valid(occurrence)) {
-                facts = physical_occurrence(context, scenario, abi, occurrence);
-                return;
-            }
-            break;
         }
         case Kind::soa: {
             auto const spelling{types.strings().view(types.cpp_spelling(type))};

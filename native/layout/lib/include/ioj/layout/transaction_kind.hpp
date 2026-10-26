@@ -5,7 +5,7 @@
 namespace ioj::layout {
 
 enum class TransactionKind : std::uint8_t {
-    field_bits,
+    member_bits,
     packed_storage,
     member_type,
     create,
@@ -22,11 +22,6 @@ enum class TransactionKind : std::uint8_t {
     rename_member,
     reorder_member,
     member_count,
-    add_field,
-    field_type,
-    delete_field,
-    rename_field,
-    reorder_field,
     add_enumerator,
     delete_enumerator,
     rename_enumerator,
@@ -54,7 +49,6 @@ enum class TransactionKind : std::uint8_t {
     access_set,
     varint_distribution,
     union_distribution,
-    tagged_union_distribution
 };
 
 }

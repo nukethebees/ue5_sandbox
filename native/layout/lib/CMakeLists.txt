@@ -9,7 +9,6 @@ set(layout_analysis_tables
   scalar_table
   selection_table
   soa_column_table
-  tag_table
   type_analysis_table
   workload_table
 )

@@ -46,7 +46,9 @@ ticket before timing runs.
    **Declaration**, then choose **Apply**. The entire declaration is validated
    as one transaction. A rejected edit leaves the document unchanged and reports
    errors in **Diagnostics**.
-3. Use **Quick edit** for packed widths/storage and member types. Named
+3. Use **Quick edit** for member bit extents, packed storage, and member types.
+   A bit extent can add padding but cannot narrow a referenced encoding; change
+   its scalar declaration to change that encoding. Named
    rename, duplicate, and move operations handle references through the document
    API. **New declaration** accepts any supported LispB declaration form.
 4. Use the **Sources**, **Create module**, and **Selected module** sections for
@@ -80,6 +82,10 @@ Load explicit primary and comparison ABI profiles under **Target profiles**.
 SoA column-type, and capacity overrides. Select an active variant to analyze it;
 expand **Compare variants** to compare two variants. Variant changes share
 document undo/redo but do not modify saved LispB files.
+
+Choose a **Packed member** by its authored path, such as `samples.value`.
+An array member path applies to every element; generated accessor names such as
+`samples_0_value` are not override paths. Unknown paths reject the transaction.
 
 Element counts, capacities, profiles and access workloads also share
 undo/redo. These analysis settings remain session-local. Controls queue changes;

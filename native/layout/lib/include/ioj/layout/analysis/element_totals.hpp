@@ -12,7 +12,6 @@ struct ElementTotals {
     std::optional<std::uint64_t> total_internal_padding_bytes{};
     std::optional<std::uint64_t> total_tail_padding_bytes{};
     std::optional<std::uint64_t> total_padding_bytes{};
-    std::optional<std::uint64_t> total_discriminant_bytes{};
     std::optional<std::uint64_t> total_encoded_bits{};
     std::optional<std::uint64_t> total_payload_bits{};
     std::optional<std::uint64_t> total_reserved_bits{};

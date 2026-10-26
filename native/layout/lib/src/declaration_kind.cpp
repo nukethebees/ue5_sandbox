@@ -22,13 +22,11 @@ auto declaration_kind_label(DeclarationKind const kind) -> char const* {
         case DeclarationKind::optional_presence_bit:
             return "optional presence bit";
         case DeclarationKind::packed:
-            return "packed value";
+            return "packed record";
         case DeclarationKind::record:
             return "record";
         case DeclarationKind::union_:
             return "union";
-        case DeclarationKind::tagged_union:
-            return "tagged union";
         case DeclarationKind::soa:
             return "SoA";
         case DeclarationKind::static_table:

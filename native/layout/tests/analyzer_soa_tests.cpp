@@ -14,7 +14,8 @@ TEST_P(SoaAnalysisTest, ReportsColumnsAllocationsAndAccess) {
 AnalysisCase const cases[]{
     {"GeneratedRecordColumn",
      R"((module game :header "Game.h"
-        (record Pair (member x float) (member y float))
+        (record Pair (member x float) (member y float)
+    (projections (cpp)))
         (struct Value (member pairs array Pair))))",
      [](AnalysisContext& context) {
          auto const run{run_analysis(context, "Value", {.default_capacity = 3})};
@@ -129,7 +130,8 @@ AnalysisCase const cases[]{
      }},
     {"RecordSoaComparison",
      R"((module game :header "Game.h"
-        (record Row (member x float) (member y float) (member z float))
+        (record Row (member x float) (member y float) (member z float)
+    (projections (cpp)))
         (struct Columns (member x array float) (member y array float) (member z array float))))",
      [](AnalysisContext& context) {
          auto const& doc{context.document};

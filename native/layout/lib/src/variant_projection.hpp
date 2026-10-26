@@ -2,7 +2,7 @@
 
 #include <ioj/layout/resolved_variant.hpp>
 
-#include <lispb/schema/packed_fields.h>
+#include <lispb/schema/bit_layout.h>
 #include <lispb/schema/type_graph.h>
 
 #include <cstdint>
@@ -10,10 +10,9 @@
 
 namespace ioj::layout::analysis_detail {
 
-auto effective_field_width(lispb::schema::TypeGraph const& types,
-                           lispb::schema::TypeId const type,
-                           lispb::schema::PackedSegmentId const& field,
-                           ResolvedVariant const& variant) -> std::uint32_t;
+auto effective_bit_layout(lispb::schema::TypeGraph const& types,
+                          lispb::schema::TypeId type,
+                          ResolvedVariant const& variant) -> lispb::schema::BitLayout;
 
 auto effective_storage_type(lispb::schema::TypeGraph const& types,
                             lispb::schema::TypeId const type,

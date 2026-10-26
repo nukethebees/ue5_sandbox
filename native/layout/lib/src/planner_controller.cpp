@@ -284,10 +284,6 @@ void PlannerController::analyze() {
             found != settings.union_distributions.end()) {
             request.union_distribution = found->second;
         }
-        if (auto const found{settings.tagged_union_distributions.find(*declaration_id_)};
-            found != settings.tagged_union_distributions.end()) {
-            request.tagged_union_distribution = found->second;
-        }
     }
 
     std::array requests{request, request, request, request};

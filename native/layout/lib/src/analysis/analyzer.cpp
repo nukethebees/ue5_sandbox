@@ -18,6 +18,7 @@
 #include <ioj/layout/variants.hpp>
 
 #include <lispb/schema/type_graph.h>
+#include <lispb/strings.h>
 
 #include <algorithm>
 #include <cassert>
@@ -45,8 +46,7 @@ auto same_workload(AnalysisRequest const& first, AnalysisRequest const& second) 
         return false;
     }
     return std::ranges::equal(first.varint_distribution, second.varint_distribution) &&
-           std::ranges::equal(first.union_distribution, second.union_distribution) &&
-           std::ranges::equal(first.tagged_union_distribution, second.tagged_union_distribution);
+           std::ranges::equal(first.union_distribution, second.union_distribution);
 }
 
 auto resolve_variant(Document const& document, VariantId id) -> ResolvedVariant {
@@ -145,9 +145,21 @@ void Analyzer::analyze(AnalysisContext& context, std::span<AnalysisRequest const
             for (auto const type : context.types.types()) {
                 auto const id{storage.types.find(type, scenario)};
                 auto const kind{context.types.definition(type).kind()};
-                if (kind == lispb::schema::TypeDefinitionKind::packed) {
+                auto const definition{context.types.definition(type)};
+                auto const& definitions{context.types.definitions()};
+                auto const packed{
+                    kind == lispb::schema::TypeDefinitionKind::record
+                        ? definitions.records.layout[definitions.records.index(definition)] ==
+                              lispb::codegen::LayoutKind::packed
+                        : kind == lispb::schema::TypeDefinitionKind::union_type &&
+                              definitions.unions.layout[definitions.unions.index(definition)] ==
+                                  lispb::codegen::LayoutKind::packed};
+                if (packed) {
                     analyze_packed_layout(context, id, variant);
-                } else if (kind == lispb::schema::TypeDefinitionKind::enumeration) {
+                } else if (kind == lispb::schema::TypeDefinitionKind::enumeration &&
+                           !context.types.strings()
+                                .view(context.types.cpp_spelling(type))
+                                .empty()) {
                     analyze_enum_backing(context, id);
                 }
             }
@@ -177,16 +189,15 @@ void Analyzer::analyze(AnalysisContext& context, std::span<AnalysisRequest const
         storage.totals.push_back(compute_element_totals(context, request, id));
         [[maybe_unused]] auto const kind{context.types.definition(request.type).kind()};
         if (request.accesses) {
-            assert(kind == lispb::schema::TypeDefinitionKind::packed ||
-                   kind == lispb::schema::TypeDefinitionKind::record ||
+            assert(kind == lispb::schema::TypeDefinitionKind::record ||
+                   kind == lispb::schema::TypeDefinitionKind::union_type ||
                    kind == lispb::schema::TypeDefinitionKind::soa);
             run.access = analyze_access(context, request, id);
         }
         if (request.distribution_requested || !request.varint_distribution.empty() ||
-            !request.union_distribution.empty() || !request.tagged_union_distribution.empty()) {
+            !request.union_distribution.empty()) {
             assert(kind == lispb::schema::TypeDefinitionKind::integer_varint ||
-                   kind == lispb::schema::TypeDefinitionKind::union_type ||
-                   kind == lispb::schema::TypeDefinitionKind::tagged_union);
+                   kind == lispb::schema::TypeDefinitionKind::union_type);
             run.distribution = analyze_distribution(context, request, id);
         }
         storage.runs.push_back(run);

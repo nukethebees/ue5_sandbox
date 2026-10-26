@@ -40,9 +40,12 @@ TEST(GraphView, RealProjectModuleProjectionReducesScopeAndKeepsBoundaries) {
 TEST(GraphView, ModuleScopeKeepsDirectBoundariesWithoutExpandingTheirDependencies) {
     EditorSession editor;
     auto const document{editor.from_source(R"(
-        (module a :header "a.h" (record aRecord (member max bRecord) (member x bRecord)))
-        (module b :header "b.h" (record bRecord (member max float) (member x float)))
-        (module c :header "c.h" (record cRecord (member max float) (member x float))))")};
+        (module a :header "a.h" (record aRecord (member max bRecord) (member x bRecord)
+    (projections (cpp))))
+        (module b :header "b.h" (record bRecord (member max float) (member x float)
+    (projections (cpp))))
+        (module c :header "c.h" (record cRecord (member max float) (member x float)
+    (projections (cpp)))))")};
     ASSERT_TRUE(document.valid());
     auto const& types{document.types()};
     GraphScope scope{};

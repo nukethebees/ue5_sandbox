@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cassert>
 #include <charconv>
+#include <set>
 #include <sstream>
 #include <utility>
 
@@ -614,11 +615,11 @@ void PlannerUi::draw_editor() {
     }
 
     if (!creating_declaration_ && ImGui::CollapsingHeader("Quick edit")) {
-        ImGui::InputText("Field / member", &override_member_);
+        ImGui::InputText("Member", &override_member_);
         ImGui::InputInt("Bits", &override_bits_);
-        if (ImGui::Button("Set packed field width")) {
+        if (ImGui::Button("Set member bit extent")) {
             auto transaction{document_->transaction()};
-            transaction.set_field_bits(
+            transaction.set_member_bits(
                 selected_module_, selected_declaration_, override_member_, override_bits_);
             commit(std::move(transaction));
         }
@@ -863,11 +864,11 @@ void PlannerUi::draw_analysis() {
         selected && ImGui::CollapsingHeader("Dependencies")) {
         auto const& types{document_->types()};
         for (auto const dependency : types.dependencies_of(*selected)) {
-            label(types.strings().view(types.cpp_spelling(dependency)));
+            label(types.strings().view(types.identity(dependency).name));
         }
         ImGui::SeparatorText("Used by");
         for (auto const user : types.users_of(*selected)) {
-            label(types.strings().view(types.cpp_spelling(user)));
+            label(types.strings().view(types.identity(user).name));
         }
     }
     ImGui::End();
@@ -877,9 +878,7 @@ void PlannerUi::draw_distribution() {
     if (selected_declaration_.empty() || !ImGui::CollapsingHeader("Value distribution")) {
         return;
     }
-    ImGui::Combo("Distribution kind",
-                 &distribution_kind_,
-                 "Varint values\0Union alternatives\0Tagged union tags\0");
+    ImGui::Combo("Distribution kind", &distribution_kind_, "Varint values\0Union alternatives\0");
     auto const selected{controller_.selected_type()};
     if (selected) {
         auto const id{document_->find_declaration(document_->types().identity(*selected))};
@@ -902,15 +901,6 @@ void PlannerUi::draw_distribution() {
                                 static_cast<unsigned long long>(entry.weight));
                 }
             }
-        } else if (id) {
-            if (auto const found{settings.tagged_union_distributions.find(*id)};
-                found != settings.tagged_union_distributions.end()) {
-                for (auto const& entry : found->second) {
-                    ImGui::Text("%s: %llu",
-                                entry.tag.c_str(),
-                                static_cast<unsigned long long>(entry.weight));
-                }
-            }
         }
     }
     ImGui::TextWrapped("Enter one value or name and a positive weight per line. An empty list "
@@ -922,7 +912,6 @@ void PlannerUi::draw_distribution() {
 
     std::vector<layout::IntegerVarintDistributionEntry> integers;
     std::vector<layout::UnionDistributionEntry> alternatives;
-    std::vector<layout::TaggedUnionDistributionEntry> tags;
     std::istringstream input{distribution_source_};
     std::string line;
     while (std::getline(input, line)) {
@@ -961,20 +950,16 @@ void PlannerUi::draw_distribution() {
             }
             integers.push_back(
                 {lispb::codegen::PackedIntegerValue::from_parts(negative, magnitude), weight});
-        } else if (distribution_kind_ == 1) {
-            alternatives.push_back({name, weight});
         } else {
-            tags.push_back({name, weight});
+            alternatives.push_back({name, weight});
         }
     }
 
     auto transaction{document_->transaction()};
     if (distribution_kind_ == 0) {
         transaction.set_varint_distribution(selected_module_, selected_declaration_, integers);
-    } else if (distribution_kind_ == 1) {
-        transaction.set_union_distribution(selected_module_, selected_declaration_, alternatives);
     } else {
-        transaction.set_tagged_union_distribution(selected_module_, selected_declaration_, tags);
+        transaction.set_union_distribution(selected_module_, selected_declaration_, alternatives);
     }
     controller_.submit(std::move(transaction));
 }
@@ -1026,10 +1011,26 @@ void PlannerUi::draw_variants() {
 
     ImGui::BeginDisabled(selected_declaration_.empty());
     ImGui::SeparatorText("Selected declaration overrides");
-    ImGui::InputText("Field / column", &override_member_);
+    ImGui::InputText("Member path / column", &override_member_);
+    std::set<std::string> member_paths;
+    if (auto const type{controller_.selected_type()}) {
+        for (auto const& placement : document_->types().bit_layout(*type).placements) {
+            if (!placement.reserved) {
+                member_paths.insert(placement.source_path);
+            }
+        }
+    }
+    if (ImGui::BeginCombo("Packed member", override_member_.c_str())) {
+        for (auto const& path : member_paths) {
+            if (ImGui::Selectable(path.c_str(), override_member_ == path)) {
+                override_member_ = path;
+            }
+        }
+        ImGui::EndCombo();
+    }
     ImGui::InputInt("Width", &override_bits_);
-    ImGui::BeginDisabled(override_bits_ <= 0);
-    if (ImGui::Button("Override field width")) {
+    ImGui::BeginDisabled(override_bits_ <= 0 || !member_paths.contains(override_member_));
+    if (ImGui::Button("Override member bit extent")) {
         auto transaction{document_->transaction()};
         transaction.set_variant_field_bits(active,
                                            selected_module_,

@@ -44,19 +44,21 @@ INSTANTIATE_TEST_SUITE_P(
         SerializationCase{"QuotedCppTypes",
                           R"((module game :header "Game.h"
                 (record Data (member value "unsigned int")
-                    (member pointer (type-ref "unsigned int" :suffix " const*")))))",
+                    (member pointer (type-ref "unsigned int" :suffix " const*"))
+    (projections (cpp)))))",
                           [](auto const& output) {
                               EXPECT_TRUE(output.contains("\"unsigned int\""));
                               EXPECT_TRUE(output.contains("\" const*\""));
                           }},
-        SerializationCase{
-            "WholeFile",
-            R"((module game :header "Game.h" (record First(member x float))(record Second (member y First))))",
-            [](auto const& output) {
-                EXPECT_TRUE(output.contains("(record First"));
-                EXPECT_TRUE(output.contains("(record Second"));
-                EXPECT_TRUE(output.contains('\n'));
-            }},
+        SerializationCase{"WholeFile",
+                          R"((module game :header "Game.h" (record First(member x float)
+    (projections (cpp)))(record Second (member y First)
+    (projections (cpp)))))",
+                          [](auto const& output) {
+                              EXPECT_TRUE(output.contains("(record First"));
+                              EXPECT_TRUE(output.contains("(record Second"));
+                              EXPECT_TRUE(output.contains('\n'));
+                          }},
         SerializationCase{"BoundaryComments",
                           R"(; file header
 (module game :header "Game.h"
@@ -64,7 +66,8 @@ INSTANTIATE_TEST_SUITE_P(
     (record Data
         (member value float) ; inline member comment
         ; record footer
-    )
+
+    (projections (cpp)))
     ; module footer
 )
 ; file footer
@@ -86,7 +89,8 @@ INSTANTIATE_TEST_SUITE_P(
             :prelude #cpp{int  value = 1; // preserve  spaces
 char const* text = "; not a LispB comment";
 }cpp#
-            (record Data (member value float))))lisp",
+            (record Data (member value float)
+    (projections (cpp)))))lisp",
                           [](auto const& output) {
                               EXPECT_TRUE(output.contains(
                                   "int  value = 1; // preserve  spaces\n"
@@ -95,7 +99,7 @@ char const* text = "; not a LispB comment";
         SerializationCase{"WindowsLineEndings",
                           "(module game :header \"Game.h\"\r\n"
                           "  ; retained comment\r\n"
-                          "  (record Data (member value float)))\r\n",
+                          "  (record Data (member value float)\n    (projections (cpp))))\r\n",
                           [](auto const& output) {
                               for (std::size_t index{}; index < output.size(); ++index) {
                                   if (output[index] == '\n') {
@@ -139,7 +143,8 @@ TEST_P(DocumentCommentEditTest, CommentsFollowTheirOwnersAndUndoRestoresThem) {
         ; x documentation
         (member x std::uint32_t) ; x inline
         ; y documentation
-        (member y std::uint32_t)))
+        (member y std::uint32_t)
+    (projections (cpp))))
 )")};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto const before{rendered(document)};
@@ -196,18 +201,19 @@ INSTANTIATE_TEST_SUITE_P(
                             EXPECT_FALSE(output.contains("; x documentation"));
                             EXPECT_FALSE(output.contains("; x inline"));
                         }},
-        CommentEditCase{"RecreateDeclarationWithSameName",
-                        [](auto& tx) {
-                            tx.delete_declaration("game", "Data");
-                            tx.create_declaration("game",
-                                                  "(record Data (member replacement float))");
-                        },
-                        [](auto const& output) {
-                            EXPECT_TRUE(output.contains("(record Data"));
-                            EXPECT_FALSE(output.contains("; data documentation"));
-                            EXPECT_FALSE(output.contains("; x documentation"));
-                            EXPECT_FALSE(output.contains("; y documentation"));
-                        }}),
+        CommentEditCase{
+            "RecreateDeclarationWithSameName",
+            [](auto& tx) {
+                tx.delete_declaration("game", "Data");
+                tx.create_declaration(
+                    "game", "(record Data (member replacement float)\n    (projections (cpp)))");
+            },
+            [](auto const& output) {
+                EXPECT_TRUE(output.contains("(record Data"));
+                EXPECT_FALSE(output.contains("; data documentation"));
+                EXPECT_FALSE(output.contains("; x documentation"));
+                EXPECT_FALSE(output.contains("; y documentation"));
+            }}),
     [](auto const& info) { return info.param.name; });
 
 TEST(DocumentSerialization, RemovedPropertyRetainsCommentOnItsParent) {
@@ -216,7 +222,8 @@ TEST(DocumentSerialization, RemovedPropertyRetainsCommentOnItsParent) {
         (module game :header "Game.h"
             (record Data
                 (member values float :count 4 ; count explanation
-                )))
+                )
+    (projections (cpp))))
     )")};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto transaction{document.transaction()};
@@ -228,6 +235,65 @@ TEST(DocumentSerialization, RemovedPropertyRetainsCommentOnItsParent) {
     auto const reloaded{editor.from_source(output)};
     ASSERT_TRUE(reloaded.valid()) << diagnostic_messages(editor);
     EXPECT_EQ(rendered(reloaded), output);
+}
+
+TEST(DocumentSerialization, UnionShorthandCommentsFollowRenamedAndReorderedChildren) {
+    EditorSession editor;
+    auto document{editor.from_source(R"(
+        (module payloads
+            (integer-scalar Bare :bit-width 8)
+            (integer-scalar Mapped :bit-width 16))
+        (module instructions
+            (union Payload
+                ; bare documentation
+                @payloads/Bare ; bare inline
+                ; mapped documentation
+                (case Special @payloads/Mapped) ; mapped inline
+            )))")};
+    ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
+
+    auto const verify_comments{[](std::string const& output,
+                                  std::string_view bare_member,
+                                  std::string_view mapped_member) {
+        for (auto const comment : {"; bare documentation",
+                                   "; bare inline",
+                                   "; mapped documentation",
+                                   "; mapped inline"}) {
+            ASSERT_NE(output.find(comment), std::string::npos) << comment;
+            EXPECT_EQ(output.find(comment), output.rfind(comment)) << comment;
+        }
+        ASSERT_NE(output.find(bare_member), std::string::npos);
+        ASSERT_NE(output.find(mapped_member), std::string::npos);
+        EXPECT_LT(output.find("; bare documentation"), output.find(bare_member));
+        EXPECT_LT(output.find(bare_member), output.find("; bare inline"));
+        EXPECT_LT(output.find("; mapped documentation"), output.find(mapped_member));
+        EXPECT_LT(output.find(mapped_member), output.find("; mapped inline"));
+    }};
+
+    auto const before{rendered(document)};
+    verify_comments(before, "(member Bare", "(member Special");
+    EXPECT_LT(before.find("; bare inline"), before.find("; mapped documentation"));
+    auto const initial_reload{editor.from_source(before)};
+    ASSERT_TRUE(initial_reload.valid()) << diagnostic_messages(editor);
+    EXPECT_EQ(rendered(initial_reload), before);
+
+    auto transaction{document.transaction()};
+    transaction.rename_member("instructions", "Payload", "Bare", "raw");
+    transaction.rename_member("instructions", "Payload", "Special", "mapped");
+    transaction.reorder_member("instructions", "Payload", "raw", 1);
+    ASSERT_TRUE(document.commit(transaction)) << diagnostic_messages(editor);
+    auto const after{rendered(document)};
+    verify_comments(after, "(member raw", "(member mapped");
+    EXPECT_LT(after.find("; mapped inline"), after.find("; bare documentation"));
+    EXPECT_TRUE(after.contains(":case Special"));
+    auto const reloaded{editor.from_source(after)};
+    ASSERT_TRUE(reloaded.valid()) << diagnostic_messages(editor);
+    EXPECT_EQ(rendered(reloaded), after);
+
+    ASSERT_TRUE(document.undo());
+    EXPECT_EQ(rendered(document), before);
+    ASSERT_TRUE(document.redo());
+    EXPECT_EQ(rendered(document), after);
 }
 
 } // namespace ioj::layout::document_serialization_tests

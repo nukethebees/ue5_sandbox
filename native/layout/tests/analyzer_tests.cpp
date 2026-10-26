@@ -18,7 +18,8 @@ AnalysisCase const cases[]{
      R"((module game :header "Game.h"
         (enum Value std::uint8_t :count Count
           (value Zero) (value One) (value Invalid :value "15" :sentinel true)
-          (value Count :value "16"))))",
+          (value Count :value "16")
+    (projections (cpp)))))",
      [](AnalysisContext& context) {
          auto const run{run_analysis(context, "Value", {.element_count = 1})};
          auto const& result{scalar_result(context, context.storage.scalars.enum_domain())};
@@ -32,7 +33,8 @@ AnalysisCase const cases[]{
      }},
     {"SignedEnum",
      R"((module game :header "Game.h"
-        (enum Value std::int8_t (value Low :value "-4") (value High :value "3"))))",
+        (enum Value std::int8_t (value Low :value "-4") (value High :value "3")
+    (projections (cpp)))))",
      [](AnalysisContext& context) {
          auto const run{run_analysis(context, "Value", {.element_count = 1})};
          auto const& result{scalar_result(context, context.storage.scalars.enum_domain())};
@@ -44,7 +46,8 @@ AnalysisCase const cases[]{
      }},
     {"EnumExpressionStaysUnknown",
      R"((module game :header "Game.h"
-        (enum Value std::uint8_t (value Mask :value "1 << 3") (value Next))))",
+        (enum Value std::uint8_t (value Mask :value "1 << 3") (value Next)
+    (projections (cpp)))))",
      [](AnalysisContext& context) {
          run_analysis(context, "Value", {}, true);
          auto const& result{scalar_result(context, context.storage.scalars.enum_domain())};

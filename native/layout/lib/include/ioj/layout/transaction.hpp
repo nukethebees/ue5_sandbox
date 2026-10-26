@@ -26,10 +26,10 @@ class DocumentState;
 // Names resolve when executed, allowing transactions to be queued in document order.
 class Transaction {
   public:
-    void set_field_bits(std::string_view module,
-                        std::string_view declaration,
-                        std::string_view field,
-                        int bits);
+    void set_member_bits(std::string_view module,
+                         std::string_view declaration,
+                         std::string_view field,
+                         int bits);
     void set_packed_storage(std::string_view module,
                             std::string_view declaration,
                             std::string_view type);
@@ -72,24 +72,6 @@ class Transaction {
                           std::string_view declaration,
                           std::string_view name,
                           std::optional<std::uint64_t> count);
-    void add_field(std::string_view module,
-                   std::string_view declaration,
-                   std::string_view name,
-                   std::string_view type,
-                   int bits);
-    void set_field_type(std::string_view module,
-                        std::string_view declaration,
-                        std::string_view name,
-                        std::string_view type);
-    void delete_field(std::string_view module, std::string_view declaration, std::string_view name);
-    void rename_field(std::string_view module,
-                      std::string_view declaration,
-                      std::string_view name,
-                      std::string_view new_name);
-    void reorder_field(std::string_view module,
-                       std::string_view declaration,
-                       std::string_view name,
-                       std::size_t position);
     void add_enumerator(std::string_view module,
                         std::string_view declaration,
                         std::string_view name,
@@ -151,9 +133,6 @@ class Transaction {
     void set_union_distribution(std::string_view module,
                                 std::string_view declaration,
                                 std::span<UnionDistributionEntry const> entries);
-    void set_tagged_union_distribution(std::string_view module,
-                                       std::string_view declaration,
-                                       std::span<TaggedUnionDistributionEntry const> entries);
   private:
     friend class Document;
     friend class DocumentState;

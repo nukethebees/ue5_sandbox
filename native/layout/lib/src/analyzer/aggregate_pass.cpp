@@ -10,9 +10,8 @@
 #include <codegen/ast/cpp_types.h>
 #include <codegen/schema/declarations.h>
 #include <lispb/schema/enum_types.h>
+#include <lispb/schema/integer_domain.h>
 #include <lispb/schema/integer_scalar_types.h>
-#include <lispb/schema/packed_fields.h>
-#include <lispb/schema/packed_types.h>
 #include <lispb/schema/type_graph.h>
 #include <lispb/strings.h>
 namespace ioj::layout::analysis_detail {
@@ -175,21 +174,33 @@ void analyze_relationships(AnalysisContext& context, ScenarioId scenario) {
                                table.minimum_value[row],
                                table.maximum_value[row]);
         } else if (auto const& packed = context.storage.types.packed()[owner.value]; packed) {
-            auto const& table{types.definitions().packed_fields};
+            auto const& table{types.definitions().children};
             auto const end{packed->fields.begin + packed->fields.count};
             for (auto row = packed->fields.begin; row < end; ++row) {
                 if (context.storage.fields.reserved()[row]) {
                     continue;
                 }
                 auto const schema_row{table.index(context.storage.fields.segment()[row])};
+                auto const semantic_type{
+                    types.occurrences()
+                        .type[types.occurrences().index(table.semantic_type[schema_row])]};
+                auto const domain{lispb::schema::integer_domain(types, semantic_type)};
+                if (!domain) {
+                    continue;
+                }
+                auto const& scalars{types.definitions().integer_scalars};
+                auto const scalar{scalars.index(*domain)};
+                auto const relationship{lispb::schema::is_valid(table.relationship[schema_row])
+                                            ? table.relationship[schema_row]
+                                            : scalars.relationship[scalar]};
                 relationship_check(context,
                                    owner,
                                    row,
-                                   table.relationship[schema_row],
-                                   table.named_codes[schema_row],
+                                   relationship,
+                                   scalars.named_codes[scalar],
                                    context.storage.fields.bit_width()[row],
-                                   table.minimum_value[schema_row],
-                                   table.maximum_value[schema_row]);
+                                   scalars.minimum_value[scalar],
+                                   scalars.maximum_value[scalar]);
             }
         }
     }

@@ -31,9 +31,10 @@ class DeclarationCapabilityTest : public testing::TestWithParam<CapabilityCase> 
 TEST_P(DeclarationCapabilityTest, ReportsAuthoringAndAnalysisCapabilities) {
     EditorSession editor;
     auto const& test{GetParam()};
-    auto const document{
-        editor.from_source(std::string{R"((module test :header "Test.h" :source "Test.cpp" )"} +
-                           test.declaration + ')')};
+    auto const document{editor.from_source(
+        std::string{
+            R"((module test :header "Test.h" :source "Test.cpp" (integer-scalar LayoutEditValue :bit-width 1) )"} +
+        test.declaration + ')')};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto const type{document.find_type("test", "Value")};
     ASSERT_TRUE(type);
@@ -45,12 +46,12 @@ INSTANTIATE_TEST_SUITE_P(
     DeclarationCapabilityTest,
     testing::Values(
         CapabilityCase{"Enumeration",
-                       "(enum Value std::uint8_t (value First))",
+                       "(enum Value std::uint8_t (value First)\n    (projections (cpp)))",
                        {DeclarationKind::enumeration, true, true, true, false}},
-        CapabilityCase{
-            "Packed",
-            "(packed-value Value :storage std::uint8_t (field bits std::uint8_t :bits 8))",
-            {DeclarationKind::packed, true, true, true, true}},
+        CapabilityCase{"Packed",
+                       "(record Value :layout packed (member bits @LayoutEditValue :bits 8)\n    "
+                       "(projections (cpp :storage std::uint8_t)))",
+                       {DeclarationKind::packed, true, true, true, true}},
         CapabilityCase{"StandardSoa",
                        "(struct Value (member values array float))",
                        {DeclarationKind::soa, true, true, true, true}}),
@@ -59,7 +60,8 @@ INSTANTIATE_TEST_SUITE_P(
 TEST(AnalysisBatch, ReusesPhysicalRowsAcrossCountsAndSeparatesAbiScenarios) {
     EditorSession editor;
     auto document{editor.from_source(R"((module test :header "Test.h"
-        (record Value (member value std::uint32_t))))")};
+        (record Value (member value std::uint32_t)
+    (projections (cpp)))))")};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto const type{document.find_type("test", "Value").value()};
     auto const known{AbiProfile::host_common()};
@@ -92,7 +94,8 @@ TEST(AnalysisBatch, ReusesPhysicalRowsAcrossCountsAndSeparatesAbiScenarios) {
 TEST(AnalysisBatch, ExternalFactsApplyOnlyToTheirRequestedTarget) {
     EditorSession editor;
     auto document{editor.from_source(R"((module test :header "Test.h"
-        (record Value (member value OpaqueVector))))")};
+        (record Value (member value OpaqueVector)
+    (projections (cpp)))))")};
     ASSERT_TRUE(document.valid());
     auto const type{document.find_type("test", "Value").value()};
     auto supplied{AbiProfile::host_common()};
@@ -119,7 +122,8 @@ TEST(AnalysisBatch, ExternalFactsApplyOnlyToTheirRequestedTarget) {
 TEST(AnalysisBatch, VariantOverflowDoesNotAlterAuthoredSchema) {
     EditorSession editor;
     auto document{editor.from_source(R"((module test :header "Test.h"
-        (packed-value Value :storage std::uint8_t (field value std::uint8_t :bits 8))))")};
+        (record Value :layout packed (member value @LayoutEditValue :bits 8)
+    (projections (cpp :storage std::uint8_t))) (integer-scalar LayoutEditValue :bit-width 1)))")};
     ASSERT_TRUE(document.valid());
     auto create{document.transaction()};
     create.create_variant("Wide");
@@ -137,8 +141,8 @@ TEST(AnalysisBatch, VariantOverflowDoesNotAlterAuthoredSchema) {
     Analyzer::analyze(context, requests);
     ASSERT_EQ(storage.runs.size(), 2);
     EXPECT_EQ(storage.types.packed()[storage.runs[0].analysis.value]->overflow_bits, 0);
-    EXPECT_EQ(storage.types.packed()[storage.runs[1].analysis.value]->overflow_bits, 8);
+    EXPECT_FALSE(storage.types.packed()[storage.runs[1].analysis.value]->overflow_bits);
     EXPECT_GT(editor.diagnostics().size(), 0);
-    EXPECT_EQ(document.query().module("test").packed_value("Value").field("value").bits(), 8);
+    EXPECT_EQ(document.query().module("test").record("Value").member("value").bits(), 8);
 }
 } // namespace ioj::layout::planner_type_tests

@@ -15,15 +15,16 @@
 namespace ioj::layout::document_tests {
 constexpr std::string_view source{R"(
     (module game :header "Game.h"
-        (packed-value ShipState :storage std::uint16_t
-            (field health std::uint16_t :bits 8)
-            (field armor std::uint16_t :bits 8))
+        (record ShipState :layout packed
+            (member health @LayoutEditValue :bits 8)
+            (member armor @LayoutEditValue :bits 8)
+    (projections (cpp :storage std::uint16_t)))
         (struct FighterData
             (member health array std::uint16_t)
-            (member speed array float))))"};
+            (member speed array float)) (integer-scalar LayoutEditValue :bit-width 1)))"};
 
 auto health_bits(Document const& document) -> std::optional<int> {
-    return document.query().module("game").packed_value("ShipState").field("health").bits();
+    return document.query().module("game").record("ShipState").member("health").bits();
 }
 
 struct EditCase {
@@ -57,22 +58,22 @@ INSTANTIATE_TEST_SUITE_P(
     DocumentEdit,
     testing::Values(
         EditCase{"ChangePackedFieldWidth",
-                 [](Transaction& tx) { tx.set_field_bits("game", "ShipState", "health", 4); },
+                 [](Transaction& tx) { tx.set_member_bits("game", "ShipState", "health", 4); },
                  [](Document const& doc) { EXPECT_EQ(health_bits(doc), 4); }},
         EditCase{"TemporaryOverflow",
                  [](Transaction& tx) {
-                     tx.set_field_bits("game", "ShipState", "health", 12);
-                     tx.set_field_bits("game", "ShipState", "armor", 4);
+                     tx.set_member_bits("game", "ShipState", "health", 12);
+                     tx.set_member_bits("game", "ShipState", "armor", 4);
                  },
                  [](Document const& doc) { EXPECT_EQ(health_bits(doc), 12); }},
         EditCase{"StorageAndWidthTogether",
                  [](Transaction& tx) {
                      tx.set_packed_storage("game", "ShipState", "std::uint8_t");
-                     tx.set_field_bits("game", "ShipState", "health", 4);
-                     tx.set_field_bits("game", "ShipState", "armor", 4);
+                     tx.set_member_bits("game", "ShipState", "health", 4);
+                     tx.set_member_bits("game", "ShipState", "armor", 4);
                  },
                  [](Document const& doc) {
-                     EXPECT_EQ(doc.query().module("game").packed_value("ShipState").storage_type(),
+                     EXPECT_EQ(doc.query().module("game").record("ShipState").storage_type(),
                                "std::uint8_t");
                  }},
         EditCase{"ChangeSoaMember",
@@ -88,74 +89,72 @@ INSTANTIATE_TEST_SUITE_P(
                  }},
         EditCase{"CreateThenEdit",
                  [](Transaction& tx) {
-                     tx.create_declaration("game",
-                                           "(packed-value Other :storage std::uint8_t (field value "
-                                           "std::uint8_t :bits 8))");
-                     tx.set_field_bits("game", "Other", "value", 4);
+                     tx.create_declaration(
+                         "game",
+                         "(record Other :layout packed (member value "
+                         "@LayoutEditValue :bits 8) (projections (cpp :storage std::uint8_t)))");
+                     tx.set_member_bits("game", "Other", "value", 4);
                  },
                  [](Document const& doc) {
-                     EXPECT_EQ(
-                         doc.query().module("game").packed_value("Other").field("value").bits(), 4);
+                     EXPECT_EQ(doc.query().module("game").record("Other").member("value").bits(),
+                               4);
                  }},
         EditCase{"ReplaceDeclaration",
                  [](Transaction& tx) {
                      tx.replace_declaration("game",
                                             "ShipState",
-                                            "(packed-value ShipState :storage std::uint16_t (field "
-                                            "health std::uint16_t :bits 12))");
+                                            "(record ShipState :layout packed (member "
+                                            "health @LayoutEditValue :bits 12) (projections (cpp "
+                                            ":storage std::uint16_t)))");
                  },
                  [](Document const& doc) { EXPECT_EQ(health_bits(doc), 12); }},
         EditCase{"DeleteDeclaration",
                  [](Transaction& tx) { tx.delete_declaration("game", "ShipState"); },
                  [](Document const& doc) {
-                     EXPECT_FALSE(doc.query().module("game").packed_value("ShipState").exists());
+                     EXPECT_FALSE(doc.query().module("game").record("ShipState").exists());
                  }},
         EditCase{"RenameAndEditInOrder",
                  [](Transaction& tx) {
                      tx.rename_declaration("game", "ShipState", "State");
-                     tx.set_field_bits("game", "State", "health", 4);
+                     tx.set_member_bits("game", "State", "health", 4);
                  },
                  [](Document const& doc) {
-                     EXPECT_FALSE(doc.query().module("game").packed_value("ShipState").exists());
-                     EXPECT_EQ(
-                         doc.query().module("game").packed_value("State").field("health").bits(),
-                         4);
+                     EXPECT_FALSE(doc.query().module("game").record("ShipState").exists());
+                     EXPECT_EQ(doc.query().module("game").record("State").member("health").bits(),
+                               4);
                  }},
         EditCase{"DuplicateThenEdit",
                  [](Transaction& tx) {
                      tx.duplicate_declaration("game", "ShipState", "Copy");
-                     tx.set_field_bits("game", "Copy", "health", 4);
+                     tx.set_member_bits("game", "Copy", "health", 4);
                  },
                  [](Document const& doc) {
                      EXPECT_EQ(health_bits(doc), 8);
-                     EXPECT_EQ(
-                         doc.query().module("game").packed_value("Copy").field("health").bits(), 4);
-                 }},
-        EditCase{"MoveToNewModule",
-                 [](Transaction& tx) {
-                     tx.create_module(R"((module destination :header "Destination.h"))");
-                     tx.move_declaration("game", "ShipState", "destination");
-                 },
-                 [](Document const& doc) {
-                     EXPECT_FALSE(doc.query().module("game").packed_value("ShipState").exists());
-                     EXPECT_EQ(doc.query()
-                                   .module("destination")
-                                   .packed_value("ShipState")
-                                   .field("health")
-                                   .bits(),
-                               8);
+                     EXPECT_EQ(doc.query().module("game").record("Copy").member("health").bits(),
+                               4);
                  }},
         EditCase{
-            "RenameModuleThenEdit",
+            "MoveToNewModule",
             [](Transaction& tx) {
-                tx.rename_module("game", "play");
-                tx.set_field_bits("play", "ShipState", "health", 4);
+                tx.create_module(R"((module destination :header "Destination.h"))");
+                tx.move_declaration("game", "ShipState", "destination");
             },
             [](Document const& doc) {
-                EXPECT_FALSE(doc.query().module("game").exists());
+                EXPECT_FALSE(doc.query().module("game").record("ShipState").exists());
                 EXPECT_EQ(
-                    doc.query().module("play").packed_value("ShipState").field("health").bits(), 4);
+                    doc.query().module("destination").record("ShipState").member("health").bits(),
+                    8);
             }},
+        EditCase{"RenameModuleThenEdit",
+                 [](Transaction& tx) {
+                     tx.rename_module("game", "play");
+                     tx.set_member_bits("play", "ShipState", "health", 4);
+                 },
+                 [](Document const& doc) {
+                     EXPECT_FALSE(doc.query().module("game").exists());
+                     EXPECT_EQ(
+                         doc.query().module("play").record("ShipState").member("health").bits(), 4);
+                 }},
         EditCase{"RemoveModule",
                  [](Transaction& tx) { tx.delete_module("game"); },
                  [](Document const& doc) { EXPECT_FALSE(doc.query().module("game").exists()); }},
@@ -179,27 +178,27 @@ INSTANTIATE_TEST_SUITE_P(
                      ASSERT_EQ(members.size(), 1);
                      EXPECT_EQ(members.front().name(), "speed");
                  }},
-        EditCase{
-            "ReplacePackedField",
-            [](Transaction& tx) {
-                tx.delete_field("game", "ShipState", "armor");
-                tx.add_field("game", "ShipState", "shields", "std::uint8_t", 4);
-                tx.rename_field("game", "ShipState", "shields", "shield");
-                tx.set_field_type("game", "ShipState", "shield", "std::uint16_t");
-                tx.reorder_field("game", "ShipState", "shield", 0);
-            },
-            [](Document const& doc) {
-                EXPECT_FALSE(
-                    doc.query().module("game").packed_value("ShipState").field("armor").exists());
-                EXPECT_EQ(
-                    doc.query().module("game").packed_value("ShipState").field("shield").bits(), 4);
-            }},
+        EditCase{"ReplacePackedField",
+                 [](Transaction& tx) {
+                     tx.delete_member("game", "ShipState", "armor");
+                     tx.add_member("game", "ShipState", "shields", "std::uint8_t");
+                     tx.set_member_bits("game", "ShipState", "shields", 4);
+                     tx.rename_member("game", "ShipState", "shields", "shield");
+                     tx.set_member_type("game", "ShipState", "shield", "@LayoutEditValue");
+                     tx.reorder_member("game", "ShipState", "shield", 0);
+                 },
+                 [](Document const& doc) {
+                     EXPECT_FALSE(
+                         doc.query().module("game").record("ShipState").member("armor").exists());
+                     EXPECT_EQ(
+                         doc.query().module("game").record("ShipState").member("shield").bits(), 4);
+                 }},
         EditCase{"RejectOverflow",
-                 [](Transaction& tx) { tx.set_field_bits("game", "ShipState", "health", 12); },
+                 [](Transaction& tx) { tx.set_member_bits("game", "ShipState", "health", 12); },
                  [](Document const& doc) { EXPECT_EQ(health_bits(doc), 8); },
                  false},
         EditCase{"RejectUnknownField",
-                 [](Transaction& tx) { tx.set_field_bits("game", "ShipState", "missing", 4); },
+                 [](Transaction& tx) { tx.set_member_bits("game", "ShipState", "missing", 4); },
                  [](Document const& doc) { EXPECT_EQ(health_bits(doc), 8); },
                  false},
         EditCase{
@@ -217,11 +216,11 @@ TEST(DocumentHistory, FailedCommitPreservesRedoAndDiagnosticsAccumulate) {
     auto doc{editor.from_source(source)};
     ASSERT_TRUE(doc.valid()) << diagnostic_messages(editor);
     auto first{doc.transaction()};
-    first.set_field_bits("game", "ShipState", "health", 4);
+    first.set_member_bits("game", "ShipState", "health", 4);
     ASSERT_TRUE(doc.commit(first)) << diagnostic_messages(editor);
     ASSERT_TRUE(doc.undo());
     auto invalid{doc.transaction()};
-    invalid.set_field_bits("game", "ShipState", "health", 20);
+    invalid.set_member_bits("game", "ShipState", "health", 20);
     EXPECT_FALSE(doc.commit(invalid));
     EXPECT_TRUE(doc.can_redo());
     auto const errors{editor.diagnostics().size()};
@@ -236,7 +235,7 @@ TEST(DocumentHistory, FailedCommitPreservesRedoAndDiagnosticsAccumulate) {
     EXPECT_EQ(health_bits(doc), 4);
     ASSERT_TRUE(doc.undo());
     auto branch{doc.transaction()};
-    branch.set_field_bits("game", "ShipState", "health", 6);
+    branch.set_member_bits("game", "ShipState", "health", 6);
     ASSERT_TRUE(doc.commit(branch)) << diagnostic_messages(editor);
     EXPECT_FALSE(doc.can_redo());
     EXPECT_EQ(health_bits(doc), 6);
@@ -249,12 +248,12 @@ TEST(DocumentHistory, QueuedTransactionsResolveNamesInExecutionOrder) {
     auto rename{doc.transaction()};
     rename.rename_declaration("game", "ShipState", "State");
     auto edit{doc.transaction()};
-    edit.set_field_bits("game", "State", "health", 4);
+    edit.set_member_bits("game", "State", "health", 4);
     ASSERT_TRUE(doc.commit(rename)) << diagnostic_messages(editor);
     ASSERT_TRUE(doc.commit(edit)) << diagnostic_messages(editor);
-    EXPECT_EQ(doc.query().module("game").packed_value("State").field("health").bits(), 4);
+    EXPECT_EQ(doc.query().module("game").record("State").member("health").bits(), 4);
     ASSERT_TRUE(doc.undo());
-    EXPECT_EQ(doc.query().module("game").packed_value("State").field("health").bits(), 8);
+    EXPECT_EQ(doc.query().module("game").record("State").member("health").bits(), 8);
     ASSERT_TRUE(doc.undo());
     EXPECT_EQ(health_bits(doc), 8);
 }
@@ -263,7 +262,7 @@ TEST(DocumentQueries, MissingNamesPropagateWithoutErrors) {
     EditorSession editor;
     auto doc{editor.from_source(source)};
     ASSERT_TRUE(doc.valid()) << diagnostic_messages(editor);
-    EXPECT_FALSE(doc.query().module("missing").packed_value("ShipState").field("health").bits());
+    EXPECT_FALSE(doc.query().module("missing").record("ShipState").member("health").bits());
     EXPECT_FALSE(doc.query().module("game").soa("ShipState").exists());
     EXPECT_FALSE(doc.query().module("game").soa("FighterData").member("missing").type());
     EXPECT_EQ(editor.diagnostics().size(), 0);
@@ -277,10 +276,10 @@ TEST(DocumentQueries, EnumeratesModulesAndDeclarationsInAuthoredOrder) {
     ASSERT_EQ(modules.size(), 1);
     EXPECT_EQ(modules.front().name(), "game");
     auto const declarations{modules.front().declarations()};
-    ASSERT_EQ(declarations.size(), 2);
+    ASSERT_EQ(declarations.size(), 3);
     EXPECT_EQ(declarations[0].name(), "ShipState");
     EXPECT_EQ(declarations[1].name(), "FighterData");
-    EXPECT_TRUE(declarations[0].source()->contains("packed-value ShipState"));
+    EXPECT_TRUE(declarations[0].source()->contains("record ShipState"));
     EXPECT_FALSE(modules.front().declaration("missing").source());
 }
 
@@ -296,13 +295,13 @@ TEST(EditorSession, DocumentMovesPreserveQueuedTransactionsAndHistory) {
     auto document{editor.from_source(source)};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto queued{document.transaction()};
-    queued.set_field_bits("game", "ShipState", "health", 4);
+    queued.set_member_bits("game", "ShipState", "health", 4);
     auto moved{std::move(document)};
     ASSERT_TRUE(moved.commit(queued)) << diagnostic_messages(editor);
     EXPECT_EQ(health_bits(moved), 4);
 
     auto next{moved.transaction()};
-    next.set_field_bits("game", "ShipState", "health", 6);
+    next.set_member_bits("game", "ShipState", "health", 6);
     EditorSession other_editor;
     auto replacement{other_editor.from_source("")};
     replacement = std::move(moved);
@@ -323,13 +322,13 @@ TEST(EditorSession, DocumentsRetainIndependentHistoriesAndOutputs) {
     ASSERT_TRUE(second.valid()) << diagnostic_messages(editor);
     auto const second_source{second.sources()};
     auto first_edit{first.transaction()};
-    first_edit.set_field_bits("game", "ShipState", "health", 4);
+    first_edit.set_member_bits("game", "ShipState", "health", 4);
     ASSERT_TRUE(first.commit(first_edit)) << diagnostic_messages(editor);
     EXPECT_EQ(health_bits(second), 8);
     EXPECT_EQ(second.sources().front().text, second_source.front().text);
     EXPECT_FALSE(second.can_undo());
     auto second_edit{second.transaction()};
-    second_edit.set_field_bits("game", "ShipState", "health", 6);
+    second_edit.set_member_bits("game", "ShipState", "health", 6);
     ASSERT_TRUE(second.commit(second_edit)) << diagnostic_messages(editor);
     ASSERT_TRUE(first.undo());
     EXPECT_EQ(health_bits(first), 8);
@@ -366,7 +365,9 @@ TEST_P(DocumentDeclaration, CreatesAndRoundTripsAuthoredDeclaration) {
     EditorSession editor;
     auto const& test{GetParam()};
     auto doc{editor.from_source(R"((module game :header "Game.h"
-        (enum Kind std::uint8_t (value Small) (value Large))
+        (enum Kind std::uint8_t (value Small) (value Large)
+    (projections (cpp)))
+        (integer-scalar LayoutEditValue :bit-width 1)
         (integer-scalar Value :signed false :minimum 0 :maximum 100
             (code Invalid :value 127 :sentinel true))))")};
     ASSERT_TRUE(doc.valid()) << diagnostic_messages(editor);
@@ -386,17 +387,20 @@ INSTANTIATE_TEST_SUITE_P(
     DeclarationKinds,
     DocumentDeclaration,
     testing::Values(
-        DeclarationCase{"Enum", "(enum Created std::uint8_t (value A) (value B :value 4))"},
-        DeclarationCase{"Record", "(record Created (member values std::uint16_t :count 4))"},
         DeclarationCase{
-            "Union",
-            "(union Created (alternative small std::uint8_t) (alternative large std::uint32_t))"},
-        DeclarationCase{"TaggedUnion",
-                        "(tagged-union Created :discriminant Kind (alternative small std::uint8_t "
-                        ":tag Small) (alternative large std::uint32_t :tag Large))"},
+            "Enum",
+            "(enum Created std::uint8_t (value A) (value B :value 4)\n    (projections (cpp)))"},
         DeclarationCase{
-            "Packed",
-            "(packed-value Created :storage std::uint16_t (field health std::uint16_t :bits 12))"},
+            "Record",
+            "(record Created (member values std::uint16_t :count 4)\n    (projections (cpp)))"},
+        DeclarationCase{"Union",
+                        "(union Created (member small std::uint8_t) (member large std::uint32_t)\n "
+                        "   (projections (cpp)))"},
+        DeclarationCase{"MappedUnion",
+                        "(union Created (case Small std::uint8_t) (case Large std::uint32_t))"},
+        DeclarationCase{"Packed",
+                        "(record Created :layout packed (member health @LayoutEditValue :bits "
+                        "12)\n    (projections (cpp :storage std::uint16_t)))"},
         DeclarationCase{
             "Soa",
             "(struct Created (member positions array float) (member ids array std::uint32_t))"},
@@ -421,8 +425,10 @@ INSTANTIATE_TEST_SUITE_P(
 TEST(DocumentEdit, EnumAndRecordChildrenUseNamedOperations) {
     EditorSession editor;
     auto doc{editor.from_source(R"((module game :header "Game.h"
-        (enum State std::uint8_t (value Idle) (value Running))
-        (record Position (member x float) (member y float))))")};
+        (enum State std::uint8_t (value Idle) (value Running)
+    (projections (cpp)))
+        (record Position (member x float) (member y float)
+    (projections (cpp)))))")};
     ASSERT_TRUE(doc.valid()) << diagnostic_messages(editor);
     auto tx{doc.transaction()};
     tx.add_enumerator("game", "State", "Done", "8");
@@ -452,12 +458,12 @@ TEST(DocumentHistory, ReplaysCoordinatedEditsAcrossSeveralTransactions) {
     auto const original_type{doc.find_type("game", "ShipState").value()};
     auto const declaration{doc.find_declaration(doc.types().identity(original_type)).value()};
     auto first{doc.transaction()};
-    first.set_field_bits("game", "ShipState", "health", 12);
-    first.set_field_bits("game", "ShipState", "armor", 4);
+    first.set_member_bits("game", "ShipState", "health", 12);
+    first.set_member_bits("game", "ShipState", "armor", 4);
     ASSERT_TRUE(doc.commit(first)) << diagnostic_messages(editor);
     auto second{doc.transaction()};
     second.rename_declaration("game", "ShipState", "State");
-    second.set_field_bits("game", "State", "health", 10);
+    second.set_member_bits("game", "State", "health", 10);
     ASSERT_TRUE(doc.commit(second)) << diagnostic_messages(editor);
     auto const renamed_type{doc.find_type("game", "State").value()};
     EXPECT_EQ(doc.find_declaration(doc.types().identity(renamed_type)), declaration);
@@ -466,7 +472,7 @@ TEST(DocumentHistory, ReplaysCoordinatedEditsAcrossSeveralTransactions) {
     ASSERT_TRUE(doc.commit(third)) << diagnostic_messages(editor);
     EXPECT_FALSE(doc.find_type("game", "State"));
     ASSERT_TRUE(doc.undo());
-    EXPECT_EQ(doc.query().module("game").packed_value("State").field("health").bits(), 10);
+    EXPECT_EQ(doc.query().module("game").record("State").member("health").bits(), 10);
     ASSERT_TRUE(doc.undo());
     EXPECT_EQ(health_bits(doc), 12);
     ASSERT_TRUE(doc.undo());
@@ -508,9 +514,11 @@ TEST(DocumentEdit, RenameRepairsReferencesAndRejectedDeleteIsAtomic) {
 TEST(DocumentLoad, ResolvesNamedSourcesAndOwnsTheirContents) {
     EditorSession editor;
     Document doc{[&editor] {
-        std::string first{R"((module first :header "First.h" (record Point (member x float))))"};
+        std::string first{R"((module first :header "First.h" (record Point (member x float)
+    (projections (cpp)))))"};
         std::string second{
-            R"((module second :header "Second.h" (record Ship (member position Point))))"};
+            R"((module second :header "Second.h" (record Ship (member position Point)
+    (projections (cpp)))))"};
         std::array sources{DocumentSource{"first.lispb", first},
                            DocumentSource{"second.lispb", second}};
         return editor.from_sources(sources);
@@ -530,11 +538,15 @@ TEST(DocumentEdit, RenameRespectsNamespaceLocalShadowing) {
     EditorSession editor;
     auto doc{editor.from_source(R"(
         (module global :header "Global.h"
-            (record Value (member x float))
-            (record Holder (member value Value)))
+            (record Value (member x float)
+    (projections (cpp)))
+            (record Holder (member value Value)
+    (projections (cpp))))
         (module local :header "Local.h" :namespace local
-            (record Value (member y double))
-            (record Holder (member value Value))))")};
+            (record Value (member y double)
+    (projections (cpp)))
+            (record Holder (member value Value)
+    (projections (cpp)))))")};
     ASSERT_TRUE(doc.valid()) << diagnostic_messages(editor);
     auto tx{doc.transaction()};
     tx.rename_declaration("global", "Value", "GlobalValue");
@@ -548,11 +560,15 @@ TEST(DocumentEdit, NamespaceMoveRetainsOutgoingAndIncomingReferences) {
     EditorSession editor;
     auto doc{editor.from_source(R"(
         (module first :header "First.h" :namespace alpha
-            (record Value (member x float))
-            (record Holder (member value Value))
-            (record User (member holder Holder)))
+            (record Value (member x float)
+    (projections (cpp)))
+            (record Holder (member value Value)
+    (projections (cpp)))
+            (record User (member holder Holder)
+    (projections (cpp))))
         (module second :header "Second.h" :namespace beta
-            (record Value (member y double))))")};
+            (record Value (member y double)
+    (projections (cpp)))))")};
     ASSERT_TRUE(doc.valid()) << diagnostic_messages(editor);
     auto const holder{
         doc.find_declaration(doc.types().identity(*doc.find_type("first", "Holder")))};
@@ -597,7 +613,8 @@ TEST(DocumentEdit, WholeSourceReplacementSupportsAllModuleKindsAndRejectsInvalid
     auto tx{doc.transaction()};
     tx.replace_source("document.lispb", R"(
         (module game :header "Game.h"
-            (packed-value ShipState :storage std::uint16_t (field health std::uint16_t :bits 12)))
+            (record ShipState :layout packed (member health @LayoutEditValue :bits 12)
+    (projections (cpp :storage std::uint16_t))) (integer-scalar LayoutEditValue :bit-width 1))
         (settings-module settings :header "Settings.h" :source "Settings.cpp"
             :api-name SettingsAccess :state-name SettingsState
             (category video "Video")
@@ -626,14 +643,15 @@ TEST(DocumentEdit, RenderedSourcesOwnTheirTextAcrossSessionGrowthAndReplay) {
     ASSERT_TRUE(doc.valid()) << diagnostic_messages(editor);
     auto const original{std::string{doc.sources().front().text}};
     auto tx{doc.transaction()};
-    tx.set_field_bits("game", "ShipState", "health", 4);
+    tx.set_member_bits("game", "ShipState", "health", 4);
     ASSERT_TRUE(doc.commit(tx));
     auto const edited{doc.sources()};
     EXPECT_NE(edited.front().text, original);
     EXPECT_TRUE(edited.front().text.contains(":bits 4"));
 
-    auto other{editor.from_source(";" + std::string(32768, 'x') +
-                                  "\n(module other :header \"Other.h\" (record Other))")};
+    auto other{editor.from_source(
+        ";" + std::string(32768, 'x') +
+        "\n(module other :header \"Other.h\" (record Other\n    (projections (cpp))))")};
     ASSERT_TRUE(other.valid()) << diagnostic_messages(editor);
     EXPECT_EQ(doc.sources().front().path, "document.lispb");
     EXPECT_EQ(doc.sources().front().text, edited.front().text);
@@ -643,5 +661,52 @@ TEST(DocumentEdit, RenderedSourcesOwnTheirTextAcrossSessionGrowthAndReplay) {
     EXPECT_EQ(doc.sources().front().text, original);
     EXPECT_TRUE(edited.front().text.contains(":bits 4"));
     EXPECT_EQ(health_bits(doc), 8);
+}
+TEST(DocumentEdit, LogicalReferencesFollowMovesAndModuleRenames) {
+    EditorSession editor;
+    auto doc{editor.from_source(R"(
+        (module definitions
+            (integer-scalar Index :bit-width 24)
+            (record Target (member index @Index)))
+        (module use
+            (record Instruction :layout packed (member target @definitions/Target))))")};
+    ASSERT_TRUE(doc.valid()) << diagnostic_messages(editor);
+
+    auto edit{doc.transaction()};
+    edit.move_declaration("definitions", "Target", "use");
+    edit.rename_module("definitions", "values");
+    edit.rename_declaration("values", "Index", "EntityIndex");
+    ASSERT_TRUE(doc.commit(edit)) << diagnostic_messages(editor);
+    EXPECT_EQ(doc.query().module("use").record("Target").member("index").type(),
+              "@values/EntityIndex");
+    EXPECT_EQ(doc.query().module("use").record("Instruction").member("target").type(), "@Target");
+    ASSERT_TRUE(doc.undo());
+    EXPECT_EQ(doc.query().module("definitions").record("Target").member("index").type(), "@Index");
+    ASSERT_TRUE(doc.redo()) << diagnostic_messages(editor);
+}
+
+TEST(DocumentEdit, DiscriminatorRenamesPreserveCaseBindings) {
+    EditorSession editor;
+    auto doc{editor.from_source(R"(
+        (module instructions
+            (integer-scalar Index :bit-width 24)
+            (enum Opcode :bit-width 2 (value Kill))
+            (record Target (member index @Index))
+            (union Payload (case Kill @Target))
+            (record Instruction :layout packed
+                (member opcode @Opcode)
+                (member payload @Payload :tag opcode))))")};
+    ASSERT_TRUE(doc.valid()) << diagnostic_messages(editor);
+    auto const original{doc.declaration_source("instructions", "Payload")};
+
+    auto edit{doc.transaction()};
+    edit.rename_member("instructions", "Instruction", "opcode", "operation");
+    edit.rename_enumerator("instructions", "Opcode", "Kill", "Destroy");
+    ASSERT_TRUE(doc.commit(edit)) << diagnostic_messages(editor);
+    EXPECT_TRUE(doc.declaration_source("instructions", "Instruction")->contains(":tag operation"));
+    EXPECT_TRUE(doc.declaration_source("instructions", "Payload")->contains(":case Destroy"));
+    ASSERT_TRUE(doc.undo());
+    EXPECT_EQ(doc.declaration_source("instructions", "Payload"), original);
+    ASSERT_TRUE(doc.redo()) << diagnostic_messages(editor);
 }
 } // namespace ioj::layout::document_tests
