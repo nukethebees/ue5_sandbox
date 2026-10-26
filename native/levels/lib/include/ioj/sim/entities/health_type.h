@@ -33,9 +33,7 @@ struct Health : detail::HealthBase {
     [[nodiscard]] constexpr auto operator<=>(Health const& other) const noexcept {
         return value() <=> other.value();
     }
-    [[nodiscard]] constexpr auto operator==(Health const& other) const noexcept -> bool {
-        return value() == other.value();
-    }
+    [[nodiscard]] constexpr bool operator==(Health const&) const noexcept = default;
 
     [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
         return true;

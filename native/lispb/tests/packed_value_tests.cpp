@@ -364,7 +364,7 @@ TEST(PackedRecord, SharesTypedValidationHelpersAcrossConstructionMutationAndVali
     EXPECT_TRUE(method_body(constrained, "set_limited(").contains("is_valid_limited(value)"));
 }
 
-TEST(PackedRecord, DefaultsScalarComparisonOnlyWhenStorageOrderMatchesLogicalValues) {
+TEST(PackedRecord, DefaultsCanonicalScalarComparisonExceptSignedOrdering) {
     CompilerTestContext context;
     auto const files{render_test_manifest(context, parse_test_manifest(context, R"(
       (module values :header "Values.h"
@@ -375,11 +375,13 @@ TEST(PackedRecord, DefaultsScalarComparisonOnlyWhenStorageOrderMatchesLogicalVal
     ASSERT_EQ(files.size(), 1U);
     auto const& output{files.front().content};
     EXPECT_NE(output.find("operator<=>(Full const&) const noexcept = default"), std::string::npos);
-    EXPECT_EQ(output.find("operator<=>(Padded const&) const noexcept = default"),
+    EXPECT_NE(output.find("operator<=>(Padded const&) const noexcept = default"),
               std::string::npos);
     EXPECT_EQ(output.find("operator<=>(Signed const&) const noexcept = default"),
               std::string::npos);
-    EXPECT_EQ(occurrences(output, "return value() <=> other.value();"), 2U);
+    EXPECT_NE(output.find("operator==(Signed const&) const noexcept = default"), std::string::npos);
+    EXPECT_EQ(occurrences(output, "return value() <=> other.value();"), 1U);
+    EXPECT_EQ(occurrences(output, "return value() == other.value();"), 0U);
 }
 
 class InvalidPackedRecord : public testing::TestWithParam<char const*> {};
@@ -414,6 +416,8 @@ INSTANTIATE_TEST_SUITE_P(
         R"((module m :header "M.h" (record R :layout packed (member value @Missing) (projections (cpp)))))",
         R"((module m :header "M.h" (integer-scalar Byte :bit-width 8)
       (record R :layout packed (member raw_value @Byte) (projections (cpp)))))",
+        R"((module m :header "M.h" (integer-scalar Byte :bit-width 8)
+      (record R :layout packed (member from_canonical_raw @Byte) (projections (cpp)))))",
         R"((module m :header "M.h" (integer-scalar Byte :bit-width 8) (record Nested (member b @Byte))
       (record R :layout packed (member a @Nested) (member a_b @Byte) (projections (cpp)))))",
         R"((module m :header "M.h" (integer-scalar Byte :bit-width 8)

@@ -32,11 +32,29 @@ struct DeletedDefault
     constexpr auto operator<=>(DeletedDefault const&) const noexcept = default;
 };
 
+template <typename Storage>
+struct PaddedScalar
+    : ioj::PackedValueBase<PaddedScalar<Storage>, ioj::PackedStorage<Storage, 3>{0xa5}> {
+    using packed_integer_tag = ioj::packed::scalar_tag;
+    using value_type = Storage;
+    static constexpr ioj::PackedField<Storage, value_type, 0, 3> value_layout{};
+
+    constexpr auto operator<=>(PaddedScalar const&) const noexcept = default;
+
+    constexpr auto value() const noexcept -> value_type {
+        return this->template extract<decltype(value_layout)>();
+    }
+    constexpr void set_value(value_type value) noexcept {
+        this->template insert<decltype(value_layout)>(value);
+    }
+};
+
 static_assert(!std::is_default_constructible_v<DeletedDefault>);
 static_assert(ioj::PackedInteger<DeletedDefault>);
 static_assert(DeletedDefault::from_raw(0xff).raw_value() == 0xff);
 static_assert(DeletedDefault::from_raw(0).is_valid());
 static_assert(DeletedDefault::from_raw(0) < DeletedDefault::from_raw(0xff));
+static_assert(DeletedDefault::from_canonical_raw(0xff).raw_value() == 0xff);
 
 template <typename Storage>
 constexpr auto check_storage_width() -> bool {
@@ -97,6 +115,18 @@ constexpr auto check_storage_width() -> bool {
     static_assert(Value::from_raw(maximum).is_valid());
     static_assert(Value::from_raw(0) < Value::from_raw(maximum));
     static_assert(Value::from_raw(0xa5) == Value{});
+    static_assert(Value::from_canonical_raw(maximum).raw_value() == maximum);
+    using Scalar = PaddedScalar<Storage>;
+    static_assert(ioj::PackedInteger<Scalar>);
+    static_assert(Scalar{}.raw_value() == 5);
+    static_assert(Scalar{}.value() == 5);
+    static_assert(Scalar::from_raw(maximum).raw_value() == 7);
+    static_assert(Scalar::from_canonical_raw(7) == Scalar::from_raw(maximum));
+    auto scalar{Scalar{}};
+    scalar.set_value(2);
+    if (scalar.raw_value() != 2 || scalar.value() != 2) {
+        return false;
+    }
     auto value{Value::from_raw(maximum)};
     value.set_field(2);
     return value.field() == 2 &&

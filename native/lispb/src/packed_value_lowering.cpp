@@ -209,6 +209,7 @@ class PackedEmitter {
                                 "storage",
                                 "raw_value",
                                 "from_raw",
+                                "from_canonical_raw",
                                 "is_valid",
                                 "extract",
                                 "insert",
@@ -508,34 +509,32 @@ class PackedEmitter {
         return ir_.header_function(fn);
     }
     void comparison(bool defaulted) {
-        auto const fn{ir_.function(
-            "operator<=>", ir_.types.intern("auto", {ir_.types.dependency("auto", "compare")}))};
-        ir_.set_function_receiver(fn, FunctionReceiver::const_);
-        ir_.set_function_noexcept(fn);
-        ir_.function_flags(fn).set_is_constexpr(true);
-        ir_.function_flags(fn).set_define_in_header(true);
-        ir_.function_flags(fn).set_is_nodiscard(true);
         auto const owner{ir_.types.decorate(type(name_), "", " const&")};
-        ir_.set_function_parameters(fn, {ir_.parameter(owner, defaulted ? "" : "other")});
-        if (defaulted) {
-            ir_.set_function_defaulted(fn);
-        } else {
-            ir_.set_function_body(
-                fn,
-                {ir_.return_stmt(binary(BinaryOperator::three_way,
-                                        invoke("value"),
-                                        member_call(ir_.named("other"), "value")))});
-        }
-        operators_.push_back(ir_.header_function(fn));
-        if (!defaulted) {
-            operators_.push_back(
-                function("operator==",
-                         "bool",
-                         FunctionReceiver::const_,
-                         {ir_.parameter(owner, "other")},
-                         {ir_.return_stmt(binary(BinaryOperator::equal,
-                                                 invoke("value"),
-                                                 member_call(ir_.named("other"), "value")))}));
+        for (auto const equality : {false, true}) {
+            if (equality && defaulted) {
+                continue;
+            }
+            auto const decoded{!defaulted && !equality};
+            auto const fn{ir_.function(
+                equality ? "operator==" : "operator<=>",
+                equality ? type("bool")
+                         : ir_.types.intern("auto", {ir_.types.dependency("auto", "compare")}))};
+            ir_.set_function_receiver(fn, FunctionReceiver::const_);
+            ir_.set_function_noexcept(fn);
+            ir_.function_flags(fn).set_is_constexpr(true);
+            ir_.function_flags(fn).set_define_in_header(true);
+            ir_.function_flags(fn).set_is_nodiscard(true);
+            ir_.set_function_parameters(fn, {ir_.parameter(owner, decoded ? "other" : "")});
+            if (decoded) {
+                ir_.set_function_body(
+                    fn,
+                    {ir_.return_stmt(binary(BinaryOperator::three_way,
+                                            invoke("value"),
+                                            member_call(ir_.named("other"), "value")))});
+            } else {
+                ir_.set_function_defaulted(fn);
+            }
+            operators_.push_back(ir_.header_function(fn));
         }
     }
     auto scalar_domain(schema::TypeId scalar,
@@ -938,8 +937,7 @@ class PackedEmitter {
             constructor(std::nullopt);
         }
         comparison(!scalar_ ||
-                   (value_type(context_, type_, *layout_.encoded_bits).starts_with("std::uint") &&
-                    *layout_.encoded_bits == layout_.storage_bits));
+                   !value_type(context_, type_, *layout_.encoded_bits).starts_with("std::int"));
         std::set<std::pair<std::optional<std::uint32_t>, schema::ChildOccurrenceId>> alternatives;
         for (std::size_t index{}; index < count; ++index) {
             auto const& placement{layout_.placements[index]};

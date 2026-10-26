@@ -3,6 +3,7 @@
 #include <ioj/min_max.h>
 
 #include <bit>
+#include <cassert>
 #include <compare>
 #include <concepts>
 #include <cstddef>
@@ -72,7 +73,7 @@ concept PackedInteger =
 
 namespace packed {
 template <PackedInteger T>
-[[nodiscard]] constexpr auto comparison_value(T const& value) noexcept {
+[[nodiscard]] constexpr auto format_value(T const& value) noexcept {
     if constexpr (ScalarValue<T>) {
         return value.value();
     } else {
@@ -81,7 +82,7 @@ template <PackedInteger T>
 }
 
 template <PackedInteger T>
-using comparison_type = decltype(comparison_value(std::declval<T const&>()));
+using format_type = decltype(format_value(std::declval<T const&>()));
 }
 
 template <PackedStorageInteger Storage, int EncodedBits>
@@ -186,11 +187,30 @@ struct PackedValueBase {
     constexpr auto operator<=>(PackedValueBase const&) const noexcept = default;
 
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    // Clear scalar padding without validating the encoded value's semantic domain.
     [[nodiscard]] static constexpr auto from_raw(storage_type const value) noexcept -> Derived {
         static_assert(valid_packed_value_layout<Derived>());
+        return std::bit_cast<Derived>(canonical_raw(value));
+    }
+    // Require zero scalar padding; semantic validity remains the caller's responsibility.
+    [[nodiscard]] static constexpr auto from_canonical_raw(storage_type const value) noexcept
+        -> Derived {
+        static_assert(valid_packed_value_layout<Derived>());
+        assert(value == canonical_raw(value));
         return std::bit_cast<Derived>(value);
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+
+  private:
+    [[nodiscard]] static constexpr auto canonical_raw(storage_type const value) noexcept
+        -> storage_type {
+        if constexpr (std::same_as<typename Derived::packed_integer_tag, packed::scalar_tag>) {
+            using Field = PackedField<storage_type, storage_type, 0, storage.encoded_bits>;
+            return static_cast<storage_type>(value & Field::value_mask);
+        } else {
+            return value;
+        }
+    }
 
   protected:
     template <typename Field>
@@ -202,7 +222,7 @@ struct PackedValueBase {
         value_ = packed_insert<Field>(value_, value);
     }
 
-    storage_type value_{storage.default_raw_value};
+    storage_type value_{canonical_raw(storage.default_raw_value)};
 };
 
 } // namespace ioj
@@ -210,15 +230,15 @@ struct PackedValueBase {
 template <ioj::PackedInteger T>
 struct std::hash<T> {
     [[nodiscard]] auto operator()(T const& value) const noexcept -> std::size_t {
-        return std::hash<ioj::packed::comparison_type<T>>{}(ioj::packed::comparison_value(value));
+        return std::hash<typename T::storage_type>{}(value.raw_value());
     }
 };
 
 template <ioj::PackedInteger T, typename Char>
-struct std::formatter<T, Char> : std::formatter<ioj::packed::comparison_type<T>, Char> {
+struct std::formatter<T, Char> : std::formatter<ioj::packed::format_type<T>, Char> {
     template <typename FormatContext>
     auto format(T const& value, FormatContext& context) const -> typename FormatContext::iterator {
-        return std::formatter<ioj::packed::comparison_type<T>, Char>::format(
-            ioj::packed::comparison_value(value), context);
+        return std::formatter<ioj::packed::format_type<T>, Char>::format(
+            ioj::packed::format_value(value), context);
     }
 };

@@ -33,12 +33,7 @@ struct EntityFrameIndex : detail::EntityFrameIndexBase {
         insert<decltype(value_layout)>(value);
     }
 
-    [[nodiscard]] constexpr auto operator<=>(EntityFrameIndex const& other) const noexcept {
-        return value() <=> other.value();
-    }
-    [[nodiscard]] constexpr auto operator==(EntityFrameIndex const& other) const noexcept -> bool {
-        return value() == other.value();
-    }
+    [[nodiscard]] constexpr auto operator<=>(EntityFrameIndex const&) const noexcept = default;
 
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= value_layout.value_mask;
@@ -76,12 +71,7 @@ struct QuantisedHealth : detail::QuantisedHealthBase {
         insert<decltype(value_layout)>(value);
     }
 
-    [[nodiscard]] constexpr auto operator<=>(QuantisedHealth const& other) const noexcept {
-        return value() <=> other.value();
-    }
-    [[nodiscard]] constexpr auto operator==(QuantisedHealth const& other) const noexcept -> bool {
-        return value() == other.value();
-    }
+    [[nodiscard]] constexpr auto operator<=>(QuantisedHealth const&) const noexcept = default;
 
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= value_layout.value_mask;

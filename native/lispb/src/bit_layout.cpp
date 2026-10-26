@@ -505,6 +505,7 @@ class BitLayoutResolver {
                                     "packed_integer_tag",
                                     "raw_value",
                                     "from_raw",
+                                    "from_canonical_raw",
                                     "is_valid",
                                     "value_"};
         auto const& declarations{graph_.declarations()};

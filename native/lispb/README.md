@@ -27,11 +27,14 @@ records. `:bits` reserves a larger enclosing extent; it cannot truncate a child'
 An unsigned `integer-scalar` infers its full domain from `:bit-width`; `:signed true` selects a
 signed domain. Optional `:minimum` and `:maximum` narrow the domain. A projected integer scalar is
 an explicit C++ wrapper with `value_type`, `value()`, `set_value()` and checked typed construction.
-`from_raw()` preserves all storage bits without validation; `is_valid()` checks the logical domain.
+Scalar `from_raw()` clears padding bits; `from_canonical_raw()` requires zero padding and asserts
+that precondition in debug builds. Neither checks the logical domain; use `is_valid()` for that.
+Packed records and unions retain their raw storage bits.
 
 Projected scalars and packed owners support `std::format` and `std::hash` automatically. Scalars
-format and hash their decoded value; packed records and unions use their raw integer, matching
-their equality semantics. Standard integer format specifications, including hexadecimal, apply.
+format their decoded value; packed records and unions format their raw integer. All hash their
+raw integer, matching equality on canonical scalar encodings. Standard integer format
+specifications, including hexadecimal, apply.
 
 Unions contain references, for example `(union Target @EntityIndex @LocationIndex)`. A record
 member binds a discriminator with `(member payload @Payload :tag opcode)`, where `opcode` is a

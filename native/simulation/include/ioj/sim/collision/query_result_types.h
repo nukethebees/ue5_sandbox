@@ -32,12 +32,7 @@ struct TraceHit : detail::TraceHitBase {
         insert<decltype(value_layout)>(value);
     }
 
-    [[nodiscard]] constexpr auto operator<=>(TraceHit const& other) const noexcept {
-        return value() <=> other.value();
-    }
-    [[nodiscard]] constexpr auto operator==(TraceHit const& other) const noexcept -> bool {
-        return value() == other.value();
-    }
+    [[nodiscard]] constexpr auto operator<=>(TraceHit const&) const noexcept = default;
 
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= value_layout.value_mask;
@@ -75,12 +70,7 @@ struct LineQueryResult : detail::LineQueryResultBase {
         insert<decltype(value_layout)>(value);
     }
 
-    [[nodiscard]] constexpr auto operator<=>(LineQueryResult const& other) const noexcept {
-        return value() <=> other.value();
-    }
-    [[nodiscard]] constexpr auto operator==(LineQueryResult const& other) const noexcept -> bool {
-        return value() == other.value();
-    }
+    [[nodiscard]] constexpr auto operator<=>(LineQueryResult const&) const noexcept = default;
 
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= value_layout.value_mask;

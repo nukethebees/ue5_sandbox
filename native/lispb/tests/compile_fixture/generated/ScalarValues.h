@@ -37,9 +37,7 @@ struct RegisteredInt : detail::RegisteredIntBase {
     [[nodiscard]] constexpr auto operator<=>(RegisteredInt const& other) const noexcept {
         return value() <=> other.value();
     }
-    [[nodiscard]] constexpr auto operator==(RegisteredInt const& other) const noexcept -> bool {
-        return value() == other.value();
-    }
+    [[nodiscard]] constexpr bool operator==(RegisteredInt const&) const noexcept = default;
 
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
         return value >= value_layout.range.min && value <= value_layout.range.max;
@@ -84,9 +82,7 @@ struct StandardInt : detail::StandardIntBase {
     [[nodiscard]] constexpr auto operator<=>(StandardInt const& other) const noexcept {
         return value() <=> other.value();
     }
-    [[nodiscard]] constexpr auto operator==(StandardInt const& other) const noexcept -> bool {
-        return value() == other.value();
-    }
+    [[nodiscard]] constexpr bool operator==(StandardInt const&) const noexcept = default;
 
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
         return value >= value_layout.range.min && value <= value_layout.range.max;
@@ -129,12 +125,7 @@ struct DamageCode : detail::DamageCodeBase {
         insert<decltype(value_layout)>(value);
     }
 
-    [[nodiscard]] constexpr auto operator<=>(DamageCode const& other) const noexcept {
-        return value() <=> other.value();
-    }
-    [[nodiscard]] constexpr auto operator==(DamageCode const& other) const noexcept -> bool {
-        return value() == other.value();
-    }
+    [[nodiscard]] constexpr auto operator<=>(DamageCode const&) const noexcept = default;
 
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
         return value <= value_layout.range.max;
@@ -221,12 +212,7 @@ struct Health : detail::HealthBase {
         insert<decltype(value_layout)>(value);
     }
 
-    [[nodiscard]] constexpr auto operator<=>(Health const& other) const noexcept {
-        return value() <=> other.value();
-    }
-    [[nodiscard]] constexpr auto operator==(Health const& other) const noexcept -> bool {
-        return value() == other.value();
-    }
+    [[nodiscard]] constexpr auto operator<=>(Health const&) const noexcept = default;
 
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
         return value <= value_layout.range.max;

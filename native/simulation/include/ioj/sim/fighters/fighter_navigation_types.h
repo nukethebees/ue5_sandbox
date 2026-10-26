@@ -44,13 +44,7 @@ struct NavigationRiskCode : detail::NavigationRiskCodeBase {
         insert<decltype(value_layout)>(value);
     }
 
-    [[nodiscard]] constexpr auto operator<=>(NavigationRiskCode const& other) const noexcept {
-        return value() <=> other.value();
-    }
-    [[nodiscard]] constexpr auto operator==(NavigationRiskCode const& other) const noexcept
-        -> bool {
-        return value() == other.value();
-    }
+    [[nodiscard]] constexpr auto operator<=>(NavigationRiskCode const&) const noexcept = default;
 
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= value_layout.value_mask;
@@ -131,9 +125,7 @@ struct AvoidanceChoice : detail::AvoidanceChoiceBase {
     [[nodiscard]] constexpr auto operator<=>(AvoidanceChoice const& other) const noexcept {
         return value() <=> other.value();
     }
-    [[nodiscard]] constexpr auto operator==(AvoidanceChoice const& other) const noexcept -> bool {
-        return value() == other.value();
-    }
+    [[nodiscard]] constexpr bool operator==(AvoidanceChoice const&) const noexcept = default;
 
     [[nodiscard]] static constexpr auto is_valid_value(value_type const value) noexcept -> bool {
         return (value >= value_layout.range.min && value <= value_layout.range.max) ||

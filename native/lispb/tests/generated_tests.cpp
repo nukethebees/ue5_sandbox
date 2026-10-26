@@ -775,6 +775,11 @@ TEST(GeneratedIntegerScalar, PreservesRawSentinelsWithoutImplicitConversions) {
     EXPECT_TRUE(invalid.is_valid());
     EXPECT_FALSE(DamageReason::from_raw(42).is_valid());
     EXPECT_TRUE(DamageReason{1}.is_valid());
+    constexpr auto canonical_invalid{Health::from_canonical_raw(1001)};
+    static_assert(canonical_invalid.raw_value() == 1001);
+    static_assert(!canonical_invalid.is_valid());
+    static_assert(DamageReason::from_canonical_raw(255) == invalid);
+    static_assert(noexcept(Health::from_canonical_raw(1001)));
 }
 
 TEST(GeneratedIntegerScalar, FormatsDecodedNumbersWithStandardNumericSpecifications) {
@@ -791,28 +796,30 @@ TEST(GeneratedIntegerScalar, FormatsDecodedNumbersWithStandardNumericSpecificati
     EXPECT_EQ(std::format("{}", Health::from_raw(1001)), "1001");
 }
 
-TEST(GeneratedIntegerScalar, HashesDecodedValuesConsistentlyWithEquality) {
+TEST(GeneratedIntegerScalar, HashesCanonicalRawValuesConsistentlyWithEquality) {
     static_assert(ioj::PackedInteger<RegisteredInt>);
     static_assert(std::same_as<RegisteredInt::packed_integer_tag, ioj::packed::scalar_tag>);
     constexpr RegisteredInt canonical{-42};
-    constexpr auto padded{RegisteredInt::from_raw(0xabcdefd6)};
-    static_assert(canonical == padded);
-    static_assert(canonical.raw_value() != padded.raw_value());
+    constexpr auto normalized{RegisteredInt::from_raw(0xabcdefd6)};
+    static_assert(canonical == normalized);
+    static_assert(canonical.raw_value() == normalized.raw_value());
+    static_assert(normalized.raw_value() == 0xd6);
     static_assert(noexcept(std::hash<RegisteredInt>{}(canonical)));
     EXPECT_EQ(std::hash<RegisteredInt>{}(canonical),
-              std::hash<RegisteredInt::value_type>{}(canonical.value()));
-    EXPECT_EQ(std::hash<RegisteredInt>{}(canonical), std::hash<RegisteredInt>{}(padded));
-    std::unordered_set<RegisteredInt> values{canonical, padded, RegisteredInt{-41}};
+              std::hash<RegisteredInt::storage_type>{}(canonical.raw_value()));
+    EXPECT_EQ(std::hash<RegisteredInt>{}(canonical), std::hash<RegisteredInt>{}(normalized));
+    std::unordered_set<RegisteredInt> values{canonical, normalized, RegisteredInt{-41}};
     EXPECT_EQ(values.size(), 2U);
     EXPECT_TRUE(values.contains(RegisteredInt::from_raw(0x123456d6)));
     EXPECT_EQ(std::hash<DamageReason>{}(DamageReason::from_raw(255)),
-              std::hash<DamageReason::value_type>{}(255));
+              std::hash<DamageReason::storage_type>{}(255));
     constexpr unified::EntityIndex index{42};
-    constexpr auto padded_index{unified::EntityIndex::from_raw(0xff00002a)};
-    static_assert(index == padded_index);
-    static_assert((index <=> padded_index) == std::strong_ordering::equal);
+    constexpr auto normalized_index{unified::EntityIndex::from_raw(0xff00002a)};
+    static_assert(index == normalized_index);
+    static_assert(normalized_index.raw_value() == 42);
+    static_assert((index <=> normalized_index) == std::strong_ordering::equal);
     EXPECT_EQ(std::hash<unified::EntityIndex>{}(index),
-              std::hash<unified::EntityIndex>{}(padded_index));
+              std::hash<unified::EntityIndex>{}(normalized_index));
     static_assert(unified::SignedOffset{-32768} < unified::SignedOffset{32767});
     static_assert(unified::SignedOffset{-1} < unified::SignedOffset{0});
     static_assert(DamageReason{0} < DamageReason::from_raw(255));
@@ -842,6 +849,8 @@ TEST(UnifiedPacked, SharedValidationHelpersRetainRangeAndEncodingBoundaries) {
     static_assert(unified::EntityId::from_raw(0xffffffff).is_valid());
     static_assert(!Health::from_raw(1001).is_valid());
 #ifndef NDEBUG
+    EXPECT_DEATH(static_cast<void>(unified::EntityIndex::from_canonical_raw(0xff000001)), "");
+    EXPECT_DEATH(static_cast<void>(RegisteredInt::from_canonical_raw(0xffffffd6)), "");
     EXPECT_DEATH(static_cast<void>(unified::EntityIndex{0x1000000}), "");
     auto index{unified::EntityIndex::from_raw(0xff000001)};
     EXPECT_DEATH(index.set_value(0x1000000), "");
@@ -909,6 +918,7 @@ TEST(UnifiedPacked, HashesEveryStorageBitConsistentlyWithRawEquality) {
     static_assert(std::same_as<WideEntityId::packed_integer_tag, ioj::packed::integer_tag>);
     constexpr auto canonical{WideEntityId::from_raw(42)};
     constexpr auto padded{WideEntityId::from_raw(0xabcd00000000002aULL)};
+    static_assert(WideEntityId::from_canonical_raw(0xabcd00000000002aULL) == padded);
     static_assert(canonical.index() == padded.index());
     static_assert(canonical.entity_type() == padded.entity_type());
     static_assert(canonical != padded);
@@ -936,7 +946,20 @@ TEST(UnifiedPacked, ScalarWidthsDomainsAndSignedValuesAreIndependentOfStorage) {
     constexpr EntityIndex index{0xabcdef};
     static_assert(index.value() == 0xabcdef);
     static_assert(index.raw_value() == 0xabcdef);
-    static_assert(EntityIndex::from_raw(0xffabcdef).raw_value() == 0xffabcdef);
+    static_assert(EntityIndex::from_raw(0xffabcdef).raw_value() == 0xabcdef);
+    static_assert(EntityIndex::from_canonical_raw(0xabcdef) == index);
+    constexpr auto changed{[] {
+        auto value{EntityIndex::from_raw(0xffffffff)};
+        value.set_value(42);
+        return value;
+    }()};
+    static_assert(changed.value() == 42 && changed.raw_value() == 42);
+    constexpr auto signed_changed{[] {
+        RegisteredInt value{};
+        value.set_value(-1);
+        return value;
+    }()};
+    static_assert(signed_changed.value() == -1 && signed_changed.raw_value() == 0xff);
     constexpr SignedOffset negative{-123};
     static_assert(negative.value() == -123);
     static_assert(SignedOffset{-123} < SignedOffset{1});

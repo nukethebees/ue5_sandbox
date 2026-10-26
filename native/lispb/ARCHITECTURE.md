@@ -228,15 +228,17 @@ by generated members. Raw construction uses `std::bit_cast` without a tag constr
 default-construction availability.
 
 An explicit `packed_integer_tag` opts generated types into shared constrained `std::hash` and
-`std::formatter` implementations in `ioj/packed_value.h`. Packed records use their raw integer;
-scalar wrappers use their decoded value, preserving signed ordering and equality across padding
-bits. The concept also checks the integer interface and packed layout. A full specialization can
+`std::formatter` implementations in `ioj/packed_value.h`. Hashing uses the raw integer for all
+owners. Formatting uses the decoded value for scalars and the raw integer for records and unions.
+The concept also checks the integer interface and packed layout. A full specialization can
 override either default for an individual type.
 
-Packed owners expose `storage_type`, `raw_value()`, and unchecked `from_raw()`. They are standard
+Packed owners expose `storage_type`, `raw_value()`, `from_raw()`, and `from_canonical_raw()`. They are standard
 layout and trivially copyable, with the size and alignment of their integer storage. Typed
 construction clears unused bits; setters preserve bits outside the addressed field. Raw loading
-preserves every storage bit, including unused bits, and `is_valid()` checks logical values.
+clears scalar padding but preserves every storage bit of records and unions. Scalar defaults are
+also canonicalized. `from_canonical_raw()` requires zero scalar padding and asserts that precondition
+in debug builds. Neither raw factory checks the logical domain; `is_valid()` checks logical values.
 Factories named `make_<alternative path>` establish a tagged alternative together with its payload.
 Other independent union regions are complete inputs: projected packed values when available,
 otherwise encoded integers together with their discriminator inputs. Factories validate the
@@ -275,11 +277,10 @@ C++ types with unsigned `storage_type`, decoded `value_type`, explicit construct
 `set_value()`, `is_valid_value()`, and raw access. Signed comparisons use decoded values. Named
 codes are scoped constants on the wrapper. No alias or constants-only emission modes remain.
 
-Unsigned scalars occupying all storage bits use defaulted comparison. Signed or narrower scalars
-compare decoded values so numeric ordering and equality ignore preserved padding bits. Packed
-records and unions compare their complete raw storage. Generated `std::hash` and `std::formatter`
-specializations use those same decoded/raw values; formatting delegates to the integer formatter
-and supports its standard format specifications and character types.
+Unsigned scalars use defaulted comparison. Signed scalars use decoded ordering and defaulted
+equality. Canonical scalar encodings make raw equality and hashing consistent with logical
+equality. Packed records and unions compare their complete raw storage. Formatting delegates to
+the integer formatter and supports its standard format specifications and character types.
 
 ## External scalar registry
 
