@@ -34,7 +34,7 @@ accepts already-applied patches, and rejects unrelated source edits. It does not
 When updating the pin, first reverse the owned patches, update the clean checkout explicitly, and
 review whether each patch is still needed.
 
-The configuration is Ninja, X86, Release, assertions/PDBs on, EH/RTTI off, with `clang` and
+The configuration is Ninja, X86, Release, assertions off, PDBs on, EH/RTTI off, with `clang` and
 `clang-tools-extra`. The newly built Clang builds `compiler-rt` builtins and Windows x64 ASAN
 through `LLVM_ENABLE_RUNTIMES`, including upstream's supporting sanitizer libraries.
 Profiling, XRay, libFuzzer and ORC runtimes are disabled.
