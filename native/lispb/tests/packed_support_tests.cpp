@@ -10,6 +10,31 @@
 namespace packed_support_tests {
 
 template <typename Storage>
+struct StoredValue : ioj::PackedValueBase<StoredValue<Storage>, Storage, Storage{0xa5}> {
+    using packed_integer_tag = ioj::packed::integer_tag;
+    using Field = ioj::PackedField<Storage, Storage, 2, 3>;
+
+    constexpr auto operator<=>(StoredValue const&) const noexcept = default;
+
+    constexpr auto field() const noexcept -> Storage { return this->template extract<Field>(); }
+    constexpr void set_field(Storage value) noexcept { this->template insert<Field>(value); }
+};
+
+struct DeletedDefault : ioj::PackedValueBase<DeletedDefault, std::uint8_t, 0xa5> {
+    using packed_integer_tag = ioj::packed::integer_tag;
+
+    constexpr DeletedDefault() noexcept = delete;
+
+    constexpr auto operator<=>(DeletedDefault const&) const noexcept = default;
+};
+
+static_assert(!std::is_default_constructible_v<DeletedDefault>);
+static_assert(ioj::PackedInteger<DeletedDefault>);
+static_assert(DeletedDefault::from_raw(0xff).raw_value() == 0xff);
+static_assert(DeletedDefault::from_raw(0).is_valid());
+static_assert(DeletedDefault::from_raw(0) < DeletedDefault::from_raw(0xff));
+
+template <typename Storage>
 constexpr auto check_storage_width() -> bool {
     constexpr auto width{std::numeric_limits<Storage>::digits};
     constexpr auto maximum{(std::numeric_limits<Storage>::max)()};
@@ -32,6 +57,9 @@ constexpr auto check_storage_width() -> bool {
     static_assert(storage.encoded_bits == width && storage.storage_bits == width);
     static_assert(storage.default_raw_value == maximum);
     static_assert(full.range.min == 0 && full.range.max == maximum);
+    static_assert(full.magnitude_bits == width);
+    static_assert(signed_field.magnitude_bits == width - 1);
+    static_assert(flag.magnitude_bits == 1);
     static_assert(signed_field.range.min == minimum && signed_field.range.max == signed_maximum);
     static_assert(!flag.range.min && flag.range.max);
     static_assert(Full::value_mask == maximum && Full::mask == maximum);
@@ -52,7 +80,19 @@ constexpr auto check_storage_width() -> bool {
     static_assert(ioj::packed_extract<Signed>(ioj::packed_pack<Signed>(signed_maximum)) ==
                   signed_maximum);
     static_assert(ioj::packed_extract<Signed>(maximum) == -1);
-    return true;
+    using Value = StoredValue<Storage>;
+    static_assert(ioj::PackedInteger<Value>);
+    static_assert(ioj::valid_packed_value_layout<Value>());
+    static_assert(Value{}.raw_value() == 0xa5);
+    static_assert(Value::from_raw(maximum).raw_value() == maximum);
+    static_assert(Value::from_raw(0).raw_value() == 0);
+    static_assert(Value::from_raw(maximum).is_valid());
+    static_assert(Value::from_raw(0) < Value::from_raw(maximum));
+    static_assert(Value::from_raw(0xa5) == Value{});
+    auto value{Value::from_raw(maximum)};
+    value.set_field(2);
+    return value.field() == 2 &&
+           value.raw_value() == static_cast<Storage>((maximum & ~Storage{0x1c}) | Storage{8});
 }
 
 static_assert(check_storage_width<std::uint8_t>());

@@ -2,6 +2,8 @@
 
 #include <ioj/min_max.h>
 
+#include <bit>
+#include <compare>
 #include <concepts>
 #include <cstddef>
 #include <format>
@@ -110,6 +112,7 @@ struct PackedField {
 
     inline static constexpr int offset{Offset};
     inline static constexpr int bits{Bits};
+    inline static constexpr int magnitude_bits{Bits - (std::is_signed_v<Value> ? 1 : 0)};
     inline static constexpr storage_type value_mask{[] {
         if constexpr (Bits > 0 && Bits < std::numeric_limits<Storage>::digits) {
             return static_cast<Storage>((Storage{1} << Bits) - Storage{1});
@@ -171,6 +174,34 @@ template <typename Field>
     auto const cleared{static_cast<Storage>(raw & static_cast<Storage>(~Field::mask))};
     return static_cast<Storage>(cleared | packed_pack<Field>(value));
 }
+
+template <typename Derived, PackedStorageInteger Storage, Storage DefaultRaw = Storage{}>
+struct PackedValueBase {
+    using storage_type = Storage;
+
+    constexpr PackedValueBase() noexcept = default;
+
+    constexpr auto operator<=>(PackedValueBase const&) const noexcept = default;
+
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] static constexpr auto from_raw(storage_type const value) noexcept -> Derived {
+        static_assert(valid_packed_value_layout<Derived>());
+        return std::bit_cast<Derived>(value);
+    }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+
+  protected:
+    template <typename Field>
+    [[nodiscard]] constexpr auto extract() const noexcept -> typename Field::value_type {
+        return packed_extract<Field>(value_);
+    }
+    template <typename Field>
+    constexpr void insert(typename Field::value_type const value) noexcept {
+        value_ = packed_insert<Field>(value_, value);
+    }
+
+    storage_type value_{DefaultRaw};
+};
 
 } // namespace ioj
 
