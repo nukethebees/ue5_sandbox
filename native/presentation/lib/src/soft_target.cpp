@@ -111,9 +111,17 @@ auto select_soft_target(std::span<::ioj::presentation::AgentDisplayBatch const> 
     for (auto const& batch : batches) {
         auto const batch_count{static_cast<std::uint32_t>(batch.num())};
         assert(batch.ids.size() == static_cast<std::size_t>(batch_count));
+        if (!is_supported_entity_type(batch.type)) {
+            output_index += batch_count;
+            continue;
+        }
+
+        auto const world_radius{std::max(entity_type_radii[batch.type], 0.0f)};
+        auto const right_offset{context.camera_right * world_radius};
+        auto const up_offset{context.camera_up * world_radius};
         for (std::uint32_t index{}; index < batch_count; ++index, ++output_index) {
             if (::ioj::sim::is_dead(batch.health(index)) ||
-                batch.team(index) == context.player_team || !is_supported_entity_type(batch.type)) {
+                batch.team(index) == context.player_team) {
                 continue;
             }
 
@@ -142,15 +150,12 @@ auto select_soft_target(std::span<::ioj::presentation::AgentDisplayBatch const> 
                 continue;
             }
 
-            auto const world_radius{std::max(entity_type_radii[batch.type], 0.0f)};
             float projected_radius{};
             ProjectedPosition projected_edge;
-            if (project_to_overlay(
-                    context.view, position + context.camera_right * world_radius, projected_edge)) {
+            if (project_to_overlay(context.view, position + right_offset, projected_edge)) {
                 projected_radius = size(projected_entity.pixels - projected_edge.pixels);
             }
-            if (project_to_overlay(
-                    context.view, position + context.camera_up * world_radius, projected_edge)) {
+            if (project_to_overlay(context.view, position + up_offset, projected_edge)) {
                 projected_radius = std::max(projected_radius,
                                             size(projected_entity.pixels - projected_edge.pixels));
             }

@@ -1,28 +1,14 @@
 #include <ioj/presentation/soft_target.h>
-#include <ioj/sim/fighters/fighter_entity_data.h>
+#include <ioj/vectors3f.h>
 
 #include <gtest/gtest.h>
 
 namespace ioj::presentation {
 namespace {
 struct Entities {
-    void add_defaulted(std::int32_t const count) {
-        motion.add_defaulted(count);
-        healths.resize(healths.size() + static_cast<std::size_t>(count));
-        entity_ids.resize(entity_ids.size() + static_cast<std::size_t>(count));
-        teams.resize(teams.size() + static_cast<std::size_t>(count));
-        entity_types.resize(entity_types.size() + static_cast<std::size_t>(count));
-    }
     auto num() const noexcept -> std::int32_t { return static_cast<std::int32_t>(healths.size()); }
 
-    void add_health(std::int32_t const row, sim::EntityId const owner, sim::Health const health) {
-        entity_ids[row] = owner;
-        healths[row] = health;
-    }
-
-    void set_health(std::int32_t const row, sim::Health const health) { healths[row] = health; }
-
-    sim::FighterEntityData motion;
+    Vectors3f positions;
     std::vector<sim::Health> healths;
     std::vector<sim::EntityId> entity_ids;
     std::vector<Team> teams;
@@ -45,31 +31,29 @@ auto make_view(Entities const& entities) -> std::vector<::ioj::presentation::Age
     for (std::int32_t i{}; i < count; ++i) {
         batches.push_back({entities.entity_types[static_cast<std::size_t>(i)],
                            std::span{entities.entity_ids}.subspan(i, 1),
-                           entities.motion.get_const_view(i, 1).view_locations(),
-                           entities.motion.get_const_view(i, 1).view_velocities(),
+                           entities.positions.get_const_view(i, 1),
+                           {},
                            ::ioj::sim::HealthConstView{std::span{entities.healths}.subspan(i, 1)},
                            std::span{entities.teams}.subspan(i, 1)});
     }
     return batches;
 }
 
-void add_entity(Entities& entities,
-                EntityTypeRadii& entity_type_radii,
-                Vector3f const position,
-                std::int32_t const health,
-                ::ioj::sim::EntityType const type,
-                float const radius = 1.0f,
-                bool const alive = true,
-                Team const team = Team::White) {
-    auto const index{entities.num()};
-    entities.add_defaulted(1);
-    ::ioj::set_vector(entities.motion.get_view().view_locations(), index, ioj::Vector3f{position});
-    entity_type_radii[type] = radius;
-    entities.teams[index] = team;
-    entities.entity_types[index] = type;
-    auto const owner{
-        ::ioj::sim::EntityId(static_cast<std::uint32_t>(index), entities.entity_types[index])};
-    entities.add_health(index, owner, alive ? health : 0);
+struct EntityInput {
+    Vector3f position{};
+    sim::Health health{20};
+    sim::EntityType type{sim::EntityType::Turret};
+    float radius{};
+    Team team{Team::Red};
+};
+
+void add_entity(Entities& entities, EntityTypeRadii& entity_type_radii, EntityInput const input) {
+    auto const index{entities.positions.add(input.position)};
+    entities.healths.push_back(input.health);
+    entities.entity_ids.emplace_back(index, input.type);
+    entities.teams.push_back(input.team);
+    entities.entity_types.push_back(input.type);
+    entity_type_radii[input.type] = input.radius;
 }
 
 auto make_forward_x_view() -> OverlayView {
@@ -110,38 +94,12 @@ auto select_target(Entities const& entities,
 TEST(EntityOverlaySource, SelectsOnlyTheBestValidHostile) {
     Entities entities;
     auto entity_type_radii{make_entity_type_radii()};
-    add_entity(entities,
-               entity_type_radii,
-               {1000.0f, 0.0f, 0.0f},
-               20,
-               ::ioj::sim::EntityType::Turret,
-               0.0f,
-               true,
-               Team::Green);
-    add_entity(entities,
-               entity_type_radii,
-               {1000.0f, 50.0f, 0.0f},
-               20,
-               ::ioj::sim::EntityType::Turret,
-               0.0f,
-               true,
-               Team::Red);
-    add_entity(entities,
-               entity_type_radii,
-               {1000.0f, 80.0f, 0.0f},
-               20,
-               ::ioj::sim::EntityType::Turret,
-               0.0f,
-               true,
-               Team::Blue);
-    add_entity(entities,
-               entity_type_radii,
-               {1000.0f, 0.0f, 0.0f},
-               20,
-               ::ioj::sim::EntityType::Turret,
-               0.0f,
-               false,
-               Team::Red);
+    add_entity(
+        entities, entity_type_radii, {.position = {1000.0f, 0.0f, 0.0f}, .team = Team::Green});
+    add_entity(entities, entity_type_radii, {.position = {1000.0f, 50.0f, 0.0f}});
+    add_entity(
+        entities, entity_type_radii, {.position = {1000.0f, 80.0f, 0.0f}, .team = Team::Blue});
+    add_entity(entities, entity_type_radii, {.position = {1000.0f, 0.0f, 0.0f}, .health = 0});
 
     auto const selected{select_target(entities, entity_type_radii)};
     EXPECT_EQ(selected.id.raw_value(), entity_id(entities, 1).raw_value())
@@ -151,39 +109,26 @@ TEST(EntityOverlaySource, SelectsOnlyTheBestValidHostile) {
 TEST(EntityOverlaySource, RetainsAndSwitchesWithHysteresis) {
     Entities entities;
     auto entity_type_radii{make_entity_type_radii()};
-    add_entity(entities,
-               entity_type_radii,
-               {1000.0f, 65.0f, 0.0f},
-               20,
-               ::ioj::sim::EntityType::Turret,
-               0.0f,
-               true,
-               Team::Red);
-    add_entity(entities,
-               entity_type_radii,
-               {1000.0f, 80.0f, 0.0f},
-               20,
-               ::ioj::sim::EntityType::Turret,
-               0.0f,
-               true,
-               Team::Blue);
+    add_entity(entities, entity_type_radii, {.position = {1000.0f, 65.0f, 0.0f}});
+    add_entity(
+        entities, entity_type_radii, {.position = {1000.0f, 80.0f, 0.0f}, .team = Team::Blue});
 
     auto const retained{select_target(entities, entity_type_radii, entity_id(entities, 1))};
     EXPECT_EQ(retained.id.raw_value(), entity_id(entities, 1).raw_value())
         << "Small improvement does not switch";
 
-    entities.motion.get_view().view_locations().ys()[0] = 50.0f;
+    entities.positions.get_view().ys()[0] = 50.0f;
     auto const switched{select_target(entities, entity_type_radii, entity_id(entities, 1))};
     EXPECT_EQ(switched.id.raw_value(), entity_id(entities, 0).raw_value())
         << "Materially better candidate switches";
 
-    entities.motion.get_view().view_locations().ys()[0] = 250.0f;
-    entities.motion.get_view().view_locations().ys()[1] = 250.0f;
+    entities.positions.get_view().ys()[0] = 250.0f;
+    entities.positions.get_view().ys()[1] = 250.0f;
     auto const cleared{select_target(entities, entity_type_radii, entity_id(entities, 1))};
     EXPECT_FALSE(cleared.id.is_valid()) << "Target outside retention is cleared";
     EXPECT_TRUE(cleared.previous_target_can_fade) << "Valid on-screen lost target may fade";
 
-    entities.set_health(1, 0);
+    entities.healths[1] = 0;
     auto const dead{select_target(entities, entity_type_radii, entity_id(entities, 1))};
     EXPECT_FALSE(dead.previous_target_can_fade) << "Dead target may not fade";
 }
@@ -191,22 +136,13 @@ TEST(EntityOverlaySource, RetainsAndSwitchesWithHysteresis) {
 TEST(EntityOverlaySource, ProjectedSizeDoesNotLetARearTargetDominate) {
     Entities entities;
     auto entity_type_radii{make_entity_type_radii()};
+    add_entity(
+        entities,
+        entity_type_radii,
+        {.position = {2000.0f, 80.0f, 0.0f}, .type = EntityType::CapitalShip, .radius = 800.0f});
     add_entity(entities,
                entity_type_radii,
-               {2000.0f, 80.0f, 0.0f},
-               20,
-               ::ioj::sim::EntityType::CapitalShip,
-               800.0f,
-               true,
-               Team::Red);
-    add_entity(entities,
-               entity_type_radii,
-               {1000.0f, 20.0f, 0.0f},
-               20,
-               ::ioj::sim::EntityType::Turret,
-               5.0f,
-               true,
-               Team::Blue);
+               {.position = {1000.0f, 20.0f, 0.0f}, .radius = 5.0f, .team = Team::Blue});
 
     auto const selected{select_target(entities, entity_type_radii)};
     EXPECT_EQ(selected.id.raw_value(), entity_id(entities, 1).raw_value())
@@ -216,22 +152,13 @@ TEST(EntityOverlaySource, ProjectedSizeDoesNotLetARearTargetDominate) {
 TEST(EntityOverlaySource, NearestSurfaceResolvesCentredTargetsAndHysteresis) {
     Entities entities;
     auto entity_type_radii{make_entity_type_radii()};
+    add_entity(
+        entities,
+        entity_type_radii,
+        {.position = {2000.0f, 0.0f, 0.0f}, .type = EntityType::CapitalShip, .radius = 100.0f});
     add_entity(entities,
                entity_type_radii,
-               {2000.0f, 0.0f, 0.0f},
-               20,
-               ::ioj::sim::EntityType::CapitalShip,
-               100.0f,
-               true,
-               Team::Red);
-    add_entity(entities,
-               entity_type_radii,
-               {1000.0f, 0.0f, 0.0f},
-               20,
-               ::ioj::sim::EntityType::Turret,
-               5.0f,
-               true,
-               Team::Blue);
+               {.position = {1000.0f, 0.0f, 0.0f}, .radius = 5.0f, .team = Team::Blue});
 
     auto const selected{select_target(entities, entity_type_radii)};
     EXPECT_EQ(selected.id.raw_value(), entity_id(entities, 1).raw_value())
@@ -245,30 +172,23 @@ TEST(EntityOverlaySource, NearestSurfaceResolvesCentredTargetsAndHysteresis) {
 TEST(EntityOverlaySource, NormalizesRangeAlphaUsingTargetSurfaceDistance) {
     Entities entities;
     auto entity_type_radii{make_entity_type_radii()};
-    add_entity(entities,
-               entity_type_radii,
-               {5000.0f, 0.0f, 0.0f},
-               20,
-               ::ioj::sim::EntityType::Turret,
-               0.0f,
-               true,
-               Team::Red);
+    add_entity(entities, entity_type_radii, {.position = {5000.0f, 0.0f, 0.0f}});
 
     auto const comfortably_out_of_range{select_target(entities, entity_type_radii)};
     EXPECT_EQ(comfortably_out_of_range.range_alpha, 0.0f)
         << "Beyond transition start clamps to zero";
 
-    entities.motion.get_view().view_locations().xs()[0] = 2500.0f;
+    entities.positions.get_view().xs()[0] = 2500.0f;
     auto const approaching{select_target(entities, entity_type_radii)};
     EXPECT_EQ(approaching.range_alpha, 0.5f);
 
-    entities.motion.get_view().view_locations().xs()[0] = 1100.0f;
+    entities.positions.get_view().xs()[0] = 1100.0f;
     entity_type_radii[::ioj::sim::EntityType::Turret] = 100.0f;
     auto const at_range_boundary{select_target(entities, entity_type_radii)};
     EXPECT_EQ(at_range_boundary.range_alpha, 1.0f)
         << "Surface at range boundary has full range alpha";
 
-    entities.motion.get_view().view_locations().xs()[0] = 500.0f;
+    entities.positions.get_view().xs()[0] = 500.0f;
     auto const inside_range{select_target(entities, entity_type_radii)};
     EXPECT_EQ(inside_range.range_alpha, 1.0f);
 
@@ -277,33 +197,10 @@ TEST(EntityOverlaySource, NormalizesRangeAlphaUsingTargetSurfaceDistance) {
         << "Missing weapon range produces zero range alpha";
 }
 
-TEST(EntityOverlaySource, RangeAlphaUsesTargetSurfaceRatherThanCentre) {
-    Entities entities;
-    auto entity_type_radii{make_entity_type_radii()};
-    add_entity(entities,
-               entity_type_radii,
-               {1100.0f, 0.0f, 0.0f},
-               20,
-               ::ioj::sim::EntityType::Turret,
-               100.0f,
-               true,
-               Team::Red);
-
-    auto const selected{select_target(entities, entity_type_radii)};
-    EXPECT_EQ(selected.range_alpha, 1.0f) << "Target surface at weapon range has full range alpha";
-}
-
 TEST(EntityOverlaySource, ReportsWorldScaleSeparatelyFromClampedIndicatorRadius) {
     Entities entities;
     auto entity_type_radii{make_entity_type_radii()};
-    add_entity(entities,
-               entity_type_radii,
-               {1000.0f, 0.0f, 0.0f},
-               20,
-               ::ioj::sim::EntityType::Turret,
-               2.0f,
-               true,
-               Team::Red);
+    add_entity(entities, entity_type_radii, {.position = {1000.0f, 0.0f, 0.0f}, .radius = 2.0f});
 
     auto const distant{select_target(entities, entity_type_radii)};
     EXPECT_TRUE(distant.world_units_per_pixel > 0.0f)
@@ -316,7 +213,7 @@ TEST(EntityOverlaySource, ReportsWorldScaleSeparatelyFromClampedIndicatorRadius)
     EXPECT_TRUE(zero_radius.world_units_per_pixel > 0.0f)
         << "Zero-radius targets still have a usable projection scale";
 
-    entities.motion.get_view().view_locations().xs()[0] = 500.0f;
+    entities.positions.get_view().xs()[0] = 500.0f;
     auto const nearer{select_target(entities, entity_type_radii)};
     EXPECT_TRUE(nearer.world_units_per_pixel < distant.world_units_per_pixel)
         << "World units per pixel shrink as the target approaches";
@@ -326,8 +223,7 @@ TEST(EntityOverlaySource, TiesUseEntityIdentityRegardlessOfBatchOrdering) {
     Entities entities;
     auto radii{make_entity_type_radii()};
     for (int index{}; index < 2; ++index) {
-        add_entity(
-            entities, radii, {1000.f, 0.f, 0.f}, 20, EntityType::Turret, 0.f, true, Team::Red);
+        add_entity(entities, radii, {.position = {1000.f, 0.f, 0.f}});
     }
     auto batches{make_view(entities)};
     std::array<ui::entity_overlay::ObjectiveRole, 2> roles{};
@@ -342,7 +238,7 @@ TEST(EntityOverlaySource, TiesUseEntityIdentityRegardlessOfBatchOrdering) {
 TEST(EntityOverlaySource, ObjectivesBypassRangeButNotProjectionOrHealth) {
     Entities entities;
     auto radii{make_entity_type_radii()};
-    add_entity(entities, radii, {1000.f, 0.f, 0.f}, 20, EntityType::Turret, 0.f, true, Team::Red);
+    add_entity(entities, radii, {.position = {1000.f, 0.f, 0.f}});
     std::array<ui::entity_overlay::ObjectiveRole, 1> roles{};
     SoftTargetContext context{.view = make_forward_x_view(), .maximum_overlay_range = 500.f};
     auto const select{
@@ -350,16 +246,16 @@ TEST(EntityOverlaySource, ObjectivesBypassRangeButNotProjectionOrHealth) {
     EXPECT_FALSE(select().id.is_valid());
     roles[0] = ui::entity_overlay::ObjectiveRole::Destroy;
     EXPECT_EQ(select().id, entity_id(entities, 0));
-    entities.motion.get_view().view_locations().ys()[0] = 2000.f;
+    entities.positions.get_view().ys()[0] = 2000.f;
     EXPECT_FALSE(select().id.is_valid());
-    entities.motion.get_view().view_locations().ys()[0] = 0.f;
+    entities.positions.get_view().ys()[0] = 0.f;
     context.view.view_projection[0][3] = 0.f;
     EXPECT_FALSE(select().id.is_valid());
     context.view = make_forward_x_view();
     context.aim_direction = {};
     EXPECT_FALSE(select().id.is_valid());
     context.aim_direction = {1.f, 0.f, 0.f};
-    entities.set_health(0, 0);
+    entities.healths[0] = 0;
     EXPECT_FALSE(select().id.is_valid());
 }
 
