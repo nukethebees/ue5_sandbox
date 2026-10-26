@@ -16,16 +16,15 @@ struct EntityId;
 namespace detail {
 inline constexpr std::uint32_t entity_id_default_raw_value{4294967295};
 
-using EntityIdBase = PackedValueBase<EntityId, std::uint32_t, entity_id_default_raw_value>;
+using EntityIdBase =
+    PackedValueBase<EntityId, PackedStorage<std::uint32_t, 32>{entity_id_default_raw_value}>;
 } // namespace detail
 
 struct EntityId : detail::EntityIdBase {
   public:
     // Storage
     using Base = detail::EntityIdBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::integer_tag;
-    static constexpr PackedStorage<storage_type, 32> storage{detail::entity_id_default_raw_value};
     static constexpr storage_type invalid_value{storage.default_raw_value};
 
     // index

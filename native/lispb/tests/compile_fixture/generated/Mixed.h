@@ -108,16 +108,14 @@ union Payload {
 struct MethodCount;
 
 namespace detail {
-using MethodCountBase = ioj::PackedValueBase<MethodCount, std::uint8_t>;
+using MethodCountBase = ioj::PackedValueBase<MethodCount, ioj::PackedStorage<std::uint8_t, 8>{0}>;
 } // namespace detail
 
 struct MethodCount : detail::MethodCountBase {
   public:
     // Storage
     using Base = detail::MethodCountBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::scalar_tag;
-    static constexpr ioj::PackedStorage<storage_type, 8> storage{0};
 
     // value
     using value_type = std::uint8_t;

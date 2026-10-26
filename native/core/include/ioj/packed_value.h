@@ -175,9 +175,11 @@ template <typename Field>
     return static_cast<Storage>(cleared | packed_pack<Field>(value));
 }
 
-template <typename Derived, PackedStorageInteger Storage, Storage DefaultRaw = Storage{}>
+template <typename Derived, auto Layout>
 struct PackedValueBase {
-    using storage_type = Storage;
+    using storage_type = typename decltype(Layout)::storage_type;
+
+    static constexpr auto storage{Layout};
 
     constexpr PackedValueBase() noexcept = default;
 
@@ -200,7 +202,7 @@ struct PackedValueBase {
         value_ = packed_insert<Field>(value_, value);
     }
 
-    storage_type value_{DefaultRaw};
+    storage_type value_{storage.default_raw_value};
 };
 
 } // namespace ioj

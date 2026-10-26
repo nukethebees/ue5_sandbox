@@ -18,17 +18,16 @@ struct Defaults;
 namespace detail {
 inline constexpr std::uint16_t defaults_default_raw_value{933};
 
-using DefaultsBase = ioj::PackedValueBase<Defaults, std::uint16_t, defaults_default_raw_value>;
+using DefaultsBase =
+    ioj::PackedValueBase<Defaults,
+                         ioj::PackedStorage<std::uint16_t, 16>{defaults_default_raw_value}>;
 } // namespace detail
 
 struct Defaults : detail::DefaultsBase {
   public:
     // Storage
     using Base = detail::DefaultsBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 16> storage{
-        detail::defaults_default_raw_value};
 
     // low
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 0, 3> low_layout{};
@@ -81,17 +80,15 @@ namespace detail {
 inline constexpr std::uint16_t defaults_msb_default_raw_value{42816};
 
 using DefaultsMsbBase =
-    ioj::PackedValueBase<DefaultsMsb, std::uint16_t, defaults_msb_default_raw_value>;
+    ioj::PackedValueBase<DefaultsMsb,
+                         ioj::PackedStorage<std::uint16_t, 16>{defaults_msb_default_raw_value}>;
 } // namespace detail
 
 struct DefaultsMsb : detail::DefaultsMsbBase {
   public:
     // Storage
     using Base = detail::DefaultsMsbBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 16> storage{
-        detail::defaults_msb_default_raw_value};
 
     // low
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 13, 3> low_layout{};
@@ -141,16 +138,15 @@ static_assert(ioj::valid_packed_value_layout<DefaultsMsb>());
 struct PartialDefaults;
 
 namespace detail {
-using PartialDefaultsBase = ioj::PackedValueBase<PartialDefaults, std::uint8_t>;
+using PartialDefaultsBase =
+    ioj::PackedValueBase<PartialDefaults, ioj::PackedStorage<std::uint8_t, 8>{0}>;
 } // namespace detail
 
 struct PartialDefaults : detail::PartialDefaultsBase {
   public:
     // Storage
     using Base = detail::PartialDefaultsBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 8> storage{0};
 
     // first
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 0, 2> first_layout{};
@@ -216,16 +212,14 @@ static_assert(ioj::valid_packed_value_layout<PartialDefaults>());
 struct PackedSingle;
 
 namespace detail {
-using PackedSingleBase = ioj::PackedValueBase<PackedSingle, std::uint8_t>;
+using PackedSingleBase = ioj::PackedValueBase<PackedSingle, ioj::PackedStorage<std::uint8_t, 8>{0}>;
 } // namespace detail
 
 struct PackedSingle : detail::PackedSingleBase {
   public:
     // Storage
     using Base = detail::PackedSingleBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 8> storage{0};
 
     // value
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 4, 4> value_layout{};
@@ -256,16 +250,15 @@ static_assert(ioj::valid_packed_value_layout<PackedSingle>());
 struct FighterState;
 
 namespace detail {
-using FighterStateBase = ioj::PackedValueBase<FighterState, std::uint32_t>;
+using FighterStateBase =
+    ioj::PackedValueBase<FighterState, ioj::PackedStorage<std::uint32_t, 32>{0}>;
 } // namespace detail
 
 struct FighterState : detail::FighterStateBase {
   public:
     // Storage
     using Base = detail::FighterStateBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 32> storage{0};
 
     // entity_index
     static constexpr ioj::PackedField<storage_type, std::uint32_t, 0, 24> entity_index_layout{};
@@ -322,16 +315,14 @@ static_assert(ioj::valid_packed_value_layout<FighterState>());
 struct PackedByte;
 
 namespace detail {
-using PackedByteBase = ioj::PackedValueBase<PackedByte, std::uint8_t>;
+using PackedByteBase = ioj::PackedValueBase<PackedByte, ioj::PackedStorage<std::uint8_t, 8>{0}>;
 } // namespace detail
 
 struct PackedByte : detail::PackedByteBase {
   public:
     // Storage
     using Base = detail::PackedByteBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 8> storage{0};
 
     // low
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 0, 3> low_layout{};
@@ -390,16 +381,15 @@ static_assert(ioj::valid_packed_value_layout<PackedByte>());
 struct NetworkHeader;
 
 namespace detail {
-using NetworkHeaderBase = ioj::PackedValueBase<NetworkHeader, std::uint32_t>;
+using NetworkHeaderBase =
+    ioj::PackedValueBase<NetworkHeader, ioj::PackedStorage<std::uint32_t, 32>{0}>;
 } // namespace detail
 
 struct NetworkHeader : detail::NetworkHeaderBase {
   public:
     // Storage
     using Base = detail::NetworkHeaderBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 32> storage{0};
 
     // version
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 28, 4> version_layout{};
@@ -453,16 +443,14 @@ static_assert(ioj::valid_packed_value_layout<NetworkHeader>());
 struct PackedWide;
 
 namespace detail {
-using PackedWideBase = ioj::PackedValueBase<PackedWide, std::uint64_t>;
+using PackedWideBase = ioj::PackedValueBase<PackedWide, ioj::PackedStorage<std::uint64_t, 64>{0}>;
 } // namespace detail
 
 struct PackedWide : detail::PackedWideBase {
   public:
     // Storage
     using Base = detail::PackedWideBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 64> storage{0};
 
     // value
     static constexpr ioj::PackedField<storage_type, std::uint64_t, 0, 64> value_layout{};
@@ -487,16 +475,14 @@ static_assert(ioj::valid_packed_value_layout<PackedWide>());
 struct SignedDelta;
 
 namespace detail {
-using SignedDeltaBase = ioj::PackedValueBase<SignedDelta, std::uint32_t>;
+using SignedDeltaBase = ioj::PackedValueBase<SignedDelta, ioj::PackedStorage<std::uint32_t, 32>{0}>;
 } // namespace detail
 
 struct SignedDelta : detail::SignedDeltaBase {
   public:
     // Storage
     using Base = detail::SignedDeltaBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 32> storage{0};
 
     // delta
     static constexpr ioj::PackedField<storage_type, std::int32_t, 0, 17> delta_layout{};
@@ -528,16 +514,14 @@ static_assert(ioj::valid_packed_value_layout<SignedDelta>());
 struct SignedWide;
 
 namespace detail {
-using SignedWideBase = ioj::PackedValueBase<SignedWide, std::uint64_t>;
+using SignedWideBase = ioj::PackedValueBase<SignedWide, ioj::PackedStorage<std::uint64_t, 64>{0}>;
 } // namespace detail
 
 struct SignedWide : detail::SignedWideBase {
   public:
     // Storage
     using Base = detail::SignedWideBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 64> storage{0};
 
     // delta
     static constexpr ioj::PackedField<storage_type, std::int64_t, 0, 64> delta_layout{};
@@ -562,16 +546,15 @@ static_assert(ioj::valid_packed_value_layout<SignedWide>());
 struct SignedTemperature;
 
 namespace detail {
-using SignedTemperatureBase = ioj::PackedValueBase<SignedTemperature, std::uint32_t>;
+using SignedTemperatureBase =
+    ioj::PackedValueBase<SignedTemperature, ioj::PackedStorage<std::uint32_t, 32>{0}>;
 } // namespace detail
 
 struct SignedTemperature : detail::SignedTemperatureBase {
   public:
     // Storage
     using Base = detail::SignedTemperatureBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 32> storage{0};
 
     // temperature
     static constexpr ioj::PackedField<storage_type, std::int8_t, 0, 8> temperature_layout{
@@ -614,16 +597,15 @@ static_assert(ioj::valid_packed_value_layout<SignedTemperature>());
 struct PackedTinyState;
 
 namespace detail {
-using PackedTinyStateBase = ioj::PackedValueBase<PackedTinyState, std::uint8_t>;
+using PackedTinyStateBase =
+    ioj::PackedValueBase<PackedTinyState, ioj::PackedStorage<std::uint8_t, 8>{0}>;
 } // namespace detail
 
 struct PackedTinyState : detail::PackedTinyStateBase {
   public:
     // Storage
     using Base = detail::PackedTinyStateBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 8> storage{0};
 
     // state
     static constexpr ioj::PackedField<storage_type, TinyState, 0, 2> state_layout{};
@@ -677,16 +659,15 @@ static_assert(ioj::valid_packed_value_layout<PackedTinyState>());
 struct PackedOpaqueState;
 
 namespace detail {
-using PackedOpaqueStateBase = ioj::PackedValueBase<PackedOpaqueState, std::uint8_t>;
+using PackedOpaqueStateBase =
+    ioj::PackedValueBase<PackedOpaqueState, ioj::PackedStorage<std::uint8_t, 8>{0}>;
 } // namespace detail
 
 struct PackedOpaqueState : detail::PackedOpaqueStateBase {
   public:
     // Storage
     using Base = detail::PackedOpaqueStateBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 8> storage{0};
 
     // state
     static constexpr ioj::PackedField<storage_type, OpaqueState, 0, 8> state_layout{};
@@ -731,17 +712,15 @@ namespace detail {
 inline constexpr std::uint32_t checked_value_default_raw_value{2147483647};
 
 using CheckedValueBase =
-    ioj::PackedValueBase<CheckedValue, std::uint32_t, checked_value_default_raw_value>;
+    ioj::PackedValueBase<CheckedValue,
+                         ioj::PackedStorage<std::uint32_t, 32>{checked_value_default_raw_value}>;
 } // namespace detail
 
 struct CheckedValue : detail::CheckedValueBase {
   public:
     // Storage
     using Base = detail::CheckedValueBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 32> storage{
-        detail::checked_value_default_raw_value};
     static constexpr storage_type invalid_value{storage.default_raw_value};
 
     // serial
@@ -796,16 +775,14 @@ static_assert(ioj::valid_packed_value_layout<CheckedValue>());
 struct Vitals;
 
 namespace detail {
-using VitalsBase = ioj::PackedValueBase<Vitals, std::uint16_t>;
+using VitalsBase = ioj::PackedValueBase<Vitals, ioj::PackedStorage<std::uint16_t, 16>{0}>;
 } // namespace detail
 
 struct Vitals : detail::VitalsBase {
   public:
     // Storage
     using Base = detail::VitalsBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 16> storage{0};
 
     // health
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 0, 8> health_encoded_layout{
@@ -855,16 +832,14 @@ static_assert(ioj::valid_packed_value_layout<Vitals>());
 struct Motion;
 
 namespace detail {
-using MotionBase = ioj::PackedValueBase<Motion, std::uint32_t>;
+using MotionBase = ioj::PackedValueBase<Motion, ioj::PackedStorage<std::uint32_t, 32>{0}>;
 } // namespace detail
 
 struct Motion : detail::MotionBase {
   public:
     // Storage
     using Base = detail::MotionBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 32> storage{0};
 
     // velocity
     static constexpr ioj::PackedField<storage_type, std::int16_t, 0, 12> velocity_raw_layout{};
@@ -1011,16 +986,15 @@ static_assert(ioj::valid_packed_value_layout<Motion>());
 struct PackedMiniFloat;
 
 namespace detail {
-using PackedMiniFloatBase = ioj::PackedValueBase<PackedMiniFloat, std::uint16_t>;
+using PackedMiniFloatBase =
+    ioj::PackedValueBase<PackedMiniFloat, ioj::PackedStorage<std::uint16_t, 16>{0}>;
 } // namespace detail
 
 struct PackedMiniFloat : detail::PackedMiniFloatBase {
   public:
     // Storage
     using Base = detail::PackedMiniFloatBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 16> storage{0};
 
     // component
     static constexpr ioj::PackedField<storage_type, std::uint16_t, 0, 12>

@@ -14,16 +14,14 @@ namespace ioj::sim {
 struct EntityFrameIndex;
 
 namespace detail {
-using EntityFrameIndexBase = PackedValueBase<EntityFrameIndex, std::uint32_t>;
+using EntityFrameIndexBase = PackedValueBase<EntityFrameIndex, PackedStorage<std::uint32_t, 18>{0}>;
 } // namespace detail
 
 struct EntityFrameIndex : detail::EntityFrameIndexBase {
   public:
     // Storage
     using Base = detail::EntityFrameIndexBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
-    static constexpr PackedStorage<storage_type, 18> storage{0};
 
     // value
     using value_type = std::uint32_t;
@@ -59,16 +57,14 @@ static_assert(valid_packed_value_layout<EntityFrameIndex>());
 struct QuantisedHealth;
 
 namespace detail {
-using QuantisedHealthBase = PackedValueBase<QuantisedHealth, std::uint8_t>;
+using QuantisedHealthBase = PackedValueBase<QuantisedHealth, PackedStorage<std::uint8_t, 2>{0}>;
 } // namespace detail
 
 struct QuantisedHealth : detail::QuantisedHealthBase {
   public:
     // Storage
     using Base = detail::QuantisedHealthBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
-    static constexpr PackedStorage<storage_type, 2> storage{0};
 
     // value
     using value_type = std::uint8_t;
@@ -107,17 +103,15 @@ namespace detail {
 inline constexpr std::uint32_t entity_instance_handle_default_raw_value{4294967295};
 
 using EntityInstanceHandleBase =
-    PackedValueBase<EntityInstanceHandle, std::uint32_t, entity_instance_handle_default_raw_value>;
+    PackedValueBase<EntityInstanceHandle,
+                    PackedStorage<std::uint32_t, 32>{entity_instance_handle_default_raw_value}>;
 } // namespace detail
 
 struct EntityInstanceHandle : detail::EntityInstanceHandleBase {
   public:
     // Storage
     using Base = detail::EntityInstanceHandleBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::integer_tag;
-    static constexpr PackedStorage<storage_type, 32> storage{
-        detail::entity_instance_handle_default_raw_value};
     static constexpr storage_type invalid_value{storage.default_raw_value};
 
     // index

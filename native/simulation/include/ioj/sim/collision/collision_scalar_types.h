@@ -13,16 +13,15 @@ namespace ioj::sim::collision {
 struct StaticGeometryIndex;
 
 namespace detail {
-using StaticGeometryIndexBase = PackedValueBase<StaticGeometryIndex, std::uint32_t>;
+using StaticGeometryIndexBase =
+    PackedValueBase<StaticGeometryIndex, PackedStorage<std::uint32_t, 32>{0}>;
 } // namespace detail
 
 struct StaticGeometryIndex : detail::StaticGeometryIndexBase {
   public:
     // Storage
     using Base = detail::StaticGeometryIndexBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
-    static constexpr PackedStorage<storage_type, 32> storage{0};
 
     // value
     using value_type = std::uint32_t;
@@ -53,16 +52,14 @@ static_assert(valid_packed_value_layout<StaticGeometryIndex>());
 struct CellIndex;
 
 namespace detail {
-using CellIndexBase = PackedValueBase<CellIndex, std::uint32_t>;
+using CellIndexBase = PackedValueBase<CellIndex, PackedStorage<std::uint32_t, 32>{0}>;
 } // namespace detail
 
 struct CellIndex : detail::CellIndexBase {
   public:
     // Storage
     using Base = detail::CellIndexBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
-    static constexpr PackedStorage<storage_type, 32> storage{0};
 
     // value
     using value_type = std::uint32_t;
@@ -93,16 +90,14 @@ static_assert(valid_packed_value_layout<CellIndex>());
 struct GridCellCount;
 
 namespace detail {
-using GridCellCountBase = PackedValueBase<GridCellCount, std::uint32_t>;
+using GridCellCountBase = PackedValueBase<GridCellCount, PackedStorage<std::uint32_t, 32>{0}>;
 } // namespace detail
 
 struct GridCellCount : detail::GridCellCountBase {
   public:
     // Storage
     using Base = detail::GridCellCountBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
-    static constexpr PackedStorage<storage_type, 32> storage{0};
 
     // value
     using value_type = std::uint32_t;
@@ -131,16 +126,15 @@ static_assert(valid_packed_value_layout<GridCellCount>());
 struct SphereInBoundsResult;
 
 namespace detail {
-using SphereInBoundsResultBase = PackedValueBase<SphereInBoundsResult, std::uint8_t>;
+using SphereInBoundsResultBase =
+    PackedValueBase<SphereInBoundsResult, PackedStorage<std::uint8_t, 1>{0}>;
 } // namespace detail
 
 struct SphereInBoundsResult : detail::SphereInBoundsResultBase {
   public:
     // Storage
     using Base = detail::SphereInBoundsResultBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
-    static constexpr PackedStorage<storage_type, 1> storage{0};
 
     // value
     using value_type = std::uint8_t;

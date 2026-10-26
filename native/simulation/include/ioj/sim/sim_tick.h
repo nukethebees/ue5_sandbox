@@ -12,16 +12,14 @@ namespace ioj::sim {
 struct SimTick;
 
 namespace detail {
-using SimTickBase = PackedValueBase<SimTick, std::uint64_t>;
+using SimTickBase = PackedValueBase<SimTick, PackedStorage<std::uint64_t, 64>{0}>;
 } // namespace detail
 
 struct SimTick : detail::SimTickBase {
   public:
     // Storage
     using Base = detail::SimTickBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
-    static constexpr PackedStorage<storage_type, 64> storage{0};
 
     // value
     using value_type = std::uint64_t;

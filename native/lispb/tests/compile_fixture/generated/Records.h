@@ -23,16 +23,14 @@ namespace codegen_compile_fixture {
 struct ReaderHealth;
 
 namespace detail {
-using ReaderHealthBase = ioj::PackedValueBase<ReaderHealth, std::uint8_t>;
+using ReaderHealthBase = ioj::PackedValueBase<ReaderHealth, ioj::PackedStorage<std::uint8_t, 8>{0}>;
 } // namespace detail
 
 struct ReaderHealth : detail::ReaderHealthBase {
   public:
     // Storage
     using Base = detail::ReaderHealthBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::scalar_tag;
-    static constexpr ioj::PackedStorage<storage_type, 8> storage{0};
 
     // value
     using value_type = std::uint8_t;

@@ -15,16 +15,14 @@ struct CheckedPayload;
 struct EntityIndex;
 
 namespace detail {
-using EntityIndexBase = ioj::PackedValueBase<EntityIndex, std::uint32_t>;
+using EntityIndexBase = ioj::PackedValueBase<EntityIndex, ioj::PackedStorage<std::uint32_t, 24>{0}>;
 } // namespace detail
 
 struct EntityIndex : detail::EntityIndexBase {
   public:
     // Storage
     using Base = detail::EntityIndexBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::scalar_tag;
-    static constexpr ioj::PackedStorage<storage_type, 24> storage{0};
 
     // value
     using value_type = std::uint32_t;
@@ -61,16 +59,15 @@ static_assert(ioj::valid_packed_value_layout<EntityIndex>());
 struct SignedOffset;
 
 namespace detail {
-using SignedOffsetBase = ioj::PackedValueBase<SignedOffset, std::uint16_t>;
+using SignedOffsetBase =
+    ioj::PackedValueBase<SignedOffset, ioj::PackedStorage<std::uint16_t, 16>{0}>;
 } // namespace detail
 
 struct SignedOffset : detail::SignedOffsetBase {
   public:
     // Storage
     using Base = detail::SignedOffsetBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::scalar_tag;
-    static constexpr ioj::PackedStorage<storage_type, 16> storage{0};
 
     // value
     using value_type = std::int16_t;
@@ -114,16 +111,14 @@ enum class Opcode : OpcodeUnderlying {
 struct EntityId;
 
 namespace detail {
-using EntityIdBase = ioj::PackedValueBase<EntityId, std::uint32_t>;
+using EntityIdBase = ioj::PackedValueBase<EntityId, ioj::PackedStorage<std::uint32_t, 32>{0}>;
 } // namespace detail
 
 struct EntityId : detail::EntityIdBase {
   public:
     // Storage
     using Base = detail::EntityIdBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 32> storage{0};
 
     // index
     static constexpr ioj::PackedField<storage_type, std::uint32_t, 0, 24> index_layout{};
@@ -167,16 +162,15 @@ static_assert(ioj::valid_packed_value_layout<EntityId>());
 struct WideEntityId;
 
 namespace detail {
-using WideEntityIdBase = ioj::PackedValueBase<WideEntityId, std::uint64_t>;
+using WideEntityIdBase =
+    ioj::PackedValueBase<WideEntityId, ioj::PackedStorage<std::uint64_t, 32>{0}>;
 } // namespace detail
 
 struct WideEntityId : detail::WideEntityIdBase {
   public:
     // Storage
     using Base = detail::WideEntityIdBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 32> storage{0};
 
     // index
     static constexpr ioj::PackedField<storage_type, std::uint32_t, 0, 24> index_layout{};
@@ -220,16 +214,14 @@ static_assert(ioj::valid_packed_value_layout<WideEntityId>());
 struct NestedId;
 
 namespace detail {
-using NestedIdBase = ioj::PackedValueBase<NestedId, std::uint64_t>;
+using NestedIdBase = ioj::PackedValueBase<NestedId, ioj::PackedStorage<std::uint64_t, 64>{0}>;
 } // namespace detail
 
 struct NestedId : detail::NestedIdBase {
   public:
     // Storage
     using Base = detail::NestedIdBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 64> storage{0};
 
     // prefix
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 0, 8> prefix_layout{};
@@ -297,16 +289,14 @@ static_assert(ioj::valid_packed_value_layout<NestedId>());
 struct Target;
 
 namespace detail {
-using TargetBase = ioj::PackedValueBase<Target, std::uint32_t>;
+using TargetBase = ioj::PackedValueBase<Target, ioj::PackedStorage<std::uint32_t, 32>{0}>;
 } // namespace detail
 
 struct Target : detail::TargetBase {
   public:
     // Storage
     using Base = detail::TargetBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 32> storage{0};
 
     // entity_index
     static constexpr ioj::PackedField<storage_type, std::uint32_t, 0, 24> entity_index_layout{};
@@ -385,16 +375,14 @@ static_assert(ioj::valid_packed_value_layout<Target>());
 struct Instruction;
 
 namespace detail {
-using InstructionBase = ioj::PackedValueBase<Instruction, std::uint64_t>;
+using InstructionBase = ioj::PackedValueBase<Instruction, ioj::PackedStorage<std::uint64_t, 64>{0}>;
 } // namespace detail
 
 struct Instruction : detail::InstructionBase {
   public:
     // Storage
     using Base = detail::InstructionBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 64> storage{0};
 
     // opcode
     static constexpr ioj::PackedField<storage_type, Opcode, 0, 6> opcode_layout{
@@ -562,16 +550,15 @@ static_assert(ioj::valid_packed_value_layout<Instruction>());
 struct IndependentUnions;
 
 namespace detail {
-using IndependentUnionsBase = ioj::PackedValueBase<IndependentUnions, std::uint32_t>;
+using IndependentUnionsBase =
+    ioj::PackedValueBase<IndependentUnions, ioj::PackedStorage<std::uint32_t, 32>{0}>;
 } // namespace detail
 
 struct IndependentUnions : detail::IndependentUnionsBase {
   public:
     // Storage
     using Base = detail::IndependentUnionsBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 32> storage{0};
 
     // opcode_a
     static constexpr ioj::PackedField<storage_type, Opcode, 0, 6> opcode_a_layout{
@@ -750,16 +737,15 @@ static_assert(ioj::valid_packed_value_layout<IndependentUnions>());
 struct CheckedPayload;
 
 namespace detail {
-using CheckedPayloadBase = ioj::PackedValueBase<CheckedPayload, std::uint8_t>;
+using CheckedPayloadBase =
+    ioj::PackedValueBase<CheckedPayload, ioj::PackedStorage<std::uint8_t, 8>{0}>;
 } // namespace detail
 
 struct CheckedPayload : detail::CheckedPayloadBase {
   public:
     // Storage
     using Base = detail::CheckedPayloadBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 8> storage{0};
 
     // kill_entity
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 0, 8> kill_entity_layout{
@@ -817,16 +803,15 @@ struct PayloadPointer {
 struct TaggedProjected;
 
 namespace detail {
-using TaggedProjectedBase = ioj::PackedValueBase<TaggedProjected, std::uint32_t>;
+using TaggedProjectedBase =
+    ioj::PackedValueBase<TaggedProjected, ioj::PackedStorage<std::uint32_t, 32>{0}>;
 } // namespace detail
 
 struct TaggedProjected : detail::TaggedProjectedBase {
   public:
     // Storage
     using Base = detail::TaggedProjectedBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 32> storage{0};
 
     // opcode
     static constexpr ioj::PackedField<storage_type, Opcode, 0, 6> opcode_layout{
@@ -952,16 +937,14 @@ static_assert(ioj::valid_packed_value_layout<TaggedProjected>());
 struct Samples;
 
 namespace detail {
-using SamplesBase = ioj::PackedValueBase<Samples, std::uint32_t>;
+using SamplesBase = ioj::PackedValueBase<Samples, ioj::PackedStorage<std::uint32_t, 32>{0}>;
 } // namespace detail
 
 struct Samples : detail::SamplesBase {
   public:
     // Storage
     using Base = detail::SamplesBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 32> storage{0};
 
     // samples_0
     static constexpr ioj::PackedField<storage_type, storage_type, 0, 8> samples_0_layout{};
@@ -1040,16 +1023,14 @@ static_assert(ioj::valid_packed_value_layout<Samples>());
 struct Optionals;
 
 namespace detail {
-using OptionalsBase = ioj::PackedValueBase<Optionals, std::uint32_t>;
+using OptionalsBase = ioj::PackedValueBase<Optionals, ioj::PackedStorage<std::uint32_t, 17>{0}>;
 } // namespace detail
 
 struct Optionals : detail::OptionalsBase {
   public:
     // Storage
     using Base = detail::OptionalsBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 17> storage{0};
 
     // sentinel
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 0, 8> sentinel_encoded_layout{};

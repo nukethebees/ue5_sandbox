@@ -12,16 +12,14 @@ namespace lispb::codegen {
 struct CppFileFlags;
 
 namespace detail {
-using CppFileFlagsBase = ioj::PackedValueBase<CppFileFlags, std::uint8_t>;
+using CppFileFlagsBase = ioj::PackedValueBase<CppFileFlags, ioj::PackedStorage<std::uint8_t, 8>{0}>;
 } // namespace detail
 
 struct CppFileFlags : detail::CppFileFlagsBase {
   public:
     // Storage
     using Base = detail::CppFileFlagsBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::integer_tag;
-    static constexpr ioj::PackedStorage<storage_type, 8> storage{0};
 
     // pragma_once
     static constexpr ioj::PackedField<storage_type, bool, 0, 1> pragma_once_layout{};

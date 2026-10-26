@@ -799,8 +799,9 @@ TEST(SourceLoader, ScalarProjectionInfersStorageAndSupportsExplicitWidth) {
         auto const header{files.render(files.load()).front().content};
         auto const expected{std::string_view{representation} == "std::uint64_t" ? "std::uint64_t"
                                                                                 : "std::uint32_t"};
-        EXPECT_TRUE(header.contains("PackedValueBase<Value, " + std::string{expected}));
-        EXPECT_TRUE(header.contains("using storage_type = Base::storage_type"));
+        EXPECT_TRUE(header.contains("PackedValueBase<Value, ioj::PackedStorage<" +
+                                    std::string{expected} + ", 24>"));
+        EXPECT_FALSE(header.contains("using storage_type"));
         EXPECT_FALSE(header.contains("raw_value() const"));
         EXPECT_FALSE(header.contains("from_raw(storage_type"));
         EXPECT_FALSE(header.contains("using Value ="));
@@ -845,7 +846,8 @@ TEST(SourceLoader, PackedDefaultsAreValidatedWithoutChangingImplicitSentinels) {
     EXPECT_EQ(default_raw("Invalid"), 255);
     auto const header{files.render(manifest).front().content};
     EXPECT_NE(header.find("Partial() noexcept = delete"), std::string::npos);
-    EXPECT_NE(header.find("PackedValueBase<Partial, std::uint8_t>"), std::string::npos);
+    EXPECT_NE(header.find("PackedValueBase<Partial, ioj::PackedStorage<std::uint8_t, 8>"),
+              std::string::npos);
     EXPECT_EQ(header.find("std::bit_cast"), std::string::npos);
     EXPECT_EQ(header.find("RawTag"), std::string::npos);
 }

@@ -13,16 +13,14 @@ namespace ioj::sim {
 struct TraceHit;
 
 namespace detail {
-using TraceHitBase = PackedValueBase<TraceHit, std::uint8_t>;
+using TraceHitBase = PackedValueBase<TraceHit, PackedStorage<std::uint8_t, 1>{0}>;
 } // namespace detail
 
 struct TraceHit : detail::TraceHitBase {
   public:
     // Storage
     using Base = detail::TraceHitBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
-    static constexpr PackedStorage<storage_type, 1> storage{0};
 
     // value
     using value_type = std::uint8_t;
@@ -58,16 +56,14 @@ static_assert(valid_packed_value_layout<TraceHit>());
 struct LineQueryResult;
 
 namespace detail {
-using LineQueryResultBase = PackedValueBase<LineQueryResult, std::uint8_t>;
+using LineQueryResultBase = PackedValueBase<LineQueryResult, PackedStorage<std::uint8_t, 1>{0}>;
 } // namespace detail
 
 struct LineQueryResult : detail::LineQueryResultBase {
   public:
     // Storage
     using Base = detail::LineQueryResultBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
-    static constexpr PackedStorage<storage_type, 1> storage{0};
 
     // value
     using value_type = std::uint8_t;

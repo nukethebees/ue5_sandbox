@@ -12,16 +12,14 @@ namespace ioj::sim {
 struct LevelEventCount;
 
 namespace detail {
-using LevelEventCountBase = PackedValueBase<LevelEventCount, std::uint8_t>;
+using LevelEventCountBase = PackedValueBase<LevelEventCount, PackedStorage<std::uint8_t, 8>{0}>;
 } // namespace detail
 
 struct LevelEventCount : detail::LevelEventCountBase {
   public:
     // Storage
     using Base = detail::LevelEventCountBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
-    static constexpr PackedStorage<storage_type, 8> storage{0};
 
     // value
     using value_type = std::uint8_t;

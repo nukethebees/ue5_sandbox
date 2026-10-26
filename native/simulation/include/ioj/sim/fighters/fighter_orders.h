@@ -24,16 +24,14 @@ enum class FighterTask : FighterTaskUnderlying {
 struct FighterOrder;
 
 namespace detail {
-using FighterOrderBase = PackedValueBase<FighterOrder, std::uint8_t>;
+using FighterOrderBase = PackedValueBase<FighterOrder, PackedStorage<std::uint8_t, 8>{0}>;
 } // namespace detail
 
 struct FighterOrder : detail::FighterOrderBase {
   public:
     // Storage
     using Base = detail::FighterOrderBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::integer_tag;
-    static constexpr PackedStorage<storage_type, 8> storage{0};
 
     // task
     static constexpr PackedField<storage_type, std::uint8_t, 0, 1> task_layout{};

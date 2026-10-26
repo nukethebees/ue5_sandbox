@@ -15,17 +15,15 @@ struct ObjectiveId;
 namespace detail {
 inline constexpr std::uint32_t objective_id_default_raw_value{4294967295};
 
-using ObjectiveIdBase = PackedValueBase<ObjectiveId, std::uint32_t, objective_id_default_raw_value>;
+using ObjectiveIdBase =
+    PackedValueBase<ObjectiveId, PackedStorage<std::uint32_t, 32>{objective_id_default_raw_value}>;
 } // namespace detail
 
 struct ObjectiveId : detail::ObjectiveIdBase {
   public:
     // Storage
     using Base = detail::ObjectiveIdBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::integer_tag;
-    static constexpr PackedStorage<storage_type, 32> storage{
-        detail::objective_id_default_raw_value};
     static constexpr storage_type invalid_value{storage.default_raw_value};
 
     // index

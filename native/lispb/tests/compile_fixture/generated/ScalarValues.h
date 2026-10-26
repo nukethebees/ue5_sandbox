@@ -13,16 +13,15 @@ namespace codegen_compile_fixture {
 struct RegisteredInt;
 
 namespace detail {
-using RegisteredIntBase = ioj::PackedValueBase<RegisteredInt, std::uint32_t>;
+using RegisteredIntBase =
+    ioj::PackedValueBase<RegisteredInt, ioj::PackedStorage<std::uint32_t, 8>{0}>;
 } // namespace detail
 
 struct RegisteredInt : detail::RegisteredIntBase {
   public:
     // Storage
     using Base = detail::RegisteredIntBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::scalar_tag;
-    static constexpr ioj::PackedStorage<storage_type, 8> storage{0};
 
     // value
     using value_type = std::int8_t;
@@ -62,16 +61,14 @@ static_assert(ioj::valid_packed_value_layout<RegisteredInt>());
 struct StandardInt;
 
 namespace detail {
-using StandardIntBase = ioj::PackedValueBase<StandardInt, std::uint32_t>;
+using StandardIntBase = ioj::PackedValueBase<StandardInt, ioj::PackedStorage<std::uint32_t, 8>{0}>;
 } // namespace detail
 
 struct StandardInt : detail::StandardIntBase {
   public:
     // Storage
     using Base = detail::StandardIntBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::scalar_tag;
-    static constexpr ioj::PackedStorage<storage_type, 8> storage{0};
 
     // value
     using value_type = std::int8_t;
@@ -111,16 +108,14 @@ static_assert(ioj::valid_packed_value_layout<StandardInt>());
 struct DamageCode;
 
 namespace detail {
-using DamageCodeBase = ioj::PackedValueBase<DamageCode, std::uint8_t>;
+using DamageCodeBase = ioj::PackedValueBase<DamageCode, ioj::PackedStorage<std::uint8_t, 4>{0}>;
 } // namespace detail
 
 struct DamageCode : detail::DamageCodeBase {
   public:
     // Storage
     using Base = detail::DamageCodeBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::scalar_tag;
-    static constexpr ioj::PackedStorage<storage_type, 4> storage{0};
 
     // value
     using value_type = std::uint8_t;
@@ -161,16 +156,14 @@ static_assert(ioj::valid_packed_value_layout<DamageCode>());
 struct DamageReason;
 
 namespace detail {
-using DamageReasonBase = ioj::PackedValueBase<DamageReason, std::uint8_t>;
+using DamageReasonBase = ioj::PackedValueBase<DamageReason, ioj::PackedStorage<std::uint8_t, 8>{0}>;
 } // namespace detail
 
 struct DamageReason : detail::DamageReasonBase {
   public:
     // Storage
     using Base = detail::DamageReasonBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::scalar_tag;
-    static constexpr ioj::PackedStorage<storage_type, 8> storage{0};
 
     // value
     using value_type = std::uint8_t;
@@ -208,16 +201,14 @@ static_assert(ioj::valid_packed_value_layout<DamageReason>());
 struct Health;
 
 namespace detail {
-using HealthBase = ioj::PackedValueBase<Health, std::uint16_t>;
+using HealthBase = ioj::PackedValueBase<Health, ioj::PackedStorage<std::uint16_t, 10>{0}>;
 } // namespace detail
 
 struct Health : detail::HealthBase {
   public:
     // Storage
     using Base = detail::HealthBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = ioj::packed::scalar_tag;
-    static constexpr ioj::PackedStorage<storage_type, 10> storage{0};
 
     // value
     using value_type = std::uint16_t;

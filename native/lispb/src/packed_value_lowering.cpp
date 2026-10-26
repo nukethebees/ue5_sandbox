@@ -145,42 +145,38 @@ class PackedEmitter {
         auto const detail_namespace{(owner_namespace.empty() ? "" : owner_namespace + "::") +
                                     "detail::"};
         Nodes detail_members;
-        auto default_value{number(0)};
+        auto default_value{ir_.types.intern("0")};
         auto const base{
             ir_.types.named("ioj::PackedValueBase",
                             {ir_.types.dependency("ioj::PackedValueBase", "ioj/packed_value.h")})};
-        std::vector<CppTypeId> base_arguments{type(name_),
-                                              type(integer_type(layout_.storage_bits))};
+        auto const storage_type{type(integer_type(layout_.storage_bits))};
         if (layout_.default_raw_value.value_or(0) != 0) {
             auto const default_name{soa_namespace_name(name_) + "_default_raw_value"};
             auto const default_symbol{type(detail_namespace + default_name)};
             detail_members.push_back(
-                ir_.variable(ir_.types.decorate(
-                                 type(integer_type(layout_.storage_bits)), "inline constexpr ", ""),
+                ir_.variable(ir_.types.decorate(storage_type, "inline constexpr ", ""),
                              text(default_name),
                              number(*layout_.default_raw_value)));
-            base_arguments.push_back(default_symbol);
-            default_value = ir_.type_reference(default_symbol);
+            default_value = default_symbol;
         }
-        auto const base_type{ir_.types.template_type(base, base_arguments)};
+        auto const descriptor{ir_.types.template_type(
+            ir_.types.named("ioj::PackedStorage",
+                            {ir_.types.dependency("ioj::PackedStorage", "ioj/packed_value.h")}),
+            {storage_type, ir_.types.intern(std::to_string(*layout_.encoded_bits))})};
+        auto const storage{ir_.types.compose({{.type = descriptor},
+                                              {.text = text("{")},
+                                              {.type = default_value},
+                                              {.text = text("}")}})};
+        auto const base_type{ir_.types.template_type(base, {type(name_), storage})};
         auto const base_name{name_ + "Base"};
         auto const base_alias{type(detail_namespace + base_name)};
         detail_members.push_back(ir_.using_declaration(text(base_name), base_type));
         metadata_.push_back(ir_.line_comment("Storage"));
         metadata_.push_back(ir_.using_declaration(text("Base"), base_alias));
         metadata_.push_back(ir_.using_declaration(
-            text("storage_type"), ir_.types.decorate(type("Base"), "", "::storage_type")));
-        metadata_.push_back(ir_.using_declaration(
             text("packed_integer_tag"),
             ir_.types.named(scalar_ ? "ioj::packed::scalar_tag" : "ioj::packed::integer_tag",
                             {ir_.types.dependency("ioj::PackedStorage", "ioj/packed_value.h")})));
-        metadata_.push_back(ir_.constexpr_member(
-            ir_.types.template_type(
-                ir_.types.named("ioj::PackedStorage",
-                                {ir_.types.dependency("ioj::PackedStorage", "ioj/packed_value.h")}),
-                {type("storage_type"), ir_.types.intern(std::to_string(*layout_.encoded_bits))}),
-            text("storage"),
-            default_value));
         packed_members();
         Nodes members{ir_.access()};
         members.push_back(ir_.lines(1));
@@ -209,8 +205,14 @@ class PackedEmitter {
         auto const record{ir_.record(text(name_), members)};
         ir_.set_record_bases(record, {base_alias});
         std::vector<StringId> inherited;
-        for (auto const name :
-             {"storage_type", "raw_value", "from_raw", "is_valid", "extract", "insert", "value_"}) {
+        for (auto const name : {"storage_type",
+                                "storage",
+                                "raw_value",
+                                "from_raw",
+                                "is_valid",
+                                "extract",
+                                "insert",
+                                "value_"}) {
             inherited.push_back(text(name));
         }
         ir_.set_scope_bindings(record, inherited);

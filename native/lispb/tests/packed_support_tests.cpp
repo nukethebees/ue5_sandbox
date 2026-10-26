@@ -10,7 +10,10 @@
 namespace packed_support_tests {
 
 template <typename Storage>
-struct StoredValue : ioj::PackedValueBase<StoredValue<Storage>, Storage, Storage{0xa5}> {
+struct StoredValue
+    : ioj::PackedValueBase<StoredValue<Storage>,
+                           ioj::PackedStorage<Storage, std::numeric_limits<Storage>::digits>{
+                               0xa5}> {
     using packed_integer_tag = ioj::packed::integer_tag;
     using Field = ioj::PackedField<Storage, Storage, 2, 3>;
 
@@ -20,7 +23,8 @@ struct StoredValue : ioj::PackedValueBase<StoredValue<Storage>, Storage, Storage
     constexpr void set_field(Storage value) noexcept { this->template insert<Field>(value); }
 };
 
-struct DeletedDefault : ioj::PackedValueBase<DeletedDefault, std::uint8_t, 0xa5> {
+struct DeletedDefault
+    : ioj::PackedValueBase<DeletedDefault, ioj::PackedStorage<std::uint8_t, 8>{0xa5}> {
     using packed_integer_tag = ioj::packed::integer_tag;
 
     constexpr DeletedDefault() noexcept = delete;
@@ -83,6 +87,10 @@ constexpr auto check_storage_width() -> bool {
     using Value = StoredValue<Storage>;
     static_assert(ioj::PackedInteger<Value>);
     static_assert(ioj::valid_packed_value_layout<Value>());
+    static_assert(std::same_as<typename Value::storage_type, Storage>);
+    static_assert(Value::storage.encoded_bits == width);
+    static_assert(Value::storage.storage_bits == width);
+    static_assert(Value::storage.default_raw_value == 0xa5);
     static_assert(Value{}.raw_value() == 0xa5);
     static_assert(Value::from_raw(maximum).raw_value() == maximum);
     static_assert(Value::from_raw(0).raw_value() == 0);

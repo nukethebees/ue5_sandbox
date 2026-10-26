@@ -14,16 +14,14 @@ namespace ioj::sim {
 struct RuleId;
 
 namespace detail {
-using RuleIdBase = PackedValueBase<RuleId, std::uint32_t>;
+using RuleIdBase = PackedValueBase<RuleId, PackedStorage<std::uint32_t, 32>{0}>;
 } // namespace detail
 
 struct RuleId : detail::RuleIdBase {
   public:
     // Storage
     using Base = detail::RuleIdBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::integer_tag;
-    static constexpr PackedStorage<storage_type, 32> storage{0};
 
     // index
     static constexpr PackedField<storage_type, std::uint32_t, 0, 24> index_layout{};

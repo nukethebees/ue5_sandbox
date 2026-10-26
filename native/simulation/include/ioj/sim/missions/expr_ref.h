@@ -15,16 +15,15 @@ struct ExprRef;
 namespace detail {
 inline constexpr std::uint32_t expr_ref_default_raw_value{4294967295};
 
-using ExprRefBase = PackedValueBase<ExprRef, std::uint32_t, expr_ref_default_raw_value>;
+using ExprRefBase =
+    PackedValueBase<ExprRef, PackedStorage<std::uint32_t, 32>{expr_ref_default_raw_value}>;
 } // namespace detail
 
 struct ExprRef : detail::ExprRefBase {
   public:
     // Storage
     using Base = detail::ExprRefBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::integer_tag;
-    static constexpr PackedStorage<storage_type, 32> storage{detail::expr_ref_default_raw_value};
     static constexpr storage_type invalid_value{storage.default_raw_value};
 
     // index

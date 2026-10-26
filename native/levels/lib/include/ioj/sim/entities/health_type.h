@@ -12,16 +12,14 @@ namespace ioj::sim {
 struct Health;
 
 namespace detail {
-using HealthBase = PackedValueBase<Health, std::uint32_t>;
+using HealthBase = PackedValueBase<Health, PackedStorage<std::uint32_t, 32>{0}>;
 } // namespace detail
 
 struct Health : detail::HealthBase {
   public:
     // Storage
     using Base = detail::HealthBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
-    static constexpr PackedStorage<storage_type, 32> storage{0};
 
     // value
     using value_type = std::int32_t;

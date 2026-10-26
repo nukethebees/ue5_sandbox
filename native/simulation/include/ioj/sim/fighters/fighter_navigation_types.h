@@ -24,16 +24,15 @@ enum class NavigationRiskTier : NavigationRiskTierUnderlying {
 struct NavigationRiskCode;
 
 namespace detail {
-using NavigationRiskCodeBase = PackedValueBase<NavigationRiskCode, std::uint8_t>;
+using NavigationRiskCodeBase =
+    PackedValueBase<NavigationRiskCode, PackedStorage<std::uint8_t, 2>{0}>;
 } // namespace detail
 
 struct NavigationRiskCode : detail::NavigationRiskCodeBase {
   public:
     // Storage
     using Base = detail::NavigationRiskCodeBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
-    static constexpr PackedStorage<storage_type, 2> storage{0};
 
     // value
     using value_type = std::uint8_t;
@@ -70,16 +69,15 @@ static_assert(valid_packed_value_layout<NavigationRiskCode>());
 struct NavigationScanCount;
 
 namespace detail {
-using NavigationScanCountBase = PackedValueBase<NavigationScanCount, std::uint8_t>;
+using NavigationScanCountBase =
+    PackedValueBase<NavigationScanCount, PackedStorage<std::uint8_t, 8>{0}>;
 } // namespace detail
 
 struct NavigationScanCount : detail::NavigationScanCountBase {
   public:
     // Storage
     using Base = detail::NavigationScanCountBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
-    static constexpr PackedStorage<storage_type, 8> storage{0};
 
     // value
     using value_type = std::uint8_t;
@@ -108,16 +106,14 @@ static_assert(valid_packed_value_layout<NavigationScanCount>());
 struct AvoidanceChoice;
 
 namespace detail {
-using AvoidanceChoiceBase = PackedValueBase<AvoidanceChoice, std::uint8_t>;
+using AvoidanceChoiceBase = PackedValueBase<AvoidanceChoice, PackedStorage<std::uint8_t, 8>{0}>;
 } // namespace detail
 
 struct AvoidanceChoice : detail::AvoidanceChoiceBase {
   public:
     // Storage
     using Base = detail::AvoidanceChoiceBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
-    static constexpr PackedStorage<storage_type, 8> storage{0};
 
     // value
     using value_type = std::int8_t;

@@ -253,9 +253,7 @@ TEST(PackedRecord, DefaultsIncludeSignedValuesAndReservedBits) {
     EXPECT_EQ(occurrences(output, "933"), 1U);
     EXPECT_EQ(occurrences(output, "253"), 1U);
     for (auto const name : {"defaults", "same_invalid", "distinct_invalid"}) {
-        EXPECT_EQ(occurrences(output, std::string{name} + "_default_raw_value"), 3U);
-        EXPECT_TRUE(
-            output.contains("storage{detail::" + std::string{name} + "_default_raw_value}"));
+        EXPECT_EQ(occurrences(output, std::string{name} + "_default_raw_value"), 2U);
     }
     auto const same_begin{output.find("struct SameInvalid :")};
     ASSERT_NE(same_begin, std::string::npos);
@@ -331,8 +329,8 @@ TEST(PackedRecord, SharesTypedValidationHelpersAcrossConstructionMutationAndVali
         auto const constructor{type.find("constexpr " + std::string{name} + "()")};
         auto const comparison{type.find("operator<=>")};
         EXPECT_LT(type.find("using Base"), constructor);
-        EXPECT_LT(type.find("using storage_type"), constructor);
-        EXPECT_LT(type.find("PackedStorage<"), constructor);
+        EXPECT_FALSE(type.contains("using storage_type"));
+        EXPECT_FALSE(type.contains("PackedStorage<"));
         EXPECT_EQ(type.substr(constructor).find("static_cast<std::uint8_t>"),
                   std::string_view::npos);
         EXPECT_LT(constructor, comparison);

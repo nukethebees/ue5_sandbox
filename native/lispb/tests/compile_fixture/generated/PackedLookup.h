@@ -13,16 +13,14 @@ namespace ioj::packed_lookup_fixture {
 struct LookupByte;
 
 namespace detail {
-using LookupByteBase = PackedValueBase<LookupByte, std::uint8_t>;
+using LookupByteBase = PackedValueBase<LookupByte, PackedStorage<std::uint8_t, 8>{0}>;
 } // namespace detail
 
 struct LookupByte : detail::LookupByteBase {
   public:
     // Storage
     using Base = detail::LookupByteBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
-    static constexpr PackedStorage<storage_type, 8> storage{0};
 
     // value
     using value_type = std::uint8_t;
@@ -51,16 +49,14 @@ static_assert(valid_packed_value_layout<LookupByte>());
 struct CustomByte;
 
 namespace detail {
-using CustomByteBase = PackedValueBase<CustomByte, std::uint8_t>;
+using CustomByteBase = PackedValueBase<CustomByte, PackedStorage<std::uint8_t, 8>{0}>;
 } // namespace detail
 
 struct CustomByte : detail::CustomByteBase {
   public:
     // Storage
     using Base = detail::CustomByteBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::scalar_tag;
-    static constexpr PackedStorage<storage_type, 8> storage{0};
 
     // value
     using value_type = std::uint8_t;
@@ -98,16 +94,14 @@ enum class CountedState : CountedStateUnderlying {
 struct CountedValue;
 
 namespace detail {
-using CountedValueBase = PackedValueBase<CountedValue, std::uint8_t>;
+using CountedValueBase = PackedValueBase<CountedValue, PackedStorage<std::uint8_t, 8>{0}>;
 } // namespace detail
 
 struct CountedValue : detail::CountedValueBase {
   public:
     // Storage
     using Base = detail::CountedValueBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::integer_tag;
-    static constexpr PackedStorage<storage_type, 8> storage{0};
 
     // state
     static constexpr PackedField<storage_type, CountedState, 0, 8> state_layout{
@@ -142,16 +136,14 @@ static_assert(valid_packed_value_layout<CountedValue>());
 struct PackedLookup;
 
 namespace detail {
-using PackedLookupBase = PackedValueBase<PackedLookup, std::uint16_t>;
+using PackedLookupBase = PackedValueBase<PackedLookup, PackedStorage<std::uint16_t, 16>{0}>;
 } // namespace detail
 
 struct PackedLookup : detail::PackedLookupBase {
   public:
     // Storage
     using Base = detail::PackedLookupBase;
-    using storage_type = Base::storage_type;
     using packed_integer_tag = packed::integer_tag;
-    static constexpr PackedStorage<storage_type, 16> storage{0};
 
     // packed_insert
     static constexpr PackedField<storage_type, std::uint8_t, 0, 8> packed_insert_layout{};
