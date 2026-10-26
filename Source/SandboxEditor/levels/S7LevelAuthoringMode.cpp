@@ -794,8 +794,8 @@ auto US7LevelAuthoringMode::apply_current_source(bool const require_review) -> b
         if (!IsValid(level) || !document_.IsValid()) {
             return false;
         }
-        auto const current{
-            validate_s7_level_authoring_preview(*level, *document_, source_session_, *preview_)};
+        auto const current{validate_s7_level_authoring_preview(
+            *level, *document_, source_session_, *preview_, collect_s7_scene(*level, *document_))};
         if (!current) {
             clear_preview(PreviewState::Stale);
             set_status(FText::FromString(current.error().message));

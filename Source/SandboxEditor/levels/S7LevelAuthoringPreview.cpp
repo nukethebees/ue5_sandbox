@@ -95,15 +95,6 @@ auto make_s7_level_authoring_preview(ULevel& level,
         .actor_identities = s7_level_authoring_preview_detail::actor_identities(level, document)};
 }
 
-auto validate_s7_level_authoring_preview(ULevel& level,
-                                         AS7LevelAuthoringDocument& document,
-                                         FS7LevelSourceSession const& source_session,
-                                         FS7LevelAuthoringPreview const& preview)
-    -> std::expected<void, FS7LevelPreviewError> {
-    return validate_s7_level_authoring_preview(
-        level, document, source_session, preview, collect_s7_scene(level, document));
-}
-
 auto validate_s7_level_authoring_preview(
     ULevel& level,
     AS7LevelAuthoringDocument& document,
@@ -141,8 +132,8 @@ auto apply_s7_level_authoring_preview(ULevel& level,
                                       FS7LevelSourceSession const& source_session,
                                       FS7LevelAuthoringPreview const& preview)
     -> std::expected<void, FS7LevelPreviewError> {
-    auto const validated{
-        validate_s7_level_authoring_preview(level, document, source_session, preview)};
+    auto const validated{validate_s7_level_authoring_preview(
+        level, document, source_session, preview, collect_s7_scene(level, document))};
     if (!validated) {
         return std::unexpected{validated.error()};
     }

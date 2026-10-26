@@ -59,6 +59,42 @@ auto adopt(ULevel& level, TArray<FS7LevelEntityBinding>& bindings) -> int32 {
     }
     return count;
 }
+
+static auto editor_level_from_scene(ULevel const& level,
+                                    AS7LevelAuthoringDocument const& document,
+                                    std::expected<SceneSnapshot, FString> const& scene)
+    -> std::expected<LevelDefinition, FString> {
+    auto const* const config{document.level_config.Get()};
+    auto const* const canonical{s7_level_config::load_canonical()};
+    if (!IsValid(config) || !IsValid(canonical) ||
+        (config != canonical && !level.GetOutermost()->GetName().StartsWith(TEXT("/Temp/")))) {
+        return std::unexpected{
+            TEXT("S7 authoring requires the canonical GameRuntime level configuration asset.")};
+    }
+    if (!scene) {
+        return std::unexpected{scene.error()};
+    }
+    TSet<AActor const*> bound;
+    for (auto const& binding : document.entities) {
+        bound.Add(binding.actor);
+    }
+    for (auto const actor : level.Actors) {
+        if (IsValid(actor) && resolve_s7_level_actor(*actor).IsSet() && !bound.Contains(actor)) {
+            return std::unexpected{FString::Printf(
+                TEXT("Supported actor '%s' is not adopted by the authoring document."),
+                *actor->GetActorLabel())};
+        }
+    }
+    if (!scene->viewpoint_valid || !scene->mission_references_valid) {
+        return std::unexpected{
+            TEXT("Every viewpoint and mission reference must identify an adopted entity.")};
+    }
+    auto checked{LevelDefinition::make(scene->definition)};
+    if (!checked) {
+        return std::unexpected{to_fstring(format_diagnostics(checked.error()))};
+    }
+    return MoveTemp(*checked);
+}
 }
 
 auto s7_settings_path(ULevel const& level) -> FString {
@@ -122,7 +158,8 @@ auto collect_s7_scene_source(ULevel const& level,
                              AS7LevelAuthoringDocument const& document,
                              std::expected<levels::authoring::SceneSnapshot, FString> const& scene)
     -> std::expected<FString, FString> {
-    auto const definition{collect_s7_editor_level(level, document, scene)};
+    auto const definition{
+        s7_level_authoring_session_detail::editor_level_from_scene(level, document, scene)};
     if (!definition) {
         return std::unexpected{definition.error()};
     }
@@ -321,43 +358,7 @@ auto collect_s7_scene(ULevel const& level, AS7LevelAuthoringDocument const& docu
 
 auto collect_s7_editor_level(ULevel const& level, AS7LevelAuthoringDocument const& document)
     -> std::expected<levels::LevelDefinition, FString> {
-    return collect_s7_editor_level(level, document, collect_s7_scene(level, document));
-}
-
-auto collect_s7_editor_level(ULevel const& level,
-                             AS7LevelAuthoringDocument const& document,
-                             std::expected<levels::authoring::SceneSnapshot, FString> const& scene)
-    -> std::expected<levels::LevelDefinition, FString> {
-    using namespace s7_level_authoring_session_detail;
-    auto const* const config{document.level_config.Get()};
-    auto const* const canonical{s7_level_config::load_canonical()};
-    if (!IsValid(config) || !IsValid(canonical) ||
-        (config != canonical && !level.GetOutermost()->GetName().StartsWith(TEXT("/Temp/")))) {
-        return std::unexpected{
-            TEXT("S7 authoring requires the canonical GameRuntime level configuration asset.")};
-    }
-    if (!scene) {
-        return std::unexpected{scene.error()};
-    }
-    TSet<AActor const*> bound;
-    for (auto const& binding : document.entities) {
-        bound.Add(binding.actor);
-    }
-    for (auto const actor : level.Actors) {
-        if (IsValid(actor) && resolve_s7_level_actor(*actor).IsSet() && !bound.Contains(actor)) {
-            return std::unexpected{FString::Printf(
-                TEXT("Supported actor '%s' is not adopted by the authoring document."),
-                *actor->GetActorLabel())};
-        }
-    }
-    if (!scene->viewpoint_valid || !scene->mission_references_valid) {
-        return std::unexpected{
-            TEXT("Every viewpoint and mission reference must identify an adopted entity.")};
-    }
-    auto checked{LevelDefinition::make(scene->definition)};
-    if (!checked) {
-        return std::unexpected{to_fstring(format_diagnostics(checked.error()))};
-    }
-    return MoveTemp(*checked);
+    return s7_level_authoring_session_detail::editor_level_from_scene(
+        level, document, collect_s7_scene(level, document));
 }
 }
