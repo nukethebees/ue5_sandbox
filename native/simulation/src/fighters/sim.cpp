@@ -341,7 +341,7 @@ void Sim::plan_movement(ThinkingInputs const inputs) {
             attack_view.view_desired_aiming_directions().resolve()};
         auto const desired_move_locations{attack_view.view_desired_move_locations().resolve()};
         auto const target_directions{attack_view.view_target_directions().resolve()};
-        detail::solve_intercept_times_soa_loop::solve_intercept_times(
+        ::ioj::detail::solve_intercept_times_soa_loop::solve_intercept_times(
             intercept_times.data(),
             locations,
             target_locations,

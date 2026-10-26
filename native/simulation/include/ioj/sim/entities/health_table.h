@@ -117,8 +117,8 @@ class HealthTable {
             static_cast<EntityFrameIndex::value_type>(initial_values.size())};
         assert(range_fits(first,
                           count,
-                          EntityInstanceHandle::index_range.min,
-                          EntityInstanceHandle::index_range.max));
+                          EntityInstanceHandle::index_layout.range.min,
+                          EntityInstanceHandle::index_layout.range.max));
         assert(first + count <= health_storage::layout.capacities[Type]);
         constexpr auto base{health_storage::layout.offsets[Type]};
         std::ranges::copy(initial_values, values_.begin() + base + first);
@@ -130,8 +130,8 @@ class HealthTable {
                          Health const initial_value) {
         assert(range_fits(first,
                           count,
-                          EntityInstanceHandle::index_range.min,
-                          EntityInstanceHandle::index_range.max));
+                          EntityInstanceHandle::index_layout.range.min,
+                          EntityInstanceHandle::index_layout.range.max));
         assert(first + count <= health_storage::layout.capacities[Type]);
         constexpr auto base{health_storage::layout.offsets[Type]};
         std::fill_n(values_.begin() + base + first, count, initial_value);

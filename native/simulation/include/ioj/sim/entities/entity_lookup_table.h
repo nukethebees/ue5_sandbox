@@ -38,8 +38,8 @@ class EntityLookupTable {
         assert(healths.empty() || healths.size() == ids.size());
         assert(range_fits<std::size_t>(0,
                                        ids.size(),
-                                       EntityInstanceHandle::index_range.min,
-                                       EntityInstanceHandle::index_range.max));
+                                       EntityInstanceHandle::index_layout.range.min,
+                                       EntityInstanceHandle::index_layout.range.max));
         auto const count{ids.size()};
         row_count_ = static_cast<std::uint32_t>(count);
         [[maybe_unused]] auto const handle_count{handles_.size()};

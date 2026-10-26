@@ -10,16 +10,16 @@
 
 namespace ioj::sim::tests {
 namespace {
-static_assert(EntityId::index_field::offset == 0);
-static_assert(EntityId::index_field::bits == 24);
-static_assert(EntityId::index_field::value_mask == 0x00ffffffu);
-static_assert(EntityId::index_field::mask == 0x00ffffffu);
-static_assert(EntityId::entity_type_field::offset == 24);
-static_assert(EntityId::entity_type_field::bits == 8);
-static_assert(EntityId::entity_type_field::value_mask == 0x000000ffu);
-static_assert(EntityId::entity_type_field::mask == 0xff000000u);
-static_assert((EntityId::index_field::mask & EntityId::entity_type_field::mask) == 0);
-static_assert((EntityId::index_field::mask | EntityId::entity_type_field::mask) == 0xffffffffu);
+static_assert(EntityId::index_layout.offset == 0);
+static_assert(EntityId::index_layout.bits == 24);
+static_assert(EntityId::index_layout.value_mask == 0x00ffffffu);
+static_assert(EntityId::index_layout.mask == 0x00ffffffu);
+static_assert(EntityId::entity_type_layout.offset == 24);
+static_assert(EntityId::entity_type_layout.bits == 8);
+static_assert(EntityId::entity_type_layout.value_mask == 0x000000ffu);
+static_assert(EntityId::entity_type_layout.mask == 0xff000000u);
+static_assert((EntityId::index_layout.mask & EntityId::entity_type_layout.mask) == 0);
+static_assert((EntityId::index_layout.mask | EntityId::entity_type_layout.mask) == 0xffffffffu);
 static_assert(EntityId::invalid_value == 0xffffffffu);
 static_assert(sizeof(EntityId) == sizeof(std::uint32_t));
 static_assert(std::is_trivially_copyable_v<EntityId>);
@@ -46,8 +46,8 @@ static_assert(zero_player_id.index() == 0);
 static_assert(zero_player_id.entity_type() == EntityType::PlayerShip);
 static_assert(zero_player_id.is_valid());
 
-constexpr auto maximum_fighter_id{EntityId(EntityId::index_field::value_mask, EntityType::Fighter)};
-static_assert(maximum_fighter_id.index() == EntityId::index_field::value_mask);
+constexpr auto maximum_fighter_id{EntityId(EntityId::index_layout.value_mask, EntityType::Fighter)};
+static_assert(maximum_fighter_id.index() == EntityId::index_layout.value_mask);
 static_assert(maximum_fighter_id.entity_type() == EntityType::Fighter);
 static_assert(!HasTryMake<EntityId>);
 static_assert(!HasTrySetIndex<EntityId>);
@@ -114,15 +114,15 @@ TEST(EntityId, InvalidRepresentationAndDomainArePreserved) {
 #ifndef NDEBUG
 TEST(EntityId, AssertsWhenConstructionViolatesThePackedDomain) {
     EXPECT_DEATH(
-        static_cast<void>(EntityId(EntityId::index_field::value_mask + 1, EntityType::Turret)), "");
+        static_cast<void>(EntityId(EntityId::index_layout.value_mask + 1, EntityType::Turret)), "");
     EXPECT_DEATH(static_cast<void>(EntityId(0, static_cast<EntityType>(enum_count<EntityType>()))),
                  "");
 }
 #endif
 
 TEST(EntityId, AllocationRangeDetectsExhaustionWithoutWrapping) {
-    constexpr auto minimum{EntityId::index_range.min};
-    constexpr auto maximum{EntityId::index_range.max};
+    constexpr auto minimum{EntityId::index_layout.range.min};
+    constexpr auto maximum{EntityId::index_layout.range.max};
     EXPECT_TRUE(range_fits(0u, 0u, minimum, maximum));
     EXPECT_TRUE(range_fits(0u, maximum + 1, minimum, maximum));
     EXPECT_TRUE(range_fits(maximum, 1u, minimum, maximum));

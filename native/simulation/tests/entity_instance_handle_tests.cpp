@@ -5,9 +5,9 @@
 
 namespace ioj::sim::tests {
 static_assert(sizeof(EntityInstanceHandle) == sizeof(std::uint32_t));
-static_assert(EntityInstanceHandle::index_field::bits == 18);
-static_assert(EntityInstanceHandle::team_field::offset == 18);
-static_assert(EntityInstanceHandle::health_state_field::offset == 21);
+static_assert(EntityInstanceHandle::index_layout.bits == 18);
+static_assert(EntityInstanceHandle::team_layout.offset == 18);
+static_assert(EntityInstanceHandle::health_state_layout.offset == 21);
 
 TEST(EntityInstanceHandle, RepresentsTheMaximumRowWithoutTouchingReservedBits) {
     EntityInstanceHandle result;
