@@ -42,6 +42,16 @@ C++ launchers set `sloppiness=pch_defines,time_macros` for PCH caching. Avoid
 time-dependent macros in PCHs. Clang-cl uses `/showIncludes` dependencies and
 timestamp-free PCHs so both PCH creation and consuming objects can be cached.
 
+Unreal CMake builds enable UBA result caching by default (`IOJ_ENABLE_UBA_CACHE=ON`).
+Before invoking UBT, they start the engine's `UbaCacheService.exe` in the background
+if no service is listening on `127.0.0.1:1347`. No manual launch or Windows service
+installation is needed; the next build restarts it after a reboot. UBT receives
+cache read/write settings only in its build environment, preserving XML configuration.
+The cache uses Epic's default `%ProgramData%\Epic\UbaCacheService` directory and a
+100 GB limit (`IOJ_UBA_CACHE_CAPACITY_GB`). Capacity changes apply on the next service
+start. Configure with `-DIOJ_ENABLE_UBA_CACHE=OFF` to stop using this integration;
+this does not stop the shared background process or delete cached data.
+
 ### Compiler build profiling
 
 Configure with `-DIOJ_ENABLE_BUILD_PROFILING=ON` to enable compiler timing on targets

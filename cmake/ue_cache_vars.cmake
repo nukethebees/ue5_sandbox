@@ -1,5 +1,8 @@
 include_guard(GLOBAL)
 
+option(IOJ_ENABLE_UBA_CACHE "Start and use the local Unreal Build Accelerator cache" ON)
+set(IOJ_UBA_CACHE_CAPACITY_GB 100 CACHE STRING "Local UBA cache capacity in GB")
+
 set(CACHE{UE_ROOT}
   TYPE PATH
   HELP "Root directory of the Unreal Engine installation"

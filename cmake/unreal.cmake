@@ -3,9 +3,25 @@ include("${CMAKE_CURRENT_LIST_DIR}/validate_arguments.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/unreal_arguments.cmake")
 
 function(add_unreal_target target_name unreal_target)
+  set(cache_start_command)
+  set(build_environment)
+  if(IOJ_ENABLE_UBA_CACHE)
+    set(cache_start_command
+      COMMAND pwsh -NoProfile -File "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/start_uba_cache.ps1"
+        -EngineRoot "${UE_ROOT_ABSOLUTE}"
+        -CapacityGB "${IOJ_UBA_CACHE_CAPACITY_GB}"
+    )
+    set(build_environment
+      "${CMAKE_COMMAND}" -E env
+        "UnrealBuildTool_UnrealBuildAccelerator__Cache=127.0.0.1:1347"
+        "UnrealBuildTool_UnrealBuildAccelerator__WriteCache=True"
+    )
+  endif()
+
   add_custom_target(${target_name}
+    ${cache_start_command}
     COMMAND
-      coj unreal-build
+      ${build_environment} coj unreal-build
       --build-script "${UE_BUILD_SCRIPT}"
       --target ${unreal_target}
       --platform ${UE_PLATFORM}
