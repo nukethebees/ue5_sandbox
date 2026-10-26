@@ -16,6 +16,7 @@ struct SVolumeHeatmap3DWidgetBuilder {
 #line 4 "../Widgets/Experiments/Patterns.lispb"
         return SAssignNew(self_.image_, SImage).Image(brush);
     }
+
   private:
     ThisClass& self_;
 };

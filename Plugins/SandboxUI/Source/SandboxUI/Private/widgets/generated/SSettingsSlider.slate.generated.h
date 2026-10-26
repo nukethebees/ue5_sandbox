@@ -32,6 +32,7 @@ struct SSettingsSliderBuilder {
                      .VAlign(VAlign_Center)[SNew(SBox).WidthOverride(
                          value_width)[std::forward<decltype(value_text)>(value_text)]]];
     }
+
   private:
     ThisClass& self_;
 };

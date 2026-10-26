@@ -33,6 +33,7 @@ struct SValueSliderBuilder {
                                    FMargin{value_text_padding})[SNew(SBox).MinDesiredWidth(
                                    value_text_min_width)[SNew(STextBlock).Text(value_text)]]];
     }
+
   private:
     ThisClass& self_;
 };

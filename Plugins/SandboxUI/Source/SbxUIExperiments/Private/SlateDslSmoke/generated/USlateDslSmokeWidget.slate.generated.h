@@ -33,6 +33,7 @@ struct USlateDslSmokeWidgetBuilder {
                               .Text(FText::FromString(TEXT("Invoke private UObject callback")))
                               .OnClicked_UObject(&self_, &ThisClass::handle_clicked)];
     }
+
   private:
     ThisClass& self_;
 };

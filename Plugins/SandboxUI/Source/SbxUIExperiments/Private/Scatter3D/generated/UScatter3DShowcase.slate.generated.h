@@ -60,6 +60,7 @@ struct UScatter3DShowcaseBuilder {
             .Preview()[SNew(SBox).WidthOverride(512.0f).HeightOverride(
                 512.0f)[std::forward<decltype(scatter_widget)>(scatter_widget)]];
     }
+
   private:
     ThisClass& self_;
 };

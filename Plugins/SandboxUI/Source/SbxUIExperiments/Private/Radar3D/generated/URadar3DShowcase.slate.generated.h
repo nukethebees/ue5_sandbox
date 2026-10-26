@@ -58,6 +58,7 @@ struct URadar3DShowcaseBuilder {
             .Preview()[SNew(SBox).WidthOverride(512.0f).HeightOverride(
                 512.0f)[std::forward<decltype(radar_widget)>(radar_widget)]];
     }
+
   private:
     ThisClass& self_;
 };

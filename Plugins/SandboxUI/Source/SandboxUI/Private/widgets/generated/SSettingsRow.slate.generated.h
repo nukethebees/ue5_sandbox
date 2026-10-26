@@ -27,6 +27,7 @@ struct SSettingsRowBuilder {
                                     .VAlign(VAlign_Center)[SNew(SBox).WidthOverride(
                                         control_width)[std::forward<decltype(control)>(control)]]];
     }
+
   private:
     ThisClass& self_;
 };

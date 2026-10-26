@@ -50,6 +50,7 @@ struct USandboxUIShowcaseBuilder {
 #line 38 "SandboxUIShowcase.lispb"
         return SNew(SHeatmap2D).ValueRange(value_range).Domain(domain);
     }
+
   private:
     ThisClass& self_;
 };

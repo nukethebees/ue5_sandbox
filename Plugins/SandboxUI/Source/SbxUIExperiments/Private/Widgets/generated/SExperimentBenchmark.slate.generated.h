@@ -26,6 +26,7 @@ struct SExperimentBenchmarkBuilder {
                    FMargin{0.0f, 4.0f, 0.0f, 0.0f})[SNew(SBox).HeightOverride(
                    output_height)[std::forward<decltype(output)>(output)]];
     }
+
   private:
     ThisClass& self_;
 };

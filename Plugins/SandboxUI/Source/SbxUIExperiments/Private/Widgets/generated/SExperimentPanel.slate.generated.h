@@ -30,6 +30,7 @@ struct SExperimentPanelBuilder {
                                 .HAlign(HAlign_Center)
                                 .VAlign(VAlign_Center)[std::forward<decltype(preview)>(preview)]];
     }
+
   private:
     ThisClass& self_;
 };

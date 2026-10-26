@@ -42,6 +42,7 @@ struct SSectionPanelBuilder {
                  FMargin{description_padding})[std::forward<decltype(description)>(description)] +
              SandboxUI::Slate::vbox_fill_slot()[std::forward<decltype(content)>(content)]];
     }
+
   private:
     ThisClass& self_;
 };

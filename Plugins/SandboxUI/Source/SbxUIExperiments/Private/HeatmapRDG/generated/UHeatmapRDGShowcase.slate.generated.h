@@ -90,6 +90,7 @@ struct UHeatmapRDGShowcaseBuilder {
                            .MinDesiredHeight(preview_size)[std::forward<decltype(heatmap_preview)>(
                                heatmap_preview)]];
     }
+
   private:
     ThisClass& self_;
 };

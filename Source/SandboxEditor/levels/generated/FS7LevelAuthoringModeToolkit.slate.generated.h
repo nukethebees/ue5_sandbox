@@ -122,6 +122,7 @@ struct FS7LevelAuthoringModeToolkitBuilder {
                                       .AutoWrapText(true)] +
                SandboxUI::Slate::vbox_auto_slot()[std::forward<decltype(details)>(details)];
     }
+
   private:
     ThisClass& self_;
 };

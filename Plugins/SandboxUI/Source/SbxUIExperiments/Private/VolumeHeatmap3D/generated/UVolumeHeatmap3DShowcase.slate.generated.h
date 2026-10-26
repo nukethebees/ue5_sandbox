@@ -166,6 +166,7 @@ struct UVolumeHeatmap3DShowcaseBuilder {
                            .HeightOverride(
                                preview_size)[std::forward<decltype(volume_widget)>(volume_widget)]];
     }
+
   private:
     ThisClass& self_;
 };

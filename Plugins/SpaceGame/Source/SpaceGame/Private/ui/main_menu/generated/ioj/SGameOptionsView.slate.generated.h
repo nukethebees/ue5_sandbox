@@ -36,6 +36,7 @@ struct SGameOptionsViewBuilder {
                           SandboxUI::Slate::vbox_auto_slot()[std::forward<decltype(footer)>(
                               footer)]]];
     }
+
   private:
     ThisClass& self_;
 };

@@ -43,6 +43,7 @@ struct SLabeledRowBuilder {
                    .HAlign(content_halign)
                    .VAlign(VAlign_Center)[std::forward<decltype(content)>(content)];
     }
+
   private:
     ThisClass& self_;
 };

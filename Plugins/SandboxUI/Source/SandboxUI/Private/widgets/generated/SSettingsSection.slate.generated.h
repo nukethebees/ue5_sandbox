@@ -28,6 +28,7 @@ struct SSettingsSectionBuilder {
                             SandboxUI::Slate::vbox_auto_slot()[std::forward<decltype(content)>(
                                 content)]]];
     }
+
   private:
     ThisClass& self_;
 };

@@ -74,6 +74,7 @@ struct SS7LevelScriptEditorBuilder {
                                                     .IsReadOnly(true)
                                                     .AutoWrapText(true)]];
     }
+
   private:
     ThisClass& self_;
 };

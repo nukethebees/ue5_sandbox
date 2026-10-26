@@ -79,6 +79,7 @@ struct SScriptLevelSelectViewBuilder {
                      SandboxUI::Slate::vbox_fill_slot()[std::forward<decltype(catalog_scroll)>(
                          catalog_scroll)]]];
     }
+
   private:
     ThisClass& self_;
 };
