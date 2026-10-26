@@ -153,21 +153,21 @@
       "name": "debug",
       "configurePreset": "debug",
       "targets": [
-        "dev-core"
+        "editor"
       ]
     },
     {
       "name": "debug-game",
       "configurePreset": "debug-game",
       "targets": [
-        "dev-core"
+        "editor"
       ]
     },
     {
       "name": "development",
       "configurePreset": "development",
       "targets": [
-        "dev-core"
+        "editor"
       ]
     },
     {
@@ -181,7 +181,7 @@
       "name": "test",
       "configurePreset": "test",
       "targets": [
-        "dev-core"
+        "editor"
       ]
     },
     {
@@ -195,21 +195,21 @@
       "name": "debug-msvc",
       "configurePreset": "debug-msvc",
       "targets": [
-        "dev-core"
+        "editor"
       ]
     },
     {
       "name": "debug-game-msvc",
       "configurePreset": "debug-game-msvc",
       "targets": [
-        "dev-core"
+        "editor"
       ]
     },
     {
       "name": "development-msvc",
       "configurePreset": "development-msvc",
       "targets": [
-        "dev-core"
+        "editor"
       ]
     },
     {
@@ -223,7 +223,7 @@
       "name": "test-msvc",
       "configurePreset": "test-msvc",
       "targets": [
-        "dev-core"
+        "editor"
       ]
     },
     {
@@ -598,7 +598,7 @@
         },
         {
           "type": "build",
-          "name": "debug-game"
+          "name": "debug-game-unit-prerequisites"
         },
         {
           "type": "test",
@@ -615,7 +615,7 @@
         },
         {
           "type": "build",
-          "name": "debug-game"
+          "name": "debug-game-unit-prerequisites"
         },
         {
           "type": "build",

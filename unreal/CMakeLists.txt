@@ -198,12 +198,6 @@ add_custom_target(unreal-unit-tests
 )
 set_property(TARGET unreal-unit-tests PROPERTY FOLDER "Sandbox/Unreal/Tests")
 
-add_custom_target(dev-core
-  DEPENDS
-    editor
-    native-tests
-)
-
 add_unreal_editor_target(validate-ui-glow-material-unreal
   UNATTENDED
   ARGUMENTS

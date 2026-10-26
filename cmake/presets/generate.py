@@ -467,7 +467,7 @@ def make_unreal_document() -> dict[str, Any]:
     ]
     for suffix, _, _, _ in compiler_variants:
         for name, _, _, _ in unreal_configurations:
-            target = "game" if name == "shipping" else "dev-core"
+            target = "game" if name == "shipping" else "editor"
             build_presets.append(
                 {
                     "name": f"{name}{suffix}",
@@ -620,7 +620,7 @@ def make_unreal_document() -> dict[str, Any]:
                 "name": "debug-game-tests",
                 "steps": [
                     {"type": "configure", "name": "debug-game"},
-                    {"type": "build", "name": "debug-game"},
+                    {"type": "build", "name": "debug-game-unit-prerequisites"},
                     {"type": "test", "name": "debug-game-tests"},
                 ],
             },
@@ -628,7 +628,7 @@ def make_unreal_document() -> dict[str, Any]:
                 "name": "debug-game-full-tests",
                 "steps": [
                     {"type": "configure", "name": "debug-game"},
-                    {"type": "build", "name": "debug-game"},
+                    {"type": "build", "name": "debug-game-unit-prerequisites"},
                     {"type": "build", "name": "debug-game-tool-tests-build"},
                     {"type": "test", "name": "debug-game-full-tests"},
                 ],

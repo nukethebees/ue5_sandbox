@@ -58,12 +58,11 @@ ordinary native/game validation excludes standalone developer-tool tests. The fo
 `native-simulation-tests` preset excludes soak; `native-simulation-full-tests` includes it,
 and `native-simulation-soak-tests` runs it alone. Full `native-tests` retains soak and compile contracts.
 
-The normal Unreal presets build `dev-core`, the broad integration aggregate. The focused
-`debug-game-unit-tests` workflow instead builds `unreal-unit-tests` (`editor` plus `native-tests`)
-before running the mixed unit taxonomy. `debug-game-tests` retains `dev-core` as the merge-ready
-game/native integration gate when the changed dependency surface requires broad Unreal validation;
-it is not a universal gate for standalone tooling or native-only changes. `debug-game-full-tests`
-is the explicit broad suite and also includes standalone developer-tool tests.
+Normal Unreal presets build `editor` and its required native libraries and generated inputs;
+Shipping builds `game`. The `debug-game-unit-tests`, `debug-game-tests`, and
+`debug-game-full-tests` workflows explicitly build `unreal-unit-tests` (`editor` plus
+`native-tests`) before running tests. `debug-game-full-tests` also builds and runs standalone
+developer-tool tests. Use these broader workflows when the changed dependencies require them.
 
 Standalone native policy follows `CMAKE_BUILD_TYPE`: presets own configuration, unity, ASAN,
 analysis, and profiling intent. `IOJ_ENABLE_PROFILING` defaults to `ON`, including native Release
