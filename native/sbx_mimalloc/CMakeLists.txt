@@ -151,6 +151,7 @@ if(IOJ_WITH_UNREAL)
 endif()
 
 add_executable(sbx-mimalloc-tests tests/memory_tests.cpp)
+ioj_stage_runtime_dependencies(sbx-mimalloc-tests)
 target_link_libraries(sbx-mimalloc-tests
   PRIVATE
     sandbox::mimalloc

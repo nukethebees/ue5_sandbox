@@ -37,8 +37,8 @@ if(IOJ_WITH_TRACY)
   set(TRACY_ONLY_LOCALHOST ON)
   set(TRACY_NO_BROADCAST ON)
   set(TRACY_NO_CRASH_HANDLER ON)
-  set(TRACY_STATIC ON)
-  set(TRACY_MANUAL_LIFETIME OFF)
+  set(TRACY_STATIC OFF)
+  set(TRACY_MANUAL_LIFETIME ${IOJ_WITH_UNREAL})
 
   find_package(Threads REQUIRED)
   add_subdirectory(third_party/tracy EXCLUDE_FROM_ALL)
@@ -50,32 +50,10 @@ if(IOJ_WITH_TRACY)
   elseif(MSVC)
     target_compile_options(TracyClient PRIVATE /wd4477 /wd4552)
   endif()
-  set_target_properties(TracyClient PROPERTIES OUTPUT_NAME SandboxTracyClientStatic)
+  set_target_properties(TracyClient PROPERTIES OUTPUT_NAME SandboxTracyClient)
 
   if(IOJ_WITH_UNREAL)
-    add_library(TracyClientUnreal SHARED)
-    target_sources(TracyClientUnreal PRIVATE
-      third_party/tracy/public/TracyClient.cpp
-      profiling/src/memory.cpp
-    )
-    target_compile_features(TracyClientUnreal PUBLIC cxx_std_11 PRIVATE cxx_std_23)
-    target_include_directories(TracyClientUnreal PUBLIC profiling/include)
-    target_include_directories(TracyClientUnreal SYSTEM PUBLIC third_party/tracy/public)
-    get_target_property(tracy_definitions TracyClient INTERFACE_COMPILE_DEFINITIONS)
-    get_target_property(tracy_libraries TracyClient INTERFACE_LINK_LIBRARIES)
-    target_compile_definitions(TracyClientUnreal
-      PUBLIC ${tracy_definitions} TRACY_MANUAL_LIFETIME TRACY_IMPORTS
-      PRIVATE TRACY_EXPORTS IOJ_TRACY_MEMORY_EXPORTS
-    )
-    target_link_libraries(TracyClientUnreal PUBLIC ${tracy_libraries})
-    ioj_apply_native_abi(TracyClientUnreal)
-    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-      target_compile_options(TracyClientUnreal PRIVATE -Wno-format -Wno-unused-value)
-    elseif(MSVC)
-      target_compile_options(TracyClientUnreal PRIVATE /wd4477 /wd4552)
-    endif()
-    set_target_properties(TracyClientUnreal PROPERTIES
-      OUTPUT_NAME SandboxTracyClient
+    set_target_properties(TracyClient PROPERTIES
       ARCHIVE_OUTPUT_DIRECTORY
         "${IOJ_NATIVE_OUTPUT_ROOT}/Tracy/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
       RUNTIME_OUTPUT_DIRECTORY
@@ -128,9 +106,3 @@ add_custom_target(native-tests
     check-generated-code
 )
 set_property(TARGET native-tests PROPERTY FOLDER "Sandbox/Native/Tests")
-
-if(TARGET TracyClientUnreal)
-  set_property(SOURCE profiling/src/memory.cpp APPEND PROPERTY
-    COMPILE_OPTIONS "$<TARGET_PROPERTY:sandbox_native_no_rtti,INTERFACE_COMPILE_OPTIONS>"
-  )
-endif()

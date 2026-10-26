@@ -1,5 +1,5 @@
 add_executable(native-core-benchmarks)
-ioj_stage_tbb_runtime(native-core-benchmarks)
+ioj_stage_runtime_dependencies(native-core-benchmarks)
 target_sources(native-core-benchmarks
   PRIVATE
     projectile_intercept_benchmarks.cpp

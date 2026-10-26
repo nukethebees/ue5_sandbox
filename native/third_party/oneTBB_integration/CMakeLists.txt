@@ -39,13 +39,3 @@ if(IOJ_WITH_UNREAL)
       "${IOJ_NATIVE_OUTPUT_ROOT}/OneTBB/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
   )
 endif()
-
-function(ioj_stage_tbb_runtime target)
-  if(WIN32)
-    add_custom_command(TARGET ${target} POST_BUILD
-      COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-        "$<TARGET_FILE:TBB::tbb>" "$<TARGET_FILE_DIR:${target}>"
-      VERBATIM
-    )
-  endif()
-endfunction()

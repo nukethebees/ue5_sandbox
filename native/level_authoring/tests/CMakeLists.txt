@@ -1,5 +1,5 @@
 add_executable(native-level-authoring-tests)
-ioj_stage_tbb_runtime(native-level-authoring-tests)
+ioj_stage_runtime_dependencies(native-level-authoring-tests)
 target_sources(native-level-authoring-tests
   PRIVATE
     level_authoring_tests.cpp
@@ -26,6 +26,7 @@ set_tests_properties(native-level-authoring-tests PROPERTIES
   LABELS "unit;all;native;native-level-authoring")
 
 add_executable(native-level-parser-tests)
+ioj_stage_runtime_dependencies(native-level-parser-tests)
 target_sources(native-level-parser-tests
   PRIVATE
     parser_tests.cpp

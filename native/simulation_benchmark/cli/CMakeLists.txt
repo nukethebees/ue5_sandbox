@@ -1,5 +1,5 @@
 add_executable(native-simulation-benchmark)
-ioj_stage_tbb_runtime(native-simulation-benchmark)
+ioj_stage_runtime_dependencies(native-simulation-benchmark)
 target_sources(native-simulation-benchmark PRIVATE main.cpp)
 target_link_libraries(native-simulation-benchmark PRIVATE
   native-simulation-benchmark-lib

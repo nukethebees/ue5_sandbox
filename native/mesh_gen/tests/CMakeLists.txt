@@ -1,4 +1,5 @@
 add_executable(mesh-gen-tests mesh_generation_tests.cpp)
+ioj_stage_runtime_dependencies(mesh-gen-tests)
 target_link_libraries(mesh-gen-tests PRIVATE
   mesh-gen
   GTest::gtest_main

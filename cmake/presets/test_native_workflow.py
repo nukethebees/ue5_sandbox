@@ -124,7 +124,7 @@ class NativeWorkflowTests(unittest.TestCase):
             self.assertNotIn("NFD_BUILD_TESTS:", cache)
             self.assertRegex(cache, r"IOJ_ENABLE_PROFILING:BOOL=(ON|TRUE)")
             graph = (build / "build.ninja").read_text()
-            self.assertIn("SandboxTracyClientStatic", graph)
+            self.assertIn("SandboxTracyClient.dll", graph)
             self.assertNotIn("cargo test", graph)
             commands = self.run_cmake("--build", str(build), "--target", "native-core", "--", "-t", "commands")
             self.assertNotIn(" /WX", commands)

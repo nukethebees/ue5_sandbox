@@ -116,7 +116,7 @@ target_link_libraries(native-test-support
     native-core-headers
     GTest::gtest
 )
-ioj_stage_tbb_runtime(native-core-tests)
+ioj_stage_runtime_dependencies(native-core-tests)
 
 target_sources(native-core-tests
   PRIVATE

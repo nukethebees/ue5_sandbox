@@ -13,6 +13,6 @@ target_link_libraries(native-presentation-tests
 )
 ioj_enable_warnings(native-presentation-tests)
 ioj_apply_native_abi(native-presentation-tests)
-ioj_stage_tbb_runtime(native-presentation-tests)
+ioj_stage_runtime_dependencies(native-presentation-tests)
 add_test(NAME native-presentation-tests COMMAND native-presentation-tests)
 set_tests_properties(native-presentation-tests PROPERTIES LABELS "unit;all;native;native-presentation")

@@ -6,6 +6,7 @@ project(SandboxUnrealBuild LANGUAGES C CXX)
 include(cmake/compiler_cache.cmake)
 enable_testing()
 include(cmake/test_environment.cmake)
+include(cmake/runtime_dependencies.cmake)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 

@@ -30,6 +30,7 @@ if(IOJ_WITH_UNREAL)
 endif()
 
 add_executable(native-memory-tests)
+ioj_stage_runtime_dependencies(native-memory-tests)
 target_sources(native-memory-tests PRIVATE tests/root_arena_tests.cpp)
 target_link_libraries(native-memory-tests PRIVATE
   native-memory
