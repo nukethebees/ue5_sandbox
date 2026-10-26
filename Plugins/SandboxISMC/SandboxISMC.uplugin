@@ -22,11 +22,6 @@
 			"LoadingPhase": "PostConfigInit"
 		},
 		{
-			"Name": "SandboxISMCLab",
-			"Type": "Editor",
-			"LoadingPhase": "Default"
-		},
-		{
 			"Name": "SandboxISMCTests",
 			"Type": "Editor",
 			"LoadingPhase": "Default"

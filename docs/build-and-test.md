@@ -86,11 +86,14 @@ Normal editor builds exclude `SandboxExperiments`. Enable that plugin in
 tests, or `generate-slate-dsl-smoke-asset`. Module names are retained; showcase assets
 are mounted only when the plugin is enabled, with redirects for their old paths.
 The mesh-generation lab remains enabled because editor asset-generation commands
-use it; the ISMC lab remains available to the supported benchmark workflow.
+use it. `SandboxISMCLab` is a separate, disabled-by-default plugin; enable it and
+rebuild before using ISMC demo maps or `coj benchmark sandbox-ismc`. The production
+`SandboxISMC` renderer and its tests remain enabled.
 
 When updating a workspace built before this module move, remove the generated
-`UnrealEditor*.modules` manifests under `Plugins/SandboxUI/Binaries/Win64` and
-`Plugins/SandboxShaders/Binaries/Win64`, then rebuild. Stale entries can otherwise
+`UnrealEditor*.modules` manifests under `Plugins/SandboxUI/Binaries/Win64`,
+`Plugins/SandboxShaders/Binaries/Win64` and `Plugins/SandboxISMC/Binaries/Win64`,
+then rebuild. Stale entries can otherwise
 override the experiments plugin's new binary locations.
 
 The obsolete learning actors, example widgets, editor customizations and their

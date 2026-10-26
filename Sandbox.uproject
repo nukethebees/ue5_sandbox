@@ -35,6 +35,10 @@
 	],
 	"Plugins": [
 		{
+			"Name": "SandboxISMCLab",
+			"Enabled": false
+		},
+		{
 			"Name": "SandboxExperiments",
 			"Enabled": false
 		},

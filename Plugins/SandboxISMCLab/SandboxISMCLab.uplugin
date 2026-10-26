@@ -1,0 +1,20 @@
+{
+    "FileVersion": 3,
+    "Version": 1,
+    "VersionName": "1.0",
+    "FriendlyName": "Sandbox ISMC Lab",
+    "Description": "Optional demonstrations and benchmarks for the SandboxISMC renderer.",
+    "Category": "Sandbox",
+    "EnabledByDefault": false,
+    "CanContainContent": true,
+    "Modules": [
+        {
+            "Name": "SandboxISMCLab",
+            "Type": "Editor",
+            "LoadingPhase": "Default"
+        }
+    ],
+    "Plugins": [
+        { "Name": "SandboxISMC", "Enabled": true }
+    ]
+}

@@ -174,7 +174,7 @@ impl Request {
     }
 }
 fn benchmark_map_path(root: &Path) -> PathBuf {
-    root.join("Plugins/SandboxISMC/Content/Lab/FT_SandboxISMCBenchmark.umap")
+    root.join("Plugins/SandboxISMCLab/Content/Lab/FT_SandboxISMCBenchmark.umap")
 }
 
 #[derive(Serialize, Deserialize)]
@@ -211,7 +211,7 @@ fn build_editor(root: &Path, editor: &Path) -> Result<()> {
 
 fn validate_measurement_protocol(root: &Path) -> Result<()> {
     let path = root
-        .join("Plugins/SandboxISMC/Source/SandboxISMCLab/Private/SandboxISMCBenchmarkActor.cpp");
+        .join("Plugins/SandboxISMCLab/Source/SandboxISMCLab/Private/SandboxISMCBenchmarkActor.cpp");
     if !fs::read_to_string(path)
         .unwrap_or_default()
         .contains("SandboxISMCBenchmarkRunId=")

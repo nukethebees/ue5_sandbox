@@ -61,7 +61,7 @@ bool FSandboxISMCRemoteBenchmarkTest::RunTest(FString const& parameters) {
 
     FString load_error;
     GUnrealEd->AutomationLoadMap(
-        TEXT("/SandboxISMC/Lab/FT_SandboxISMCBenchmark"), true, &load_error);
+        TEXT("/SandboxISMCLab/Lab/FT_SandboxISMCBenchmark"), true, &load_error);
     if (!load_error.IsEmpty()) {
         return fail(
             FString::Printf(TEXT("Could not load SandboxISMC benchmark map: %s"), *load_error));
