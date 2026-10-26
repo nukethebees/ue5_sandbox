@@ -2,212 +2,192 @@ Unreal Engine 5.8 project.
 
 # Project Context
 
-* Simulation-heavy space combat game written primarily in C++
-* Prefer simple, explicit systems over speculative abstraction
-* Heavy SoA container usage
-* UI must not own gameplay logic
-* Prefer implementing work under `native/` until Unreal Engine integration is needed. Local code avoids shared Unreal engine resource contention.
-* External standalone developer tools may live under `tools/`.
+* Simulation-heavy space combat game, primarily C++, with heavy SoA usage.
+* Prefer simple, explicit systems over speculative abstraction.
+* Keep gameplay logic out of UI.
+* Prefer `native/` until Unreal integration is needed; local code avoids shared engine contention.
+* Standalone developer tools may live under `tools/`.
 
 # Feature Workflow
 
-* `coj` is the project CLI for automating and controlling the development workflow.
-  * At the start of a task, run `coj --help` to discover available functionality, then inspect `coj <command> --help` for commands relevant to the work. Prefer `coj` over manually reproducing workflows it already supports.
-  * Do not exhaustively inspect unrelated commands.
-* Use `coj git` for mutating Git operations. For unsupported commands, request permission from the maintainer to use git directly.
-* Git stash is intentionally unsupported because it is repository-global. Use branches instead of stashing.
-* `dev`, `main`, and `master` are protected regardless of ASCII case. Read them freely, but do not
-  mutate them or switch an agent worktree onto them through the ordinary Git path.
-* The worktree containing the current CWD is the workspace boundary. Do not access or modify
-  another worktree outside that boundary. 
-* coj is a cooperative guardrail, not a hostile-process security sandbox. Do not bypass it
-  with raw mutating Git, direct `.git` edits, environment overrides, aliases, alternate Git
-  executables, shell tricks, or other workarounds. 
-* `dev` is the integration branch
-* Begin a new task with `coj prepare-worktree` in the current Git worktree. 
-  The maintainer installs/updates `coj` and manages PATH; agents invoke it by name from PATH. If it cannot be found or launched, halt and report the problem so the maintainer can fix it.
-* After worktree preparation, build only affected targets and execute relevant CTest labels.
-  Use `ctest --test-dir out/build/native -L <subsystem> -LE "soak|compile-contract"` for the
-  fast loop. Include the applicable expensive categories once for final validation.
-  `native-simulation-tests` is the ordinary-only workflow; `native-simulation-full-tests`
-  adds the soak for final simulation validation. `native-tests` includes native soak/compile
-  contracts but excludes standalone developer-tool tests.
-* Perform feature work on dedicated feature branches; `coj git switch -c feature/<task> dev`
-  creates one. The `feature/` prefix is a convention, not an ownership requirement.
-* Do not bypass instructions here unless explicitly told to
-* Use the CMake workflows described in [Builds](#builds).
-* **Fast default:** 
-  * Understand the task
-  * Finish the coherent implementation and required cleanup
-  * Format and review it
-  * Run the smallest useful native/focused validation
-  * Fix with focused checks then report ready
-  * Only build and run what is needed.
-* Use stock Codex and the cooperative [jobs board](tools/jobserver/README.md). Cheap work needs no
-  ticket. Before heavyweight builds/tests, run `coj jobs request shared "operation"`;
-  use `exclusive` for benchmarks or work requiring a quiet machine. Check the returned ID with
-  `coj jobs check <id>` until Ready. Call `jobs start <id>` immediately before the ordinary
-  command and `jobs end <id>` immediately when it returns, including failures. Cancel unused
-  queued/ready tickets with `jobs cancel <id>`. These are all `coj jobs` commands.
-  Inspect `jobs status`; never jump a queued exclusive ticket.
-  This is voluntary coordination: tools do not enforce it. Follow the protocol and report missing tools.
-* Run light, relevant tests after implementation and expensive relevant gates once against
-  the final candidate. Tooling/native work must not build Unreal without a dependency reason.
-* If coj is broken, report it once and follow an explicit maintainer instruction for any
-  minimal alternative; do not repeatedly retry or deliberately bypass it.
-* Use one simple shell command per tool invocation for routine agent work. Do not combine commands with `;`, `&&`, `||`, pipelines, or script blocks, even when each command is individually approved or cheap.
-  * Run inspections as separate tool calls and read their output directly. Independent calls may be batched through the tool API, without combining their shell command strings.
-  * Cheap inspections need no ticket. Request tickets separately from the commands they coordinate.
-  * Do not redirect command output to log files. Existing build/test scripts may still be invoked normally.
-* Make commits for each discrete chunk of work as you work. Use good judgement.
-* Try to avoid making just one commit for all the work
-* Static analysis is not part of normal feature validation. Run it only when explicitly requested or when modifying static-analysis tooling.
+* Use `coj`, the project workflow CLI. Start tasks with `coj --help`, then inspect relevant
+  `coj <command> --help`. Prefer supported workflows over manual equivalents; skip unrelated help.
+* Begin new tasks with `coj prepare-worktree` in the current worktree. The maintainer installs
+  and updates `coj` and manages PATH; invoke it by name. If it cannot launch or is missing,
+  halt and report it. If broken, report once; use a minimal alternative only under explicit
+  maintainer instruction. Do not repeatedly retry or bypass it.
+* Use `coj git` for mutating Git operations. Ask the maintainer before using unsupported Git
+  commands directly. Stash is unsupported because it is repository-global; use branches.
+* `dev` is the integration branch. `dev`, `main`, and `master` are protected regardless of
+  ASCII case: read them freely, but do not mutate them or switch agent worktrees onto them
+  through the ordinary Git path.
+* Work on dedicated feature branches; create one with `coj git switch -c feature/<task> dev`.
+  `feature/` is a convention, not an ownership requirement.
+* Treat the current worktree as the workspace boundary. Do not access or modify worktrees outside that boundary.
+* Treat `coj` as a cooperative guardrail, not a hostile-process sandbox. Never bypass it with
+  raw mutating Git, `.git` edits, environment overrides, aliases, alternate Git executables,
+  shell tricks, or other workarounds.
+* Follow these instructions unless explicitly told otherwise. Use the [CMake workflows](#builds).
+* Understand the task, finish implementation and cleanup, format and review, run the smallest useful native/focused
+  validation, fix with focused checks, then report ready. Build and run only what is needed.
+* After worktree preparation, build affected targets and run relevant CTest labels. Fast loop:
+  `ctest --test-dir out/build/native -L <subsystem> -LE "soak|compile-contract"`.
+  Run applicable expensive categories once against the final candidate.
+  `native-simulation-tests` runs ordinary tests; `native-simulation-full-tests` adds the soak.
+  `native-tests` includes native soak/compile contracts, excluding standalone developer tools.
+* Use stock Codex and the cooperative [jobs board](tools/jobserver/README.md). Cheap work needs
+  no ticket. Before heavy builds/tests, run `coj jobs request shared "operation"`; use `exclusive`
+  for benchmarks or work needing a quiet machine. Check `coj jobs check <id>` until Ready.
+  Run `coj jobs start <id>` immediately before the command and `coj jobs end <id>` immediately
+  after it returns, including failures. Cancel unused queued/ready tickets with
+  `coj jobs cancel <id>`. Inspect `coj jobs status`; never jump a queued exclusive ticket.
+  Follow this voluntary, unenforced protocol and report missing tools.
+* Run light, relevant tests after implementation and expensive relevant gates once on the final
+  candidate. Do not build Unreal for tooling/native work without a dependency reason.
+* Use one simple shell command per tool invocation for routine work. Never combine commands with `;`,
+  `&&`, `||`, pipelines, or script blocks, even if approved or cheap. Inspect through separate
+  calls and read output directly; batch independent calls through the tool API, not shell strings.
+  Cheap inspections need no ticket; request tickets separately from coordinated commands.
+  Do not redirect output to log files; existing build/test scripts may run normally.
+* Commit discrete chunks as you work, using judgement; avoid one commit for everything.
+* Run static analysis only when explicitly requested or modifying its tooling, not as normal
+  feature validation.
 
 # Builds
 
-* CMake is used to drive all builds, including UBT
-* Before editing CMake files, read [CMake style](cmake/STYLE.md).
-* Set `IOJ_ROOT` to the absolute base directory for shared tools and temporary files.
-  Stable tools are maintainer-installed under `%IOJ_ROOT%\tools\<ToolName>\bin`
-  and invoked from PATH.
-  Agents never auto-install/update tools or construct local fallbacks.
-  Report a missing command; use `--version` for manual source/install comparison when needed.
-  CMake builds revision-local game-package-tools, native-binary-tools, and
-  benchmark-tools privately on demand.
-* Windows tools use `%IOJ_ROOT%\tmp\<worktree-name>` for temporary files. Allow that directory in
-  the agent sandbox; do not grant access to the user profile to resolve temporary-path failures.
-* For final integration, only build and test what your work has affected
-* Keep benchmarks short; Not more than 3 minutes total
-* For native simulation and fighter revision comparisons, use `coj benchmark compare
-  --baseline <ref> [--candidate <ref>]` rather than ad-hoc worktree or analysis scripts.
-  This command manages its own detached inputs under this workspace's `.local/benchmarks/wt/`.
-  Omit `--candidate` to include local edits. Use `--prepare-only` under a shared ticket, then
-  the printed worktree paths with `--skip-build` under an exclusive ticket; see `docs/benchmarks.md`.
-* For probe-level performance work, use `coj benchmark tracy-report --trace <capture.tracy>`
-  with a relevant `--filter` and steady-state time window. Compare probe distributions as well as
-  full-tick timings. Keep raw traces/exports out of agent context; see `docs/benchmarks.md`.
-* Standalone developer-tool tests are not part of the default validation path. Run
-  `cmake --workflow --preset tool-tests` only when the change can affect a tool or its tests, a
-  directly consumed interface/protocol/file format/configuration, shared build or tool
-  infrastructure, or the tool is being diagnosed. Unrelated native, game, and runtime changes must
-  not run them merely because a broad test command exists. Select focused tool tests from the affected dependencies; use the complete developer-tool
-  suite for shared/unknown tool infrastructure. Integration does not rerun validation.
-
+* Drive all builds, including UBT, through CMake. Read [CMake style](cmake/STYLE.md) before editing CMake files.
+* Use non-unity builds for normal development work.
+* Set `IOJ_ROOT` to the absolute shared-tools/temp root. The maintainer installs stable tools
+  under `%IOJ_ROOT%\tools\<ToolName>\bin`; invoke them from PATH. Never auto-install/update tools
+  or construct local fallbacks. Report missing commands; use `--version` for manual source/install
+  comparison when needed. CMake privately builds revision-local game-package-tools,
+  native-binary-tools, and benchmark-tools on demand.
+* Use `%IOJ_ROOT%\tmp\<worktree-name>` for Windows temporary files. Allow that directory in the
+  sandbox; do not grant user-profile access to fix temporary-path failures.
+* Build and test only affected work for final integration. Integration does not rerun validation.
+* Limit benchmarks to three minutes total.
+* Compare native simulation/fighter revisions with
+  `coj benchmark compare --baseline <ref> [--candidate <ref>]`, not ad-hoc worktree/analysis scripts.
+  It manages detached inputs under this workspace's `.local/benchmarks/wt/`. Omit `--candidate`
+  to include local edits. Run `--prepare-only` under a shared ticket, then use the printed
+  worktree paths with `--skip-build` under an exclusive ticket. See `docs/benchmarks.md`.
+* For probe-level performance, use `coj benchmark tracy-report --trace <capture.tracy>` with a
+  relevant `--filter` and steady-state window. Compare probe distributions and full-tick timings.
+  Keep raw traces/exports out of agent context; see `docs/benchmarks.md`.
+* Exclude standalone developer-tool tests from default validation. Run
+  `cmake --workflow --preset tool-tests` only for changes affecting tools/tests, their directly
+  consumed interfaces/protocols/formats/configuration, shared build/tool infrastructure, or tool
+  diagnosis. Do not run them for unrelated native/game/runtime work because a broad command exists.
+  Choose focused tests for affected dependencies; use the complete suite for shared/unknown tool
+  infrastructure.
 
 # Agent Behaviour
 
-* Do not guess. Ask questions when things are unclear.
-* Use targeted repository inspection to establish implementation facts.
-* Once enough context exists, implement rather than continuing exploration.
-* Keep answers to the maintainer's questions in the final response after completing the work item,
-  so they are not buried beneath tool output. Use progress updates for work status.
-* Apply obvious improvements within the active scope as you work and report them at the end.
-* Keep README.md files concise and user-oriented. Put detailed usage instructions in local READMEs
-  or local `docs/` directories, and architecture information in local `ARCHITECTURE.md` files.
-* For contention other than jobs-board tickets, treat obvious temporary contention for shared resources as a wait condition: do not repeatedly retry across consecutive turns; sleep within the shell/tool invocation before retrying with 10s, then 30s, then 60s backoff (capped at 60s). Investigate and report the failure if persists unreasonably.
-* When replacing an experimental architecture or workflow on a feature branch, remove the superseded path
-  completely unless the maintainer requests compatibility. Feature branches are the rollback
-  mechanism. Keep one canonical path: no obsolete implementations, compatibility wrappers,
-  fallback execution, duplicate configuration, or alternate workflows "just in case".
-* When explicitly granted autonomy, use judgement to resolve reasonable ambiguities while keeping scope controlled.
-* Store local development roadmaps under `.local/plans/` and disposable session hand-offs under `.local/handoffs/`; never commit them.
-* Use common tools like `clang-tidy` from PATH, not from explicit file paths.
+* Establish facts through targeted repository inspection. Do not guess; ask when unclear.
+  Once context is sufficient, implement rather than continuing exploration.
+* Answer maintainer questions in the final response after completing the work item, where tool
+  output cannot bury them. Use progress updates for work status.
+* Apply obvious improvements within the active scope and report them at the end.
+* Keep README.md files concise and user-oriented. Put detailed usage in local READMEs or `docs/`,
+  and architecture in local `ARCHITECTURE.md` files.
+* For temporary shared-resource contention outside jobs-board tickets, wait rather than retrying
+  across consecutive turns. Sleep within the shell/tool invocation before retries: 10s, 30s, then
+  60s, capped at 60s. Investigate and report unreasonable persistence.
+* When replacing experimental architecture/workflows on a feature branch, remove the old path
+  completely unless the maintainer requests compatibility. Branches provide rollback. Keep one
+  canonical path: no obsolete implementations, compatibility wrappers, fallback execution,
+  duplicate configuration, or speculative alternate workflows.
+* When granted autonomy, resolve reasonable ambiguities with judgement and keep scope controlled.
+* Keep local roadmaps in `.local/plans/` and disposable hand-offs in `.local/handoffs/`; never commit either.
+* Invoke common tools such as `clang-tidy` from PATH, not explicit paths.
 
-Do not say “almost done”, “virtually done”, “nearly finished”, or give percentage-style completion estimates unless all required validation steps are already known and enumerated. When reporting progress, explicitly separate:
-- implementation complete/incomplete
-- tests complete/incomplete
-- static analysis: not yet due / complete / failed
-- sanitizer validation complete/incomplete
-- integration/build validation complete/incomplete
-- unresolved issues
-If a new issue invalidates previous validation or requires additional builds/tests, explicitly retract the previous completion estimate.
+Do not say "almost done", "virtually done", "nearly finished", or give percentage completion
+estimates unless all required validation steps are known and enumerated. Report these separately:
+
+* Implementation: complete/incomplete.
+* Tests: complete/incomplete.
+* Static analysis: not yet due/complete/failed.
+* Sanitizer validation: complete/incomplete.
+* Integration/build validation: complete/incomplete.
+* Unresolved issues.
+
+Retract earlier completion estimates if new issues invalidate validation or require more builds/tests.
 
 # Coding Style
 
-* Unreal Engine C++.
-* `snake_case` functions and variables; `TitleCase` types.
-* Do not prefix booleans with `b_`.
-* East const; always use braces.
-* Prefer `auto` where the type is obvious.
-* Prefer simple C++ over template metaprogramming.
-* Declare one variable or data member per declaration and per line. Do not combine declarators.
-* Order declarations in handwritten and generated types as type aliases and constexpr constants
-  (with supporting nested types), constructors then destructors, copy/move special member functions,
-  operators, ordinary member functions, then data members. Keep data members last and separate
-  each distinct group with a blank line. Static factories belong with ordinary member functions.
-* Declare forward declarations before type definitions and separate the groups with a blank line.
-* Keep headers concise. Do not add inline explanatory comments to routine declarations or members.
-  Add a comment only for a non-obvious contract that names and types cannot express; put implementation
-  explanations in the source file. Do not add comments that restate the code.
-* Prefer SOA layouts for related performance-sensitive collections.
-* Save loop bounds as const locals.
-* Use named local values or views for repeated long expressions; keep views within the lifetime
-  of the storage they reference and do not retain them across invalidating mutations.
-* State non-obvious API preconditions and missing-result semantics at the declaration. Treat
-  impossible internal inputs as contract violations, with assertions at the responsible boundary;
-  do not silently convert them into null/missing results. Handle legitimate optional sentinels
-  explicitly before entering stricter bulk operations. Reuse phase guarantees instead of repeating
-  validity checks in inner loops. Tests must respect these contracts except when explicitly testing
-  invariant detection; prefer normal commands and events for simulation scenarios.
-* Log warnings/errors when null checks fail rather than returning silently.
-* Visually separate blocks of related code with whitespace, including logical phases within
-  functions and groups of declarations or data. Arrange long functions so their main control
-  flow is easy to scan, while keeping tightly coupled statements together.
-* Add brief comments to potentially hard-to-read code using the present imperative mood
-  (for example, "Preserve the original encoding when replacing the setting."). Explain intent
-  or non-obvious constraints; do not merely restate the code.
-* In non-trivial functions, use blank lines around guard/validation blocks, setup, major state
-  transitions, loops, and final publication or return steps when those phases are distinct.
-* In large classes with many member functions, group declarations and definitions by category using this banner style:
+* Use Unreal Engine C++, `snake_case` functions/variables, `TitleCase` types, east const, and braces.
+  Do not prefix booleans with `b_`. Prefer `auto` when the type is obvious and simple C++ over template metaprogramming.
+* Declare one variable/data member per declaration and line; never combine declarators.
+* Order handwritten and generated type declarations: aliases and constexpr constants (with
+  supporting nested types), constructors, destructors, copy/move special members, operators,
+  ordinary member functions, then data members. Put static factories with ordinary functions.
+  Keep data members last and separate distinct groups with blank lines.
+* Put forward declarations before definitions, separated by a blank line.
+* Keep headers concise. Comment declarations only for non-obvious contracts names/types cannot
+  express; put implementation explanations in source files. Never restate routine declarations,
+  members, or code in comments.
+* Prefer SoA for related performance-sensitive collections. Save loop bounds as const locals.
+* Name repeated long expressions with local values/views. Keep views within storage lifetime
+  and never retain them across invalidating mutations.
+* Declare non-obvious API preconditions and missing-result semantics. Assert impossible internal
+  inputs at the responsible boundary; never silently turn them into null/missing results.
+  Handle legitimate optional sentinels before stricter bulk operations. Reuse phase guarantees
+  instead of repeating inner-loop validation. Tests must respect contracts unless testing
+  invariant detection; prefer normal commands/events for simulation scenarios.
+* Log warnings/errors for failed null checks rather than returning silently.
+* Separate related code blocks with whitespace. Make long-function control flow easy to scan
+  while keeping coupled statements together. In non-trivial functions, separate distinct guards,
+  validation, setup, state transitions, loops, and final publication/returns with blank lines.
+* Briefly explain hard-to-read intent or constraints in present imperative comments, for example,
+  "Preserve the original encoding when replacing the setting."
+* Group large classes' member declarations and definitions by category using:
   ```cpp
   /* **************************************** */
   // Category
   /* **************************************** */
   ```
-* Order member-function categories to reflect lifecycle and control flow, and keep the category
-  order aligned between headers and `.cpp` files where practical.
-* In `.cpp` category groups, do not put blank lines between adjacent member-function definitions. Separate categories with blank lines around their banners.
-* When returning `std::expected`, prefer `std::in_place` / `std::unexpect` when they avoid unnecessary copies or moves.
-* For UObject types in a dedicated plugin and namespace, prefer concise names.
-* Avoid anonymous-namespace constants in `.cpp` files because Unreal unity builds can merge translation units. Prefer `static constexpr` members or `inline constexpr` constants in a specific named namespace.
+  Order categories by lifecycle/control flow; align header/source order where practical.
+  In `.cpp` category groups, omit blank lines between adjacent function definitions; separate
+  categories with blank lines around banners.
+* Prefer `std::in_place`/`std::unexpect` for `std::expected` returns when they avoid copies/moves.
+* Prefer concise UObject names within dedicated plugins/namespaces.
+* Avoid anonymous-namespace `.cpp` constants: Unreal unity builds can merge translation units.
+  Prefer `static constexpr` members or `inline constexpr` constants in a specific named namespace.
 
 # Code Reuse
 
-* Put generated non-test code in the ordinary source/include tree alongside handwritten code.
-  Do not create `generated/` directories for production code. Generated test fixtures may use them.
-* Reuse existing code if it can perform the requested task
-* Define closed language keyword sets represented by enums in Lispb and generate their serialized
-  names and parsing. Keep contextual grammar restrictions explicit; do not create enums for open
-  identifiers or property names already owned by record metadata.
-* Keep generated code simple and easy to debug. Share repetitive typed SoA operations using the existing column packs when this reduces total code; retain explicit generation for schema-specific behavior. Avoid additional type-description systems or elaborate template frameworks.
-* Emit compiler-owned C++ symbols through the existing typed CppIR and scope-aware renderer.
-  Do not bypass name resolution with qualified names embedded in generated text or add local
-  namespace-stripping rules. Reserve opaque text for authored C++ and syntax the IR cannot express.
+* Put generated production code beside handwritten code in normal source/include trees, never
+  production `generated/` directories. Generated test fixtures may use them.
+* Reuse existing code when it performs the task.
+* Define closed language keyword enums in Lispb; generate serialized names and parsing. Keep
+  contextual grammar restrictions explicit. Do not create enums for open identifiers or property
+  names already owned by record metadata.
+* Keep generated code simple and debuggable. Share repetitive typed SoA operations through
+  existing column packs when this reduces total code; generate schema-specific behavior explicitly.
+  Avoid extra type-description systems or elaborate template frameworks.
+* Emit compiler-owned C++ symbols through existing typed CppIR and the scope-aware renderer.
+  Never bypass resolution with qualified names embedded in generated text or local namespace
+  stripping. Reserve opaque text for authored C++ and syntax the IR cannot express.
 
 # Formatting
 
-* Format changed C++ files with `coj format --changed`
-* Do not invoke `clang-format` directly for normal repository work
+* Format changed C++ with `coj format --changed`; do not invoke `clang-format` directly for normal work.
 
 # UI
 
-* Use `BindWidget` for UPROPERTY widgets. 
-* For generated UMG widgets whose root is a panel widget, use `meta=(GeneratorRoot)`.
-* For Slate, consider using the repository's Slate DSL where useful
-* Keep gameplay logic out of UI widgets
+* Use `BindWidget` for UPROPERTY widgets.
+* Use `meta=(GeneratorRoot)` for generated UMG widgets whose root is a panel.
+* Consider the repository's Slate DSL where useful. Keep gameplay logic out of UI widgets.
 
 # Testing
 
-* Do not run AddressSanitizer (ASAN) builds or tests unless the user explicitly requests them.
-  ASAN is not a default validation, readiness, or integration requirement.
-* Only create tests when explicitly asked.
-* Keep automated tests and fixtures in `tests/` subdirectories or dedicated Unreal test modules,
-  separate from production implementations.
-* Keep all Rust test implementations, fixtures, and test helpers in each crate's `tests/`
-  directory, not inline or in files under `src/`. Unit tests that need private access may use
-  `#[cfg(test)]` and `#[path = "../tests/<module>/mod.rs"]` declarations in source modules.
-* Use CQTest/Unreal automation tests for code with engine/editor dependencies.
-* Register Unreal Automation benchmarks under the top-level `SandboxBenchmarks` category.
-* Prefer putting tests in native where possible
-* Prefer running native tests as part of the normal flow
-* Leave Unreal tests until the end of a task
+* Run AddressSanitizer (ASAN) builds/tests only when explicitly requested. ASAN is not a default
+  validation, readiness, or integration requirement.
+* Create tests only when explicitly asked.
+* Keep automated tests/fixtures separate from production, in `tests/` or dedicated Unreal test modules.
+* Put all Rust test implementations, fixtures, and helpers in each crate's `tests/`, never inline
+  or under `src/`. Private-access unit tests may use `#[cfg(test)]` and
+  `#[path = "../tests/<module>/mod.rs"]` declarations in source modules.
+* Use CQTest/Unreal automation for engine/editor dependencies. Register Unreal Automation
+  benchmarks under top-level `SandboxBenchmarks`.
+* Prefer native tests and run them in the normal flow. Leave Unreal tests until the task's end.
