@@ -972,7 +972,7 @@ class Analyzer {
         auto const result_type{result_name ? parse_type(*result_name) : ValueType::invalid};
         auto const function{atom(syntax_.children(form)[3], "shader function")};
         auto const& path_form{syntax_.children(form)[2]};
-        auto const& declarations{syntax_.children(form)[4]};
+        auto const& decls{syntax_.children(form)[4]};
         if (!is_numeric(result_type)) {
             fail(syntax_.token_span(syntax_.children(form)[1]),
                  "shader-call result type must be float, float2, float3, or float4");
@@ -990,17 +990,17 @@ class Analyzer {
             fail(syntax_.token_span(syntax_.children(form)[3]), "invalid shader function name");
             return std::nullopt;
         }
-        if (!syntax_.is_list(declarations)) {
-            fail(syntax_.token_span(declarations), "shader-call inputs must be a list");
+        if (!syntax_.is_list(decls)) {
+            fail(syntax_.token_span(decls), "shader-call inputs must be a list");
             return std::nullopt;
         }
 
         std::vector<NodeHandle> inputs;
         std::vector<CustomInputId> custom_inputs;
-        inputs.reserve(syntax_.children(declarations).size());
-        custom_inputs.reserve(syntax_.children(declarations).size());
+        inputs.reserve(syntax_.children(decls).size());
+        custom_inputs.reserve(syntax_.children(decls).size());
         std::set<lispb::StringId> input_names;
-        for (auto const& declaration : syntax_.children(declarations)) {
+        for (auto const& declaration : syntax_.children(decls)) {
             if (!syntax_.is_list(declaration) || syntax_.children(declaration).size() != 3) {
                 fail(syntax_.token_span(declaration),
                      "shader-call input must be (name type expression)");
@@ -1028,7 +1028,7 @@ class Analyzer {
             custom_inputs.push_back(material_.nodes.input_declarations.append(
                 syntax_.identifier(syntax_.children(declaration)[0]), type));
         }
-        if (custom_inputs.size() != syntax_.children(declarations).size()) {
+        if (custom_inputs.size() != syntax_.children(decls).size()) {
             return std::nullopt;
         }
         return material_.nodes.add_shader_call(result_type,
@@ -1070,18 +1070,18 @@ class Analyzer {
                  "custom result type must be float, float2, float3, or float4");
             return std::nullopt;
         }
-        auto const& declarations{syntax_.children(form)[2]};
-        if (!syntax_.is_list(declarations)) {
-            fail(syntax_.token_span(declarations), "custom inputs must be a list");
+        auto const& decls{syntax_.children(form)[2]};
+        if (!syntax_.is_list(decls)) {
+            fail(syntax_.token_span(decls), "custom inputs must be a list");
             return std::nullopt;
         }
         std::vector<NodeHandle> inputs;
         std::vector<CustomInputId> custom_inputs;
-        inputs.reserve(syntax_.children(declarations).size());
-        custom_inputs.reserve(syntax_.children(declarations).size());
+        inputs.reserve(syntax_.children(decls).size());
+        custom_inputs.reserve(syntax_.children(decls).size());
         lispb::StringId description;
         std::set<lispb::StringId> input_names;
-        for (auto const& declaration : syntax_.children(declarations)) {
+        for (auto const& declaration : syntax_.children(decls)) {
             if (!syntax_.is_list(declaration) || syntax_.children(declaration).size() != 3) {
                 fail(syntax_.token_span(declaration),
                      "custom input must be (name type expression)");

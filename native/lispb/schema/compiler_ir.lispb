@@ -20,6 +20,44 @@
     (value union_ :serialized-name "union")
     (projections (cpp))))
 
+(module compiler_binary_operator
+  :header "binary_operator.h"
+  :namespace lispb::codegen
+  (enum BinaryOperator std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string)
+    (value equal :serialized-name "==")
+    (value greater_equal :serialized-name ">=")
+    (value greater :serialized-name ">")
+    (value subtract :serialized-name "-")
+    (value add :serialized-name "+")
+    (value multiply :serialized-name "*")
+    (value logical_or :serialized-name "||")
+    (value logical_and :serialized-name "&&")
+    (value not_equal :serialized-name "!=")
+    (value divide :serialized-name "/")
+    (value less :serialized-name "<")
+    (value bitwise_and :serialized-name "&")
+    (value bitwise_or :serialized-name "|")
+    (value shift_left :serialized-name "<<")
+    (value less_equal :serialized-name "<=")
+    (value three_way :serialized-name "<=>")
+    (projections (cpp))))
+
+(module compiler_unary_operator
+  :header "unary_operator.h"
+  :namespace lispb::codegen
+  (enum UnaryOperator std::uint8_t
+    :native-api true
+    :helpers (to-serialized-string)
+    (value logical_not :serialized-name "!")
+    (value dereference :serialized-name "*")
+    (value address_of :serialized-name "&")
+    (value preincrement :serialized-name "++")
+    (value bitwise_not :serialized-name "~")
+    (value negate :serialized-name "-")
+    (projections (cpp))))
+
 (module compiler_parameter_passing
   :header "parameter_passing.h"
   :namespace lispb::codegen

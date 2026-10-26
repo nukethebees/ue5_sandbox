@@ -1,8 +1,10 @@
 lispb-outputs-v1
 access.h
+binary_operator.h
 cpp_file_flags.h
 function_flags.h
 node_kind.h
 parameter_passing.h
 record_kind.h
 type_operation.h
+unary_operator.h

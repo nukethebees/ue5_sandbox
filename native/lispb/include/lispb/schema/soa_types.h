@@ -1,5 +1,6 @@
 #pragma once
 
+#include <lispb/indexed_column.h>
 #include <lispb/indices.h>
 #include <lispb/schema/indices.h>
 #include <lispb/schema/semantic_range.h>
@@ -13,16 +14,18 @@
 namespace lispb::schema {
 
 struct SoaTypes {
+    using Index = TaggedIndex<TypeDefinitionId, TypeDefinitionKind::soa>;
+
     [[nodiscard]] auto append() -> TypeDefinitionId;
     [[nodiscard]] auto index(TypeDefinitionId id) const -> std::uint32_t;
     [[nodiscard]] auto columns_of(TypeDefinitionId id) const -> std::span<SoaColumnId const>;
     void set_columns(TypeDefinitionId id, std::span<SoaColumnId const> values);
 
-    std::vector<SemanticRange> columns;
+    IndexedColumn<SemanticRange, Index> columns;
     std::vector<SoaColumnId> columns_values;
-    std::vector<ResolvedOccurrenceId> equivalent_type;
-    std::vector<std::uint8_t> layout_only;
-    std::vector<std::optional<StringId>> equivalent_constructor;
+    IndexedColumn<ResolvedOccurrenceId, Index> equivalent_type;
+    IndexedColumn<std::uint8_t, Index> layout_only;
+    IndexedColumn<std::optional<StringId>, Index> equivalent_constructor;
 };
 
 } // namespace lispb::schema

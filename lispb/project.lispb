@@ -40,6 +40,7 @@
     :sources (
       "native/layout/schema/code_table.lispb"
       "native/layout/schema/component_table.lispb"
+      "native/layout/schema/declaration_kind.lispb"
       "native/layout/schema/distribution_entry_table.lispb"
       "native/layout/schema/distribution_table.lispb"
       "native/layout/schema/packed_field_table.lispb"

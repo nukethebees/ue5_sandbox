@@ -408,9 +408,9 @@ void rename_discriminator_case(DocumentState& state,
         if (module.kind() != ModuleKind::normal) {
             continue;
         }
-        auto declarations{declarations_of(store, module)};
+        auto decls{declarations_of(store, module)};
         bool changed{};
-        for (auto& declaration : declarations) {
+        for (auto& declaration : decls) {
             if (std::ranges::find(mapped_unions, declaration) == mapped_unions.end()) {
                 continue;
             }
@@ -450,7 +450,7 @@ void rename_discriminator_case(DocumentState& state,
             }
         }
         if (changed) {
-            publish_module(state, manifest, index, declarations);
+            publish_module(state, manifest, index, decls);
         }
     }
 }
@@ -947,9 +947,9 @@ void Transaction::apply(DocumentState& state, Manifest& manifest, std::size_t en
                 default: {
                     auto const module{
                         module_index(manifest, durable_strings.view(modules_[instruction]))};
-                    auto const declarations{declarations_of(store, manifest.modules[module])};
-                    auto const declaration{declarations[declaration_index(
-                        store, declarations, durable_strings.view(declarations_[instruction]))]};
+                    auto const decls{declarations_of(store, manifest.modules[module])};
+                    auto const declaration{decls[declaration_index(
+                        store, decls, durable_strings.view(declarations_[instruction]))]};
                     auto const identity{state.declaration_ids.at(declaration)};
                     auto const offset{payload_offsets_[instruction]};
                     auto const count{payload_counts_[instruction]};
@@ -1143,9 +1143,9 @@ void Transaction::apply(DocumentState& state, Manifest& manifest, std::size_t en
                 if (target_module.kind() != ModuleKind::normal) {
                     continue;
                 }
-                auto declarations{declarations_of(store, target_module)};
+                auto decls{declarations_of(store, target_module)};
                 bool changed{};
-                for (auto& declaration : declarations) {
+                for (auto& declaration : decls) {
                     auto const before{declaration};
                     declaration = rewrite_type_references(
                         store, declaration, [&](auto const&, TypeRefId reference, auto) {
@@ -1166,7 +1166,7 @@ void Transaction::apply(DocumentState& state, Manifest& manifest, std::size_t en
                     }
                 }
                 if (changed) {
-                    publish_module(state, manifest, target, declarations);
+                    publish_module(state, manifest, target, decls);
                 }
             }
             continue;

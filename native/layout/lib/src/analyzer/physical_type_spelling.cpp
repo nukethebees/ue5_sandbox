@@ -22,44 +22,33 @@ using namespace analysis_detail;
 
 auto physical_type_spelling(lispb::schema::TypeGraph const& types, lispb::schema::TypeId const type)
     -> std::optional<std::string> {
+    auto const& definitions{types.definitions()};
+    auto const& occurrences{types.occurrences()};
+    auto const& cpp_types{types.cpp_types()};
     std::vector<lispb::schema::TypeId> visited;
     auto current{type};
     while (lispb::schema::is_valid(current) &&
            std::ranges::find(visited, current) == visited.end()) {
         visited.push_back(current);
-        auto const& node{current};
-        if (auto const external{
-                ((types.definition(node)).kind() == lispb::schema::TypeDefinitionKind::external
-                     ? std::optional{types.definition(node)}
-                     : std::nullopt)}) {
-            return lispb::codegen::native_spelling(std::string{types.cpp_types().spelling(
-                types.definitions()
-                    .externals.cpp_type[types.definitions().externals.index(*external)])});
+        auto const definition{types.definition(current)};
+        if (definition.kind() == lispb::schema::TypeDefinitionKind::external) {
+            auto const& externals{definitions.externals};
+            return lispb::codegen::native_spelling(
+                std::string{cpp_types.spelling(externals.cpp_type[externals.index(definition)])});
         }
-        if (auto const enumeration{
-                ((types.definition(node)).kind() == lispb::schema::TypeDefinitionKind::enumeration
-                     ? std::optional{types.definition(node)}
-                     : std::nullopt)}) {
-            if (lispb::schema::is_valid(
-                    types.definitions()
-                        .enums.underlying_type[types.definitions().enums.index(*enumeration)])) {
-                if (!types.occurrences().contains_value(
-                        types.definitions().enums.underlying_type[types.definitions().enums.index(
-                            *enumeration)])) {
-                    return std::string{types.cpp_types().spelling(
-                        types.occurrences().cpp_type[types.occurrences().index(
-                            types.definitions().enums.underlying_type
-                                [types.definitions().enums.index(*enumeration)])])};
+        if (definition.kind() == lispb::schema::TypeDefinitionKind::enumeration) {
+            auto const underlying_type{definitions.enums.underlying_type[definition]};
+            if (lispb::schema::is_valid(underlying_type)) {
+                if (!occurrences.contains_value(underlying_type)) {
+                    return std::string{cpp_types.spelling(occurrences.cpp_type[underlying_type])};
                 }
-                current = types.occurrences().type[types.occurrences().index(
-                    types.definitions()
-                        .enums.underlying_type[types.definitions().enums.index(*enumeration)])];
+                current = occurrences.type[underlying_type];
                 continue;
             }
-            return derived_enum_backing_type(types, *enumeration);
+            return derived_enum_backing_type(types, definition);
         }
-        if (lispb::schema::is_packed_projection(types, node)) {
-            return "std::uint" + std::to_string(types.bit_layout(node).storage_bits) + "_t";
+        if (lispb::schema::is_packed_projection(types, current)) {
+            return "std::uint" + std::to_string(types.bit_layout(current).storage_bits) + "_t";
         }
         return std::nullopt;
     }
@@ -69,11 +58,10 @@ auto physical_type_spelling(lispb::schema::TypeGraph const& types, lispb::schema
 auto physical_type_spelling(lispb::schema::TypeGraph const& types,
                             lispb::schema::ResolvedOccurrenceId const use)
     -> std::optional<std::string> {
-    return types.occurrences().contains_value(use)
-             ? physical_type_spelling(types,
-                                      types.occurrences().type[types.occurrences().index(use)])
-             : std::optional{std::string{types.cpp_types().spelling(
-                   types.occurrences().cpp_type[types.occurrences().index(use)])}};
+    auto const& occurrences{types.occurrences()};
+    return occurrences.contains_value(use)
+             ? physical_type_spelling(types, occurrences.type[use])
+             : std::optional{std::string{types.cpp_types().spelling(occurrences.cpp_type[use])}};
 }
 
 } // namespace ioj::layout

@@ -1,0 +1,22 @@
+(module declaration_kind
+  :header "include/ioj/layout/declaration_kind.hpp"
+  :namespace ioj::layout
+  (enum DeclarationKind int
+    :native-api true
+    :helpers (to-display-string)
+    (value external :display-name "external")
+    (value enumeration :display-name "enum")
+    (value integer_scalar :display-name "integer scalar")
+    (value linear_quantized :display-name "linear quantized")
+    (value integer_varint :display-name "integer varint")
+    (value fixed_point :display-name "fixed point")
+    (value mini_float :display-name "mini float")
+    (value optional_sentinel :display-name "optional sentinel")
+    (value optional_presence_bit :display-name "optional presence bit")
+    (value packed :display-name "packed record")
+    (value record :display-name "record")
+    (value union_ :display-name "union")
+    (value soa :display-name "SoA")
+    (value static_table :display-name "table")
+    (value facade :display-name "facade")
+    (projections (cpp))))

@@ -32,22 +32,22 @@
 namespace lispb::codegen::detail {
 auto schema_namespace(LoweringContext& context, DeclarationHandle schema) -> std::string {
     auto const scoped{context.for_declaration(schema)};
-    auto const& declarations{context.declarations};
-    auto const& settings{declarations.module_settings_store};
-    auto const namespace_name{settings.namespace_name[declarations.module_settings(scoped.module)]};
+    auto const& decls{context.declarations};
+    auto const& settings{decls.module_settings_store};
+    auto const namespace_name{settings.namespace_name[decls.module_settings(scoped.module)]};
     return (namespace_name ? "::" + context.text(*namespace_name) + "::" : "::") +
-           soa_namespace_name(context.text(declarations.soas.name[schema]));
+           soa_namespace_name(context.text(decls.soas.name[schema]));
 }
 
 auto is_strided_schema(LoweringContext& context, DeclarationHandle schema) -> bool {
-    auto const& declarations{context.declarations};
-    auto const& soas{declarations.soas};
-    auto const& members{declarations.soa_members};
+    auto const& decls{context.declarations};
+    auto const& soas{decls.soas};
+    auto const& members{decls.soa_members};
     std::optional<CppTypeId> element_type;
     std::size_t count{};
     auto homogeneous = [&](auto&& self, DeclarationHandle current) -> bool {
         auto const scoped{context.for_declaration(current)};
-        for (auto const member : declarations.items(soas.members[current])) {
+        for (auto const member : decls.items(soas.members[current])) {
             auto const row{members.index(member)};
             if (members.kind[row] == SoaMemberKind::nested) {
                 if (!self(self, scoped.nested_declaration(member))) {

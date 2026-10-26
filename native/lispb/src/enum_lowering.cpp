@@ -20,6 +20,7 @@
 #include <codegen/ast/nodes.h>
 #include <codegen/ast/return_syntax.h>
 #include <codegen/cpp_string.h>
+#include <codegen/fixed_width_integer_types.h>
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/enum_conversion.h>
 #include <codegen/schema/enum_reflection.h>
@@ -468,11 +469,11 @@ auto native_enum_declaration(LoweringContext& context, DeclarationHandle const s
         values.push_back(ir.enumerator(enumerators.name[value], enumerators.initializer[value]));
     }
 
-    NodeListBuilder declarations{ir};
-    declarations.add(
-        ir.using_declaration(ir.strings.intern(alias), enum_underlying_type(context, schema)), 2);
-    declarations.add(enum_bit_width_comment(context, schema), 1);
-    declarations.add(ir.enumeration(enums.name[schema], ir.types.intern(alias), values), 2);
+    NodeListBuilder decls{ir};
+    decls.add(ir.using_declaration(ir.strings.intern(alias), enum_underlying_type(context, schema)),
+              2);
+    decls.add(enum_bit_width_comment(context, schema), 1);
+    decls.add(ir.enumeration(enums.name[schema], ir.types.intern(alias), values), 2);
 
     auto const helpers{context.declarations.items(enums.helpers[schema])};
     for (auto const helper : {NativeEnumHelper::to_string,
@@ -483,13 +484,13 @@ auto native_enum_declaration(LoweringContext& context, DeclarationHandle const s
                             : helper == NativeEnumHelper::to_display_string
                                 ? "to_display_string"
                                 : "to_serialized_string"};
-            declarations.add(ir.using_import(ir.types.named(
-                                 std::format("ioj::{}", name),
-                                 {ir.types.dependency("ioj::enum_strings", "ioj/enum_strings.h")})),
-                             1);
+            decls.add(ir.using_import(ir.types.named(
+                          std::format("ioj::{}", name),
+                          {ir.types.dependency("ioj::enum_strings", "ioj/enum_strings.h")})),
+                      1);
         }
     }
-    return declarations.build();
+    return decls.build();
 }
 
 auto native_enum_parsers(LoweringContext& context, DeclarationHandle const schema) -> Nodes {
@@ -591,29 +592,10 @@ auto native_enum_formatter(LoweringContext& context,
 }
 
 auto unreal_underlying_type(std::string_view const spelling) -> std::string {
-    if (spelling == "std::uint8_t") {
-        return "uint8";
-    }
-    if (spelling == "std::uint16_t") {
-        return "uint16";
-    }
-    if (spelling == "std::uint32_t") {
-        return "uint32";
-    }
-    if (spelling == "std::uint64_t") {
-        return "uint64";
-    }
-    if (spelling == "std::int8_t") {
-        return "int8";
-    }
-    if (spelling == "std::int16_t") {
-        return "int16";
-    }
-    if (spelling == "std::int32_t") {
-        return "int32";
-    }
-    if (spelling == "std::int64_t") {
-        return "int64";
+    for (auto const& type : fixed_width_integer_types) {
+        if (spelling == type.native_name) {
+            return std::string{type.name};
+        }
     }
     return std::string{spelling};
 }
@@ -637,20 +619,20 @@ auto unreal_projection_header(LoweringContext& context,
                                        ir.store_optional_text(annotation(context, value, true))));
     }
 
-    NodeListBuilder declarations{ir};
-    declarations.add(enum_bit_width_comment(context, schema), 1);
-    declarations.add(ir.raw(projections.reflection[projection] == EnumReflection::blueprint
-                                ? "UENUM(BlueprintType)"
-                                : "UENUM()"),
-                     1);
-    declarations.add(ir.enumeration(projections.name[projection], underlying, values), 2);
-    declarations.add(ir.using_declaration(ir.strings.intern(name + "Underlying"), underlying), 2);
+    NodeListBuilder decls{ir};
+    decls.add(enum_bit_width_comment(context, schema), 1);
+    decls.add(ir.raw(projections.reflection[projection] == EnumReflection::blueprint
+                         ? "UENUM(BlueprintType)"
+                         : "UENUM()"),
+              1);
+    decls.add(ir.enumeration(projections.name[projection], underlying, values), 2);
+    decls.add(ir.using_declaration(ir.strings.intern(name + "Underlying"), underlying), 2);
     if (projections.enum_array[projection]) {
-        declarations.add(ir.namespace_node(
+        decls.add(ir.namespace_node(
             ir.strings.intern("ioj"),
             {enum_count_specialization(ir, ir.types.intern("::" + name), enum_values.size())}));
     }
-    return declarations.build();
+    return decls.build();
 }
 
 auto native_conversion_function(LoweringContext& context,
@@ -695,25 +677,24 @@ auto unreal_conversion_header(LoweringContext& context,
     auto const& enums{context.declarations.enums};
     auto const values{context.declarations.items(enums.values[schema])};
 
-    NodeListBuilder declarations{ir};
-    declarations.add(
+    NodeListBuilder decls{ir};
+    decls.add(
         native_conversion_function(context, "to_native", projection_name, native_name, values), 2);
-    declarations.add(
+    decls.add(
         native_conversion_function(context, "to_unreal", native_name, projection_name, values), 2);
     auto const& enumerators{context.declarations.enumerators};
     for (auto const value : values) {
         auto const name{context.text(enumerators.name[value])};
-        declarations.add(
-            ir.static_assertion(
-                ir.store_text(std::format("static_cast<int>({}::{}) == static_cast<int>({}::{})",
+        decls.add(ir.static_assertion(ir.store_text(std::format(
+                                          "static_cast<int>({}::{}) == static_cast<int>({}::{})",
                                           projection_name,
                                           name,
                                           native_name,
                                           name)),
-                {}),
-            1);
+                                      {}),
+                  1);
     }
-    return ir.namespace_node(ir.strings.intern("ioj"), declarations.build());
+    return ir.namespace_node(ir.strings.intern("ioj"), decls.build());
 }
 
 } // namespace
@@ -741,10 +722,10 @@ auto lower_enum(LoweringContext& context,
             prefix.add(ir.include(ir.store_text("ioj/enum_traits.h"), IncludeStyle::quoted), 2);
         }
         emission.header_prefix = prefix.build();
-        NodeListBuilder declarations{ir};
-        declarations.append(
+        NodeListBuilder decls{ir};
+        decls.append(
             {native_enum_declaration(context, schema), native_enum_parsers(context, schema)});
-        emission.header = declarations.build();
+        emission.header = decls.build();
         if (needs_traits) {
             emission.header_global = {ir.namespace_node(
                 ir.strings.intern("ioj"), native_enum_traits(context, settings, schema))};
@@ -802,20 +783,20 @@ auto lower_enum(LoweringContext& context,
         return emission;
     }
 
-    NodeListBuilder declarations{ir};
+    NodeListBuilder decls{ir};
     auto const underlying{enum_underlying_type(context, schema)};
     auto const underlying_alias{context.text(enums.name[schema]) + "Underlying"};
     auto const reflected{enums.reflection[schema] != EnumReflection::none};
     if (!reflected) {
-        declarations.add(ir.using_declaration(ir.strings.intern(underlying_alias), underlying), 2);
+        decls.add(ir.using_declaration(ir.strings.intern(underlying_alias), underlying), 2);
     }
-    declarations.add(enum_bit_width_comment(context, schema), 1);
+    decls.add(enum_bit_width_comment(context, schema), 1);
     if (reflected) {
-        declarations.add(ir.raw(enums.reflection[schema] == EnumReflection::blueprint
-                                    ? "UENUM(BlueprintType)"
-                                    : "UENUM()",
-                                {ir.types.dependency("UENUM", "CoreMinimal.h")}),
-                         1);
+        decls.add(ir.raw(enums.reflection[schema] == EnumReflection::blueprint
+                             ? "UENUM(BlueprintType)"
+                             : "UENUM()",
+                         {ir.types.dependency("UENUM", "CoreMinimal.h")}),
+                  1);
         emission.header_generated_include = {ir.include(
             ir.store_text(std::filesystem::path{context.text(settings_store.header[settings])}
                               .stem()
@@ -830,15 +811,15 @@ auto lower_enum(LoweringContext& context,
                           enumerators.initializer[value],
                           ir.store_optional_text(annotation(context, value, reflected))));
     }
-    declarations.add(ir.enumeration(enums.name[schema],
-                                    reflected ? ir.types.intern(unreal_underlying_type(
-                                                    ir.types.spelling(underlying)))
-                                              : ir.types.intern(underlying_alias),
-                                    std::move(values)),
-                     2);
+    decls.add(ir.enumeration(
+                  enums.name[schema],
+                  reflected ? ir.types.intern(unreal_underlying_type(ir.types.spelling(underlying)))
+                            : ir.types.intern(underlying_alias),
+                  std::move(values)),
+              2);
     if (reflected) {
         // Preserve the built-in spelling required by UnrealHeaderTool for reflected enums.
-        declarations.add(ir.using_declaration(ir.strings.intern(underlying_alias), underlying), 2);
+        decls.add(ir.using_declaration(ir.strings.intern(underlying_alias), underlying), 2);
     }
     if (enums.enum_array[schema]) {
         emission.header_prefix.push_back(
@@ -865,7 +846,7 @@ auto lower_enum(LoweringContext& context,
                            conversion == EnumConversion::lex_to_serialized_string};
         (lexical ? lex_declarations : helper_declarations).add(ir.declaration(spec), 2);
     }
-    emission.header = declarations.build();
+    emission.header = decls.build();
     emission.header_after = lex_declarations.build();
     auto const tail_namespace{
         context.optional_text(helper_namespace)

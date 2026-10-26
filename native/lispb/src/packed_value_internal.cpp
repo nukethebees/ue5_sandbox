@@ -1,6 +1,7 @@
 #include "packed_value_internal.h"
 
 #include <codegen/ast/cpp_types.h>
+#include <codegen/fixed_width_integer_types.h>
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/enum_schemas.h>
 #include <codegen/schema/fixed_point_schemas.h>
@@ -23,7 +24,6 @@
 #include <lispb/strings.h>
 
 #include <algorithm>
-#include <array>
 #include <cstdint>
 #include <limits>
 #include <optional>
@@ -46,33 +46,17 @@ auto referenced_declaration(TypeRefId reference,
 } // namespace
 
 auto packed_unsigned_width(std::string_view const spelling) -> std::optional<int> {
-    constexpr std::array values{std::pair{"uint8", 8},
-                                std::pair{"uint16", 16},
-                                std::pair{"uint32", 32},
-                                std::pair{"uint64", 64},
-                                std::pair{"std::uint8_t", 8},
-                                std::pair{"std::uint16_t", 16},
-                                std::pair{"std::uint32_t", 32},
-                                std::pair{"std::uint64_t", 64}};
-    for (auto const& [name, width] : values) {
-        if (spelling == name) {
-            return width;
+    for (auto const& type : fixed_width_integer_types) {
+        if (!type.is_signed && (spelling == type.name || spelling == type.native_name)) {
+            return type.width;
         }
     }
     return std::nullopt;
 }
 auto packed_signed_width(std::string_view const spelling) -> std::optional<int> {
-    constexpr std::array values{std::pair{"int8", 8},
-                                std::pair{"int16", 16},
-                                std::pair{"int32", 32},
-                                std::pair{"int64", 64},
-                                std::pair{"std::int8_t", 8},
-                                std::pair{"std::int16_t", 16},
-                                std::pair{"std::int32_t", 32},
-                                std::pair{"std::int64_t", 64}};
-    for (auto const& [name, width] : values) {
-        if (spelling == name) {
-            return width;
+    for (auto const& type : fixed_width_integer_types) {
+        if (type.is_signed && (spelling == type.name || spelling == type.native_name)) {
+            return type.width;
         }
     }
     return std::nullopt;
@@ -106,10 +90,10 @@ auto find_mini_float(TypeRefId reference,
 auto find_integer_domain(TypeRefId const reference,
                          lispb::schema::TypeGraph const& graph,
                          ModuleHandle const module) -> std::optional<schema::TypeDefinitionId> {
-    auto const& declarations{graph.declarations()};
-    auto const& references{declarations.type_refs};
+    auto const& decls{graph.declarations()};
+    auto const& references{decls.type_refs};
     auto const row{references.index(reference)};
-    if (!declarations.strings().view(references.suffix[row]).empty() || references.nested[row]) {
+    if (!decls.strings().view(references.suffix[row]).empty() || references.nested[row]) {
         return std::nullopt;
     }
     auto const occurrence{graph.resolved(module, reference)};

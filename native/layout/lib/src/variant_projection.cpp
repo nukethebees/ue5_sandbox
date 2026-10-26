@@ -44,21 +44,16 @@ auto effective_column_type(lispb::schema::TypeGraph const& types,
                            lispb::schema::TypeId const type,
                            lispb::schema::SoaColumnId const& column,
                            ResolvedVariant const& variant) -> std::string {
-    auto const found{variant.overrides.soa_column_types.find(FieldOverrideId{
-        .type = type,
-        .field_name =
-            types.definitions().soa_columns.name[types.definitions().soa_columns.index(column)]})};
+    auto const& columns{types.definitions().soa_columns};
+    auto const& occurrences{types.occurrences()};
+    auto const found{variant.overrides.soa_column_types.find(
+        FieldOverrideId{.type = type, .field_name = columns.name[column]})};
     if (found != variant.overrides.soa_column_types.end()) {
         return found->second;
     }
-    return physical_type_spelling(
-               types,
-               types.definitions()
-                   .soa_columns.semantic_type[types.definitions().soa_columns.index(column)])
-        .value_or(std::string{
-            types.cpp_types().spelling(types.occurrences().cpp_type[types.occurrences().index(
-                types.definitions()
-                    .soa_columns.semantic_type[types.definitions().soa_columns.index(column)])])});
+    auto const semantic_type{columns.semantic_type[column]};
+    return physical_type_spelling(types, semantic_type)
+        .value_or(std::string{types.cpp_types().spelling(occurrences.cpp_type[semantic_type])});
 }
 
 }

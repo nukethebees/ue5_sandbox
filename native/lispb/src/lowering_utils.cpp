@@ -18,7 +18,6 @@
 #include <lispb/indices.h>
 #include <lispb/strings.h>
 
-#include <array>
 #include <cctype>
 #include <cstddef>
 #include <filesystem>
@@ -100,25 +99,6 @@ auto qualify(CppIR& ir, CppTypeId type, std::string const& suffix) -> CppTypeId 
     return ir.types.decorate(type, "", suffix);
 }
 
-auto native_spelling(std::string const& spelling) -> std::string {
-    constexpr std::array integer_types{
-        std::pair{"int8", "std::int8_t"},
-        std::pair{"uint8", "std::uint8_t"},
-        std::pair{"int16", "std::int16_t"},
-        std::pair{"uint16", "std::uint16_t"},
-        std::pair{"int32", "std::int32_t"},
-        std::pair{"uint32", "std::uint32_t"},
-        std::pair{"int64", "std::int64_t"},
-        std::pair{"uint64", "std::uint64_t"},
-    };
-    for (auto const& [source, destination] : integer_types) {
-        if (spelling == source) {
-            return destination;
-        }
-    }
-    return spelling;
-}
-
 auto title_case_identifier(std::string_view const identifier) -> std::string {
     std::string result;
     result.reserve(identifier.size());
@@ -196,59 +176,53 @@ auto lower_schema_function(LoweringContext& context,
                            FunctionSchemaId schema,
                            std::optional<std::string_view> body) -> FunctionId {
     auto& ir{context.ir};
-    auto const& declarations{context.declarations};
-    auto const row{declarations.functions.index(schema)};
+    auto const& decls{context.declarations};
+    auto const row{decls.functions.index(schema)};
     std::vector<FunctionParameterId> parameters;
-    for (auto const id : declarations.items(context.declarations.functions.parameters[schema])) {
+    for (auto const id : decls.items(decls.functions.parameters[schema])) {
         auto const parameter{id};
-        auto resolved{context.resolve(declarations.parameters.type[parameter])};
-        if (declarations.parameters.default_value[parameter]) {
+        auto resolved{context.resolve(decls.parameters.type[parameter])};
+        if (decls.parameters.default_value[parameter]) {
             parameters.push_back(ir.parameter(resolved,
-                                              declarations.parameters.name[parameter],
-                                              *declarations.parameters.default_value[parameter]));
+                                              decls.parameters.name[parameter],
+                                              *decls.parameters.default_value[parameter]));
         } else {
-            parameters.push_back(ir.parameter(resolved, declarations.parameters.name[parameter]));
+            parameters.push_back(ir.parameter(resolved, decls.parameters.name[parameter]));
         }
     }
     std::vector<TypeDependencyId> dependencies;
-    for (auto const key : declarations.items(context.declarations.functions.dependencies[schema])) {
+    for (auto const key : decls.items(decls.functions.dependencies[schema])) {
         append_type_dependencies(dependencies, context.text(key), context.types);
     }
-    auto const trailing{declarations.functions.trailing_return_type[row]};
-    auto const return_type{
-        context.resolve(trailing.value_or(declarations.functions.return_type[row]))};
-    auto const created_function{ir.function(declarations.functions.name[row], return_type)};
+    auto const trailing{decls.functions.trailing_return_type[row]};
+    auto const return_type{context.resolve(trailing.value_or(decls.functions.return_type[row]))};
+    auto const created_function{ir.function(decls.functions.name[row], return_type)};
     ir.set_function_parameters(created_function, std::move(parameters));
     ir.set_function_body(
         created_function,
         {body ? ir.raw(*body, dependencies)
-              : ir.raw_lines(declarations.items(context.declarations.functions.body_lines[schema]),
-                             dependencies)});
+              : ir.raw_lines(decls.items(decls.functions.body_lines[schema]), dependencies)});
     if (trailing) {
         ir.set_function_return_type(created_function, return_type, ReturnSyntax::trailing);
     }
     ir.set_function_receiver(created_function,
-                             declarations.functions.is_static[row] ? FunctionReceiver::static_
-                             : declarations.functions.is_const[row]
-                                 ? FunctionReceiver::const_
-                                 : FunctionReceiver::unqualified);
-    if (declarations.functions.is_noexcept[row]) {
+                             decls.functions.is_static[row]  ? FunctionReceiver::static_
+                             : decls.functions.is_const[row] ? FunctionReceiver::const_
+                                                             : FunctionReceiver::unqualified);
+    if (decls.functions.is_noexcept[row]) {
         ir.set_function_noexcept(created_function);
     }
+    ir.function_flags(created_function).set_is_constexpr(decls.functions.is_constexpr[schema]);
+    ir.function_flags(created_function).set_is_inline(decls.functions.is_inline[schema]);
+    ir.function_flags(created_function).set_is_nodiscard(decls.functions.is_nodiscard[schema]);
     ir.function_flags(created_function)
-        .set_is_constexpr(context.declarations.functions.is_constexpr[schema]);
-    ir.function_flags(created_function)
-        .set_is_inline(context.declarations.functions.is_inline[schema]);
-    ir.function_flags(created_function)
-        .set_is_nodiscard(context.declarations.functions.is_nodiscard[schema]);
-    ir.function_flags(created_function)
-        .set_define_in_header(!declarations.functions.definition_in_source[row] &&
-                              (declarations.functions.is_inline[row] ||
-                               !declarations.functions.body_lines[row].empty()));
-    if (auto const parameters{declarations.functions.template_parameters[row]}) {
+        .set_define_in_header(
+            !decls.functions.definition_in_source[row] &&
+            (decls.functions.is_inline[row] || !decls.functions.body_lines[row].empty()));
+    if (auto const parameters{decls.functions.template_parameters[row]}) {
         ir.set_function_template(created_function, ir.raw_template_declaration(*parameters));
     }
-    if (auto const constraint{declarations.functions.requires_clause[row]}) {
+    if (auto const constraint{decls.functions.requires_clause[row]}) {
         ir.set_function_requires_clause(created_function, ir.raw_expr(*constraint));
     }
     return created_function;

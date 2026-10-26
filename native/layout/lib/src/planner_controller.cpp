@@ -93,9 +93,9 @@ void PlannerController::select_variant(VariantId variant) {
 void PlannerController::select_created_declaration(std::string module) {
     pending_.emplace_back([this, module = std::move(module)] {
         if (last_edit_succeeded_.value_or(false)) {
-            auto const declarations{document_->query().module(module).declarations()};
-            assert(!declarations.empty());
-            select_now(module, std::string{declarations.back().name()});
+            auto const decls{document_->query().module(module).declarations()};
+            assert(!decls.empty());
+            select_now(module, std::string{decls.back().name()});
         }
     });
 }
@@ -224,9 +224,9 @@ void PlannerController::adopt(Document document) {
     analysis_needed_ = true;
     if (document_->valid()) {
         for (auto const& module : document_->query().modules()) {
-            auto const declarations{module.declarations()};
-            if (!declarations.empty()) {
-                select_now(std::string{module.name()}, std::string{declarations.front().name()});
+            auto const decls{module.declarations()};
+            if (!decls.empty()) {
+                select_now(std::string{module.name()}, std::string{decls.front().name()});
                 break;
             }
         }

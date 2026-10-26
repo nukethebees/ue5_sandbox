@@ -10,6 +10,7 @@
 #include <cassert>
 #include <cctype>
 #include <charconv>
+#include <format>
 #include <limits>
 #include <string_view>
 #include <system_error>
@@ -105,9 +106,9 @@ auto minimum_enum_bits(EnumCode const minimum, EnumCode const maximum, bool cons
 
 } // namespace
 
-EnumDomains::EnumDomains(codegen::Declarations const& declarations)
-    : declarations_{&declarations}
-    , declarations_to_domains_(declarations.enums.name.size()) {}
+EnumDomains::EnumDomains(codegen::Declarations const& decls)
+    : declarations_{&decls}
+    , declarations_to_domains_(decls.enums.name.size()) {}
 
 auto EnumDomains::index(EnumDomainId const id) const -> std::uint32_t {
     assert(id.value != 0 && id.value <= values_.size());
@@ -182,23 +183,24 @@ auto EnumDomains::issue_message(EnumDomainId const id, std::size_t const ordinal
     auto const& enumerators{declarations_->enumerators};
     auto const& strings{declarations_->strings()};
     auto const value{issue_values_[issue]};
-    auto name = [&] {
-        return std::string{strings.view(enumerators.name[enumerators.index(value)])};
-    };
+    auto name = [&] { return strings.view(enumerators.name[value]); };
     switch (issue_kinds_[issue]) {
         case EnumDomainIssueKind::non_literal:
-            return "Enumerator '" + name() + "' uses non-literal initializer '" +
-                   std::string{strings.view(*enumerators.initializer[enumerators.index(value)])} +
-                   "'; value-domain width is unknown.";
+            return std::format("Enumerator '{}' uses non-literal initializer '{}'; "
+                               "value-domain width is unknown.",
+                               name(),
+                               strings.view(*enumerators.initializer[value]));
         case EnumDomainIssueKind::implicit_overflow:
-            return "Implicit value for enumerator '" + name() +
-                   "' overflows the supported 64-bit analysis range.";
+            return std::format("Implicit value for enumerator '{}' overflows the supported "
+                               "64-bit analysis range.",
+                               name());
         case EnumDomainIssueKind::implicit_unknown:
-            return "Implicit value for enumerator '" + name() +
-                   "' cannot be derived after an unknown initializer.";
+            return std::format("Implicit value for enumerator '{}' cannot be derived after "
+                               "an unknown initializer.",
+                               name());
         case EnumDomainIssueKind::negative_unsigned:
-            return "Explicitly unsigned enum domain contains negative value " +
-                   format_enum_code(*minimum_value[row]) + ".";
+            return std::format("Explicitly unsigned enum domain contains negative value {}.",
+                               format_enum_code(*minimum_value[row]));
         case EnumDomainIssueKind::width_overflow:
             return "Enum value domain does not fit its signedness within the supported 64-bit "
                    "analysis range.";

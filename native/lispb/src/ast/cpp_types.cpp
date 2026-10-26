@@ -4,6 +4,7 @@
 #include <codegen/ast/indices.h>
 #include <codegen/ast/parameter_passing.h>
 #include <codegen/ast/type_operation.h>
+#include <codegen/fixed_width_integer_types.h>
 #include <lispb/indices.h>
 #include <lispb/strings.h>
 
@@ -35,10 +36,6 @@ auto default_parameter_passing(std::string_view const spelling) -> ParameterPass
         "double",
         "float",
         "int",
-        "int8",
-        "int16",
-        "int32",
-        "int64",
         "long",
         "long double",
         "long int",
@@ -49,18 +46,6 @@ auto default_parameter_passing(std::string_view const spelling) -> ParameterPass
         "size_t",
         "std::ptrdiff_t",
         "std::size_t",
-        "std::int8_t",
-        "std::int16_t",
-        "std::int32_t",
-        "std::int64_t",
-        "std::uint8_t",
-        "std::uint16_t",
-        "std::uint32_t",
-        "std::uint64_t",
-        "uint8",
-        "uint16",
-        "uint32",
-        "uint64",
         "unsigned",
         "unsigned char",
         "unsigned int",
@@ -72,6 +57,11 @@ auto default_parameter_passing(std::string_view const spelling) -> ParameterPass
         "wchar_t",
     };
     return std::ranges::find(value_types, spelling) != std::end(value_types) ||
+                   std::ranges::any_of(fixed_width_integer_types,
+                                       [spelling](auto const& type) {
+                                           return spelling == type.name ||
+                                                  spelling == type.native_name;
+                                       }) ||
                    spelling.ends_with('*')
              ? ParameterPassing::value
              : ParameterPassing::const_reference;

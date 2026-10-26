@@ -2,6 +2,7 @@
 
 #include <codegen/ast/cpp_types.h>
 #include <codegen/ast/indices.h>
+#include <codegen/fixed_width_integer_types.h>
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/indices.h>
 #include <codegen/schema/physical_type_form.h>
@@ -12,7 +13,6 @@
 #include <lispb/strings.h>
 
 #include <algorithm>
-#include <array>
 #include <cassert>
 #include <stdexcept>
 #include <string>
@@ -37,15 +37,9 @@ auto resolve_type_use(TypeRefId const reference_id, TypeRegistry const& types)
         result = types.registered.cpp_type[types.registered.index(*found)];
     } else {
         auto const spelling{native_spelling(name)};
-        constexpr std::array fixed_width_integers{"std::int8_t",
-                                                  "std::uint8_t",
-                                                  "std::int16_t",
-                                                  "std::uint16_t",
-                                                  "std::int32_t",
-                                                  "std::uint32_t",
-                                                  "std::int64_t",
-                                                  "std::uint64_t"};
-        if (std::ranges::find(fixed_width_integers, spelling) != fixed_width_integers.end()) {
+        if (std::ranges::find(
+                fixed_width_integer_types, spelling, &FixedWidthIntegerType::native_name) !=
+            fixed_width_integer_types.end()) {
             result = cpp_types.intern(spelling, {cpp_types.dependency(spelling, "cstdint")});
         } else if (spelling == "std::size_t" || spelling == "std::ptrdiff_t") {
             result = cpp_types.intern(spelling, {cpp_types.dependency(spelling, "cstddef")});
@@ -78,19 +72,9 @@ auto resolve_type(TypeRefId const reference, TypeRegistry const& types) -> CppTy
 }
 
 auto native_spelling(std::string const& spelling) -> std::string {
-    constexpr std::array integer_types{
-        std::pair{"int8", "std::int8_t"},
-        std::pair{"uint8", "std::uint8_t"},
-        std::pair{"int16", "std::int16_t"},
-        std::pair{"uint16", "std::uint16_t"},
-        std::pair{"int32", "std::int32_t"},
-        std::pair{"uint32", "std::uint32_t"},
-        std::pair{"int64", "std::int64_t"},
-        std::pair{"uint64", "std::uint64_t"},
-    };
-    for (auto const& [source, destination] : integer_types) {
-        if (spelling == source) {
-            return destination;
+    for (auto const& type : fixed_width_integer_types) {
+        if (spelling == type.name) {
+            return std::string{type.native_name};
         }
     }
     return spelling;

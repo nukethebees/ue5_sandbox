@@ -318,10 +318,9 @@ void DocumentState::restore_baseline() {
             modules.push_back(module);
             source_files.emplace(module, file);
             if (module.kind() == lispb::codegen::ModuleKind::normal) {
-                auto const& declarations{compiler.declarations};
-                for (auto const declaration : declarations.items(
-                         declarations.normal_modules
-                             .declarations[declarations.normal_modules.index(module)])) {
+                auto const& decls{compiler.declarations};
+                for (auto const declaration : decls.items(
+                         decls.normal_modules.declarations[decls.normal_modules.index(module)])) {
                     register_declaration(declaration);
                 }
             }

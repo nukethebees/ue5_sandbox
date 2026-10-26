@@ -11,6 +11,7 @@ include/ioj/layout/analysis/selection_table.hpp
 include/ioj/layout/analysis/soa_column_table.hpp
 include/ioj/layout/analysis/type_analysis_table.hpp
 include/ioj/layout/analysis/workload_table.hpp
+include/ioj/layout/declaration_kind.hpp
 src/analysis/code_table.cpp
 src/analysis/component_table.cpp
 src/analysis/distribution_entry_table.cpp

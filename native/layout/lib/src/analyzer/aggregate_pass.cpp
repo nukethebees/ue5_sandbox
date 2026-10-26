@@ -21,20 +21,16 @@ void analyze_enum_backing(AnalysisContext& context, AnalysisId id) {
     auto const enumeration{types.definition(type)};
     auto const& domain{*context.storage.scalars.enum_domain()[context.storage.scalars.find(type)]};
     auto const& domains{types.enum_domains()};
-    auto const domain_id{
-        types.definitions().enums.domain[types.definitions().enums.index(enumeration)]};
+    auto const& enums{types.definitions().enums};
+    auto const& occurrences{types.occurrences()};
+    auto const domain_id{enums.domain[enumeration]};
     auto const domain_row{domains.index(domain_id)};
+    auto const underlying_type{enums.underlying_type[enumeration]};
     auto const backing_type{
-        lispb::schema::is_valid(
-            types.definitions().enums.underlying_type[types.definitions().enums.index(enumeration)])
-            ? physical_type_spelling(
-                  types,
-                  types.definitions()
-                      .enums.underlying_type[types.definitions().enums.index(enumeration)])
-                  .value_or(std::string{types.cpp_types().spelling(
-                      types.occurrences().cpp_type[types.occurrences().index(
-                          types.definitions().enums.underlying_type[types.definitions().enums.index(
-                              enumeration)])])})
+        lispb::schema::is_valid(underlying_type)
+            ? physical_type_spelling(types, underlying_type)
+                  .value_or(std::string{
+                      types.cpp_types().spelling(occurrences.cpp_type[underlying_type])})
             : derived_enum_backing_type(types, enumeration).value_or("Unknown")};
     auto const facts{context.storage.physical_facts.get_const_view().resolve()};
     EnumBacking result;

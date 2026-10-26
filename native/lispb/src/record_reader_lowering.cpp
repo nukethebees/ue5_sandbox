@@ -52,11 +52,11 @@ auto field_name(LoweringContext& context, ChildOccurrenceId const member) -> std
 
 auto reader_fields(LoweringContext& context, DeclarationHandle record)
     -> std::vector<ChildOccurrenceId> {
-    auto const& declarations{context.declarations};
-    auto const& records{declarations.records};
+    auto const& decls{context.declarations};
+    auto const& records{decls.records};
     std::vector<ChildOccurrenceId> result;
-    for (auto field : declarations.items(records.members[record])) {
-        if (!declarations.child_occurrences.s7[field].exclude) {
+    for (auto field : decls.items(records.members[record])) {
+        if (!decls.child_occurrences.s7[field].exclude) {
             result.push_back(field);
         }
     }
@@ -281,7 +281,7 @@ void lower_record_reader(LoweringContext& context,
         }
         values.push_back(ir.enumerator(member));
     }
-    NodeListBuilder declarations{ir};
+    NodeListBuilder decls{ir};
     auto const includes{context.declarations.items(records.s7_reader_includes[row])};
     emission.reader_includes.insert(
         emission.reader_includes.end(), includes.begin(), includes.end());
@@ -294,7 +294,7 @@ void lower_record_reader(LoweringContext& context,
         ir.set_function_receiver(function, FunctionReceiver::static_);
         ir.set_function_body(function, body);
         ir.function_flags(function).set_define_in_header(true);
-        declarations.add(ir.header_function(function), 2);
+        decls.add(ir.header_function(function), 2);
     }};
     std::vector<FunctionParameterId> const read_parameters{
         ir.parameter("DecodeContext", "context")};
@@ -312,19 +312,19 @@ void lower_record_reader(LoweringContext& context,
     add_function(
         "decode", "void", decode_parameters, record_reader::fields_body(context, record, false));
     if (!records.s7_positional[row]) {
-        declarations.add(ir.access(Access::private_), 1);
+        decls.add(ir.access(Access::private_), 1);
     }
     if (!records.s7_positional[row]) {
         if (records.generate_visitor[row]) {
-            declarations.add(ir.using_declaration(ir.strings.intern("Field"),
-                                                  ir.types.intern("value_type::Field")),
-                             2);
+            decls.add(ir.using_declaration(ir.strings.intern("Field"),
+                                           ir.types.intern("value_type::Field")),
+                      2);
         } else {
-            declarations.add(ir.enumeration(ir.strings.intern("Field"),
-                                            ir.types.intern(values.size() <= 256 ? "std::uint8_t"
-                                                                                 : "std::uint32_t"),
-                                            values),
-                             2);
+            decls.add(ir.enumeration(
+                          ir.strings.intern("Field"),
+                          ir.types.intern(values.size() <= 256 ? "std::uint8_t" : "std::uint32_t"),
+                          values),
+                      2);
         }
         std::vector<Expr> names;
         std::vector<Expr> required;
@@ -347,11 +347,11 @@ void lower_record_reader(LoweringContext& context,
             {ir.types.named("std::string_view",
                             {ir.types.dependency("std::string_view", "string_view")}),
              ir.types.intern(std::to_string(named_fields.size()))})};
-        declarations.add(
+        decls.add(
             ir.constexpr_member(array_type, ir.strings.intern("field_names"), ir.init_list(names)),
             1);
         if (!required.empty()) {
-            declarations.add(
+            decls.add(
                 ir.constexpr_member(ir.types.intern("auto"),
                                     ir.strings.intern("required"),
                                     ir.call(ir.named("required_fields<Field, field_names.size()>"),
@@ -359,9 +359,8 @@ void lower_record_reader(LoweringContext& context,
                 1);
         }
     }
-    auto const specialization{
-        ir.record(ir.template_id(ir.named("TypeReader"), {ir.type_reference(value_type)}),
-                  declarations.build())};
+    auto const specialization{ir.record(
+        ir.template_id(ir.named("TypeReader"), {ir.type_reference(value_type)}), decls.build())};
     ir.set_record_template(specialization, ir.template_specialization());
     ir.set_record_bases(
         specialization,

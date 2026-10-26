@@ -70,40 +70,40 @@ auto compute_element_totals(AnalysisContext& context,
 
     auto const kind{context.types.definition(request.type).kind()};
     auto const& scalars{storage.scalars};
+    using Kind = lispb::schema::TypeDefinitionKind;
+    auto encoding = [&](auto const column) -> auto const& {
+        return *column[scalars.find(request.type)];
+    };
     switch (kind) {
-        case lispb::schema::TypeDefinitionKind::optional_sentinel:
+        case Kind::optional_sentinel:
             result.total_encoded_bits =
-                scale(scalars.optional_sentinel_encoding()[scalars.find(request.type)]
-                          ->encoded_storage_bits,
+                scale(encoding(scalars.optional_sentinel_encoding()).encoded_storage_bits,
                       "Optional encoding bits");
             break;
-        case lispb::schema::TypeDefinitionKind::optional_presence_bit:
+        case Kind::optional_presence_bit:
             result.total_encoded_bits =
-                scale(scalars.optional_presence_encoding()[scalars.find(request.type)]
-                          ->encoded_storage_bits,
+                scale(encoding(scalars.optional_presence_encoding()).encoded_storage_bits,
                       "Optional encoding bits");
             break;
-        case lispb::schema::TypeDefinitionKind::linear_quantized:
-            result.total_encoded_bits = scale(
-                scalars.quantized_encoding()[scalars.find(request.type)]->encoded_storage_bits,
-                "Quantized encoding bits");
-            break;
-        case lispb::schema::TypeDefinitionKind::fixed_point:
+        case Kind::linear_quantized:
             result.total_encoded_bits =
-                scale(scalars.fixed_encoding()[scalars.find(request.type)]->total_bits,
-                      "Fixed-point encoding bits");
+                scale(encoding(scalars.quantized_encoding()).encoded_storage_bits,
+                      "Quantized encoding bits");
             break;
-        case lispb::schema::TypeDefinitionKind::mini_float:
+        case Kind::fixed_point:
             result.total_encoded_bits =
-                scale(scalars.float_encoding()[scalars.find(request.type)]->total_bits,
-                      "Mini-float encoding bits");
+                scale(encoding(scalars.fixed_encoding()).total_bits, "Fixed-point encoding bits");
             break;
-        case lispb::schema::TypeDefinitionKind::integer_varint: {
-            auto const& encoding{*scalars.varint_encoding()[scalars.find(request.type)]};
+        case Kind::mini_float:
+            result.total_encoded_bits =
+                scale(encoding(scalars.float_encoding()).total_bits, "Mini-float encoding bits");
+            break;
+        case Kind::integer_varint: {
+            auto const& varint{encoding(scalars.varint_encoding())};
             result.minimum_total_bytes =
-                scale(encoding.minimum_encoded_bytes, "Minimum encoded bytes");
+                scale(varint.minimum_encoded_bytes, "Minimum encoded bytes");
             result.maximum_total_bytes =
-                scale(encoding.maximum_encoded_bytes, "Maximum encoded bytes");
+                scale(varint.maximum_encoded_bytes, "Maximum encoded bytes");
             break;
         }
         default:

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <lispb/indexed_column.h>
 #include <lispb/indices.h>
 #include <lispb/schema/enum_signedness.h>
 #include <lispb/schema/indices.h>
@@ -7,20 +8,21 @@
 
 #include <cstdint>
 #include <optional>
-#include <vector>
 
 namespace lispb::schema {
 
 struct EnumTypes {
+    using Index = TaggedIndex<TypeDefinitionId, TypeDefinitionKind::enumeration>;
+
     [[nodiscard]] auto append() -> TypeDefinitionId;
     [[nodiscard]] auto index(TypeDefinitionId id) const -> std::uint32_t;
 
-    std::vector<ResolvedOccurrenceId> underlying_type;
-    std::vector<EnumDomainId> domain;
-    std::vector<std::optional<std::uint8_t>> bit_width;
-    std::vector<EnumSignedness> signedness;
-    std::vector<std::optional<StringId>> count;
-    std::vector<std::uint8_t> enum_array;
+    IndexedColumn<ResolvedOccurrenceId, Index> underlying_type;
+    IndexedColumn<EnumDomainId, Index> domain;
+    IndexedColumn<std::optional<std::uint8_t>, Index> bit_width;
+    IndexedColumn<EnumSignedness, Index> signedness;
+    IndexedColumn<std::optional<StringId>, Index> count;
+    IndexedColumn<std::uint8_t, Index> enum_array;
 };
 
 } // namespace lispb::schema

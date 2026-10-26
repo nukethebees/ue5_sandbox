@@ -5,6 +5,7 @@
 #include <codegen/schema/declaration_handle.h>
 #include <codegen/schema/indices.h>
 #include <codegen/schema/schema_range.h>
+#include <lispb/indexed_column.h>
 #include <lispb/schema/enum_code.h>
 #include <lispb/schema/enum_domain_issue_kind.h>
 #include <lispb/schema/enum_domain_issue_severity.h>
@@ -41,14 +42,14 @@ struct EnumDomains {
     auto issue_severity(EnumDomainId id, std::size_t ordinal) const -> EnumDomainIssueSeverity;
     auto issue_message(EnumDomainId id, std::size_t ordinal) const -> std::string;
 
-    std::vector<std::uint64_t> live_value_count;
-    std::vector<std::uint64_t> reserved_value_count;
-    std::vector<std::uint64_t> distinct_code_count;
-    std::vector<std::optional<EnumCode>> minimum_value;
-    std::vector<std::optional<EnumCode>> maximum_value;
-    std::vector<EnumSignedness> signedness;
-    std::vector<std::optional<std::uint8_t>> minimum_required_bits;
-    std::vector<codegen::EnumeratorId> count_value;
+    IndexedColumn<std::uint64_t, OneBasedIndex<EnumDomainId>> live_value_count;
+    IndexedColumn<std::uint64_t, OneBasedIndex<EnumDomainId>> reserved_value_count;
+    IndexedColumn<std::uint64_t, OneBasedIndex<EnumDomainId>> distinct_code_count;
+    IndexedColumn<std::optional<EnumCode>, OneBasedIndex<EnumDomainId>> minimum_value;
+    IndexedColumn<std::optional<EnumCode>, OneBasedIndex<EnumDomainId>> maximum_value;
+    IndexedColumn<EnumSignedness, OneBasedIndex<EnumDomainId>> signedness;
+    IndexedColumn<std::optional<std::uint8_t>, OneBasedIndex<EnumDomainId>> minimum_required_bits;
+    IndexedColumn<codegen::EnumeratorId, OneBasedIndex<EnumDomainId>> count_value;
   private:
     codegen::Declarations const* declarations_{};
     std::vector<EnumDomainId> declarations_to_domains_;

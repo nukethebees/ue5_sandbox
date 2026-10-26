@@ -86,7 +86,6 @@ target_sources(native-layout
     src/planner_controller.cpp
     src/variants.cpp
     src/planner_type.cpp
-    src/declaration_kind.cpp
     src/declaration_capabilities.cpp
     src/external_dependency.cpp
     ${layout_analysis_headers}

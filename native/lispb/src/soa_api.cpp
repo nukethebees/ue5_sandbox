@@ -77,13 +77,13 @@ auto has_custom_row_function(LoweringContext& context,
                              DeclarationHandle schema,
                              SoaReceiver receiver,
                              std::string_view name) -> bool {
-    auto const& declarations{context.declarations};
-    auto const& soas{declarations.soas};
+    auto const& decls{context.declarations};
+    auto const& soas{decls.soas};
     auto const row{soas.index(schema)};
     auto const functions{receiver == SoaReceiver::owner ? soas.functions[row]
                                                         : soas.mutable_view_functions[row]};
-    return std::ranges::any_of(declarations.items(functions), [&](auto function) {
-        return context.text(declarations.functions.name[function]) == name;
+    return std::ranges::any_of(decls.items(functions), [&](auto function) {
+        return context.text(decls.functions.name[function]) == name;
     });
 }
 
@@ -92,9 +92,9 @@ auto compact_row_api(LoweringContext& context,
                      SoaReceiver receiver,
                      CppTypeId base) -> Nodes {
     auto& ir{context.ir};
-    auto const& declarations{context.declarations};
-    auto const& soas{declarations.soas};
-    auto const& members{declarations.soa_members};
+    auto const& decls{context.declarations};
+    auto const& soas{decls.soas};
+    auto const& members{decls.soa_members};
     NodeListBuilder result{ir};
     auto const owner{receiver == SoaReceiver::owner};
     auto const mutable_view{receiver == SoaReceiver::mutable_view};
@@ -118,7 +118,7 @@ auto compact_row_api(LoweringContext& context,
     };
 
     if (owner) {
-        for (auto member : declarations.items(soas.members[schema])) {
+        for (auto member : decls.items(soas.members[schema])) {
             auto const row{members.index(member)};
             auto const name{(members.kind[row] == SoaMemberKind::nested ? "view_" : "") +
                             context.text(members.name[row])};
@@ -143,7 +143,7 @@ auto compact_row_api(LoweringContext& context,
     std::vector<Expr> equivalent_arguments;
     auto mapped{soas.equivalent_type[schema].has_value()};
     auto collect = [&](auto&& self, DeclarationHandle current, std::string const& value) -> void {
-        for (auto member : declarations.items(soas.members[current])) {
+        for (auto member : decls.items(soas.members[current])) {
             auto const row{members.index(member)};
             auto component{value};
             if (members.equivalent_member[row]) {
@@ -168,7 +168,7 @@ auto compact_row_api(LoweringContext& context,
         if (!soas.equivalent_type[current]) {
             return false;
         }
-        for (auto const member : declarations.items(soas.members[current])) {
+        for (auto const member : decls.items(soas.members[current])) {
             auto const row{members.index(member)};
             if (!members.equivalent_member[row]) {
                 return false;
@@ -186,7 +186,7 @@ auto compact_row_api(LoweringContext& context,
     logical_assignments.add(ir.raw("assert(index < num());"));
     auto collect_logical =
         [&](auto&& self, DeclarationHandle current, std::vector<std::string> const& path) -> void {
-        for (auto const member : declarations.items(soas.members[current])) {
+        for (auto const member : decls.items(soas.members[current])) {
             auto const row{members.index(member)};
             auto column{path};
             column.push_back(context.text(members.name[row]));

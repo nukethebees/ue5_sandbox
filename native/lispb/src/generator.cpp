@@ -109,7 +109,7 @@ auto generated_forward_declarations(CppIR& ir, ModuleHandle module, schema::Type
             targets.insert(graph.occurrences().type[graph.occurrences().index(graph.target(use))]);
         }
     }
-    NodeListBuilder declarations{ir};
+    NodeListBuilder decls{ir};
     NodeListBuilder prefix{ir};
     for (auto const target : targets) {
         auto const node{target};
@@ -120,7 +120,7 @@ auto generated_forward_declarations(CppIR& ir, ModuleHandle module, schema::Type
                                 .substr(namespace_name.empty() ? 0 : namespace_name.size() + 2)}),
             *forward_declaration_kind(node, graph))};
         if (graph.module(node) == module) {
-            declarations.add(declaration);
+            decls.add(declaration);
         } else if (namespace_name.empty()) {
             prefix.add(declaration);
         } else {
@@ -129,9 +129,7 @@ auto generated_forward_declarations(CppIR& ir, ModuleHandle module, schema::Type
             prefix.add(ir.namespace_node(ir.strings.intern(namespace_name), children.build()));
         }
     }
-    return {.header_prefix = prefix.build(),
-            .header = declarations.build(),
-            .source_dependencies = false};
+    return {.header_prefix = prefix.build(), .header = decls.build(), .source_dependencies = false};
 }
 
 auto declaration_emission_order(Declarations const& store,
@@ -220,9 +218,9 @@ auto lower_s7_constructors(detail::LoweringContext& context) -> detail::Declarat
     NodeListBuilder body{ir};
     body.add(ir.return_stmt(ir.string_literal(ir.strings.intern(source))));
     ir.set_function_body(function, body.build());
-    NodeListBuilder declarations{ir};
-    declarations.add(ir.header_function(function));
-    return {.header = declarations.build(), .source_dependencies = false};
+    NodeListBuilder decls{ir};
+    decls.add(ir.header_function(function));
+    return {.header = decls.build(), .source_dependencies = false};
 }
 
 auto lower_umbrella(detail::LoweringContext& context, ModuleHandle module) -> ModuleId {
@@ -273,14 +271,14 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
 
                     auto const settings{
                         store.normal_modules.settings[store.normal_modules.index(module)]};
-                    auto const declarations{store.items(
+                    auto const decls{store.items(
                         store.normal_modules.declarations[store.normal_modules.index(module)])};
                     std::vector<detail::DeclarationEmission> emissions;
-                    emissions.reserve(declarations.size() + 1);
+                    emissions.reserve(decls.size() + 1);
                     emissions.push_back(generated_forward_declarations(ir, module_id, graph));
-                    for (auto const index : declaration_emission_order(
-                             store, module_id, declarations, graph, complete)) {
-                        auto const declaration{declarations[index]};
+                    for (auto const index :
+                         declaration_emission_order(store, module_id, decls, graph, complete)) {
+                        auto const declaration{decls[index]};
                         emissions.push_back([&]() -> detail::DeclarationEmission {
                             auto const value{declaration};
                             switch (value.kind()) {

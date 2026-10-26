@@ -122,43 +122,6 @@ auto binary_precedence(BinaryOperator operation) -> int {
     }
     std::unreachable();
 }
-auto binary_spelling(BinaryOperator operation) -> std::string_view {
-    switch (operation) {
-        case BinaryOperator::logical_or:
-            return " || ";
-        case BinaryOperator::logical_and:
-            return " && ";
-        case BinaryOperator::equal:
-            return " == ";
-        case BinaryOperator::not_equal:
-            return " != ";
-        case BinaryOperator::greater_equal:
-            return " >= ";
-        case BinaryOperator::greater:
-            return " > ";
-        case BinaryOperator::less:
-            return " < ";
-        case BinaryOperator::less_equal:
-            return " <= ";
-        case BinaryOperator::three_way:
-            return " <=> ";
-        case BinaryOperator::subtract:
-            return " - ";
-        case BinaryOperator::add:
-            return " + ";
-        case BinaryOperator::multiply:
-            return " * ";
-        case BinaryOperator::divide:
-            return " / ";
-        case BinaryOperator::bitwise_and:
-            return " & ";
-        case BinaryOperator::bitwise_or:
-            return " | ";
-        case BinaryOperator::shift_left:
-            return " << ";
-    }
-    std::unreachable();
-}
 }
 
 /* **************************************** */
@@ -661,7 +624,9 @@ void CppRenderer::append_expr(
                             right || conjunction);
             };
             append_operand(ir_.binary_exprs_.left[index], false);
-            output += expr_detail::binary_spelling(operation);
+            output += ' ';
+            output += to_serialized_string(operation);
+            output += ' ';
             if (ir_.binary_exprs_.line_break_after[index]) {
                 output.pop_back();
                 output += "\n    ";
@@ -670,26 +635,7 @@ void CppRenderer::append_expr(
             break;
         }
         case ExprKind::unary:
-            switch (ir_.unary_exprs_.operation[index]) {
-                case UnaryOperator::logical_not:
-                    output += '!';
-                    break;
-                case UnaryOperator::dereference:
-                    output += '*';
-                    break;
-                case UnaryOperator::address_of:
-                    output += '&';
-                    break;
-                case UnaryOperator::preincrement:
-                    output += "++";
-                    break;
-                case UnaryOperator::bitwise_not:
-                    output += '~';
-                    break;
-                case UnaryOperator::negate:
-                    output += '-';
-                    break;
-            }
+            output += to_serialized_string(ir_.unary_exprs_.operation[index]);
             append_expr(output, ir_.unary_exprs_.operand[index], context, 11, true);
             break;
         case ExprKind::static_cast_:
@@ -1169,17 +1115,8 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
                 output.size() - begin >= 2) {
                 output.resize(output.size() - 2);
             }
-            switch (ir_.access_specifier_nodes_.access[i]) {
-                case Access::public_:
-                    output += "public:";
-                    break;
-                case Access::protected_:
-                    output += "protected:";
-                    break;
-                case Access::private_:
-                    output += "private:";
-                    break;
-            }
+            output += to_serialized_string(ir_.access_specifier_nodes_.access[i]);
+            output += ':';
             break;
         }
         case NodeKind::include: {

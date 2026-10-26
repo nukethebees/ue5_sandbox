@@ -36,7 +36,7 @@ auto lower_facade_impl(LoweringContext& context, DeclarationHandle facade) -> De
     auto const& method_schemas{context.declarations.facade_methods};
     auto const& parameter_schemas{context.declarations.parameters};
     auto const row{facades.index(facade)};
-    auto const& declarations{context.declarations};
+    auto const& decls{context.declarations};
     auto const target_type{context.resolve(facades.target_type[row])};
     auto const definitions_in_source{facades.definitions_in_source[row]};
     auto const reference_target{facades.reference_target[row]};
@@ -57,11 +57,11 @@ auto lower_facade_impl(LoweringContext& context, DeclarationHandle facade) -> De
                            ir.unary(UnaryOperator::address_of, ir.named("new_target")))});
     }
     std::vector<FunctionId> methods;
-    for (auto const method : declarations.items(facades.methods[row])) {
+    for (auto const method : decls.items(facades.methods[row])) {
         auto const method_row{method_schemas.index(method)};
         std::vector<FunctionParameterId> parameters;
         std::vector<Expr> arguments;
-        for (auto const parameter : declarations.items(method_schemas.parameters[method_row])) {
+        for (auto const parameter : decls.items(method_schemas.parameters[method_row])) {
             auto const parameter_row{parameter_schemas.index(parameter)};
             auto const type{context.resolve(parameter_schemas.type[parameter_row])};
             auto const name{parameter_schemas.name[parameter_row]};
@@ -70,12 +70,12 @@ auto lower_facade_impl(LoweringContext& context, DeclarationHandle facade) -> De
             arguments.push_back(ir.named(name));
         }
         std::vector<TypeDependencyId> validation_dependencies;
-        for (auto const key : declarations.items(facades.validation_dependencies[row])) {
+        for (auto const key : decls.items(facades.validation_dependencies[row])) {
             append_type_dependencies(validation_dependencies, context.text(key), context.types);
         }
         NodeListBuilder body{ir};
         if (!facades.validation_lines[row].empty()) {
-            body.add(ir.raw_lines(declarations.items(facades.validation_lines[row])));
+            body.add(ir.raw_lines(decls.items(facades.validation_lines[row])));
         }
         auto const target{ir.named(target_name)};
         auto const method_name{
@@ -116,7 +116,7 @@ auto lower_facade_impl(LoweringContext& context, DeclarationHandle facade) -> De
     for (auto const method : methods) {
         add_method(facades.method_access[row], method);
     }
-    for (auto const friend_name : declarations.items(facades.friends[row])) {
+    for (auto const friend_name : decls.items(facades.friends[row])) {
         private_nodes.add(ir.friend_declaration(ir.strings.intern(context.text(friend_name)),
                                                 facades.friend_kind[row]),
                           1);

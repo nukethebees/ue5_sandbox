@@ -1604,7 +1604,7 @@ auto SchemaParser::parse_module(Declarations& declarations, sexpr::FormId const 
 
 auto SchemaParser::parse_external_integer(RegisteredTypes& registered, sexpr::FormId const form)
     -> ExternalScalarId {
-    auto& declarations{registered.declarations};
+    auto& decls{registered.declarations};
     Fields const fields{parser_, form, "integer", 0};
     fields.validate({P::signed_, P::bit_width, P::minimum, P::maximum}, {"code"});
     auto const width{parser_.integer(fields.required(P::bit_width), "external integer bit width")};
@@ -1632,7 +1632,7 @@ auto SchemaParser::parse_external_integer(RegisteredTypes& registered, sexpr::Fo
         Fields const code{parser_, declaration, "code", 1};
         code.validate({P::value, P::sentinel});
         {
-            auto& records{declarations.packed_named_codes};
+            auto& records{decls.packed_named_codes};
             auto const record_id{records.append()};
             auto const record_index{records.index(record_id)};
             records.name[record_index] = parser_.identifier(code.positional(0), "code name");
@@ -1645,7 +1645,7 @@ auto SchemaParser::parse_external_integer(RegisteredTypes& registered, sexpr::Fo
                                   minimum_value,
                                   maximum_value,
                                   static_cast<std::uint8_t>(width),
-                                  declarations.range(named_codes));
+                                  decls.range(named_codes));
 }
 
 auto SchemaParser::parse_type_definition(sexpr::FormId const form, TypeRegistry& registry)

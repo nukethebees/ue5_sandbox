@@ -103,9 +103,9 @@ auto Document::find_declaration(lispb::schema::TypeIdentity const& identity) con
     if (!type) {
         return {};
     }
-    auto const& declarations{state().declaration_ids};
-    auto const found{declarations.find(types().source_declaration(*type))};
-    return found == declarations.end() ? std::nullopt : std::optional{found->second};
+    auto const& decls{state().declaration_ids};
+    auto const found{decls.find(types().source_declaration(*type))};
+    return found == decls.end() ? std::nullopt : std::optional{found->second};
 }
 auto Document::declaration_type(lispb::schema::DeclarationId declaration) const
     -> std::optional<lispb::schema::TypeId> {

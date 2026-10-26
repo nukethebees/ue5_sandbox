@@ -2023,9 +2023,9 @@ class Validator {
             if (module.kind() != ModuleKind::normal) {
                 continue;
             }
-            auto const declarations{
+            auto const decls{
                 declarations_.items(declarations_.normal_modules.declarations[module])};
-            for (auto const declaration : declarations) {
+            for (auto const declaration : decls) {
                 if (declaration.kind() != DeclarationKind::integer_scalar) {
                     continue;
                 }

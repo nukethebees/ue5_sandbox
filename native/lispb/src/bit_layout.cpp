@@ -27,8 +27,8 @@ class BitLayoutResolver {
   public:
     BitLayoutResolver(TypeGraph const& graph, BitLayoutOverrides const& overrides)
         : graph_{graph}
-        , definitions_{graph.definitions()}
-        , children_{definitions_.children}
+        , defs_{graph.definitions()}
+        , children_{defs_.children}
         , overrides_{overrides}
         , states_(graph.types().size())
         , widths_(graph.types().size()) {}
@@ -40,11 +40,9 @@ class BitLayoutResolver {
             auto const definition{graph_.definition(type)};
             if (is_packed_projection(graph_, type) ||
                 (definition.kind() == TypeDefinitionKind::record &&
-                 definitions_.records.layout[definitions_.records.index(definition)] ==
-                     codegen::LayoutKind::packed) ||
+                 defs_.records.layout[definition] == codegen::LayoutKind::packed) ||
                 (definition.kind() == TypeDefinitionKind::union_type &&
-                 definitions_.unions.layout[definitions_.unions.index(definition)] ==
-                     codegen::LayoutKind::packed)) {
+                 defs_.unions.layout[definition] == codegen::LayoutKind::packed)) {
                 fail("Packed projection has no fixed-width encoding", type);
             }
             return result;
@@ -55,7 +53,7 @@ class BitLayoutResolver {
         }
         auto const storage{storage_type(type)};
         if (is_valid(storage) && !overrides_.storage_bits) {
-            auto const target{graph_.occurrences().type[graph_.occurrences().index(storage)]};
+            auto const target{graph_.occurrences().type[storage]};
             auto const specified{codegen::detail::packed_unsigned_width(
                 graph_.strings().view(graph_.cpp_spelling(target)))};
             if (!specified || static_cast<std::uint32_t>(*specified) < bits) {
@@ -78,16 +76,13 @@ class BitLayoutResolver {
         }
         auto const definition{graph_.definition(type)};
         if (bits > 64 && ((definition.kind() == TypeDefinitionKind::record &&
-                           definitions_.records.layout[definitions_.records.index(definition)] ==
-                               codegen::LayoutKind::native) ||
+                           defs_.records.layout[definition] == codegen::LayoutKind::native) ||
                           (definition.kind() == TypeDefinitionKind::union_type &&
-                           definitions_.unions.layout[definitions_.unions.index(definition)] ==
-                               codegen::LayoutKind::native))) {
+                           defs_.unions.layout[definition] == codegen::LayoutKind::native))) {
             return result;
         }
         if (is_packed_projection(graph_, type) && definition.kind() == TypeDefinitionKind::record) {
-            auto const invalid{
-                definitions_.records.invalid_raw_value[definitions_.records.index(definition)]};
+            auto const invalid{defs_.records.invalid_raw_value[definition]};
             if (invalid && *invalid > mask(result.storage_bits)) {
                 fail("Invalid value exceeds the owning storage", type);
             }
@@ -102,24 +97,22 @@ class BitLayoutResolver {
                     graph_.definition(placement.type).kind() != TypeDefinitionKind::enumeration) {
                     continue;
                 }
-                auto const row{definitions_.enums.index(graph_.definition(placement.type))};
-                auto const domain{definitions_.enums.domain[row]};
-                auto underlying{definitions_.enums.underlying_type[row]};
+                auto const row{defs_.enums.index(graph_.definition(placement.type))};
+                auto const domain{defs_.enums.domain[row]};
+                auto underlying{defs_.enums.underlying_type[row]};
                 auto const source{graph_.source_declaration(placement.type)};
                 auto const& projection{graph_.declarations().enums.cpp_projection[source]};
                 if (projection && projection->storage) {
                     underlying =
                         graph_.resolved(graph_.module(placement.type), *projection->storage);
                 }
-                auto const signed_underlying{
-                    is_valid(underlying) &&
-                    codegen::detail::packed_signed_width(
-                        graph_.strings().view(graph_.cpp_spelling(
-                            graph_.occurrences().type[graph_.occurrences().index(underlying)])))
-                        .has_value()};
+                auto const signed_underlying{is_valid(underlying) &&
+                                             codegen::detail::packed_signed_width(
+                                                 graph_.strings().view(graph_.cpp_spelling(
+                                                     graph_.occurrences().type[underlying])))
+                                                 .has_value()};
                 if (signed_underlying ||
-                    graph_.enum_domains().signedness[graph_.enum_domains().index(domain)] ==
-                        EnumSignedness::signed_) {
+                    graph_.enum_domains().signedness[domain] == EnumSignedness::signed_) {
                     fail("Packed enum members require an unsigned encoding", placement.type);
                 }
                 if (!graph_.strings().view(graph_.cpp_spelling(placement.type)).empty()) {
@@ -149,47 +142,46 @@ class BitLayoutResolver {
     auto children_of(TypeId const type) const -> std::span<ChildOccurrenceId const> {
         auto const definition{graph_.definition(type)};
         if (definition.kind() == TypeDefinitionKind::record) {
-            return definitions_.records.members_of(definition);
+            return defs_.records.members_of(definition);
         }
         if (definition.kind() == TypeDefinitionKind::union_type) {
-            return definitions_.unions.alternatives_of(definition);
+            return defs_.unions.alternatives_of(definition);
         }
         return {};
     }
     auto child_type(std::uint32_t const row) const -> TypeId {
-        return graph_.occurrences().type[graph_.occurrences().index(children_.semantic_type[row])];
+        return graph_.occurrences().type[children_.semantic_type[row]];
     }
     auto storage_type(TypeId const type) const -> ResolvedOccurrenceId {
         auto const definition{graph_.definition(type)};
         if (definition.kind() == TypeDefinitionKind::record) {
-            return definitions_.records.storage_type[definitions_.records.index(definition)];
+            return defs_.records.storage_type[definition];
         }
         if (definition.kind() == TypeDefinitionKind::union_type) {
-            return definitions_.unions.storage_type[definitions_.unions.index(definition)];
+            return defs_.unions.storage_type[definition];
         }
         if (definition.kind() == TypeDefinitionKind::integer_scalar) {
-            return definitions_.integer_scalars
-                .cpp_representation[definitions_.integer_scalars.index(definition)];
+            return defs_.integer_scalars.cpp_representation[definition];
         }
         if (graph_.origin(type) == TypeOrigin::declaration) {
             auto const source{graph_.source_declaration(type)};
-            auto const& declarations{graph_.declarations()};
+            auto const& decls{graph_.declarations()};
             std::optional<codegen::CppProjection> projection;
             switch (definition.kind()) {
                 case TypeDefinitionKind::fixed_point:
-                    projection = declarations.fixed_points.cpp_projection[source];
+                    projection = decls.fixed_points.cpp_projection[source];
                     break;
                 case TypeDefinitionKind::linear_quantized:
-                    projection = declarations.linear_quantizeds.cpp_projection[source];
+                    projection = decls.linear_quantizeds.cpp_projection[source];
                     break;
                 case TypeDefinitionKind::mini_float:
-                    projection = declarations.mini_floats.cpp_projection[source];
+                    projection = decls.mini_floats.cpp_projection[source];
                     break;
                 case TypeDefinitionKind::optional_sentinel:
-                    projection = declarations.optional_sentinels.cpp_projection[source];
+                    projection = decls.optional_sentinels.cpp_projection[source];
                     break;
                 case TypeDefinitionKind::optional_presence_bit:
-                    projection = declarations.optional_presence_bits.cpp_projection[source];
+                    projection = decls.optional_presence_bits.cpp_projection[source];
                     break;
                 default:
                     break;
@@ -203,10 +195,10 @@ class BitLayoutResolver {
     auto explicit_width(TypeId const type) const -> std::optional<std::uint32_t> {
         auto const definition{graph_.definition(type)};
         if (definition.kind() == TypeDefinitionKind::record) {
-            return definitions_.records.bits[definitions_.records.index(definition)];
+            return defs_.records.bits[definition];
         }
         if (definition.kind() == TypeDefinitionKind::union_type) {
-            return definitions_.unions.bits[definitions_.unions.index(definition)];
+            return defs_.unions.bits[definition];
         }
         return std::nullopt;
     }
@@ -269,8 +261,7 @@ class BitLayoutResolver {
         states_[type.value] = 1;
         std::optional<std::uint32_t> result;
         if (auto const scalar{integer_domain(graph_, type)}) {
-            result =
-                definitions_.integer_scalars.bit_width[definitions_.integer_scalars.index(*scalar)];
+            result = defs_.integer_scalars.bit_width[*scalar];
         } else {
             switch (definition.kind()) {
                 case TypeDefinitionKind::external: {
@@ -287,14 +278,12 @@ class BitLayoutResolver {
                     break;
                 }
                 case TypeDefinitionKind::enumeration: {
-                    auto const row{definitions_.enums.index(definition)};
-                    if (definitions_.enums.bit_width[row]) {
-                        result = *definitions_.enums.bit_width[row];
+                    auto const row{defs_.enums.index(definition)};
+                    if (defs_.enums.bit_width[row]) {
+                        result = *defs_.enums.bit_width[row];
                     } else {
-                        auto const domain{definitions_.enums.domain[row]};
-                        auto const bits{
-                            graph_.enum_domains()
-                                .minimum_required_bits[graph_.enum_domains().index(domain)]};
+                        auto const domain{defs_.enums.domain[row]};
+                        auto const bits{graph_.enum_domains().minimum_required_bits[domain]};
                         if (bits) {
                             result = std::max<std::uint32_t>(1, *bits);
                         }
@@ -302,36 +291,30 @@ class BitLayoutResolver {
                     break;
                 }
                 case TypeDefinitionKind::fixed_point:
-                    result = definitions_.fixed_points
-                                 .total_bits[definitions_.fixed_points.index(definition)];
+                    result = defs_.fixed_points.total_bits[definition];
                     break;
                 case TypeDefinitionKind::linear_quantized:
-                    result = definitions_.linear_quantized
-                                 .bit_width[definitions_.linear_quantized.index(definition)];
+                    result = defs_.linear_quantized.bit_width[definition];
                     break;
                 case TypeDefinitionKind::mini_float: {
-                    auto const row{definitions_.mini_floats.index(definition)};
-                    result = definitions_.mini_floats.sign_bits[row] +
-                             definitions_.mini_floats.exponent_bits[row] +
-                             definitions_.mini_floats.significand_bits[row];
+                    auto const row{defs_.mini_floats.index(definition)};
+                    result = defs_.mini_floats.sign_bits[row] +
+                             defs_.mini_floats.exponent_bits[row] +
+                             defs_.mini_floats.significand_bits[row];
                     break;
                 }
                 case TypeDefinitionKind::optional_sentinel:
-                    result = definitions_.optional_sentinels
-                                 .bit_width[definitions_.optional_sentinels.index(definition)];
+                    result = defs_.optional_sentinels.bit_width[definition];
                     break;
                 case TypeDefinitionKind::optional_presence_bit:
-                    result =
-                        definitions_.optional_presence_bits
-                            .encoded_bits[definitions_.optional_presence_bits.index(definition)];
+                    result = defs_.optional_presence_bits.encoded_bits[definition];
                     break;
                 case TypeDefinitionKind::record:
                 case TypeDefinitionKind::union_type: {
                     std::uint64_t total{};
                     bool fixed{true};
                     for (auto const child : children_of(type)) {
-                        auto const name{std::string{
-                            graph_.strings().view(children_.name[children_.index(child)])}};
+                        auto const name{std::string{graph_.strings().view(children_.name[child])}};
                         auto const path{prefix.empty() ? name : prefix + "." + name};
                         auto const bits{extent(child, path)};
                         if (!bits) {
@@ -373,7 +356,7 @@ class BitLayoutResolver {
         auto const definition{graph_.definition(type)};
         auto const is_union{definition.kind() == TypeDefinitionKind::union_type};
         auto const msb{definition.kind() == TypeDefinitionKind::record &&
-                       definitions_.records.bit_order[definitions_.records.index(definition)] ==
+                       defs_.records.bit_order[definition] ==
                            codegen::PackedBitOrder::most_significant_first};
         std::uint32_t cursor{};
         std::vector<std::uint32_t> direct;
@@ -434,8 +417,7 @@ class BitLayoutResolver {
                 fail("Only a union occurrence can bind a discriminator", placement.type);
             }
             auto const found{std::ranges::find_if(direct, [&](auto const candidate) {
-                return children_.name[children_.index(result.placements[candidate].child)] ==
-                     *children_.tag[row];
+                return children_.name[result.placements[candidate].child] == *children_.tag[row];
             })};
             if (found == direct.end()) {
                 fail("Union discriminator must name a sibling member", type);
@@ -443,7 +425,7 @@ class BitLayoutResolver {
             auto& discriminator{result.placements[*found]};
             if (discriminator.reserved ||
                 graph_.definition(discriminator.type).kind() != TypeDefinitionKind::enumeration ||
-                children_.count[children_.index(discriminator.child)]) {
+                children_.count[discriminator.child]) {
                 fail("Union discriminator must be a scalar enum member", type);
             }
             discriminator.discriminator = true;
@@ -457,7 +439,7 @@ class BitLayoutResolver {
                     index,
                     placement.guards);
             auto const enum_def{graph_.definition(tag.type)};
-            auto const domain{definitions_.enums.domain[definitions_.enums.index(enum_def)]};
+            auto const domain{defs_.enums.domain[enum_def]};
             auto const values{graph_.enum_domains().values(domain)};
             auto const& authored{graph_.declarations()};
             std::map<std::uint64_t, ChildOccurrenceId> mapped;
@@ -479,8 +461,7 @@ class BitLayoutResolver {
                 auto const ordinal{static_cast<std::size_t>(enumerator - values.begin())};
                 auto const code{graph_.enum_domains().code(domain, ordinal)};
                 if (!code || code->negative || authored.enumerators.sentinel[*enumerator] ||
-                    *enumerator ==
-                        graph_.enum_domains().count_value[graph_.enum_domains().index(domain)]) {
+                    *enumerator == graph_.enum_domains().count_value[domain]) {
                     fail("Union case requires a nonnegative live numeric discriminator",
                          placement.type);
                 }
@@ -514,14 +495,13 @@ class BitLayoutResolver {
                                     "from_canonical_raw",
                                     "is_valid",
                                     "value_"};
-        auto const& declarations{graph_.declarations()};
+        auto const& decls{graph_.declarations()};
         auto const root_definition{graph_.definition(type)};
         auto const root_kind{root_definition.kind()};
         if (root_kind == TypeDefinitionKind::record ||
             root_kind == TypeDefinitionKind::union_type) {
             if (root_kind == TypeDefinitionKind::record &&
-                definitions_.records
-                    .invalid_raw_value[definitions_.records.index(root_definition)]) {
+                defs_.records.invalid_raw_value[root_definition]) {
                 names.insert("invalid_value");
             }
         } else {
@@ -538,21 +518,16 @@ class BitLayoutResolver {
                     if (root_kind == TypeDefinitionKind::optional_sentinel) {
                         names.insert("sentinel");
                     }
-                    auto const source{
-                        root_kind == TypeDefinitionKind::optional_sentinel
-                            ? definitions_.optional_sentinels
-                                  .source[definitions_.optional_sentinels.index(root_definition)]
-                            : definitions_.optional_presence_bits
-                                  .source[definitions_.optional_presence_bits.index(
-                                      root_definition)]};
-                    auto const source_type{
-                        graph_.occurrences().type[graph_.occurrences().index(source)]};
+                    auto const source{root_kind == TypeDefinitionKind::optional_sentinel
+                                          ? defs_.optional_sentinels.source[root_definition]
+                                          : defs_.optional_presence_bits.source[root_definition]};
+                    auto const source_type{graph_.occurrences().type[source]};
                     auto const domain{*integer_domain(graph_, source_type)};
-                    auto const& scalars{definitions_.integer_scalars};
+                    auto const& scalars{defs_.integer_scalars};
                     auto const row{scalars.index(domain)};
-                    for (auto const code : declarations.items(scalars.named_codes[row])) {
+                    for (auto const code : decls.items(scalars.named_codes[row])) {
                         names.insert("payload_" + std::string{graph_.strings().view(
-                                                      declarations.packed_named_codes.name[code])});
+                                                      decls.packed_named_codes.name[code])});
                     }
                     break;
                 }
@@ -565,11 +540,10 @@ class BitLayoutResolver {
             fail("Owning type name collides with generated C++ member: " + owner_name, type);
         }
         if (root_kind == TypeDefinitionKind::integer_scalar) {
-            for (auto const code : declarations.items(
-                     definitions_.integer_scalars
-                         .named_codes[definitions_.integer_scalars.index(root_definition)])) {
+            for (auto const code :
+                 decls.items(defs_.integer_scalars.named_codes[root_definition])) {
                 auto const name{
-                    std::string{graph_.strings().view(declarations.packed_named_codes.name[code])}};
+                    std::string{graph_.strings().view(decls.packed_named_codes.name[code])}};
                 if (!names.insert(name).second) {
                     fail("Projected scalar C++ name collision: " + name, type);
                 }
@@ -598,8 +572,8 @@ class BitLayoutResolver {
                 }
             };
             if (kind == TypeDefinitionKind::record &&
-                definitions_.records
-                    .invalid_raw_value[definitions_.records.index(graph_.definition(value.type))]) {
+                defs_.records
+                    .invalid_raw_value[defs_.records.index(graph_.definition(value.type))]) {
                 add_name(accessor + "_invalid_value");
             }
             for (auto const& name : {accessor,
@@ -624,37 +598,30 @@ class BitLayoutResolver {
                 }
                 add_name(accessor + "_payload_layout");
                 auto const definition{graph_.definition(value.type)};
-                auto const source{
-                    kind == TypeDefinitionKind::optional_sentinel
-                        ? definitions_.optional_sentinels
-                              .source[definitions_.optional_sentinels.index(definition)]
-                        : definitions_.optional_presence_bits
-                              .source[definitions_.optional_presence_bits.index(definition)]};
-                auto const source_type{
-                    graph_.occurrences().type[graph_.occurrences().index(source)]};
+                auto const source{kind == TypeDefinitionKind::optional_sentinel
+                                      ? defs_.optional_sentinels.source[definition]
+                                      : defs_.optional_presence_bits.source[definition]};
+                auto const source_type{graph_.occurrences().type[source]};
                 if (auto const domain{integer_domain(graph_, source_type)}) {
-                    for (auto const code : declarations.items(
-                             definitions_.integer_scalars
-                                 .named_codes[definitions_.integer_scalars.index(*domain)])) {
+                    for (auto const code :
+                         decls.items(defs_.integer_scalars.named_codes[*domain])) {
                         add_name(accessor + "_payload_" +
-                                 std::string{graph_.strings().view(
-                                     declarations.packed_named_codes.name[code])});
+                                 std::string{
+                                     graph_.strings().view(decls.packed_named_codes.name[code])});
                     }
                 }
             }
             if (auto const domain{integer_domain(graph_, value.type)}) {
-                for (auto const code : declarations.items(
-                         definitions_.integer_scalars
-                             .named_codes[definitions_.integer_scalars.index(*domain)])) {
-                    auto const name{accessor + "_" +
-                                    std::string{graph_.strings().view(
-                                        declarations.packed_named_codes.name[code])}};
+                for (auto const code : decls.items(defs_.integer_scalars.named_codes[*domain])) {
+                    auto const name{
+                        accessor + "_" +
+                        std::string{graph_.strings().view(decls.packed_named_codes.name[code])}};
                     add_name(name);
                 }
             }
             if (value.alternative && factories.emplace(value.child, value.parent).second) {
                 auto path{value.path};
-                if (children_.count[children_.index(value.child)]) {
+                if (children_.count[value.child]) {
                     path.resize(path.rfind('_'));
                 }
                 if (!names.insert("make_" + path).second) {
@@ -681,7 +648,7 @@ class BitLayoutResolver {
                 continue;
             }
             auto const kind{graph_.definition(placement.type).kind()};
-            auto const value{children_.default_value[children_.index(placement.child)]};
+            auto const value{children_.default_value[placement.child]};
             if (!value) {
                 continue;
             }
@@ -705,10 +672,9 @@ class BitLayoutResolver {
             return std::nullopt;
         }
         auto const definition{graph_.definition(type)};
-        auto const invalid{
-            definition.kind() == TypeDefinitionKind::record
-                ? definitions_.records.invalid_raw_value[definitions_.records.index(definition)]
-                : std::nullopt};
+        auto const invalid{definition.kind() == TypeDefinitionKind::record
+                               ? defs_.records.invalid_raw_value[definition]
+                               : std::nullopt};
         if (!any) {
             return invalid.value_or(0);
         }
@@ -754,9 +720,7 @@ class BitLayoutResolver {
                 return {.complete = false};
             }
             if (combined.complete && current_definition.kind() == TypeDefinitionKind::record) {
-                auto const current_invalid{
-                    definitions_.records
-                        .invalid_raw_value[definitions_.records.index(current_definition)]};
+                auto const current_invalid{defs_.records.invalid_raw_value[current_definition]};
                 auto const local_raw{parent ? (combined.raw >> result.placements[*parent].offset) &
                                                   mask(result.placements[*parent].bits)
                                             : combined.raw};
@@ -771,13 +735,12 @@ class BitLayoutResolver {
     }
     void validate_default(BitPlacement const& placement,
                           codegen::PackedIntegerValue const value) const {
-        auto const& declarations{graph_.declarations()};
+        auto const& decls{graph_.declarations()};
         auto const definition{graph_.definition(placement.type)};
         auto const kind{definition.kind()};
         auto const signed_encoding{
             kind == TypeDefinitionKind::fixed_point
-                ? definitions_.fixed_points
-                          .signedness[definitions_.fixed_points.index(definition)] != 0
+                ? defs_.fixed_points.signedness[definition] != 0
                 : kind == TypeDefinitionKind::external &&
                       codegen::detail::packed_signed_width(
                           graph_.strings().view(graph_.cpp_spelling(placement.type)))
@@ -789,15 +752,15 @@ class BitLayoutResolver {
                                         placement.path};
         }
         if (auto const domain{integer_domain(graph_, placement.type)}) {
-            auto const& scalars{definitions_.integer_scalars};
+            auto const& scalars{defs_.integer_scalars};
             auto const row{scalars.index(*domain)};
             auto const signed_domain{scalars.signedness[row] != 0};
             auto const fits{signed_domain
                                 ? codegen::packed_integer_fits_signed(value, placement.bits)
                                 : codegen::packed_integer_fits_unsigned(value, placement.bits)};
-            auto const named{std::ranges::any_of(
-                declarations.items(scalars.named_codes[row]), [&](auto const code) {
-                    return declarations.packed_named_codes.value[code] == value;
+            auto const named{
+                std::ranges::any_of(decls.items(scalars.named_codes[row]), [&](auto const code) {
+                    return decls.packed_named_codes.value[code] == value;
                 })};
             if (!fits ||
                 (!named &&
@@ -808,17 +771,15 @@ class BitLayoutResolver {
             }
         }
         if (definition.kind() == TypeDefinitionKind::enumeration) {
-            auto const domain{definitions_.enums.domain[definitions_.enums.index(definition)]};
+            auto const domain{defs_.enums.domain[definition]};
             auto const values{graph_.enum_domains().values(domain)};
             bool live{};
             for (std::size_t index{}; index < values.size(); ++index) {
                 auto const code{graph_.enum_domains().code(domain, index)};
-                live = live ||
-                       (code && code->negative == value.negative &&
-                        code->magnitude == value.magnitude &&
-                        !declarations.enumerators.sentinel[values[index]] &&
-                        values[index] !=
-                            graph_.enum_domains().count_value[graph_.enum_domains().index(domain)]);
+                live = live || (code && code->negative == value.negative &&
+                                code->magnitude == value.magnitude &&
+                                !decls.enumerators.sentinel[values[index]] &&
+                                values[index] != graph_.enum_domains().count_value[domain]);
             }
             if (!live) {
                 throw std::invalid_argument{"Packed default is not a live enum code: " +
@@ -826,9 +787,9 @@ class BitLayoutResolver {
             }
         }
         if (definition.kind() == TypeDefinitionKind::fixed_point) {
-            auto const row{definitions_.fixed_points.index(definition)};
-            auto const minimum{definitions_.fixed_points.minimum_raw_value[row]};
-            auto const maximum{definitions_.fixed_points.maximum_raw_value[row]};
+            auto const row{defs_.fixed_points.index(definition)};
+            auto const minimum{defs_.fixed_points.minimum_raw_value[row]};
+            auto const maximum{defs_.fixed_points.maximum_raw_value[row]};
             if ((minimum && codegen::packed_integer_less(value, *minimum)) ||
                 (maximum && codegen::packed_integer_less(*maximum, value))) {
                 throw std::invalid_argument{"Packed default is outside its fixed-point domain: " +
@@ -838,36 +799,26 @@ class BitLayoutResolver {
         if (definition.kind() == TypeDefinitionKind::linear_quantized &&
             (value.negative ||
              value.magnitude >
-                 mask(placement.bits) -
-                     definitions_.linear_quantized
-                         .reserved_codes[definitions_.linear_quantized.index(definition)])) {
+                 mask(placement.bits) - defs_.linear_quantized.reserved_codes[definition])) {
             throw std::invalid_argument{"Packed default names a reserved quantization code: " +
                                         placement.path};
         }
         if (kind == TypeDefinitionKind::optional_sentinel ||
             kind == TypeDefinitionKind::optional_presence_bit) {
             auto const sentinel{kind == TypeDefinitionKind::optional_sentinel};
-            auto const source{
-                sentinel ? definitions_.optional_sentinels
-                               .source[definitions_.optional_sentinels.index(definition)]
-                         : definitions_.optional_presence_bits
-                               .source[definitions_.optional_presence_bits.index(definition)]};
+            auto const source{sentinel ? defs_.optional_sentinels.source[definition]
+                                       : defs_.optional_presence_bits.source[definition]};
             auto const payload_bits{
-                sentinel
-                    ? placement.bits
-                    : definitions_.optional_presence_bits
-                          .payload_bits[definitions_.optional_presence_bits.index(definition)]};
+                sentinel ? placement.bits : defs_.optional_presence_bits.payload_bits[definition]};
             auto payload{placement};
-            payload.type = graph_.occurrences().type[graph_.occurrences().index(source)];
+            payload.type = graph_.occurrences().type[source];
             payload.bits = payload_bits;
             auto const raw{value.magnitude & mask(payload_bits)};
             if (!sentinel && (value.magnitude & (std::uint64_t{1} << payload_bits)) == 0) {
                 return;
             }
             auto const scalar{*integer_domain(graph_, payload.type)};
-            auto const negative{definitions_.integer_scalars
-                                        .signedness[definitions_.integer_scalars.index(scalar)] !=
-                                    0 &&
+            auto const negative{defs_.integer_scalars.signedness[scalar] != 0 &&
                                 (raw & (std::uint64_t{1} << (payload_bits - 1))) != 0};
             auto const decoded{codegen::PackedIntegerValue::from_parts(
                 negative, negative ? (std::uint64_t{} - raw) & mask(payload_bits) : raw)};
@@ -876,7 +827,7 @@ class BitLayoutResolver {
     }
 
     TypeGraph const& graph_;
-    TypeDefinitions const& definitions_;
+    TypeDefinitions const& defs_;
     ChildOccurrences const& children_;
     BitLayoutOverrides const& overrides_;
     std::vector<std::uint8_t> states_;
@@ -903,12 +854,10 @@ auto is_packed_projection(TypeGraph const& graph, TypeId const type) -> bool {
     auto const definition{graph.definition(type)};
     auto const& definitions{graph.definitions()};
     if (definition.kind() == TypeDefinitionKind::record) {
-        return definitions.records.layout[definitions.records.index(definition)] ==
-               codegen::LayoutKind::packed;
+        return definitions.records.layout[definition] == codegen::LayoutKind::packed;
     }
     if (definition.kind() == TypeDefinitionKind::union_type) {
-        return definitions.unions.layout[definitions.unions.index(definition)] ==
-               codegen::LayoutKind::packed;
+        return definitions.unions.layout[definition] == codegen::LayoutKind::packed;
     }
     return definition.kind() == TypeDefinitionKind::integer_scalar ||
            definition.kind() == TypeDefinitionKind::fixed_point ||

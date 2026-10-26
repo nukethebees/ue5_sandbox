@@ -31,10 +31,10 @@ namespace lispb::codegen::detail {
 namespace {
 
 auto mask_field_width(LoweringContext& context, SoaMemberId member) -> std::string {
-    auto const& declarations{context.declarations};
-    auto const& members{declarations.soa_members};
-    auto const& dimensions{declarations.soa_mask_dimensions};
-    auto const selected{declarations.items(members.mask_dimensions[members.index(member)])};
+    auto const& decls{context.declarations};
+    auto const& members{decls.soa_members};
+    auto const& dimensions{decls.soa_mask_dimensions};
+    auto const selected{decls.items(members.mask_dimensions[members.index(member)])};
     if (selected.empty()) {
         return "1";
     }
@@ -48,10 +48,10 @@ auto mask_field_width(LoweringContext& context, SoaMemberId member) -> std::stri
 
 auto mask_index_expression(LoweringContext& context, SoaMemberId member) -> Expr {
     auto& ir{context.ir};
-    auto const& declarations{context.declarations};
-    auto const& members{declarations.soa_members};
-    auto const& dimensions{declarations.soa_mask_dimensions};
-    auto const selected{declarations.items(members.mask_dimensions[members.index(member)])};
+    auto const& decls{context.declarations};
+    auto const& members{decls.soa_members};
+    auto const& dimensions{decls.soa_mask_dimensions};
+    auto const selected{decls.items(members.mask_dimensions[members.index(member)])};
     auto const count{selected.size()};
     Expr result;
     for (std::size_t index{}; index < count; ++index) {
@@ -69,10 +69,10 @@ auto mask_index_expression(LoweringContext& context, SoaMemberId member) -> Expr
 
 auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nodes {
     auto& ir{context.ir};
-    auto const& declarations{context.declarations};
-    auto const& soas{declarations.soas};
-    auto const& members{declarations.soa_members};
-    auto const& dimensions{declarations.soa_mask_dimensions};
+    auto const& decls{context.declarations};
+    auto const& soas{decls.soas};
+    auto const& members{decls.soa_members};
+    auto const& dimensions{decls.soa_mask_dimensions};
     auto const row{soas.index(schema)};
     if (!soas.field_mask_name[row].has_value()) {
         return {};
@@ -80,7 +80,7 @@ auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nod
 
     auto const mask_name{*soas.field_mask_name[row]};
     auto const enum_name{context.text(*soas.field_enum_name[row])};
-    auto const selected{declarations.items(soas.members[row])};
+    auto const selected{decls.items(soas.members[row])};
     auto const uint8_type{
         ir.types.intern("std::uint8_t", {ir.types.dependency("std::uint8_t", "cstdint")})};
     auto const int32_type{
@@ -116,7 +116,7 @@ auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nod
 
     for (auto const member : selected) {
         auto const member_row{members.index(member)};
-        auto const selected_dimensions{declarations.items(members.mask_dimensions[member_row])};
+        auto const selected_dimensions{decls.items(members.mask_dimensions[member_row])};
         if (!members.mask_field[member_row] || selected_dimensions.empty()) {
             continue;
         }
