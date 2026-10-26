@@ -85,7 +85,8 @@ auto collect_radar_instances(std::span<::ioj::presentation::AgentDisplayBatch co
                              ioj::settings::Radar const& settings,
                              FRadarFrame& output_frame) -> FRadarCollectionResult {
     TRACE_CPUPROFILER_EVENT_SCOPE(Radar::CollectAgentSource);
-    check(objective_roles.Num() == ::ioj::presentation::display_entity_count(batches));
+    auto const count{::ioj::presentation::display_entity_count(batches)};
+    check(objective_roles.Num() == count);
     output_frame.instances.Reset();
 
     auto const rotation{player_transform.Rotator()};
@@ -97,7 +98,6 @@ auto collect_radar_instances(std::span<::ioj::presentation::AgentDisplayBatch co
     output_frame.tactical_display_radius = ioj::presentation::radar::map_distance(
         settings.tactical_range / settings.maximum_range, curve);
     auto const range_squared{settings.maximum_range * settings.maximum_range};
-    auto const count{::ioj::presentation::display_entity_count(batches)};
     output_frame.instances.Reserve(count + 1);
 
     int32 candidate_count{0};
@@ -106,13 +106,22 @@ auto collect_radar_instances(std::span<::ioj::presentation::AgentDisplayBatch co
         for (auto const& batch : batches) {
             auto const batch_count{static_cast<int32>(batch.num())};
             check(batch.ids.size() == static_cast<std::size_t>(batch_count));
+            auto const entity_type{batch.type};
+            if (entity_type == ::ioj::sim::EntityType::PlayerShip) {
+                output_index += batch_count;
+                continue;
+            }
+
+            auto const contact_glyph{ioj::radar_source::glyph(entity_type)};
+            auto const contact_size_scale{ioj::radar_source::size_scale(entity_type)};
+            auto const is_fighter{entity_type == ::ioj::sim::EntityType::Fighter};
             for (int32 index{}; index < batch_count; ++index, ++output_index) {
                 if (::ioj::sim::is_dead(batch.health(index))) {
                     continue;
                 }
 
                 auto const id{batch.ids[index]};
-                if (id == player_id || batch.type == ::ioj::sim::EntityType::PlayerShip) {
+                if (id == player_id) {
                     continue;
                 }
                 if (priority == 0) {
@@ -131,9 +140,8 @@ auto collect_radar_instances(std::span<::ioj::presentation::AgentDisplayBatch co
                 }
                 auto const local_delta{FVector3f{
                     no_roll_transform.InverseTransformVectorNoScale(FVector{world_delta})}};
-                auto const entity_type{batch.type};
                 auto heading_radians{0.0f};
-                if (entity_type == ::ioj::sim::EntityType::Fighter) {
+                if (is_fighter) {
                     auto const world_velocity{ioj::to_unreal(batch.velocity(index))};
                     auto const local_velocity{FVector3f{
                         no_roll_transform.InverseTransformVectorNoScale(FVector{world_velocity})}};
@@ -145,11 +153,11 @@ auto collect_radar_instances(std::span<::ioj::presentation::AgentDisplayBatch co
                 output_frame.instances.Add({
                     .radar_position = ioj::to_unreal(ioj::presentation::radar::to_radar_position(
                         ioj::Vector3f{local_delta}, settings, curve)),
-                    .size_scale = ioj::radar_source::size_scale(entity_type),
+                    .size_scale = contact_size_scale,
                     .packed_color = pack_radar_color(ioj::radar_source::colour(
                         ioj::to_unreal(batch.team(index)), player_team, contact_colours)),
-                    .packed_glyph_and_flags = pack_radar_display(
-                        ioj::radar_source::glyph(entity_type), contact_flags, heading_radians),
+                    .packed_glyph_and_flags =
+                        pack_radar_display(contact_glyph, contact_flags, heading_radians),
                 });
             }
         }

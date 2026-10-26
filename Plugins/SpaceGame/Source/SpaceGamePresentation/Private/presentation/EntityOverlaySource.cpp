@@ -100,30 +100,33 @@ auto collect_entity_overlay_instances(
     TArray<FEntityOverlayInstance>& output_instances,
     FEntityOverlayCollector& collector) -> FEntityOverlayCollectionResult {
     TRACE_CPUPROFILER_EVENT_SCOPE(EntityOverlay::CollectAgentSource);
-    check(objective_roles.Num() == ::ioj::presentation::display_entity_count(batches));
+    auto const count{::ioj::presentation::display_entity_count(batches)};
+    check(objective_roles.Num() == count);
     collector.begin(origin, FMath::Max(maximum_range, 0.0f), output_instances);
 
-    auto const count{::ioj::presentation::display_entity_count(batches)};
     output_instances.Reserve(count);
     int32 output_index{};
     for (auto const& batch : batches) {
         auto const batch_count{static_cast<int32>(batch.num())};
-        for (int32 index{}; index < batch_count; ++index, ++output_index) {
-            if (::ioj::sim::is_dead(batch.health(index))) {
-                continue;
-            }
+        auto const entity_type{batch.type};
+        auto const inverse_health{inverse_maximum_health(entity_type, maximum_health)};
+        if (inverse_health <= 0.0f) {
+            output_index += batch_count;
+            continue;
+        }
 
-            auto const entity_type{batch.type};
-            auto const inverse_health{inverse_maximum_health(entity_type, maximum_health)};
-            if (inverse_health <= 0.0f) {
+        auto const world_radius{entity_type_radii[entity_type]};
+        for (int32 index{}; index < batch_count; ++index, ++output_index) {
+            auto const health{batch.health(index)};
+            if (::ioj::sim::is_dead(health)) {
                 continue;
             }
 
             auto const objective_role{objective_roles[output_index]};
             static_cast<void>(collector.try_add_colored(
                 ioj::to_unreal(::ioj::vector_at(batch.locations, index)),
-                static_cast<float>(batch.health(index)) * inverse_health,
-                entity_type_radii[entity_type],
+                static_cast<float>(health) * inverse_health,
+                world_radius,
                 team_colour(entity_type, ioj::to_unreal(batch.team(index)), team_colours),
                 objective_role,
                 objective_role != EEntityOverlayObjectiveRole::None));
