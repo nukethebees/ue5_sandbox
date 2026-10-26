@@ -22,7 +22,7 @@ editing the actor does not require shader-source changes.
 
 ## Viewing it
 
-Open `/SandboxShaders/Showcase/SandboxShaders_Showcase`, or choose **Window > Sandbox Shaders >
+Open `/SandboxExperiments/ShaderShowcase/SandboxShaders_Showcase`, or choose **Window > Sandbox Shaders >
 Open Shader Showcase**. The shield is the cyan sphere on the left. PIE uses the placed showcase
 camera, while the effect also animates in the editor viewport.
 

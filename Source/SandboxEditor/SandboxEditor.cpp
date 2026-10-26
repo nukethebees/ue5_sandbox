@@ -6,9 +6,7 @@
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
 #include "SandboxEditor/levels/S7LevelPlayableSetup.h"
 #include "SandboxEditor/levels/S7LevelScriptEditor.h"
-#include "SandboxEditor/slate/BoxSizeCustomisation.h"
 #include "SandboxEditor/slate/StrongTypedefPreview.h"
-#include "SandboxEditor/slate/TestVolumeDetailsCustomisation.h"
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 #include "Editor.h"
@@ -258,9 +256,6 @@ void FSandboxEditorModule::register_custom_properties() {
     Adder adder{property_module, registered_properties, registered_class_layouts};
 
     adder.add_property<FStrongTypedefPreview>(TEXT("Dimensions"));
-    adder.add_property<FBoxSizeCustomisation>(TEXT("BoxSize"));
-
-    adder.add_class_layout<FTestVolumeDetailsCustomisation>(TEXT("TestVolume"));
 }
 void FSandboxEditorModule::unregister_custom_properties() {
     // ToolMenus are automatically cleaned up when the module is unloaded

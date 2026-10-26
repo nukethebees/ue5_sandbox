@@ -42,7 +42,7 @@ add_custom_target(compile-space-dust-material DEPENDS "${SPACE_DUST_MATERIAL_ART
 
 set(MIGRATED_MATERIAL_ARTIFACTS)
 set(SHADER_MATERIAL_SOURCE_ROOT
-  "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials"
+  "Plugins/SandboxExperiments/Source/SbxShadersExperiments/Private/materials"
 )
 add_material_ir("radar display" radar-display-material
   "${SHADER_MATERIAL_SOURCE_ROOT}/RadarDisplay.lispb" RadarDisplay MIGRATED_MATERIAL_ARTIFACTS)

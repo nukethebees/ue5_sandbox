@@ -20,7 +20,7 @@ sheath. The result reaches the screen through an unlit additive material.
 
 ## Editor controls and showcase
 
-Open `/SandboxShaders/Showcase/SandboxShaders_Showcase` and select `Energy Beam`. Edit either
+Open `/SandboxExperiments/ShaderShowcase/SandboxShaders_Showcase` and select `Energy Beam`. Edit either
 endpoint or use `set_short_beam`, `set_long_beam`, and `reverse_direction`. Width, flow speed,
 turbulence, colours, and emission update live; animation can be paused or restarted.
 

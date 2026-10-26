@@ -338,22 +338,22 @@ TEST(MaterialFrontend, SupportsEveryNumericExpressionAndPropagatesTypes) {
 TEST(MaterialFrontend, LowersMigratedMaterialsToNativeScaffoldingAndTypedShaderLeaves) {
     auto const source_root{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR}};
     std::array<std::filesystem::path, 9> const sources{
-        source_root / "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/"
+        source_root / "Plugins/SandboxExperiments/Source/SbxShadersExperiments/Private/materials/"
                       "RadarDisplay.lispb",
-        source_root / "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/"
+        source_root / "Plugins/SandboxExperiments/Source/SbxShadersExperiments/Private/materials/"
                       "EnergyShield.lispb",
-        source_root / "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/"
+        source_root / "Plugins/SandboxExperiments/Source/SbxShadersExperiments/Private/materials/"
                       "SpaceEnergyFieldDisplay.lispb",
         source_root / "Source/Sandbox/materials/GlowingCross.lispb",
-        source_root / "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/"
+        source_root / "Plugins/SandboxExperiments/Source/SbxShadersExperiments/Private/materials/"
                       "VertexRipple.lispb",
-        source_root / "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/"
+        source_root / "Plugins/SandboxExperiments/Source/SbxShadersExperiments/Private/materials/"
                       "ConstructionSpawn.lispb",
-        source_root / "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/"
+        source_root / "Plugins/SandboxExperiments/Source/SbxShadersExperiments/Private/materials/"
                       "PlanetAtmosphere.lispb",
-        source_root / "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/"
+        source_root / "Plugins/SandboxExperiments/Source/SbxShadersExperiments/Private/materials/"
                       "PlanetSurface.lispb",
-        source_root / "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/"
+        source_root / "Plugins/SandboxExperiments/Source/SbxShadersExperiments/Private/materials/"
                       "TacticalScan.lispb"};
 
     std::vector<AnalyzedMaterial> materials;

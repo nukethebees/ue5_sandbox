@@ -116,33 +116,33 @@
               "Source/SandboxEditor/levels/S7LevelAuthoringModeToolkit.lispb")
     :output-root (project-path "Source/SandboxEditor/levels/generated"))
   (slate slate-ui-showcase
-    :sources ("Plugins/SandboxUI/Source/SandboxUIExamples/Private/SandboxUIShowcase.lispb")
-    :output-root (project-path "Plugins/SandboxUI/Source/SandboxUIExamples/Private/generated"))
+    :sources ("Plugins/SandboxExperiments/Source/SandboxUIExamples/Private/SandboxUIShowcase.lispb")
+    :output-root (project-path "Plugins/SandboxExperiments/Source/SandboxUIExamples/Private/generated"))
   (slate slate-heatmap-benchmark
-    :sources ("Plugins/SandboxUI/Source/SbxUIExperiments/Private/Benchmarks/Heatmap/HeatmapBenchmarkSlate.lispb")
-    :output-root (project-path "Plugins/SandboxUI/Source/SbxUIExperiments/Private/Benchmarks/Heatmap/generated"))
+    :sources ("Plugins/SandboxExperiments/Source/SbxUIExperiments/Private/Benchmarks/Heatmap/HeatmapBenchmarkSlate.lispb")
+    :output-root (project-path "Plugins/SandboxExperiments/Source/SbxUIExperiments/Private/Benchmarks/Heatmap/generated"))
   (slate slate-experiment-widgets
-    :sources ("Plugins/SandboxUI/Source/SbxUIExperiments/Private/Widgets/ExperimentPanels.lispb")
-    :output-root (project-path "Plugins/SandboxUI/Source/SbxUIExperiments/Private/Widgets/generated"))
+    :sources ("Plugins/SandboxExperiments/Source/SbxUIExperiments/Private/Widgets/ExperimentPanels.lispb")
+    :output-root (project-path "Plugins/SandboxExperiments/Source/SbxUIExperiments/Private/Widgets/generated"))
   (slate slate-radar
-    :sources ("Plugins/SandboxUI/Source/SbxUIExperiments/Private/Radar3D/Radar3DShowcase.lispb")
-    :include-directories ("Plugins/SandboxUI/Source/SbxUIExperiments/Private/Widgets")
-    :output-root (project-path "Plugins/SandboxUI/Source/SbxUIExperiments/Private/Radar3D/generated"))
+    :sources ("Plugins/SandboxExperiments/Source/SbxUIExperiments/Private/Radar3D/Radar3DShowcase.lispb")
+    :include-directories ("Plugins/SandboxExperiments/Source/SbxUIExperiments/Private/Widgets")
+    :output-root (project-path "Plugins/SandboxExperiments/Source/SbxUIExperiments/Private/Radar3D/generated"))
   (slate slate-heatmap-rdg
-    :sources ("Plugins/SandboxUI/Source/SbxUIExperiments/Private/HeatmapRDG/HeatmapRDGShowcase.lispb")
-    :include-directories ("Plugins/SandboxUI/Source/SbxUIExperiments/Private/Widgets")
-    :output-root (project-path "Plugins/SandboxUI/Source/SbxUIExperiments/Private/HeatmapRDG/generated"))
+    :sources ("Plugins/SandboxExperiments/Source/SbxUIExperiments/Private/HeatmapRDG/HeatmapRDGShowcase.lispb")
+    :include-directories ("Plugins/SandboxExperiments/Source/SbxUIExperiments/Private/Widgets")
+    :output-root (project-path "Plugins/SandboxExperiments/Source/SbxUIExperiments/Private/HeatmapRDG/generated"))
   (slate slate-scatter
-    :sources ("Plugins/SandboxUI/Source/SbxUIExperiments/Private/Scatter3D/Scatter3DShowcase.lispb")
-    :include-directories ("Plugins/SandboxUI/Source/SbxUIExperiments/Private/Widgets")
-    :output-root (project-path "Plugins/SandboxUI/Source/SbxUIExperiments/Private/Scatter3D/generated"))
+    :sources ("Plugins/SandboxExperiments/Source/SbxUIExperiments/Private/Scatter3D/Scatter3DShowcase.lispb")
+    :include-directories ("Plugins/SandboxExperiments/Source/SbxUIExperiments/Private/Widgets")
+    :output-root (project-path "Plugins/SandboxExperiments/Source/SbxUIExperiments/Private/Scatter3D/generated"))
   (slate slate-smoke
-    :sources ("Plugins/SandboxUI/Source/SbxUIExperiments/Private/SlateDslSmoke/SlateDslSmokeWidget.lispb")
-    :output-root (project-path "Plugins/SandboxUI/Source/SbxUIExperiments/Private/SlateDslSmoke/generated"))
+    :sources ("Plugins/SandboxExperiments/Source/SbxUIExperiments/Private/SlateDslSmoke/SlateDslSmokeWidget.lispb")
+    :output-root (project-path "Plugins/SandboxExperiments/Source/SbxUIExperiments/Private/SlateDslSmoke/generated"))
   (slate slate-volume-heatmap
-    :sources ("Plugins/SandboxUI/Source/SbxUIExperiments/Private/VolumeHeatmap3D/VolumeHeatmap3DShowcase.lispb")
-    :include-directories ("Plugins/SandboxUI/Source/SbxUIExperiments/Private/Widgets")
-    :output-root (project-path "Plugins/SandboxUI/Source/SbxUIExperiments/Private/VolumeHeatmap3D/generated"))
+    :sources ("Plugins/SandboxExperiments/Source/SbxUIExperiments/Private/VolumeHeatmap3D/VolumeHeatmap3DShowcase.lispb")
+    :include-directories ("Plugins/SandboxExperiments/Source/SbxUIExperiments/Private/Widgets")
+    :output-root (project-path "Plugins/SandboxExperiments/Source/SbxUIExperiments/Private/VolumeHeatmap3D/generated"))
   (slate slate-game-options
     :sources ("Plugins/SpaceGame/Source/SpaceGame/Private/ui/main_menu/SGameOptionsView.lispb")
     :output-root (project-path "Plugins/SpaceGame/Source/SpaceGame/Private/ui/main_menu/generated"))
@@ -173,31 +173,31 @@
     :source "Plugins/SpaceGame/Source/SpaceGamePresentation/Private/materials/SoftTargetWorld.lispb"
     :artifact (project-path "Intermediate/MaterialGen/SoftTargetWorld.smat"))
   (material radar-display-material
-    :source "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/RadarDisplay.lispb"
+    :source "Plugins/SandboxExperiments/Source/SbxShadersExperiments/Private/materials/RadarDisplay.lispb"
     :artifact (project-path "Intermediate/MaterialGen/RadarDisplay.smat"))
   (material energy-shield-material
-    :source "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/EnergyShield.lispb"
+    :source "Plugins/SandboxExperiments/Source/SbxShadersExperiments/Private/materials/EnergyShield.lispb"
     :artifact (project-path "Intermediate/MaterialGen/EnergyShield.smat"))
   (material space-energy-field-material
-    :source "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/SpaceEnergyFieldDisplay.lispb"
+    :source "Plugins/SandboxExperiments/Source/SbxShadersExperiments/Private/materials/SpaceEnergyFieldDisplay.lispb"
     :artifact (project-path "Intermediate/MaterialGen/SpaceEnergyField.smat"))
   (material glowing-cross-material
     :source "Source/Sandbox/materials/GlowingCross.lispb"
     :artifact (project-path "Intermediate/MaterialGen/GlowingCross.smat"))
   (material vertex-ripple-material
-    :source "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/VertexRipple.lispb"
+    :source "Plugins/SandboxExperiments/Source/SbxShadersExperiments/Private/materials/VertexRipple.lispb"
     :artifact (project-path "Intermediate/MaterialGen/VertexRipple.smat"))
   (material construction-spawn-material
-    :source "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/ConstructionSpawn.lispb"
+    :source "Plugins/SandboxExperiments/Source/SbxShadersExperiments/Private/materials/ConstructionSpawn.lispb"
     :artifact (project-path "Intermediate/MaterialGen/ConstructionSpawn.smat"))
   (material planet-atmosphere-material
-    :source "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/PlanetAtmosphere.lispb"
+    :source "Plugins/SandboxExperiments/Source/SbxShadersExperiments/Private/materials/PlanetAtmosphere.lispb"
     :artifact (project-path "Intermediate/MaterialGen/PlanetAtmosphere.smat"))
   (material planet-surface-material
-    :source "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/PlanetSurface.lispb"
+    :source "Plugins/SandboxExperiments/Source/SbxShadersExperiments/Private/materials/PlanetSurface.lispb"
     :artifact (project-path "Intermediate/MaterialGen/PlanetSurface.smat"))
   (material tactical-scan-material
-    :source "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/TacticalScan.lispb"
+    :source "Plugins/SandboxExperiments/Source/SbxShadersExperiments/Private/materials/TacticalScan.lispb"
     :artifact (project-path "Intermediate/MaterialGen/TacticalScan.smat"))
   (material celestial-analytic-material
     :source "Plugins/SandboxShaders/Source/SandboxCelestials/Private/materials/CelestialAnalytic.lispb"

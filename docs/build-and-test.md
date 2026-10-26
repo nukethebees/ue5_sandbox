@@ -79,7 +79,26 @@ Reconfigure with `cmake --preset native -DIOJ_ENABLE_BUILD_PROFILING=OFF` afterw
 the preset also restores its compiler launchers. A cache hit is not a fresh compiler
 measurement.
 
+## Optional Unreal experiments
+
+Normal editor builds exclude `SandboxExperiments`. Enable that plugin in
+`Sandbox.uproject` and rebuild when working on UI/shader showcases, their smoke
+tests, or `generate-slate-dsl-smoke-asset`. Module names are retained; showcase assets
+are mounted only when the plugin is enabled, with redirects for their old paths.
+The mesh-generation lab remains enabled because editor asset-generation commands
+use it; the ISMC lab remains available to the supported benchmark workflow.
+
+When updating a workspace built before this module move, remove the generated
+`UnrealEditor*.modules` manifests under `Plugins/SandboxUI/Binaries/Win64` and
+`Plugins/SandboxShaders/Binaries/Win64`, then rebuild. Stale entries can otherwise
+override the experiments plugin's new binary locations.
+
+The obsolete learning actors, example widgets, editor customizations and their
+unused learning/prototype assets have been removed. SpaceGame content is retained.
+
 ## Native iteration
+
+### Build-time generators
 
 Build-time generation and checks use a revision-local Release build of `lispb` and
 its compiler libraries under `<build-dir>/host-tools/lispb`. This is independent of

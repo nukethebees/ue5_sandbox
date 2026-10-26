@@ -20,7 +20,7 @@ state or gameplay system is involved.
 
 ## Editor controls and showcase
 
-Open `/SandboxShaders/Showcase/SandboxShaders_Showcase`, select `Construction / Spawn`, and use
+Open `/SandboxExperiments/ShaderShowcase/SandboxShaders_Showcase`, select `Construction / Spawn`, and use
 `reset_effect`, `complete_effect`, or `restart_animation`. Disable `auto_animate` to scrub `Progress`
 manually from zero to one. A gameplay spawn system could later write that same scalar.
 

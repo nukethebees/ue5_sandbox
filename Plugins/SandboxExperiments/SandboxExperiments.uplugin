@@ -1,0 +1,39 @@
+{
+    "FileVersion": 3,
+    "Version": 1,
+    "VersionName": "1.0",
+    "FriendlyName": "Sandbox Experiments",
+    "Description": "Optional UI and shader showcases, experiments and their editor tests.",
+    "Category": "Sandbox",
+    "EnabledByDefault": false,
+    "CanContainContent": true,
+    "IsExperimentalVersion": true,
+    "Modules": [
+        {
+            "Name": "SbxUIExperiments",
+            "Type": "Editor",
+            "LoadingPhase": "PostConfigInit"
+        },
+        {
+            "Name": "SandboxUIExamples",
+            "Type": "Editor",
+            "LoadingPhase": "Default"
+        },
+        {
+            "Name": "SbxShadersExperiments",
+            "Type": "Runtime",
+            "LoadingPhase": "PostConfigInit"
+        },
+        {
+            "Name": "SandboxShadersEditor",
+            "Type": "Editor",
+            "LoadingPhase": "Default"
+        }
+    ],
+    "Plugins": [
+        { "Name": "SandboxCore", "Enabled": true },
+        { "Name": "SandboxUI", "Enabled": true },
+        { "Name": "SandboxShaders", "Enabled": true },
+        { "Name": "CQTest", "Enabled": true }
+    ]
+}

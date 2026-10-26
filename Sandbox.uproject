@@ -35,6 +35,10 @@
 	],
 	"Plugins": [
 		{
+			"Name": "SandboxExperiments",
+			"Enabled": false
+		},
+		{
 			"Name": "ModelingToolsEditorMode",
 			"Enabled": true
 		},

@@ -2,15 +2,11 @@
 
 `SandboxShaders` contains reusable runtime shader systems and the `/Plugin/SandboxShaders`
 shader-source mapping. `SandboxCelestials` contains the production celestial-backdrop actor,
-`SbxShadersExperiments` contains isolated experiment actors and rendering code, and
-`SandboxShadersEditor` adds the showcase launcher and smoke tests.
+`SbxShadersExperiments` and `SandboxShadersEditor` now live in the optional
+[SandboxExperiments plugin](../SandboxExperiments/README.md). Enable it for experiment
+actors, the showcase launcher and shader smoke tests.
 
-The experiments module uses the qualified name `SbxShadersExperiments` because this project already
-has an Unreal module named `Experiments` in `SandboxUI`; Unreal module names share one target-wide
-namespace. Keeping the existing module intact avoids modifying an unrelated plugin while preserving
-an unmistakable experiments module here.
-
-Open `/SandboxShaders/Showcase/SandboxShaders_Showcase`, or use **Window > Sandbox Shaders > Open
+Open `/SandboxExperiments/ShaderShowcase/SandboxShaders_Showcase`, or use **Window > Sandbox Shaders > Open
 Shader Showcase** in the editor. Select an experiment actor to edit its exposed settings.
 
 See the experiment-specific documentation:

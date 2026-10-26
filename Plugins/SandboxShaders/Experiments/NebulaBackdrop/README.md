@@ -13,4 +13,4 @@ covered pixel. It is intended for distant composition rather than flying through
 The source textures are deterministic promotions of the `nebula_soft` and `nebula_flow` presets
 from the standalone Image Lab. The committed copies keep this plugin independent at runtime.
 
-Open `/SandboxShaders/Showcase/SandboxShaders_Showcase` and select **NEBULA BACKDROP** to edit it.
+Open `/SandboxExperiments/ShaderShowcase/SandboxShaders_Showcase` and select **NEBULA BACKDROP** to edit it.

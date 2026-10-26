@@ -20,7 +20,7 @@ Unreal's atmosphere systems.
 
 ## Editor controls and showcase
 
-Open `/SandboxShaders/Showcase/SandboxShaders_Showcase` and select `Planet Atmosphere`. Change the
+Open `/SandboxExperiments/ShaderShowcase/SandboxShaders_Showcase` and select `Planet Atmosphere`. Change the
 settings directly, or use `reset_sun_direction`. Density and limb power make the approximation easy
 to exaggerate. A later gameplay integration could feed the system star direction into the same
 `SunDirection` material parameter.

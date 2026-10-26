@@ -36,4 +36,4 @@ Midpoint ray samples remain stable while the camera moves. Use the high-quality 
 fly-throughs where low step counts would expose the intervals between samples.
 
 The translucent material does not write scene depth and has the usual translucent sorting limits.
-Open `/SandboxShaders/Showcase/SandboxShaders_Showcase` and select **NEBULA VOLUME** to edit it.
+Open `/SandboxExperiments/ShaderShowcase/SandboxShaders_Showcase` and select **NEBULA VOLUME** to edit it.

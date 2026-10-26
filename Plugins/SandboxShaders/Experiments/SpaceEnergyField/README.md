@@ -22,7 +22,7 @@ each dispatch; changing them never rewrites or recompiles the HLSL.
 
 ## Viewing it
 
-Open `/SandboxShaders/Showcase/SandboxShaders_Showcase`, or choose **Window > Sandbox Shaders >
+Open `/SandboxExperiments/ShaderShowcase/SandboxShaders_Showcase`, or choose **Window > Sandbox Shaders >
 Open Shader Showcase**. The large blue/magenta panel is on the right. It runs in the editor viewport,
 PIE, and standalone builds.
 

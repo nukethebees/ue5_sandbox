@@ -20,16 +20,6 @@
 			"Name": "SandboxUI",
 			"Type": "Runtime",
 			"LoadingPhase": "PostConfigInit"
-		},
-		{
-			"Name": "SbxUIExperiments",
-			"Type": "Editor",
-			"LoadingPhase": "PostConfigInit"
-		},
-		{
-			"Name": "SandboxUIExamples",
-			"Type": "Editor",
-			"LoadingPhase": "Default"
 		}
 	]
 }

@@ -2,7 +2,7 @@
 
 SandboxUI provides reusable, game-independent runtime UI and rendering primitives. Production code
 lives in the `SandboxUI` runtime module. `SandboxUIExamples` and `SbxUIExperiments` are editor-only
-consumers, and production code must not depend on them.
+consumers in the optional [SandboxExperiments plugin](../SandboxExperiments/README.md).
 
 ## 3D radar
 
@@ -63,5 +63,5 @@ structure retains a separate emissive/halo treatment.
 
 `EUW_Radar3DShowcase` is an editor-only harness in `SbxUIExperiments`. It feeds deterministic
 synthetic frames into the same production `SRadarWidget`; it is not a separate radar implementation.
-See [the showcase README](Source/SbxUIExperiments/Private/Radar3D/README.md) for launch and benchmark
+Enable `SandboxExperiments` first. See [the showcase README](../SandboxExperiments/Source/SbxUIExperiments/Private/Radar3D/README.md) for launch and benchmark
 instructions.

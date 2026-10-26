@@ -132,7 +132,7 @@ impl Request {
         let mut args = vec![self.project.to_string_lossy().into_owned()];
         args.extend(
             [
-                "/SandboxShaders/Showcase/SandboxShaders_Showcase",
+                "/SandboxExperiments/ShaderShowcase/SandboxShaders_Showcase",
                 "-game",
                 "-RenderOffscreen",
                 "-unattended",
