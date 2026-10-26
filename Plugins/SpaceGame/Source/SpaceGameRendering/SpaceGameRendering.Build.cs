@@ -5,6 +5,7 @@ public class SpaceGameRendering : ModuleRules
     public SpaceGameRendering(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+        PrivatePCHHeaderFile = "Private/SpaceGameRenderingPCH.h";
         CppStandard = CppStandardVersion.Latest;
         bAllowUETypesInNamespaces = true;
         MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;

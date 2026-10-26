@@ -7,6 +7,7 @@ public class SandboxEditorTools : ModuleRules
     public SandboxEditorTools(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
+        PrivatePCHHeaderFile = "Private/SandboxEditorToolsPCH.h";
         MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
 
         PublicIncludePaths.AddRange(

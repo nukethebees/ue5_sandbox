@@ -6,6 +6,7 @@ public class SpaceGame : ModuleRules
     public SpaceGame(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+        PrivatePCHHeaderFile = "Private/SpaceGamePCH.h";
         CppStandard = CppStandardVersion.Latest;
         bAllowUETypesInNamespaces = true;
         MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;

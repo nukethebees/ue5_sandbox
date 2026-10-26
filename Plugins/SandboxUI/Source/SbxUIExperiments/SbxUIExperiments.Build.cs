@@ -5,6 +5,7 @@ public class SbxUIExperiments : ModuleRules
     public SbxUIExperiments(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+        PrivatePCHHeaderFile = "Private/SbxUIExperimentsPCH.h";
         CppStandard = CppStandardVersion.Latest;
         MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
 

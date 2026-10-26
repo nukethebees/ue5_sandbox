@@ -121,6 +121,16 @@ game/native integration workflow; `debug-game-full-tests` additionally includes 
 developer tools and is for explicitly requested broad validation. `debug-game` prepares an
 editor-ready build without running tests. Use `development` for Development configuration.
 
+Unreal modules using `CppStandard.Latest` cannot consume the installed engine's shared
+PCHs. Engine-facing modules declare `PrivatePCHHeaderFile` in their `.Build.cs` files
+to retain PCHs with that standard. Keep these headers limited to stable engine headers
+commonly used by the module; avoid adding frequently edited gameplay headers. The small
+`SandboxCore`, `SpaceGameSimulation`, `USFLoader` and `SandboxMaterialExprs` modules
+remain without PCHs because their measured compilation work is small.
+Keep `ShortenSizeTToIntWarningLevel` at Unreal's default: explicit `/we4267` overrides
+are restored when MSVC loads a PCH, bypassing the engine header's warning suppression
+and producing errors in engine headers.
+
 Launch with `coj editor` (optionally `--wait-for-debugger`), or pass `--build-dir` for another
 configured tree. To prepare Visual Studio debugging without a full build:
 

@@ -8,6 +8,7 @@ public class SandboxShaders : ModuleRules
         string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
         PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "gfx", "lib", "include"));
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+        PrivatePCHHeaderFile = "Private/SandboxShadersPCH.h";
         CppStandard = CppStandardVersion.Latest;
         MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
 

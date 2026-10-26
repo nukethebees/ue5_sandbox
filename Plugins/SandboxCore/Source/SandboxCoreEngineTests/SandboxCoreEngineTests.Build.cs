@@ -6,6 +6,8 @@ public class SandboxCoreEngineTests : ModuleRules
 {
     public SandboxCoreEngineTests(ReadOnlyTargetRules Target) : base(Target)
     {
+        PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+        PrivatePCHHeaderFile = "Private/SandboxCoreEngineTestsPCH.h";
         CppStandard = CppStandardVersion.Latest;
         bAllowUETypesInNamespaces = true;
         MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;

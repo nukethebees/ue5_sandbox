@@ -10,6 +10,7 @@ public class Sandbox : ModuleRules
     public Sandbox(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+        PrivatePCHHeaderFile = "Private/SandboxPCH.h";
         CppStandard = CppStandardVersion.Latest;
 
         bAllowUETypesInNamespaces = true;
@@ -18,7 +19,6 @@ public class Sandbox : ModuleRules
 
         CppCompileWarningSettings.AmbiguousReversedOperatorWarningLevel = WarningLevel.Error;
         CppCompileWarningSettings.UnreachableCodeWarningLevel = WarningLevel.Error;
-        CppCompileWarningSettings.ShortenSizeTToIntWarningLevel = WarningLevel.Error;
 
         PublicDependencyModuleNames.AddRange(new string[] {
             "SpaceGame", "SpaceGameSimulation", "SpaceGamePresentation",

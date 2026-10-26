@@ -10,6 +10,7 @@ public class SandboxTests : ModuleRules
     public SandboxTests(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+        PrivatePCHHeaderFile = "Private/SandboxTestsPCH.h";
         CppStandard = CppStandardVersion.Latest;
 
         bAllowUETypesInNamespaces = true;
@@ -18,7 +19,6 @@ public class SandboxTests : ModuleRules
 
         CppCompileWarningSettings.AmbiguousReversedOperatorWarningLevel = WarningLevel.Error;
         CppCompileWarningSettings.UnreachableCodeWarningLevel = WarningLevel.Error;
-        CppCompileWarningSettings.ShortenSizeTToIntWarningLevel = WarningLevel.Error;
 
         PublicDependencyModuleNames.AddRange(new string[] {
         });
