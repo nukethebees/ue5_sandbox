@@ -402,23 +402,7 @@ auto SchemaParser::parse_member(Declarations& declarations, sexpr::FormId const 
         if (relationship.has_value()) {
             parser_.fail(declaration, "SOA member may have only one relationship");
         }
-        Fields const relation{parser_, declaration, "relation", 2};
-        relation.validate({P::unit});
-        auto const unit{relation.optional(P::unit)};
-        {
-            auto& records{declarations.semantic_relations};
-            auto const record_id{records.append()};
-            auto const record_index{records.index(record_id)};
-            records.kind[record_index] = parse_keyword(parser_,
-                                                       relation.positional(0),
-                                                       "semantic relationship kind",
-                                                       try_parse_serialized_semantic_relation_kind);
-            records.target[record_index] = parse_type_ref(declarations, relation.positional(1));
-            records.unit[record_index] = !unit.has_value()
-                                           ? std::nullopt
-                                           : std::optional{parse_semantic_relation_unit(*unit)};
-            relationship = record_id;
-        }
+        relationship = parse_relation(declarations, declaration);
     }
     auto& records{declarations.soa_members};
     auto const record_id{records.append()};
@@ -547,6 +531,24 @@ auto SchemaParser::parse_enum_unreal_projection(Declarations& declarations,
     return record_id;
 }
 
+auto SchemaParser::parse_relation(Declarations& declarations, sexpr::FormId const form)
+    -> SemanticRelationId {
+    Fields const relation{parser_, form, "relation", 2};
+    relation.validate({P::unit});
+    auto const unit{relation.optional(P::unit)};
+    auto& records{declarations.semantic_relations};
+    auto const record_id{records.append()};
+    auto const record_index{records.index(record_id)};
+    records.kind[record_index] = parse_keyword(parser_,
+                                               relation.positional(0),
+                                               "semantic relationship kind",
+                                               try_parse_serialized_semantic_relation_kind);
+    records.target[record_index] = parse_type_ref(declarations, relation.positional(1));
+    records.unit[record_index] =
+        !unit.has_value() ? std::nullopt : std::optional{parse_semantic_relation_unit(*unit)};
+    return record_id;
+}
+
 auto SchemaParser::parse_semantic_relation_unit(sexpr::FormId const form) -> SemanticRelationUnit {
     auto const value{parser_.text(form, "semantic relationship unit")};
     if (auto const parsed{try_parse_serialized_semantic_relation_unit(value)}) {
@@ -599,24 +601,7 @@ auto SchemaParser::parse_packed_field(Declarations& declarations, sexpr::FormId 
             if (relationship.has_value()) {
                 parser_.fail(declaration, "packed field may have only one relationship");
             }
-            Fields const relation{parser_, declaration, "relation", 2};
-            relation.validate({P::unit});
-            auto const unit{relation.optional(P::unit)};
-            {
-                auto& records{declarations.semantic_relations};
-                auto const record_id{records.append()};
-                auto const record_index{records.index(record_id)};
-                records.kind[record_index] =
-                    parse_keyword(parser_,
-                                  relation.positional(0),
-                                  "semantic relationship kind",
-                                  try_parse_serialized_semantic_relation_kind);
-                records.target[record_index] = parse_type_ref(declarations, relation.positional(1));
-                records.unit[record_index] = !unit.has_value()
-                                               ? std::nullopt
-                                               : std::optional{parse_semantic_relation_unit(*unit)};
-                relationship = record_id;
-            }
+            relationship = parse_relation(declarations, declaration);
             continue;
         }
         Fields const code{parser_, declaration, "code", 1};
@@ -1073,23 +1058,7 @@ auto SchemaParser::parse_record_member(Declarations& declarations, sexpr::FormId
         if (relationship.has_value()) {
             parser_.fail(declaration, "record member may have only one relationship");
         }
-        Fields const relation{parser_, declaration, "relation", 2};
-        relation.validate({P::unit});
-        auto const unit{relation.optional(P::unit)};
-        {
-            auto& records{declarations.semantic_relations};
-            auto const record_id{records.append()};
-            auto const record_index{records.index(record_id)};
-            records.kind[record_index] = parse_keyword(parser_,
-                                                       relation.positional(0),
-                                                       "semantic relationship kind",
-                                                       try_parse_serialized_semantic_relation_kind);
-            records.target[record_index] = parse_type_ref(declarations, relation.positional(1));
-            records.unit[record_index] = !unit.has_value()
-                                           ? std::nullopt
-                                           : std::optional{parse_semantic_relation_unit(*unit)};
-            relationship = record_id;
-        }
+        relationship = parse_relation(declarations, declaration);
     }
     auto& records{declarations.record_members};
     auto const record_id{records.append()};
@@ -1316,24 +1285,7 @@ auto SchemaParser::parse_integer_scalar(Declarations& declarations, sexpr::FormI
             if (relationship.has_value()) {
                 parser_.fail(declaration, "integer scalar may have only one relationship");
             }
-            Fields const relation{parser_, declaration, "relation", 2};
-            relation.validate({P::unit});
-            auto const unit{relation.optional(P::unit)};
-            {
-                auto& records{declarations.semantic_relations};
-                auto const record_id{records.append()};
-                auto const record_index{records.index(record_id)};
-                records.kind[record_index] =
-                    parse_keyword(parser_,
-                                  relation.positional(0),
-                                  "semantic relationship kind",
-                                  try_parse_serialized_semantic_relation_kind);
-                records.target[record_index] = parse_type_ref(declarations, relation.positional(1));
-                records.unit[record_index] = !unit.has_value()
-                                               ? std::nullopt
-                                               : std::optional{parse_semantic_relation_unit(*unit)};
-                relationship = record_id;
-            }
+            relationship = parse_relation(declarations, declaration);
             continue;
         }
         Fields const code{parser_, declaration, "code", 1};

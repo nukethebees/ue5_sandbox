@@ -80,6 +80,7 @@ class SchemaParser {
     auto parse_native_enum_helper(sexpr::FormId const form) -> NativeEnumHelper;
     auto parse_enum_unreal_projection(Declarations& declarations, sexpr::FormId const form)
         -> EnumUnrealProjectionId;
+    auto parse_relation(Declarations& declarations, sexpr::FormId const form) -> SemanticRelationId;
     auto parse_semantic_relation_unit(sexpr::FormId const form) -> SemanticRelationUnit;
     auto parse_packed_byte_order(sexpr::FormId const form) -> PackedByteOrder;
     auto parse_packed_bit_order(sexpr::FormId const form) -> PackedBitOrder;
