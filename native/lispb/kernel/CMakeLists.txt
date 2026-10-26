@@ -64,12 +64,12 @@ set(KERNEL_STANDARD_FILES
 )
 add_custom_command(
   OUTPUT ${KERNEL_STANDARD_FILES}
-  COMMAND "$<TARGET_FILE:lispb>" generate
+  COMMAND "$<TARGET_FILE:lispb-executable>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target kernel-standard
   DEPENDS
-    lispb
+    lispb-executable
     "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     "${KERNEL_PRODUCTION_DOCUMENT}"
     "${KERNEL_CANDIDATE_DOCUMENT}"
@@ -96,12 +96,12 @@ set_tests_properties(kernel-generated-standard-tests PROPERTIES LABELS "unit;all
 add_dependencies(kernel-codegen-tests kernel-generated-standard-tests)
 
 add_custom_target(generate-native-core-kernels
-  COMMAND "$<TARGET_FILE:lispb>" generate
+  COMMAND "$<TARGET_FILE:lispb-executable>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target kernel-native-core
   DEPENDS
-    lispb
+    lispb-executable
     "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     "${KERNEL_PRODUCTION_DOCUMENT}"
     "${KERNEL_NATIVE_VECTOR_LERP_DOCUMENT}"
@@ -112,12 +112,12 @@ add_custom_target(generate-native-core-kernels
 )
 
 add_custom_target(check-generated-native-core-kernels
-  COMMAND "$<TARGET_FILE:lispb>" check
+  COMMAND "$<TARGET_FILE:lispb-executable>" check
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target kernel-native-core
   DEPENDS
-    lispb
+    lispb-executable
     "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     "${KERNEL_PRODUCTION_DOCUMENT}"
     "${KERNEL_NATIVE_VECTOR_LERP_DOCUMENT}"

@@ -1,9 +1,9 @@
 add_custom_target(check-generated-native-soa-fixture
-  COMMAND "$<TARGET_FILE:lispb>" check
+  COMMAND "$<TARGET_FILE:lispb-executable>" check
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target native-soa-fixture
-  DEPENDS lispb
+  DEPENDS lispb-executable
   VERBATIM
 )
 add_dependencies(check-generated-code check-generated-native-soa-fixture)

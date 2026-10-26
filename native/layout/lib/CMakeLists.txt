@@ -20,21 +20,21 @@ foreach(table IN LISTS layout_analysis_tables)
 endforeach()
 
 add_custom_target(generate-layout-analysis
-  COMMAND "$<TARGET_FILE:lispb>" generate
+  COMMAND "$<TARGET_FILE:lispb-executable>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target layout-analysis
-  DEPENDS lispb
+  DEPENDS lispb-executable
   COMMENT "Generating committed layout analysis tables"
   USES_TERMINAL
   VERBATIM
 )
 add_custom_target(check-generated-layout-analysis
-  COMMAND "$<TARGET_FILE:lispb>" check
+  COMMAND "$<TARGET_FILE:lispb-executable>" check
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target layout-analysis
-  DEPENDS lispb
+  DEPENDS lispb-executable
   COMMENT "Checking committed layout analysis tables"
   USES_TERMINAL
   VERBATIM

@@ -8,12 +8,12 @@ function(add_material_ir name target source artifact_name artifacts_variable)
     OUTPUT "${artifact_path}"
     COMMAND "${CMAKE_COMMAND}" -E make_directory
       "${PROJECT_SOURCE_DIR}/Intermediate/MaterialGen"
-    COMMAND "$<TARGET_FILE:lispb>" generate
+    COMMAND "$<TARGET_FILE:lispb-executable>" generate
       --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
       --build-root "${CMAKE_BINARY_DIR}"
       --target "${target}"
       --depfile "${depfile_path}"
-    DEPENDS lispb "${PROJECT_SOURCE_DIR}/lispb/project.lispb" "${source_path}"
+    DEPENDS lispb-executable "${PROJECT_SOURCE_DIR}/lispb/project.lispb" "${source_path}"
     DEPFILE "${depfile_path}"
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
     COMMENT "Compiling ${name} material IR"
@@ -68,21 +68,21 @@ add_material_ir("celestial analytic" celestial-analytic-material
 add_custom_target(compile-migrated-materials DEPENDS ${MIGRATED_MATERIAL_ARTIFACTS})
 
 add_custom_target(validate-ui-glow-material
-  COMMAND "$<TARGET_FILE:lispb>" validate
+  COMMAND "$<TARGET_FILE:lispb-executable>" validate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target ui-glow-material
-  DEPENDS lispb
+  DEPENDS lispb-executable
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   USES_TERMINAL
   VERBATIM
 )
 add_custom_target(validate-world-soft-target-material
-  COMMAND "$<TARGET_FILE:lispb>" validate
+  COMMAND "$<TARGET_FILE:lispb-executable>" validate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target world-soft-target-material
-  DEPENDS lispb
+  DEPENDS lispb-executable
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   USES_TERMINAL
   VERBATIM

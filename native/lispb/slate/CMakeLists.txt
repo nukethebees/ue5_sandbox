@@ -42,11 +42,11 @@ set(SLATE_COMPILE_HEADERS
 )
 add_custom_command(
   OUTPUT ${SLATE_COMPILE_HEADERS}
-  COMMAND "$<TARGET_FILE:lispb>" generate
+  COMMAND "$<TARGET_FILE:lispb-executable>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target slate-compile-fixture
-  DEPENDS lispb
+  DEPENDS lispb-executable
     "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     "${SLATE_COMPILE_FIXTURE}/widgets.lispb"
   VERBATIM
@@ -66,7 +66,7 @@ set_tests_properties(SlateGeneratedCompileSmoke PROPERTIES LABELS "unit;all;nati
 
 add_test(NAME SlateExpandCli
   COMMAND "${CMAKE_COMMAND}"
-    "-DSLATEC=$<TARGET_FILE:lispb>"
+    "-DSLATEC=$<TARGET_FILE:lispb-executable>"
     "-DFIXTURE=${SLATE_COMPILE_FIXTURE}"
     "-DPROJECT_FILE=${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     "-DBUILD_ROOT=${CMAKE_BINARY_DIR}"
@@ -98,12 +98,12 @@ foreach(document IN LISTS SLATE_CODEGEN_DOCUMENTS)
 endforeach()
 
 add_custom_target(generate-slate-code
-  COMMAND "$<TARGET_FILE:lispb>" generate
+  COMMAND "$<TARGET_FILE:lispb-executable>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target slate-production
   DEPENDS
-    lispb
+    lispb-executable
     "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     ${SLATE_CODEGEN_DEPENDENCIES}
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
@@ -113,12 +113,12 @@ add_custom_target(generate-slate-code
 )
 
 add_custom_target(check-generated-slate-code
-  COMMAND "$<TARGET_FILE:lispb>" check
+  COMMAND "$<TARGET_FILE:lispb-executable>" check
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target slate-production
   DEPENDS
-    lispb
+    lispb-executable
     "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     ${SLATE_CODEGEN_DEPENDENCIES}
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"

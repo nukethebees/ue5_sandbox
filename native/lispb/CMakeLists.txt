@@ -227,12 +227,26 @@ target_link_libraries(lispb-target-compiler
 )
 ioj_enable_warnings(lispb-target-compiler CODEGEN)
 
-add_executable(lispb src/main.cpp)
-target_link_libraries(lispb PRIVATE
-  lispb-target-compiler
-  sandbox::native_defaults
-)
-ioj_enable_warnings(lispb CODEGEN)
+if(IOJ_LISPB_HOST_BUILD)
+  add_executable(lispb-executable)
+  target_sources(lispb-executable
+    PRIVATE
+      src/main.cpp
+  )
+  target_link_libraries(lispb-executable
+    PRIVATE
+      lispb-target-compiler
+      sandbox::native_defaults
+  )
+  set_target_properties(lispb-executable PROPERTIES
+    OUTPUT_NAME lispb
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>"
+  )
+  ioj_enable_warnings(lispb-executable CODEGEN)
+else()
+  include("${PROJECT_SOURCE_DIR}/cmake/lispb_host_tool.cmake")
+endif()
+add_custom_target(lispb DEPENDS lispb-executable)
 
 set(CODEGEN_COMPILE_FIXTURE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tests/compile_fixture")
 set(CODEGEN_COMPILE_FIXTURE_OUTPUT "${CODEGEN_COMPILE_FIXTURE_SOURCE}/generated")
@@ -265,22 +279,22 @@ set(CODEGEN_COMPILE_FIXTURE_SOURCES
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/PlainEnums.cpp"
 )
 add_custom_target(generate-codegen-compile-fixture
-  COMMAND "$<TARGET_FILE:lispb>" generate
+  COMMAND "$<TARGET_FILE:lispb-executable>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target cpp-compile-fixture
-  DEPENDS lispb
+  DEPENDS lispb-executable
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Generating committed C++ codegen fixture"
   USES_TERMINAL
   VERBATIM
 )
 add_custom_target(check-generated-codegen-compile-fixture
-  COMMAND "$<TARGET_FILE:lispb>" check
+  COMMAND "$<TARGET_FILE:lispb-executable>" check
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target cpp-compile-fixture
-  DEPENDS lispb
+  DEPENDS lispb-executable
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Checking committed C++ codegen fixture"
   USES_TERMINAL
@@ -400,32 +414,32 @@ foreach(restriction IN ITEMS COPY DESTRUCTOR DEFAULT)
   set_tests_properties("SingleAllocationRejects${restriction}" PROPERTIES
     LABELS "all;native;codegen;compile-contract;subprocess" RESOURCE_LOCK codegen-negative-build)
 endforeach()
-add_test(NAME CodegenCliRejectsUnknownArgument COMMAND lispb generate --unknown value)
+add_test(NAME CodegenCliRejectsUnknownArgument COMMAND lispb-executable generate --unknown value)
 set_tests_properties(CodegenCliRejectsUnknownArgument PROPERTIES
   LABELS "unit;all;native;codegen"
   WILL_FAIL TRUE
 )
-add_test(NAME CodegenCliRejectsMissingArgumentValue COMMAND lispb generate --target)
+add_test(NAME CodegenCliRejectsMissingArgumentValue COMMAND lispb-executable generate --target)
 set_tests_properties(CodegenCliRejectsMissingArgumentValue PROPERTIES
   LABELS "unit;all;native;codegen"
   WILL_FAIL TRUE
 )
 add_test(NAME CodegenCliRejectsOptionAsArgumentValue
-  COMMAND lispb generate --project --target
+  COMMAND lispb-executable generate --project --target
 )
 set_tests_properties(CodegenCliRejectsOptionAsArgumentValue PROPERTIES
   LABELS "unit;all;native;codegen"
   WILL_FAIL TRUE
 )
 add_test(NAME CodegenCliRejectsDuplicateArguments
-  COMMAND lispb generate --target sandbox-code --target sandbox-code
+  COMMAND lispb-executable generate --target sandbox-code --target sandbox-code
 )
 set_tests_properties(CodegenCliRejectsDuplicateArguments PROPERTIES
   LABELS "unit;all;native;codegen"
   WILL_FAIL TRUE
 )
 add_test(NAME CodegenCliReportsMissingProject
-  COMMAND lispb generate --project missing-project.lispb --target sandbox-code
+  COMMAND lispb-executable generate --project missing-project.lispb --target sandbox-code
 )
 set_tests_properties(CodegenCliReportsMissingProject PROPERTIES
   LABELS "unit;all;native;codegen"
@@ -433,19 +447,19 @@ set_tests_properties(CodegenCliReportsMissingProject PROPERTIES
 )
 
 add_custom_target(generate-code
-  COMMAND "$<TARGET_FILE:lispb>" generate
+  COMMAND "$<TARGET_FILE:lispb-executable>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target compiler-models
-  COMMAND "$<TARGET_FILE:lispb>" generate
+  COMMAND "$<TARGET_FILE:lispb-executable>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target sandbox-code
-  COMMAND "$<TARGET_FILE:lispb>" generate
+  COMMAND "$<TARGET_FILE:lispb-executable>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target native-soa-fixture
-  DEPENDS lispb
+  DEPENDS lispb-executable
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Generating committed Sandbox C++ files"
   USES_TERMINAL
@@ -453,19 +467,19 @@ add_custom_target(generate-code
 )
 
 add_custom_target(check-generated-code
-  COMMAND "$<TARGET_FILE:lispb>" check
+  COMMAND "$<TARGET_FILE:lispb-executable>" check
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target compiler-models
-  COMMAND "$<TARGET_FILE:lispb>" check
+  COMMAND "$<TARGET_FILE:lispb-executable>" check
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target sandbox-code
-  COMMAND "$<TARGET_FILE:lispb>" check
+  COMMAND "$<TARGET_FILE:lispb-executable>" check
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target native-soa-fixture
-  DEPENDS lispb
+  DEPENDS lispb-executable
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Checking committed Sandbox C++ files"
   USES_TERMINAL

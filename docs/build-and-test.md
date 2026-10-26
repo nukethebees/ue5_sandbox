@@ -71,6 +71,14 @@ measurement.
 
 ## Native iteration
 
+Build-time generation and checks use a revision-local Release build of `lispb` and
+its compiler libraries under `<build-dir>/host-tools/lispb`. This is independent of
+the game/library configuration. The generator rebuilds incrementally when its inputs
+change; `cmake --build --preset native --target lispb` builds it explicitly.
+For generator debugging, configure with `-DIOJ_HOST_TOOLS_CONFIGURATION=Debug`;
+restore `Release` afterward. The normal game and compiler-library test targets keep
+their preset's configuration. Checks still verify all generated output on each run.
+
 Build affected targets and select tests by subsystem:
 
 ```powershell
