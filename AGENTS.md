@@ -28,8 +28,11 @@ Unreal Engine 5.8 project.
   raw mutating Git, `.git` edits, environment overrides, aliases, alternate Git executables,
   shell tricks, or other workarounds.
 * Follow these instructions unless explicitly told otherwise. Use the [CMake workflows](#builds).
-* Understand the task, finish implementation and cleanup, format and review, run the smallest useful native/focused
-  validation, fix with focused checks, then report ready. Build and run only what is needed.
+* Work as a pipeline: understand the task, complete all requested implementation and cleanup,
+  review and format, then build affected targets and run the smallest useful validation.
+  Batch fixes exposed by failures before repeating focused checks. Do not interleave partial
+  edits with repeated builds or expand validation without a concrete need. Report ready after
+  the required checks pass.
 * After worktree preparation, build affected targets and run relevant CTest labels. Fast loop:
   `ctest --test-dir out/build/native -L <subsystem> -LE "soak|compile-contract"`.
   Run applicable expensive categories once against the final candidate.
