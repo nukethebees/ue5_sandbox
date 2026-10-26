@@ -1909,6 +1909,105 @@ TEST(SemanticTypeGraph, RejectsPackedValidationAndEncodingMetadataCollisions) {
     }
 }
 
+TEST(SemanticTypeGraph, RejectsInvalidPackedDefaultsAcrossEncodings) {
+    for (auto const body : {"(member value std::uint8_t :default -1)",
+                            "(member value std::int8_t :default 255)",
+                            "(member value @Signed :default 255)",
+                            "(member value @Unsigned :default -1)",
+                            "(member value @Present :default 456)",
+                            "(member value @Sentinel :default 200)",
+                            "(member value @SignedPresent :default 384)",
+                            "(member value @SignedSentinel :default 128)",
+                            "(member value @Child :default 1)",
+                            "(member value @Choices :default 1)",
+                            "(member kind @Kind) (member payload @Choices :tag kind) "
+                            "(member value @Health :default 999)"}) {
+        SCOPED_TRACE(body);
+        lispb::codegen::CompilerTestContext context;
+        auto const source{std::string{R"((module values :header "Values.h"
+          (integer-scalar Health :bit-width 8 :minimum 0 :maximum 100
+            (code Absent :value 255 :sentinel true))
+          (fixed-point Signed :signed true :total-bits 8 :fractional-bits 0)
+          (fixed-point Unsigned :signed false :total-bits 8 :fractional-bits 0)
+          (optional-presence-bit Present :source @Health)
+          (optional-sentinel Sentinel :source @Health :sentinel Absent)
+          (integer-scalar SignedHealth :signed true :bit-width 8 :minimum -100 :maximum 100
+            (code Absent :value -127 :sentinel true))
+          (optional-presence-bit SignedPresent :source @SignedHealth)
+          (optional-sentinel SignedSentinel :source @SignedHealth :sentinel Absent)
+          (record Child (member value @Health))
+          (enum Kind :bit-width 1 (value Child))
+          (union Choices (member child @Child :case Child))
+          (record Value :layout packed )"} +
+                          body + " (projections (cpp))))"};
+        auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
+        EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
+    }
+}
+
+TEST(SemanticTypeGraph, AcceptsValidPackedOptionalAndSignedDefaults) {
+    lispb::codegen::CompilerTestContext context;
+    auto const manifest{lispb::codegen::parse_test_manifest(context, R"(
+      (module values :header "Values.h"
+        (integer-scalar Health :bit-width 8 :minimum 0 :maximum 100
+          (code Absent :value 255 :sentinel true))
+        (integer-scalar SignedHealth :signed true :bit-width 8 :minimum -100 :maximum 100
+          (code Absent :value -128 :sentinel true))
+        (fixed-point Signed :signed true :total-bits 8 :fractional-bits 0)
+        (optional-presence-bit Present :source @Health)
+        (optional-sentinel Sentinel :source @Health :sentinel Absent)
+        (optional-presence-bit SignedPresent :source @SignedHealth)
+        (optional-sentinel SignedSentinel :source @SignedHealth :sentinel Absent)
+        (record Value :layout packed
+          (member signed_value @Signed :default -1)
+          (member absent @Present :default 200)
+          (member present @Present :default 356)
+          (member sentinel @Sentinel :default 255)
+          (member signed_present @SignedPresent :default 511)
+          (member signed_sentinel @SignedSentinel :default 128)
+          (projections (cpp)))))")};
+    auto const graph{resolve_type_graph(manifest)};
+    auto const type{*lispb::codegen::find_test_type(graph, "values", "Value")};
+    EXPECT_TRUE(graph.bit_layout(type).default_raw_value.has_value());
+}
+
+TEST(SemanticTypeGraph, RejectsSignedEnumProjectionInPackedRecord) {
+    lispb::codegen::CompilerTestContext context;
+    auto const manifest{lispb::codegen::parse_test_manifest(context, R"(
+      (module values :header "Values.h"
+        (enum Kind :bit-width 8 (value First) (value Second)
+          (projections (cpp :storage std::int16_t)))
+        (record Value :layout packed (member kind @Kind) (projections (cpp)))))")};
+    EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
+}
+
+TEST(SemanticTypeGraph, PackedEnumProjectionOverridesAuthoredUnderlyingStorage) {
+    lispb::codegen::CompilerTestContext context;
+    auto const manifest{lispb::codegen::parse_test_manifest(context, R"(
+      (module values :header "Values.h"
+        (enum Kind std::int16_t :bit-width 8 (value First) (value Second)
+          (projections (cpp :storage std::uint16_t)))
+        (record Value :layout packed (member kind @Kind) (projections (cpp)))))")};
+    EXPECT_NO_THROW(resolve_type_graph(manifest));
+}
+
+TEST(SemanticTypeGraph, TaggedPackedDefaultsRemainDisabledAfterValidation) {
+    lispb::codegen::CompilerTestContext context;
+    auto const manifest{lispb::codegen::parse_test_manifest(context, R"(
+      (module values :header "Values.h"
+        (integer-scalar Health :bit-width 8 :minimum 0 :maximum 100)
+        (enum Kind :bit-width 1 (value Health))
+        (union Choices (member health @Health :default 42))
+        (record Value :layout packed
+          (member kind @Kind :default 0)
+          (member payload @Choices :tag kind)
+          (member other @Health :default 100)
+          (projections (cpp)))))")};
+    auto const graph{resolve_type_graph(manifest)};
+    auto const type{*lispb::codegen::find_test_type(graph, "values", "Value")};
+    EXPECT_FALSE(graph.bit_layout(type).default_raw_value.has_value());
+}
+
 TEST(SemanticTypeGraph, UnionDefaultsSelectOneCompleteAlternative) {
     lispb::codegen::CompilerTestContext context;
     auto const manifest{lispb::codegen::parse_test_manifest(context, R"(

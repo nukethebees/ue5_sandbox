@@ -593,6 +593,12 @@
     (member prefix @EntityKind)
     (member target @WideEntityId)
     (projections (cpp)))
+  (record PaddedInvalid :layout packed :invalid-value 256
+    (member data @EntityKind)
+    (projections (cpp :storage std::uint16_t)))
+  (record EmbeddedPaddedInvalid :layout packed
+    (member nested @PaddedInvalid)
+    (projections (cpp)))
 
   (record KillEntity (member target @EntityId))
   (record MoveTo (member destination @LocationIndex))

@@ -104,7 +104,13 @@ class BitLayoutResolver {
                 }
                 auto const row{definitions_.enums.index(graph_.definition(placement.type))};
                 auto const domain{definitions_.enums.domain[row]};
-                auto const underlying{definitions_.enums.underlying_type[row]};
+                auto underlying{definitions_.enums.underlying_type[row]};
+                auto const source{graph_.source_declaration(placement.type)};
+                auto const& projection{graph_.declarations().enums.cpp_projection[source]};
+                if (projection && projection->storage) {
+                    underlying =
+                        graph_.resolved(graph_.module(placement.type), *projection->storage);
+                }
                 auto const signed_underlying{
                     is_valid(underlying) &&
                     codegen::detail::packed_signed_width(
@@ -662,10 +668,6 @@ class BitLayoutResolver {
         if (!result.encoded_bits || *result.encoded_bits > 64) {
             return std::nullopt;
         }
-        if (std::ranges::any_of(result.placements,
-                                [](auto const& placement) { return !placement.guards.empty(); })) {
-            return std::nullopt;
-        }
         struct DefaultBits {
             std::uint64_t raw{};
             bool complete{true};
@@ -679,18 +681,16 @@ class BitLayoutResolver {
                 continue;
             }
             auto const kind{graph_.definition(placement.type).kind()};
-            if (kind == TypeDefinitionKind::record || kind == TypeDefinitionKind::union_type) {
-                continue;
-            }
             auto const value{children_.default_value[children_.index(placement.child)]};
             if (!value) {
                 continue;
             }
+            if (kind == TypeDefinitionKind::record || kind == TypeDefinitionKind::union_type) {
+                throw std::invalid_argument{"Packed defaults require a scalar occurrence: " +
+                                            placement.path};
+            }
             any = true;
-            if (placement.bits == 0 || placement.bits > 64 ||
-                (!value->negative &&
-                 !codegen::packed_integer_fits_unsigned(*value, placement.bits)) ||
-                (value->negative && !codegen::packed_integer_fits_signed(*value, placement.bits))) {
+            if (placement.bits == 0 || placement.bits > 64) {
                 throw std::invalid_argument{"Packed default does not fit its encoding: " +
                                             placement.path};
             }
@@ -699,6 +699,10 @@ class BitLayoutResolver {
                 (value->negative ? std::uint64_t{} - value->magnitude : value->magnitude) &
                 mask(placement.bits)};
             defaults[index] = encoded << placement.offset;
+        }
+        if (std::ranges::any_of(result.placements,
+                                [](auto const& placement) { return !placement.guards.empty(); })) {
+            return std::nullopt;
         }
         auto const definition{graph_.definition(type)};
         auto const invalid{
@@ -768,6 +772,22 @@ class BitLayoutResolver {
     void validate_default(BitPlacement const& placement,
                           codegen::PackedIntegerValue const value) const {
         auto const& declarations{graph_.declarations()};
+        auto const definition{graph_.definition(placement.type)};
+        auto const kind{definition.kind()};
+        auto const signed_encoding{
+            kind == TypeDefinitionKind::fixed_point
+                ? definitions_.fixed_points
+                          .signedness[definitions_.fixed_points.index(definition)] != 0
+                : kind == TypeDefinitionKind::external &&
+                      codegen::detail::packed_signed_width(
+                          graph_.strings().view(graph_.cpp_spelling(placement.type)))
+                          .has_value()};
+        if (!integer_domain(graph_, placement.type) &&
+            !(signed_encoding ? codegen::packed_integer_fits_signed(value, placement.bits)
+                              : codegen::packed_integer_fits_unsigned(value, placement.bits))) {
+            throw std::invalid_argument{"Packed default does not fit its scalar encoding: " +
+                                        placement.path};
+        }
         if (auto const domain{integer_domain(graph_, placement.type)}) {
             auto const& scalars{definitions_.integer_scalars};
             auto const row{scalars.index(*domain)};
@@ -787,7 +807,6 @@ class BitLayoutResolver {
                                             placement.path};
             }
         }
-        auto const definition{graph_.definition(placement.type)};
         if (definition.kind() == TypeDefinitionKind::enumeration) {
             auto const domain{definitions_.enums.domain[definitions_.enums.index(definition)]};
             auto const values{graph_.enum_domains().values(domain)};
@@ -824,6 +843,35 @@ class BitLayoutResolver {
                          .reserved_codes[definitions_.linear_quantized.index(definition)])) {
             throw std::invalid_argument{"Packed default names a reserved quantization code: " +
                                         placement.path};
+        }
+        if (kind == TypeDefinitionKind::optional_sentinel ||
+            kind == TypeDefinitionKind::optional_presence_bit) {
+            auto const sentinel{kind == TypeDefinitionKind::optional_sentinel};
+            auto const source{
+                sentinel ? definitions_.optional_sentinels
+                               .source[definitions_.optional_sentinels.index(definition)]
+                         : definitions_.optional_presence_bits
+                               .source[definitions_.optional_presence_bits.index(definition)]};
+            auto const payload_bits{
+                sentinel
+                    ? placement.bits
+                    : definitions_.optional_presence_bits
+                          .payload_bits[definitions_.optional_presence_bits.index(definition)]};
+            auto payload{placement};
+            payload.type = graph_.occurrences().type[graph_.occurrences().index(source)];
+            payload.bits = payload_bits;
+            auto const raw{value.magnitude & mask(payload_bits)};
+            if (!sentinel && (value.magnitude & (std::uint64_t{1} << payload_bits)) == 0) {
+                return;
+            }
+            auto const scalar{*integer_domain(graph_, payload.type)};
+            auto const negative{definitions_.integer_scalars
+                                        .signedness[definitions_.integer_scalars.index(scalar)] !=
+                                    0 &&
+                                (raw & (std::uint64_t{1} << (payload_bits - 1))) != 0};
+            auto const decoded{codegen::PackedIntegerValue::from_parts(
+                negative, negative ? (std::uint64_t{} - raw) & mask(payload_bits) : raw)};
+            validate_default(payload, decoded);
         }
     }
 

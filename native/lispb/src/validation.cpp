@@ -1893,13 +1893,32 @@ class Validator {
                                             "': " + text(name)};
             }
             for (auto const generated_name : generated_cpp_names(declarations_, declaration)) {
-                auto const [existing, inserted]{
-                    generated_names.emplace(prefix + text(generated_name), declaration)};
+                auto const relative_name{text(generated_name)};
+                auto const qualified_name{prefix + relative_name};
+                auto const helper{declaration.kind() != DeclarationKind::soa &&
+                                  relative_name.starts_with("detail::")};
+                auto namespace_collision{packed_helper_namespaces_.contains(qualified_name) &&
+                                         declaration.kind() != DeclarationKind::soa};
+                if (helper) {
+                    auto const scope{prefix + "detail"};
+                    auto const existing_scope{generated_names.find(scope)};
+                    namespace_collision = namespace_collision ||
+                                          (existing_scope != generated_names.end() &&
+                                           existing_scope->second.kind() != DeclarationKind::soa);
+                    packed_helper_namespaces_.insert(scope);
+                    packed_helper_names_.insert(qualified_name);
+                }
+                auto const [existing,
+                            inserted]{generated_names.emplace(qualified_name, declaration)};
                 // Preserve ordinary cross-module ambiguity handling while reserving SoA scopes.
                 auto const soa_collision{!inserted &&
                                          (declaration.kind() == DeclarationKind::soa ||
                                           existing->second.kind() == DeclarationKind::soa)};
-                if (!local_generated_names.insert(generated_name).second || soa_collision) {
+                auto const helper_collision{
+                    !inserted && packed_helper_names_.contains(qualified_name) &&
+                    declaration_name(declarations_, existing->second) != name};
+                if (!local_generated_names.insert(generated_name).second || soa_collision ||
+                    helper_collision || namespace_collision) {
                     throw std::invalid_argument{"Generated C++ name collision in module '" +
                                                 text(settings.name[modules.settings[module]]) +
                                                 "': " + text(generated_name)};
@@ -2154,6 +2173,8 @@ class Validator {
     Declarations& declarations_;
     lispb::Strings& strings_;
     ModuleHandle module_;
+    std::set<std::string> packed_helper_names_;
+    std::set<std::string> packed_helper_namespaces_;
 };
 
 } // namespace

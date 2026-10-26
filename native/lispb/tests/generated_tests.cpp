@@ -987,6 +987,18 @@ TEST(UnifiedPacked, NestedAccessorsUseLogicalWidthAndPreserveOutsideBits) {
     EXPECT_EQ(value.raw_value(), 0xffffff9aabcdef12ULL);
     value.set_target(WideEntityId{0x123456, 0x78});
     EXPECT_EQ(value.raw_value(), 0xffffff7812345612ULL);
+
+    static_assert(sizeof(unified::PaddedInvalid) == 2);
+    static_assert(sizeof(unified::EmbeddedPaddedInvalid) == 1);
+    static_assert(!unified::PaddedInvalid{}.is_valid());
+    constexpr auto embedded{unified::EmbeddedPaddedInvalid{unified::PaddedInvalid{255}}};
+    static_assert(embedded.raw_value() == 255);
+    static_assert(embedded.is_valid());
+    static_assert(embedded.nested().is_valid());
+    auto nested_invalid{unified::EmbeddedPaddedInvalid::from_raw(0)};
+    nested_invalid.set_nested(unified::PaddedInvalid{42});
+    EXPECT_EQ(nested_invalid.raw_value(), 42);
+    EXPECT_TRUE(nested_invalid.is_valid());
 }
 
 TEST(UnifiedPacked, InstructionFactoriesSetTagAndClearInactivePayload) {

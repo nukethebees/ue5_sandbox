@@ -393,6 +393,11 @@ auto generated_cpp_names(Declarations const& declarations, DeclarationHandle dec
     auto text = [&](auto id) { return std::string{strings.view(id)}; };
     auto const id{declaration_name(declarations, declaration)};
     auto const name{text(id)};
+    auto const packed_names = [&]() -> std::vector<StringId> {
+        return {id,
+                strings.intern("detail::" + name + "Base"),
+                strings.intern("detail::" + soa_namespace_name(name) + "_default_raw_value")};
+    };
     switch (declaration.kind()) {
         case DeclarationKind::enumeration:
             return declarations.enums.cpp_projection[declaration]
@@ -405,34 +410,41 @@ auto generated_cpp_names(Declarations const& declarations, DeclarationHandle dec
             if (declarations.records.constraint_policy[declaration]) {
                 return {id, strings.intern(name + "Value")};
             }
+            if (declarations.records.layout[declaration] == LayoutKind::packed) {
+                return packed_names();
+            }
             return {id};
         case DeclarationKind::union_type:
-            return declarations.unions.cpp_projection[declaration] ? std::vector<StringId>{id}
-                                                                   : std::vector<StringId>{};
+            if (!declarations.unions.cpp_projection[declaration]) {
+                return {};
+            }
+            return declarations.unions.layout[declaration] == LayoutKind::packed
+                     ? packed_names()
+                     : std::vector<StringId>{id};
         case DeclarationKind::static_table:
         case DeclarationKind::facade:
             return {id};
         case DeclarationKind::integer_scalar:
             return declarations.integer_scalars.cpp_projection[declaration]
-                     ? std::vector<StringId>{id}
+                     ? packed_names()
                      : std::vector<StringId>{};
         case DeclarationKind::fixed_point:
-            return declarations.fixed_points.cpp_projection[declaration] ? std::vector<StringId>{id}
+            return declarations.fixed_points.cpp_projection[declaration] ? packed_names()
                                                                          : std::vector<StringId>{};
         case DeclarationKind::linear_quantized:
             return declarations.linear_quantizeds.cpp_projection[declaration]
-                     ? std::vector<StringId>{id}
+                     ? packed_names()
                      : std::vector<StringId>{};
         case DeclarationKind::mini_float:
-            return declarations.mini_floats.cpp_projection[declaration] ? std::vector<StringId>{id}
+            return declarations.mini_floats.cpp_projection[declaration] ? packed_names()
                                                                         : std::vector<StringId>{};
         case DeclarationKind::optional_sentinel:
             return declarations.optional_sentinels.cpp_projection[declaration]
-                     ? std::vector<StringId>{id}
+                     ? packed_names()
                      : std::vector<StringId>{};
         case DeclarationKind::optional_presence_bit:
             return declarations.optional_presence_bits.cpp_projection[declaration]
-                     ? std::vector<StringId>{id}
+                     ? packed_names()
                      : std::vector<StringId>{};
         case DeclarationKind::soa:
             return soa_generated_cpp_names(declarations, declaration);

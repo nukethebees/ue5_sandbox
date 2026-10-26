@@ -1040,8 +1040,9 @@ class PackedEmitter {
         }
         auto result{union_ ? any(checks) : all(checks)};
         if (parent) {
-            if (auto const invalid{record_invalid(child_type)}) {
-                auto const& placement{layout_.placements[*parent]};
+            auto const& placement{layout_.placements[*parent]};
+            if (auto const invalid{record_invalid(child_type)};
+                invalid && *invalid <= mask(placement.bits)) {
                 auto const constant_{constant(field_metadata_[*parent],
                                               placement.path + "_invalid_value",
                                               "storage_type",

@@ -279,6 +279,94 @@ struct NestedId : detail::NestedIdBase {
 
 static_assert(ioj::valid_packed_value_layout<NestedId>());
 
+struct PaddedInvalid;
+
+namespace detail {
+inline constexpr std::uint16_t padded_invalid_default_raw_value{256};
+
+using PaddedInvalidBase =
+    ioj::PackedValueBase<PaddedInvalid,
+                         ioj::PackedStorage<std::uint16_t, 8>{padded_invalid_default_raw_value}>;
+} // namespace detail
+
+struct PaddedInvalid : detail::PaddedInvalidBase {
+  public:
+    // Storage
+    using Base = detail::PaddedInvalidBase;
+    using packed_integer_tag = ioj::packed::integer_tag;
+    static constexpr storage_type invalid_value{storage.default_raw_value};
+
+    // data
+    static constexpr ioj::PackedField<storage_type, std::uint8_t, 0, 8> data_layout{};
+
+    constexpr PaddedInvalid() noexcept = default;
+    constexpr explicit PaddedInvalid(decltype(data_layout)::value_type const data_value) noexcept {
+        value_ = 0;
+        insert<decltype(data_layout)>(data_value);
+        assert((value_ != invalid_value));
+    }
+
+    [[nodiscard]] constexpr auto operator<=>(PaddedInvalid const&) const noexcept = default;
+
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return value_ != invalid_value;
+    }
+    [[nodiscard]] constexpr auto data() const noexcept -> decltype(data_layout)::value_type {
+        return extract<decltype(data_layout)>();
+    }
+    constexpr void set_data(decltype(data_layout)::value_type const value) noexcept {
+        insert<decltype(data_layout)>(value);
+    }
+};
+
+static_assert(ioj::valid_packed_value_layout<PaddedInvalid>());
+
+struct EmbeddedPaddedInvalid;
+
+namespace detail {
+using EmbeddedPaddedInvalidBase =
+    ioj::PackedValueBase<EmbeddedPaddedInvalid, ioj::PackedStorage<std::uint8_t, 8>{0}>;
+} // namespace detail
+
+struct EmbeddedPaddedInvalid : detail::EmbeddedPaddedInvalidBase {
+  public:
+    // Storage
+    using Base = detail::EmbeddedPaddedInvalidBase;
+    using packed_integer_tag = ioj::packed::integer_tag;
+
+    // nested
+    static constexpr ioj::PackedField<storage_type, storage_type, 0, 8> nested_layout{};
+
+    // nested_data
+    static constexpr ioj::PackedField<storage_type, std::uint8_t, 0, 8> nested_data_layout{};
+
+    constexpr EmbeddedPaddedInvalid() noexcept = default;
+    constexpr explicit EmbeddedPaddedInvalid(PaddedInvalid const nested_value) noexcept {
+        assert((nested_value.is_valid()));
+        insert<decltype(nested_layout)>(static_cast<storage_type>(nested_value.raw_value()));
+    }
+
+    [[nodiscard]] constexpr auto operator<=>(EmbeddedPaddedInvalid const&) const noexcept = default;
+
+    [[nodiscard]] constexpr auto nested() const noexcept -> PaddedInvalid {
+        return PaddedInvalid::from_raw(
+            static_cast<PaddedInvalid::storage_type>(extract<decltype(nested_layout)>()));
+    }
+    constexpr void set_nested(PaddedInvalid const value) noexcept {
+        assert((value.is_valid()));
+        insert<decltype(nested_layout)>(static_cast<storage_type>(value.raw_value()));
+    }
+    [[nodiscard]] constexpr auto nested_data() const noexcept
+        -> decltype(nested_data_layout)::value_type {
+        return extract<decltype(nested_data_layout)>();
+    }
+    constexpr void set_nested_data(decltype(nested_data_layout)::value_type const value) noexcept {
+        insert<decltype(nested_data_layout)>(value);
+    }
+};
+
+static_assert(ioj::valid_packed_value_layout<EmbeddedPaddedInvalid>());
+
 struct Target;
 
 namespace detail {

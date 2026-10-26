@@ -117,6 +117,15 @@ TEST(PackedRecord, QualifiedLogicalReferencesNeedNoCppSpelling) {
     auto const& layout{graph.bit_layout(*find_test_type(graph, "owners", "Handle"))};
     EXPECT_EQ(layout.encoded_bits, 24U);
     EXPECT_EQ(placement(layout, "target_index").offset, 0U);
+
+    CompilerTestContext duplicate_context;
+    auto const duplicates{parse_test_manifest(duplicate_context, R"(
+      (module first :header "First.h" :namespace shared
+        (integer-scalar Value :bit-width 8 (projections (cpp))))
+      (module second :header "Second.h" :namespace shared
+        (integer-scalar Value :bit-width 16 (projections (cpp))))
+    )")};
+    EXPECT_NO_THROW(schema::resolve_type_graph(duplicates));
 }
 
 TEST(PackedRecord, ProjectedDescendantsAreDefinedBeforeOwnersAcrossLogicalIntermediates) {
@@ -418,6 +427,25 @@ INSTANTIATE_TEST_SUITE_P(
       (record R :layout packed (member raw_value @Byte) (projections (cpp)))))",
         R"((module m :header "M.h" (integer-scalar Byte :bit-width 8)
       (record R :layout packed (member from_canonical_raw @Byte) (projections (cpp)))))",
+        R"((module m :header "M.h"
+      (record FooBar :layout packed (member data std::uint8_t :default 1) (projections (cpp)))
+      (record Foo_Bar :layout packed (member data std::uint8_t :default 2) (projections (cpp)))))",
+        R"((module m :header "M.h"
+      (integer-scalar detail :bit-width 8 (projections (cpp)))))",
+        R"((module m :header "M.h"
+      (record detail (member data std::uint8_t) (projections (cpp)))
+      (integer-scalar Byte :bit-width 8 (projections (cpp)))))",
+        R"((module m :header "M.h"
+      (integer-scalar Byte :bit-width 8 (projections (cpp)))
+      (record detail (member data std::uint8_t) (projections (cpp)))))",
+        R"((module a :header "A.h" :namespace shared
+      (record FooBar :layout packed (member data std::uint8_t :default 1) (projections (cpp))))
+      (module b :header "B.h" :namespace shared
+      (record Foo_Bar :layout packed (member data std::uint8_t :default 2) (projections (cpp)))))",
+        R"((module a :header "A.h" :namespace shared::detail
+      (record ByteBase (member data std::uint8_t) (projections (cpp))))
+      (module b :header "B.h" :namespace shared
+      (integer-scalar Byte :bit-width 8 (projections (cpp)))))",
         R"((module m :header "M.h" (integer-scalar Byte :bit-width 8) (record Nested (member b @Byte))
       (record R :layout packed (member a @Nested) (member a_b @Byte) (projections (cpp)))))",
         R"((module m :header "M.h" (integer-scalar Byte :bit-width 8)
