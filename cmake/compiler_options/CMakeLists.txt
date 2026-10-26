@@ -103,7 +103,7 @@ if(IOJ_MSVC_FRONTEND)
   target_compile_options(ioj_arch_avx512 INTERFACE /arch:AVX512)
 
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    target_compile_options(ioj_fp_precise INTERFACE /clang:-ffp-contract=off)
+    target_compile_options(ioj_fp_precise INTERFACE "SHELL:-Xclang -ffp-contract=off")
   else()
     target_compile_options(ioj_fp_precise INTERFACE /fp:precise)
   endif()

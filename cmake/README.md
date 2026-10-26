@@ -19,6 +19,15 @@ a build tree. Leave it unset to use LLVM tools from PATH. A set root restricts d
 its `bin` directory; missing tools are errors. Configured tests/tools receive the captured
 selection explicitly, independent of later shell changes.
 
+Clang-cl presets use ccache through CMake's standard C/C++ compiler launcher variables.
+Install ccache on PATH; its default cache directory and user size settings are respected.
+`SCCACHE_CACHE_SIZE` does not configure ccache; use `CCACHE_MAXSIZE=100G` for the same limit.
+Override `CMAKE_C_COMPILER_LAUNCHER` and `CMAKE_CXX_COMPILER_LAUNCHER` with empty strings
+to disable caching. Unreal compilation remains managed by UBT/UBA.
+C++ launchers enable ccache's required `pch_defines,time_macros` PCH settings; avoid
+time-dependent macros in precompiled headers. Clang-cl uses `/showIncludes` dependency
+tracking and timestamp-free PCHs so both PCH creation and consuming objects can be cached.
+
 The CMake modules in this directory own compiler warnings, sanitizers, precompiled headers, Unreal
 build/packaging integration. See [Build and test](../docs/build-and-test.md)
 for the supported workflows, [Benchmarks](../docs/benchmarks.md) for exclusive measurements, and

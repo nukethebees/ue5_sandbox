@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 4.4.2)
 
 
 
-project(SandboxUnrealBuild LANGUAGES CXX)
+project(SandboxUnrealBuild LANGUAGES C CXX)
+include(cmake/compiler_cache.cmake)
 enable_testing()
 include(cmake/test_environment.cmake)
 

@@ -29,7 +29,9 @@
       },
       "toolchainFile": "${sourceDir}/cmake/toolchains/windows-clang-cl.cmake",
       "cacheVariables": {
-        "UE_PLATFORM": "Win64"
+        "UE_PLATFORM": "Win64",
+        "CMAKE_C_COMPILER_LAUNCHER": "ccache",
+        "CMAKE_CXX_COMPILER_LAUNCHER": "ccache;sloppiness=pch_defines,time_macros"
       },
       "vendor": {
         "microsoft.com/VisualStudioSettings/CMake/1.0": {
