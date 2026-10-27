@@ -37,6 +37,7 @@ target_link_libraries(kernel-codegen-tests PRIVATE
   GTest::gtest_main
   sandbox::native_defaults
   ioj::test_pch
+  ioj::codegen_pch
 )
 ioj_enable_warnings(kernel-codegen-tests CODEGEN)
 

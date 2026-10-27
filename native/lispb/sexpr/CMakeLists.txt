@@ -29,6 +29,8 @@ target_include_directories(lispb-sexpr-output
 target_link_libraries(lispb-sexpr-output
   PUBLIC
     sandbox::native_defaults
+  PRIVATE
+    ioj::codegen_pch
 )
 ioj_enable_warnings(lispb-sexpr-output CODEGEN)
 ioj_apply_native_abi(lispb-sexpr-output)
@@ -58,6 +60,7 @@ target_link_libraries(lispb-syntax
     native-core-headers
   PRIVATE
     lispb-strings
+    ioj::codegen_pch
 )
 ioj_enable_warnings(lispb-syntax CODEGEN)
 
@@ -71,6 +74,8 @@ target_link_libraries(lispb-syntax-tests PRIVATE
   lispb-syntax
   GTest::gtest_main
   sandbox::native_defaults
+  ioj::test_pch
+  ioj::codegen_pch
 )
 ioj_enable_warnings(lispb-syntax-tests CODEGEN)
 add_test(NAME LispbSyntaxTests COMMAND lispb-syntax-tests)

@@ -36,6 +36,7 @@ target_link_libraries(lispb-output
     sandbox::native_defaults
   PRIVATE
     lispb-paths
+    ioj::codegen_pch
 )
 ioj_enable_warnings(lispb-output CODEGEN)
 
@@ -55,6 +56,7 @@ target_link_libraries(lispb-project
     lispb-paths
     lispb-schema
     lispb-syntax
+    ioj::codegen_pch
 )
 ioj_enable_warnings(lispb-project CODEGEN)
 
@@ -157,6 +159,7 @@ target_link_libraries(lispb-schema
   PRIVATE
     lispb-paths
     lispb-sexpr-output
+    ioj::codegen_pch
 )
 ioj_enable_warnings(lispb-schema CODEGEN)
 
@@ -224,6 +227,8 @@ target_link_libraries(lispb-target-compiler
     lispb-project
     material-gen
     slate-codegen-lib
+  PRIVATE
+    ioj::codegen_pch
 )
 ioj_enable_warnings(lispb-target-compiler CODEGEN)
 
@@ -364,6 +369,7 @@ target_link_libraries(codegen-tests PRIVATE
   GTest::gtest_main
   sandbox::native_defaults
   ioj::test_pch
+  ioj::codegen_pch
 )
 ioj_enable_warnings(codegen-tests CODEGEN)
 target_compile_definitions(codegen-tests PRIVATE
