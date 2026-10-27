@@ -5,15 +5,20 @@ param(
     [string]$LLVMSource,
     [string]$BuildDir,
     [string]$LLVMRoot = $env:LLVM_ROOT,
+    [string]$BootstrapRoot,
     [ValidateRange(1, 256)]
     [int]$Jobs = 24,
     [switch]$TidyOnly,
+    [switch]$CompilerOnly,
     [switch]$Install
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-$revision = 'e0b3e4c82911376fcb2dfcbc4a3dd3f4f5891aba'
+$revision = '3c3e1eeb0ae7030396f01080b4ce520b181406a8'
+if ($TidyOnly -and $CompilerOnly) {
+    throw '-TidyOnly and -CompilerOnly cannot be combined.'
+}
 $invocationDirectory = (Get-Location -PSProvider FileSystem).ProviderPath
 if ([string]::IsNullOrWhiteSpace($LLVMRoot)) {
     $installedClang = Get-Command clang-cl.exe -CommandType Application -ErrorAction SilentlyContinue
@@ -38,11 +43,13 @@ if ([string]::IsNullOrWhiteSpace($BuildDir)) {
         if (-not (Test-Path -LiteralPath $cache -PathType Leaf)) { continue }
         $cacheSource = $null
         $cacheInstall = $null
+        $cacheLto = $null
         foreach ($line in Get-Content -LiteralPath $cache) {
             if ($line -match '^CMAKE_HOME_DIRECTORY:[^=]+=(.+)$') { $cacheSource = $Matches[1] }
             if ($line -match '^CMAKE_INSTALL_PREFIX:[^=]+=(.+)$') { $cacheInstall = $Matches[1] }
+            if ($line -match '^LLVM_ENABLE_LTO:[^=]+=(.+)$') { $cacheLto = $Matches[1] }
         }
-        if ($cacheSource -and $cacheInstall -and
+        if ($cacheSource -and $cacheInstall -and $cacheLto -eq 'Thin' -and
             [System.IO.Path]::GetFullPath($cacheSource) -eq (Join-Path $LLVMSource 'llvm') -and
             (!$LLVMRoot -or [System.IO.Path]::GetFullPath($cacheInstall) -eq $LLVMRoot)) {
             $directory.FullName
@@ -88,6 +95,16 @@ if ($env:VSCMD_ARG_HOST_ARCH -ne 'x64' -or $env:VSCMD_ARG_TGT_ARCH -ne 'x64' -or
     $env:WindowsSDKVersion -notmatch '^10\.0\.22621\.0[\\/]?$') {
     throw 'Pass -VSCommonTools pointing to Common7/Tools with MSVC 14.50.35717 and Windows SDK 10.0.22621.0 installed, or load that x64 developer environment first.'
 }
+if ([string]::IsNullOrWhiteSpace($BootstrapRoot)) {
+    $BootstrapRoot = Join-Path $env:VCINSTALLDIR 'Tools/Llvm/x64'
+}
+$BootstrapRoot = [System.IO.Path]::GetFullPath($BootstrapRoot, $invocationDirectory)
+foreach ($tool in @('clang-cl.exe', 'lld-link.exe', 'llvm-lib.exe', 'llvm-ranlib.exe')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $BootstrapRoot "bin/$tool") -PathType Leaf)) {
+        throw "Bootstrap toolchain is missing $tool under $BootstrapRoot."
+    }
+}
+Write-Host "Bootstrap LLVM: $BootstrapRoot"
 # Each patch is independently either pristine or fully applied.
 $patches = @(
     '0001-add-ioj-clang-tidy-subdirectory.patch',
@@ -140,8 +157,16 @@ $runtimeTools = @(
 ) -join ';'
 $configureArgs = @(
     '-S', (Join-Path $LLVMSource 'llvm'), '-B', $BuildDir, '-G', 'Ninja',
-    '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_C_COMPILER=cl', '-DCMAKE_CXX_COMPILER=cl',
-    '-DLLVM_ENABLE_PROJECTS=clang;clang-tools-extra', '-DLLVM_TARGETS_TO_BUILD=X86',
+    '-DCMAKE_BUILD_TYPE=Release',
+    "-DCMAKE_C_COMPILER:FILEPATH=$(Join-Path $BootstrapRoot 'bin/clang-cl.exe')",
+    "-DCMAKE_CXX_COMPILER:FILEPATH=$(Join-Path $BootstrapRoot 'bin/clang-cl.exe')",
+    "-DCMAKE_LINKER:FILEPATH=$(Join-Path $BootstrapRoot 'bin/lld-link.exe')",
+    "-DCMAKE_AR:FILEPATH=$(Join-Path $BootstrapRoot 'bin/llvm-lib.exe')",
+    "-DCMAKE_RANLIB:FILEPATH=$(Join-Path $BootstrapRoot 'bin/llvm-ranlib.exe')",
+    '-DCMAKE_C_FLAGS_INIT=/clang:-march=native', '-DCMAKE_CXX_FLAGS_INIT=/clang:-march=native',
+    '-DLLVM_ENABLE_LTO=Thin', '-DLLVM_PARALLEL_LINK_JOBS=1',
+    '-DLLVM_ENABLE_PROJECTS=clang;clang-tools-extra;lld', '-DLLVM_TARGETS_TO_BUILD=X86',
+    '-DCLANG_ENABLE_CIR=OFF',
     '-DLLVM_ENABLE_RUNTIMES=compiler-rt', '-DLLVM_ENABLE_PER_TARGET_RUNTIME_DIR=OFF',
     "-DBUILTINS_CMAKE_ARGS:STRING=$runtimeTools", "-DRUNTIMES_CMAKE_ARGS:STRING=$runtimeTools",
     '-DCOMPILER_RT_DEFAULT_TARGET_ONLY=ON', '-DCOMPILER_RT_SANITIZERS_TO_BUILD=asan',
@@ -166,37 +191,41 @@ if ($LASTEXITCODE -ne 0) { throw 'LLVM configure failed.' }
 [string[]]$buildTargets = if ($TidyOnly) {
     @('clang-tidy')
 } else {
-    @('clang', 'clang-format', 'clang-tidy', 'clang-scan-deps', 'llvm-ar', 'llvm-nm', 'llvm-readobj', 'runtimes')
+    @('clang', 'clang-format', 'clang-scan-deps', 'llvm-ar', 'llvm-lib', 'llvm-nm', 'llvm-readobj', 'lld')
+    if (-not $CompilerOnly) { @('clang-tidy', 'runtimes') }
 }
 & cmake --build $BuildDir --target @buildTargets --parallel $Jobs
 if ($LASTEXITCODE -ne 0) { throw 'LLVM toolchain build failed.' }
 
-$checks = & (Join-Path $BuildDir 'bin/clang-tidy.exe') '-checks=-*,ioj-*' -list-checks
-if ($LASTEXITCODE -ne 0) { throw 'Cannot query the built clang-tidy checks.' }
-foreach ($check in @('ioj-loop-condition-call', 'ioj-loop-view-construction',
-        'ioj-loop-view-accessor-call', 'ioj-no-pair', 'ioj-no-tuple')) {
-    if (($checks -join "`n") -notmatch "(?m)^\s+$check\s*$") {
-        throw "The built clang-tidy did not register $check."
+if (-not $CompilerOnly) {
+    $checks = & (Join-Path $BuildDir 'bin/clang-tidy.exe') '-checks=-*,ioj-*' -list-checks
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot query the built clang-tidy checks.' }
+    foreach ($check in @('ioj-loop-condition-call', 'ioj-loop-view-construction',
+            'ioj-loop-view-accessor-call', 'ioj-no-pair', 'ioj-no-tuple')) {
+        if (($checks -join "`n") -notmatch "(?m)^\s+$check\s*$") {
+            throw "The built clang-tidy did not register $check."
+        }
     }
-}
-$checks
-$projectSource = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../..')).Path
-Push-Location -LiteralPath $projectSource
-try {
-    foreach ($test in Get-ChildItem -LiteralPath (Join-Path $checkerSource 'tests') -Filter 'test_*.py') {
-        & python $test.FullName --clang-tidy (Join-Path $BuildDir 'bin/clang-tidy.exe')
-        if ($LASTEXITCODE -ne 0) { throw "IOJ clang-tidy test $($test.Name) failed; installation is blocked." }
+    $checks
+    $projectSource = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../..')).Path
+    Push-Location -LiteralPath $projectSource
+    try {
+        foreach ($test in Get-ChildItem -LiteralPath (Join-Path $checkerSource 'tests') -Filter 'test_*.py') {
+            & python $test.FullName --clang-tidy (Join-Path $BuildDir 'bin/clang-tidy.exe')
+            if ($LASTEXITCODE -ne 0) { throw "IOJ clang-tidy test $($test.Name) failed; installation is blocked." }
+        }
+    } finally {
+        Pop-Location
     }
-} finally {
-    Pop-Location
 }
 
 if ($Install) {
     $installComponents = if ($TidyOnly) {
         @('clang-tidy')
     } else {
-        @('clang', 'clang-resource-headers', 'clang-format', 'clang-tidy', 'clang-scan-deps',
-            'llvm-ar', 'llvm-lib', 'llvm-nm', 'llvm-readobj', 'builtins', 'runtimes')
+        @('clang', 'clang-resource-headers', 'clang-format', 'clang-scan-deps',
+            'llvm-ar', 'llvm-lib', 'llvm-nm', 'llvm-readobj', 'lld')
+        if (-not $CompilerOnly) { @('clang-tidy', 'builtins', 'runtimes') }
     }
     foreach ($component in $installComponents) {
         & cmake --install $BuildDir --component $component
@@ -205,8 +234,9 @@ if ($Install) {
     $installedTools = if ($TidyOnly) {
         @('clang-tidy.exe')
     } else {
-        @('clang.exe', 'clang-cl.exe', 'clang-format.exe', 'clang-tidy.exe', 'clang-scan-deps.exe',
-            'run-clang-tidy', 'llvm-ar.exe', 'llvm-lib.exe', 'llvm-nm.exe', 'llvm-readobj.exe')
+        @('clang.exe', 'clang-cl.exe', 'clang-format.exe', 'clang-scan-deps.exe',
+            'llvm-ar.exe', 'llvm-lib.exe', 'llvm-nm.exe', 'llvm-readobj.exe', 'lld.exe', 'lld-link.exe')
+        if (-not $CompilerOnly) { @('clang-tidy.exe', 'run-clang-tidy') }
     }
     foreach ($tool in $installedTools) {
         if (-not (Test-Path -LiteralPath (Join-Path $LLVMRoot "bin/$tool") -PathType Leaf)) {
@@ -225,6 +255,10 @@ if ($Install) {
     $resourceDirectory = & (Join-Path $LLVMRoot 'bin/clang.exe') -print-resource-dir
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath (Join-Path $resourceDirectory 'include/stddef.h'))) {
         throw 'Installed toolchain is missing Clang resource headers.'
+    }
+    if ($CompilerOnly) {
+        Write-Host "Verified compiler installation (tidy and runtimes deferred): $LLVMRoot"
+        return
     }
     foreach ($runtime in @('clang_rt.asan_dynamic-x86_64.dll', 'clang_rt.asan_dynamic-x86_64.lib',
             'clang_rt.asan_dynamic_runtime_thunk-x86_64.lib')) {

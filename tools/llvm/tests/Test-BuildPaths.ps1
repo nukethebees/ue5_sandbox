@@ -63,7 +63,7 @@ $discoveryInstall = Join-Path $discoveryRoot 'installed'
 $discoveryBuild = Join-Path $discoveryRoot 'existing build'
 $secondBuild = Join-Path $discoveryRoot 'second build'
 $null = New-Item -ItemType Directory -Path $discoverySource, $discoveryInstall, $discoveryBuild -Force
-$cacheText = "CMAKE_HOME_DIRECTORY:INTERNAL=$discoverySource/llvm`nCMAKE_INSTALL_PREFIX:PATH=$discoveryInstall"
+$cacheText = "CMAKE_HOME_DIRECTORY:INTERNAL=$discoverySource/llvm`nCMAKE_INSTALL_PREFIX:PATH=$discoveryInstall`nLLVM_ENABLE_LTO:STRING=Thin"
 Set-Content -LiteralPath (Join-Path $discoveryBuild 'CMakeCache.txt') -Value $cacheText
 $previousRoot = $env:LLVM_ROOT
 try {
@@ -94,12 +94,17 @@ Write-Host 'LLVM defaults reuse a matching build and reject ambiguous matches.'
 function git {
     if ($args -contains 'rev-parse') {
         $global:LASTEXITCODE = 0
-        return 'e0b3e4c82911376fcb2dfcbc4a3dd3f4f5891aba'
+        return '3c3e1eeb0ae7030396f01080b4ce520b181406a8'
     }
     throw 'LLVM environment probe reached patch check'
 }
 
 $commonTools = Join-Path $FixtureRoot 'VS & tools % literal/Common7/Tools'
+$bootstrapDirectory = Join-Path $FixtureRoot 'bootstrap'
+$null = New-Item -ItemType Directory -Path (Join-Path $bootstrapDirectory 'bin') -Force
+foreach ($tool in @('clang-cl.exe', 'lld-link.exe', 'llvm-lib.exe', 'llvm-ranlib.exe')) {
+    $null = New-Item -ItemType File -Path (Join-Path $bootstrapDirectory "bin/$tool") -Force
+}
 $null = New-Item -ItemType Directory -Path $commonTools -Force
 $setupScript = Join-Path $commonTools 'VsDevCmd.bat'
 $environmentNames = @('VSCMD_ARG_HOST_ARCH', 'VSCMD_ARG_TGT_ARCH', 'VCToolsVersion',
@@ -122,7 +127,7 @@ set IOJ_LLVM_SETUP_PROBE=loaded=with equals
 exit /b 0
 '@
     try {
-        . $buildScript $commonTools -LLVMSource $sourceDirectory -BuildDir $discoveryBuild -LLVMRoot $discoveryInstall
+        . $buildScript $commonTools -LLVMSource $sourceDirectory -BuildDir $discoveryBuild -LLVMRoot $discoveryInstall -BootstrapRoot $bootstrapDirectory
         throw 'Environment probe did not stop at the patch check'
     } catch {
         if ($_.Exception.Message -ne 'LLVM environment probe reached patch check') { throw }
@@ -148,7 +153,7 @@ Write-Host 'Common7/Tools initializes the pinned environment; setup failures sto
 function git {
     $global:LASTEXITCODE = 0
     if ($args -contains 'rev-parse') {
-        return 'e0b3e4c82911376fcb2dfcbc4a3dd3f4f5891aba'
+        return '3c3e1eeb0ae7030396f01080b4ce520b181406a8'
     }
 }
 
@@ -177,7 +182,7 @@ try {
     foreach ($tidyOnly in @($false, $true)) {
         $observedBuildArguments = @()
         try {
-            . $buildScript -LLVMSource $sourceDirectory -BuildDir $discoveryBuild -LLVMRoot $discoveryInstall -TidyOnly:$tidyOnly
+            . $buildScript -LLVMSource $sourceDirectory -BuildDir $discoveryBuild -LLVMRoot $discoveryInstall -BootstrapRoot $bootstrapDirectory -TidyOnly:$tidyOnly
             throw 'Target probe did not stop at the build'
         } catch {
             if ($_.Exception.Message -ne 'LLVM target probe reached build') { throw }
@@ -185,7 +190,7 @@ try {
         $expectedTargets = if ($tidyOnly) {
             'clang-tidy'
         } else {
-            'clang clang-format clang-tidy clang-scan-deps llvm-ar llvm-nm llvm-readobj runtimes'
+            'clang clang-format clang-scan-deps llvm-ar llvm-lib llvm-nm llvm-readobj lld clang-tidy runtimes'
         }
         if (($observedBuildArguments -join ' ') -ne "--build $discoveryBuild --target $expectedTargets --parallel 24") {
             throw "Unexpected LLVM build command: $observedBuildArguments"

@@ -5,8 +5,9 @@ standard clang-tidy checks when IOJ checks are absent. They never build or repai
 
 ## Requirements
 
-- LLVM 24.0.0git checkout at `e0b3e4c82911376fcb2dfcbc4a3dd3f4f5891aba`.
-- Windows x64, MSVC 14.50.35717, Windows SDK 10.0.22621.0, CMake, Ninja, Git, Python and PowerShell.
+- LLVM 24.0.0git checkout at `3c3e1eeb0ae7030396f01080b4ce520b181406a8`.
+- Windows x64, MSVC 14.50.35717, Windows SDK 10.0.22621.0, Visual Studio's Clang/LLD,
+  CMake, Ninja, Git, Python and PowerShell.
 
 ## Build and install
 
@@ -17,9 +18,12 @@ checkout beside that installation, pass Visual Studio's `Common7/Tools` director
 ./tools/llvm/build.ps1 'C:/Program Files/Microsoft Visual Studio/18/Community/Common7/Tools' -Install
 ```
 
-The script loads `VsDevCmd.bat` with the pinned x64 compiler and SDK. `-LLVMRoot` defaults to
+The script loads `VsDevCmd.bat` with the pinned x64 MSVC libraries and SDK, then uses Clang/LLD
+from Visual Studio's `VC/Tools/Llvm/x64`. `-BootstrapRoot` can select another matching Clang/LLD
+installation containing `bin/clang-cl.exe`, `lld-link.exe`, `llvm-lib.exe` and `llvm-ranlib.exe`.
+`-LLVMRoot` defaults to
 `LLVM_ROOT`, then the installation containing `clang-cl.exe` on PATH. `-LLVMSource` defaults to
-the sibling `llvm-project` checkout. `-BuildDir` reuses a sibling CMake build with matching source
+the sibling `llvm-project` checkout. `-BuildDir` reuses a sibling ThinLTO CMake build with matching source
 and installation paths, or defaults to sibling `build` if none exists; ambiguous matches require
 an explicit `-BuildDir`. The selected paths are printed before building.
 
@@ -34,18 +38,26 @@ accepts already-applied patches, and rejects unrelated source edits. It does not
 When updating the pin, first reverse the owned patches, update the clean checkout explicitly, and
 review whether each patch is still needed.
 
-The configuration is Ninja, X86, Release, assertions off, PDBs on, EH/RTTI off, with `clang` and
-`clang-tools-extra`. The newly built Clang builds `compiler-rt` builtins and Windows x64 ASAN
+The configuration is Ninja, X86, Release, ThinLTO, assertions off, PDBs on, EH/RTTI off, with
+`clang`, `clang-tools-extra` and `lld`. The tools themselves target the build machine's CPU
+(`-march=native`), including AVX-512 on the Ryzen 9950X3D. This setting does not change the
+game's target flags; the resulting tools require a CPU supporting the selected instructions.
+ThinLTO links run one at a time, each using LLD's parallel backend and LLVM's build-local LTO cache.
+The optional ClangIR/MLIR pipeline is disabled.
+The newly built Clang builds `compiler-rt` builtins and Windows x64 ASAN
 through `LLVM_ENABLE_RUNTIMES`, including upstream's supporting sanitizer libraries.
 Profiling, XRay, libFuzzer and ORC runtimes are disabled.
 Runtime builds explicitly use the pinned MSVC linker and SDK manifest tool.
 `LLVM_ENABLE_PLUGINS`, `LLVM_EXPORT_SYMBOLS_FOR_PLUGINS` and
 `CLANG_PLUGIN_SUPPORT` are off. Examples, benchmarks and extra-tools tests are disabled.
 
-The build targets are `clang`, `clang-format`, `clang-tidy`, `clang-scan-deps`, `llvm-ar`, `llvm-nm`, `llvm-readobj`
-and `runtimes`, including their dependencies. Before installation, the script checks IOJ
+The build targets are `clang`, `clang-format`, `clang-tidy`, `clang-scan-deps`, `llvm-ar`, `llvm-lib`, `llvm-nm`, `llvm-readobj`,
+`lld` and `runtimes`, including their dependencies. Before installation, the script checks IOJ
 registration and runs the semantic and nested-policy tests against the newly built executable.
 A failed check blocks installation.
+
+Use `-CompilerOnly` for intermediate compiler builds: this defers clang-tidy, its tests and
+compiler runtimes. Omit it for the final build and installation. It cannot be combined with `-TidyOnly`.
 
 `-Install` establishes a project `LLVM_ROOT` from scratch: those tools, the `clang-cl`/`llvm-lib`
 aliases, Clang resource headers, `run-clang-tidy`, supporting tidy scripts, enabled PDBs and
