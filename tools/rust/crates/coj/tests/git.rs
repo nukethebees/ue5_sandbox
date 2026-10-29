@@ -420,6 +420,114 @@ fn protected_worktree_allows_inspection_only_and_environment_redirects_fail() {
 }
 
 #[test]
+fn workspace_safe_directory_entries_are_whitelisted_from_subdirectories() {
+    let repo = Repo::new();
+    let nested = repo.feature.join("nested");
+    fs::create_dir(&nested).unwrap();
+    let root = repo.feature.to_string_lossy().replace('\\', "/");
+    let output = repo
+        .tool()
+        .current_dir(&nested)
+        .env("GIT_CONFIG_COUNT", "2")
+        .env("GIT_CONFIG_KEY_0", "safe.directory")
+        .env("GIT_CONFIG_VALUE_0", &root)
+        .env("GIT_CONFIG_KEY_1", "safe.directory")
+        .env("GIT_CONFIG_VALUE_1", format!("{root}/*"))
+        .args(["git", "status", "--short"])
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+
+    let output = repo
+        .tool()
+        .env("GIT_CONFIG_COUNT", "1")
+        .env("GIT_CONFIG_KEY_0", "safe.directory")
+        .env("GIT_CONFIG_VALUE_0", &root)
+        .args(["git", "check", "switch", "dev"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success(), "{output:?}");
+    assert!(String::from_utf8_lossy(&output.stderr).contains("protected"));
+}
+
+#[test]
+fn injected_git_configuration_rejects_unscoped_trust_and_other_settings() {
+    let repo = Repo::new();
+    for (key, value) in [
+        ("safe.directory", "*".to_owned()),
+        ("safe.directory", String::new()),
+        ("safe.directory", ".".to_owned()),
+        ("safe.directory", repo.root.to_string_lossy().into_owned()),
+        ("safe.directory", repo.dev.to_string_lossy().into_owned()),
+        ("safe.directory", format!("{}/*", repo.root.display())),
+        ("core.worktree", repo.dev.to_string_lossy().into_owned()),
+        ("core.hooksPath", repo.root.to_string_lossy().into_owned()),
+        (
+            "include.path",
+            repo.root.join("config").to_string_lossy().into_owned(),
+        ),
+    ] {
+        let output = repo
+            .tool()
+            .env("GIT_CONFIG_COUNT", "1")
+            .env("GIT_CONFIG_KEY_0", key)
+            .env("GIT_CONFIG_VALUE_0", &value)
+            .args(["git", "status"])
+            .output()
+            .unwrap();
+        assert!(!output.status.success(), "{key}={value}: {output:?}");
+    }
+    for count in ["-1", "garbage", "184467440737095516160"] {
+        let output = repo
+            .tool()
+            .env("GIT_CONFIG_COUNT", count)
+            .args(["git", "status"])
+            .output()
+            .unwrap();
+        assert!(!output.status.success(), "{count}: {output:?}");
+    }
+    for missing in ["GIT_CONFIG_KEY_0", "GIT_CONFIG_VALUE_0"] {
+        let output = repo
+            .tool()
+            .env("GIT_CONFIG_COUNT", "1")
+            .env("GIT_CONFIG_KEY_0", "safe.directory")
+            .env("GIT_CONFIG_VALUE_0", &repo.feature)
+            .env_remove(missing)
+            .args(["git", "status"])
+            .output()
+            .unwrap();
+        assert!(!output.status.success(), "{missing}: {output:?}");
+    }
+    for count in ["", "0"] {
+        let output = repo
+            .tool()
+            .env("GIT_CONFIG_COUNT", count)
+            .args(["git", "status"])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{count}: {output:?}");
+    }
+}
+
+#[test]
+fn integration_accepts_workspace_safe_directory_configuration() {
+    let repo = Repo::new();
+    fs::write(repo.feature.join("feature.txt"), "feature\n").unwrap();
+    repo.raw(&repo.feature, &["add", "feature.txt"]);
+    repo.raw(&repo.feature, &["commit", "-qm", "feature change"]);
+    let output = repo
+        .tool()
+        .env("GIT_CONFIG_COUNT", "1")
+        .env("GIT_CONFIG_KEY_0", "safe.directory")
+        .env("GIT_CONFIG_VALUE_0", &repo.feature)
+        .args(["integrate", "--keep-branch"])
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+    assert!(String::from_utf8_lossy(&output.stdout).contains("Integrated feature into dev"));
+}
+
+#[test]
 fn supported_git_streams_and_exit_status_are_preserved() {
     let repo = Repo::new();
     for args in [

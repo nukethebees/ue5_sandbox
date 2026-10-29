@@ -11,7 +11,7 @@ Start a task from anywhere inside its worktree:
 coj prepare-worktree
 ```
 
-This clears `out`, updates submodules, regenerates presets and code, and disables Live Coding
+This retains build outputs, updates submodules, regenerates presets and code, and disables Live Coding
 in existing saved settings. Build and test the affected targets afterward.
 
 - [Installation and command guide](docs/usage.md)

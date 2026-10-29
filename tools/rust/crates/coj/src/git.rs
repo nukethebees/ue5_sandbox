@@ -385,9 +385,8 @@ fn parse(arguments: &[OsString]) -> Result<Cli, clap::Error> {
 }
 
 fn prepare(operation: Operation) -> Result<Prepared, String> {
-    workspace::check_environment()?;
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    let root = workspace::root(&cwd)?;
+    let root = workspace::checked_root(&cwd)?;
     operation.prepare(&root, &cwd)
 }
 

@@ -1,7 +1,7 @@
 # coj architecture
 
-coj is installed outside `out`, allowing preparation to clear build output while the
-executable runs. Commands resolve the current worktree and launch subprocesses directly.
+coj is installed outside `out`. Preparation retains build outputs.
+Commands resolve the current worktree and launch subprocesses directly.
 Preparation and central-tool installation share recursive submodule synchronization/update.
 
 Developer operations use explicit command dispatch. CMake retains build prerequisites and writes
@@ -16,6 +16,14 @@ and benchmark commands delegate to the revision-local benchmark-tools host execu
 Typed Clap commands construct fresh Git arguments without a shell. Pathspecs and messages
 retain literal values, and Git inherits terminal streams. Git owns locks and recovery state;
 coj provides cooperative workflow guardrails, not a hostile-process security boundary.
+
+Repository-redirecting environment variables remain rejected. Injected configuration through
+`GIT_CONFIG_COUNT` is whitelisted only for `safe.directory` entries naming the current
+worktree root or that root followed by `/*`. Keys and syntax are checked before Git
+discovers the root; absolute paths are resolved and compared afterward. Subdirectory
+launches therefore use the containing worktree, including linked worktrees whose Git
+metadata lives elsewhere. Entries remain available to Git; unrelated paths, unrestricted
+wildcards and other injected settings are rejected.
 
 `coj git check` parses the requested action through the same typed command parser and prepares
 the same validated arguments as execution, then reports the outcome without running the action.

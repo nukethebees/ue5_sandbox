@@ -212,9 +212,8 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
         );
     }
 
-    workspace::check_environment()?;
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    let root = workspace::root(&cwd)?;
+    let root = workspace::checked_root(&cwd)?;
 
     transaction(&root, !args.is_empty())
 }

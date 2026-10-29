@@ -120,7 +120,7 @@ pub fn managed_worktree_path(root: &Path, branch: &str) -> Result<PathBuf, Strin
 #[path = "../tests/workspace/mod.rs"]
 mod tests;
 
-pub fn check_environment() -> Result<(), String> {
+pub fn checked_root(cwd: &Path) -> Result<PathBuf, String> {
     for name in [
         "GIT_DIR",
         "GIT_WORK_TREE",
@@ -130,7 +130,6 @@ pub fn check_environment() -> Result<(), String> {
         "GIT_ALTERNATE_OBJECT_DIRECTORIES",
         "GIT_NAMESPACE",
         "GIT_CONFIG",
-        "GIT_CONFIG_COUNT",
         "GIT_CONFIG_PARAMETERS",
     ] {
         if std::env::var_os(name).is_some() {
@@ -140,7 +139,47 @@ pub fn check_environment() -> Result<(), String> {
         }
     }
 
-    Ok(())
+    let count = match std::env::var("GIT_CONFIG_COUNT") {
+        Ok(value) if value.is_empty() => 0,
+        Ok(value) => value
+            .parse::<usize>()
+            .map_err(|_| "Invalid GIT_CONFIG_COUNT")?,
+        Err(std::env::VarError::NotPresent) => 0,
+        Err(error) => return Err(format!("Invalid GIT_CONFIG_COUNT: {error}")),
+    };
+    let mut safe_directories = Vec::new();
+    for index in 0..count {
+        let key = std::env::var(format!("GIT_CONFIG_KEY_{index}"))
+            .map_err(|_| format!("Missing or invalid GIT_CONFIG_KEY_{index}"))?;
+        if !key.eq_ignore_ascii_case("safe.directory") {
+            return Err(format!(
+                "GIT_CONFIG_COUNT contains unsupported setting '{key}'. Only safe.directory is permitted."
+            ));
+        }
+        let value = std::env::var(format!("GIT_CONFIG_VALUE_{index}"))
+            .map_err(|_| format!("Missing or invalid GIT_CONFIG_VALUE_{index}"))?;
+        let path = PathBuf::from(value.strip_suffix("/*").unwrap_or(&value));
+        if !path.is_absolute() || path.as_os_str().to_string_lossy().contains('*') {
+            return Err(format!(
+                "GIT_CONFIG_VALUE_{index} must name the current worktree or its /* scope."
+            ));
+        }
+        safe_directories.push(path);
+    }
+
+    // Inspect Git only after rejecting settings that can redirect repository discovery.
+    let root = root(cwd)?;
+    let resolved_root = resolved(&root)?;
+    for path in safe_directories {
+        if resolved(&path)? != resolved_root {
+            return Err(format!(
+                "safe.directory '{}' is outside the current worktree '{}'.",
+                path.display(),
+                root.display()
+            ));
+        }
+    }
+    Ok(root)
 }
 
 // Resolve existing ancestors too, so a linked directory cannot expand the workspace boundary.

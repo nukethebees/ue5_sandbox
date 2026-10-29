@@ -184,8 +184,7 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
         }
     };
 
-    workspace::check_environment()?;
-    let root = workspace::root(&std::env::current_dir().map_err(|e| e.to_string())?)?;
+    let root = workspace::checked_root(&std::env::current_dir().map_err(|e| e.to_string())?)?;
 
     if args.staged {
         workspace::check_branch_target(
