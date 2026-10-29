@@ -1,5 +1,6 @@
 #include "cpp_ir_test.h"
 #include "test_utilities.h"
+#include "text_expectations.h"
 
 #include <codegen/ast/binary_operator.h>
 #include <codegen/ast/cpp_files.h>
@@ -32,6 +33,7 @@
 #include <vector>
 
 namespace lispb::codegen {
+using lispb::test_support::expect_contains_all;
 namespace {
 
 TEST_F(ExprTest, RequiresExplicitRawAndSupportsIndependentCopies) {
@@ -177,8 +179,7 @@ TEST_F(ExprTest, CollectsSizeofTypeDependenciesThroughArithmetic) {
     auto const file{ir.files.append(ir.strings.intern("Example.h"),
                                     {ir.include_dependencies(), ir.definition(function)})};
     auto const output{CppRenderer{ir}.render(file)};
-    EXPECT_NE(output.find("#include \"Project/Element.h\""), std::string::npos);
-    EXPECT_NE(output.find("return 2 * sizeof(Element);"), std::string::npos);
+    expect_contains_all(output, {"#include \"Project/Element.h\"", "return 2 * sizeof(Element);"});
 }
 
 TEST_F(ExprTest, KeepsRawVerbatimAndProtectsNestedRawOperands) {

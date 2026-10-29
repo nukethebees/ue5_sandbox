@@ -444,12 +444,12 @@ TEST(DocumentEdit, EnumAndRecordChildrenUseNamedOperations) {
     ASSERT_TRUE(doc.commit(tx)) << diagnostic_messages(editor);
     auto const enumeration{doc.declaration_source("game", "State").value()};
     EXPECT_LT(enumeration.find("Done"), enumeration.find("Active"));
-    EXPECT_EQ(enumeration.find("Idle"), std::string::npos);
+    EXPECT_FALSE(enumeration.contains("Idle"));
     EXPECT_NE(enumeration.find('4'), std::string::npos);
     auto const record{doc.declaration_source("game", "Position").value()};
     EXPECT_LT(record.find("height"), record.find("member x"));
-    EXPECT_NE(record.find(":count 3"), std::string::npos);
-    EXPECT_NE(record.find("double"), std::string::npos);
+    EXPECT_TRUE(record.contains(":count 3"));
+    EXPECT_TRUE(record.contains("double"));
 }
 
 TEST(DocumentHistory, ReplaysCoordinatedEditsAcrossSeveralTransactions) {

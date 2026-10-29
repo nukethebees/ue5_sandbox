@@ -1,5 +1,6 @@
 #include "compiler_test_context.h"
 #include "test_utilities.h"
+#include "text_expectations.h"
 
 #include <codegen/ast/cpp_types.h>
 #include <codegen/ast/indices.h>
@@ -53,6 +54,8 @@
 #include <vector>
 
 namespace lispb::codegen {
+using lispb::test_support::expect_contains_all;
+using lispb::test_support::expect_contains_none;
 namespace {
 
 struct RenderedModule {
@@ -160,12 +163,13 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
 
     ASSERT_EQ(files.size(), 1);
     auto const& header{files.front().content};
-    EXPECT_NE(header.find("using NativeStateUnderlying = std::uint8_t;"), std::string::npos);
-    EXPECT_NE(header.find("enum class NativeState : NativeStateUnderlying"), std::string::npos);
-    EXPECT_NE(header.find("try_parse_native_state"), std::string::npos);
-    EXPECT_NE(header.find("try_parse_serialized_native_state"), std::string::npos);
-    EXPECT_NE(header.find("EnumTraits<::fixture::NativeState>"), std::string::npos);
-    EXPECT_EQ(header.find("CoreMinimal.h"), std::string::npos);
+    expect_contains_all(header,
+                        {"using NativeStateUnderlying = std::uint8_t;",
+                         "enum class NativeState : NativeStateUnderlying",
+                         "try_parse_native_state",
+                         "try_parse_serialized_native_state",
+                         "EnumTraits<::fixture::NativeState>"});
+    EXPECT_FALSE(header.contains("CoreMinimal.h"));
 
     std::vector<std::pair<NativeEnumHelper, std::string>> const selections{
         {NativeEnumHelper::to_string, "using ioj::to_string;"},
@@ -220,12 +224,12 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
             EXPECT_EQ(selected.contains(candidate_spelling), candidate == helper)
                 << spelling << ": " << candidate_spelling;
         }
-        EXPECT_NE(selected.find("enum_count<"), std::string::npos);
-        EXPECT_EQ(selected.find("std::array names"), std::string::npos);
+        EXPECT_TRUE(selected.contains("enum_count<"));
+        EXPECT_FALSE(selected.contains("std::array names"));
         EXPECT_EQ(selected.contains("<string_view>"),
                   helper == NativeEnumHelper::try_parse ||
                       helper == NativeEnumHelper::try_parse_serialized);
-        EXPECT_EQ(selected.find("<unordered_map>"), std::string::npos);
+        EXPECT_FALSE(selected.contains("<unordered_map>"));
     }
 }
 
@@ -317,14 +321,12 @@ TEST(Lowering, DerivesNativeEnumBackingFromSemanticWidthAndSignedness) {
 
     ASSERT_EQ(files.size(), 1);
     auto const& header{files.front().content};
-    EXPECT_NE(header.find("using SignedStateUnderlying = std::int16_t;"), std::string::npos);
-    EXPECT_NE(header.find("enum class SignedState : SignedStateUnderlying"), std::string::npos);
-    EXPECT_EQ(header.find("to_string("), std::string::npos);
-    EXPECT_EQ(header.find("try_parse_"), std::string::npos);
-    EXPECT_EQ(header.find("EnumTraits<"), std::string::npos);
-    EXPECT_EQ(header.find("<optional>"), std::string::npos);
-    EXPECT_EQ(header.find("<string_view>"), std::string::npos);
-    EXPECT_NE(header.find("#include <cstdint>"), std::string::npos);
+    expect_contains_all(header,
+                        {"using SignedStateUnderlying = std::int16_t;",
+                         "enum class SignedState : SignedStateUnderlying"});
+    expect_contains_none(
+        header, {"to_string(", "try_parse_", "EnumTraits<", "<optional>", "<string_view>"});
+    EXPECT_TRUE(header.contains("#include <cstdint>"));
 }
 
 TEST(Lowering, DerivesFixedWidthEnumBackingWithoutNativeHelpers) {
@@ -368,10 +370,11 @@ TEST(Lowering, DerivesFixedWidthEnumBackingWithoutNativeHelpers) {
                 })});
         }))};
 
-    EXPECT_NE(output.header.find("#include <cstdint>"), std::string::npos);
-    EXPECT_EQ(output.header.find("#include \"CoreMinimal.h\""), std::string::npos);
-    EXPECT_NE(output.header.find("using EStateUnderlying = std::uint16_t;"), std::string::npos);
-    EXPECT_NE(output.header.find("enum class EState : EStateUnderlying"), std::string::npos);
+    EXPECT_TRUE(output.header.contains("#include <cstdint>"));
+    EXPECT_FALSE(output.header.contains("#include \"CoreMinimal.h\""));
+    expect_contains_all(
+        output.header,
+        {"using EStateUnderlying = std::uint16_t;", "enum class EState : EStateUnderlying"});
 }
 
 TEST(Lowering, EmitsOwningIntegerScalarWithInferredStorage) {
@@ -383,14 +386,12 @@ TEST(Lowering, EmitsOwningIntegerScalarWithInferredStorage) {
     )"))};
     ASSERT_EQ(files.size(), 1U);
     auto const& output{files.front().content};
-    EXPECT_NE(output.find("PackedValueBase<Index, ioj::PackedStorage<std::uint32_t, 24>"),
-              std::string::npos);
-    EXPECT_EQ(output.find("using storage_type"), std::string::npos);
-    EXPECT_NE(output.find("using value_type = std::uint32_t;"), std::string::npos);
-    EXPECT_EQ(output.find("raw_value() const"), std::string::npos);
-    EXPECT_EQ(output.find("from_raw(storage_type"), std::string::npos);
-    EXPECT_NE(output.find("set_value("), std::string::npos);
-    EXPECT_EQ(output.find("struct Logical"), std::string::npos);
+    EXPECT_TRUE(output.contains("PackedValueBase<Index, ioj::PackedStorage<std::uint32_t, 24>"));
+    EXPECT_FALSE(output.contains("using storage_type"));
+    EXPECT_TRUE(output.contains("using value_type = std::uint32_t;"));
+    expect_contains_none(output, {"raw_value() const", "from_raw(storage_type"});
+    EXPECT_TRUE(output.contains("set_value("));
+    EXPECT_FALSE(output.contains("struct Logical"));
 }
 
 TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) {
@@ -474,28 +475,25 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
     auto const& native_header{files[0].content};
     auto const& projection_header{files[1].content};
     auto const& conversion_header{files[2].content};
-    EXPECT_EQ(native_header.find("enum_count<"), std::string::npos);
-    EXPECT_NE(projection_header.find("enum_count<::ENativeState>"), std::string::npos);
-    EXPECT_NE(native_header.find("enum class NativeState : NativeStateUnderlying"),
-              std::string::npos);
+    EXPECT_FALSE(native_header.contains("enum_count<"));
+    EXPECT_TRUE(projection_header.contains("enum_count<::ENativeState>"));
+    EXPECT_TRUE(native_header.contains("enum class NativeState : NativeStateUnderlying"));
     auto const traits_start{native_header.find("struct EnumTraits<::fixture::NativeState>")};
     ASSERT_NE(traits_start, std::string::npos);
     auto const traits_end{native_header.find("};", traits_start)};
     ASSERT_NE(traits_end, std::string::npos);
     auto const traits{native_header.substr(traits_start, traits_end - traits_start)};
-    EXPECT_NE(traits.find("::fixture::NativeState::Idle"), std::string::npos);
-    EXPECT_NE(traits.find("::fixture::NativeState::Active"), std::string::npos);
-    EXPECT_EQ(traits.find("::fixture::NativeState::COUNT"), std::string::npos);
-    EXPECT_EQ(native_header.find("CoreMinimal.h"), std::string::npos);
-    EXPECT_NE(projection_header.find("#include \"NativeState.generated.h\""), std::string::npos);
-    EXPECT_NE(projection_header.find("UENUM()\nenum class ENativeState : uint8"),
-              std::string::npos);
-    EXPECT_NE(conversion_header.find("#include \"fixture/NativeEnum.h\"\n"
-                                     "#include \"Project/NativeState.h\""),
-              std::string::npos);
-    EXPECT_NE(conversion_header.find("static_assert(static_cast<int>(ENativeState::Active) == "
-                                     "static_cast<int>(::fixture::NativeState::Active));"),
-              std::string::npos);
+    expect_contains_all(traits, {"::fixture::NativeState::Idle", "::fixture::NativeState::Active"});
+    EXPECT_FALSE(traits.contains("::fixture::NativeState::COUNT"));
+    EXPECT_FALSE(native_header.contains("CoreMinimal.h"));
+    expect_contains_all(
+        projection_header,
+        {"#include \"NativeState.generated.h\"", "UENUM()\nenum class ENativeState : uint8"});
+    expect_contains_all(conversion_header,
+                        {"#include \"fixture/NativeEnum.h\"\n"
+                         "#include \"Project/NativeState.h\"",
+                         "static_assert(static_cast<int>(ENativeState::Active) == "
+                         "static_cast<int>(::fixture::NativeState::Active));"});
 }
 
 TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
@@ -571,37 +569,27 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
             normal_modules.enum_helper_namespace[new_normal_modules] = strings.intern("project");
         }))};
 
-    EXPECT_NE(output.header.find("#include \"Modes.generated.h\""), std::string::npos);
-    EXPECT_NE(output.header.find("UENUM(BlueprintType)\nenum class EMode : uint8"),
-              std::string::npos);
-    EXPECT_NE(output.header.find("Readable = 1 UMETA(DisplayName = \"Readable Value\")"),
-              std::string::npos);
-    EXPECT_NE(output.header.find("COUNT UMETA(Hidden)"), std::string::npos);
-    EXPECT_NE(
-        output.header.find("PROJECT_API auto LexToString(EMode const value) -> TCHAR const*;"),
-        std::string::npos);
-    EXPECT_NE(output.header.find("namespace project {\nPROJECT_API auto to_string_view"),
-              std::string::npos);
-    EXPECT_NE(output.header.find(
-                  "PROJECT_API auto LexToSerializedString(EMode const value) -> TCHAR const*;"),
-              std::string::npos);
-    EXPECT_NE(
-        output.header.find(
-            "PROJECT_API auto try_parse_serialized(FStringView const value, EMode& result) -> "
-            "bool;"),
-        std::string::npos);
-    EXPECT_EQ(output.header.find("auto to_string(EMode"), std::string::npos);
+    expect_contains_all(
+        output.header,
+        {"#include \"Modes.generated.h\"",
+         "UENUM(BlueprintType)\nenum class EMode : uint8",
+         "Readable = 1 UMETA(DisplayName = \"Readable Value\")",
+         "COUNT UMETA(Hidden)",
+         "PROJECT_API auto LexToString(EMode const value) -> TCHAR const*;",
+         "namespace project {\nPROJECT_API auto to_string_view",
+         "PROJECT_API auto LexToSerializedString(EMode const value) -> TCHAR const*;",
+         "PROJECT_API auto try_parse_serialized(FStringView const value, EMode& result) -> "
+         "bool;"});
+    EXPECT_FALSE(output.header.contains("auto to_string(EMode"));
 
-    EXPECT_NE(output.source.find("#include \"Project/Modes.h\""), std::string::npos);
-    EXPECT_EQ(output.source.find("switch (value)"), std::string::npos);
-    EXPECT_NE(output.header.find("ioj::enum_strings<::EMode, ioj::Name>"), std::string::npos);
-    EXPECT_NE(output.header.find("Readable Value"), std::string::npos);
-    EXPECT_NE(output.header.find("readable"), std::string::npos);
-    EXPECT_NE(output.source.find("ioj::enum_string<ioj::Serialized>(value).data()"),
-              std::string::npos);
-    EXPECT_NE(output.source.find("result = EMode::Readable;"), std::string::npos);
-    EXPECT_NE(output.source.find("auto LexToString(EMode const value) -> TCHAR const*"),
-              std::string::npos);
+    EXPECT_TRUE(output.source.contains("#include \"Project/Modes.h\""));
+    EXPECT_FALSE(output.source.contains("switch (value)"));
+    expect_contains_all(output.header,
+                        {"ioj::enum_strings<::EMode, ioj::Name>", "Readable Value", "readable"});
+    expect_contains_all(output.source,
+                        {"ioj::enum_string<ioj::Serialized>(value).data()",
+                         "result = EMode::Readable;",
+                         "auto LexToString(EMode const value) -> TCHAR const*"});
 }
 
 TEST(Lowering, EmitsPlainEnumsInTheirNamespace) {
@@ -643,15 +631,13 @@ TEST(Lowering, EmitsPlainEnumsInTheirNamespace) {
                 })});
         }))};
 
-    EXPECT_NE(output.header.find("namespace project::states {\nusing EStateUnderlying = int;\n\n"
-                                 "// Logical bit width: 1.\nenum class EState : EStateUnderlying"),
-              std::string::npos);
-    EXPECT_NE(output.header.find("using EStateUnderlying = int;"), std::string::npos);
-    EXPECT_NE(output.header.find("namespace project::states {\nauto to_string(EState const value)"),
-              std::string::npos);
-    EXPECT_EQ(output.header.find("UENUM"), std::string::npos);
-    EXPECT_NE(output.header.find("ioj::enum_strings<::project::states::EState, ioj::Name>"),
-              std::string::npos);
+    expect_contains_all(output.header,
+                        {"namespace project::states {\nusing EStateUnderlying = int;\n\n"
+                         "// Logical bit width: 1.\nenum class EState : EStateUnderlying",
+                         "using EStateUnderlying = int;",
+                         "namespace project::states {\nauto to_string(EState const value)"});
+    EXPECT_FALSE(output.header.contains("UENUM"));
+    EXPECT_TRUE(output.header.contains("ioj::enum_strings<::project::states::EState, ioj::Name>"));
 }
 
 TEST(Lowering, EmitsCountsForEnumArrays) {
@@ -694,12 +680,11 @@ TEST(Lowering, EmitsCountsForEnumArrays) {
                 })});
         }))};
 
-    EXPECT_NE(output.header.find("#include \"ioj/enum_traits.h\""), std::string::npos);
-    EXPECT_NE(
-        output.header.find(
-            "constexpr auto enum_count<::EMode>() noexcept -> std::size_t {\n    return 2;\n}"),
-        std::string::npos);
-    EXPECT_EQ(output.header.find("COUNT"), std::string::npos);
+    expect_contains_all(
+        output.header,
+        {"#include \"ioj/enum_traits.h\"",
+         "constexpr auto enum_count<::EMode>() noexcept -> std::size_t {\n    return 2;\n}"});
+    EXPECT_FALSE(output.header.contains("COUNT"));
 }
 
 TEST(Lowering, EmitsCountsForReflectedEnumArrays) {
@@ -743,10 +728,9 @@ TEST(Lowering, EmitsCountsForReflectedEnumArrays) {
                 })});
         }))};
 
-    EXPECT_NE(output.header.find("#include \"ioj/enum_traits.h\""), std::string::npos);
-    EXPECT_NE(
-        output.header.find("enum_count<::EMode>() noexcept -> std::size_t {\n    return 2;\n}"),
-        std::string::npos);
+    expect_contains_all(output.header,
+                        {"#include \"ioj/enum_traits.h\"",
+                         "enum_count<::EMode>() noexcept -> std::size_t {\n    return 2;\n}"});
 }
 
 TEST(Lowering, EnumDisplayLookupWithoutOverridesFallsBackDirectly) {
@@ -786,13 +770,11 @@ TEST(Lowering, EnumDisplayLookupWithoutOverridesFallsBackDirectly) {
                 })});
         }))};
 
-    EXPECT_NE(output.source.find("return ioj::enum_string<ioj::Display>(value).data();"),
-              std::string::npos);
-    EXPECT_NE(output.header.find("ioj::enum_strings<::EState, ioj::Display>"), std::string::npos);
-    EXPECT_EQ(output.header.find("ioj::enum_strings<::EState, ioj::Name>"), std::string::npos);
+    EXPECT_TRUE(output.source.contains("return ioj::enum_string<ioj::Display>(value).data();"));
+    EXPECT_TRUE(output.header.contains("ioj::enum_strings<::EState, ioj::Display>"));
+    EXPECT_FALSE(output.header.contains("ioj::enum_strings<::EState, ioj::Name>"));
     EXPECT_EQ(occurrences(output.source, "switch (value)"), 0);
-    EXPECT_NE(output.source.find("return FString{get_state_display_name(value)};"),
-              std::string::npos);
+    EXPECT_TRUE(output.source.contains("return FString{get_state_display_name(value)};"));
 }
 
 TEST(Lowering, EnumEscapingAndSparseDisplayCasesPreserveFallbacks) {
@@ -853,18 +835,16 @@ TEST(Lowering, EnumEscapingAndSparseDisplayCasesPreserveFallbacks) {
                 })});
         }))};
 
-    EXPECT_NE(output.header.find("UMETA(DisplayName = \"Quote\\\" Slash\\\\\\n\\t\")"),
-              std::string::npos);
-    EXPECT_NE(output.header.find("TEXT(\"Ready\\000Quote\\\" Slash\\\\\\n\\t\")"),
-              std::string::npos);
-    EXPECT_NE(output.source.find("return ioj::enum_string<ioj::Display>(value).data();"),
-              std::string::npos);
-    EXPECT_NE(output.source.find("if (value == TEXT(\"a\\\"b\\\\c\\n\")) {\n"
-                                 "        result = EState::Special;\n"
-                                 "        return true;\n"
-                                 "    }\n"
-                                 "    return false;"),
-              std::string::npos);
+    expect_contains_all(output.header,
+                        {"UMETA(DisplayName = \"Quote\\\" Slash\\\\\\n\\t\")",
+                         "TEXT(\"Ready\\000Quote\\\" Slash\\\\\\n\\t\")"});
+    expect_contains_all(output.source,
+                        {"return ioj::enum_string<ioj::Display>(value).data();",
+                         "if (value == TEXT(\"a\\\"b\\\\c\\n\")) {\n"
+                         "        result = EState::Special;\n"
+                         "        return true;\n"
+                         "    }\n"
+                         "    return false;"});
 }
 
 TEST(Lowering, EnumCountsUseMlNamespaceForQualifiedHeaderOnlyEnums) {
@@ -909,11 +889,10 @@ TEST(Lowering, EnumCountsUseMlNamespaceForQualifiedHeaderOnlyEnums) {
                              })});
                  })}})};
     ASSERT_EQ(files.size(), 1);
-    EXPECT_NE(files.front().content.find("namespace ioj {"), std::string::npos);
-    EXPECT_NE(
-        files.front().content.find(
-            "enum_count<::project::states::EState>() noexcept -> std::size_t {\n    return 1;\n}"),
-        std::string::npos);
+    expect_contains_all(
+        files.front().content,
+        {"namespace ioj {",
+         "enum_count<::project::states::EState>() noexcept -> std::size_t {\n    return 1;\n}"});
 }
 
 TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
@@ -985,17 +964,17 @@ TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
                  })});
         }))};
 
-    EXPECT_NE(output.header.find("enum class EGameSetting : uint8"), std::string::npos);
-    EXPECT_NE(output.header.find("using FGameSettingValue = std::variant<bool, float>"),
-              std::string::npos);
-    EXPECT_NE(output.header.find("void set_vsync(bool const value)"), std::string::npos);
-    EXPECT_NE(output.header.find("auto operator==(FSettingsState const&) const -> bool = default"),
-              std::string::npos);
-    EXPECT_NE(output.source.find("ESettingApplyMode::Deferred"), std::string::npos);
-    EXPECT_NE(output.header.find("enum class EGameSettingDevice"), std::string::npos);
-    EXPECT_NE(output.source.find("EGameSettingDevice::Controller"), std::string::npos);
-    EXPECT_NE(output.source.find("EGameSettingOptionProvider::FrameLimits"), std::string::npos);
-    EXPECT_NE(output.source.find("std::get_if<float>"), std::string::npos);
+    expect_contains_all(output.header,
+                        {"enum class EGameSetting : uint8",
+                         "using FGameSettingValue = std::variant<bool, float>",
+                         "void set_vsync(bool const value)",
+                         "auto operator==(FSettingsState const&) const -> bool = default"});
+    EXPECT_TRUE(output.source.contains("ESettingApplyMode::Deferred"));
+    EXPECT_TRUE(output.header.contains("enum class EGameSettingDevice"));
+    expect_contains_all(output.source,
+                        {"EGameSettingDevice::Controller",
+                         "EGameSettingOptionProvider::FrameLimits",
+                         "std::get_if<float>"});
 }
 
 } // namespace

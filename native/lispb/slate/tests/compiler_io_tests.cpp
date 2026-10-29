@@ -1,4 +1,5 @@
 #include "../../tests/temporary_project.h"
+#include "../../tests/text_expectations.h"
 
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
@@ -29,6 +30,7 @@
 #include <vector>
 
 namespace slate_codegen {
+using lispb::test_support::expect_contains_all;
 namespace {
 
 using lispb::test_support::TemporaryProject;
@@ -89,12 +91,13 @@ TEST(SlateCompiler, WritesMultipleOwnersAndQualifiedOutputPaths) {
     EXPECT_TRUE(project.read("generated/SFirstPanel.slate.generated.h")
                     .contains("struct SFirstPanelBuilder"));
     auto const qualified_output{project.read("generated/Example/SSecondPanel.slate.generated.h")};
-    EXPECT_TRUE(qualified_output.contains("namespace SlateGenerated::Example"));
-    EXPECT_TRUE(qualified_output.contains("using ThisClass = ::Example::SSecondPanel;"));
+    expect_contains_all(
+        qualified_output,
+        {"namespace SlateGenerated::Example", "using ThisClass = ::Example::SSecondPanel;"});
 
     auto const inventory{project.read("generated/.lispb-outputs")};
-    EXPECT_TRUE(inventory.contains("SFirstPanel.slate.generated.h"));
-    EXPECT_TRUE(inventory.contains("Example/SSecondPanel.slate.generated.h"));
+    expect_contains_all(
+        inventory, {"SFirstPanel.slate.generated.h", "Example/SSecondPanel.slate.generated.h"});
 }
 
 TEST(SlateCompiler, CheckModeDetectsStaleAndMissingOutputs) {
@@ -232,15 +235,12 @@ TEST(SlateCompiler, ReportsMissingIncludesAndCycles) {
     TemporaryProject project{"slate", "include-errors"};
     project.write("panel.lispb", "(include \"Missing.lispb\")");
     auto error{compile_error(project, {"panel.lispb"}, {"shared"})};
-    EXPECT_TRUE(error.contains("include not found"));
-    EXPECT_TRUE(error.contains("shared/Missing.lispb"));
+    expect_contains_all(error, {"include not found", "shared/Missing.lispb"});
     project.write("panel.lispb", "(include \"First.lispb\")");
     project.write("shared/First.lispb", "(include \"Second.lispb\")");
     project.write("shared/Second.lispb", "(include \"./First.lispb\")");
     error = compile_error(project, {"panel.lispb"}, {"shared"});
-    EXPECT_TRUE(error.contains("include cycle"));
-    EXPECT_TRUE(error.contains("First.lispb"));
-    EXPECT_TRUE(error.contains("Second.lispb"));
+    expect_contains_all(error, {"include cycle", "First.lispb", "Second.lispb"});
 }
 
 TEST(SlateCompiler, RejectsInvalidMacroDeclarationsAndInvocations) {
@@ -279,9 +279,7 @@ TEST(SlateCompiler, ReportsMacroDefinitionAndInvocationForSemanticErrors) {
 (widget-class SPanel (function Build (params) (broken (SImage))))
 )");
     auto const error{compile_error(project)};
-    EXPECT_TRUE(error.contains("Common.lispb:2:"));
-    EXPECT_TRUE(error.contains("expanded at"));
-    EXPECT_TRUE(error.contains("panel.lispb:3:"));
+    expect_contains_all(error, {"Common.lispb:2:", "expanded at", "panel.lispb:3:"});
 }
 
 TEST(SlateCompiler, RestrictsIncludedFilesAndIsolatesMacrosBetweenInputs) {

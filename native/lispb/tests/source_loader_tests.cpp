@@ -1,4 +1,5 @@
 #include "test_utilities.h"
+#include "text_expectations.h"
 
 #include <codegen/ast/indices.h>
 #include <codegen/ast/type_operation.h>
@@ -85,6 +86,8 @@
 #include <vector>
 
 namespace lispb::codegen {
+using lispb::test_support::expect_contains_all;
+using lispb::test_support::expect_contains_none;
 namespace {
 
 TEST(CompilerStorage, RebuildsAfterFullResetWithoutRetainingSourceText) {
@@ -167,6 +170,11 @@ class TemporaryManifest {
     std::filesystem::path directory_;
 };
 
+class SourceLoaderTest : public testing::Test {
+  protected:
+    TemporaryManifest files;
+};
+
 auto schema_at(Manifest const& manifest,
                std::size_t const module_index,
                std::size_t const declaration_index = 0) -> DeclarationHandle {
@@ -175,8 +183,7 @@ auto schema_at(Manifest const& manifest,
     return store.items(store.normal_modules.declarations[module])[declaration_index];
 }
 
-TEST(SourceLoader, RecordValueSemanticsSurviveParsingGraphAndLowering) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, RecordValueSemanticsSurviveParsingGraphAndLowering) {
     auto& store{files.store()};
     auto& record_members{store.child_occurrences};
     auto& records{store.records};
@@ -260,8 +267,7 @@ INSTANTIATE_TEST_SUITE_P(
     (projections (cpp))))"}),
     [](auto const& info) { return info.param.name; });
 
-TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareLaterAndMutualTypes) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, RecordMethodDeclarationsForwardDeclareLaterAndMutualTypes) {
     auto& store{files.store()};
     auto& normal_modules{store.normal_modules};
     auto& type_refs{store.type_refs};
@@ -314,17 +320,14 @@ TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareLaterAndMutualTypes) {
     auto const output{files.render(manifest).front().content};
     EXPECT_LT(output.find("struct B;"), output.find("struct A {"));
     EXPECT_LT(output.find("struct A;"), output.find("struct B {"));
-    EXPECT_NE(output.find("struct A {"), std::string::npos);
-    EXPECT_NE(output.find("struct B {"), std::string::npos);
-    EXPECT_NE(output.find("auto ref() -> B const&;"), std::string::npos);
+    expect_contains_all(output, {"struct A {", "struct B {", "auto ref() -> B const&;"});
     EXPECT_EQ(
         files.text(declaration_name(
             store, store.items(normal_modules.declarations[manifest.modules.front()]).front())),
         "A");
 }
 
-TEST(SourceLoader, RecordMethodSignaturesOrderScalarWrappersEnumsAndHeaderBodyValues) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, RecordMethodSignaturesOrderScalarWrappersEnumsAndHeaderBodyValues) {
     auto& store{files.store()};
     files.write_root(R"((module values :header "Values.h"
       (record Consumer
@@ -349,8 +352,8 @@ TEST(SourceLoader, RecordMethodSignaturesOrderScalarWrappersEnumsAndHeaderBodyVa
          {"struct Provider {", "struct Argument {", "enum class Tag", "struct Count"}) {
         EXPECT_LT(output.find(definition), consumer) << definition;
     }
-    EXPECT_EQ(output.find("struct Tag;"), std::string::npos);
-    EXPECT_NE(output.find("struct Count;"), std::string::npos);
+    EXPECT_FALSE(output.contains("struct Tag;"));
+    EXPECT_TRUE(output.contains("struct Count;"));
     EXPECT_EQ(
         files.text(declaration_name(
             store,
@@ -358,8 +361,7 @@ TEST(SourceLoader, RecordMethodSignaturesOrderScalarWrappersEnumsAndHeaderBodyVa
         "Consumer");
 }
 
-TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareCrossModuleTypes) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, RecordMethodDeclarationsForwardDeclareCrossModuleTypes) {
     files.write_root(R"((module consumers :header "Consumers.h" :namespace consumers
       (record Consumer
         (function make providers::Provider)
@@ -370,18 +372,18 @@ TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareCrossModuleTypes) {
         :namespace providers (record Provider
     (projections (cpp)))))");
     auto const output{files.render(files.load()).front().content};
-    EXPECT_EQ(output.find("#include \"api/Provider.h\""), std::string::npos);
+    EXPECT_FALSE(output.contains("#include \"api/Provider.h\""));
     EXPECT_LT(output.find("namespace providers {"), output.find("struct Provider;"));
     EXPECT_LT(output.find("struct Provider;"), output.find("namespace consumers {"));
     EXPECT_EQ(output.find("struct Provider;", output.find("struct Provider;") + 1),
               std::string::npos);
-    EXPECT_NE(output.find("providers::Provider make();"), std::string::npos);
-    EXPECT_NE(output.find("providers::Provider const& value"), std::string::npos);
-    EXPECT_NE(output.find("-> providers::Provider*;"), std::string::npos);
+    expect_contains_all(output,
+                        {"providers::Provider make();",
+                         "providers::Provider const& value",
+                         "-> providers::Provider*;"});
 }
 
-TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareMutualCrossModuleTypes) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, RecordMethodDeclarationsForwardDeclareMutualCrossModuleTypes) {
     files.write_root(R"((module first :header "First.h" :namespace first
       (record A
         (function make second::B)
@@ -398,16 +400,16 @@ TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareMutualCrossModuleTypes)
     (projections (cpp)))))");
     auto const output{files.render(files.load())};
     ASSERT_EQ(output.size(), 2U);
-    EXPECT_EQ(output[0].content.find("#include \"Second.h\""), std::string::npos);
-    EXPECT_EQ(output[1].content.find("#include \"First.h\""), std::string::npos);
+    EXPECT_FALSE(output[0].content.contains("#include \"Second.h\""));
+    EXPECT_FALSE(output[1].content.contains("#include \"First.h\""));
     EXPECT_LT(output[0].content.find("namespace second {"), output[0].content.find("struct B;"));
     EXPECT_LT(output[0].content.find("struct B;"), output[0].content.find("namespace first {"));
     EXPECT_LT(output[1].content.find("namespace first {"), output[1].content.find("struct A;"));
     EXPECT_LT(output[1].content.find("struct A;"), output[1].content.find("namespace second {"));
 }
 
-TEST(SourceLoader, RecordParameterDefaultsRequireCompleteTypesWithoutChangingOtherSignatures) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest,
+       RecordParameterDefaultsRequireCompleteTypesWithoutChangingOtherSignatures) {
     auto& store{files.store()};
     for (auto const& [parameter_type, default_value] :
          {std::pair{"B", "{}"},
@@ -462,16 +464,14 @@ TEST(SourceLoader, RecordParameterDefaultsRequireCompleteTypesWithoutChangingOth
         EXPECT_EQ(std::ranges::count(mutable_kinds, TypeReferenceKind::complete_definition), 2);
         auto const output{files.render(manifest).front().content};
         EXPECT_LT(output.find("struct B {"), output.find("struct A {"));
-        EXPECT_EQ(output.find("struct B;"), std::string::npos);
+        EXPECT_FALSE(output.contains("struct B;"));
         EXPECT_LT(output.find("struct Result;"), output.find("struct A {"));
         EXPECT_LT(output.find("struct C;"), output.find("struct A {"));
-        EXPECT_NE(output.find("struct Result {"), std::string::npos);
-        EXPECT_NE(output.find("struct C {"), std::string::npos);
+        expect_contains_all(output, {"struct Result {", "struct C {"});
     }
 }
 
-TEST(SourceLoader, RecordParameterDefaultsRetainCrossModuleIncludes) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, RecordParameterDefaultsRetainCrossModuleIncludes) {
     for (auto const& [parameter_type, default_value] :
          {std::pair{"second::B", "{}"},
           std::pair{"(type-ref second::B :suffix \" const&\")", "{}"},
@@ -483,13 +483,12 @@ TEST(SourceLoader, RecordParameterDefaultsRetainCrossModuleIncludes) {
             :namespace second (record B
     (projections (cpp)))))");
         auto const output{files.render(files.load()).front().content};
-        EXPECT_NE(output.find("#include \"api/Second.h\""), std::string::npos);
-        EXPECT_EQ(output.find("struct B;"), std::string::npos);
+        EXPECT_TRUE(output.contains("#include \"api/Second.h\""));
+        EXPECT_FALSE(output.contains("struct B;"));
     }
 }
 
-TEST(SourceLoader, RecordParameterDefaultsRejectCompleteDefinitionCycles) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, RecordParameterDefaultsRejectCompleteDefinitionCycles) {
     for (auto const& schema : {
              R"((module values :header "Values.h"
                (record A (function inspect void
@@ -515,8 +514,7 @@ TEST(SourceLoader, RecordParameterDefaultsRejectCompleteDefinitionCycles) {
     }
 }
 
-TEST(SourceLoader, RecordMethodCrossModuleCompleteTypesRetainIncludes) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, RecordMethodCrossModuleCompleteTypesRetainIncludes) {
     files.write_root(R"((module consumers :header "Consumers.h" :namespace consumers
       (record Consumer
         (function make providers::Provider :body ("return {};"))
@@ -540,12 +538,11 @@ TEST(SourceLoader, RecordMethodCrossModuleCompleteTypesRetainIncludes) {
     for (auto const type : {"Provider", "Tag"}) {
         EXPECT_EQ(output.find(std::string{"struct "} + type + ";"), std::string::npos);
     }
-    EXPECT_EQ(output.find("#include \"Counts.h\""), std::string::npos);
-    EXPECT_NE(output.find("struct Count;"), std::string::npos);
+    EXPECT_FALSE(output.contains("#include \"Counts.h\""));
+    EXPECT_TRUE(output.contains("struct Count;"));
 }
 
-TEST(SourceLoader, RecordMethodCrossModuleForwardsRespectPhysicalOwnersAndExternalHeaders) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, RecordMethodCrossModuleForwardsRespectPhysicalOwnersAndExternalHeaders) {
     files.write_root(R"((module consumers :header "Consumers.h" :namespace consumers
       (record Consumer
         (function rows providers::Rows)
@@ -563,18 +560,13 @@ TEST(SourceLoader, RecordMethodCrossModuleForwardsRespectPhysicalOwnersAndExtern
       (type external :spelling "external::Value" :header "External.h")
       (type registered :spelling "providers::Registered" :header "Providers.h"))");
     auto const output{files.render(files.load()).front().content};
-    EXPECT_NE(output.find("struct Rows;"), std::string::npos);
-    EXPECT_NE(output.find("providers::Rows rows();"), std::string::npos);
-    EXPECT_NE(output.find("struct Global;"), std::string::npos);
-    EXPECT_EQ(output.find("#include \"Global.h\""), std::string::npos);
-    EXPECT_NE(output.find("#include \"External.h\""), std::string::npos);
-    EXPECT_NE(output.find("#include \"Providers.h\""), std::string::npos);
-    EXPECT_EQ(output.find("struct Value;"), std::string::npos);
-    EXPECT_EQ(output.find("struct Registered;"), std::string::npos);
+    expect_contains_all(output, {"struct Rows;", "providers::Rows rows();", "struct Global;"});
+    EXPECT_FALSE(output.contains("#include \"Global.h\""));
+    expect_contains_all(output, {"#include \"External.h\"", "#include \"Providers.h\""});
+    expect_contains_none(output, {"struct Value;", "struct Registered;"});
 }
 
-TEST(SourceLoader, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteDefinitionCycles) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteDefinitionCycles) {
     for (auto const signature :
          {"(function make Layout)",
           "(function make (type-ref Layout :suffix \"*\"))",
@@ -669,8 +661,7 @@ INSTANTIATE_TEST_SUITE_P(
                           "(struct Rows :const-view-name ConstValues (member ids array int))"}),
     [](auto const& info) { return info.param.name; });
 
-TEST(SourceLoader, ScalarProjectionKeepsSemanticIdentityAndDependencies) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, ScalarProjectionKeepsSemanticIdentityAndDependencies) {
     files.write_root(
         R"((module vitals :header "Vitals.h" :namespace fixture
       (record Vessel (member health Health)
@@ -743,11 +734,10 @@ TEST(SourceLoader, ScalarProjectionKeepsSemanticIdentityAndDependencies) {
     }
     auto const generated{files.render(manifest)};
     auto const& header{generated.front().content};
-    EXPECT_NE(header.find("struct Health"), std::string::npos);
-    EXPECT_NE(header.find("#include <cstdint>"), std::string::npos);
+    expect_contains_all(header, {"struct Health", "#include <cstdint>"});
     EXPECT_LT(header.find("struct Health"), header.find("struct Vessel"));
     EXPECT_LT(header.find("struct Health"), header.find("struct Fleet"));
-    EXPECT_EQ(header.find("Health_Invalid"), std::string::npos);
+    EXPECT_FALSE(header.contains("Health_Invalid"));
 }
 
 TEST(SourceLoader, ScalarProjectionControlsOwningRepresentation) {
@@ -801,15 +791,13 @@ TEST(SourceLoader, ScalarProjectionInfersStorageAndSupportsExplicitWidth) {
                                                                                 : "std::uint32_t"};
         EXPECT_TRUE(header.contains("PackedValueBase<Value, ioj::PackedStorage<" +
                                     std::string{expected} + ", 24>"));
-        EXPECT_FALSE(header.contains("using storage_type"));
-        EXPECT_FALSE(header.contains("raw_value() const"));
-        EXPECT_FALSE(header.contains("from_raw(storage_type"));
-        EXPECT_FALSE(header.contains("using Value ="));
+        expect_contains_none(
+            header,
+            {"using storage_type", "raw_value() const", "from_raw(storage_type", "using Value ="});
     }
 }
 
-TEST(SourceLoader, PackedDefaultsAreValidatedWithoutChangingImplicitSentinels) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, PackedDefaultsAreValidatedWithoutChangingImplicitSentinels) {
     auto& store{files.store()};
     files.write_root(R"((module orders :header "Orders.h"
       (record Order :layout packed :bits 8
@@ -845,15 +833,13 @@ TEST(SourceLoader, PackedDefaultsAreValidatedWithoutChangingImplicitSentinels) {
     EXPECT_EQ(default_raw("Implicit"), 0);
     EXPECT_EQ(default_raw("Invalid"), 255);
     auto const header{files.render(manifest).front().content};
-    EXPECT_NE(header.find("Partial() noexcept = delete"), std::string::npos);
-    EXPECT_NE(header.find("PackedValueBase<Partial, ioj::PackedStorage<std::uint8_t, 8>"),
-              std::string::npos);
-    EXPECT_EQ(header.find("std::bit_cast"), std::string::npos);
-    EXPECT_EQ(header.find("RawTag"), std::string::npos);
+    expect_contains_all(header,
+                        {"Partial() noexcept = delete",
+                         "PackedValueBase<Partial, ioj::PackedStorage<std::uint8_t, 8>"});
+    expect_contains_none(header, {"std::bit_cast", "RawTag"});
 }
 
-TEST(SourceLoader, IncludedExternalScalarsRetainExternalIdentityAndEnrichPlainReferences) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, IncludedExternalScalarsRetainExternalIdentityAndEnrichPlainReferences) {
     files.write_root(R"((module example :header "Example.h"
       (record Values (member x double) (member y int8) (member z std::int8_t) (member w @signed_byte)
     (projections (cpp)))))");
@@ -927,8 +913,7 @@ TEST(SourceLoader, IncludedExternalScalarsRetainExternalIdentityAndEnrichPlainRe
     EXPECT_EQ(compiled.dependencies.size(), 4);
 }
 
-TEST(SourceLoader, ExternalIntegerDomainsDriveRepresentationsAndPackedWidths) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, ExternalIntegerDomainsDriveRepresentationsAndPackedWidths) {
     files.write_root(R"((module example :header "Example.h"
       (linear-quantized Quantized :source @index :bits 4)
       (integer-varint Encoded :source @index :encoding unsigned)
@@ -954,12 +939,11 @@ TEST(SourceLoader, ExternalIntegerDomainsDriveRepresentationsAndPackedWidths) {
     EXPECT_EQ(layout.placements[1].bits, 24U);
     auto const output{files.render(manifest)};
     ASSERT_EQ(output.size(), 1);
-    EXPECT_EQ(output[0].content.find("struct NativeIndex"), std::string::npos);
-    EXPECT_NE(output[0].content.find("std::uint8_t"), std::string::npos);
+    EXPECT_FALSE(output[0].content.contains("struct NativeIndex"));
+    EXPECT_TRUE(output[0].content.contains("std::uint8_t"));
 }
 
-TEST(SourceLoader, PackedOccurrenceCannotTruncateReusableEncoding) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, PackedOccurrenceCannotTruncateReusableEncoding) {
     files.write_root(R"((module example :header "Packed.h"
       (integer-scalar Index :bit-width 32)
       (record Packed :layout packed :bits 64
@@ -1005,8 +989,7 @@ INSTANTIATE_TEST_SUITE_P(
         InvalidSourceCase{"RecursiveInclude", R"((include "types.lispb"))"}),
     [](auto const& info) { return info.param.name; });
 
-TEST(SourceLoader, ExternalIntegerDefaultsCoverFull64BitDomains) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, ExternalIntegerDefaultsCoverFull64BitDomains) {
     files.write_root(R"((module example :header "Example.h"))");
     files.write("types.lispb", R"(
       (type signed64 :spelling "int64" (integer :signed true :bit-width 64))
@@ -1060,8 +1043,7 @@ INSTANTIATE_TEST_SUITE_P(
         InvalidSourceCase{"BuiltinNameCollision", "(record double (member x int8))"}),
     [](auto const& info) { return info.param.name; });
 
-TEST(SourceLoader, NormalModuleKeepsMixedDeclarationOrderAndResolvesTypes) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, NormalModuleKeepsMixedDeclarationOrderAndResolvesTypes) {
     auto& store{files.store()};
     auto& normal_modules{store.normal_modules};
     files.write_root(R"(
@@ -1123,8 +1105,7 @@ TEST(SourceLoader, NormalModuleKeepsMixedDeclarationOrderAndResolvesTypes) {
     EXPECT_LT(enum_position, record_position);
 }
 
-TEST(SourceLoader, RejectsRetiredDeclarationModuleHeads) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, RejectsRetiredDeclarationModuleHeads) {
     for (auto const* head : {"enum-module",
                              "soa-module",
                              "static-table-module",
@@ -1148,8 +1129,7 @@ TEST(SourceLoader, RejectsRetiredDeclarationModuleHeads) {
     }
 }
 
-TEST(SourceLoader, OrdersPhysicalDependenciesWithoutChangingDeclarationIndices) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, OrdersPhysicalDependenciesWithoutChangingDeclarationIndices) {
     auto& store{files.store()};
     files.write_root(R"(
 (module mixed
@@ -1176,8 +1156,7 @@ TEST(SourceLoader, OrdersPhysicalDependenciesWithoutChangingDeclarationIndices) 
     EXPECT_EQ(files.text(declaration_name(store, store.items(declarations)[3])), "Inner");
 }
 
-TEST(SourceLoader, NormalModuleRejectsCrossKindGeneratedCppNameCollision) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, NormalModuleRejectsCrossKindGeneratedCppNameCollision) {
     files.write_root(R"(
 (module mixed
   :header "Mixed.h"
@@ -1191,8 +1170,7 @@ TEST(SourceLoader, NormalModuleRejectsCrossKindGeneratedCppNameCollision) {
     EXPECT_THROW(lispb::schema::resolve_type_graph(files.load()), std::invalid_argument);
 }
 
-TEST(SourceLoader, ReadsCommentsAndTypedSoa) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, ReadsCommentsAndTypedSoa) {
     auto& store{files.store()};
     auto& semantic_relations{store.semantic_relations};
     auto& soa_members{store.soa_members};
@@ -1239,17 +1217,14 @@ TEST(SourceLoader, ReadsCommentsAndTypedSoa) {
     EXPECT_EQ(semantic_relations.unit[relation_row], SemanticRelationUnit::elements);
 }
 
-TEST(SourceLoader, OrdinarySoaNeedsNoSourceOutput) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, OrdinarySoaNeedsNoSourceOutput) {
     files.write_root(R"((module native_data :header "NativeData.h"
         (struct Data (member values array std::int32_t))))");
     auto const output{files.render(files.load()).front().content};
-    EXPECT_NE(output.find("struct Data"), std::string::npos);
-    EXPECT_NE(output.find("std::pmr::memory_resource&"), std::string::npos);
+    expect_contains_all(output, {"struct Data", "std::pmr::memory_resource&"});
 }
 
-TEST(SourceLoader, NativeIntegerSpellingsPreserveExplicitExternalTypes) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, NativeIntegerSpellingsPreserveExplicitExternalTypes) {
     files.write_root(R"((module values :header "Values.h"
         (record Values
           (member signed_value int32)
@@ -1259,15 +1234,15 @@ TEST(SourceLoader, NativeIntegerSpellingsPreserveExplicitExternalTypes) {
     files.write("types.lispb", R"(
         (type engine_integer :spelling int32 :header "EngineInteger.h"))");
     auto const output{files.render(files.load()).front().content};
-    EXPECT_NE(output.find("#include <cstdint>"), std::string::npos);
-    EXPECT_NE(output.find("std::int32_t signed_value"), std::string::npos);
-    EXPECT_NE(output.find("std::uint16_t unsigned_value"), std::string::npos);
-    EXPECT_NE(output.find("int32 engine_value"), std::string::npos);
-    EXPECT_NE(output.find("#include \"EngineInteger.h\""), std::string::npos);
+    expect_contains_all(output,
+                        {"#include <cstdint>",
+                         "std::int32_t signed_value",
+                         "std::uint16_t unsigned_value",
+                         "int32 engine_value",
+                         "#include \"EngineInteger.h\""});
 }
 
-TEST(SourceLoader, RejectsRemovedSoaBackend) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, RejectsRemovedSoaBackend) {
     files.write_root(R"(
 (module native_data
   :header "NativeData.h"
@@ -1279,8 +1254,7 @@ TEST(SourceLoader, RejectsRemovedSoaBackend) {
     EXPECT_THROW(files.load(), lispb::codegen::sexpr::SourceError);
 }
 
-TEST(SourceLoader, ReadsSoaFieldMaskMetadata) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, ReadsSoaFieldMaskMetadata) {
     auto& store{files.store()};
     auto& soa_mask_dimensions{store.soa_mask_dimensions};
     auto& soa_members{store.soa_members};
@@ -1317,8 +1291,7 @@ TEST(SourceLoader, ReadsSoaFieldMaskMetadata) {
     EXPECT_EQ(files.text(soa_mask_dimensions.extent[column_dimension]), "4");
 }
 
-TEST(SourceLoader, ReadsPackedValueModule) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, ReadsPackedValueModule) {
     auto& store{files.store()};
     auto& packed_fields{store.child_occurrences};
     auto& packed_named_codes{store.packed_named_codes};
@@ -1389,8 +1362,7 @@ TEST(SourceLoader, ReadsPackedValueModule) {
     EXPECT_EQ(packed_fields.bits[state_row], 8);
 }
 
-TEST(SourceLoader, ReadsSignedArbitraryWidthPackedField) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, ReadsSignedArbitraryWidthPackedField) {
     auto& store{files.store()};
     auto& packed_fields{store.child_occurrences};
     auto& packed_named_codes{store.packed_named_codes};
@@ -1429,8 +1401,7 @@ TEST(SourceLoader, ReadsSignedArbitraryWidthPackedField) {
         packed_named_codes.sentinel[store.items(store.integer_scalars.named_codes[scalar])[1]]);
 }
 
-TEST(SourceLoader, ReadsLinearQuantizedPackedField) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, ReadsLinearQuantizedPackedField) {
     auto& store{files.store()};
     auto& packed_fields{store.child_occurrences};
     files.write_root(R"(
@@ -1469,8 +1440,7 @@ TEST(SourceLoader, ReadsLinearQuantizedPackedField) {
     EXPECT_FALSE(packed_fields.bits[health_row].has_value());
 }
 
-TEST(SourceLoader, ReadsFixedPointPackedField) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, ReadsFixedPointPackedField) {
     auto& store{files.store()};
     auto& packed_fields{store.child_occurrences};
     files.write_root(R"(
@@ -1501,8 +1471,7 @@ TEST(SourceLoader, ReadsFixedPointPackedField) {
     EXPECT_FALSE(packed_fields.bits[velocity_row].has_value());
 }
 
-TEST(SourceLoader, ReadsMiniFloatPackedField) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, ReadsMiniFloatPackedField) {
     auto& store{files.store()};
     auto& packed_fields{store.child_occurrences};
     files.write_root(R"(
@@ -1549,8 +1518,7 @@ INSTANTIATE_TEST_SUITE_P(
                           "uint8 :bits 8))"}),
     [](auto const& info) { return info.param.name; });
 
-TEST(SourceLoader, ReadsStandaloneIntegerScalarDomain) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, ReadsStandaloneIntegerScalarDomain) {
     auto& store{files.store()};
     auto& integer_scalars{store.integer_scalars};
     auto& packed_named_codes{store.packed_named_codes};
@@ -1618,8 +1586,7 @@ TEST(SourceLoader, ReadsStandaloneIntegerScalarDomain) {
               SemanticRelationUnit::bytes);
 }
 
-TEST(SourceLoader, ReadsPhysicalRepresentations) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, ReadsPhysicalRepresentations) {
     auto& store{files.store()};
     auto& fixed_points{store.fixed_points};
     auto& integer_varints{store.integer_varints};
@@ -1735,8 +1702,7 @@ INSTANTIATE_TEST_SUITE_P(
             "(mini-float Invalid :sign-bits 1 :exponent-bits 5 :significand-bits 10 :bias 32768)"}),
     [](auto const& info) { return info.param.name; });
 
-TEST(SourceLoader, ReadsExplicitEnumBitWidth) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, ReadsExplicitEnumBitWidth) {
     auto& store{files.store()};
     auto& enums{store.enums};
     files.write_root(R"(
@@ -1762,8 +1728,7 @@ TEST(SourceLoader, ReadsExplicitEnumBitWidth) {
                            std::array{NativeEnumHelper::to_string, NativeEnumHelper::traits}));
 }
 
-TEST(SourceLoader, ReadsEnumWithoutCppBackingType) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, ReadsEnumWithoutCppBackingType) {
     auto& store{files.store()};
     auto& enums{store.enums};
     files.write_root(R"(
@@ -1785,8 +1750,7 @@ TEST(SourceLoader, ReadsEnumWithoutCppBackingType) {
     EXPECT_EQ(enums.signedness[schema_row], schema::EnumSignedness::unsigned_);
 }
 
-TEST(SourceLoader, ReadsExplicitSignedEnumDomain) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, ReadsExplicitSignedEnumDomain) {
     auto& store{files.store()};
     auto& enums{store.enums};
     files.write_root(R"(
@@ -1806,8 +1770,7 @@ TEST(SourceLoader, ReadsExplicitSignedEnumDomain) {
     EXPECT_FALSE(enums.bit_width[schema_row].has_value());
 }
 
-TEST(SourceLoader, ReadsNamedEnumSentinels) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, ReadsNamedEnumSentinels) {
     auto& store{files.store()};
     auto& enumerators{store.enumerators};
     files.write_root(R"(
@@ -1847,8 +1810,7 @@ INSTANTIATE_TEST_SUITE_P(
     (projections (cpp))))"}),
     [](auto const& info) { return info.param.name; });
 
-TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, PreservesNumericAndOpaqueEnumInitializers) {
     auto& store{files.store()};
     auto& enumerators{store.enumerators};
     auto& enums{store.enums};
@@ -1891,8 +1853,7 @@ TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
               "static_cast<uint8>(1)");
 }
 
-TEST(SourceLoader, ReadsRecordModuleAndFixedArrays) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, ReadsRecordModuleAndFixedArrays) {
     auto& store{files.store()};
     auto& record_members{store.child_occurrences};
     auto& records{store.records};
@@ -1940,8 +1901,7 @@ TEST(SourceLoader, ReadsRecordModuleAndFixedArrays) {
               "Position");
 }
 
-TEST(SourceLoader, ReadsRawUnionModuleAndFixedArrayAlternatives) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, ReadsRawUnionModuleAndFixedArrayAlternatives) {
     auto& store{files.store()};
     auto& union_alternatives{store.child_occurrences};
     auto& unions{store.unions};
@@ -2002,8 +1962,7 @@ INSTANTIATE_TEST_SUITE_P(
                           "(member payload @Payload :tag kind) (projections (cpp)))"}),
     [](auto const& info) { return info.param.name; });
 
-TEST(SourceLoader, ReadsUnionDiscriminatorOnMemberOccurrence) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, ReadsUnionDiscriminatorOnMemberOccurrence) {
     files.write_root(R"((module events :header "Events.h"
       (enum Kind :bit-width 2 (value Empty) (value Data))
       (record Empty)
@@ -2034,8 +1993,7 @@ TEST(SourceLoader, ReadsUnionDiscriminatorOnMemberOccurrence) {
     EXPECT_EQ(store.child_occurrences.bits[store.child_occurrences.index(members[1])], 30U);
 }
 
-TEST(SourceLoader, RejectsNonIntegerPackedFieldWidthWithSourceLocation) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, RejectsNonIntegerPackedFieldWidthWithSourceLocation) {
     files.write_root(R"(
 (module packed
   :header "Packed.h"
@@ -2050,13 +2008,12 @@ TEST(SourceLoader, RejectsNonIntegerPackedFieldWidthWithSourceLocation) {
         FAIL() << "Expected manifest error";
     } catch (lispb::codegen::sexpr::SourceError const& error) {
         auto const message{std::string{error.what()}};
-        EXPECT_NE(message.find("modules.lispb:6:31"), std::string::npos) << message;
-        EXPECT_NE(message.find("member bits must be an integer"), std::string::npos) << message;
+        EXPECT_TRUE(message.contains("modules.lispb:6:31")) << message;
+        EXPECT_TRUE(message.contains("member bits must be an integer")) << message;
     }
 }
 
-TEST(SourceLoader, ReportsSourceLocationForUnknownProperties) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, ReportsSourceLocationForUnknownProperties) {
     files.write_root("(umbrella-module all\n  :header \"All.h\"\n  :headers ()\n  :typo true)\n");
 
     try {
@@ -2064,19 +2021,16 @@ TEST(SourceLoader, ReportsSourceLocationForUnknownProperties) {
         FAIL() << "Expected manifest error";
     } catch (lispb::codegen::sexpr::SourceError const& error) {
         auto const message{std::string{error.what()}};
-        EXPECT_NE(message.find("modules.lispb:4:3"), std::string::npos);
-        EXPECT_NE(message.find("unknown property ':typo'"), std::string::npos);
+        expect_contains_all(message, {"modules.lispb:4:3", "unknown property ':typo'"});
     }
 }
 
-TEST(SourceLoader, RejectsUnknownModuleDeclarations) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, RejectsUnknownModuleDeclarations) {
     files.write_root("(mystery-module bad :header \"Bad.h\")");
     EXPECT_THROW(files.load(), lispb::codegen::sexpr::SourceError);
 }
 
-TEST(SourceLoader, LoadsStructuredTypeReferencesAndFacadeStorage) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, LoadsStructuredTypeReferencesAndFacadeStorage) {
     auto& store{files.store()};
     auto& facade_methods{store.facade_methods};
     auto& facades{store.facades};
@@ -2106,8 +2060,7 @@ TEST(SourceLoader, LoadsStructuredTypeReferencesAndFacadeStorage) {
     EXPECT_TRUE(facade_methods.is_const[method_row]);
 }
 
-TEST(SourceLoader, LoadsOpaqueCppBlocksAndKeepsQuotedBodiesCompatible) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, LoadsOpaqueCppBlocksAndKeepsQuotedBodiesCompatible) {
     auto& store{files.store()};
     auto& facades{store.facades};
     auto& functions{store.functions};
@@ -2170,8 +2123,7 @@ TEST(SourceLoader, LoadsOpaqueCppBlocksAndKeepsQuotedBodiesCompatible) {
               "checkf(target != nullptr, TEXT(\"missing target\"));");
 }
 
-TEST(SourceLoader, AcceptsEmptyCppBodyAndRejectsWrongRawTag) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, AcceptsEmptyCppBodyAndRejectsWrongRawTag) {
     auto& store{files.store()};
     auto& functions{store.functions};
     files.write_root(R"(
@@ -2197,20 +2149,18 @@ TEST(SourceLoader, AcceptsEmptyCppBodyAndRejectsWrongRawTag) {
         FAIL() << "Expected manifest error";
     } catch (lispb::codegen::sexpr::SourceError const& error) {
         auto const message{std::string{error.what()}};
-        EXPECT_TRUE(message.contains("body requires a #cpp raw literal; got #hlsl"));
-        EXPECT_TRUE(message.contains("modules.lispb:5:32"));
+        expect_contains_all(message,
+                            {"body requires a #cpp raw literal; got #hlsl", "modules.lispb:5:32"});
     }
 }
 
-TEST(SourceLoader, RejectsRawLiteralForOrdinaryTextField) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, RejectsRawLiteralForOrdinaryTextField) {
     files.write_root("(umbrella-module all :header #cpp{Generated.h}cpp# :headers ())");
 
     EXPECT_THROW(files.load(), lispb::codegen::sexpr::SourceError);
 }
 
-TEST(SourceLoader, LoadsSettingsControls) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, LoadsSettingsControls) {
     auto& store{files.store()};
     auto& setting_controls{store.setting_controls};
     auto& settings{store.settings};
@@ -2248,8 +2198,7 @@ TEST(SourceLoader, LoadsSettingsControls) {
         0.5);
 }
 
-TEST(SourceLoader, SettingsDeviceDefaultsToShared) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, SettingsDeviceDefaultsToShared) {
     auto& store{files.store()};
     files.write_root(R"(
 (settings-module settings
@@ -2271,8 +2220,7 @@ TEST(SourceLoader, SettingsDeviceDefaultsToShared) {
               SettingDevice::shared);
 }
 
-TEST(SourceLoader, OrdinarySoaPreservesLogicalApi) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, OrdinarySoaPreservesLogicalApi) {
     auto& store{files.store()};
     auto& soas{store.soas};
     files.write_root(R"(
@@ -2293,15 +2241,14 @@ TEST(SourceLoader, OrdinarySoaPreservesLogicalApi) {
     EXPECT_TRUE(store.functions.is_const[store.items(soas.const_view_functions[schema_row])[0]]);
     ASSERT_EQ(soas.mutable_view_functions[schema_row].size(), 1U);
     auto const output{files.render(manifest).front().content};
-    EXPECT_NE(output.find("struct API Rows"), std::string::npos);
-    EXPECT_NE(output.find("std::pmr::memory_resource& resource"), std::string::npos);
-    EXPECT_NE(output.find("return this->values()[0];"), std::string::npos);
-    EXPECT_EQ(output.find("struct Rows {"), std::string::npos);
-    EXPECT_NE(output.find("void noop() {"), std::string::npos);
+    expect_contains_all(
+        output,
+        {"struct API Rows", "std::pmr::memory_resource& resource", "return this->values()[0];"});
+    EXPECT_FALSE(output.contains("struct Rows {"));
+    EXPECT_TRUE(output.contains("void noop() {"));
 }
 
-TEST(SourceLoader, ReadOnlyViewFunctionRejectsMutableReceiver) {
-    TemporaryManifest files;
+TEST_F(SourceLoaderTest, ReadOnlyViewFunctionRejectsMutableReceiver) {
     files.write_root(R"(
 (module api :header "Api.h"
   (struct Rows

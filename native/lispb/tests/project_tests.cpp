@@ -65,12 +65,12 @@ TEST(Compiler, RecompilesChangedSourcesAndRetainsProjectAndOverlays) {
         auto const& output{compiler.compile(project, target, files.path("build")).compilation};
         return output.text(output.artifacts.front());
     }};
-    EXPECT_NE(compile_text().find("struct Before"), std::string::npos);
+    EXPECT_TRUE(compile_text().contains("struct Before"));
 
     files.write("values.lispb", R"((module values :header "Values.h" (record After
     (projections (cpp)))))");
     auto const changed{compile_text()};
-    EXPECT_NE(changed.find("struct After"), std::string::npos);
+    EXPECT_TRUE(changed.contains("struct After"));
     EXPECT_EQ(compile_text(), changed);
     EXPECT_TRUE(compiler.compile(project, target, files.path("build"), CompileMode::validate)
                     .compilation.artifacts.empty());
@@ -78,7 +78,7 @@ TEST(Compiler, RecompilesChangedSourcesAndRetainsProjectAndOverlays) {
     static_cast<void>(storage.sources.overlay(files.path("values.lispb"),
                                               R"((module values :header "Values.h" (record Unsaved
     (projections (cpp)))))"));
-    EXPECT_NE(compile_text().find("struct Unsaved"), std::string::npos);
+    EXPECT_TRUE(compile_text().contains("struct Unsaved"));
     EXPECT_EQ(project.target_name(target), "test");
     EXPECT_FALSE(std::filesystem::exists(files.path("generated/Values.h")));
 }

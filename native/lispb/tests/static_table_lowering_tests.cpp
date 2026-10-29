@@ -1,5 +1,6 @@
 #include "compiler_test_context.h"
 #include "test_utilities.h"
+#include "text_expectations.h"
 
 #include <codegen/ast/cpp_types.h>
 #include <codegen/ast/indices.h>
@@ -16,6 +17,8 @@
 #include <string_view>
 
 namespace lispb::codegen {
+using lispb::test_support::expect_contains_all;
+using lispb::test_support::expect_contains_none;
 namespace {
 
 auto render_static_table(CompilerTestContext& context, bool const two_tables = false)
@@ -48,33 +51,31 @@ TEST(StaticTableLowering, GeneratesFixedRowsColumnsAndCoreFunctions) {
     CompilerTestContext context;
     auto const output{render_static_table(context)};
 
-    EXPECT_NE(output.find("#include \"Project/Value.h\""), std::string::npos);
-    EXPECT_NE(output.find("#include \"Project/Point.h\""), std::string::npos);
-    EXPECT_NE(output.find("#include \"Containers/StaticArray.h\""), std::string::npos);
-    EXPECT_NE(output.find("struct PROJECT_API FValues"), std::string::npos);
-    EXPECT_NE(output.find("static constexpr int32 num_rows{3};"), std::string::npos);
-    EXPECT_NE(output.find("static constexpr int32 first_index{0};"), std::string::npos);
-    EXPECT_NE(output.find("static constexpr int32 third_index{2};"), std::string::npos);
-    EXPECT_NE(output.find("static constexpr auto num() noexcept -> int32"), std::string::npos);
-    EXPECT_NE(output.find("auto apply_arrays(this auto&& self, TFunc&& func)"), std::string::npos);
-    EXPECT_NE(output.find("auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)"),
-              std::string::npos);
-    EXPECT_NE(output.find("auto get_point(int32 const index) const -> FPoint"), std::string::npos);
-    EXPECT_NE(output.find("return FPoint{ids[index], values[index]};"), std::string::npos);
-    EXPECT_NE(output.find("TStaticArray<std::int32_t, num_rows> ids{};"), std::string::npos);
-    EXPECT_NE(output.find("TStaticArray<FValue, num_rows> values{};"), std::string::npos);
-    EXPECT_NE(output.find("namespace project::generated"), std::string::npos);
-    EXPECT_NE(output.find("class FForward;"), std::string::npos);
-    EXPECT_EQ(output.find("get_view"), std::string::npos);
-    EXPECT_EQ(output.find("set_num"), std::string::npos);
+    expect_contains_all(output,
+                        {"#include \"Project/Value.h\"",
+                         "#include \"Project/Point.h\"",
+                         "#include \"Containers/StaticArray.h\"",
+                         "struct PROJECT_API FValues",
+                         "static constexpr int32 num_rows{3};",
+                         "static constexpr int32 first_index{0};",
+                         "static constexpr int32 third_index{2};",
+                         "static constexpr auto num() noexcept -> int32",
+                         "auto apply_arrays(this auto&& self, TFunc&& func)",
+                         "auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)",
+                         "auto get_point(int32 const index) const -> FPoint",
+                         "return FPoint{ids[index], values[index]};",
+                         "TStaticArray<std::int32_t, num_rows> ids{};",
+                         "TStaticArray<FValue, num_rows> values{};",
+                         "namespace project::generated",
+                         "class FForward;"});
+    expect_contains_none(output, {"get_view", "set_num"});
 }
 
 TEST(StaticTableLowering, GeneratesMultipleTablesInOneHeader) {
     CompilerTestContext context;
     auto const output{render_static_table(context, true)};
 
-    EXPECT_NE(output.find("struct PROJECT_API FValues"), std::string::npos);
-    EXPECT_NE(output.find("struct PROJECT_API FOtherValues"), std::string::npos);
+    expect_contains_all(output, {"struct PROJECT_API FValues", "struct PROJECT_API FOtherValues"});
 }
 
 } // namespace

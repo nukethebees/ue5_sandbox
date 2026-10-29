@@ -1024,9 +1024,8 @@ void CppIR::collect_dependencies(NodeId node, std::vector<TypeDependencyId>& res
         case NodeKind::switch_stmt: {
             collect_dependencies(switch_stmt_nodes_.condition[i], result);
             auto const range{switch_stmt_nodes_.cases[i]};
-            auto const end{range.begin + range.count};
-            for (auto c{range.begin}; c < end; ++c) {
-                if (auto const label{cases_.label[case_references_[c].value]}) {
+            for (auto const case_id : ir::range_values(case_references_, range)) {
+                if (auto const label{cases_.label[case_id.value]}) {
                     collect_dependencies(*label, result);
                 }
             }
@@ -1082,18 +1081,16 @@ void CppIR::collect_dependencies(NodeId node, std::vector<TypeDependencyId>& res
                 collect_dependencies(conditional_noexcept_[exception.index()], result);
             }
             auto const range{functions_.parameters[id]};
-            auto const end{range.begin + range.count};
-            for (auto p{range.begin}; p < end; ++p) {
-                type(parameters_.type[parameter_references_[p].value]);
+            for (auto const parameter : ir::range_values(parameter_references_, range)) {
+                type(parameters_.type[parameter.value]);
             }
             auto const implementation{functions_.implementation[id]};
             if (!function_nodes_.declaration[i] &&
                 implementation.kind() == FunctionImplementationKind::body) {
                 auto const initializers{function_bodies_.initializers[implementation.index()]};
-                auto const initializers_end{initializers.begin + initializers.count};
-                for (auto m{initializers.begin}; m < initializers_end; ++m) {
-                    collect_dependencies(initializers_.value[initializer_references_[m].value],
-                                         result);
+                for (auto const initializer :
+                     ir::range_values(initializer_references_, initializers)) {
+                    collect_dependencies(initializers_.value[initializer.value], result);
                 }
             }
             break;
@@ -1203,9 +1200,7 @@ void CppIR::collect_dependencies(TemplateId declaration,
         result.insert(result.end(), dependencies.begin(), dependencies.end());
     };
     auto const range{templates_.parameters[declaration.index()]};
-    auto const end{range.begin + range.count};
-    for (auto position{range.begin}; position < end; ++position) {
-        auto const parameter{template_parameter_references_[position]};
+    for (auto const parameter : ir::range_values(template_parameter_references_, range)) {
         auto const index{parameter.index()};
         switch (parameter.kind()) {
             case TemplateParameterKind::type:

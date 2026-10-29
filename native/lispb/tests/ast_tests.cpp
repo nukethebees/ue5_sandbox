@@ -1,5 +1,6 @@
 #include "cpp_ir_test.h"
 #include "test_utilities.h"
+#include "text_expectations.h"
 
 #include <codegen/ast/access.h>
 #include <codegen/ast/access_indentation.h>
@@ -41,6 +42,7 @@
 #include <vector>
 
 namespace lispb::codegen {
+using lispb::test_support::expect_contains_all;
 namespace {
 
 static_assert(
@@ -97,8 +99,7 @@ TEST_F(AstTest, RendersStaticAssertionsWithOptionalMessages) {
         {ir.instance_member(ir.types.intern("int"), ir.strings.intern("valid")), assertion})};
     auto const output{
         renderer.render(ir.namespace_node(ir.strings.intern("a"), {assertion, shadowed}))};
-    EXPECT_NE(output.find("static_assert(valid());"), std::string::npos);
-    EXPECT_NE(output.find("static_assert(a::valid());"), std::string::npos);
+    expect_contains_all(output, {"static_assert(valid());", "static_assert(a::valid());"});
     EXPECT_EQ(collected_dependencies(ir, assertion), std::vector<TypeDependencyId>{dependency});
 }
 
@@ -351,9 +352,9 @@ TEST_F(AstTest, RendersTemplatedConstrainedFunctions) {
         spec, ir.template_id(ir.named("Appendable"), {ir.type_reference(types.intern("Other"))}));
 
     auto const rendered{CppRenderer{ir}.render(ir.header_function(spec))};
-    EXPECT_NE(rendered.find("template <typename Other>"), std::string::npos);
-    EXPECT_NE(rendered.find("requires Appendable<Other>"), std::string::npos);
-    EXPECT_NE(rendered.find("append_from(other);"), std::string::npos);
+    expect_contains_all(
+        rendered,
+        {"template <typename Other>", "requires Appendable<Other>", "append_from(other);"});
 }
 
 TEST_F(AstTest, RendersTypedFunctionFormattingPolicies) {
@@ -503,14 +504,14 @@ TEST_F(AstTest, CollectsOpaqueDeclarationDependenciesWithoutIncludingTheBody) {
     auto const file{ir.files.append(ir.strings.intern("Example.h"),
                                     {ir.include_dependencies(), ir.declaration(spec)})};
     auto const header{renderer.render(file)};
-    EXPECT_NE(header.find("#include \"Project/Requirement.h\""), std::string::npos);
-    EXPECT_EQ(header.find("Project/Implementation.h"), std::string::npos);
-    EXPECT_NE(header.find("requires SupportsValue<T>"), std::string::npos);
+    EXPECT_TRUE(header.contains("#include \"Project/Requirement.h\""));
+    EXPECT_FALSE(header.contains("Project/Implementation.h"));
+    EXPECT_TRUE(header.contains("requires SupportsValue<T>"));
 
     ir.files.set_nodes(file, {ir.files.nodes(file).front(), ir.definition(spec)});
     auto const source{renderer.render(file)};
-    EXPECT_NE(source.find("#include \"Project/Requirement.h\""), std::string::npos);
-    EXPECT_NE(source.find("#include \"Project/Implementation.h\""), std::string::npos);
+    expect_contains_all(
+        source, {"#include \"Project/Requirement.h\"", "#include \"Project/Implementation.h\""});
     EXPECT_EQ(source.find("Project/Requirement.h"), source.rfind("Project/Requirement.h"));
 }
 
@@ -540,7 +541,7 @@ TEST_F(AstTest, RendersQualifiedTrailingReturnAndDefaultedConstructor) {
                   {ir.header_function(initialized),
                    ir.instance_member(types.intern("int"), ir.strings.intern("value_"))})};
     auto const output{renderer.render(ir.namespace_node(ir.strings.intern("a"), {record}))};
-    EXPECT_NE(output.find("value_{a::make_value()}"), std::string::npos) << output;
+    EXPECT_TRUE(output.contains("value_{a::make_value()}")) << output;
     EXPECT_EQ(collected_dependencies(ir, ir.header_function(initialized)),
               std::vector<TypeDependencyId>{dependency});
     EXPECT_TRUE(collected_dependencies(ir, ir.declaration(initialized)).empty());
@@ -575,10 +576,10 @@ TEST_F(AstTest, RendersForwardUsingAndFilePolicyNodes) {
 
     auto const rendered{CppRenderer{ir}.render(file)};
     EXPECT_TRUE(rendered.starts_with("// clang-format off\n"));
-    EXPECT_EQ(rendered.find("#pragma once"), std::string::npos);
-    EXPECT_NE(rendered.find("// prologue\n\nstruct FValue;\nusing Value = FValue;"),
-              std::string::npos);
-    EXPECT_NE(rendered.find("// epilogue\n// clang-format on\n"), std::string::npos);
+    EXPECT_FALSE(rendered.contains("#pragma once"));
+    expect_contains_all(rendered,
+                        {"// prologue\n\nstruct FValue;\nusing Value = FValue;",
+                         "// epilogue\n// clang-format on\n"});
 }
 
 TEST_F(AstTest, AppliesStaticAndDefaultArgumentRulesToFunctionForms) {
@@ -698,7 +699,7 @@ TEST_F(AstTest, RestoresNamespaceContextAndRetainsAnonymousLookup) {
     auto const member{ir.variable(type, "value")};
     auto const local{in_namespace(ir, "a::b", ir.namespace_node(ir.strings.intern(""), {member}))};
     auto const output{renderer.render_nodes(std::vector<NodeId>{local, member}, {}, 1)};
-    EXPECT_NE(output.find("namespace {\nToken value{};"), std::string::npos);
+    EXPECT_TRUE(output.contains("namespace {\nToken value{};"));
     EXPECT_TRUE(output.ends_with("a::b::Token value{};"));
     EXPECT_EQ(renderer.render(member), "a::b::Token value{};");
     EXPECT_EQ(renderer.render(local), renderer.render(local));
@@ -763,7 +764,7 @@ TEST_F(AstTest, AccountsForReopenedAndAnonymousNamespaceBindings) {
                                                              in_namespace(ir, "a::b", member)},
                                          {},
                                          1)};
-        EXPECT_NE(output.find("a::Token value{};"), std::string::npos) << output;
+        EXPECT_TRUE(output.contains("a::Token value{};")) << output;
     }
 }
 
@@ -781,9 +782,10 @@ TEST_F(AstTest, UsesTemplateAndMemberScopesInSignaturesAndExpressions) {
         std::vector<NodeId>{in_namespace(ir, "a", record), in_namespace(ir, "a", definition)},
         {},
         1)};
-    EXPECT_NE(output.find("a::Token make(a::Token argument);"), std::string::npos);
-    EXPECT_NE(output.find("Token Holder::make(a::Token argument)"), std::string::npos);
-    EXPECT_NE(output.find("return a::Token{};"), std::string::npos);
+    expect_contains_all(output,
+                        {"a::Token make(a::Token argument);",
+                         "Token Holder::make(a::Token argument)",
+                         "return a::Token{};"});
 
     auto const template_function{ir.function("use", token)};
     ir.set_function_return_type(template_function, token, ReturnSyntax::trailing);
@@ -815,12 +817,11 @@ TEST_F(AstTest, DistinguishesDeclarationsWhenNodesAreReusedAcrossNamespaces) {
         {},
         1)};
 
-    EXPECT_NE(output.find("namespace a {\nusing Token = int;\n\nstruct Holder {\n    Token value;"),
-              std::string::npos)
+    EXPECT_TRUE(
+        output.contains("namespace a {\nusing Token = int;\n\nstruct Holder {\n    Token value;"))
         << output;
-    EXPECT_NE(
-        output.find("namespace b {\nusing Token = int;\n\nstruct Holder {\n    a::Token value;"),
-        std::string::npos)
+    EXPECT_TRUE(output.contains(
+        "namespace b {\nusing Token = int;\n\nstruct Holder {\n    a::Token value;"))
         << output;
 }
 
@@ -862,9 +863,9 @@ TEST_F(AstTest, ResolvesNestedClassOwnersAndForwardDeclaredInjectedNames) {
                            ir.forward_declaration(ir.strings.intern("Self")),
                            self}))};
 
-    EXPECT_NE(output.find("Token Outer::Inner::make(a::Token value)"), std::string::npos) << output;
-    EXPECT_NE(output.find("return a::Token{};"), std::string::npos) << output;
-    EXPECT_NE(output.find("Self const* next;"), std::string::npos) << output;
+    EXPECT_TRUE(output.contains("Token Outer::Inner::make(a::Token value)")) << output;
+    EXPECT_TRUE(output.contains("return a::Token{};")) << output;
+    EXPECT_TRUE(output.contains("Self const* next;")) << output;
 }
 
 TEST_F(AstTest, KeepsTemplateHeadersIndependentOfFunctionParameters) {
@@ -878,9 +879,8 @@ TEST_F(AstTest, KeepsTemplateHeadersIndependentOfFunctionParameters) {
     ir.set_function_return_type(function, token, ReturnSyntax::trailing);
     auto const output{CppRenderer{ir}.render(in_namespace(ir, "a", ir.declaration(function)))};
 
-    EXPECT_NE(output.find("template <Token N>"), std::string::npos) << output;
-    EXPECT_NE(output.find("use(Token Token, a::Token other) -> a::Token;"), std::string::npos)
-        << output;
+    EXPECT_TRUE(output.contains("template <Token N>")) << output;
+    EXPECT_TRUE(output.contains("use(Token Token, a::Token other) -> a::Token;")) << output;
 }
 
 TEST_F(AstTest, PreservesQualificationForAuthoredRecordNames) {

@@ -21,7 +21,7 @@ class CanonicalRenderer {
   private:
     auto text(StringId value) const -> std::string_view;
 
-    static auto access_keyword(codegen::Access access) -> std::string_view;
+    void add_export_specifier(codegen::sexpr::FormBuilder& result, StringId specifier);
     template <typename Id>
     auto items(codegen::SchemaRange<Id> range) const {
         return store_.items(range);

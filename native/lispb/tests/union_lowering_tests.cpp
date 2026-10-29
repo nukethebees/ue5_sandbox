@@ -1,5 +1,6 @@
 #include "compiler_test_context.h"
 #include "test_utilities.h"
+#include "text_expectations.h"
 
 #include <codegen/ast/cpp_types.h>
 #include <codegen/ast/indices.h>
@@ -15,6 +16,7 @@
 #include <string>
 
 namespace lispb::codegen {
+using lispb::test_support::expect_contains_all;
 namespace {
 
 TEST(UnionLowering, GeneratesRawAlternativesAndFixedArrays) {
@@ -34,12 +36,13 @@ TEST(UnionLowering, GeneratesRawAlternativesAndFixedArrays) {
 
     ASSERT_EQ(files.size(), 1U);
     auto const& output{files.front().content};
-    EXPECT_NE(output.find("#include <array>"), std::string::npos);
-    EXPECT_NE(output.find("#include \"Project/Value.h\""), std::string::npos);
-    EXPECT_NE(output.find("namespace project"), std::string::npos);
-    EXPECT_NE(output.find("union PROJECT_API Payload"), std::string::npos);
-    EXPECT_NE(output.find("std::uint32_t identifier;"), std::string::npos);
-    EXPECT_NE(output.find("std::array<Value, 3> values;"), std::string::npos);
+    expect_contains_all(output,
+                        {"#include <array>",
+                         "#include \"Project/Value.h\"",
+                         "namespace project",
+                         "union PROJECT_API Payload",
+                         "std::uint32_t identifier;",
+                         "std::array<Value, 3> values;"});
 }
 
 TEST(UnionLowering, EmitsByValueDependenciesBeforeTheirUsers) {
@@ -81,13 +84,14 @@ TEST(UnionLowering, GeneratesTaggedAggregateWithExplicitPayloadUnion) {
 
     ASSERT_EQ(files.size(), 2U);
     auto const& output{files.back().content};
-    EXPECT_NE(output.find("#include \"Events.h\""), std::string::npos);
-    EXPECT_NE(output.find("struct PROJECT_API Event"), std::string::npos);
-    EXPECT_NE(output.find("EventKind tag;"), std::string::npos);
-    EXPECT_NE(output.find("union EventPayload"), std::string::npos);
-    EXPECT_NE(output.find("std::uint32_t spawn;"), std::string::npos);
-    EXPECT_NE(output.find("std::array<std::uint16_t, 4> damage;"), std::string::npos);
-    EXPECT_NE(output.find("EventPayload payload;"), std::string::npos);
+    expect_contains_all(output,
+                        {"#include \"Events.h\"",
+                         "struct PROJECT_API Event",
+                         "EventKind tag;",
+                         "union EventPayload",
+                         "std::uint32_t spawn;",
+                         "std::array<std::uint16_t, 4> damage;",
+                         "EventPayload payload;"});
 }
 
 } // namespace

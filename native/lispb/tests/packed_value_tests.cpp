@@ -1,5 +1,6 @@
 #include "compiler_test_context.h"
 #include "test_utilities.h"
+#include "text_expectations.h"
 
 #include <lispb/schema/bit_layout.h>
 #include <lispb/schema/type_graph.h>
@@ -13,6 +14,8 @@
 #include <string_view>
 
 namespace lispb::codegen {
+using lispb::test_support::expect_contains_all;
+using lispb::test_support::expect_contains_none;
 namespace {
 
 auto placement(schema::BitLayout const& layout, std::string_view path)
@@ -66,8 +69,8 @@ TEST(PackedRecord, LogicalRecordsAndArraysHaveFlatConstantOffsets) {
     EXPECT_EQ(placement(layout, "samples_2_value").offset, 16U);
     auto const files{render_test_manifest(context, manifest)};
     ASSERT_EQ(files.size(), 1U);
-    EXPECT_EQ(files.front().content.find("struct Sample\n"), std::string::npos);
-    EXPECT_NE(files.front().content.find("samples_2_value()"), std::string::npos);
+    EXPECT_FALSE(files.front().content.contains("struct Sample\n"));
+    EXPECT_TRUE(files.front().content.contains("samples_2_value()"));
 
     for (auto const name_space : {"ioj", "ioj::packed_lookup_fixture", "game"}) {
         SCOPED_TRACE(name_space);
@@ -96,10 +99,9 @@ TEST(PackedRecord, LogicalRecordsAndArraysHaveFlatConstantOffsets) {
         auto const hidden_files{render_test_manifest(
             hidden_context, parse_test_manifest(hidden_context, hidden_source))};
         ASSERT_EQ(hidden_files.size(), 1U);
-        EXPECT_TRUE(
-            hidden_files.front().content.contains("insert<decltype(packed_insert_layout)>"));
-        EXPECT_TRUE(
-            hidden_files.front().content.contains("extract<decltype(packed_extract_layout)>"));
+        expect_contains_all(
+            hidden_files.front().content,
+            {"insert<decltype(packed_insert_layout)>", "extract<decltype(packed_extract_layout)>"});
     }
 }
 
@@ -142,7 +144,7 @@ TEST(PackedRecord, ProjectedDescendantsAreDefinedBeforeOwnersAcrossLogicalInterm
     ASSERT_EQ(files.size(), 1U);
     auto const& output{files.front().content};
     EXPECT_LT(output.find("struct Child :"), output.find("struct Owner :"));
-    EXPECT_NE(output.find("nested_child()"), std::string::npos);
+    EXPECT_TRUE(output.contains("nested_child()"));
 }
 
 TEST(PackedRecord, ReservedAndMostSignificantFirstUseLogicalExtent) {
@@ -207,12 +209,12 @@ TEST(PackedRecord, TaggedAlternativesResolveGuardsAndDirectNestedAccessors) {
     auto const files{render_test_manifest(context, manifest)};
     ASSERT_EQ(files.size(), 1U);
     auto const& output{files.front().content};
-    EXPECT_NE(output.find("payload_kill_entity_target_index()"), std::string::npos);
-    EXPECT_NE(output.find("set_payload_kill_entity_target_index("), std::string::npos);
-    EXPECT_NE(output.find("make_payload_kill_entity("), std::string::npos);
-    EXPECT_NE(output.find("payload_kill_entity_target()"), std::string::npos);
-    EXPECT_EQ(output.find("set_opcode("), std::string::npos);
-    EXPECT_EQ(output.find("payload_kill_entity_target().index()"), std::string::npos);
+    expect_contains_all(output,
+                        {"payload_kill_entity_target_index()",
+                         "set_payload_kill_entity_target_index(",
+                         "make_payload_kill_entity(",
+                         "payload_kill_entity_target()"});
+    expect_contains_none(output, {"set_opcode(", "payload_kill_entity_target().index()"});
 }
 
 TEST(PackedRecord, FixedEncodingsComposeWithoutStandaloneProjection) {
@@ -293,18 +295,20 @@ TEST(PackedRecord, SharesTypedValidationHelpersAcrossConstructionMutationAndVali
     auto const& output{files.front().content};
     EXPECT_GE(occurrences(output, "is_valid_value("), 4U);
     EXPECT_GE(occurrences(output, "is_valid_health("), 4U);
-    EXPECT_NE(output.find("value_type const value"), std::string::npos);
-    EXPECT_NE(output.find("decltype(health_layout)::value_type const value"), std::string::npos);
-    EXPECT_EQ(output.find("RawTag"), std::string::npos);
-    EXPECT_TRUE(output.contains("using packed_integer_tag = ioj::packed::scalar_tag;"));
-    EXPECT_TRUE(output.contains("using packed_integer_tag = ioj::packed::integer_tag;"));
-    EXPECT_FALSE(output.contains("struct std::hash"));
-    EXPECT_FALSE(output.contains("struct std::formatter"));
-    EXPECT_FALSE(output.contains("using health_type"));
-    EXPECT_FALSE(output.contains("using health_field"));
-    EXPECT_FALSE(output.contains("using value_field"));
-    EXPECT_TRUE(output.contains("extract<decltype(health_layout)>()"));
-    EXPECT_TRUE(output.contains("insert<decltype(health_layout)>(value)"));
+    expect_contains_all(
+        output, {"value_type const value", "decltype(health_layout)::value_type const value"});
+    EXPECT_FALSE(output.contains("RawTag"));
+    expect_contains_all(output,
+                        {"using packed_integer_tag = ioj::packed::scalar_tag;",
+                         "using packed_integer_tag = ioj::packed::integer_tag;"});
+    expect_contains_none(output,
+                         {"struct std::hash",
+                          "struct std::formatter",
+                          "using health_type",
+                          "using health_field",
+                          "using value_field"});
+    expect_contains_all(
+        output, {"extract<decltype(health_layout)>()", "insert<decltype(health_layout)>(value)"});
     auto class_output = [&](std::string_view name) {
         auto const begin{output.find("struct " + std::string{name} + " :")};
         EXPECT_NE(begin, std::string::npos);
@@ -338,15 +342,13 @@ TEST(PackedRecord, SharesTypedValidationHelpersAcrossConstructionMutationAndVali
         auto const constructor{type.find("constexpr " + std::string{name} + "()")};
         auto const comparison{type.find("operator<=>")};
         EXPECT_LT(type.find("using Base"), constructor);
-        EXPECT_FALSE(type.contains("using storage_type"));
-        EXPECT_FALSE(type.contains("PackedStorage<"));
+        expect_contains_none(type, {"using storage_type", "PackedStorage<"});
         EXPECT_EQ(type.substr(constructor).find("static_cast<std::uint8_t>"),
                   std::string_view::npos);
         EXPECT_LT(constructor, comparison);
-        EXPECT_FALSE(type.contains("raw_value() const"));
-        EXPECT_FALSE(type.contains("from_raw(storage_type"));
-        EXPECT_FALSE(type.contains("storage_type value_"));
-        EXPECT_FALSE(type.contains("std::bit_cast"));
+        expect_contains_none(
+            type,
+            {"raw_value() const", "from_raw(storage_type", "storage_type value_", "std::bit_cast"});
     }
     auto const index{class_output("Index")};
     auto const index_constructor{index.find("Index(value_type")};
@@ -383,12 +385,11 @@ TEST(PackedRecord, DefaultsCanonicalScalarComparisonExceptSignedOrdering) {
     )"))};
     ASSERT_EQ(files.size(), 1U);
     auto const& output{files.front().content};
-    EXPECT_NE(output.find("operator<=>(Full const&) const noexcept = default"), std::string::npos);
-    EXPECT_NE(output.find("operator<=>(Padded const&) const noexcept = default"),
-              std::string::npos);
-    EXPECT_EQ(output.find("operator<=>(Signed const&) const noexcept = default"),
-              std::string::npos);
-    EXPECT_NE(output.find("operator==(Signed const&) const noexcept = default"), std::string::npos);
+    expect_contains_all(output,
+                        {"operator<=>(Full const&) const noexcept = default",
+                         "operator<=>(Padded const&) const noexcept = default"});
+    EXPECT_FALSE(output.contains("operator<=>(Signed const&) const noexcept = default"));
+    EXPECT_TRUE(output.contains("operator==(Signed const&) const noexcept = default"));
     EXPECT_EQ(occurrences(output, "return value() <=> other.value();"), 1U);
     EXPECT_EQ(occurrences(output, "return value() == other.value();"), 0U);
 }

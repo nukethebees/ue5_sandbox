@@ -1290,41 +1290,42 @@ class TypeGraphBuilder {
                     edges.emplace_back(owner, dependency);
                 }
             };
-            switch ((definition).kind()) {
-                case lispb::schema::TypeDefinitionKind::enumeration: {
-                    if (is_valid(definitions.enums
-                                     .underlying_type[definitions.enums.index(definition)])) {
-                        add(occurrences.type[occurrences.index(
-                            definitions.enums
-                                .underlying_type[definitions.enums.index(definition)])]);
+            auto add_occurrence = [&](ResolvedOccurrenceId occurrence) {
+                add(occurrences.type[occurrence]);
+            };
+            auto add_relationship = [&](RelationshipId relationship) {
+                if (is_valid(relationship)) {
+                    add_occurrence(relationships.target[relationship]);
+                }
+            };
+            switch (definition.kind()) {
+                case TypeDefinitionKind::enumeration: {
+                    if (auto const underlying{definitions.enums.underlying_type[definition]};
+                        is_valid(underlying)) {
+                        add_occurrence(underlying);
                     }
                     break;
                 }
-                case lispb::schema::TypeDefinitionKind::static_table: {
-                    auto const source{
-                        definitions.static_tables
-                            .source[definitions.static_tables.index(graph_.definition(owner))]};
+                case TypeDefinitionKind::static_table: {
+                    auto const& tables{definitions.static_tables};
+                    auto const source{tables.source[tables.index(definition)]};
                     auto const module{graph_.module(owner)};
                     for (auto const column : store_.items(store_.static_tables.columns[source])) {
-                        auto const occurrence{
-                            graph_.resolved(module, store_.static_table_columns.type[column])};
-                        add(occurrences.type[occurrences.index(occurrence)]);
+                        add_occurrence(
+                            graph_.resolved(module, store_.static_table_columns.type[column]));
                     }
                     for (auto const group : store_.items(store_.static_tables.groups[source])) {
-                        auto const occurrence{
-                            graph_.resolved(module, store_.static_table_groups.type[group])};
-                        add(occurrences.type[occurrences.index(occurrence)]);
+                        add_occurrence(
+                            graph_.resolved(module, store_.static_table_groups.type[group]));
                     }
                     break;
                 }
-                case lispb::schema::TypeDefinitionKind::facade: {
-                    auto const source{
-                        definitions.facades
-                            .source[definitions.facades.index(graph_.definition(owner))]};
+                case TypeDefinitionKind::facade: {
+                    auto const& facades{definitions.facades};
+                    auto const source{facades.source[facades.index(definition)]};
                     auto const module{graph_.module(owner)};
                     auto add_reference = [&](codegen::TypeRefId reference) {
-                        auto const occurrence{graph_.resolved(module, reference)};
-                        add(occurrences.type[occurrences.index(occurrence)]);
+                        add_occurrence(graph_.resolved(module, reference));
                     };
                     add_reference(store_.facades.target_type[source]);
                     for (auto const method : store_.items(store_.facades.methods[source])) {
@@ -1336,84 +1337,51 @@ class TypeGraphBuilder {
                     }
                     break;
                 }
-                case lispb::schema::TypeDefinitionKind::integer_scalar: {
+                case TypeDefinitionKind::integer_scalar: {
                     auto const& scalars{definitions.integer_scalars};
-                    if (is_valid(scalars.cpp_representation[scalars.index(definition)])) {
-                        add(occurrences.type[occurrences.index(
-                            scalars.cpp_representation[scalars.index(definition)])]);
+                    if (auto const representation{scalars.cpp_representation[definition]};
+                        is_valid(representation)) {
+                        add_occurrence(representation);
                     }
-                    if (is_valid(scalars.relationship[scalars.index(definition)])) {
-                        add(occurrences
-                                .type[occurrences.index(relationships.target[relationships.index(
-                                    scalars.relationship[scalars.index(definition)])])]);
-                    }
+                    add_relationship(scalars.relationship[definition]);
                     break;
                 }
-                case lispb::schema::TypeDefinitionKind::linear_quantized: {
-                    add(occurrences.type[occurrences.index(
-                        definitions.linear_quantized
-                            .source[definitions.linear_quantized.index(definition)])]);
+                case TypeDefinitionKind::linear_quantized:
+                    add_occurrence(definitions.linear_quantized.source[definition]);
                     break;
-                }
-                case lispb::schema::TypeDefinitionKind::integer_varint: {
-                    add(occurrences.type[occurrences.index(
-                        definitions.integer_varints
-                            .source[definitions.integer_varints.index(definition)])]);
+                case TypeDefinitionKind::integer_varint:
+                    add_occurrence(definitions.integer_varints.source[definition]);
                     break;
-                }
-                case lispb::schema::TypeDefinitionKind::optional_sentinel: {
-                    add(occurrences.type[occurrences.index(
-                        definitions.optional_sentinels
-                            .source[definitions.optional_sentinels.index(definition)])]);
+                case TypeDefinitionKind::optional_sentinel:
+                    add_occurrence(definitions.optional_sentinels.source[definition]);
                     break;
-                }
-                case lispb::schema::TypeDefinitionKind::optional_presence_bit: {
-                    add(occurrences.type[occurrences.index(
-                        definitions.optional_presence_bits
-                            .source[definitions.optional_presence_bits.index(definition)])]);
+                case TypeDefinitionKind::optional_presence_bit:
+                    add_occurrence(definitions.optional_presence_bits.source[definition]);
                     break;
-                }
-
-                case lispb::schema::TypeDefinitionKind::record: {
+                case TypeDefinitionKind::record: {
                     auto const& members{definitions.children};
-                    for (auto const id : definitions.records.members_of(definition)) {
-                        auto const member{id};
-                        if (!members.reserved[members.index(member)]) {
-                            add(occurrences.type[occurrences.index(
-                                members.semantic_type[members.index(member)])]);
+                    for (auto const member : definitions.records.members_of(definition)) {
+                        if (!members.reserved[member]) {
+                            add_occurrence(members.semantic_type[member]);
                         }
-                        if (is_valid(members.relationship[members.index(member)])) {
-                            add(occurrences.type[occurrences.index(
-                                relationships.target[relationships.index(
-                                    members.relationship[members.index(member)])])]);
-                        }
+                        add_relationship(members.relationship[member]);
                     }
                     break;
                 }
-                case lispb::schema::TypeDefinitionKind::union_type: {
-                    for (auto const id : definitions.unions.alternatives_of(definition)) {
-                        add(occurrences.type[occurrences.index(
-                            definitions.children.semantic_type[definitions.children.index(id)])]);
+                case TypeDefinitionKind::union_type:
+                    for (auto const member : definitions.unions.alternatives_of(definition)) {
+                        add_occurrence(definitions.children.semantic_type[member]);
                     }
                     break;
-                }
-
-                case lispb::schema::TypeDefinitionKind::soa: {
+                case TypeDefinitionKind::soa: {
                     auto const& columns{definitions.soa_columns};
-                    if (is_valid(
-                            definitions.soas.equivalent_type[definitions.soas.index(definition)])) {
-                        add(occurrences.type[occurrences.index(
-                            definitions.soas.equivalent_type[definitions.soas.index(definition)])]);
+                    if (auto const equivalent{definitions.soas.equivalent_type[definition]};
+                        is_valid(equivalent)) {
+                        add_occurrence(equivalent);
                     }
-                    for (auto const id : definitions.soas.columns_of(definition)) {
-                        auto const column{id};
-                        add(occurrences.type[occurrences.index(
-                            columns.semantic_type[columns.index(column)])]);
-                        if (is_valid(columns.relationship[columns.index(column)])) {
-                            add(occurrences.type[occurrences.index(
-                                relationships.target[relationships.index(
-                                    columns.relationship[columns.index(column)])])]);
-                        }
+                    for (auto const column : definitions.soas.columns_of(definition)) {
+                        add_occurrence(columns.semantic_type[column]);
+                        add_relationship(columns.relationship[column]);
                     }
                     break;
                 }
@@ -1422,13 +1390,13 @@ class TypeGraphBuilder {
             }
         }
         for (auto const use : graph_.type_uses()) {
-            if (graph_.owner(use) &&
-                graph_.role(use).category == codegen::TypeReferenceCategory::function &&
-                ((graph_.definition(*graph_.owner(use))).kind() ==
-                 lispb::schema::TypeDefinitionKind::record) &&
-                occurrences.type[occurrences.index(graph_.target(use))] != *graph_.owner(use)) {
-                edges.emplace_back(*graph_.owner(use),
-                                   occurrences.type[occurrences.index(graph_.target(use))]);
+            auto const owner{graph_.owner(use)};
+            if (owner && graph_.role(use).category == codegen::TypeReferenceCategory::function &&
+                graph_.definition(*owner).kind() == TypeDefinitionKind::record) {
+                auto const target{occurrences.type[graph_.target(use)]};
+                if (target != *owner) {
+                    edges.emplace_back(*owner, target);
+                }
             }
         }
         std::ranges::stable_sort(edges, {}, &std::pair<TypeId, TypeId>::first);

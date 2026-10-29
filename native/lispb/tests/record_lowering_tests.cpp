@@ -1,5 +1,6 @@
 #include "compiler_test_context.h"
 #include "test_utilities.h"
+#include "text_expectations.h"
 
 #include <codegen/ast/cpp_types.h>
 #include <codegen/ast/indices.h>
@@ -24,6 +25,7 @@
 #include <utility>
 
 namespace lispb::codegen {
+using lispb::test_support::expect_contains_all;
 namespace {
 
 TEST(RecordLowering, GeneratesUniqueConstructorsAndPreservesSpecialForms) {
@@ -41,7 +43,7 @@ TEST(RecordLowering, GeneratesUniqueConstructorsAndPreservesSpecialForms) {
     auto const constructor{output.find("(define (shared . arguments)")};
     ASSERT_NE(constructor, std::string::npos);
     EXPECT_EQ(output.find("(define (shared . arguments)", constructor + 1), std::string::npos);
-    EXPECT_EQ(output.find("(define (special"), std::string::npos);
+    EXPECT_FALSE(output.contains("(define (special"));
 }
 
 class InvalidConstructorTags : public testing::TestWithParam<char const*> {};
@@ -83,14 +85,15 @@ TEST(RecordLowering, GeneratesSemanticMembersAndFixedArrays) {
 
     ASSERT_EQ(files.size(), 1U);
     auto const& output{files.front().content};
-    EXPECT_NE(output.find("#include <array>"), std::string::npos);
-    EXPECT_NE(output.find("#include \"Project/Value.h\""), std::string::npos);
-    EXPECT_NE(output.find("namespace project"), std::string::npos);
-    EXPECT_NE(output.find("struct Position"), std::string::npos);
-    EXPECT_NE(output.find("float x;"), std::string::npos);
-    EXPECT_NE(output.find("struct PROJECT_API Sample"), std::string::npos);
-    EXPECT_NE(output.find("Position position;"), std::string::npos);
-    EXPECT_NE(output.find("std::array<Value, 3> values;"), std::string::npos);
+    expect_contains_all(output,
+                        {"#include <array>",
+                         "#include \"Project/Value.h\"",
+                         "namespace project",
+                         "struct Position",
+                         "float x;",
+                         "struct PROJECT_API Sample",
+                         "Position position;",
+                         "std::array<Value, 3> values;"});
 }
 
 class InvalidRecordDeclaration : public testing::TestWithParam<char const*> {};
@@ -184,9 +187,9 @@ TEST(RecordLowering, SettingsOptionsSurviveSourceRoundTrip) {
               source);
     auto const output{render_test_manifest(context, manifest).front().content};
     EXPECT_EQ(output, render_test_manifest(reparsed, round_trip).front().content);
-    EXPECT_NE(output.find("case Field::max_speed:\n"), std::string::npos);
-    EXPECT_EQ(output.find("case Field::max_speed: {"), std::string::npos);
-    EXPECT_NE(output.find("return invoke_field<Field::max_speed>"), std::string::npos);
+    EXPECT_TRUE(output.contains("case Field::max_speed:\n"));
+    EXPECT_FALSE(output.contains("case Field::max_speed: {"));
+    EXPECT_TRUE(output.contains("return invoke_field<Field::max_speed>"));
 }
 
 TEST(RecordLowering, ReaderOptionsSurviveRoundTripAndLeaveOrdinaryOutputUnchanged) {
@@ -217,7 +220,7 @@ TEST(RecordLowering, ReaderOptionsSurviveRoundTripAndLeaveOrdinaryOutputUnchange
     ASSERT_EQ(reader.size(), 2u);
     EXPECT_EQ(ordinary.front().content, reader.front().content);
     EXPECT_EQ(ordinary.front().content, positional.front().content);
-    EXPECT_EQ(reader.front().content.find("s7/reader"), std::string::npos);
+    EXPECT_FALSE(reader.front().content.contains("s7/reader"));
 }
 
 TEST(RecordLowering, RetainsReaderConstraintsInCanonicalSource) {
@@ -289,7 +292,7 @@ TEST(RecordLowering, AllowsEmptyAndNonemptyRecords) {
         static_cast<void>(lower_test_manifest(context, record("(member value float)"))));
     auto const files{render_test_manifest(context, record(""))};
     ASSERT_EQ(files.size(), 1U);
-    EXPECT_NE(files.front().content.find("struct Record"), std::string::npos);
+    EXPECT_TRUE(files.front().content.contains("struct Record"));
 }
 
 TEST(RecordLowering, EmitsByValueDependenciesBeforeTheirUsers) {
@@ -316,10 +319,8 @@ TEST(RecordLowering, ForwardDeclaresMutuallyReferringPointerRecords) {
     (projections (cpp)))))")};
     auto const files{render_test_manifest(context, manifest)};
     auto const& output{files.front().content};
-    EXPECT_NE(output.find("struct First;"), std::string::npos);
-    EXPECT_NE(output.find("struct Second;"), std::string::npos);
-    EXPECT_NE(output.find("Second* next;"), std::string::npos);
-    EXPECT_NE(output.find("First* next;"), std::string::npos);
+    expect_contains_all(output,
+                        {"struct First;", "struct Second;", "Second* next;", "First* next;"});
 }
 
 TEST(RecordLowering, SoaPointerCyclesRetainSemanticEdgesInEitherSourceOrder) {
@@ -392,13 +393,12 @@ TEST(RecordLowering, ForwardDeclarationsMatchGeneratedRecordKindsAndExcludeAlias
     for (auto const name : {"Record", "Tagged", "Packed", "Table", "Values"}) {
         EXPECT_NE(output.find(std::string{"struct "} + name + ";"), std::string::npos) << name;
     }
-    EXPECT_NE(output.find("union Raw;"), std::string::npos);
-    EXPECT_NE(output.find("class Facade;"), std::string::npos);
-    EXPECT_EQ(output.find("struct Facade;"), std::string::npos);
+    expect_contains_all(output, {"union Raw;", "class Facade;"});
+    EXPECT_FALSE(output.contains("struct Facade;"));
     for (auto const name : {"Tag", "External", "LayoutOnly"}) {
         EXPECT_EQ(output.find(std::string{"struct "} + name + ";"), std::string::npos) << name;
     }
-    EXPECT_NE(output.find("struct Alias;"), std::string::npos);
+    EXPECT_TRUE(output.contains("struct Alias;"));
 }
 
 } // namespace

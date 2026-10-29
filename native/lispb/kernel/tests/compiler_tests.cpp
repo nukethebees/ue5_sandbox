@@ -1,3 +1,4 @@
+#include "../../tests/text_expectations.h"
 #include "parser.h"
 #include "renderer.h"
 
@@ -28,6 +29,7 @@
 #include <vector>
 
 namespace kernel_codegen::detail {
+using lispb::test_support::expect_contains_all;
 namespace {
 
 constexpr std::string_view valid_source = R"(
@@ -151,14 +153,14 @@ TEST(KernelRenderer, GeneratesConcreteOverloadsAndSourceLoops) {
     auto const& header{files[0].content};
     auto const& source{files[1].content};
     EXPECT_FALSE(header.contains("template"));
-    EXPECT_TRUE(header.contains("void multiply("));
-    EXPECT_TRUE(header.contains("std::span<float const> rhs"));
-    EXPECT_TRUE(header.contains("float rhs"));
-    EXPECT_TRUE(header.contains("std::span<float> lhs"));
-    EXPECT_TRUE(source.contains("for (std::size_t i{}; i < count; ++i)"));
-    EXPECT_TRUE(source.contains("lhs[i] * rhs[i]"));
-    EXPECT_TRUE(source.contains("lhs[i] * rhs"));
-    EXPECT_TRUE(source.contains("float const* lhs, float const* rhs, float* out"));
+    expect_contains_all(
+        header,
+        {"void multiply(", "std::span<float const> rhs", "float rhs", "std::span<float> lhs"});
+    expect_contains_all(source,
+                        {"for (std::size_t i{}; i < count; ++i)",
+                         "lhs[i] * rhs[i]",
+                         "lhs[i] * rhs",
+                         "float const* lhs, float const* rhs, float* out"});
 
     auto const begin{source.find("void multiply(")};
     ASSERT_NE(begin, std::string::npos);
@@ -177,16 +179,15 @@ TEST(KernelRenderer, GeneratesFusedComponentMapBindings) {
     auto const files{render_document(document)};
 
     ASSERT_EQ(files.size(), 2);
-    EXPECT_TRUE(files[0].content.contains("std::span<float const> from_x"));
-    EXPECT_TRUE(files[0].content.contains("std::span<float const> from_y"));
-    EXPECT_TRUE(files[0].content.contains("std::span<float const> from_z"));
-    EXPECT_TRUE(files[0].content.contains("void lerp_3d_in_place("));
-    EXPECT_TRUE(
-        files[1].content.contains("from_x[i] = from_x[i] + alpha * (to_x[i] - from_x[i]);"));
-    EXPECT_TRUE(
-        files[1].content.contains("from_y[i] = from_y[i] + alpha * (to_y[i] - from_y[i]);"));
-    EXPECT_TRUE(
-        files[1].content.contains("from_z[i] = from_z[i] + alpha * (to_z[i] - from_z[i]);"));
+    expect_contains_all(files[0].content,
+                        {"std::span<float const> from_x",
+                         "std::span<float const> from_y",
+                         "std::span<float const> from_z",
+                         "void lerp_3d_in_place("});
+    expect_contains_all(files[1].content,
+                        {"from_x[i] = from_x[i] + alpha * (to_x[i] - from_x[i]);",
+                         "from_y[i] = from_y[i] + alpha * (to_y[i] - from_y[i]);",
+                         "from_z[i] = from_z[i] + alpha * (to_z[i] - from_z[i]);"});
 }
 
 struct InvalidDeclarationCase {
@@ -284,10 +285,11 @@ TEST(KernelReferenceEvaluator, EvaluatesEveryOperatorForEveryNumericType) {
     auto const files{render_document(document)};
 
     ASSERT_EQ(files.size(), 3);
-    EXPECT_TRUE(files[2].content.contains("make_array<std::int32_t>("));
-    EXPECT_TRUE(files[2].content.contains("make_array<std::uint32_t>("));
-    EXPECT_TRUE(files[2].content.contains("make_array<float>("));
-    EXPECT_TRUE(files[2].content.contains("make_array<double>("));
+    expect_contains_all(files[2].content,
+                        {"make_array<std::int32_t>(",
+                         "make_array<std::uint32_t>(",
+                         "make_array<float>(",
+                         "make_array<double>("});
 }
 
 TEST(KernelRenderer, QualifiesSharedFixturesWhenAnOperandShadowsTheirName) {
@@ -348,9 +350,8 @@ TEST(KernelRenderer, ExpandsStorageCartesianProductWithoutRewritingExpression) {
     auto const files{render_source(source)};
 
     EXPECT_EQ(occurrence_count(files[0].content, "void difference("), 3);
-    EXPECT_TRUE(files[1].content.contains("a[i] - (b[i] + c)"));
-    EXPECT_TRUE(files[1].content.contains("a[i] - (b + c)"));
-    EXPECT_TRUE(files[1].content.contains("a - (b[i] + c)"));
+    expect_contains_all(files[1].content,
+                        {"a[i] - (b[i] + c)", "a[i] - (b + c)", "a - (b[i] + c)"});
     EXPECT_FALSE(files[1].content.contains("a - (b + c)"));
 }
 
@@ -360,15 +361,13 @@ TEST(KernelRenderer, PairwiseDisjointChecksEveryArray) {
     auto document{parse_document("test.lispb", source)};
     auto const files{render_document(document)};
 
-    EXPECT_TRUE(
-        files[1].content.contains("arithmetic_detail::require(!arithmetic_detail::ranges_overlap("
-                                  "lhs.data(), lhs.size_bytes(), rhs.data(), rhs.size_bytes()))"));
-    EXPECT_TRUE(
-        files[1].content.contains("arithmetic_detail::require(!arithmetic_detail::ranges_overlap("
-                                  "lhs.data(), lhs.size_bytes(), out.data(), out.size_bytes()))"));
-    EXPECT_TRUE(
-        files[1].content.contains("arithmetic_detail::require(!arithmetic_detail::ranges_overlap("
-                                  "rhs.data(), rhs.size_bytes(), out.data(), out.size_bytes()))"));
+    expect_contains_all(files[1].content,
+                        {"arithmetic_detail::require(!arithmetic_detail::ranges_overlap("
+                         "lhs.data(), lhs.size_bytes(), rhs.data(), rhs.size_bytes()))",
+                         "arithmetic_detail::require(!arithmetic_detail::ranges_overlap("
+                         "lhs.data(), lhs.size_bytes(), out.data(), out.size_bytes()))",
+                         "arithmetic_detail::require(!arithmetic_detail::ranges_overlap("
+                         "rhs.data(), rhs.size_bytes(), out.data(), out.size_bytes()))"});
 }
 
 TEST(KernelRenderer, RendersNamedConstantsForEachConcreteFloatingType) {
@@ -393,12 +392,13 @@ TEST(KernelRenderer, RendersNamedConstantsForEachConcreteFloatingType) {
 
     auto const files{render_source(source)};
 
-    EXPECT_TRUE(files[1].content.contains("#include <limits>"));
-    EXPECT_TRUE(files[1].content.contains("std::numeric_limits<float>::quiet_NaN()"));
-    EXPECT_TRUE(files[1].content.contains("std::numeric_limits<float>::infinity()"));
-    EXPECT_TRUE(files[1].content.contains("-std::numeric_limits<float>::infinity()"));
-    EXPECT_TRUE(files[1].content.contains("std::numeric_limits<double>::quiet_NaN()"));
-    EXPECT_TRUE(files[1].content.contains("-std::numeric_limits<double>::infinity()"));
+    expect_contains_all(files[1].content,
+                        {"#include <limits>",
+                         "std::numeric_limits<float>::quiet_NaN()",
+                         "std::numeric_limits<float>::infinity()",
+                         "-std::numeric_limits<float>::infinity()",
+                         "std::numeric_limits<double>::quiet_NaN()",
+                         "-std::numeric_limits<double>::infinity()"});
 }
 
 TEST(KernelRenderer, TreatsBareNanAndInfAsOperandReferences) {

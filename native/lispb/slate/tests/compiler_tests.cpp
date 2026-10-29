@@ -1,3 +1,4 @@
+#include "../../tests/text_expectations.h"
 #include "parser.h"
 #include "renderer.h"
 
@@ -21,6 +22,8 @@
 #include <utility>
 
 namespace slate_codegen::detail {
+using lispb::test_support::expect_contains_all;
+using lispb::test_support::expect_contains_none;
 namespace {
 
 struct TestDocument {
@@ -71,14 +74,14 @@ TEST(SlateDsl, LibrariesRenderInlineFunctionsWithExplicitParameters) {
 )")};
     ASSERT_EQ(document.document.declarations.size(), 2);
     auto const output{document.render()};
-    EXPECT_TRUE(output.contains("namespace SlateGenerated::Example::Controls {"));
-    EXPECT_TRUE(output.contains("inline auto Empty()"));
-    EXPECT_TRUE(output.contains(
-        "inline auto Build(auto&& label, auto&& clicked, auto&& content, auto&& make_child)"));
-    EXPECT_TRUE(output.contains(".OnClicked_Lambda(std::forward<decltype(clicked)>(clicked))"));
-    EXPECT_TRUE(output.contains("make_child(label)"));
-    EXPECT_FALSE(output.contains("ThisClass"));
-    EXPECT_FALSE(output.contains("self_"));
+    expect_contains_all(
+        output,
+        {"namespace SlateGenerated::Example::Controls {",
+         "inline auto Empty()",
+         "inline auto Build(auto&& label, auto&& clicked, auto&& content, auto&& make_child)",
+         ".OnClicked_Lambda(std::forward<decltype(clicked)>(clicked))",
+         "make_child(label)"});
+    expect_contains_none(output, {"ThisClass", "self_"});
     EXPECT_TRUE(document.render(1).contains("SAssignNew(self_.image_"));
 }
 
@@ -110,11 +113,11 @@ TEST(SlateDsl, ExplicitParametersDetermineSignatureAndRoles) {
 
     ASSERT_EQ(document.document.declarations.size(), 1);
     auto const output{document.render()};
-    EXPECT_NE(output.find("auto Build(auto&& label, auto&& make_child, auto&& supplied_child, "
-                          "auto&& on_clicked)"),
-              std::string::npos);
+    EXPECT_TRUE(
+        output.contains("auto Build(auto&& label, auto&& make_child, auto&& supplied_child, "
+                        "auto&& on_clicked)"));
     EXPECT_NE(output.find("make_child(label)"), output.rfind("make_child(label)"));
-    EXPECT_NE(output.find(".Text(label)"), std::string::npos);
+    EXPECT_TRUE(output.contains(".Text(label)"));
 }
 
 TEST(SlateDsl, LetBindingsSupportValuesAndMargins) {
@@ -130,10 +133,11 @@ TEST(SlateDsl, LetBindingsSupportValuesAndMargins) {
 )")};
 
     auto const output{document.render()};
-    EXPECT_NE(output.find("auto const gap{FMargin{0.0f, 0.0f, 0.0f, 10.0f}};"), std::string::npos);
-    EXPECT_NE(output.find("auto const width{512.0f};"), std::string::npos);
-    EXPECT_NE(output.find("vbox_auto_slot(FMargin{gap})"), std::string::npos);
-    EXPECT_NE(output.find(".WidthOverride(width)"), std::string::npos);
+    expect_contains_all(output,
+                        {"auto const gap{FMargin{0.0f, 0.0f, 0.0f, 10.0f}};",
+                         "auto const width{512.0f};",
+                         "vbox_auto_slot(FMargin{gap})",
+                         ".WidthOverride(width)"});
 }
 
 TEST(SlateDsl, ValueParametersWorkInLetBindingsAndPadding) {
@@ -150,9 +154,10 @@ TEST(SlateDsl, ValueParametersWorkInLetBindingsAndPadding) {
 )")};
 
     auto const output{document.render()};
-    EXPECT_NE(output.find("auto const box_width{width};"), std::string::npos);
-    EXPECT_NE(output.find("vbox_auto_slot(FMargin{padding})"), std::string::npos);
-    EXPECT_NE(output.find(".WidthOverride(box_width)"), std::string::npos);
+    expect_contains_all(output,
+                        {"auto const box_width{width};",
+                         "vbox_auto_slot(FMargin{padding})",
+                         ".WidthOverride(box_width)"});
 }
 
 TEST(SlateDsl, RendersSupportedTreeForms) {
@@ -172,14 +177,13 @@ TEST(SlateDsl, RendersSupportedTreeForms) {
 )")};
 
     auto const output{document.render()};
-    EXPECT_NE(output.find("NSLOCTEXT(\"Tests\", \"Description\", \"Description text\")"),
-              std::string::npos);
-    EXPECT_NE(output.find(".State(&self_, &ThisClass::current_state)"), std::string::npos);
-    EXPECT_NE(output.find(".OnClicked_UObject(&self_, &ThisClass::handle_clicked)"),
-              std::string::npos);
-    EXPECT_NE(output.find(".Header()"), std::string::npos);
-    EXPECT_NE(output.find(".Body()"), std::string::npos);
-    EXPECT_NE(output.find("SAssignNew(self_.child_, SBox)"), std::string::npos);
+    expect_contains_all(output,
+                        {"NSLOCTEXT(\"Tests\", \"Description\", \"Description text\")",
+                         ".State(&self_, &ThisClass::current_state)",
+                         ".OnClicked_UObject(&self_, &ThisClass::handle_clicked)",
+                         ".Header()",
+                         ".Body()",
+                         "SAssignNew(self_.child_, SBox)"});
 }
 
 TEST(SlateDsl, RendersBoxOptionsAndMultipleFunctions) {
@@ -196,11 +200,12 @@ TEST(SlateDsl, RendersBoxOptionsAndMultipleFunctions) {
 )")};
 
     auto const output{document.render()};
-    EXPECT_NE(output.find("auto BuildControls()"), std::string::npos);
-    EXPECT_NE(output.find("auto BuildPreview()"), std::string::npos);
-    EXPECT_NE(output.find("vbox_fill_slot(2.0f, FMargin{1.0f, 2.0f})"), std::string::npos);
-    EXPECT_NE(output.find(".HAlign(HAlign_Right)"), std::string::npos);
-    EXPECT_NE(output.find(".VAlign(VAlign_Bottom)"), std::string::npos);
+    expect_contains_all(output,
+                        {"auto BuildControls()",
+                         "auto BuildPreview()",
+                         "vbox_fill_slot(2.0f, FMargin{1.0f, 2.0f})",
+                         ".HAlign(HAlign_Right)",
+                         ".VAlign(VAlign_Bottom)"});
 }
 
 TEST(SlateDsl, RendersValueParametersAsBoxOptions) {
@@ -218,9 +223,10 @@ TEST(SlateDsl, RendersValueParametersAsBoxOptions) {
 )")};
 
     auto const output{document.render()};
-    EXPECT_NE(output.find("hbox_fill_slot(fill_width)"), std::string::npos);
-    EXPECT_NE(output.find(".HAlign(horizontal_alignment)"), std::string::npos);
-    EXPECT_NE(output.find(".VAlign(vertical_alignment)"), std::string::npos);
+    expect_contains_all(output,
+                        {"hbox_fill_slot(fill_width)",
+                         ".HAlign(horizontal_alignment)",
+                         ".VAlign(vertical_alignment)"});
 }
 
 struct InvalidParameterCase {

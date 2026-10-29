@@ -74,9 +74,7 @@ auto value_type(LoweringContext& context, schema::TypeId type, std::uint32_t bit
         return integer_type(bits, definitions.integer_scalars.signedness[row] != 0);
     }
     if (kind == schema::TypeDefinitionKind::fixed_point) {
-        return integer_type(
-            bits,
-            definitions.fixed_points.signedness[definitions.fixed_points.index(definition)] != 0);
+        return integer_type(bits, definitions.fixed_points.signedness[definition] != 0);
     }
     if (packed_signed_width(context.text(graph.cpp_spelling(type)))) {
         return integer_type(bits, true);
@@ -111,9 +109,9 @@ void append_dependencies(LoweringContext& context,
                          schema::ChildOccurrenceId child,
                          std::vector<TypeDependencyId>& dependencies) {
     auto const& children{context.semantic.definitions().children};
-    auto const occurrence{children.semantic_type[children.index(child)]};
+    auto const occurrence{children.semantic_type[child]};
     auto const& occurrences{context.semantic.occurrences()};
-    auto const type{occurrences.cpp_type[occurrences.index(occurrence)]};
+    auto const type{occurrences.cpp_type[occurrence]};
     if (type.value == 0) {
         return;
     }
@@ -396,7 +394,7 @@ class PackedEmitter {
             minimum = definitions.integer_scalars.minimum_value[row];
             maximum = definitions.integer_scalars.maximum_value[row];
         } else if (definition.kind() == schema::TypeDefinitionKind::enumeration) {
-            auto const domain{definitions.enums.domain[definitions.enums.index(definition)]};
+            auto const domain{definitions.enums.domain[definition]};
             if (auto const range{graph_.enum_domains().contiguous_value_range(domain)}) {
                 minimum = PackedIntegerValue{range->min};
                 maximum = PackedIntegerValue{range->max};
@@ -406,9 +404,8 @@ class PackedEmitter {
             minimum = definitions.fixed_points.minimum_raw_value[row];
             maximum = definitions.fixed_points.maximum_raw_value[row];
         } else if (definition.kind() == schema::TypeDefinitionKind::linear_quantized) {
-            maximum = PackedIntegerValue{
-                mask(bits) - definitions.linear_quantized
-                                 .reserved_codes[definitions.linear_quantized.index(definition)]};
+            maximum = PackedIntegerValue{mask(bits) -
+                                         definitions.linear_quantized.reserved_codes[definition]};
         }
         auto initializer{ir_.init_list({})};
         auto const signedness{value_type(context_, logical, bits).starts_with("std::int")};
@@ -605,7 +602,7 @@ class PackedEmitter {
         }
         switch (definition.kind()) {
             case schema::TypeDefinitionKind::enumeration: {
-                auto const domain{definitions.enums.domain[definitions.enums.index(definition)]};
+                auto const domain{definitions.enums.domain[definition]};
                 auto const& domains{graph_.enum_domains()};
                 if (auto const range{domains.contiguous_value_range(domain)}) {
                     std::vector<Predicate> checks;
@@ -620,7 +617,7 @@ class PackedEmitter {
                     return all(checks);
                 }
                 auto const enumerators{domains.values(domain)};
-                auto const count_value{domains.count_value[domains.index(domain)]};
+                auto const count_value{domains.count_value[domain]};
                 std::vector<Predicate> checks;
                 auto const count{enumerators.size()};
                 for (std::size_t ordinal{}; ordinal < count; ++ordinal) {
@@ -659,7 +656,7 @@ class PackedEmitter {
             }
             case schema::TypeDefinitionKind::linear_quantized: {
                 auto const& quantized{definitions.linear_quantized};
-                auto const reserved{quantized.reserved_codes[quantized.index(definition)]};
+                auto const reserved{quantized.reserved_codes[definition]};
                 auto const maximum{range_bound(layout, "max")};
                 return reserved ? Predicate{binary(BinaryOperator::less_equal, expression, maximum)}
                                 : Predicate{};
@@ -669,17 +666,11 @@ class PackedEmitter {
                 auto const sentinel{definition.kind() ==
                                     schema::TypeDefinitionKind::optional_sentinel};
                 auto const source_occurrence{
-                    sentinel ? definitions.optional_sentinels
-                                   .source[definitions.optional_sentinels.index(definition)]
-                             : definitions.optional_presence_bits
-                                   .source[definitions.optional_presence_bits.index(definition)]};
-                auto const source{
-                    graph_.occurrences().type[graph_.occurrences().index(source_occurrence)]};
+                    sentinel ? definitions.optional_sentinels.source[definition]
+                             : definitions.optional_presence_bits.source[definition]};
+                auto const source{graph_.occurrences().type[source_occurrence]};
                 auto const payload_bits{
-                    sentinel
-                        ? bits
-                        : definitions.optional_presence_bits
-                              .payload_bits[definitions.optional_presence_bits.index(definition)]};
+                    sentinel ? bits : definitions.optional_presence_bits.payload_bits[definition]};
                 auto const payload{qualify("payload")};
                 field_layout(metadata,
                              payload + "_layout",
@@ -693,13 +684,11 @@ class PackedEmitter {
                     source, payload_bits, decoded_source, payload, payload_alias, metadata)};
                 Expr absent;
                 if (sentinel) {
-                    absent = binary(
-                        BinaryOperator::equal,
-                        expression,
-                        bound(
-                            "sentinel",
-                            definitions.optional_sentinels
-                                .sentinel_value[definitions.optional_sentinels.index(definition)]));
+                    absent =
+                        binary(BinaryOperator::equal,
+                               expression,
+                               bound("sentinel",
+                                     definitions.optional_sentinels.sentinel_value[definition]));
                 } else {
                     auto const presence{
                         binary(BinaryOperator::shift_left,
@@ -735,10 +724,10 @@ class PackedEmitter {
         }
         auto const definition{graph_.definition(logical)};
         if (definition.kind() == schema::TypeDefinitionKind::enumeration) {
-            auto const domain{definitions.enums.domain[definitions.enums.index(definition)]};
+            auto const domain{definitions.enums.domain[definition]};
             auto const& domains{graph_.enum_domains()};
             auto const enumerators{domains.values(domain)};
-            auto const count_value{domains.count_value[domains.index(domain)]};
+            auto const count_value{domains.count_value[domain]};
             auto const count{enumerators.size()};
             for (std::size_t ordinal{}; ordinal < count; ++ordinal) {
                 if (enumerators[ordinal] == count_value) {
@@ -774,7 +763,7 @@ class PackedEmitter {
                 if (explicit_type) {
                     auto const occurrence{graph_.resolved(graph_.module(logical), *explicit_type)};
                     auto const& occurrences{graph_.occurrences()};
-                    auto const underlying{occurrences.cpp_type[occurrences.index(occurrence)]};
+                    auto const underlying{occurrences.cpp_type[occurrence]};
                     if (auto const width{packed_unsigned_width(ir_.types.spelling(underlying))}) {
                         underlying_bits = static_cast<std::uint32_t>(*width);
                     }
@@ -855,7 +844,7 @@ class PackedEmitter {
             return {};
         }
         auto const& records{graph_.definitions().records};
-        return records.invalid_raw_value[records.index(definition)];
+        return records.invalid_raw_value[definition];
     }
     void integer_constants(schema::BitPlacement const& placement,
                            std::string const& accessor,
@@ -968,7 +957,7 @@ class PackedEmitter {
         }
         auto const definition{graph_.definition(guard.enumeration)};
         auto const& enums{graph_.definitions().enums};
-        auto const domain{enums.domain[enums.index(definition)]};
+        auto const domain{enums.domain[definition]};
         auto const& domains{graph_.enum_domains()};
         auto const values{domains.values(domain)};
         auto const count{values.size()};
@@ -1130,6 +1119,7 @@ class PackedEmitter {
             auto const argument{ir_.named(argument_name)};
             params.push_back(parameter(access_type(input), argument_name));
             validate_record = validate_record || input.discriminator;
+            Expr encoded{};
             if (!addressable(input)) {
                 validate_record = true;
                 if (input.bits < layout_.storage_bits) {
@@ -1138,17 +1128,15 @@ class PackedEmitter {
                                argument,
                                ir_.member_access(ir_.named(name + "_layout"), "value_mask"))));
                 }
-                body.push_back(insert_member(name + "_layout",
-                                             cast("storage_type", argument),
-                                             choice ? std::optional<Expr>{result} : std::nullopt));
+                encoded = cast("storage_type", argument);
             } else {
                 assert_if(body, value_check(input, argument));
-                body.push_back(insert_member(
-                    name + "_layout",
-                    aggregate(input) ? cast("storage_type", member_call(argument, "raw_value"))
-                                     : argument,
-                    choice ? std::optional<Expr>{result} : std::nullopt));
+                encoded = aggregate(input)
+                            ? cast("storage_type", member_call(argument, "raw_value"))
+                            : argument;
             }
+            body.push_back(insert_member(
+                name + "_layout", encoded, choice ? std::optional<Expr>{result} : std::nullopt));
         }
         if (validate_record) {
             body.push_back(
@@ -1163,7 +1151,7 @@ class PackedEmitter {
             auto const& placement{layout_.placements[*choice]};
             auto path{placement.path};
             auto const& children{graph_.definitions().children};
-            if (children.count[children.index(placement.child)]) {
+            if (children.count[placement.child]) {
                 path.resize(path.rfind('_'));
             }
             functions_.push_back(
@@ -1203,7 +1191,7 @@ class PackedEmitter {
                                ? cast("storage_type", member_call(value(), "raw_value"))
                                : value()};
         auto const& children{graph_.definitions().children};
-        if (!scalar_ && children.tag[children.index(placement.child)]) {
+        if (!scalar_ && children.tag[placement.child]) {
             body.push_back(
                 ir_.variable("auto const", "updated", insert(name + "_layout", raw(), encoded)));
             assert_if(body, valid_children(index, placement.type, ir_.named("updated")));

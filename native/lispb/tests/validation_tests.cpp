@@ -162,15 +162,13 @@ TEST(Validation, FunctionQualifiersAreSharedByRecordsAndAllSoaReceivers) {
             auto module{valid_soa_module(context)};
             if (receiver == 0) {
                 normal_modules.declarations[module] =
-                    declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-                        auto const new_records{records.append()};
-                        records.cpp_projection[new_records] = CppProjection{};
-                        auto const new_records_row{records.index(new_records)};
-                        records.name[new_records_row] = strings.intern("Record");
-                        records.functions[new_records_row] =
-                            declarations.range<lispb::codegen::FunctionSchemaId>({function});
-                        return new_records;
-                    }()});
+                    declarations.range<lispb::codegen::DeclarationHandle>(
+                        {append_test_row(records, [&](auto const new_records) {
+                            records.cpp_projection[new_records] = CppProjection{};
+                            records.name[new_records] = strings.intern("Record");
+                            records.functions[new_records] =
+                                declarations.range<lispb::codegen::FunctionSchemaId>({function});
+                        })});
             } else {
 
                 normal_modules.declarations[module] = edit_first_test_item(
@@ -227,25 +225,21 @@ TEST(Validation, FunctionQualifiersAreSharedByRecordsAndAllSoaReceivers) {
     check(function, "function templates must be defined in the header");
 
     function = functions_schemas.clone(valid);
-    functions_schemas.return_type[functions_schemas.index(function)] = [&] {
-        auto const new_type_refs{type_refs.append()};
-        auto const new_type_refs_row{type_refs.index(new_type_refs)};
-        type_refs.name[new_type_refs_row] = strings.intern("void");
-        type_refs.suffix[new_type_refs_row] = strings.intern("*");
-        return new_type_refs;
-    }();
+    functions_schemas.return_type[functions_schemas.index(function)] =
+        append_test_row(type_refs, [&](auto const new_type_refs) {
+            type_refs.name[new_type_refs] = strings.intern("void");
+            type_refs.suffix[new_type_refs] = strings.intern("*");
+        });
     functions_schemas.body_lines[functions_schemas.index(function)] =
         declarations.range<lispb::StringId>({strings.intern("return nullptr;")});
     check(function, "");
     functions_schemas.return_type[functions_schemas.index(function)] =
         make_test_type_ref(context, "auto");
-    functions_schemas.trailing_return_type[functions_schemas.index(function)] = [&] {
-        auto const new_type_refs{type_refs.append()};
-        auto const new_type_refs_row{type_refs.index(new_type_refs)};
-        type_refs.name[new_type_refs_row] = strings.intern("void");
-        type_refs.suffix[new_type_refs_row] = strings.intern("*");
-        return new_type_refs;
-    }();
+    functions_schemas.trailing_return_type[functions_schemas.index(function)] =
+        append_test_row(type_refs, [&](auto const new_type_refs) {
+            type_refs.name[new_type_refs] = strings.intern("void");
+            type_refs.suffix[new_type_refs] = strings.intern("*");
+        });
     check(function, "");
     functions_schemas.is_constexpr[functions_schemas.index(function)] = false;
     functions_schemas.body_lines[functions_schemas.index(function)] = {};
@@ -296,20 +290,15 @@ auto plain_soa(CompilerTestContext& context, std::string name = "Data")
     auto& soas{declarations.soas};
     auto& soa_members{declarations.soa_members};
     auto& strings{context.storage.strings};
-    return [&] {
-        auto const new_soas{soas.append()};
-        auto const new_soas_row{soas.index(new_soas)};
-        soas.name[new_soas_row] = strings.intern(std::move(name));
-        soas.members[new_soas_row] = declarations.range<lispb::codegen::SoaMemberId>({[&] {
-            auto const new_soa_members{soa_members.append()};
-            auto const new_soa_members_row{soa_members.index(new_soa_members)};
-            soa_members.name[new_soa_members_row] = strings.intern("values");
-            soa_members.kind[new_soa_members_row] = SoaMemberKind::array;
-            soa_members.type[new_soa_members_row] = make_test_type_ref(context, "int32");
-            return new_soa_members;
-        }()});
-        return new_soas;
-    }();
+    return append_test_row(soas, [&](auto const new_soas) {
+        soas.name[new_soas] = strings.intern(std::move(name));
+        soas.members[new_soas] = declarations.range<lispb::codegen::SoaMemberId>(
+            {append_test_row(soa_members, [&](auto const new_soa_members) {
+                soa_members.name[new_soa_members] = strings.intern("values");
+                soa_members.kind[new_soa_members] = SoaMemberKind::array;
+                soa_members.type[new_soa_members] = make_test_type_ref(context, "int32");
+            })});
+    });
 }
 
 auto valid_enum_module(CompilerTestContext& context) -> lispb::codegen::ModuleHandle {
@@ -318,41 +307,32 @@ auto valid_enum_module(CompilerTestContext& context) -> lispb::codegen::ModuleHa
     auto& module_settings_store{declarations.module_settings_store};
     auto& enums{declarations.enums};
     auto& strings{context.storage.strings};
-    return [&] {
-        auto const new_normal_modules{normal_modules.append()};
-        auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-        normal_modules.settings[new_normal_modules_row] = [&] {
-            auto const new_module_settings_store{module_settings_store.append()};
-            auto const new_module_settings_store_row{
-                module_settings_store.index(new_module_settings_store)};
-            module_settings_store.name[new_module_settings_store_row] = strings.intern("enums");
-            module_settings_store.header[new_module_settings_store_row] = strings.intern("Enums.h");
-            module_settings_store.source[new_module_settings_store_row] =
-                strings.intern("Enums.cpp");
-            return new_module_settings_store;
-        }();
-        normal_modules.declarations[new_normal_modules_row] =
-            declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-                auto const new_enums{enums.append()};
-                enums.cpp_projection[new_enums] = CppProjection{};
-                auto const new_enums_row{enums.index(new_enums)};
-                enums.name[new_enums_row] = strings.intern("EMode");
-                enums.underlying_type[new_enums_row] = make_test_type_ref(context, "uint8");
-                enums.values[new_enums_row] =
-                    declarations.range<lispb::codegen::EnumeratorId>({[&] {
-                        auto const new_enumerators{declarations.enumerators.append()};
-                        declarations.enumerators.name[new_enumerators] = strings.intern("Value");
-                        return new_enumerators;
-                    }()});
-                enums.conversions[new_enums_row] =
-                    declarations.range<lispb::codegen::EnumConversion>(
-                        {EnumConversion::string_view});
-                enums.reflection[new_enums_row] = EnumReflection::uenum;
-                return new_enums;
-            }()});
-        normal_modules.enum_helper_namespace[new_normal_modules_row] = strings.intern("project");
-        return new_normal_modules;
-    }();
+    return append_test_row(normal_modules, [&](auto const new_normal_modules) {
+        normal_modules.settings[new_normal_modules] =
+            append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                module_settings_store.name[new_module_settings_store] = strings.intern("enums");
+                module_settings_store.header[new_module_settings_store] = strings.intern("Enums.h");
+                module_settings_store.source[new_module_settings_store] =
+                    strings.intern("Enums.cpp");
+            });
+        normal_modules.declarations[new_normal_modules] =
+            declarations.range<lispb::codegen::DeclarationHandle>(
+                {append_test_row(enums, [&](auto const new_enums) {
+                    enums.cpp_projection[new_enums] = CppProjection{};
+                    enums.name[new_enums] = strings.intern("EMode");
+                    enums.underlying_type[new_enums] = make_test_type_ref(context, "uint8");
+                    enums.values[new_enums] = declarations.range<lispb::codegen::EnumeratorId>(
+                        {append_test_row(declarations.enumerators, [&](auto const new_enumerators) {
+                            declarations.enumerators.name[new_enumerators] =
+                                strings.intern("Value");
+                        })});
+                    enums.conversions[new_enums] =
+                        declarations.range<lispb::codegen::EnumConversion>(
+                            {EnumConversion::string_view});
+                    enums.reflection[new_enums] = EnumReflection::uenum;
+                })});
+        normal_modules.enum_helper_namespace[new_normal_modules] = strings.intern("project");
+    });
 }
 
 auto valid_native_enum_module(CompilerTestContext& context) -> lispb::codegen::ModuleHandle {
@@ -362,44 +342,33 @@ auto valid_native_enum_module(CompilerTestContext& context) -> lispb::codegen::M
     auto& enums{declarations.enums};
     auto& enumerators{declarations.enumerators};
     auto& strings{context.storage.strings};
-    return [&] {
-        auto const new_normal_modules{normal_modules.append()};
-        auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-        normal_modules.settings[new_normal_modules_row] = [&] {
-            auto const new_module_settings_store{module_settings_store.append()};
-            auto const new_module_settings_store_row{
-                module_settings_store.index(new_module_settings_store)};
-            module_settings_store.name[new_module_settings_store_row] =
-                strings.intern("native_enums");
-            module_settings_store.header[new_module_settings_store_row] =
-                strings.intern("NativeEnums.h");
-            module_settings_store.namespace_name[new_module_settings_store_row] =
-                strings.intern("project");
-            return new_module_settings_store;
-        }();
-        normal_modules.declarations[new_normal_modules_row] =
-            declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-                auto const new_enums{enums.append()};
-                enums.cpp_projection[new_enums] = CppProjection{};
-                auto const new_enums_row{enums.index(new_enums)};
-                enums.name[new_enums_row] = strings.intern("NativeMode");
-                enums.underlying_type[new_enums_row] = make_test_type_ref(context, "std::uint8_t");
-                enums.values[new_enums_row] =
-                    declarations.range<lispb::codegen::EnumeratorId>({[&] {
-                        auto const new_enumerators{enumerators.append()};
-                        auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                        enumerators.name[new_enumerators_row] = strings.intern("Idle");
-                        enumerators.initializer[new_enumerators_row] = strings.intern("0");
-                        enumerators.display_name[new_enumerators_row] = std::nullopt;
-                        enumerators.hidden[new_enumerators_row] = false;
-                        enumerators.serialized_name[new_enumerators_row] = strings.intern("idle");
-                        return new_enumerators;
-                    }()});
-                enums.native_api[new_enums_row] = true;
-                return new_enums;
-            }()});
-        return new_normal_modules;
-    }();
+    return append_test_row(normal_modules, [&](auto const new_normal_modules) {
+        normal_modules.settings[new_normal_modules] =
+            append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                module_settings_store.name[new_module_settings_store] =
+                    strings.intern("native_enums");
+                module_settings_store.header[new_module_settings_store] =
+                    strings.intern("NativeEnums.h");
+                module_settings_store.namespace_name[new_module_settings_store] =
+                    strings.intern("project");
+            });
+        normal_modules.declarations[new_normal_modules] =
+            declarations.range<lispb::codegen::DeclarationHandle>(
+                {append_test_row(enums, [&](auto const new_enums) {
+                    enums.cpp_projection[new_enums] = CppProjection{};
+                    enums.name[new_enums] = strings.intern("NativeMode");
+                    enums.underlying_type[new_enums] = make_test_type_ref(context, "std::uint8_t");
+                    enums.values[new_enums] = declarations.range<lispb::codegen::EnumeratorId>(
+                        {append_test_row(enumerators, [&](auto const new_enumerators) {
+                            enumerators.name[new_enumerators] = strings.intern("Idle");
+                            enumerators.initializer[new_enumerators] = strings.intern("0");
+                            enumerators.display_name[new_enumerators] = std::nullopt;
+                            enumerators.hidden[new_enumerators] = false;
+                            enumerators.serialized_name[new_enumerators] = strings.intern("idle");
+                        })});
+                    enums.native_api[new_enums] = true;
+                })});
+    });
 }
 
 auto valid_integer_scalar_module(CompilerTestContext& context) -> lispb::codegen::ModuleHandle {
@@ -421,28 +390,23 @@ auto valid_linear_quantized_manifest(CompilerTestContext& context) -> Manifest {
     auto scalar{valid_integer_scalar_module(context)};
     auto const representations{normal_modules.append()};
     auto const representations_row{normal_modules.index(representations)};
-    normal_modules.settings[representations_row] = [&] {
-        auto const new_module_settings_store{module_settings_store.append()};
-        auto const new_module_settings_store_row{
-            module_settings_store.index(new_module_settings_store)};
-        module_settings_store.name[new_module_settings_store_row] =
-            strings.intern("representations");
-        module_settings_store.header[new_module_settings_store_row] =
-            strings.intern("Representations.h");
-        return new_module_settings_store;
-    }();
+    normal_modules.settings[representations_row] =
+        append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+            module_settings_store.name[new_module_settings_store] =
+                strings.intern("representations");
+            module_settings_store.header[new_module_settings_store] =
+                strings.intern("Representations.h");
+        });
     normal_modules.declarations[representations_row] =
-        declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-            auto const new_linear_quantizeds{linear_quantizeds.append()};
-            auto const new_linear_quantizeds_row{linear_quantizeds.index(new_linear_quantizeds)};
-            linear_quantizeds.name[new_linear_quantizeds_row] = strings.intern("DamageReasonQ4");
-            linear_quantizeds.source[new_linear_quantizeds_row] =
-                make_test_type_ref(context, "@scalars/DamageReason");
-            linear_quantizeds.bit_width[new_linear_quantizeds_row] = 4;
-            linear_quantizeds.reserved_codes[new_linear_quantizeds_row] = 1;
-            linear_quantizeds.clipping[new_linear_quantizeds_row] = QuantizationClipping::reject;
-            return new_linear_quantizeds;
-        }()});
+        declarations.range<lispb::codegen::DeclarationHandle>(
+            {append_test_row(linear_quantizeds, [&](auto const new_linear_quantizeds) {
+                linear_quantizeds.name[new_linear_quantizeds] = strings.intern("DamageReasonQ4");
+                linear_quantizeds.source[new_linear_quantizeds] =
+                    make_test_type_ref(context, "@scalars/DamageReason");
+                linear_quantizeds.bit_width[new_linear_quantizeds] = 4;
+                linear_quantizeds.reserved_codes[new_linear_quantizeds] = 1;
+                linear_quantizeds.clipping[new_linear_quantizeds] = QuantizationClipping::reject;
+            })});
     return lispb::codegen::Manifest{manifest_schema_version,
                                     make_test_registry(context),
                                     declarations,
@@ -484,26 +448,21 @@ auto valid_integer_varint_manifest(
     }
     auto const representations{normal_modules.append()};
     auto const representations_row{normal_modules.index(representations)};
-    normal_modules.settings[representations_row] = [&] {
-        auto const new_module_settings_store{module_settings_store.append()};
-        auto const new_module_settings_store_row{
-            module_settings_store.index(new_module_settings_store)};
-        module_settings_store.name[new_module_settings_store_row] =
-            strings.intern("representations");
-        module_settings_store.header[new_module_settings_store_row] =
-            strings.intern("Representations.h");
-        return new_module_settings_store;
-    }();
+    normal_modules.settings[representations_row] =
+        append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+            module_settings_store.name[new_module_settings_store] =
+                strings.intern("representations");
+            module_settings_store.header[new_module_settings_store] =
+                strings.intern("Representations.h");
+        });
     normal_modules.declarations[representations_row] =
-        declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-            auto const new_integer_varints{integer_varints.append()};
-            auto const new_integer_varints_row{integer_varints.index(new_integer_varints)};
-            integer_varints.name[new_integer_varints_row] = strings.intern("DamageReasonVarint");
-            integer_varints.source[new_integer_varints_row] =
-                make_test_type_ref(context, "@scalars/DamageReason");
-            integer_varints.encoding[new_integer_varints_row] = encoding;
-            return new_integer_varints;
-        }()});
+        declarations.range<lispb::codegen::DeclarationHandle>(
+            {append_test_row(integer_varints, [&](auto const new_integer_varints) {
+                integer_varints.name[new_integer_varints] = strings.intern("DamageReasonVarint");
+                integer_varints.source[new_integer_varints] =
+                    make_test_type_ref(context, "@scalars/DamageReason");
+                integer_varints.encoding[new_integer_varints] = encoding;
+            })});
     return lispb::codegen::Manifest{manifest_schema_version,
                                     make_test_registry(context),
                                     declarations,
@@ -519,27 +478,22 @@ auto valid_fixed_point_manifest(CompilerTestContext& context, bool const signedn
     auto& strings{context.storage.strings};
     auto const representations{normal_modules.append()};
     auto const representations_row{normal_modules.index(representations)};
-    normal_modules.settings[representations_row] = [&] {
-        auto const new_module_settings_store{module_settings_store.append()};
-        auto const new_module_settings_store_row{
-            module_settings_store.index(new_module_settings_store)};
-        module_settings_store.name[new_module_settings_store_row] =
-            strings.intern("representations");
-        module_settings_store.header[new_module_settings_store_row] =
-            strings.intern("Representations.h");
-        return new_module_settings_store;
-    }();
+    normal_modules.settings[representations_row] =
+        append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+            module_settings_store.name[new_module_settings_store] =
+                strings.intern("representations");
+            module_settings_store.header[new_module_settings_store] =
+                strings.intern("Representations.h");
+        });
     normal_modules.declarations[representations_row] =
-        declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-            auto const new_fixed_points{fixed_points.append()};
-            auto const new_fixed_points_row{fixed_points.index(new_fixed_points)};
-            fixed_points.name[new_fixed_points_row] = strings.intern("VelocityQ12_4");
-            fixed_points.signedness[new_fixed_points_row] = signedness;
-            fixed_points.total_bits[new_fixed_points_row] = 16;
-            fixed_points.fractional_bits[new_fixed_points_row] = 4;
-            fixed_points.rounding[new_fixed_points_row] = FixedPointRounding::nearest_even;
-            return new_fixed_points;
-        }()});
+        declarations.range<lispb::codegen::DeclarationHandle>(
+            {append_test_row(fixed_points, [&](auto const new_fixed_points) {
+                fixed_points.name[new_fixed_points] = strings.intern("VelocityQ12_4");
+                fixed_points.signedness[new_fixed_points] = signedness;
+                fixed_points.total_bits[new_fixed_points] = 16;
+                fixed_points.fractional_bits[new_fixed_points] = 4;
+                fixed_points.rounding[new_fixed_points] = FixedPointRounding::nearest_even;
+            })});
     return lispb::codegen::Manifest{
         manifest_schema_version, make_test_registry(context), declarations, {representations}};
 }
@@ -560,27 +514,22 @@ auto valid_optional_sentinel_manifest(CompilerTestContext& context) -> Manifest 
     auto scalar{valid_integer_scalar_module(context)};
     auto const representations{normal_modules.append()};
     auto const representations_row{normal_modules.index(representations)};
-    normal_modules.settings[representations_row] = [&] {
-        auto const new_module_settings_store{module_settings_store.append()};
-        auto const new_module_settings_store_row{
-            module_settings_store.index(new_module_settings_store)};
-        module_settings_store.name[new_module_settings_store_row] =
-            strings.intern("representations");
-        module_settings_store.header[new_module_settings_store_row] =
-            strings.intern("Representations.h");
-        return new_module_settings_store;
-    }();
+    normal_modules.settings[representations_row] =
+        append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+            module_settings_store.name[new_module_settings_store] =
+                strings.intern("representations");
+            module_settings_store.header[new_module_settings_store] =
+                strings.intern("Representations.h");
+        });
     normal_modules.declarations[representations_row] =
-        declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-            auto const new_optional_sentinels{optional_sentinels.append()};
-            auto const new_optional_sentinels_row{optional_sentinels.index(new_optional_sentinels)};
-            optional_sentinels.name[new_optional_sentinels_row] =
-                strings.intern("OptionalDamageReason");
-            optional_sentinels.source[new_optional_sentinels_row] =
-                make_test_type_ref(context, "@scalars/DamageReason");
-            optional_sentinels.sentinel[new_optional_sentinels_row] = strings.intern("Invalid");
-            return new_optional_sentinels;
-        }()});
+        declarations.range<lispb::codegen::DeclarationHandle>(
+            {append_test_row(optional_sentinels, [&](auto const new_optional_sentinels) {
+                optional_sentinels.name[new_optional_sentinels] =
+                    strings.intern("OptionalDamageReason");
+                optional_sentinels.source[new_optional_sentinels] =
+                    make_test_type_ref(context, "@scalars/DamageReason");
+                optional_sentinels.sentinel[new_optional_sentinels] = strings.intern("Invalid");
+            })});
     return lispb::codegen::Manifest{manifest_schema_version,
                                     make_test_registry(context),
                                     declarations,
@@ -596,27 +545,21 @@ auto valid_optional_presence_bit_manifest(CompilerTestContext& context) -> Manif
     auto scalar{valid_integer_scalar_module(context)};
     auto const representations{normal_modules.append()};
     auto const representations_row{normal_modules.index(representations)};
-    normal_modules.settings[representations_row] = [&] {
-        auto const new_module_settings_store{module_settings_store.append()};
-        auto const new_module_settings_store_row{
-            module_settings_store.index(new_module_settings_store)};
-        module_settings_store.name[new_module_settings_store_row] =
-            strings.intern("representations");
-        module_settings_store.header[new_module_settings_store_row] =
-            strings.intern("Representations.h");
-        return new_module_settings_store;
-    }();
+    normal_modules.settings[representations_row] =
+        append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+            module_settings_store.name[new_module_settings_store] =
+                strings.intern("representations");
+            module_settings_store.header[new_module_settings_store] =
+                strings.intern("Representations.h");
+        });
     normal_modules.declarations[representations_row] =
-        declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-            auto const new_optional_presence_bits{optional_presence_bits.append()};
-            auto const new_optional_presence_bits_row{
-                optional_presence_bits.index(new_optional_presence_bits)};
-            optional_presence_bits.name[new_optional_presence_bits_row] =
-                strings.intern("PresentDamageReason");
-            optional_presence_bits.source[new_optional_presence_bits_row] =
-                make_test_type_ref(context, "@scalars/DamageReason");
-            return new_optional_presence_bits;
-        }()});
+        declarations.range<lispb::codegen::DeclarationHandle>(
+            {append_test_row(optional_presence_bits, [&](auto const new_optional_presence_bits) {
+                optional_presence_bits.name[new_optional_presence_bits] =
+                    strings.intern("PresentDamageReason");
+                optional_presence_bits.source[new_optional_presence_bits] =
+                    make_test_type_ref(context, "@scalars/DamageReason");
+            })});
     return lispb::codegen::Manifest{manifest_schema_version,
                                     make_test_registry(context),
                                     declarations,
@@ -631,52 +574,39 @@ auto valid_static_table_module(CompilerTestContext& context) -> lispb::codegen::
     auto& static_table_rows{declarations.static_table_rows};
     auto& static_table_columns{declarations.static_table_columns};
     auto& strings{context.storage.strings};
-    return [&] {
-        auto const new_normal_modules{normal_modules.append()};
-        auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-        normal_modules.settings[new_normal_modules_row] = [&] {
-            auto const new_module_settings_store{module_settings_store.append()};
-            auto const new_module_settings_store_row{
-                module_settings_store.index(new_module_settings_store)};
-            module_settings_store.name[new_module_settings_store_row] = strings.intern("tables");
-            module_settings_store.header[new_module_settings_store_row] =
-                strings.intern("Tables.h");
-            return new_module_settings_store;
-        }();
-        normal_modules.declarations[new_normal_modules_row] =
-            declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-                auto const new_static_tables{static_tables.append()};
-                auto const new_static_tables_row{static_tables.index(new_static_tables)};
-                static_tables.name[new_static_tables_row] = strings.intern("FValues");
-                static_tables.rows[new_static_tables_row] =
-                    declarations.range<lispb::codegen::StaticTableRowId>(
-                        {[&] {
-                             auto const new_static_table_rows{static_table_rows.append()};
-                             static_table_rows.name[new_static_table_rows] =
-                                 strings.intern("first");
-                             return new_static_table_rows;
-                         }(),
-                         [&] {
-                             auto const new_static_table_rows{static_table_rows.append()};
-                             static_table_rows.name[new_static_table_rows] =
-                                 strings.intern("second");
-                             return new_static_table_rows;
-                         }()});
-                static_tables.columns[new_static_tables_row] =
-                    declarations.range<lispb::codegen::StaticTableColumnId>({[&] {
-                        auto const new_static_table_columns{static_table_columns.append()};
-                        auto const new_static_table_columns_row{
-                            static_table_columns.index(new_static_table_columns)};
-                        static_table_columns.name[new_static_table_columns_row] =
-                            strings.intern("ids");
-                        static_table_columns.type[new_static_table_columns_row] =
-                            make_test_type_ref(context, "int32");
-                        return new_static_table_columns;
-                    }()});
-                return new_static_tables;
-            }()});
-        return new_normal_modules;
-    }();
+    return append_test_row(normal_modules, [&](auto const new_normal_modules) {
+        normal_modules.settings[new_normal_modules] =
+            append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                module_settings_store.name[new_module_settings_store] = strings.intern("tables");
+                module_settings_store.header[new_module_settings_store] =
+                    strings.intern("Tables.h");
+            });
+        normal_modules.declarations[new_normal_modules] =
+            declarations.range<lispb::codegen::DeclarationHandle>(
+                {append_test_row(static_tables, [&](auto const new_static_tables) {
+                    static_tables.name[new_static_tables] = strings.intern("FValues");
+                    static_tables.rows[new_static_tables] =
+                        declarations.range<lispb::codegen::StaticTableRowId>(
+                            {append_test_row(static_table_rows,
+                                             [&](auto const new_static_table_rows) {
+                                                 static_table_rows.name[new_static_table_rows] =
+                                                     strings.intern("first");
+                                             }),
+                             append_test_row(static_table_rows,
+                                             [&](auto const new_static_table_rows) {
+                                                 static_table_rows.name[new_static_table_rows] =
+                                                     strings.intern("second");
+                                             })});
+                    static_tables.columns[new_static_tables] =
+                        declarations.range<lispb::codegen::StaticTableColumnId>({append_test_row(
+                            static_table_columns, [&](auto const new_static_table_columns) {
+                                static_table_columns.name[new_static_table_columns] =
+                                    strings.intern("ids");
+                                static_table_columns.type[new_static_table_columns] =
+                                    make_test_type_ref(context, "int32");
+                            })});
+                })});
+    });
 }
 
 TEST(Validation, IntegerProjectionRequiresUnsignedSufficientStorage) {
@@ -733,11 +663,9 @@ TEST(Validation, RejectsInvalidEnumDefinitions) {
             enums.values[row_0_row] = [&] {
                 auto const original_items{declarations.items(enums.values[row_0_row])};
                 auto rows{std::vector(original_items.begin(), original_items.end())};
-                rows.push_back([&] {
-                    auto const new_enumerators{enumerators.append()};
+                rows.push_back(append_test_row(enumerators, [&](auto const new_enumerators) {
                     enumerators.name[new_enumerators] = strings.intern("Value");
-                    return new_enumerators;
-                }());
+                }));
                 return declarations.range(rows);
             }();
         });
@@ -973,21 +901,14 @@ TEST(Validation, EmptyEditableModulesDoNotEmitCppWithoutDeclarations) {
     auto& normal_modules{declarations.normal_modules};
     auto& strings{context.storage.strings};
     auto settings = [&](std::string const& name) {
-        return [&] {
-            auto const new_module_settings_store{module_settings_store.append()};
-            auto const new_module_settings_store_row{
-                module_settings_store.index(new_module_settings_store)};
-            module_settings_store.name[new_module_settings_store_row] = strings.intern(name);
-            module_settings_store.header[new_module_settings_store_row] =
-                strings.intern(name + ".h");
-            return new_module_settings_store;
-        }();
+        return append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+            module_settings_store.name[new_module_settings_store] = strings.intern(name);
+            module_settings_store.header[new_module_settings_store] = strings.intern(name + ".h");
+        });
     };
-    auto module{[&] {
-        auto const new_normal_modules{normal_modules.append()};
+    auto module{append_test_row(normal_modules, [&](auto const new_normal_modules) {
         normal_modules.settings[new_normal_modules] = settings("empty");
-        return new_normal_modules;
-    }()};
+    })};
     EXPECT_NO_THROW(
         render_modules(context.ir, lower_test_manifest(context, manifest_with(context, module))));
     normal_modules.settings[module] = [&] {
@@ -1011,67 +932,50 @@ TEST(Validation, ValidatesRecordMemberRelationshipUnits) {
 
     auto& semantic_relations{declarations.semantic_relations};
     auto& strings{context.storage.strings};
-    auto module{[&] {
-        auto const new_normal_modules{normal_modules.append()};
-        auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-        normal_modules.settings[new_normal_modules_row] = [&] {
-            auto const new_module_settings_store{module_settings_store.append()};
-            auto const new_module_settings_store_row{
-                module_settings_store.index(new_module_settings_store)};
-            module_settings_store.name[new_module_settings_store_row] = strings.intern("records");
-            module_settings_store.header[new_module_settings_store_row] =
-                strings.intern("Records.h");
-            return new_module_settings_store;
-        }();
-        normal_modules.declarations[new_normal_modules_row] =
+    auto module{append_test_row(normal_modules, [&](auto const new_normal_modules) {
+        normal_modules.settings[new_normal_modules] =
+            append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                module_settings_store.name[new_module_settings_store] = strings.intern("records");
+                module_settings_store.header[new_module_settings_store] =
+                    strings.intern("Records.h");
+            });
+        normal_modules.declarations[new_normal_modules] =
             declarations.range<lispb::codegen::DeclarationHandle>(
-                {[&] {
-                     auto const new_records{records.append()};
+                {append_test_row(
+                     records,
+                     [&](auto const new_records) {
+                         records.cpp_projection[new_records] = CppProjection{};
+                         records.name[new_records] = strings.intern("Target");
+                         records.members[new_records] =
+                             declarations.range<lispb::codegen::ChildOccurrenceId>({append_test_row(
+                                 record_members, [&](auto const new_record_members) {
+                                     record_members.name[new_record_members] =
+                                         strings.intern("value");
+                                     record_members.type[new_record_members] =
+                                         make_test_type_ref(context, "std::uint32_t");
+                                 })});
+                     }),
+                 append_test_row(records, [&](auto const new_records) {
                      records.cpp_projection[new_records] = CppProjection{};
-                     auto const new_records_row{records.index(new_records)};
-                     records.name[new_records_row] = strings.intern("Target");
-                     records.members[new_records_row] =
-                         declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
-                             auto const new_record_members{record_members.append()};
-                             auto const new_record_members_row{
-                                 record_members.index(new_record_members)};
-                             record_members.name[new_record_members_row] = strings.intern("value");
-                             record_members.type[new_record_members_row] =
-                                 make_test_type_ref(context, "std::uint32_t");
-                             return new_record_members;
-                         }()});
-                     return new_records;
-                 }(),
-                 [&] {
-                     auto const new_records{records.append()};
-                     records.cpp_projection[new_records] = CppProjection{};
-                     auto const new_records_row{records.index(new_records)};
-                     records.name[new_records_row] = strings.intern("User");
-                     records.members[new_records_row] =
-                         declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
-                             auto const new_record_members{record_members.append()};
-                             auto const new_record_members_row{
-                                 record_members.index(new_record_members)};
-                             record_members.name[new_record_members_row] = strings.intern("value");
-                             record_members.type[new_record_members_row] =
-                                 make_test_type_ref(context, "std::uint32_t");
-                             record_members.relationship[new_record_members_row] = [&] {
-                                 auto const new_semantic_relations{semantic_relations.append()};
-                                 auto const new_semantic_relations_row{
-                                     semantic_relations.index(new_semantic_relations)};
-                                 semantic_relations.kind[new_semantic_relations_row] =
-                                     SemanticRelationKind::references;
-                                 semantic_relations.target[new_semantic_relations_row] =
-                                     make_test_type_ref(context, "Target");
-                                 semantic_relations.unit[new_semantic_relations_row] = std::nullopt;
-                                 return new_semantic_relations;
-                             }();
-                             return new_record_members;
-                         }()});
-                     return new_records;
-                 }()});
-        return new_normal_modules;
-    }()};
+                     records.name[new_records] = strings.intern("User");
+                     records.members[new_records] =
+                         declarations.range<lispb::codegen::ChildOccurrenceId>(
+                             {append_test_row(record_members, [&](auto const new_record_members) {
+                                 record_members.name[new_record_members] = strings.intern("value");
+                                 record_members.type[new_record_members] =
+                                     make_test_type_ref(context, "std::uint32_t");
+                                 record_members.relationship[new_record_members] = append_test_row(
+                                     semantic_relations, [&](auto const new_semantic_relations) {
+                                         semantic_relations.kind[new_semantic_relations] =
+                                             SemanticRelationKind::references;
+                                         semantic_relations.target[new_semantic_relations] =
+                                             make_test_type_ref(context, "Target");
+                                         semantic_relations.unit[new_semantic_relations] =
+                                             std::nullopt;
+                                     });
+                             })});
+                 })});
+    })};
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
     normal_modules.declarations[module] = [&] {
@@ -1085,17 +989,14 @@ TEST(Validation, ValidatesRecordMemberRelationshipUnits) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{record_members.clone(rows_1[0])};
-                    record_members.relationship[row_0] = [&] {
-                        auto const new_semantic_relations{semantic_relations.append()};
-                        auto const new_semantic_relations_row{
-                            semantic_relations.index(new_semantic_relations)};
-                        semantic_relations.kind[new_semantic_relations_row] =
-                            SemanticRelationKind::offset_into;
-                        semantic_relations.target[new_semantic_relations_row] =
-                            make_test_type_ref(context, "Target");
-                        semantic_relations.unit[new_semantic_relations_row] = std::nullopt;
-                        return new_semantic_relations;
-                    }();
+                    record_members.relationship[row_0] =
+                        append_test_row(semantic_relations, [&](auto const new_semantic_relations) {
+                            semantic_relations.kind[new_semantic_relations] =
+                                SemanticRelationKind::offset_into;
+                            semantic_relations.target[new_semantic_relations] =
+                                make_test_type_ref(context, "Target");
+                            semantic_relations.unit[new_semantic_relations] = std::nullopt;
+                        });
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -1118,18 +1019,15 @@ TEST(Validation, ValidatesRecordMemberRelationshipUnits) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{record_members.clone(rows_1[0])};
-                    record_members.relationship[row_0] = [&] {
-                        auto const new_semantic_relations{semantic_relations.append()};
-                        auto const new_semantic_relations_row{
-                            semantic_relations.index(new_semantic_relations)};
-                        semantic_relations.kind[new_semantic_relations_row] =
-                            SemanticRelationKind::references;
-                        semantic_relations.target[new_semantic_relations_row] =
-                            make_test_type_ref(context, "Target");
-                        semantic_relations.unit[new_semantic_relations_row] =
-                            SemanticRelationUnit::elements;
-                        return new_semantic_relations;
-                    }();
+                    record_members.relationship[row_0] =
+                        append_test_row(semantic_relations, [&](auto const new_semantic_relations) {
+                            semantic_relations.kind[new_semantic_relations] =
+                                SemanticRelationKind::references;
+                            semantic_relations.target[new_semantic_relations] =
+                                make_test_type_ref(context, "Target");
+                            semantic_relations.unit[new_semantic_relations] =
+                                SemanticRelationUnit::elements;
+                        });
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -1152,18 +1050,15 @@ TEST(Validation, ValidatesRecordMemberRelationshipUnits) {
                 auto rows_1{std::vector(original_items.begin(), original_items.end())};
                 rows_1[0] = [&] {
                     auto row_0{record_members.clone(rows_1[0])};
-                    record_members.relationship[row_0] = [&] {
-                        auto const new_semantic_relations{semantic_relations.append()};
-                        auto const new_semantic_relations_row{
-                            semantic_relations.index(new_semantic_relations)};
-                        semantic_relations.kind[new_semantic_relations_row] =
-                            SemanticRelationKind::offset_into;
-                        semantic_relations.target[new_semantic_relations_row] =
-                            make_test_type_ref(context, "Target");
-                        semantic_relations.unit[new_semantic_relations_row] =
-                            SemanticRelationUnit::bytes;
-                        return new_semantic_relations;
-                    }();
+                    record_members.relationship[row_0] =
+                        append_test_row(semantic_relations, [&](auto const new_semantic_relations) {
+                            semantic_relations.kind[new_semantic_relations] =
+                                SemanticRelationKind::offset_into;
+                            semantic_relations.target[new_semantic_relations] =
+                                make_test_type_ref(context, "Target");
+                            semantic_relations.unit[new_semantic_relations] =
+                                SemanticRelationUnit::bytes;
+                        });
                     return row_0;
                 }();
                 return declarations.range(rows_1);
@@ -1188,22 +1083,17 @@ TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
     normal_modules.declarations[module] = [&] {
         auto const original_items{declarations.items(normal_modules.declarations[module])};
         auto rows{std::vector(original_items.begin(), original_items.end())};
-        rows.push_back([&] {
-            auto const new_soas{soas.append()};
-            auto const new_soas_row{soas.index(new_soas)};
-            soas.name[new_soas_row] = strings.intern("Target");
-            soas.members[new_soas_row] = declarations.range<lispb::codegen::SoaMemberId>({[&] {
-                auto const new_soa_members{soa_members.append()};
-                auto const new_soa_members_row{soa_members.index(new_soa_members)};
-                soa_members.name[new_soa_members_row] = strings.intern("values");
-                soa_members.kind[new_soa_members_row] = SoaMemberKind::array;
-                soa_members.type[new_soa_members_row] =
-                    make_test_type_ref(context, "std::uint32_t");
-                soa_members.relationship[new_soa_members_row] = std::nullopt;
-                return new_soa_members;
-            }()});
-            return new_soas;
-        }());
+        rows.push_back(append_test_row(soas, [&](auto const new_soas) {
+            soas.name[new_soas] = strings.intern("Target");
+            soas.members[new_soas] = declarations.range<lispb::codegen::SoaMemberId>(
+                {append_test_row(soa_members, [&](auto const new_soa_members) {
+                    soa_members.name[new_soa_members] = strings.intern("values");
+                    soa_members.kind[new_soa_members] = SoaMemberKind::array;
+                    soa_members.type[new_soa_members] =
+                        make_test_type_ref(context, "std::uint32_t");
+                    soa_members.relationship[new_soa_members] = std::nullopt;
+                })});
+        }));
         return declarations.range(rows);
     }();
 
@@ -1212,17 +1102,14 @@ TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
             auto const row_2_row{soas.index(row_2)};
             soas.members[row_2_row] = edit_first_test_item(
                 declarations, soas.members[row_2_row], soa_members, [&](auto const row_0) {
-                    soa_members.relationship[row_0] = [&] {
-                        auto const new_semantic_relations{semantic_relations.append()};
-                        auto const new_semantic_relations_row{
-                            semantic_relations.index(new_semantic_relations)};
-                        semantic_relations.kind[new_semantic_relations_row] =
-                            SemanticRelationKind::references;
-                        semantic_relations.target[new_semantic_relations_row] =
-                            make_test_type_ref(context, "Target");
-                        semantic_relations.unit[new_semantic_relations_row] = std::nullopt;
-                        return new_semantic_relations;
-                    }();
+                    soa_members.relationship[row_0] =
+                        append_test_row(semantic_relations, [&](auto const new_semantic_relations) {
+                            semantic_relations.kind[new_semantic_relations] =
+                                SemanticRelationKind::references;
+                            semantic_relations.target[new_semantic_relations] =
+                                make_test_type_ref(context, "Target");
+                            semantic_relations.unit[new_semantic_relations] = std::nullopt;
+                        });
                 });
         });
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
@@ -1232,17 +1119,14 @@ TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
             auto const row_2_row{soas.index(row_2)};
             soas.members[row_2_row] = edit_first_test_item(
                 declarations, soas.members[row_2_row], soa_members, [&](auto const row_0) {
-                    soa_members.relationship[row_0] = [&] {
-                        auto const new_semantic_relations{semantic_relations.append()};
-                        auto const new_semantic_relations_row{
-                            semantic_relations.index(new_semantic_relations)};
-                        semantic_relations.kind[new_semantic_relations_row] =
-                            SemanticRelationKind::offset_into;
-                        semantic_relations.target[new_semantic_relations_row] =
-                            make_test_type_ref(context, "Target");
-                        semantic_relations.unit[new_semantic_relations_row] = std::nullopt;
-                        return new_semantic_relations;
-                    }();
+                    soa_members.relationship[row_0] =
+                        append_test_row(semantic_relations, [&](auto const new_semantic_relations) {
+                            semantic_relations.kind[new_semantic_relations] =
+                                SemanticRelationKind::offset_into;
+                            semantic_relations.target[new_semantic_relations] =
+                                make_test_type_ref(context, "Target");
+                            semantic_relations.unit[new_semantic_relations] = std::nullopt;
+                        });
                 });
         });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
@@ -1253,18 +1137,15 @@ TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
             auto const row_2_row{soas.index(row_2)};
             soas.members[row_2_row] = edit_first_test_item(
                 declarations, soas.members[row_2_row], soa_members, [&](auto const row_0) {
-                    soa_members.relationship[row_0] = [&] {
-                        auto const new_semantic_relations{semantic_relations.append()};
-                        auto const new_semantic_relations_row{
-                            semantic_relations.index(new_semantic_relations)};
-                        semantic_relations.kind[new_semantic_relations_row] =
-                            SemanticRelationKind::references;
-                        semantic_relations.target[new_semantic_relations_row] =
-                            make_test_type_ref(context, "Target");
-                        semantic_relations.unit[new_semantic_relations_row] =
-                            SemanticRelationUnit::elements;
-                        return new_semantic_relations;
-                    }();
+                    soa_members.relationship[row_0] =
+                        append_test_row(semantic_relations, [&](auto const new_semantic_relations) {
+                            semantic_relations.kind[new_semantic_relations] =
+                                SemanticRelationKind::references;
+                            semantic_relations.target[new_semantic_relations] =
+                                make_test_type_ref(context, "Target");
+                            semantic_relations.unit[new_semantic_relations] =
+                                SemanticRelationUnit::elements;
+                        });
                 });
         });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
@@ -1275,18 +1156,15 @@ TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
             auto const row_2_row{soas.index(row_2)};
             soas.members[row_2_row] = edit_first_test_item(
                 declarations, soas.members[row_2_row], soa_members, [&](auto const row_0) {
-                    soa_members.relationship[row_0] = [&] {
-                        auto const new_semantic_relations{semantic_relations.append()};
-                        auto const new_semantic_relations_row{
-                            semantic_relations.index(new_semantic_relations)};
-                        semantic_relations.kind[new_semantic_relations_row] =
-                            SemanticRelationKind::offset_into;
-                        semantic_relations.target[new_semantic_relations_row] =
-                            make_test_type_ref(context, "Target");
-                        semantic_relations.unit[new_semantic_relations_row] =
-                            SemanticRelationUnit::bytes;
-                        return new_semantic_relations;
-                    }();
+                    soa_members.relationship[row_0] =
+                        append_test_row(semantic_relations, [&](auto const new_semantic_relations) {
+                            semantic_relations.kind[new_semantic_relations] =
+                                SemanticRelationKind::offset_into;
+                            semantic_relations.target[new_semantic_relations] =
+                                make_test_type_ref(context, "Target");
+                            semantic_relations.unit[new_semantic_relations] =
+                                SemanticRelationUnit::bytes;
+                        });
                 });
         });
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
@@ -1329,19 +1207,16 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
             normal_modules.declarations[module],
             integer_scalars,
             [&](auto const row_0) {
-                integer_scalars.relationship[row_0] = [&] {
-                    auto const new_semantic_relations{semantic_relations.append()};
-                    auto const new_semantic_relations_row{
-                        semantic_relations.index(new_semantic_relations)};
-                    semantic_relations.kind[new_semantic_relations_row] = kind;
-                    semantic_relations.target[new_semantic_relations_row] =
-                        make_test_type_ref(context, "@scalars/DamageReason");
-                    semantic_relations.unit[new_semantic_relations_row] =
-                        kind == SemanticRelationKind::offset_into
-                            ? std::optional{SemanticRelationUnit::bytes}
-                            : std::nullopt;
-                    return new_semantic_relations;
-                }();
+                integer_scalars.relationship[row_0] =
+                    append_test_row(semantic_relations, [&](auto const new_semantic_relations) {
+                        semantic_relations.kind[new_semantic_relations] = kind;
+                        semantic_relations.target[new_semantic_relations] =
+                            make_test_type_ref(context, "@scalars/DamageReason");
+                        semantic_relations.unit[new_semantic_relations] =
+                            kind == SemanticRelationKind::offset_into
+                                ? std::optional{SemanticRelationUnit::bytes}
+                                : std::nullopt;
+                    });
             });
         EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                      std::invalid_argument);
@@ -1350,34 +1225,28 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
     auto module{valid_integer_scalar_module(context)};
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], integer_scalars, [&](auto const row_0) {
-            integer_scalars.relationship[row_0] = [&] {
-                auto const new_semantic_relations{semantic_relations.append()};
-                auto const new_semantic_relations_row{
-                    semantic_relations.index(new_semantic_relations)};
-                semantic_relations.kind[new_semantic_relations_row] =
-                    SemanticRelationKind::references;
-                semantic_relations.target[new_semantic_relations_row] =
-                    make_test_type_ref(context, "@scalars/DamageReason");
-                semantic_relations.unit[new_semantic_relations_row] = std::nullopt;
-                return new_semantic_relations;
-            }();
+            integer_scalars.relationship[row_0] =
+                append_test_row(semantic_relations, [&](auto const new_semantic_relations) {
+                    semantic_relations.kind[new_semantic_relations] =
+                        SemanticRelationKind::references;
+                    semantic_relations.target[new_semantic_relations] =
+                        make_test_type_ref(context, "@scalars/DamageReason");
+                    semantic_relations.unit[new_semantic_relations] = std::nullopt;
+                });
         });
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
     module = valid_integer_scalar_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], integer_scalars, [&](auto const row_0) {
-            integer_scalars.relationship[row_0] = [&] {
-                auto const new_semantic_relations{semantic_relations.append()};
-                auto const new_semantic_relations_row{
-                    semantic_relations.index(new_semantic_relations)};
-                semantic_relations.kind[new_semantic_relations_row] =
-                    SemanticRelationKind::offset_into;
-                semantic_relations.target[new_semantic_relations_row] =
-                    make_test_type_ref(context, "@scalars/DamageReason");
-                semantic_relations.unit[new_semantic_relations_row] = std::nullopt;
-                return new_semantic_relations;
-            }();
+            integer_scalars.relationship[row_0] =
+                append_test_row(semantic_relations, [&](auto const new_semantic_relations) {
+                    semantic_relations.kind[new_semantic_relations] =
+                        SemanticRelationKind::offset_into;
+                    semantic_relations.target[new_semantic_relations] =
+                        make_test_type_ref(context, "@scalars/DamageReason");
+                    semantic_relations.unit[new_semantic_relations] = std::nullopt;
+                });
         });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -1385,18 +1254,15 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
     module = valid_integer_scalar_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], integer_scalars, [&](auto const row_0) {
-            integer_scalars.relationship[row_0] = [&] {
-                auto const new_semantic_relations{semantic_relations.append()};
-                auto const new_semantic_relations_row{
-                    semantic_relations.index(new_semantic_relations)};
-                semantic_relations.kind[new_semantic_relations_row] =
-                    SemanticRelationKind::index_into;
-                semantic_relations.target[new_semantic_relations_row] =
-                    make_test_type_ref(context, "@scalars/DamageReason");
-                semantic_relations.unit[new_semantic_relations_row] =
-                    SemanticRelationUnit::elements;
-                return new_semantic_relations;
-            }();
+            integer_scalars.relationship[row_0] =
+                append_test_row(semantic_relations, [&](auto const new_semantic_relations) {
+                    semantic_relations.kind[new_semantic_relations] =
+                        SemanticRelationKind::index_into;
+                    semantic_relations.target[new_semantic_relations] =
+                        make_test_type_ref(context, "@scalars/DamageReason");
+                    semantic_relations.unit[new_semantic_relations] =
+                        SemanticRelationUnit::elements;
+                });
         });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -1404,17 +1270,14 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
     module = valid_integer_scalar_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], integer_scalars, [&](auto const row_0) {
-            integer_scalars.relationship[row_0] = [&] {
-                auto const new_semantic_relations{semantic_relations.append()};
-                auto const new_semantic_relations_row{
-                    semantic_relations.index(new_semantic_relations)};
-                semantic_relations.kind[new_semantic_relations_row] =
-                    SemanticRelationKind::offset_into;
-                semantic_relations.target[new_semantic_relations_row] =
-                    make_test_type_ref(context, "@scalars/DamageReason");
-                semantic_relations.unit[new_semantic_relations_row] = SemanticRelationUnit::bytes;
-                return new_semantic_relations;
-            }();
+            integer_scalars.relationship[row_0] =
+                append_test_row(semantic_relations, [&](auto const new_semantic_relations) {
+                    semantic_relations.kind[new_semantic_relations] =
+                        SemanticRelationKind::offset_into;
+                    semantic_relations.target[new_semantic_relations] =
+                        make_test_type_ref(context, "@scalars/DamageReason");
+                    semantic_relations.unit[new_semantic_relations] = SemanticRelationUnit::bytes;
+                });
         });
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 }
@@ -1609,22 +1472,20 @@ TEST(Validation, ValidatesIntegerVarintSourceAndSignedness) {
         normal_modules.declarations[row_0_row] = [&] {
             auto const original_items{declarations.items(normal_modules.declarations[row_0_row])};
             auto rows{std::vector(original_items.begin(), original_items.end())};
-            rows.push_back([&] {
-                auto const new_linear_quantizeds{linear_quantizeds.append()};
-                auto const new_linear_quantizeds_row{
-                    linear_quantizeds.index(new_linear_quantizeds)};
-                linear_quantizeds.name[new_linear_quantizeds_row] =
-                    integer_varints
-                        .name[declarations.items(normal_modules.declarations[manifest.modules[1]])
-                                  .front()];
-                linear_quantizeds.source[new_linear_quantizeds_row] =
-                    make_test_type_ref(context, "@scalars/DamageReason");
-                linear_quantizeds.bit_width[new_linear_quantizeds_row] = 4;
-                linear_quantizeds.reserved_codes[new_linear_quantizeds_row] = 0;
-                linear_quantizeds.clipping[new_linear_quantizeds_row] =
-                    QuantizationClipping::reject;
-                return new_linear_quantizeds;
-            }());
+            rows.push_back(
+                append_test_row(linear_quantizeds, [&](auto const new_linear_quantizeds) {
+                    linear_quantizeds.name[new_linear_quantizeds] =
+                        integer_varints
+                            .name[declarations
+                                      .items(normal_modules.declarations[manifest.modules[1]])
+                                      .front()];
+                    linear_quantizeds.source[new_linear_quantizeds] =
+                        make_test_type_ref(context, "@scalars/DamageReason");
+                    linear_quantizeds.bit_width[new_linear_quantizeds] = 4;
+                    linear_quantizeds.reserved_codes[new_linear_quantizeds] = 0;
+                    linear_quantizeds.clipping[new_linear_quantizeds] =
+                        QuantizationClipping::reject;
+                }));
             return declarations.range(rows);
         }();
         return row_0;
@@ -1751,8 +1612,7 @@ TEST(Validation, ValidatesMiniFloatEncodingAndEmitsNoPhysicalType) {
         modules.declarations[row_0] = [&] {
             auto const original_items{declarations.items(modules.declarations[row_0])};
             auto rows{std::vector(original_items.begin(), original_items.end())};
-            rows.push_back([&] {
-                auto const new_fixed_points{points.append()};
+            rows.push_back(append_test_row(points, [&](auto const new_fixed_points) {
                 points.name[new_fixed_points] =
                     floats.name[declarations.items(modules.declarations[manifest.modules.front()])
                                     .front()];
@@ -1760,8 +1620,7 @@ TEST(Validation, ValidatesMiniFloatEncodingAndEmitsNoPhysicalType) {
                 points.total_bits[new_fixed_points] = 16;
                 points.fractional_bits[new_fixed_points] = 4;
                 points.rounding[new_fixed_points] = FixedPointRounding::nearest_even;
-                return new_fixed_points;
-            }());
+            }));
             return declarations.range(rows);
         }();
         return row_0;
@@ -1846,19 +1705,16 @@ TEST(Validation, ValidatesOptionalSentinelSourceAndCodeRole) {
         normal_modules.declarations[row_0_row] = [&] {
             auto const original_items{declarations.items(normal_modules.declarations[row_0_row])};
             auto rows{std::vector(original_items.begin(), original_items.end())};
-            rows.push_back([&] {
-                auto const new_fixed_points{fixed_points.append()};
-                auto const new_fixed_points_row{fixed_points.index(new_fixed_points)};
-                fixed_points.name[new_fixed_points_row] =
+            rows.push_back(append_test_row(fixed_points, [&](auto const new_fixed_points) {
+                fixed_points.name[new_fixed_points] =
                     optional_sentinels
                         .name[declarations.items(normal_modules.declarations[manifest.modules[1]])
                                   .front()];
-                fixed_points.signedness[new_fixed_points_row] = false;
-                fixed_points.total_bits[new_fixed_points_row] = 8;
-                fixed_points.fractional_bits[new_fixed_points_row] = 0;
-                fixed_points.rounding[new_fixed_points_row] = FixedPointRounding::nearest_even;
-                return new_fixed_points;
-            }());
+                fixed_points.signedness[new_fixed_points] = false;
+                fixed_points.total_bits[new_fixed_points] = 8;
+                fixed_points.fractional_bits[new_fixed_points] = 0;
+                fixed_points.rounding[new_fixed_points] = FixedPointRounding::nearest_even;
+            }));
             return declarations.range(rows);
         }();
         return row_0;
@@ -1900,19 +1756,17 @@ TEST(Validation, ValidatesOptionalPresenceBitSourceAndSharedNames) {
         normal_modules.declarations[row_0_row] = [&] {
             auto const original_items{declarations.items(normal_modules.declarations[row_0_row])};
             auto rows{std::vector(original_items.begin(), original_items.end())};
-            rows.push_back([&] {
-                auto const new_optional_sentinels{optional_sentinels.append()};
-                auto const new_optional_sentinels_row{
-                    optional_sentinels.index(new_optional_sentinels)};
-                optional_sentinels.name[new_optional_sentinels_row] =
-                    optional_presence_bits
-                        .name[declarations.items(normal_modules.declarations[manifest.modules[1]])
-                                  .front()];
-                optional_sentinels.source[new_optional_sentinels_row] =
-                    make_test_type_ref(context, "@scalars/DamageReason");
-                optional_sentinels.sentinel[new_optional_sentinels_row] = strings.intern("Invalid");
-                return new_optional_sentinels;
-            }());
+            rows.push_back(
+                append_test_row(optional_sentinels, [&](auto const new_optional_sentinels) {
+                    optional_sentinels.name[new_optional_sentinels] =
+                        optional_presence_bits
+                            .name[declarations
+                                      .items(normal_modules.declarations[manifest.modules[1]])
+                                      .front()];
+                    optional_sentinels.source[new_optional_sentinels] =
+                        make_test_type_ref(context, "@scalars/DamageReason");
+                    optional_sentinels.sentinel[new_optional_sentinels] = strings.intern("Invalid");
+                }));
             return declarations.range(rows);
         }();
         return row_0;
@@ -2048,24 +1902,21 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
     module = valid_native_enum_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
-            enums.unreal_projection[row_0] = [&] {
-                auto const new_enum_unreal_projections{enum_unreal_projections.append()};
-                auto const new_enum_unreal_projections_row{
-                    enum_unreal_projections.index(new_enum_unreal_projections)};
-                enum_unreal_projections.name[new_enum_unreal_projections_row] =
-                    strings.intern("ENativeMode");
-                enum_unreal_projections.header[new_enum_unreal_projections_row] =
-                    strings.intern("Project/NativeMode.h");
-                enum_unreal_projections.header_include[new_enum_unreal_projections_row] =
-                    strings.intern("Project/NativeMode.h");
-                enum_unreal_projections.conversion_header[new_enum_unreal_projections_row] =
-                    strings.intern("Project/NativeModeConversion.h");
-                enum_unreal_projections.native_header_include[new_enum_unreal_projections] =
-                    strings.intern("project/NativeEnums.h");
-                enum_unreal_projections.reflection[new_enum_unreal_projections_row] =
-                    EnumReflection::none;
-                return new_enum_unreal_projections;
-            }();
+            enums.unreal_projection[row_0] = append_test_row(
+                enum_unreal_projections, [&](auto const new_enum_unreal_projections) {
+                    enum_unreal_projections.name[new_enum_unreal_projections] =
+                        strings.intern("ENativeMode");
+                    enum_unreal_projections.header[new_enum_unreal_projections] =
+                        strings.intern("Project/NativeMode.h");
+                    enum_unreal_projections.header_include[new_enum_unreal_projections] =
+                        strings.intern("Project/NativeMode.h");
+                    enum_unreal_projections.conversion_header[new_enum_unreal_projections] =
+                        strings.intern("Project/NativeModeConversion.h");
+                    enum_unreal_projections.native_header_include[new_enum_unreal_projections] =
+                        strings.intern("project/NativeEnums.h");
+                    enum_unreal_projections.reflection[new_enum_unreal_projections] =
+                        EnumReflection::none;
+                });
         });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -2073,22 +1924,19 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
     module = valid_enum_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
-            enums.unreal_projection[row_0] = [&] {
-                auto const new_enum_unreal_projections{enum_unreal_projections.append()};
-                auto const new_enum_unreal_projections_row{
-                    enum_unreal_projections.index(new_enum_unreal_projections)};
-                enum_unreal_projections.name[new_enum_unreal_projections_row] =
-                    strings.intern("ENativeMode");
-                enum_unreal_projections.header[new_enum_unreal_projections_row] =
-                    strings.intern("Project/NativeMode.h");
-                enum_unreal_projections.header_include[new_enum_unreal_projections_row] =
-                    strings.intern("Project/NativeMode.h");
-                enum_unreal_projections.conversion_header[new_enum_unreal_projections_row] =
-                    strings.intern("Project/NativeModeConversion.h");
-                enum_unreal_projections.native_header_include[new_enum_unreal_projections] =
-                    strings.intern("project/NativeEnums.h");
-                return new_enum_unreal_projections;
-            }();
+            enums.unreal_projection[row_0] = append_test_row(
+                enum_unreal_projections, [&](auto const new_enum_unreal_projections) {
+                    enum_unreal_projections.name[new_enum_unreal_projections] =
+                        strings.intern("ENativeMode");
+                    enum_unreal_projections.header[new_enum_unreal_projections] =
+                        strings.intern("Project/NativeMode.h");
+                    enum_unreal_projections.header_include[new_enum_unreal_projections] =
+                        strings.intern("Project/NativeMode.h");
+                    enum_unreal_projections.conversion_header[new_enum_unreal_projections] =
+                        strings.intern("Project/NativeModeConversion.h");
+                    enum_unreal_projections.native_header_include[new_enum_unreal_projections] =
+                        strings.intern("project/NativeEnums.h");
+                });
         });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -2130,16 +1978,13 @@ TEST(Validation, RejectsIncompleteOrAmbiguousSerializedEnumNames) {
             enums.values[row_0_row] = [&] {
                 auto const original_items{declarations.items(enums.values[row_0_row])};
                 auto rows{std::vector(original_items.begin(), original_items.end())};
-                rows.push_back([&] {
-                    auto const new_enumerators{enumerators.append()};
-                    auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                    enumerators.name[new_enumerators_row] = strings.intern("Other");
-                    enumerators.initializer[new_enumerators_row] = std::nullopt;
-                    enumerators.display_name[new_enumerators_row] = std::nullopt;
-                    enumerators.hidden[new_enumerators_row] = false;
-                    enumerators.serialized_name[new_enumerators_row] = strings.intern("value");
-                    return new_enumerators;
-                }());
+                rows.push_back(append_test_row(enumerators, [&](auto const new_enumerators) {
+                    enumerators.name[new_enumerators] = strings.intern("Other");
+                    enumerators.initializer[new_enumerators] = std::nullopt;
+                    enumerators.display_name[new_enumerators] = std::nullopt;
+                    enumerators.hidden[new_enumerators] = false;
+                    enumerators.serialized_name[new_enumerators] = strings.intern("value");
+                }));
                 return declarations.range(rows);
             }();
         });
@@ -2190,20 +2035,17 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
         normal_modules.declarations[module] = edit_first_test_item(
             declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
                 enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>(
-                    {[&] {
-                         auto const new_enumerators{enumerators.append()};
-                         auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                         enumerators.name[new_enumerators_row] = strings.intern("First");
-                         enumerators.initializer[new_enumerators_row] = strings.intern("0");
-                         return new_enumerators;
-                     }(),
-                     [&] {
-                         auto const new_enumerators{enumerators.append()};
-                         auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                         enumerators.name[new_enumerators_row] = strings.intern("Second");
-                         enumerators.initializer[new_enumerators_row] = strings.intern(code);
-                         return new_enumerators;
-                     }()});
+                    {append_test_row(enumerators,
+                                     [&](auto const new_enumerators) {
+                                         enumerators.name[new_enumerators] =
+                                             strings.intern("First");
+                                         enumerators.initializer[new_enumerators] =
+                                             strings.intern("0");
+                                     }),
+                     append_test_row(enumerators, [&](auto const new_enumerators) {
+                         enumerators.name[new_enumerators] = strings.intern("Second");
+                         enumerators.initializer[new_enumerators] = strings.intern(code);
+                     })});
             });
         EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                      std::invalid_argument);
@@ -2218,20 +2060,16 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>(
-                {[&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[new_enumerators_row] = strings.intern("First");
-                     enumerators.initializer[new_enumerators_row] = strings.intern("0x0");
-                     return new_enumerators;
-                 }(),
-                 [&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[new_enumerators_row] = strings.intern("Second");
-                     enumerators.initializer[new_enumerators_row] = strings.intern("1");
-                     return new_enumerators;
-                 }()});
+                {append_test_row(enumerators,
+                                 [&](auto const new_enumerators) {
+                                     enumerators.name[new_enumerators] = strings.intern("First");
+                                     enumerators.initializer[new_enumerators] =
+                                         strings.intern("0x0");
+                                 }),
+                 append_test_row(enumerators, [&](auto const new_enumerators) {
+                     enumerators.name[new_enumerators] = strings.intern("Second");
+                     enumerators.initializer[new_enumerators] = strings.intern("1");
+                 })});
         });
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
@@ -2282,55 +2120,24 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
             enums.values[row_0_row] = [&] {
                 auto const original_items{declarations.items(enums.values[row_0_row])};
                 auto rows{std::vector(original_items.begin(), original_items.end())};
-                rows.push_back([&] {
-                    auto const new_enumerators{enumerators.append()};
-                    auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                    enumerators.name[new_enumerators_row] = strings.intern("COUNT");
-                    enumerators.initializer[new_enumerators_row] = std::nullopt;
-                    enumerators.display_name[new_enumerators_row] = std::nullopt;
-                    enumerators.hidden[new_enumerators_row] = true;
-                    return new_enumerators;
-                }());
-                return declarations.range(rows);
-            }();
-        });
-    normal_modules.declarations[module] = edit_first_test_item(
-        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
-            auto const row_0_row{enums.index(row_0)};
-            enums.values[row_0_row] = [&] {
-                auto const original_items{declarations.items(enums.values[row_0_row])};
-                auto rows{std::vector(original_items.begin(), original_items.end())};
-                rows.push_back([&] {
-                    auto const new_enumerators{enumerators.append()};
-                    enumerators.name[new_enumerators] = strings.intern("After");
-                    return new_enumerators;
-                }());
-                return declarations.range(rows);
-            }();
-        });
-    normal_modules.declarations[module] = edit_first_test_item(
-        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
-            enums.count[row_0] = strings.intern("COUNT");
-        });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
-
-    module = valid_enum_module(context);
-    normal_modules.declarations[module] = edit_first_test_item(
-        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
-            enums.enum_array[row_0] = true;
-        });
-    normal_modules.declarations[module] = edit_first_test_item(
-        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
-            auto const row_0_row{enums.index(row_0)};
-            enums.values[row_0_row] = [&] {
-                auto const original_items{declarations.items(enums.values[row_0_row])};
-                auto rows{std::vector(original_items.begin(), original_items.end())};
-                rows.push_back([&] {
-                    auto const new_enumerators{enumerators.append()};
+                rows.push_back(append_test_row(enumerators, [&](auto const new_enumerators) {
                     enumerators.name[new_enumerators] = strings.intern("COUNT");
-                    return new_enumerators;
-                }());
+                    enumerators.initializer[new_enumerators] = std::nullopt;
+                    enumerators.display_name[new_enumerators] = std::nullopt;
+                    enumerators.hidden[new_enumerators] = true;
+                }));
+                return declarations.range(rows);
+            }();
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
+            auto const row_0_row{enums.index(row_0)};
+            enums.values[row_0_row] = [&] {
+                auto const original_items{declarations.items(enums.values[row_0_row])};
+                auto rows{std::vector(original_items.begin(), original_items.end())};
+                rows.push_back(append_test_row(enumerators, [&](auto const new_enumerators) {
+                    enumerators.name[new_enumerators] = strings.intern("After");
+                }));
                 return declarations.range(rows);
             }();
         });
@@ -2348,15 +2155,37 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
         });
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
-            enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>({[&] {
-                auto const new_enumerators{enumerators.append()};
-                auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                enumerators.name[new_enumerators_row] = strings.intern("COUNT");
-                enumerators.initializer[new_enumerators_row] = std::nullopt;
-                enumerators.display_name[new_enumerators_row] = std::nullopt;
-                enumerators.hidden[new_enumerators_row] = true;
-                return new_enumerators;
-            }()});
+            auto const row_0_row{enums.index(row_0)};
+            enums.values[row_0_row] = [&] {
+                auto const original_items{declarations.items(enums.values[row_0_row])};
+                auto rows{std::vector(original_items.begin(), original_items.end())};
+                rows.push_back(append_test_row(enumerators, [&](auto const new_enumerators) {
+                    enumerators.name[new_enumerators] = strings.intern("COUNT");
+                }));
+                return declarations.range(rows);
+            }();
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
+            enums.count[row_0] = strings.intern("COUNT");
+        });
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
+                 std::invalid_argument);
+
+    module = valid_enum_module(context);
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
+            enums.enum_array[row_0] = true;
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
+            enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>(
+                {append_test_row(enumerators, [&](auto const new_enumerators) {
+                    enumerators.name[new_enumerators] = strings.intern("COUNT");
+                    enumerators.initializer[new_enumerators] = std::nullopt;
+                    enumerators.display_name[new_enumerators] = std::nullopt;
+                    enumerators.hidden[new_enumerators] = true;
+                })});
         });
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
@@ -2382,20 +2211,16 @@ TEST(Validation, SupportsSignedEnumValuesWhenTheyFitTheUnderlyingType) {
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>(
-                {[&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[new_enumerators_row] = strings.intern("Minimum");
-                     enumerators.initializer[new_enumerators_row] = strings.intern("-128");
-                     return new_enumerators;
-                 }(),
-                 [&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[new_enumerators_row] = strings.intern("Maximum");
-                     enumerators.initializer[new_enumerators_row] = strings.intern("127");
-                     return new_enumerators;
-                 }()});
+                {append_test_row(enumerators,
+                                 [&](auto const new_enumerators) {
+                                     enumerators.name[new_enumerators] = strings.intern("Minimum");
+                                     enumerators.initializer[new_enumerators] =
+                                         strings.intern("-128");
+                                 }),
+                 append_test_row(enumerators, [&](auto const new_enumerators) {
+                     enumerators.name[new_enumerators] = strings.intern("Maximum");
+                     enumerators.initializer[new_enumerators] = strings.intern("127");
+                 })});
         });
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
@@ -2444,11 +2269,9 @@ TEST(Validation, RequiresKnownSemanticFactsWhenEnumBackingIsDerived) {
             enums.values[row_0_row] = [&] {
                 auto const original_items{declarations.items(enums.values[row_0_row])};
                 auto rows{std::vector(original_items.begin(), original_items.end())};
-                rows.push_back([&] {
-                    auto const new_enumerators{enumerators.append()};
+                rows.push_back(append_test_row(enumerators, [&](auto const new_enumerators) {
                     enumerators.name[new_enumerators] = strings.intern("Active");
-                    return new_enumerators;
-                }());
+                }));
                 return declarations.range(rows);
             }();
         });
@@ -2569,11 +2392,10 @@ TEST(Validation, RejectsInvalidStaticTableNamesAndTypes) {
                 static_tables.rows[row_0_row] = [&] {
                     auto const original_items{declarations.items(static_tables.rows[row_0_row])};
                     auto rows{std::vector(original_items.begin(), original_items.end())};
-                    rows.push_back([&] {
-                        auto const new_static_table_rows{static_table_rows.append()};
-                        static_table_rows.name[new_static_table_rows] = strings.intern("first");
-                        return new_static_table_rows;
-                    }());
+                    rows.push_back(
+                        append_test_row(static_table_rows, [&](auto const new_static_table_rows) {
+                            static_table_rows.name[new_static_table_rows] = strings.intern("first");
+                        }));
                     return declarations.range(rows);
                 }();
             });
@@ -2694,18 +2516,15 @@ TEST(Validation, RejectsInvalidStaticTableGroups) {
             static_tables,
             [&](auto const row_0) {
                 static_tables.groups[row_0] =
-                    declarations.range<lispb::codegen::StaticTableGroupId>({[&] {
-                        auto const new_static_table_groups{static_table_groups.append()};
-                        auto const new_static_table_groups_row{
-                            static_table_groups.index(new_static_table_groups)};
-                        static_table_groups.name[new_static_table_groups_row] =
-                            strings.intern("point");
-                        static_table_groups.type[new_static_table_groups_row] =
-                            make_test_type_ref(context, "FPoint");
-                        static_table_groups.columns[new_static_table_groups_row] =
-                            declarations.range<lispb::StringId>({strings.intern("ids")});
-                        return new_static_table_groups;
-                    }()});
+                    declarations.range<lispb::codegen::StaticTableGroupId>({append_test_row(
+                        static_table_groups, [&](auto const new_static_table_groups) {
+                            static_table_groups.name[new_static_table_groups] =
+                                strings.intern("point");
+                            static_table_groups.type[new_static_table_groups] =
+                                make_test_type_ref(context, "FPoint");
+                            static_table_groups.columns[new_static_table_groups] =
+                                declarations.range<lispb::StringId>({strings.intern("ids")});
+                        })});
             });
 
     auto duplicate_group{module};
@@ -2848,33 +2667,26 @@ TEST(Validation, RejectsStaticTableGroupGetterCollisions) {
             static_tables.columns[row_0_row] = [&] {
                 auto const original_items{declarations.items(static_tables.columns[row_0_row])};
                 auto rows{std::vector(original_items.begin(), original_items.end())};
-                rows.push_back([&] {
-                    auto const new_static_table_columns{static_table_columns.append()};
-                    auto const new_static_table_columns_row{
-                        static_table_columns.index(new_static_table_columns)};
-                    static_table_columns.name[new_static_table_columns_row] =
-                        strings.intern("get_point");
-                    static_table_columns.type[new_static_table_columns_row] =
-                        make_test_type_ref(context, "float");
-                    return new_static_table_columns;
-                }());
+                rows.push_back(
+                    append_test_row(static_table_columns, [&](auto const new_static_table_columns) {
+                        static_table_columns.name[new_static_table_columns] =
+                            strings.intern("get_point");
+                        static_table_columns.type[new_static_table_columns] =
+                            make_test_type_ref(context, "float");
+                    }));
                 return declarations.range(rows);
             }();
         });
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], static_tables, [&](auto const row_0) {
-            static_tables.groups[row_0] =
-                declarations.range<lispb::codegen::StaticTableGroupId>({[&] {
-                    auto const new_static_table_groups{static_table_groups.append()};
-                    auto const new_static_table_groups_row{
-                        static_table_groups.index(new_static_table_groups)};
-                    static_table_groups.name[new_static_table_groups_row] = strings.intern("point");
-                    static_table_groups.type[new_static_table_groups_row] =
+            static_tables.groups[row_0] = declarations.range<lispb::codegen::StaticTableGroupId>(
+                {append_test_row(static_table_groups, [&](auto const new_static_table_groups) {
+                    static_table_groups.name[new_static_table_groups] = strings.intern("point");
+                    static_table_groups.type[new_static_table_groups] =
                         make_test_type_ref(context, "FPoint");
-                    static_table_groups.columns[new_static_table_groups_row] =
+                    static_table_groups.columns[new_static_table_groups] =
                         declarations.range<lispb::StringId>({strings.intern("ids")});
-                    return new_static_table_groups;
-                }()});
+                })});
         });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
@@ -3065,14 +2877,11 @@ TEST(Validation, RejectsDuplicateSoaMembers) {
             soas.members[row_0_row] = [&] {
                 auto const original_items{declarations.items(soas.members[row_0_row])};
                 auto rows{std::vector(original_items.begin(), original_items.end())};
-                rows.push_back([&] {
-                    auto const new_soa_members{soa_members.append()};
-                    auto const new_soa_members_row{soa_members.index(new_soa_members)};
-                    soa_members.name[new_soa_members_row] = strings.intern("values");
-                    soa_members.kind[new_soa_members_row] = SoaMemberKind::array;
-                    soa_members.type[new_soa_members_row] = make_test_type_ref(context, "float");
-                    return new_soa_members;
-                }());
+                rows.push_back(append_test_row(soa_members, [&](auto const new_soa_members) {
+                    soa_members.name[new_soa_members] = strings.intern("values");
+                    soa_members.kind[new_soa_members] = SoaMemberKind::array;
+                    soa_members.type[new_soa_members] = make_test_type_ref(context, "float");
+                }));
                 return declarations.range(rows);
             }();
         });
@@ -3198,14 +3007,13 @@ TEST(Validation, RejectsInvalidSoaMaskDimensions) {
                         auto const original_items{
                             declarations.items(soa_members.mask_dimensions[row_0_row])};
                         auto rows{std::vector(original_items.begin(), original_items.end())};
-                        rows.push_back([&] {
-                            auto const new_soa_mask_dimensions{soa_mask_dimensions.append()};
-                            soa_mask_dimensions.index_name[new_soa_mask_dimensions] =
-                                strings.intern("field_index");
-                            soa_mask_dimensions.extent[new_soa_mask_dimensions] =
-                                strings.intern("4");
-                            return new_soa_mask_dimensions;
-                        }());
+                        rows.push_back(append_test_row(
+                            soa_mask_dimensions, [&](auto const new_soa_mask_dimensions) {
+                                soa_mask_dimensions.index_name[new_soa_mask_dimensions] =
+                                    strings.intern("field_index");
+                                soa_mask_dimensions.extent[new_soa_mask_dimensions] =
+                                    strings.intern("4");
+                            }));
                         return declarations.range(rows);
                     }();
                     return row_0;
@@ -3226,14 +3034,13 @@ TEST(Validation, RejectsInvalidSoaMaskDimensions) {
                         auto const original_items{
                             declarations.items(soa_members.mask_dimensions[row_0_row])};
                         auto rows{std::vector(original_items.begin(), original_items.end())};
-                        rows.push_back([&] {
-                            auto const new_soa_mask_dimensions{soa_mask_dimensions.append()};
-                            soa_mask_dimensions.index_name[new_soa_mask_dimensions] =
-                                strings.intern("field_index");
-                            soa_mask_dimensions.extent[new_soa_mask_dimensions] =
-                                strings.intern("2");
-                            return new_soa_mask_dimensions;
-                        }());
+                        rows.push_back(append_test_row(
+                            soa_mask_dimensions, [&](auto const new_soa_mask_dimensions) {
+                                soa_mask_dimensions.index_name[new_soa_mask_dimensions] =
+                                    strings.intern("field_index");
+                                soa_mask_dimensions.extent[new_soa_mask_dimensions] =
+                                    strings.intern("2");
+                            }));
                         return declarations.range(rows);
                     }();
                     return row_0;
@@ -3258,14 +3065,13 @@ TEST(Validation, RejectsInvalidSoaMaskDimensions) {
                         auto const original_items{
                             declarations.items(soa_members.mask_dimensions[row_0_row])};
                         auto rows{std::vector(original_items.begin(), original_items.end())};
-                        rows.push_back([&] {
-                            auto const new_soa_mask_dimensions{soa_mask_dimensions.append()};
-                            soa_mask_dimensions.index_name[new_soa_mask_dimensions] =
-                                strings.intern("bad-index");
-                            soa_mask_dimensions.extent[new_soa_mask_dimensions] =
-                                strings.intern("4");
-                            return new_soa_mask_dimensions;
-                        }());
+                        rows.push_back(append_test_row(
+                            soa_mask_dimensions, [&](auto const new_soa_mask_dimensions) {
+                                soa_mask_dimensions.index_name[new_soa_mask_dimensions] =
+                                    strings.intern("bad-index");
+                                soa_mask_dimensions.extent[new_soa_mask_dimensions] =
+                                    strings.intern("4");
+                            }));
                         return declarations.range(rows);
                     }();
                     return row_0;
@@ -3400,36 +3206,28 @@ TEST(Validation, RejectsDuplicateCustomSoaFunctionParameters) {
         declarations.soas,
         [&](auto const row_0) {
             declarations.soas.functions[row_0] =
-                declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
-                    auto const new_functions{functions_schemas.append()};
-                    auto const new_functions_row{functions_schemas.index(new_functions)};
-                    functions_schemas.name[new_functions_row] = strings.intern("set");
-                    functions_schemas.return_type[new_functions_row] =
-                        make_test_type_ref(context, "void");
-                    functions_schemas.parameters[new_functions_row] =
-                        declarations.range<lispb::codegen::ParameterId>(
-                            {[&] {
-                                 auto const new_parameters{parameters_schemas.append()};
-                                 auto const new_parameters_row{
-                                     parameters_schemas.index(new_parameters)};
-                                 parameters_schemas.type[new_parameters_row] =
-                                     make_test_type_ref(context, "int32");
-                                 parameters_schemas.name[new_parameters_row] =
-                                     strings.intern("value");
-                                 return new_parameters;
-                             }(),
-                             [&] {
-                                 auto const new_parameters{parameters_schemas.append()};
-                                 auto const new_parameters_row{
-                                     parameters_schemas.index(new_parameters)};
-                                 parameters_schemas.type[new_parameters_row] =
-                                     make_test_type_ref(context, "float");
-                                 parameters_schemas.name[new_parameters_row] =
-                                     strings.intern("value");
-                                 return new_parameters;
-                             }()});
-                    return new_functions;
-                }()});
+                declarations.range<lispb::codegen::FunctionSchemaId>(
+                    {append_test_row(functions_schemas, [&](auto const new_functions) {
+                        functions_schemas.name[new_functions] = strings.intern("set");
+                        functions_schemas.return_type[new_functions] =
+                            make_test_type_ref(context, "void");
+                        functions_schemas.parameters[new_functions] =
+                            declarations.range<lispb::codegen::ParameterId>(
+                                {append_test_row(parameters_schemas,
+                                                 [&](auto const new_parameters) {
+                                                     parameters_schemas.type[new_parameters] =
+                                                         make_test_type_ref(context, "int32");
+                                                     parameters_schemas.name[new_parameters] =
+                                                         strings.intern("value");
+                                                 }),
+                                 append_test_row(parameters_schemas,
+                                                 [&](auto const new_parameters) {
+                                                     parameters_schemas.type[new_parameters] =
+                                                         make_test_type_ref(context, "float");
+                                                     parameters_schemas.name[new_parameters] =
+                                                         strings.intern("value");
+                                                 })});
+                    })});
         });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
@@ -3448,36 +3246,28 @@ TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
     auto module{valid_soa_module(context)};
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
-            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
-                auto const new_functions{functions_schemas.append()};
-                auto const new_functions_row{functions_schemas.index(new_functions)};
-                functions_schemas.name[new_functions_row] = strings.intern("set");
-                functions_schemas.return_type[new_functions_row] =
-                    make_test_type_ref(context, "void");
-                functions_schemas.parameters[new_functions_row] =
-                    declarations.range<lispb::codegen::ParameterId>(
-                        {[&] {
-                             auto const new_parameters{parameters_schemas.append()};
-                             auto const new_parameters_row{
-                                 parameters_schemas.index(new_parameters)};
-                             parameters_schemas.type[new_parameters_row] =
-                                 make_test_type_ref(context, "int32");
-                             parameters_schemas.name[new_parameters_row] = strings.intern("first");
-                             parameters_schemas.default_value[new_parameters_row] =
-                                 strings.intern("0");
-                             return new_parameters;
-                         }(),
-                         [&] {
-                             auto const new_parameters{parameters_schemas.append()};
-                             auto const new_parameters_row{
-                                 parameters_schemas.index(new_parameters)};
-                             parameters_schemas.type[new_parameters_row] =
-                                 make_test_type_ref(context, "int32");
-                             parameters_schemas.name[new_parameters_row] = strings.intern("second");
-                             return new_parameters;
-                         }()});
-                return new_functions;
-            }()});
+            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>(
+                {append_test_row(functions_schemas, [&](auto const new_functions) {
+                    functions_schemas.name[new_functions] = strings.intern("set");
+                    functions_schemas.return_type[new_functions] =
+                        make_test_type_ref(context, "void");
+                    functions_schemas.parameters[new_functions] =
+                        declarations.range<lispb::codegen::ParameterId>(
+                            {append_test_row(parameters_schemas,
+                                             [&](auto const new_parameters) {
+                                                 parameters_schemas.type[new_parameters] =
+                                                     make_test_type_ref(context, "int32");
+                                                 parameters_schemas.name[new_parameters] =
+                                                     strings.intern("first");
+                                                 parameters_schemas.default_value[new_parameters] =
+                                                     strings.intern("0");
+                                             }),
+                             append_test_row(parameters_schemas, [&](auto const new_parameters) {
+                                 parameters_schemas.type[new_parameters] =
+                                     make_test_type_ref(context, "int32");
+                                 parameters_schemas.name[new_parameters] = strings.intern("second");
+                             })});
+                })});
         });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
@@ -3486,25 +3276,21 @@ TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
     module = valid_soa_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
-            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
-                auto const new_functions{functions_schemas.append()};
-                auto const new_functions_row{functions_schemas.index(new_functions)};
-                functions_schemas.name[new_functions_row] = strings.intern("set");
-                functions_schemas.return_type[new_functions_row] =
-                    make_test_type_ref(context, "void");
-                functions_schemas.parameters[new_functions_row] =
-                    declarations.range<lispb::codegen::ParameterId>({[&] {
-                        auto const new_parameters{parameters_schemas.append()};
-                        auto const new_parameters_row{parameters_schemas.index(new_parameters)};
-                        parameters_schemas.type[new_parameters_row] =
-                            make_test_type_ref(context, "int32");
-                        parameters_schemas.name[new_parameters_row] = strings.intern("value");
-                        parameters_schemas.default_value[new_parameters_row] =
-                            strings.intern(" \t");
-                        return new_parameters;
-                    }()});
-                return new_functions;
-            }()});
+            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>(
+                {append_test_row(functions_schemas, [&](auto const new_functions) {
+                    functions_schemas.name[new_functions] = strings.intern("set");
+                    functions_schemas.return_type[new_functions] =
+                        make_test_type_ref(context, "void");
+                    functions_schemas.parameters[new_functions] =
+                        declarations.range<lispb::codegen::ParameterId>(
+                            {append_test_row(parameters_schemas, [&](auto const new_parameters) {
+                                parameters_schemas.type[new_parameters] =
+                                    make_test_type_ref(context, "int32");
+                                parameters_schemas.name[new_parameters] = strings.intern("value");
+                                parameters_schemas.default_value[new_parameters] =
+                                    strings.intern(" \t");
+                            })});
+                })});
         });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
@@ -3522,16 +3308,14 @@ TEST(Validation, RejectsUnknownCustomSoaDependencies) {
     auto module{valid_soa_module(context)};
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
-            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
-                auto const new_functions{functions_schemas.append()};
-                auto const new_functions_row{functions_schemas.index(new_functions)};
-                functions_schemas.name[new_functions_row] = strings.intern("reset_values");
-                functions_schemas.return_type[new_functions_row] =
-                    make_test_type_ref(context, "void");
-                functions_schemas.dependencies[new_functions_row] =
-                    declarations.range<lispb::StringId>({strings.intern("missing")});
-                return new_functions;
-            }()});
+            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>(
+                {append_test_row(functions_schemas, [&](auto const new_functions) {
+                    functions_schemas.name[new_functions] = strings.intern("reset_values");
+                    functions_schemas.return_type[new_functions] =
+                        make_test_type_ref(context, "void");
+                    functions_schemas.dependencies[new_functions] =
+                        declarations.range<lispb::StringId>({strings.intern("missing")});
+                })});
         });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
@@ -3540,16 +3324,14 @@ TEST(Validation, RejectsUnknownCustomSoaDependencies) {
     module = valid_soa_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
-            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
-                auto const new_functions{functions_schemas.append()};
-                auto const new_functions_row{functions_schemas.index(new_functions)};
-                functions_schemas.name[new_functions_row] = strings.intern("reset_values");
-                functions_schemas.return_type[new_functions_row] =
-                    make_test_type_ref(context, "void");
-                functions_schemas.dependencies[new_functions_row] =
-                    declarations.range<lispb::StringId>({strings.intern(" \t")});
-                return new_functions;
-            }()});
+            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>(
+                {append_test_row(functions_schemas, [&](auto const new_functions) {
+                    functions_schemas.name[new_functions] = strings.intern("reset_values");
+                    functions_schemas.return_type[new_functions] =
+                        make_test_type_ref(context, "void");
+                    functions_schemas.dependencies[new_functions] =
+                        declarations.range<lispb::StringId>({strings.intern(" \t")});
+                })});
         });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
@@ -3567,15 +3349,13 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
     auto module{valid_soa_module(context)};
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
-            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
-                auto const new_functions{functions_schemas.append()};
-                auto const new_functions_row{functions_schemas.index(new_functions)};
-                functions_schemas.name[new_functions_row] = strings.intern("class");
-                functions_schemas.return_type[new_functions_row] =
-                    make_test_type_ref(context, "void");
-                functions_schemas.is_inline[new_functions_row] = true;
-                return new_functions;
-            }()});
+            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>(
+                {append_test_row(functions_schemas, [&](auto const new_functions) {
+                    functions_schemas.name[new_functions] = strings.intern("class");
+                    functions_schemas.return_type[new_functions] =
+                        make_test_type_ref(context, "void");
+                    functions_schemas.is_inline[new_functions] = true;
+                })});
         });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -3583,16 +3363,14 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
     module = valid_soa_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
-            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
-                auto const new_functions{functions_schemas.append()};
-                auto const new_functions_row{functions_schemas.index(new_functions)};
-                functions_schemas.name[new_functions_row] = strings.intern("update");
-                functions_schemas.return_type[new_functions_row] =
-                    make_test_type_ref(context, "void");
-                functions_schemas.is_inline[new_functions_row] = true;
-                functions_schemas.definition_in_source[new_functions_row] = true;
-                return new_functions;
-            }()});
+            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>(
+                {append_test_row(functions_schemas, [&](auto const new_functions) {
+                    functions_schemas.name[new_functions] = strings.intern("update");
+                    functions_schemas.return_type[new_functions] =
+                        make_test_type_ref(context, "void");
+                    functions_schemas.is_inline[new_functions] = true;
+                    functions_schemas.definition_in_source[new_functions] = true;
+                })});
         });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -3600,16 +3378,14 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
     module = valid_soa_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
-            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
-                auto const new_functions{functions_schemas.append()};
-                auto const new_functions_row{functions_schemas.index(new_functions)};
-                functions_schemas.name[new_functions_row] = strings.intern("invalid_static_const");
-                functions_schemas.return_type[new_functions_row] =
-                    make_test_type_ref(context, "void");
-                functions_schemas.is_const[new_functions_row] = true;
-                functions_schemas.is_static[new_functions_row] = true;
-                return new_functions;
-            }()});
+            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>(
+                {append_test_row(functions_schemas, [&](auto const new_functions) {
+                    functions_schemas.name[new_functions] = strings.intern("invalid_static_const");
+                    functions_schemas.return_type[new_functions] =
+                        make_test_type_ref(context, "void");
+                    functions_schemas.is_const[new_functions] = true;
+                    functions_schemas.is_static[new_functions] = true;
+                })});
         });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -3617,17 +3393,15 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
     module = valid_soa_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
-            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
-                auto const new_functions{functions_schemas.append()};
-                auto const new_functions_row{functions_schemas.index(new_functions)};
-                functions_schemas.name[new_functions_row] =
-                    strings.intern("invalid_trailing_return");
-                functions_schemas.return_type[new_functions_row] =
-                    make_test_type_ref(context, "void");
-                functions_schemas.trailing_return_type[new_functions_row] =
-                    make_test_type_ref(context, "int32");
-                return new_functions;
-            }()});
+            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>(
+                {append_test_row(functions_schemas, [&](auto const new_functions) {
+                    functions_schemas.name[new_functions] =
+                        strings.intern("invalid_trailing_return");
+                    functions_schemas.return_type[new_functions] =
+                        make_test_type_ref(context, "void");
+                    functions_schemas.trailing_return_type[new_functions] =
+                        make_test_type_ref(context, "int32");
+                })});
         });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -3635,15 +3409,13 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
     module = valid_soa_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
-            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
-                auto const new_functions{functions_schemas.append()};
-                auto const new_functions_row{functions_schemas.index(new_functions)};
-                functions_schemas.name[new_functions_row] = strings.intern("invalid_template");
-                functions_schemas.return_type[new_functions_row] =
-                    make_test_type_ref(context, "void");
-                functions_schemas.template_parameters[new_functions_row] = strings.intern(" \t");
-                return new_functions;
-            }()});
+            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>(
+                {append_test_row(functions_schemas, [&](auto const new_functions) {
+                    functions_schemas.name[new_functions] = strings.intern("invalid_template");
+                    functions_schemas.return_type[new_functions] =
+                        make_test_type_ref(context, "void");
+                    functions_schemas.template_parameters[new_functions] = strings.intern(" \t");
+                })});
         });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -3651,15 +3423,13 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
     module = valid_soa_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
-            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
-                auto const new_functions{functions_schemas.append()};
-                auto const new_functions_row{functions_schemas.index(new_functions)};
-                functions_schemas.name[new_functions_row] = strings.intern("invalid_requires");
-                functions_schemas.return_type[new_functions_row] =
-                    make_test_type_ref(context, "void");
-                functions_schemas.requires_clause[new_functions_row] = strings.intern(" \t");
-                return new_functions;
-            }()});
+            soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>(
+                {append_test_row(functions_schemas, [&](auto const new_functions) {
+                    functions_schemas.name[new_functions] = strings.intern("invalid_requires");
+                    functions_schemas.return_type[new_functions] =
+                        make_test_type_ref(context, "void");
+                    functions_schemas.requires_clause[new_functions] = strings.intern(" \t");
+                })});
         });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -3823,26 +3593,18 @@ TEST(Validation, RejectsDuplicateFacadeMethodParameters) {
                 [&](auto const row_0) {
                     declarations.facade_methods.parameters[row_0] =
                         declarations.range<lispb::codegen::ParameterId>(
-                            {[&] {
-                                 auto const new_parameters{parameters_schemas.append()};
-                                 auto const new_parameters_row{
-                                     parameters_schemas.index(new_parameters)};
-                                 parameters_schemas.type[new_parameters_row] =
-                                     make_test_type_ref(context, "int32");
-                                 parameters_schemas.name[new_parameters_row] =
-                                     strings.intern("value");
-                                 return new_parameters;
-                             }(),
-                             [&] {
-                                 auto const new_parameters{parameters_schemas.append()};
-                                 auto const new_parameters_row{
-                                     parameters_schemas.index(new_parameters)};
-                                 parameters_schemas.type[new_parameters_row] =
+                            {append_test_row(parameters_schemas,
+                                             [&](auto const new_parameters) {
+                                                 parameters_schemas.type[new_parameters] =
+                                                     make_test_type_ref(context, "int32");
+                                                 parameters_schemas.name[new_parameters] =
+                                                     strings.intern("value");
+                                             }),
+                             append_test_row(parameters_schemas, [&](auto const new_parameters) {
+                                 parameters_schemas.type[new_parameters] =
                                      make_test_type_ref(context, "float");
-                                 parameters_schemas.name[new_parameters_row] =
-                                     strings.intern("value");
-                                 return new_parameters;
-                             }()});
+                                 parameters_schemas.name[new_parameters] = strings.intern("value");
+                             })});
                 });
         });
 
@@ -3924,23 +3686,20 @@ TEST(Validation, RejectsFacadeMethodsCollidingWithBind) {
         declarations.facades,
         [&](auto const row_0) {
             declarations.facades.methods[row_0] =
-                declarations.range<lispb::codegen::FacadeMethodId>({[&] {
-                    auto const new_facade_methods{facade_methods.append()};
-                    auto const new_facade_methods_row{facade_methods.index(new_facade_methods)};
-                    facade_methods.name[new_facade_methods_row] = strings.intern("bind");
-                    facade_methods.return_type[new_facade_methods_row] =
-                        make_test_type_ref(context, "void");
-                    facade_methods.parameters[new_facade_methods_row] =
-                        declarations.range<lispb::codegen::ParameterId>({[&] {
-                            auto const new_parameters{parameters_schemas.append()};
-                            auto const new_parameters_row{parameters_schemas.index(new_parameters)};
-                            parameters_schemas.type[new_parameters_row] =
-                                make_test_type_ref(context, "FTarget&");
-                            parameters_schemas.name[new_parameters_row] = strings.intern("target");
-                            return new_parameters;
-                        }()});
-                    return new_facade_methods;
-                }()});
+                declarations.range<lispb::codegen::FacadeMethodId>(
+                    {append_test_row(facade_methods, [&](auto const new_facade_methods) {
+                        facade_methods.name[new_facade_methods] = strings.intern("bind");
+                        facade_methods.return_type[new_facade_methods] =
+                            make_test_type_ref(context, "void");
+                        facade_methods.parameters[new_facade_methods] =
+                            declarations.range<lispb::codegen::ParameterId>({append_test_row(
+                                parameters_schemas, [&](auto const new_parameters) {
+                                    parameters_schemas.type[new_parameters] =
+                                        make_test_type_ref(context, "FTarget&");
+                                    parameters_schemas.name[new_parameters] =
+                                        strings.intern("target");
+                                })});
+                    })});
         });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
@@ -3966,28 +3725,20 @@ TEST(Validation, RejectsNonTrailingFacadeDefaultArguments) {
                 [&](auto const row_0) {
                     declarations.facade_methods.parameters[row_0] =
                         declarations.range<lispb::codegen::ParameterId>(
-                            {[&] {
-                                 auto const new_parameters{parameters_schemas.append()};
-                                 auto const new_parameters_row{
-                                     parameters_schemas.index(new_parameters)};
-                                 parameters_schemas.type[new_parameters_row] =
+                            {append_test_row(parameters_schemas,
+                                             [&](auto const new_parameters) {
+                                                 parameters_schemas.type[new_parameters] =
+                                                     make_test_type_ref(context, "int32");
+                                                 parameters_schemas.name[new_parameters] =
+                                                     strings.intern("first");
+                                                 parameters_schemas.default_value[new_parameters] =
+                                                     strings.intern("0");
+                                             }),
+                             append_test_row(parameters_schemas, [&](auto const new_parameters) {
+                                 parameters_schemas.type[new_parameters] =
                                      make_test_type_ref(context, "int32");
-                                 parameters_schemas.name[new_parameters_row] =
-                                     strings.intern("first");
-                                 parameters_schemas.default_value[new_parameters_row] =
-                                     strings.intern("0");
-                                 return new_parameters;
-                             }(),
-                             [&] {
-                                 auto const new_parameters{parameters_schemas.append()};
-                                 auto const new_parameters_row{
-                                     parameters_schemas.index(new_parameters)};
-                                 parameters_schemas.type[new_parameters_row] =
-                                     make_test_type_ref(context, "int32");
-                                 parameters_schemas.name[new_parameters_row] =
-                                     strings.intern("second");
-                                 return new_parameters;
-                             }()});
+                                 parameters_schemas.name[new_parameters] = strings.intern("second");
+                             })});
                 });
         });
 
@@ -4080,14 +3831,11 @@ TEST(Validation, RejectsDuplicateUmbrellaHeaders) {
     auto& strings{context.storage.strings};
     auto const module{umbrella_modules.append()};
     auto const module_row{umbrella_modules.index(module)};
-    umbrella_modules.settings[module_row] = [&] {
-        auto const new_module_settings_store{module_settings_store.append()};
-        auto const new_module_settings_store_row{
-            module_settings_store.index(new_module_settings_store)};
-        module_settings_store.name[new_module_settings_store_row] = strings.intern("all");
-        module_settings_store.header[new_module_settings_store_row] = strings.intern("All.h");
-        return new_module_settings_store;
-    }();
+    umbrella_modules.settings[module_row] =
+        append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+            module_settings_store.name[new_module_settings_store] = strings.intern("all");
+            module_settings_store.header[new_module_settings_store] = strings.intern("All.h");
+        });
     umbrella_modules.headers[module_row] =
         declarations.range<lispb::StringId>({strings.intern("Value.h"), strings.intern("Value.h")});
 
@@ -4101,14 +3849,11 @@ TEST(Validation, RejectsUmbrellaModulesWithoutHeaders) {
     auto& module_settings_store{declarations.module_settings_store};
     auto& strings{context.storage.strings};
     auto const module{declarations.umbrella_modules.append()};
-    declarations.umbrella_modules.settings[module] = [&] {
-        auto const new_module_settings_store{module_settings_store.append()};
-        auto const new_module_settings_store_row{
-            module_settings_store.index(new_module_settings_store)};
-        module_settings_store.name[new_module_settings_store_row] = strings.intern("all");
-        module_settings_store.header[new_module_settings_store_row] = strings.intern("All.h");
-        return new_module_settings_store;
-    }();
+    declarations.umbrella_modules.settings[module] =
+        append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+            module_settings_store.name[new_module_settings_store] = strings.intern("all");
+            module_settings_store.header[new_module_settings_store] = strings.intern("All.h");
+        });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -4122,15 +3867,12 @@ TEST(Validation, RejectsUnsupportedUmbrellaSourceAndNamespaceSettings) {
     auto& strings{context.storage.strings};
     auto const module{umbrella_modules.append()};
     auto const module_row{umbrella_modules.index(module)};
-    umbrella_modules.settings[module_row] = [&] {
-        auto const new_module_settings_store{module_settings_store.append()};
-        auto const new_module_settings_store_row{
-            module_settings_store.index(new_module_settings_store)};
-        module_settings_store.name[new_module_settings_store_row] = strings.intern("all");
-        module_settings_store.header[new_module_settings_store_row] = strings.intern("All.h");
-        module_settings_store.source[new_module_settings_store_row] = strings.intern("All.cpp");
-        return new_module_settings_store;
-    }();
+    umbrella_modules.settings[module_row] =
+        append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+            module_settings_store.name[new_module_settings_store] = strings.intern("all");
+            module_settings_store.header[new_module_settings_store] = strings.intern("All.h");
+            module_settings_store.source[new_module_settings_store] = strings.intern("All.cpp");
+        });
     umbrella_modules.headers[module_row] =
         declarations.range<lispb::StringId>({strings.intern("Value.h")});
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
@@ -4159,50 +3901,39 @@ TEST(Validation, RejectsInvalidSettingsDefinitions) {
     auto& settings_schemas{declarations.settings};
     auto& setting_controls{declarations.setting_controls};
     auto& strings{context.storage.strings};
-    auto module = [&] {
-        auto const new_settings_modules{settings_modules.append()};
-        auto const new_settings_modules_row{settings_modules.index(new_settings_modules)};
-        settings_modules.settings[new_settings_modules_row] = [&] {
-            auto const new_module_settings_store{module_settings_store.append()};
-            auto const new_module_settings_store_row{
-                module_settings_store.index(new_module_settings_store)};
-            module_settings_store.name[new_module_settings_store_row] = strings.intern("settings");
-            module_settings_store.header[new_module_settings_store_row] =
-                strings.intern("Settings.h");
-            module_settings_store.source[new_module_settings_store_row] =
-                strings.intern("Settings.cpp");
-            return new_module_settings_store;
-        }();
-        settings_modules.api_name[new_settings_modules_row] = strings.intern("TSettingsAccess");
-        settings_modules.state_name[new_settings_modules_row] = strings.intern("FSettingsState");
-        settings_modules.categories[new_settings_modules_row] =
-            declarations.range<lispb::codegen::SettingCategoryId>({[&] {
-                auto const new_setting_categories{setting_categories.append()};
-                auto const new_setting_categories_row{
-                    setting_categories.index(new_setting_categories)};
-                setting_categories.name[new_setting_categories_row] = strings.intern("video");
-                setting_categories.label[new_setting_categories_row] = strings.intern("Video");
-                return new_setting_categories;
-            }()});
-        settings_modules.settings_list[new_settings_modules_row] =
-            declarations.range<lispb::codegen::SettingId>({[&] {
-                auto const new_settings{settings_schemas.append()};
-                auto const new_settings_row{settings_schemas.index(new_settings)};
-                settings_schemas.name[new_settings_row] = strings.intern("vsync");
-                settings_schemas.label[new_settings_row] = strings.intern("VSync");
-                settings_schemas.category[new_settings_row] = strings.intern("missing");
-                settings_schemas.value_type[new_settings_row] = make_test_type_ref(context, "bool");
-                settings_schemas.backend[new_settings_row] = strings.intern("engine");
-                settings_schemas.apply_mode[new_settings_row] = SettingApplyMode::deferred;
-                settings_schemas.control[new_settings_row] = [&] {
-                    auto const new_setting_controls{setting_controls.append()};
-                    setting_controls.kind[new_setting_controls] = SettingControlKind::toggle;
-                    return new_setting_controls;
-                }();
-                return new_settings;
-            }()});
-        return new_settings_modules;
-    }();
+    auto module = append_test_row(settings_modules, [&](auto const new_settings_modules) {
+        settings_modules.settings[new_settings_modules] =
+            append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                module_settings_store.name[new_module_settings_store] = strings.intern("settings");
+                module_settings_store.header[new_module_settings_store] =
+                    strings.intern("Settings.h");
+                module_settings_store.source[new_module_settings_store] =
+                    strings.intern("Settings.cpp");
+            });
+        settings_modules.api_name[new_settings_modules] = strings.intern("TSettingsAccess");
+        settings_modules.state_name[new_settings_modules] = strings.intern("FSettingsState");
+        settings_modules.categories[new_settings_modules] =
+            declarations.range<lispb::codegen::SettingCategoryId>(
+                {append_test_row(setting_categories, [&](auto const new_setting_categories) {
+                    setting_categories.name[new_setting_categories] = strings.intern("video");
+                    setting_categories.label[new_setting_categories] = strings.intern("Video");
+                })});
+        settings_modules.settings_list[new_settings_modules] =
+            declarations.range<lispb::codegen::SettingId>(
+                {append_test_row(settings_schemas, [&](auto const new_settings) {
+                    settings_schemas.name[new_settings] = strings.intern("vsync");
+                    settings_schemas.label[new_settings] = strings.intern("VSync");
+                    settings_schemas.category[new_settings] = strings.intern("missing");
+                    settings_schemas.value_type[new_settings] = make_test_type_ref(context, "bool");
+                    settings_schemas.backend[new_settings] = strings.intern("engine");
+                    settings_schemas.apply_mode[new_settings] = SettingApplyMode::deferred;
+                    settings_schemas.control[new_settings] =
+                        append_test_row(setting_controls, [&](auto const new_setting_controls) {
+                            setting_controls.kind[new_setting_controls] =
+                                SettingControlKind::toggle;
+                        });
+                })});
+    });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
@@ -4260,19 +3991,18 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
     auto module = normal_module(
         context,
         {vector,
-         [&] {
-             auto const new_enums{enums.append()};
-             enums.cpp_projection[new_enums] = CppProjection{};
-             auto const new_enums_row{enums.index(new_enums)};
-             enums.name[new_enums_row] = strings.intern("foo");
-             enums.underlying_type[new_enums_row] = make_test_type_ref(context, "uint8");
-             enums.values[new_enums_row] = declarations.range<lispb::codegen::EnumeratorId>({[&] {
-                 auto const new_enumerators{enumerators.append()};
-                 enumerators.name[new_enumerators] = strings.intern("One");
-                 return new_enumerators;
-             }()});
-             return new_enums;
-         }()},
+         append_test_row(enums,
+                         [&](auto const new_enums) {
+                             enums.cpp_projection[new_enums] = CppProjection{};
+                             enums.name[new_enums] = strings.intern("foo");
+                             enums.underlying_type[new_enums] =
+                                 make_test_type_ref(context, "uint8");
+                             enums.values[new_enums] =
+                                 declarations.range<lispb::codegen::EnumeratorId>(
+                                     {append_test_row(enumerators, [&](auto const new_enumerators) {
+                                         enumerators.name[new_enumerators] = strings.intern("One");
+                                     })});
+                         })},
         "Mixed.cpp");
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -4280,92 +4010,74 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
     module = normal_module(
         context,
         {vector,
-         [&] {
-             auto const new_records{records.append()};
-             records.cpp_projection[new_records] = CppProjection{};
-             auto const new_records_row{records.index(new_records)};
-             records.name[new_records_row] = strings.intern("foo");
-             records.members[new_records_row] =
-                 declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
-                     auto const new_record_members{record_members.append()};
-                     auto const new_record_members_row{record_members.index(new_record_members)};
-                     record_members.name[new_record_members_row] = strings.intern("value");
-                     record_members.type[new_record_members_row] =
-                         make_test_type_ref(context, "int32");
-                     return new_record_members;
-                 }()});
-             return new_records;
-         }()},
+         append_test_row(
+             records,
+             [&](auto const new_records) {
+                 records.cpp_projection[new_records] = CppProjection{};
+                 records.name[new_records] = strings.intern("foo");
+                 records.members[new_records] =
+                     declarations.range<lispb::codegen::ChildOccurrenceId>(
+                         {append_test_row(record_members, [&](auto const new_record_members) {
+                             record_members.name[new_record_members] = strings.intern("value");
+                             record_members.type[new_record_members] =
+                                 make_test_type_ref(context, "int32");
+                         })});
+             })},
         "Mixed.cpp");
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
-    auto soa = [&] {
-        auto const new_soas{soas.append()};
-        auto const new_soas_row{soas.index(new_soas)};
-        soas.name[new_soas_row] = strings.intern("Data");
-        soas.members[new_soas_row] = declarations.range<lispb::codegen::SoaMemberId>({[&] {
-            auto const new_soa_members{soa_members.append()};
-            auto const new_soa_members_row{soa_members.index(new_soa_members)};
-            soa_members.name[new_soa_members_row] = strings.intern("values");
-            soa_members.kind[new_soa_members_row] = SoaMemberKind::array;
-            soa_members.type[new_soa_members_row] = make_test_type_ref(context, "int32");
-            return new_soa_members;
-        }()});
-        return new_soas;
-    }();
-    module = normal_module(context,
-                           {soa,
-                            [&] {
-                                auto const new_enums{enums.append()};
-                                enums.cpp_projection[new_enums] = CppProjection{};
-                                auto const new_enums_row{enums.index(new_enums)};
-                                enums.name[new_enums_row] = strings.intern("data");
-                                enums.underlying_type[new_enums_row] =
-                                    make_test_type_ref(context, "uint8");
-                                enums.values[new_enums_row] =
-                                    declarations.range<lispb::codegen::EnumeratorId>({[&] {
-                                        auto const new_enumerators{enumerators.append()};
-                                        enumerators.name[new_enumerators] = strings.intern("One");
-                                        return new_enumerators;
-                                    }()});
-                                return new_enums;
-                            }()},
-                           "Mixed.cpp");
+    auto soa = append_test_row(soas, [&](auto const new_soas) {
+        soas.name[new_soas] = strings.intern("Data");
+        soas.members[new_soas] = declarations.range<lispb::codegen::SoaMemberId>(
+            {append_test_row(soa_members, [&](auto const new_soa_members) {
+                soa_members.name[new_soa_members] = strings.intern("values");
+                soa_members.kind[new_soa_members] = SoaMemberKind::array;
+                soa_members.type[new_soa_members] = make_test_type_ref(context, "int32");
+            })});
+    });
+    module = normal_module(
+        context,
+        {soa,
+         append_test_row(enums,
+                         [&](auto const new_enums) {
+                             enums.cpp_projection[new_enums] = CppProjection{};
+                             enums.name[new_enums] = strings.intern("data");
+                             enums.underlying_type[new_enums] =
+                                 make_test_type_ref(context, "uint8");
+                             enums.values[new_enums] =
+                                 declarations.range<lispb::codegen::EnumeratorId>(
+                                     {append_test_row(enumerators, [&](auto const new_enumerators) {
+                                         enumerators.name[new_enumerators] = strings.intern("One");
+                                     })});
+                         })},
+        "Mixed.cpp");
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = normal_module(
         context,
-        {[&] {
-             auto const new_enums{enums.append()};
-             enums.cpp_projection[new_enums] = CppProjection{};
-             auto const new_enums_row{enums.index(new_enums)};
-             enums.name[new_enums_row] = strings.intern("State");
-             enums.underlying_type[new_enums_row] = make_test_type_ref(context, "uint8");
-             enums.values[new_enums_row] = declarations.range<lispb::codegen::EnumeratorId>({[&] {
-                 auto const new_enumerators{enumerators.append()};
-                 enumerators.name[new_enumerators] = strings.intern("One");
-                 return new_enumerators;
-             }()});
-             return new_enums;
-         }(),
-         [&] {
-             auto const new_records{records.append()};
+        {append_test_row(enums,
+                         [&](auto const new_enums) {
+                             enums.cpp_projection[new_enums] = CppProjection{};
+                             enums.name[new_enums] = strings.intern("State");
+                             enums.underlying_type[new_enums] =
+                                 make_test_type_ref(context, "uint8");
+                             enums.values[new_enums] =
+                                 declarations.range<lispb::codegen::EnumeratorId>(
+                                     {append_test_row(enumerators, [&](auto const new_enumerators) {
+                                         enumerators.name[new_enumerators] = strings.intern("One");
+                                     })});
+                         }),
+         append_test_row(records, [&](auto const new_records) {
              records.cpp_projection[new_records] = CppProjection{};
-             auto const new_records_row{records.index(new_records)};
-             records.name[new_records_row] = strings.intern("Snapshot");
-             records.members[new_records_row] =
-                 declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
-                     auto const new_record_members{record_members.append()};
-                     auto const new_record_members_row{record_members.index(new_record_members)};
-                     record_members.name[new_record_members_row] = strings.intern("value");
-                     record_members.type[new_record_members_row] =
-                         make_test_type_ref(context, "int32");
-                     return new_record_members;
-                 }()});
-             return new_records;
-         }()});
+             records.name[new_records] = strings.intern("Snapshot");
+             records.members[new_records] = declarations.range<lispb::codegen::ChildOccurrenceId>(
+                 {append_test_row(record_members, [&](auto const new_record_members) {
+                     record_members.name[new_record_members] = strings.intern("value");
+                     record_members.type[new_record_members] = make_test_type_ref(context, "int32");
+                 })});
+         })});
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 }
 
@@ -4376,22 +4088,17 @@ TEST(Validation, NormalModuleAppliesSourceRequirementsPerDeclaration) {
 
     auto& facade_methods{declarations.facade_methods};
     auto& strings{context.storage.strings};
-    auto facade = [&] {
-        auto const new_facades{facades.append()};
-        auto const new_facades_row{facades.index(new_facades)};
-        facades.name[new_facades_row] = strings.intern("InlineFacade");
-        facades.target_type[new_facades_row] = make_test_type_ref(context, "int32");
-        facades.target_member_name[new_facades_row] = strings.intern("target");
-        facades.methods[new_facades_row] = declarations.range<lispb::codegen::FacadeMethodId>({[&] {
-            auto const new_facade_methods{facade_methods.append()};
-            auto const new_facade_methods_row{facade_methods.index(new_facade_methods)};
-            facade_methods.name[new_facade_methods_row] = strings.intern("reset");
-            facade_methods.return_type[new_facade_methods_row] =
-                make_test_type_ref(context, "void");
-            return new_facade_methods;
-        }()});
-        return new_facades;
-    }();
+    auto facade = append_test_row(facades, [&](auto const new_facades) {
+        facades.name[new_facades] = strings.intern("InlineFacade");
+        facades.target_type[new_facades] = make_test_type_ref(context, "int32");
+        facades.target_member_name[new_facades] = strings.intern("target");
+        facades.methods[new_facades] = declarations.range<lispb::codegen::FacadeMethodId>(
+            {append_test_row(facade_methods, [&](auto const new_facade_methods) {
+                facade_methods.name[new_facade_methods] = strings.intern("reset");
+                facade_methods.return_type[new_facade_methods] =
+                    make_test_type_ref(context, "void");
+            })});
+    });
     auto module = normal_module(context, {facade}, "Mixed.cpp");
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
@@ -4411,33 +4118,28 @@ TEST(Validation, NormalModuleCanMixIndependentEnumApis) {
     auto& strings{context.storage.strings};
     auto module = normal_module(
         context,
-        {[&] {
-             auto const new_enums{enums.append()};
+        {append_test_row(enums,
+                         [&](auto const new_enums) {
+                             enums.cpp_projection[new_enums] = CppProjection{};
+                             enums.name[new_enums] = strings.intern("NativeMode");
+                             enums.underlying_type[new_enums] =
+                                 make_test_type_ref(context, "uint8");
+                             enums.values[new_enums] =
+                                 declarations.range<lispb::codegen::EnumeratorId>(
+                                     {append_test_row(enumerators, [&](auto const new_enumerators) {
+                                         enumerators.name[new_enumerators] = strings.intern("One");
+                                     })});
+                             enums.native_api[new_enums] = true;
+                         }),
+         append_test_row(enums, [&](auto const new_enums) {
              enums.cpp_projection[new_enums] = CppProjection{};
-             auto const new_enums_row{enums.index(new_enums)};
-             enums.name[new_enums_row] = strings.intern("NativeMode");
-             enums.underlying_type[new_enums_row] = make_test_type_ref(context, "uint8");
-             enums.values[new_enums_row] = declarations.range<lispb::codegen::EnumeratorId>({[&] {
-                 auto const new_enumerators{enumerators.append()};
-                 enumerators.name[new_enumerators] = strings.intern("One");
-                 return new_enumerators;
-             }()});
-             enums.native_api[new_enums_row] = true;
-             return new_enums;
-         }(),
-         [&] {
-             auto const new_enums{enums.append()};
-             enums.cpp_projection[new_enums] = CppProjection{};
-             auto const new_enums_row{enums.index(new_enums)};
-             enums.name[new_enums_row] = strings.intern("UnrealMode");
-             enums.underlying_type[new_enums_row] = make_test_type_ref(context, "uint8");
-             enums.values[new_enums_row] = declarations.range<lispb::codegen::EnumeratorId>({[&] {
-                 auto const new_enumerators{enumerators.append()};
-                 enumerators.name[new_enumerators] = strings.intern("One");
-                 return new_enumerators;
-             }()});
-             return new_enums;
-         }()});
+             enums.name[new_enums] = strings.intern("UnrealMode");
+             enums.underlying_type[new_enums] = make_test_type_ref(context, "uint8");
+             enums.values[new_enums] = declarations.range<lispb::codegen::EnumeratorId>(
+                 {append_test_row(enumerators, [&](auto const new_enumerators) {
+                     enumerators.name[new_enumerators] = strings.intern("One");
+                 })});
+         })});
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 }
 

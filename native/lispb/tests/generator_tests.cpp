@@ -1,5 +1,6 @@
 #include "compiler_test_context.h"
 #include "test_utilities.h"
+#include "text_expectations.h"
 
 #include <codegen/ast/cpp_types.h>
 #include <codegen/ast/indices.h>
@@ -34,6 +35,8 @@
 #include <vector>
 
 namespace lispb::codegen {
+using lispb::test_support::expect_contains_all;
+using lispb::test_support::expect_contains_none;
 namespace {
 
 auto example_manifest(CompilerTestContext& context) -> Manifest {
@@ -58,17 +61,15 @@ TEST(Generator, LowersDynamicSoaIntoNativeOwnerAndViews) {
     ASSERT_EQ(files.size(), 2);
     auto const& header{files.front().content};
     auto const& source{files.back().content};
-    EXPECT_NE(header.find("namespace f_data"), std::string::npos);
-    EXPECT_NE(header.find("struct EXAMPLE_API ConstView"), std::string::npos);
-    EXPECT_NE(header.find("ResolvedViewBase<"), std::string::npos);
-    EXPECT_NE(header.find("std::pmr::memory_resource&"), std::string::npos);
-    EXPECT_NE(header.find("#include \"Project/Handle.h\""), std::string::npos);
-    EXPECT_NE(header.find("using Operations = ioj::native_soa::StorageOperations;"),
-              std::string::npos);
-    EXPECT_EQ(header.find("void apply_permutation("), std::string::npos);
-    EXPECT_EQ(header.find("TArray"), std::string::npos);
-    EXPECT_EQ(header.find("validate_array_sizes"), std::string::npos);
-    EXPECT_NE(source.find("#include \"Project/Generated.h\""), std::string::npos);
+    expect_contains_all(header,
+                        {"namespace f_data",
+                         "struct EXAMPLE_API ConstView",
+                         "ResolvedViewBase<",
+                         "std::pmr::memory_resource&",
+                         "#include \"Project/Handle.h\"",
+                         "using Operations = ioj::native_soa::StorageOperations;"});
+    expect_contains_none(header, {"void apply_permutation(", "TArray", "validate_array_sizes"});
+    EXPECT_TRUE(source.contains("#include \"Project/Generated.h\""));
 }
 
 TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
@@ -82,21 +83,16 @@ TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
             (member last array std::int32_t :mask-field true))))")};
 
     auto const header{render_test_manifest(context, manifest).front().content};
-    EXPECT_NE(header.find("enum class EField : std::uint8_t"), std::string::npos);
-    EXPECT_NE(header.find("First = 0"), std::string::npos);
-    EXPECT_NE(header.find("Matrix = static_cast<std::uint8_t>(First) + 1"), std::string::npos);
-    EXPECT_NE(header.find("Last = static_cast<std::uint8_t>(Matrix) + (2) * (3)"),
-              std::string::npos);
-    EXPECT_NE(
-        header.find(
-            "struct FFieldMask : ioj::FieldMask<EField, static_cast<std::size_t>(EField::Count)>"),
-        std::string::npos);
-    EXPECT_NE(
-        header.find("matrix_field(std::int32_t const row_index, std::int32_t const column_index)"),
-        std::string::npos);
-    EXPECT_NE(header.find("ColumnLayouts<FFieldMask, std::int32_t, std::int32_t, std::int32_t>"),
-              std::string::npos);
-    EXPECT_EQ(header.find("CoreMinimal.h"), std::string::npos);
+    expect_contains_all(
+        header,
+        {"enum class EField : std::uint8_t",
+         "First = 0",
+         "Matrix = static_cast<std::uint8_t>(First) + 1",
+         "Last = static_cast<std::uint8_t>(Matrix) + (2) * (3)",
+         "struct FFieldMask : ioj::FieldMask<EField, static_cast<std::size_t>(EField::Count)>",
+         "matrix_field(std::int32_t const row_index, std::int32_t const column_index)",
+         "ColumnLayouts<FFieldMask, std::int32_t, std::int32_t, std::int32_t>"});
+    EXPECT_FALSE(header.contains("CoreMinimal.h"));
 }
 
 class DuplicateOutputPaths : public testing::TestWithParam<char const*> {};
@@ -299,10 +295,9 @@ TEST(Generator, LowersFacadeWithPrivateBindingAndSourceDefinitions) {
 
     auto const files{render_test_manifest(context, manifest)};
     ASSERT_EQ(files.size(), 2);
-    EXPECT_NE(files[0].content.find("friend class FOwner;"), std::string::npos);
-    EXPECT_NE(files[0].content.find("FTarget* target{nullptr};"), std::string::npos);
-    EXPECT_NE(files[1].content.find("void FFacade::bind(FTarget& new_target)"), std::string::npos);
-    EXPECT_NE(files[1].content.find("return target->get(index);"), std::string::npos);
+    expect_contains_all(files[0].content, {"friend class FOwner;", "FTarget* target{nullptr};"});
+    expect_contains_all(files[1].content,
+                        {"void FFacade::bind(FTarget& new_target)", "return target->get(index);"});
 
     auto& store{context.storage.declarations};
     auto module{manifest.modules.front()};
@@ -311,7 +306,7 @@ TEST(Generator, LowersFacadeWithPrivateBindingAndSourceDefinitions) {
     store.normal_modules.declarations[module] = store.range({facade});
     manifest.modules.front() = module;
     auto const struct_files{render_test_manifest(context, manifest)};
-    EXPECT_NE(struct_files[0].content.find("friend struct FOwner;"), std::string::npos);
+    EXPECT_TRUE(struct_files[0].content.contains("friend struct FOwner;"));
 }
 
 TEST(Generator, LowersFacadeWithReferenceTarget) {
@@ -327,11 +322,12 @@ TEST(Generator, LowersFacadeWithReferenceTarget) {
 
     auto const files{render_test_manifest(context, manifest)};
     ASSERT_EQ(files.size(), 1);
-    EXPECT_NE(files[0].content.find("FFacade(FTarget& new_target)"), std::string::npos);
-    EXPECT_NE(files[0].content.find(": target{new_target}"), std::string::npos);
-    EXPECT_NE(files[0].content.find("return target.get();"), std::string::npos);
-    EXPECT_NE(files[0].content.find("FTarget& target;"), std::string::npos);
-    EXPECT_EQ(files[0].content.find("bind("), std::string::npos);
+    expect_contains_all(files[0].content,
+                        {"FFacade(FTarget& new_target)",
+                         ": target{new_target}",
+                         "return target.get();",
+                         "FTarget& target;"});
+    EXPECT_FALSE(files[0].content.contains("bind("));
 }
 
 TEST(Generator, AppliesFacadePreludeSettings) {
@@ -342,7 +338,7 @@ TEST(Generator, AppliesFacadePreludeSettings) {
 
     auto const files{render_test_manifest(context, manifest)};
     ASSERT_EQ(files.size(), 1);
-    EXPECT_NE(files[0].content.find("class FFacadeForward;"), std::string::npos);
+    EXPECT_TRUE(files[0].content.contains("class FFacadeForward;"));
 }
 
 TEST(Generator, AppliesUmbrellaPreludeSettings) {
@@ -352,8 +348,8 @@ TEST(Generator, AppliesUmbrellaPreludeSettings) {
 
     auto const files{render_test_manifest(context, manifest)};
     ASSERT_EQ(files.size(), 1);
-    EXPECT_NE(files[0].content.find("#define PROJECT_INCLUDED 1"), std::string::npos);
-    EXPECT_NE(files[0].content.find("#include \"Project/First.h\""), std::string::npos);
+    expect_contains_all(files[0].content,
+                        {"#define PROJECT_INCLUDED 1", "#include \"Project/First.h\""});
 }
 
 TEST(Generator, CommittedProductionFilesAreCurrent) {
@@ -404,7 +400,7 @@ TEST(Generator, FormatsOptedInOutputBeforeWritingAndChecking) {
         std::ifstream input{destination, std::ios::binary};
         return std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
     };
-    EXPECT_NE(read().find("    int number;"), std::string::npos);
+    EXPECT_TRUE(read().contains("    int number;"));
     EXPECT_EQ(read().find('\r'), std::string::npos);
     auto const timestamp{std::filesystem::last_write_time(destination)};
     EXPECT_EQ(generate_files(files, directory, directory, true), 0);

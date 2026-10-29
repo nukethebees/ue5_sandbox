@@ -1,5 +1,6 @@
 #include "compiler_test_context.h"
 #include "test_utilities.h"
+#include "text_expectations.h"
 
 #include <codegen/ast/cpp_types.h>
 #include <codegen/generator.h>
@@ -19,6 +20,8 @@
 
 namespace single_allocation_tests {
 using lispb::codegen::CompilerTestContext;
+using lispb::test_support::expect_contains_all;
+using lispb::test_support::expect_contains_none;
 
 TEST(SingleAllocationSoa, OrdinarySchemasGenerateNativeOwnersAndViews) {
     CompilerTestContext context;
@@ -33,33 +36,32 @@ TEST(SingleAllocationSoa, OrdinarySchemasGenerateNativeOwnersAndViews) {
             (member foreign_types array other::Token)
             (member shadowed_types array example::Base))))"))};
     auto const& output{files.front().content};
-    EXPECT_NE(output.find("namespace rows"), std::string::npos);
-    EXPECT_NE(output.find("struct View"), std::string::npos);
-    EXPECT_NE(output.find("struct ConstView"), std::string::npos);
-    EXPECT_NE(
-        output.find("ColumnLayouts<std::int32_t, float, Token, sub::Token, other::Token, Base>"),
-        std::string::npos);
-    EXPECT_NE(output.find("Element<Base>* shadowed_types"), std::string::npos);
-    EXPECT_NE(output.find("struct DataPointers"), std::string::npos);
-    EXPECT_NE(output.find("ResolvedViewBase<Layout::column_types, DataPointers, Const>"),
-              std::string::npos);
-    EXPECT_EQ(output.find("make_data_unchecked("), std::string::npos);
-    EXPECT_NE(output.find("auto ids() const"), std::string::npos);
-    EXPECT_NE(output.find("ids_column{0}"), std::string::npos);
-    EXPECT_NE(output.find("nested_xs_column{1}"), std::string::npos);
-    EXPECT_EQ(output.find("LayoutColumns"), std::string::npos);
-    EXPECT_NE(output.find("CompactViewBase<Const>"), std::string::npos);
-    EXPECT_EQ(output.find("State* state_{};"), std::string::npos);
-    EXPECT_EQ(output.find("transfer_columns("), std::string::npos);
-    EXPECT_EQ(output.find("TArray"), std::string::npos);
-    EXPECT_EQ(output.find("FMemory"), std::string::npos);
-    EXPECT_EQ(output.find("CoreMinimal"), std::string::npos);
-    EXPECT_EQ(output.find("void default_construct_columns("), std::string::npos);
-    EXPECT_EQ(output.find("source_pointers("), std::string::npos);
-    EXPECT_NE(output.find("with_columns(Columns const& source, Func&& func)"), std::string::npos);
-    EXPECT_NE(output.find("return func(source.ids(), nested_view.xs(),"), std::string::npos);
-    EXPECT_NE(output.find("using resolved_view_type ="), std::string::npos);
-    EXPECT_NE(output.find("Operations::release_storage(*this);"), std::string::npos);
+    expect_contains_all(
+        output,
+        {"namespace rows",
+         "struct View",
+         "struct ConstView",
+         "ColumnLayouts<std::int32_t, float, Token, sub::Token, other::Token, Base>",
+         "Element<Base>* shadowed_types",
+         "struct DataPointers",
+         "ResolvedViewBase<Layout::column_types, DataPointers, Const>"});
+    EXPECT_FALSE(output.contains("make_data_unchecked("));
+    expect_contains_all(output, {"auto ids() const", "ids_column{0}", "nested_xs_column{1}"});
+    EXPECT_FALSE(output.contains("LayoutColumns"));
+    EXPECT_TRUE(output.contains("CompactViewBase<Const>"));
+    expect_contains_none(output,
+                         {"State* state_{};",
+                          "transfer_columns(",
+                          "TArray",
+                          "FMemory",
+                          "CoreMinimal",
+                          "void default_construct_columns(",
+                          "source_pointers("});
+    expect_contains_all(output,
+                        {"with_columns(Columns const& source, Func&& func)",
+                         "return func(source.ids(), nested_view.xs(),",
+                         "using resolved_view_type =",
+                         "Operations::release_storage(*this);"});
 }
 
 TEST(SingleAllocationSoa, RowOperationsUseNestedEquivalentValues) {
@@ -72,16 +74,15 @@ TEST(SingleAllocationSoa, RowOperationsUseNestedEquivalentValues) {
             (member ids array std::int32_t)
             (member points nested Points))))"))};
     auto const& output{files.front().content};
-    EXPECT_NE(output.find("void set(size_type index, std::int32_t const new_ids, Point const "
-                          "new_points) const"),
-              std::string::npos);
-    EXPECT_NE(output.find("view_points().set(index, new_points);"), std::string::npos);
-    EXPECT_NE(output.find("set(index, (value.x), (value.y));"), std::string::npos);
-    EXPECT_NE(output.find("size_type add(std::int32_t const new_ids, Point const new_points)"),
-              std::string::npos);
-    EXPECT_NE(output.find("using Base::set;"), std::string::npos);
-    EXPECT_NE(output.find("using RowOperations::add;"), std::string::npos);
-    EXPECT_EQ(output.find("points().xs()[index] = new_points_xs;"), std::string::npos);
+    expect_contains_all(output,
+                        {"void set(size_type index, std::int32_t const new_ids, Point const "
+                         "new_points) const",
+                         "view_points().set(index, new_points);",
+                         "set(index, (value.x), (value.y));",
+                         "size_type add(std::int32_t const new_ids, Point const new_points)",
+                         "using Base::set;",
+                         "using RowOperations::add;"});
+    EXPECT_FALSE(output.contains("points().xs()[index] = new_points_xs;"));
 }
 
 auto schemas() -> std::string {
@@ -281,14 +282,12 @@ TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
         (struct Grandparent
           (member first nested Rows)
           (member second nested Rows)))")};
-    EXPECT_NE(output.find("second_nested_wide_column{"), std::string::npos);
-    EXPECT_NE(output.find("Layout::second_nested_wide_column"), std::string::npos);
-    EXPECT_EQ(output.find("last_column()"), std::string::npos);
-    EXPECT_EQ(output.find("GrandparentView_first"), std::string::npos);
-    EXPECT_EQ(output.find("GrandparentView_second_nested"), std::string::npos);
-    EXPECT_NE(output.find("rows::ResolvedView"), std::string::npos);
-    EXPECT_NE(output.find("child::ResolvedView"), std::string::npos);
-    EXPECT_NE(output.find("second_nested_view.wide()"), std::string::npos);
+    expect_contains_all(output,
+                        {"second_nested_wide_column{", "Layout::second_nested_wide_column"});
+    expect_contains_none(
+        output, {"last_column()", "GrandparentView_first", "GrandparentView_second_nested"});
+    expect_contains_all(output,
+                        {"rows::ResolvedView", "child::ResolvedView", "second_nested_view.wide()"});
 }
 
 TEST(SingleAllocationSoa, PreservesCommonApiInSchemaNamespace) {
@@ -305,15 +304,16 @@ TEST(SingleAllocationSoa, PreservesCommonApiInSchemaNamespace) {
             (view-function read_first float :const true :body #cpp{return $column(values)[0];}cpp#))))"))};
     auto const& header{files.front().content};
     auto const& implementation{files.back().content};
-    EXPECT_NE(header.find("struct ROWS_API LogicalRows"), std::string::npos);
-    EXPECT_NE(header.find("namespace logical_rows"), std::string::npos);
-    EXPECT_NE(header.find("struct ROWS_API View"), std::string::npos);
-    EXPECT_NE(header.find("struct ROWS_API ConstView"), std::string::npos);
-    EXPECT_NE(header.find("using Value = float;"), std::string::npos);
-    EXPECT_NE(header.find("read_first() const"), std::string::npos);
-    EXPECT_NE(header.find("clear_first()"), std::string::npos);
-    EXPECT_EQ(header.find("$column("), std::string::npos);
-    EXPECT_NE(implementation.find("LogicalRows::external_first() const"), std::string::npos);
+    expect_contains_all(header,
+                        {"struct ROWS_API LogicalRows",
+                         "namespace logical_rows",
+                         "struct ROWS_API View",
+                         "struct ROWS_API ConstView",
+                         "using Value = float;",
+                         "read_first() const",
+                         "clear_first()"});
+    EXPECT_FALSE(header.contains("$column("));
+    EXPECT_TRUE(implementation.contains("LogicalRows::external_first() const"));
 }
 
 INSTANTIATE_TEST_SUITE_P(UnknownLogicalColumns,
