@@ -74,8 +74,8 @@ def make_base_document() -> dict[str, Any]:
             }
             if compiler.name == "clangcl":
                 preset["cacheVariables"].update({
-                    "CMAKE_C_COMPILER_LAUNCHER": "ccache",
-                    "CMAKE_CXX_COMPILER_LAUNCHER": "ccache;sloppiness=pch_defines,time_macros",
+                    "CMAKE_C_COMPILER_LAUNCHER": "ccache;compiler_check=content",
+                    "CMAKE_CXX_COMPILER_LAUNCHER": "ccache;compiler_check=content;sloppiness=pch_defines,time_macros",
                 })
                 preset["vendor"] = {
                     "microsoft.com/VisualStudioSettings/CMake/1.0": {

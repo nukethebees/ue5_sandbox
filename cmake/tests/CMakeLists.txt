@@ -1,5 +1,19 @@
 include("${CMAKE_CURRENT_LIST_DIR}/assertions.cmake")
 
+if(WIN32 AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_test(NAME CMake.CompilerCache
+    COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/cmake/tests/test_compiler_cache.py"
+      --source-dir "${PROJECT_SOURCE_DIR}"
+      --cmake "${CMAKE_COMMAND}"
+      --compiler "${CMAKE_CXX_COMPILER}"
+      --archiver "${CMAKE_AR}"
+  )
+  set_tests_properties(CMake.CompilerCache PROPERTIES
+    LABELS "integration;subprocess;all;cmake;compiler-cache"
+    TIMEOUT 120
+  )
+endif()
+
 add_subdirectory(unreal_paths)
 add_subdirectory(unreal_arguments)
 add_subdirectory(msvc_environment)

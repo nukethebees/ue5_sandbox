@@ -41,6 +41,11 @@ to disable caching. Unreal compilation is separately managed by UBT/UBA.
 C++ launchers set `sloppiness=pch_defines,time_macros` for PCH caching. Avoid
 time-dependent macros in PCHs. Clang-cl uses `/showIncludes` dependencies and
 timestamp-free PCHs so both PCH creation and consuming objects can be cached.
+The launchers use `compiler_check=content` to distinguish compiler binaries even when
+their paths or reported versions match. CMake watches the Clang executable and includes
+its content hash in PCH creation flags, so replacing it triggers reconfiguration and
+rebuilds retained PCHs automatically. Cache settings alone cannot invalidate an existing
+PCH that the build system considers up to date.
 
 Unreal CMake builds enable UBA result caching by default (`IOJ_ENABLE_UBA_CACHE=ON`).
 Before invoking UBT, they start the engine's `UbaCacheService.exe` in the background

@@ -1,4 +1,18 @@
 foreach(language IN ITEMS C CXX)
+  if(CMAKE_${language}_COMPILER_ID MATCHES "Clang")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+      "${CMAKE_${language}_COMPILER}"
+    )
+    if(NOT CMAKE_${language}_COMPILER STREQUAL pch_compiler)
+      set(pch_compiler "${CMAKE_${language}_COMPILER}")
+      file(SHA256 "${pch_compiler}" pch_compiler_hash)
+    endif()
+    # Replacing Clang at the same path must invalidate its serialized PCH format.
+    list(APPEND CMAKE_${language}_COMPILE_OPTIONS_CREATE_PCH
+      "-DIOJ_PCH_COMPILER_SHA256=${pch_compiler_hash}"
+    )
+  endif()
+
   if(NOT CMAKE_${language}_COMPILER_LAUNCHER)
     continue()
   endif()
