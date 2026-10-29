@@ -8,11 +8,12 @@
 
 namespace ioj::sim::player {
 class PhaseInterface {
-  public:
+  private:
     PhaseInterface(Sim& new_target)
         : simulation{new_target} {}
 
-  private:
+    void initialise(PlayerSpawnData const& spawn) { simulation.initialise(spawn); }
+
     void prepare_tick(float const dt) { simulation.prepare_tick(dt); }
 
     void think(float const dt) { simulation.think(dt); }

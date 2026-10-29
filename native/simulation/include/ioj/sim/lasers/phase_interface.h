@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/sim/lasers/laser_sim_config.h"
 #include "ioj/sim/lasers/phase_inputs.h"
 #include "ioj/sim/lasers/sim.h"
 
@@ -11,6 +12,8 @@ class PhaseInterface {
   private:
     PhaseInterface(Sim& new_target)
         : simulation{new_target} {}
+
+    void initialise(LaserSimConfig const& config) { simulation.initialise(config); }
 
     void simulate(ActionInputs const inputs) { simulation.simulate(inputs); }
 

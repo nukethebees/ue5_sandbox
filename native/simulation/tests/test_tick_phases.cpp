@@ -57,6 +57,20 @@ void schedule_turret(LevelSimInitData& data,
     ASSERT_TRUE(schedule.add_spawn_group(EntityType::Turret, payload_offset, 1));
 }
 
+void queue_capital_laser(LevelSim& simulation) {
+    lasers::LaserSpawnRequests shot{};
+    tests::add_laser_spawn(shot,
+                           {{290.f, 100.f, 0.f}},
+                           {},
+                           {},
+                           25,
+                           1000.f,
+                           10000.f,
+                           simulation.get_capital_ships().get_id(0),
+                           {Team::White, EntityType::CapitalShip});
+    LevelSimTestAccess::queue_laser_spawns(simulation, shot.get_const_view());
+}
+
 TEST(TickPhases, CompletedBurstsStopUntilTheNextFirePress) {
     for (auto const rate : {ShipFireRate::Single, ShipFireRate::Burst3}) {
         auto data{make_world()};
@@ -252,18 +266,7 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {
     LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
 
-    lasers::LaserSpawnRequests shot{};
-    tests::add_laser_spawn(shot,
-                           {{290.f, 100.f, 0.f}},
-                           {},
-                           {},
-                           25,
-                           1000.f,
-                           10000.f,
-                           simulation.get_capital_ships().get_id(0),
-                           {Team::White, EntityType::CapitalShip});
-
-    LevelSimTestAccess::queue_laser_spawns(simulation, shot.get_const_view());
+    queue_capital_laser(simulation);
 
     simulation.start();
 
@@ -343,18 +346,7 @@ TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndBoundsAdvanceAfterwa
     auto const& laser_sim{simulation.get_lasers()};
     simulation.get_player_ship_commands()->set_right_input(1.f);
 
-    lasers::LaserSpawnRequests shot{};
-    tests::add_laser_spawn(shot,
-                           {{290.f, 100.f, 0.f}},
-                           {},
-                           {},
-                           25,
-                           1000.f,
-                           10000.f,
-                           simulation.get_capital_ships().get_id(0),
-                           {Team::White, EntityType::CapitalShip});
-
-    LevelSimTestAccess::queue_laser_spawns(simulation, shot.get_const_view());
+    queue_capital_laser(simulation);
 
     simulation.start();
 

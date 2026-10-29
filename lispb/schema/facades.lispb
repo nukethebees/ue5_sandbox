@@ -73,10 +73,13 @@
   :namespace ioj::sim::player
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
   (facade PhaseInterface @player_sim simulation
+    :bind-access private
     :method-access private
     :friends ("sim::LevelSim")
     :friend-kind struct
     :target-storage reference
+    (method initialise void
+      (parameter spawn (type-ref @player_spawn_data :suffix " const&")))
     (method prepare_tick void
       (parameter dt "float const"))
     (method think void
@@ -97,6 +100,8 @@
     :friends ("sim::LevelSim")
     :friend-kind struct
     :target-storage reference
+    (method initialise void
+      (parameter config (type-ref ioj::sim::LaserSimConfig :suffix " const&")))
     (method simulate void
       (parameter inputs (type-ref @lasers_action_inputs :suffix " const")))
     (method commit_spawns void)
@@ -113,6 +118,8 @@
     :friends ("sim::LevelSim")
     :friend-kind struct
     :target-storage reference
+    (method initialise void
+      (parameter config (type-ref ioj::sim::CapitalShipSimConfig :suffix " const&")))
     (method prepare_tick void
       (parameter dt "float const"))
     (method think void
@@ -136,6 +143,9 @@
     :friends ("sim::LevelSim")
     :friend-kind struct
     :target-storage reference
+    (method initialise void
+      (parameter config (type-ref ioj::sim::FighterSimConfig :suffix " const&"))
+      (parameter level_data @fighter_level_data))
     (method commit_orders void)
     (method prepare_tick void
       (parameter dt "float const"))
@@ -163,6 +173,8 @@
     :friends ("sim::LevelSim")
     :friend-kind struct
     :target-storage reference
+    (method initialise void
+      (parameter config (type-ref ioj::sim::TurretSimConfig :suffix " const&")))
     (method prepare_tick void
       (parameter dt "float const"))
     (method think void
@@ -186,6 +198,8 @@
     :friends ("sim::LevelSim")
     :friend-kind struct
     :target-storage reference
+    (method initialise void
+      (parameter config (type-ref ioj::sim::SpinnerSimConfig :suffix " const&")))
     (method prepare_tick void
       (parameter dt "float const"))
     (method think void

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/sim/capital_ships/capital_ship_sim_config.h"
 #include "ioj/sim/capital_ships/phase_inputs.h"
 #include "ioj/sim/capital_ships/sim.h"
 
@@ -11,6 +12,8 @@ class PhaseInterface {
   private:
     PhaseInterface(Sim& new_target)
         : simulation{new_target} {}
+
+    void initialise(CapitalShipSimConfig const& config) { simulation.initialise(config); }
 
     void prepare_tick(float const dt) { simulation.prepare_tick(dt); }
 

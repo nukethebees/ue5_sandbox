@@ -273,6 +273,15 @@
   :spelling "Sim"
   :header "ioj/sim/spinners/sim.h")
 
+(type player_spawn_data
+  :spelling "ioj::sim::player::PlayerSpawnData"
+  :header "ioj/sim/player/sim.h")
+
+(type fighter_level_data
+  :spelling "ioj::sim::fighters::FighterLevelData"
+  :header "ioj/sim/fighters/sim.h"
+  :pass-by value)
+
 (type laser_source
   :spelling "ioj::sim::LaserSource"
   :header "ioj/sim/lasers/laser_source.h"

@@ -87,22 +87,22 @@ void LevelSim::pause() {
 /* **************************************** */
 void LevelSim::initialise_subsystems(LevelSimInitData const& data) {
     if (data.player) {
-        player_ship_simulation_.emplace(clock_, entity_ledger_, entity_tables_)
-            .initialise(*data.player);
+        auto& simulation{player_ship_simulation_.emplace(clock_, entity_ledger_, entity_tables_)};
+        player::PhaseInterface{simulation}.initialise(*data.player);
     }
 
-    capital_ships_simulation_.initialise(data.capital_ships);
+    capital_ships::PhaseInterface{capital_ships_simulation_}.initialise(data.capital_ships);
     auto const player_team{player_ship_simulation_ ? std::optional{player_ship_simulation_->team}
                                                    : std::nullopt};
     auto const teams{event_manager_.get_participating_teams(player_team)};
-    fighters_simulation_.initialise(
+    fighters::PhaseInterface{fighters_simulation_}.initialise(
         data.fighters,
         {.participating_teams = teams,
          .collision_radius = PositiveFinite<float>::make(
              collision_pipeline_.queries().get_entity_type_radius(EntityType::Fighter))});
-    turrets_simulation_.initialise(data.turrets);
-    spinners_simulation_.initialise(data.spinners);
-    lasers_simulation_.initialise(data.lasers);
+    turrets::PhaseInterface{turrets_simulation_}.initialise(data.turrets);
+    spinners::PhaseInterface{spinners_simulation_}.initialise(data.spinners);
+    lasers::PhaseInterface{lasers_simulation_}.initialise(data.lasers);
 }
 
 /* **************************************** */

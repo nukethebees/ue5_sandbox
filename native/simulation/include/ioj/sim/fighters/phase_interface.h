@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/sim/fighters/fighter_sim_config.h"
 #include "ioj/sim/fighters/phase_inputs.h"
 #include "ioj/sim/fighters/sim.h"
 
@@ -11,6 +12,10 @@ class PhaseInterface {
   private:
     PhaseInterface(Sim& new_target)
         : simulation{new_target} {}
+
+    void initialise(FighterSimConfig const& config, FighterLevelData level_data) {
+        simulation.initialise(config, level_data);
+    }
 
     void commit_orders() { simulation.commit_orders(); }
 

@@ -10,6 +10,7 @@
 
 #include <array>
 #include <cmath>
+#include <optional>
 #include <utility>
 
 namespace ioj::sim::tests {
@@ -59,20 +60,22 @@ void start(LevelSim& simulation) {
 
 class SkaterFlightModelTest : public ::testing::Test {
   protected:
-    void SetUp() override { start(simulation); }
+    void SetUp() override {
+        start(simulation);
+        ASSERT_NE(simulation.get_player_ship_simulation(), nullptr);
+    }
 
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
+    player::Sim& sim_player{LevelSimTestAccess::player_simulation(simulation)};
+    player::FlightModelControllerState const& controller{sim_player.get_controller_state()};
+    std::optional<player::CommandInterface> commands{simulation.get_player_ship_commands()};
 };
 
 auto player_sim(LevelSim const& simulation) -> player::Sim const& {
     auto const* const result{simulation.get_player_ship_simulation()};
     EXPECT_NE(result, nullptr);
     return *result;
-}
-
-auto mutable_player_sim(LevelSim& simulation) -> player::Sim& {
-    return LevelSimTestAccess::player_simulation(simulation);
 }
 
 void set_test_turn(player::CommandInterface commands, Vector2d const direction) {
@@ -202,29 +205,29 @@ TEST(NativeSimulationFlightModels, FighterBoostAndBrakeRemainOrthogonal) {
 }
 
 TEST_F(SkaterFlightModelTest, SkaterCoastsAndRotationDoesNotRotateVelocity) {
-    simulation.get_player_ship_commands()->set_accelerator(1.f);
+    commands->set_accelerator(1.f);
     advance_ticks(simulation, 30);
-    simulation.get_player_ship_commands()->set_accelerator(0.f);
+    commands->set_accelerator(0.f);
     auto const before{velocity(simulation)};
 
-    set_test_turn(*simulation.get_player_ship_commands(), {1.0, 0.0});
+    set_test_turn(*commands, {1.0, 0.0});
     advance_ticks(simulation, 60);
-    set_test_turn(*simulation.get_player_ship_commands(), {});
+    set_test_turn(*commands, {});
 
     expect_approximately_equal(velocity(simulation), before, 1.e-5);
-    EXPECT_GT(player_sim(simulation).get_physical_state().transform.forward().y(), 0.8);
+    EXPECT_GT(sim_player.get_physical_state().transform.forward().y(), 0.8);
 }
 
 TEST_F(SkaterFlightModelTest, SkaterAddsThrustAlongCurrentFacing) {
-    simulation.get_player_ship_commands()->set_accelerator(1.f);
+    commands->set_accelerator(1.f);
     advance_ticks(simulation, 30);
-    simulation.get_player_ship_commands()->set_accelerator(0.f);
+    commands->set_accelerator(0.f);
     auto const original{velocity(simulation)};
 
-    set_test_turn(*simulation.get_player_ship_commands(), {1.0, 0.0});
+    set_test_turn(*commands, {1.0, 0.0});
     advance_ticks(simulation, 90);
-    set_test_turn(*simulation.get_player_ship_commands(), {});
-    simulation.get_player_ship_commands()->set_accelerator(1.f);
+    set_test_turn(*commands, {});
+    commands->set_accelerator(1.f);
     advance_ticks(simulation, 30);
 
     auto const after{velocity(simulation)};
@@ -233,7 +236,6 @@ TEST_F(SkaterFlightModelTest, SkaterAddsThrustAlongCurrentFacing) {
 }
 
 TEST_F(SkaterFlightModelTest, SkaterTurningUnderThrustProgressivelyBendsTrajectory) {
-    auto commands{simulation.get_player_ship_commands()};
     commands->set_accelerator(1.f);
     advance_ticks(simulation, 30);
     auto const before_turn{velocity(simulation)};
@@ -248,7 +250,6 @@ TEST_F(SkaterFlightModelTest, SkaterTurningUnderThrustProgressivelyBendsTrajecto
 }
 
 TEST_F(SkaterFlightModelTest, SkaterCanFaceBackwardWhilePreservingForwardTravel) {
-    auto commands{simulation.get_player_ship_commands()};
     commands->set_accelerator(1.f);
     advance_ticks(simulation, 30);
     commands->set_accelerator(0.f);
@@ -258,9 +259,7 @@ TEST_F(SkaterFlightModelTest, SkaterCanFaceBackwardWhilePreservingForwardTravel)
     advance_ticks(simulation, 180);
 
     expect_approximately_equal(velocity(simulation), preserved, 1.e-5);
-    EXPECT_LT(
-        dot(velocity(simulation), player_sim(simulation).get_physical_state().transform.forward()),
-        0.0);
+    EXPECT_LT(dot(velocity(simulation), sim_player.get_physical_state().transform.forward()), 0.0);
 }
 
 TEST(NativeSimulationFlightModels, SkaterBrakeAndEmergencyBrakeReduceWithoutReversing) {
@@ -324,11 +323,10 @@ TEST(NativeSimulationFlightModels, GunshipRotationRemainsIndependentOfTranslatio
 }
 
 TEST_F(SkaterFlightModelTest, DirectSlotSelectionPreservesPhysicalStateAtBoundary) {
-    simulation.get_player_ship_commands()->set_accelerator(1.f);
-    simulation.get_player_ship_commands()->set_forward_input(-0.25f);
+    commands->set_accelerator(1.f);
+    commands->set_forward_input(-0.25f);
     advance_ticks(simulation, 30);
-    set_test_turn(*simulation.get_player_ship_commands(), {0.25, -0.5});
-    auto const& sim_player{player_sim(simulation)};
+    set_test_turn(*commands, {0.25, -0.5});
     auto const physical{sim_player.get_physical_state()};
     auto const resources{sim_player.get_resource_state()};
     auto expected_presentation{sim_player.get_presentation_state()};
@@ -336,7 +334,6 @@ TEST_F(SkaterFlightModelTest, DirectSlotSelectionPreservesPhysicalStateAtBoundar
     player::PlayerFlightIntent const expected_intent{
         .translation = {-0.25, 0.0, 0.0}, .rotation = {-0.5, 0.25, 0.0}, .accelerator = 1.f};
     auto const health{sim_player.get_health()};
-    auto commands{simulation.get_player_ship_commands()};
     commands->start_fire_laser();
     auto const firing_mode{sim_player.laser_firing_mode};
     auto const fire_rate{sim_player.laser_fire_rate};
@@ -352,13 +349,10 @@ TEST_F(SkaterFlightModelTest, DirectSlotSelectionPreservesPhysicalStateAtBoundar
     EXPECT_EQ(sim_player.get_health(), health);
     EXPECT_EQ(sim_player.laser_firing_mode, firing_mode);
     EXPECT_EQ(sim_player.laser_fire_rate, fire_rate);
-    EXPECT_EQ(sim_player.get_controller_state().effective_action, player::BoostBrakeState::Boost);
+    EXPECT_EQ(controller.effective_action, player::BoostBrakeState::Boost);
 }
 
 TEST_F(SkaterFlightModelTest, SwitchingClearsPersistentTargetsAndSamplingState) {
-    auto& sim_player{mutable_player_sim(simulation)};
-    auto const& controller{sim_player.get_controller_state()};
-    auto commands{simulation.get_player_ship_commands()};
     auto profile{sim_player.get_active_flight_model_profile()};
     auto& forward{profile.config.translation.forward};
     forward.manual.semantic = player::TranslationSemantic::TargetSpeed;
@@ -382,38 +376,32 @@ TEST_F(SkaterFlightModelTest, SwitchingClearsPersistentTargetsAndSamplingState) 
 }
 
 TEST_F(SkaterFlightModelTest, SwitchingRecomputesActionsFromHeldIntent) {
-    auto const& controller{player_sim(simulation).get_controller_state()};
-    auto commands{simulation.get_player_ship_commands()};
     commands->start_boost();
     ASSERT_EQ(controller.effective_action, player::BoostBrakeState::Boost);
 
     commands->select_flight_model_slot(player::FlightModelSlot::Fourth);
 
     player::PlayerFlightIntent const expected_intent{.boost_held = true};
-    EXPECT_PRED_FORMAT2(
-        structurally_equal, expected_intent, player_sim(simulation).get_flight_intent());
+    EXPECT_PRED_FORMAT2(structurally_equal, expected_intent, sim_player.get_flight_intent());
     EXPECT_EQ(controller.effective_action, player::BoostBrakeState::Boost);
     commands->stop_boost();
     EXPECT_EQ(controller.effective_action, player::BoostBrakeState::None);
 }
 
 TEST_F(SkaterFlightModelTest, SlotReplacementAppliesRuntimeConfigWithoutReconstruction) {
-    auto const& sim_player{player_sim(simulation)};
     auto profile{sim_player.get_active_flight_model_profile()};
     profile.customized = true;
     profile.config.translation.forward.normal.positive_acceleration = 1234.f;
     profile.config.maximum_resultant_speed = player::effectively_unlimited_speed;
-    EXPECT_TRUE(simulation.get_player_ship_commands()->set_flight_model_slot_profile(
-        player::FlightModelSlot::Third, profile));
+    EXPECT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
     EXPECT_EQ(sim_player.get_active_flight_model_profile(), profile);
 
-    simulation.get_player_ship_commands()->set_accelerator(1.f);
+    commands->set_accelerator(1.f);
     advance_ticks(simulation, 60);
     EXPECT_NEAR(velocity(simulation).x(), 1234.0, 0.1);
 }
 
 TEST_F(SkaterFlightModelTest, ResponseSeedingUsesTheNewChannelsReferenceFrame) {
-    auto commands{simulation.get_player_ship_commands()};
     commands->set_accelerator(1.f);
     advance_ticks(simulation, 30);
     commands->set_accelerator(0.f);
@@ -422,17 +410,15 @@ TEST_F(SkaterFlightModelTest, ResponseSeedingUsesTheNewChannelsReferenceFrame) {
     set_test_turn(*commands, {});
     auto const world_forward_speed{static_cast<float>(velocity(simulation).x())};
     ASSERT_GT(world_forward_speed, 0.f);
-    ASSERT_NEAR(player_sim(simulation).get_physical_state().transform.forward().x(), 0.0, 1.e-3);
+    ASSERT_NEAR(sim_player.get_physical_state().transform.forward().x(), 0.0, 1.e-3);
 
-    auto profile{player_sim(simulation).get_active_flight_model_profile()};
+    auto profile{sim_player.get_active_flight_model_profile()};
     auto& forward{profile.config.translation.forward};
     forward.manual.semantic = player::TranslationSemantic::TargetVelocity;
     forward.manual.reference_frame = player::ReferenceFrame::World;
     ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
 
-    EXPECT_NEAR(player_sim(simulation).get_controller_state().forward_manual_response.value(),
-                world_forward_speed,
-                1.e-3f);
+    EXPECT_NEAR(controller.forward_manual_response.value(), world_forward_speed, 1.e-3f);
 }
 
 TEST(NativeSimulationFlightModels, PassiveDragAndNeutralStabilizationRemainDistinct) {
@@ -536,8 +522,7 @@ TEST(NativeSimulationFlightModels, AutomaticAccelerationAndPassiveDragKeepIndepe
 }
 
 TEST_F(SkaterFlightModelTest, BoostResponseChangesWithoutDiscardingAccelerationState) {
-    auto commands{simulation.get_player_ship_commands()};
-    auto profile{player_sim(simulation).get_active_flight_model_profile()};
+    auto profile{sim_player.get_active_flight_model_profile()};
     profile.config.boost.response.mode = player::ResponseMode::RateLimited;
     profile.config.boost.response.rate_limited = {1000.f, 1000.f};
     ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
@@ -554,7 +539,6 @@ TEST_F(SkaterFlightModelTest, BoostResponseChangesWithoutDiscardingAccelerationS
 }
 
 TEST_F(SkaterFlightModelTest, PartialFacingCouplingBendsVelocityWithoutLockingIt) {
-    auto commands{simulation.get_player_ship_commands()};
     commands->set_accelerator(1.f);
     advance_ticks(simulation, 30);
     commands->set_accelerator(0.f);
@@ -563,7 +547,7 @@ TEST_F(SkaterFlightModelTest, PartialFacingCouplingBendsVelocityWithoutLockingIt
     set_test_turn(*commands, {});
     ASSERT_GT(velocity(simulation).x(), 0.0);
 
-    auto profile{player_sim(simulation).get_active_flight_model_profile()};
+    auto profile{sim_player.get_active_flight_model_profile()};
     profile.config.facing_velocity.mode = player::FacingVelocityCoupling::AlignToFacing;
     profile.config.facing_velocity.alignment_rate = 1000.f;
     ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
@@ -622,8 +606,7 @@ TEST(NativeSimulationFlightModels, SecondOrderBrakeStrengthUsesConfiguredDeceler
 }
 
 TEST_F(SkaterFlightModelTest, EnergyFallbackRespectsHeldIntentAndAvailability) {
-    auto commands{simulation.get_player_ship_commands()};
-    auto profile{player_sim(simulation).get_active_flight_model_profile()};
+    auto profile{sim_player.get_active_flight_model_profile()};
     profile.config.emergency_brake.energy_drain_per_second = 60.f;
     profile.config.brake.available = false;
     profile.config.boost.available = false;
@@ -632,15 +615,12 @@ TEST_F(SkaterFlightModelTest, EnergyFallbackRespectsHeldIntentAndAvailability) {
     commands->start_emergency_brake();
     advance_ticks(simulation, 1);
 
-    EXPECT_FLOAT_EQ(player_sim(simulation).get_energy(), 0.f);
-    EXPECT_EQ(player_sim(simulation).get_controller_state().effective_action,
-              player::BoostBrakeState::None);
+    EXPECT_FLOAT_EQ(sim_player.get_energy(), 0.f);
+    EXPECT_EQ(controller.effective_action, player::BoostBrakeState::None);
 }
 
 TEST_F(SkaterFlightModelTest, EnergyFallbackUsesOnlyAvailableIndependentlyHeldActions) {
-    auto const& controller{player_sim(simulation).get_controller_state()};
-    auto commands{simulation.get_player_ship_commands()};
-    auto profile{player_sim(simulation).get_active_flight_model_profile()};
+    auto profile{sim_player.get_active_flight_model_profile()};
     profile.config.emergency_brake.energy_drain_per_second = 60.f;
     profile.config.brake.energy_drain_per_second = 0.f;
     ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
@@ -651,7 +631,7 @@ TEST_F(SkaterFlightModelTest, EnergyFallbackUsesOnlyAvailableIndependentlyHeldAc
     ASSERT_EQ(controller.effective_action, player::BoostBrakeState::EmergencyBrake);
     advance_ticks(simulation, 1);
 
-    EXPECT_FLOAT_EQ(player_sim(simulation).get_energy(), 0.f);
+    EXPECT_FLOAT_EQ(sim_player.get_energy(), 0.f);
     EXPECT_EQ(controller.effective_action, player::BoostBrakeState::Brake);
 
     commands->stop_brake();
@@ -659,20 +639,17 @@ TEST_F(SkaterFlightModelTest, EnergyFallbackUsesOnlyAvailableIndependentlyHeldAc
 }
 
 TEST_F(SkaterFlightModelTest, UnavailableBoostNeverBecomesEffective) {
-    auto commands{simulation.get_player_ship_commands()};
-    auto profile{player_sim(simulation).get_active_flight_model_profile()};
+    auto profile{sim_player.get_active_flight_model_profile()};
     profile.config.boost.available = false;
     ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));
 
     commands->start_boost();
 
-    EXPECT_EQ(player_sim(simulation).get_controller_state().effective_action,
-              player::BoostBrakeState::None);
+    EXPECT_EQ(controller.effective_action, player::BoostBrakeState::None);
 }
 
 TEST_F(SkaterFlightModelTest, AcceleratorCanDriveEveryTranslationAxis) {
-    auto commands{simulation.get_player_ship_commands()};
-    auto profile{player_sim(simulation).get_active_flight_model_profile()};
+    auto profile{sim_player.get_active_flight_model_profile()};
     profile.config.translation.forward.manual.semantic = player::TranslationSemantic::Disabled;
     for (auto* const axis :
          std::array{&profile.config.translation.right, &profile.config.translation.up}) {
@@ -691,8 +668,7 @@ TEST_F(SkaterFlightModelTest, AcceleratorCanDriveEveryTranslationAxis) {
 }
 
 TEST_F(SkaterFlightModelTest, TargetVelocityUsesInputScaleNotUnlimitedCap) {
-    auto commands{simulation.get_player_ship_commands()};
-    auto profile{player_sim(simulation).get_active_flight_model_profile()};
+    auto profile{sim_player.get_active_flight_model_profile()};
     auto& forward{profile.config.translation.forward};
     forward.manual.semantic = player::TranslationSemantic::TargetVelocity;
     forward.manual.input_source = player::TranslationInputSource::Axis;
@@ -710,9 +686,6 @@ TEST_F(SkaterFlightModelTest, TargetVelocityUsesInputScaleNotUnlimitedCap) {
 }
 
 TEST_F(SkaterFlightModelTest, TargetSpeedUsesAsymmetricScalesAndTrimBounds) {
-    auto& sim_player{mutable_player_sim(simulation)};
-    auto const& controller{sim_player.get_controller_state()};
-    auto commands{simulation.get_player_ship_commands()};
     auto profile{sim_player.get_active_flight_model_profile()};
     auto& forward{profile.config.translation.forward};
     forward.manual.semantic = player::TranslationSemantic::TargetSpeed;
@@ -741,9 +714,6 @@ TEST_F(SkaterFlightModelTest, TargetSpeedUsesAsymmetricScalesAndTrimBounds) {
 }
 
 TEST_F(SkaterFlightModelTest, ProfileReplacementClampsTargetsAndReseedsResponses) {
-    auto& sim_player{mutable_player_sim(simulation)};
-    auto const& controller{sim_player.get_controller_state()};
-    auto commands{simulation.get_player_ship_commands()};
     auto profile{sim_player.get_active_flight_model_profile()};
     auto& forward{profile.config.translation.forward};
     forward.manual.semantic = player::TranslationSemantic::TargetSpeed;
@@ -767,9 +737,6 @@ TEST_F(SkaterFlightModelTest, ProfileReplacementClampsTargetsAndReseedsResponses
 }
 
 TEST_F(SkaterFlightModelTest, LeavingBoostImmediatelyClampsPersistentTarget) {
-    auto& sim_player{mutable_player_sim(simulation)};
-    auto const& controller{sim_player.get_controller_state()};
-    auto commands{simulation.get_player_ship_commands()};
     auto profile{sim_player.get_active_flight_model_profile()};
     auto& forward{profile.config.translation.forward};
     forward.manual.semantic = player::TranslationSemantic::TargetSpeed;
@@ -790,9 +757,7 @@ TEST_F(SkaterFlightModelTest, LeavingBoostImmediatelyClampsPersistentTarget) {
 }
 
 TEST_F(SkaterFlightModelTest, BrakeResponseStateDoesNotSurviveActionTransition) {
-    auto const& controller{player_sim(simulation).get_controller_state()};
-    auto commands{simulation.get_player_ship_commands()};
-    auto profile{player_sim(simulation).get_active_flight_model_profile()};
+    auto profile{sim_player.get_active_flight_model_profile()};
     profile.config.brake.response.mode = player::ResponseMode::RateLimited;
     profile.config.brake.response.rate_limited = {1.f, 1.f};
     ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Third, profile));

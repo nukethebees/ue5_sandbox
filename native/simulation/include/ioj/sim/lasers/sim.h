@@ -51,7 +51,6 @@ struct Sim {
     /* **************************************** */
     // Spawning and configuration
     /* **************************************** */
-    void initialise(LaserSimConfig const& new_config);
     // Fill every appended column before another append or commit. Serialize appends and
     // discard the returned view and its spans before either operation can invalidate them.
     auto append_spawn_requests(std::uint32_t count) -> LaserSpawnRequests::View;
@@ -59,6 +58,7 @@ struct Sim {
     /* **************************************** */
     // Tick phases
     /* **************************************** */
+    void initialise(LaserSimConfig const& new_config);
     void commit_spawns();
     void cleanup_entities();
     void simulate(ActionInputs const inputs);

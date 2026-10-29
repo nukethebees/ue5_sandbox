@@ -48,7 +48,6 @@ struct Sim {
         frame_changes_.clear();
         death_locations_.clear();
     }
-    void initialise(TurretSimConfig const& new_config);
 
     /* **************************************** */
     // Accessors
@@ -63,6 +62,7 @@ struct Sim {
     /* **************************************** */
     // Sim phases
     /* **************************************** */
+    void initialise(TurretSimConfig const& new_config);
     void update_entity_lookup_table();
     void prepare_tick(float dt);
     void think(ThinkingInputs const inputs);

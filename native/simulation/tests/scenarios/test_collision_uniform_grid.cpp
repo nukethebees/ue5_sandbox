@@ -274,6 +274,25 @@ auto count_id(std::span<EntityId const> const handles, EntityId const expected) 
     }
     return count;
 }
+
+auto count_memberships(collision::CollisionUniformGrid const& grid,
+                       collision::CellCoord const min_coord,
+                       collision::CellCoord const max_coord,
+                       EntityId const id) -> std::int32_t {
+    std::int32_t count{};
+    auto const max_x{max_coord.x()};
+    auto const max_y{max_coord.y()};
+    auto const max_z{max_coord.z()};
+    for (std::int32_t x{min_coord.x()}; x <= max_x; ++x) {
+        for (std::int32_t y{min_coord.y()}; y <= max_y; ++y) {
+            for (std::int32_t z{min_coord.z()}; z <= max_z; ++z) {
+                // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- per-cell membership.
+                count += count_id(grid.get_cell_entities({x, y, z}), id);
+            }
+        }
+    }
+    return count;
+}
 }
 
 TEST(WorldlessSpaceGameSimulation, Collision_UniformGridContainsAllEntityTypes) {
@@ -335,21 +354,9 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridContainsAllEntityTypes) 
             continue;
         }
 
-        std::int32_t expected_cell_count{};
-        std::int32_t found_cell_count{};
-        auto const max_x{max_coord.x()};
-        auto const max_y{max_coord.y()};
-        auto const max_z{max_coord.z()};
-        for (std::int32_t x{min_coord.x()}; x <= max_x; ++x) {
-            for (std::int32_t y{min_coord.y()}; y <= max_y; ++y) {
-                for (std::int32_t z{min_coord.z()}; z <= max_z; ++z) {
-                    ++expected_cell_count;
-                    // Each coordinate selects a distinct grid cell.
-                    // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
-                    found_cell_count += count_id(grid.get_cell_entities({x, y, z}), id);
-                }
-            }
-        }
+        auto const expected_cell_count{
+            (max_coord - min_coord + collision::CellCoord{1, 1, 1}).product()};
+        auto const found_cell_count{count_memberships(grid, min_coord, max_coord, id)};
         EXPECT_EQ(expected_cell_count, found_cell_count)
             << "Expected entity has the expected collision-grid membership";
     }
@@ -1371,19 +1378,8 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridDenseAndWideAABBs) {
     TraceFixture const wide_fixture{wide_locations, wide_half_extents};
     auto const [min_coord, max_coord]{
         wide_fixture.grid.to_cell_coord_bounds(-wide_half_extents, wide_half_extents)};
-    std::int32_t membership_count{};
-    auto const max_x{max_coord.x()};
-    auto const max_y{max_coord.y()};
-    auto const max_z{max_coord.z()};
-    for (std::int32_t x{min_coord.x()}; x <= max_x; ++x) {
-        for (std::int32_t y{min_coord.y()}; y <= max_y; ++y) {
-            for (std::int32_t z{min_coord.z()}; z <= max_z; ++z) {
-                // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- per-cell membership.
-                membership_count += count_id(wide_fixture.grid.get_cell_entities({x, y, z}),
-                                             wide_fixture.handles[0]);
-            }
-        }
-    }
+    auto const membership_count{
+        count_memberships(wide_fixture.grid, min_coord, max_coord, wide_fixture.handles[0])};
     EXPECT_EQ(64, membership_count) << "Three-axis AABB occupies every covered cell";
 
     std::array<ExpectedTrace, 1> const wide_cases{{

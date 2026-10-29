@@ -5,12 +5,15 @@
 
 #include "ioj/sim/turrets/phase_inputs.h"
 #include "ioj/sim/turrets/sim.h"
+#include "ioj/sim/turrets/turret_sim_config.h"
 
 namespace ioj::sim::turrets {
 class PhaseInterface {
   private:
     PhaseInterface(Sim& new_target)
         : simulation{new_target} {}
+
+    void initialise(TurretSimConfig const& config) { simulation.initialise(config); }
 
     void prepare_tick(float const dt) { simulation.prepare_tick(dt); }
 

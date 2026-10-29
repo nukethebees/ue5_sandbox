@@ -5,12 +5,15 @@
 
 #include "ioj/sim/spinners/phase_inputs.h"
 #include "ioj/sim/spinners/sim.h"
+#include "ioj/sim/spinners/spinner_sim_config.h"
 
 namespace ioj::sim::spinners {
 class PhaseInterface {
   private:
     PhaseInterface(Sim& new_target)
         : simulation{new_target} {}
+
+    void initialise(SpinnerSimConfig const& config) { simulation.initialise(config); }
 
     void prepare_tick(float const dt) { simulation.prepare_tick(dt); }
 
