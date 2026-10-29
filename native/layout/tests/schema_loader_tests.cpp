@@ -14,9 +14,9 @@
 #include <string_view>
 
 namespace ioj::layout::schema_loader_tests {
-class DocumentFiles {
+class DocumentFileStorage {
   public:
-    DocumentFiles()
+    DocumentFileStorage()
         : root_{std::filesystem::temp_directory_path() /
                 ("layout-document-" +
                  std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()))} {
@@ -30,7 +30,7 @@ class DocumentFiles {
                 (member health @LayoutEditValue :bits 8)
     (projections (cpp :storage std::uint16_t))) (integer-scalar LayoutEditValue :bit-width 1)))");
     }
-    ~DocumentFiles() {
+    ~DocumentFileStorage() {
         std::error_code ignored;
         std::filesystem::remove_all(root_, ignored);
     }
@@ -48,9 +48,13 @@ class DocumentFiles {
     std::filesystem::path root_;
 };
 
-TEST(DocumentFiles, SavesReloadsAndUndoesAcrossSaveBoundary) {
+class DocumentFiles : public testing::Test {
+  protected:
     EditorSession editor;
-    DocumentFiles files;
+    DocumentFileStorage files;
+};
+
+TEST_F(DocumentFiles, SavesReloadsAndUndoesAcrossSaveBoundary) {
     auto document{editor.load(files.path("project.lispb"), "game")};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     EXPECT_FALSE(document.dirty());
@@ -72,9 +76,7 @@ TEST(DocumentFiles, SavesReloadsAndUndoesAcrossSaveBoundary) {
     EXPECT_EQ(document.query().module("game").record("State").member("health").bits(), 12);
 }
 
-TEST(DocumentFiles, DetectsExternalChangesWithoutDiscardingDraft) {
-    EditorSession editor;
-    DocumentFiles files;
+TEST_F(DocumentFiles, DetectsExternalChangesWithoutDiscardingDraft) {
     auto document{editor.load(files.path("project.lispb"), "game")};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto tx{document.transaction()};
@@ -90,9 +92,7 @@ TEST(DocumentFiles, DetectsExternalChangesWithoutDiscardingDraft) {
     EXPECT_GT(editor.diagnostics().size(), editor.last_diagnostic_begin());
 }
 
-TEST(DocumentFiles, SourceAdditionSharesSchemaHistoryAndPublishesProject) {
-    EditorSession editor;
-    DocumentFiles files;
+TEST_F(DocumentFiles, SourceAdditionSharesSchemaHistoryAndPublishesProject) {
     auto document{editor.load(files.path("project.lispb"), "game")};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto tx{document.transaction()};
@@ -116,9 +116,7 @@ TEST(DocumentFiles, SourceAdditionSharesSchemaHistoryAndPublishesProject) {
               std::string::npos);
 }
 
-TEST(DocumentFiles, UnregistersSourceWithoutDeletingOriginalFile) {
-    EditorSession editor;
-    DocumentFiles files;
+TEST_F(DocumentFiles, UnregistersSourceWithoutDeletingOriginalFile) {
     auto document{editor.load(files.path("project.lispb"), "game")};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto const original{files.read("game.lispb")};
@@ -137,9 +135,7 @@ TEST(DocumentFiles, UnregistersSourceWithoutDeletingOriginalFile) {
     EXPECT_FALSE(reloaded.find_type("game", "State"));
 }
 
-TEST(DocumentFiles, RenamesSourceAndRetainsItsEditedContents) {
-    EditorSession editor;
-    DocumentFiles files;
+TEST_F(DocumentFiles, RenamesSourceAndRetainsItsEditedContents) {
     auto document{editor.load(files.path("project.lispb"), "game")};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto tx{document.transaction()};
@@ -158,9 +154,7 @@ TEST(DocumentFiles, RenamesSourceAndRetainsItsEditedContents) {
     EXPECT_FALSE(std::filesystem::exists(files.path("schema/renamed.lispb")));
 }
 
-TEST(DocumentFiles, SavesInMemorySourcesAndRegistryAsIndependentProject) {
-    EditorSession editor;
-    DocumentFiles files;
+TEST_F(DocumentFiles, SavesInMemorySourcesAndRegistryAsIndependentProject) {
     auto document{editor.from_source(
         R"((module game :header "Game.h" (record Entity (member value @external)
     (projections (cpp)))))",
@@ -184,9 +178,7 @@ TEST(DocumentFiles, SavesInMemorySourcesAndRegistryAsIndependentProject) {
     EXPECT_TRUE(undone.find_type("game", "Entity"));
 }
 
-TEST(DocumentFiles, InvalidLoadReportsAnOperationDiagnostic) {
-    EditorSession editor;
-    DocumentFiles files;
+TEST_F(DocumentFiles, InvalidLoadReportsAnOperationDiagnostic) {
     auto missing_target{editor.load(files.path("project.lispb"), "missing")};
     EXPECT_FALSE(missing_target.valid());
     EXPECT_GT(editor.diagnostics().size(), 0);
@@ -195,9 +187,7 @@ TEST(DocumentFiles, InvalidLoadReportsAnOperationDiagnostic) {
     EXPECT_GT(editor.diagnostics().size(), 0);
 }
 
-TEST(DocumentFiles, FailedStagingPreservesPublishedFilesAndDraftHistory) {
-    EditorSession editor;
-    DocumentFiles files;
+TEST_F(DocumentFiles, FailedStagingPreservesPublishedFilesAndDraftHistory) {
     files.write("blocked", "existing file");
     auto const original_schema{files.read("game.lispb")};
     auto const original_project{files.read("project.lispb")};
@@ -220,9 +210,7 @@ TEST(DocumentFiles, FailedStagingPreservesPublishedFilesAndDraftHistory) {
     EXPECT_FALSE(document.dirty());
 }
 
-TEST(DocumentFiles, VariantOnlyEditsLeaveSourcesClean) {
-    EditorSession editor;
-    DocumentFiles files;
+TEST_F(DocumentFiles, VariantOnlyEditsLeaveSourcesClean) {
     auto const original_schema{files.read("game.lispb")};
     auto document{editor.load(files.path("project.lispb"), "game")};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
@@ -236,9 +224,7 @@ TEST(DocumentFiles, VariantOnlyEditsLeaveSourcesClean) {
     EXPECT_FALSE(document.dirty());
 }
 
-TEST(DocumentFiles, LeavesUneditedFilesAndRegistryIncludesUntouched) {
-    EditorSession editor;
-    DocumentFiles files;
+TEST_F(DocumentFiles, LeavesUneditedFilesAndRegistryIncludesUntouched) {
     files.write("types.lispb", R"((include "common/scalars.lispb"))");
     files.write("common/scalars.lispb", R"(; authored registry
         (type byte :spelling "std::uint8_t" (integer :signed false :bit-width 8)))");
@@ -254,9 +240,7 @@ TEST(DocumentFiles, LeavesUneditedFilesAndRegistryIncludesUntouched) {
     EXPECT_EQ(files.read("common/scalars.lispb"), included);
 }
 
-TEST(DocumentFiles, HistoryUsesCapturedInputsAfterProjectAndRegistryFilesChange) {
-    EditorSession editor;
-    DocumentFiles files;
+TEST_F(DocumentFiles, HistoryUsesCapturedInputsAfterProjectAndRegistryFilesChange) {
     files.write("types.lispb", R"((include "common/scalars.lispb"))");
     files.write("common/scalars.lispb", R"((type byte :spelling "std::uint8_t"
         (integer :signed false :bit-width 8)))");

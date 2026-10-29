@@ -43,34 +43,30 @@ TEST_F(ExprTest, RequiresExplicitRawAndSupportsIndependentCopies) {
     auto copy{original};
     original = ir.literal("false");
 
-    EXPECT_EQ(renderer.render(copy), "lookup(value)");
-    EXPECT_EQ(renderer.render(original), "false");
+    expect_rendered(copy, "lookup(value)");
+    expect_rendered(original, "false");
     EXPECT_EQ(copy.kind(), ExprKind::call);
 }
 
 TEST_F(ExprTest, RendersCallsCastsAndInitializerLists) {
     auto const lookup{ir.call(ir.named("get_name"), {ir.named("project::Mode::Ready")})};
-    EXPECT_EQ(renderer.render(ir.init_list({lookup}, types.intern("FString"))),
-              "FString{get_name(project::Mode::Ready)}");
-    EXPECT_EQ(renderer.render(ir.init_list({ir.literal("1"), ir.literal("2")})), "{1, 2}");
-    EXPECT_EQ(renderer.render(ir.init_list({}, types.intern("FString"))), "FString{}");
-    EXPECT_EQ(renderer.render(ir.init_list({})), "{}");
-    EXPECT_EQ(renderer.render(ir.static_cast_expr(types.intern("int32"), ir.named("Mode::COUNT"))),
-              "static_cast<int32>(Mode::COUNT)");
-    EXPECT_EQ(renderer.render(ir.call(ir.call(ir.named("factory")), {ir.literal("42")})),
-              "factory()(42)");
+    expect_rendered(ir.init_list({lookup}, types.intern("FString")),
+                    "FString{get_name(project::Mode::Ready)}");
+    expect_rendered(ir.init_list({ir.literal("1"), ir.literal("2")}), "{1, 2}");
+    expect_rendered(ir.init_list({}, types.intern("FString")), "FString{}");
+    expect_rendered(ir.init_list({}), "{}");
+    expect_rendered(ir.static_cast_expr(types.intern("int32"), ir.named("Mode::COUNT")),
+                    "static_cast<int32>(Mode::COUNT)");
+    expect_rendered(ir.call(ir.call(ir.named("factory")), {ir.literal("42")}), "factory()(42)");
 }
 
 TEST_F(ExprTest, PreservesBinaryGroupingAndPostfixBinding) {
     auto const inner{ir.binary(BinaryOperator::equal, ir.named("a"), ir.named("b"))};
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::equal, inner, ir.named("c"))),
-              "a == b == c");
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::equal, ir.named("c"), inner)),
-              "c == (a == b)");
-    EXPECT_EQ(renderer.render(ir.call(inner)), "(a == b)()");
-    EXPECT_EQ(renderer.render(ir.call(ir.named("f"), {inner})), "f(a == b)");
-    EXPECT_EQ(renderer.render(ir.static_cast_expr(types.intern("bool"), inner)),
-              "static_cast<bool>(a == b)");
+    expect_rendered(ir.binary(BinaryOperator::equal, inner, ir.named("c")), "a == b == c");
+    expect_rendered(ir.binary(BinaryOperator::equal, ir.named("c"), inner), "c == (a == b)");
+    expect_rendered(ir.call(inner), "(a == b)()");
+    expect_rendered(ir.call(ir.named("f"), {inner}), "f(a == b)");
+    expect_rendered(ir.static_cast_expr(types.intern("bool"), inner), "static_cast<bool>(a == b)");
 }
 
 TEST_F(ExprTest, RendersUnaryPointerAccessAndLogicalPrecedence) {
@@ -79,28 +75,24 @@ TEST_F(ExprTest, RendersUnaryPointerAccessAndLogicalPrecedence) {
     auto const missing{ir.binary(BinaryOperator::logical_or,
                                  ir.unary(UnaryOperator::logical_not, pointer),
                                  ir.unary(UnaryOperator::logical_not, data))};
-    EXPECT_EQ(renderer.render(missing), "!state || !state->data");
-    EXPECT_EQ(renderer.render(ir.unary(UnaryOperator::logical_not, missing)),
-              "!(!state || !state->data)");
-    EXPECT_EQ(renderer.render(ir.call(ir.named("test"), {missing})),
-              "test(!state || !state->data)");
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::equal, missing, ir.literal("false"))),
-              "(!state || !state->data) == false");
-    EXPECT_EQ(
-        renderer.render(ir.member_access(ir.unary(UnaryOperator::dereference, pointer), "data")),
-        "(*state).data");
-    EXPECT_EQ(renderer.render(ir.unary(UnaryOperator::address_of,
-                                       ir.unary(UnaryOperator::address_of, pointer))),
-              "&(&state)");
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::not_equal,
-                                        ir.named("this"),
-                                        ir.unary(UnaryOperator::address_of, ir.named("other")))),
-              "this != &other");
-    EXPECT_EQ(renderer.render(
-                  ir.binary(BinaryOperator::divide,
-                            ir.named("a"),
-                            ir.binary(BinaryOperator::multiply, ir.named("b"), ir.named("c")))),
-              "a / (b * c)");
+    expect_rendered(missing, "!state || !state->data");
+    expect_rendered(ir.unary(UnaryOperator::logical_not, missing), "!(!state || !state->data)");
+    expect_rendered(ir.call(ir.named("test"), {missing}), "test(!state || !state->data)");
+    expect_rendered(ir.binary(BinaryOperator::equal, missing, ir.literal("false")),
+                    "(!state || !state->data) == false");
+    expect_rendered(ir.member_access(ir.unary(UnaryOperator::dereference, pointer), "data"),
+                    "(*state).data");
+    expect_rendered(
+        ir.unary(UnaryOperator::address_of, ir.unary(UnaryOperator::address_of, pointer)),
+        "&(&state)");
+    expect_rendered(ir.binary(BinaryOperator::not_equal,
+                              ir.named("this"),
+                              ir.unary(UnaryOperator::address_of, ir.named("other"))),
+                    "this != &other");
+    expect_rendered(ir.binary(BinaryOperator::divide,
+                              ir.named("a"),
+                              ir.binary(BinaryOperator::multiply, ir.named("b"), ir.named("c"))),
+                    "a / (b * c)");
     auto const expression{
         ir.unary(UnaryOperator::logical_not,
                  ir.pointer_member_access(ir.named("state", {types.dependency("state", "State.h")}),
@@ -114,21 +106,18 @@ TEST_F(ExprTest, PreservesBitwiseAndShiftPrecedence) {
     auto const value{ir.named("value")};
     auto const bit{ir.call(ir.named("bit"), {ir.named("field")})};
     auto const masked{ir.binary(BinaryOperator::bitwise_and, value, bit)};
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::not_equal, masked, ir.literal("0"))),
-              "(value & bit(field)) != 0");
-    EXPECT_EQ(renderer.render(ir.binary(
-                  BinaryOperator::bitwise_and, value, ir.unary(UnaryOperator::bitwise_not, bit))),
-              "value & ~bit(field)");
+    expect_rendered(ir.binary(BinaryOperator::not_equal, masked, ir.literal("0")),
+                    "(value & bit(field)) != 0");
+    expect_rendered(
+        ir.binary(BinaryOperator::bitwise_and, value, ir.unary(UnaryOperator::bitwise_not, bit)),
+        "value & ~bit(field)");
     auto const combined{ir.binary(BinaryOperator::bitwise_or, value, bit)};
-    EXPECT_EQ(renderer.render(
-                  ir.binary(BinaryOperator::shift_left,
-                            combined,
-                            ir.binary(BinaryOperator::add, ir.named("index"), ir.literal("1")))),
-              "(value | bit(field)) << index + 1");
-    EXPECT_EQ(renderer.render(ir.unary(UnaryOperator::bitwise_not, combined)),
-              "~(value | bit(field))");
-    EXPECT_EQ(renderer.render(ir.call(ir.member_access(combined, "test"))),
-              "(value | bit(field)).test()");
+    expect_rendered(ir.binary(BinaryOperator::shift_left,
+                              combined,
+                              ir.binary(BinaryOperator::add, ir.named("index"), ir.literal("1"))),
+                    "(value | bit(field)) << index + 1");
+    expect_rendered(ir.unary(UnaryOperator::bitwise_not, combined), "~(value | bit(field))");
+    expect_rendered(ir.call(ir.member_access(combined, "test")), "(value | bit(field)).test()");
 }
 
 TEST_F(AstTest, RendersRefQualifiedMethodsAndInlineOutOfLineConstructors) {
@@ -136,17 +125,16 @@ TEST_F(AstTest, RendersRefQualifiedMethodsAndInlineOutOfLineConstructors) {
     ir.set_function_return_type(spec, types.intern("View"), ReturnSyntax::trailing);
     ir.set_function_receiver(spec, FunctionReceiver::const_lvalue);
     ir.set_function_noexcept(spec);
-    EXPECT_EQ(renderer.render(ir.declaration(spec)), "auto view() const & noexcept -> View;");
+    expect_rendered(ir.declaration(spec), "auto view() const & noexcept -> View;");
     ir.set_function_receiver(spec, FunctionReceiver::const_rvalue);
     ir.set_function_deleted(spec);
-    EXPECT_EQ(renderer.render(ir.definition(spec)),
-              "auto view() const && noexcept -> View = delete;");
+    expect_rendered(ir.definition(spec), "auto view() const && noexcept -> View = delete;");
     auto const constructor_spec{ir.constructor(ir.strings.intern("View"))};
     ir.function_flags(constructor_spec).set_is_inline(true);
     ir.function_flags(constructor_spec).set_define_in_header(true);
     ir.function_formatting(constructor_spec) = {.body_layout = FunctionBodyLayout::compact};
     auto const constructor{ir.definition(constructor_spec, ir.types.intern("View"), {}, true)};
-    EXPECT_EQ(renderer.render(constructor), "inline View::View() {  }");
+    expect_rendered(constructor, "inline View::View() {  }");
 }
 
 TEST_F(ExprTest, RendersSizeofAndPreservesArithmeticGrouping) {
@@ -155,19 +143,18 @@ TEST_F(ExprTest, RendersSizeofAndPreservesArithmeticGrouping) {
     auto const c{ir.named("c")};
     auto const sum{ir.binary(BinaryOperator::add, a, b)};
     auto const product{ir.binary(BinaryOperator::multiply, b, c)};
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::multiply, sum, c)), "(a + b) * c");
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::add, a, product)), "a + b * c");
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::multiply, a, product)), "a * (b * c)");
-    EXPECT_EQ(renderer.render(
-                  ir.binary(BinaryOperator::add, a, ir.binary(BinaryOperator::subtract, b, c))),
-              "a + (b - c)");
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::multiply,
-                                        ir.named("count"),
-                                        ir.sizeof_type(types.intern("Element")))),
-              "count * sizeof(Element)");
-    EXPECT_EQ(renderer.render(ir.static_cast_expr(types.intern("int"),
-                                                  ir.sizeof_type(types.intern("Element")))),
-              "static_cast<int>(sizeof(Element))");
+    expect_rendered(ir.binary(BinaryOperator::multiply, sum, c), "(a + b) * c");
+    expect_rendered(ir.binary(BinaryOperator::add, a, product), "a + b * c");
+    expect_rendered(ir.binary(BinaryOperator::multiply, a, product), "a * (b * c)");
+    expect_rendered(ir.binary(BinaryOperator::add, a, ir.binary(BinaryOperator::subtract, b, c)),
+                    "a + (b - c)");
+    expect_rendered(ir.binary(BinaryOperator::multiply,
+                              ir.named("count"),
+                              ir.sizeof_type(types.intern("Element"))),
+                    "count * sizeof(Element)");
+    expect_rendered(
+        ir.static_cast_expr(types.intern("int"), ir.sizeof_type(types.intern("Element"))),
+        "static_cast<int>(sizeof(Element))");
 }
 
 TEST_F(ExprTest, CollectsSizeofTypeDependenciesThroughArithmetic) {
@@ -184,38 +171,36 @@ TEST_F(ExprTest, CollectsSizeofTypeDependenciesThroughArithmetic) {
 
 TEST_F(ExprTest, KeepsRawVerbatimAndProtectsNestedRawOperands) {
     Expr const raw_expr{ir.raw_expr("left, right")};
-    EXPECT_EQ(renderer.render(raw_expr), "left, right");
-    EXPECT_EQ(renderer.render(ir.return_stmt(raw_expr)), "return left, right;");
-    EXPECT_EQ(renderer.render(ir.call(ir.named("f"), {raw_expr})), "f((left, right))");
-    EXPECT_EQ(renderer.render(ir.call(ir.raw_expr("*function_pointer"))), "(*function_pointer)()");
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::equal, raw_expr, ir.literal("0"))),
-              "(left, right) == 0");
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::equal, ir.literal("0"), raw_expr)),
-              "0 == (left, right)");
-    EXPECT_EQ(renderer.render(ir.static_cast_expr(types.intern("int"), raw_expr)),
-              "static_cast<int>((left, right))");
-    EXPECT_EQ(renderer.render(ir.init_list({raw_expr})), "{(left, right)}");
+    expect_rendered(raw_expr, "left, right");
+    expect_rendered(ir.return_stmt(raw_expr), "return left, right;");
+    expect_rendered(ir.call(ir.named("f"), {raw_expr}), "f((left, right))");
+    expect_rendered(ir.call(ir.raw_expr("*function_pointer")), "(*function_pointer)()");
+    expect_rendered(ir.binary(BinaryOperator::equal, raw_expr, ir.literal("0")),
+                    "(left, right) == 0");
+    expect_rendered(ir.binary(BinaryOperator::equal, ir.literal("0"), raw_expr),
+                    "0 == (left, right)");
+    expect_rendered(ir.static_cast_expr(types.intern("int"), raw_expr),
+                    "static_cast<int>((left, right))");
+    expect_rendered(ir.init_list({raw_expr}), "{(left, right)}");
 }
 
 TEST_F(ExprTest, RendersMemberAccessAndSubscriptsWithPostfixBinding) {
     auto const other_values{ir.member_access(ir.named("other"), "values")};
     auto const element{ir.subscript(other_values, ir.named("index"))};
-    EXPECT_EQ(renderer.render(element), "other.values[index]");
-    EXPECT_EQ(renderer.render(ir.call(ir.member_access(element, "size"))),
-              "other.values[index].size()");
-    EXPECT_EQ(renderer.render(ir.subscript(ir.call(ir.named("get_values")), ir.named("index"))),
-              "get_values()[index]");
-    EXPECT_EQ(renderer.render(ir.call(ir.member_access(ir.named("values"), "set"),
-                                      {ir.named("index"), ir.literal("42")})),
-              "values.set(index, 42)");
+    expect_rendered(element, "other.values[index]");
+    expect_rendered(ir.call(ir.member_access(element, "size")), "other.values[index].size()");
+    expect_rendered(ir.subscript(ir.call(ir.named("get_values")), ir.named("index")),
+                    "get_values()[index]");
+    expect_rendered(
+        ir.call(ir.member_access(ir.named("values"), "set"), {ir.named("index"), ir.literal("42")}),
+        "values.set(index, 42)");
     auto const difference{ir.binary(BinaryOperator::subtract, ir.named("end"), ir.named("count"))};
-    EXPECT_EQ(renderer.render(ir.subscript(other_values, difference)), "other.values[end - count]");
-    EXPECT_EQ(renderer.render(ir.subscript(difference, ir.named("index"))), "(end - count)[index]");
-    EXPECT_EQ(renderer.render(ir.member_access(difference, "value")), "(end - count).value");
-    EXPECT_EQ(renderer.render(ir.member_access(ir.raw_expr("*pointer"), "value")),
-              "(*pointer).value");
-    EXPECT_EQ(renderer.render(ir.subscript(ir.raw_expr("*pointer"), ir.raw_expr("first, last"))),
-              "(*pointer)[(first, last)]");
+    expect_rendered(ir.subscript(other_values, difference), "other.values[end - count]");
+    expect_rendered(ir.subscript(difference, ir.named("index")), "(end - count)[index]");
+    expect_rendered(ir.member_access(difference, "value"), "(end - count).value");
+    expect_rendered(ir.member_access(ir.raw_expr("*pointer"), "value"), "(*pointer).value");
+    expect_rendered(ir.subscript(ir.raw_expr("*pointer"), ir.raw_expr("first, last")),
+                    "(*pointer)[(first, last)]");
 }
 
 TEST_F(ExprTest, PreservesSubtractionAndComparisonPrecedence) {
@@ -226,24 +211,19 @@ TEST_F(ExprTest, PreservesSubtractionAndComparisonPrecedence) {
     auto const comparison{ir.binary(BinaryOperator::greater_equal, a, b)};
     auto const equality{ir.binary(BinaryOperator::equal, a, b)};
 
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::subtract, subtraction, c)), "a - b - c");
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::subtract, c, subtraction)), "c - (a - b)");
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::greater_equal, subtraction, c)),
-              "a - b >= c");
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::subtract, comparison, c)), "(a >= b) - c");
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::subtract, c, comparison)), "c - (a >= b)");
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::equal, comparison, c)), "a >= b == c");
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::greater_equal, equality, c)),
-              "(a == b) >= c");
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::greater_equal, c, comparison)),
-              "c >= (a >= b)");
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::greater, subtraction, c)), "a - b > c");
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::greater, equality, c)), "(a == b) > c");
-    EXPECT_EQ(renderer.render(
-                  ir.binary(BinaryOperator::greater, a, ir.binary(BinaryOperator::greater, b, c))),
-              "a > (b > c)");
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::subtract, c, ir.raw_expr("a - b"))),
-              "c - (a - b)");
+    expect_rendered(ir.binary(BinaryOperator::subtract, subtraction, c), "a - b - c");
+    expect_rendered(ir.binary(BinaryOperator::subtract, c, subtraction), "c - (a - b)");
+    expect_rendered(ir.binary(BinaryOperator::greater_equal, subtraction, c), "a - b >= c");
+    expect_rendered(ir.binary(BinaryOperator::subtract, comparison, c), "(a >= b) - c");
+    expect_rendered(ir.binary(BinaryOperator::subtract, c, comparison), "c - (a >= b)");
+    expect_rendered(ir.binary(BinaryOperator::equal, comparison, c), "a >= b == c");
+    expect_rendered(ir.binary(BinaryOperator::greater_equal, equality, c), "(a == b) >= c");
+    expect_rendered(ir.binary(BinaryOperator::greater_equal, c, comparison), "c >= (a >= b)");
+    expect_rendered(ir.binary(BinaryOperator::greater, subtraction, c), "a - b > c");
+    expect_rendered(ir.binary(BinaryOperator::greater, equality, c), "(a == b) > c");
+    expect_rendered(ir.binary(BinaryOperator::greater, a, ir.binary(BinaryOperator::greater, b, c)),
+                    "a > (b > c)");
+    expect_rendered(ir.binary(BinaryOperator::subtract, c, ir.raw_expr("a - b")), "c - (a - b)");
 }
 
 TEST_F(ExprTest, CollectsMemberObjectAndSubscriptIndexDependencies) {
@@ -259,14 +239,14 @@ TEST_F(ExprTest, CollectsMemberObjectAndSubscriptIndexDependencies) {
 }
 
 TEST_F(ExprTest, EscapesStringContentsWithoutConsumingFollowingDigits) {
-    EXPECT_EQ(renderer.render(ir.string_literal("")), "\"\"");
-    EXPECT_EQ(renderer.render(ir.string_literal("a\"b\\c\n\r\t")), "\"a\\\"b\\\\c\\n\\r\\t\"");
-    EXPECT_EQ(renderer.render(ir.string_literal(std::string_view{"\0"
-                                                                 "7\001"
-                                                                 "f\177",
-                                                                 5})),
-              "\"\\0007\\001f\\177\"");
-    EXPECT_EQ(renderer.render(ir.string_literal("caf\xc3\xa9")), "\"caf\xc3\xa9\"");
+    expect_rendered(ir.string_literal(""), "\"\"");
+    expect_rendered(ir.string_literal("a\"b\\c\n\r\t"), "\"a\\\"b\\\\c\\n\\r\\t\"");
+    expect_rendered(ir.string_literal(std::string_view{"\0"
+                                                       "7\001"
+                                                       "f\177",
+                                                       5}),
+                    "\"\\0007\\001f\\177\"");
+    expect_rendered(ir.string_literal("caf\xc3\xa9"), "\"caf\xc3\xa9\"");
     EXPECT_EQ(escape_cpp_string(std::string_view{"\0"
                                                  "7\001"
                                                  "f\177",
@@ -314,21 +294,20 @@ TEST_F(ExprTest, StmtsCollectInitializersAndAssignmentOperands) {
 }
 
 TEST_F(ExprTest, PreservesAbsentEmptyAndStructuredInitializers) {
-    EXPECT_EQ(renderer.render(ir.instance_member(types.intern("int"), ir.strings.intern("value"))),
-              "int value;");
-    EXPECT_EQ(renderer.render(ir.instance_member(
-                  types.intern("int"), ir.strings.intern("value"), ir.raw_expr(""))),
-              "int value{};");
-    EXPECT_EQ(renderer.render(ir.instance_member(
-                  types.intern("int"), ir.strings.intern("value"), ir.literal("42"))),
-              "int value{42};");
-    EXPECT_EQ(renderer.render(
-                  ir.variable(types.intern("int"), ir.strings.intern("value"), ir.raw_expr(""))),
-              "int value{};");
-    EXPECT_EQ(renderer.render(ir.variable(
-                  types.intern("auto const"), ir.strings.intern("value"), ir.call(ir.named("f")))),
-              "auto const value{f()};");
-    EXPECT_EQ(renderer.render(ir.return_stmt()), "return;");
+    expect_rendered(ir.instance_member(types.intern("int"), ir.strings.intern("value")),
+                    "int value;");
+    expect_rendered(
+        ir.instance_member(types.intern("int"), ir.strings.intern("value"), ir.raw_expr("")),
+        "int value{};");
+    expect_rendered(
+        ir.instance_member(types.intern("int"), ir.strings.intern("value"), ir.literal("42")),
+        "int value{42};");
+    expect_rendered(ir.variable(types.intern("int"), ir.strings.intern("value"), ir.raw_expr("")),
+                    "int value{};");
+    expect_rendered(
+        ir.variable(types.intern("auto const"), ir.strings.intern("value"), ir.call(ir.named("f"))),
+        "auto const value{f()};");
+    expect_rendered(ir.return_stmt(), "return;");
 }
 
 TEST_F(AstTest, RendersNestedControlFlowWithExplicitBreaksAndSpacing) {
@@ -361,13 +340,12 @@ TEST_F(AstTest, RendersNestedControlFlowWithExplicitBreaksAndSpacing) {
 }
 
 TEST_F(AstTest, RendersEmptyControlFlowAndStandaloneBlocks) {
-    EXPECT_EQ(renderer.render(ir.block({})), "{\n\n}");
-    EXPECT_EQ(renderer.render(ir.block({ir.return_stmt()})), "{\n    return;\n}");
-    EXPECT_EQ(renderer.render(ir.if_stmt(ir.named("ready"), ir.block({}))), "if (ready) {\n\n}");
-    EXPECT_EQ(renderer.render(ir.switch_stmt(ir.named("mode"), {})), "switch (mode) {\n}");
-    EXPECT_EQ(renderer.render(
-                  ir.switch_stmt(ir.named("mode"), {ir.switch_case(std::nullopt, ir.block({}))})),
-              "switch (mode) {\ndefault: {\n\n}\n}");
+    expect_rendered(ir.block({}), "{\n\n}");
+    expect_rendered(ir.block({ir.return_stmt()}), "{\n    return;\n}");
+    expect_rendered(ir.if_stmt(ir.named("ready"), ir.block({})), "if (ready) {\n\n}");
+    expect_rendered(ir.switch_stmt(ir.named("mode"), {}), "switch (mode) {\n}");
+    expect_rendered(ir.switch_stmt(ir.named("mode"), {ir.switch_case(std::nullopt, ir.block({}))}),
+                    "switch (mode) {\ndefault: {\n\n}\n}");
 }
 
 TEST_F(AstTest, VisitsBothBranchesAndAllSwitchBodiesInOrder) {

@@ -22,15 +22,40 @@
 #include <lispb/schema/type_graph.h>
 #include <lispb/strings.h>
 
+#include <gtest/gtest.h>
+
+#include <algorithm>
 #include <concepts>
 #include <cstddef>
 #include <optional>
+#include <source_location>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 
 namespace lispb::codegen {
+
+template <typename Exception, typename Operation>
+auto capture_exception_message(Operation operation) -> std::optional<std::string> {
+    try {
+        operation();
+    } catch (Exception const& error) {
+        return std::string{error.what()};
+    }
+    return std::nullopt;
+}
+
+inline void
+    expect_dependency_edge(schema::TypeGraph const& graph,
+                           schema::TypeId const consumer,
+                           schema::TypeId const dependency,
+                           std::source_location const location = std::source_location::current()) {
+    ::testing::ScopedTrace const trace{
+        location.file_name(), static_cast<int>(location.line()), "dependency edge"};
+    EXPECT_TRUE(std::ranges::contains(graph.dependencies_of(consumer), dependency));
+    EXPECT_TRUE(std::ranges::contains(graph.users_of(dependency), consumer));
+}
 
 template <typename Store, typename Initialise>
 auto append_test_row(Store& store, Initialise initialise) {

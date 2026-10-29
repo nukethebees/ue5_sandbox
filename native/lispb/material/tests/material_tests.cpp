@@ -81,6 +81,12 @@ auto read(std::filesystem::path const& path) -> std::string {
     return std::string{std::istreambuf_iterator<char>{stream}, std::istreambuf_iterator<char>{}};
 }
 
+auto node_count(MaterialIR const& material, NodeKind const kind) -> std::ptrdiff_t {
+    return std::ranges::count_if(material.nodes.handles(), [&](NodeHandle const node) {
+        return material.nodes.kind(node) == kind;
+    });
+}
+
 TEST(MaterialFrontend, LowersUiGlowGoldenSourceWithStableHandles) {
     auto const source_path{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} /
                            "Plugins/SandboxUI/Source/SandboxUI/Private/materials/"
@@ -99,10 +105,7 @@ TEST(MaterialFrontend, LowersUiGlowGoldenSourceWithStableHandles) {
         EXPECT_EQ(material.parameters.node[index].value, index);
     }
     EXPECT_EQ(material.nodes.kind(NodeHandle{4}), NodeKind::texture_coordinate);
-    EXPECT_EQ(std::ranges::count_if(
-                  node_handles,
-                  [&](NodeHandle node) { return material.nodes.kind(node) == NodeKind::sample; }),
-              2);
+    EXPECT_EQ(node_count(material, NodeKind::sample), 2);
     auto const custom{std::ranges::find_if(node_handles, [&](NodeHandle node) {
         return material.nodes.kind(node) == NodeKind::custom;
     })};
@@ -163,9 +166,7 @@ TEST(CompiledMaterial, RoundTripsDeterministically) {
     EXPECT_EQ(decoded->material.text(decoded->source_hash), source_hash);
     EXPECT_EQ(decoded->material.text(decoded->material.settings.name), "M_UiGlowComposite");
     EXPECT_EQ(decoded->material.parameters.size(), 4);
-    EXPECT_TRUE(std::ranges::any_of(decoded->material.nodes.handles(), [&](NodeHandle node) {
-        return decoded->material.nodes.kind(node) == NodeKind::component_mask;
-    }));
+    EXPECT_GT(node_count(decoded->material, NodeKind::component_mask), 0);
     EXPECT_TRUE(validate(decoded->material).empty());
 }
 
@@ -226,19 +227,10 @@ TEST(MaterialFrontend, LowersWorldSurfaceSettingsInstanceDataAndOpacity) {
                    material.nodes.instance_data_index(node) == instance_data_index;
         }));
     }
-    EXPECT_TRUE(std::ranges::any_of(node_handles, [&](NodeHandle node) {
-        return material.nodes.kind(node) == NodeKind::time;
-    }));
-    EXPECT_TRUE(std::ranges::any_of(node_handles, [&](NodeHandle node) {
-        return material.nodes.kind(node) == NodeKind::saturate;
-    }));
-    EXPECT_TRUE(std::ranges::any_of(node_handles, [&](NodeHandle node) {
-        return material.nodes.kind(node) == NodeKind::lerp;
-    }));
-    EXPECT_EQ(std::ranges::count_if(
-                  node_handles,
-                  [&](NodeHandle node) { return material.nodes.kind(node) == NodeKind::custom; }),
-              2);
+    EXPECT_GT(node_count(material, NodeKind::time), 0);
+    EXPECT_GT(node_count(material, NodeKind::saturate), 0);
+    EXPECT_GT(node_count(material, NodeKind::lerp), 0);
+    EXPECT_EQ(node_count(material, NodeKind::custom), 2);
     ASSERT_EQ(material.outputs.size(), 2);
     EXPECT_EQ(material.text(material.outputs.name[1]), "opacity");
     EXPECT_TRUE(validate(material).empty());
@@ -253,9 +245,7 @@ TEST(MaterialFrontend, LowersWorldSurfaceSettingsInstanceDataAndOpacity) {
     EXPECT_EQ(decoded->material.settings.shading_model, ShadingModel::unlit);
     EXPECT_TRUE(decoded->material.settings.used_with_instanced_static_meshes);
     EXPECT_EQ(decoded->material.parameters.size(), 16);
-    EXPECT_TRUE(std::ranges::any_of(decoded->material.nodes.handles(), [&](NodeHandle node) {
-        return decoded->material.nodes.kind(node) == NodeKind::time;
-    }));
+    EXPECT_GT(node_count(decoded->material, NodeKind::time), 0);
 }
 
 TEST(MaterialFrontend, LowersTimeTrigDynamicVectorsAndNaryArithmetic) {
@@ -274,7 +264,6 @@ TEST(MaterialFrontend, LowersTimeTrigDynamicVectorsAndNaryArithmetic) {
     ASSERT_TRUE(result.material.has_value())
         << (result.diagnostics.empty() ? "" : result.diagnostics.front().message);
     auto const& material{*result.material};
-    auto const node_handles{material.nodes.handles()};
 
     auto const binding_ids{material.bindings.handles()};
     auto const find_binding{[&](std::string_view const name) -> NodeHandle {
@@ -289,12 +278,8 @@ TEST(MaterialFrontend, LowersTimeTrigDynamicVectorsAndNaryArithmetic) {
     EXPECT_EQ(material.nodes.kind(find_binding("pulse")), NodeKind::multiply);
     EXPECT_EQ(material.nodes.kind(find_binding("offset")), NodeKind::cosine);
     EXPECT_EQ(material.nodes.kind(find_binding("tint")), NodeKind::vector_constructor);
-    EXPECT_TRUE(std::ranges::any_of(node_handles, [&](NodeHandle node) {
-        return material.nodes.kind(node) == NodeKind::time;
-    }));
-    EXPECT_TRUE(std::ranges::any_of(node_handles, [&](NodeHandle node) {
-        return material.nodes.kind(node) == NodeKind::sine;
-    }));
+    EXPECT_GT(node_count(material, NodeKind::time), 0);
+    EXPECT_GT(node_count(material, NodeKind::sine), 0);
     auto const emissive{material.outputs.node.front()};
     EXPECT_EQ(material.nodes.kind(emissive), NodeKind::multiply);
     EXPECT_EQ(material.nodes.inputs(emissive).size(), 4);
@@ -369,28 +354,20 @@ TEST(MaterialFrontend, LowersMigratedMaterialsToNativeScaffoldingAndTypedShaderL
     }
 
     auto const& energy_shield{*materials[1].material};
-    EXPECT_TRUE(std::ranges::any_of(energy_shield.nodes.handles(), [&](NodeHandle node) {
-        return energy_shield.nodes.kind(node) == NodeKind::subtract;
-    }));
+    EXPECT_GT(node_count(energy_shield, NodeKind::subtract), 0);
     EXPECT_TRUE(std::ranges::any_of(energy_shield.nodes.handles(), [&](NodeHandle node) {
         return energy_shield.nodes.kind(node) == NodeKind::shader_call &&
                energy_shield.text(energy_shield.nodes.shader_function(node)) == "sbx_energy_shield";
     }));
 
     auto const& glowing_cross{*materials[3].material};
-    EXPECT_TRUE(std::ranges::none_of(glowing_cross.nodes.handles(), [&](NodeHandle node) {
-        return glowing_cross.nodes.kind(node) == NodeKind::custom ||
-               glowing_cross.nodes.kind(node) == NodeKind::shader_call;
-    }));
-    EXPECT_TRUE(std::ranges::any_of(glowing_cross.nodes.handles(), [&](NodeHandle node) {
-        return glowing_cross.nodes.kind(node) == NodeKind::texture_object;
-    }));
+    EXPECT_EQ(node_count(glowing_cross, NodeKind::custom), 0);
+    EXPECT_EQ(node_count(glowing_cross, NodeKind::shader_call), 0);
+    EXPECT_GT(node_count(glowing_cross, NodeKind::texture_object), 0);
 
     auto const& construction_spawn{*materials[5].material};
     EXPECT_EQ(construction_spawn.settings.blend_mode, BlendMode::masked);
-    EXPECT_TRUE(std::ranges::any_of(construction_spawn.nodes.handles(), [&](NodeHandle node) {
-        return construction_spawn.nodes.kind(node) == NodeKind::transform_position;
-    }));
+    EXPECT_GT(node_count(construction_spawn, NodeKind::transform_position), 0);
     EXPECT_TRUE(std::ranges::any_of(construction_spawn.outputs.handles(), [&](NamedNodeId output) {
         return construction_spawn.text(construction_spawn.outputs.name[output.value]) ==
                "opacity-mask";
@@ -398,12 +375,7 @@ TEST(MaterialFrontend, LowersMigratedMaterialsToNativeScaffoldingAndTypedShaderL
 
     auto const& tactical_scan{*materials[8].material};
     EXPECT_EQ(tactical_scan.settings.domain, MaterialDomain::post_process);
-    EXPECT_EQ(std::ranges::count_if(tactical_scan.nodes.handles(),
-                                    [&](NodeHandle node) {
-                                        return tactical_scan.nodes.kind(node) ==
-                                               NodeKind::scene_texture;
-                                    }),
-              2);
+    EXPECT_EQ(node_count(tactical_scan, NodeKind::scene_texture), 2);
 }
 
 TEST(MaterialIR, RejectsForgedForwardHandlesAndMalformedNodes) {

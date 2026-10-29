@@ -69,17 +69,15 @@ TEST_F(AstTest, NodeListBuilderComposesSectionsAndSpacing) {
 }
 
 TEST_F(AstTest, RendersFriendDeclarations) {
-    EXPECT_EQ(renderer.render(ir.friend_declaration(ir.strings.intern("FOwner"))),
-              "friend class FOwner;");
-    EXPECT_EQ(
-        renderer.render(ir.friend_declaration(ir.strings.intern("FValue"), RecordKind::struct_)),
-        "friend struct FValue;");
+    expect_rendered(ir.friend_declaration(ir.strings.intern("FOwner")), "friend class FOwner;");
+    expect_rendered(ir.friend_declaration(ir.strings.intern("FValue"), RecordKind::struct_),
+                    "friend struct FValue;");
 }
 
 TEST_F(AstTest, RendersComments) {
-    EXPECT_EQ(renderer.render(ir.line_comment("Lifetime")), "// Lifetime");
-    EXPECT_EQ(renderer.render(ir.block_comment("****************************************")),
-              "/* **************************************** */");
+    expect_rendered(ir.line_comment("Lifetime"), "// Lifetime");
+    expect_rendered(ir.block_comment("****************************************"),
+                    "/* **************************************** */");
 }
 
 TEST_F(AstTest, RendersStaticAssertionsWithOptionalMessages) {
@@ -87,9 +85,8 @@ TEST_F(AstTest, RendersStaticAssertionsWithOptionalMessages) {
     NodeId const with_message{ir.static_assertion(ir.store_text("valid<Value>"),
                                                   ir.store_text("Value must be \"valid\"."))};
 
-    EXPECT_EQ(renderer.render(without_message), "static_assert(sizeof(Value) == 16);");
-    EXPECT_EQ(renderer.render(with_message),
-              "static_assert(valid<Value>, \"Value must be \\\"valid\\\".\");");
+    expect_rendered(without_message, "static_assert(sizeof(Value) == 16);");
+    expect_rendered(with_message, "static_assert(valid<Value>, \"Value must be \\\"valid\\\".\");");
 
     auto const dependency{ir.types.dependency("a::valid", "a/validation.h")};
     auto const predicate{ir.call(ir.type_reference(ir.types.named("a::valid", {dependency})), {})};
@@ -104,39 +101,35 @@ TEST_F(AstTest, RendersStaticAssertionsWithOptionalMessages) {
 }
 
 TEST_F(AstTest, RendersTypedStmts) {
-    EXPECT_EQ(renderer.render(ir.expr_stmt(ir.raw_expr("apply(value)"))), "apply(value);");
-    EXPECT_EQ(renderer.render(ir.return_stmt(ir.raw_expr("value"))), "return value;");
-    EXPECT_EQ(renderer.render(ir.return_stmt()), "return;");
-    EXPECT_EQ(renderer.render(ir.assignment(ir.raw_expr("target"), ir.raw_expr("value"))),
-              "target = value;");
-    EXPECT_EQ(renderer.render(ir.variable(types.intern("auto const"),
-                                          ir.strings.intern("count"),
-                                          ir.raw_expr("values.Num()"))),
-              "auto const count{values.Num()};");
+    expect_rendered(ir.expr_stmt(ir.raw_expr("apply(value)")), "apply(value);");
+    expect_rendered(ir.return_stmt(ir.raw_expr("value")), "return value;");
+    expect_rendered(ir.return_stmt(), "return;");
+    expect_rendered(ir.assignment(ir.raw_expr("target"), ir.raw_expr("value")), "target = value;");
+    expect_rendered(ir.variable(types.intern("auto const"),
+                                ir.strings.intern("count"),
+                                ir.raw_expr("values.Num()")),
+                    "auto const count{values.Num()};");
 
     auto const left{ir.named("left")};
     auto const right{ir.named("right")};
     auto const comparison{ir.binary(BinaryOperator::three_way, left, right)};
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::less_equal, comparison, ir.literal("0"))),
-              "left <=> right <= 0");
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::three_way,
-                                        ir.binary(BinaryOperator::less_equal, left, right),
-                                        ir.literal("0"))),
-              "(left <= right) <=> 0");
-    EXPECT_EQ(renderer.render(ir.unary(UnaryOperator::negate, comparison)), "-(left <=> right)");
+    expect_rendered(ir.binary(BinaryOperator::less_equal, comparison, ir.literal("0")),
+                    "left <=> right <= 0");
+    expect_rendered(ir.binary(BinaryOperator::three_way,
+                              ir.binary(BinaryOperator::less_equal, left, right),
+                              ir.literal("0")),
+                    "(left <= right) <=> 0");
+    expect_rendered(ir.unary(UnaryOperator::negate, comparison), "-(left <=> right)");
 
     auto const conjunction{ir.binary(BinaryOperator::logical_and, left, right)};
-    EXPECT_EQ(
-        renderer.render(ir.binary(BinaryOperator::logical_or, conjunction, ir.named("other"))),
-        "(left && right) || other");
-    EXPECT_EQ(
-        renderer.render(ir.binary(BinaryOperator::logical_or, ir.named("other"), conjunction)),
-        "other || (left && right)");
-    EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::logical_or, conjunction, conjunction)),
-              "(left && right) || (left && right)");
-    EXPECT_EQ(
-        renderer.render(ir.binary(BinaryOperator::logical_and, conjunction, ir.named("other"))),
-        "left && right && other");
+    expect_rendered(ir.binary(BinaryOperator::logical_or, conjunction, ir.named("other")),
+                    "(left && right) || other");
+    expect_rendered(ir.binary(BinaryOperator::logical_or, ir.named("other"), conjunction),
+                    "other || (left && right)");
+    expect_rendered(ir.binary(BinaryOperator::logical_or, conjunction, conjunction),
+                    "(left && right) || (left && right)");
+    expect_rendered(ir.binary(BinaryOperator::logical_and, conjunction, ir.named("other")),
+                    "left && right && other");
 }
 
 TEST_F(AstTest, TypedStmtsReportDependencies) {
@@ -371,8 +364,8 @@ TEST_F(AstTest, RendersTypedFunctionFormattingPolicies) {
         .requires_placement = FunctionRequiresPlacement::trailing_same_line,
         .template_placement = FunctionTemplatePlacement::same_line,
     };
-    EXPECT_EQ(
-        renderer.render(ir.record(ir.strings.intern("FValue"), {ir.header_function(compact)})),
+    expect_rendered(
+        ir.record(ir.strings.intern("FValue"), {ir.header_function(compact)}),
         "struct FValue {\n"
         "    template <typename TFunc> void apply() requires Invocable<TFunc> { func(); }\n"
         "};");
@@ -381,30 +374,28 @@ TEST_F(AstTest, RendersTypedFunctionFormattingPolicies) {
     ir.function_formatting(prefixed) = FunctionFormatting{
         .requires_placement = FunctionRequiresPlacement::before_signature,
     };
-    EXPECT_EQ(
-        renderer.render(ir.record(ir.strings.intern("FValue"), {ir.header_function(prefixed)})),
-        "struct FValue {\n"
-        "    template <typename TFunc>\n"
-        "        requires Invocable<TFunc>\n"
-        "    void apply() {\n"
-        "        func();\n"
-        "    }\n"
-        "};");
+    expect_rendered(ir.record(ir.strings.intern("FValue"), {ir.header_function(prefixed)}),
+                    "struct FValue {\n"
+                    "    template <typename TFunc>\n"
+                    "        requires Invocable<TFunc>\n"
+                    "    void apply() {\n"
+                    "        func();\n"
+                    "    }\n"
+                    "};");
 
     auto separate_brace{compact};
     ir.set_function_template(separate_brace, {});
     ir.function_formatting(separate_brace) = FunctionFormatting{
         .opening_brace_placement = FunctionOpeningBracePlacement::separate_line,
     };
-    EXPECT_EQ(renderer.render(
-                  ir.record(ir.strings.intern("FValue"), {ir.header_function(separate_brace)})),
-              "struct FValue {\n"
-              "    void apply()\n"
-              "        requires Invocable<TFunc>\n"
-              "    {\n"
-              "        func();\n"
-              "    }\n"
-              "};");
+    expect_rendered(ir.record(ir.strings.intern("FValue"), {ir.header_function(separate_brace)}),
+                    "struct FValue {\n"
+                    "    void apply()\n"
+                    "        requires Invocable<TFunc>\n"
+                    "    {\n"
+                    "        func();\n"
+                    "    }\n"
+                    "};");
 }
 
 TEST_F(AstTest, RendersConstrainedStructuresAndSpecialMembers) {
@@ -469,12 +460,11 @@ TEST_F(AstTest, RendersDeclarationsAndOutOfLineDefinitionsFromOneSpec) {
     ir.set_function_body(function, {ir.raw("stored = value;")});
     ir.set_function_noexcept(function);
 
-    EXPECT_EQ(renderer.render(ir.declaration(function)),
-              "void set(int32 const value = 0) noexcept;");
-    EXPECT_EQ(renderer.render(ir.definition(function, types.intern("FValue"))),
-              "void FValue::set(int32 const value) noexcept {\n"
-              "    stored = value;\n"
-              "}");
+    expect_rendered(ir.declaration(function), "void set(int32 const value = 0) noexcept;");
+    expect_rendered(ir.definition(function, types.intern("FValue")),
+                    "void FValue::set(int32 const value) noexcept {\n"
+                    "    stored = value;\n"
+                    "}");
 }
 
 TEST_F(AstTest, CollectsTrailingReturnTypeDependencies) {
@@ -521,13 +511,13 @@ TEST_F(AstTest, RendersQualifiedTrailingReturnAndDefaultedConstructor) {
     ir.set_function_return_type(function, types.intern("int32"), ReturnSyntax::trailing);
     ir.set_function_receiver(function, FunctionReceiver::static_);
     ir.function_flags(function).set_is_constexpr(true);
-    EXPECT_EQ(renderer.render(ir.declaration(function)),
-              "static constexpr auto qualified_placeholder_return() -> int32;");
+    expect_rendered(ir.declaration(function),
+                    "static constexpr auto qualified_placeholder_return() -> int32;");
 
     auto const constructor{ir.constructor(ir.strings.intern("FValue"))};
     ir.set_function_defaulted(constructor);
-    EXPECT_EQ(renderer.render(ir.definition(constructor, ir.types.intern("FValue"))),
-              "FValue::FValue() = default;");
+    expect_rendered(ir.definition(constructor, ir.types.intern("FValue")),
+                    "FValue::FValue() = default;");
 
     auto const dependency{types.dependency("a::make_value", "a/value.h")};
     auto const factory{ir.call(ir.type_reference(types.named("a::make_value", {dependency})), {})};
@@ -593,25 +583,23 @@ TEST_F(AstTest, AppliesStaticAndDefaultArgumentRulesToFunctionForms) {
     ir.function_flags(function).set_is_inline(true);
     ir.function_flags(function).set_define_in_header(true);
 
-    EXPECT_EQ(
-        renderer.render(ir.record(ir.strings.intern("FValue"), {ir.header_function(function)})),
-        "struct FValue {\n"
-        "    static int32 make(int32 const value = 7) {\n"
-        "        return value;\n"
-        "    }\n"
-        "};");
-    EXPECT_EQ(renderer.render(ir.definition(function, ir.types.intern("FValue"))),
-              "int32 FValue::make(int32 const value) {\n"
-              "    return value;\n"
-              "}");
+    expect_rendered(ir.record(ir.strings.intern("FValue"), {ir.header_function(function)}),
+                    "struct FValue {\n"
+                    "    static int32 make(int32 const value = 7) {\n"
+                    "        return value;\n"
+                    "    }\n"
+                    "};");
+    expect_rendered(ir.definition(function, ir.types.intern("FValue")),
+                    "int32 FValue::make(int32 const value) {\n"
+                    "    return value;\n"
+                    "}");
 }
 
 TEST_F(AstTest, RendersEmptyEnumsWithoutAnEnumerator) {
 
-    EXPECT_EQ(renderer.render(ir.enumeration(ir.strings.intern("Empty"), {}, {})),
-              "enum class Empty {\n\n};");
-    EXPECT_EQ(renderer.render(ir.enumeration(ir.strings.intern("Empty"), {}, {}, {}, false)),
-              "enum Empty {\n\n};");
+    expect_rendered(ir.enumeration(ir.strings.intern("Empty"), {}, {}), "enum class Empty {\n\n};");
+    expect_rendered(ir.enumeration(ir.strings.intern("Empty"), {}, {}, {}, false),
+                    "enum Empty {\n\n};");
 }
 
 TEST_F(AstTest, RendersEnumsAndExportedFreeFunctions) {
@@ -626,20 +614,18 @@ TEST_F(AstTest, RendersEnumsAndExportedFreeFunctions) {
                        },
                        ir.strings.intern("PROJECT_API"))};
 
-    EXPECT_EQ(renderer.render(value),
-              "enum class PROJECT_API EMode : uint8 {\n"
-              "    First = 1,\n"
-              "    Second UMETA(DisplayName = \"Second Value\"),\n"
-              "};");
+    expect_rendered(value,
+                    "enum class PROJECT_API EMode : uint8 {\n"
+                    "    First = 1,\n"
+                    "    Second UMETA(DisplayName = \"Second Value\"),\n"
+                    "};");
     auto const function{ir.function(ir.strings.intern("to_string_view"), types.intern("auto"))};
     ir.set_function_return_type(function, types.intern("FStringView"), ReturnSyntax::trailing);
     ir.set_function_export_specifier(function, ir.strings.intern("PROJECT_API"));
-    EXPECT_EQ(renderer.render(ir.declaration(function)),
-              "PROJECT_API auto to_string_view() -> FStringView;");
-    EXPECT_EQ(renderer.render(ir.definition(function)),
-              "auto to_string_view() -> FStringView {\n\n}");
-    EXPECT_EQ(renderer.render(ir.namespace_node(ir.strings.intern(""), {ir.raw("int value;")})),
-              "namespace {\nint value;\n} // namespace");
+    expect_rendered(ir.declaration(function), "PROJECT_API auto to_string_view() -> FStringView;");
+    expect_rendered(ir.definition(function), "auto to_string_view() -> FStringView {\n\n}");
+    expect_rendered(ir.namespace_node(ir.strings.intern(""), {ir.raw("int value;")}),
+                    "namespace {\nint value;\n} // namespace");
 }
 
 struct NamespaceCase {
@@ -701,15 +687,14 @@ TEST_F(AstTest, RestoresNamespaceContextAndRetainsAnonymousLookup) {
     auto const output{renderer.render_nodes(std::vector<NodeId>{local, member}, {}, 1)};
     EXPECT_TRUE(output.contains("namespace {\nToken value{};"));
     EXPECT_TRUE(output.ends_with("a::b::Token value{};"));
-    EXPECT_EQ(renderer.render(member), "a::b::Token value{};");
-    EXPECT_EQ(renderer.render(local), renderer.render(local));
+    expect_rendered(member, "a::b::Token value{};");
+    expect_rendered(local, renderer.render(local));
 }
 
 TEST_F(AstTest, OmitsImportsIntoTheirOwningNamespaceAndRetainsOtherImports) {
     auto const dependency{ir.types.dependency("a::lookup", "Lookup.h")};
     auto const imported{ir.using_import(ir.types.named("a::lookup", {dependency}))};
-    EXPECT_EQ(renderer.render(in_namespace(ir, "a", imported)),
-              "namespace a {\n\n} // namespace a");
+    expect_rendered(in_namespace(ir, "a", imported), "namespace a {\n\n} // namespace a");
     EXPECT_NE(renderer.render(in_namespace(ir, "b", imported)).find("using a::lookup;"),
               std::string::npos);
     EXPECT_NE(renderer.render(in_namespace(ir, "a::nested", imported)).find("using a::lookup;"),

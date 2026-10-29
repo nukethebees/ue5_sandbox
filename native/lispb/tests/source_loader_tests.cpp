@@ -504,13 +504,10 @@ TEST_F(SourceLoaderTest, RecordParameterDefaultsRejectCompleteDefinitionCycles) 
                  (record B (function consume void (parameter value first::A :default "{}"))
     (projections (cpp)))))"}) {
         files.write_root(schema);
-        try {
-            static_cast<void>(files.graph());
-            FAIL();
-        } catch (std::invalid_argument const& error) {
-            EXPECT_TRUE(std::string{error.what()}.contains("complete-definition dependency cycle"))
-                << error.what();
-        }
+        auto const message{
+            capture_exception_message<std::invalid_argument>([&] { return files.graph(); })};
+        ASSERT_TRUE(message);
+        EXPECT_TRUE(message->contains("complete-definition dependency cycle")) << *message;
     }
 }
 
@@ -576,11 +573,11 @@ TEST_F(SourceLoaderTest, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteD
           (record Consumer (projections (cpp)) )"} +
                          signature + R"()
           (struct Layout :layout-only true (member xs array float))))");
-        try {
-            static_cast<void>(files.graph());
-            FAIL() << signature;
-        } catch (std::invalid_argument const& error) {
-            EXPECT_TRUE(std::string{error.what()}.contains("has no C++ owner")) << error.what();
+        {
+            auto const message{
+                capture_exception_message<std::invalid_argument>([&] { return files.graph(); })};
+            ASSERT_TRUE(message) << signature;
+            EXPECT_TRUE(message->contains("has no C++ owner")) << *message;
         }
     }
     files.write_root(R"((module consumers :header "Consumers.h"
@@ -588,23 +585,23 @@ TEST_F(SourceLoaderTest, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteD
     (projections (cpp))))
       (module providers :header "Providers.h" :namespace providers
         (struct Layout :layout-only true (member xs array float))))");
-    try {
-        static_cast<void>(files.graph());
-        FAIL();
-    } catch (std::invalid_argument const& error) {
-        EXPECT_TRUE(std::string{error.what()}.contains("has no C++ owner")) << error.what();
+    {
+        auto const message{
+            capture_exception_message<std::invalid_argument>([&] { return files.graph(); })};
+        ASSERT_TRUE(message);
+        EXPECT_TRUE(message->contains("has no C++ owner")) << *message;
     }
     files.write_root(R"((module values :header "Values.h"
       (record A (function make B :body ("return {};"))
     (projections (cpp)))
       (record B (function make A :body ("return {};"))
     (projections (cpp)))))");
-    try {
-        static_cast<void>(files.graph());
-        FAIL();
-    } catch (std::invalid_argument const& error) {
-        EXPECT_TRUE(std::string{error.what()}.contains("complete-definition dependency cycle"));
-        EXPECT_TRUE(std::string{error.what()}.contains("A -> B -> A"));
+    {
+        auto const message{
+            capture_exception_message<std::invalid_argument>([&] { return files.graph(); })};
+        ASSERT_TRUE(message);
+        EXPECT_TRUE(message->contains("complete-definition dependency cycle"));
+        EXPECT_TRUE(message->contains("A -> B -> A"));
     }
     files.write_root(R"((module first :header "First.h" :namespace first
       (record A (function make second::B :body ("return {};"))
@@ -612,12 +609,12 @@ TEST_F(SourceLoaderTest, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteD
       (module second :header "Second.h" :namespace second
         (record B (member a first::A)
     (projections (cpp)))))");
-    try {
-        static_cast<void>(files.graph());
-        FAIL();
-    } catch (std::invalid_argument const& error) {
-        EXPECT_TRUE(std::string{error.what()}.contains("complete-definition dependency cycle"));
-        EXPECT_TRUE(std::string{error.what()}.contains("first::A -> second::B -> first::A"));
+    {
+        auto const message{
+            capture_exception_message<std::invalid_argument>([&] { return files.graph(); })};
+        ASSERT_TRUE(message);
+        EXPECT_TRUE(message->contains("complete-definition dependency cycle"));
+        EXPECT_TRUE(message->contains("first::A -> second::B -> first::A"));
     }
 }
 
@@ -727,10 +724,7 @@ TEST_F(SourceLoaderTest, ScalarProjectionKeepsSemanticIdentityAndDependencies) {
                                 packed,
                                 *find_test_type(graph, "vitals", "Fleet"),
                                 *find_test_type(graph, "consumers", "Other")}) {
-        EXPECT_NE(std::ranges::find(graph.dependencies_of(consumer), health),
-                  graph.dependencies_of(consumer).end());
-        EXPECT_NE(std::ranges::find(graph.users_of(health), consumer),
-                  graph.users_of(health).end());
+        expect_dependency_edge(graph, consumer, health);
     }
     auto const generated{files.render(manifest)};
     auto const& header{generated.front().content};
@@ -1119,13 +1113,10 @@ TEST_F(SourceLoaderTest, RejectsRetiredDeclarationModuleHeads) {
                              "facade-module"}) {
         SCOPED_TRACE(head);
         files.write_root("(" + std::string{head} + " retired :header \"Retired.h\")");
-        try {
-            static_cast<void>(files.load());
-            FAIL() << "Retired module head was accepted";
-        } catch (lispb::codegen::sexpr::SourceError const& error) {
-            EXPECT_NE(std::string{error.what()}.find("unknown module declaration"),
-                      std::string::npos);
-        }
+        auto const message{
+            capture_exception_message<sexpr::SourceError>([&] { return files.load(); })};
+        ASSERT_TRUE(message) << "Retired module head was accepted";
+        EXPECT_NE(message->find("unknown module declaration"), std::string::npos);
     }
 }
 
@@ -2003,26 +1994,18 @@ TEST_F(SourceLoaderTest, RejectsNonIntegerPackedFieldWidthWithSourceLocation) {
     (projections (cpp :storage uint8))))
 )");
 
-    try {
-        static_cast<void>(files.load());
-        FAIL() << "Expected manifest error";
-    } catch (lispb::codegen::sexpr::SourceError const& error) {
-        auto const message{std::string{error.what()}};
-        EXPECT_TRUE(message.contains("modules.lispb:6:31")) << message;
-        EXPECT_TRUE(message.contains("member bits must be an integer")) << message;
-    }
+    auto const message{capture_exception_message<sexpr::SourceError>([&] { return files.load(); })};
+    ASSERT_TRUE(message) << "Expected manifest error";
+    EXPECT_TRUE(message->contains("modules.lispb:6:31")) << *message;
+    EXPECT_TRUE(message->contains("member bits must be an integer")) << *message;
 }
 
 TEST_F(SourceLoaderTest, ReportsSourceLocationForUnknownProperties) {
     files.write_root("(umbrella-module all\n  :header \"All.h\"\n  :headers ()\n  :typo true)\n");
 
-    try {
-        static_cast<void>(files.load());
-        FAIL() << "Expected manifest error";
-    } catch (lispb::codegen::sexpr::SourceError const& error) {
-        auto const message{std::string{error.what()}};
-        expect_contains_all(message, {"modules.lispb:4:3", "unknown property ':typo'"});
-    }
+    auto const message{capture_exception_message<sexpr::SourceError>([&] { return files.load(); })};
+    ASSERT_TRUE(message) << "Expected manifest error";
+    expect_contains_all(*message, {"modules.lispb:4:3", "unknown property ':typo'"});
 }
 
 TEST_F(SourceLoaderTest, RejectsUnknownModuleDeclarations) {
@@ -2144,14 +2127,10 @@ TEST_F(SourceLoaderTest, AcceptsEmptyCppBodyAndRejectsWrongRawTag) {
   (struct FData
     (function wrong void :body #hlsl{return 0;}hlsl#)))
 )");
-    try {
-        static_cast<void>(files.load());
-        FAIL() << "Expected manifest error";
-    } catch (lispb::codegen::sexpr::SourceError const& error) {
-        auto const message{std::string{error.what()}};
-        expect_contains_all(message,
-                            {"body requires a #cpp raw literal; got #hlsl", "modules.lispb:5:32"});
-    }
+    auto const message{capture_exception_message<sexpr::SourceError>([&] { return files.load(); })};
+    ASSERT_TRUE(message) << "Expected manifest error";
+    expect_contains_all(*message,
+                        {"body requires a #cpp raw literal; got #hlsl", "modules.lispb:5:32"});
 }
 
 TEST_F(SourceLoaderTest, RejectsRawLiteralForOrdinaryTextField) {
@@ -2255,12 +2234,9 @@ TEST_F(SourceLoaderTest, ReadOnlyViewFunctionRejectsMutableReceiver) {
     (member values array float)
     (view-function read float :const false :body #cpp{return 0;}cpp#)))
 )");
-    try {
-        static_cast<void>(files.load());
-        FAIL() << "Expected a const receiver diagnostic";
-    } catch (lispb::codegen::sexpr::SourceError const& error) {
-        EXPECT_TRUE(std::string{error.what()}.contains("view-function must be const"));
-    }
+    auto const message{capture_exception_message<sexpr::SourceError>([&] { return files.load(); })};
+    ASSERT_TRUE(message) << "Expected a const receiver diagnostic";
+    EXPECT_TRUE(message->contains("view-function must be const"));
 }
 
 } // namespace

@@ -67,6 +67,7 @@
 #include <format>
 #include <map>
 #include <optional>
+#include <source_location>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -101,6 +102,16 @@ auto manifest_with(CompilerTestContext& context,
                                     {std::move(module)}};
 }
 
+template <typename Module>
+void expect_invalid_module(CompilerTestContext& context,
+                           Module const module,
+                           std::source_location const location = std::source_location::current()) {
+    ::testing::ScopedTrace const trace{
+        location.file_name(), static_cast<int>(location.line()), "invalid module"};
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
+                 std::invalid_argument);
+}
+
 auto valid_soa_module(CompilerTestContext& context) -> lispb::codegen::ModuleHandle {
     return parse_test_manifest(context, R"(
 (module soa :header "Soa.h" :source "Soa.cpp"
@@ -124,14 +135,11 @@ TEST(Validation, EnumStringTablesRequireKnownDenseZeroBasedCodes) {
                                           "(enum State int {} {} (projections (cpp))))",
                                           options,
                                           values)};
-            try {
-                render_test_manifest(context, parse_test_manifest(context, source));
-                FAIL() << "Expected dense enum diagnostic";
-            } catch (std::invalid_argument const& error) {
-                EXPECT_NE(std::string_view{error.what()}.find("zero-based contiguous codes"),
-                          std::string_view::npos)
-                    << error.what();
-            }
+            auto const message{capture_exception_message<std::invalid_argument>(
+                [&] { render_test_manifest(context, parse_test_manifest(context, source)); })};
+            ASSERT_TRUE(message) << "Expected dense enum diagnostic";
+            EXPECT_NE(message->find("zero-based contiguous codes"), std::string_view::npos)
+                << *message;
         }
     }
 }
@@ -184,12 +192,10 @@ TEST(Validation, FunctionQualifiersAreSharedByRecordsAndAllSoaReceivers) {
             if (diagnostic.empty()) {
                 EXPECT_NO_THROW(lispb::schema::resolve_type_graph(manifest));
             } else {
-                try {
-                    lispb::schema::resolve_type_graph(manifest);
-                    FAIL() << "Expected " << diagnostic;
-                } catch (std::invalid_argument const& error) {
-                    EXPECT_TRUE(std::string{error.what()}.contains(diagnostic)) << error.what();
-                }
+                auto const message{capture_exception_message<std::invalid_argument>(
+                    [&] { lispb::schema::resolve_type_graph(manifest); })};
+                ASSERT_TRUE(message) << "Expected " << diagnostic;
+                EXPECT_TRUE(message->contains(diagnostic)) << *message;
             }
         }
     };
@@ -637,8 +643,7 @@ TEST(Validation, RejectsEmptyModuleNames) {
         return row_0;
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsInvalidEnumDefinitions) {
@@ -653,8 +658,7 @@ TEST(Validation, RejectsInvalidEnumDefinitions) {
         declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.values[row_0] = {};
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_enum_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -669,8 +673,7 @@ TEST(Validation, RejectsInvalidEnumDefinitions) {
                 return declarations.range(rows);
             }();
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_enum_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -681,16 +684,14 @@ TEST(Validation, RejectsInvalidEnumDefinitions) {
                     enumerators.name[row_0] = strings.intern("bad-name");
                 });
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_enum_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.underlying_type[row_0] = make_test_type_ref(context, "@missing");
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 struct EnumDomainCase {
@@ -733,8 +734,7 @@ TEST_P(EnumDomainValidation, AppliesWidthAndSignednessToKnownValues) {
     if (test_case.valid) {
         EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
     } else {
-        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                     std::invalid_argument);
+        expect_invalid_module(context, module);
     }
 }
 
@@ -783,16 +783,14 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
         declarations, normal_modules.declarations[module], integer_scalars, [&](auto const row_0) {
             integer_scalars.bit_width[row_0] = 3;
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_integer_scalar_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], integer_scalars, [&](auto const row_0) {
             integer_scalars.minimum_value[row_0] = -1;
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_integer_scalar_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -810,8 +808,7 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
                 return declarations.range(rows_1);
             }();
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_integer_scalar_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -829,8 +826,7 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
                 return declarations.range(rows_1);
             }();
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_integer_scalar_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -848,8 +844,7 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
                 return declarations.range(rows_1);
             }();
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_integer_scalar_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -867,8 +862,7 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
                 return declarations.range(rows_1);
             }();
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_integer_scalar_module(context);
     normal_modules.settings[module] = [&] {
@@ -1005,8 +999,7 @@ TEST(Validation, ValidatesRecordMemberRelationshipUnits) {
         }();
         return declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     normal_modules.declarations[module] = [&] {
         auto const original_items{declarations.items(normal_modules.declarations[module])};
@@ -1036,8 +1029,7 @@ TEST(Validation, ValidatesRecordMemberRelationshipUnits) {
         }();
         return declarations.range(rows_3);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     normal_modules.declarations[module] = [&] {
         auto const original_items{declarations.items(normal_modules.declarations[module])};
@@ -1129,8 +1121,7 @@ TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
                         });
                 });
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], soas, [&](auto const row_2) {
@@ -1148,8 +1139,7 @@ TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
                         });
                 });
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], soas, [&](auto const row_2) {
@@ -1218,8 +1208,7 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
                                 : std::nullopt;
                     });
             });
-        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                     std::invalid_argument);
+        expect_invalid_module(context, module);
     }
 
     auto module{valid_integer_scalar_module(context)};
@@ -1248,8 +1237,7 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
                     semantic_relations.unit[new_semantic_relations] = std::nullopt;
                 });
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_integer_scalar_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -1264,8 +1252,7 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
                         SemanticRelationUnit::elements;
                 });
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_integer_scalar_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -1784,19 +1771,16 @@ TEST(Validation, RejectsInvalidEnumModuleConfiguration) {
     auto module{valid_enum_module(context)};
     auto settings_row{module_settings_store.index(normal_modules.settings[module])};
     module_settings_store.namespace_name[settings_row] = strings.intern("project");
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_enum_module(context);
     settings_row = module_settings_store.index(normal_modules.settings[module]);
     module_settings_store.source[settings_row].reset();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_enum_module(context);
     normal_modules.enum_helper_namespace[module] = strings.intern("bad-name");
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_enum_module(context);
     auto enum_row{enums.index(declarations.items(normal_modules.declarations[module]).front())};
@@ -1804,16 +1788,14 @@ TEST(Validation, RejectsInvalidEnumModuleConfiguration) {
     auto conversions{std::vector(original_conversions.begin(), original_conversions.end())};
     conversions.push_back(EnumConversion::string_view);
     enums.conversions[enum_row] = declarations.range(conversions);
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_enum_module(context);
     enum_row = enums.index(declarations.items(normal_modules.declarations[module]).front());
     enums.reflection[enum_row] = EnumReflection::none;
     auto const first_value{declarations.items(enums.values[enum_row]).front()};
     declarations.enumerators.hidden[first_value] = true;
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
@@ -1864,16 +1846,14 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
             declarations.items(normal_modules.declarations[valid_enum_module(context)]).front());
         return declarations.range(rows);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_native_enum_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.reflection[row_0] = EnumReflection::uenum;
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_native_enum_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -1888,16 +1868,14 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
             enums.conversions[row_0] =
                 declarations.range<lispb::codegen::EnumConversion>({EnumConversion::string_view});
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_native_enum_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.export_specifier[row_0] = strings.intern("PROJECT_API");
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_native_enum_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -1918,8 +1896,7 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
                         EnumReflection::none;
                 });
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_enum_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -1938,8 +1915,7 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
                         strings.intern("project/NativeEnums.h");
                 });
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsIncompleteOrAmbiguousSerializedEnumNames) {
@@ -1960,8 +1936,7 @@ TEST(Validation, RejectsIncompleteOrAmbiguousSerializedEnumNames) {
                 return declarations.range(rows);
             }();
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_enum_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -1998,8 +1973,7 @@ TEST(Validation, RejectsIncompleteOrAmbiguousSerializedEnumNames) {
                 return declarations.range(rows);
             }();
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
@@ -2047,8 +2021,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
                          enumerators.initializer[new_enumerators] = strings.intern(code);
                      })});
             });
-        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                     std::invalid_argument);
+        expect_invalid_module(context, module);
     }
 
     module = valid_native_enum_module(context);
@@ -2086,16 +2059,14 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
                     enumerators.hidden[row_0] = true;
                 });
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_enum_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.count[row_0] = strings.intern("Value");
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_enum_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -2106,8 +2077,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
         declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.count[row_0] = strings.intern("Missing");
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_enum_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -2145,8 +2115,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
         declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.count[row_0] = strings.intern("COUNT");
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_enum_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -2169,8 +2138,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
         declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.count[row_0] = strings.intern("COUNT");
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_enum_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -2191,8 +2159,7 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
         declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.count[row_0] = strings.intern("COUNT");
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, SupportsSignedEnumValuesWhenTheyFitTheUnderlyingType) {
@@ -2348,16 +2315,14 @@ TEST(Validation, RejectsInvalidStaticTableModuleConfiguration) {
         declarations, normal_modules.declarations[module], static_tables, [&](auto const row_0) {
             static_tables.rows[row_0] = {};
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_static_table_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], static_tables, [&](auto const row_0) {
             static_tables.columns[row_0] = {};
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsInvalidStaticTableNamesAndTypes) {
@@ -2378,8 +2343,7 @@ TEST(Validation, RejectsInvalidStaticTableNamesAndTypes) {
                 .front());
         return declarations.range(rows);
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_static_table_module(context);
     normal_modules_schemas.declarations[normal_modules_schemas.index(module)] =
@@ -2399,8 +2363,7 @@ TEST(Validation, RejectsInvalidStaticTableNamesAndTypes) {
                     return declarations.range(rows);
                 }();
             });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_static_table_module(context);
     normal_modules_schemas.declarations[normal_modules_schemas.index(module)] =
@@ -2419,8 +2382,7 @@ TEST(Validation, RejectsInvalidStaticTableNamesAndTypes) {
                                                  strings.intern("bad-name");
                                          });
             });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_static_table_module(context);
     normal_modules_schemas
@@ -2445,8 +2407,7 @@ TEST(Validation, RejectsInvalidStaticTableNamesAndTypes) {
                 return declarations.range(rows);
             }();
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_static_table_module(context);
     normal_modules_schemas.declarations[normal_modules_schemas.index(module)] =
@@ -2465,8 +2426,7 @@ TEST(Validation, RejectsInvalidStaticTableNamesAndTypes) {
                                                  make_test_type_ref(context, "@missing");
                                          });
             });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 struct InvalidSchemaTextCase {
@@ -2485,8 +2445,7 @@ TEST_P(StaticTableColumnCollision, RejectsGeneratedApiNames) {
     declarations.static_table_columns.name[column] =
         context.storage.strings.intern(GetParam().value);
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -2689,8 +2648,7 @@ TEST(Validation, RejectsStaticTableGroupGetterCollisions) {
                 })});
         });
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsEmptyModuleOutputs) {
@@ -2702,8 +2660,7 @@ TEST(Validation, RejectsEmptyModuleOutputs) {
     auto const row{settings.index(normal_modules.settings[module])};
     settings.header[row] = {};
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 struct EmptyModuleSettingCase {
@@ -2721,8 +2678,7 @@ TEST_P(EmptyModuleSetting, RejectsPresentButEmptyValues) {
     auto const row{settings.index(declarations.normal_modules.settings[module])};
     (settings.*GetParam().column)[row] = context.storage.strings.intern("");
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -2750,8 +2706,7 @@ TEST_P(InvalidIncludeOrder, RejectsDuplicateAndEmptyPrefixes) {
     }
     declarations.module_settings_store.include_order[settings] = declarations.range(prefixes);
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -2770,8 +2725,7 @@ TEST(Validation, RejectsMalformedQualifiedNamespaces) {
     auto const row{settings.index(normal_modules.settings[module])};
     settings.namespace_name[row] = context.storage.strings.intern("project:::invalid");
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsDuplicateModuleNames) {
@@ -2815,8 +2769,7 @@ TEST(Validation, RejectsKeywordsInQualifiedNamespaces) {
     declarations.module_settings_store.namespace_name[settings] =
         context.storage.strings.intern("project::namespace");
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsEmptyTypeSpellings) {
@@ -2859,8 +2812,7 @@ TEST(Validation, RejectsEmptySoaNames) {
                              declarations.soas,
                              [&](auto const row_0) { declarations.soas.name[row_0] = {}; });
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsDuplicateSoaMembers) {
@@ -2886,8 +2838,7 @@ TEST(Validation, RejectsDuplicateSoaMembers) {
             }();
         });
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsMalformedSoaMemberIdentifiers) {
@@ -2909,8 +2860,7 @@ TEST(Validation, RejectsMalformedSoaMemberIdentifiers) {
                                      });
         });
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsIncompleteSoaFieldMaskDeclarations) {
@@ -2923,16 +2873,14 @@ TEST(Validation, RejectsIncompleteSoaFieldMaskDeclarations) {
         declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
             soas.field_enum_name[row_0].reset();
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_mask_soa_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
         declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
             soas.field_mask_name[row_0].reset();
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsInvalidSoaFieldMaskMembers) {
@@ -2950,8 +2898,7 @@ TEST(Validation, RejectsInvalidSoaFieldMaskMembers) {
                     soa_members.type[row_0] = make_test_type_ref(context, "uint8");
                 });
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_mask_soa_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -2968,8 +2915,7 @@ TEST(Validation, RejectsInvalidSoaFieldMaskMembers) {
                 return declarations.range(rows_1);
             }();
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_soa_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -2980,8 +2926,7 @@ TEST(Validation, RejectsInvalidSoaFieldMaskMembers) {
                     soa_members.mask_field[row_0] = true;
                 });
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsInvalidSoaMaskDimensions) {
@@ -3048,8 +2993,7 @@ TEST(Validation, RejectsInvalidSoaMaskDimensions) {
                 return declarations.range(rows_1);
             }();
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_mask_soa_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -3079,8 +3023,7 @@ TEST(Validation, RejectsInvalidSoaMaskDimensions) {
                 return declarations.range(rows_1);
             }();
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 using InvalidSoaMemberName = testing::TestWithParam<InvalidSchemaTextCase>;
@@ -3093,8 +3036,7 @@ TEST_P(InvalidSoaMemberName, RejectsReservedNamesAndGeneratedApiCollisions) {
     auto const member{declarations.items(declarations.soas.members[soa]).front()};
     declarations.soa_members.name[member] = context.storage.strings.intern(GetParam().value);
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 INSTANTIATE_TEST_SUITE_P(Validation,
@@ -3128,8 +3070,7 @@ TEST(Validation, RejectsUnknownSoaTypeReferences) {
                                      });
         });
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsCollidingGeneratedSoaTypeNames) {
@@ -3147,8 +3088,7 @@ TEST(Validation, RejectsCollidingGeneratedSoaTypeNames) {
         return declarations.range(rows);
     }();
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsReservedSoaNamespaceNames) {
@@ -3165,8 +3105,7 @@ TEST(Validation, RejectsReservedSoaNamespaceNames) {
                                      context.storage.strings.intern("Class");
                              });
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 using BlankSoaUsingDeclaration = testing::TestWithParam<InvalidSchemaTextCase>;
@@ -3179,8 +3118,7 @@ TEST_P(BlankSoaUsingDeclaration, RejectsBlankDeclarations) {
     declarations.soas.using_declarations[soa] =
         declarations.range<StringId>({context.storage.strings.intern(GetParam().value)});
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 INSTANTIATE_TEST_SUITE_P(Validation,
@@ -3230,8 +3168,7 @@ TEST(Validation, RejectsDuplicateCustomSoaFunctionParameters) {
                     })});
         });
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
@@ -3270,8 +3207,7 @@ TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
                 })});
         });
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_soa_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -3293,8 +3229,7 @@ TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
                 })});
         });
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsUnknownCustomSoaDependencies) {
@@ -3318,8 +3253,7 @@ TEST(Validation, RejectsUnknownCustomSoaDependencies) {
                 })});
         });
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_soa_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -3334,8 +3268,7 @@ TEST(Validation, RejectsUnknownCustomSoaDependencies) {
                 })});
         });
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
@@ -3357,8 +3290,7 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
                     functions_schemas.is_inline[new_functions] = true;
                 })});
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_soa_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -3372,8 +3304,7 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
                     functions_schemas.definition_in_source[new_functions] = true;
                 })});
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_soa_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -3387,8 +3318,7 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
                     functions_schemas.is_static[new_functions] = true;
                 })});
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_soa_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -3403,8 +3333,7 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
                         make_test_type_ref(context, "int32");
                 })});
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_soa_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -3417,8 +3346,7 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
                     functions_schemas.template_parameters[new_functions] = strings.intern(" \t");
                 })});
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_soa_module(context);
     normal_modules.declarations[module] = edit_first_test_item(
@@ -3431,8 +3359,7 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
                     functions_schemas.requires_clause[new_functions] = strings.intern(" \t");
                 })});
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 using SoaFunctionNameCollision = testing::TestWithParam<InvalidSchemaTextCase>;
@@ -3449,8 +3376,7 @@ TEST_P(SoaFunctionNameCollision, RejectsGeneratedApiAndTypeNames) {
     functions.is_inline[function] = true;
     declarations.soas.functions[soa] = declarations.range<FunctionSchemaId>({function});
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 INSTANTIATE_TEST_SUITE_P(Validation,
@@ -3510,8 +3436,7 @@ TEST(Validation, RejectsFacadesWithoutMethods) {
                              declarations.facades,
                              [&](auto const row_0) { declarations.facades.methods[row_0] = {}; });
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsUnknownFacadeAccess) {
@@ -3540,8 +3465,7 @@ TEST(Validation, RejectsMalformedFacadeMethodIdentifiers) {
                                      });
         });
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsOutOfLineFacadesWithoutSourceOutput) {
@@ -3555,8 +3479,7 @@ TEST(Validation, RejectsOutOfLineFacadesWithoutSourceOutput) {
         declarations.facades,
         [&](auto const row_0) { declarations.facades.definitions_in_source[row_0] = true; });
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, AllowsInlineFacadesInModulesWithSourceOutput) {
@@ -3608,8 +3531,7 @@ TEST(Validation, RejectsDuplicateFacadeMethodParameters) {
                 });
         });
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsDuplicateFacadeMethodSignatures) {
@@ -3641,8 +3563,7 @@ TEST(Validation, RejectsDuplicateFacadeMethodSignatures) {
             }();
         });
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsFacadeOverloadsDifferingOnlyByNoexcept) {
@@ -3667,8 +3588,7 @@ TEST(Validation, RejectsFacadeOverloadsDifferingOnlyByNoexcept) {
             }();
         });
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsFacadeMethodsCollidingWithBind) {
@@ -3702,8 +3622,7 @@ TEST(Validation, RejectsFacadeMethodsCollidingWithBind) {
                     })});
         });
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsNonTrailingFacadeDefaultArguments) {
@@ -3742,8 +3661,7 @@ TEST(Validation, RejectsNonTrailingFacadeDefaultArguments) {
                 });
         });
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsUnknownFacadeValidationDependencies) {
@@ -3760,8 +3678,7 @@ TEST(Validation, RejectsUnknownFacadeValidationDependencies) {
                 declarations.range<lispb::StringId>({context.storage.strings.intern("missing")});
         });
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsInvalidFacadeFriendAndMemberCollisions) {
@@ -3785,8 +3702,7 @@ TEST(Validation, RejectsInvalidFacadeFriendAndMemberCollisions) {
                 facades.friends[row_0] =
                     declarations.range<lispb::StringId>({strings.intern("class")});
             });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_facade_module(context);
     normal_modules_schemas.declarations[normal_modules_schemas.index(module)] =
@@ -3795,8 +3711,7 @@ TEST(Validation, RejectsInvalidFacadeFriendAndMemberCollisions) {
             normal_modules_schemas.declarations[normal_modules_schemas.index(module)],
             facades,
             [&](auto const row_0) { facades.target_member_name[row_0] = strings.intern("bind"); });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = valid_facade_module(context);
     normal_modules_schemas.declarations[normal_modules_schemas.index(module)] =
@@ -3819,8 +3734,7 @@ TEST(Validation, RejectsInvalidFacadeFriendAndMemberCollisions) {
                                      .front()];
                     });
             });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsDuplicateUmbrellaHeaders) {
@@ -3839,8 +3753,7 @@ TEST(Validation, RejectsDuplicateUmbrellaHeaders) {
     umbrella_modules.headers[module_row] =
         declarations.range<lispb::StringId>({strings.intern("Value.h"), strings.intern("Value.h")});
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsUmbrellaModulesWithoutHeaders) {
@@ -3855,8 +3768,7 @@ TEST(Validation, RejectsUmbrellaModulesWithoutHeaders) {
             module_settings_store.header[new_module_settings_store] = strings.intern("All.h");
         });
 
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsUnsupportedUmbrellaSourceAndNamespaceSettings) {
@@ -3875,8 +3787,7 @@ TEST(Validation, RejectsUnsupportedUmbrellaSourceAndNamespaceSettings) {
         });
     umbrella_modules.headers[module_row] =
         declarations.range<lispb::StringId>({strings.intern("Value.h")});
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     umbrella_modules.settings[module_row] = [&] {
         auto row_0{module_settings_store.clone(umbrella_modules.settings[module_row])};
@@ -3888,8 +3799,7 @@ TEST(Validation, RejectsUnsupportedUmbrellaSourceAndNamespaceSettings) {
         module_settings_store.namespace_name[row_0] = strings.intern("project");
         return row_0;
     }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, RejectsInvalidSettingsDefinitions) {
@@ -3934,8 +3844,7 @@ TEST(Validation, RejectsInvalidSettingsDefinitions) {
                         });
                 })});
     });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     settings_modules.settings_list[module] =
         edit_first_test_item(declarations,
@@ -3957,8 +3866,7 @@ TEST(Validation, RejectsInvalidSettingsDefinitions) {
                 return row_0;
             }();
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     settings_modules.settings_list[module] = edit_first_test_item(
         declarations,
@@ -3972,8 +3880,7 @@ TEST(Validation, RejectsInvalidSettingsDefinitions) {
                 return row_0;
             }();
         });
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
@@ -4004,8 +3911,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
                                      })});
                          })},
         "Mixed.cpp");
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = normal_module(
         context,
@@ -4024,8 +3930,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
                          })});
              })},
         "Mixed.cpp");
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     auto soa = append_test_row(soas, [&](auto const new_soas) {
         soas.name[new_soas] = strings.intern("Data");
@@ -4052,8 +3957,7 @@ TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
                                      })});
                          })},
         "Mixed.cpp");
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 
     module = normal_module(
         context,
@@ -4105,8 +4009,7 @@ TEST(Validation, NormalModuleAppliesSourceRequirementsPerDeclaration) {
     auto const source_facade{facades.clone(facade)};
     facades.definitions_in_source[source_facade] = true;
     module = normal_module(context, {source_facade});
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    expect_invalid_module(context, module);
 }
 
 TEST(Validation, NormalModuleCanMixIndependentEnumApis) {

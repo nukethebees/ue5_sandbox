@@ -741,10 +741,7 @@ TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
     EXPECT_EQ(linear_quantized.reserved_codes[linear_quantized.index(type)], 1U);
     EXPECT_EQ(linear_quantized.clipping[linear_quantized.index(type)],
               lispb::codegen::QuantizationClipping::clamp);
-    EXPECT_NE(std::ranges::find(graph.dependencies_of(*representation), *source),
-              graph.dependencies_of(*representation).end());
-    EXPECT_NE(std::ranges::find(graph.users_of(*source), *representation),
-              graph.users_of(*source).end());
+    codegen::expect_dependency_edge(graph, *representation, *source);
 
     auto const& varint_type{graph.definition(*varint)};
     EXPECT_EQ(
@@ -753,9 +750,7 @@ TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
         *source);
     EXPECT_EQ(integer_varints.encoding[integer_varints.index(varint_type)],
               lispb::codegen::IntegerVarintEncoding::unsigned_varint);
-    EXPECT_NE(std::ranges::find(graph.dependencies_of(*varint), *source),
-              graph.dependencies_of(*varint).end());
-    EXPECT_NE(std::ranges::find(graph.users_of(*source), *varint), graph.users_of(*source).end());
+    codegen::expect_dependency_edge(graph, *varint, *source);
 
     auto const& fixed_point_type{graph.definition(*fixed_point)};
     EXPECT_TRUE(fixed_points.signedness[fixed_points.index(fixed_point_type)]);
@@ -775,9 +770,7 @@ TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
     EXPECT_EQ(optional_sentinels.sentinel_value[optional_sentinels.index(optional_type)],
               lispb::codegen::PackedIntegerValue{1023});
     EXPECT_EQ(optional_sentinels.bit_width[optional_sentinels.index(optional_type)], 10U);
-    EXPECT_NE(std::ranges::find(graph.dependencies_of(*optional), *source),
-              graph.dependencies_of(*optional).end());
-    EXPECT_NE(std::ranges::find(graph.users_of(*source), *optional), graph.users_of(*source).end());
+    codegen::expect_dependency_edge(graph, *optional, *source);
 
     auto const& presence_type{graph.definition(*presence)};
     EXPECT_EQ(occurrences.type[occurrences.index(
@@ -787,9 +780,7 @@ TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
               10U);
     EXPECT_EQ(optional_presence_bits.encoded_bits[optional_presence_bits.index(presence_type)],
               11U);
-    EXPECT_NE(std::ranges::find(graph.dependencies_of(*presence), *source),
-              graph.dependencies_of(*presence).end());
-    EXPECT_NE(std::ranges::find(graph.users_of(*source), *presence), graph.users_of(*source).end());
+    codegen::expect_dependency_edge(graph, *presence, *source);
 
     auto const& mini_float_type{graph.definition(*mini_float)};
     EXPECT_EQ(mini_floats.sign_bits[mini_floats.index(mini_float_type)], 1U);
@@ -821,10 +812,7 @@ TEST(SemanticTypeGraph, ResolvesPackedFieldsAndDependencies) {
     EXPECT_EQ(layout.placements[1].offset, 24U);
     EXPECT_EQ(layout.placements[1].bits, 8U);
     EXPECT_EQ(layout.placements[1].type, entity_type);
-    EXPECT_NE(std::ranges::find(graph.dependencies_of(entity_id), entity_type),
-              graph.dependencies_of(entity_id).end());
-    EXPECT_NE(std::ranges::find(graph.users_of(entity_type), entity_id),
-              graph.users_of(entity_type).end());
+    codegen::expect_dependency_edge(graph, entity_id, entity_type);
 }
 
 TEST(SemanticTypeGraph, ResolvesPackedIntegerScalarDomainAndDependency) {
@@ -852,9 +840,7 @@ TEST(SemanticTypeGraph, ResolvesPackedIntegerScalarDomainAndDependency) {
     EXPECT_EQ(layout.placements[0].type, health);
     EXPECT_EQ(layout.placements[0].bits, 12U);
     EXPECT_EQ(layout.storage_bits, 16U);
-    EXPECT_NE(std::ranges::find(graph.dependencies_of(status), health),
-              graph.dependencies_of(status).end());
-    EXPECT_NE(std::ranges::find(graph.users_of(health), status), graph.users_of(health).end());
+    codegen::expect_dependency_edge(graph, status, health);
 }
 
 TEST(SemanticTypeGraph, RetainsPackedPhysicalOrdering) {
@@ -1048,9 +1034,7 @@ TEST(SemanticTypeGraph, ResolvesSoaColumnRelationshipsAndDependencies) {
         occurrences.type[occurrences.index(graph.relationships().target[graph.relationships().index(
             soa_columns.relationship[soa_columns.index(soas.columns_of(soa)[0])])])],
         *target);
-    EXPECT_NE(std::ranges::find(graph.dependencies_of(*user), *target),
-              graph.dependencies_of(*user).end());
-    EXPECT_NE(std::ranges::find(graph.users_of(*target), *user), graph.users_of(*target).end());
+    codegen::expect_dependency_edge(graph, *user, *target);
 }
 
 TEST(SemanticTypeGraph, ResolvesRecordMembersFixedArraysAndDependencies) {
@@ -1165,12 +1149,8 @@ TEST(SemanticTypeGraph, ResolvesRecordMembersFixedArraysAndDependencies) {
         occurrences.type[occurrences.index(graph.relationships().target[graph.relationships().index(
             record_members.relationship[record_members.index(records.members_of(record)[0])])])],
         *table);
-    EXPECT_NE(std::ranges::find(graph.dependencies_of(*path), *position),
-              graph.dependencies_of(*path).end());
-    EXPECT_NE(std::ranges::find(graph.users_of(*position), *path), graph.users_of(*position).end());
-    EXPECT_NE(std::ranges::find(graph.dependencies_of(*path), *table),
-              graph.dependencies_of(*path).end());
-    EXPECT_NE(std::ranges::find(graph.users_of(*table), *path), graph.users_of(*table).end());
+    codegen::expect_dependency_edge(graph, *path, *position);
+    codegen::expect_dependency_edge(graph, *path, *table);
 }
 
 TEST(SemanticTypeGraph, RejectsDirectAndIndirectByValueRecordCycles) {
