@@ -1,3 +1,5 @@
+#include "../../tests/temporary_project.h"
+
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
 #include <codegen/sexpr/indices.h>
@@ -15,8 +17,6 @@
 #include <gtest/gtest.h>
 
 #include <filesystem>
-#include <fstream>
-#include <iterator>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -44,47 +44,7 @@ constexpr std::string_view kernel_source = R"(
       (out-of-place multiply))))
 )";
 
-class TemporaryProject {
-  public:
-    explicit TemporaryProject(std::string_view const name)
-        : root_{std::filesystem::temp_directory_path() /
-                ("sandbox-kernel-codegen-" + std::string{name})} {
-        std::error_code ignored;
-        std::filesystem::remove_all(root_, ignored);
-        std::filesystem::create_directories(root_);
-        write(".clang-format", "BasedOnStyle: LLVM\nLineEnding: LF\n");
-    }
-
-    ~TemporaryProject() {
-        std::error_code ignored;
-        std::filesystem::remove_all(root_, ignored);
-    }
-
-    void write(std::filesystem::path const& relative_path, std::string_view const content) const {
-        auto const path{root_ / relative_path};
-        std::filesystem::create_directories(path.parent_path());
-        std::ofstream output{path, std::ios::binary};
-        if (!output) {
-            throw std::runtime_error{"Cannot write test file: " + path.string()};
-        }
-        output << content;
-    }
-
-    auto read(std::filesystem::path const& relative_path) const -> std::string {
-        auto const path{root_ / relative_path};
-        std::ifstream input{path, std::ios::binary};
-        if (!input) {
-            throw std::runtime_error{"Cannot read test file: " + path.string()};
-        }
-        return std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
-    }
-
-    auto path(std::filesystem::path const& relative_path) const -> std::filesystem::path {
-        return root_ / relative_path;
-    }
-  private:
-    std::filesystem::path root_;
-};
+using lispb::test_support::TemporaryProject;
 
 auto compile(TemporaryProject const& project,
              std::vector<std::filesystem::path> const& inputs,
@@ -109,7 +69,7 @@ auto compile(TemporaryProject const& project,
 }
 
 TEST(KernelCompiler, WritesChecksAndDetectsStaleOutputs) {
-    TemporaryProject project{"check-mode"};
+    TemporaryProject project{"kernel", "check-mode"};
     project.write("array_math.lispb", kernel_source);
     ASSERT_EQ(compile(project, {"array_math.lispb"}), 0);
     EXPECT_TRUE(
@@ -137,7 +97,7 @@ TEST(KernelCompiler, ValidationDoesNotProduceArtifacts) {
 }
 
 TEST(KernelCompiler, RejectsOutputCollisionsAcrossInputs) {
-    TemporaryProject project{"duplicate-outputs"};
+    TemporaryProject project{"kernel", "duplicate-outputs"};
     project.write("first.lispb", kernel_source);
     project.write("second.lispb", kernel_source);
 
@@ -146,7 +106,7 @@ TEST(KernelCompiler, RejectsOutputCollisionsAcrossInputs) {
 }
 
 TEST(KernelCompiler, EmitsReferenceTestsWhenRequested) {
-    TemporaryProject project{"reference-tests"};
+    TemporaryProject project{"kernel", "reference-tests"};
     auto source{std::string{kernel_source}};
     source.insert(source.find("    (header-include"), "    (tests \"ArrayKernelsTests.cpp\")\n");
     project.write("array_math.lispb", source);

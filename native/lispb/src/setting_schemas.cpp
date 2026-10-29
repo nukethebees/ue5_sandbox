@@ -1,5 +1,7 @@
 #include <codegen/schema/setting_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -23,30 +25,21 @@ auto SettingSchemas::append() -> SettingId {
     return SettingId{index + 1};
 }
 auto SettingSchemas::clone(SettingId id) -> SettingId {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    name[destination] = name[source_index];
-    label[destination] = label[source_index];
-    tooltip[destination] = tooltip[source_index];
-    category[destination] = category[source_index];
-    value_type[destination] = value_type[source_index];
-    backend[destination] = backend[source_index];
-    apply_mode[destination] = apply_mode[source_index];
-    device[destination] = device[source_index];
-    control[destination] = control[source_index];
-    return result;
+    return detail::clone_schema_row(*this,
+                                    id,
+                                    name,
+                                    label,
+                                    tooltip,
+                                    category,
+                                    value_type,
+                                    backend,
+                                    apply_mode,
+                                    device,
+                                    control);
 }
 void SettingSchemas::clear() {
-    name.clear();
-    label.clear();
-    tooltip.clear();
-    category.clear();
-    value_type.clear();
-    backend.clear();
-    apply_mode.clear();
-    device.clear();
-    control.clear();
+    detail::clear_schema_columns(
+        name, label, tooltip, category, value_type, backend, apply_mode, device, control);
 }
 
 }

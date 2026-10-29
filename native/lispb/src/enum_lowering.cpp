@@ -315,84 +315,37 @@ auto conversion_function(LoweringContext& context,
     ir.set_function_parameters(result, {ir.parameter(parameter_type + " const", "value")});
     ir.set_function_body(result, {ir.return_stmt(lookup)});
     ir.set_function_export_specifier(result, enums.export_specifier[schema]);
+    auto configure_result =
+        [&](std::string_view name, std::string_view type_name, bool construct = false) {
+            auto const type{
+                ir.types.intern(type_name, {ir.types.dependency(type_name, "CoreMinimal.h")})};
+            ir.set_function_name(result, ir.strings.intern(name));
+            ir.set_function_return_type(result, type, ReturnSyntax::trailing);
+            if (construct) {
+                ir.set_function_body(result, {ir.return_stmt(ir.init_list({lookup}, type))});
+            }
+        };
     switch (conversion) {
         case EnumConversion::lex_to_string:
-            ir.set_function_name(result, ir.strings.intern("LexToString"));
-            ir.set_function_return_type(
-                result,
-                ir.types.intern("TCHAR const*",
-                                {ir.types.dependency("TCHAR const*", "CoreMinimal.h")}),
-                ReturnSyntax::trailing);
+            configure_result("LexToString", "TCHAR const*");
             break;
         case EnumConversion::string_view:
-            ir.set_function_name(result, ir.strings.intern("to_string_view"));
-            ir.set_function_return_type(
-                result,
-                ir.types.intern("FStringView",
-                                {ir.types.dependency("FStringView", "CoreMinimal.h")}),
-                ReturnSyntax::trailing);
-            ir.set_function_body(
-                result,
-                {ir.return_stmt(ir.init_list(
-                    {lookup},
-                    ir.types.intern("FStringView",
-                                    {ir.types.dependency("FStringView", "CoreMinimal.h")})))});
+            configure_result("to_string_view", "FStringView", true);
             break;
         case EnumConversion::string:
-            ir.set_function_name(result, ir.strings.intern("to_string"));
-            ir.set_function_return_type(
-                result,
-                ir.types.intern("FString", {ir.types.dependency("FString", "CoreMinimal.h")}),
-                ReturnSyntax::trailing);
-            ir.set_function_body(
-                result,
-                {ir.return_stmt(ir.init_list(
-                    {lookup},
-                    ir.types.intern("FString",
-                                    {ir.types.dependency("FString", "CoreMinimal.h")})))});
+            configure_result("to_string", "FString", true);
             break;
         case EnumConversion::lex_to_display_string:
-            ir.set_function_name(result, ir.strings.intern("LexToDisplayString"));
-            ir.set_function_return_type(
-                result,
-                ir.types.intern("TCHAR const*",
-                                {ir.types.dependency("TCHAR const*", "CoreMinimal.h")}),
-                ReturnSyntax::trailing);
+            configure_result("LexToDisplayString", "TCHAR const*");
             break;
         case EnumConversion::display_string_view:
-            ir.set_function_name(result, ir.strings.intern("to_display_string_view"));
-            ir.set_function_return_type(
-                result,
-                ir.types.intern("FStringView",
-                                {ir.types.dependency("FStringView", "CoreMinimal.h")}),
-                ReturnSyntax::trailing);
-            ir.set_function_body(
-                result,
-                {ir.return_stmt(ir.init_list(
-                    {lookup},
-                    ir.types.intern("FStringView",
-                                    {ir.types.dependency("FStringView", "CoreMinimal.h")})))});
+            configure_result("to_display_string_view", "FStringView", true);
             break;
         case EnumConversion::display_string:
-            ir.set_function_name(result, ir.strings.intern("to_display_string"));
-            ir.set_function_return_type(
-                result,
-                ir.types.intern("FString", {ir.types.dependency("FString", "CoreMinimal.h")}),
-                ReturnSyntax::trailing);
-            ir.set_function_body(
-                result,
-                {ir.return_stmt(ir.init_list(
-                    {lookup},
-                    ir.types.intern("FString",
-                                    {ir.types.dependency("FString", "CoreMinimal.h")})))});
+            configure_result("to_display_string", "FString", true);
             break;
         case EnumConversion::lex_to_serialized_string:
-            ir.set_function_name(result, ir.strings.intern("LexToSerializedString"));
-            ir.set_function_return_type(
-                result,
-                ir.types.intern("TCHAR const*",
-                                {ir.types.dependency("TCHAR const*", "CoreMinimal.h")}),
-                ReturnSyntax::trailing);
+            configure_result("LexToSerializedString", "TCHAR const*");
             break;
         case EnumConversion::try_parse_serialized:
             break;
@@ -416,6 +369,22 @@ auto annotation(LoweringContext& context, EnumeratorId value, bool const reflect
         metadata.emplace_back("Hidden");
     }
     return "UMETA(" + join(metadata, ", ") + ")";
+}
+
+auto enum_values(LoweringContext& context, DeclarationHandle schema, bool reflected)
+    -> std::vector<EnumValueId> {
+    auto& ir{context.ir};
+    auto const& decls{context.declarations};
+    auto const& enumerators{decls.enumerators};
+    std::vector<EnumValueId> values;
+    values.reserve(decls.enums.values[schema].size());
+    for (auto const value : decls.items(decls.enums.values[schema])) {
+        values.push_back(
+            ir.enumerator(enumerators.name[value],
+                          enumerators.initializer[value],
+                          ir.store_optional_text(annotation(context, value, reflected))));
+    }
+    return values;
 }
 
 auto native_enum_name(LoweringContext& context, ModuleSettingsId settings, DeclarationHandle schema)
@@ -463,17 +432,13 @@ auto native_enum_declaration(LoweringContext& context, DeclarationHandle const s
     auto& ir{context.ir};
     auto const& enums{context.declarations.enums};
     auto const alias{context.text(enums.name[schema]) + "Underlying"};
-    auto const& enumerators{context.declarations.enumerators};
-    std::vector<EnumValueId> values;
-    for (auto const value : context.declarations.items(enums.values[schema])) {
-        values.push_back(ir.enumerator(enumerators.name[value], enumerators.initializer[value]));
-    }
-
     NodeListBuilder decls{ir};
     decls.add(ir.using_declaration(ir.strings.intern(alias), enum_underlying_type(context, schema)),
               2);
     decls.add(enum_bit_width_comment(context, schema), 1);
-    decls.add(ir.enumeration(enums.name[schema], ir.types.intern(alias), values), 2);
+    decls.add(ir.enumeration(
+                  enums.name[schema], ir.types.intern(alias), enum_values(context, schema, false)),
+              2);
 
     auto const helpers{context.declarations.items(enums.helpers[schema])};
     for (auto const helper : {NativeEnumHelper::to_string,
@@ -609,15 +574,6 @@ auto unreal_projection_header(LoweringContext& context,
     auto const underlying{ir.types.intern(
         unreal_underlying_type(ir.types.spelling(enum_underlying_type(context, schema))))};
     auto const& enums{context.declarations.enums};
-    auto const& enumerators{context.declarations.enumerators};
-    auto const enum_values{context.declarations.items(enums.values[schema])};
-    std::vector<EnumValueId> values;
-    values.reserve(enum_values.size());
-    for (auto const value : enum_values) {
-        values.push_back(ir.enumerator(enumerators.name[value],
-                                       enumerators.initializer[value],
-                                       ir.store_optional_text(annotation(context, value, true))));
-    }
 
     NodeListBuilder decls{ir};
     decls.add(enum_bit_width_comment(context, schema), 1);
@@ -625,12 +581,15 @@ auto unreal_projection_header(LoweringContext& context,
                          ? "UENUM(BlueprintType)"
                          : "UENUM()"),
               1);
-    decls.add(ir.enumeration(projections.name[projection], underlying, values), 2);
+    decls.add(ir.enumeration(
+                  projections.name[projection], underlying, enum_values(context, schema, true)),
+              2);
     decls.add(ir.using_declaration(ir.strings.intern(name + "Underlying"), underlying), 2);
     if (projections.enum_array[projection]) {
-        decls.add(ir.namespace_node(
-            ir.strings.intern("ioj"),
-            {enum_count_specialization(ir, ir.types.intern("::" + name), enum_values.size())}));
+        decls.add(
+            ir.namespace_node(ir.strings.intern("ioj"),
+                              {enum_count_specialization(
+                                  ir, ir.types.intern("::" + name), enums.values[schema].size())}));
     }
     return decls.build();
 }
@@ -705,7 +664,6 @@ auto lower_enum(LoweringContext& context,
                 std::optional<StringId> const helper_namespace) -> DeclarationEmission {
     auto& ir{context.ir};
     auto const& enums{context.declarations.enums};
-    auto const& enumerators{context.declarations.enumerators};
     auto const& settings_store{context.declarations.module_settings_store};
     DeclarationEmission emission;
     if (!enums.cpp_projection[schema]) {
@@ -804,18 +762,11 @@ auto lower_enum(LoweringContext& context,
                           ".generated.h"),
             IncludeStyle::quoted)};
     }
-    std::vector<EnumValueId> values;
-    for (auto const value : context.declarations.items(enums.values[schema])) {
-        values.push_back(
-            ir.enumerator(enumerators.name[value],
-                          enumerators.initializer[value],
-                          ir.store_optional_text(annotation(context, value, reflected))));
-    }
     decls.add(ir.enumeration(
                   enums.name[schema],
                   reflected ? ir.types.intern(unreal_underlying_type(ir.types.spelling(underlying)))
                             : ir.types.intern(underlying_alias),
-                  std::move(values)),
+                  enum_values(context, schema, reflected)),
               2);
     if (reflected) {
         // Preserve the built-in spelling required by UnrealHeaderTool for reflected enums.

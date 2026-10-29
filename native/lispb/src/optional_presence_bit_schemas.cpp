@@ -1,5 +1,7 @@
 #include <codegen/schema/optional_presence_bit_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -19,18 +21,10 @@ auto OptionalPresenceBitSchemas::append() -> DeclarationHandle {
         (static_cast<std::uint32_t>(DeclarationKind::optional_presence_bit) << 24) | (index + 1)};
 }
 auto OptionalPresenceBitSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    cpp_projection[destination] = cpp_projection[source_index];
-    name[destination] = name[source_index];
-    source[destination] = source[source_index];
-    return result;
+    return detail::clone_schema_row(*this, id, cpp_projection, name, source);
 }
 void OptionalPresenceBitSchemas::clear() {
-    cpp_projection.clear();
-    name.clear();
-    source.clear();
+    detail::clear_schema_columns(cpp_projection, name, source);
 }
 
 }

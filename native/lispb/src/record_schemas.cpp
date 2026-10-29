@@ -1,5 +1,7 @@
 #include <codegen/schema/record_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -34,48 +36,46 @@ auto RecordSchemas::append() -> DeclarationHandle {
                              (index + 1)};
 }
 auto RecordSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    cpp_projection[destination] = cpp_projection[source_index];
-    layout[destination] = layout[source_index];
-    bits[destination] = bits[source_index];
-    invalid_value[destination] = invalid_value[source_index];
-    bit_order[destination] = bit_order[source_index];
-    byte_order[destination] = byte_order[source_index];
-    name[destination] = name[source_index];
-    constraint_policy[destination] = constraint_policy[source_index];
-    generate_visitor[destination] = generate_visitor[source_index];
-    s7_tag[destination] = s7_tag[source_index];
-    s7_positional[destination] = s7_positional[source_index];
-    s7_constructor[destination] = s7_constructor[source_index];
-    s7_reader_includes[destination] = s7_reader_includes[source_index];
-    members[destination] = members[source_index];
-    export_specifier[destination] = export_specifier[source_index];
-    comparison[destination] = comparison[source_index];
-    comparison_noexcept[destination] = comparison_noexcept[source_index];
-    functions[destination] = functions[source_index];
-    return result;
+    return detail::clone_schema_row(*this,
+                                    id,
+                                    cpp_projection,
+                                    layout,
+                                    bits,
+                                    invalid_value,
+                                    bit_order,
+                                    byte_order,
+                                    name,
+                                    constraint_policy,
+                                    generate_visitor,
+                                    s7_tag,
+                                    s7_positional,
+                                    s7_constructor,
+                                    s7_reader_includes,
+                                    members,
+                                    export_specifier,
+                                    comparison,
+                                    comparison_noexcept,
+                                    functions);
 }
 void RecordSchemas::clear() {
-    cpp_projection.clear();
-    layout.clear();
-    bits.clear();
-    invalid_value.clear();
-    bit_order.clear();
-    byte_order.clear();
-    name.clear();
-    constraint_policy.clear();
-    generate_visitor.clear();
-    s7_tag.clear();
-    s7_positional.clear();
-    s7_constructor.clear();
-    s7_reader_includes.clear();
-    members.clear();
-    export_specifier.clear();
-    comparison.clear();
-    comparison_noexcept.clear();
-    functions.clear();
+    detail::clear_schema_columns(cpp_projection,
+                                 layout,
+                                 bits,
+                                 invalid_value,
+                                 bit_order,
+                                 byte_order,
+                                 name,
+                                 constraint_policy,
+                                 generate_visitor,
+                                 s7_tag,
+                                 s7_positional,
+                                 s7_constructor,
+                                 s7_reader_includes,
+                                 members,
+                                 export_specifier,
+                                 comparison,
+                                 comparison_noexcept,
+                                 functions);
 }
 
 }

@@ -68,6 +68,25 @@ auto minimal_source() -> std::string {
       :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue
         :position '(0 0 0) :rotation '(0 0 0)))))";
 }
+
+class OverrideReader {
+  public:
+    template <typename T>
+    auto assign(std::string_view const source, T& target, std::string_view const path = "value")
+        -> bool {
+        auto result{interpreter_.evaluate_ast(source).and_then([&](s7::Ast const& ast) {
+            return s7::read_override(s7::Reader{ast}, ast.root, path, target);
+        })};
+        if (!result) {
+            return false;
+        }
+        target = *result;
+        return true;
+    }
+  private:
+    s7::Interpreter interpreter_;
+};
+
 class TemporaryLevelDirectory {
   public:
     TemporaryLevelDirectory() {
@@ -95,24 +114,12 @@ static_assert(std::is_same_v<decltype(std::declval<LevelDefinition&>().entities(
                              std::vector<EntitySpawnDefinition> const&>);
 
 TEST(NativeSettings, PreservesExactIntegersAndRejectsOutOfRangeConversions) {
-    s7::Interpreter interpreter;
-    auto const assign{[&]<typename T>(std::string_view source, T& target) {
-        auto ast{interpreter.evaluate_ast(source)};
-        if (!ast) {
-            return false;
-        }
-        auto result{s7::read_override(s7::Reader{*ast}, ast->root, "value", target)};
-        if (!result) {
-            return false;
-        }
-        target = *result;
-        return true;
-    }};
+    OverrideReader reader;
     auto const maximum{std::numeric_limits<std::int64_t>::max()};
     std::int64_t integer{};
-    ASSERT_TRUE((assign(std::to_string(maximum), integer)));
+    ASSERT_TRUE(reader.assign(std::to_string(maximum), integer));
     EXPECT_EQ(integer, maximum);
-    ASSERT_TRUE((assign("9007199254740993", integer)));
+    ASSERT_TRUE(reader.assign("9007199254740993", integer));
     EXPECT_EQ(integer, 9007199254740993);
 
     constexpr std::string_view invalid_sources[]{"9223372036854775808.0",
@@ -122,41 +129,29 @@ TEST(NativeSettings, PreservesExactIntegersAndRejectsOutOfRangeConversions) {
                                                  s7::literals::nan};
     for (auto const invalid : invalid_sources) {
         SCOPED_TRACE(invalid);
-        EXPECT_FALSE((assign(invalid, integer)));
+        EXPECT_FALSE(reader.assign(invalid, integer));
         EXPECT_EQ(integer, 9007199254740993);
     }
-    ASSERT_TRUE((assign("-9223372036854775808", integer)));
+    ASSERT_TRUE(reader.assign("-9223372036854775808", integer));
     EXPECT_EQ(integer, std::numeric_limits<std::int64_t>::min());
 
     std::uint64_t unsigned_integer{7};
-    EXPECT_FALSE((assign("18446744073709551616.0", unsigned_integer)));
-    EXPECT_FALSE((assign("-1", unsigned_integer)));
+    EXPECT_FALSE(reader.assign("18446744073709551616.0", unsigned_integer));
+    EXPECT_FALSE(reader.assign("-1", unsigned_integer));
     EXPECT_EQ(unsigned_integer, 7u);
     PositiveFinite<float> real{3.f};
-    EXPECT_FALSE((assign("1e100", real)));
-    EXPECT_FALSE((assign(s7::literals::positive_infinity, real)));
+    EXPECT_FALSE(reader.assign("1e100", real));
+    EXPECT_FALSE(reader.assign(s7::literals::positive_infinity, real));
     EXPECT_EQ(real.get(), 3.f);
 }
 
 TEST(NativeSettings, AssignsWholeVectorsOnlyAfterEveryComponentConverts) {
     Vector3f target{1.f, 2.f, 3.f};
-    s7::Interpreter interpreter;
-    auto assign{[&](std::string_view source) {
-        auto ast{interpreter.evaluate_ast(source)};
-        if (!ast) {
-            return false;
-        }
-        auto result{s7::read_override(s7::Reader{*ast}, ast->root, "vector", target)};
-        if (!result) {
-            return false;
-        }
-        target = *result;
-        return true;
-    }};
-    EXPECT_FALSE(assign("'(4 5)"));
-    EXPECT_FALSE(assign("'(4 5 1e100)"));
+    OverrideReader reader;
+    EXPECT_FALSE(reader.assign("'(4 5)", target, "vector"));
+    EXPECT_FALSE(reader.assign("'(4 5 1e100)", target, "vector"));
     EXPECT_EQ(target, (Vector3f{1.f, 2.f, 3.f}));
-    ASSERT_TRUE(assign("'(4 5 6)"));
+    ASSERT_TRUE(reader.assign("'(4 5 6)", target, "vector"));
     EXPECT_EQ(target, (Vector3f{4.f, 5.f, 6.f}));
 }
 

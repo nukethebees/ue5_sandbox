@@ -1,3 +1,5 @@
+#include "../../tests/temporary_project.h"
+
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
 #include <codegen/sexpr/indices.h>
@@ -19,8 +21,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
-#include <fstream>
-#include <iterator>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -31,47 +31,7 @@
 namespace slate_codegen {
 namespace {
 
-class TemporaryProject {
-  public:
-    explicit TemporaryProject(std::string_view const name)
-        : root_{std::filesystem::temp_directory_path() /
-                ("sandbox-slate-codegen-" + std::string{name})} {
-        std::error_code ignored;
-        std::filesystem::remove_all(root_, ignored);
-        std::filesystem::create_directories(root_);
-        write(".clang-format", "BasedOnStyle: LLVM\nLineEnding: LF\n");
-    }
-
-    ~TemporaryProject() {
-        std::error_code ignored;
-        std::filesystem::remove_all(root_, ignored);
-    }
-
-    void write(std::filesystem::path const& relative_path, std::string_view const content) const {
-        auto const path{root_ / relative_path};
-        std::filesystem::create_directories(path.parent_path());
-        std::ofstream output{path, std::ios::binary};
-        if (!output) {
-            throw std::runtime_error{"Cannot write test file: " + path.string()};
-        }
-        output << content;
-    }
-
-    auto read(std::filesystem::path const& relative_path) const -> std::string {
-        auto const path{root_ / relative_path};
-        std::ifstream input{path, std::ios::binary};
-        if (!input) {
-            throw std::runtime_error{"Cannot read test file: " + path.string()};
-        }
-        return std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
-    }
-
-    auto path(std::filesystem::path const& relative_path) const -> std::filesystem::path {
-        return root_ / relative_path;
-    }
-  private:
-    std::filesystem::path root_;
-};
+using lispb::test_support::TemporaryProject;
 
 auto compile(TemporaryProject const& project,
              std::vector<std::filesystem::path> inputs,
@@ -113,7 +73,7 @@ auto expand(TemporaryProject const& project,
 }
 
 TEST(SlateCompiler, WritesMultipleOwnersAndQualifiedOutputPaths) {
-    TemporaryProject project{"multiple-owners"};
+    TemporaryProject project{"slate", "multiple-owners"};
     project.write("panels.lispb", R"(
 (widget-class SFirstPanel
   (function Build
@@ -138,7 +98,7 @@ TEST(SlateCompiler, WritesMultipleOwnersAndQualifiedOutputPaths) {
 }
 
 TEST(SlateCompiler, CheckModeDetectsStaleAndMissingOutputs) {
-    TemporaryProject project{"check-mode"};
+    TemporaryProject project{"slate", "check-mode"};
     project.write("panel.lispb", R"(
 (widget-class SPanel
   (function Build
@@ -157,7 +117,7 @@ TEST(SlateCompiler, CheckModeDetectsStaleAndMissingOutputs) {
 }
 
 TEST(SlateCompiler, RejectsDuplicateOwnersAcrossInputs) {
-    TemporaryProject project{"duplicate-owners"};
+    TemporaryProject project{"slate", "duplicate-owners"};
     auto const source{R"(
 (widget-class SPanel
   (function Build
@@ -176,7 +136,7 @@ TEST(SlateCompiler, RejectsDuplicateOwnersAcrossInputs) {
 }
 
 TEST(SlateCompiler, ExpandsIncludedMacrosWithoutChangingGeneratedCpp) {
-    TemporaryProject project{"macro-equivalence"};
+    TemporaryProject project{"slate", "macro-equivalence"};
     project.write("panel.lispb", R"(
 (widget-class SPanel
   (function Build
@@ -224,7 +184,7 @@ TEST(SlateCompiler, ExpandsIncludedMacrosWithoutChangingGeneratedCpp) {
 }
 
 TEST(SlateCompiler, ExpansionPreservesOpaqueRawMacroArguments) {
-    TemporaryProject project{"raw-macro-expansion"};
+    TemporaryProject project{"slate", "raw-macro-expansion"};
     project.write("raw.lispb", R"lisp(
 (defmacro passthrough (value) $value)
 (passthrough #cpp{if ($value) {
@@ -239,7 +199,7 @@ TEST(SlateCompiler, ExpansionPreservesOpaqueRawMacroArguments) {
 }
 
 TEST(SlateCompiler, ResolvesIncludesLocallyThenInDirectoryOrder) {
-    TemporaryProject project{"include-order"};
+    TemporaryProject project{"slate", "include-order"};
     project.write("local/panel.lispb", R"(
 (include "Widgets.lispb")
 (widget-class SPanel (function Build (params) (content)))
@@ -269,7 +229,7 @@ auto compile_error(TemporaryProject const& project,
 }
 
 TEST(SlateCompiler, ReportsMissingIncludesAndCycles) {
-    TemporaryProject project{"include-errors"};
+    TemporaryProject project{"slate", "include-errors"};
     project.write("panel.lispb", "(include \"Missing.lispb\")");
     auto error{compile_error(project, {"panel.lispb"}, {"shared"})};
     EXPECT_TRUE(error.contains("include not found"));
@@ -284,7 +244,7 @@ TEST(SlateCompiler, ReportsMissingIncludesAndCycles) {
 }
 
 TEST(SlateCompiler, RejectsInvalidMacroDeclarationsAndInvocations) {
-    TemporaryProject project{"macro-errors"};
+    TemporaryProject project{"slate", "macro-errors"};
     struct Case {
         std::string_view source;
         std::string_view expected;
@@ -310,7 +270,7 @@ TEST(SlateCompiler, RejectsInvalidMacroDeclarationsAndInvocations) {
 }
 
 TEST(SlateCompiler, ReportsMacroDefinitionAndInvocationForSemanticErrors) {
-    TemporaryProject project{"macro-diagnostics"};
+    TemporaryProject project{"slate", "macro-diagnostics"};
     project.write("Common.lispb", R"(
 (defmacro broken (child) (vbox (auto :halign sideways $child)))
 )");
@@ -325,7 +285,7 @@ TEST(SlateCompiler, ReportsMacroDefinitionAndInvocationForSemanticErrors) {
 }
 
 TEST(SlateCompiler, RestrictsIncludedFilesAndIsolatesMacrosBetweenInputs) {
-    TemporaryProject project{"macro-isolation"};
+    TemporaryProject project{"slate", "macro-isolation"};
     project.write("panel.lispb", "(include \"Common.lispb\")");
     project.write("Common.lispb", "(widget-class SPanel (function Build (params) (SImage)))");
     EXPECT_TRUE(compile_error(project).contains("included files may contain only"));
@@ -339,7 +299,7 @@ TEST(SlateCompiler, RestrictsIncludedFilesAndIsolatesMacrosBetweenInputs) {
 }
 
 TEST(SlateCompiler, LibraryMigrationRemovesTheObsoleteOwnerHeader) {
-    TemporaryProject project{"library-migration"};
+    TemporaryProject project{"slate", "library-migration"};
     project.write("panel.lispb", "(widget-class FOwner (function Build (params) (SImage)))");
     ASSERT_EQ(compile(project, {"panel.lispb"}), 0);
     project.write("Common.lispb", "(defmacro image () (SImage))");
@@ -355,7 +315,7 @@ TEST(SlateCompiler, LibraryMigrationRemovesTheObsoleteOwnerHeader) {
 }
 
 TEST(SlateCompiler, ExpansionResolvesIncludesAndNeverWritesGeneratedFiles) {
-    TemporaryProject project{"expand-read-only"};
+    TemporaryProject project{"slate", "expand-read-only"};
     project.write("shared/Common.lispb", "(defmacro content () (SImage))");
     project.write("panel.lispb", R"(
 (include "Common.lispb")
@@ -376,7 +336,7 @@ TEST(SlateCompiler, ExpansionResolvesIncludesAndNeverWritesGeneratedFiles) {
 }
 
 TEST(SlateCompiler, ExpansionPreservesStringsKeywordsAndSourceOrder) {
-    TemporaryProject project{"expand-roundtrip"};
+    TemporaryProject project{"slate", "expand-roundtrip"};
     std::string const first{R"(
 (widget-library First
   (function Build (params)
@@ -408,7 +368,7 @@ TEST(SlateCompiler, ExpansionPreservesStringsKeywordsAndSourceOrder) {
 }
 
 TEST(SlateCompiler, ExpansionCanInspectSemanticallyInvalidTrees) {
-    TemporaryProject project{"expand-invalid-tree"};
+    TemporaryProject project{"slate", "expand-invalid-tree"};
     project.write("panel.lispb", R"(
 (defmacro bad () (assign image_ SImage))
 (widget-library Images (function Build (params) (bad)))

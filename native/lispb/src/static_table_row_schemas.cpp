@@ -1,5 +1,7 @@
 #include <codegen/schema/static_table_row_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -15,14 +17,10 @@ auto StaticTableRowSchemas::append() -> StaticTableRowId {
     return StaticTableRowId{index + 1};
 }
 auto StaticTableRowSchemas::clone(StaticTableRowId id) -> StaticTableRowId {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    name[destination] = name[source_index];
-    return result;
+    return detail::clone_schema_row(*this, id, name);
 }
 void StaticTableRowSchemas::clear() {
-    name.clear();
+    detail::clear_schema_columns(name);
 }
 
 }

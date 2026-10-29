@@ -21,6 +21,7 @@
 #include <cstddef>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace kernel_codegen::detail {
@@ -90,8 +91,34 @@ auto array_initializer(lispb::codegen::CppIR& cpp,
     return cpp.call(cpp.template_id(cpp.named("make_array"), {cpp.type_reference(type)}), elements);
 }
 
+struct FixtureArray {
+    lispb::codegen::CppTypeId type;
+    lispb::StringId name;
+    lispb::codegen::CppTypeId symbol;
+    std::vector<ReferenceValue> const* values;
+};
+
+auto fixture_array(lispb::codegen::CppIR& cpp,
+                   std::vector<FixtureArray>& arrays,
+                   std::string_view const suite,
+                   lispb::codegen::CppTypeId const type,
+                   std::vector<ReferenceValue> const& values) -> lispb::codegen::Expr {
+    for (auto const& array : arrays) {
+        if (array.type == type && *array.values == values) {
+            return cpp.type_reference(array.symbol);
+        }
+    }
+
+    auto const name{"fixture_values_" + std::to_string(arrays.size())};
+    auto const symbol{cpp.types.named(std::string{suite} + "::" + name)};
+    arrays.push_back({type, cpp.strings.intern(name), symbol, &values});
+    return cpp.type_reference(symbol);
+}
+
 void append_case(lispb::codegen::CppIR& cpp,
                  lispb::codegen::Nodes& output,
+                 std::vector<FixtureArray>& arrays,
+                 std::string_view const suite,
                  EmissionId const emission,
                  Document const& document,
                  ExpandedVariantId const id,
@@ -102,15 +129,16 @@ void append_case(lispb::codegen::CppIR& cpp,
     auto const count{fixture.expected.size()};
     auto const array_type{
         cpp.types.intern("std::array<" + type + ", " + std::to_string(count) + ">")};
-    lispb::codegen::Nodes body;
+    lispb::codegen::Nodes body{
+        cpp.expr_stmt(cpp.call(cpp.named("SCOPED_TRACE"), {cpp.named("Count")}))};
     for (std::size_t index{}; index < document.operations.operands(expanded.operation(id)).size();
          ++index) {
         auto const operand{document.operations.operands(expanded.operation(id))[index]};
         if (expanded.storage(id)[index] == StorageKind::array) {
-            body.push_back(
-                cpp.variable(cpp.types.intern("auto"),
-                             document.operands.name(operand),
-                             array_initializer(cpp, element_type, fixture.operands[index])));
+            body.push_back(cpp.variable(
+                cpp.types.intern("auto"),
+                document.operands.name(operand),
+                fixture_array(cpp, arrays, suite, element_type, fixture.operands[index])));
         } else {
             body.push_back(cpp.variable(
                 cpp.types.intern("auto const"),
@@ -128,8 +156,9 @@ void append_case(lispb::codegen::CppIR& cpp,
     if (document.variants.kind(expanded.variant(id)) == VariantKind::out_of_place) {
         body.push_back(cpp.variable(array_type, destination));
     }
-    body.push_back(cpp.variable(
-        "auto const", "expected", array_initializer(cpp, element_type, fixture.expected)));
+    body.push_back(cpp.variable("auto const&",
+                                "expected",
+                                fixture_array(cpp, arrays, suite, element_type, fixture.expected)));
 
     auto const function{cpp.named(document.text(document.emissions.cpp_namespace(emission)) + "::" +
                                   document.text(document.variants.name(expanded.variant(id))))};
@@ -139,11 +168,11 @@ void append_case(lispb::codegen::CppIR& cpp,
     auto const actual{cpp.subscript(cpp.named(destination), index)};
     auto const expected{cpp.subscript(cpp.named("expected"), index)};
     auto const check{cpp.expr_stmt(cpp.call(cpp.named("expect_value"), {actual, expected}))};
-    body.push_back(
-        cpp.for_stmt(cpp.variable("std::size_t", "i"),
-                     cpp.binary(lispb::codegen::BinaryOperator::less, index, cpp.named("Count")),
-                     cpp.unary(lispb::codegen::UnaryOperator::preincrement, index),
-                     cpp.block({check})));
+    body.push_back(cpp.for_stmt(
+        cpp.variable("std::size_t", "i"),
+        cpp.binary(lispb::codegen::BinaryOperator::less, index, cpp.named("Count")),
+        cpp.unary(lispb::codegen::UnaryOperator::preincrement, index),
+        cpp.block({cpp.expr_stmt(cpp.call(cpp.named("SCOPED_TRACE"), {index})), check})));
 
     output.push_back(cpp.raw("for (std::size_t const Count : {0, 1, 7, 8, 9, 31})"));
     output.push_back(cpp.block(body));
@@ -203,10 +232,8 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
     EXPECT_EQ(actual, expected);
 }
 )")});
-    lispb::codegen::Nodes cases{cpp.header_function(make_array),
-                                cpp.lines(2),
-                                cpp.header_function(expect_value),
-                                cpp.lines(2)};
+    lispb::codegen::Nodes cases;
+    std::vector<FixtureArray> arrays;
     auto const range{document.modules.expanded_variants(module)};
     assert(fixtures.size() == range.count);
     auto const end{range.offset + range.count};
@@ -215,11 +242,29 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
         cases.push_back(cpp.raw("TEST(" + suite + ", " + raw_name(document, id) + ")"));
         cases.push_back(cpp.lines(1));
         lispb::codegen::Nodes body;
-        append_case(cpp, body, emission, document, id, fixtures[variant_index - range.offset]);
+        append_case(cpp,
+                    body,
+                    arrays,
+                    suite,
+                    emission,
+                    document,
+                    id,
+                    fixtures[variant_index - range.offset]);
         cases.push_back(cpp.block(body));
         cases.push_back(cpp.lines(2));
     }
-    file_nodes.add(cpp.namespace_node(cpp.strings.intern(suite), cases));
+    lispb::codegen::Nodes declarations{cpp.header_function(make_array),
+                                       cpp.lines(2),
+                                       cpp.header_function(expect_value),
+                                       cpp.lines(2)};
+    for (auto const& array : arrays) {
+        declarations.push_back(cpp.variable(cpp.types.intern("inline constexpr auto"),
+                                            array.name,
+                                            array_initializer(cpp, array.type, *array.values)));
+        declarations.push_back(cpp.lines(2));
+    }
+    declarations.insert(declarations.end(), cases.begin(), cases.end());
+    file_nodes.add(cpp.namespace_node(cpp.strings.intern(suite), declarations));
     auto const file{cpp.files.append(*document.emissions.tests(emission), file_nodes.build())};
     auto& flags{cpp.files.flags[cpp.files.index(file)]};
     flags.set_pragma_once(false);

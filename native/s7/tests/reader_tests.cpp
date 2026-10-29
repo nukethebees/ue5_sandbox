@@ -8,6 +8,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <string_view>
 #include <vector>
 
@@ -23,94 +24,50 @@ auto read_source(std::string_view const source) -> ReadResult<T> {
     return read<T>(Reader{*ast}, ast->root, "test");
 }
 
-enum class NumericType { Int32, Int64, UInt64, Float, Double };
+template <typename T>
+auto read_numeric(std::string_view const source) -> ReadResult<void> {
+    return read_source<T>(source).transform([](T) {});
+}
 
 struct NumericReaderCase {
     char const* name;
-    NumericType type;
-    std::vector<std::string_view> accepted;
+    ReadResult<void> (*read)(std::string_view);
     std::vector<std::string_view> rejected;
     AstErrorCode error_code{AstErrorCode::InvalidNumber};
 };
 
-template <typename T>
-void check_numeric_sources(NumericReaderCase const& test, bool const accepted) {
-    auto const& sources{accepted ? test.accepted : test.rejected};
-    for (auto const source : sources) {
-        SCOPED_TRACE(source);
-        auto const result{read_source<T>(source)};
-        EXPECT_EQ(result.has_value(), accepted);
-        if (!accepted && !result) {
-            ASSERT_EQ(result.error().size(), 1u);
-            EXPECT_EQ(result.error().front().code, test.error_code);
-            EXPECT_EQ(result.error().front().node_path, "test");
-        }
-    }
-}
-
-void check_numeric_sources(NumericReaderCase const& test, bool const accepted) {
-    switch (test.type) {
-        case NumericType::Int32: {
-            check_numeric_sources<std::int32_t>(test, accepted);
-            return;
-        }
-        case NumericType::Int64: {
-            check_numeric_sources<std::int64_t>(test, accepted);
-            return;
-        }
-        case NumericType::UInt64: {
-            check_numeric_sources<std::uint64_t>(test, accepted);
-            return;
-        }
-        case NumericType::Float: {
-            check_numeric_sources<float>(test, accepted);
-            return;
-        }
-        case NumericType::Double: {
-            check_numeric_sources<double>(test, accepted);
-            return;
-        }
-    }
-}
-
 using SchemeNumericReader = ::testing::TestWithParam<NumericReaderCase>;
 
-TEST_P(SchemeNumericReader, AcceptsValidSources) {
-    check_numeric_sources(GetParam(), true);
-}
-
 TEST_P(SchemeNumericReader, RejectsInvalidSources) {
-    check_numeric_sources(GetParam(), false);
+    auto const& test{GetParam()};
+    for (auto const source : test.rejected) {
+        SCOPED_TRACE(source);
+        auto const result{test.read(source)};
+        ASSERT_FALSE(result);
+        ASSERT_EQ(result.error().size(), 1u);
+        EXPECT_EQ(result.error().front().code, test.error_code);
+        EXPECT_EQ(result.error().front().node_path, "test");
+    }
 }
 
 INSTANTIATE_TEST_SUITE_P(
     NumericConversions,
     SchemeNumericReader,
-    ::testing::Values(NumericReaderCase{"Int32",
-                                        NumericType::Int32,
-                                        {"4294967294/2"},
-                                        {"2147483648",
-                                         "-2147483649",
-                                         "1.5",
-                                         "3/2",
-                                         literals::nan,
-                                         literals::positive_infinity,
-                                         literals::true_value}},
-                      NumericReaderCase{"Int64",
-                                        NumericType::Int64,
-                                        {"9007199254740993", "-9223372036854775808"},
-                                        {"9223372036854775808.0"}},
-                      NumericReaderCase{"UInt64",
-                                        NumericType::UInt64,
-                                        {"18446744073709549568.0"},
-                                        {"18446744073709551616.0", "-1"}},
-                      NumericReaderCase{"Float", NumericType::Float, {"1/4"}, {"1e100"}},
-                      NumericReaderCase{
-                          "Double",
-                          NumericType::Double,
-                          {literals::positive_infinity, literals::negative_infinity, literals::nan},
-                          {literals::true_value},
-                          AstErrorCode::InvalidType}),
+    ::testing::Values(
+        NumericReaderCase{"Int32",
+                          read_numeric<std::int32_t>,
+                          {"2147483648",
+                           "-2147483649",
+                           "1.5",
+                           "3/2",
+                           literals::nan,
+                           literals::positive_infinity,
+                           literals::true_value}},
+        NumericReaderCase{"Int64", read_numeric<std::int64_t>, {"9223372036854775808.0"}},
+        NumericReaderCase{"UInt64", read_numeric<std::uint64_t>, {"18446744073709551616.0", "-1"}},
+        NumericReaderCase{"Float", read_numeric<float>, {"1e100"}},
+        NumericReaderCase{
+            "Double", read_numeric<double>, {literals::true_value}, AstErrorCode::InvalidType}),
     [](auto const& info) { return info.param.name; });
 
 TEST(SchemeReader, PreservesNumericValues) {
@@ -122,6 +79,11 @@ TEST(SchemeReader, PreservesNumericValues) {
     EXPECT_EQ(read_source<float>("1/4"), 0.25f);
     EXPECT_EQ(read_source<double>(literals::positive_infinity),
               std::numeric_limits<double>::infinity());
+    EXPECT_EQ(read_source<double>(literals::negative_infinity),
+              -std::numeric_limits<double>::infinity());
+    auto const nan{read_source<double>(literals::nan)};
+    ASSERT_TRUE(nan);
+    EXPECT_TRUE(std::isnan(*nan));
 }
 
 struct RealFormattingCase {

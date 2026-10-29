@@ -1,5 +1,7 @@
 #include <codegen/schema/union_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -22,24 +24,12 @@ auto UnionSchemas::append() -> DeclarationHandle {
                              (index + 1)};
 }
 auto UnionSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    cpp_projection[destination] = cpp_projection[source_index];
-    layout[destination] = layout[source_index];
-    bits[destination] = bits[source_index];
-    name[destination] = name[source_index];
-    alternatives[destination] = alternatives[source_index];
-    export_specifier[destination] = export_specifier[source_index];
-    return result;
+    return detail::clone_schema_row(
+        *this, id, cpp_projection, layout, bits, name, alternatives, export_specifier);
 }
 void UnionSchemas::clear() {
-    cpp_projection.clear();
-    layout.clear();
-    bits.clear();
-    name.clear();
-    alternatives.clear();
-    export_specifier.clear();
+    detail::clear_schema_columns(
+        cpp_projection, layout, bits, name, alternatives, export_specifier);
 }
 
 }

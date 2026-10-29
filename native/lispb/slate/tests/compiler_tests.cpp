@@ -155,30 +155,6 @@ TEST(SlateDsl, ValueParametersWorkInLetBindingsAndPadding) {
     EXPECT_NE(output.find(".WidthOverride(box_width)"), std::string::npos);
 }
 
-TEST(SlateDsl, RejectsRepeatedSingleUseParameters) {
-    auto const repeated_callback{parse_error(R"(
-(widget-class FOwner
-  (function Build
-    (params (callback handle))
-    (SButton
-      :OnClicked (callback handle)
-      :OnPressed (callback handle))))
-)")};
-    EXPECT_NE(repeated_callback.find("callback parameter 'handle' may only be used once"),
-              std::string::npos);
-
-    auto const repeated_existing{parse_error(R"(
-(widget-class FOwner
-  (function Build
-    (params (existing child))
-    (vbox
-      (auto (existing child))
-      (auto (existing child)))))
-)")};
-    EXPECT_NE(repeated_existing.find("existing parameter 'child' may only be used once"),
-              std::string::npos);
-}
-
 TEST(SlateDsl, RendersSupportedTreeForms) {
     auto document{parse_source(R"(
 (widget-class FOwner
@@ -247,56 +223,57 @@ TEST(SlateDsl, RendersValueParametersAsBoxOptions) {
     EXPECT_NE(output.find(".VAlign(vertical_alignment)"), std::string::npos);
 }
 
-TEST(SlateDsl, RejectsUndeclaredAndIncorrectParameterUses) {
-    auto const undeclared{parse_error(R"(
-(widget-class FOwner
-  (function Build
-    (params)
-    (SButton :OnClicked (callback on_clicked))))
-)")};
-    EXPECT_NE(undeclared.find("undeclared callback parameter 'on_clicked'"), std::string::npos);
+struct InvalidParameterCase {
+    char const* name;
+    char const* parameters;
+    char const* body;
+    char const* diagnostic;
+};
 
-    auto const incorrect_role{parse_error(R"(
-(widget-class FOwner
-  (function Build
-    (params (existing on_clicked))
-    (SButton :OnClicked (callback on_clicked))))
-)")};
-    EXPECT_NE(incorrect_role.find("declared as existing, not callback"), std::string::npos);
+using SlateInvalidParameter = testing::TestWithParam<InvalidParameterCase>;
 
-    auto const incorrect_value_role{parse_error(R"(
-(widget-class FOwner
-  (function Build
-    (params (existing label))
-    (SButton :Text label)))
-)")};
-    EXPECT_NE(incorrect_value_role.find("declared as existing, not value"), std::string::npos);
+TEST_P(SlateInvalidParameter, RejectsInvalidDeclarationOrUse) {
+    auto const& test{GetParam()};
+    auto const source{std::string{"(widget-class FOwner (function Build "} + test.parameters + " " +
+                      test.body + "))"};
+    EXPECT_NE(parse_error(source).find(test.diagnostic), std::string::npos) << source;
 }
 
-TEST(SlateDsl, RejectsUnusedAndDuplicateParameters) {
-    auto const missing{parse_error(R"(
-(widget-class FOwner
-  (function Build
-    (SButton)))
-)")};
-    EXPECT_NE(missing.find("expected 'params' declaration"), std::string::npos);
-
-    auto const unused{parse_error(R"(
-(widget-class FOwner
-  (function Build
-    (params (existing child))
-    (SButton)))
-)")};
-    EXPECT_NE(unused.find("unused existing parameter 'child'"), std::string::npos);
-
-    auto const duplicate{parse_error(R"(
-(widget-class FOwner
-  (function Build
-    (params (existing child) (callback child))
-    (SButton)))
-)")};
-    EXPECT_NE(duplicate.find("duplicate parameter declaration 'child'"), std::string::npos);
-}
+INSTANTIATE_TEST_SUITE_P(
+    SlateDsl,
+    SlateInvalidParameter,
+    testing::Values(
+        InvalidParameterCase{"RepeatedCallback",
+                             "(params (callback handle))",
+                             "(SButton :OnClicked (callback handle) :OnPressed (callback handle))",
+                             "callback parameter 'handle' may only be used once"},
+        InvalidParameterCase{"RepeatedExisting",
+                             "(params (existing child))",
+                             "(vbox (auto (existing child)) (auto (existing child)))",
+                             "existing parameter 'child' may only be used once"},
+        InvalidParameterCase{"UndeclaredCallback",
+                             "(params)",
+                             "(SButton :OnClicked (callback on_clicked))",
+                             "undeclared callback parameter 'on_clicked'"},
+        InvalidParameterCase{"IncorrectCallbackRole",
+                             "(params (existing on_clicked))",
+                             "(SButton :OnClicked (callback on_clicked))",
+                             "declared as existing, not callback"},
+        InvalidParameterCase{"IncorrectValueRole",
+                             "(params (existing label))",
+                             "(SButton :Text label)",
+                             "declared as existing, not value"},
+        InvalidParameterCase{
+            "MissingDeclaration", "", "(SButton)", "expected 'params' declaration"},
+        InvalidParameterCase{"UnusedExisting",
+                             "(params (existing child))",
+                             "(SButton)",
+                             "unused existing parameter 'child'"},
+        InvalidParameterCase{"Duplicate",
+                             "(params (existing child) (callback child))",
+                             "(SButton)",
+                             "duplicate parameter declaration 'child'"}),
+    [](auto const& info) { return info.param.name; });
 
 }
 }

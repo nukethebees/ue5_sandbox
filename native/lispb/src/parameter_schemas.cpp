@@ -1,5 +1,7 @@
 #include <codegen/schema/parameter_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -17,18 +19,10 @@ auto ParameterSchemas::append() -> ParameterId {
     return ParameterId{index + 1};
 }
 auto ParameterSchemas::clone(ParameterId id) -> ParameterId {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    type[destination] = type[source_index];
-    name[destination] = name[source_index];
-    default_value[destination] = default_value[source_index];
-    return result;
+    return detail::clone_schema_row(*this, id, type, name, default_value);
 }
 void ParameterSchemas::clear() {
-    type.clear();
-    name.clear();
-    default_value.clear();
+    detail::clear_schema_columns(type, name, default_value);
 }
 
 }

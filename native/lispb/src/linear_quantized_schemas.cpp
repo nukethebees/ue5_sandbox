@@ -1,5 +1,7 @@
 #include <codegen/schema/linear_quantized_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -22,24 +24,11 @@ auto LinearQuantizedSchemas::append() -> DeclarationHandle {
                              (index + 1)};
 }
 auto LinearQuantizedSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    cpp_projection[destination] = cpp_projection[source_index];
-    name[destination] = name[source_index];
-    source[destination] = source[source_index];
-    bit_width[destination] = bit_width[source_index];
-    reserved_codes[destination] = reserved_codes[source_index];
-    clipping[destination] = clipping[source_index];
-    return result;
+    return detail::clone_schema_row(
+        *this, id, cpp_projection, name, source, bit_width, reserved_codes, clipping);
 }
 void LinearQuantizedSchemas::clear() {
-    cpp_projection.clear();
-    name.clear();
-    source.clear();
-    bit_width.clear();
-    reserved_codes.clear();
-    clipping.clear();
+    detail::clear_schema_columns(cpp_projection, name, source, bit_width, reserved_codes, clipping);
 }
 
 }

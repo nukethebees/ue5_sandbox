@@ -29,6 +29,7 @@ auto enum_strings_specialization(CppIR& ir,
 auto lower_schema_function(LoweringContext& context,
                            FunctionSchemaId schema,
                            std::optional<std::string_view> body = std::nullopt) -> FunctionId;
+auto lower_member_type(LoweringContext& context, ChildOccurrenceId member) -> CppTypeId;
 
 auto join(std::vector<std::string> const& values, std::string_view separator) -> std::string;
 auto join(LoweringContext const& context, SchemaRange<StringId> values, std::string_view separator)

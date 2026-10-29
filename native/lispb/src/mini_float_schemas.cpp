@@ -1,5 +1,7 @@
 #include <codegen/schema/mini_float_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -22,24 +24,12 @@ auto MiniFloatSchemas::append() -> DeclarationHandle {
                              (index + 1)};
 }
 auto MiniFloatSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    cpp_projection[destination] = cpp_projection[source_index];
-    name[destination] = name[source_index];
-    sign_bits[destination] = sign_bits[source_index];
-    exponent_bits[destination] = exponent_bits[source_index];
-    significand_bits[destination] = significand_bits[source_index];
-    exponent_bias[destination] = exponent_bias[source_index];
-    return result;
+    return detail::clone_schema_row(
+        *this, id, cpp_projection, name, sign_bits, exponent_bits, significand_bits, exponent_bias);
 }
 void MiniFloatSchemas::clear() {
-    cpp_projection.clear();
-    name.clear();
-    sign_bits.clear();
-    exponent_bits.clear();
-    significand_bits.clear();
-    exponent_bias.clear();
+    detail::clear_schema_columns(
+        cpp_projection, name, sign_bits, exponent_bits, significand_bits, exponent_bias);
 }
 
 }

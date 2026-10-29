@@ -1,5 +1,7 @@
 #include <codegen/schema/integer_scalar_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -24,28 +26,26 @@ auto IntegerScalarSchemas::append() -> DeclarationHandle {
                              (index + 1)};
 }
 auto IntegerScalarSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    cpp_projection[destination] = cpp_projection[source_index];
-    name[destination] = name[source_index];
-    signedness[destination] = signedness[source_index];
-    minimum_value[destination] = minimum_value[source_index];
-    maximum_value[destination] = maximum_value[source_index];
-    bit_width[destination] = bit_width[source_index];
-    named_codes[destination] = named_codes[source_index];
-    relationship[destination] = relationship[source_index];
-    return result;
+    return detail::clone_schema_row(*this,
+                                    id,
+                                    cpp_projection,
+                                    name,
+                                    signedness,
+                                    minimum_value,
+                                    maximum_value,
+                                    bit_width,
+                                    named_codes,
+                                    relationship);
 }
 void IntegerScalarSchemas::clear() {
-    cpp_projection.clear();
-    name.clear();
-    signedness.clear();
-    minimum_value.clear();
-    maximum_value.clear();
-    bit_width.clear();
-    named_codes.clear();
-    relationship.clear();
+    detail::clear_schema_columns(cpp_projection,
+                                 name,
+                                 signedness,
+                                 minimum_value,
+                                 maximum_value,
+                                 bit_width,
+                                 named_codes,
+                                 relationship);
 }
 
 }

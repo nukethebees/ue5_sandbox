@@ -1,5 +1,7 @@
 #include <codegen/schema/semantic_relation_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -17,18 +19,10 @@ auto SemanticRelationSchemas::append() -> SemanticRelationId {
     return SemanticRelationId{index + 1};
 }
 auto SemanticRelationSchemas::clone(SemanticRelationId id) -> SemanticRelationId {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    kind[destination] = kind[source_index];
-    target[destination] = target[source_index];
-    unit[destination] = unit[source_index];
-    return result;
+    return detail::clone_schema_row(*this, id, kind, target, unit);
 }
 void SemanticRelationSchemas::clear() {
-    kind.clear();
-    target.clear();
-    unit.clear();
+    detail::clear_schema_columns(kind, target, unit);
 }
 
 }

@@ -1,6 +1,7 @@
 #include "declaration_emission.h"
 #include "lowering.h"
 #include "lowering_context.h"
+#include "lowering_utils.h"
 
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
@@ -24,19 +25,6 @@
 namespace lispb::codegen::detail {
 namespace {
 
-auto alternative_type(LoweringContext& context,
-                      TypeRefId reference,
-                      std::optional<std::uint64_t> count) -> CppTypeId {
-    auto& ir{context.ir};
-    auto element{context.resolve(reference)};
-    if (!count.has_value()) {
-        return element;
-    }
-    return ir.types.template_type(
-        ir.types.named("std::array", {ir.types.dependency("std::array", "array")}),
-        {element, ir.types.intern(std::to_string(*count))});
-}
-
 auto union_node(LoweringContext& context, DeclarationHandle schema) -> NodeId {
     auto& ir{context.ir};
     auto const& unions{context.declarations.unions};
@@ -45,9 +33,7 @@ auto union_node(LoweringContext& context, DeclarationHandle schema) -> NodeId {
     NodeListBuilder alternatives{ir};
     for (auto const alternative : context.declarations.items(unions.alternatives[row])) {
         auto const alternative_row{schemas.index(alternative)};
-        alternatives.add(ir.instance_member(alternative_type(context,
-                                                             schemas.type[alternative_row],
-                                                             schemas.count[alternative_row]),
+        alternatives.add(ir.instance_member(lower_member_type(context, alternative),
                                             schemas.name[alternative_row]));
     }
     auto const created_record{

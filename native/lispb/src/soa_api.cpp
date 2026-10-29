@@ -300,8 +300,7 @@ auto lower_soa_api(LoweringContext& parent_context,
         header.add(ir.raw("using " + context.text(alias) + ";")).new_lines(1);
     }
     auto append = [&](SchemaRange<FunctionSchemaId> const functions) {
-        for (auto const function_id : context.declarations.items(functions)) {
-            auto const function{function_id};
+        for (auto const function : context.declarations.items(functions)) {
             auto const& function_schemas{context.declarations.functions};
             auto const row{function_schemas.index(function)};
             auto const body{
@@ -309,7 +308,7 @@ auto lower_soa_api(LoweringContext& parent_context,
                                join_lines(context, function_schemas.body_lines[function]),
                                schema,
                                receiver)};
-            auto spec{lower_schema_function(context, function, body)};
+            auto const spec{lower_schema_function(context, function, body)};
             if (auto const appended{function_schemas.append_columns[row]}) {
                 auto const columns{context.declarations.items(*appended)};
                 auto const parameters{context.declarations.items(function_schemas.parameters[row])};
@@ -343,17 +342,17 @@ auto lower_soa_api(LoweringContext& parent_context,
                     !function_schemas.definition_in_source[row]);
             }
             if (function_schemas.definition_in_source[function]) {
-                auto const id{spec};
-                auto const use_trailing_return{
-                    ir.function_return_syntax(spec) == ReturnSyntax::direct &&
-                    ir.types.spelling(ir.function_return_type(spec)) != "auto" &&
-                    ir.types.spelling(ir.function_return_type(spec)) != "decltype(auto)"};
-                header.add(ir.declaration(id)).new_lines(1);
+                auto const return_syntax{ir.function_return_syntax(spec)};
+                auto const return_spelling{ir.types.spelling(ir.function_return_type(spec))};
+                auto const use_trailing_return{return_syntax == ReturnSyntax::direct &&
+                                               return_spelling != "auto" &&
+                                               return_spelling != "decltype(auto)"};
+                header.add(ir.declaration(spec)).new_lines(1);
                 source
-                    .add(ir.definition(id,
-                                       ir.types.intern(type_name),
-                                       use_trailing_return ? ReturnSyntax::trailing
-                                                           : ir.function_return_syntax(spec)))
+                    .add(
+                        ir.definition(spec,
+                                      ir.types.intern(type_name),
+                                      use_trailing_return ? ReturnSyntax::trailing : return_syntax))
                     .new_lines(2);
             } else {
                 ir.function_flags(spec).set_define_in_header(
@@ -383,8 +382,7 @@ auto lower_soa_api(LoweringContext& parent_context,
             auto const constructor{soas.equivalent_constructor[schema]};
             expression = constructor ? context.text(*constructor) + "(" : "equivalent_type{";
             bool first{true};
-            for (auto const member_id : context.declarations.items(soas.members[schema])) {
-                auto const member{member_id};
+            for (auto const member : context.declarations.items(soas.members[schema])) {
                 if (!first) {
                     expression += ", ";
                 }
@@ -395,22 +393,17 @@ auto lower_soa_api(LoweringContext& parent_context,
             }
             expression += constructor ? ")" : "}";
         }
-        header
-            .add(ir.header_function([&] {
-                auto const created_function{ir.function("operator[]", "auto")};
-                ir.set_function_parameters(created_function,
-                                           {ir.parameter("std::uint32_t", "index")});
-                ir.set_function_body(
-                    created_function,
-                    {ir.raw("assert(index < num());\nreturn " + expression + ";")});
-                ir.set_function_return_type(
-                    created_function, ir.types.intern("equivalent_type"), ReturnSyntax::trailing);
-                ir.set_function_receiver(created_function, FunctionReceiver::const_);
-                ir.function_flags(created_function).set_is_inline(true);
-                ir.function_flags(created_function).set_define_in_header(true);
-                return created_function;
-            }()))
-            .new_lines(1);
+        auto const function{ir.function("operator[]", "auto")};
+        ir.set_function_parameters(function, {ir.parameter("std::uint32_t", "index")});
+        ir.set_function_body(function,
+                             {ir.raw("assert(index < num());\nreturn " + expression + ";")});
+        ir.set_function_return_type(
+            function, ir.types.intern("equivalent_type"), ReturnSyntax::trailing);
+        ir.set_function_receiver(function, FunctionReceiver::const_);
+        auto& flags{ir.function_flags(function)};
+        flags.set_is_inline(true);
+        flags.set_define_in_header(true);
+        header.add(ir.header_function(function)).new_lines(1);
     }
     return {header.build(), source.build()};
 }

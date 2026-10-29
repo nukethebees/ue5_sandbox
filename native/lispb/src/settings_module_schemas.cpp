@@ -1,5 +1,7 @@
 #include <codegen/schema/settings_module_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -21,24 +23,12 @@ auto SettingsModuleSchemas::append() -> ModuleHandle {
     return ModuleHandle{(static_cast<std::uint32_t>(ModuleKind::settings) << 24) | (index + 1)};
 }
 auto SettingsModuleSchemas::clone(ModuleHandle id) -> ModuleHandle {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    settings[destination] = settings[source_index];
-    api_name[destination] = api_name[source_index];
-    state_name[destination] = state_name[source_index];
-    export_specifier[destination] = export_specifier[source_index];
-    categories[destination] = categories[source_index];
-    settings_list[destination] = settings_list[source_index];
-    return result;
+    return detail::clone_schema_row(
+        *this, id, settings, api_name, state_name, export_specifier, categories, settings_list);
 }
 void SettingsModuleSchemas::clear() {
-    settings.clear();
-    api_name.clear();
-    state_name.clear();
-    export_specifier.clear();
-    categories.clear();
-    settings_list.clear();
+    detail::clear_schema_columns(
+        settings, api_name, state_name, export_specifier, categories, settings_list);
 }
 
 }

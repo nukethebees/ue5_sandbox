@@ -1,5 +1,7 @@
 #include <codegen/schema/facade_method_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -20,24 +22,11 @@ auto FacadeMethodSchemas::append() -> FacadeMethodId {
     return FacadeMethodId{index + 1};
 }
 auto FacadeMethodSchemas::clone(FacadeMethodId id) -> FacadeMethodId {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    name[destination] = name[source_index];
-    return_type[destination] = return_type[source_index];
-    parameters[destination] = parameters[source_index];
-    is_const[destination] = is_const[source_index];
-    is_noexcept[destination] = is_noexcept[source_index];
-    target_name[destination] = target_name[source_index];
-    return result;
+    return detail::clone_schema_row(
+        *this, id, name, return_type, parameters, is_const, is_noexcept, target_name);
 }
 void FacadeMethodSchemas::clear() {
-    name.clear();
-    return_type.clear();
-    parameters.clear();
-    is_const.clear();
-    is_noexcept.clear();
-    target_name.clear();
+    detail::clear_schema_columns(name, return_type, parameters, is_const, is_noexcept, target_name);
 }
 
 }

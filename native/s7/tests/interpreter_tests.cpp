@@ -15,6 +15,7 @@
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <utility>
 
 namespace ioj::s7::tests {
 void expect_error(Interpreter& interpreter,
@@ -44,6 +45,11 @@ class TemporaryLibrary final {
     auto operator=(TemporaryLibrary const&) -> TemporaryLibrary& = delete;
 
     [[nodiscard]] auto path() const -> std::filesystem::path const& { return path_; }
+
+    auto make_interpreter(InterpreterOptions options = {}) const -> Interpreter {
+        options.script_library_root_utf8 = path_.string();
+        return Interpreter{std::move(options)};
+    }
 
     void write(std::filesystem::path const& relative_path, std::string_view const source) const {
         auto const full_path{path_ / relative_path};
@@ -86,11 +92,9 @@ TEST(SchemeInterpreter, LoaderContextsAreIndependent) {
     TemporaryLibrary second_library;
     first_library.write("value.scm", "(define library-value 17)");
     second_library.write("value.scm", "(define library-value 29)");
-    Interpreter second{
-        InterpreterOptions{.script_library_root_utf8 = second_library.path().string()}};
+    auto second{second_library.make_interpreter()};
     {
-        Interpreter first{
-            InterpreterOptions{.script_library_root_utf8 = first_library.path().string()}};
+        auto first{first_library.make_interpreter()};
         EXPECT_EQ(first.evaluate(R"((begin (load-script "value.scm") library-value))"), "17");
         EXPECT_EQ(second.evaluate(R"((begin (load-script "value.scm") library-value))"), "29");
     }
@@ -164,8 +168,7 @@ TEST(SchemeInterpreter, LoadsLibrariesInTheSameSandbox) {
     library.write("unsafe.scm", "(getenv \"PATH\")\n");
     library.write("uppercase.SCM", "(set! load-count (+ load-count 1))\nload-count");
 
-    Interpreter interpreter{
-        InterpreterOptions{.script_library_root_utf8 = library.path().string()}};
+    auto interpreter{library.make_interpreter()};
     auto const loaded{
         interpreter.evaluate("(begin"
                              "  (define load-count 0)"
@@ -195,8 +198,7 @@ TEST(SchemeInterpreter, RejectsUnsafeLibraryPathsAndCycles) {
     library.write("plain.txt", "(define should-not-load #t)\n");
     outside_library.write("secret.scm", "(define escaped-root #t)\n");
 
-    Interpreter interpreter{
-        InterpreterOptions{.script_library_root_utf8 = library.path().string()}};
+    auto interpreter{library.make_interpreter()};
     constexpr std::array<std::string_view, 5> expressions{
         "(load-script \"../outside.scm\")",
         "(load-script \"sub/../outside.scm\")",
@@ -226,16 +228,10 @@ TEST(SchemeInterpreter, EnforcesLibraryResourceLimits) {
     library.write("first.scm", "(define first-value 1)\n");
     library.write("second.scm", "(define second-value 2)\n");
 
-    Interpreter interpreter{InterpreterOptions{
-        .script_library_root_utf8 = library.path().string(),
-        .max_loaded_file_bytes = 8,
-    }};
+    auto interpreter{library.make_interpreter({.max_loaded_file_bytes = 8})};
     expect_error(interpreter, "(load-script \"large.scm\")", "size limit");
 
-    Interpreter file_count_interpreter{InterpreterOptions{
-        .script_library_root_utf8 = library.path().string(),
-        .max_loaded_files = 1,
-    }};
+    auto file_count_interpreter{library.make_interpreter({.max_loaded_files = 1})};
     expect_error(file_count_interpreter,
                  R"((begin (load-script "first.scm") (load-script "second.scm")))",
                  "file count limit");
@@ -251,8 +247,7 @@ TEST(SchemeInterpreter, CaughtChildFailurePreservesParentAndAllowsRetry) {
         (catch #t (lambda () (load-script "broken.scm")) (lambda args #f))
         (catch #t (lambda () (load-script "broken.scm")) (lambda args #f))
         (set! parent-finished #t))");
-    Interpreter interpreter{
-        InterpreterOptions{.script_library_root_utf8 = library.path().string()}};
+    auto interpreter{library.make_interpreter()};
     auto const first{interpreter.evaluate(R"((begin
         (define attempts 0) (define outer-count 0) (define parent-finished #f)
         (load-script "outer.scm")
@@ -268,12 +263,11 @@ TEST(SchemeInterpreter, AbortReleasesLibraryReservations) {
     std::string const broken{R"((error 'broken "broken"))"};
     library.write("broken.scm", broken);
     library.write("good.scm", "(define recovered 42)");
-    Interpreter interpreter{InterpreterOptions{
-        .script_library_root_utf8 = library.path().string(),
+    auto interpreter{library.make_interpreter({
         .max_total_loaded_bytes = broken.size(),
         .max_loaded_files = 1,
         .max_load_depth = 1,
-    }};
+    })};
     auto const result{interpreter.evaluate(R"((begin
         (catch #t (lambda () (load-script "broken.scm")) (lambda args #f))
         (catch #t (lambda () (load-script "broken.scm")) (lambda args #f))
@@ -287,18 +281,16 @@ TEST(SchemeInterpreter, ActiveNestedSourcesCountTowardByteLimit) {
     std::string const inner{"(define inner-value 42)"};
     library.write("outer.scm", outer);
     library.write("inner.scm", inner);
-    Interpreter interpreter{InterpreterOptions{
-        .script_library_root_utf8 = library.path().string(),
+    auto interpreter{library.make_interpreter({
         .max_total_loaded_bytes = outer.size() + inner.size() - 1,
-    }};
+    })};
     expect_error(interpreter, R"((load-script "outer.scm"))", "size limit");
     auto const recovery{interpreter.evaluate(R"((begin (load-script "inner.scm") inner-value))")};
     EXPECT_EQ(recovery, "42");
 
-    Interpreter exact{InterpreterOptions{
-        .script_library_root_utf8 = library.path().string(),
+    auto exact{library.make_interpreter({
         .max_total_loaded_bytes = outer.size() + inner.size(),
-    }};
+    })};
     auto const accepted{exact.evaluate(R"((begin
         (load-script "outer.scm") (load-script "inner.scm")
         (load-script "outer.scm") inner-value))")};
@@ -309,9 +301,7 @@ TEST(SchemeInterpreter, NonlocalExitAbortsLoad) {
     TemporaryLibrary library;
     library.write("escape.scm", "(escape 7)");
     library.write("good.scm", "(define recovered 42)");
-    Interpreter interpreter{InterpreterOptions{.script_library_root_utf8 = library.path().string(),
-                                               .max_loaded_files = 1,
-                                               .max_load_depth = 1}};
+    auto interpreter{library.make_interpreter({.max_loaded_files = 1, .max_load_depth = 1})};
     auto const result{interpreter.evaluate(R"((begin
         (define escape #f)
         (call/cc (lambda (k) (set! escape k) (load-script "escape.scm")))
@@ -391,8 +381,7 @@ TEST(SchemeInterpreter, SourceLoadingPreservesReaderErrorsAndEmptyFiles) {
     TemporaryLibrary library;
     library.write("empty.scm", "");
     library.write("reader-error.scm", "(define missing-paren 1");
-    Interpreter interpreter{
-        InterpreterOptions{.script_library_root_utf8 = library.path().string()}};
+    auto interpreter{library.make_interpreter()};
     auto const empty{interpreter.evaluate(R"((begin (load-script "empty.scm") 42))")};
     EXPECT_EQ(empty, "42");
     expect_error(interpreter, R"((load-script "reader-error.scm"))", "reader-error.scm");

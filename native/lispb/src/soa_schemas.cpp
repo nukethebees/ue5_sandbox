@@ -1,5 +1,7 @@
 #include <codegen/schema/soa_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -28,36 +30,34 @@ auto SoaSchemas::append() -> DeclarationHandle {
                              (index + 1)};
 }
 auto SoaSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    name[destination] = name[source_index];
-    members[destination] = members[source_index];
-    export_specifier[destination] = export_specifier[source_index];
-    functions[destination] = functions[source_index];
-    mutable_view_functions[destination] = mutable_view_functions[source_index];
-    using_declarations[destination] = using_declarations[source_index];
-    equivalent_type[destination] = equivalent_type[source_index];
-    equivalent_constructor[destination] = equivalent_constructor[source_index];
-    layout_only[destination] = layout_only[source_index];
-    field_mask_name[destination] = field_mask_name[source_index];
-    field_enum_name[destination] = field_enum_name[source_index];
-    const_view_functions[destination] = const_view_functions[source_index];
-    return result;
+    return detail::clone_schema_row(*this,
+                                    id,
+                                    name,
+                                    members,
+                                    export_specifier,
+                                    functions,
+                                    mutable_view_functions,
+                                    using_declarations,
+                                    equivalent_type,
+                                    equivalent_constructor,
+                                    layout_only,
+                                    field_mask_name,
+                                    field_enum_name,
+                                    const_view_functions);
 }
 void SoaSchemas::clear() {
-    name.clear();
-    members.clear();
-    export_specifier.clear();
-    functions.clear();
-    mutable_view_functions.clear();
-    using_declarations.clear();
-    equivalent_type.clear();
-    equivalent_constructor.clear();
-    layout_only.clear();
-    field_mask_name.clear();
-    field_enum_name.clear();
-    const_view_functions.clear();
+    detail::clear_schema_columns(name,
+                                 members,
+                                 export_specifier,
+                                 functions,
+                                 mutable_view_functions,
+                                 using_declarations,
+                                 equivalent_type,
+                                 equivalent_constructor,
+                                 layout_only,
+                                 field_mask_name,
+                                 field_enum_name,
+                                 const_view_functions);
 }
 
 }

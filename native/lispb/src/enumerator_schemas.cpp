@@ -1,5 +1,7 @@
 #include <codegen/schema/enumerator_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -20,24 +22,12 @@ auto EnumeratorSchemas::append() -> EnumeratorId {
     return EnumeratorId{index + 1};
 }
 auto EnumeratorSchemas::clone(EnumeratorId id) -> EnumeratorId {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    name[destination] = name[source_index];
-    initializer[destination] = initializer[source_index];
-    display_name[destination] = display_name[source_index];
-    hidden[destination] = hidden[source_index];
-    serialized_name[destination] = serialized_name[source_index];
-    sentinel[destination] = sentinel[source_index];
-    return result;
+    return detail::clone_schema_row(
+        *this, id, name, initializer, display_name, hidden, serialized_name, sentinel);
 }
 void EnumeratorSchemas::clear() {
-    name.clear();
-    initializer.clear();
-    display_name.clear();
-    hidden.clear();
-    serialized_name.clear();
-    sentinel.clear();
+    detail::clear_schema_columns(
+        name, initializer, display_name, hidden, serialized_name, sentinel);
 }
 
 }

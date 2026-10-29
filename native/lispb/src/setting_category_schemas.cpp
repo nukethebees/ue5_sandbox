@@ -1,5 +1,7 @@
 #include <codegen/schema/setting_category_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -16,16 +18,10 @@ auto SettingCategorySchemas::append() -> SettingCategoryId {
     return SettingCategoryId{index + 1};
 }
 auto SettingCategorySchemas::clone(SettingCategoryId id) -> SettingCategoryId {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    name[destination] = name[source_index];
-    label[destination] = label[source_index];
-    return result;
+    return detail::clone_schema_row(*this, id, name, label);
 }
 void SettingCategorySchemas::clear() {
-    name.clear();
-    label.clear();
+    detail::clear_schema_columns(name, label);
 }
 
 }

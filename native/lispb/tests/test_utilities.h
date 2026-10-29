@@ -32,6 +32,13 @@
 
 namespace lispb::codegen {
 
+template <typename Store, typename Initialise>
+auto append_test_row(Store& store, Initialise initialise) {
+    auto const id{store.append()};
+    initialise(id);
+    return id;
+}
+
 template <typename Id>
 inline auto test_text(Strings const& strings, Id const id) -> std::string_view {
     return strings.view(id);

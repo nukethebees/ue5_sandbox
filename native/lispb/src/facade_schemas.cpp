@@ -1,5 +1,7 @@
 #include <codegen/schema/facade_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -29,38 +31,36 @@ auto FacadeSchemas::append() -> DeclarationHandle {
                              (index + 1)};
 }
 auto FacadeSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    name[destination] = name[source_index];
-    target_type[destination] = target_type[source_index];
-    target_member_name[destination] = target_member_name[source_index];
-    methods[destination] = methods[source_index];
-    validation_lines[destination] = validation_lines[source_index];
-    validation_dependencies[destination] = validation_dependencies[source_index];
-    export_specifier[destination] = export_specifier[source_index];
-    bind_access[destination] = bind_access[source_index];
-    method_access[destination] = method_access[source_index];
-    friends[destination] = friends[source_index];
-    friend_kind[destination] = friend_kind[source_index];
-    definitions_in_source[destination] = definitions_in_source[source_index];
-    reference_target[destination] = reference_target[source_index];
-    return result;
+    return detail::clone_schema_row(*this,
+                                    id,
+                                    name,
+                                    target_type,
+                                    target_member_name,
+                                    methods,
+                                    validation_lines,
+                                    validation_dependencies,
+                                    export_specifier,
+                                    bind_access,
+                                    method_access,
+                                    friends,
+                                    friend_kind,
+                                    definitions_in_source,
+                                    reference_target);
 }
 void FacadeSchemas::clear() {
-    name.clear();
-    target_type.clear();
-    target_member_name.clear();
-    methods.clear();
-    validation_lines.clear();
-    validation_dependencies.clear();
-    export_specifier.clear();
-    bind_access.clear();
-    method_access.clear();
-    friends.clear();
-    friend_kind.clear();
-    definitions_in_source.clear();
-    reference_target.clear();
+    detail::clear_schema_columns(name,
+                                 target_type,
+                                 target_member_name,
+                                 methods,
+                                 validation_lines,
+                                 validation_dependencies,
+                                 export_specifier,
+                                 bind_access,
+                                 method_access,
+                                 friends,
+                                 friend_kind,
+                                 definitions_in_source,
+                                 reference_target);
 }
 
 }

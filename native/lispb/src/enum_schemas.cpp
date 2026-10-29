@@ -1,5 +1,7 @@
 #include <codegen/schema/enum_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -30,40 +32,38 @@ auto EnumSchemas::append() -> DeclarationHandle {
                              (index + 1)};
 }
 auto EnumSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    cpp_projection[destination] = cpp_projection[source_index];
-    name[destination] = name[source_index];
-    underlying_type[destination] = underlying_type[source_index];
-    values[destination] = values[source_index];
-    count[destination] = count[source_index];
-    conversions[destination] = conversions[source_index];
-    export_specifier[destination] = export_specifier[source_index];
-    unreal_projection[destination] = unreal_projection[source_index];
-    bit_width[destination] = bit_width[source_index];
-    reflection[destination] = reflection[source_index];
-    signedness[destination] = signedness[source_index];
-    enum_array[destination] = enum_array[source_index];
-    native_api[destination] = native_api[source_index];
-    helpers[destination] = helpers[source_index];
-    return result;
+    return detail::clone_schema_row(*this,
+                                    id,
+                                    cpp_projection,
+                                    name,
+                                    underlying_type,
+                                    values,
+                                    count,
+                                    conversions,
+                                    export_specifier,
+                                    unreal_projection,
+                                    bit_width,
+                                    reflection,
+                                    signedness,
+                                    enum_array,
+                                    native_api,
+                                    helpers);
 }
 void EnumSchemas::clear() {
-    cpp_projection.clear();
-    name.clear();
-    underlying_type.clear();
-    values.clear();
-    count.clear();
-    conversions.clear();
-    export_specifier.clear();
-    unreal_projection.clear();
-    bit_width.clear();
-    reflection.clear();
-    signedness.clear();
-    enum_array.clear();
-    native_api.clear();
-    helpers.clear();
+    detail::clear_schema_columns(cpp_projection,
+                                 name,
+                                 underlying_type,
+                                 values,
+                                 count,
+                                 conversions,
+                                 export_specifier,
+                                 unreal_projection,
+                                 bit_width,
+                                 reflection,
+                                 signedness,
+                                 enum_array,
+                                 native_api,
+                                 helpers);
 }
 
 }

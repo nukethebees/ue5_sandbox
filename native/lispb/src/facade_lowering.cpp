@@ -28,9 +28,8 @@
 #include <vector>
 
 namespace lispb::codegen::detail {
-namespace {
 
-auto lower_facade_impl(LoweringContext& context, DeclarationHandle facade) -> DeclarationEmission {
+auto lower_facade(LoweringContext& context, DeclarationHandle facade) -> DeclarationEmission {
     auto& ir{context.ir};
     auto const& facades{context.declarations.facades};
     auto const& method_schemas{context.declarations.facade_methods};
@@ -146,12 +145,6 @@ auto lower_facade_impl(LoweringContext& context, DeclarationHandle facade) -> De
         }
     }
     return {.header = {std::move(declaration_node)}, .source = definitions.build()};
-}
-
-} // namespace
-
-auto lower_facade(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission {
-    return lower_facade_impl(context, schema);
 }
 
 } // namespace lispb::codegen::detail

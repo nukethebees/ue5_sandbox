@@ -1,5 +1,7 @@
 #include <codegen/schema/setting_control_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -21,26 +23,19 @@ auto SettingControlSchemas::append() -> SettingControlId {
     return SettingControlId{index + 1};
 }
 auto SettingControlSchemas::clone(SettingControlId id) -> SettingControlId {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    kind[destination] = kind[source_index];
-    options_provider[destination] = options_provider[source_index];
-    availability_provider[destination] = availability_provider[source_index];
-    minimum[destination] = minimum[source_index];
-    maximum[destination] = maximum[source_index];
-    step[destination] = step[source_index];
-    custom_row[destination] = custom_row[source_index];
-    return result;
+    return detail::clone_schema_row(*this,
+                                    id,
+                                    kind,
+                                    options_provider,
+                                    availability_provider,
+                                    minimum,
+                                    maximum,
+                                    step,
+                                    custom_row);
 }
 void SettingControlSchemas::clear() {
-    kind.clear();
-    options_provider.clear();
-    availability_provider.clear();
-    minimum.clear();
-    maximum.clear();
-    step.clear();
-    custom_row.clear();
+    detail::clear_schema_columns(
+        kind, options_provider, availability_provider, minimum, maximum, step, custom_row);
 }
 
 }

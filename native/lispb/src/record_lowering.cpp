@@ -28,20 +28,6 @@
 namespace lispb::codegen::detail {
 namespace {
 
-auto record_member_type(LoweringContext& context, ChildOccurrenceId member) -> CppTypeId {
-    auto& ir{context.ir};
-    auto const& members{context.declarations.child_occurrences};
-    auto const row{members.index(member)};
-    auto const element{context.resolve(members.type[row])};
-    auto const count{members.count[row]};
-    if (!count) {
-        return element;
-    }
-    return ir.types.template_type(
-        ir.types.named("std::array", {ir.types.dependency("std::array", "array")}),
-        {element, ir.types.intern(std::to_string(*count))});
-}
-
 auto record_visitor(LoweringContext& context, DeclarationHandle record, std::string const& name)
     -> Nodes {
     auto& ir{context.ir};
@@ -175,7 +161,7 @@ auto record_node(LoweringContext& context, DeclarationHandle record) -> NodeId {
     for (auto const member : context.declarations.items(records.members[row])) {
         auto const member_row{record_members.index(member)};
         auto const initializer{record_members.initializer[member_row]};
-        members.add(ir.instance_member(record_member_type(context, member),
+        members.add(ir.instance_member(lower_member_type(context, member),
                                        record_members.name[member_row],
                                        initializer
                                            ? std::optional<Expr>{ir.raw_expr(*initializer, {})}

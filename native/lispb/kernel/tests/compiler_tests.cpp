@@ -290,6 +290,25 @@ TEST(KernelReferenceEvaluator, EvaluatesEveryOperatorForEveryNumericType) {
     EXPECT_TRUE(files[2].content.contains("make_array<double>("));
 }
 
+TEST(KernelRenderer, QualifiesSharedFixturesWhenAnOperandShadowsTheirName) {
+    auto source{literal_source("float", "1")};
+    source.insert(source.find("(header-include"), "(tests \"ArrayKernelsTests.cpp\")\n    ");
+    constexpr std::string_view operand{"fixture_values_0"};
+    for (auto position{source.find("data")}; position != std::string::npos;
+         position = source.find("data", position + operand.size())) {
+        source.replace(position, std::string_view{"data"}.size(), operand);
+    }
+
+    auto const files{render_source(source)};
+
+    ASSERT_EQ(files.size(), 3);
+    auto const& tests{files[2].content};
+    EXPECT_TRUE(tests.contains("inline constexpr auto fixture_values_0{make_array<float>("));
+    EXPECT_TRUE(tests.contains("auto fixture_values_0{Generated_literals::fixture_values_0};"))
+        << tests;
+    EXPECT_FALSE(tests.contains("auto fixture_values_0{fixture_values_0};"));
+}
+
 TEST(KernelParser, RejectsInvalidEmissions) {
     auto unknown{std::string{valid_source}};
     unknown.insert(unknown.find("    (namespace ioj)"), "    (unsupported-option value)\n");

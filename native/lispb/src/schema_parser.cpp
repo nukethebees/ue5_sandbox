@@ -309,8 +309,7 @@ auto SchemaParser::parse_function(Declarations& declarations,
                      P::requires_},
                     {"parameter"});
     std::vector<ParameterId> parameters;
-    for (auto const declaration_id : fields.declarations()) {
-        auto const declaration{declaration_id};
+    for (auto const declaration : fields.declarations()) {
         parameters.push_back(parse_parameter(declarations, declaration));
     }
     std::optional<TypeRefId> trailing_return_type;
@@ -395,8 +394,7 @@ auto SchemaParser::parse_member(Declarations& declarations, sexpr::FormId const 
         }
     }
     std::optional<SemanticRelationId> relationship;
-    for (auto const declaration_id : fields.declarations()) {
-        auto const declaration{declaration_id};
+    for (auto const declaration : fields.declarations()) {
         if (relationship.has_value()) {
             parser_.fail(declaration, "SOA member may have only one relationship");
         }
@@ -432,8 +430,7 @@ auto SchemaParser::parse_soa(Declarations& declarations, sexpr::FormId const for
     std::vector<FunctionSchemaId> functions;
     std::vector<FunctionSchemaId> const_view_functions;
     std::vector<FunctionSchemaId> mutable_view_functions;
-    for (auto const declaration_id : fields.declarations()) {
-        auto const declaration{declaration_id};
+    for (auto const declaration : fields.declarations()) {
         auto const head{syntax_.head(declaration)};
         if (head == "member") {
             members.push_back(parse_member(declarations, declaration));
@@ -648,8 +645,7 @@ auto SchemaParser::parse_enum(Declarations& declarations, sexpr::FormId const fo
     std::vector<EnumeratorId> values;
     std::optional<EnumUnrealProjectionId> unreal_projection;
     auto const cpp_projection{parse_projections(declarations, fields, &unreal_projection)};
-    for (auto const declaration_id : fields.declarations()) {
-        auto const declaration{declaration_id};
+    for (auto const declaration : fields.declarations()) {
         if (syntax_.head(declaration) == "value") {
             Fields const value{parser_, declaration, "value", 1};
             value.validate({P::value, P::display_name, P::hidden, P::serialized_name, P::sentinel});
@@ -737,8 +733,7 @@ auto SchemaParser::parse_table(Declarations& declarations, sexpr::FormId const f
     std::vector<StaticTableRowId> rows;
     std::vector<StaticTableColumnId> columns;
     std::vector<StaticTableGroupId> groups;
-    for (auto const declaration_id : fields.declarations()) {
-        auto const declaration{declaration_id};
+    for (auto const declaration : fields.declarations()) {
         auto const head{syntax_.head(declaration)};
         if (head == "row") {
             Fields const row{parser_, declaration, "row", 1};
@@ -839,13 +834,11 @@ auto SchemaParser::parse_facade(Declarations& declarations, sexpr::FormId const 
                      P::target_storage},
                     {"method"});
     std::vector<FacadeMethodId> methods;
-    for (auto const declaration_id : fields.declarations()) {
-        auto const declaration{declaration_id};
+    for (auto const declaration : fields.declarations()) {
         Fields const method{parser_, declaration, "method", 2};
         method.validate({P::const_, P::noexcept_, P::target_name}, {"parameter"});
         std::vector<ParameterId> parameters;
-        for (auto const parameter_id : method.declarations()) {
-            auto const parameter{parameter_id};
+        for (auto const parameter : method.declarations()) {
             parameters.push_back(parse_parameter(declarations, parameter));
         }
         {
@@ -1078,8 +1071,7 @@ auto SchemaParser::parse_record(Declarations& declarations, sexpr::FormId const 
     std::vector<FunctionSchemaId> functions;
     std::vector<ChildOccurrenceId> members;
     members.reserve(fields.declarations().size());
-    for (auto const declaration_id : fields.declarations()) {
-        auto const declaration{declaration_id};
+    for (auto const declaration : fields.declarations()) {
         if (syntax_.head(declaration) == "function") {
             functions.push_back(parse_function(declarations, declaration));
         } else if (syntax_.head(declaration) == "reserved") {
@@ -1197,10 +1189,7 @@ auto SchemaParser::parse_integer_scalar(Declarations& declarations, sexpr::FormI
     if (auto const width{fields.optional(P::bit_width)}) {
         auto const width_text{std::string{parser_.text(*width, "integer scalar bit width")}};
         if (width_text != "auto") {
-            auto const parsed{parser_.integer(*width, "integer scalar bit width")};
-            if (parsed <= 0 || parsed > 64) {
-                parser_.fail(*width, "integer scalar bit width must be in the range 1..64");
-            }
+            auto const parsed{bounded_integer(parser_, *width, "integer scalar bit width", 1, 64)};
             bit_width = static_cast<std::uint32_t>(parsed);
         }
     }
@@ -1208,8 +1197,7 @@ auto SchemaParser::parse_integer_scalar(Declarations& declarations, sexpr::FormI
     std::vector<PackedNamedCodeId> named_codes;
     named_codes.reserve(fields.declarations().size());
     std::optional<SemanticRelationId> relationship;
-    for (auto const declaration_id : fields.declarations()) {
-        auto const declaration{declaration_id};
+    for (auto const declaration : fields.declarations()) {
         if (syntax_.head(declaration) == "projections") {
             continue;
         }
@@ -1241,7 +1229,9 @@ auto SchemaParser::parse_integer_scalar(Declarations& declarations, sexpr::FormI
     records.name[record_index] = parser_.identifier(fields.positional(0), "integer scalar name");
     auto const signedness{boolean_or(fields, P::signed_)};
     records.signedness[record_index] = signedness;
-    if (!bit_width && (!fields.optional(P::minimum) || !fields.optional(P::maximum))) {
+    auto const minimum_form{fields.optional(P::minimum)};
+    auto const maximum_form{fields.optional(P::maximum)};
+    if (!bit_width && (!minimum_form || !maximum_form)) {
         parser_.fail(form, "integer scalar requires :bit-width or both :minimum and :maximum");
     }
     auto const width{bit_width.value_or(64)};
@@ -1249,14 +1239,12 @@ auto SchemaParser::parse_integer_scalar(Declarations& declarations, sexpr::FormI
     auto const maximum{magnitude_bits == 64 ? std::numeric_limits<std::uint64_t>::max()
                                             : (std::uint64_t{1} << magnitude_bits) - 1};
     records.minimum_value[record_index] =
-        fields.optional(P::minimum)
-            ? packed_integer(*fields.optional(P::minimum), "integer scalar minimum")
-            : PackedIntegerValue::from_parts(signedness,
-                                             signedness ? std::uint64_t{1} << magnitude_bits : 0);
+        minimum_form ? packed_integer(*minimum_form, "integer scalar minimum")
+                     : PackedIntegerValue::from_parts(
+                           signedness, signedness ? std::uint64_t{1} << magnitude_bits : 0);
     records.maximum_value[record_index] =
-        fields.optional(P::maximum)
-            ? packed_integer(*fields.optional(P::maximum), "integer scalar maximum")
-            : PackedIntegerValue{maximum};
+        maximum_form ? packed_integer(*maximum_form, "integer scalar maximum")
+                     : PackedIntegerValue{maximum};
     records.bit_width[record_index] = bit_width;
     records.named_codes[record_index] = declarations.range(named_codes);
     records.relationship[record_index] = relationship;
@@ -1279,11 +1267,8 @@ auto SchemaParser::parse_linear_quantized(Declarations& declarations, sexpr::For
         clipping = *parsed;
     }
 
-    auto const bits{parser_.integer(fields.required(P::bits), "linear quantization bit width")};
-    if (bits <= 0 || bits > 64) {
-        parser_.fail(fields.required(P::bits),
-                     "linear quantization bit width must be in the range 1..64");
-    }
+    auto const bits{
+        bounded_integer(parser_, fields.required(P::bits), "linear quantization bit width", 1, 64)};
     auto const reserved{fields.optional(P::reserved_codes)};
     auto& records{declarations.linear_quantizeds};
     auto const record_id{records.append()};
@@ -1329,17 +1314,9 @@ auto SchemaParser::parse_fixed_point(Declarations& declarations, sexpr::FormId c
         {"projections"});
 
     auto const total_bits{
-        parser_.integer(fields.required(P::total_bits), "fixed-point total width")};
-    if (total_bits <= 0 || total_bits > 64) {
-        parser_.fail(fields.required(P::total_bits),
-                     "fixed-point total width must be in the range 1..64");
-    }
-    auto const fractional_bits{
-        parser_.integer(fields.required(P::fractional_bits), "fixed-point fractional width")};
-    if (fractional_bits < 0 || fractional_bits > 64) {
-        parser_.fail(fields.required(P::fractional_bits),
-                     "fixed-point fractional width must be in the range 0..64");
-    }
+        bounded_integer(parser_, fields.required(P::total_bits), "fixed-point total width", 1, 64)};
+    auto const fractional_bits{bounded_integer(
+        parser_, fields.required(P::fractional_bits), "fixed-point fractional width", 0, 64)};
 
     auto rounding{FixedPointRounding::nearest_even};
     if (auto const value{fields.optional(P::rounding)}) {
@@ -1627,8 +1604,7 @@ auto SchemaParser::parse_external_integer(RegisteredTypes& registered, sexpr::Fo
         maximum_value = packed_integer(*maximum_form, "external integer maximum");
     }
     std::vector<PackedNamedCodeId> named_codes;
-    for (auto const declaration_id : fields.declarations()) {
-        auto const declaration{declaration_id};
+    for (auto const declaration : fields.declarations()) {
         Fields const code{parser_, declaration, "code", 1};
         code.validate({P::value, P::sentinel});
         {
@@ -1667,8 +1643,7 @@ auto SchemaParser::parse_type_definition(sexpr::FormId const form, TypeRegistry&
             parse_keyword(
                 parser_, *pass_by, "parameter passing", try_parse_serialized_parameter_passing));
     }
-    for (auto const declaration_id : fields.declarations()) {
-        auto const declaration{declaration_id};
+    for (auto const declaration : fields.declarations()) {
         if (syntax_.head(declaration) != "operation") {
             if (semantics.kind() != ExternalScalarKind::none) {
                 parser_.fail(declaration, "type may have only one scalar description");

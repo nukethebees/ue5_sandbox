@@ -1,5 +1,7 @@
 #include <codegen/schema/normal_module_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -19,20 +21,11 @@ auto NormalModuleSchemas::append() -> ModuleHandle {
     return ModuleHandle{(static_cast<std::uint32_t>(ModuleKind::normal) << 24) | (index + 1)};
 }
 auto NormalModuleSchemas::clone(ModuleHandle id) -> ModuleHandle {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    settings[destination] = settings[source_index];
-    declarations[destination] = declarations[source_index];
-    enum_helper_namespace[destination] = enum_helper_namespace[source_index];
-    s7_constructors[destination] = s7_constructors[source_index];
-    return result;
+    return detail::clone_schema_row(
+        *this, id, settings, declarations, enum_helper_namespace, s7_constructors);
 }
 void NormalModuleSchemas::clear() {
-    settings.clear();
-    declarations.clear();
-    enum_helper_namespace.clear();
-    s7_constructors.clear();
+    detail::clear_schema_columns(settings, declarations, enum_helper_namespace, s7_constructors);
 }
 
 }

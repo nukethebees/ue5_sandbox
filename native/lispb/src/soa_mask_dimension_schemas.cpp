@@ -1,5 +1,7 @@
 #include <codegen/schema/soa_mask_dimension_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -16,16 +18,10 @@ auto SoaMaskDimensionSchemas::append() -> SoaMaskDimensionId {
     return SoaMaskDimensionId{index + 1};
 }
 auto SoaMaskDimensionSchemas::clone(SoaMaskDimensionId id) -> SoaMaskDimensionId {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    index_name[destination] = index_name[source_index];
-    extent[destination] = extent[source_index];
-    return result;
+    return detail::clone_schema_row(*this, id, index_name, extent);
 }
 void SoaMaskDimensionSchemas::clear() {
-    index_name.clear();
-    extent.clear();
+    detail::clear_schema_columns(index_name, extent);
 }
 
 }

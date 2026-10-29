@@ -1,5 +1,7 @@
 #include <codegen/schema/soa_member_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -22,28 +24,26 @@ auto SoaMemberSchemas::append() -> SoaMemberId {
     return SoaMemberId{index + 1};
 }
 auto SoaMemberSchemas::clone(SoaMemberId id) -> SoaMemberId {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    name[destination] = name[source_index];
-    kind[destination] = kind[source_index];
-    type[destination] = type[source_index];
-    equivalent_member[destination] = equivalent_member[source_index];
-    equivalent_accessor[destination] = equivalent_accessor[source_index];
-    mask_field[destination] = mask_field[source_index];
-    mask_dimensions[destination] = mask_dimensions[source_index];
-    relationship[destination] = relationship[source_index];
-    return result;
+    return detail::clone_schema_row(*this,
+                                    id,
+                                    name,
+                                    kind,
+                                    type,
+                                    equivalent_member,
+                                    equivalent_accessor,
+                                    mask_field,
+                                    mask_dimensions,
+                                    relationship);
 }
 void SoaMemberSchemas::clear() {
-    name.clear();
-    kind.clear();
-    type.clear();
-    equivalent_member.clear();
-    equivalent_accessor.clear();
-    mask_field.clear();
-    mask_dimensions.clear();
-    relationship.clear();
+    detail::clear_schema_columns(name,
+                                 kind,
+                                 type,
+                                 equivalent_member,
+                                 equivalent_accessor,
+                                 mask_field,
+                                 mask_dimensions,
+                                 relationship);
 }
 
 }

@@ -77,6 +77,8 @@
 namespace lispb::schema {
 namespace {
 
+using codegen::append_test_row;
+
 template <typename Id>
 auto text(CompilerStorage const& storage, Id id) -> std::string_view {
     return storage.strings.view(id);
@@ -259,57 +261,42 @@ TEST(SemanticTypeGraph, PreservesExplicitEnumSemanticWidth) {
         lispb::codegen::manifest_schema_version,
         lispb::codegen::make_test_registry(context),
         declarations,
-        {[&] {
-            auto const new_normal_modules{normal_modules.append()};
-            auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-            normal_modules.settings[new_normal_modules_row] = [&] {
-                auto const new_module_settings_store{module_settings_store.append()};
-                auto const new_module_settings_store_row{
-                    module_settings_store.index(new_module_settings_store)};
-                module_settings_store.name[new_module_settings_store_row] =
-                    strings.intern("states");
-                module_settings_store.header[new_module_settings_store_row] =
-                    strings.intern("States.h");
-                return new_module_settings_store;
-            }();
-            normal_modules.declarations[new_normal_modules_row] =
-                declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-                    auto const new_enums{enums_schemas.append()};
-                    auto const new_enums_row{enums_schemas.index(new_enums)};
-                    enums_schemas.cpp_projection[new_enums_row] = lispb::codegen::CppProjection{};
-                    enums_schemas.name[new_enums_row] = strings.intern("State");
-                    enums_schemas.underlying_type[new_enums_row] =
-                        lispb::codegen::make_test_type_ref(context, "std::uint8_t");
-                    enums_schemas.values[new_enums_row] =
-                        declarations.range<lispb::codegen::EnumeratorId>(
-                            {[&] {
-                                 auto const new_enumerators{enumerators_schemas.append()};
-                                 auto const new_enumerators_row{
-                                     enumerators_schemas.index(new_enumerators)};
-                                 enumerators_schemas.name[new_enumerators_row] =
-                                     strings.intern("Idle");
-                                 enumerators_schemas.initializer[new_enumerators_row] =
-                                     strings.intern("0");
-                                 return new_enumerators;
-                             }(),
-                             [&] {
-                                 auto const new_enumerators{enumerators_schemas.append()};
-                                 auto const new_enumerators_row{
-                                     enumerators_schemas.index(new_enumerators)};
-                                 enumerators_schemas.name[new_enumerators_row] =
+        {append_test_row(normal_modules, [&](auto const new_normal_modules) {
+            normal_modules.settings[new_normal_modules] =
+                append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                    module_settings_store.name[new_module_settings_store] =
+                        strings.intern("states");
+                    module_settings_store.header[new_module_settings_store] =
+                        strings.intern("States.h");
+                });
+            normal_modules.declarations[new_normal_modules] =
+                declarations.range<lispb::codegen::DeclarationHandle>(
+                    {append_test_row(enums_schemas, [&](auto const new_enums) {
+                        enums_schemas.cpp_projection[new_enums] = lispb::codegen::CppProjection{};
+                        enums_schemas.name[new_enums] = strings.intern("State");
+                        enums_schemas.underlying_type[new_enums] =
+                            lispb::codegen::make_test_type_ref(context, "std::uint8_t");
+                        enums_schemas
+                            .values[new_enums] = declarations.range<lispb::codegen::EnumeratorId>(
+                            {append_test_row(enumerators_schemas,
+                                             [&](auto const new_enumerators) {
+                                                 enumerators_schemas.name[new_enumerators] =
+                                                     strings.intern("Idle");
+                                                 enumerators_schemas.initializer[new_enumerators] =
+                                                     strings.intern("0");
+                                             }),
+                             append_test_row(enumerators_schemas, [&](auto const new_enumerators) {
+                                 enumerators_schemas.name[new_enumerators] =
                                      strings.intern("Active");
-                                 enumerators_schemas.initializer[new_enumerators_row] =
+                                 enumerators_schemas.initializer[new_enumerators] =
                                      strings.intern("7");
-                                 enumerators_schemas.sentinel[new_enumerators_row] = true;
-                                 return new_enumerators;
-                             }()});
-                    enums_schemas.bit_width[new_enums_row] = 3;
-                    enums_schemas.signedness[new_enums_row] =
-                        lispb::schema::EnumSignedness::unsigned_;
-                    return new_enums;
-                }()});
-            return new_normal_modules;
-        }()}};
+                                 enumerators_schemas.sentinel[new_enumerators] = true;
+                             })});
+                        enums_schemas.bit_width[new_enums] = 3;
+                        enums_schemas.signedness[new_enums] =
+                            lispb::schema::EnumSignedness::unsigned_;
+                    })});
+        })}};
 
     auto const graph{resolve_type_graph(manifest)};
     auto const& enums{graph.definitions().enums};
@@ -379,49 +366,38 @@ TEST(SemanticTypeGraph, KeepsDerivedEnumBackingOutOfSemanticDependencies) {
         lispb::codegen::manifest_schema_version,
         lispb::codegen::make_test_registry(context),
         declarations,
-        {[&] {
-            auto const new_normal_modules{normal_modules.append()};
-            auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-            normal_modules.settings[new_normal_modules_row] = [&] {
-                auto const new_module_settings_store{module_settings_store.append()};
-                auto const new_module_settings_store_row{
-                    module_settings_store.index(new_module_settings_store)};
-                module_settings_store.name[new_module_settings_store_row] =
-                    strings.intern("states");
-                module_settings_store.header[new_module_settings_store_row] =
-                    strings.intern("States.h");
-                return new_module_settings_store;
-            }();
-            normal_modules.declarations[new_normal_modules_row] =
-                declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-                    auto const new_enums{enums_schemas.append()};
-                    auto const new_enums_row{enums_schemas.index(new_enums)};
-                    enums_schemas.cpp_projection[new_enums_row] = lispb::codegen::CppProjection{};
-                    enums_schemas.name[new_enums_row] = strings.intern("State");
-                    enums_schemas.underlying_type[new_enums_row] = std::nullopt;
-                    enums_schemas.values[new_enums_row] =
-                        declarations.range<lispb::codegen::EnumeratorId>(
-                            {[&] {
-                                 auto const new_enumerators{enumerators.append()};
-                                 auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                                 enumerators.name[new_enumerators_row] = strings.intern("Idle");
-                                 enumerators.initializer[new_enumerators_row] = strings.intern("0");
-                                 return new_enumerators;
-                             }(),
-                             [&] {
-                                 auto const new_enumerators{enumerators.append()};
-                                 auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                                 enumerators.name[new_enumerators_row] = strings.intern("Active");
-                                 enumerators.initializer[new_enumerators_row] = strings.intern("7");
-                                 return new_enumerators;
-                             }()});
-                    enums_schemas.bit_width[new_enums_row] = 3;
-                    enums_schemas.signedness[new_enums_row] =
-                        lispb::schema::EnumSignedness::unsigned_;
-                    return new_enums;
-                }()});
-            return new_normal_modules;
-        }()}};
+        {append_test_row(normal_modules, [&](auto const new_normal_modules) {
+            normal_modules.settings[new_normal_modules] =
+                append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                    module_settings_store.name[new_module_settings_store] =
+                        strings.intern("states");
+                    module_settings_store.header[new_module_settings_store] =
+                        strings.intern("States.h");
+                });
+            normal_modules.declarations[new_normal_modules] =
+                declarations.range<lispb::codegen::DeclarationHandle>(
+                    {append_test_row(enums_schemas, [&](auto const new_enums) {
+                        enums_schemas.cpp_projection[new_enums] = lispb::codegen::CppProjection{};
+                        enums_schemas.name[new_enums] = strings.intern("State");
+                        enums_schemas.underlying_type[new_enums] = std::nullopt;
+                        enums_schemas.values[new_enums] =
+                            declarations.range<lispb::codegen::EnumeratorId>(
+                                {append_test_row(enumerators,
+                                                 [&](auto const new_enumerators) {
+                                                     enumerators.name[new_enumerators] =
+                                                         strings.intern("Idle");
+                                                     enumerators.initializer[new_enumerators] =
+                                                         strings.intern("0");
+                                                 }),
+                                 append_test_row(enumerators, [&](auto const new_enumerators) {
+                                     enumerators.name[new_enumerators] = strings.intern("Active");
+                                     enumerators.initializer[new_enumerators] = strings.intern("7");
+                                 })});
+                        enums_schemas.bit_width[new_enums] = 3;
+                        enums_schemas.signedness[new_enums] =
+                            lispb::schema::EnumSignedness::unsigned_;
+                    })});
+        })}};
 
     auto const graph{resolve_type_graph(manifest)};
     auto const& enums{graph.definitions().enums};
@@ -447,88 +423,75 @@ TEST(SemanticTypeGraph, ResolvesStandaloneIntegerScalarWithoutPhysicalFacts) {
         lispb::codegen::manifest_schema_version,
         lispb::codegen::make_test_registry(context),
         declarations,
-        {[&] {
-            auto const new_normal_modules{normal_modules.append()};
-            auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-            normal_modules.settings[new_normal_modules_row] = [&] {
-                auto const new_module_settings_store{module_settings_store.append()};
-                auto const new_module_settings_store_row{
-                    module_settings_store.index(new_module_settings_store)};
-                module_settings_store.name[new_module_settings_store_row] =
-                    strings.intern("semantic_values");
-                module_settings_store.header[new_module_settings_store_row] =
-                    strings.intern("SemanticValues.h");
-                module_settings_store.namespace_name[new_module_settings_store_row] =
-                    strings.intern("project");
-                return new_module_settings_store;
-            }();
-            normal_modules.declarations[new_normal_modules_row] = declarations.range<
-                lispb::codegen::DeclarationHandle>(
-                {[&] {
-                     auto const new_integer_scalars{integer_scalars.append()};
-                     auto const new_integer_scalars_row{integer_scalars.index(new_integer_scalars)};
-                     integer_scalars.name[new_integer_scalars_row] = strings.intern("DamageReason");
-                     integer_scalars.signedness[new_integer_scalars_row] = false;
-                     integer_scalars.minimum_value[new_integer_scalars_row] = 0;
-                     integer_scalars.maximum_value[new_integer_scalars_row] = 10;
-                     integer_scalars.bit_width[new_integer_scalars_row] = std::nullopt;
-                     integer_scalars.named_codes[new_integer_scalars_row] =
-                         declarations.range<lispb::codegen::PackedNamedCodeId>(
-                             {[&] {
-                                  auto const new_packed_named_codes{packed_named_codes.append()};
-                                  packed_named_codes
-                                      .name[packed_named_codes.index(new_packed_named_codes)] =
-                                      strings.intern("Unknown");
-                                  packed_named_codes
-                                      .value[packed_named_codes.index(new_packed_named_codes)] = 0;
-                                  packed_named_codes
-                                      .sentinel[packed_named_codes.index(new_packed_named_codes)] =
-                                      false;
-                                  return new_packed_named_codes;
-                              }(),
-                              [&] {
-                                  auto const new_packed_named_codes{packed_named_codes.append()};
-                                  packed_named_codes
-                                      .name[packed_named_codes.index(new_packed_named_codes)] =
-                                      strings.intern("Invalid");
-                                  packed_named_codes
-                                      .value[packed_named_codes.index(new_packed_named_codes)] = 15;
-                                  packed_named_codes
-                                      .sentinel[packed_named_codes.index(new_packed_named_codes)] =
-                                      true;
-                                  return new_packed_named_codes;
-                              }()});
-                     integer_scalars.relationship[new_integer_scalars_row] = [&] {
-                         auto const new_semantic_relations{semantic_relations.append()};
-                         auto const new_semantic_relations_row{
-                             semantic_relations.index(new_semantic_relations)};
-                         semantic_relations.kind[new_semantic_relations_row] =
-                             lispb::codegen::SemanticRelationKind::offset_into;
-                         semantic_relations.target[new_semantic_relations_row] =
-                             lispb::codegen::make_test_type_ref(context, "project::EntityTable");
-                         semantic_relations.unit[new_semantic_relations_row] =
-                             lispb::codegen::SemanticRelationUnit::bytes;
-                         return new_semantic_relations;
-                     }();
-                     return new_integer_scalars;
-                 }(),
-                 [&] {
-                     auto const new_integer_scalars{integer_scalars.append()};
-                     auto const new_integer_scalars_row{integer_scalars.index(new_integer_scalars)};
-                     integer_scalars.name[new_integer_scalars_row] = strings.intern("EntityTable");
-                     integer_scalars.signedness[new_integer_scalars_row] = false;
-                     integer_scalars.minimum_value[new_integer_scalars_row] = 0;
-                     integer_scalars.maximum_value[new_integer_scalars_row] = 1'023;
-                     context.storage.declarations.integer_scalars
-                         .bit_width[context.storage.declarations.integer_scalars.index(
-                             new_integer_scalars)] = 10;
-                     context.storage.declarations.integer_scalars
-                         .named_codes[context.storage.declarations.integer_scalars.index(
-                             new_integer_scalars)] = {};
-                     return new_integer_scalars;
-                 }()});
-            return new_normal_modules;
-        }()}};
+        {append_test_row(normal_modules, [&](auto const new_normal_modules) {
+            normal_modules.settings[new_normal_modules] =
+                append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                    module_settings_store.name[new_module_settings_store] =
+                        strings.intern("semantic_values");
+                    module_settings_store.header[new_module_settings_store] =
+                        strings.intern("SemanticValues.h");
+                    module_settings_store.namespace_name[new_module_settings_store] =
+                        strings.intern("project");
+                });
+            normal_modules.declarations[new_normal_modules] =
+                declarations.range<lispb::codegen::DeclarationHandle>(
+                    {append_test_row(
+                         integer_scalars,
+                         [&](auto const new_integer_scalars) {
+                             integer_scalars.name[new_integer_scalars] =
+                                 strings.intern("DamageReason");
+                             integer_scalars.signedness[new_integer_scalars] = false;
+                             integer_scalars.minimum_value[new_integer_scalars] = 0;
+                             integer_scalars.maximum_value[new_integer_scalars] = 10;
+                             integer_scalars.bit_width[new_integer_scalars] = std::nullopt;
+                             integer_scalars.named_codes[new_integer_scalars] =
+                                 declarations.range<lispb::codegen::PackedNamedCodeId>(
+                                     {append_test_row(
+                                          packed_named_codes,
+                                          [&](auto const new_packed_named_codes) {
+                                              packed_named_codes.name[packed_named_codes.index(
+                                                  new_packed_named_codes)] =
+                                                  strings.intern("Unknown");
+                                              packed_named_codes.value[packed_named_codes.index(
+                                                  new_packed_named_codes)] = 0;
+                                              packed_named_codes.sentinel[packed_named_codes.index(
+                                                  new_packed_named_codes)] = false;
+                                          }),
+                                      append_test_row(
+                                          packed_named_codes,
+                                          [&](auto const new_packed_named_codes) {
+                                              packed_named_codes.name[packed_named_codes.index(
+                                                  new_packed_named_codes)] =
+                                                  strings.intern("Invalid");
+                                              packed_named_codes.value[packed_named_codes.index(
+                                                  new_packed_named_codes)] = 15;
+                                              packed_named_codes.sentinel[packed_named_codes.index(
+                                                  new_packed_named_codes)] = true;
+                                          })});
+                             integer_scalars.relationship[new_integer_scalars] = append_test_row(
+                                 semantic_relations, [&](auto const new_semantic_relations) {
+                                     semantic_relations.kind[new_semantic_relations] =
+                                         lispb::codegen::SemanticRelationKind::offset_into;
+                                     semantic_relations.target[new_semantic_relations] =
+                                         lispb::codegen::make_test_type_ref(context,
+                                                                            "project::EntityTable");
+                                     semantic_relations.unit[new_semantic_relations] =
+                                         lispb::codegen::SemanticRelationUnit::bytes;
+                                 });
+                         }),
+                     append_test_row(integer_scalars, [&](auto const new_integer_scalars) {
+                         integer_scalars.name[new_integer_scalars] = strings.intern("EntityTable");
+                         integer_scalars.signedness[new_integer_scalars] = false;
+                         integer_scalars.minimum_value[new_integer_scalars] = 0;
+                         integer_scalars.maximum_value[new_integer_scalars] = 1'023;
+                         context.storage.declarations.integer_scalars
+                             .bit_width[context.storage.declarations.integer_scalars.index(
+                                 new_integer_scalars)] = 10;
+                         context.storage.declarations.integer_scalars
+                             .named_codes[context.storage.declarations.integer_scalars.index(
+                                 new_integer_scalars)] = {};
+                     })});
+        })}};
 
     auto const graph{resolve_type_graph(manifest)};
     auto const scalar_id{lispb::codegen::find_test_type(graph, "semantic_values", "DamageReason")};
@@ -584,44 +547,36 @@ TEST(SemanticTypeGraph, RejectsIntegerScalarRelationshipToExternalLeaf) {
                   "project::ExternalTable",
                   {storage.cpp_types.dependency("project::ExternalTable", "ExternalTable.h")})}}),
         storage.declarations,
-        {[&] {
-            auto const new_normal_modules{modules.append()};
-            modules.settings[new_normal_modules] = [&] {
-                auto const new_module_settings_store{modules_settings.append()};
-                modules_settings.name[new_module_settings_store] =
-                    storage.strings.intern("semantic_values");
-                modules_settings.header[new_module_settings_store] =
-                    storage.strings.intern("SemanticValues.h");
-                modules_settings.namespace_name[new_module_settings_store] =
-                    storage.strings.intern("project");
-                return new_module_settings_store;
-            }();
+        {append_test_row(modules, [&](auto const new_normal_modules) {
+            modules.settings[new_normal_modules] =
+                append_test_row(modules_settings, [&](auto const new_module_settings_store) {
+                    modules_settings.name[new_module_settings_store] =
+                        storage.strings.intern("semantic_values");
+                    modules_settings.header[new_module_settings_store] =
+                        storage.strings.intern("SemanticValues.h");
+                    modules_settings.namespace_name[new_module_settings_store] =
+                        storage.strings.intern("project");
+                });
             modules.declarations[new_normal_modules] =
-                storage.declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-                    auto const new_integer_scalars{integer_scalars.append()};
-                    auto const new_integer_scalars_row{integer_scalars.index(new_integer_scalars)};
-                    integer_scalars.name[new_integer_scalars_row] =
-                        storage.strings.intern("EntityIndex");
-                    integer_scalars.signedness[new_integer_scalars_row] = false;
-                    integer_scalars.minimum_value[new_integer_scalars_row] = 0;
-                    integer_scalars.maximum_value[new_integer_scalars_row] = 1'023;
-                    integer_scalars.bit_width[new_integer_scalars_row] = 10;
-                    integer_scalars.named_codes[new_integer_scalars_row] = {};
-                    integer_scalars.relationship[new_integer_scalars_row] = [&] {
-                        auto const new_semantic_relations{semantic_relations.append()};
-                        auto const new_semantic_relations_row{
-                            semantic_relations.index(new_semantic_relations)};
-                        semantic_relations.kind[new_semantic_relations_row] =
-                            lispb::codegen::SemanticRelationKind::index_into;
-                        semantic_relations.target[new_semantic_relations_row] =
-                            lispb::codegen::make_test_type_ref(context, "@external_table");
-                        semantic_relations.unit[new_semantic_relations_row] = std::nullopt;
-                        return new_semantic_relations;
-                    }();
-                    return new_integer_scalars;
-                }()});
-            return new_normal_modules;
-        }()}};
+                storage.declarations.range<lispb::codegen::DeclarationHandle>(
+                    {append_test_row(integer_scalars, [&](auto const new_integer_scalars) {
+                        integer_scalars.name[new_integer_scalars] =
+                            storage.strings.intern("EntityIndex");
+                        integer_scalars.signedness[new_integer_scalars] = false;
+                        integer_scalars.minimum_value[new_integer_scalars] = 0;
+                        integer_scalars.maximum_value[new_integer_scalars] = 1'023;
+                        integer_scalars.bit_width[new_integer_scalars] = 10;
+                        integer_scalars.named_codes[new_integer_scalars] = {};
+                        integer_scalars.relationship[new_integer_scalars] = append_test_row(
+                            semantic_relations, [&](auto const new_semantic_relations) {
+                                semantic_relations.kind[new_semantic_relations] =
+                                    lispb::codegen::SemanticRelationKind::index_into;
+                                semantic_relations.target[new_semantic_relations] =
+                                    lispb::codegen::make_test_type_ref(context, "@external_table");
+                                semantic_relations.unit[new_semantic_relations] = std::nullopt;
+                            });
+                    })});
+        })}};
 
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
@@ -646,139 +601,113 @@ TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
         lispb::codegen::manifest_schema_version,
         lispb::codegen::make_test_registry(context),
         declarations,
-        {[&] {
-             auto const new_normal_modules{normal_modules.append()};
-             auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-             normal_modules.settings[new_normal_modules_row] = [&] {
-                 auto const new_module_settings_store{module_settings_store.append()};
-                 auto const new_module_settings_store_row{
-                     module_settings_store.index(new_module_settings_store)};
-                 module_settings_store.name[new_module_settings_store_row] =
-                     strings.intern("semantic_values");
-                 module_settings_store.header[new_module_settings_store_row] =
-                     strings.intern("SemanticValues.h");
-                 module_settings_store.namespace_name[new_module_settings_store_row] =
-                     strings.intern("project");
-                 return new_module_settings_store;
-             }();
-             normal_modules.declarations[new_normal_modules_row] =
-                 declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-                     auto const new_integer_scalars{integer_scalars.append()};
-                     auto const new_integer_scalars_row{integer_scalars.index(new_integer_scalars)};
-                     integer_scalars.name[new_integer_scalars_row] = strings.intern("Health");
-                     integer_scalars.signedness[new_integer_scalars_row] = false;
-                     integer_scalars.minimum_value[new_integer_scalars_row] = 0;
-                     integer_scalars.maximum_value[new_integer_scalars_row] = 1000;
-                     integer_scalars.bit_width[new_integer_scalars_row] = std::nullopt;
-                     integer_scalars.named_codes[new_integer_scalars_row] =
-                         declarations.range<lispb::codegen::PackedNamedCodeId>({[&] {
-                             auto const new_packed_named_codes{packed_named_codes.append()};
-                             auto const new_packed_named_codes_row{
-                                 packed_named_codes.index(new_packed_named_codes)};
-                             packed_named_codes.name[new_packed_named_codes_row] =
-                                 strings.intern("Invalid");
-                             packed_named_codes.value[new_packed_named_codes_row] = 1023;
-                             packed_named_codes
-                                 .sentinel[packed_named_codes.index(new_packed_named_codes)] = true;
-                             return new_packed_named_codes;
-                         }()});
-                     return new_integer_scalars;
-                 }()});
-             return new_normal_modules;
-         }(),
-         [&] {
-             auto const new_normal_modules{normal_modules.append()};
-             auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-             normal_modules.settings[new_normal_modules_row] = [&] {
-                 auto const new_module_settings_store{module_settings_store.append()};
-                 auto const new_module_settings_store_row{
-                     module_settings_store.index(new_module_settings_store)};
-                 module_settings_store.name[new_module_settings_store_row] =
-                     strings.intern("representations");
-                 module_settings_store.header[new_module_settings_store_row] =
-                     strings.intern("Representations.h");
-                 module_settings_store.namespace_name[new_module_settings_store_row] =
-                     strings.intern("project");
-                 return new_module_settings_store;
-             }();
-             normal_modules.declarations[new_normal_modules_row] =
+        {append_test_row(
+             normal_modules,
+             [&](auto const new_normal_modules) {
+                 normal_modules.settings[new_normal_modules] = append_test_row(
+                     module_settings_store, [&](auto const new_module_settings_store) {
+                         module_settings_store.name[new_module_settings_store] =
+                             strings.intern("semantic_values");
+                         module_settings_store.header[new_module_settings_store] =
+                             strings.intern("SemanticValues.h");
+                         module_settings_store.namespace_name[new_module_settings_store] =
+                             strings.intern("project");
+                     });
+                 normal_modules.declarations[new_normal_modules] =
+                     declarations.range<lispb::codegen::DeclarationHandle>(
+                         {append_test_row(integer_scalars, [&](auto const new_integer_scalars) {
+                             integer_scalars.name[new_integer_scalars] = strings.intern("Health");
+                             integer_scalars.signedness[new_integer_scalars] = false;
+                             integer_scalars.minimum_value[new_integer_scalars] = 0;
+                             integer_scalars.maximum_value[new_integer_scalars] = 1000;
+                             integer_scalars.bit_width[new_integer_scalars] = std::nullopt;
+                             integer_scalars.named_codes[new_integer_scalars] =
+                                 declarations.range<lispb::codegen::PackedNamedCodeId>(
+                                     {append_test_row(
+                                         packed_named_codes,
+                                         [&](auto const new_packed_named_codes) {
+                                             packed_named_codes.name[new_packed_named_codes] =
+                                                 strings.intern("Invalid");
+                                             packed_named_codes.value[new_packed_named_codes] =
+                                                 1023;
+                                             packed_named_codes.sentinel[packed_named_codes.index(
+                                                 new_packed_named_codes)] = true;
+                                         })});
+                         })});
+             }),
+         append_test_row(normal_modules, [&](auto const new_normal_modules) {
+             normal_modules.settings[new_normal_modules] =
+                 append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                     module_settings_store.name[new_module_settings_store] =
+                         strings.intern("representations");
+                     module_settings_store.header[new_module_settings_store] =
+                         strings.intern("Representations.h");
+                     module_settings_store.namespace_name[new_module_settings_store] =
+                         strings.intern("project");
+                 });
+             normal_modules.declarations[new_normal_modules] =
                  declarations.range<lispb::codegen::DeclarationHandle>(
-                     {[&] {
-                          auto const new_linear_quantizeds{linear_quantizeds.append()};
-                          auto const new_linear_quantizeds_row{
-                              linear_quantizeds.index(new_linear_quantizeds)};
-                          linear_quantizeds.name[new_linear_quantizeds_row] =
-                              strings.intern("HealthQ8");
-                          linear_quantizeds.source[new_linear_quantizeds_row] =
-                              lispb::codegen::make_test_type_ref(context, "project::Health");
-                          linear_quantizeds.bit_width[new_linear_quantizeds_row] = 8;
-                          linear_quantizeds.reserved_codes[new_linear_quantizeds_row] = 1;
-                          linear_quantizeds.clipping[new_linear_quantizeds_row] =
-                              lispb::codegen::QuantizationClipping::clamp;
-                          return new_linear_quantizeds;
-                      }(),
-                      [&] {
-                          auto const new_integer_varints{integer_varints_schemas.append()};
-                          auto const new_integer_varints_row{
-                              integer_varints_schemas.index(new_integer_varints)};
-                          integer_varints_schemas.name[new_integer_varints_row] =
-                              strings.intern("HealthVarint");
-                          integer_varints_schemas.source[new_integer_varints_row] =
-                              lispb::codegen::make_test_type_ref(context, "project::Health");
-                          integer_varints_schemas.encoding[new_integer_varints_row] =
-                              lispb::codegen::IntegerVarintEncoding::unsigned_varint;
-                          return new_integer_varints;
-                      }(),
-                      [&] {
-                          auto const new_fixed_points{fixed_points_schemas.append()};
-                          auto const new_fixed_points_row{
-                              fixed_points_schemas.index(new_fixed_points)};
-                          fixed_points_schemas.name[new_fixed_points_row] =
-                              strings.intern("VelocityQ12_4");
-                          fixed_points_schemas.signedness[new_fixed_points_row] = true;
-                          fixed_points_schemas.total_bits[new_fixed_points_row] = 16;
-                          fixed_points_schemas.fractional_bits[new_fixed_points_row] = 4;
-                          fixed_points_schemas.rounding[new_fixed_points_row] =
-                              lispb::codegen::FixedPointRounding::toward_zero;
-                          return new_fixed_points;
-                      }(),
-                      [&] {
-                          auto const new_optional_sentinels{optional_sentinels_schemas.append()};
-                          auto const new_optional_sentinels_row{
-                              optional_sentinels_schemas.index(new_optional_sentinels)};
-                          optional_sentinels_schemas.name[new_optional_sentinels_row] =
-                              strings.intern("OptionalHealth");
-                          optional_sentinels_schemas.source[new_optional_sentinels_row] =
-                              lispb::codegen::make_test_type_ref(context, "project::Health");
-                          optional_sentinels_schemas.sentinel[new_optional_sentinels_row] =
-                              strings.intern("Invalid");
-                          return new_optional_sentinels;
-                      }(),
-                      [&] {
-                          auto const new_optional_presence_bits{
-                              optional_presence_bits_schemas.append()};
-                          auto const new_optional_presence_bits_row{
-                              optional_presence_bits_schemas.index(new_optional_presence_bits)};
-                          optional_presence_bits_schemas.name[new_optional_presence_bits_row] =
-                              strings.intern("PresentHealth");
-                          optional_presence_bits_schemas.source[new_optional_presence_bits_row] =
-                              lispb::codegen::make_test_type_ref(context, "project::Health");
-                          return new_optional_presence_bits;
-                      }(),
-                      [&] {
-                          auto const new_mini_floats{mini_floats_schemas.append()};
-                          auto const new_mini_floats_row{
-                              mini_floats_schemas.index(new_mini_floats)};
-                          mini_floats_schemas.name[new_mini_floats_row] =
+                     {append_test_row(linear_quantizeds,
+                                      [&](auto const new_linear_quantizeds) {
+                                          linear_quantizeds.name[new_linear_quantizeds] =
+                                              strings.intern("HealthQ8");
+                                          linear_quantizeds.source[new_linear_quantizeds] =
+                                              lispb::codegen::make_test_type_ref(context,
+                                                                                 "project::Health");
+                                          linear_quantizeds.bit_width[new_linear_quantizeds] = 8;
+                                          linear_quantizeds.reserved_codes[new_linear_quantizeds] =
+                                              1;
+                                          linear_quantizeds.clipping[new_linear_quantizeds] =
+                                              lispb::codegen::QuantizationClipping::clamp;
+                                      }),
+                      append_test_row(
+                          integer_varints_schemas,
+                          [&](auto const new_integer_varints) {
+                              integer_varints_schemas.name[new_integer_varints] =
+                                  strings.intern("HealthVarint");
+                              integer_varints_schemas.source[new_integer_varints] =
+                                  lispb::codegen::make_test_type_ref(context, "project::Health");
+                              integer_varints_schemas.encoding[new_integer_varints] =
+                                  lispb::codegen::IntegerVarintEncoding::unsigned_varint;
+                          }),
+                      append_test_row(fixed_points_schemas,
+                                      [&](auto const new_fixed_points) {
+                                          fixed_points_schemas.name[new_fixed_points] =
+                                              strings.intern("VelocityQ12_4");
+                                          fixed_points_schemas.signedness[new_fixed_points] = true;
+                                          fixed_points_schemas.total_bits[new_fixed_points] = 16;
+                                          fixed_points_schemas.fractional_bits[new_fixed_points] =
+                                              4;
+                                          fixed_points_schemas.rounding[new_fixed_points] =
+                                              lispb::codegen::FixedPointRounding::toward_zero;
+                                      }),
+                      append_test_row(
+                          optional_sentinels_schemas,
+                          [&](auto const new_optional_sentinels) {
+                              optional_sentinels_schemas.name[new_optional_sentinels] =
+                                  strings.intern("OptionalHealth");
+                              optional_sentinels_schemas.source[new_optional_sentinels] =
+                                  lispb::codegen::make_test_type_ref(context, "project::Health");
+                              optional_sentinels_schemas.sentinel[new_optional_sentinels] =
+                                  strings.intern("Invalid");
+                          }),
+                      append_test_row(
+                          optional_presence_bits_schemas,
+                          [&](auto const new_optional_presence_bits) {
+                              optional_presence_bits_schemas.name[new_optional_presence_bits] =
+                                  strings.intern("PresentHealth");
+                              optional_presence_bits_schemas.source[new_optional_presence_bits] =
+                                  lispb::codegen::make_test_type_ref(context, "project::Health");
+                          }),
+                      append_test_row(mini_floats_schemas, [&](auto const new_mini_floats) {
+                          mini_floats_schemas.name[new_mini_floats] =
                               strings.intern("CompactFloat");
-                          mini_floats_schemas.sign_bits[new_mini_floats_row] = 1;
-                          mini_floats_schemas.exponent_bits[new_mini_floats_row] = 5;
-                          mini_floats_schemas.significand_bits[new_mini_floats_row] = 10;
-                          mini_floats_schemas.exponent_bias[new_mini_floats_row] = 15;
-                          return new_mini_floats;
-                      }()});
-             return new_normal_modules;
-         }()}};
+                          mini_floats_schemas.sign_bits[new_mini_floats] = 1;
+                          mini_floats_schemas.exponent_bits[new_mini_floats] = 5;
+                          mini_floats_schemas.significand_bits[new_mini_floats] = 10;
+                          mini_floats_schemas.exponent_bias[new_mini_floats] = 15;
+                      })});
+         })}};
 
     auto const graph{resolve_type_graph(manifest)};
     auto const& linear_quantized{graph.definitions().linear_quantized};
@@ -1049,72 +978,56 @@ TEST(SemanticTypeGraph, ResolvesSoaColumnRelationshipsAndDependencies) {
         lispb::codegen::manifest_schema_version,
         lispb::codegen::make_test_registry(context),
         declarations,
-        {[&] {
-            auto const new_normal_modules{normal_modules.append()};
-            auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-            normal_modules.settings[new_normal_modules_row] = [&] {
-                auto const new_module_settings_store{module_settings_store.append()};
-                auto const new_module_settings_store_row{
-                    module_settings_store.index(new_module_settings_store)};
-                module_settings_store.name[new_module_settings_store_row] =
-                    strings.intern("tables");
-                module_settings_store.header[new_module_settings_store_row] =
-                    strings.intern("Tables.h");
-                return new_module_settings_store;
-            }();
-            normal_modules.declarations[new_normal_modules_row] =
+        {append_test_row(normal_modules, [&](auto const new_normal_modules) {
+            normal_modules.settings[new_normal_modules] =
+                append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                    module_settings_store.name[new_module_settings_store] =
+                        strings.intern("tables");
+                    module_settings_store.header[new_module_settings_store] =
+                        strings.intern("Tables.h");
+                });
+            normal_modules.declarations[new_normal_modules] =
                 declarations.range<lispb::codegen::DeclarationHandle>(
-                    {[&] {
-                         auto const new_soas{soas_schemas.append()};
-                         auto const new_soas_row{soas_schemas.index(new_soas)};
-                         soas_schemas.name[new_soas_row] = strings.intern("Target");
-                         soas_schemas.members[new_soas_row] =
-                             declarations.range<lispb::codegen::SoaMemberId>({[&] {
-                                 auto const new_soa_members{soa_members.append()};
-                                 auto const new_soa_members_row{soa_members.index(new_soa_members)};
-                                 soa_members.name[new_soa_members_row] = strings.intern("values");
-                                 soa_members.kind[new_soa_members_row] =
+                    {append_test_row(
+                         soas_schemas,
+                         [&](auto const new_soas) {
+                             soas_schemas.name[new_soas] = strings.intern("Target");
+                             soas_schemas.members[new_soas] =
+                                 declarations.range<lispb::codegen::SoaMemberId>(
+                                     {append_test_row(soa_members, [&](auto const new_soa_members) {
+                                         soa_members.name[new_soa_members] =
+                                             strings.intern("values");
+                                         soa_members.kind[new_soa_members] =
+                                             lispb::codegen::SoaMemberKind::array;
+                                         soa_members.type[new_soa_members] =
+                                             lispb::codegen::make_test_type_ref(context, "float");
+                                         soa_members.relationship[new_soa_members] = std::nullopt;
+                                     })});
+                         }),
+                     append_test_row(soas_schemas, [&](auto const new_soas) {
+                         soas_schemas.name[new_soas] = strings.intern("User");
+                         soas_schemas
+                             .members[new_soas] = declarations.range<lispb::codegen::SoaMemberId>(
+                             {append_test_row(soa_members, [&](auto const new_soa_members) {
+                                 soa_members.name[new_soa_members] = strings.intern("identifiers");
+                                 soa_members.kind[new_soa_members] =
                                      lispb::codegen::SoaMemberKind::array;
-                                 soa_members.type[new_soa_members_row] =
-                                     lispb::codegen::make_test_type_ref(context, "float");
-                                 soa_members.relationship[new_soa_members_row] = std::nullopt;
-                                 return new_soa_members;
-                             }()});
-                         return new_soas;
-                     }(),
-                     [&] {
-                         auto const new_soas{soas_schemas.append()};
-                         auto const new_soas_row{soas_schemas.index(new_soas)};
-                         soas_schemas.name[new_soas_row] = strings.intern("User");
-                         soas_schemas.members[new_soas_row] =
-                             declarations.range<lispb::codegen::SoaMemberId>({[&] {
-                                 auto const new_soa_members{soa_members.append()};
-                                 auto const new_soa_members_row{soa_members.index(new_soa_members)};
-                                 soa_members.name[new_soa_members_row] =
-                                     strings.intern("identifiers");
-                                 soa_members.kind[new_soa_members_row] =
-                                     lispb::codegen::SoaMemberKind::array;
-                                 soa_members.type[new_soa_members_row] =
+                                 soa_members.type[new_soa_members] =
                                      lispb::codegen::make_test_type_ref(context, "std::uint32_t");
-                                 soa_members.relationship[new_soa_members_row] = [&] {
-                                     auto const new_semantic_relations{semantic_relations.append()};
-                                     semantic_relations
-                                         .kind[semantic_relations.index(new_semantic_relations)] =
-                                         lispb::codegen::SemanticRelationKind::index_into;
-                                     semantic_relations
-                                         .target[semantic_relations.index(new_semantic_relations)] =
-                                         lispb::codegen::make_test_type_ref(context, "Target");
-                                     semantic_relations
-                                         .unit[semantic_relations.index(new_semantic_relations)] =
-                                         std::nullopt;
-                                     return new_semantic_relations;
-                                 }();
-                                 return new_soa_members;
-                             }()});
-                         return new_soas;
-                     }()});
-            return new_normal_modules;
-        }()}};
+                                 soa_members.relationship[new_soa_members] = append_test_row(
+                                     semantic_relations, [&](auto const new_semantic_relations) {
+                                         semantic_relations.kind[semantic_relations.index(
+                                             new_semantic_relations)] =
+                                             lispb::codegen::SemanticRelationKind::index_into;
+                                         semantic_relations.target[semantic_relations.index(
+                                             new_semantic_relations)] =
+                                             lispb::codegen::make_test_type_ref(context, "Target");
+                                         semantic_relations.unit[semantic_relations.index(
+                                             new_semantic_relations)] = std::nullopt;
+                                     });
+                             })});
+                     })});
+        })}};
 
     auto const graph{resolve_type_graph(manifest)};
     auto const& soas{graph.definitions().soas};
@@ -1155,95 +1068,75 @@ TEST(SemanticTypeGraph, ResolvesRecordMembersFixedArraysAndDependencies) {
         lispb::codegen::manifest_schema_version,
         lispb::codegen::make_test_registry(context),
         declarations,
-        {[&] {
-            auto const new_normal_modules{normal_modules.append()};
-            auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-            normal_modules.settings[new_normal_modules_row] = [&] {
-                auto const new_module_settings_store{module_settings_store.append()};
-                auto const new_module_settings_store_row{
-                    module_settings_store.index(new_module_settings_store)};
-                module_settings_store.name[new_module_settings_store_row] =
-                    strings.intern("records");
-                module_settings_store.header[new_module_settings_store_row] =
-                    strings.intern("Records.h");
-                return new_module_settings_store;
-            }();
-            normal_modules.declarations[new_normal_modules_row] =
-                declarations.range<lispb::codegen::DeclarationHandle>(
-                    {[&] {
-                         auto const new_records{records_schemas.append()};
-                         auto const new_records_row{records_schemas.index(new_records)};
-                         records_schemas.cpp_projection[new_records_row] =
+        {append_test_row(normal_modules, [&](auto const new_normal_modules) {
+            normal_modules.settings[new_normal_modules] =
+                append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                    module_settings_store.name[new_module_settings_store] =
+                        strings.intern("records");
+                    module_settings_store.header[new_module_settings_store] =
+                        strings.intern("Records.h");
+                });
+            normal_modules.declarations[new_normal_modules] = declarations.range<
+                lispb::codegen::DeclarationHandle>(
+                {append_test_row(
+                     records_schemas,
+                     [&](auto const new_records) {
+                         records_schemas.cpp_projection[new_records] =
                              lispb::codegen::CppProjection{};
-                         records_schemas.name[new_records_row] = strings.intern("Position");
-                         records_schemas.members[new_records_row] =
-                             declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
-                                 auto const new_record_members{record_members_schemas.append()};
-                                 auto const new_record_members_row{
-                                     record_members_schemas.index(new_record_members)};
-                                 record_members_schemas.name[new_record_members_row] =
-                                     strings.intern("x");
-                                 record_members_schemas.type[new_record_members_row] =
-                                     lispb::codegen::make_test_type_ref(context, "float");
-                                 return new_record_members;
-                             }()});
-                         return new_records;
-                     }(),
-                     [&] {
-                         auto const new_records{records_schemas.append()};
-                         auto const new_records_row{records_schemas.index(new_records)};
-                         records_schemas.cpp_projection[new_records_row] =
+                         records_schemas.name[new_records] = strings.intern("Position");
+                         records_schemas.members[new_records] =
+                             declarations.range<lispb::codegen::ChildOccurrenceId>({append_test_row(
+                                 record_members_schemas, [&](auto const new_record_members) {
+                                     record_members_schemas.name[new_record_members] =
+                                         strings.intern("x");
+                                     record_members_schemas.type[new_record_members] =
+                                         lispb::codegen::make_test_type_ref(context, "float");
+                                 })});
+                     }),
+                 append_test_row(
+                     records_schemas,
+                     [&](auto const new_records) {
+                         records_schemas.cpp_projection[new_records] =
                              lispb::codegen::CppProjection{};
-                         records_schemas.name[new_records_row] = strings.intern("Table");
-                         records_schemas.members[new_records_row] =
-                             declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
-                                 auto const new_record_members{record_members_schemas.append()};
-                                 auto const new_record_members_row{
-                                     record_members_schemas.index(new_record_members)};
-                                 record_members_schemas.name[new_record_members_row] =
-                                     strings.intern("value");
-                                 record_members_schemas.type[new_record_members_row] =
-                                     lispb::codegen::make_test_type_ref(context, "float");
-                                 return new_record_members;
-                             }()});
-                         return new_records;
-                     }(),
-                     [&] {
-                         auto const new_records{records_schemas.append()};
-                         auto const new_records_row{records_schemas.index(new_records)};
-                         records_schemas.cpp_projection[new_records_row] =
-                             lispb::codegen::CppProjection{};
-                         records_schemas.name[new_records_row] = strings.intern("Path");
-                         records_schemas.members[new_records_row] =
-                             declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
-                                 auto const new_record_members{record_members_schemas.append()};
-                                 auto const new_record_members_row{
-                                     record_members_schemas.index(new_record_members)};
-                                 record_members_schemas.name[new_record_members_row] =
+                         records_schemas.name[new_records] = strings.intern("Table");
+                         records_schemas.members[new_records] =
+                             declarations.range<lispb::codegen::ChildOccurrenceId>({append_test_row(
+                                 record_members_schemas, [&](auto const new_record_members) {
+                                     record_members_schemas.name[new_record_members] =
+                                         strings.intern("value");
+                                     record_members_schemas.type[new_record_members] =
+                                         lispb::codegen::make_test_type_ref(context, "float");
+                                 })});
+                     }),
+                 append_test_row(records_schemas, [&](auto const new_records) {
+                     records_schemas.cpp_projection[new_records] = lispb::codegen::CppProjection{};
+                     records_schemas.name[new_records] = strings.intern("Path");
+                     records_schemas.members[new_records] =
+                         declarations.range<lispb::codegen::ChildOccurrenceId>({append_test_row(
+                             record_members_schemas, [&](auto const new_record_members) {
+                                 record_members_schemas.name[new_record_members] =
                                      strings.intern("points");
-                                 record_members_schemas.type[new_record_members_row] =
+                                 record_members_schemas.type[new_record_members] =
                                      lispb::codegen::make_test_type_ref(context, "Position");
-                                 record_members_schemas.count[new_record_members_row] = 8;
+                                 record_members_schemas.count[new_record_members] = 8;
                                  record_members_schemas.relationship[record_members_schemas.index(
-                                     new_record_members)] = [&] {
-                                     auto const new_semantic_relations{semantic_relations.append()};
-                                     semantic_relations
-                                         .kind[semantic_relations.index(new_semantic_relations)] =
-                                         lispb::codegen::SemanticRelationKind::member_of;
-                                     semantic_relations
-                                         .target[semantic_relations.index(new_semantic_relations)] =
-                                         lispb::codegen::make_test_type_ref(context, "Table");
-                                     semantic_relations
-                                         .unit[semantic_relations.index(new_semantic_relations)] =
-                                         std::nullopt;
-                                     return new_semantic_relations;
-                                 }();
-                                 return new_record_members;
-                             }()});
-                         return new_records;
-                     }()});
-            return new_normal_modules;
-        }()}};
+                                     new_record_members)] =
+                                     append_test_row(
+                                         semantic_relations,
+                                         [&](auto const new_semantic_relations) {
+                                             semantic_relations.kind[semantic_relations.index(
+                                                 new_semantic_relations)] =
+                                                 lispb::codegen::SemanticRelationKind::member_of;
+                                             semantic_relations.target[semantic_relations.index(
+                                                 new_semantic_relations)] =
+                                                 lispb::codegen::make_test_type_ref(context,
+                                                                                    "Table");
+                                             semantic_relations.unit[semantic_relations.index(
+                                                 new_semantic_relations)] = std::nullopt;
+                                         });
+                             })});
+                 })});
+        })}};
 
     auto const graph{resolve_type_graph(manifest)};
     auto const& records{graph.definitions().records};
@@ -1290,37 +1183,27 @@ TEST(SemanticTypeGraph, RejectsDirectAndIndirectByValueRecordCycles) {
 
     auto& strings{context.storage.strings};
     [[maybe_unused]] auto& storage{context.storage};
-    auto module{[&] {
-        auto const new_normal_modules{normal_modules.append()};
-        auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-        normal_modules.settings[new_normal_modules_row] = [&] {
-            auto const new_module_settings_store{module_settings_store.append()};
-            auto const new_module_settings_store_row{
-                module_settings_store.index(new_module_settings_store)};
-            module_settings_store.name[new_module_settings_store_row] = strings.intern("records");
-            module_settings_store.header[new_module_settings_store_row] =
-                strings.intern("Records.h");
-            return new_module_settings_store;
-        }();
-        normal_modules.declarations[new_normal_modules_row] =
-            declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-                auto const new_records{records.append()};
-                auto const new_records_row{records.index(new_records)};
-                records.cpp_projection[new_records_row] = lispb::codegen::CppProjection{};
-                records.name[new_records_row] = strings.intern("Record");
-                records.members[new_records_row] =
-                    declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
-                        auto const new_record_members{record_members.append()};
-                        auto const new_record_members_row{record_members.index(new_record_members)};
-                        record_members.name[new_record_members_row] = strings.intern("self");
-                        record_members.type[new_record_members_row] =
-                            lispb::codegen::make_test_type_ref(context, "Record");
-                        return new_record_members;
-                    }()});
-                return new_records;
-            }()});
-        return new_normal_modules;
-    }()};
+    auto module{append_test_row(normal_modules, [&](auto const new_normal_modules) {
+        normal_modules.settings[new_normal_modules] =
+            append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                module_settings_store.name[new_module_settings_store] = strings.intern("records");
+                module_settings_store.header[new_module_settings_store] =
+                    strings.intern("Records.h");
+            });
+        normal_modules.declarations[new_normal_modules] =
+            declarations.range<lispb::codegen::DeclarationHandle>(
+                {append_test_row(records, [&](auto const new_records) {
+                    records.cpp_projection[new_records] = lispb::codegen::CppProjection{};
+                    records.name[new_records] = strings.intern("Record");
+                    records.members[new_records] =
+                        declarations.range<lispb::codegen::ChildOccurrenceId>(
+                            {append_test_row(record_members, [&](auto const new_record_members) {
+                                record_members.name[new_record_members] = strings.intern("self");
+                                record_members.type[new_record_members] =
+                                    lispb::codegen::make_test_type_ref(context, "Record");
+                            })});
+                })});
+    })};
     auto manifest{lispb::codegen::Manifest{lispb::codegen::manifest_schema_version,
                                            lispb::codegen::make_test_registry(context),
                                            declarations,
@@ -1328,36 +1211,28 @@ TEST(SemanticTypeGraph, RejectsDirectAndIndirectByValueRecordCycles) {
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 
     normal_modules.declarations[normal_modules.index(module)] = storage.declarations.range(
-        {[&] {
-             auto const new_records{records.append()};
-             records.name[records.index(new_records)] = strings.intern("First");
-             records.members[records.index(new_records)] =
-                 declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
-                     auto const new_record_members{record_members.append()};
-                     auto const new_record_members_row{record_members.index(new_record_members)};
-                     record_members.name[new_record_members_row] = strings.intern("second");
-                     record_members.type[new_record_members_row] =
-                         lispb::codegen::make_test_type_ref(context, "Second");
-                     return new_record_members;
-                 }()});
-             return new_records;
-         }(),
-         [&] {
-             auto const new_records{records.append()};
-             auto const new_records_row{records.index(new_records)};
-             records.cpp_projection[new_records_row] = lispb::codegen::CppProjection{};
-             records.name[new_records_row] = strings.intern("Second");
-             records.members[new_records_row] =
-                 declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
-                     auto const new_record_members{record_members.append()};
-                     auto const new_record_members_row{record_members.index(new_record_members)};
-                     record_members.name[new_record_members_row] = strings.intern("first");
-                     record_members.type[new_record_members_row] =
+        {append_test_row(
+             records,
+             [&](auto const new_records) {
+                 records.name[records.index(new_records)] = strings.intern("First");
+                 records.members[records.index(new_records)] =
+                     declarations.range<lispb::codegen::ChildOccurrenceId>(
+                         {append_test_row(record_members, [&](auto const new_record_members) {
+                             record_members.name[new_record_members] = strings.intern("second");
+                             record_members.type[new_record_members] =
+                                 lispb::codegen::make_test_type_ref(context, "Second");
+                         })});
+             }),
+         append_test_row(records, [&](auto const new_records) {
+             records.cpp_projection[new_records] = lispb::codegen::CppProjection{};
+             records.name[new_records] = strings.intern("Second");
+             records.members[new_records] = declarations.range<lispb::codegen::ChildOccurrenceId>(
+                 {append_test_row(record_members, [&](auto const new_record_members) {
+                     record_members.name[new_record_members] = strings.intern("first");
+                     record_members.type[new_record_members] =
                          lispb::codegen::make_test_type_ref(context, "First");
-                     return new_record_members;
-                 }()});
-             return new_records;
-         }()});
+                 })});
+         })});
     manifest.modules = {module};
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
@@ -1376,44 +1251,32 @@ TEST(SemanticTypeGraph, PointerSelfReferenceIsNotByValueRecursion) {
         lispb::codegen::manifest_schema_version,
         lispb::codegen::make_test_registry(context),
         declarations,
-        {[&] {
-            auto const new_normal_modules{normal_modules.append()};
-            auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-            normal_modules.settings[new_normal_modules_row] = [&] {
-                auto const new_module_settings_store{module_settings_store.append()};
-                auto const new_module_settings_store_row{
-                    module_settings_store.index(new_module_settings_store)};
-                module_settings_store.name[new_module_settings_store_row] =
-                    strings.intern("records");
-                module_settings_store.header[new_module_settings_store_row] =
-                    strings.intern("Records.h");
-                return new_module_settings_store;
-            }();
-            normal_modules.declarations[new_normal_modules_row] =
-                declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-                    auto const new_records{records.append()};
-                    auto const new_records_row{records.index(new_records)};
-                    records.cpp_projection[new_records_row] = lispb::codegen::CppProjection{};
-                    records.name[new_records_row] = strings.intern("Node");
-                    records.members[new_records_row] =
-                        declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
-                            auto const new_record_members{record_members.append()};
-                            auto const new_record_members_row{
-                                record_members.index(new_record_members)};
-                            record_members.name[new_record_members_row] = strings.intern("next");
-                            record_members.type[new_record_members_row] = [&] {
-                                auto const new_type_refs{type_refs.append()};
-                                auto const new_type_refs_row{type_refs.index(new_type_refs)};
-                                type_refs.name[new_type_refs_row] = strings.intern("Node");
-                                type_refs.suffix[new_type_refs_row] = strings.intern("*");
-                                return new_type_refs;
-                            }();
-                            return new_record_members;
-                        }()});
-                    return new_records;
-                }()});
-            return new_normal_modules;
-        }()}};
+        {append_test_row(normal_modules, [&](auto const new_normal_modules) {
+            normal_modules.settings[new_normal_modules] =
+                append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                    module_settings_store.name[new_module_settings_store] =
+                        strings.intern("records");
+                    module_settings_store.header[new_module_settings_store] =
+                        strings.intern("Records.h");
+                });
+            normal_modules.declarations[new_normal_modules] =
+                declarations.range<lispb::codegen::DeclarationHandle>(
+                    {append_test_row(records, [&](auto const new_records) {
+                        records.cpp_projection[new_records] = lispb::codegen::CppProjection{};
+                        records.name[new_records] = strings.intern("Node");
+                        records.members[new_records] =
+                            declarations.range<lispb::codegen::ChildOccurrenceId>({append_test_row(
+                                record_members, [&](auto const new_record_members) {
+                                    record_members.name[new_record_members] =
+                                        strings.intern("next");
+                                    record_members.type[new_record_members] =
+                                        append_test_row(type_refs, [&](auto const new_type_refs) {
+                                            type_refs.name[new_type_refs] = strings.intern("Node");
+                                            type_refs.suffix[new_type_refs] = strings.intern("*");
+                                        });
+                                })});
+                    })});
+        })}};
     EXPECT_NO_THROW(static_cast<void>(resolve_type_graph(manifest)));
 }
 
@@ -1425,50 +1288,42 @@ TEST(SemanticTypeGraph, ClassifiesBoundedUsesWithoutDiscardingSpelling) {
     [[maybe_unused]] auto& storage{context.storage};
     auto& semantic_strings{storage.strings};
     auto const pointer{lispb::codegen::resolve_type_use(
-        [&] {
-            auto const new_type_refs{type_refs.append()};
-            auto const new_type_refs_row{type_refs.index(new_type_refs)};
-            type_refs.name[new_type_refs_row] = strings.intern("float");
-            type_refs.suffix[new_type_refs_row] = strings.intern(" const* const*");
-            return new_type_refs;
-        }(),
+        append_test_row(type_refs,
+                        [&](auto const new_type_refs) {
+                            type_refs.name[new_type_refs] = strings.intern("float");
+                            type_refs.suffix[new_type_refs] = strings.intern(" const* const*");
+                        }),
         lispb::codegen::make_test_registry(context))};
     EXPECT_EQ(storage.cpp_types.spelling(pointer.cpp_type), "float const* const*");
     EXPECT_EQ(pointer.physical.form, lispb::codegen::PhysicalTypeForm::object_pointer);
     EXPECT_EQ(semantic_strings.view(pointer.physical.object_spelling), "float");
     EXPECT_FALSE(pointer.physical.contains_value());
     auto const value{lispb::codegen::resolve_type_use(
-        [&] {
-            auto const new_type_refs{type_refs.append()};
-            auto const new_type_refs_row{type_refs.index(new_type_refs)};
-            type_refs.name[new_type_refs_row] = strings.intern("float");
-            type_refs.suffix[new_type_refs_row] = strings.intern(" const");
-            return new_type_refs;
-        }(),
+        append_test_row(type_refs,
+                        [&](auto const new_type_refs) {
+                            type_refs.name[new_type_refs] = strings.intern("float");
+                            type_refs.suffix[new_type_refs] = strings.intern(" const");
+                        }),
         lispb::codegen::make_test_registry(context))};
     EXPECT_TRUE(value.physical.contains_value());
     for (auto const suffix : {"&", "&&", "* const&"}) {
         auto const reference{lispb::codegen::resolve_type_use(
-            [&] {
-                auto const new_type_refs{type_refs.append()};
-                auto const new_type_refs_row{type_refs.index(new_type_refs)};
-                type_refs.name[new_type_refs_row] = strings.intern("float");
-                type_refs.suffix[new_type_refs_row] = strings.intern(suffix);
-                return new_type_refs;
-            }(),
+            append_test_row(type_refs,
+                            [&](auto const new_type_refs) {
+                                type_refs.name[new_type_refs] = strings.intern("float");
+                                type_refs.suffix[new_type_refs] = strings.intern(suffix);
+                            }),
             lispb::codegen::make_test_registry(context))};
         EXPECT_FALSE(reference.physical.contains_value());
         EXPECT_NE(reference.physical.form, lispb::codegen::PhysicalTypeForm::value);
     }
     for (auto const suffix : {"[4]", "(*)()", " Owner::*", "*[]"}) {
         auto const unsupported{lispb::codegen::resolve_type_use(
-            [&] {
-                auto const new_type_refs{type_refs.append()};
-                auto const new_type_refs_row{type_refs.index(new_type_refs)};
-                type_refs.name[new_type_refs_row] = strings.intern("float");
-                type_refs.suffix[new_type_refs_row] = strings.intern(suffix);
-                return new_type_refs;
-            }(),
+            append_test_row(type_refs,
+                            [&](auto const new_type_refs) {
+                                type_refs.name[new_type_refs] = strings.intern("float");
+                                type_refs.suffix[new_type_refs] = strings.intern(suffix);
+                            }),
             lispb::codegen::make_test_registry(context))};
         EXPECT_EQ(unsupported.physical.form, lispb::codegen::PhysicalTypeForm::unsupported)
             << suffix;
@@ -1477,14 +1332,12 @@ TEST(SemanticTypeGraph, ClassifiesBoundedUsesWithoutDiscardingSpelling) {
                 .empty());
     }
     auto const nested{lispb::codegen::resolve_type_use(
-        [&] {
-            auto const new_type_refs{type_refs.append()};
-            auto const new_type_refs_row{type_refs.index(new_type_refs)};
-            type_refs.name[new_type_refs_row] = strings.intern("Owner");
-            type_refs.suffix[new_type_refs_row] = strings.intern("");
-            type_refs.nested[new_type_refs_row] = strings.intern("Inner");
-            return new_type_refs;
-        }(),
+        append_test_row(type_refs,
+                        [&](auto const new_type_refs) {
+                            type_refs.name[new_type_refs] = strings.intern("Owner");
+                            type_refs.suffix[new_type_refs] = strings.intern("");
+                            type_refs.nested[new_type_refs] = strings.intern("Inner");
+                        }),
         lispb::codegen::make_test_registry(context))};
     EXPECT_EQ(semantic_strings.view(nested.physical.object_spelling), "Owner::Inner");
     EXPECT_FALSE(nested.physical.contains_value());
@@ -1504,55 +1357,44 @@ TEST(SemanticTypeGraph, ResolvesRawUnionAlternativesAndDependencies) {
         lispb::codegen::manifest_schema_version,
         lispb::codegen::make_test_registry(context),
         declarations,
-        {[&] {
-            auto const new_normal_modules{normal_modules.append()};
-            auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-            normal_modules.settings[new_normal_modules_row] = [&] {
-                auto const new_module_settings_store{module_settings_store.append()};
-                auto const new_module_settings_store_row{
-                    module_settings_store.index(new_module_settings_store)};
-                module_settings_store.name[new_module_settings_store_row] =
-                    strings.intern("payloads");
-                module_settings_store.header[new_module_settings_store_row] =
-                    strings.intern("Payloads.h");
-                return new_module_settings_store;
-            }();
-            normal_modules.declarations[new_normal_modules_row] =
-                declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-                    auto const new_unions{unions_schemas.append()};
-                    auto const new_unions_row{unions_schemas.index(new_unions)};
-                    unions_schemas.cpp_projection[new_unions_row] = lispb::codegen::CppProjection{};
-                    unions_schemas.name[new_unions_row] = strings.intern("Payload");
-                    unions_schemas.alternatives[new_unions_row] =
-                        declarations.range<lispb::codegen::ChildOccurrenceId>(
-                            {[&] {
-                                 auto const new_union_alternatives{
-                                     union_alternatives_schemas.append()};
-                                 auto const new_union_alternatives_row{
-                                     union_alternatives_schemas.index(new_union_alternatives)};
-                                 union_alternatives_schemas.name[new_union_alternatives_row] =
-                                     strings.intern("identifier");
-                                 union_alternatives_schemas.type[new_union_alternatives_row] =
-                                     lispb::codegen::make_test_type_ref(context, "std::uint32_t");
-                                 return new_union_alternatives;
-                             }(),
-                             [&] {
-                                 auto const new_union_alternatives{
-                                     union_alternatives_schemas.append()};
-                                 auto const new_union_alternatives_row{
-                                     union_alternatives_schemas.index(new_union_alternatives)};
-                                 union_alternatives_schemas.name[new_union_alternatives_row] =
-                                     strings.intern("bytes");
-                                 union_alternatives_schemas.type[new_union_alternatives_row] =
-                                     lispb::codegen::make_test_type_ref(context, "std::uint8_t");
-                                 union_alternatives_schemas.count[new_union_alternatives_row] = 12;
-                                 return new_union_alternatives;
-                             }()});
-                    unions_schemas.export_specifier[new_unions_row] = {};
-                    return new_unions;
-                }()});
-            return new_normal_modules;
-        }()}};
+        {append_test_row(normal_modules, [&](auto const new_normal_modules) {
+            normal_modules.settings[new_normal_modules] =
+                append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                    module_settings_store.name[new_module_settings_store] =
+                        strings.intern("payloads");
+                    module_settings_store.header[new_module_settings_store] =
+                        strings.intern("Payloads.h");
+                });
+            normal_modules.declarations[new_normal_modules] =
+                declarations.range<lispb::codegen::DeclarationHandle>(
+                    {append_test_row(unions_schemas, [&](auto const new_unions) {
+                        unions_schemas.cpp_projection[new_unions] = lispb::codegen::CppProjection{};
+                        unions_schemas.name[new_unions] = strings.intern("Payload");
+                        unions_schemas.alternatives[new_unions] =
+                            declarations.range<lispb::codegen::ChildOccurrenceId>(
+                                {append_test_row(
+                                     union_alternatives_schemas,
+                                     [&](auto const new_union_alternatives) {
+                                         union_alternatives_schemas.name[new_union_alternatives] =
+                                             strings.intern("identifier");
+                                         union_alternatives_schemas.type[new_union_alternatives] =
+                                             lispb::codegen::make_test_type_ref(context,
+                                                                                "std::uint32_t");
+                                     }),
+                                 append_test_row(
+                                     union_alternatives_schemas,
+                                     [&](auto const new_union_alternatives) {
+                                         union_alternatives_schemas.name[new_union_alternatives] =
+                                             strings.intern("bytes");
+                                         union_alternatives_schemas.type[new_union_alternatives] =
+                                             lispb::codegen::make_test_type_ref(context,
+                                                                                "std::uint8_t");
+                                         union_alternatives_schemas.count[new_union_alternatives] =
+                                             12;
+                                     })});
+                        unions_schemas.export_specifier[new_unions] = {};
+                    })});
+        })}};
 
     auto const graph{resolve_type_graph(manifest)};
     auto const& unions{graph.definitions().unions};
@@ -1594,28 +1436,22 @@ TEST(SemanticTypeGraph, RejectsUnionAndMixedAggregateCycles) {
     auto const union_schema{unions.append()};
     auto const union_schema_row{unions.index(union_schema)};
     unions.name[union_schema_row] = strings.intern("Payload");
-    unions.alternatives[union_schema_row] =
-        declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
-            auto const new_union_alternatives{union_alternatives.append()};
-            auto const new_union_alternatives_row{union_alternatives.index(new_union_alternatives)};
-            union_alternatives.name[new_union_alternatives_row] = strings.intern("self");
-            union_alternatives.type[new_union_alternatives_row] =
+    unions.alternatives[union_schema_row] = declarations.range<lispb::codegen::ChildOccurrenceId>(
+        {append_test_row(union_alternatives, [&](auto const new_union_alternatives) {
+            union_alternatives.name[new_union_alternatives] = strings.intern("self");
+            union_alternatives.type[new_union_alternatives] =
                 lispb::codegen::make_test_type_ref(context, "Payload");
-            return new_union_alternatives;
-        }()});
+        })});
     unions.export_specifier[union_schema_row] = {};
     auto const union_module{normal_modules.append()};
     auto const union_module_row{normal_modules.index(union_module)};
-    normal_modules.settings[union_module_row] = [&] {
-        auto const new_module_settings_store{module_settings_store.append()};
-        auto const new_module_settings_store_row{
-            module_settings_store.index(new_module_settings_store)};
-        module_settings_store.name[new_module_settings_store_row] = strings.intern("payloads");
-        module_settings_store.header[new_module_settings_store_row] = strings.intern("Payloads.h");
-        module_settings_store.namespace_name[new_module_settings_store_row] =
-            strings.intern("payloads");
-        return new_module_settings_store;
-    }();
+    normal_modules.settings[union_module_row] =
+        append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+            module_settings_store.name[new_module_settings_store] = strings.intern("payloads");
+            module_settings_store.header[new_module_settings_store] = strings.intern("Payloads.h");
+            module_settings_store.namespace_name[new_module_settings_store] =
+                strings.intern("payloads");
+        });
     normal_modules.declarations[union_module_row] =
         declarations.range<lispb::codegen::DeclarationHandle>({union_schema});
     lispb::codegen::Manifest manifest{lispb::codegen::manifest_schema_version,
@@ -1624,39 +1460,32 @@ TEST(SemanticTypeGraph, RejectsUnionAndMixedAggregateCycles) {
                                       {union_module}};
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 
-    unions.alternatives[union_schema_row] = semantic_declarations.range({[&] {
-        auto const new_union_alternatives{union_alternatives.append()};
-        union_alternatives.name[union_alternatives.index(new_union_alternatives)] =
-            semantic_strings.intern("record");
-        union_alternatives.type[union_alternatives.index(new_union_alternatives)] =
-            lispb::codegen::make_test_type_ref(context, "records::Record");
-        return new_union_alternatives;
-    }()});
+    unions.alternatives[union_schema_row] = semantic_declarations.range(
+        {append_test_row(union_alternatives, [&](auto const new_union_alternatives) {
+            union_alternatives.name[union_alternatives.index(new_union_alternatives)] =
+                semantic_strings.intern("record");
+            union_alternatives.type[union_alternatives.index(new_union_alternatives)] =
+                lispb::codegen::make_test_type_ref(context, "records::Record");
+        })});
     normal_modules.declarations[union_module_row] = semantic_declarations.range({union_schema});
     auto const record_schema{records.append()};
     auto const record_schema_row{records.index(record_schema)};
     records.name[record_schema_row] = strings.intern("Record");
-    records.members[record_schema_row] =
-        declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
-            auto const new_record_members{record_members.append()};
-            auto const new_record_members_row{record_members.index(new_record_members)};
-            record_members.name[new_record_members_row] = strings.intern("payload");
-            record_members.type[new_record_members_row] =
+    records.members[record_schema_row] = declarations.range<lispb::codegen::ChildOccurrenceId>(
+        {append_test_row(record_members, [&](auto const new_record_members) {
+            record_members.name[new_record_members] = strings.intern("payload");
+            record_members.type[new_record_members] =
                 lispb::codegen::make_test_type_ref(context, "payloads::Payload");
-            return new_record_members;
-        }()});
+        })});
     records.export_specifier[record_schema_row] = {};
     auto const record_module{normal_modules.append()};
-    normal_modules.settings[normal_modules.index(record_module)] = [&] {
-        auto const new_module_settings_store{module_settings_store.append()};
-        auto const new_module_settings_store_row{
-            module_settings_store.index(new_module_settings_store)};
-        module_settings_store.name[new_module_settings_store_row] = strings.intern("records");
-        module_settings_store.header[new_module_settings_store_row] = strings.intern("Records.h");
-        module_settings_store.namespace_name[new_module_settings_store_row] =
-            strings.intern("records");
-        return new_module_settings_store;
-    }();
+    normal_modules.settings[normal_modules.index(record_module)] =
+        append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+            module_settings_store.name[new_module_settings_store] = strings.intern("records");
+            module_settings_store.header[new_module_settings_store] = strings.intern("Records.h");
+            module_settings_store.namespace_name[new_module_settings_store] =
+                strings.intern("records");
+        });
     normal_modules.declarations[normal_modules.index(record_module)] =
         declarations.range<lispb::codegen::DeclarationHandle>({record_schema});
     manifest.modules = {record_module, union_module};
@@ -2051,38 +1880,29 @@ TEST(SemanticTypeGraph, KeepsUnknownRegisteredTypesAsExternalLeaves) {
                   "NativeHandle",
                   {storage.cpp_types.dependency("NativeHandle", "native/handle.h")})}}),
         declarations,
-        {[&] {
-            auto const new_normal_modules{normal_modules.append()};
-            auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-            normal_modules.settings[new_normal_modules_row] = [&] {
-                auto const new_module_settings_store{module_settings_store.append()};
-                auto const new_module_settings_store_row{
-                    module_settings_store.index(new_module_settings_store)};
-                module_settings_store.name[new_module_settings_store_row] = strings.intern("mode");
-                module_settings_store.header[new_module_settings_store_row] =
-                    strings.intern("Mode.h");
-                return new_module_settings_store;
-            }();
-            normal_modules.declarations[new_normal_modules_row] =
-                declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-                    auto const new_enums{enums.append()};
-                    auto const new_enums_row{enums.index(new_enums)};
-                    enums.cpp_projection[new_enums_row] = lispb::codegen::CppProjection{};
-                    enums.name[new_enums_row] = strings.intern("Mode");
-                    enums.underlying_type[new_enums_row] =
-                        lispb::codegen::make_test_type_ref(context, "uint8");
-                    enums.values[new_enums_row] =
-                        declarations.range<lispb::codegen::EnumeratorId>({[&] {
-                            auto const new_enumerators{declarations.enumerators.append()};
-                            declarations.enumerators
-                                .name[declarations.enumerators.index(new_enumerators)] =
-                                strings.intern("Value");
-                            return new_enumerators;
-                        }()});
-                    return new_enums;
-                }()});
-            return new_normal_modules;
-        }()}};
+        {append_test_row(normal_modules, [&](auto const new_normal_modules) {
+            normal_modules.settings[new_normal_modules] =
+                append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                    module_settings_store.name[new_module_settings_store] = strings.intern("mode");
+                    module_settings_store.header[new_module_settings_store] =
+                        strings.intern("Mode.h");
+                });
+            normal_modules.declarations[new_normal_modules] =
+                declarations.range<lispb::codegen::DeclarationHandle>(
+                    {append_test_row(enums, [&](auto const new_enums) {
+                        enums.cpp_projection[new_enums] = lispb::codegen::CppProjection{};
+                        enums.name[new_enums] = strings.intern("Mode");
+                        enums.underlying_type[new_enums] =
+                            lispb::codegen::make_test_type_ref(context, "uint8");
+                        enums.values[new_enums] =
+                            declarations.range<lispb::codegen::EnumeratorId>({append_test_row(
+                                declarations.enumerators, [&](auto const new_enumerators) {
+                                    declarations.enumerators
+                                        .name[declarations.enumerators.index(new_enumerators)] =
+                                        strings.intern("Value");
+                                })});
+                    })});
+        })}};
     auto const graph{resolve_type_graph(manifest)};
     auto const& externals{graph.definitions().externals};
     auto const handle{graph.find_registered(storage.strings.find("native_handle"))};
@@ -2112,41 +1932,32 @@ TEST(SemanticTypeGraph, RejectsAmbiguousRegisteredDeclarationBindings) {
     auto& strings{context.storage.strings};
     [[maybe_unused]] auto& storage{context.storage};
     auto enum_module = [&](std::string module_name, std::string const& header) {
-        return [&] {
-            auto const new_normal_modules{normal_modules.append()};
-            auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-            normal_modules.settings[new_normal_modules_row] = [&] {
-                auto const new_module_settings_store{module_settings_store.append()};
-                auto const new_module_settings_store_row{
-                    module_settings_store.index(new_module_settings_store)};
-                module_settings_store.name[new_module_settings_store_row] =
-                    strings.intern(std::move(module_name));
-                module_settings_store.header[new_module_settings_store_row] =
-                    strings.intern(header);
-                module_settings_store.namespace_name[new_module_settings_store_row] =
-                    strings.intern("project");
-                return new_module_settings_store;
-            }();
-            normal_modules.declarations[new_normal_modules_row] =
-                declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-                    auto const new_enums{enums.append()};
-                    auto const new_enums_row{enums.index(new_enums)};
-                    enums.cpp_projection[new_enums_row] = lispb::codegen::CppProjection{};
-                    enums.name[new_enums_row] = strings.intern("Mode");
-                    enums.underlying_type[new_enums_row] =
-                        lispb::codegen::make_test_type_ref(context, "uint8");
-                    enums.values[new_enums_row] =
-                        declarations.range<lispb::codegen::EnumeratorId>({[&] {
-                            auto const new_enumerators{declarations.enumerators.append()};
-                            declarations.enumerators
-                                .name[declarations.enumerators.index(new_enumerators)] =
-                                strings.intern("Value");
-                            return new_enumerators;
-                        }()});
-                    return new_enums;
-                }()});
-            return new_normal_modules;
-        }();
+        return append_test_row(normal_modules, [&](auto const new_normal_modules) {
+            normal_modules.settings[new_normal_modules] =
+                append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                    module_settings_store.name[new_module_settings_store] =
+                        strings.intern(std::move(module_name));
+                    module_settings_store.header[new_module_settings_store] =
+                        strings.intern(header);
+                    module_settings_store.namespace_name[new_module_settings_store] =
+                        strings.intern("project");
+                });
+            normal_modules.declarations[new_normal_modules] =
+                declarations.range<lispb::codegen::DeclarationHandle>(
+                    {append_test_row(enums, [&](auto const new_enums) {
+                        enums.cpp_projection[new_enums] = lispb::codegen::CppProjection{};
+                        enums.name[new_enums] = strings.intern("Mode");
+                        enums.underlying_type[new_enums] =
+                            lispb::codegen::make_test_type_ref(context, "uint8");
+                        enums.values[new_enums] =
+                            declarations.range<lispb::codegen::EnumeratorId>({append_test_row(
+                                declarations.enumerators, [&](auto const new_enumerators) {
+                                    declarations.enumerators
+                                        .name[declarations.enumerators.index(new_enumerators)] =
+                                        strings.intern("Value");
+                                })});
+                    })});
+        });
     };
     lispb::codegen::Manifest manifest{
         lispb::codegen::manifest_schema_version,
@@ -2176,39 +1987,32 @@ TEST_P(InvalidDeclaredIdentities, RejectsInvalidAndDuplicateDeclaredIdentities) 
         for (auto const& value : enums) {
             declarations.push_back(value);
         }
-        return [&] {
-            auto const new_normal_modules{normal_modules_schemas.append()};
+        return append_test_row(normal_modules_schemas, [&](auto const new_normal_modules) {
             normal_modules_schemas.settings[normal_modules_schemas.index(new_normal_modules)] =
-                [&] {
-                    auto const new_module_settings_store{module_settings_store_schemas.append()};
-                    module_settings_store_schemas
-                        .name[module_settings_store_schemas.index(new_module_settings_store)] =
-                        strings.intern(std::move(name));
-                    module_settings_store_schemas
-                        .header[module_settings_store_schemas.index(new_module_settings_store)] =
-                        strings.intern("Types.h");
-                    return new_module_settings_store;
-                }();
+                append_test_row(
+                    module_settings_store_schemas, [&](auto const new_module_settings_store) {
+                        module_settings_store_schemas
+                            .name[module_settings_store_schemas.index(new_module_settings_store)] =
+                            strings.intern(std::move(name));
+                        module_settings_store_schemas.header[module_settings_store_schemas.index(
+                            new_module_settings_store)] = strings.intern("Types.h");
+                    });
             normal_modules_schemas.declarations[normal_modules_schemas.index(new_normal_modules)] =
                 semantic_declarations.range(declarations);
-            return new_normal_modules;
-        }();
+        });
     };
     auto const make_enum = [&](std::string name) {
-        return [&] {
-            auto const new_enums{enums_schemas.append()};
+        return append_test_row(enums_schemas, [&](auto const new_enums) {
             enums_schemas.name[enums_schemas.index(new_enums)] = strings.intern(std::move(name));
             enums_schemas.underlying_type[enums_schemas.index(new_enums)] =
                 lispb::codegen::make_test_type_ref(context, "uint8");
             enums_schemas.values[enums_schemas.index(new_enums)] =
-                semantic_declarations.range<lispb::codegen::EnumeratorId>({[&] {
-                    auto const new_enumerators{enumerators_schemas.append()};
-                    enumerators_schemas.name[enumerators_schemas.index(new_enumerators)] =
-                        strings.intern("Value");
-                    return new_enumerators;
-                }()});
-            return new_enums;
-        }();
+                semantic_declarations.range<lispb::codegen::EnumeratorId>(
+                    {append_test_row(enumerators_schemas, [&](auto const new_enumerators) {
+                        enumerators_schemas.name[enumerators_schemas.index(new_enumerators)] =
+                            strings.intern("Value");
+                    })});
+        });
     };
 
     std::vector<lispb::codegen::DeclarationHandle> enums;
@@ -2239,38 +2043,29 @@ TEST(SemanticTypeGraph, RejectsUnresolvedRegisteredReferences) {
         lispb::codegen::manifest_schema_version,
         lispb::codegen::make_test_registry(context),
         declarations,
-        {[&] {
-            auto const new_normal_modules{normal_modules.append()};
-            auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-            normal_modules.settings[new_normal_modules_row] = [&] {
-                auto const new_module_settings_store{module_settings_store.append()};
-                auto const new_module_settings_store_row{
-                    module_settings_store.index(new_module_settings_store)};
-                module_settings_store.name[new_module_settings_store_row] = strings.intern("mode");
-                module_settings_store.header[new_module_settings_store_row] =
-                    strings.intern("Mode.h");
-                return new_module_settings_store;
-            }();
-            normal_modules.declarations[new_normal_modules_row] =
-                declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-                    auto const new_enums{enums.append()};
-                    auto const new_enums_row{enums.index(new_enums)};
-                    enums.cpp_projection[new_enums_row] = lispb::codegen::CppProjection{};
-                    enums.name[new_enums_row] = strings.intern("Mode");
-                    enums.underlying_type[new_enums_row] =
-                        lispb::codegen::make_test_type_ref(context, "@missing");
-                    enums.values[new_enums_row] =
-                        declarations.range<lispb::codegen::EnumeratorId>({[&] {
-                            auto const new_enumerators{declarations.enumerators.append()};
-                            declarations.enumerators
-                                .name[declarations.enumerators.index(new_enumerators)] =
-                                strings.intern("Value");
-                            return new_enumerators;
-                        }()});
-                    return new_enums;
-                }()});
-            return new_normal_modules;
-        }()}};
+        {append_test_row(normal_modules, [&](auto const new_normal_modules) {
+            normal_modules.settings[new_normal_modules] =
+                append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                    module_settings_store.name[new_module_settings_store] = strings.intern("mode");
+                    module_settings_store.header[new_module_settings_store] =
+                        strings.intern("Mode.h");
+                });
+            normal_modules.declarations[new_normal_modules] =
+                declarations.range<lispb::codegen::DeclarationHandle>(
+                    {append_test_row(enums, [&](auto const new_enums) {
+                        enums.cpp_projection[new_enums] = lispb::codegen::CppProjection{};
+                        enums.name[new_enums] = strings.intern("Mode");
+                        enums.underlying_type[new_enums] =
+                            lispb::codegen::make_test_type_ref(context, "@missing");
+                        enums.values[new_enums] =
+                            declarations.range<lispb::codegen::EnumeratorId>({append_test_row(
+                                declarations.enumerators, [&](auto const new_enumerators) {
+                                    declarations.enumerators
+                                        .name[declarations.enumerators.index(new_enumerators)] =
+                                        strings.intern("Value");
+                                })});
+                    })});
+        })}};
 
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
@@ -2290,163 +2085,139 @@ TEST(SemanticTypeGraph, ReferenceLookupMatchesResolverBindings) {
         lispb::codegen::manifest_schema_version,
         lispb::codegen::make_test_registry(context, {{"bar", storage.cpp_types.add("game::Bar")}}),
         declarations,
-        {[&] {
-             auto const new_normal_modules{normal_modules_schemas.append()};
-             auto const new_normal_modules_row{normal_modules_schemas.index(new_normal_modules)};
-             normal_modules_schemas.settings[new_normal_modules_row] = [&] {
-                 auto const new_module_settings_store{module_settings_store.append()};
-                 auto const new_module_settings_store_row{
-                     module_settings_store.index(new_module_settings_store)};
-                 module_settings_store.name[new_module_settings_store_row] = strings.intern("A");
-                 module_settings_store.header[new_module_settings_store_row] =
-                     strings.intern("A.h");
-                 module_settings_store.namespace_name[new_module_settings_store_row] =
-                     strings.intern("game");
-                 return new_module_settings_store;
-             }();
-             normal_modules_schemas.declarations[new_normal_modules_row] =
+        {append_test_row(
+             normal_modules_schemas,
+             [&](auto const new_normal_modules) {
+                 normal_modules_schemas.settings[new_normal_modules] = append_test_row(
+                     module_settings_store, [&](auto const new_module_settings_store) {
+                         module_settings_store.name[new_module_settings_store] =
+                             strings.intern("A");
+                         module_settings_store.header[new_module_settings_store] =
+                             strings.intern("A.h");
+                         module_settings_store.namespace_name[new_module_settings_store] =
+                             strings.intern("game");
+                     });
+                 normal_modules_schemas.declarations[new_normal_modules] =
+                     declarations.range<lispb::codegen::DeclarationHandle>(
+                         {append_test_row(
+                              records_schemas,
+                              [&](auto const new_records) {
+                                  records_schemas.cpp_projection[new_records] =
+                                      lispb::codegen::CppProjection{};
+                                  records_schemas.name[new_records] = strings.intern("Foo");
+                                  records_schemas.members[new_records] =
+                                      declarations.range<lispb::codegen::ChildOccurrenceId>(
+                                          {append_test_row(
+                                              record_members_schemas,
+                                              [&](auto const new_record_members) {
+                                                  record_members_schemas.name[new_record_members] =
+                                                      strings.intern("value");
+                                                  record_members_schemas.type[new_record_members] =
+                                                      lispb::codegen::make_test_type_ref(context,
+                                                                                         "int32");
+                                              })});
+                              }),
+                          append_test_row(
+                              records_schemas,
+                              [&](auto const new_records) {
+                                  records_schemas.cpp_projection[new_records] =
+                                      lispb::codegen::CppProjection{};
+                                  records_schemas.name[new_records] = strings.intern("Bar");
+                                  records_schemas.members[new_records] =
+                                      declarations.range<lispb::codegen::ChildOccurrenceId>(
+                                          {append_test_row(
+                                              record_members_schemas,
+                                              [&](auto const new_record_members) {
+                                                  record_members_schemas.name[new_record_members] =
+                                                      strings.intern("value");
+                                                  record_members_schemas.type[new_record_members] =
+                                                      lispb::codegen::make_test_type_ref(context,
+                                                                                         "int32");
+                                              })});
+                              }),
+                          append_test_row(records_schemas, [&](auto const new_records) {
+                              records_schemas.cpp_projection[new_records] =
+                                  lispb::codegen::CppProjection{};
+                              records_schemas.name[new_records] = strings.intern("User");
+                              records_schemas.members[new_records] =
+                                  declarations.range<lispb::codegen::ChildOccurrenceId>(
+                                      {append_test_row(
+                                           record_members_schemas,
+                                           [&](auto const new_record_members) {
+                                               record_members_schemas.name[new_record_members] =
+                                                   strings.intern("local");
+                                               record_members_schemas.type[new_record_members] =
+                                                   lispb::codegen::make_test_type_ref(context,
+                                                                                      "Foo");
+                                           }),
+                                       append_test_row(
+                                           record_members_schemas,
+                                           [&](auto const new_record_members) {
+                                               record_members_schemas.name[new_record_members] =
+                                                   strings.intern("qualified");
+                                               record_members_schemas.type[new_record_members] =
+                                                   lispb::codegen::make_test_type_ref(context,
+                                                                                      "game::Bar");
+                                           }),
+                                       append_test_row(
+                                           record_members_schemas,
+                                           [&](auto const new_record_members) {
+                                               record_members_schemas.name[new_record_members] =
+                                                   strings.intern("registered");
+                                               record_members_schemas.type[new_record_members] =
+                                                   lispb::codegen::make_test_type_ref(context,
+                                                                                      "@bar");
+                                           }),
+                                       append_test_row(
+                                           record_members_schemas,
+                                           [&](auto const new_record_members) {
+                                               record_members_schemas.name[new_record_members] =
+                                                   strings.intern("suffixed");
+                                               record_members_schemas.type[new_record_members] =
+                                                   append_test_row(
+                                                       type_refs, [&](auto const new_type_refs) {
+                                                           type_refs.name[new_type_refs] =
+                                                               strings.intern("Foo");
+                                                           type_refs.suffix[new_type_refs] =
+                                                               strings.intern("*");
+                                                       });
+                                           }),
+                                       append_test_row(
+                                           record_members_schemas,
+                                           [&](auto const new_record_members) {
+                                               record_members_schemas.name[new_record_members] =
+                                                   strings.intern("ambiguous");
+                                               record_members_schemas.type[new_record_members] =
+                                                   lispb::codegen::make_test_type_ref(context,
+                                                                                      "game::Foo");
+                                           })});
+                          })});
+             }),
+         append_test_row(normal_modules_schemas, [&](auto const new_normal_modules) {
+             normal_modules_schemas.settings[new_normal_modules] =
+                 append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                     module_settings_store.name[new_module_settings_store] = strings.intern("B");
+                     module_settings_store.header[new_module_settings_store] =
+                         strings.intern("B.h");
+                     module_settings_store.namespace_name[new_module_settings_store] =
+                         strings.intern("game");
+                 });
+             normal_modules_schemas.declarations[new_normal_modules] =
                  declarations.range<lispb::codegen::DeclarationHandle>(
-                     {[&] {
-                          auto const new_records{records_schemas.append()};
-                          auto const new_records_row{records_schemas.index(new_records)};
-                          records_schemas.cpp_projection[new_records_row] =
-                              lispb::codegen::CppProjection{};
-                          records_schemas.name[new_records_row] = strings.intern("Foo");
-                          records_schemas.members[new_records_row] =
-                              declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
-                                  auto const new_record_members{record_members_schemas.append()};
-                                  auto const new_record_members_row{
-                                      record_members_schemas.index(new_record_members)};
-                                  record_members_schemas.name[new_record_members_row] =
-                                      strings.intern("value");
-                                  record_members_schemas.type[new_record_members_row] =
-                                      lispb::codegen::make_test_type_ref(context, "int32");
-                                  return new_record_members;
-                              }()});
-                          return new_records;
-                      }(),
-                      [&] {
-                          auto const new_records{records_schemas.append()};
-                          auto const new_records_row{records_schemas.index(new_records)};
-                          records_schemas.cpp_projection[new_records_row] =
-                              lispb::codegen::CppProjection{};
-                          records_schemas.name[new_records_row] = strings.intern("Bar");
-                          records_schemas.members[new_records_row] =
-                              declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
-                                  auto const new_record_members{record_members_schemas.append()};
-                                  auto const new_record_members_row{
-                                      record_members_schemas.index(new_record_members)};
-                                  record_members_schemas.name[new_record_members_row] =
-                                      strings.intern("value");
-                                  record_members_schemas.type[new_record_members_row] =
-                                      lispb::codegen::make_test_type_ref(context, "int32");
-                                  return new_record_members;
-                              }()});
-                          return new_records;
-                      }(),
-                      [&] {
-                          auto const new_records{records_schemas.append()};
-                          auto const new_records_row{records_schemas.index(new_records)};
-                          records_schemas.cpp_projection[new_records_row] =
-                              lispb::codegen::CppProjection{};
-                          records_schemas.name[new_records_row] = strings.intern("User");
-                          records_schemas.members[new_records_row] = declarations.range<
-                              lispb::codegen::ChildOccurrenceId>(
-                              {[&] {
-                                   auto const new_record_members{record_members_schemas.append()};
-                                   auto const new_record_members_row{
-                                       record_members_schemas.index(new_record_members)};
-                                   record_members_schemas.name[new_record_members_row] =
-                                       strings.intern("local");
-                                   record_members_schemas.type[new_record_members_row] =
-                                       lispb::codegen::make_test_type_ref(context, "Foo");
-                                   return new_record_members;
-                               }(),
-                               [&] {
-                                   auto const new_record_members{record_members_schemas.append()};
-                                   auto const new_record_members_row{
-                                       record_members_schemas.index(new_record_members)};
-                                   record_members_schemas.name[new_record_members_row] =
-                                       strings.intern("qualified");
-                                   record_members_schemas.type[new_record_members_row] =
-                                       lispb::codegen::make_test_type_ref(context, "game::Bar");
-                                   return new_record_members;
-                               }(),
-                               [&] {
-                                   auto const new_record_members{record_members_schemas.append()};
-                                   auto const new_record_members_row{
-                                       record_members_schemas.index(new_record_members)};
-                                   record_members_schemas.name[new_record_members_row] =
-                                       strings.intern("registered");
-                                   record_members_schemas.type[new_record_members_row] =
-                                       lispb::codegen::make_test_type_ref(context, "@bar");
-                                   return new_record_members;
-                               }(),
-                               [&] {
-                                   auto const new_record_members{record_members_schemas.append()};
-                                   auto const new_record_members_row{
-                                       record_members_schemas.index(new_record_members)};
-                                   record_members_schemas.name[new_record_members_row] =
-                                       strings.intern("suffixed");
-                                   record_members_schemas.type[new_record_members_row] = [&] {
-                                       auto const new_type_refs{type_refs.append()};
-                                       auto const new_type_refs_row{type_refs.index(new_type_refs)};
-                                       type_refs.name[new_type_refs_row] = strings.intern("Foo");
-                                       type_refs.suffix[new_type_refs_row] = strings.intern("*");
-                                       return new_type_refs;
-                                   }();
-                                   return new_record_members;
-                               }(),
-                               [&] {
-                                   auto const new_record_members{record_members_schemas.append()};
-                                   auto const new_record_members_row{
-                                       record_members_schemas.index(new_record_members)};
-                                   record_members_schemas.name[new_record_members_row] =
-                                       strings.intern("ambiguous");
-                                   record_members_schemas.type[new_record_members_row] =
-                                       lispb::codegen::make_test_type_ref(context, "game::Foo");
-                                   return new_record_members;
-                               }()});
-                          return new_records;
-                      }()});
-             return new_normal_modules;
-         }(),
-         [&] {
-             auto const new_normal_modules{normal_modules_schemas.append()};
-             auto const new_normal_modules_row{normal_modules_schemas.index(new_normal_modules)};
-             normal_modules_schemas.settings[new_normal_modules_row] = [&] {
-                 auto const new_module_settings_store{module_settings_store.append()};
-                 auto const new_module_settings_store_row{
-                     module_settings_store.index(new_module_settings_store)};
-                 module_settings_store.name[new_module_settings_store_row] = strings.intern("B");
-                 module_settings_store.header[new_module_settings_store_row] =
-                     strings.intern("B.h");
-                 module_settings_store.namespace_name[new_module_settings_store_row] =
-                     strings.intern("game");
-                 return new_module_settings_store;
-             }();
-             normal_modules_schemas.declarations[new_normal_modules_row] =
-                 declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-                     auto const new_records{records_schemas.append()};
-                     auto const new_records_row{records_schemas.index(new_records)};
-                     records_schemas.cpp_projection[new_records_row] =
-                         lispb::codegen::CppProjection{};
-                     records_schemas.name[new_records_row] = strings.intern("Foo");
-                     records_schemas.members[new_records_row] =
-                         declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
-                             auto const new_record_members{record_members_schemas.append()};
-                             auto const new_record_members_row{
-                                 record_members_schemas.index(new_record_members)};
-                             record_members_schemas.name[new_record_members_row] =
-                                 strings.intern("value");
-                             record_members_schemas.type[new_record_members_row] =
-                                 lispb::codegen::make_test_type_ref(context, "int32");
-                             return new_record_members;
-                         }()});
-                     return new_records;
-                 }()});
-             return new_normal_modules;
-         }()}};
+                     {append_test_row(records_schemas, [&](auto const new_records) {
+                         records_schemas.cpp_projection[new_records] =
+                             lispb::codegen::CppProjection{};
+                         records_schemas.name[new_records] = strings.intern("Foo");
+                         records_schemas.members[new_records] =
+                             declarations.range<lispb::codegen::ChildOccurrenceId>({append_test_row(
+                                 record_members_schemas, [&](auto const new_record_members) {
+                                     record_members_schemas.name[new_record_members] =
+                                         strings.intern("value");
+                                     record_members_schemas.type[new_record_members] =
+                                         lispb::codegen::make_test_type_ref(context, "int32");
+                                 })});
+                     })});
+         })}};
     auto const graph{resolve_type_graph(manifest)};
     auto const& semantic_record_members{graph.definitions().children};
     auto const& semantic_records{graph.definitions().records};
@@ -2495,39 +2266,30 @@ TEST(SemanticTypeGraph, TreatsRawCppSpellingsAsExplicitExternalLeaves) {
         lispb::codegen::manifest_schema_version,
         lispb::codegen::make_test_registry(context),
         declarations,
-        {[&] {
-            auto const new_normal_modules{normal_modules.append()};
-            auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-            normal_modules.settings[new_normal_modules_row] = [&] {
-                auto const new_module_settings_store{module_settings_store.append()};
-                auto const new_module_settings_store_row{
-                    module_settings_store.index(new_module_settings_store)};
-                module_settings_store.name[new_module_settings_store_row] =
-                    strings.intern("values");
-                module_settings_store.header[new_module_settings_store_row] =
-                    strings.intern("Values.h");
-                return new_module_settings_store;
-            }();
-            normal_modules.declarations[new_normal_modules_row] =
-                declarations.range<lispb::codegen::DeclarationHandle>({[&] {
-                    auto const new_soas{soas_schemas.append()};
-                    auto const new_soas_row{soas_schemas.index(new_soas)};
-                    soas_schemas.name[new_soas_row] = strings.intern("Values");
-                    soas_schemas.members[new_soas_row] =
-                        declarations.range<lispb::codegen::SoaMemberId>({[&] {
-                            auto const new_soa_members{soa_members.append()};
-                            auto const new_soa_members_row{soa_members.index(new_soa_members)};
-                            soa_members.name[new_soa_members_row] = strings.intern("items");
-                            soa_members.kind[new_soa_members_row] =
-                                lispb::codegen::SoaMemberKind::array;
-                            soa_members.type[new_soa_members_row] =
-                                lispb::codegen::make_test_type_ref(context, "ExternalValue");
-                            return new_soa_members;
-                        }()});
-                    return new_soas;
-                }()});
-            return new_normal_modules;
-        }()}};
+        {append_test_row(normal_modules, [&](auto const new_normal_modules) {
+            normal_modules.settings[new_normal_modules] =
+                append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                    module_settings_store.name[new_module_settings_store] =
+                        strings.intern("values");
+                    module_settings_store.header[new_module_settings_store] =
+                        strings.intern("Values.h");
+                });
+            normal_modules.declarations[new_normal_modules] =
+                declarations.range<lispb::codegen::DeclarationHandle>(
+                    {append_test_row(soas_schemas, [&](auto const new_soas) {
+                        soas_schemas.name[new_soas] = strings.intern("Values");
+                        soas_schemas.members[new_soas] =
+                            declarations.range<lispb::codegen::SoaMemberId>(
+                                {append_test_row(soa_members, [&](auto const new_soa_members) {
+                                    soa_members.name[new_soa_members] = strings.intern("items");
+                                    soa_members.kind[new_soa_members] =
+                                        lispb::codegen::SoaMemberKind::array;
+                                    soa_members.type[new_soa_members] =
+                                        lispb::codegen::make_test_type_ref(context,
+                                                                           "ExternalValue");
+                                })});
+                    })});
+        })}};
     auto const graph{resolve_type_graph(manifest)};
     auto const& soas{graph.definitions().soas};
     auto const& soa_columns{graph.definitions().soa_columns};
@@ -2557,15 +2319,13 @@ TEST(SemanticTypeGraph, SoaOwnerUsesItsLogicalIdentity) {
     auto const rows{soas_schemas.append()};
     auto const rows_row{soas_schemas.index(rows)};
     soas_schemas.name[rows_row] = strings.intern("LogicalRows");
-    soas_schemas.members[rows_row] = declarations.range<lispb::codegen::SoaMemberId>({[&] {
-        auto const new_soa_members{soa_members.append()};
-        auto const new_soa_members_row{soa_members.index(new_soa_members)};
-        soa_members.name[new_soa_members_row] = strings.intern("values");
-        soa_members.kind[new_soa_members_row] = lispb::codegen::SoaMemberKind::array;
-        soa_members.type[new_soa_members_row] =
-            lispb::codegen::make_test_type_ref(context, "float");
-        return new_soa_members;
-    }()});
+    soas_schemas.members[rows_row] = declarations.range<lispb::codegen::SoaMemberId>(
+        {append_test_row(soa_members, [&](auto const new_soa_members) {
+            soa_members.name[new_soa_members] = strings.intern("values");
+            soa_members.kind[new_soa_members] = lispb::codegen::SoaMemberKind::array;
+            soa_members.type[new_soa_members] =
+                lispb::codegen::make_test_type_ref(context, "float");
+        })});
     soas_schemas.equivalent_type[rows_row] = lispb::codegen::make_test_type_ref(context, "Row");
     lispb::codegen::Manifest manifest{
         lispb::codegen::manifest_schema_version,
@@ -2574,68 +2334,51 @@ TEST(SemanticTypeGraph, SoaOwnerUsesItsLogicalIdentity) {
             {{"logical", storage.cpp_types.add("model::LogicalRows")},
              {"physical", storage.cpp_types.add("model::LogicalRows")}}),
         declarations,
-        {[&] {
-            auto const new_normal_modules{normal_modules.append()};
-            auto const new_normal_modules_row{normal_modules.index(new_normal_modules)};
-            normal_modules.settings[new_normal_modules_row] = [&] {
-                auto const new_module_settings_store{module_settings_store.append()};
-                auto const new_module_settings_store_row{
-                    module_settings_store.index(new_module_settings_store)};
-                module_settings_store.name[new_module_settings_store_row] = strings.intern("model");
-                module_settings_store.header[new_module_settings_store_row] =
-                    strings.intern("Model.h");
-                module_settings_store.namespace_name[new_module_settings_store_row] =
-                    strings.intern("model");
-                return new_module_settings_store;
-            }();
-            normal_modules.declarations[new_normal_modules_row] =
+        {append_test_row(normal_modules, [&](auto const new_normal_modules) {
+            normal_modules.settings[new_normal_modules] =
+                append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                    module_settings_store.name[new_module_settings_store] = strings.intern("model");
+                    module_settings_store.header[new_module_settings_store] =
+                        strings.intern("Model.h");
+                    module_settings_store.namespace_name[new_module_settings_store] =
+                        strings.intern("model");
+                });
+            normal_modules.declarations[new_normal_modules] =
                 declarations.range<lispb::codegen::DeclarationHandle>(
                     {rows,
-                     [&] {
-                         auto const new_soas{soas_schemas.append()};
-                         auto const new_soas_row{soas_schemas.index(new_soas)};
-                         soas_schemas.name[new_soas_row] = strings.intern("Layout");
-                         soas_schemas.members[new_soas_row] =
-                             declarations.range<lispb::codegen::SoaMemberId>({[&] {
-                                 auto const new_soa_members{soa_members.append()};
-                                 auto const new_soa_members_row{soa_members.index(new_soa_members)};
-                                 soa_members.name[new_soa_members_row] = strings.intern("xs");
-                                 soa_members.kind[new_soa_members_row] =
-                                     lispb::codegen::SoaMemberKind::array;
-                                 soa_members.type[new_soa_members_row] =
-                                     lispb::codegen::make_test_type_ref(context, "float");
-                                 return new_soa_members;
-                             }()});
-                         soas_schemas.layout_only[new_soas_row] = true;
-                         return new_soas;
-                     }(),
-                     [&] {
-                         auto const new_records{records_schemas.append()};
-                         auto const new_records_row{records_schemas.index(new_records)};
-                         records_schemas.cpp_projection[new_records_row] =
+                     append_test_row(
+                         soas_schemas,
+                         [&](auto const new_soas) {
+                             soas_schemas.name[new_soas] = strings.intern("Layout");
+                             soas_schemas.members[new_soas] =
+                                 declarations.range<lispb::codegen::SoaMemberId>(
+                                     {append_test_row(soa_members, [&](auto const new_soa_members) {
+                                         soa_members.name[new_soa_members] = strings.intern("xs");
+                                         soa_members.kind[new_soa_members] =
+                                             lispb::codegen::SoaMemberKind::array;
+                                         soa_members.type[new_soa_members] =
+                                             lispb::codegen::make_test_type_ref(context, "float");
+                                     })});
+                             soas_schemas.layout_only[new_soas] = true;
+                         }),
+                     append_test_row(records_schemas, [&](auto const new_records) {
+                         records_schemas.cpp_projection[new_records] =
                              lispb::codegen::CppProjection{};
-                         records_schemas.name[new_records_row] = strings.intern("Reference");
-                         records_schemas.members[new_records_row] =
-                             declarations.range<lispb::codegen::ChildOccurrenceId>({[&] {
-                                 auto const new_record_members{record_members_schemas.append()};
-                                 auto const new_record_members_row{
-                                     record_members_schemas.index(new_record_members)};
-                                 record_members_schemas.name[new_record_members_row] =
-                                     strings.intern("owner");
-                                 record_members_schemas.type[new_record_members_row] = [&] {
-                                     auto const new_type_refs{type_refs.append()};
-                                     auto const new_type_refs_row{type_refs.index(new_type_refs)};
-                                     type_refs.name[new_type_refs_row] =
-                                         strings.intern("LogicalRows");
-                                     type_refs.suffix[new_type_refs_row] = strings.intern("*");
-                                     return new_type_refs;
-                                 }();
-                                 return new_record_members;
-                             }()});
-                         return new_records;
-                     }()});
-            return new_normal_modules;
-        }()}};
+                         records_schemas.name[new_records] = strings.intern("Reference");
+                         records_schemas.members[new_records] =
+                             declarations.range<lispb::codegen::ChildOccurrenceId>({append_test_row(
+                                 record_members_schemas, [&](auto const new_record_members) {
+                                     record_members_schemas.name[new_record_members] =
+                                         strings.intern("owner");
+                                     record_members_schemas.type[new_record_members] =
+                                         append_test_row(type_refs, [&](auto const new_type_refs) {
+                                             type_refs.name[new_type_refs] =
+                                                 strings.intern("LogicalRows");
+                                             type_refs.suffix[new_type_refs] = strings.intern("*");
+                                         });
+                                 })});
+                     })});
+        })}};
     auto const graph{resolve_type_graph(manifest)};
     auto const& soas{graph.definitions().soas};
     auto const& record_members{graph.definitions().children};

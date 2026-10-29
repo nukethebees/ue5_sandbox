@@ -1,4 +1,4 @@
-#include "compiler_test_context.h"
+#include "cpp_ir_test.h"
 #include "test_utilities.h"
 
 #include <codegen/ast/binary_operator.h>
@@ -34,10 +34,7 @@
 namespace lispb::codegen {
 namespace {
 
-TEST(Expr, RequiresExplicitRawAndSupportsIndependentCopies) {
-    CompilerTestContext context;
-    auto& ir{context.ir};
-    CppRenderer renderer{ir};
+TEST_F(ExprTest, RequiresExplicitRawAndSupportsIndependentCopies) {
     static_assert(!std::is_convertible_v<std::string, Expr>);
     static_assert(!std::is_convertible_v<char const*, Expr>);
     auto original{ir.call(ir.named("lookup"), {ir.named("value")})};
@@ -49,11 +46,7 @@ TEST(Expr, RequiresExplicitRawAndSupportsIndependentCopies) {
     EXPECT_EQ(copy.kind(), ExprKind::call);
 }
 
-TEST(Expr, RendersCallsCastsAndInitializerLists) {
-    CompilerTestContext context;
-    auto& ir{context.ir};
-    auto& types{ir.types};
-    CppRenderer renderer{ir};
+TEST_F(ExprTest, RendersCallsCastsAndInitializerLists) {
     auto const lookup{ir.call(ir.named("get_name"), {ir.named("project::Mode::Ready")})};
     EXPECT_EQ(renderer.render(ir.init_list({lookup}, types.intern("FString"))),
               "FString{get_name(project::Mode::Ready)}");
@@ -66,11 +59,7 @@ TEST(Expr, RendersCallsCastsAndInitializerLists) {
               "factory()(42)");
 }
 
-TEST(Expr, PreservesBinaryGroupingAndPostfixBinding) {
-    CompilerTestContext context;
-    auto& ir{context.ir};
-    auto& types{ir.types};
-    CppRenderer renderer{ir};
+TEST_F(ExprTest, PreservesBinaryGroupingAndPostfixBinding) {
     auto const inner{ir.binary(BinaryOperator::equal, ir.named("a"), ir.named("b"))};
     EXPECT_EQ(renderer.render(ir.binary(BinaryOperator::equal, inner, ir.named("c"))),
               "a == b == c");
@@ -82,11 +71,7 @@ TEST(Expr, PreservesBinaryGroupingAndPostfixBinding) {
               "static_cast<bool>(a == b)");
 }
 
-TEST(Expr, RendersUnaryPointerAccessAndLogicalPrecedence) {
-    CompilerTestContext context;
-    auto& ir{context.ir};
-    auto& types{ir.types};
-    CppRenderer renderer{ir};
+TEST_F(ExprTest, RendersUnaryPointerAccessAndLogicalPrecedence) {
     auto const pointer{ir.named("state")};
     auto const data{ir.pointer_member_access(pointer, "data")};
     auto const missing{ir.binary(BinaryOperator::logical_or,
@@ -123,10 +108,7 @@ TEST(Expr, RendersUnaryPointerAccessAndLogicalPrecedence) {
     EXPECT_EQ(types.dependency_header(deps.front()), "State.h");
 }
 
-TEST(Expr, PreservesBitwiseAndShiftPrecedence) {
-    CompilerTestContext context;
-    auto& ir{context.ir};
-    CppRenderer renderer{ir};
+TEST_F(ExprTest, PreservesBitwiseAndShiftPrecedence) {
     auto const value{ir.named("value")};
     auto const bit{ir.call(ir.named("bit"), {ir.named("field")})};
     auto const masked{ir.binary(BinaryOperator::bitwise_and, value, bit)};
@@ -147,11 +129,7 @@ TEST(Expr, PreservesBitwiseAndShiftPrecedence) {
               "(value | bit(field)).test()");
 }
 
-TEST(Ast, RendersRefQualifiedMethodsAndInlineOutOfLineConstructors) {
-    CompilerTestContext context;
-    auto& ir{context.ir};
-    auto& types{ir.types};
-    CppRenderer renderer{ir};
+TEST_F(AstTest, RendersRefQualifiedMethodsAndInlineOutOfLineConstructors) {
     auto spec{ir.function(ir.strings.intern("view"), types.intern("auto"))};
     ir.set_function_return_type(spec, types.intern("View"), ReturnSyntax::trailing);
     ir.set_function_receiver(spec, FunctionReceiver::const_lvalue);
@@ -169,11 +147,7 @@ TEST(Ast, RendersRefQualifiedMethodsAndInlineOutOfLineConstructors) {
     EXPECT_EQ(renderer.render(constructor), "inline View::View() {  }");
 }
 
-TEST(Expr, RendersSizeofAndPreservesArithmeticGrouping) {
-    CompilerTestContext context;
-    auto& ir{context.ir};
-    auto& types{ir.types};
-    CppRenderer renderer{ir};
+TEST_F(ExprTest, RendersSizeofAndPreservesArithmeticGrouping) {
     auto const a{ir.named("a")};
     auto const b{ir.named("b")};
     auto const c{ir.named("c")};
@@ -194,10 +168,7 @@ TEST(Expr, RendersSizeofAndPreservesArithmeticGrouping) {
               "static_cast<int>(sizeof(Element))");
 }
 
-TEST(Expr, CollectsSizeofTypeDependenciesThroughArithmetic) {
-    CompilerTestContext context;
-    auto& ir{context.ir};
-    auto& types{ir.types};
+TEST_F(ExprTest, CollectsSizeofTypeDependenciesThroughArithmetic) {
     auto const function{ir.function(ir.strings.intern("bytes"), types.intern("auto"))};
     auto const element{types.intern("Element", {types.dependency("Element", "Project/Element.h")})};
     ir.set_function_body(function,
@@ -210,11 +181,7 @@ TEST(Expr, CollectsSizeofTypeDependenciesThroughArithmetic) {
     EXPECT_NE(output.find("return 2 * sizeof(Element);"), std::string::npos);
 }
 
-TEST(Expr, KeepsRawVerbatimAndProtectsNestedRawOperands) {
-    CompilerTestContext context;
-    auto& ir{context.ir};
-    auto& types{ir.types};
-    CppRenderer renderer{ir};
+TEST_F(ExprTest, KeepsRawVerbatimAndProtectsNestedRawOperands) {
     Expr const raw_expr{ir.raw_expr("left, right")};
     EXPECT_EQ(renderer.render(raw_expr), "left, right");
     EXPECT_EQ(renderer.render(ir.return_stmt(raw_expr)), "return left, right;");
@@ -229,10 +196,7 @@ TEST(Expr, KeepsRawVerbatimAndProtectsNestedRawOperands) {
     EXPECT_EQ(renderer.render(ir.init_list({raw_expr})), "{(left, right)}");
 }
 
-TEST(Expr, RendersMemberAccessAndSubscriptsWithPostfixBinding) {
-    CompilerTestContext context;
-    auto& ir{context.ir};
-    CppRenderer renderer{ir};
+TEST_F(ExprTest, RendersMemberAccessAndSubscriptsWithPostfixBinding) {
     auto const other_values{ir.member_access(ir.named("other"), "values")};
     auto const element{ir.subscript(other_values, ir.named("index"))};
     EXPECT_EQ(renderer.render(element), "other.values[index]");
@@ -253,10 +217,7 @@ TEST(Expr, RendersMemberAccessAndSubscriptsWithPostfixBinding) {
               "(*pointer)[(first, last)]");
 }
 
-TEST(Expr, PreservesSubtractionAndComparisonPrecedence) {
-    CompilerTestContext context;
-    auto& ir{context.ir};
-    CppRenderer renderer{ir};
+TEST_F(ExprTest, PreservesSubtractionAndComparisonPrecedence) {
     auto const a{ir.named("a")};
     auto const b{ir.named("b")};
     auto const c{ir.named("c")};
@@ -284,10 +245,7 @@ TEST(Expr, PreservesSubtractionAndComparisonPrecedence) {
               "c - (a - b)");
 }
 
-TEST(Expr, CollectsMemberObjectAndSubscriptIndexDependencies) {
-    CompilerTestContext context;
-    auto& ir{context.ir};
-    auto& types{ir.types};
+TEST_F(ExprTest, CollectsMemberObjectAndSubscriptIndexDependencies) {
     auto const object{types.dependency("get_rows", "Project/Rows.h")};
     auto const index{types.dependency("get_index", "Project/Index.h")};
     auto const expression{
@@ -299,10 +257,7 @@ TEST(Expr, CollectsMemberObjectAndSubscriptIndexDependencies) {
               (std::vector<TypeDependencyId>{object, index}));
 }
 
-TEST(Expr, EscapesStringContentsWithoutConsumingFollowingDigits) {
-    CompilerTestContext context;
-    auto& ir{context.ir};
-    CppRenderer renderer{ir};
+TEST_F(ExprTest, EscapesStringContentsWithoutConsumingFollowingDigits) {
     EXPECT_EQ(renderer.render(ir.string_literal("")), "\"\"");
     EXPECT_EQ(renderer.render(ir.string_literal("a\"b\\c\n\r\t")), "\"a\\\"b\\\\c\\n\\r\\t\"");
     EXPECT_EQ(renderer.render(ir.string_literal(std::string_view{"\0"
@@ -318,10 +273,7 @@ TEST(Expr, EscapesStringContentsWithoutConsumingFollowingDigits) {
               "\\0007\\001f\\177");
 }
 
-TEST(Expr, CollectsDependenciesFromEveryOperandAndType) {
-    CompilerTestContext context;
-    auto& ir{context.ir};
-    auto& types{ir.types};
+TEST_F(ExprTest, CollectsDependenciesFromEveryOperandAndType) {
     auto const callee{types.dependency("make", "Project/Make.h")};
     auto const left{types.dependency("left", "Project/Left.h")};
     auto const right{types.dependency("right", "Project/Right.h")};
@@ -341,10 +293,7 @@ TEST(Expr, CollectsDependenciesFromEveryOperandAndType) {
         (std::vector<TypeDependencyId>{list_type, callee, left, right, cast_type, raw_dependency}));
 }
 
-TEST(Expr, StmtsCollectInitializersAndAssignmentOperands) {
-    CompilerTestContext context;
-    auto& ir{context.ir};
-    auto& types{ir.types};
+TEST_F(ExprTest, StmtsCollectInitializersAndAssignmentOperands) {
     auto const make{types.dependency("make", "Project/Make.h")};
     auto const target{types.dependency("target", "Project/Target.h")};
     auto const expression{ir.call(ir.named("make", {make}))};
@@ -363,11 +312,7 @@ TEST(Expr, StmtsCollectInitializersAndAssignmentOperands) {
               (std::vector<TypeDependencyId>{target, make}));
 }
 
-TEST(Expr, PreservesAbsentEmptyAndStructuredInitializers) {
-    CompilerTestContext context;
-    auto& ir{context.ir};
-    auto& types{ir.types};
-    CppRenderer renderer{ir};
+TEST_F(ExprTest, PreservesAbsentEmptyAndStructuredInitializers) {
     EXPECT_EQ(renderer.render(ir.instance_member(types.intern("int"), ir.strings.intern("value"))),
               "int value;");
     EXPECT_EQ(renderer.render(ir.instance_member(
@@ -385,9 +330,7 @@ TEST(Expr, PreservesAbsentEmptyAndStructuredInitializers) {
     EXPECT_EQ(renderer.render(ir.return_stmt()), "return;");
 }
 
-TEST(Ast, RendersNestedControlFlowWithExplicitBreaksAndSpacing) {
-    CompilerTestContext context;
-    auto& ir{context.ir};
+TEST_F(AstTest, RendersNestedControlFlowWithExplicitBreaksAndSpacing) {
     NodeListBuilder body{ir};
     body.add(ir.if_stmt(ir.named("ready"),
                         ir.block({ir.return_stmt(ir.literal("true"))}),
@@ -416,10 +359,7 @@ TEST(Ast, RendersNestedControlFlowWithExplicitBreaksAndSpacing) {
               "    }");
 }
 
-TEST(Ast, RendersEmptyControlFlowAndStandaloneBlocks) {
-    CompilerTestContext context;
-    auto& ir{context.ir};
-    CppRenderer renderer{ir};
+TEST_F(AstTest, RendersEmptyControlFlowAndStandaloneBlocks) {
     EXPECT_EQ(renderer.render(ir.block({})), "{\n\n}");
     EXPECT_EQ(renderer.render(ir.block({ir.return_stmt()})), "{\n    return;\n}");
     EXPECT_EQ(renderer.render(ir.if_stmt(ir.named("ready"), ir.block({}))), "if (ready) {\n\n}");
@@ -429,9 +369,7 @@ TEST(Ast, RendersEmptyControlFlowAndStandaloneBlocks) {
               "switch (mode) {\ndefault: {\n\n}\n}");
 }
 
-TEST(Ast, VisitsBothBranchesAndAllSwitchBodiesInOrder) {
-    CompilerTestContext context;
-    auto& ir{context.ir};
+TEST_F(AstTest, VisitsBothBranchesAndAllSwitchBodiesInOrder) {
     NodeId const branches{
         ir.if_stmt(ir.named("ready"), ir.block({ir.raw("then")}), ir.block({ir.raw("else")}))};
     NodeId const cases{
@@ -446,9 +384,7 @@ TEST(Ast, VisitsBothBranchesAndAllSwitchBodiesInOrder) {
     EXPECT_EQ(visited, (std::vector<std::string>{"then", "else", "one", "two", "default"}));
 }
 
-TEST(Ast, RendersUnbracedSwitchReturnsWithoutChangingOtherCases) {
-    CompilerTestContext context;
-    auto& ir{context.ir};
+TEST_F(AstTest, RendersUnbracedSwitchReturnsWithoutChangingOtherCases) {
     auto const selection{ir.switch_stmt(
         ir.named("field"),
         {ir.switch_case(
@@ -459,11 +395,7 @@ TEST(Ast, RendersUnbracedSwitchReturnsWithoutChangingOtherCases) {
         "switch (field) {\ncase Field::value:\n    return value;\ndefault: {\n    return 0;\n}\n}");
 }
 
-TEST(Ast, CollectsDeepControlFlowDependenciesOnlyForDefinitions) {
-    CompilerTestContext context;
-    auto& ir{context.ir};
-    auto& types{ir.types};
-    CppRenderer renderer{ir};
+TEST_F(AstTest, CollectsDeepControlFlowDependenciesOnlyForDefinitions) {
     auto symbol = [&](std::string const& name) {
         auto const header{"Project/" + name + ".h"};
         return ir.named(name, {types.dependency(name, header)});
@@ -498,10 +430,7 @@ TEST(Ast, CollectsDeepControlFlowDependenciesOnlyForDefinitions) {
     }
 }
 
-TEST(Ast, DeduplicatesSharedSymbolDependenciesAndTheirNestedHeaders) {
-    CompilerTestContext context;
-    auto& ir{context.ir};
-    auto& types{ir.types};
+TEST_F(AstTest, DeduplicatesSharedSymbolDependenciesAndTheirNestedHeaders) {
     auto const symbol{types.dependency("make", "Project/Make.h")};
     auto const value{types.dependency("Value", "Project/Value.h")};
     auto const expression{ir.call(ir.named("make", {symbol, value}))};

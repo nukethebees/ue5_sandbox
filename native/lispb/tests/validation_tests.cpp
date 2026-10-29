@@ -61,6 +61,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cassert>
 #include <cstdint>
 #include <filesystem>
 #include <format>
@@ -74,6 +75,20 @@
 
 namespace lispb::codegen {
 namespace {
+
+template <typename Id, typename Store, typename Edit>
+auto edit_first_test_item(Declarations& declarations,
+                          SchemaRange<Id> const range,
+                          Store& store,
+                          Edit edit) -> SchemaRange<Id> {
+    auto const items{declarations.items(range)};
+    auto rows{std::vector(items.begin(), items.end())};
+    assert(!rows.empty());
+    auto const replacement{store.clone(rows.front())};
+    edit(replacement);
+    rows.front() = replacement;
+    return declarations.range(rows);
+}
 
 template <typename T>
 auto manifest_with(CompilerTestContext& context,
@@ -158,21 +173,14 @@ TEST(Validation, FunctionQualifiersAreSharedByRecordsAndAllSoaReceivers) {
                     }()});
             } else {
 
-                normal_modules.declarations[module] = [&] {
-                    auto const original_items{
-                        declarations.items(normal_modules.declarations[module])};
-                    auto rows{std::vector(original_items.begin(), original_items.end())};
-                    rows.front() = [&] {
-                        auto soa{soas.clone(rows.front())};
+                normal_modules.declarations[module] = edit_first_test_item(
+                    declarations, normal_modules.declarations[module], soas, [&](auto const soa) {
                         auto const soa_row{soas.index(soa)};
                         auto& functions{receiver == 1   ? soas.functions[soa_row]
                                         : receiver == 2 ? soas.const_view_functions[soa_row]
                                                         : soas.mutable_view_functions[soa_row]};
                         functions = declarations.range<FunctionSchemaId>({function});
-                        return soa;
-                    }();
-                    return declarations.range(rows);
-                }();
+                    });
             }
             auto const manifest{manifest_with(context, module)};
             if (diagnostic.empty()) {
@@ -453,46 +461,26 @@ auto valid_integer_varint_manifest(
     auto& strings{context.storage.strings};
     auto scalar{valid_integer_scalar_module(context)};
     if (signedness) {
-        normal_modules.declarations[scalar] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[scalar])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.signedness[row_0] = true;
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
-        normal_modules.declarations[scalar] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[scalar])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.minimum_value[row_0] = -100;
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
-        normal_modules.declarations[scalar] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[scalar])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.maximum_value[row_0] = 100;
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
-        normal_modules.declarations[scalar] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[scalar])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.named_codes[row_0] = {};
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+        normal_modules.declarations[scalar] = edit_first_test_item(
+            declarations,
+            normal_modules.declarations[scalar],
+            integer_scalars,
+            [&](auto const row_0) { integer_scalars.signedness[row_0] = true; });
+        normal_modules.declarations[scalar] = edit_first_test_item(
+            declarations,
+            normal_modules.declarations[scalar],
+            integer_scalars,
+            [&](auto const row_0) { integer_scalars.minimum_value[row_0] = -100; });
+        normal_modules.declarations[scalar] = edit_first_test_item(
+            declarations,
+            normal_modules.declarations[scalar],
+            integer_scalars,
+            [&](auto const row_0) { integer_scalars.maximum_value[row_0] = 100; });
+        normal_modules.declarations[scalar] = edit_first_test_item(
+            declarations,
+            normal_modules.declarations[scalar],
+            integer_scalars,
+            [&](auto const row_0) { integer_scalars.named_codes[row_0] = {}; });
     }
     auto const representations{normal_modules.append()};
     auto const representations_row{normal_modules.index(representations)};
@@ -731,25 +719,16 @@ TEST(Validation, RejectsInvalidEnumDefinitions) {
     auto& enumerators{declarations.enumerators};
     auto& strings{context.storage.strings};
     auto module{valid_enum_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.values[row_0] = {};
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             auto const row_0_row{enums.index(row_0)};
             enums.values[row_0_row] = [&] {
                 auto const original_items{declarations.items(enums.values[row_0_row])};
@@ -761,380 +740,108 @@ TEST(Validation, RejectsInvalidEnumDefinitions) {
                 }());
                 return declarations.range(rows);
             }();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{enums.clone(rows_3.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_2) {
             auto const row_2_row{enums.index(row_2)};
-            enums.values[row_2_row] = [&] {
-                auto const original_items{declarations.items(enums.values[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{enumerators.clone(rows_1.front())};
+            enums.values[row_2_row] = edit_first_test_item(
+                declarations, enums.values[row_2_row], enumerators, [&](auto const row_0) {
                     enumerators.name[row_0] = strings.intern("bad-name");
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+                });
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.underlying_type[row_0] = make_test_type_ref(context, "@missing");
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
 
-TEST(Validation, RejectsEnumSemanticWidthsThatCannotRepresentKnownValues) {
+struct EnumDomainCase {
+    char const* name;
+    std::optional<std::uint8_t> bit_width;
+    schema::EnumSignedness signedness;
+    std::vector<std::pair<std::string_view, std::string_view>> values;
+    bool valid;
+};
+
+using EnumDomainValidation = testing::TestWithParam<EnumDomainCase>;
+
+TEST_P(EnumDomainValidation, AppliesWidthAndSignednessToKnownValues) {
     CompilerTestContext context;
     auto& declarations{context.storage.declarations};
-    auto& normal_modules{declarations.normal_modules};
+    auto& modules{declarations.normal_modules};
     auto& enums{declarations.enums};
     auto& enumerators{declarations.enumerators};
     auto& strings{context.storage.strings};
-    auto module{valid_enum_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.reflection[row_0] = EnumReflection::none;
-            enums.conversions[row_0] = {};
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.bit_width[row_0] = 0;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
+    auto const& test_case{GetParam()};
+    auto const module{valid_enum_module(context)};
+    modules.declarations[module] = edit_first_test_item(
+        declarations, modules.declarations[module], enums, [&](auto const enumeration) {
+            enums.reflection[enumeration] = EnumReflection::none;
+            enums.conversions[enumeration] = {};
+            enums.bit_width[enumeration] = test_case.bit_width;
+            enums.signedness[enumeration] = test_case.signedness;
+            if (!test_case.values.empty()) {
+                std::vector<EnumeratorId> values;
+                for (auto const& [name, initializer] : test_case.values) {
+                    auto const value{enumerators.append()};
+                    enumerators.name[value] = strings.intern(name);
+                    enumerators.initializer[value] = strings.intern(initializer);
+                    values.push_back(value);
+                }
+                enums.values[enumeration] = declarations.range(values);
+            }
+        });
 
-    module = valid_enum_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.reflection[row_0] = EnumReflection::none;
-            enums.conversions[row_0] = {};
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.bit_width[row_0] = 65;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
-
-    module = valid_enum_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.reflection[row_0] = EnumReflection::none;
-            enums.conversions[row_0] = {};
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>(
-                {[&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[new_enumerators_row] = strings.intern("Zero");
-                     enumerators.initializer[new_enumerators_row] = strings.intern("0");
-                     return new_enumerators;
-                 }(),
-                 [&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[new_enumerators_row] = strings.intern("Seven");
-                     enumerators.initializer[new_enumerators_row] = strings.intern("7");
-                     return new_enumerators;
-                 }()});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.bit_width[row_0] = 2;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
-
-    module = valid_enum_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.reflection[row_0] = EnumReflection::none;
-            enums.conversions[row_0] = {};
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>(
-                {[&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[new_enumerators_row] = strings.intern("Zero");
-                     enumerators.initializer[new_enumerators_row] = strings.intern("0");
-                     return new_enumerators;
-                 }(),
-                 [&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[new_enumerators_row] = strings.intern("Seven");
-                     enumerators.initializer[new_enumerators_row] = strings.intern("7");
-                     return new_enumerators;
-                 }()});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.bit_width[row_0] = 3;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
+    if (test_case.valid) {
+        EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
+    } else {
+        EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
+                     std::invalid_argument);
+    }
 }
 
-TEST(Validation, AppliesExplicitEnumSignednessToTheSemanticDomain) {
-    CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
-    auto& normal_modules{declarations.normal_modules};
-    auto& enums{declarations.enums};
-    auto& enumerators{declarations.enumerators};
-    auto& strings{context.storage.strings};
-    auto module{valid_enum_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.reflection[row_0] = EnumReflection::none;
-            enums.conversions[row_0] = {};
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>(
-                {[&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[new_enumerators_row] = strings.intern("Negative");
-                     enumerators.initializer[new_enumerators_row] = strings.intern("-1");
-                     return new_enumerators;
-                 }(),
-                 [&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[new_enumerators_row] = strings.intern("Positive");
-                     enumerators.initializer[new_enumerators_row] = strings.intern("1");
-                     return new_enumerators;
-                 }()});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.signedness[row_0] = schema::EnumSignedness::unsigned_;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
-
-    module = valid_enum_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.reflection[row_0] = EnumReflection::none;
-            enums.conversions[row_0] = {};
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>(
-                {[&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[new_enumerators_row] = strings.intern("Zero");
-                     enumerators.initializer[new_enumerators_row] = strings.intern("0");
-                     return new_enumerators;
-                 }(),
-                 [&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[new_enumerators_row] = strings.intern("Seven");
-                     enumerators.initializer[new_enumerators_row] = strings.intern("7");
-                     return new_enumerators;
-                 }()});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.signedness[row_0] = schema::EnumSignedness::signed_;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.bit_width[row_0] = 3;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
-
-    module = valid_enum_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.reflection[row_0] = EnumReflection::none;
-            enums.conversions[row_0] = {};
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>(
-                {[&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[new_enumerators_row] = strings.intern("Zero");
-                     enumerators.initializer[new_enumerators_row] = strings.intern("0");
-                     return new_enumerators;
-                 }(),
-                 [&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const new_enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[new_enumerators_row] = strings.intern("Seven");
-                     enumerators.initializer[new_enumerators_row] = strings.intern("7");
-                     return new_enumerators;
-                 }()});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.signedness[row_0] = schema::EnumSignedness::signed_;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
-            enums.bit_width[row_0] = 4;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
-}
+INSTANTIATE_TEST_SUITE_P(
+    Validation,
+    EnumDomainValidation,
+    testing::Values(EnumDomainCase{"ZeroWidth", 0, schema::EnumSignedness::unspecified, {}, false},
+                    EnumDomainCase{
+                        "WidthAbove64", 65, schema::EnumSignedness::unspecified, {}, false},
+                    EnumDomainCase{"InsufficientUnsignedWidth",
+                                   2,
+                                   schema::EnumSignedness::unspecified,
+                                   {{"Zero", "0"}, {"Seven", "7"}},
+                                   false},
+                    EnumDomainCase{"SufficientUnsignedWidth",
+                                   3,
+                                   schema::EnumSignedness::unspecified,
+                                   {{"Zero", "0"}, {"Seven", "7"}},
+                                   true},
+                    EnumDomainCase{"NegativeUnsignedValue",
+                                   std::nullopt,
+                                   schema::EnumSignedness::unsigned_,
+                                   {{"Negative", "-1"}, {"Positive", "1"}},
+                                   false},
+                    EnumDomainCase{"InsufficientSignedWidth",
+                                   3,
+                                   schema::EnumSignedness::signed_,
+                                   {{"Zero", "0"}, {"Seven", "7"}},
+                                   false},
+                    EnumDomainCase{"SufficientSignedWidth",
+                                   4,
+                                   schema::EnumSignedness::signed_,
+                                   {{"Zero", "0"}, {"Seven", "7"}},
+                                   true}),
+    [](testing::TestParamInfo<EnumDomainCase> const& info) { return info.param.name; });
 
 TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
     CompilerTestContext context;
@@ -1144,39 +851,24 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
     auto& packed_named_codes{declarations.packed_named_codes};
     auto& strings{context.storage.strings};
     auto module{valid_integer_scalar_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], integer_scalars, [&](auto const row_0) {
             integer_scalars.bit_width[row_0] = 3;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], integer_scalars, [&](auto const row_0) {
             integer_scalars.minimum_value[row_0] = -1;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{integer_scalars.clone(rows_3.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], integer_scalars, [&](auto const row_2) {
             auto const row_2_row{integer_scalars.index(row_2)};
             integer_scalars.named_codes[row_2_row] = [&] {
                 auto const original_items{
@@ -1189,19 +881,13 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
                 }();
                 return declarations.range(rows_1);
             }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{integer_scalars.clone(rows_3.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], integer_scalars, [&](auto const row_2) {
             auto const row_2_row{integer_scalars.index(row_2)};
             integer_scalars.named_codes[row_2_row] = [&] {
                 auto const original_items{
@@ -1214,19 +900,13 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
                 }();
                 return declarations.range(rows_1);
             }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{integer_scalars.clone(rows_3.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], integer_scalars, [&](auto const row_2) {
             auto const row_2_row{integer_scalars.index(row_2)};
             integer_scalars.named_codes[row_2_row] = [&] {
                 auto const original_items{
@@ -1239,19 +919,13 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
                 }();
                 return declarations.range(rows_1);
             }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{integer_scalars.clone(rows_3.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], integer_scalars, [&](auto const row_2) {
             auto const row_2_row{integer_scalars.index(row_2)};
             integer_scalars.named_codes[row_2_row] = [&] {
                 auto const original_items{
@@ -1264,10 +938,7 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
                 }();
                 return declarations.range(rows_1);
             }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
@@ -1536,17 +1207,11 @@ TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
         return declarations.range(rows);
     }();
 
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{soas.clone(rows_3.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_2) {
             auto const row_2_row{soas.index(row_2)};
-            soas.members[row_2_row] = [&] {
-                auto const original_items{declarations.items(soas.members[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{soa_members.clone(rows_1.front())};
+            soas.members[row_2_row] = edit_first_test_item(
+                declarations, soas.members[row_2_row], soa_members, [&](auto const row_0) {
                     soa_members.relationship[row_0] = [&] {
                         auto const new_semantic_relations{semantic_relations.append()};
                         auto const new_semantic_relations_row{
@@ -1558,27 +1223,15 @@ TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
                         semantic_relations.unit[new_semantic_relations_row] = std::nullopt;
                         return new_semantic_relations;
                     }();
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+                });
+        });
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{soas.clone(rows_3.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_2) {
             auto const row_2_row{soas.index(row_2)};
-            soas.members[row_2_row] = [&] {
-                auto const original_items{declarations.items(soas.members[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{soa_members.clone(rows_1.front())};
+            soas.members[row_2_row] = edit_first_test_item(
+                declarations, soas.members[row_2_row], soa_members, [&](auto const row_0) {
                     soa_members.relationship[row_0] = [&] {
                         auto const new_semantic_relations{semantic_relations.append()};
                         auto const new_semantic_relations_row{
@@ -1590,28 +1243,16 @@ TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
                         semantic_relations.unit[new_semantic_relations_row] = std::nullopt;
                         return new_semantic_relations;
                     }();
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+                });
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{soas.clone(rows_3.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_2) {
             auto const row_2_row{soas.index(row_2)};
-            soas.members[row_2_row] = [&] {
-                auto const original_items{declarations.items(soas.members[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{soa_members.clone(rows_1.front())};
+            soas.members[row_2_row] = edit_first_test_item(
+                declarations, soas.members[row_2_row], soa_members, [&](auto const row_0) {
                     soa_members.relationship[row_0] = [&] {
                         auto const new_semantic_relations{semantic_relations.append()};
                         auto const new_semantic_relations_row{
@@ -1624,28 +1265,16 @@ TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
                             SemanticRelationUnit::elements;
                         return new_semantic_relations;
                     }();
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+                });
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{soas.clone(rows_3.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_2) {
             auto const row_2_row{soas.index(row_2)};
-            soas.members[row_2_row] = [&] {
-                auto const original_items{declarations.items(soas.members[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{soa_members.clone(rows_1.front())};
+            soas.members[row_2_row] = edit_first_test_item(
+                declarations, soas.members[row_2_row], soa_members, [&](auto const row_0) {
                     soa_members.relationship[row_0] = [&] {
                         auto const new_semantic_relations{semantic_relations.append()};
                         auto const new_semantic_relations_row{
@@ -1658,14 +1287,8 @@ TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
                             SemanticRelationUnit::bytes;
                         return new_semantic_relations;
                     }();
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+                });
+        });
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 }
 
@@ -1681,51 +1304,31 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
                             SemanticRelationKind::offset_into}) {
         auto module{valid_integer_scalar_module(context)};
 
-        normal_modules.declarations[module] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[module])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.signedness[row_0] = true;
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
-        normal_modules.declarations[module] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[module])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.minimum_value[row_0] = -10;
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
-        normal_modules.declarations[module] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[module])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.maximum_value[row_0] = 10;
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
-        normal_modules.declarations[module] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[module])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.named_codes[row_0] = {};
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
-        normal_modules.declarations[module] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[module])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{integer_scalars.clone(rows_1.front())};
+        normal_modules.declarations[module] = edit_first_test_item(
+            declarations,
+            normal_modules.declarations[module],
+            integer_scalars,
+            [&](auto const row_0) { integer_scalars.signedness[row_0] = true; });
+        normal_modules.declarations[module] = edit_first_test_item(
+            declarations,
+            normal_modules.declarations[module],
+            integer_scalars,
+            [&](auto const row_0) { integer_scalars.minimum_value[row_0] = -10; });
+        normal_modules.declarations[module] = edit_first_test_item(
+            declarations,
+            normal_modules.declarations[module],
+            integer_scalars,
+            [&](auto const row_0) { integer_scalars.maximum_value[row_0] = 10; });
+        normal_modules.declarations[module] = edit_first_test_item(
+            declarations,
+            normal_modules.declarations[module],
+            integer_scalars,
+            [&](auto const row_0) { integer_scalars.named_codes[row_0] = {}; });
+        normal_modules.declarations[module] = edit_first_test_item(
+            declarations,
+            normal_modules.declarations[module],
+            integer_scalars,
+            [&](auto const row_0) {
                 integer_scalars.relationship[row_0] = [&] {
                     auto const new_semantic_relations{semantic_relations.append()};
                     auto const new_semantic_relations_row{
@@ -1739,20 +1342,14 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
                             : std::nullopt;
                     return new_semantic_relations;
                 }();
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+            });
         EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                      std::invalid_argument);
     }
 
     auto module{valid_integer_scalar_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], integer_scalars, [&](auto const row_0) {
             integer_scalars.relationship[row_0] = [&] {
                 auto const new_semantic_relations{semantic_relations.append()};
                 auto const new_semantic_relations_row{
@@ -1764,18 +1361,12 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
                 semantic_relations.unit[new_semantic_relations_row] = std::nullopt;
                 return new_semantic_relations;
             }();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
     module = valid_integer_scalar_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], integer_scalars, [&](auto const row_0) {
             integer_scalars.relationship[row_0] = [&] {
                 auto const new_semantic_relations{semantic_relations.append()};
                 auto const new_semantic_relations_row{
@@ -1787,19 +1378,13 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
                 semantic_relations.unit[new_semantic_relations_row] = std::nullopt;
                 return new_semantic_relations;
             }();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], integer_scalars, [&](auto const row_0) {
             integer_scalars.relationship[row_0] = [&] {
                 auto const new_semantic_relations{semantic_relations.append()};
                 auto const new_semantic_relations_row{
@@ -1812,19 +1397,13 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
                     SemanticRelationUnit::elements;
                 return new_semantic_relations;
             }();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_integer_scalar_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{integer_scalars.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], integer_scalars, [&](auto const row_0) {
             integer_scalars.relationship[row_0] = [&] {
                 auto const new_semantic_relations{semantic_relations.append()};
                 auto const new_semantic_relations_row{
@@ -1836,10 +1415,7 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
                 semantic_relations.unit[new_semantic_relations_row] = SemanticRelationUnit::bytes;
                 return new_semantic_relations;
             }();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 }
 
@@ -1859,61 +1435,41 @@ TEST(Validation, ValidatesLogicalLinearQuantizedRepresentationsWithoutCppOutput)
     manifest.modules[0] = [&] {
         auto row_2{normal_modules.clone(manifest.modules[0])};
         auto const row_2_row{normal_modules.index(row_2)};
-        normal_modules.declarations[row_2_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_2_row])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.signedness[row_0] = true;
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+        normal_modules.declarations[row_2_row] = edit_first_test_item(
+            declarations,
+            normal_modules.declarations[row_2_row],
+            integer_scalars,
+            [&](auto const row_0) { integer_scalars.signedness[row_0] = true; });
         return row_2;
     }();
     manifest.modules[0] = [&] {
         auto row_2{normal_modules.clone(manifest.modules[0])};
         auto const row_2_row{normal_modules.index(row_2)};
-        normal_modules.declarations[row_2_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_2_row])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.minimum_value[row_0] = -100;
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+        normal_modules.declarations[row_2_row] = edit_first_test_item(
+            declarations,
+            normal_modules.declarations[row_2_row],
+            integer_scalars,
+            [&](auto const row_0) { integer_scalars.minimum_value[row_0] = -100; });
         return row_2;
     }();
     manifest.modules[0] = [&] {
         auto row_2{normal_modules.clone(manifest.modules[0])};
         auto const row_2_row{normal_modules.index(row_2)};
-        normal_modules.declarations[row_2_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_2_row])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.maximum_value[row_0] = 100;
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+        normal_modules.declarations[row_2_row] = edit_first_test_item(
+            declarations,
+            normal_modules.declarations[row_2_row],
+            integer_scalars,
+            [&](auto const row_0) { integer_scalars.maximum_value[row_0] = 100; });
         return row_2;
     }();
     manifest.modules[0] = [&] {
         auto row_2{normal_modules.clone(manifest.modules[0])};
         auto const row_2_row{normal_modules.index(row_2)};
-        normal_modules.declarations[row_2_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_2_row])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.named_codes[row_0] = {};
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+        normal_modules.declarations[row_2_row] = edit_first_test_item(
+            declarations,
+            normal_modules.declarations[row_2_row],
+            integer_scalars,
+            [&](auto const row_0) { integer_scalars.named_codes[row_0] = {}; });
         return row_2;
     }();
     EXPECT_NO_THROW(lower_test_manifest(context, manifest));
@@ -1922,16 +1478,11 @@ TEST(Validation, ValidatesLogicalLinearQuantizedRepresentationsWithoutCppOutput)
     manifest.modules[1] = [&] {
         auto row_2{normal_modules.clone(manifest.modules[1])};
         auto const row_2_row{normal_modules.index(row_2)};
-        normal_modules.declarations[row_2_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_2_row])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{linear_quantizeds.clone(rows_1.front())};
-                linear_quantizeds.bit_width[row_0] = 1;
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+        normal_modules.declarations[row_2_row] =
+            edit_first_test_item(declarations,
+                                 normal_modules.declarations[row_2_row],
+                                 linear_quantizeds,
+                                 [&](auto const row_0) { linear_quantizeds.bit_width[row_0] = 1; });
         return row_2;
     }();
     EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
@@ -1941,31 +1492,21 @@ TEST(Validation, ValidatesLogicalLinearQuantizedRepresentationsWithoutCppOutput)
     manifest.modules[1] = [&] {
         auto row_2{normal_modules.clone(manifest.modules[1])};
         auto const row_2_row{normal_modules.index(row_2)};
-        normal_modules.declarations[row_2_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_2_row])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{linear_quantizeds.clone(rows_1.front())};
-                linear_quantizeds.bit_width[row_0] = 2;
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+        normal_modules.declarations[row_2_row] =
+            edit_first_test_item(declarations,
+                                 normal_modules.declarations[row_2_row],
+                                 linear_quantizeds,
+                                 [&](auto const row_0) { linear_quantizeds.bit_width[row_0] = 2; });
         return row_2;
     }();
     manifest.modules[1] = [&] {
         auto row_2{normal_modules.clone(manifest.modules[1])};
         auto const row_2_row{normal_modules.index(row_2)};
-        normal_modules.declarations[row_2_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_2_row])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{linear_quantizeds.clone(rows_1.front())};
-                linear_quantizeds.reserved_codes[row_0] = 3;
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+        normal_modules.declarations[row_2_row] = edit_first_test_item(
+            declarations,
+            normal_modules.declarations[row_2_row],
+            linear_quantizeds,
+            [&](auto const row_0) { linear_quantizeds.reserved_codes[row_0] = 3; });
         return row_2;
     }();
     EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
@@ -1974,16 +1515,11 @@ TEST(Validation, ValidatesLogicalLinearQuantizedRepresentationsWithoutCppOutput)
     manifest.modules[0] = [&] {
         auto row_2{normal_modules.clone(manifest.modules[0])};
         auto const row_2_row{normal_modules.index(row_2)};
-        normal_modules.declarations[row_2_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_2_row])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{integer_scalars.clone(rows_1.front())};
-                integer_scalars.maximum_value[row_0] = 0;
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+        normal_modules.declarations[row_2_row] = edit_first_test_item(
+            declarations,
+            normal_modules.declarations[row_2_row],
+            integer_scalars,
+            [&](auto const row_0) { integer_scalars.maximum_value[row_0] = 0; });
         return row_2;
     }();
     EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
@@ -1992,16 +1528,14 @@ TEST(Validation, ValidatesLogicalLinearQuantizedRepresentationsWithoutCppOutput)
     manifest.modules[1] = [&] {
         auto row_2{normal_modules.clone(manifest.modules[1])};
         auto const row_2_row{normal_modules.index(row_2)};
-        normal_modules.declarations[row_2_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_2_row])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{linear_quantizeds.clone(rows_1.front())};
-                linear_quantizeds.source[row_0] = make_test_type_ref(context, "std::uint32_t");
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+        normal_modules.declarations[row_2_row] =
+            edit_first_test_item(declarations,
+                                 normal_modules.declarations[row_2_row],
+                                 linear_quantizeds,
+                                 [&](auto const row_0) {
+                                     linear_quantizeds.source[row_0] =
+                                         make_test_type_ref(context, "std::uint32_t");
+                                 });
         return row_2;
     }();
     EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
@@ -2055,16 +1589,14 @@ TEST(Validation, ValidatesIntegerVarintSourceAndSignedness) {
     manifest.modules[1] = [&] {
         auto row_2{normal_modules.clone(manifest.modules[1])};
         auto const row_2_row{normal_modules.index(row_2)};
-        normal_modules.declarations[row_2_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_2_row])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{integer_varints.clone(rows_1.front())};
-                integer_varints.source[row_0] = make_test_type_ref(context, "std::uint32_t");
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+        normal_modules.declarations[row_2_row] =
+            edit_first_test_item(declarations,
+                                 normal_modules.declarations[row_2_row],
+                                 integer_varints,
+                                 [&](auto const row_0) {
+                                     integer_varints.source[row_0] =
+                                         make_test_type_ref(context, "std::uint32_t");
+                                 });
         return row_2;
     }();
     EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
@@ -2114,31 +1646,21 @@ TEST(Validation, ValidatesLogicalFixedPointWidthsWithoutCppOutput) {
     manifest.modules.front() = [&] {
         auto row_2{normal_modules.clone(manifest.modules.front())};
         auto const row_2_row{normal_modules.index(row_2)};
-        normal_modules.declarations[row_2_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_2_row])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{fixed_points.clone(rows_1.front())};
-                fixed_points.total_bits[row_0] = 8;
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+        normal_modules.declarations[row_2_row] =
+            edit_first_test_item(declarations,
+                                 normal_modules.declarations[row_2_row],
+                                 fixed_points,
+                                 [&](auto const row_0) { fixed_points.total_bits[row_0] = 8; });
         return row_2;
     }();
     manifest.modules.front() = [&] {
         auto row_2{normal_modules.clone(manifest.modules.front())};
         auto const row_2_row{normal_modules.index(row_2)};
-        normal_modules.declarations[row_2_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_2_row])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{fixed_points.clone(rows_1.front())};
-                fixed_points.fractional_bits[row_0] = 8;
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+        normal_modules.declarations[row_2_row] = edit_first_test_item(
+            declarations,
+            normal_modules.declarations[row_2_row],
+            fixed_points,
+            [&](auto const row_0) { fixed_points.fractional_bits[row_0] = 8; });
         return row_2;
     }();
     EXPECT_NO_THROW(lower_test_manifest(context, manifest));
@@ -2147,16 +1669,11 @@ TEST(Validation, ValidatesLogicalFixedPointWidthsWithoutCppOutput) {
     manifest.modules.front() = [&] {
         auto row_2{normal_modules.clone(manifest.modules.front())};
         auto const row_2_row{normal_modules.index(row_2)};
-        normal_modules.declarations[row_2_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_2_row])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{fixed_points.clone(rows_1.front())};
-                fixed_points.fractional_bits[row_0] = 16;
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+        normal_modules.declarations[row_2_row] = edit_first_test_item(
+            declarations,
+            normal_modules.declarations[row_2_row],
+            fixed_points,
+            [&](auto const row_0) { fixed_points.fractional_bits[row_0] = 16; });
         return row_2;
     }();
     EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
@@ -2165,16 +1682,11 @@ TEST(Validation, ValidatesLogicalFixedPointWidthsWithoutCppOutput) {
     manifest.modules.front() = [&] {
         auto row_2{normal_modules.clone(manifest.modules.front())};
         auto const row_2_row{normal_modules.index(row_2)};
-        normal_modules.declarations[row_2_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_2_row])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{fixed_points.clone(rows_1.front())};
-                fixed_points.total_bits[row_0] = 0;
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+        normal_modules.declarations[row_2_row] =
+            edit_first_test_item(declarations,
+                                 normal_modules.declarations[row_2_row],
+                                 fixed_points,
+                                 [&](auto const row_0) { fixed_points.total_bits[row_0] = 0; });
         return row_2;
     }();
     EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
@@ -2271,16 +1783,14 @@ TEST(Validation, ValidatesOptionalSentinelSourceAndCodeRole) {
     manifest.modules[1] = [&] {
         auto row_2{normal_modules.clone(manifest.modules[1])};
         auto const row_2_row{normal_modules.index(row_2)};
-        normal_modules.declarations[row_2_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_2_row])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{optional_sentinels.clone(rows_1.front())};
-                optional_sentinels.source[row_0] = make_test_type_ref(context, "std::uint32_t");
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+        normal_modules.declarations[row_2_row] =
+            edit_first_test_item(declarations,
+                                 normal_modules.declarations[row_2_row],
+                                 optional_sentinels,
+                                 [&](auto const row_0) {
+                                     optional_sentinels.source[row_0] =
+                                         make_test_type_ref(context, "std::uint32_t");
+                                 });
         return row_2;
     }();
     EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
@@ -2289,16 +1799,13 @@ TEST(Validation, ValidatesOptionalSentinelSourceAndCodeRole) {
     manifest.modules[1] = [&] {
         auto row_2{normal_modules.clone(manifest.modules[1])};
         auto const row_2_row{normal_modules.index(row_2)};
-        normal_modules.declarations[row_2_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_2_row])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{optional_sentinels.clone(rows_1.front())};
-                optional_sentinels.sentinel[row_0] = strings.intern("Missing");
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+        normal_modules.declarations[row_2_row] =
+            edit_first_test_item(declarations,
+                                 normal_modules.declarations[row_2_row],
+                                 optional_sentinels,
+                                 [&](auto const row_0) {
+                                     optional_sentinels.sentinel[row_0] = strings.intern("Missing");
+                                 });
         return row_2;
     }();
     EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
@@ -2307,16 +1814,13 @@ TEST(Validation, ValidatesOptionalSentinelSourceAndCodeRole) {
     manifest.modules[1] = [&] {
         auto row_2{normal_modules.clone(manifest.modules[1])};
         auto const row_2_row{normal_modules.index(row_2)};
-        normal_modules.declarations[row_2_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_2_row])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{optional_sentinels.clone(rows_1.front())};
-                optional_sentinels.sentinel[row_0] = strings.intern("Unknown");
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+        normal_modules.declarations[row_2_row] =
+            edit_first_test_item(declarations,
+                                 normal_modules.declarations[row_2_row],
+                                 optional_sentinels,
+                                 [&](auto const row_0) {
+                                     optional_sentinels.sentinel[row_0] = strings.intern("Unknown");
+                                 });
         return row_2;
     }();
     EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
@@ -2325,16 +1829,11 @@ TEST(Validation, ValidatesOptionalSentinelSourceAndCodeRole) {
     manifest.modules[0] = [&] {
         auto row_2{normal_modules.clone(manifest.modules[0])};
         auto const row_2_row{normal_modules.index(row_2)};
-        normal_modules.declarations[row_2_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_2_row])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{declarations.integer_scalars.clone(rows_1.front())};
-                declarations.integer_scalars.named_codes[row_0] = {};
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+        normal_modules.declarations[row_2_row] = edit_first_test_item(
+            declarations,
+            normal_modules.declarations[row_2_row],
+            declarations.integer_scalars,
+            [&](auto const row_0) { declarations.integer_scalars.named_codes[row_0] = {}; });
         return row_2;
     }();
     EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
@@ -2381,16 +1880,14 @@ TEST(Validation, ValidatesOptionalPresenceBitSourceAndSharedNames) {
     manifest.modules[1] = [&] {
         auto row_2{normal_modules.clone(manifest.modules[1])};
         auto const row_2_row{normal_modules.index(row_2)};
-        normal_modules.declarations[row_2_row] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[row_2_row])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{optional_presence_bits.clone(rows_1.front())};
-                optional_presence_bits.source[row_0] = make_test_type_ref(context, "std::uint32_t");
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+        normal_modules.declarations[row_2_row] =
+            edit_first_test_item(declarations,
+                                 normal_modules.declarations[row_2_row],
+                                 optional_presence_bits,
+                                 [&](auto const row_0) {
+                                     optional_presence_bits.source[row_0] =
+                                         make_test_type_ref(context, "std::uint32_t");
+                                 });
         return row_2;
     }();
     EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
@@ -2478,51 +1975,30 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
                                 std::vector{NativeEnumHelper::try_parse_serialized}}) {
         auto invalid{valid_native_enum_module(context)};
 
-        normal_modules.declarations[invalid] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[invalid])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{enums.clone(rows_1.front())};
+        normal_modules.declarations[invalid] = edit_first_test_item(
+            declarations, normal_modules.declarations[invalid], enums, [&](auto const row_0) {
                 enums.helpers[row_0] = declarations.range<NativeEnumHelper>(helpers);
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
-        normal_modules.declarations[invalid] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[invalid])};
-            auto rows_3{std::vector(original_items.begin(), original_items.end())};
-            rows_3.front() = [&] {
-                auto row_2{enums.clone(rows_3.front())};
+            });
+        normal_modules.declarations[invalid] = edit_first_test_item(
+            declarations, normal_modules.declarations[invalid], enums, [&](auto const row_2) {
                 auto const row_2_row{enums.index(row_2)};
-                enums.values[row_2_row] = [&] {
-                    auto const original_items{declarations.items(enums.values[row_2_row])};
-                    auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                    rows_1.front() = [&] {
-                        auto row_0{declarations.enumerators.clone(rows_1.front())};
+                enums.values[row_2_row] = edit_first_test_item(
+                    declarations,
+                    enums.values[row_2_row],
+                    declarations.enumerators,
+                    [&](auto const row_0) {
                         declarations.enumerators.serialized_name[row_0].reset();
-                        return row_0;
-                    }();
-                    return declarations.range(rows_1);
-                }();
-                return row_2;
-            }();
-            return declarations.range(rows_3);
-        }();
+                    });
+            });
         EXPECT_THROW(lower_test_manifest(context, manifest_with(context, invalid)),
                      std::invalid_argument);
     }
     auto unreal{valid_enum_module(context)};
-    normal_modules.declarations[unreal] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[unreal])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+    normal_modules.declarations[unreal] = edit_first_test_item(
+        declarations, normal_modules.declarations[unreal], enums, [&](auto const row_0) {
             enums.helpers[row_0] =
                 declarations.range<lispb::codegen::NativeEnumHelper>({NativeEnumHelper::traits});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, unreal)),
                  std::invalid_argument);
 
@@ -2538,67 +2014,40 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
                  std::invalid_argument);
 
     module = valid_native_enum_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.reflection[row_0] = EnumReflection::uenum;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_native_enum_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.enum_array[row_0] = true;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
     module = valid_native_enum_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.conversions[row_0] =
                 declarations.range<lispb::codegen::EnumConversion>({EnumConversion::string_view});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_native_enum_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.export_specifier[row_0] = strings.intern("PROJECT_API");
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_native_enum_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.unreal_projection[row_0] = [&] {
                 auto const new_enum_unreal_projections{enum_unreal_projections.append()};
                 auto const new_enum_unreal_projections_row{
@@ -2617,19 +2066,13 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
                     EnumReflection::none;
                 return new_enum_unreal_projections;
             }();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.unreal_projection[row_0] = [&] {
                 auto const new_enum_unreal_projections{enum_unreal_projections.append()};
                 auto const new_enum_unreal_projections_row{
@@ -2646,10 +2089,7 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
                     strings.intern("project/NativeEnums.h");
                 return new_enum_unreal_projections;
             }();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
@@ -2662,11 +2102,8 @@ TEST(Validation, RejectsIncompleteOrAmbiguousSerializedEnumNames) {
     auto& enumerators{declarations.enumerators};
     auto& strings{context.storage.strings};
     auto module{valid_enum_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             auto const row_0_row{enums.index(row_0)};
             enums.conversions[row_0_row] = [&] {
                 auto const original_items{declarations.items(enums.conversions[row_0_row])};
@@ -2674,39 +2111,21 @@ TEST(Validation, RejectsIncompleteOrAmbiguousSerializedEnumNames) {
                 rows.push_back(EnumConversion::try_parse_serialized);
                 return declarations.range(rows);
             }();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{enums.clone(rows_3.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_2) {
             auto const row_2_row{enums.index(row_2)};
-            enums.values[row_2_row] = [&] {
-                auto const original_items{declarations.items(enums.values[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{enumerators.clone(rows_1.front())};
+            enums.values[row_2_row] = edit_first_test_item(
+                declarations, enums.values[row_2_row], enumerators, [&](auto const row_0) {
                     enumerators.serialized_name[row_0] = strings.intern("value");
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+                });
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             auto const row_0_row{enums.index(row_0)};
             enums.values[row_0_row] = [&] {
                 auto const original_items{declarations.items(enums.values[row_0_row])};
@@ -2723,15 +2142,9 @@ TEST(Validation, RejectsIncompleteOrAmbiguousSerializedEnumNames) {
                 }());
                 return declarations.range(rows);
             }();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             auto const row_0_row{enums.index(row_0)};
             enums.conversions[row_0_row] = [&] {
                 auto const original_items{declarations.items(enums.conversions[row_0_row])};
@@ -2739,10 +2152,7 @@ TEST(Validation, RejectsIncompleteOrAmbiguousSerializedEnumNames) {
                 rows.push_back(EnumConversion::try_parse_serialized);
                 return declarations.range(rows);
             }();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
@@ -2755,57 +2165,30 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
     auto& enumerators{declarations.enumerators};
     auto& strings{context.storage.strings};
     auto module{valid_enum_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.enum_array[row_0] = true;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{enums.clone(rows_3.front())};
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_2) {
             auto const row_2_row{enums.index(row_2)};
-            enums.values[row_2_row] = [&] {
-                auto const original_items{declarations.items(enums.values[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{enumerators.clone(rows_1.front())};
+            enums.values[row_2_row] = edit_first_test_item(
+                declarations, enums.values[row_2_row], enumerators, [&](auto const row_0) {
                     enumerators.initializer[row_0] = strings.intern("0");
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+                });
+        });
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
     for (auto const* code : {"2", "0", "-1", "unknown_code", "0x2"}) {
         SCOPED_TRACE(code);
         module = valid_enum_module(context);
 
-        normal_modules.declarations[module] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[module])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{enums.clone(rows_1.front())};
+        normal_modules.declarations[module] = edit_first_test_item(
+            declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
                 enums.enum_array[row_0] = true;
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
-        normal_modules.declarations[module] = [&] {
-            auto const original_items{declarations.items(normal_modules.declarations[module])};
-            auto rows_1{std::vector(original_items.begin(), original_items.end())};
-            rows_1.front() = [&] {
-                auto row_0{enums.clone(rows_1.front())};
+            });
+        normal_modules.declarations[module] = edit_first_test_item(
+            declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
                 enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>(
                     {[&] {
                          auto const new_enumerators{enumerators.append()};
@@ -2821,31 +2204,19 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
                          enumerators.initializer[new_enumerators_row] = strings.intern(code);
                          return new_enumerators;
                      }()});
-                return row_0;
-            }();
-            return declarations.range(rows_1);
-        }();
+            });
         EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                      std::invalid_argument);
     }
 
     module = valid_native_enum_module(context);
 
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.enum_array[row_0] = true;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>(
                 {[&] {
                      auto const new_enumerators{enumerators.append()};
@@ -2861,100 +2232,52 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
                      enumerators.initializer[new_enumerators_row] = strings.intern("1");
                      return new_enumerators;
                  }()});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
     module = valid_enum_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.enum_array[row_0] = true;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{enums.clone(rows_3.front())};
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_2) {
             auto const row_2_row{enums.index(row_2)};
-            enums.values[row_2_row] = [&] {
-                auto const original_items{declarations.items(enums.values[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{enumerators.clone(rows_1.front())};
+            enums.values[row_2_row] = edit_first_test_item(
+                declarations, enums.values[row_2_row], enumerators, [&](auto const row_0) {
                     enumerators.hidden[row_0] = true;
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+                });
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.count[row_0] = strings.intern("Value");
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.enum_array[row_0] = true;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.count[row_0] = strings.intern("Missing");
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.enum_array[row_0] = true;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             auto const row_0_row{enums.index(row_0)};
             enums.values[row_0_row] = [&] {
                 auto const original_items{declarations.items(enums.values[row_0_row])};
@@ -2970,15 +2293,9 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
                 }());
                 return declarations.range(rows);
             }();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             auto const row_0_row{enums.index(row_0)};
             enums.values[row_0_row] = [&] {
                 auto const original_items{declarations.items(enums.values[row_0_row])};
@@ -2990,39 +2307,21 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
                 }());
                 return declarations.range(rows);
             }();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.count[row_0] = strings.intern("COUNT");
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.enum_array[row_0] = true;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             auto const row_0_row{enums.index(row_0)};
             enums.values[row_0_row] = [&] {
                 auto const original_items{declarations.items(enums.values[row_0_row])};
@@ -3034,39 +2333,21 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
                 }());
                 return declarations.range(rows);
             }();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.count[row_0] = strings.intern("COUNT");
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_enum_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.enum_array[row_0] = true;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>({[&] {
                 auto const new_enumerators{enumerators.append()};
                 auto const new_enumerators_row{enumerators.index(new_enumerators)};
@@ -3076,20 +2357,11 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
                 enumerators.hidden[new_enumerators_row] = true;
                 return new_enumerators;
             }()});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.count[row_0] = strings.intern("COUNT");
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
@@ -3103,21 +2375,12 @@ TEST(Validation, SupportsSignedEnumValuesWhenTheyFitTheUnderlyingType) {
     auto& strings{context.storage.strings};
     auto module{valid_native_enum_module(context)};
 
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.underlying_type[row_0] = make_test_type_ref(context, "@native_int8");
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.values[row_0] = declarations.range<lispb::codegen::EnumeratorId>(
                 {[&] {
                      auto const new_enumerators{enumerators.append()};
@@ -3133,20 +2396,11 @@ TEST(Validation, SupportsSignedEnumValuesWhenTheyFitTheUnderlyingType) {
                      enumerators.initializer[new_enumerators_row] = strings.intern("127");
                      return new_enumerators;
                  }()});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.count[row_0].reset();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     auto const types{std::vector<std::pair<std::string_view, CppTypeId>>{
         {"native_int8",
          context.storage.cpp_types.add(
@@ -3156,11 +2410,8 @@ TEST(Validation, SupportsSignedEnumValuesWhenTheyFitTheUnderlyingType) {
     EXPECT_NO_THROW(
         static_cast<void>(lower_test_manifest(context, manifest_with(context, module, types))));
 
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{enums.clone(rows_3.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_2) {
             auto const row_2_row{enums.index(row_2)};
             enums.values[row_2_row] = [&] {
                 auto const original_items{declarations.items(enums.values[row_2_row])};
@@ -3172,10 +2423,7 @@ TEST(Validation, SupportsSignedEnumValuesWhenTheyFitTheUnderlyingType) {
                 }();
                 return declarations.range(rows_1);
             }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+        });
     EXPECT_THROW(
         static_cast<void>(lower_test_manifest(context, manifest_with(context, module, types))),
         std::invalid_argument);
@@ -3190,11 +2438,8 @@ TEST(Validation, RequiresKnownSemanticFactsWhenEnumBackingIsDerived) {
     auto& strings{context.storage.strings};
     auto module{valid_native_enum_module(context)};
 
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             auto const row_0_row{enums.index(row_0)};
             enums.values[row_0_row] = [&] {
                 auto const original_items{declarations.items(enums.values[row_0_row])};
@@ -3206,69 +2451,33 @@ TEST(Validation, RequiresKnownSemanticFactsWhenEnumBackingIsDerived) {
                 }());
                 return declarations.range(rows);
             }();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.underlying_type[row_0].reset();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.bit_width[row_0] = 12;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.signedness[row_0] = schema::EnumSignedness::unsigned_;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
 
     EXPECT_NO_THROW(
         static_cast<void>(lower_test_manifest(context, manifest_with(context, module))));
 
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{enums.clone(rows_3.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_2) {
             auto const row_2_row{enums.index(row_2)};
-            enums.values[row_2_row] = [&] {
-                auto const original_items{declarations.items(enums.values[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{enumerators.clone(rows_1.front())};
+            enums.values[row_2_row] = edit_first_test_item(
+                declarations, enums.values[row_2_row], enumerators, [&](auto const row_0) {
                     enumerators.initializer[row_0] = strings.intern("calculate_state()");
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{enums.clone(rows_3.front())};
+                });
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_2) {
             auto const row_2_row{enums.index(row_2)};
             enums.values[row_2_row] = [&] {
                 auto const original_items{declarations.items(enums.values[row_2_row])};
@@ -3280,30 +2489,15 @@ TEST(Validation, RequiresKnownSemanticFactsWhenEnumBackingIsDerived) {
                 }();
                 return declarations.range(rows_1);
             }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.bit_width[row_0].reset();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{enums.clone(rows_1.front())};
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], enums, [&](auto const row_0) {
             enums.signedness[row_0] = schema::EnumSignedness::unspecified;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(static_cast<void>(lower_test_manifest(context, manifest_with(context, module))),
                  std::invalid_argument);
 }
@@ -3327,30 +2521,18 @@ TEST(Validation, RejectsInvalidStaticTableModuleConfiguration) {
     EXPECT_NO_THROW(lower_test_manifest(context, manifest_with(context, module)));
 
     module = valid_static_table_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{static_tables.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], static_tables, [&](auto const row_0) {
             static_tables.rows[row_0] = {};
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_static_table_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{static_tables.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], static_tables, [&](auto const row_0) {
             static_tables.columns[row_0] = {};
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
@@ -3377,62 +2559,54 @@ TEST(Validation, RejectsInvalidStaticTableNamesAndTypes) {
                  std::invalid_argument);
 
     module = valid_static_table_module(context);
-    normal_modules_schemas.declarations[normal_modules_schemas.index(module)] = [&] {
-        auto const original_items{declarations.items(
-            normal_modules_schemas.declarations[normal_modules_schemas.index(module)])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{static_tables.clone(rows_1.front())};
-            auto const row_0_row{static_tables.index(row_0)};
-            static_tables.rows[row_0_row] = [&] {
-                auto const original_items{declarations.items(static_tables.rows[row_0_row])};
-                auto rows{std::vector(original_items.begin(), original_items.end())};
-                rows.push_back([&] {
-                    auto const new_static_table_rows{static_table_rows.append()};
-                    static_table_rows.name[new_static_table_rows] = strings.intern("first");
-                    return new_static_table_rows;
-                }());
-                return declarations.range(rows);
-            }();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
-                 std::invalid_argument);
-
-    module = valid_static_table_module(context);
-    normal_modules_schemas.declarations[normal_modules_schemas.index(module)] = [&] {
-        auto const original_items{declarations.items(
-            normal_modules_schemas.declarations[normal_modules_schemas.index(module)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{static_tables.clone(rows_3.front())};
-            auto const row_2_row{static_tables.index(row_2)};
-            static_tables.rows[row_2_row] = [&] {
-                auto const original_items{declarations.items(static_tables.rows[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{static_table_rows.clone(rows_1.front())};
-                    static_table_rows.name[row_0] = strings.intern("bad-name");
-                    return row_0;
+    normal_modules_schemas.declarations[normal_modules_schemas.index(module)] =
+        edit_first_test_item(
+            declarations,
+            normal_modules_schemas.declarations[normal_modules_schemas.index(module)],
+            static_tables,
+            [&](auto const row_0) {
+                auto const row_0_row{static_tables.index(row_0)};
+                static_tables.rows[row_0_row] = [&] {
+                    auto const original_items{declarations.items(static_tables.rows[row_0_row])};
+                    auto rows{std::vector(original_items.begin(), original_items.end())};
+                    rows.push_back([&] {
+                        auto const new_static_table_rows{static_table_rows.append()};
+                        static_table_rows.name[new_static_table_rows] = strings.intern("first");
+                        return new_static_table_rows;
+                    }());
+                    return declarations.range(rows);
                 }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+            });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_static_table_module(context);
-    normal_modules_schemas.declarations[normal_modules_schemas.index(module)] = [&] {
-        auto const original_items{declarations.items(
-            normal_modules_schemas.declarations[normal_modules_schemas.index(module)])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{static_tables.clone(rows_1.front())};
+    normal_modules_schemas.declarations[normal_modules_schemas.index(module)] =
+        edit_first_test_item(
+            declarations,
+            normal_modules_schemas.declarations[normal_modules_schemas.index(module)],
+            static_tables,
+            [&](auto const row_2) {
+                auto const row_2_row{static_tables.index(row_2)};
+                static_tables.rows[row_2_row] =
+                    edit_first_test_item(declarations,
+                                         static_tables.rows[row_2_row],
+                                         static_table_rows,
+                                         [&](auto const row_0) {
+                                             static_table_rows.name[row_0] =
+                                                 strings.intern("bad-name");
+                                         });
+            });
+    EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
+                 std::invalid_argument);
+
+    module = valid_static_table_module(context);
+    normal_modules_schemas
+        .declarations[normal_modules_schemas.index(module)] = edit_first_test_item(
+        declarations,
+        normal_modules_schemas.declarations[normal_modules_schemas.index(module)],
+        static_tables,
+        [&](auto const row_0) {
             auto const row_0_row{static_tables.index(row_0)};
             static_tables.columns[row_0_row] = [&] {
                 auto const original_items{declarations.items(static_tables.columns[row_0_row])};
@@ -3448,36 +2622,27 @@ TEST(Validation, RejectsInvalidStaticTableNamesAndTypes) {
                         .front());
                 return declarations.range(rows);
             }();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_static_table_module(context);
-    normal_modules_schemas.declarations[normal_modules_schemas.index(module)] = [&] {
-        auto const original_items{declarations.items(
-            normal_modules_schemas.declarations[normal_modules_schemas.index(module)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{static_tables.clone(rows_3.front())};
-            auto const row_2_row{static_tables.index(row_2)};
-            static_tables.columns[row_2_row] = [&] {
-                auto const original_items{declarations.items(static_tables.columns[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{declarations.static_table_columns.clone(rows_1.front())};
-                    declarations.static_table_columns.type[row_0] =
-                        make_test_type_ref(context, "@missing");
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+    normal_modules_schemas.declarations[normal_modules_schemas.index(module)] =
+        edit_first_test_item(
+            declarations,
+            normal_modules_schemas.declarations[normal_modules_schemas.index(module)],
+            static_tables,
+            [&](auto const row_2) {
+                auto const row_2_row{static_tables.index(row_2)};
+                static_tables.columns[row_2_row] =
+                    edit_first_test_item(declarations,
+                                         static_tables.columns[row_2_row],
+                                         declarations.static_table_columns,
+                                         [&](auto const row_0) {
+                                             declarations.static_table_columns.type[row_0] =
+                                                 make_test_type_ref(context, "@missing");
+                                         });
+            });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
@@ -3522,183 +2687,147 @@ TEST(Validation, RejectsInvalidStaticTableGroups) {
 
     auto& strings{context.storage.strings};
     auto module{valid_static_table_module(context)};
-    normal_modules_schemas.declarations[normal_modules_schemas.index(module)] = [&] {
-        auto const original_items{declarations.items(
-            normal_modules_schemas.declarations[normal_modules_schemas.index(module)])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{static_tables.clone(rows_1.front())};
-            static_tables.groups[row_0] =
-                declarations.range<lispb::codegen::StaticTableGroupId>({[&] {
-                    auto const new_static_table_groups{static_table_groups.append()};
-                    auto const new_static_table_groups_row{
-                        static_table_groups.index(new_static_table_groups)};
-                    static_table_groups.name[new_static_table_groups_row] = strings.intern("point");
-                    static_table_groups.type[new_static_table_groups_row] =
-                        make_test_type_ref(context, "FPoint");
-                    static_table_groups.columns[new_static_table_groups_row] =
-                        declarations.range<lispb::StringId>({strings.intern("ids")});
-                    return new_static_table_groups;
-                }()});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+    normal_modules_schemas.declarations[normal_modules_schemas.index(module)] =
+        edit_first_test_item(
+            declarations,
+            normal_modules_schemas.declarations[normal_modules_schemas.index(module)],
+            static_tables,
+            [&](auto const row_0) {
+                static_tables.groups[row_0] =
+                    declarations.range<lispb::codegen::StaticTableGroupId>({[&] {
+                        auto const new_static_table_groups{static_table_groups.append()};
+                        auto const new_static_table_groups_row{
+                            static_table_groups.index(new_static_table_groups)};
+                        static_table_groups.name[new_static_table_groups_row] =
+                            strings.intern("point");
+                        static_table_groups.type[new_static_table_groups_row] =
+                            make_test_type_ref(context, "FPoint");
+                        static_table_groups.columns[new_static_table_groups_row] =
+                            declarations.range<lispb::StringId>({strings.intern("ids")});
+                        return new_static_table_groups;
+                    }()});
+            });
 
     auto duplicate_group{module};
-    normal_modules_schemas.declarations[normal_modules_schemas.index(duplicate_group)] = [&] {
-        auto const original_items{declarations.items(
-            normal_modules_schemas.declarations[normal_modules_schemas.index(duplicate_group)])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{static_tables.clone(rows_1.front())};
-            auto const row_0_row{static_tables.index(row_0)};
-            static_tables.groups[row_0_row] = [&] {
-                auto const original_items{declarations.items(static_tables.groups[row_0_row])};
-                auto rows{std::vector(original_items.begin(), original_items.end())};
-                rows.push_back(
-                    declarations
-                        .items(
-                            static_tables
-                                .groups[declarations
-                                            .items(normal_modules_schemas
-                                                       .declarations[declarations.normal_modules
+    normal_modules_schemas.declarations[normal_modules_schemas.index(duplicate_group)] =
+        edit_first_test_item(
+            declarations,
+            normal_modules_schemas.declarations[normal_modules_schemas.index(duplicate_group)],
+            static_tables,
+            [&](auto const row_0) {
+                auto const row_0_row{static_tables.index(row_0)};
+                static_tables.groups[row_0_row] = [&] {
+                    auto const original_items{declarations.items(static_tables.groups[row_0_row])};
+                    auto rows{std::vector(original_items.begin(), original_items.end())};
+                    rows.push_back(
+                        declarations
+                            .items(
+                                static_tables.groups[declarations
+                                                         .items(normal_modules_schemas.declarations
+                                                                    [declarations.normal_modules
                                                                          .index(duplicate_group)])
-                                            .front()])
-                        .front());
-                return declarations.range(rows);
-            }();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+                                                         .front()])
+                            .front());
+                    return declarations.range(rows);
+                }();
+            });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, duplicate_group)),
                  std::invalid_argument);
 
     auto invalid_name{module};
-    normal_modules_schemas.declarations[normal_modules_schemas.index(invalid_name)] = [&] {
-        auto const original_items{declarations.items(
-            normal_modules_schemas.declarations[normal_modules_schemas.index(invalid_name)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{static_tables.clone(rows_3.front())};
-            auto const row_2_row{static_tables.index(row_2)};
-            static_tables.groups[row_2_row] = [&] {
-                auto const original_items{declarations.items(static_tables.groups[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{static_table_groups.clone(rows_1.front())};
-                    static_table_groups.name[row_0] = strings.intern("bad-name");
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+    normal_modules_schemas.declarations[normal_modules_schemas.index(invalid_name)] =
+        edit_first_test_item(
+            declarations,
+            normal_modules_schemas.declarations[normal_modules_schemas.index(invalid_name)],
+            static_tables,
+            [&](auto const row_2) {
+                auto const row_2_row{static_tables.index(row_2)};
+                static_tables.groups[row_2_row] =
+                    edit_first_test_item(declarations,
+                                         static_tables.groups[row_2_row],
+                                         static_table_groups,
+                                         [&](auto const row_0) {
+                                             static_table_groups.name[row_0] =
+                                                 strings.intern("bad-name");
+                                         });
+            });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, invalid_name)),
                  std::invalid_argument);
 
     auto unknown_type{module};
-    normal_modules_schemas.declarations[normal_modules_schemas.index(unknown_type)] = [&] {
-        auto const original_items{declarations.items(
-            normal_modules_schemas.declarations[normal_modules_schemas.index(unknown_type)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{static_tables.clone(rows_3.front())};
-            auto const row_2_row{static_tables.index(row_2)};
-            static_tables.groups[row_2_row] = [&] {
-                auto const original_items{declarations.items(static_tables.groups[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{static_table_groups.clone(rows_1.front())};
-                    static_table_groups.type[row_0] = make_test_type_ref(context, "@missing");
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+    normal_modules_schemas.declarations[normal_modules_schemas.index(unknown_type)] =
+        edit_first_test_item(
+            declarations,
+            normal_modules_schemas.declarations[normal_modules_schemas.index(unknown_type)],
+            static_tables,
+            [&](auto const row_2) {
+                auto const row_2_row{static_tables.index(row_2)};
+                static_tables.groups[row_2_row] =
+                    edit_first_test_item(declarations,
+                                         static_tables.groups[row_2_row],
+                                         static_table_groups,
+                                         [&](auto const row_0) {
+                                             static_table_groups.type[row_0] =
+                                                 make_test_type_ref(context, "@missing");
+                                         });
+            });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, unknown_type)),
                  std::invalid_argument);
 
     auto empty_columns{module};
-    normal_modules_schemas.declarations[normal_modules_schemas.index(empty_columns)] = [&] {
-        auto const original_items{declarations.items(
-            normal_modules_schemas.declarations[normal_modules_schemas.index(empty_columns)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{static_tables.clone(rows_3.front())};
-            auto const row_2_row{static_tables.index(row_2)};
-            static_tables.groups[row_2_row] = [&] {
-                auto const original_items{declarations.items(static_tables.groups[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{static_table_groups.clone(rows_1.front())};
-                    static_table_groups.columns[row_0] = {};
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+    normal_modules_schemas.declarations[normal_modules_schemas.index(empty_columns)] =
+        edit_first_test_item(
+            declarations,
+            normal_modules_schemas.declarations[normal_modules_schemas.index(empty_columns)],
+            static_tables,
+            [&](auto const row_2) {
+                auto const row_2_row{static_tables.index(row_2)};
+                static_tables.groups[row_2_row] = edit_first_test_item(
+                    declarations,
+                    static_tables.groups[row_2_row],
+                    static_table_groups,
+                    [&](auto const row_0) { static_table_groups.columns[row_0] = {}; });
+            });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, empty_columns)),
                  std::invalid_argument);
 
     auto unknown_column{module};
-    normal_modules_schemas.declarations[normal_modules_schemas.index(unknown_column)] = [&] {
-        auto const original_items{declarations.items(
-            normal_modules_schemas.declarations[normal_modules_schemas.index(unknown_column)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{static_tables.clone(rows_3.front())};
-            auto const row_2_row{static_tables.index(row_2)};
-            static_tables.groups[row_2_row] = [&] {
-                auto const original_items{declarations.items(static_tables.groups[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{static_table_groups.clone(rows_1.front())};
-                    static_table_groups.columns[row_0] =
-                        declarations.range<lispb::StringId>({strings.intern("missing")});
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+    normal_modules_schemas.declarations[normal_modules_schemas.index(unknown_column)] =
+        edit_first_test_item(
+            declarations,
+            normal_modules_schemas.declarations[normal_modules_schemas.index(unknown_column)],
+            static_tables,
+            [&](auto const row_2) {
+                auto const row_2_row{static_tables.index(row_2)};
+                static_tables.groups[row_2_row] = edit_first_test_item(
+                    declarations,
+                    static_tables.groups[row_2_row],
+                    static_table_groups,
+                    [&](auto const row_0) {
+                        static_table_groups.columns[row_0] =
+                            declarations.range<lispb::StringId>({strings.intern("missing")});
+                    });
+            });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, unknown_column)),
                  std::invalid_argument);
 
     auto duplicate_column{module};
-    normal_modules_schemas.declarations[normal_modules_schemas.index(duplicate_column)] = [&] {
-        auto const original_items{declarations.items(
-            normal_modules_schemas.declarations[normal_modules_schemas.index(duplicate_column)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{static_tables.clone(rows_3.front())};
-            auto const row_2_row{static_tables.index(row_2)};
-            static_tables.groups[row_2_row] = [&] {
-                auto const original_items{declarations.items(static_tables.groups[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{static_table_groups.clone(rows_1.front())};
-                    static_table_groups.columns[row_0] = declarations.range<lispb::StringId>(
-                        {strings.intern("ids"), strings.intern("ids")});
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+    normal_modules_schemas.declarations[normal_modules_schemas.index(duplicate_column)] =
+        edit_first_test_item(
+            declarations,
+            normal_modules_schemas.declarations[normal_modules_schemas.index(duplicate_column)],
+            static_tables,
+            [&](auto const row_2) {
+                auto const row_2_row{static_tables.index(row_2)};
+                static_tables.groups[row_2_row] = edit_first_test_item(
+                    declarations,
+                    static_tables.groups[row_2_row],
+                    static_table_groups,
+                    [&](auto const row_0) {
+                        static_table_groups.columns[row_0] = declarations.range<lispb::StringId>(
+                            {strings.intern("ids"), strings.intern("ids")});
+                    });
+            });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, duplicate_column)),
                  std::invalid_argument);
 }
@@ -3713,11 +2842,8 @@ TEST(Validation, RejectsStaticTableGroupGetterCollisions) {
     auto& static_table_groups{declarations.static_table_groups};
     auto& strings{context.storage.strings};
     auto module{valid_static_table_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{static_tables.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], static_tables, [&](auto const row_0) {
             auto const row_0_row{static_tables.index(row_0)};
             static_tables.columns[row_0_row] = [&] {
                 auto const original_items{declarations.items(static_tables.columns[row_0_row])};
@@ -3734,15 +2860,9 @@ TEST(Validation, RejectsStaticTableGroupGetterCollisions) {
                 }());
                 return declarations.range(rows);
             }();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{static_tables.clone(rows_1.front())};
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], static_tables, [&](auto const row_0) {
             static_tables.groups[row_0] =
                 declarations.range<lispb::codegen::StaticTableGroupId>({[&] {
                     auto const new_static_table_groups{static_table_groups.append()};
@@ -3755,10 +2875,7 @@ TEST(Validation, RejectsStaticTableGroupGetterCollisions) {
                         declarations.range<lispb::StringId>({strings.intern("ids")});
                     return new_static_table_groups;
                 }()});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -3924,16 +3041,11 @@ TEST(Validation, RejectsEmptySoaNames) {
     auto& declarations{context.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto module{valid_soa_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{declarations.soas.clone(rows_1.front())};
-            declarations.soas.name[row_0] = {};
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+    normal_modules.declarations[module] =
+        edit_first_test_item(declarations,
+                             normal_modules.declarations[module],
+                             declarations.soas,
+                             [&](auto const row_0) { declarations.soas.name[row_0] = {}; });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -3947,11 +3059,8 @@ TEST(Validation, RejectsDuplicateSoaMembers) {
     auto& soa_members{declarations.soa_members};
     auto& strings{context.storage.strings};
     auto module{valid_soa_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{soas.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
             auto const row_0_row{soas.index(row_0)};
             soas.members[row_0_row] = [&] {
                 auto const original_items{declarations.items(soas.members[row_0_row])};
@@ -3966,10 +3075,7 @@ TEST(Validation, RejectsDuplicateSoaMembers) {
                 }());
                 return declarations.range(rows);
             }();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -3981,27 +3087,18 @@ TEST(Validation, RejectsMalformedSoaMemberIdentifiers) {
     auto& normal_modules{declarations.normal_modules};
     auto& soas{declarations.soas};
     auto module{valid_soa_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{soas.clone(rows_3.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_2) {
             auto const row_2_row{soas.index(row_2)};
-            soas.members[row_2_row] = [&] {
-                auto const original_items{declarations.items(soas.members[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{declarations.soa_members.clone(rows_1.front())};
-                    declarations.soa_members.name[row_0] =
-                        context.storage.strings.intern("bad-name");
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+            soas.members[row_2_row] =
+                edit_first_test_item(declarations,
+                                     soas.members[row_2_row],
+                                     declarations.soa_members,
+                                     [&](auto const row_0) {
+                                         declarations.soa_members.name[row_0] =
+                                             context.storage.strings.intern("bad-name");
+                                     });
+        });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -4013,30 +3110,18 @@ TEST(Validation, RejectsIncompleteSoaFieldMaskDeclarations) {
     auto& normal_modules{declarations.normal_modules};
     auto& soas{declarations.soas};
     auto module{valid_mask_soa_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{soas.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
             soas.field_enum_name[row_0].reset();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_mask_soa_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{soas.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
             soas.field_mask_name[row_0].reset();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
@@ -4048,35 +3133,20 @@ TEST(Validation, RejectsInvalidSoaFieldMaskMembers) {
     auto& soas{declarations.soas};
     auto& soa_members{declarations.soa_members};
     auto module{valid_mask_soa_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{soas.clone(rows_3.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_2) {
             auto const row_2_row{soas.index(row_2)};
-            soas.members[row_2_row] = [&] {
-                auto const original_items{declarations.items(soas.members[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{soa_members.clone(rows_1.front())};
+            soas.members[row_2_row] = edit_first_test_item(
+                declarations, soas.members[row_2_row], soa_members, [&](auto const row_0) {
                     soa_members.type[row_0] = make_test_type_ref(context, "uint8");
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+                });
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_mask_soa_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{soas.clone(rows_3.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_2) {
             auto const row_2_row{soas.index(row_2)};
             soas.members[row_2_row] = [&] {
                 auto const original_items{declarations.items(soas.members[row_2_row])};
@@ -4088,34 +3158,19 @@ TEST(Validation, RejectsInvalidSoaFieldMaskMembers) {
                 }();
                 return declarations.range(rows_1);
             }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_soa_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{soas.clone(rows_3.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_2) {
             auto const row_2_row{soas.index(row_2)};
-            soas.members[row_2_row] = [&] {
-                auto const original_items{declarations.items(soas.members[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{soa_members.clone(rows_1.front())};
+            soas.members[row_2_row] = edit_first_test_item(
+                declarations, soas.members[row_2_row], soa_members, [&](auto const row_0) {
                     soa_members.mask_field[row_0] = true;
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+                });
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
@@ -4130,11 +3185,8 @@ TEST(Validation, RejectsInvalidSoaMaskDimensions) {
     auto& strings{context.storage.strings};
     auto module{valid_mask_soa_module(context)};
 
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{soas.clone(rows_3.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_2) {
             auto const row_2_row{soas.index(row_2)};
             soas.members[row_2_row] = [&] {
                 auto const original_items{declarations.items(soas.members[row_2_row])};
@@ -4160,15 +3212,9 @@ TEST(Validation, RejectsInvalidSoaMaskDimensions) {
                 }();
                 return declarations.range(rows_1);
             }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{soas.clone(rows_3.front())};
+        });
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_2) {
             auto const row_2_row{soas.index(row_2)};
             soas.members[row_2_row] = [&] {
                 auto const original_items{declarations.items(soas.members[row_2_row])};
@@ -4194,19 +3240,13 @@ TEST(Validation, RejectsInvalidSoaMaskDimensions) {
                 }();
                 return declarations.range(rows_1);
             }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_mask_soa_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{soas.clone(rows_3.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_2) {
             auto const row_2_row{soas.index(row_2)};
             soas.members[row_2_row] = [&] {
                 auto const original_items{declarations.items(soas.members[row_2_row])};
@@ -4232,10 +3272,7 @@ TEST(Validation, RejectsInvalidSoaMaskDimensions) {
                 }();
                 return declarations.range(rows_1);
             }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
@@ -4272,26 +3309,18 @@ TEST(Validation, RejectsUnknownSoaTypeReferences) {
     auto& normal_modules{declarations.normal_modules};
     auto& soas{declarations.soas};
     auto module{valid_soa_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{soas.clone(rows_3.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_2) {
             auto const row_2_row{soas.index(row_2)};
-            soas.members[row_2_row] = [&] {
-                auto const original_items{declarations.items(soas.members[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{declarations.soa_members.clone(rows_1.front())};
-                    declarations.soa_members.type[row_0] = make_test_type_ref(context, "@missing");
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+            soas.members[row_2_row] =
+                edit_first_test_item(declarations,
+                                     soas.members[row_2_row],
+                                     declarations.soa_members,
+                                     [&](auto const row_0) {
+                                         declarations.soa_members.type[row_0] =
+                                             make_test_type_ref(context, "@missing");
+                                     });
+        });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -4321,16 +3350,14 @@ TEST(Validation, RejectsReservedSoaNamespaceNames) {
     auto& declarations{context.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto module{valid_soa_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{declarations.soas.clone(rows_1.front())};
-            declarations.soas.name[row_0] = context.storage.strings.intern("Class");
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+    normal_modules.declarations[module] =
+        edit_first_test_item(declarations,
+                             normal_modules.declarations[module],
+                             declarations.soas,
+                             [&](auto const row_0) {
+                                 declarations.soas.name[row_0] =
+                                     context.storage.strings.intern("Class");
+                             });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -4367,11 +3394,11 @@ TEST(Validation, RejectsDuplicateCustomSoaFunctionParameters) {
     auto& parameters_schemas{declarations.parameters};
     auto& strings{context.storage.strings};
     auto module{valid_soa_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{declarations.soas.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations,
+        normal_modules.declarations[module],
+        declarations.soas,
+        [&](auto const row_0) {
             declarations.soas.functions[row_0] =
                 declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
                     auto const new_functions{functions_schemas.append()};
@@ -4403,10 +3430,7 @@ TEST(Validation, RejectsDuplicateCustomSoaFunctionParameters) {
                              }()});
                     return new_functions;
                 }()});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -4422,11 +3446,8 @@ TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
     auto& parameters_schemas{declarations.parameters};
     auto& strings{context.storage.strings};
     auto module{valid_soa_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{soas.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
             soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
                 auto const new_functions{functions_schemas.append()};
                 auto const new_functions_row{functions_schemas.index(new_functions)};
@@ -4457,20 +3478,14 @@ TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
                          }()});
                 return new_functions;
             }()});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_soa_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{soas.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
             soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
                 auto const new_functions{functions_schemas.append()};
                 auto const new_functions_row{functions_schemas.index(new_functions)};
@@ -4490,10 +3505,7 @@ TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
                     }()});
                 return new_functions;
             }()});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -4508,11 +3520,8 @@ TEST(Validation, RejectsUnknownCustomSoaDependencies) {
 
     auto& strings{context.storage.strings};
     auto module{valid_soa_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{soas.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
             soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
                 auto const new_functions{functions_schemas.append()};
                 auto const new_functions_row{functions_schemas.index(new_functions)};
@@ -4523,20 +3532,14 @@ TEST(Validation, RejectsUnknownCustomSoaDependencies) {
                     declarations.range<lispb::StringId>({strings.intern("missing")});
                 return new_functions;
             }()});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_soa_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{soas.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
             soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
                 auto const new_functions{functions_schemas.append()};
                 auto const new_functions_row{functions_schemas.index(new_functions)};
@@ -4547,10 +3550,7 @@ TEST(Validation, RejectsUnknownCustomSoaDependencies) {
                     declarations.range<lispb::StringId>({strings.intern(" \t")});
                 return new_functions;
             }()});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -4565,11 +3565,8 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
 
     auto& strings{context.storage.strings};
     auto module{valid_soa_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{soas.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
             soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
                 auto const new_functions{functions_schemas.append()};
                 auto const new_functions_row{functions_schemas.index(new_functions)};
@@ -4579,19 +3576,13 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
                 functions_schemas.is_inline[new_functions_row] = true;
                 return new_functions;
             }()});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_soa_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{soas.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
             soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
                 auto const new_functions{functions_schemas.append()};
                 auto const new_functions_row{functions_schemas.index(new_functions)};
@@ -4602,19 +3593,13 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
                 functions_schemas.definition_in_source[new_functions_row] = true;
                 return new_functions;
             }()});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_soa_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{soas.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
             soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
                 auto const new_functions{functions_schemas.append()};
                 auto const new_functions_row{functions_schemas.index(new_functions)};
@@ -4625,19 +3610,13 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
                 functions_schemas.is_static[new_functions_row] = true;
                 return new_functions;
             }()});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_soa_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{soas.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
             soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
                 auto const new_functions{functions_schemas.append()};
                 auto const new_functions_row{functions_schemas.index(new_functions)};
@@ -4649,19 +3628,13 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
                     make_test_type_ref(context, "int32");
                 return new_functions;
             }()});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_soa_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{soas.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
             soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
                 auto const new_functions{functions_schemas.append()};
                 auto const new_functions_row{functions_schemas.index(new_functions)};
@@ -4671,19 +3644,13 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
                 functions_schemas.template_parameters[new_functions_row] = strings.intern(" \t");
                 return new_functions;
             }()});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_soa_module(context);
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{soas.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], soas, [&](auto const row_0) {
             soas.functions[row_0] = declarations.range<lispb::codegen::FunctionSchemaId>({[&] {
                 auto const new_functions{functions_schemas.append()};
                 auto const new_functions_row{functions_schemas.index(new_functions)};
@@ -4693,10 +3660,7 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
                 functions_schemas.requires_clause[new_functions_row] = strings.intern(" \t");
                 return new_functions;
             }()});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
@@ -4734,43 +3698,33 @@ TEST(Validation, RejectsMalformedExportSpecifiers) {
     auto& normal_modules{declarations.normal_modules};
     auto& strings{context.storage.strings};
     auto soa{valid_soa_module(context)};
-    normal_modules.declarations[soa] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[soa])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{declarations.soas.clone(rows_1.front())};
+    normal_modules.declarations[soa] = edit_first_test_item(
+        declarations, normal_modules.declarations[soa], declarations.soas, [&](auto const row_0) {
             declarations.soas.export_specifier[row_0] = strings.intern("bad-specifier");
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, soa)), std::invalid_argument);
 
     auto facade{valid_facade_module(context)};
-    normal_modules.declarations[facade] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[facade])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{declarations.facades.clone(rows_1.front())};
-            declarations.facades.export_specifier[row_0] = strings.intern("two words");
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+    normal_modules.declarations[facade] =
+        edit_first_test_item(declarations,
+                             normal_modules.declarations[facade],
+                             declarations.facades,
+                             [&](auto const row_0) {
+                                 declarations.facades.export_specifier[row_0] =
+                                     strings.intern("two words");
+                             });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, facade)),
                  std::invalid_argument);
 
     auto table{valid_static_table_module(context)};
-    normal_modules.declarations[table] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[table])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{declarations.static_tables.clone(rows_1.front())};
-            declarations.static_tables.export_specifier[row_0] = strings.intern("bad-specifier");
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+    normal_modules.declarations[table] =
+        edit_first_test_item(declarations,
+                             normal_modules.declarations[table],
+                             declarations.static_tables,
+                             [&](auto const row_0) {
+                                 declarations.static_tables.export_specifier[row_0] =
+                                     strings.intern("bad-specifier");
+                             });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, table)),
                  std::invalid_argument);
 }
@@ -4780,16 +3734,11 @@ TEST(Validation, RejectsFacadesWithoutMethods) {
     auto& declarations{context.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto module{valid_facade_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{declarations.facades.clone(rows_1.front())};
-            declarations.facades.methods[row_0] = {};
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+    normal_modules.declarations[module] =
+        edit_first_test_item(declarations,
+                             normal_modules.declarations[module],
+                             declarations.facades,
+                             [&](auto const row_0) { declarations.facades.methods[row_0] = {}; });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -4808,27 +3757,18 @@ TEST(Validation, RejectsMalformedFacadeMethodIdentifiers) {
     auto& normal_modules{declarations.normal_modules};
     auto& facades{declarations.facades};
     auto module{valid_facade_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{facades.clone(rows_3.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], facades, [&](auto const row_2) {
             auto const row_2_row{facades.index(row_2)};
-            facades.methods[row_2_row] = [&] {
-                auto const original_items{declarations.items(facades.methods[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{declarations.facade_methods.clone(rows_1.front())};
-                    declarations.facade_methods.name[row_0] =
-                        context.storage.strings.intern("bad-name");
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+            facades.methods[row_2_row] =
+                edit_first_test_item(declarations,
+                                     facades.methods[row_2_row],
+                                     declarations.facade_methods,
+                                     [&](auto const row_0) {
+                                         declarations.facade_methods.name[row_0] =
+                                             context.storage.strings.intern("bad-name");
+                                     });
+        });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -4839,16 +3779,11 @@ TEST(Validation, RejectsOutOfLineFacadesWithoutSourceOutput) {
     auto& declarations{context.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto module{valid_facade_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{declarations.facades.clone(rows_1.front())};
-            declarations.facades.definitions_in_source[row_0] = true;
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations,
+        normal_modules.declarations[module],
+        declarations.facades,
+        [&](auto const row_0) { declarations.facades.definitions_in_source[row_0] = true; });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -4878,17 +3813,14 @@ TEST(Validation, RejectsDuplicateFacadeMethodParameters) {
 
     auto& strings{context.storage.strings};
     auto module{valid_facade_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{facades.clone(rows_3.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], facades, [&](auto const row_2) {
             auto const row_2_row{facades.index(row_2)};
-            facades.methods[row_2_row] = [&] {
-                auto const original_items{declarations.items(facades.methods[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{declarations.facade_methods.clone(rows_1.front())};
+            facades.methods[row_2_row] = edit_first_test_item(
+                declarations,
+                facades.methods[row_2_row],
+                declarations.facade_methods,
+                [&](auto const row_0) {
                     declarations.facade_methods.parameters[row_0] =
                         declarations.range<lispb::codegen::ParameterId>(
                             {[&] {
@@ -4911,14 +3843,8 @@ TEST(Validation, RejectsDuplicateFacadeMethodParameters) {
                                      strings.intern("value");
                                  return new_parameters;
                              }()});
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+                });
+        });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -4930,12 +3856,12 @@ TEST(Validation, RejectsDuplicateFacadeMethodSignatures) {
     auto& normal_modules_schemas{declarations.normal_modules};
     auto& facades{declarations.facades};
     auto module{valid_facade_module(context)};
-    normal_modules_schemas.declarations[normal_modules_schemas.index(module)] = [&] {
-        auto const original_items{declarations.items(
-            normal_modules_schemas.declarations[normal_modules_schemas.index(module)])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{facades.clone(rows_1.front())};
+    normal_modules_schemas
+        .declarations[normal_modules_schemas.index(module)] = edit_first_test_item(
+        declarations,
+        normal_modules_schemas.declarations[normal_modules_schemas.index(module)],
+        facades,
+        [&](auto const row_0) {
             auto const row_0_row{facades.index(row_0)};
             facades.methods[row_0_row] = [&] {
                 auto const original_items{declarations.items(facades.methods[row_0_row])};
@@ -4951,10 +3877,7 @@ TEST(Validation, RejectsDuplicateFacadeMethodSignatures) {
                         .front());
                 return declarations.range(rows);
             }();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -4971,11 +3894,8 @@ TEST(Validation, RejectsFacadeOverloadsDifferingOnlyByNoexcept) {
             .items(facades.methods[declarations.items(normal_modules.declarations[module]).front()])
             .front())};
     declarations.facade_methods.is_noexcept[second] = true;
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{facades.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], facades, [&](auto const row_0) {
             auto const row_0_row{facades.index(row_0)};
             facades.methods[row_0_row] = [&] {
                 auto const original_items{declarations.items(facades.methods[row_0_row])};
@@ -4983,10 +3903,7 @@ TEST(Validation, RejectsFacadeOverloadsDifferingOnlyByNoexcept) {
                 rows.push_back(second);
                 return declarations.range(rows);
             }();
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -5001,11 +3918,11 @@ TEST(Validation, RejectsFacadeMethodsCollidingWithBind) {
     auto& parameters_schemas{declarations.parameters};
     auto& strings{context.storage.strings};
     auto module{valid_facade_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{declarations.facades.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations,
+        normal_modules.declarations[module],
+        declarations.facades,
+        [&](auto const row_0) {
             declarations.facades.methods[row_0] =
                 declarations.range<lispb::codegen::FacadeMethodId>({[&] {
                     auto const new_facade_methods{facade_methods.append()};
@@ -5024,10 +3941,7 @@ TEST(Validation, RejectsFacadeMethodsCollidingWithBind) {
                         }()});
                     return new_facade_methods;
                 }()});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -5042,17 +3956,14 @@ TEST(Validation, RejectsNonTrailingFacadeDefaultArguments) {
 
     auto& strings{context.storage.strings};
     auto module{valid_facade_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{facades.clone(rows_3.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations, normal_modules.declarations[module], facades, [&](auto const row_2) {
             auto const row_2_row{facades.index(row_2)};
-            facades.methods[row_2_row] = [&] {
-                auto const original_items{declarations.items(facades.methods[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{declarations.facade_methods.clone(rows_1.front())};
+            facades.methods[row_2_row] = edit_first_test_item(
+                declarations,
+                facades.methods[row_2_row],
+                declarations.facade_methods,
+                [&](auto const row_0) {
                     declarations.facade_methods.parameters[row_0] =
                         declarations.range<lispb::codegen::ParameterId>(
                             {[&] {
@@ -5077,14 +3988,8 @@ TEST(Validation, RejectsNonTrailingFacadeDefaultArguments) {
                                      strings.intern("second");
                                  return new_parameters;
                              }()});
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+                });
+        });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -5095,17 +4000,14 @@ TEST(Validation, RejectsUnknownFacadeValidationDependencies) {
     auto& declarations{context.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto module{valid_facade_module(context)};
-    normal_modules.declarations[module] = [&] {
-        auto const original_items{declarations.items(normal_modules.declarations[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{declarations.facades.clone(rows_1.front())};
+    normal_modules.declarations[module] = edit_first_test_item(
+        declarations,
+        normal_modules.declarations[module],
+        declarations.facades,
+        [&](auto const row_0) {
             declarations.facades.validation_dependencies[row_0] =
                 declarations.range<lispb::StringId>({context.storage.strings.intern("missing")});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+        });
 
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
@@ -5123,63 +4025,49 @@ TEST(Validation, RejectsInvalidFacadeFriendAndMemberCollisions) {
                  lispb::codegen::sexpr::SourceError);
 
     module = valid_facade_module(context);
-    normal_modules_schemas.declarations[normal_modules_schemas.index(module)] = [&] {
-        auto const original_items{declarations.items(
-            normal_modules_schemas.declarations[normal_modules_schemas.index(module)])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{facades.clone(rows_1.front())};
-            facades.friends[row_0] = declarations.range<lispb::StringId>({strings.intern("class")});
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+    normal_modules_schemas.declarations[normal_modules_schemas.index(module)] =
+        edit_first_test_item(
+            declarations,
+            normal_modules_schemas.declarations[normal_modules_schemas.index(module)],
+            facades,
+            [&](auto const row_0) {
+                facades.friends[row_0] =
+                    declarations.range<lispb::StringId>({strings.intern("class")});
+            });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_facade_module(context);
-    normal_modules_schemas.declarations[normal_modules_schemas.index(module)] = [&] {
-        auto const original_items{declarations.items(
-            normal_modules_schemas.declarations[normal_modules_schemas.index(module)])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{facades.clone(rows_1.front())};
-            facades.target_member_name[row_0] = strings.intern("bind");
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
+    normal_modules_schemas.declarations[normal_modules_schemas.index(module)] =
+        edit_first_test_item(
+            declarations,
+            normal_modules_schemas.declarations[normal_modules_schemas.index(module)],
+            facades,
+            [&](auto const row_0) { facades.target_member_name[row_0] = strings.intern("bind"); });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
     module = valid_facade_module(context);
-    normal_modules_schemas.declarations[normal_modules_schemas.index(module)] = [&] {
-        auto const original_items{declarations.items(
-            normal_modules_schemas.declarations[normal_modules_schemas.index(module)])};
-        auto rows_3{std::vector(original_items.begin(), original_items.end())};
-        rows_3.front() = [&] {
-            auto row_2{facades.clone(rows_3.front())};
-            auto const row_2_row{facades.index(row_2)};
-            facades.methods[row_2_row] = [&] {
-                auto const original_items{declarations.items(facades.methods[row_2_row])};
-                auto rows_1{std::vector(original_items.begin(), original_items.end())};
-                rows_1.front() = [&] {
-                    auto row_0{declarations.facade_methods.clone(rows_1.front())};
-                    declarations.facade_methods.name[row_0] =
-                        facades.target_member_name
-                            [declarations
-                                 .items(
-                                     normal_modules_schemas
-                                         .declarations[declarations.normal_modules.index(module)])
-                                 .front()];
-                    return row_0;
-                }();
-                return declarations.range(rows_1);
-            }();
-            return row_2;
-        }();
-        return declarations.range(rows_3);
-    }();
+    normal_modules_schemas.declarations[normal_modules_schemas.index(module)] =
+        edit_first_test_item(
+            declarations,
+            normal_modules_schemas.declarations[normal_modules_schemas.index(module)],
+            facades,
+            [&](auto const row_2) {
+                auto const row_2_row{facades.index(row_2)};
+                facades.methods[row_2_row] = edit_first_test_item(
+                    declarations,
+                    facades.methods[row_2_row],
+                    declarations.facade_methods,
+                    [&](auto const row_0) {
+                        declarations.facade_methods.name[row_0] =
+                            facades.target_member_name
+                                [declarations
+                                     .items(normal_modules_schemas.declarations
+                                                [declarations.normal_modules.index(module)])
+                                     .front()];
+                    });
+            });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }
@@ -5318,49 +4206,41 @@ TEST(Validation, RejectsInvalidSettingsDefinitions) {
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
-    settings_modules.settings_list[module] = [&] {
-        auto const original_items{declarations.items(settings_modules.settings_list[module])};
-        auto rows_1{std::vector(original_items.begin(), original_items.end())};
-        rows_1.front() = [&] {
-            auto row_0{settings_schemas.clone(rows_1.front())};
-            settings_schemas.category[settings_schemas.index(row_0)] = strings.intern("video");
-            return row_0;
-        }();
-        return declarations.range(rows_1);
-    }();
-    settings_modules.settings_list[module] = [&] {
-        auto const original_items{declarations.items(settings_modules.settings_list[module])};
-        auto rows_2{std::vector(original_items.begin(), original_items.end())};
-        rows_2.front() = [&] {
-            auto row_1{settings_schemas.clone(rows_2.front())};
+    settings_modules.settings_list[module] =
+        edit_first_test_item(declarations,
+                             settings_modules.settings_list[module],
+                             settings_schemas,
+                             [&](auto const row_0) {
+                                 settings_schemas.category[settings_schemas.index(row_0)] =
+                                     strings.intern("video");
+                             });
+    settings_modules.settings_list[module] = edit_first_test_item(
+        declarations,
+        settings_modules.settings_list[module],
+        settings_schemas,
+        [&](auto const row_1) {
             auto const row_1_row{settings_schemas.index(row_1)};
             settings_schemas.control[row_1_row] = [&] {
                 auto row_0{setting_controls.clone(settings_schemas.control[row_1_row])};
                 setting_controls.kind[row_0] = SettingControlKind::choice;
                 return row_0;
             }();
-            return row_1;
-        }();
-        return declarations.range(rows_2);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 
-    settings_modules.settings_list[module] = [&] {
-        auto const original_items{declarations.items(settings_modules.settings_list[module])};
-        auto rows_2{std::vector(original_items.begin(), original_items.end())};
-        rows_2.front() = [&] {
-            auto row_1{settings_schemas.clone(rows_2.front())};
+    settings_modules.settings_list[module] = edit_first_test_item(
+        declarations,
+        settings_modules.settings_list[module],
+        settings_schemas,
+        [&](auto const row_1) {
             auto const row_1_row{settings_schemas.index(row_1)};
             settings_schemas.control[row_1_row] = [&] {
                 auto row_0{setting_controls.clone(settings_schemas.control[row_1_row])};
                 setting_controls.kind[row_0] = SettingControlKind::custom;
                 return row_0;
             }();
-            return row_1;
-        }();
-        return declarations.range(rows_2);
-    }();
+        });
     EXPECT_THROW(lower_test_manifest(context, manifest_with(context, module)),
                  std::invalid_argument);
 }

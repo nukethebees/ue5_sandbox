@@ -50,18 +50,13 @@ auto lower_single_allocation(LoweringContext& context, DeclarationHandle schema)
         .add(ir.block_comment("****************************************"))
         .new_lines(1);
     result.add(ir.line_comment("Columns:")).new_lines(1);
-    for (auto const column :
-         ir.lowering.items(ir.lowering.single_allocation_models
-                               .columns[ir.lowering.single_allocation_models.index(model)])) {
+    auto const& models{ir.lowering.single_allocation_models};
+    auto const& columns{ir.lowering.single_allocation_columns};
+    for (auto const column : ir.lowering.items(models.columns[models.index(model)])) {
+        auto const column_row{columns.index(column)};
         result
-            .add(ir.line_comment(
-                context.text(ir.lowering.single_allocation_columns
-                                 .flattened_identifier[ir.lowering.single_allocation_columns.index(
-                                     column)]) +
-                ": " +
-                std::string{ir.types.spelling(
-                    ir.lowering.single_allocation_columns
-                        .type[ir.lowering.single_allocation_columns.index(column)])}))
+            .add(ir.line_comment(context.text(columns.flattened_identifier[column_row]) + ": " +
+                                 std::string{ir.types.spelling(columns.type[column_row])}))
             .new_lines(1);
     }
     result.add(emit_single_allocation_container(context, model, source));

@@ -60,17 +60,7 @@ struct RenderedModule {
     std::string source;
 };
 
-auto render_enum(CompilerTestContext& context, ModuleHandle module) -> RenderedModule {
-    auto const files{render_test_manifest(context,
-                                          Manifest{manifest_schema_version,
-                                                   make_test_registry(context),
-                                                   context.storage.declarations,
-                                                   {module}})};
-    EXPECT_EQ(files.size(), 2);
-    return RenderedModule{files[0].content, files[1].content};
-}
-
-auto render_settings(CompilerTestContext& context, ModuleHandle module) -> RenderedModule {
+auto render_module(CompilerTestContext& context, ModuleHandle module) -> RenderedModule {
     auto const files{render_test_manifest(context,
                                           Manifest{manifest_schema_version,
                                                    make_test_registry(context),
@@ -119,67 +109,54 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
                       "std::uint8_t",
                       {context.storage.cpp_types.dependency("std::uint8_t", "cstdint")})}}),
             store,
-            {[&] {
-                auto const new_normal_modules{normal_modules.append()};
-                auto const normal_modules_row{normal_modules.index(new_normal_modules)};
-                normal_modules.settings[normal_modules_row] = [&] {
-                    auto const new_module_settings_store{module_settings_store.append()};
-                    auto const module_settings_store_row{
-                        module_settings_store.index(new_module_settings_store)};
-                    module_settings_store.name[module_settings_store_row] =
-                        strings.intern("native_enum");
-                    module_settings_store.header[module_settings_store_row] =
-                        strings.intern("NativeEnum.h");
-                    module_settings_store.namespace_name[module_settings_store_row] =
-                        strings.intern("fixture");
-                    return new_module_settings_store;
-                }();
-                normal_modules.declarations[normal_modules_row] =
-                    store.range<DeclarationHandle>({[&] {
-                        auto const new_enums{enums.append()};
+            {append_test_row(normal_modules, [&](auto const new_normal_modules) {
+                normal_modules.settings[new_normal_modules] = append_test_row(
+                    module_settings_store, [&](auto const new_module_settings_store) {
+                        module_settings_store.name[new_module_settings_store] =
+                            strings.intern("native_enum");
+                        module_settings_store.header[new_module_settings_store] =
+                            strings.intern("NativeEnum.h");
+                        module_settings_store.namespace_name[new_module_settings_store] =
+                            strings.intern("fixture");
+                    });
+                normal_modules.declarations[new_normal_modules] = store.range<DeclarationHandle>(
+                    {append_test_row(enums, [&](auto const new_enums) {
                         enums.cpp_projection[new_enums] = CppProjection{};
-                        auto const enums_row{enums.index(new_enums)};
-                        enums.name[enums_row] = strings.intern("NativeState");
-                        enums.underlying_type[enums_row] = [&] {
-                            auto const new_type_refs{type_refs.append()};
-                            auto const type_refs_row{type_refs.index(new_type_refs)};
-                            type_refs.name[type_refs_row] = strings.intern("@native_uint8");
-                            return new_type_refs;
-                        }();
-                        enums.values[enums_row] = store.range<EnumeratorId>(
-                            {[&] {
-                                 auto const new_enumerators{enumerators.append()};
-                                 auto const enumerators_row{enumerators.index(new_enumerators)};
-                                 enumerators.name[enumerators_row] = strings.intern("Idle");
-                                 enumerators.initializer[enumerators_row] = strings.intern("0");
-                                 enumerators.display_name[enumerators_row] = strings.intern("Idle");
-                                 enumerators.serialized_name[enumerators_row] =
-                                     strings.intern("idle");
-                                 return new_enumerators;
-                             }(),
-                             [&] {
-                                 auto const new_enumerators{enumerators.append()};
-                                 auto const enumerators_row{enumerators.index(new_enumerators)};
-                                 enumerators.name[enumerators_row] = strings.intern("Active");
-                                 enumerators.initializer[enumerators_row] = strings.intern("1");
-                                 enumerators.display_name[enumerators_row] =
+                        enums.name[new_enums] = strings.intern("NativeState");
+                        enums.underlying_type[new_enums] =
+                            append_test_row(type_refs, [&](auto const new_type_refs) {
+                                type_refs.name[new_type_refs] = strings.intern("@native_uint8");
+                            });
+                        enums.values[new_enums] = store.range<EnumeratorId>(
+                            {append_test_row(enumerators,
+                                             [&](auto const new_enumerators) {
+                                                 enumerators.name[new_enumerators] =
+                                                     strings.intern("Idle");
+                                                 enumerators.initializer[new_enumerators] =
+                                                     strings.intern("0");
+                                                 enumerators.display_name[new_enumerators] =
+                                                     strings.intern("Idle");
+                                                 enumerators.serialized_name[new_enumerators] =
+                                                     strings.intern("idle");
+                                             }),
+                             append_test_row(enumerators, [&](auto const new_enumerators) {
+                                 enumerators.name[new_enumerators] = strings.intern("Active");
+                                 enumerators.initializer[new_enumerators] = strings.intern("1");
+                                 enumerators.display_name[new_enumerators] =
                                      strings.intern("Active");
-                                 enumerators.serialized_name[enumerators_row] =
+                                 enumerators.serialized_name[new_enumerators] =
                                      strings.intern("active");
-                                 return new_enumerators;
-                             }()});
-                        enums.native_api[enums_row] = true;
-                        enums.helpers[enums_row] =
+                             })});
+                        enums.native_api[new_enums] = true;
+                        enums.helpers[new_enums] =
                             store.range<NativeEnumHelper>({NativeEnumHelper::to_string,
                                                            NativeEnumHelper::try_parse,
                                                            NativeEnumHelper::to_display_string,
                                                            NativeEnumHelper::to_serialized_string,
                                                            NativeEnumHelper::try_parse_serialized,
                                                            NativeEnumHelper::traits});
-                        return new_enums;
-                    }()});
-                return new_normal_modules;
-            }()}})};
+                    })});
+            })}})};
 
     ASSERT_EQ(files.size(), 1);
     auto const& header{files.front().content};
@@ -203,41 +180,40 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
             render_test_manifest(
                 context,
                 Manifest{
-                    manifest_schema_version, make_test_registry(context), store, {[&] {
-                        auto const new_normal_modules{normal_modules.append()};
-                        auto const normal_modules_row{normal_modules.index(new_normal_modules)};
-                        normal_modules.settings[normal_modules_row] = [&] {
-                            auto const new_module_settings_store{module_settings_store.append()};
-                            auto const module_settings_store_row{
-                                module_settings_store.index(new_module_settings_store)};
-                            module_settings_store.name[module_settings_store_row] =
-                                strings.intern("selected");
-                            module_settings_store.header[module_settings_store_row] =
-                                strings.intern("Selected.h");
-                            return new_module_settings_store;
-                        }();
-                        normal_modules.declarations[normal_modules_row] =
-                            store.range<DeclarationHandle>({[&] {
-                                auto const new_enums{enums.append()};
-                                enums.cpp_projection[new_enums] = CppProjection{};
-                                auto const enums_row{enums.index(new_enums)};
-                                enums.name[enums_row] = strings.intern("State");
-                                enums.values[enums_row] = store.range<EnumeratorId>({[&] {
-                                    auto const new_enumerators{enumerators.append()};
-                                    auto const enumerators_row{enumerators.index(new_enumerators)};
-                                    enumerators.name[enumerators_row] = strings.intern("Idle");
-                                    enumerators.initializer[enumerators_row] = strings.intern("0");
-                                    enumerators.serialized_name[enumerators_row] =
-                                        strings.intern("idle");
-                                    return new_enumerators;
-                                }()});
-                                enums.enum_array[enums_row] = true;
-                                enums.native_api[enums_row] = true;
-                                enums.helpers[enums_row] = store.range<NativeEnumHelper>({helper});
-                                return new_enums;
-                            }()});
-                        return new_normal_modules;
-                    }()}})
+                    manifest_schema_version,
+                    make_test_registry(context),
+                    store,
+                    {append_test_row(
+                        normal_modules,
+                        [&](auto const new_normal_modules) {
+                            normal_modules.settings[new_normal_modules] = append_test_row(
+                                module_settings_store, [&](auto const new_module_settings_store) {
+                                    module_settings_store.name[new_module_settings_store] =
+                                        strings.intern("selected");
+                                    module_settings_store.header[new_module_settings_store] =
+                                        strings.intern("Selected.h");
+                                });
+                            normal_modules.declarations[new_normal_modules] =
+                                store.range<DeclarationHandle>(
+                                    {append_test_row(enums, [&](auto const new_enums) {
+                                        enums.cpp_projection[new_enums] = CppProjection{};
+                                        enums.name[new_enums] = strings.intern("State");
+                                        enums.values[new_enums] =
+                                            store.range<EnumeratorId>({append_test_row(
+                                                enumerators, [&](auto const new_enumerators) {
+                                                    enumerators.name[new_enumerators] =
+                                                        strings.intern("Idle");
+                                                    enumerators.initializer[new_enumerators] =
+                                                        strings.intern("0");
+                                                    enumerators.serialized_name[new_enumerators] =
+                                                        strings.intern("idle");
+                                                })});
+                                        enums.enum_array[new_enums] = true;
+                                        enums.native_api[new_enums] = true;
+                                        enums.helpers[new_enums] =
+                                            store.range<NativeEnumHelper>({helper});
+                                    })});
+                        })}})
                 .front()
                 .content};
         for (auto const& [candidate, candidate_spelling] : selections) {
@@ -303,50 +279,41 @@ TEST(Lowering, DerivesNativeEnumBackingFromSemanticWidthAndSignedness) {
     auto const files{render_test_manifest(
         context,
         Manifest{
-            manifest_schema_version, make_test_registry(context), store, {[&] {
-                auto const new_normal_modules{normal_modules.append()};
-                auto const normal_modules_row{normal_modules.index(new_normal_modules)};
-                normal_modules.settings[normal_modules_row] = [&] {
-                    auto const new_module_settings_store{module_settings_store.append()};
-                    auto const module_settings_store_row{
-                        module_settings_store.index(new_module_settings_store)};
-                    module_settings_store.name[module_settings_store_row] =
-                        strings.intern("native_enum");
-                    module_settings_store.header[module_settings_store_row] =
-                        strings.intern("NativeEnum.h");
-                    module_settings_store.namespace_name[module_settings_store_row] =
-                        strings.intern("fixture");
-                    return new_module_settings_store;
-                }();
-                normal_modules.declarations[normal_modules_row] =
-                    store.range<DeclarationHandle>({[&] {
-                        auto const new_enums{enums.append()};
+            manifest_schema_version,
+            make_test_registry(context),
+            store,
+            {append_test_row(normal_modules, [&](auto const new_normal_modules) {
+                normal_modules.settings[new_normal_modules] = append_test_row(
+                    module_settings_store, [&](auto const new_module_settings_store) {
+                        module_settings_store.name[new_module_settings_store] =
+                            strings.intern("native_enum");
+                        module_settings_store.header[new_module_settings_store] =
+                            strings.intern("NativeEnum.h");
+                        module_settings_store.namespace_name[new_module_settings_store] =
+                            strings.intern("fixture");
+                    });
+                normal_modules.declarations[new_normal_modules] = store.range<DeclarationHandle>(
+                    {append_test_row(enums, [&](auto const new_enums) {
                         enums.cpp_projection[new_enums] = CppProjection{};
-                        auto const enums_row{enums.index(new_enums)};
-                        enums.name[enums_row] = strings.intern("SignedState");
-                        enums.underlying_type[enums_row] = std::nullopt;
-                        enums.values[enums_row] = store.range<EnumeratorId>(
-                            {[&] {
-                                 auto const new_enumerators{enumerators.append()};
-                                 auto const enumerators_row{enumerators.index(new_enumerators)};
-                                 enumerators.name[enumerators_row] = strings.intern("Below");
-                                 enumerators.initializer[enumerators_row] = strings.intern("-1");
-                                 return new_enumerators;
-                             }(),
-                             [&] {
-                                 auto const new_enumerators{enumerators.append()};
-                                 auto const enumerators_row{enumerators.index(new_enumerators)};
-                                 enumerators.name[enumerators_row] = strings.intern("Above");
-                                 enumerators.initializer[enumerators_row] = strings.intern("1");
-                                 return new_enumerators;
-                             }()});
-                        enums.bit_width[enums_row] = 12;
-                        enums.signedness[enums_row] = lispb::schema::EnumSignedness::signed_;
-                        enums.native_api[enums_row] = true;
-                        return new_enums;
-                    }()});
-                return new_normal_modules;
-            }()}})};
+                        enums.name[new_enums] = strings.intern("SignedState");
+                        enums.underlying_type[new_enums] = std::nullopt;
+                        enums.values[new_enums] = store.range<EnumeratorId>(
+                            {append_test_row(enumerators,
+                                             [&](auto const new_enumerators) {
+                                                 enumerators.name[new_enumerators] =
+                                                     strings.intern("Below");
+                                                 enumerators.initializer[new_enumerators] =
+                                                     strings.intern("-1");
+                                             }),
+                             append_test_row(enumerators, [&](auto const new_enumerators) {
+                                 enumerators.name[new_enumerators] = strings.intern("Above");
+                                 enumerators.initializer[new_enumerators] = strings.intern("1");
+                             })});
+                        enums.bit_width[new_enums] = 12;
+                        enums.signedness[new_enums] = lispb::schema::EnumSignedness::signed_;
+                        enums.native_api[new_enums] = true;
+                    })});
+            })}})};
 
     ASSERT_EQ(files.size(), 1);
     auto const& header{files.front().content};
@@ -368,45 +335,38 @@ TEST(Lowering, DerivesFixedWidthEnumBackingWithoutNativeHelpers) {
     auto& enums{store.enums};
     auto& module_settings_store{store.module_settings_store};
     auto& normal_modules{store.normal_modules};
-    auto const output{render_enum(context, [&] {
-        auto const new_normal_modules{normal_modules.append()};
-        auto const normal_modules_row{normal_modules.index(new_normal_modules)};
-        normal_modules.settings[normal_modules_row] = [&] {
-            auto const new_module_settings_store{module_settings_store.append()};
-            auto const module_settings_store_row{
-                module_settings_store.index(new_module_settings_store)};
-            module_settings_store.name[module_settings_store_row] = strings.intern("states");
-            module_settings_store.header[module_settings_store_row] = strings.intern("States.h");
-            module_settings_store.source[module_settings_store_row] = strings.intern("States.cpp");
-            return new_module_settings_store;
-        }();
-        normal_modules.declarations[normal_modules_row] = store.range<DeclarationHandle>({[&] {
-            auto const new_enums{enums.append()};
-            enums.cpp_projection[new_enums] = CppProjection{};
-            auto const enums_row{enums.index(new_enums)};
-            enums.name[enums_row] = strings.intern("EState");
-            enums.underlying_type[enums_row] = std::nullopt;
-            enums.values[enums_row] = store.range<EnumeratorId>(
-                {[&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[enumerators_row] = strings.intern("Idle");
-                     enumerators.initializer[enumerators_row] = strings.intern("0");
-                     return new_enumerators;
-                 }(),
-                 [&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[enumerators_row] = strings.intern("Maximum");
-                     enumerators.initializer[enumerators_row] = strings.intern("4095");
-                     return new_enumerators;
-                 }()});
-            enums.bit_width[enums_row] = 12;
-            enums.signedness[enums_row] = lispb::schema::EnumSignedness::unsigned_;
-            return new_enums;
-        }()});
-        return new_normal_modules;
-    }())};
+    auto const output{render_module(
+        context, append_test_row(normal_modules, [&](auto const new_normal_modules) {
+            normal_modules.settings[new_normal_modules] =
+                append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                    module_settings_store.name[new_module_settings_store] =
+                        strings.intern("states");
+                    module_settings_store.header[new_module_settings_store] =
+                        strings.intern("States.h");
+                    module_settings_store.source[new_module_settings_store] =
+                        strings.intern("States.cpp");
+                });
+            normal_modules.declarations[new_normal_modules] =
+                store.range<DeclarationHandle>({append_test_row(enums, [&](auto const new_enums) {
+                    enums.cpp_projection[new_enums] = CppProjection{};
+                    enums.name[new_enums] = strings.intern("EState");
+                    enums.underlying_type[new_enums] = std::nullopt;
+                    enums.values[new_enums] = store.range<EnumeratorId>(
+                        {append_test_row(enumerators,
+                                         [&](auto const new_enumerators) {
+                                             enumerators.name[new_enumerators] =
+                                                 strings.intern("Idle");
+                                             enumerators.initializer[new_enumerators] =
+                                                 strings.intern("0");
+                                         }),
+                         append_test_row(enumerators, [&](auto const new_enumerators) {
+                             enumerators.name[new_enumerators] = strings.intern("Maximum");
+                             enumerators.initializer[new_enumerators] = strings.intern("4095");
+                         })});
+                    enums.bit_width[new_enums] = 12;
+                    enums.signedness[new_enums] = lispb::schema::EnumSignedness::unsigned_;
+                })});
+        }))};
 
     EXPECT_NE(output.header.find("#include <cstdint>"), std::string::npos);
     EXPECT_EQ(output.header.find("#include \"CoreMinimal.h\""), std::string::npos);
@@ -454,76 +414,61 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
                       "std::uint8_t",
                       {context.storage.cpp_types.dependency("std::uint8_t", "cstdint")})}}),
             store,
-            {[&] {
-                auto const new_normal_modules{normal_modules.append()};
-                auto const normal_modules_row{normal_modules.index(new_normal_modules)};
-                normal_modules.settings[normal_modules_row] = [&] {
-                    auto const new_module_settings_store{module_settings_store.append()};
-                    auto const module_settings_store_row{
-                        module_settings_store.index(new_module_settings_store)};
-                    module_settings_store.name[module_settings_store_row] =
-                        strings.intern("native_enum");
-                    module_settings_store.header[module_settings_store_row] =
-                        strings.intern("NativeEnum.h");
-                    module_settings_store.namespace_name[module_settings_store_row] =
-                        strings.intern("fixture");
-                    return new_module_settings_store;
-                }();
-                normal_modules
-                    .declarations[normal_modules_row] = store.range<DeclarationHandle>({[&] {
-                    auto const new_enums{enums.append()};
+            {append_test_row(normal_modules, [&](auto const new_normal_modules) {
+                normal_modules.settings[new_normal_modules] = append_test_row(
+                    module_settings_store, [&](auto const new_module_settings_store) {
+                        module_settings_store.name[new_module_settings_store] =
+                            strings.intern("native_enum");
+                        module_settings_store.header[new_module_settings_store] =
+                            strings.intern("NativeEnum.h");
+                        module_settings_store.namespace_name[new_module_settings_store] =
+                            strings.intern("fixture");
+                    });
+                normal_modules.declarations[new_normal_modules] = store.range<
+                    DeclarationHandle>({append_test_row(enums, [&](auto const new_enums) {
                     enums.cpp_projection[new_enums] = CppProjection{};
-                    auto const enums_row{enums.index(new_enums)};
-                    enums.name[enums_row] = strings.intern("NativeState");
-                    enums.underlying_type[enums_row] = [&] {
-                        auto const new_type_refs{type_refs.append()};
-                        auto const type_refs_row{type_refs.index(new_type_refs)};
-                        type_refs.name[type_refs_row] = strings.intern("@native_uint8");
-                        return new_type_refs;
-                    }();
-                    enums.values[enums_row] = store.range<EnumeratorId>(
-                        {[&] {
-                             auto const new_enumerators{enumerators.append()};
-                             auto const enumerators_row{enumerators.index(new_enumerators)};
-                             enumerators.name[enumerators_row] = strings.intern("Idle");
-                             enumerators.initializer[enumerators_row] = strings.intern("0");
-                             enumerators.serialized_name[enumerators_row] = strings.intern("idle");
-                             return new_enumerators;
-                         }(),
-                         [&] {
-                             auto const new_enumerators{enumerators.append()};
-                             auto const enumerators_row{enumerators.index(new_enumerators)};
-                             enumerators.name[enumerators_row] = strings.intern("Active");
-                             enumerators.initializer[enumerators_row] = strings.intern("1");
-                             enumerators.serialized_name[enumerators_row] =
+                    enums.name[new_enums] = strings.intern("NativeState");
+                    enums.underlying_type[new_enums] =
+                        append_test_row(type_refs, [&](auto const new_type_refs) {
+                            type_refs.name[new_type_refs] = strings.intern("@native_uint8");
+                        });
+                    enums.values[new_enums] = store.range<EnumeratorId>(
+                        {append_test_row(enumerators,
+                                         [&](auto const new_enumerators) {
+                                             enumerators.name[new_enumerators] =
+                                                 strings.intern("Idle");
+                                             enumerators.initializer[new_enumerators] =
+                                                 strings.intern("0");
+                                             enumerators.serialized_name[new_enumerators] =
+                                                 strings.intern("idle");
+                                         }),
+                         append_test_row(enumerators, [&](auto const new_enumerators) {
+                             enumerators.name[new_enumerators] = strings.intern("Active");
+                             enumerators.initializer[new_enumerators] = strings.intern("1");
+                             enumerators.serialized_name[new_enumerators] =
                                  strings.intern("active");
-                             return new_enumerators;
-                         }()});
-                    enums.unreal_projection[enums_row] = [&] {
-                        auto const new_enum_unreal_projections{enum_unreal_projections.append()};
-                        auto const enum_unreal_projections_row{
-                            enum_unreal_projections.index(new_enum_unreal_projections)};
-                        enum_unreal_projections.name[enum_unreal_projections_row] =
-                            strings.intern("ENativeState");
-                        enum_unreal_projections.header[enum_unreal_projections_row] =
-                            strings.intern("Project/NativeState.h");
-                        enum_unreal_projections.header_include[enum_unreal_projections_row] =
-                            strings.intern("Project/NativeState.h");
-                        enum_unreal_projections.conversion_header[enum_unreal_projections_row] =
-                            strings.intern("Project/NativeStateConversion.h");
-                        enum_unreal_projections.native_header_include[enum_unreal_projections_row] =
-                            strings.intern("fixture/NativeEnum.h");
-                        enum_unreal_projections.enum_array[enum_unreal_projections_row] = true;
-                        return new_enum_unreal_projections;
-                    }();
-                    enums.enum_array[enums_row] = false;
-                    enums.native_api[enums_row] = true;
-                    enums.helpers[enums_row] =
+                         })});
+                    enums.unreal_projection[new_enums] = append_test_row(
+                        enum_unreal_projections, [&](auto const new_enum_unreal_projections) {
+                            enum_unreal_projections.name[new_enum_unreal_projections] =
+                                strings.intern("ENativeState");
+                            enum_unreal_projections.header[new_enum_unreal_projections] =
+                                strings.intern("Project/NativeState.h");
+                            enum_unreal_projections.header_include[new_enum_unreal_projections] =
+                                strings.intern("Project/NativeState.h");
+                            enum_unreal_projections.conversion_header[new_enum_unreal_projections] =
+                                strings.intern("Project/NativeStateConversion.h");
+                            enum_unreal_projections
+                                .native_header_include[new_enum_unreal_projections] =
+                                strings.intern("fixture/NativeEnum.h");
+                            enum_unreal_projections.enum_array[new_enum_unreal_projections] = true;
+                        });
+                    enums.enum_array[new_enums] = false;
+                    enums.native_api[new_enums] = true;
+                    enums.helpers[new_enums] =
                         store.range<NativeEnumHelper>({NativeEnumHelper::traits});
-                    return new_enums;
-                }()});
-                return new_normal_modules;
-            }()}})};
+                })});
+            })}})};
 
     ASSERT_EQ(files.size(), 3);
     auto const& native_header{files[0].content};
@@ -562,75 +507,69 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
     auto& module_settings_store{store.module_settings_store};
     auto& normal_modules{store.normal_modules};
     auto& type_refs{store.type_refs};
-    auto const output{render_enum(context, [&] {
-        auto const new_normal_modules{normal_modules.append()};
-        auto const normal_modules_row{normal_modules.index(new_normal_modules)};
-        normal_modules.settings[normal_modules_row] = [&] {
-            auto const new_module_settings_store{module_settings_store.append()};
-            auto const module_settings_store_row{
-                module_settings_store.index(new_module_settings_store)};
-            module_settings_store.name[module_settings_store_row] = strings.intern("modes");
-            module_settings_store.header[module_settings_store_row] = strings.intern("Modes.h");
-            module_settings_store.source[module_settings_store_row] = strings.intern("Modes.cpp");
-            module_settings_store.header_include[module_settings_store_row] =
-                strings.intern("Project/Modes.h");
-            return new_module_settings_store;
-        }();
-        normal_modules.declarations[normal_modules_row] = store.range<DeclarationHandle>({[&] {
-            auto const new_enums{enums.append()};
-            enums.cpp_projection[new_enums] = CppProjection{};
-            auto const enums_row{enums.index(new_enums)};
-            enums.name[enums_row] = strings.intern("EMode");
-            enums.underlying_type[enums_row] = [&] {
-                auto const new_type_refs{type_refs.append()};
-                auto const type_refs_row{type_refs.index(new_type_refs)};
-                type_refs.name[type_refs_row] = strings.intern("uint8");
-                return new_type_refs;
-            }();
-            enums.values[enums_row] = store.range<EnumeratorId>(
-                {[&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[enumerators_row] = strings.intern("First");
-                     enumerators.initializer[enumerators_row] = std::nullopt;
-                     enumerators.display_name[enumerators_row] = std::nullopt;
-                     enumerators.hidden[enumerators_row] = false;
-                     enumerators.serialized_name[enumerators_row] = strings.intern("first");
-                     return new_enumerators;
-                 }(),
-                 [&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[enumerators_row] = strings.intern("Readable");
-                     enumerators.initializer[enumerators_row] = strings.intern("1");
-                     enumerators.display_name[enumerators_row] = strings.intern("Readable Value");
-                     enumerators.hidden[enumerators_row] = false;
-                     enumerators.serialized_name[enumerators_row] = strings.intern("readable");
-                     return new_enumerators;
-                 }(),
-                 [&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[enumerators_row] = strings.intern("COUNT");
-                     enumerators.initializer[enumerators_row] = std::nullopt;
-                     enumerators.display_name[enumerators_row] = std::nullopt;
-                     enumerators.hidden[enumerators_row] = true;
-                     enumerators.serialized_name[enumerators_row] = strings.intern("count");
-                     return new_enumerators;
-                 }()});
-            enums.conversions[enums_row] =
-                store.range<EnumConversion>({EnumConversion::lex_to_string,
-                                             EnumConversion::string_view,
-                                             EnumConversion::display_string_view,
-                                             EnumConversion::lex_to_serialized_string,
-                                             EnumConversion::try_parse_serialized});
-            enums.export_specifier[enums_row] = strings.intern("PROJECT_API");
-            enums.reflection[enums_row] = EnumReflection::blueprint;
-            return new_enums;
-        }()});
-        normal_modules.enum_helper_namespace[normal_modules_row] = strings.intern("project");
-        return new_normal_modules;
-    }())};
+    auto const output{render_module(
+        context, append_test_row(normal_modules, [&](auto const new_normal_modules) {
+            normal_modules.settings[new_normal_modules] =
+                append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                    module_settings_store.name[new_module_settings_store] = strings.intern("modes");
+                    module_settings_store.header[new_module_settings_store] =
+                        strings.intern("Modes.h");
+                    module_settings_store.source[new_module_settings_store] =
+                        strings.intern("Modes.cpp");
+                    module_settings_store.header_include[new_module_settings_store] =
+                        strings.intern("Project/Modes.h");
+                });
+            normal_modules.declarations[new_normal_modules] =
+                store.range<DeclarationHandle>({append_test_row(enums, [&](auto const new_enums) {
+                    enums.cpp_projection[new_enums] = CppProjection{};
+                    enums.name[new_enums] = strings.intern("EMode");
+                    enums.underlying_type[new_enums] =
+                        append_test_row(type_refs, [&](auto const new_type_refs) {
+                            type_refs.name[new_type_refs] = strings.intern("uint8");
+                        });
+                    enums.values[new_enums] = store.range<EnumeratorId>(
+                        {append_test_row(enumerators,
+                                         [&](auto const new_enumerators) {
+                                             enumerators.name[new_enumerators] =
+                                                 strings.intern("First");
+                                             enumerators.initializer[new_enumerators] =
+                                                 std::nullopt;
+                                             enumerators.display_name[new_enumerators] =
+                                                 std::nullopt;
+                                             enumerators.hidden[new_enumerators] = false;
+                                             enumerators.serialized_name[new_enumerators] =
+                                                 strings.intern("first");
+                                         }),
+                         append_test_row(enumerators,
+                                         [&](auto const new_enumerators) {
+                                             enumerators.name[new_enumerators] =
+                                                 strings.intern("Readable");
+                                             enumerators.initializer[new_enumerators] =
+                                                 strings.intern("1");
+                                             enumerators.display_name[new_enumerators] =
+                                                 strings.intern("Readable Value");
+                                             enumerators.hidden[new_enumerators] = false;
+                                             enumerators.serialized_name[new_enumerators] =
+                                                 strings.intern("readable");
+                                         }),
+                         append_test_row(enumerators, [&](auto const new_enumerators) {
+                             enumerators.name[new_enumerators] = strings.intern("COUNT");
+                             enumerators.initializer[new_enumerators] = std::nullopt;
+                             enumerators.display_name[new_enumerators] = std::nullopt;
+                             enumerators.hidden[new_enumerators] = true;
+                             enumerators.serialized_name[new_enumerators] = strings.intern("count");
+                         })});
+                    enums.conversions[new_enums] =
+                        store.range<EnumConversion>({EnumConversion::lex_to_string,
+                                                     EnumConversion::string_view,
+                                                     EnumConversion::display_string_view,
+                                                     EnumConversion::lex_to_serialized_string,
+                                                     EnumConversion::try_parse_serialized});
+                    enums.export_specifier[new_enums] = strings.intern("PROJECT_API");
+                    enums.reflection[new_enums] = EnumReflection::blueprint;
+                })});
+            normal_modules.enum_helper_namespace[new_normal_modules] = strings.intern("project");
+        }))};
 
     EXPECT_NE(output.header.find("#include \"Modes.generated.h\""), std::string::npos);
     EXPECT_NE(output.header.find("UENUM(BlueprintType)\nenum class EMode : uint8"),
@@ -674,42 +613,35 @@ TEST(Lowering, EmitsPlainEnumsInTheirNamespace) {
     auto& module_settings_store{store.module_settings_store};
     auto& normal_modules{store.normal_modules};
     auto& type_refs{store.type_refs};
-    auto const output{render_enum(context, [&] {
-        auto const new_normal_modules{normal_modules.append()};
-        auto const normal_modules_row{normal_modules.index(new_normal_modules)};
-        normal_modules.settings[normal_modules_row] = [&] {
-            auto const new_module_settings_store{module_settings_store.append()};
-            auto const module_settings_store_row{
-                module_settings_store.index(new_module_settings_store)};
-            module_settings_store.name[module_settings_store_row] = strings.intern("states");
-            module_settings_store.header[module_settings_store_row] = strings.intern("States.h");
-            module_settings_store.source[module_settings_store_row] = strings.intern("States.cpp");
-            module_settings_store.namespace_name[module_settings_store_row] =
-                strings.intern("project::states");
-            return new_module_settings_store;
-        }();
-        normal_modules.declarations[normal_modules_row] = store.range<DeclarationHandle>({[&] {
-            auto const new_enums{enums.append()};
-            enums.cpp_projection[new_enums] = CppProjection{};
-            auto const enums_row{enums.index(new_enums)};
-            enums.name[enums_row] = strings.intern("EState");
-            enums.underlying_type[enums_row] = [&] {
-                auto const new_type_refs{type_refs.append()};
-                auto const type_refs_row{type_refs.index(new_type_refs)};
-                type_refs.name[type_refs_row] = strings.intern("int");
-                return new_type_refs;
-            }();
-            enums.values[enums_row] = store.range<EnumeratorId>({[&] {
-                auto const new_enumerators{enumerators.append()};
-                auto const enumerators_row{enumerators.index(new_enumerators)};
-                enumerators.name[enumerators_row] = strings.intern("Ready");
-                return new_enumerators;
-            }()});
-            enums.conversions[enums_row] = store.range<EnumConversion>({EnumConversion::string});
-            return new_enums;
-        }()});
-        return new_normal_modules;
-    }())};
+    auto const output{render_module(
+        context, append_test_row(normal_modules, [&](auto const new_normal_modules) {
+            normal_modules.settings[new_normal_modules] =
+                append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                    module_settings_store.name[new_module_settings_store] =
+                        strings.intern("states");
+                    module_settings_store.header[new_module_settings_store] =
+                        strings.intern("States.h");
+                    module_settings_store.source[new_module_settings_store] =
+                        strings.intern("States.cpp");
+                    module_settings_store.namespace_name[new_module_settings_store] =
+                        strings.intern("project::states");
+                });
+            normal_modules.declarations[new_normal_modules] =
+                store.range<DeclarationHandle>({append_test_row(enums, [&](auto const new_enums) {
+                    enums.cpp_projection[new_enums] = CppProjection{};
+                    enums.name[new_enums] = strings.intern("EState");
+                    enums.underlying_type[new_enums] =
+                        append_test_row(type_refs, [&](auto const new_type_refs) {
+                            type_refs.name[new_type_refs] = strings.intern("int");
+                        });
+                    enums.values[new_enums] = store.range<EnumeratorId>(
+                        {append_test_row(enumerators, [&](auto const new_enumerators) {
+                            enumerators.name[new_enumerators] = strings.intern("Ready");
+                        })});
+                    enums.conversions[new_enums] =
+                        store.range<EnumConversion>({EnumConversion::string});
+                })});
+        }))};
 
     EXPECT_NE(output.header.find("namespace project::states {\nusing EStateUnderlying = int;\n\n"
                                  "// Logical bit width: 1.\nenum class EState : EStateUnderlying"),
@@ -731,47 +663,36 @@ TEST(Lowering, EmitsCountsForEnumArrays) {
     auto& module_settings_store{store.module_settings_store};
     auto& normal_modules{store.normal_modules};
     auto& type_refs{store.type_refs};
-    auto const output{render_enum(context, [&] {
-        auto const new_normal_modules{normal_modules.append()};
-        auto const normal_modules_row{normal_modules.index(new_normal_modules)};
-        normal_modules.settings[normal_modules_row] = [&] {
-            auto const new_module_settings_store{module_settings_store.append()};
-            auto const module_settings_store_row{
-                module_settings_store.index(new_module_settings_store)};
-            module_settings_store.name[module_settings_store_row] = strings.intern("modes");
-            module_settings_store.header[module_settings_store_row] = strings.intern("Modes.h");
-            module_settings_store.source[module_settings_store_row] = strings.intern("Modes.cpp");
-            return new_module_settings_store;
-        }();
-        normal_modules.declarations[normal_modules_row] = store.range<DeclarationHandle>({[&] {
-            auto const new_enums{enums.append()};
-            enums.cpp_projection[new_enums] = CppProjection{};
-            auto const enums_row{enums.index(new_enums)};
-            enums.name[enums_row] = strings.intern("EMode");
-            enums.underlying_type[enums_row] = [&] {
-                auto const new_type_refs{type_refs.append()};
-                auto const type_refs_row{type_refs.index(new_type_refs)};
-                type_refs.name[type_refs_row] = strings.intern("uint8");
-                return new_type_refs;
-            }();
-            enums.values[enums_row] = store.range<EnumeratorId>(
-                {[&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[enumerators_row] = strings.intern("First");
-                     return new_enumerators;
-                 }(),
-                 [&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[enumerators_row] = strings.intern("Second");
-                     return new_enumerators;
-                 }()});
-            enums.enum_array[enums_row] = true;
-            return new_enums;
-        }()});
-        return new_normal_modules;
-    }())};
+    auto const output{render_module(
+        context, append_test_row(normal_modules, [&](auto const new_normal_modules) {
+            normal_modules.settings[new_normal_modules] =
+                append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                    module_settings_store.name[new_module_settings_store] = strings.intern("modes");
+                    module_settings_store.header[new_module_settings_store] =
+                        strings.intern("Modes.h");
+                    module_settings_store.source[new_module_settings_store] =
+                        strings.intern("Modes.cpp");
+                });
+            normal_modules.declarations[new_normal_modules] =
+                store.range<DeclarationHandle>({append_test_row(enums, [&](auto const new_enums) {
+                    enums.cpp_projection[new_enums] = CppProjection{};
+                    enums.name[new_enums] = strings.intern("EMode");
+                    enums.underlying_type[new_enums] =
+                        append_test_row(type_refs, [&](auto const new_type_refs) {
+                            type_refs.name[new_type_refs] = strings.intern("uint8");
+                        });
+                    enums.values[new_enums] = store.range<EnumeratorId>(
+                        {append_test_row(enumerators,
+                                         [&](auto const new_enumerators) {
+                                             enumerators.name[new_enumerators] =
+                                                 strings.intern("First");
+                                         }),
+                         append_test_row(enumerators, [&](auto const new_enumerators) {
+                             enumerators.name[new_enumerators] = strings.intern("Second");
+                         })});
+                    enums.enum_array[new_enums] = true;
+                })});
+        }))};
 
     EXPECT_NE(output.header.find("#include \"ioj/enum_traits.h\""), std::string::npos);
     EXPECT_NE(
@@ -790,48 +711,37 @@ TEST(Lowering, EmitsCountsForReflectedEnumArrays) {
     auto& module_settings_store{store.module_settings_store};
     auto& normal_modules{store.normal_modules};
     auto& type_refs{store.type_refs};
-    auto const output{render_enum(context, [&] {
-        auto const new_normal_modules{normal_modules.append()};
-        auto const normal_modules_row{normal_modules.index(new_normal_modules)};
-        normal_modules.settings[normal_modules_row] = [&] {
-            auto const new_module_settings_store{module_settings_store.append()};
-            auto const module_settings_store_row{
-                module_settings_store.index(new_module_settings_store)};
-            module_settings_store.name[module_settings_store_row] = strings.intern("modes");
-            module_settings_store.header[module_settings_store_row] = strings.intern("Modes.h");
-            module_settings_store.source[module_settings_store_row] = strings.intern("Modes.cpp");
-            return new_module_settings_store;
-        }();
-        normal_modules.declarations[normal_modules_row] = store.range<DeclarationHandle>({[&] {
-            auto const new_enums{enums.append()};
-            enums.cpp_projection[new_enums] = CppProjection{};
-            auto const enums_row{enums.index(new_enums)};
-            enums.name[enums_row] = strings.intern("EMode");
-            enums.underlying_type[enums_row] = [&] {
-                auto const new_type_refs{type_refs.append()};
-                auto const type_refs_row{type_refs.index(new_type_refs)};
-                type_refs.name[type_refs_row] = strings.intern("uint8");
-                return new_type_refs;
-            }();
-            enums.values[enums_row] = store.range<EnumeratorId>(
-                {[&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[enumerators_row] = strings.intern("First");
-                     return new_enumerators;
-                 }(),
-                 [&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[enumerators_row] = strings.intern("Second");
-                     return new_enumerators;
-                 }()});
-            enums.reflection[enums_row] = EnumReflection::uenum;
-            enums.enum_array[enums_row] = true;
-            return new_enums;
-        }()});
-        return new_normal_modules;
-    }())};
+    auto const output{render_module(
+        context, append_test_row(normal_modules, [&](auto const new_normal_modules) {
+            normal_modules.settings[new_normal_modules] =
+                append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                    module_settings_store.name[new_module_settings_store] = strings.intern("modes");
+                    module_settings_store.header[new_module_settings_store] =
+                        strings.intern("Modes.h");
+                    module_settings_store.source[new_module_settings_store] =
+                        strings.intern("Modes.cpp");
+                });
+            normal_modules.declarations[new_normal_modules] =
+                store.range<DeclarationHandle>({append_test_row(enums, [&](auto const new_enums) {
+                    enums.cpp_projection[new_enums] = CppProjection{};
+                    enums.name[new_enums] = strings.intern("EMode");
+                    enums.underlying_type[new_enums] =
+                        append_test_row(type_refs, [&](auto const new_type_refs) {
+                            type_refs.name[new_type_refs] = strings.intern("uint8");
+                        });
+                    enums.values[new_enums] = store.range<EnumeratorId>(
+                        {append_test_row(enumerators,
+                                         [&](auto const new_enumerators) {
+                                             enumerators.name[new_enumerators] =
+                                                 strings.intern("First");
+                                         }),
+                         append_test_row(enumerators, [&](auto const new_enumerators) {
+                             enumerators.name[new_enumerators] = strings.intern("Second");
+                         })});
+                    enums.reflection[new_enums] = EnumReflection::uenum;
+                    enums.enum_array[new_enums] = true;
+                })});
+        }))};
 
     EXPECT_NE(output.header.find("#include \"ioj/enum_traits.h\""), std::string::npos);
     EXPECT_NE(
@@ -848,41 +758,33 @@ TEST(Lowering, EnumDisplayLookupWithoutOverridesFallsBackDirectly) {
     auto& module_settings_store{store.module_settings_store};
     auto& normal_modules{store.normal_modules};
     auto& type_refs{store.type_refs};
-    auto const output{render_enum(context, [&] {
-        auto const new_normal_modules{normal_modules.append()};
-        auto const normal_modules_row{normal_modules.index(new_normal_modules)};
-        normal_modules.settings[normal_modules_row] = [&] {
-            auto const new_module_settings_store{module_settings_store.append()};
-            auto const module_settings_store_row{
-                module_settings_store.index(new_module_settings_store)};
-            module_settings_store.name[module_settings_store_row] = strings.intern("states");
-            module_settings_store.header[module_settings_store_row] = strings.intern("States.h");
-            module_settings_store.source[module_settings_store_row] = strings.intern("States.cpp");
-            return new_module_settings_store;
-        }();
-        normal_modules.declarations[normal_modules_row] = store.range<DeclarationHandle>({[&] {
-            auto const new_enums{enums.append()};
-            enums.cpp_projection[new_enums] = CppProjection{};
-            auto const enums_row{enums.index(new_enums)};
-            enums.name[enums_row] = strings.intern("EState");
-            enums.underlying_type[enums_row] = [&] {
-                auto const new_type_refs{type_refs.append()};
-                auto const type_refs_row{type_refs.index(new_type_refs)};
-                type_refs.name[type_refs_row] = strings.intern("int");
-                return new_type_refs;
-            }();
-            enums.values[enums_row] = store.range<EnumeratorId>({[&] {
-                auto const new_enumerators{enumerators.append()};
-                auto const enumerators_row{enumerators.index(new_enumerators)};
-                enumerators.name[enumerators_row] = strings.intern("Ready");
-                return new_enumerators;
-            }()});
-            enums.conversions[enums_row] =
-                store.range<EnumConversion>({EnumConversion::display_string});
-            return new_enums;
-        }()});
-        return new_normal_modules;
-    }())};
+    auto const output{render_module(
+        context, append_test_row(normal_modules, [&](auto const new_normal_modules) {
+            normal_modules.settings[new_normal_modules] =
+                append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                    module_settings_store.name[new_module_settings_store] =
+                        strings.intern("states");
+                    module_settings_store.header[new_module_settings_store] =
+                        strings.intern("States.h");
+                    module_settings_store.source[new_module_settings_store] =
+                        strings.intern("States.cpp");
+                });
+            normal_modules.declarations[new_normal_modules] =
+                store.range<DeclarationHandle>({append_test_row(enums, [&](auto const new_enums) {
+                    enums.cpp_projection[new_enums] = CppProjection{};
+                    enums.name[new_enums] = strings.intern("EState");
+                    enums.underlying_type[new_enums] =
+                        append_test_row(type_refs, [&](auto const new_type_refs) {
+                            type_refs.name[new_type_refs] = strings.intern("int");
+                        });
+                    enums.values[new_enums] = store.range<EnumeratorId>(
+                        {append_test_row(enumerators, [&](auto const new_enumerators) {
+                            enumerators.name[new_enumerators] = strings.intern("Ready");
+                        })});
+                    enums.conversions[new_enums] =
+                        store.range<EnumConversion>({EnumConversion::display_string});
+                })});
+        }))};
 
     EXPECT_NE(output.source.find("return ioj::enum_string<ioj::Display>(value).data();"),
               std::string::npos);
@@ -902,60 +804,54 @@ TEST(Lowering, EnumEscapingAndSparseDisplayCasesPreserveFallbacks) {
     auto& module_settings_store{store.module_settings_store};
     auto& normal_modules{store.normal_modules};
     auto& type_refs{store.type_refs};
-    auto const output{render_enum(context, [&] {
-        auto const new_normal_modules{normal_modules.append()};
-        auto const normal_modules_row{normal_modules.index(new_normal_modules)};
-        normal_modules.settings[normal_modules_row] = [&] {
-            auto const new_module_settings_store{module_settings_store.append()};
-            auto const module_settings_store_row{
-                module_settings_store.index(new_module_settings_store)};
-            module_settings_store.name[module_settings_store_row] = strings.intern("states");
-            module_settings_store.header[module_settings_store_row] = strings.intern("States.h");
-            module_settings_store.source[module_settings_store_row] = strings.intern("States.cpp");
-            return new_module_settings_store;
-        }();
-        normal_modules.declarations[normal_modules_row] = store.range<DeclarationHandle>({[&] {
-            auto const new_enums{enums.append()};
-            enums.cpp_projection[new_enums] = CppProjection{};
-            auto const enums_row{enums.index(new_enums)};
-            enums.name[enums_row] = strings.intern("EState");
-            enums.underlying_type[enums_row] = [&] {
-                auto const new_type_refs{type_refs.append()};
-                auto const type_refs_row{type_refs.index(new_type_refs)};
-                type_refs.name[type_refs_row] = strings.intern("int");
-                return new_type_refs;
-            }();
-            enums.values[enums_row] = store.range<EnumeratorId>(
-                {[&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[enumerators_row] = strings.intern("Ready");
-                     enumerators.initializer[enumerators_row] = std::nullopt;
-                     enumerators.display_name[enumerators_row] = std::nullopt;
-                     enumerators.hidden[enumerators_row] = false;
-                     enumerators.serialized_name[enumerators_row] = strings.intern("ready");
-                     return new_enumerators;
-                 }(),
-                 [&] {
-                     auto const new_enumerators{enumerators.append()};
-                     auto const enumerators_row{enumerators.index(new_enumerators)};
-                     enumerators.name[enumerators_row] = strings.intern("Special");
-                     enumerators.initializer[enumerators_row] = std::nullopt;
-                     enumerators.display_name[enumerators_row] =
-                         strings.intern("Quote\" Slash\\\n\t");
-                     enumerators.hidden[enumerators_row] = false;
-                     enumerators.serialized_name[enumerators_row] = strings.intern("a\"b\\c\n");
-                     return new_enumerators;
-                 }()});
-            enums.conversions[enums_row] =
-                store.range<EnumConversion>({EnumConversion::display_string,
-                                             EnumConversion::lex_to_serialized_string,
-                                             EnumConversion::try_parse_serialized});
-            enums.reflection[enums_row] = EnumReflection::uenum;
-            return new_enums;
-        }()});
-        return new_normal_modules;
-    }())};
+    auto const output{render_module(
+        context, append_test_row(normal_modules, [&](auto const new_normal_modules) {
+            normal_modules.settings[new_normal_modules] =
+                append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                    module_settings_store.name[new_module_settings_store] =
+                        strings.intern("states");
+                    module_settings_store.header[new_module_settings_store] =
+                        strings.intern("States.h");
+                    module_settings_store.source[new_module_settings_store] =
+                        strings.intern("States.cpp");
+                });
+            normal_modules.declarations[new_normal_modules] =
+                store.range<DeclarationHandle>({append_test_row(enums, [&](auto const new_enums) {
+                    enums.cpp_projection[new_enums] = CppProjection{};
+                    enums.name[new_enums] = strings.intern("EState");
+                    enums.underlying_type[new_enums] =
+                        append_test_row(type_refs, [&](auto const new_type_refs) {
+                            type_refs.name[new_type_refs] = strings.intern("int");
+                        });
+                    enums.values[new_enums] = store.range<EnumeratorId>(
+                        {append_test_row(enumerators,
+                                         [&](auto const new_enumerators) {
+                                             enumerators.name[new_enumerators] =
+                                                 strings.intern("Ready");
+                                             enumerators.initializer[new_enumerators] =
+                                                 std::nullopt;
+                                             enumerators.display_name[new_enumerators] =
+                                                 std::nullopt;
+                                             enumerators.hidden[new_enumerators] = false;
+                                             enumerators.serialized_name[new_enumerators] =
+                                                 strings.intern("ready");
+                                         }),
+                         append_test_row(enumerators, [&](auto const new_enumerators) {
+                             enumerators.name[new_enumerators] = strings.intern("Special");
+                             enumerators.initializer[new_enumerators] = std::nullopt;
+                             enumerators.display_name[new_enumerators] =
+                                 strings.intern("Quote\" Slash\\\n\t");
+                             enumerators.hidden[new_enumerators] = false;
+                             enumerators.serialized_name[new_enumerators] =
+                                 strings.intern("a\"b\\c\n");
+                         })});
+                    enums.conversions[new_enums] =
+                        store.range<EnumConversion>({EnumConversion::display_string,
+                                                     EnumConversion::lex_to_serialized_string,
+                                                     EnumConversion::try_parse_serialized});
+                    enums.reflection[new_enums] = EnumReflection::uenum;
+                })});
+        }))};
 
     EXPECT_NE(output.header.find("UMETA(DisplayName = \"Quote\\\" Slash\\\\\\n\\t\")"),
               std::string::npos);
@@ -982,44 +878,36 @@ TEST(Lowering, EnumCountsUseMlNamespaceForQualifiedHeaderOnlyEnums) {
     auto& type_refs{store.type_refs};
     auto const files{render_test_manifest(
         context,
-        Manifest{manifest_schema_version, make_test_registry(context), store, {[&] {
-                     auto const new_normal_modules{normal_modules.append()};
-                     auto const normal_modules_row{normal_modules.index(new_normal_modules)};
-                     normal_modules.settings[normal_modules_row] = [&] {
-                         auto const new_module_settings_store{module_settings_store.append()};
-                         auto const module_settings_store_row{
-                             module_settings_store.index(new_module_settings_store)};
-                         module_settings_store.name[module_settings_store_row] =
-                             strings.intern("states");
-                         module_settings_store.header[module_settings_store_row] =
-                             strings.intern("States.h");
-                         module_settings_store.namespace_name[module_settings_store_row] =
-                             strings.intern("project::states");
-                         return new_module_settings_store;
-                     }();
-                     normal_modules.declarations[normal_modules_row] =
-                         store.range<DeclarationHandle>({[&] {
-                             auto const new_enums{enums.append()};
-                             enums.cpp_projection[new_enums] = CppProjection{};
-                             auto const enums_row{enums.index(new_enums)};
-                             enums.name[enums_row] = strings.intern("EState");
-                             enums.underlying_type[enums_row] = [&] {
-                                 auto const new_type_refs{type_refs.append()};
-                                 auto const type_refs_row{type_refs.index(new_type_refs)};
-                                 type_refs.name[type_refs_row] = strings.intern("int");
-                                 return new_type_refs;
-                             }();
-                             enums.values[enums_row] = store.range<EnumeratorId>({[&] {
-                                 auto const new_enumerators{enumerators.append()};
-                                 auto const enumerators_row{enumerators.index(new_enumerators)};
-                                 enumerators.name[enumerators_row] = strings.intern("Ready");
-                                 return new_enumerators;
-                             }()});
-                             enums.enum_array[enums_row] = true;
-                             return new_enums;
-                         }()});
-                     return new_normal_modules;
-                 }()}})};
+        Manifest{manifest_schema_version,
+                 make_test_registry(context),
+                 store,
+                 {append_test_row(normal_modules, [&](auto const new_normal_modules) {
+                     normal_modules.settings[new_normal_modules] = append_test_row(
+                         module_settings_store, [&](auto const new_module_settings_store) {
+                             module_settings_store.name[new_module_settings_store] =
+                                 strings.intern("states");
+                             module_settings_store.header[new_module_settings_store] =
+                                 strings.intern("States.h");
+                             module_settings_store.namespace_name[new_module_settings_store] =
+                                 strings.intern("project::states");
+                         });
+                     normal_modules.declarations[new_normal_modules] =
+                         store.range<DeclarationHandle>(
+                             {append_test_row(enums, [&](auto const new_enums) {
+                                 enums.cpp_projection[new_enums] = CppProjection{};
+                                 enums.name[new_enums] = strings.intern("EState");
+                                 enums.underlying_type[new_enums] =
+                                     append_test_row(type_refs, [&](auto const new_type_refs) {
+                                         type_refs.name[new_type_refs] = strings.intern("int");
+                                     });
+                                 enums.values[new_enums] = store.range<EnumeratorId>(
+                                     {append_test_row(enumerators, [&](auto const new_enumerators) {
+                                         enumerators.name[new_enumerators] =
+                                             strings.intern("Ready");
+                                     })});
+                                 enums.enum_array[new_enums] = true;
+                             })});
+                 })}})};
     ASSERT_EQ(files.size(), 1);
     EXPECT_NE(files.front().content.find("namespace ioj {"), std::string::npos);
     EXPECT_NE(
@@ -1038,80 +926,64 @@ TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
     auto& settings{store.settings};
     auto& settings_modules{store.settings_modules};
     auto& type_refs{store.type_refs};
-    auto const output{render_settings(context, [&] {
-        auto const new_settings_modules{settings_modules.append()};
-        auto const settings_modules_row{settings_modules.index(new_settings_modules)};
-        settings_modules.settings[settings_modules_row] = [&] {
-            auto const new_module_settings_store{module_settings_store.append()};
-            auto const module_settings_store_row{
-                module_settings_store.index(new_module_settings_store)};
-            module_settings_store.name[module_settings_store_row] = strings.intern("settings");
-            module_settings_store.header[module_settings_store_row] = strings.intern("Settings.h");
-            module_settings_store.source[module_settings_store_row] =
-                strings.intern("Settings.cpp");
-            module_settings_store.namespace_name[module_settings_store_row] =
-                strings.intern("game");
-            return new_module_settings_store;
-        }();
-        settings_modules.api_name[settings_modules_row] = strings.intern("TSettingsAccess");
-        settings_modules.state_name[settings_modules_row] = strings.intern("FSettingsState");
-        settings_modules.categories[settings_modules_row] = store.range<SettingCategoryId>({[&] {
-            auto const new_setting_categories{setting_categories.append()};
-            auto const setting_categories_row{setting_categories.index(new_setting_categories)};
-            setting_categories.name[setting_categories_row] = strings.intern("video");
-            setting_categories.label[setting_categories_row] = strings.intern("Video");
-            return new_setting_categories;
-        }()});
-        settings_modules.settings_list[settings_modules_row] = store.range<SettingId>(
-            {[&] {
-                 auto const new_settings{settings.append()};
-                 auto const settings_row{settings.index(new_settings)};
-                 settings.name[settings_row] = strings.intern("vsync");
-                 settings.label[settings_row] = strings.intern("VSync");
-                 settings.category[settings_row] = strings.intern("video");
-                 settings.value_type[settings_row] = [&] {
-                     auto const new_type_refs{type_refs.append()};
-                     auto const type_refs_row{type_refs.index(new_type_refs)};
-                     type_refs.name[type_refs_row] = strings.intern("bool");
-                     return new_type_refs;
-                 }();
-                 settings.backend[settings_row] = strings.intern("engine");
-                 settings.apply_mode[settings_row] = SettingApplyMode::deferred;
-                 settings.control[settings_row] = [&] {
-                     auto const new_setting_controls{setting_controls.append()};
-                     auto const setting_controls_row{setting_controls.index(new_setting_controls)};
-                     setting_controls.kind[setting_controls_row] = SettingControlKind::toggle;
-                     return new_setting_controls;
-                 }();
-                 return new_settings;
-             }(),
-             [&] {
-                 auto const new_settings{settings.append()};
-                 auto const settings_row{settings.index(new_settings)};
-                 settings.name[settings_row] = strings.intern("frame_limit");
-                 settings.label[settings_row] = strings.intern("Frame Limit");
-                 settings.category[settings_row] = strings.intern("video");
-                 settings.value_type[settings_row] = [&] {
-                     auto const new_type_refs{type_refs.append()};
-                     auto const type_refs_row{type_refs.index(new_type_refs)};
-                     type_refs.name[type_refs_row] = strings.intern("float");
-                     return new_type_refs;
-                 }();
-                 settings.backend[settings_row] = strings.intern("engine");
-                 settings.apply_mode[settings_row] = SettingApplyMode::immediate;
-                 settings.device[settings_row] = SettingDevice::controller;
-                 settings.control[settings_row] = [&] {
-                     auto const new_setting_controls{setting_controls.append()};
-                     auto const setting_controls_row{setting_controls.index(new_setting_controls)};
-                     setting_controls.kind[setting_controls_row] = SettingControlKind::choice;
-                     setting_controls.options_provider[setting_controls_row] =
-                         strings.intern("frame_limits");
-                     return new_setting_controls;
-                 }();
-                 return new_settings;
-             }()});
-        return new_settings_modules;
-    }())};
+    auto const output{render_module(
+        context, append_test_row(settings_modules, [&](auto const new_settings_modules) {
+            settings_modules.settings[new_settings_modules] =
+                append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                    module_settings_store.name[new_module_settings_store] =
+                        strings.intern("settings");
+                    module_settings_store.header[new_module_settings_store] =
+                        strings.intern("Settings.h");
+                    module_settings_store.source[new_module_settings_store] =
+                        strings.intern("Settings.cpp");
+                    module_settings_store.namespace_name[new_module_settings_store] =
+                        strings.intern("game");
+                });
+            settings_modules.api_name[new_settings_modules] = strings.intern("TSettingsAccess");
+            settings_modules.state_name[new_settings_modules] = strings.intern("FSettingsState");
+            settings_modules.categories[new_settings_modules] = store.range<SettingCategoryId>(
+                {append_test_row(setting_categories, [&](auto const new_setting_categories) {
+                    setting_categories.name[new_setting_categories] = strings.intern("video");
+                    setting_categories.label[new_setting_categories] = strings.intern("Video");
+                })});
+            settings_modules.settings_list[new_settings_modules] = store.range<SettingId>(
+                {append_test_row(settings,
+                                 [&](auto const new_settings) {
+                                     settings.name[new_settings] = strings.intern("vsync");
+                                     settings.label[new_settings] = strings.intern("VSync");
+                                     settings.category[new_settings] = strings.intern("video");
+                                     settings.value_type[new_settings] =
+                                         append_test_row(type_refs, [&](auto const new_type_refs) {
+                                             type_refs.name[new_type_refs] = strings.intern("bool");
+                                         });
+                                     settings.backend[new_settings] = strings.intern("engine");
+                                     settings.apply_mode[new_settings] = SettingApplyMode::deferred;
+                                     settings.control[new_settings] = append_test_row(
+                                         setting_controls, [&](auto const new_setting_controls) {
+                                             setting_controls.kind[new_setting_controls] =
+                                                 SettingControlKind::toggle;
+                                         });
+                                 }),
+                 append_test_row(settings, [&](auto const new_settings) {
+                     settings.name[new_settings] = strings.intern("frame_limit");
+                     settings.label[new_settings] = strings.intern("Frame Limit");
+                     settings.category[new_settings] = strings.intern("video");
+                     settings.value_type[new_settings] =
+                         append_test_row(type_refs, [&](auto const new_type_refs) {
+                             type_refs.name[new_type_refs] = strings.intern("float");
+                         });
+                     settings.backend[new_settings] = strings.intern("engine");
+                     settings.apply_mode[new_settings] = SettingApplyMode::immediate;
+                     settings.device[new_settings] = SettingDevice::controller;
+                     settings.control[new_settings] =
+                         append_test_row(setting_controls, [&](auto const new_setting_controls) {
+                             setting_controls.kind[new_setting_controls] =
+                                 SettingControlKind::choice;
+                             setting_controls.options_provider[new_setting_controls] =
+                                 strings.intern("frame_limits");
+                         });
+                 })});
+        }))};
 
     EXPECT_NE(output.header.find("enum class EGameSetting : uint8"), std::string::npos);
     EXPECT_NE(output.header.find("using FGameSettingValue = std::variant<bool, float>"),

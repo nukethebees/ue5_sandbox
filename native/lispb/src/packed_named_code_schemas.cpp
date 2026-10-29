@@ -1,5 +1,7 @@
 #include <codegen/schema/packed_named_code_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -17,18 +19,10 @@ auto PackedNamedCodeSchemas::append() -> PackedNamedCodeId {
     return PackedNamedCodeId{index + 1};
 }
 auto PackedNamedCodeSchemas::clone(PackedNamedCodeId id) -> PackedNamedCodeId {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    name[destination] = name[source_index];
-    value[destination] = value[source_index];
-    sentinel[destination] = sentinel[source_index];
-    return result;
+    return detail::clone_schema_row(*this, id, name, value, sentinel);
 }
 void PackedNamedCodeSchemas::clear() {
-    name.clear();
-    value.clear();
-    sentinel.clear();
+    detail::clear_schema_columns(name, value, sentinel);
 }
 
 }

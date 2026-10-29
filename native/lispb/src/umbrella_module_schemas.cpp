@@ -1,5 +1,7 @@
 #include <codegen/schema/umbrella_module_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -17,16 +19,10 @@ auto UmbrellaModuleSchemas::append() -> ModuleHandle {
     return ModuleHandle{(static_cast<std::uint32_t>(ModuleKind::umbrella) << 24) | (index + 1)};
 }
 auto UmbrellaModuleSchemas::clone(ModuleHandle id) -> ModuleHandle {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    settings[destination] = settings[source_index];
-    headers[destination] = headers[source_index];
-    return result;
+    return detail::clone_schema_row(*this, id, settings, headers);
 }
 void UmbrellaModuleSchemas::clear() {
-    settings.clear();
-    headers.clear();
+    detail::clear_schema_columns(settings, headers);
 }
 
 }

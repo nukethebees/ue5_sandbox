@@ -6,7 +6,6 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
-#include <initializer_list>
 #include <limits>
 #include <string>
 #include <system_error>
@@ -32,24 +31,24 @@ class TemporaryFile final {
     std::filesystem::path path_{};
 };
 
-TEST(SimulationBenchmarkCommandLine, ParsesRequiredOptions) {
-    TemporaryFile level;
-    auto const path{level.path().string()};
-    char const* argv[]{"native-simulation-benchmark",
-                       "--level",
-                       path.c_str(),
-                       "--seconds",
-                       "1.5",
-                       "--game-speed",
-                       "100",
-                       "--wait-for-profiler",
-                       "5",
-                       "--telemetry"};
+class SimulationBenchmarkCommandLine : public testing::Test {
+  protected:
+    auto parse(std::vector<char const*> const& arguments) const -> CommandLineResult {
+        auto const path{level_.path().string()};
+        std::vector<char const*> argv{"native-simulation-benchmark", "--level", path.c_str()};
+        argv.insert(argv.end(), arguments.begin(), arguments.end());
+        return parse_command_line(static_cast<int>(argv.size()), argv.data());
+    }
 
-    auto const result{parse_command_line(10, argv)};
+    TemporaryFile level_;
+};
+
+TEST_F(SimulationBenchmarkCommandLine, ParsesRequiredOptions) {
+    auto const result{parse(
+        {"--seconds", "1.5", "--game-speed", "100", "--wait-for-profiler", "5", "--telemetry"})};
 
     ASSERT_TRUE(result.options.has_value()) << result.standard_error;
-    EXPECT_EQ(result.options->level_path, level.path());
+    EXPECT_EQ(result.options->level_path, level_.path());
     EXPECT_DOUBLE_EQ(result.options->simulated_seconds, 1.5);
     EXPECT_EQ(result.options->game_speed, 100u);
     ASSERT_TRUE(result.options->profiler_connection_timeout_seconds.has_value());
@@ -57,22 +56,15 @@ TEST(SimulationBenchmarkCommandLine, ParsesRequiredOptions) {
     EXPECT_TRUE(result.options->telemetry_enabled);
 }
 
-TEST(SimulationBenchmarkCommandLine, ParsesFighterStressOptions) {
-    TemporaryFile level;
-    auto const path{level.path().string()};
-    char const* argv[]{"native-simulation-benchmark",
-                       "--level",
-                       path.c_str(),
-                       "--seconds",
-                       "10",
-                       "--fighter-stress-cap",
-                       "4000",
-                       "--warmup-seconds",
-                       "5",
-                       "--saturation-timeout-seconds",
-                       "30"};
-
-    auto const result{parse_command_line(11, argv)};
+TEST_F(SimulationBenchmarkCommandLine, ParsesFighterStressOptions) {
+    auto const result{parse({"--seconds",
+                             "10",
+                             "--fighter-stress-cap",
+                             "4000",
+                             "--warmup-seconds",
+                             "5",
+                             "--saturation-timeout-seconds",
+                             "30"})};
 
     ASSERT_TRUE(result.options.has_value()) << result.standard_error;
     ASSERT_TRUE(result.options->fighter_stress_cap.has_value());
@@ -81,22 +73,15 @@ TEST(SimulationBenchmarkCommandLine, ParsesFighterStressOptions) {
     EXPECT_DOUBLE_EQ(result.options->saturation_timeout_seconds, 30.0);
 }
 
-TEST(SimulationBenchmarkCommandLine, ParsesOrderedCommaSeparatedFighterStressCaps) {
-    TemporaryFile level;
-    auto const path{level.path().string()};
-    char const* argv[]{"native-simulation-benchmark",
-                       "--level",
-                       path.c_str(),
-                       "--seconds",
-                       "10",
-                       "--fighter-stress-caps",
-                       "4000,2000",
-                       "--warmup-seconds",
-                       "5",
-                       "--saturation-timeout-seconds",
-                       "30"};
-
-    auto const result{parse_command_line(11, argv)};
+TEST_F(SimulationBenchmarkCommandLine, ParsesOrderedCommaSeparatedFighterStressCaps) {
+    auto const result{parse({"--seconds",
+                             "10",
+                             "--fighter-stress-caps",
+                             "4000,2000",
+                             "--warmup-seconds",
+                             "5",
+                             "--saturation-timeout-seconds",
+                             "30"})};
 
     ASSERT_TRUE(result.options.has_value()) << result.standard_error;
     EXPECT_FALSE(result.options->fighter_stress_cap.has_value());
@@ -105,27 +90,7 @@ TEST(SimulationBenchmarkCommandLine, ParsesOrderedCommaSeparatedFighterStressCap
     EXPECT_EQ(result.options->fighter_stress_caps[1], 2000);
 }
 
-TEST(SimulationBenchmarkCommandLine, RejectsInvalidFighterStressCaps) {
-    TemporaryFile level;
-    auto const path{level.path().string()};
-    auto const parse_caps = [&path](std::initializer_list<char const*> const caps) {
-        std::vector<char const*> argv{"native-simulation-benchmark",
-                                      "--level",
-                                      path.c_str(),
-                                      "--seconds",
-                                      "1",
-                                      "--fighter-stress-caps"};
-        argv.insert(argv.end(), caps.begin(), caps.end());
-        return parse_command_line(static_cast<int>(argv.size()), argv.data());
-    };
-
-    EXPECT_FALSE(parse_caps({"12", "12"}).options.has_value());
-    EXPECT_FALSE(parse_caps({"0"}).options.has_value());
-    EXPECT_FALSE(parse_caps({"2147483648"}).options.has_value());
-    EXPECT_FALSE(parse_caps({"1.5"}).options.has_value());
-}
-
-TEST(SimulationBenchmarkCommandLine, RejectsMissingLevel) {
+TEST(SimulationBenchmarkCommandLineWithoutLevel, RejectsMissingLevel) {
     char const* argv[]{"native-simulation-benchmark", "--seconds", "1"};
     auto const result{parse_command_line(3, argv)};
 
@@ -133,67 +98,46 @@ TEST(SimulationBenchmarkCommandLine, RejectsMissingLevel) {
     EXPECT_NE(result.exit_code, 0);
 }
 
-TEST(SimulationBenchmarkCommandLine, RejectsNonPositiveSeconds) {
-    TemporaryFile level;
-    auto const path{level.path().string()};
-    char const* argv[]{"native-simulation-benchmark", "--level", path.c_str(), "--seconds", "0"};
-    auto const result{parse_command_line(5, argv)};
+struct InvalidArguments {
+    char const* name;
+    std::vector<char const*> arguments;
+    std::string expected_error{};
+};
+
+class InvalidSimulationBenchmarkCommandLine
+    : public SimulationBenchmarkCommandLine
+    , public testing::WithParamInterface<InvalidArguments> {};
+
+TEST_P(InvalidSimulationBenchmarkCommandLine, RejectsInvalidOptions) {
+    auto const& test{GetParam()};
+    auto const result{parse(test.arguments)};
 
     EXPECT_FALSE(result.options.has_value());
     EXPECT_NE(result.exit_code, 0);
+    if (!test.expected_error.empty()) {
+        EXPECT_NE(result.standard_error.find(test.expected_error), std::string::npos);
+    }
 }
 
-TEST(SimulationBenchmarkCommandLine, RejectsNonPositiveGameSpeed) {
-    TemporaryFile level;
-    auto const path{level.path().string()};
-    char const* argv[]{"native-simulation-benchmark",
-                       "--level",
-                       path.c_str(),
-                       "--seconds",
-                       "1",
-                       "--game-speed",
-                       "0"};
-    auto const result{parse_command_line(7, argv)};
+INSTANTIATE_TEST_SUITE_P(
+    Options,
+    InvalidSimulationBenchmarkCommandLine,
+    testing::Values(
+        InvalidArguments{"DuplicateStressCaps",
+                         {"--seconds", "1", "--fighter-stress-caps", "12", "12"}},
+        InvalidArguments{"ZeroStressCap", {"--seconds", "1", "--fighter-stress-caps", "0"}},
+        InvalidArguments{"OverflowStressCap",
+                         {"--seconds", "1", "--fighter-stress-caps", "2147483648"}},
+        InvalidArguments{"FractionalStressCap", {"--seconds", "1", "--fighter-stress-caps", "1.5"}},
+        InvalidArguments{"NonPositiveSeconds", {"--seconds", "0"}},
+        InvalidArguments{"NonPositiveGameSpeed", {"--seconds", "1", "--game-speed", "0"}},
+        InvalidArguments{"NonPositiveProfilerWait", {"--seconds", "1", "--wait-for-profiler", "0"}},
+        InvalidArguments{"StressSetupWithoutFighterCap",
+                         {"--seconds", "1", "--warmup-seconds", "5"},
+                         "--fighter-stress-cap or --fighter-stress-caps"}),
+    [](auto const& info) { return info.param.name; });
 
-    EXPECT_FALSE(result.options.has_value());
-    EXPECT_NE(result.exit_code, 0);
-}
-
-TEST(SimulationBenchmarkCommandLine, RejectsNonPositiveProfilerWait) {
-    TemporaryFile level;
-    auto const path{level.path().string()};
-    char const* argv[]{"native-simulation-benchmark",
-                       "--level",
-                       path.c_str(),
-                       "--seconds",
-                       "1",
-                       "--wait-for-profiler",
-                       "0"};
-    auto const result{parse_command_line(7, argv)};
-
-    EXPECT_FALSE(result.options.has_value());
-    EXPECT_NE(result.exit_code, 0);
-}
-
-TEST(SimulationBenchmarkCommandLine, RejectsStressSetupWithoutFighterCap) {
-    TemporaryFile level;
-    auto const path{level.path().string()};
-    char const* argv[]{"native-simulation-benchmark",
-                       "--level",
-                       path.c_str(),
-                       "--seconds",
-                       "1",
-                       "--warmup-seconds",
-                       "5"};
-    auto const result{parse_command_line(7, argv)};
-
-    EXPECT_FALSE(result.options.has_value());
-    EXPECT_NE(result.exit_code, 0);
-    EXPECT_NE(result.standard_error.find("--fighter-stress-cap or --fighter-stress-caps"),
-              std::string::npos);
-}
-
-TEST(SimulationBenchmarkCommandLine, ReturnsHelpWithoutOptions) {
+TEST(SimulationBenchmarkCommandLineWithoutLevel, ReturnsHelpWithoutOptions) {
     char const* argv[]{"native-simulation-benchmark", "--help"};
     auto const result{parse_command_line(2, argv)};
 

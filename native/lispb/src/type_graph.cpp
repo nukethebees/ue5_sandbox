@@ -149,17 +149,17 @@ auto forward_declaration_kind(TypeId const node, TypeGraph const& graph)
 auto uses_forward_declaration(ResolvedOccurrenceId const reference,
                               TypeGraph const& graph,
                               codegen::TypeReferenceKind const kind) -> bool {
-    auto const form{graph.occurrences().physical_form[graph.occurrences().index(reference)]};
+    auto const& occurrences{graph.occurrences()};
+    auto const row{occurrences.index(reference)};
+    auto const form{occurrences.physical_form[row]};
     return kind != codegen::TypeReferenceKind::complete_definition &&
-           graph.occurrences().names_semantic_type[graph.occurrences().index(reference)] &&
+           occurrences.names_semantic_type[row] &&
            ((kind == codegen::TypeReferenceKind::function_declaration &&
              form == codegen::PhysicalTypeForm::value) ||
             form == codegen::PhysicalTypeForm::object_pointer ||
             form == codegen::PhysicalTypeForm::lvalue_reference ||
             form == codegen::PhysicalTypeForm::rvalue_reference) &&
-           forward_declaration_kind(graph.occurrences().type[graph.occurrences().index(reference)],
-                                    graph)
-               .has_value();
+           forward_declaration_kind(occurrences.type[row], graph).has_value();
 }
 
 auto uses_cross_module_signature_forward_declaration(ResolvedOccurrenceId const reference,
@@ -296,180 +296,70 @@ class TypeGraphBuilder {
                 if (!names.insert(name).second) {
                     throw std::invalid_argument{"Duplicate declaration name: " + str(name)};
                 }
-                auto const definition{[&]() -> TypeDefinitionId {
-                    auto const value{source};
-                    switch (value.kind()) {
-                        case lispb::codegen::DeclarationKind::enumeration: {
-
-                            return lispb::schema::TypeDefinitionId{
-                                (static_cast<std::uint32_t>(
-                                     lispb::schema::TypeDefinitionKind::enumeration)
-                                 << 24) |
-                                0xffffffu};
-                        }
-                        case lispb::codegen::DeclarationKind::integer_scalar: {
-
-                            return lispb::schema::TypeDefinitionId{
-                                (static_cast<std::uint32_t>(
-                                     lispb::schema::TypeDefinitionKind::integer_scalar)
-                                 << 24) |
-                                0xffffffu};
-                        }
-                        case lispb::codegen::DeclarationKind::linear_quantized: {
-
-                            return lispb::schema::TypeDefinitionId{
-                                (static_cast<std::uint32_t>(
-                                     lispb::schema::TypeDefinitionKind::linear_quantized)
-                                 << 24) |
-                                0xffffffu};
-                        }
-                        case lispb::codegen::DeclarationKind::integer_varint: {
-
-                            return lispb::schema::TypeDefinitionId{
-                                (static_cast<std::uint32_t>(
-                                     lispb::schema::TypeDefinitionKind::integer_varint)
-                                 << 24) |
-                                0xffffffu};
-                        }
-                        case lispb::codegen::DeclarationKind::fixed_point: {
-
-                            return lispb::schema::TypeDefinitionId{
-                                (static_cast<std::uint32_t>(
-                                     lispb::schema::TypeDefinitionKind::fixed_point)
-                                 << 24) |
-                                0xffffffu};
-                        }
-                        case lispb::codegen::DeclarationKind::mini_float: {
-
-                            return lispb::schema::TypeDefinitionId{
-                                (static_cast<std::uint32_t>(
-                                     lispb::schema::TypeDefinitionKind::mini_float)
-                                 << 24) |
-                                0xffffffu};
-                        }
-                        case lispb::codegen::DeclarationKind::optional_sentinel: {
-
-                            return lispb::schema::TypeDefinitionId{
-                                (static_cast<std::uint32_t>(
-                                     lispb::schema::TypeDefinitionKind::optional_sentinel)
-                                 << 24) |
-                                0xffffffu};
-                        }
-                        case lispb::codegen::DeclarationKind::optional_presence_bit: {
-
-                            return lispb::schema::TypeDefinitionId{
-                                (static_cast<std::uint32_t>(
-                                     lispb::schema::TypeDefinitionKind::optional_presence_bit)
-                                 << 24) |
-                                0xffffffu};
-                        }
-
-                        case lispb::codegen::DeclarationKind::record: {
-
-                            return lispb::schema::TypeDefinitionId{
-                                (static_cast<std::uint32_t>(
-                                     lispb::schema::TypeDefinitionKind::record)
-                                 << 24) |
-                                0xffffffu};
-                        }
-                        case lispb::codegen::DeclarationKind::union_type: {
-
-                            return lispb::schema::TypeDefinitionId{
-                                (static_cast<std::uint32_t>(
-                                     lispb::schema::TypeDefinitionKind::union_type)
-                                 << 24) |
-                                0xffffffu};
-                        }
-
-                        case lispb::codegen::DeclarationKind::static_table: {
-
-                            return lispb::schema::TypeDefinitionId{
-                                (static_cast<std::uint32_t>(
-                                     lispb::schema::TypeDefinitionKind::static_table)
-                                 << 24) |
-                                0xffffffu};
-                        }
-                        case lispb::codegen::DeclarationKind::facade: {
-
-                            return lispb::schema::TypeDefinitionId{
-                                (static_cast<std::uint32_t>(
-                                     lispb::schema::TypeDefinitionKind::facade)
-                                 << 24) |
-                                0xffffffu};
-                        }
-                        case lispb::codegen::DeclarationKind::soa: {
-
-                            return lispb::schema::TypeDefinitionId{
-                                (static_cast<std::uint32_t>(lispb::schema::TypeDefinitionKind::soa)
-                                 << 24) |
-                                0xffffffu};
-                        }
+                auto const kind{[&]() -> TypeDefinitionKind {
+                    switch (source.kind()) {
+                        case codegen::DeclarationKind::enumeration:
+                            return TypeDefinitionKind::enumeration;
+                        case codegen::DeclarationKind::integer_scalar:
+                            return TypeDefinitionKind::integer_scalar;
+                        case codegen::DeclarationKind::linear_quantized:
+                            return TypeDefinitionKind::linear_quantized;
+                        case codegen::DeclarationKind::integer_varint:
+                            return TypeDefinitionKind::integer_varint;
+                        case codegen::DeclarationKind::fixed_point:
+                            return TypeDefinitionKind::fixed_point;
+                        case codegen::DeclarationKind::mini_float:
+                            return TypeDefinitionKind::mini_float;
+                        case codegen::DeclarationKind::optional_sentinel:
+                            return TypeDefinitionKind::optional_sentinel;
+                        case codegen::DeclarationKind::optional_presence_bit:
+                            return TypeDefinitionKind::optional_presence_bit;
+                        case codegen::DeclarationKind::record:
+                            return TypeDefinitionKind::record;
+                        case codegen::DeclarationKind::union_type:
+                            return TypeDefinitionKind::union_type;
+                        case codegen::DeclarationKind::static_table:
+                            return TypeDefinitionKind::static_table;
+                        case codegen::DeclarationKind::facade:
+                            return TypeDefinitionKind::facade;
+                        case codegen::DeclarationKind::soa:
+                            return TypeDefinitionKind::soa;
                         default:
                             std::unreachable();
                     }
                 }()};
-                std::optional<StringId> physical;
-                switch (source.kind()) {
-                    case codegen::DeclarationKind::record:
-                        if (!store_.records.cpp_projection[source]) {
-                            physical = StringId{};
-                        }
-                        break;
-                    case codegen::DeclarationKind::union_type:
-                        if (!store_.unions.cpp_projection[source]) {
-                            physical = StringId{};
-                        }
-                        break;
-                    case codegen::DeclarationKind::enumeration:
-                        if (!store_.enums.cpp_projection[source]) {
-                            physical = StringId{};
-                        }
-                        break;
-                    case codegen::DeclarationKind::integer_scalar:
-                        if (!store_.integer_scalars.cpp_projection[source]) {
-                            physical = StringId{};
-                        }
-                        break;
-                    case codegen::DeclarationKind::linear_quantized:
-                        if (!store_.linear_quantizeds.cpp_projection[source]) {
-                            physical = StringId{};
-                        }
-                        break;
-                    case codegen::DeclarationKind::fixed_point:
-                        if (!store_.fixed_points.cpp_projection[source]) {
-                            physical = StringId{};
-                        }
-                        break;
-                    case codegen::DeclarationKind::mini_float:
-                        if (!store_.mini_floats.cpp_projection[source]) {
-                            physical = StringId{};
-                        }
-                        break;
-                    case codegen::DeclarationKind::integer_varint:
-                        if (!store_.integer_varints.cpp_projection[source]) {
-                            physical = StringId{};
-                        }
-                        break;
-                    case codegen::DeclarationKind::optional_sentinel:
-                        if (!store_.optional_sentinels.cpp_projection[source]) {
-                            physical = StringId{};
-                        }
-                        break;
-                    case codegen::DeclarationKind::optional_presence_bit:
-                        if (!store_.optional_presence_bits.cpp_projection[source]) {
-                            physical = StringId{};
-                        }
-                        break;
-                    default:
-                        break;
-                }
-                if (auto const soa{((source).kind() == lispb::codegen::DeclarationKind::soa
-                                        ? std::optional{source}
-                                        : std::nullopt)}) {
-                    if (store_.soas.layout_only[*soa]) {
-                        physical = StringId{};
+                auto const definition{TypeDefinitionId{
+                    (static_cast<std::uint32_t>(kind) << TypeDefinitionId::kind_shift) |
+                    TypeDefinitionId::index_mask}};
+                auto const has_physical_name{[&] {
+                    switch (source.kind()) {
+                        case codegen::DeclarationKind::record:
+                            return store_.records.cpp_projection[source].has_value();
+                        case codegen::DeclarationKind::union_type:
+                            return store_.unions.cpp_projection[source].has_value();
+                        case codegen::DeclarationKind::enumeration:
+                            return store_.enums.cpp_projection[source].has_value();
+                        case codegen::DeclarationKind::integer_scalar:
+                            return store_.integer_scalars.cpp_projection[source].has_value();
+                        case codegen::DeclarationKind::linear_quantized:
+                            return store_.linear_quantizeds.cpp_projection[source].has_value();
+                        case codegen::DeclarationKind::fixed_point:
+                            return store_.fixed_points.cpp_projection[source].has_value();
+                        case codegen::DeclarationKind::mini_float:
+                            return store_.mini_floats.cpp_projection[source].has_value();
+                        case codegen::DeclarationKind::integer_varint:
+                            return store_.integer_varints.cpp_projection[source].has_value();
+                        case codegen::DeclarationKind::optional_sentinel:
+                            return store_.optional_sentinels.cpp_projection[source].has_value();
+                        case codegen::DeclarationKind::optional_presence_bit:
+                            return store_.optional_presence_bits.cpp_projection[source].has_value();
+                        case codegen::DeclarationKind::soa:
+                            return !store_.soas.layout_only[source];
+                        default:
+                            return true;
                     }
-                }
+                }()};
+                auto const physical{has_physical_name ? std::optional<StringId>{} : StringId{}};
                 declare(module_id,
                         source,
                         codegen::declaration_name(store_, source),
@@ -921,329 +811,285 @@ class TypeGraphBuilder {
     }
 
     auto resolve_normal_definition(codegen::ModuleHandle const module_id,
-                                   codegen::DeclarationHandle const declaration)
-        -> TypeDefinitionId {
+                                   codegen::DeclarationHandle const source) -> TypeDefinitionId {
         auto& definitions{graph_.definitions_};
-        return [&]() -> TypeDefinitionId {
-            auto const source{declaration};
-            switch (source.kind()) {
-                case lispb::codegen::DeclarationKind::enumeration: {
-                    auto& enums{definitions.enums};
-                    auto const& schemas{store_.enums};
+        auto const& occurrences{graph_.occurrences()};
+        auto const& integer_scalars{definitions.integer_scalars};
+        switch (source.kind()) {
+            case lispb::codegen::DeclarationKind::enumeration: {
+                auto& enums{definitions.enums};
+                auto const& schemas{store_.enums};
 
-                    auto const new_enums_3{enums.append()};
+                auto const result{enums.append()};
+                auto const row{enums.index(result)};
+                enums.domain[row] = graph_.enum_domains_.find(source);
+                enums.underlying_type[row] =
+                    schemas.underlying_type[source]
+                        .transform([&](auto id) { return resolve_ref(id, module_id); })
+                        .value_or(ResolvedOccurrenceId{});
+                enums.bit_width[row] = schemas.bit_width[source];
+                enums.signedness[row] = schemas.signedness[source];
+                enums.count[row] = schemas.count[source];
+                enums.enum_array[row] = schemas.enum_array[source];
+                return result;
+            }
+            case lispb::codegen::DeclarationKind::integer_scalar: {
+                auto const& schemas{store_.integer_scalars};
+                auto const& codes{store_.packed_named_codes};
 
-                    auto const row{enums.index(new_enums_3)};
-                    enums.domain[row] = graph_.enum_domains_.find(source);
-                    enums.underlying_type[row] =
-                        schemas.underlying_type[source]
-                            .transform([&](auto id) { return resolve_ref(id, module_id); })
-                            .value_or(ResolvedOccurrenceId{});
-                    enums.bit_width[row] = schemas.bit_width[source];
-                    enums.signedness[row] = schemas.signedness[source];
-                    enums.count[row] = schemas.count[source];
-                    enums.enum_array[row] = schemas.enum_array[source];
-                    return new_enums_3;
+                auto minimum{schemas.minimum_value[source]};
+                auto maximum{schemas.maximum_value[source]};
+                for (auto const code_id : store_.items(schemas.named_codes[source])) {
+                    auto const code{code_id};
+                    if (codegen::packed_integer_less(codes.value[code], minimum)) {
+                        minimum = codes.value[code];
+                    }
+                    if (codegen::packed_integer_less(maximum, codes.value[code])) {
+                        maximum = codes.value[code];
+                    }
                 }
-                case lispb::codegen::DeclarationKind::integer_scalar: {
-                    auto const& schemas{store_.integer_scalars};
-                    auto const& codes{store_.packed_named_codes};
+                auto& scalars{definitions.integer_scalars};
+                auto const result{scalars.append()};
+                auto const scalar_index{scalars.index(result)};
+                scalars.signedness[scalar_index] = schemas.signedness[source];
+                scalars.minimum_value[scalar_index] = schemas.minimum_value[source];
+                scalars.maximum_value[scalar_index] = schemas.maximum_value[source];
+                scalars.bit_width[scalar_index] =
+                    schemas.bit_width[source].value_or(*codegen::minimum_packed_integer_bits(
+                        minimum, maximum, schemas.signedness[source]));
+                scalars.bit_width_auto[scalar_index] = !schemas.bit_width[source];
+                scalars.named_codes[scalar_index] = schemas.named_codes[source];
+                scalars.relationship[scalar_index] =
+                    relationship(schemas.relationship[source], module_id, "Integer scalar");
+                if (schemas.cpp_projection[source] && schemas.cpp_projection[source]->storage) {
+                    scalars.cpp_representation[scalar_index] =
+                        resolve_ref(*schemas.cpp_projection[source]->storage, module_id);
+                }
+                return result;
+            }
+            case lispb::codegen::DeclarationKind::linear_quantized: {
+                auto& types{definitions.linear_quantized};
+                auto const& schemas{store_.linear_quantizeds};
 
-                    auto minimum{schemas.minimum_value[source]};
-                    auto maximum{schemas.maximum_value[source]};
-                    for (auto const code_id : store_.items(schemas.named_codes[source])) {
-                        auto const code{code_id};
-                        if (codegen::packed_integer_less(codes.value[code], minimum)) {
-                            minimum = codes.value[code];
+                auto const scalar{resolve_ref(schemas.source[source], module_id)};
+                if (!integer_domain(graph_, occurrences.type[occurrences.index(scalar)])) {
+                    throw std::invalid_argument{"Linear quantization '" +
+                                                str(schemas.name[source]) +
+                                                "' source must have a declared integer domain"};
+                }
+                auto const result{types.append()};
+                auto const row{types.index(result)};
+                types.source[row] = scalar;
+                types.bit_width[row] = schemas.bit_width[source];
+                types.reserved_codes[row] = schemas.reserved_codes[source];
+                types.clipping[row] = schemas.clipping[source];
+                return result;
+            }
+            case lispb::codegen::DeclarationKind::integer_varint: {
+                auto& types{definitions.integer_varints};
+                auto const& schemas{store_.integer_varints};
+
+                auto const scalar{resolve_ref(schemas.source[source], module_id)};
+                if (!integer_domain(graph_, occurrences.type[occurrences.index(scalar)])) {
+                    throw std::invalid_argument{"Integer varint '" + str(schemas.name[source]) +
+                                                "' source must have a declared integer domain"};
+                }
+                auto const result{types.append()};
+                auto const row{types.index(result)};
+                types.source[row] = scalar;
+                types.encoding[row] = schemas.encoding[source];
+                return result;
+            }
+            case lispb::codegen::DeclarationKind::fixed_point: {
+                auto& points{definitions.fixed_points};
+                auto const& schemas{store_.fixed_points};
+
+                auto const result{points.append()};
+                auto const row{points.index(result)};
+                points.signedness[row] = schemas.signedness[source];
+                points.total_bits[row] = schemas.total_bits[source];
+                points.fractional_bits[row] = schemas.fractional_bits[source];
+                points.rounding[row] = schemas.rounding[source];
+                points.minimum_raw_value[row] =
+                    schemas.minimum_value[source].transform([&](auto id) {
+                        return *codegen::parse_fixed_point_value(store_.strings().view(id),
+                                                                 schemas.fractional_bits[source]);
+                    });
+                points.maximum_raw_value[row] =
+                    schemas.maximum_value[source].transform([&](auto id) {
+                        return *codegen::parse_fixed_point_value(store_.strings().view(id),
+                                                                 schemas.fractional_bits[source]);
+                    });
+                return result;
+            }
+            case lispb::codegen::DeclarationKind::mini_float: {
+                auto& floats{definitions.mini_floats};
+                auto const& schemas{store_.mini_floats};
+
+                auto const result{floats.append()};
+                auto const row{floats.index(result)};
+                floats.sign_bits[row] = schemas.sign_bits[source];
+                floats.exponent_bits[row] = schemas.exponent_bits[source];
+                floats.significand_bits[row] = schemas.significand_bits[source];
+                floats.exponent_bias[row] = schemas.exponent_bias[source];
+                return result;
+            }
+            case lispb::codegen::DeclarationKind::optional_sentinel: {
+                auto& types{definitions.optional_sentinels};
+                auto const& schemas{store_.optional_sentinels};
+
+                auto const resolved{resolve_ref(schemas.source[source], module_id)};
+                auto const scalar{
+                    integer_domain(graph_, occurrences.type[occurrences.index(resolved)])};
+                if (!scalar) {
+                    throw std::invalid_argument{"Optional sentinel representation '" +
+                                                str(schemas.name[source]) +
+                                                "' source must have a declared integer domain"};
+                }
+                auto const codes{
+                    store_.items(integer_scalars.named_codes[integer_scalars.index(*scalar)])};
+                auto const sentinel{std::ranges::find_if(codes, [&](auto id) {
+                    return store_.packed_named_codes.name[id] == schemas.sentinel[source];
+                })};
+                if (sentinel == codes.end() || !store_.packed_named_codes.sentinel[*sentinel]) {
+                    throw std::invalid_argument{"Optional sentinel representation '" +
+                                                str(schemas.name[source]) +
+                                                "' must name a source sentinel code"};
+                }
+                auto const result{types.append()};
+                auto const row{types.index(result)};
+                types.source[row] = resolved;
+                types.sentinel_name[row] = schemas.sentinel[source];
+                types.sentinel_value[row] = store_.packed_named_codes.value[*sentinel];
+                types.bit_width[row] = integer_scalars.bit_width[integer_scalars.index(*scalar)];
+                return result;
+            }
+            case lispb::codegen::DeclarationKind::optional_presence_bit: {
+                auto& types{definitions.optional_presence_bits};
+                auto const& schemas{store_.optional_presence_bits};
+
+                auto const resolved{resolve_ref(schemas.source[source], module_id)};
+                auto const scalar{
+                    integer_domain(graph_, occurrences.type[occurrences.index(resolved)])};
+                if (!scalar) {
+                    throw std::invalid_argument{"Optional presence-bit representation '" +
+                                                str(schemas.name[source]) +
+                                                "' source must have a declared integer domain"};
+                }
+                auto const result{types.append()};
+                auto const row{types.index(result)};
+                types.source[row] = resolved;
+                auto const payload_bits{integer_scalars.bit_width[integer_scalars.index(*scalar)]};
+                types.payload_bits[row] = payload_bits;
+                types.encoded_bits[row] = payload_bits + 1;
+                return result;
+            }
+
+            case codegen::DeclarationKind::record:
+            case codegen::DeclarationKind::union_type: {
+                auto const record{source.kind() == codegen::DeclarationKind::record};
+                auto const children{record ? store_.records.members[source]
+                                           : store_.unions.alternatives[source]};
+                std::vector<ChildOccurrenceId> resolved_children;
+                auto& values{definitions.children};
+                auto const& authored{store_.child_occurrences};
+                for (auto const child : store_.items(children)) {
+                    auto const id{values.append()};
+                    auto const row{values.index(id)};
+                    values.source[row] = child;
+                    values.name[row] = authored.name[child];
+                    values.reserved[row] =
+                        authored.kind[child] == codegen::ChildOccurrenceKind::reserved;
+                    if (!values.reserved[row]) {
+                        values.semantic_type[row] = resolve_ref(authored.type[child], module_id);
+                        if (!values.name[row].value) {
+                            values.name[row] = graph_.name(
+                                occurrences.type[occurrences.index(values.semantic_type[row])]);
                         }
-                        if (codegen::packed_integer_less(maximum, codes.value[code])) {
-                            maximum = codes.value[code];
-                        }
                     }
-                    auto& scalars{definitions.integer_scalars};
-                    auto const result{scalars.append()};
-                    auto const scalar_index{scalars.index(result)};
-                    scalars.signedness[scalar_index] = schemas.signedness[source];
-                    scalars.minimum_value[scalar_index] = schemas.minimum_value[source];
-                    scalars.maximum_value[scalar_index] = schemas.maximum_value[source];
-                    scalars.bit_width[scalar_index] =
-                        schemas.bit_width[source].value_or(*codegen::minimum_packed_integer_bits(
-                            minimum, maximum, schemas.signedness[source]));
-                    scalars.bit_width_auto[scalar_index] = !schemas.bit_width[source];
-                    scalars.named_codes[scalar_index] = schemas.named_codes[source];
-                    scalars.relationship[scalar_index] =
-                        relationship(schemas.relationship[source], module_id, "Integer scalar");
-                    if (schemas.cpp_projection[source] && schemas.cpp_projection[source]->storage) {
-                        scalars.cpp_representation[scalar_index] =
-                            resolve_ref(*schemas.cpp_projection[source]->storage, module_id);
-                    }
-                    return result;
+                    values.count[row] = authored.count[child];
+                    values.relationship[row] =
+                        relationship(authored.relationship[child], module_id, "Child occurrence");
+                    values.initializer[row] = authored.initializer[child];
+                    values.bits[row] = authored.bits[child];
+                    values.case_label[row] = authored.case_label[child];
+                    values.tag[row] = authored.tag[child];
+                    values.default_value[row] = authored.default_value[child];
+                    resolved_children.push_back(id);
                 }
-                case lispb::codegen::DeclarationKind::linear_quantized: {
-
-                    auto const scalar{
-                        resolve_ref(store_.linear_quantizeds.source[source], module_id)};
-                    if (!integer_domain(
-                            graph_,
-                            graph_.occurrences().type[graph_.occurrences().index(scalar)])) {
-                        throw std::invalid_argument{"Linear quantization '" +
-                                                    str(store_.linear_quantizeds.name[source]) +
-                                                    "' source must have a declared integer domain"};
+                auto set_layout = [&](auto& types, auto const& schemas, TypeDefinitionId const id) {
+                    auto const row{types.index(id)};
+                    types.layout[row] = schemas.layout[source];
+                    types.bits[row] = schemas.bits[source];
+                    auto const projection{schemas.cpp_projection[source]};
+                    if (projection && projection->storage) {
+                        types.storage_type[row] = resolve_ref(*projection->storage, module_id);
                     }
-                    auto const new_linear_quantized_4{definitions.linear_quantized.append()};
-                    definitions.linear_quantized
-                        .source[definitions.linear_quantized.index(new_linear_quantized_4)] =
-                        scalar;
-                    definitions.linear_quantized
-                        .bit_width[definitions.linear_quantized.index(new_linear_quantized_4)] =
-                        store_.linear_quantizeds.bit_width[source];
-                    definitions.linear_quantized.reserved_codes[definitions.linear_quantized.index(
-                        new_linear_quantized_4)] = store_.linear_quantizeds.reserved_codes[source];
-                    definitions.linear_quantized
-                        .clipping[definitions.linear_quantized.index(new_linear_quantized_4)] =
-                        store_.linear_quantizeds.clipping[source];
-                    return new_linear_quantized_4;
-                }
-                case lispb::codegen::DeclarationKind::integer_varint: {
-
-                    auto const scalar{
-                        resolve_ref(store_.integer_varints.source[source], module_id)};
-                    if (!integer_domain(
-                            graph_,
-                            graph_.occurrences().type[graph_.occurrences().index(scalar)])) {
-                        throw std::invalid_argument{"Integer varint '" +
-                                                    str(store_.integer_varints.name[source]) +
-                                                    "' source must have a declared integer domain"};
-                    }
-                    auto const new_integer_varints_5{definitions.integer_varints.append()};
-                    definitions.integer_varints
-                        .source[definitions.integer_varints.index(new_integer_varints_5)] = scalar;
-                    definitions.integer_varints
-                        .encoding[definitions.integer_varints.index(new_integer_varints_5)] =
-                        store_.integer_varints.encoding[source];
-                    return new_integer_varints_5;
-                }
-                case lispb::codegen::DeclarationKind::fixed_point: {
-                    auto& points{definitions.fixed_points};
-                    auto const& schemas{store_.fixed_points};
-
-                    auto const new_fixed_points_6{points.append()};
-
-                    auto const row{points.index(new_fixed_points_6)};
-                    points.signedness[row] = schemas.signedness[source];
-                    points.total_bits[row] = schemas.total_bits[source];
-                    points.fractional_bits[row] = schemas.fractional_bits[source];
-                    points.rounding[row] = schemas.rounding[source];
-                    points.minimum_raw_value[row] =
-                        schemas.minimum_value[source].transform([&](auto id) {
-                            return *codegen::parse_fixed_point_value(
-                                store_.strings().view(id), schemas.fractional_bits[source]);
-                        });
-                    points.maximum_raw_value[row] =
-                        schemas.maximum_value[source].transform([&](auto id) {
-                            return *codegen::parse_fixed_point_value(
-                                store_.strings().view(id), schemas.fractional_bits[source]);
-                        });
-                    return new_fixed_points_6;
-                }
-                case lispb::codegen::DeclarationKind::mini_float: {
-                    auto& floats{definitions.mini_floats};
-                    auto const& schemas{store_.mini_floats};
-
-                    auto const new_mini_floats_7{floats.append()};
-
-                    auto const row{floats.index(new_mini_floats_7)};
-                    floats.sign_bits[row] = schemas.sign_bits[source];
-                    floats.exponent_bits[row] = schemas.exponent_bits[source];
-                    floats.significand_bits[row] = schemas.significand_bits[source];
-                    floats.exponent_bias[row] = schemas.exponent_bias[source];
-                    return new_mini_floats_7;
-                }
-                case lispb::codegen::DeclarationKind::optional_sentinel: {
-
-                    auto const resolved{
-                        resolve_ref(store_.optional_sentinels.source[source], module_id)};
-                    auto const scalar{integer_domain(
-                        graph_, graph_.occurrences().type[graph_.occurrences().index(resolved)])};
-                    if (!scalar) {
-                        throw std::invalid_argument{"Optional sentinel representation '" +
-                                                    str(store_.optional_sentinels.name[source]) +
-                                                    "' source must have a declared integer domain"};
-                    }
-                    auto const codes{store_.items(
-                        graph_.definitions()
-                            .integer_scalars
-                            .named_codes[graph_.definitions().integer_scalars.index(*scalar)])};
-                    auto const sentinel{std::ranges::find_if(codes, [&](auto id) {
-                        return store_.packed_named_codes.name[id] ==
-                               store_.optional_sentinels.sentinel[source];
-                    })};
-                    if (sentinel == codes.end() || !store_.packed_named_codes.sentinel[*sentinel]) {
-                        throw std::invalid_argument{"Optional sentinel representation '" +
-                                                    str(store_.optional_sentinels.name[source]) +
-                                                    "' must name a source sentinel code"};
-                    }
-                    auto const new_optional_sentinels_8{definitions.optional_sentinels.append()};
-                    definitions.optional_sentinels
-                        .source[definitions.optional_sentinels.index(new_optional_sentinels_8)] =
-                        resolved;
-                    definitions.optional_sentinels
-                        .sentinel_name[definitions.optional_sentinels.index(
-                            new_optional_sentinels_8)] = store_.optional_sentinels.sentinel[source];
-                    definitions.optional_sentinels
-                        .sentinel_value[definitions.optional_sentinels.index(
-                            new_optional_sentinels_8)] = store_.packed_named_codes.value[*sentinel];
-                    definitions.optional_sentinels
-                        .bit_width[definitions.optional_sentinels.index(new_optional_sentinels_8)] =
-                        graph_.definitions()
-                            .integer_scalars
-                            .bit_width[graph_.definitions().integer_scalars.index(*scalar)];
-                    return new_optional_sentinels_8;
-                }
-                case lispb::codegen::DeclarationKind::optional_presence_bit: {
-
-                    auto const resolved{
-                        resolve_ref(store_.optional_presence_bits.source[source], module_id)};
-                    auto const scalar{integer_domain(
-                        graph_, graph_.occurrences().type[graph_.occurrences().index(resolved)])};
-                    if (!scalar) {
-                        throw std::invalid_argument{
-                            "Optional presence-bit representation '" +
-                            str(store_.optional_presence_bits.name[source]) +
-                            "' source must have a declared integer domain"};
-                    }
-                    auto const new_optional_presence_bits_9{
-                        definitions.optional_presence_bits.append()};
-                    definitions.optional_presence_bits
-                        .source[definitions.optional_presence_bits.index(
-                            new_optional_presence_bits_9)] = resolved;
-                    definitions.optional_presence_bits
-                        .payload_bits[definitions.optional_presence_bits.index(
-                            new_optional_presence_bits_9)] =
-                        graph_.definitions()
-                            .integer_scalars
-                            .bit_width[graph_.definitions().integer_scalars.index(*scalar)];
-                    definitions.optional_presence_bits
-                        .encoded_bits[definitions.optional_presence_bits.index(
-                            new_optional_presence_bits_9)] =
-                        graph_.definitions()
-                            .integer_scalars
-                            .bit_width[graph_.definitions().integer_scalars.index(*scalar)] +
-                        1;
-                    return new_optional_presence_bits_9;
-                }
-
-                case codegen::DeclarationKind::record:
-                case codegen::DeclarationKind::union_type: {
-                    auto const record{source.kind() == codegen::DeclarationKind::record};
-                    auto const children{record ? store_.records.members[source]
-                                               : store_.unions.alternatives[source]};
-                    std::vector<ChildOccurrenceId> resolved_children;
-                    auto& values{definitions.children};
-                    auto const& authored{store_.child_occurrences};
-                    for (auto const child : store_.items(children)) {
-                        auto const id{values.append()};
-                        auto const row{values.index(id)};
-                        values.source[row] = child;
-                        values.name[row] = authored.name[child];
-                        values.reserved[row] =
-                            authored.kind[child] == codegen::ChildOccurrenceKind::reserved;
-                        if (!values.reserved[row]) {
-                            values.semantic_type[row] =
-                                resolve_ref(authored.type[child], module_id);
-                            if (!values.name[row].value) {
-                                values.name[row] = graph_.name(
-                                    graph_.occurrences().type[graph_.occurrences().index(
-                                        values.semantic_type[row])]);
-                            }
-                        }
-                        values.count[row] = authored.count[child];
-                        values.relationship[row] = relationship(
-                            authored.relationship[child], module_id, "Child occurrence");
-                        values.initializer[row] = authored.initializer[child];
-                        values.bits[row] = authored.bits[child];
-                        values.case_label[row] = authored.case_label[child];
-                        values.tag[row] = authored.tag[child];
-                        values.default_value[row] = authored.default_value[child];
-                        resolved_children.push_back(id);
-                    }
-                    auto set_layout = [&](auto& types,
-                                          auto const& schemas,
-                                          TypeDefinitionId const id) {
-                        auto const row{types.index(id)};
-                        types.layout[row] = schemas.layout[source];
-                        types.bits[row] = schemas.bits[source];
-                        auto const projection{schemas.cpp_projection[source]};
-                        if (projection && projection->storage) {
-                            types.storage_type[row] = resolve_ref(*projection->storage, module_id);
-                        }
-                    };
-                    if (record) {
-                        auto const id{definitions.records.append()};
-                        definitions.records.set_members(id, resolved_children);
-                        set_layout(definitions.records, store_.records, id);
-                        auto const row{definitions.records.index(id)};
-                        definitions.records.invalid_raw_value[row] =
-                            store_.records.invalid_value[source];
-                        definitions.records.bit_order[row] =
-                            store_.records.bit_order[source].value_or(
-                                codegen::PackedBitOrder::least_significant_first);
-                        definitions.records.byte_order[row] = store_.records.byte_order[source];
-                        return id;
-                    }
-                    auto const id{definitions.unions.append()};
-                    definitions.unions.set_alternatives(id, resolved_children);
-                    set_layout(definitions.unions, store_.unions, id);
+                };
+                if (record) {
+                    auto const id{definitions.records.append()};
+                    definitions.records.set_members(id, resolved_children);
+                    set_layout(definitions.records, store_.records, id);
+                    auto const row{definitions.records.index(id)};
+                    definitions.records.invalid_raw_value[row] =
+                        store_.records.invalid_value[source];
+                    definitions.records.bit_order[row] = store_.records.bit_order[source].value_or(
+                        codegen::PackedBitOrder::least_significant_first);
+                    definitions.records.byte_order[row] = store_.records.byte_order[source];
                     return id;
                 }
-                case lispb::codegen::DeclarationKind::soa: {
-                    auto& column_definitions{definitions.soa_columns};
-                    auto const& members{store_.soa_members};
-                    auto& soas{definitions.soas};
-
-                    std::vector<SoaColumnId> columns;
-                    for (auto const member_id : store_.items(store_.soas.members[source])) {
-                        auto const member{member_id};
-                        auto const resolved{resolve_ref(members.type[member], module_id)};
-                        auto const new_soa_columns_19{column_definitions.append()};
-                        auto const row{column_definitions.index(new_soa_columns_19)};
-                        column_definitions.source[row] = member_id;
-                        column_definitions.name[row] = members.name[member];
-                        column_definitions.semantic_type[row] = resolved;
-                        column_definitions.kind[row] = members.kind[member];
-                        column_definitions.relationship[row] =
-                            relationship(members.relationship[member],
-                                         module_id,
-                                         "SOA '" + str(store_.soas.name[source]) + "' member '" +
-                                             str(members.name[member]) + "'");
-                        columns.push_back(new_soa_columns_19);
-                    }
-                    auto const new_soas_20{soas.append()};
-                    auto const row{soas.index(new_soas_20)};
-                    soas.set_columns(new_soas_20, columns);
-                    soas.equivalent_type[row] =
-                        store_.soas.equivalent_type[source]
-                            .transform([&](auto id) { return resolve_ref(id, module_id); })
-                            .value_or(ResolvedOccurrenceId{});
-                    soas.layout_only[row] = store_.soas.layout_only[source];
-                    soas.equivalent_constructor[row] = store_.soas.equivalent_constructor[source];
-                    return new_soas_20;
-                }
-                case lispb::codegen::DeclarationKind::static_table: {
-                    auto const definition{definitions.static_tables.append()};
-                    definitions.static_tables.source[definitions.static_tables.index(definition)] =
-                        source;
-                    return definition;
-                }
-                case lispb::codegen::DeclarationKind::facade: {
-                    auto const definition{definitions.facades.append()};
-                    definitions.facades.source[definitions.facades.index(definition)] = source;
-                    return definition;
-                }
-                default:
-                    std::unreachable();
+                auto const id{definitions.unions.append()};
+                definitions.unions.set_alternatives(id, resolved_children);
+                set_layout(definitions.unions, store_.unions, id);
+                return id;
             }
-        }();
+            case lispb::codegen::DeclarationKind::soa: {
+                auto& column_definitions{definitions.soa_columns};
+                auto const& members{store_.soa_members};
+                auto& soas{definitions.soas};
+
+                std::vector<SoaColumnId> columns;
+                for (auto const member_id : store_.items(store_.soas.members[source])) {
+                    auto const member{member_id};
+                    auto const resolved{resolve_ref(members.type[member], module_id)};
+                    auto const column{column_definitions.append()};
+                    auto const row{column_definitions.index(column)};
+                    column_definitions.source[row] = member_id;
+                    column_definitions.name[row] = members.name[member];
+                    column_definitions.semantic_type[row] = resolved;
+                    column_definitions.kind[row] = members.kind[member];
+                    column_definitions.relationship[row] =
+                        relationship(members.relationship[member],
+                                     module_id,
+                                     "SOA '" + str(store_.soas.name[source]) + "' member '" +
+                                         str(members.name[member]) + "'");
+                    columns.push_back(column);
+                }
+                auto const result{soas.append()};
+                auto const row{soas.index(result)};
+                soas.set_columns(result, columns);
+                soas.equivalent_type[row] =
+                    store_.soas.equivalent_type[source]
+                        .transform([&](auto id) { return resolve_ref(id, module_id); })
+                        .value_or(ResolvedOccurrenceId{});
+                soas.layout_only[row] = store_.soas.layout_only[source];
+                soas.equivalent_constructor[row] = store_.soas.equivalent_constructor[source];
+                return result;
+            }
+            case lispb::codegen::DeclarationKind::static_table: {
+                auto const definition{definitions.static_tables.append()};
+                definitions.static_tables.source[definitions.static_tables.index(definition)] =
+                    source;
+                return definition;
+            }
+            case lispb::codegen::DeclarationKind::facade: {
+                auto const definition{definitions.facades.append()};
+                definitions.facades.source[definitions.facades.index(definition)] = source;
+                return definition;
+            }
+            default:
+                std::unreachable();
+        }
     }
 
     void resolve_definitions(bool const primary_pass) {

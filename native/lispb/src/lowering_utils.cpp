@@ -9,6 +9,7 @@
 #include <codegen/ast/indices.h>
 #include <codegen/ast/node_id.h>
 #include <codegen/ast/return_syntax.h>
+#include <codegen/schema/child_occurrences.h>
 #include <codegen/schema/declarations.h>
 #include <codegen/schema/function_schemas.h>
 #include <codegen/schema/module_settings_store.h>
@@ -59,16 +60,7 @@ auto join(LoweringContext const& context, SchemaRange<StringId> values, std::str
     return result;
 }
 auto join_lines(LoweringContext const& context, SchemaRange<StringId> values) -> std::string {
-    std::string result;
-    bool first{true};
-    for (auto const value : context.declarations.items(values)) {
-        if (!first) {
-            result += '\n';
-        }
-        result += context.declarations.strings().view(value);
-        first = false;
-    }
-    return result;
+    return join(context, values, "\n");
 }
 
 auto source_include(LoweringContext const& context, ModuleSettingsId settings) -> std::string {
@@ -177,55 +169,64 @@ auto lower_schema_function(LoweringContext& context,
                            std::optional<std::string_view> body) -> FunctionId {
     auto& ir{context.ir};
     auto const& decls{context.declarations};
-    auto const row{decls.functions.index(schema)};
+    auto const& functions{decls.functions};
+    auto const& parameter_schemas{decls.parameters};
+    auto const row{functions.index(schema)};
     std::vector<FunctionParameterId> parameters;
-    for (auto const id : decls.items(decls.functions.parameters[schema])) {
-        auto const parameter{id};
-        auto resolved{context.resolve(decls.parameters.type[parameter])};
-        if (decls.parameters.default_value[parameter]) {
-            parameters.push_back(ir.parameter(resolved,
-                                              decls.parameters.name[parameter],
-                                              *decls.parameters.default_value[parameter]));
-        } else {
-            parameters.push_back(ir.parameter(resolved, decls.parameters.name[parameter]));
-        }
+    for (auto const parameter : decls.items(functions.parameters[schema])) {
+        parameters.push_back(ir.parameter(context.resolve(parameter_schemas.type[parameter]),
+                                          parameter_schemas.name[parameter],
+                                          parameter_schemas.default_value[parameter]));
     }
     std::vector<TypeDependencyId> dependencies;
-    for (auto const key : decls.items(decls.functions.dependencies[schema])) {
+    for (auto const key : decls.items(functions.dependencies[schema])) {
         append_type_dependencies(dependencies, context.text(key), context.types);
     }
-    auto const trailing{decls.functions.trailing_return_type[row]};
-    auto const return_type{context.resolve(trailing.value_or(decls.functions.return_type[row]))};
-    auto const created_function{ir.function(decls.functions.name[row], return_type)};
+    auto const trailing{functions.trailing_return_type[row]};
+    auto const return_type{context.resolve(trailing.value_or(functions.return_type[row]))};
+    auto const created_function{ir.function(functions.name[row], return_type)};
     ir.set_function_parameters(created_function, std::move(parameters));
     ir.set_function_body(
         created_function,
         {body ? ir.raw(*body, dependencies)
-              : ir.raw_lines(decls.items(decls.functions.body_lines[schema]), dependencies)});
+              : ir.raw_lines(decls.items(functions.body_lines[schema]), dependencies)});
     if (trailing) {
         ir.set_function_return_type(created_function, return_type, ReturnSyntax::trailing);
     }
     ir.set_function_receiver(created_function,
-                             decls.functions.is_static[row]  ? FunctionReceiver::static_
-                             : decls.functions.is_const[row] ? FunctionReceiver::const_
-                                                             : FunctionReceiver::unqualified);
-    if (decls.functions.is_noexcept[row]) {
+                             functions.is_static[row]  ? FunctionReceiver::static_
+                             : functions.is_const[row] ? FunctionReceiver::const_
+                                                       : FunctionReceiver::unqualified);
+    if (functions.is_noexcept[row]) {
         ir.set_function_noexcept(created_function);
     }
-    ir.function_flags(created_function).set_is_constexpr(decls.functions.is_constexpr[schema]);
-    ir.function_flags(created_function).set_is_inline(decls.functions.is_inline[schema]);
-    ir.function_flags(created_function).set_is_nodiscard(decls.functions.is_nodiscard[schema]);
-    ir.function_flags(created_function)
-        .set_define_in_header(
-            !decls.functions.definition_in_source[row] &&
-            (decls.functions.is_inline[row] || !decls.functions.body_lines[row].empty()));
-    if (auto const parameters{decls.functions.template_parameters[row]}) {
+    auto& flags{ir.function_flags(created_function)};
+    flags.set_is_constexpr(functions.is_constexpr[schema]);
+    flags.set_is_inline(functions.is_inline[schema]);
+    flags.set_is_nodiscard(functions.is_nodiscard[schema]);
+    flags.set_define_in_header(!functions.definition_in_source[row] &&
+                               (functions.is_inline[row] || !functions.body_lines[row].empty()));
+    if (auto const parameters{functions.template_parameters[row]}) {
         ir.set_function_template(created_function, ir.raw_template_declaration(*parameters));
     }
-    if (auto const constraint{decls.functions.requires_clause[row]}) {
+    if (auto const constraint{functions.requires_clause[row]}) {
         ir.set_function_requires_clause(created_function, ir.raw_expr(*constraint));
     }
     return created_function;
+}
+
+auto lower_member_type(LoweringContext& context, ChildOccurrenceId member) -> CppTypeId {
+    auto& ir{context.ir};
+    auto const& members{context.declarations.child_occurrences};
+    auto const row{members.index(member)};
+    auto const element{context.resolve(members.type[row])};
+    auto const count{members.count[row]};
+    if (!count) {
+        return element;
+    }
+    return ir.types.template_type(
+        ir.types.named("std::array", {ir.types.dependency("std::array", "array")}),
+        {element, ir.types.intern(std::to_string(*count))});
 }
 
 } // namespace lispb::codegen::detail

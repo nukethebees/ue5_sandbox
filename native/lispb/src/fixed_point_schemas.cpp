@@ -1,5 +1,7 @@
 #include <codegen/schema/fixed_point_schemas.h>
 
+#include "schema_columns.h"
+
 #include <cassert>
 
 namespace lispb::codegen {
@@ -24,28 +26,26 @@ auto FixedPointSchemas::append() -> DeclarationHandle {
                              (index + 1)};
 }
 auto FixedPointSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
-    auto const source_index{index(id)};
-    auto const result{append()};
-    auto const destination{index(result)};
-    cpp_projection[destination] = cpp_projection[source_index];
-    name[destination] = name[source_index];
-    signedness[destination] = signedness[source_index];
-    total_bits[destination] = total_bits[source_index];
-    fractional_bits[destination] = fractional_bits[source_index];
-    rounding[destination] = rounding[source_index];
-    minimum_value[destination] = minimum_value[source_index];
-    maximum_value[destination] = maximum_value[source_index];
-    return result;
+    return detail::clone_schema_row(*this,
+                                    id,
+                                    cpp_projection,
+                                    name,
+                                    signedness,
+                                    total_bits,
+                                    fractional_bits,
+                                    rounding,
+                                    minimum_value,
+                                    maximum_value);
 }
 void FixedPointSchemas::clear() {
-    cpp_projection.clear();
-    name.clear();
-    signedness.clear();
-    total_bits.clear();
-    fractional_bits.clear();
-    rounding.clear();
-    minimum_value.clear();
-    maximum_value.clear();
+    detail::clear_schema_columns(cpp_projection,
+                                 name,
+                                 signedness,
+                                 total_bits,
+                                 fractional_bits,
+                                 rounding,
+                                 minimum_value,
+                                 maximum_value);
 }
 
 }
