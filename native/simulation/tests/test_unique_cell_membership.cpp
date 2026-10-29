@@ -9,23 +9,12 @@
 #include <array>
 
 namespace ioj::sim::tests {
-class UniqueCellMembership : public ::testing::Test {
+class UniqueCellMembership
+    : public ::testing::Test
+    , protected CollisionQueryFixture {
   protected:
-    UniqueCellMembership() {
-        for (auto const type : EnumTraits<EntityType>::values) {
-            bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
-        }
-        queries.initialise({{8, 8, 8}, {{100.f, 100.f, 100.f}}}, bounds);
-    }
+    UniqueCellMembership() { initialise_queries(); }
 
-    void rebuild() {
-        owners.publish();
-        owners.refresh(queries);
-    }
-
-    CollisionAgentStorage owners;
-    SpatialQueryManager queries{owners.entity_tables};
-    collision::EntityAABBs bounds;
     alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024> backing{};
     FrameMemoryResource memory{backing};
     FrameScratchScope scope{memory};

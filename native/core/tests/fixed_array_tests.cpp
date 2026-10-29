@@ -1,5 +1,6 @@
 #include <ioj/fixed_array.h>
 #include <ioj/fixed_storage.h>
+#include <ioj/testing/move_only_value.h>
 
 #include <gtest/gtest.h>
 
@@ -34,26 +35,7 @@ struct LifetimeTrackedValue {
     inline static std::int32_t live_count{};
 };
 
-struct MoveOnlyValue {
-    explicit MoveOnlyValue(std::int32_t const initial_value)
-        : value{initial_value} {}
-
-    MoveOnlyValue(MoveOnlyValue const&) = delete;
-    auto operator=(MoveOnlyValue const&) -> MoveOnlyValue& = delete;
-
-    MoveOnlyValue(MoveOnlyValue&& other) noexcept
-        : value{other.value} {
-        other.value = -1;
-    }
-
-    auto operator=(MoveOnlyValue&& other) noexcept -> MoveOnlyValue& {
-        value = other.value;
-        other.value = -1;
-        return *this;
-    }
-
-    std::int32_t value{};
-};
+using ioj::testing::MoveOnlyValue;
 
 struct ConstructionCounts {
     std::int32_t live{};

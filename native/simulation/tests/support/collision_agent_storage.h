@@ -311,6 +311,24 @@ struct CollisionAgentStorage {
     Team player_team{};
 };
 
+struct CollisionQueryFixture {
+    void initialise_queries() {
+        for (auto const type : EnumTraits<EntityType>::values) {
+            bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
+        }
+        queries.initialise({{8, 8, 8}, {{100.f, 100.f, 100.f}}}, bounds);
+    }
+
+    void rebuild() {
+        owners.publish();
+        owners.refresh(queries);
+    }
+
+    CollisionAgentStorage owners;
+    SpatialQueryManager queries{owners.entity_tables};
+    collision::EntityAABBs bounds;
+};
+
 inline auto observe_entity(CollisionAgentStorage const& owners, EntityId const id)
     -> std::optional<EntityObservation> {
     if (id.entity_type() == EntityType::PlayerShip) {

@@ -12,19 +12,11 @@
 #include <vector>
 
 namespace ioj::sim::tests {
-class BulkRangeQueries : public ::testing::Test {
+class BulkRangeQueries
+    : public ::testing::Test
+    , protected CollisionQueryFixture {
   protected:
-    BulkRangeQueries() {
-        for (auto const type : EnumTraits<EntityType>::values) {
-            bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
-        }
-        queries.initialise({{8, 8, 8}, {{100.f, 100.f, 100.f}}}, bounds);
-    }
-
-    void rebuild() {
-        owners.publish();
-        owners.refresh(queries);
-    }
+    BulkRangeQueries() { initialise_queries(); }
 
     void request(Vector3f const origin, Team const team) {
         origins.add(origin);
@@ -84,9 +76,6 @@ class BulkRangeQueries : public ::testing::Test {
         EXPECT_EQ(offset, output.matches.num());
     }
 
-    CollisionAgentStorage owners;
-    SpatialQueryManager queries{owners.entity_tables};
-    collision::EntityAABBs bounds;
     alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 1024 * 1024> backing{};
     FrameMemoryResource memory{backing};
     FrameScratchScope scope{memory};
