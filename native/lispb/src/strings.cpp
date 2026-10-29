@@ -9,6 +9,9 @@
 
 namespace lispb {
 
+Strings::Strings()
+    : slices_{{}} {}
+
 auto Strings::intern(std::string_view const text) -> StringId {
     return intern(text, temporary_);
 }

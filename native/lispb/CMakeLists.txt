@@ -328,12 +328,14 @@ target_sources(codegen-generated-tests PRIVATE
   tests/enum_formatter_tests.cpp
 )
 set_target_properties(codegen-generated-tests PROPERTIES UNITY_BUILD OFF)
-target_link_libraries(codegen-generated-tests PRIVATE
-  native-test-support
-  codegen-generated-compile-fixture
-  sandbox-s7
-  GTest::gtest_main
-  sandbox::native_defaults
+target_link_libraries(codegen-generated-tests
+  PRIVATE
+    native-test-support
+    codegen-generated-compile-fixture
+    sandbox-s7
+    GTest::gtest_main
+    sandbox::native_defaults
+    ioj::test_pch
 )
 ioj_enable_warnings(codegen-generated-tests CODEGEN)
 

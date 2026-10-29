@@ -61,6 +61,7 @@ target_sources(native-core
     src/frame_memory_resource.cpp
     src/projectile_intercept.cpp
     src/rotation.cpp
+    src/structural_diff.cpp
     src/test_timeline.cpp
 )
 target_include_directories(native-core
@@ -113,7 +114,7 @@ target_include_directories(native-test-support
 )
 target_link_libraries(native-test-support
   INTERFACE
-    native-core-headers
+    native-core
     GTest::gtest
 )
 ioj_stage_runtime_dependencies(native-core-tests)

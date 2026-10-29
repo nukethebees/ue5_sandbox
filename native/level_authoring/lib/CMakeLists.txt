@@ -24,6 +24,7 @@ target_link_libraries(native-level-authoring
     sandbox::native_defaults
   PRIVATE
     native-core
+    ioj::codegen_pch
 )
 ioj_enable_warnings(native-level-authoring)
 ioj_apply_native_abi(native-level-authoring)
@@ -50,6 +51,7 @@ target_link_libraries(native-level-authoring-s7
     sandbox-s7
     lispb-sexpr-output
     lispb-strings
+    ioj::codegen_pch
 )
 ioj_enable_warnings(native-level-authoring-s7)
 ioj_apply_native_abi(native-level-authoring-s7)

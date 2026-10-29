@@ -34,20 +34,7 @@ struct DiffReport {
     void diff(DiffPathComponent component, T const& expected, T const& actual);
 
     [[nodiscard]] auto empty() const -> bool { return differences.empty() && omitted == 0; }
-    [[nodiscard]] auto message() const -> std::string {
-        std::string text;
-        for (auto const& difference : differences) {
-            std::format_to(std::back_inserter(text),
-                           "{}\n  Expected: {}\n  Actual:   {}\n",
-                           difference.path,
-                           difference.expected,
-                           difference.actual);
-        }
-        if (omitted != 0) {
-            std::format_to(std::back_inserter(text), "{} further differences omitted\n", omitted);
-        }
-        return text;
-    }
+    [[nodiscard]] auto message() const -> std::string;
 
     std::vector<Difference> differences;
     std::size_t omitted{};

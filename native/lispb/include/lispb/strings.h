@@ -15,6 +15,8 @@ class TemporaryStringScope;
 
 class Strings {
   public:
+    Strings();
+
     // Equal text has one ID within this store, including slices of source text.
     [[nodiscard]] auto intern(std::string_view text) -> StringId;
     [[nodiscard]] auto intern(StringId text) -> StringId;
@@ -47,7 +49,7 @@ class Strings {
 
     std::string retained_bytes_;
     std::string temporary_bytes_;
-    std::vector<StringSlice> slices_{{}};
+    std::vector<StringSlice> slices_;
     std::vector<StringId> free_slices_;
     std::unordered_multimap<std::size_t, StringId> interned_;
     bool temporary_{};

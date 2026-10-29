@@ -87,9 +87,11 @@ target_include_directories(kernel-generated-standard-tests PRIVATE
   "${KERNEL_STANDARD_OUTPUT}"
   "${KERNEL_STANDARD_OUTPUT}/include"
 )
-target_link_libraries(kernel-generated-standard-tests PRIVATE
-  GTest::gtest_main
-  sandbox::native_defaults
+target_link_libraries(kernel-generated-standard-tests
+  PRIVATE
+    GTest::gtest_main
+    sandbox::native_defaults
+    ioj::test_pch
 )
 ioj_enable_warnings(kernel-generated-standard-tests CODEGEN)
 add_test(NAME kernel-generated-standard-tests COMMAND kernel-generated-standard-tests)
