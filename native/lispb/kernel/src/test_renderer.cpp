@@ -164,15 +164,13 @@ void append_case(lispb::codegen::CppIR& cpp,
                                   document.text(document.variants.name(expanded.variant(id))))};
     body.push_back(cpp.expr_stmt(cpp.call(function, test_arguments(cpp, document, id))));
 
-    auto const index{cpp.named("i")};
-    auto const actual{cpp.subscript(cpp.named(destination), index)};
-    auto const expected{cpp.subscript(cpp.named("expected"), index)};
-    auto const check{cpp.expr_stmt(cpp.call(cpp.named("expect_value"), {actual, expected}))};
-    body.push_back(cpp.for_stmt(
-        cpp.variable("std::size_t", "i"),
-        cpp.binary(lispb::codegen::BinaryOperator::less, index, cpp.named("Count")),
-        cpp.unary(lispb::codegen::UnaryOperator::preincrement, index),
-        cpp.block({cpp.expr_stmt(cpp.call(cpp.named("SCOPED_TRACE"), {index})), check})));
+    auto const expect_prefix{
+        cpp.type_reference(cpp.types.named(std::string{suite} + "::expect_prefix"))};
+    body.push_back(
+        cpp.expr_stmt(cpp.call(expect_prefix,
+                               {cpp.call(cpp.member_access(cpp.named(destination), "data")),
+                                cpp.call(cpp.member_access(cpp.named("expected"), "data")),
+                                cpp.named("Count")})));
 
     output.push_back(cpp.raw("for (std::size_t const Count : {0, 1, 7, 8, 9, 31})"));
     output.push_back(cpp.block(body));
@@ -232,6 +230,26 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
     EXPECT_EQ(actual, expected);
 }
 )")});
+    auto const expect_prefix{cpp.function("expect_prefix", "void")};
+    cpp.function_flags(expect_prefix).set_define_in_header(true);
+    cpp.set_function_template(
+        expect_prefix,
+        cpp.template_declaration({cpp.type_template_parameter(cpp.strings.intern("T"))}));
+    cpp.set_function_parameters(expect_prefix,
+                                {cpp.parameter("T const*", "actual"),
+                                 cpp.parameter("T const*", "expected"),
+                                 cpp.parameter("std::size_t const", "count")});
+    auto const index{cpp.named("i")};
+    cpp.set_function_body(
+        expect_prefix,
+        {cpp.for_stmt(
+            cpp.variable("std::size_t", "i"),
+            cpp.binary(lispb::codegen::BinaryOperator::less, index, cpp.named("count")),
+            cpp.unary(lispb::codegen::UnaryOperator::preincrement, index),
+            cpp.block({cpp.expr_stmt(cpp.call(cpp.named("SCOPED_TRACE"), {index})),
+                       cpp.expr_stmt(cpp.call(cpp.named("expect_value"),
+                                              {cpp.subscript(cpp.named("actual"), index),
+                                               cpp.subscript(cpp.named("expected"), index)}))}))});
     lispb::codegen::Nodes cases;
     std::vector<FixtureArray> arrays;
     auto const range{document.modules.expanded_variants(module)};
@@ -256,6 +274,8 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
     lispb::codegen::Nodes declarations{cpp.header_function(make_array),
                                        cpp.lines(2),
                                        cpp.header_function(expect_value),
+                                       cpp.lines(2),
+                                       cpp.header_function(expect_prefix),
                                        cpp.lines(2)};
     for (auto const& array : arrays) {
         declarations.push_back(cpp.variable(cpp.types.intern("inline constexpr auto"),

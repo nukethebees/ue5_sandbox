@@ -7,15 +7,10 @@
 
 #include <array>
 #include <cstdint>
-#include <type_traits>
+#include <ranges>
 #include <vector>
 
-namespace {
-template <typename T>
-auto copy_values(std::span<T> const values) -> std::vector<std::remove_const_t<T>> {
-    return {values.begin(), values.end()};
-}
-}
+using std::ranges::to;
 
 TEST(NativeCountdown, DecrementsAndPeriodicallyClamps) {
     std::array<std::int8_t, 3> counters{1, 0, -1};
@@ -59,11 +54,11 @@ TEST(NativeTickCountdown, OwnsAndMutatesNativeStorage) {
     countdown.zero_counter(2);
     countdown.tick();
 
-    EXPECT_EQ(copy_values(countdown.counters()), (std::vector<std::int16_t>{1, 0, -1}));
+    EXPECT_EQ(to<std::vector>(countdown.counters()), (std::vector<std::int16_t>{1, 0, -1}));
     EXPECT_FALSE(countdown.try_consume(0));
     EXPECT_TRUE(countdown.try_consume(1));
     EXPECT_TRUE(countdown.try_consume(2));
-    EXPECT_EQ(copy_values(countdown.counters()), (std::vector<std::int16_t>{1, 5, 5}));
+    EXPECT_EQ(to<std::vector>(countdown.counters()), (std::vector<std::int16_t>{1, 5, 5}));
 }
 
 TEST(NativeTickCountdown, CleanerAndResetSemanticsArePreserved) {
@@ -92,11 +87,11 @@ TEST(NativeTickCountdown, SupportsSoaRemovalAndPermutation) {
 
     std::array<std::int32_t, 3> indices{2, 0, 1};
     countdown.apply_permutation(indices);
-    EXPECT_EQ(copy_values(countdown.counters()), (std::vector<std::int16_t>{3, 1, 2}));
+    EXPECT_EQ(to<std::vector>(countdown.counters()), (std::vector<std::int16_t>{3, 1, 2}));
     EXPECT_EQ(indices, (std::array<std::int32_t, 3>{2, 0, 1}));
 
     countdown.remove_at_swap(0, 1);
-    EXPECT_EQ(copy_values(countdown.counters()), (std::vector<std::int16_t>{2, 1}));
+    EXPECT_EQ(to<std::vector>(countdown.counters()), (std::vector<std::int16_t>{2, 1}));
 }
 
 TEST(NativePeriodicTickCountdown, UsesIndividualPeriods) {
@@ -108,8 +103,8 @@ TEST(NativePeriodicTickCountdown, UsesIndividualPeriods) {
     countdown.tick();
     EXPECT_TRUE(countdown.try_consume(0));
     EXPECT_FALSE(countdown.try_consume(1));
-    EXPECT_EQ(copy_values(countdown.remaining_ticks()), (std::vector<std::int8_t>{2, 2}));
-    EXPECT_EQ(copy_values(countdown.periods()), (std::vector<std::int8_t>{2, 4}));
+    EXPECT_EQ(to<std::vector>(countdown.remaining_ticks()), (std::vector<std::int8_t>{2, 2}));
+    EXPECT_EQ(to<std::vector>(countdown.periods()), (std::vector<std::int8_t>{2, 4}));
 }
 
 TEST(NativePeriodicTickCountdown, PreservesPairsAcrossSoaOperations) {
@@ -124,12 +119,13 @@ TEST(NativePeriodicTickCountdown, PreservesPairsAcrossSoaOperations) {
     destination.copy_element(0, source, 2);
     destination.copy_elements(1, source, 0, 2);
 
-    EXPECT_EQ(copy_values(destination.remaining_ticks()), (std::vector<std::int16_t>{27, 7, 17}));
-    EXPECT_EQ(copy_values(destination.periods()), (std::vector<std::int16_t>{30, 10, 20}));
+    EXPECT_EQ(to<std::vector>(destination.remaining_ticks()),
+              (std::vector<std::int16_t>{27, 7, 17}));
+    EXPECT_EQ(to<std::vector>(destination.periods()), (std::vector<std::int16_t>{30, 10, 20}));
 
     destination.remove_at_swap(1, 1);
-    EXPECT_EQ(copy_values(destination.remaining_ticks()), (std::vector<std::int16_t>{27, 17}));
-    EXPECT_EQ(copy_values(destination.periods()), (std::vector<std::int16_t>{30, 20}));
+    EXPECT_EQ(to<std::vector>(destination.remaining_ticks()), (std::vector<std::int16_t>{27, 17}));
+    EXPECT_EQ(to<std::vector>(destination.periods()), (std::vector<std::int16_t>{30, 20}));
 }
 
 TEST(NativeCountdownTimers, TicksAndSupportsNativeStorageOperations) {
@@ -140,14 +136,14 @@ TEST(NativeCountdownTimers, TicksAndSupportsNativeStorageOperations) {
     timers[2] = 3.f;
 
     timers.tick(0.5f);
-    EXPECT_EQ(copy_values(timers.remaining_times()), (std::vector<float>{0.5f, 1.5f, 2.5f}));
+    EXPECT_EQ(to<std::vector>(timers.remaining_times()), (std::vector<float>{0.5f, 1.5f, 2.5f}));
 
     timers.remove_at_swap(0, 1);
-    EXPECT_EQ(copy_values(timers.remaining_times()), (std::vector<float>{2.5f, 1.5f}));
+    EXPECT_EQ(to<std::vector>(timers.remaining_times()), (std::vector<float>{2.5f, 1.5f}));
 
     std::array<std::int32_t, 2> indices{1, 0};
     timers.apply_permutation(indices);
-    EXPECT_EQ(copy_values(timers.remaining_times()), (std::vector<float>{1.5f, 2.5f}));
+    EXPECT_EQ(to<std::vector>(timers.remaining_times()), (std::vector<float>{1.5f, 2.5f}));
     EXPECT_EQ(indices, (std::array<std::int32_t, 2>{1, 0}));
 }
 
@@ -164,7 +160,7 @@ TEST(NativeCountdownTimers, SortsUsingAndRestoresScratchIndices) {
                    auto const rhs) { return values[lhs] < values[rhs]; },
                 scratch);
 
-    EXPECT_EQ(copy_values(timers.remaining_times()), (std::vector<float>{1.f, 2.f, 3.f, 4.f}));
+    EXPECT_EQ(to<std::vector>(timers.remaining_times()), (std::vector<float>{1.f, 2.f, 3.f, 4.f}));
     EXPECT_EQ(scratch, (std::array<std::int32_t, 4>{1, 3, 0, 2}));
 }
 
@@ -179,8 +175,8 @@ TEST(NativePeriodicCountdownTimers, ConsumesAndPreservesPeriods) {
     EXPECT_FALSE(timers.expired(0));
     EXPECT_TRUE(timers.try_consume(1));
     EXPECT_TRUE(timers.try_consume(2));
-    EXPECT_EQ(copy_values(timers.remaining_times()), (std::vector<float>{0.5f, 0.5f, 2.f}));
-    EXPECT_EQ(copy_values(timers.periods()), (std::vector<float>{1.f, 0.5f, 2.f}));
+    EXPECT_EQ(to<std::vector>(timers.remaining_times()), (std::vector<float>{0.5f, 0.5f, 2.f}));
+    EXPECT_EQ(to<std::vector>(timers.periods()), (std::vector<float>{1.f, 0.5f, 2.f}));
 
     timers.tick(2.5f);
     EXPECT_TRUE(timers.try_consume(0));

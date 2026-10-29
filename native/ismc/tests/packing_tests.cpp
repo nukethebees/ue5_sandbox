@@ -57,10 +57,8 @@ auto compare(Inputs const& inputs, PackingParameters const& parameters) -> void 
     ASSERT_EQ(std::memcmp(scalar.data(), simd.data(), scalar.size() * sizeof(PackedTransform)), 0);
     EXPECT_EQ(!scalar_bounds.empty(), count != 0);
     EXPECT_EQ(!simd_bounds.empty(), !scalar_bounds.empty());
-    for (auto axis{0U}; axis < 3; ++axis) {
-        EXPECT_EQ(scalar_bounds.minimum[axis], simd_bounds.minimum[axis]);
-        EXPECT_EQ(scalar_bounds.maximum[axis], simd_bounds.maximum[axis]);
-    }
+    EXPECT_EQ(scalar_bounds.minimum, simd_bounds.minimum);
+    EXPECT_EQ(scalar_bounds.maximum, simd_bounds.maximum);
     ismc::TransformPacker{{parameters.position_root, {}, {}}, ismc::BoundsMode::Skip}
         .pack_positions(inputs.view().positions, separate_output);
     ismc::TransformPacker{{}, ismc::BoundsMode::Skip}.pack_rotations(inputs.view().rotations,

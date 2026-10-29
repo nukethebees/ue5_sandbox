@@ -36,6 +36,14 @@ void expect_value(T const actual, T const expected) {
     }
 }
 
+template <typename T>
+void expect_prefix(T const* actual, T const* expected, std::size_t const count) {
+    for (std::size_t i{}; i < count; ++i) {
+        SCOPED_TRACE(i);
+        expect_value(actual[i], expected[i]);
+    }
+}
+
 inline constexpr auto fixture_values_0{make_array<std::int32_t>(1,
                                                                 -6,
                                                                 3,
@@ -1515,10 +1523,7 @@ TEST(Generated_array_math, add_int32_array_scalar_in_place_raw) {
         auto const value{static_cast<std::int32_t>(-4)};
         auto const& expected{Generated_array_math::fixture_values_1};
         ioj::add_in_place(std::span<std::int32_t>{data.data(), Count}, value);
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(data[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(data.data(), expected.data(), Count);
     }
 }
 
@@ -1529,10 +1534,7 @@ TEST(Generated_array_math, add_float_array_scalar_in_place_raw) {
         auto const value{static_cast<float>(-0.5)};
         auto const& expected{Generated_array_math::fixture_values_3};
         ioj::add_in_place(std::span<float>{data.data(), Count}, value);
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(data[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(data.data(), expected.data(), Count);
     }
 }
 
@@ -1543,10 +1545,7 @@ TEST(Generated_array_math, add_double_array_scalar_in_place_raw) {
         auto const value{static_cast<double>(-0.5)};
         auto const& expected{Generated_array_math::fixture_values_5};
         ioj::add_in_place(std::span<double>{data.data(), Count}, value);
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(data[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(data.data(), expected.data(), Count);
     }
 }
 
@@ -1557,10 +1556,7 @@ TEST(Generated_array_math, subtract_int32_array_scalar_in_place_raw) {
         auto const value{static_cast<std::int32_t>(-4)};
         auto const& expected{Generated_array_math::fixture_values_6};
         ioj::subtract_in_place(std::span<std::int32_t>{data.data(), Count}, value);
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(data[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(data.data(), expected.data(), Count);
     }
 }
 
@@ -1571,10 +1567,7 @@ TEST(Generated_array_math, subtract_float_array_scalar_in_place_raw) {
         auto const value{static_cast<float>(-0.5)};
         auto const& expected{Generated_array_math::fixture_values_7};
         ioj::subtract_in_place(std::span<float>{data.data(), Count}, value);
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(data[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(data.data(), expected.data(), Count);
     }
 }
 
@@ -1585,10 +1578,7 @@ TEST(Generated_array_math, subtract_double_array_scalar_in_place_raw) {
         auto const value{static_cast<double>(-0.5)};
         auto const& expected{Generated_array_math::fixture_values_8};
         ioj::subtract_in_place(std::span<double>{data.data(), Count}, value);
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(data[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(data.data(), expected.data(), Count);
     }
 }
 
@@ -1602,10 +1592,7 @@ TEST(Generated_array_math, multiply_int32_array_array_raw) {
         ioj::multiply(std::span<std::int32_t const>{lhs.data(), Count},
                       std::span<std::int32_t const>{rhs.data(), Count},
                       std::span<std::int32_t>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -1619,10 +1606,7 @@ TEST(Generated_array_math, multiply_int32_array_scalar_raw) {
         ioj::multiply(std::span<std::int32_t const>{lhs.data(), Count},
                       rhs,
                       std::span<std::int32_t>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -1636,10 +1620,7 @@ TEST(Generated_array_math, multiply_float_array_array_raw) {
         ioj::multiply(std::span<float const>{lhs.data(), Count},
                       std::span<float const>{rhs.data(), Count},
                       std::span<float>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -1652,10 +1633,7 @@ TEST(Generated_array_math, multiply_float_array_scalar_raw) {
         auto const& expected{Generated_array_math::fixture_values_14};
         ioj::multiply(
             std::span<float const>{lhs.data(), Count}, rhs, std::span<float>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -1669,10 +1647,7 @@ TEST(Generated_array_math, multiply_double_array_array_raw) {
         ioj::multiply(std::span<double const>{lhs.data(), Count},
                       std::span<double const>{rhs.data(), Count},
                       std::span<double>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -1685,10 +1660,7 @@ TEST(Generated_array_math, multiply_double_array_scalar_raw) {
         auto const& expected{Generated_array_math::fixture_values_17};
         ioj::multiply(
             std::span<double const>{lhs.data(), Count}, rhs, std::span<double>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -1700,10 +1672,7 @@ TEST(Generated_array_math, multiply_int32_array_array_in_place_raw) {
         auto const& expected{Generated_array_math::fixture_values_10};
         ioj::multiply_in_place(std::span<std::int32_t>{lhs.data(), Count},
                                std::span<std::int32_t const>{rhs.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(lhs[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(lhs.data(), expected.data(), Count);
     }
 }
 
@@ -1714,10 +1683,7 @@ TEST(Generated_array_math, multiply_int32_array_scalar_in_place_raw) {
         auto const rhs{static_cast<std::int32_t>(-4)};
         auto const& expected{Generated_array_math::fixture_values_11};
         ioj::multiply_in_place(std::span<std::int32_t>{lhs.data(), Count}, rhs);
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(lhs[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(lhs.data(), expected.data(), Count);
     }
 }
 
@@ -1729,10 +1695,7 @@ TEST(Generated_array_math, multiply_float_array_array_in_place_raw) {
         auto const& expected{Generated_array_math::fixture_values_13};
         ioj::multiply_in_place(std::span<float>{lhs.data(), Count},
                                std::span<float const>{rhs.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(lhs[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(lhs.data(), expected.data(), Count);
     }
 }
 
@@ -1743,10 +1706,7 @@ TEST(Generated_array_math, multiply_float_array_scalar_in_place_raw) {
         auto const rhs{static_cast<float>(-0.5)};
         auto const& expected{Generated_array_math::fixture_values_14};
         ioj::multiply_in_place(std::span<float>{lhs.data(), Count}, rhs);
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(lhs[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(lhs.data(), expected.data(), Count);
     }
 }
 
@@ -1758,10 +1718,7 @@ TEST(Generated_array_math, multiply_double_array_array_in_place_raw) {
         auto const& expected{Generated_array_math::fixture_values_16};
         ioj::multiply_in_place(std::span<double>{lhs.data(), Count},
                                std::span<double const>{rhs.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(lhs[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(lhs.data(), expected.data(), Count);
     }
 }
 
@@ -1772,10 +1729,7 @@ TEST(Generated_array_math, multiply_double_array_scalar_in_place_raw) {
         auto const rhs{static_cast<double>(-0.5)};
         auto const& expected{Generated_array_math::fixture_values_17};
         ioj::multiply_in_place(std::span<double>{lhs.data(), Count}, rhs);
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(lhs[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(lhs.data(), expected.data(), Count);
     }
 }
 
@@ -1786,10 +1740,7 @@ TEST(Generated_array_math, divide_int32_array_scalar_in_place_raw) {
         auto const value{static_cast<std::int32_t>(-4)};
         auto const& expected{Generated_array_math::fixture_values_18};
         ioj::divide_in_place(std::span<std::int32_t>{data.data(), Count}, value);
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(data[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(data.data(), expected.data(), Count);
     }
 }
 
@@ -1800,10 +1751,7 @@ TEST(Generated_array_math, divide_float_array_scalar_in_place_raw) {
         auto const value{static_cast<float>(-0.5)};
         auto const& expected{Generated_array_math::fixture_values_19};
         ioj::divide_in_place(std::span<float>{data.data(), Count}, value);
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(data[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(data.data(), expected.data(), Count);
     }
 }
 
@@ -1814,10 +1762,7 @@ TEST(Generated_array_math, divide_double_array_scalar_in_place_raw) {
         auto const value{static_cast<double>(-0.5)};
         auto const& expected{Generated_array_math::fixture_values_20};
         ioj::divide_in_place(std::span<double>{data.data(), Count}, value);
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(data[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(data.data(), expected.data(), Count);
     }
 }
 
@@ -1831,10 +1776,7 @@ TEST(Generated_array_math, add_arrays_int32_array_array_raw) {
         ioj::add_arrays(std::span<std::int32_t const>{lhs.data(), Count},
                         std::span<std::int32_t const>{rhs.data(), Count},
                         std::span<std::int32_t>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -1848,10 +1790,7 @@ TEST(Generated_array_math, add_arrays_float_array_array_raw) {
         ioj::add_arrays(std::span<float const>{lhs.data(), Count},
                         std::span<float const>{rhs.data(), Count},
                         std::span<float>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -1865,10 +1804,7 @@ TEST(Generated_array_math, add_arrays_double_array_array_raw) {
         ioj::add_arrays(std::span<double const>{lhs.data(), Count},
                         std::span<double const>{rhs.data(), Count},
                         std::span<double>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -1880,10 +1816,7 @@ TEST(Generated_array_math, add_arrays_int32_array_array_in_place_raw) {
         auto const& expected{Generated_array_math::fixture_values_21};
         ioj::add_arrays_in_place(std::span<std::int32_t>{lhs.data(), Count},
                                  std::span<std::int32_t const>{rhs.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(lhs[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(lhs.data(), expected.data(), Count);
     }
 }
 
@@ -1895,10 +1828,7 @@ TEST(Generated_array_math, add_arrays_float_array_array_in_place_raw) {
         auto const& expected{Generated_array_math::fixture_values_22};
         ioj::add_arrays_in_place(std::span<float>{lhs.data(), Count},
                                  std::span<float const>{rhs.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(lhs[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(lhs.data(), expected.data(), Count);
     }
 }
 
@@ -1910,10 +1840,7 @@ TEST(Generated_array_math, add_arrays_double_array_array_in_place_raw) {
         auto const& expected{Generated_array_math::fixture_values_23};
         ioj::add_arrays_in_place(std::span<double>{lhs.data(), Count},
                                  std::span<double const>{rhs.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(lhs[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(lhs.data(), expected.data(), Count);
     }
 }
 
@@ -1929,10 +1856,7 @@ TEST(Generated_array_math, lerp_float_array_array_array_raw) {
                      std::span<float const>{to.data(), Count},
                      std::span<float const>{alpha.data(), Count},
                      std::span<float>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -1948,10 +1872,7 @@ TEST(Generated_array_math, lerp_float_array_array_scalar_raw) {
                      std::span<float const>{to.data(), Count},
                      alpha,
                      std::span<float>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -1967,10 +1888,7 @@ TEST(Generated_array_math, lerp_double_array_array_array_raw) {
                      std::span<double const>{to.data(), Count},
                      std::span<double const>{alpha.data(), Count},
                      std::span<double>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -1986,10 +1904,7 @@ TEST(Generated_array_math, lerp_double_array_array_scalar_raw) {
                      std::span<double const>{to.data(), Count},
                      alpha,
                      std::span<double>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -2003,10 +1918,7 @@ TEST(Generated_array_math, lerp_float_array_array_array_in_place_raw) {
         ioj::lerp_1d_in_place(std::span<float>{from.data(), Count},
                               std::span<float const>{to.data(), Count},
                               std::span<float const>{alpha.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(from[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(from.data(), expected.data(), Count);
     }
 }
 
@@ -2019,10 +1931,7 @@ TEST(Generated_array_math, lerp_float_array_array_scalar_in_place_raw) {
         auto const& expected{Generated_array_math::fixture_values_26};
         ioj::lerp_1d_in_place(
             std::span<float>{from.data(), Count}, std::span<float const>{to.data(), Count}, alpha);
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(from[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(from.data(), expected.data(), Count);
     }
 }
 
@@ -2036,10 +1945,7 @@ TEST(Generated_array_math, lerp_double_array_array_array_in_place_raw) {
         ioj::lerp_1d_in_place(std::span<double>{from.data(), Count},
                               std::span<double const>{to.data(), Count},
                               std::span<double const>{alpha.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(from[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(from.data(), expected.data(), Count);
     }
 }
 
@@ -2053,10 +1959,7 @@ TEST(Generated_array_math, lerp_double_array_array_scalar_in_place_raw) {
         ioj::lerp_1d_in_place(std::span<double>{from.data(), Count},
                               std::span<double const>{to.data(), Count},
                               alpha);
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(from[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(from.data(), expected.data(), Count);
     }
 }
 
@@ -2072,10 +1975,7 @@ TEST(Generated_array_math, add_scaled_float_array_array_array_raw) {
                         std::span<float const>{value.data(), Count},
                         std::span<float const>{scale.data(), Count},
                         std::span<float>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -2091,10 +1991,7 @@ TEST(Generated_array_math, add_scaled_float_array_array_scalar_raw) {
                         std::span<float const>{value.data(), Count},
                         scale,
                         std::span<float>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -2110,10 +2007,7 @@ TEST(Generated_array_math, add_scaled_double_array_array_array_raw) {
                         std::span<double const>{value.data(), Count},
                         std::span<double const>{scale.data(), Count},
                         std::span<double>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -2129,10 +2023,7 @@ TEST(Generated_array_math, add_scaled_double_array_array_scalar_raw) {
                         std::span<double const>{value.data(), Count},
                         scale,
                         std::span<double>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -2146,10 +2037,7 @@ TEST(Generated_array_math, add_scaled_float_array_array_array_in_place_raw) {
         ioj::add_scaled_in_place(std::span<float>{base.data(), Count},
                                  std::span<float const>{value.data(), Count},
                                  std::span<float const>{scale.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(base[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(base.data(), expected.data(), Count);
     }
 }
 
@@ -2163,10 +2051,7 @@ TEST(Generated_array_math, add_scaled_float_array_array_scalar_in_place_raw) {
         ioj::add_scaled_in_place(std::span<float>{base.data(), Count},
                                  std::span<float const>{value.data(), Count},
                                  scale);
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(base[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(base.data(), expected.data(), Count);
     }
 }
 
@@ -2180,10 +2065,7 @@ TEST(Generated_array_math, add_scaled_double_array_array_array_in_place_raw) {
         ioj::add_scaled_in_place(std::span<double>{base.data(), Count},
                                  std::span<double const>{value.data(), Count},
                                  std::span<double const>{scale.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(base[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(base.data(), expected.data(), Count);
     }
 }
 
@@ -2197,10 +2079,7 @@ TEST(Generated_array_math, add_scaled_double_array_array_scalar_in_place_raw) {
         ioj::add_scaled_in_place(std::span<double>{base.data(), Count},
                                  std::span<double const>{value.data(), Count},
                                  scale);
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(base[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(base.data(), expected.data(), Count);
     }
 }
 
@@ -2216,10 +2095,7 @@ TEST(Generated_array_math, subtract_scaled_float_array_array_array_raw) {
                              std::span<float const>{value.data(), Count},
                              std::span<float const>{scale.data(), Count},
                              std::span<float>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -2235,10 +2111,7 @@ TEST(Generated_array_math, subtract_scaled_float_array_array_scalar_raw) {
                              std::span<float const>{value.data(), Count},
                              scale,
                              std::span<float>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -2254,10 +2127,7 @@ TEST(Generated_array_math, subtract_scaled_double_array_array_array_raw) {
                              std::span<double const>{value.data(), Count},
                              std::span<double const>{scale.data(), Count},
                              std::span<double>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -2273,10 +2143,7 @@ TEST(Generated_array_math, subtract_scaled_double_array_array_scalar_raw) {
                              std::span<double const>{value.data(), Count},
                              scale,
                              std::span<double>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -2290,10 +2157,7 @@ TEST(Generated_array_math, subtract_scaled_float_array_array_array_in_place_raw)
         ioj::subtract_scaled_in_place(std::span<float>{base.data(), Count},
                                       std::span<float const>{value.data(), Count},
                                       std::span<float const>{scale.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(base[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(base.data(), expected.data(), Count);
     }
 }
 
@@ -2307,10 +2171,7 @@ TEST(Generated_array_math, subtract_scaled_float_array_array_scalar_in_place_raw
         ioj::subtract_scaled_in_place(std::span<float>{base.data(), Count},
                                       std::span<float const>{value.data(), Count},
                                       scale);
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(base[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(base.data(), expected.data(), Count);
     }
 }
 
@@ -2324,10 +2185,7 @@ TEST(Generated_array_math, subtract_scaled_double_array_array_array_in_place_raw
         ioj::subtract_scaled_in_place(std::span<double>{base.data(), Count},
                                       std::span<double const>{value.data(), Count},
                                       std::span<double const>{scale.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(base[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(base.data(), expected.data(), Count);
     }
 }
 
@@ -2341,10 +2199,7 @@ TEST(Generated_array_math, subtract_scaled_double_array_array_scalar_in_place_ra
         ioj::subtract_scaled_in_place(std::span<double>{base.data(), Count},
                                       std::span<double const>{value.data(), Count},
                                       scale);
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(base[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(base.data(), expected.data(), Count);
     }
 }
 
@@ -2360,10 +2215,7 @@ TEST(Generated_array_math, size_squared_3d_float_array_array_array_raw) {
                              std::span<float const>{y.data(), Count},
                              std::span<float const>{z.data(), Count},
                              std::span<float>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -2379,10 +2231,7 @@ TEST(Generated_array_math, size_squared_3d_double_array_array_array_raw) {
                              std::span<double const>{y.data(), Count},
                              std::span<double const>{z.data(), Count},
                              std::span<double>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -2404,10 +2253,7 @@ TEST(Generated_array_math, distance_squared_3d_float_array_array_array_array_arr
                                  std::span<float const>{by.data(), Count},
                                  std::span<float const>{bz.data(), Count},
                                  std::span<float>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -2429,10 +2275,7 @@ TEST(Generated_array_math, distance_squared_3d_double_array_array_array_array_ar
                                  std::span<double const>{by.data(), Count},
                                  std::span<double const>{bz.data(), Count},
                                  std::span<double>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -2454,10 +2297,7 @@ TEST(Generated_array_math, dot_product_3d_float_array_array_array_array_array_ar
                             std::span<float const>{by.data(), Count},
                             std::span<float const>{bz.data(), Count},
                             std::span<float>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 
@@ -2479,10 +2319,7 @@ TEST(Generated_array_math, dot_product_3d_double_array_array_array_array_array_a
                             std::span<double const>{by.data(), Count},
                             std::span<double const>{bz.data(), Count},
                             std::span<double>{out.data(), Count});
-        for (std::size_t i{}; i < Count; ++i) {
-            SCOPED_TRACE(i);
-            expect_value(out[i], expected[i]);
-        }
+        Generated_array_math::expect_prefix(out.data(), expected.data(), Count);
     }
 }
 

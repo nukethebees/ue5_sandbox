@@ -42,14 +42,10 @@ void expect_desired_yaws() {
         {T{10}, T{20}, T{11}, T{19}, -pi / T{4}},
     };
 
-    for (auto const& test_case : cases) {
-        T const start_x[]{test_case.start_x};
-        T const start_y[]{test_case.start_y};
-        T const end_x[]{test_case.end_x};
-        T const end_y[]{test_case.end_y};
+    for (auto const& [start_x, start_y, end_x, end_y, expected] : cases) {
         T out[]{T{123}};
-        ioj::kernel::compute_desired_yaws_radians(start_x, start_y, end_x, end_y, out, 1);
-        EXPECT_NEAR(out[0], test_case.expected, static_cast<T>(1e-6));
+        ioj::kernel::compute_desired_yaws_radians(&start_x, &start_y, &end_x, &end_y, out, 1);
+        EXPECT_NEAR(out[0], expected, static_cast<T>(1e-6));
     }
 }
 }
