@@ -71,15 +71,12 @@ auto native_color_stops(TConstArrayView<FHeatmapColorStop> const stops)
     return result;
 }
 
-auto native_layout_settings(FHeatmap2DStyle const& style) -> ioj::ui::heatmap_2d::LayoutSettings {
-    return {.padding = {style.chart_padding.Left,
-                        style.chart_padding.Top,
-                        style.chart_padding.Right,
-                        style.chart_padding.Bottom},
-            .axis_thickness = style.axis_thickness,
-            .x_label_area_height = style.x_label_area_height,
-            .y_label_area_width = style.y_label_area_width,
-            .show_axes = style.show_axes};
+auto native_layout_settings(FHeatmap2DStyle const& style) -> ioj::ui::chart_layout::Settings {
+    return SandboxUI::Widgets::chart_layout_settings(style.chart_padding,
+                                                     style.axis_thickness,
+                                                     style.x_label_area_height,
+                                                     style.y_label_area_width,
+                                                     style.show_axes);
 }
 }
 
@@ -204,8 +201,8 @@ int32 SHeatmap2D::OnPaint(FPaintArgs const&,
                           FWidgetStyle const& widget_style,
                           bool const parent_enabled) const {
     auto const widget_size{FVector2f{allotted_geometry.GetLocalSize()}};
-    auto const layout{ioj::ui::heatmap_2d::make_plot_layout({widget_size.X, widget_size.Y},
-                                                            native_layout_settings(style_))};
+    auto const layout{ioj::ui::chart_layout::make_layout({widget_size.X, widget_size.Y},
+                                                         native_layout_settings(style_))};
     auto const plot_origin{to_unreal(layout.plot_origin)};
     auto const plot_size{to_unreal(layout.plot_size)};
     auto const enabled{ShouldBeEnabled(parent_enabled)};
@@ -333,13 +330,13 @@ int32 SHeatmap2D::OnPaint(FPaintArgs const&,
     auto const half_plot_width{plot_size.X * 0.5f};
     painter.label(text_layer,
                   {plot_origin.X, x_label_y},
-                  {half_plot_width, layout.x_label_area_height},
+                  {half_plot_width, layout.label_area_height},
                   FText::AsNumber(data_->native.domain().x.min),
                   style_.label_font,
                   label_tint);
     painter.label(text_layer,
                   {plot_origin.X + half_plot_width, x_label_y},
-                  {half_plot_width, layout.x_label_area_height},
+                  {half_plot_width, layout.label_area_height},
                   FText::AsNumber(data_->native.domain().x.max),
                   style_.label_font,
                   label_tint);
@@ -362,18 +359,11 @@ int32 SHeatmap2D::OnPaint(FPaintArgs const&,
 }
 
 bool SHeatmap2D::is_valid_style(FHeatmap2DStyle const& style) {
-    return SandboxUI::Widgets::is_finite_vector(style.desired_size) &&
-           style.desired_size.X >= 0.0f && style.desired_size.Y >= 0.0f &&
-           FMath::IsFinite(style.chart_padding.Left) && style.chart_padding.Left >= 0.0f &&
-           FMath::IsFinite(style.chart_padding.Right) && style.chart_padding.Right >= 0.0f &&
-           FMath::IsFinite(style.chart_padding.Top) && style.chart_padding.Top >= 0.0f &&
-           FMath::IsFinite(style.chart_padding.Bottom) && style.chart_padding.Bottom >= 0.0f &&
+    return ioj::ui::chart_layout::is_valid({style.desired_size.X, style.desired_size.Y},
+                                           native_layout_settings(style)) &&
            is_finite_heatmap_color(style.background_color) &&
            ioj::ui::heatmap_2d::is_valid_color_stops(native_color_stops(style.color_stops)) &&
-           is_finite_heatmap_color(style.axis_color) && FMath::IsFinite(style.axis_thickness) &&
-           style.axis_thickness > 0.0f && is_finite_heatmap_color(style.label_color) &&
-           FMath::IsFinite(style.x_label_area_height) && style.x_label_area_height >= 0.0f &&
-           FMath::IsFinite(style.y_label_area_width) && style.y_label_area_width >= 0.0f;
+           is_finite_heatmap_color(style.axis_color) && is_finite_heatmap_color(style.label_color);
 }
 
 void SHeatmap2D::invalidate_heatmap_cache(bool const color_lut_changed) {

@@ -1,3 +1,4 @@
+#include "ioj/ui/chart_layout.h"
 #include "ioj/ui/heatmap_2d.h"
 
 #include <gtest/gtest.h>
@@ -84,19 +85,19 @@ TEST(Heatmap2D, RestartsIndicesForTheFirstCellAfterAMaximumSizeBatch) {
 }
 
 TEST(Heatmap2D, ReservesAxisLabelsOrUsesBarePaddedArea) {
-    using namespace ioj::ui::heatmap_2d;
-    LayoutSettings settings{.padding = {10.0f, 10.0f, 10.0f, 10.0f},
-                            .axis_thickness = 1.0f,
-                            .x_label_area_height = 20.0f,
-                            .y_label_area_width = 36.0f};
-    auto const axes{make_plot_layout({200.0f, 100.0f}, settings)};
+    using namespace ioj::ui::chart_layout;
+    Settings settings{.padding = {10.0f, 10.0f, 10.0f, 10.0f},
+                      .axis_thickness = 1.0f,
+                      .label_area_height = 20.0f,
+                      .y_label_area_width = 36.0f};
+    auto const axes{make_layout({200.0f, 100.0f}, settings)};
     EXPECT_EQ(axes.plot_origin, (ioj::ui::Vector2f{47.0f, 10.0f}));
     EXPECT_EQ(axes.plot_size, (ioj::ui::Vector2f{143.0f, 59.0f}));
     settings.show_axes = false;
-    auto const bare{make_plot_layout({200.0f, 100.0f}, settings)};
+    auto const bare{make_layout({200.0f, 100.0f}, settings)};
     EXPECT_EQ(bare.plot_origin, (ioj::ui::Vector2f{10.0f, 10.0f}));
     EXPECT_EQ(bare.plot_size, (ioj::ui::Vector2f{180.0f, 80.0f}));
-    EXPECT_FLOAT_EQ(bare.x_label_area_height, 0.0f);
+    EXPECT_FLOAT_EQ(bare.label_area_height, 0.0f);
 }
 
 TEST(Heatmap2D, OwnsRejectsAndClearsGridSnapshots) {

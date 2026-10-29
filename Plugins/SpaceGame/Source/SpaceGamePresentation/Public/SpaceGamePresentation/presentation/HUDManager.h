@@ -2,6 +2,7 @@
 
 #include <ioj/multi_buffer.h>
 #include <ioj/periodic_tick_countdown.h>
+#include <ioj/presentation/soft_target.h>
 #include <ioj/settings/entity_overlay.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_type.h>
@@ -198,23 +199,13 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     using FWorldSoftTargetCustomDataBuffer =
         TArray<float, TInlineAllocator<soft_target_world::custom_data_count * 2>>;
 
-    struct FSoftTargetVisual {
-        sim::EntityId entity{};
-        float range_alpha{};
-        float radius_pixels{};
-        float world_units_per_pixel{};
-    };
-
     struct FRegisteredHud {
         TWeakObjectPtr<USimulationHudWidget> hud;
         TWeakObjectPtr<UShipHudWidget> ship_hud;
         FEntityOverlayFrameStorePtr entity_overlay_frame_store;
         FEntityOverlayCollector entity_overlay_collector;
         FRadarFrameStorePtr radar_frame_store;
-        FSoftTargetVisual soft_target{};
-        float soft_target_pulse_remaining{};
-        FSoftTargetVisual fading_soft_target{};
-        float fading_soft_target_visibility_remaining{};
+        presentation::SoftTargetState soft_targets{};
     };
 
     auto collect_data(PeriodicTickCountdown8::counter_type num_ticks) -> hud_manager::FDataChanges;
@@ -232,12 +223,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
                                bool render_world_target);
     void configure_world_soft_target_renderer();
     void clear_world_soft_targets();
-    void add_world_soft_target(TOptional<FVector> const& location,
-                               float range_alpha,
-                               float indicator_radius_pixels,
-                               float world_units_per_pixel,
-                               float pulse,
-                               float visibility,
+    void add_world_soft_target(presentation::SoftTargetMarker const& target,
                                FVector camera_location,
                                FRotator camera_rotation,
                                FLinearColor neutral_color,

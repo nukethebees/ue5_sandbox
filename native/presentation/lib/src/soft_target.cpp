@@ -72,6 +72,85 @@ auto is_supported_entity_type(::ioj::sim::EntityType const type) -> bool {
 
 }
 
+auto SoftTargetState::advance(std::span<AgentDisplayBatch const> const batches,
+                              SoftTargetResult const& selected,
+                              float const delta_seconds,
+                              float const pulse_duration,
+                              float const fade_duration) -> std::array<SoftTargetMarker, 2> {
+    sim::EntityId const ids[]{active.entity, fading.entity, selected.id};
+    std::optional<Vector3f> positions[3];
+    for (auto const& batch : batches) {
+        auto const locations{batch.locations};
+        auto const count{batch.num()};
+        for (std::uint32_t row{}; row < count; ++row) {
+            if (!sim::is_alive(batch.health(row))) {
+                continue;
+            }
+            for (std::uint32_t target{}; target < 3; ++target) {
+                if (batch.ids[row] == ids[target]) {
+                    positions[target] = locations[row];
+                }
+            }
+        }
+    }
+    auto active_location{positions[0]};
+    auto fading_location{positions[1]};
+    auto const nonnegative = [](float const value) { return value > 0.f ? value : 0.f; };
+    auto const elapsed{nonnegative(delta_seconds)};
+    auto const clear_fading = [this] {
+        fading = {};
+        fade_remaining = 0.f;
+    };
+    pulse_remaining = nonnegative(pulse_remaining - elapsed);
+    if (fading.entity.is_valid()) {
+        fade_remaining = nonnegative(fade_remaining - elapsed);
+        if (!fading_location || fade_remaining <= 0.f) {
+            clear_fading();
+        }
+    }
+
+    auto const begin_fade = [&] {
+        if (!active.entity.is_valid() || !active_location || fade_duration <= 0.f) {
+            return;
+        }
+        fading = active;
+        fading_location = active_location;
+        fade_remaining = fade_duration;
+    };
+    if (selected.id.is_valid()) {
+        if (selected.id != active.entity) {
+            if (selected.id == fading.entity) {
+                clear_fading();
+            }
+            begin_fade();
+            pulse_remaining = 0.f;
+        } else if (active.range_alpha < 1.f && selected.range_alpha >= 1.f) {
+            pulse_remaining = pulse_duration;
+        }
+        active = {.entity = selected.id,
+                  .range_alpha =
+                      nonnegative(selected.range_alpha < 1.f ? selected.range_alpha : 1.f),
+                  .radius_pixels = selected.indicator_radius_pixels,
+                  .world_units_per_pixel = selected.world_units_per_pixel};
+        active_location = positions[2];
+    } else {
+        if (selected.previous_target_can_fade) {
+            begin_fade();
+        }
+        active = {};
+        pulse_remaining = 0.f;
+    }
+
+    return {
+        SoftTargetMarker{.visual = active,
+                         .location = active.entity.is_valid() ? active_location : std::nullopt,
+                         .pulse = pulse_duration > 0.f ? pulse_remaining / pulse_duration : 0.f,
+                         .visibility = 1.f},
+        SoftTargetMarker{.visual = fading,
+                         .location = fading.entity.is_valid() ? fading_location : std::nullopt,
+                         .visibility = fade_duration > 0.f ? fade_remaining / fade_duration : 0.f}};
+}
+
 auto select_soft_target(std::span<::ioj::presentation::AgentDisplayBatch const> const batches,
                         ::ioj::sim::EntityTypeRadii const& entity_type_radii,
                         std::span<ui::entity_overlay::ObjectiveRole const> const objective_roles,

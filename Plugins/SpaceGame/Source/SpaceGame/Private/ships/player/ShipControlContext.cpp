@@ -152,81 +152,88 @@ void FShipControlContext::select_flight_model_slot(::ioj::sim::player::FlightMod
         owner->on_player_ship_flight_model_selected();
     }
 }
-void FShipControlContext::select_starfox() {
-    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::First);
-}
-void FShipControlContext::select_fighter() {
-    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Second);
-}
-void FShipControlContext::select_skater() {
-    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Third);
-}
-void FShipControlContext::select_gunship() {
-    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Fourth);
-}
 void FShipControlContext::bind_actions() {
     auto* const component{input_component_.Get()};
     check(IsValid(component) && input_);
-    auto bind_value{
-        [this, component](UInputAction* const action, ETriggerEvent const event, auto method) {
+    auto const bind_value{
+        [this, component](UInputAction* const action, ETriggerEvent const event, auto callback) {
             check(IsValid(action));
             auto& binding{component->BindActionValueLambda(
-                action, event, [this, method](FInputActionValue const& value) {
+                action, event, [this, callback](FInputActionValue const& value) {
                     if (bound_) {
-                        (this->*method)(value);
+                        callback(value);
                     }
                 })};
             binding_handles_.Add(binding.GetHandle());
         }};
-    auto bind_event{
-        [this, component](UInputAction* const action, ETriggerEvent const event, auto method) {
-            check(IsValid(action));
-            auto& binding{component->BindActionValueLambda(
-                action, event, [this, method](FInputActionValue const&) {
-                    if (bound_) {
-                        (this->*method)();
-                    }
-                })};
-            binding_handles_.Add(binding.GetHandle());
-        }};
+    auto const bind_event =
+        [&bind_value](UInputAction* const action, ETriggerEvent const event, auto callback) {
+            bind_value(action, event, [callback](FInputActionValue const&) { callback(); });
+        };
+    auto const ship_value = [this](auto method) {
+        return [this, method](FInputActionValue const& value) {
+            if (auto* const ship{get_ship()}) {
+                (ship->*method)(value.Get<float>());
+            }
+        };
+    };
+    auto const ship_event = [this](auto method) {
+        return [this, method] {
+            if (auto* const ship{get_ship()}) {
+                (ship->*method)();
+            }
+        };
+    };
     using enum ETriggerEvent;
-    bind_value(input_->translate_forward, Triggered, &FShipControlContext::set_forward_input);
-    bind_value(input_->translate_right, Triggered, &FShipControlContext::set_right_input);
-    bind_value(input_->translate_up, Triggered, &FShipControlContext::set_up_input);
-    bind_value(input_->pitch, Triggered, &FShipControlContext::set_pitch_input);
-    bind_value(input_->yaw, Triggered, &FShipControlContext::set_yaw_input);
-    bind_value(input_->roll, Triggered, &FShipControlContext::set_roll_input);
-    bind_value(input_->accelerate, Triggered, &FShipControlContext::set_accelerator);
-    bind_event(input_->translate_forward, Completed, &FShipControlContext::clear_forward_input);
-    bind_event(input_->translate_forward, Canceled, &FShipControlContext::clear_forward_input);
-    bind_event(input_->translate_right, Completed, &FShipControlContext::clear_right_input);
-    bind_event(input_->translate_right, Canceled, &FShipControlContext::clear_right_input);
-    bind_event(input_->translate_up, Completed, &FShipControlContext::clear_up_input);
-    bind_event(input_->translate_up, Canceled, &FShipControlContext::clear_up_input);
-    bind_event(input_->pitch, Completed, &FShipControlContext::clear_pitch_input);
-    bind_event(input_->pitch, Canceled, &FShipControlContext::clear_pitch_input);
-    bind_event(input_->yaw, Completed, &FShipControlContext::clear_yaw_input);
-    bind_event(input_->yaw, Canceled, &FShipControlContext::clear_yaw_input);
-    bind_event(input_->roll, Completed, &FShipControlContext::clear_roll_input);
-    bind_event(input_->roll, Canceled, &FShipControlContext::clear_roll_input);
-    bind_event(input_->accelerate, Completed, &FShipControlContext::clear_accelerator);
-    bind_event(input_->accelerate, Canceled, &FShipControlContext::clear_accelerator);
-    bind_event(input_->boost, Started, &FShipControlContext::start_boost);
-    bind_event(input_->boost, Completed, &FShipControlContext::stop_boost);
-    bind_event(input_->boost, Canceled, &FShipControlContext::stop_boost);
-    bind_event(input_->brake, Started, &FShipControlContext::start_brake);
-    bind_event(input_->brake, Completed, &FShipControlContext::stop_brake);
-    bind_event(input_->brake, Canceled, &FShipControlContext::stop_brake);
-    bind_event(input_->emergency_brake, Started, &FShipControlContext::start_emergency_brake);
-    bind_event(input_->emergency_brake, Completed, &FShipControlContext::stop_emergency_brake);
-    bind_event(input_->emergency_brake, Canceled, &FShipControlContext::stop_emergency_brake);
-    bind_event(input_->fire_primary, Started, &FShipControlContext::start_fire_primary);
-    bind_event(input_->fire_primary, Completed, &FShipControlContext::stop_fire_primary);
-    bind_event(input_->fire_primary, Canceled, &FShipControlContext::stop_fire_primary);
-    bind_event(input_->select_starfox, Started, &FShipControlContext::select_starfox);
-    bind_event(input_->select_fighter, Started, &FShipControlContext::select_fighter);
-    bind_event(input_->select_skater, Started, &FShipControlContext::select_skater);
-    bind_event(input_->select_gunship, Started, &FShipControlContext::select_gunship);
+    auto const bind_release = [&bind_event](UInputAction* const action, auto callback) {
+        bind_event(action, Completed, callback);
+        bind_event(action, Canceled, callback);
+    };
+    auto const clear_axis = [this, &bind_release](UInputAction* const action, auto method) {
+        bind_release(action, [this, method] {
+            if (auto* const ship{get_ship()}) {
+                (ship->*method)(0.f);
+            }
+        });
+    };
+    auto const select_slot = [this, &bind_event](UInputAction* const action,
+                                                 ioj::sim::player::FlightModelSlot const slot) {
+        bind_event(action, Started, [this, slot] { select_flight_model_slot(slot); });
+    };
+
+    bind_value(
+        input_->translate_forward, Triggered, ship_value(&ATestSpaceShip::set_forward_input));
+    bind_value(input_->translate_right, Triggered, ship_value(&ATestSpaceShip::set_right_input));
+    bind_value(input_->translate_up, Triggered, [this](FInputActionValue const& value) {
+        set_up_input(value);
+    });
+    bind_value(input_->pitch, Triggered, [this](FInputActionValue const& value) {
+        set_pitch_input(value);
+    });
+    bind_value(input_->yaw, Triggered, ship_value(&ATestSpaceShip::set_yaw_input));
+    bind_value(input_->roll, Triggered, ship_value(&ATestSpaceShip::set_roll_input));
+    bind_value(input_->accelerate, Triggered, ship_value(&ATestSpaceShip::set_accelerator));
+    clear_axis(input_->translate_forward, &ATestSpaceShip::set_forward_input);
+    clear_axis(input_->translate_right, &ATestSpaceShip::set_right_input);
+    clear_axis(input_->translate_up, &ATestSpaceShip::set_up_input);
+    clear_axis(input_->pitch, &ATestSpaceShip::set_pitch_input);
+    clear_axis(input_->yaw, &ATestSpaceShip::set_yaw_input);
+    clear_axis(input_->roll, &ATestSpaceShip::set_roll_input);
+    clear_axis(input_->accelerate, &ATestSpaceShip::set_accelerator);
+    bind_event(input_->boost, Started, ship_event(&ATestSpaceShip::start_boost));
+    bind_release(input_->boost, ship_event(&ATestSpaceShip::stop_boost));
+    bind_event(input_->brake, Started, ship_event(&ATestSpaceShip::start_brake));
+    bind_release(input_->brake, ship_event(&ATestSpaceShip::stop_brake));
+    bind_event(
+        input_->emergency_brake, Started, ship_event(&ATestSpaceShip::start_emergency_brake));
+    bind_release(input_->emergency_brake, ship_event(&ATestSpaceShip::stop_emergency_brake));
+    bind_event(input_->fire_primary, Started, [this] { start_fire_primary(); });
+    bind_release(input_->fire_primary, ship_event(&ATestSpaceShip::stop_fire_laser));
+    using enum ioj::sim::player::FlightModelSlot;
+    select_slot(input_->select_starfox, First);
+    select_slot(input_->select_fighter, Second);
+    select_slot(input_->select_skater, Third);
+    select_slot(input_->select_gunship, Fourth);
 }
 void FShipControlContext::remove_action_bindings() {
     if (auto* const component{input_component_.Get()}) {
@@ -261,16 +268,6 @@ auto FShipControlContext::get_ship() const -> ATestSpaceShip* {
     }
     return ship;
 }
-void FShipControlContext::set_forward_input(FInputActionValue const& value) {
-    if (auto* const ship{get_ship()}) {
-        ship->set_forward_input(value.Get<float>());
-    }
-}
-void FShipControlContext::set_right_input(FInputActionValue const& value) {
-    if (auto* const ship{get_ship()}) {
-        ship->set_right_input(value.Get<float>());
-    }
-}
 void FShipControlContext::set_up_input(FInputActionValue const& value) {
     if (auto* const ship{get_ship()}) {
         if (spacegame::input_trace::is_enabled()) {
@@ -293,86 +290,6 @@ void FShipControlContext::set_pitch_input(FInputActionValue const& value) {
         ship->set_pitch_input(value.Get<float>());
     }
 }
-void FShipControlContext::set_yaw_input(FInputActionValue const& value) {
-    if (auto* const ship{get_ship()}) {
-        ship->set_yaw_input(value.Get<float>());
-    }
-}
-void FShipControlContext::set_roll_input(FInputActionValue const& value) {
-    if (auto* const ship{get_ship()}) {
-        ship->set_roll_input(value.Get<float>());
-    }
-}
-void FShipControlContext::set_accelerator(FInputActionValue const& value) {
-    if (auto* const ship{get_ship()}) {
-        ship->set_accelerator(value.Get<float>());
-    }
-}
-void FShipControlContext::clear_forward_input() {
-    if (auto* const ship{get_ship()}) {
-        ship->set_forward_input(0.f);
-    }
-}
-void FShipControlContext::clear_right_input() {
-    if (auto* const ship{get_ship()}) {
-        ship->set_right_input(0.f);
-    }
-}
-void FShipControlContext::clear_up_input() {
-    if (auto* const ship{get_ship()}) {
-        ship->set_up_input(0.f);
-    }
-}
-void FShipControlContext::clear_pitch_input() {
-    if (auto* const ship{get_ship()}) {
-        ship->set_pitch_input(0.f);
-    }
-}
-void FShipControlContext::clear_yaw_input() {
-    if (auto* const ship{get_ship()}) {
-        ship->set_yaw_input(0.f);
-    }
-}
-void FShipControlContext::clear_roll_input() {
-    if (auto* const ship{get_ship()}) {
-        ship->set_roll_input(0.f);
-    }
-}
-void FShipControlContext::clear_accelerator() {
-    if (auto* const ship{get_ship()}) {
-        ship->set_accelerator(0.f);
-    }
-}
-void FShipControlContext::start_boost() {
-    if (auto* const ship{get_ship()}) {
-        ship->start_boost();
-    }
-}
-void FShipControlContext::stop_boost() {
-    if (auto* const ship{get_ship()}) {
-        ship->stop_boost();
-    }
-}
-void FShipControlContext::start_brake() {
-    if (auto* const ship{get_ship()}) {
-        ship->start_brake();
-    }
-}
-void FShipControlContext::stop_brake() {
-    if (auto* const ship{get_ship()}) {
-        ship->stop_brake();
-    }
-}
-void FShipControlContext::start_emergency_brake() {
-    if (auto* const ship{get_ship()}) {
-        ship->start_emergency_brake();
-    }
-}
-void FShipControlContext::stop_emergency_brake() {
-    if (auto* const ship{get_ship()}) {
-        ship->stop_emergency_brake();
-    }
-}
 void FShipControlContext::start_fire_primary() {
     if (auto* const ship{get_ship()}) {
         if (spacegame::input_trace::is_enabled()) {
@@ -381,10 +298,5 @@ void FShipControlContext::start_fire_primary() {
                    TEXT("[InputTrace] IA_Ship_FirePrimary -> start_fire_laser"));
         }
         ship->start_fire_laser();
-    }
-}
-void FShipControlContext::stop_fire_primary() {
-    if (auto* const ship{get_ship()}) {
-        ship->stop_fire_laser();
     }
 }

@@ -38,21 +38,6 @@ struct ColorStop {
     Color4f color{};
 };
 
-struct LayoutSettings {
-    Insets padding{};
-    float axis_thickness{1.0f};
-    float x_label_area_height{20.0f};
-    float y_label_area_width{36.0f};
-    bool show_axes{true};
-};
-
-struct PlotLayout {
-    Vector2f plot_origin{};
-    Vector2f plot_size{};
-    float x_label_area_height{};
-    float y_label_area_width{};
-};
-
 struct CellGeometry {
     std::uint32_t cell_index{invalid_index};
     std::uint32_t column{invalid_index};
@@ -77,8 +62,6 @@ struct MeshBatch {
 [[nodiscard]] auto is_valid_value_range(ValueRange range) noexcept -> bool;
 [[nodiscard]] auto is_valid_domain(Domain domain) noexcept -> bool;
 [[nodiscard]] auto is_valid_color_stops(std::span<ColorStop const> stops) noexcept -> bool;
-[[nodiscard]] auto make_plot_layout(Vector2f widget_size, LayoutSettings settings) noexcept
-    -> PlotLayout;
 [[nodiscard]] auto build_color_lut(std::span<ColorStop const> stops, std::int32_t entry_count = 256)
     -> std::vector<Color4f>;
 [[nodiscard]] auto build_cell_geometry(Grid const& grid,

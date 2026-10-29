@@ -40,36 +40,13 @@ struct SPACEGAME_API FShipControlContext {
     void remove_action_bindings();
     void neutralise_ship_input();
     void select_flight_model_slot(::ioj::sim::player::FlightModelSlot slot);
-    void select_starfox();
-    void select_fighter();
-    void select_skater();
-    void select_gunship();
     void verify_mode_invariant() const;
     auto context_for_slot(::ioj::sim::player::FlightModelSlot slot) const -> UInputMappingContext*;
     auto get_ship() const -> ATestSpaceShip*;
 
-    void set_forward_input(FInputActionValue const& value);
-    void set_right_input(FInputActionValue const& value);
     void set_up_input(FInputActionValue const& value);
     void set_pitch_input(FInputActionValue const& value);
-    void set_yaw_input(FInputActionValue const& value);
-    void set_roll_input(FInputActionValue const& value);
-    void set_accelerator(FInputActionValue const& value);
-    void clear_forward_input();
-    void clear_right_input();
-    void clear_up_input();
-    void clear_pitch_input();
-    void clear_yaw_input();
-    void clear_roll_input();
-    void clear_accelerator();
-    void start_boost();
-    void stop_boost();
-    void start_brake();
-    void stop_brake();
-    void start_emergency_brake();
-    void stop_emergency_brake();
     void start_fire_primary();
-    void stop_fire_primary();
 
     TWeakObjectPtr<ASpaceGamePlayerController> owner_;
     TWeakObjectPtr<UEnhancedInputComponent> input_component_;

@@ -7,6 +7,15 @@
 #include "Rendering/DrawElementTypes.h"
 #include "Styling/CoreStyle.h"
 
+namespace {
+auto native_layout_settings(FScatterPlotStyle const& style) -> ioj::ui::chart_layout::Settings {
+    return SandboxUI::Widgets::chart_layout_settings(style.chart_padding,
+                                                     style.axis_thickness,
+                                                     style.x_label_area_height,
+                                                     style.y_label_area_width);
+}
+}
+
 FScatterPlotStyle::FScatterPlotStyle()
     : label_font{FCoreStyle::GetDefaultFontStyle("Regular", 8)} {}
 
@@ -120,18 +129,13 @@ int32 SScatterPlot::OnPaint(FPaintArgs const&,
                             FWidgetStyle const& widget_style,
                             bool const parent_enabled) const {
     auto const widget_size{FVector2f{allotted_geometry.GetLocalSize()}};
-    auto const available_width{
-        FMath::Max(widget_size.X - style_.chart_padding.Left - style_.chart_padding.Right, 0.0f)};
-    auto const available_height{
-        FMath::Max(widget_size.Y - style_.chart_padding.Top - style_.chart_padding.Bottom, 0.0f)};
-    auto const x_label_height{FMath::Min(style_.x_label_area_height, available_height)};
-    auto const y_label_width{FMath::Min(style_.y_label_area_width, available_width)};
-    auto const plot_size{
-        FVector2f{FMath::Max(available_width - y_label_width - style_.axis_thickness, 0.0f),
-                  FMath::Max(available_height - x_label_height - style_.axis_thickness, 0.0f)}};
-    auto const plot_origin{
-        FVector2f{style_.chart_padding.Left + y_label_width + style_.axis_thickness,
-                  style_.chart_padding.Top}};
+    auto const layout{ioj::ui::chart_layout::make_layout(
+        {FMath::Max(widget_size.X, 0.0f), FMath::Max(widget_size.Y, 0.0f)},
+        native_layout_settings(style_))};
+    auto const x_label_height{layout.label_area_height};
+    auto const y_label_width{layout.y_label_area_width};
+    auto const plot_size{FVector2f{layout.plot_size.x(), layout.plot_size.y()}};
+    auto const plot_origin{FVector2f{layout.plot_origin.x(), layout.plot_origin.y()}};
 
     auto const enabled{ShouldBeEnabled(parent_enabled)};
     auto const draw_effect{enabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect};
@@ -204,15 +208,8 @@ int32 SScatterPlot::OnPaint(FPaintArgs const&,
 }
 
 bool SScatterPlot::is_valid_style(FScatterPlotStyle const& style) {
-    return SandboxUI::Widgets::is_finite_vector(style.desired_size) &&
-           style.desired_size.X >= 0.0f && style.desired_size.Y >= 0.0f &&
-           FMath::IsFinite(style.chart_padding.Left) && style.chart_padding.Left >= 0.0f &&
-           FMath::IsFinite(style.chart_padding.Right) && style.chart_padding.Right >= 0.0f &&
-           FMath::IsFinite(style.chart_padding.Top) && style.chart_padding.Top >= 0.0f &&
-           FMath::IsFinite(style.chart_padding.Bottom) && style.chart_padding.Bottom >= 0.0f &&
+    return ioj::ui::chart_layout::is_valid({style.desired_size.X, style.desired_size.Y},
+                                           native_layout_settings(style)) &&
            SandboxUI::Widgets::is_finite_vector(style.point_size) && style.point_size.X > 0.0f &&
-           style.point_size.Y > 0.0f && FMath::IsFinite(style.axis_thickness) &&
-           style.axis_thickness > 0.0f && FMath::IsFinite(style.x_label_area_height) &&
-           style.x_label_area_height >= 0.0f && FMath::IsFinite(style.y_label_area_width) &&
-           style.y_label_area_width >= 0.0f;
+           style.point_size.Y > 0.0f;
 }

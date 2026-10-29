@@ -33,6 +33,7 @@ class SPACEGAME_API FGameSettingsBackend {
   private:
     auto user_settings() const -> USpaceGameUserSettings*;
     auto input_user_settings() const -> USpaceGameInputUserSettings*;
+    void apply_input_settings(FGameSettingsState const& state) const;
     void write_non_display(USpaceGameUserSettings& settings, FGameSettingsState const& state) const;
 
     ULocalPlayer* local_player_{};

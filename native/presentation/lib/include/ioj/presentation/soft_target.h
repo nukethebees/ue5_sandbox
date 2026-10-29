@@ -6,6 +6,7 @@
 #include <ioj/ui/entity_overlay.h>
 
 #include <array>
+#include <optional>
 
 namespace ioj::presentation {
 struct OverlayView {
@@ -35,6 +36,33 @@ struct SoftTargetResult {
     float indicator_radius_pixels{};
     float world_units_per_pixel{};
     bool previous_target_can_fade{};
+};
+
+struct SoftTargetVisual {
+    sim::EntityId entity{};
+    float range_alpha{};
+    float radius_pixels{};
+    float world_units_per_pixel{};
+};
+
+struct SoftTargetMarker {
+    SoftTargetVisual visual{};
+    std::optional<Vector3f> location{};
+    float pulse{};
+    float visibility{};
+};
+
+struct SoftTargetState {
+    auto advance(std::span<AgentDisplayBatch const> batches,
+                 SoftTargetResult const& selected,
+                 float delta_seconds,
+                 float pulse_duration,
+                 float fade_duration) -> std::array<SoftTargetMarker, 2>;
+
+    SoftTargetVisual active{};
+    SoftTargetVisual fading{};
+    float pulse_remaining{};
+    float fade_remaining{};
 };
 
 auto select_soft_target(std::span<AgentDisplayBatch const> batches,

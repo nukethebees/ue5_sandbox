@@ -64,30 +64,6 @@ auto is_valid_color_stops(std::span<ColorStop const> const stops) noexcept -> bo
     return true;
 }
 
-auto make_plot_layout(Vector2f const widget_size, LayoutSettings const settings) noexcept
-    -> PlotLayout {
-    auto const available_width{
-        std::max(widget_size.x() - settings.padding.left - settings.padding.right, 0.0f)};
-    auto const available_height{
-        std::max(widget_size.y() - settings.padding.top - settings.padding.bottom, 0.0f)};
-
-    PlotLayout result;
-    if (!settings.show_axes) {
-        result.plot_origin = {settings.padding.left, settings.padding.top};
-        result.plot_size = {available_width, available_height};
-        return result;
-    }
-    result.x_label_area_height = std::min(settings.x_label_area_height, available_height);
-    result.y_label_area_width = std::min(settings.y_label_area_width, available_width);
-    result.plot_origin = {settings.padding.left + result.y_label_area_width +
-                              settings.axis_thickness,
-                          settings.padding.top};
-    result.plot_size = {
-        std::max(available_width - result.y_label_area_width - settings.axis_thickness, 0.0f),
-        std::max(available_height - result.x_label_area_height - settings.axis_thickness, 0.0f)};
-    return result;
-}
-
 auto build_color_lut(std::span<ColorStop const> const stops, std::int32_t const entry_count)
     -> std::vector<Color4f> {
     if (!is_valid_color_stops(stops) || entry_count < 2) {

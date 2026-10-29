@@ -1,7 +1,7 @@
 #include "SandboxUI/widgets/SHistogram.h"
 
 #include "ChartPainter.h"
-#include <ioj/ui/chart_layout.h>
+#include "WidgetMath.h"
 #include <ioj/ui/histogram.h>
 
 #include "Internationalization/Text.h"
@@ -106,14 +106,10 @@ int32 SHistogram::OnPaint(FPaintArgs const&,
                           FWidgetStyle const& widget_style,
                           bool const parent_enabled) const {
     auto const widget_size{FVector2f{allotted_geometry.GetLocalSize()}};
-    auto const native_layout{
-        ioj::ui::chart_layout::make_layout({widget_size.X, widget_size.Y},
-                                           {.padding = {style_.chart_padding.Left,
-                                                        style_.chart_padding.Top,
-                                                        style_.chart_padding.Right,
-                                                        style_.chart_padding.Bottom},
-                                            .axis_thickness = style_.axis_thickness,
-                                            .label_area_height = style_.label_area_height})};
+    auto const native_layout{ioj::ui::chart_layout::make_layout(
+        {widget_size.X, widget_size.Y},
+        SandboxUI::Widgets::chart_layout_settings(
+            style_.chart_padding, style_.axis_thickness, style_.label_area_height))};
     auto const plot_size{FVector2f{native_layout.plot_size.x(), native_layout.plot_size.y()}};
     auto const plot_origin{FVector2f{native_layout.plot_origin.x(), native_layout.plot_origin.y()}};
     auto const label_height{native_layout.label_area_height};
@@ -204,14 +200,10 @@ int32 SHistogram::OnPaint(FPaintArgs const&,
 
 auto SHistogram::OnMouseMove(FGeometry const& geometry, FPointerEvent const& event) -> FReply {
     auto const widget_size{FVector2f{geometry.GetLocalSize()}};
-    auto const native_layout{
-        ioj::ui::chart_layout::make_layout({widget_size.X, widget_size.Y},
-                                           {.padding = {style_.chart_padding.Left,
-                                                        style_.chart_padding.Top,
-                                                        style_.chart_padding.Right,
-                                                        style_.chart_padding.Bottom},
-                                            .axis_thickness = style_.axis_thickness,
-                                            .label_area_height = style_.label_area_height})};
+    auto const native_layout{ioj::ui::chart_layout::make_layout(
+        {widget_size.X, widget_size.Y},
+        SandboxUI::Widgets::chart_layout_settings(
+            style_.chart_padding, style_.axis_thickness, style_.label_area_height))};
     auto const plot_size{FVector2f{native_layout.plot_size.x(), native_layout.plot_size.y()}};
     auto const plot_origin{FVector2f{native_layout.plot_origin.x(), native_layout.plot_origin.y()}};
     auto const local{FVector2f{geometry.AbsoluteToLocal(event.GetScreenSpacePosition())}};
@@ -248,13 +240,9 @@ void SHistogram::OnMouseLeave(FPointerEvent const& event) {
 }
 
 bool SHistogram::is_valid_style(FHistogramStyle const& style) {
-    return FMath::IsFinite(style.desired_size.X) && FMath::IsFinite(style.desired_size.Y) &&
-           style.desired_size.X >= 0.0f && style.desired_size.Y >= 0.0f &&
-           FMath::IsFinite(style.chart_padding.Left) && style.chart_padding.Left >= 0.0f &&
-           FMath::IsFinite(style.chart_padding.Right) && style.chart_padding.Right >= 0.0f &&
-           FMath::IsFinite(style.chart_padding.Top) && style.chart_padding.Top >= 0.0f &&
-           FMath::IsFinite(style.chart_padding.Bottom) && style.chart_padding.Bottom >= 0.0f &&
-           FMath::IsFinite(style.bar_gap) && style.bar_gap >= 0.0f &&
-           FMath::IsFinite(style.axis_thickness) && style.axis_thickness > 0.0f &&
-           FMath::IsFinite(style.label_area_height) && style.label_area_height >= 0.0f;
+    return ioj::ui::chart_layout::is_valid(
+               {style.desired_size.X, style.desired_size.Y},
+               SandboxUI::Widgets::chart_layout_settings(
+                   style.chart_padding, style.axis_thickness, style.label_area_height)) &&
+           FMath::IsFinite(style.bar_gap) && style.bar_gap >= 0.0f;
 }

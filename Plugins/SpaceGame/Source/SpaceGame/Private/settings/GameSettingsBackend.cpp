@@ -43,27 +43,67 @@ auto to_quality(int32 const value) -> EGameQualityLevel {
     return static_cast<EGameQualityLevel>(FMath::Clamp(value, 0, 3));
 }
 
-auto graphics_preset(EGameQualityLevel const view_distance,
-                     EGameQualityLevel const anti_aliasing,
-                     EGameQualityLevel const shadows,
-                     EGameQualityLevel const global_illumination,
-                     EGameQualityLevel const reflections,
-                     EGameQualityLevel const post_processing,
-                     EGameQualityLevel const textures,
-                     EGameQualityLevel const effects,
-                     EGameQualityLevel const shading) -> EGameGraphicsPreset {
-    if (anti_aliasing != view_distance || shadows != view_distance ||
-        global_illumination != view_distance || reflections != view_distance ||
-        post_processing != view_distance || textures != view_distance || effects != view_distance ||
-        shading != view_distance) {
+auto graphics_preset(FGameSettingsState const& state) -> EGameGraphicsPreset {
+    auto const quality{state.view_distance_quality};
+    if (state.aa_quality != quality || state.shadow_quality != quality ||
+        state.global_illumination_quality != quality || state.reflections_quality != quality ||
+        state.post_processing_quality != quality || state.texture_quality != quality ||
+        state.effects_quality != quality || state.shading_quality != quality) {
         return EGameGraphicsPreset::Custom;
     }
-
-    return static_cast<EGameGraphicsPreset>(static_cast<uint8>(view_distance) + 1);
+    return static_cast<EGameGraphicsPreset>(static_cast<uint8>(quality) + 1);
 }
 
 auto make_option(FGameSettingValue value, TCHAR const* label) -> FGameSettingOption {
     return FGameSettingOption{MoveTemp(value), FText::FromString(label)};
+}
+
+auto read_settings(USpaceGameUserSettings& settings,
+                   USpaceGameInputUserSettings const& input,
+                   FIntPoint const resolution) -> FGameSettingsState {
+    float normalized_scale{};
+    float resolution_scale{};
+    float minimum_scale{};
+    float maximum_scale{};
+    settings.GetResolutionScaleInformationEx(
+        normalized_scale, resolution_scale, minimum_scale, maximum_scale);
+
+    FGameSettingsState result{
+        .resolution = resolution,
+        .window_mode = to_game_window_mode(settings.GetFullscreenMode()),
+        .vsync = settings.IsVSyncEnabled(),
+        .frame_rate_limit = settings.GetFrameRateLimit(),
+        .resolution_scale = resolution_scale,
+        .view_distance_quality = to_quality(settings.GetViewDistanceQuality()),
+        .aa_method = settings.anti_aliasing_method(),
+        .aa_quality = to_quality(settings.GetAntiAliasingQuality()),
+        .shadow_quality = to_quality(settings.GetShadowQuality()),
+        .global_illumination_quality = to_quality(settings.GetGlobalIlluminationQuality()),
+        .reflections_quality = to_quality(settings.GetReflectionQuality()),
+        .post_processing_quality = to_quality(settings.GetPostProcessingQuality()),
+        .texture_quality = to_quality(settings.GetTextureQuality()),
+        .effects_quality = to_quality(settings.GetVisualEffectQuality()),
+        .shading_quality = to_quality(settings.GetShadingQuality()),
+        .bloom = settings.bloom_enabled(),
+        .motion_blur = settings.motion_blur_enabled(),
+        .master_volume = settings.master_volume(),
+        .music_volume = settings.music_volume(),
+        .sfx_volume = settings.sfx_volume(),
+        .ui_volume = settings.ui_volume(),
+        .bees = settings.bees(),
+        .mouse_turn_sensitivity = input.mouse_turn_sensitivity(),
+        .gamepad_turn_sensitivity = input.gamepad_turn_sensitivity(),
+        .gamepad_turn_dead_zone = input.gamepad_turn_dead_zone(),
+        .gamepad_move_dead_zone = input.gamepad_move_dead_zone(),
+        .invert_mouse_pitch = input.invert_mouse_pitch(),
+        .invert_mouse_yaw = input.invert_mouse_yaw(),
+        .invert_gamepad_pitch = input.invert_gamepad_pitch(),
+        .invert_gamepad_yaw = input.invert_gamepad_yaw(),
+        .invert_gamepad_roll = input.invert_gamepad_roll(),
+        .invert_gamepad_vertical_translation = input.invert_gamepad_vertical_translation(),
+    };
+    result.overall_quality = graphics_preset(result);
+    return result;
 }
 
 } // namespace
@@ -73,88 +113,15 @@ void FGameSettingsBackend::set_local_player(ULocalPlayer* const local_player) {
 }
 
 auto FGameSettingsBackend::read() const -> FGameSettingsState {
-    auto* settings{user_settings()};
+    auto* const settings{user_settings()};
     if (settings == nullptr) {
         return {};
     }
-
-    float normalized_scale{};
-    float resolution_scale{};
-    float minimum_scale{};
-    float maximum_scale{};
-    settings->GetResolutionScaleInformationEx(
-        normalized_scale, resolution_scale, minimum_scale, maximum_scale);
-
-    auto const view_distance_quality{to_quality(settings->GetViewDistanceQuality())};
-    auto const aa_quality{to_quality(settings->GetAntiAliasingQuality())};
-    auto const shadow_quality{to_quality(settings->GetShadowQuality())};
-    auto const global_illumination_quality{to_quality(settings->GetGlobalIlluminationQuality())};
-    auto const reflections_quality{to_quality(settings->GetReflectionQuality())};
-    auto const post_processing_quality{to_quality(settings->GetPostProcessingQuality())};
-    auto const texture_quality{to_quality(settings->GetTextureQuality())};
-    auto const effects_quality{to_quality(settings->GetVisualEffectQuality())};
-    auto const shading_quality{to_quality(settings->GetShadingQuality())};
-
-    auto const* const input_settings{input_user_settings()};
-    auto const* const input_defaults{GetDefault<USpaceGameInputUserSettings>()};
-    return FGameSettingsState{
-        .resolution = settings->GetScreenResolution(),
-        .window_mode = to_game_window_mode(settings->GetFullscreenMode()),
-        .vsync = settings->IsVSyncEnabled(),
-        .frame_rate_limit = settings->GetFrameRateLimit(),
-        .resolution_scale = resolution_scale,
-        .overall_quality = graphics_preset(view_distance_quality,
-                                           aa_quality,
-                                           shadow_quality,
-                                           global_illumination_quality,
-                                           reflections_quality,
-                                           post_processing_quality,
-                                           texture_quality,
-                                           effects_quality,
-                                           shading_quality),
-        .view_distance_quality = view_distance_quality,
-        .aa_method = settings->anti_aliasing_method(),
-        .aa_quality = aa_quality,
-        .shadow_quality = shadow_quality,
-        .global_illumination_quality = global_illumination_quality,
-        .reflections_quality = reflections_quality,
-        .post_processing_quality = post_processing_quality,
-        .texture_quality = texture_quality,
-        .effects_quality = effects_quality,
-        .shading_quality = shading_quality,
-        .bloom = settings->bloom_enabled(),
-        .motion_blur = settings->motion_blur_enabled(),
-        .master_volume = settings->master_volume(),
-        .music_volume = settings->music_volume(),
-        .sfx_volume = settings->sfx_volume(),
-        .ui_volume = settings->ui_volume(),
-        .bees = settings->bees(),
-        .mouse_turn_sensitivity = input_settings != nullptr
-                                    ? input_settings->mouse_turn_sensitivity()
-                                    : input_defaults->mouse_turn_sensitivity(),
-        .gamepad_turn_sensitivity = input_settings != nullptr
-                                      ? input_settings->gamepad_turn_sensitivity()
-                                      : input_defaults->gamepad_turn_sensitivity(),
-        .gamepad_turn_dead_zone = input_settings != nullptr
-                                    ? input_settings->gamepad_turn_dead_zone()
-                                    : input_defaults->gamepad_turn_dead_zone(),
-        .gamepad_move_dead_zone = input_settings != nullptr
-                                    ? input_settings->gamepad_move_dead_zone()
-                                    : input_defaults->gamepad_move_dead_zone(),
-        .invert_mouse_pitch = input_settings != nullptr ? input_settings->invert_mouse_pitch()
-                                                        : input_defaults->invert_mouse_pitch(),
-        .invert_mouse_yaw = input_settings != nullptr ? input_settings->invert_mouse_yaw()
-                                                      : input_defaults->invert_mouse_yaw(),
-        .invert_gamepad_pitch = input_settings != nullptr ? input_settings->invert_gamepad_pitch()
-                                                          : input_defaults->invert_gamepad_pitch(),
-        .invert_gamepad_yaw = input_settings != nullptr ? input_settings->invert_gamepad_yaw()
-                                                        : input_defaults->invert_gamepad_yaw(),
-        .invert_gamepad_roll = input_settings != nullptr ? input_settings->invert_gamepad_roll()
-                                                         : input_defaults->invert_gamepad_roll(),
-        .invert_gamepad_vertical_translation =
-            input_settings != nullptr ? input_settings->invert_gamepad_vertical_translation()
-                                      : input_defaults->invert_gamepad_vertical_translation(),
-    };
+    auto const* input{input_user_settings()};
+    if (input == nullptr) {
+        input = GetDefault<USpaceGameInputUserSettings>();
+    }
+    return read_settings(*settings, *input, settings->GetScreenResolution());
 }
 
 auto FGameSettingsBackend::defaults() const -> FGameSettingsState {
@@ -167,68 +134,7 @@ auto FGameSettingsBackend::defaults() const -> FGameSettingsState {
         resolution = FIntPoint{1920, 1080};
     }
 
-    float normalized_scale{};
-    float resolution_scale{};
-    float minimum_scale{};
-    float maximum_scale{};
-    defaults->GetResolutionScaleInformationEx(
-        normalized_scale, resolution_scale, minimum_scale, maximum_scale);
-
-    auto const view_distance_quality{to_quality(defaults->GetViewDistanceQuality())};
-    auto const aa_quality{to_quality(defaults->GetAntiAliasingQuality())};
-    auto const shadow_quality{to_quality(defaults->GetShadowQuality())};
-    auto const global_illumination_quality{to_quality(defaults->GetGlobalIlluminationQuality())};
-    auto const reflections_quality{to_quality(defaults->GetReflectionQuality())};
-    auto const post_processing_quality{to_quality(defaults->GetPostProcessingQuality())};
-    auto const texture_quality{to_quality(defaults->GetTextureQuality())};
-    auto const effects_quality{to_quality(defaults->GetVisualEffectQuality())};
-    auto const shading_quality{to_quality(defaults->GetShadingQuality())};
-
-    auto const* const input_defaults{GetDefault<USpaceGameInputUserSettings>()};
-    return FGameSettingsState{
-        .resolution = resolution,
-        .window_mode = to_game_window_mode(defaults->GetFullscreenMode()),
-        .vsync = defaults->IsVSyncEnabled(),
-        .frame_rate_limit = defaults->GetFrameRateLimit(),
-        .resolution_scale = resolution_scale,
-        .overall_quality = graphics_preset(view_distance_quality,
-                                           aa_quality,
-                                           shadow_quality,
-                                           global_illumination_quality,
-                                           reflections_quality,
-                                           post_processing_quality,
-                                           texture_quality,
-                                           effects_quality,
-                                           shading_quality),
-        .view_distance_quality = view_distance_quality,
-        .aa_method = defaults->anti_aliasing_method(),
-        .aa_quality = aa_quality,
-        .shadow_quality = shadow_quality,
-        .global_illumination_quality = global_illumination_quality,
-        .reflections_quality = reflections_quality,
-        .post_processing_quality = post_processing_quality,
-        .texture_quality = texture_quality,
-        .effects_quality = effects_quality,
-        .shading_quality = shading_quality,
-        .bloom = defaults->bloom_enabled(),
-        .motion_blur = defaults->motion_blur_enabled(),
-        .master_volume = defaults->master_volume(),
-        .music_volume = defaults->music_volume(),
-        .sfx_volume = defaults->sfx_volume(),
-        .ui_volume = defaults->ui_volume(),
-        .bees = defaults->bees(),
-        .mouse_turn_sensitivity = input_defaults->mouse_turn_sensitivity(),
-        .gamepad_turn_sensitivity = input_defaults->gamepad_turn_sensitivity(),
-        .gamepad_turn_dead_zone = input_defaults->gamepad_turn_dead_zone(),
-        .gamepad_move_dead_zone = input_defaults->gamepad_move_dead_zone(),
-        .invert_mouse_pitch = input_defaults->invert_mouse_pitch(),
-        .invert_mouse_yaw = input_defaults->invert_mouse_yaw(),
-        .invert_gamepad_pitch = input_defaults->invert_gamepad_pitch(),
-        .invert_gamepad_yaw = input_defaults->invert_gamepad_yaw(),
-        .invert_gamepad_roll = input_defaults->invert_gamepad_roll(),
-        .invert_gamepad_vertical_translation =
-            input_defaults->invert_gamepad_vertical_translation(),
-    };
+    return read_settings(*defaults, *GetDefault<USpaceGameInputUserSettings>(), resolution);
 }
 
 void FGameSettingsBackend::preview_immediate(FGameSettingsState const& state,
@@ -268,20 +174,7 @@ void FGameSettingsBackend::preview_immediate(FGameSettingsState const& state,
         case EGameSetting::InvertGamepadYaw:
         case EGameSetting::InvertGamepadRoll:
         case EGameSetting::InvertGamepadVerticalTranslation: {
-            if (auto* const input_settings{input_user_settings()}) {
-                input_settings->set_mouse_turn_sensitivity(state.mouse_turn_sensitivity);
-                input_settings->set_gamepad_turn_sensitivity(state.gamepad_turn_sensitivity);
-                input_settings->set_gamepad_turn_dead_zone(state.gamepad_turn_dead_zone);
-                input_settings->set_gamepad_move_dead_zone(state.gamepad_move_dead_zone);
-                input_settings->set_invert_mouse_pitch(state.invert_mouse_pitch);
-                input_settings->set_invert_mouse_yaw(state.invert_mouse_yaw);
-                input_settings->set_invert_gamepad_pitch(state.invert_gamepad_pitch);
-                input_settings->set_invert_gamepad_yaw(state.invert_gamepad_yaw);
-                input_settings->set_invert_gamepad_roll(state.invert_gamepad_roll);
-                input_settings->set_invert_gamepad_vertical_translation(
-                    state.invert_gamepad_vertical_translation);
-                input_settings->ApplySettings();
-            }
+            apply_input_settings(state);
             break;
         }
         default: {
@@ -297,6 +190,10 @@ void FGameSettingsBackend::apply_non_display(FGameSettingsState const& state) co
     }
     write_non_display(*settings, state);
     settings->ApplyNonResolutionSettings();
+    apply_input_settings(state);
+}
+
+void FGameSettingsBackend::apply_input_settings(FGameSettingsState const& state) const {
     if (auto* const input_settings{input_user_settings()}) {
         input_settings->set_mouse_turn_sensitivity(state.mouse_turn_sensitivity);
         input_settings->set_gamepad_turn_sensitivity(state.gamepad_turn_sensitivity);
