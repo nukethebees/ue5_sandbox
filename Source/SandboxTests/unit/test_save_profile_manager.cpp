@@ -86,6 +86,24 @@ auto make_record(FDateTime const date, FName const level, int32 const kills) -> 
 
 TEST_CLASS(SaveProfileManager, "Sandbox.UnitTests")
 {
+    void check_debug_settings(FSaveProfileDebugSettings const actual,
+                              FSaveProfileDebugSettings const expected,
+                              TCHAR const* description) {
+        TestRunner->TestEqual(FString{description} + TEXT(" / unlock_all_missions"),
+                              actual.unlock_all_missions,
+                              expected.unlock_all_missions);
+        TestRunner->TestEqual(FString{description} + TEXT(" / start_levels_paused"),
+                              actual.start_levels_paused,
+                              expected.start_levels_paused);
+    }
+
+    void check_debug_settings(ioj::FSaveProfileManager const& manager,
+                              FSaveProfileDebugSettings const expected,
+                              TCHAR const* description) {
+        check_debug_settings(
+            {manager.unlock_all_missions(), manager.start_levels_paused()}, expected, description);
+    }
+
     TEST_METHOD(CreatesDefaultProfileAndImportsLegacyResults)
     {
         save_profile_manager_test::FFakeProfileStorage storage{
@@ -325,10 +343,7 @@ TEST_CLASS(SaveProfileManager, "Sandbox.UnitTests")
         ioj::FSaveProfileManager version_two_manager{version_two_storage.make()};
         TestRunner->TestTrue(TEXT("Version two profile index migrates"),
                              version_two_manager.initialise());
-        TestRunner->TestTrue(TEXT("Existing debug settings are preserved"),
-                             version_two_manager.unlock_all_missions());
-        TestRunner->TestFalse(TEXT("New debug setting is initialized off"),
-                              version_two_manager.start_levels_paused());
+        check_debug_settings(version_two_manager, {true, false}, TEXT("Version two migration"));
     }
 
     TEST_METHOD(DebugSettingsPersistPerProfileAndSurviveReload)
@@ -340,9 +355,7 @@ TEST_CLASS(SaveProfileManager, "Sandbox.UnitTests")
             ioj::FSaveProfileManager manager{storage.make()};
             TestRunner->TestTrue(TEXT("Profile manager initialises"), manager.initialise());
             first_profile_id = manager.get_active_profile_id();
-            TestRunner->TestFalse(TEXT("New profile defaults off"), manager.unlock_all_missions());
-            TestRunner->TestFalse(TEXT("Paused launch defaults off"),
-                                  manager.start_levels_paused());
+            check_debug_settings(manager, {}, TEXT("New profile defaults"));
             TestRunner->TestTrue(TEXT("Debug setting saves"),
                                  manager.set_unlock_all_missions(true));
             TestRunner->TestTrue(TEXT("Paused launch setting saves"),
@@ -351,39 +364,27 @@ TEST_CLASS(SaveProfileManager, "Sandbox.UnitTests")
                 FDateTime{2026, 9, 6}, TEXT("asteroid-field"), 3)};
             TestRunner->TestTrue(TEXT("Score record saves with debug setting enabled"),
                                  manager.append_score_record(record));
-            TestRunner->TestTrue(TEXT("Metadata updates preserve debug settings"),
-                                 manager.unlock_all_missions());
-            TestRunner->TestTrue(TEXT("Metadata updates preserve paused launch"),
-                                 manager.start_levels_paused());
+            check_debug_settings(manager, {true, true}, TEXT("Metadata updates preserve settings"));
 
             auto const created{manager.create_profile(TEXT("Second"))};
             second_profile_id = created.profile_id;
             TestRunner->TestEqual(TEXT("Second profile is created"),
                                   created.result,
                                   ioj::ECreateSaveProfileResult::succeeded);
-            TestRunner->TestFalse(TEXT("Second profile has independent default"),
-                                  manager.unlock_all_missions());
-            TestRunner->TestFalse(TEXT("Second profile paused launch defaults off"),
-                                  manager.start_levels_paused());
+            check_debug_settings(manager, {}, TEXT("Second profile has independent defaults"));
             TestRunner->TestTrue(TEXT("First profile reactivates"),
                                  manager.activate_profile(first_profile_id));
-            TestRunner->TestTrue(TEXT("First profile setting is restored"),
-                                 manager.unlock_all_missions());
-            TestRunner->TestTrue(TEXT("First profile paused launch is restored"),
-                                 manager.start_levels_paused());
+            check_debug_settings(
+                manager, {true, true}, TEXT("First profile settings are restored"));
         }
 
         ioj::FSaveProfileManager reloaded{storage.make()};
         TestRunner->TestTrue(TEXT("Profile manager reloads"), reloaded.initialise());
-        TestRunner->TestTrue(TEXT("Active profile setting survives reload"),
-                             reloaded.unlock_all_missions());
-        TestRunner->TestTrue(TEXT("Paused launch survives reload"), reloaded.start_levels_paused());
+        check_debug_settings(
+            reloaded, {true, true}, TEXT("Active profile settings survive reload"));
         TestRunner->TestTrue(TEXT("Second profile activates"),
                              reloaded.activate_profile(second_profile_id));
-        TestRunner->TestFalse(TEXT("Second profile remains independent"),
-                              reloaded.unlock_all_missions());
-        TestRunner->TestFalse(TEXT("Second profile paused launch remains independent"),
-                              reloaded.start_levels_paused());
+        check_debug_settings(reloaded, {}, TEXT("Second profile remains independent"));
     }
 
     TEST_METHOD(TestProfileResetRestoresDebugDefaults)
@@ -396,16 +397,10 @@ TEST_CLASS(SaveProfileManager, "Sandbox.UnitTests")
                              manager.set_unlock_all_missions(true));
         TestRunner->TestTrue(TEXT("Test profile paused launch saves"),
                              manager.set_start_levels_paused(true));
-        TestRunner->TestTrue(TEXT("Test profile debug setting is enabled"),
-                             manager.unlock_all_missions());
-        TestRunner->TestTrue(TEXT("Test profile paused launch is enabled"),
-                             manager.start_levels_paused());
+        check_debug_settings(manager, {true, true}, TEXT("Test profile settings are enabled"));
 
         TestRunner->TestTrue(TEXT("Test profile resets again"), manager.reset_test_profile({}));
-        TestRunner->TestFalse(TEXT("Reset test profile restores debug default"),
-                              manager.unlock_all_missions());
-        TestRunner->TestFalse(TEXT("Reset test profile restores paused launch default"),
-                              manager.start_levels_paused());
+        check_debug_settings(manager, {}, TEXT("Reset test profile restores defaults"));
     }
 
     TEST_METHOD(FailedDebugSettingsSaveRollsBack)
@@ -501,14 +496,12 @@ TEST_CLASS(SaveProfileManager, "Sandbox.UnitTests")
                               loaded->data.save_version,
                               FSaveProfileIndexData::current_save_version);
         TestRunner->TestEqual(TEXT("Both profiles round-trip"), loaded->data.profiles.Num(), 2);
-        TestRunner->TestTrue(TEXT("Enabled profile setting round-trips"),
-                             loaded->data.profiles[0].debug_settings.unlock_all_missions);
-        TestRunner->TestTrue(TEXT("Enabled paused launch round-trips"),
-                             loaded->data.profiles[0].debug_settings.start_levels_paused);
-        TestRunner->TestFalse(TEXT("Disabled profile setting round-trips"),
-                              loaded->data.profiles[1].debug_settings.unlock_all_missions);
-        TestRunner->TestFalse(TEXT("Disabled paused launch round-trips"),
-                              loaded->data.profiles[1].debug_settings.start_levels_paused);
+        check_debug_settings(loaded->data.profiles[0].debug_settings,
+                             {true, true},
+                             TEXT("Enabled profile settings round-trip"));
+        check_debug_settings(loaded->data.profiles[1].debug_settings,
+                             {},
+                             TEXT("Disabled profile settings round-trip"));
     }
 
     TEST_METHOD(SelectsDevelopmentStorageRoots)

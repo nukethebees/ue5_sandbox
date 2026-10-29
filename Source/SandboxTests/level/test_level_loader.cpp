@@ -352,22 +352,10 @@ void FLevelLoaderCameraScenario::on_tear_down() {
 
 void FLevelLoaderCameraScenario::run() {
     TestCommandBuilder.Do([this] { load_fixture(); })
-        .Until(
-            [this] {
-                advance_sample();
-                return !checks.all_passed ||
-                       (test_driver.IsSet() && test_driver->timeline.is_finished());
-            },
-            timeout)
+        .Until([this] { return advance_until_timeline_finished(); }, timeout)
         .Then([this] { check_runtime(); })
         .Then([this] { load_headless_fixture(); })
-        .Until(
-            [this] {
-                advance_sample();
-                return !checks.all_passed ||
-                       (test_driver.IsSet() && test_driver->timeline.is_finished());
-            },
-            timeout)
+        .Until([this] { return advance_until_timeline_finished(); }, timeout)
         .Then([this] { check_runtime(); });
 }
 
@@ -548,13 +536,7 @@ void FLevelLoaderScenario::check_runtime() {
 
 void FLevelLoaderScenario::run() {
     TestCommandBuilder.Do([this] { load_fixture(); })
-        .Until(
-            [this] {
-                advance_sample();
-                return !checks.all_passed ||
-                       (test_driver.IsSet() && test_driver->timeline.is_finished());
-            },
-            timeout)
+        .Until([this] { return advance_until_timeline_finished(); }, timeout)
         .Then([this] { check_runtime(); });
 }
 

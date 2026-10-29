@@ -55,17 +55,12 @@ class FSimulationTestScenario {
                 setup();
                 context_.orchestrator.SetActorTickEnabled(false);
             })
-            .Until(
-                [this] {
-                    advance_sample();
-                    return !checks.all_passed ||
-                           (test_driver.IsSet() && test_driver->timeline.is_finished());
-                },
-                timeout)
+            .Until([this] { return advance_until_timeline_finished(); }, timeout)
             .Then(Forward<Completion>(completion));
     }
 
     void advance_sample();
+    auto advance_until_timeline_finished() -> bool;
     void set_sample_callback(FSimulationSampleCallback callback) {
         sample_callback_ = MoveTemp(callback);
     }

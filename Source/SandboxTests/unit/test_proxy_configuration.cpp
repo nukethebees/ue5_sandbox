@@ -59,6 +59,23 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
         return result;
     }
 
+    void check_arrow_layout(TArray<UArrowComponent*> const& points,
+                            TArray<FTransform> const& expected,
+                            TCHAR const* description,
+                            AActor const* world_frame = nullptr) {
+        auto const frame{world_frame ? FTransform{world_frame->GetActorRotation(),
+                                                  world_frame->GetActorLocation(),
+                                                  FVector::OneVector}
+                                     : FTransform::Identity};
+        auto const count{points.Num()};
+        for (int32 i{}; i < count; ++i) {
+            TestRunner->TestTrue(
+                FString::Printf(TEXT("%s [%d]"), description, i),
+                world_frame ? points[i]->GetComponentTransform().Equals(expected[i] * frame, 0.01)
+                            : points[i]->GetRelativeTransform().Equals(expected[i]));
+        }
+    }
+
     TEST_METHOD(CapitalApplyAllUsesCurrentAssetAndSaveRoundTripsRotatedArrows)
     {
         auto* const first{world->SpawnActor<ATestCapitalShipProxy>()};
@@ -77,15 +94,10 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
             if (!TestRunner->TestEqual(TEXT("Two capital slots"), points.Num(), 2)) {
                 return;
             }
-            FTransform const frame{
-                proxy->GetActorRotation(), proxy->GetActorLocation(), FVector::OneVector};
-            for (int32 i{}; i < 2; ++i) {
-                TestRunner->TestTrue(
-                    TEXT("Every capital uses current saved actor-space slots"),
-                    points[i]->GetComponentTransform().Equals(
-                        config->capital_ships.fighter_spawn_slots_relative_transforms[i] * frame,
-                        0.01));
-            }
+            check_arrow_layout(points,
+                               config->capital_ships.fighter_spawn_slots_relative_transforms,
+                               TEXT("Every capital uses current saved actor-space slots"),
+                               proxy);
         }
         auto const points{arrows(*first, TEXT("fighter_spawn_slots"))};
         auto const moved{points[0]->GetComponentLocation() + FVector{500., -750., 200.}};
@@ -119,16 +131,10 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
                                    config->capital_ships.simulation.fighter_spawn_slots)) {
             return;
         }
-        FTransform const frame{
-            proxy->GetActorRotation(), proxy->GetActorLocation(), FVector::OneVector};
-        auto const count{points.Num()};
-        for (int32 i{}; i < count; ++i) {
-            TestRunner->TestTrue(
-                TEXT("Construction preserves applied actor-space layout"),
-                points[i]->GetComponentTransform().Equals(
-                    config->capital_ships.fighter_spawn_slots_relative_transforms[i] * frame,
-                    0.01));
-        }
+        check_arrow_layout(points,
+                           config->capital_ships.fighter_spawn_slots_relative_transforms,
+                           TEXT("Construction preserves applied actor-space layout"),
+                           proxy);
     }
 
     TEST_METHOD(CapitalApplyAllSupportsUndoRedo)
@@ -199,11 +205,9 @@ TEST_CLASS(ProxyConfiguration, "Sandbox.UnitTests")
             proxy->GetComponents(components);
             TestRunner->TestEqual(
                 TEXT("Repeated apply does not leave extra arrows"), components.Num(), 2);
-            for (int32 i{}; i < 2; ++i) {
-                TestRunner->TestTrue(TEXT("Current spinner fire points applied"),
-                                     points[i]->GetRelativeTransform().Equals(
-                                         config->tube_spinners.fire_point_offsets[i]));
-            }
+            check_arrow_layout(points,
+                               config->tube_spinners.fire_point_offsets,
+                               TEXT("Current spinner fire points applied"));
         }
         TestRunner->TestTrue(TEXT("Spinner apply preserves component identity"),
                              arrows(*first, TEXT("fire_points"))[0] == original[0]);

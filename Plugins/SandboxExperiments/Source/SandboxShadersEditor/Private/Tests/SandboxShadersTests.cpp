@@ -385,33 +385,25 @@ TEST_CLASS(MaterialCompilation, "SandboxShaders.MaterialCompilation")
         space_field->Tick(1.0f / 60.0f);
         FlushRenderingCommands();
 
-        auto* const shield_mesh{Cast<UStaticMeshComponent>(shield->GetRootComponent())};
-        auto* const field_mesh{Cast<UStaticMeshComponent>(space_field->GetRootComponent())};
         auto* const impact_mesh{Cast<UStaticMeshComponent>(impact->GetRootComponent())};
-        auto* const ripple_mesh{Cast<UStaticMeshComponent>(ripple->GetRootComponent())};
-        auto* const radar_mesh{Cast<UStaticMeshComponent>(radar->GetRootComponent())};
         auto* const warp_mesh{Cast<UStaticMeshComponent>(warp_field->GetRootComponent())};
         auto* const anomaly_mesh{Cast<UStaticMeshComponent>(anomaly->GetRootComponent())};
         auto* const exhaust_mesh{Cast<UStaticMeshComponent>(exhaust->GetRootComponent())};
         auto* const construction_mesh{Cast<UStaticMeshComponent>(construction->GetRootComponent())};
         auto* const energy_beam_mesh{energy_beam->FindComponentByClass<UStaticMeshComponent>()};
         auto* const scan_post_process{tactical_scan->FindComponentByClass<UPostProcessComponent>()};
-        TestRunner->TestNotNull(TEXT("Shield has a runtime material"),
-                                IsValid(shield_mesh) ? shield_mesh->GetMaterial(0) : nullptr);
-        TestRunner->TestNotNull(TEXT("Space field has a runtime display material"),
-                                IsValid(field_mesh) ? field_mesh->GetMaterial(0) : nullptr);
-        TestRunner->TestNotNull(TEXT("Shield impact has a runtime material"),
-                                IsValid(impact_mesh) ? impact_mesh->GetMaterial(0) : nullptr);
-        TestRunner->TestNotNull(TEXT("Vertex ripple has a runtime material"),
-                                IsValid(ripple_mesh) ? ripple_mesh->GetMaterial(0) : nullptr);
-        TestRunner->TestNotNull(TEXT("Radar has a runtime material"),
-                                IsValid(radar_mesh) ? radar_mesh->GetMaterial(0) : nullptr);
-        TestRunner->TestNotNull(TEXT("Warp field has a runtime material"),
-                                IsValid(warp_mesh) ? warp_mesh->GetMaterial(0) : nullptr);
-        TestRunner->TestNotNull(TEXT("Raymarched anomaly has a runtime material"),
-                                IsValid(anomaly_mesh) ? anomaly_mesh->GetMaterial(0) : nullptr);
-        TestRunner->TestNotNull(TEXT("Engine exhaust has a runtime material"),
-                                IsValid(exhaust_mesh) ? exhaust_mesh->GetMaterial(0) : nullptr);
+        auto const check_root_material{[this](AActor const& actor, TCHAR const* description) {
+            auto* const mesh{Cast<UStaticMeshComponent>(actor.GetRootComponent())};
+            TestRunner->TestNotNull(description, IsValid(mesh) ? mesh->GetMaterial(0) : nullptr);
+        }};
+        check_root_material(*shield, TEXT("Shield has a runtime material"));
+        check_root_material(*space_field, TEXT("Space field has a runtime display material"));
+        check_root_material(*impact, TEXT("Shield impact has a runtime material"));
+        check_root_material(*ripple, TEXT("Vertex ripple has a runtime material"));
+        check_root_material(*radar, TEXT("Radar has a runtime material"));
+        check_root_material(*warp_field, TEXT("Warp field has a runtime material"));
+        check_root_material(*anomaly, TEXT("Raymarched anomaly has a runtime material"));
+        check_root_material(*exhaust, TEXT("Engine exhaust has a runtime material"));
         TArray<UStaticMeshComponent*> planet_meshes;
         planet_atmosphere->GetComponents<UStaticMeshComponent>(planet_meshes);
         TestRunner->TestEqual(
@@ -424,20 +416,18 @@ TEST_CLASS(MaterialCompilation, "SandboxShaders.MaterialCompilation")
                 planet_atmosphere_instance = candidate;
             }
         }
-        TestRunner->TestEqual(
-            TEXT("Planet density reached its atmosphere shell material"),
-            IsValid(planet_atmosphere_instance)
-                ? planet_atmosphere_instance->K2_GetScalarParameterValue(TEXT("Density"))
-                : -1.0f,
-            3.25f);
+        auto const check_scalar{[this](UMaterialInstanceDynamic* instance, FName parameter,
+                                      float expected, TCHAR const* description) {
+            TestRunner->TestEqual(description,
+                                  IsValid(instance) ? instance->K2_GetScalarParameterValue(parameter) : -1.0f,
+                                  expected);
+        }};
+        check_scalar(planet_atmosphere_instance, TEXT("Density"), 3.25f,
+                     TEXT("Planet density reached its atmosphere shell material"));
         auto* const construction_instance{
             dynamic_material(construction_mesh)};
-        TestRunner->TestEqual(
-            TEXT("Construction progress reached its material"),
-            IsValid(construction_instance)
-                ? construction_instance->K2_GetScalarParameterValue(TEXT("Progress"))
-                : -1.0f,
-            1.0f);
+        check_scalar(construction_instance, TEXT("Progress"), 1.0f,
+                     TEXT("Construction progress reached its material"));
         auto* const energy_beam_instance{
             dynamic_material(energy_beam_mesh)};
         TestRunner->TestEqual(TEXT("Long beam preset scales cylinder to endpoint distance"),
@@ -445,12 +435,8 @@ TEST_CLASS(MaterialCompilation, "SandboxShaders.MaterialCompilation")
                                   ? static_cast<float>(energy_beam_mesh->GetRelativeScale3D().Z)
                                   : -1.0f,
                               14.0f);
-        TestRunner->TestEqual(
-            TEXT("Energy beam width reached its material"),
-            IsValid(energy_beam_instance)
-                ? energy_beam_instance->K2_GetScalarParameterValue(TEXT("BeamWidth"))
-                : -1.0f,
-            energy_beam->settings.beam_width);
+        check_scalar(energy_beam_instance, TEXT("BeamWidth"), energy_beam->settings.beam_width,
+                     TEXT("Energy beam width reached its material"));
         TestRunner->TestTrue(
             TEXT("Distinct energy beam endpoints reached its material"),
             IsValid(energy_beam_instance) &&
@@ -482,20 +468,11 @@ TEST_CLASS(MaterialCompilation, "SandboxShaders.MaterialCompilation")
         TestRunner->TestTrue(TEXT("Tactical scan time reached its material"),
                              IsValid(scan_instance) && scan_instance->K2_GetScalarParameterValue(
                                                            TEXT("AnimationTime")) > 0.0f);
-        TestRunner->TestEqual(TEXT("Warp strength reached its material"),
-                              IsValid(warp_instance) ? warp_instance->K2_GetScalarParameterValue(
-                                                           TEXT("DistortionStrength"))
-                                                     : -1.0f,
-                              warp_field->settings.distortion_strength);
-        TestRunner->TestEqual(TEXT("Raymarch quality reached its material"),
-                              IsValid(anomaly_instance)
-                                  ? anomaly_instance->K2_GetScalarParameterValue(TEXT("StepCount"))
-                                  : -1.0f,
-                              64.0f);
-        TestRunner->TestEqual(TEXT("Exhaust throttle reached its material"),
-                              IsValid(exhaust_instance)
-                                  ? exhaust_instance->K2_GetScalarParameterValue(TEXT("Throttle"))
-                                  : -1.0f,
-                              0.5f);
+        check_scalar(warp_instance, TEXT("DistortionStrength"), warp_field->settings.distortion_strength,
+                     TEXT("Warp strength reached its material"));
+        check_scalar(anomaly_instance, TEXT("StepCount"), 64.0f,
+                     TEXT("Raymarch quality reached its material"));
+        check_scalar(exhaust_instance, TEXT("Throttle"), 0.5f,
+                     TEXT("Exhaust throttle reached its material"));
     }
 };

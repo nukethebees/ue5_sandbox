@@ -25,4 +25,9 @@ void FSimulationTestScenario::advance_sample() {
         test_driver->advance_timeline();
     });
 }
+
+auto FSimulationTestScenario::advance_until_timeline_finished() -> bool {
+    advance_sample();
+    return !checks.all_passed || (test_driver.IsSet() && test_driver->timeline.is_finished());
+}
 }

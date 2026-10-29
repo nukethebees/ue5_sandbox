@@ -400,6 +400,16 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                loaded->invert_gamepad_roll() == !original_roll_inversion_;
     }
 
+    auto pitch_mapping_uses(ioj::UGameSettingsSubsystem const& settings, FKey const key) const
+        -> bool {
+        return settings
+            .control_bindings(EHardwareDevicePrimaryType::Gamepad, ioj::EShipControlScope::Starfox)
+            .ContainsByPredicate([key](auto const& binding) {
+                return binding.address.mapping_name == FName{TEXT("Starfox.Pitch.Gamepad")} &&
+                       binding.current_key == key;
+            });
+    }
+
     TEST_METHOD(DirectGameplayStartupAndModeSwitch)
     {
         TestCommandBuilder.Do([this] { setup(); })
@@ -468,14 +478,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
             .Then([this] {
                 controller_->ConsoleCommand(TEXT("Input.+key Gamepad_FaceButton_Bottom"), true);
             })
-            .Until(
-                [this] {
-                    auto const* const sim{
-                        level_setup.get_orchestrator()->get_player_ship_simulation()};
-                    return !checks.all_passed ||
-                           (sim && sim->get_flight_intent().translation.z() < -0.5f);
-                },
-                timeout)
+            .Until([this] { return !checks.all_passed || native_vertical() < -0.5f; }, timeout)
             .Then([this] {
                 auto const* const sim{level_setup.get_orchestrator()->get_player_ship_simulation()};
                 checks.is_true(sim && sim->get_flight_intent().translation.z() < -0.5f,
@@ -579,14 +582,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                                    TEXT("Gameplay Accept does not synthesize mouse down"));
                 }
             })
-            .Until(
-                [this] {
-                    auto const* const sim{
-                        level_setup.get_orchestrator()->get_player_ship_simulation()};
-                    return !checks.all_passed ||
-                           (sim != nullptr && sim->get_flight_intent().translation.z() < -0.5f);
-                },
-                timeout)
+            .Until([this] { return !checks.all_passed || native_vertical() < -0.5f; }, timeout)
             .Then([this] {
                 auto const* const sim{level_setup.get_orchestrator()->get_player_ship_simulation()};
                 checks.is_true(sim != nullptr && sim->get_flight_intent().translation.z() < -0.5f,
@@ -865,14 +861,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 settings->set_setting(ioj::EGameSetting::InvertGamepadRoll,
                                       ioj::FGameSettingValue{!original_roll_inversion_});
                 settings->apply();
-                checks.is_true(settings
-                                   ->control_bindings(EHardwareDevicePrimaryType::Gamepad,
-                                                      ioj::EShipControlScope::Starfox)
-                                   .ContainsByPredicate([](auto const& current) {
-                                       return current.address.mapping_name ==
-                                                  FName{TEXT("Starfox.Pitch.Gamepad")} &&
-                                              current.current_key == EKeys::Gamepad_RightY;
-                                   }),
+                checks.is_true(pitch_mapping_uses(*settings, EKeys::Gamepad_RightY),
                                TEXT("Apply retains the remap in the active key profile"));
             })
             .Until(
@@ -928,14 +917,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                     TEXT("Cancel restores live rotation inversion without changing its save"));
                 checks.is_true(canonical_remap_reloaded(EKeys::Gamepad_RightY),
                                TEXT("Cancel does not persist the previewed remap"));
-                checks.is_true(settings
-                                   ->control_bindings(EHardwareDevicePrimaryType::Gamepad,
-                                                      ioj::EShipControlScope::Starfox)
-                                   .ContainsByPredicate([](auto const& current) {
-                                       return current.address.mapping_name ==
-                                                  FName{TEXT("Starfox.Pitch.Gamepad")} &&
-                                              current.current_key == EKeys::Gamepad_RightY;
-                                   }),
+                checks.is_true(pitch_mapping_uses(*settings, EKeys::Gamepad_RightY),
                                TEXT("Cancel restores the previously applied live mapping"));
                 settings->begin_edit(controller->GetLocalPlayer());
                 checks.is_true(settings->reset_control_binding(remap_address_),
