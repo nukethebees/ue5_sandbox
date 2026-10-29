@@ -48,8 +48,8 @@ class FighterTargetRefresh : public ::testing::Test {
             parents[0] = simulation.get_capital_ships().get_id(i);
             LevelSimTestAccess::commit_fighter_spawns(simulation, spawn_source);
         }
-        fighter = simulation.get_fighters().get_entity_ids()[0];
-        target = simulation.get_fighters().get_entity_ids()[1];
+        fighter = fighter_sim.get_entity_ids()[0];
+        target = fighter_sim.get_entity_ids()[1];
         LevelSimTestAccess::set_fighter_kinematics(
             simulation, target, {{1100.f, 400.f, 0.f}}, {{0.f, 120.f, 0.f}});
         LevelSimTestAccess::set_fighter_target(simulation, target, fighter, 5);
@@ -70,7 +70,7 @@ class FighterTargetRefresh : public ::testing::Test {
     }
 
     void expect_target_state(EntityId const expected) {
-        auto const entities{simulation.get_fighters().get_entities()};
+        auto const entities{fighter_sim.get_entities()};
         auto const index{observe_entity_row(simulation, fighter)};
         auto const state{observe_live_entity(simulation, expected)};
         ASSERT_TRUE(state);
@@ -80,17 +80,16 @@ class FighterTargetRefresh : public ::testing::Test {
         EXPECT_FLOAT_EQ(
             entities.target_radii()[index],
             simulation.get_spatial_query_manager().get_entity_type_radius(expected.entity_type()));
-        auto const offset{state->location - vector_at(entities.view_locations(), index)};
-        auto const next_location{vector_at(entities.view_locations(), index) +
-                                 vector_at(entities.view_movement_directions(), index) *
-                                     entities.move_distances()[index]};
+        auto const location{vector_at(entities.view_locations(), index)};
+        auto const offset{state->location - location};
+        auto const next_location{location + vector_at(entities.view_movement_directions(), index) *
+                                                entities.move_distances()[index]};
         EXPECT_FLOAT_EQ(entities.target_distances()[index], size(state->location - next_location));
         EXPECT_FLOAT_EQ(entities.target_distance_sq()[index],
                         size_squared(state->location - next_location));
         auto const intercept{state->location + state->velocity * entities.intercept_times()[index]};
         expect_vector(vector_at(entities.view_desired_aiming_directions(), index),
-                      native_math::safe_normal(
-                          intercept - vector_at(entities.view_locations(), index), 1.e-8f));
+                      native_math::safe_normal(intercept - location, 1.e-8f));
         auto const direction{native_math::safe_normal(offset, 1.e-8f)};
         expect_vector(vector_at(entities.view_desired_move_locations(), index),
                       state->location -
@@ -107,7 +106,7 @@ class FighterTargetRefresh : public ::testing::Test {
     }
 
     void expect_cleared_target() {
-        auto const entities{simulation.get_fighters().get_entities()};
+        auto const entities{fighter_sim.get_entities()};
         auto const index{observe_entity_row(simulation, fighter)};
         EXPECT_FALSE(entities.target_ids()[index].is_valid());
         EXPECT_EQ(vector_at(entities.view_target_locations(), index), Vector3f{});
@@ -125,6 +124,7 @@ class FighterTargetRefresh : public ::testing::Test {
 
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, make_world()};
+    fighters::Sim const& fighter_sim{simulation.get_fighters()};
     EntityId fighter;
     EntityId target;
     alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 256 * 1024> backing{};
@@ -140,14 +140,14 @@ TEST_F(FighterTargetRefresh, UnchangedTargetUsesOneRefreshAndReadsCurrentKinemat
     auto const claims{think()};
     expect_target_state(target);
     EXPECT_EQ(claims, single_refresh_and_plan());
-    EXPECT_EQ(simulation.get_fighters().get_entities().awareness_scan_countdowns()[0], 5);
+    EXPECT_EQ(fighter_sim.get_entities().awareness_scan_countdowns()[0], 5);
 }
 
 TEST_F(FighterTargetRefresh, AwarenessSelectingSameIdPreservesTargetState) {
     LevelSimTestAccess::set_fighter_target(simulation, fighter, target);
     think();
     expect_target_state(target);
-    EXPECT_GT(simulation.get_fighters().get_entities().awareness_scan_countdowns()[0], 0);
+    EXPECT_GT(fighter_sim.get_entities().awareness_scan_countdowns()[0], 0);
 }
 
 TEST_F(FighterTargetRefresh, AwarenessFindsForwardTargetAmongMoreThan128Enemies) {
@@ -165,7 +165,7 @@ TEST_F(FighterTargetRefresh, AwarenessFindsForwardTargetAmongMoreThan128Enemies)
         parents[index] = enemy_parent;
     }
     LevelSimTestAccess::commit_fighter_spawns(simulation, spawns.get_const_view());
-    for (auto const id : simulation.get_fighters().get_entity_ids()) {
+    for (auto const id : fighter_sim.get_entity_ids()) {
         LevelSimTestAccess::set_fighter_target(simulation, id, fighter, 5);
     }
     LevelSimTestAccess::set_fighter_target(simulation, fighter, {});
@@ -173,7 +173,7 @@ TEST_F(FighterTargetRefresh, AwarenessFindsForwardTargetAmongMoreThan128Enemies)
     think();
 
     expect_target_state(target);
-    EXPECT_GT(simulation.get_fighters().get_entities().awareness_scan_countdowns()[0], 0);
+    EXPECT_GT(fighter_sim.get_entities().awareness_scan_countdowns()[0], 0);
 }
 
 TEST_F(FighterTargetRefresh, AcquisitionRefreshesBeforePlanning) {

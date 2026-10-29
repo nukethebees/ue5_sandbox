@@ -22,6 +22,8 @@
 #include "Widgets/SOverlay.h"
 #include "Widgets/Text/STextBlock.h"
 
+#include <type_traits>
+
 namespace ioj {
 namespace {
 struct FSimdFeatureDisplay {
@@ -790,44 +792,44 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
             }
             return false;
         };
-        auto const add_flight_slider = [this,
-                                        &flight_rows,
-                                        weak_settings,
-                                        flight_scope,
-                                        edit_flight_model](FText const& label,
-                                                           FText const& tooltip,
-                                                           float const minimum,
-                                                           float const maximum,
-                                                           float const step,
-                                                           auto getter,
-                                                           auto setter) {
-            auto value{TAttribute<float>::CreateLambda([weak_settings, flight_scope, getter] {
-                auto const* const current{weak_settings.Get()};
-                return current != nullptr
-                         ? getter(current->flight_model_profile(flight_scope).config)
-                         : 0.f;
-            })};
-            auto value_text{TAttribute<FText>::CreateLambda([weak_settings, flight_scope, getter] {
-                auto const* const current{weak_settings.Get()};
-                return current != nullptr ? FText::AsNumber(getter(
-                                                current->flight_model_profile(flight_scope).config))
-                                          : FText::GetEmpty();
-            })};
-            flight_rows->AddSlot().AutoHeight().Padding(style_->settings().row_padding)
-                [SNew(SSettingsSlider)
-                     .Style(&style_->settings())
-                     .Label(label)
-                     .ToolTipText(tooltip)
-                     .Value(value)
-                     .ValueText(value_text)
-                     .Minimum(minimum)
-                     .Maximum(maximum)
-                     .Step(step)
-                     .OnValueChanged_Lambda([edit_flight_model, setter](float const next) {
-                         edit_flight_model(
-                             [setter, next](FlightConfig& config) { setter(config, next); });
-                     })];
-        };
+        auto const add_flight_slider =
+            [this, &flight_rows, weak_settings, flight_scope, edit_flight_model](
+                FText const& label,
+                FText const& tooltip,
+                float const minimum,
+                float const maximum,
+                float const step,
+                auto property) {
+                auto value{TAttribute<float>::CreateLambda([weak_settings, flight_scope, property] {
+                    auto const* const current{weak_settings.Get()};
+                    return current != nullptr
+                             ? property(current->flight_model_profile(flight_scope).config)
+                             : 0.f;
+                })};
+                auto value_text{
+                    TAttribute<FText>::CreateLambda([weak_settings, flight_scope, property] {
+                        auto const* const current{weak_settings.Get()};
+                        return current != nullptr
+                                 ? FText::AsNumber(
+                                       property(current->flight_model_profile(flight_scope).config))
+                                 : FText::GetEmpty();
+                    })};
+                flight_rows->AddSlot().AutoHeight().Padding(style_->settings().row_padding)
+                    [SNew(SSettingsSlider)
+                         .Style(&style_->settings())
+                         .Label(label)
+                         .ToolTipText(tooltip)
+                         .Value(value)
+                         .ValueText(value_text)
+                         .Minimum(minimum)
+                         .Maximum(maximum)
+                         .Step(step)
+                         .OnValueChanged_Lambda([edit_flight_model, property](float const next) {
+                             edit_flight_model([property, next](FlightConfig& config) {
+                                 property(config) = next;
+                             });
+                         })];
+            };
         auto const add_flight_choice = [this,
                                         &flight_rows,
                                         weak_settings,
@@ -835,13 +837,12 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                                         edit_flight_model](FText const& label,
                                                            FText const& tooltip,
                                                            TArray<FText> options,
-                                                           auto getter,
-                                                           auto setter) {
-            auto selected{TAttribute<int32>::CreateLambda([weak_settings, flight_scope, getter] {
+                                                           auto property) {
+            auto selected{TAttribute<int32>::CreateLambda([weak_settings, flight_scope, property] {
                 auto const* const current{weak_settings.Get()};
-                return current != nullptr
-                         ? getter(current->flight_model_profile(flight_scope).config)
-                         : INDEX_NONE;
+                return current != nullptr ? static_cast<int32>(property(
+                                                current->flight_model_profile(flight_scope).config))
+                                          : INDEX_NONE;
             })};
             auto const option_count{options.Num()};
             flight_rows->AddSlot().AutoHeight().Padding(style_->settings().row_padding)
@@ -851,24 +852,36 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                      .ToolTipText(tooltip)
                      .Options(MoveTemp(options))
                      .SelectedIndex(selected)
-                     .OnSelectionChanged_Lambda(
-                         [this, edit_flight_model, setter, option_count](int32 const index) {
-                             if (index >= 0 && index < option_count &&
-                                 edit_flight_model([setter, index](FlightConfig& config) {
-                                     setter(config, index);
-                                 })) {
-                                 request_controls_rebuild({}, false);
-                             }
-                         })];
+                     .OnSelectionChanged_Lambda([this, edit_flight_model, property, option_count](
+                                                    int32 const index) {
+                         if (index >= 0 && index < option_count &&
+                             edit_flight_model([property, index](FlightConfig& config) {
+                                 property(config) =
+                                     static_cast<std::remove_cvref_t<decltype(property(config))>>(
+                                         index);
+                             })) {
+                             request_controls_rebuild({}, false);
+                         }
+                     })];
         };
         auto const add_flight_toggle =
-            [this, &flight_rows, weak_settings, flight_scope, edit_flight_model](
-                FText const& label, FText const& tooltip, auto getter, auto setter) {
-                auto checked{TAttribute<bool>::CreateLambda([weak_settings, flight_scope, getter] {
-                    auto const* const current{weak_settings.Get()};
-                    return current != nullptr &&
-                           getter(current->flight_model_profile(flight_scope).config);
-                })};
+            [this,
+             &flight_rows,
+             weak_settings,
+             flight_scope,
+             edit_flight_model]<typename Property, typename Value = bool>(
+                FText const& label,
+                FText const& tooltip,
+                Property property,
+                Value const enabled_value = true,
+                Value const disabled_value = false) {
+                auto checked{TAttribute<bool>::CreateLambda(
+                    [weak_settings, flight_scope, property, enabled_value] {
+                        auto const* const current{weak_settings.Get()};
+                        return current != nullptr &&
+                               property(current->flight_model_profile(flight_scope).config) ==
+                                   enabled_value;
+                    })};
                 flight_rows->AddSlot().AutoHeight().Padding(style_->settings().row_padding)
                     [SNew(SSettingsToggle)
                          .Style(&style_->settings())
@@ -876,19 +889,23 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                          .ToolTipText(tooltip)
                          .Checked(checked)
                          .OnCheckStateChanged_Lambda(
-                             [this, edit_flight_model, setter](ECheckBoxState const state) {
-                                 if (edit_flight_model([setter, state](FlightConfig& config) {
-                                         setter(config, state == ECheckBoxState::Checked);
-                                     })) {
+                             [this, edit_flight_model, property, enabled_value, disabled_value](
+                                 ECheckBoxState const state) {
+                                 if (edit_flight_model(
+                                         [property, state, enabled_value, disabled_value](
+                                             FlightConfig& config) {
+                                             auto& value{property(config)};
+                                             value = state == ECheckBoxState::Checked
+                                                       ? enabled_value
+                                                   : value == enabled_value ? disabled_value
+                                                                            : value;
+                                         })) {
                                      request_controls_rebuild({}, false);
                                  }
                              })];
             };
-        auto const add_speed_limit = [&](FText const& label,
-                                         FText const& tooltip,
-                                         auto getter,
-                                         auto setter) {
-            auto const unlimited{getter(settings->flight_model_profile(flight_scope).config) ==
+        auto const add_speed_limit = [&](FText const& label, FText const& tooltip, auto property) {
+            auto const unlimited{property(settings->flight_model_profile(flight_scope).config) ==
                                  sim::player::effectively_unlimited_speed};
             add_flight_toggle(
                 field_label(label, NSLOCTEXT("OptionsMenu", "UnlimitedSuffix", "Unlimited")),
@@ -896,18 +913,11 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                           "UnlimitedFlightSpeedTip",
                           "Use the largest finite float as an effective cap without changing the "
                           "requested speed."),
-                [getter](FlightConfig const& config) {
-                    return getter(config) == sim::player::effectively_unlimited_speed;
-                },
-                [getter, setter](FlightConfig& config, bool const enabled) {
-                    auto const current{getter(config)};
-                    setter(config,
-                           enabled ? sim::player::effectively_unlimited_speed
-                           : current == sim::player::effectively_unlimited_speed ? 100000.f
-                                                                                 : current);
-                });
+                property,
+                sim::player::effectively_unlimited_speed,
+                100000.f);
             if (!unlimited) {
-                add_flight_slider(label, tooltip, 0.f, 1000000.f, 100.f, getter, setter);
+                add_flight_slider(label, tooltip, 0.f, 1000000.f, 100.f, property);
             }
         };
         auto const add_response = [&](FText const& prefix,
@@ -921,12 +931,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                 {NSLOCTEXT("OptionsMenu", "DirectResponse", "Direct"),
                  NSLOCTEXT("OptionsMenu", "RateLimitedResponse", "Rate Limited"),
                  NSLOCTEXT("OptionsMenu", "SecondOrderResponse", "Second Order")},
-                [get_response](FlightConfig const& config) {
-                    return static_cast<int32>(get_response(config).mode);
-                },
-                [get_response](FlightConfig& config, int32 const index) {
-                    get_response(config).mode = static_cast<ResponseMode>(index);
-                });
+                [get_response](auto& config) -> auto& { return get_response(config).mode; });
 
             auto const mode{get_response(settings->flight_model_profile(flight_scope).config).mode};
             if (mode == ResponseMode::RateLimited) {
@@ -939,11 +944,8 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                     0.f,
                     rate_maximum,
                     rate_maximum > 100.f ? 100.f : 0.05f,
-                    [get_response](FlightConfig const& config) {
+                    [get_response](auto& config) -> auto& {
                         return get_response(config).rate_limited.increasing_rate;
-                    },
-                    [get_response](FlightConfig& config, float const value) {
-                        get_response(config).rate_limited.increasing_rate = value;
                     });
                 add_flight_slider(
                     field_label(prefix,
@@ -954,11 +956,8 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                     0.f,
                     rate_maximum,
                     rate_maximum > 100.f ? 100.f : 0.05f,
-                    [get_response](FlightConfig const& config) {
+                    [get_response](auto& config) -> auto& {
                         return get_response(config).rate_limited.decreasing_rate;
-                    },
-                    [get_response](FlightConfig& config, float const value) {
-                        get_response(config).rate_limited.decreasing_rate = value;
                     });
             } else if (mode == ResponseMode::SecondOrder) {
                 add_flight_slider(
@@ -970,11 +969,8 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                     0.05f,
                     10.f,
                     0.05f,
-                    [get_response](FlightConfig const& config) {
+                    [get_response](auto& config) -> auto& {
                         return get_response(config).second_order.settling_time;
-                    },
-                    [get_response](FlightConfig& config, float const value) {
-                        get_response(config).second_order.settling_time = value;
                     });
                 add_flight_slider(
                     field_label(prefix,
@@ -984,11 +980,8 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                     0.01f,
                     0.99f,
                     0.01f,
-                    [get_response](FlightConfig const& config) {
+                    [get_response](auto& config) -> auto& {
                         return get_response(config).second_order.damping_ratio;
-                    },
-                    [get_response](FlightConfig& config, float const value) {
-                        get_response(config).second_order.damping_ratio = value;
                     });
             }
         };
@@ -1028,11 +1021,8 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                     -1.f,
                     1.f,
                     0.05f,
-                    [axis](FlightConfig const& config) {
+                    [axis](auto& config) -> auto& {
                         return axis(config).automatic.automatic_value;
-                    },
-                    [axis](FlightConfig& config, float const value) {
-                        axis(config).automatic.automatic_value = value;
                     });
                 add_response(
                     automatic_prefix,
@@ -1075,11 +1065,8 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                         0.f,
                         100000.f,
                         100.f,
-                        [drive](FlightConfig const& config) {
+                        [drive](auto& config) -> auto& {
                             return drive(config).positive_target_speed;
-                        },
-                        [drive](FlightConfig& config, float const value) {
-                            drive(config).positive_target_speed = value;
                         });
                     add_flight_slider(
                         field_label(
@@ -1091,11 +1078,8 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                         0.f,
                         100000.f,
                         100.f,
-                        [drive](FlightConfig const& config) {
+                        [drive](auto& config) -> auto& {
                             return drive(config).negative_target_speed;
-                        },
-                        [drive](FlightConfig& config, float const value) {
-                            drive(config).negative_target_speed = value;
                         });
                 }
                 if (active) {
@@ -1106,11 +1090,8 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                         NSLOCTEXT("OptionsMenu",
                                   "PositiveSpeedLimitTip",
                                   "Maximum permitted positive component speed."),
-                        [drive](FlightConfig const& config) {
+                        [drive](auto& config) -> auto& {
                             return drive(config).positive_speed_limit;
-                        },
-                        [drive](FlightConfig& config, float const value) {
-                            drive(config).positive_speed_limit = value;
                         });
                     add_speed_limit(
                         field_label(
@@ -1119,11 +1100,8 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                         NSLOCTEXT("OptionsMenu",
                                   "NegativeSpeedLimitTip",
                                   "Maximum permitted negative component speed magnitude."),
-                        [drive](FlightConfig const& config) {
+                        [drive](auto& config) -> auto& {
                             return drive(config).negative_speed_limit;
-                        },
-                        [drive](FlightConfig& config, float const value) {
-                            drive(config).negative_speed_limit = value;
                         });
                 }
                 if (uses_acceleration) {
@@ -1137,11 +1115,8 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                         0.f,
                         100000.f,
                         100.f,
-                        [drive](FlightConfig const& config) {
+                        [drive](auto& config) -> auto& {
                             return drive(config).positive_acceleration;
-                        },
-                        [drive](FlightConfig& config, float const value) {
-                            drive(config).positive_acceleration = value;
                         });
                     add_flight_slider(
                         field_label(
@@ -1153,11 +1128,8 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                         0.f,
                         100000.f,
                         100.f,
-                        [drive](FlightConfig const& config) {
+                        [drive](auto& config) -> auto& {
                             return drive(config).negative_acceleration;
-                        },
-                        [drive](FlightConfig& config, float const value) {
-                            drive(config).negative_acceleration = value;
                         });
                 }
             }
@@ -1168,10 +1140,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                 0.f,
                 100000.f,
                 100.f,
-                [axis](FlightConfig const& config) { return axis(config).passive_drag; },
-                [axis](FlightConfig& config, float const value) {
-                    axis(config).passive_drag = value;
-                });
+                [axis](auto& config) -> auto& { return axis(config).passive_drag; });
             add_flight_slider(
                 field_label(
                     axis_name,
@@ -1182,12 +1151,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                 0.f,
                 100000.f,
                 100.f,
-                [axis](FlightConfig const& config) {
-                    return axis(config).active_stabilization_rate;
-                },
-                [axis](FlightConfig& config, float const value) {
-                    axis(config).active_stabilization_rate = value;
-                });
+                [axis](auto& config) -> auto& { return axis(config).active_stabilization_rate; });
             add_section(
                 field_label(axis_name,
                             NSLOCTEXT("OptionsMenu", "TranslationSectionSuffix", "Translation")),
@@ -1219,10 +1183,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                     0.f,
                     720.f,
                     1.f,
-                    [axis](FlightConfig const& config) { return axis(config).maximum_rate; },
-                    [axis](FlightConfig& config, float const value) {
-                        axis(config).maximum_rate = value;
-                    });
+                    [axis](auto& config) -> auto& { return axis(config).maximum_rate; });
                 if (current_axis.manual_semantic == RotationSemantic::AngularAcceleration) {
                     add_flight_slider(
                         field_label(
@@ -1234,10 +1195,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                         0.f,
                         1440.f,
                         1.f,
-                        [axis](FlightConfig const& config) { return axis(config).acceleration; },
-                        [axis](FlightConfig& config, float const value) {
-                            axis(config).acceleration = value;
-                        });
+                        [axis](auto& config) -> auto& { return axis(config).acceleration; });
                 }
                 add_response(
                     axis_name,
@@ -1250,10 +1208,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                 NSLOCTEXT("OptionsMenu",
                           "RotationStabilizationTip",
                           "Return this physical rotation axis to a target after input stops."),
-                [axis](FlightConfig const& config) { return axis(config).stabilization.enabled; },
-                [axis](FlightConfig& config, bool const value) {
-                    axis(config).stabilization.enabled = value;
-                });
+                [axis](auto& config) -> auto& { return axis(config).stabilization.enabled; });
             if (current_axis.stabilization.enabled) {
                 add_flight_slider(
                     field_label(
@@ -1265,11 +1220,8 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                     -180.f,
                     180.f,
                     1.f,
-                    [axis](FlightConfig const& config) {
+                    [axis](auto& config) -> auto& {
                         return axis(config).stabilization.target_angle;
-                    },
-                    [axis](FlightConfig& config, float const value) {
-                        axis(config).stabilization.target_angle = value;
                     });
                 add_flight_slider(
                     field_label(
@@ -1281,10 +1233,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                     0.f,
                     10.f,
                     0.05f,
-                    [axis](FlightConfig const& config) { return axis(config).stabilization.delay; },
-                    [axis](FlightConfig& config, float const value) {
-                        axis(config).stabilization.delay = value;
-                    });
+                    [axis](auto& config) -> auto& { return axis(config).stabilization.delay; });
                 auto const stabilization_prefix{field_label(
                     axis_name, NSLOCTEXT("OptionsMenu", "StabilizationResponse", "Stabilization"))};
                 add_response(
@@ -1311,12 +1260,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
             {NSLOCTEXT("OptionsMenu", "IndependentCoupling", "Independent"),
              NSLOCTEXT("OptionsMenu", "AlignToFacingCoupling", "Align To Facing"),
              NSLOCTEXT("OptionsMenu", "LockedToFacingCoupling", "Locked To Facing")},
-            [](FlightConfig const& config) {
-                return static_cast<int32>(config.facing_velocity.mode);
-            },
-            [](FlightConfig& config, int32 const index) {
-                config.facing_velocity.mode = static_cast<FacingCoupling>(index);
-            });
+            [](auto& config) -> auto& { return config.facing_velocity.mode; });
         if (current_config.facing_velocity.mode == FacingCoupling::AlignToFacing) {
             add_flight_slider(
                 NSLOCTEXT("OptionsMenu", "FacingAlignmentRate", "Alignment Rate"),
@@ -1326,10 +1270,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                 0.f,
                 100000.f,
                 100.f,
-                [](FlightConfig const& config) { return config.facing_velocity.alignment_rate; },
-                [](FlightConfig& config, float const value) {
-                    config.facing_velocity.alignment_rate = value;
-                });
+                [](auto& config) -> auto& { return config.facing_velocity.alignment_rate; });
             add_response(
                 NSLOCTEXT("OptionsMenu", "FacingAlignment", "Alignment"),
                 [](auto& config) -> auto& { return config.facing_velocity.response; },
@@ -1339,13 +1280,11 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                     flight_rows);
 
         flight_rows = SNew(SVerticalBox);
-        add_flight_toggle(
-            NSLOCTEXT("OptionsMenu", "BoostAvailable", "Boost Available"),
-            NSLOCTEXT("OptionsMenu",
-                      "BoostAvailableTip",
-                      "Allow boost intent to select boosted drive settings."),
-            [](FlightConfig const& config) { return config.boost.available; },
-            [](FlightConfig& config, bool const value) { config.boost.available = value; });
+        add_flight_toggle(NSLOCTEXT("OptionsMenu", "BoostAvailable", "Boost Available"),
+                          NSLOCTEXT("OptionsMenu",
+                                    "BoostAvailableTip",
+                                    "Allow boost intent to select boosted drive settings."),
+                          [](auto& config) -> auto& { return config.boost.available; });
         if (current_config.boost.available) {
             add_flight_toggle(
                 NSLOCTEXT(
@@ -1353,10 +1292,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                 NSLOCTEXT("OptionsMenu",
                           "AcceleratorActivatesBoostTip",
                           "Treat non-zero accelerator input as held boost intent for this model."),
-                [](FlightConfig const& config) { return config.boost.accelerator_activates_boost; },
-                [](FlightConfig& config, bool const value) {
-                    config.boost.accelerator_activates_boost = value;
-                });
+                [](auto& config) -> auto& { return config.boost.accelerator_activates_boost; });
             add_flight_slider(
                 NSLOCTEXT("OptionsMenu", "BoostEnergyDrain", "Boost Energy Drain"),
                 NSLOCTEXT("OptionsMenu",
@@ -1365,10 +1301,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                 0.f,
                 10.f,
                 0.01f,
-                [](FlightConfig const& config) { return config.boost.energy_drain_per_second; },
-                [](FlightConfig& config, float const value) {
-                    config.boost.energy_drain_per_second = value;
-                });
+                [](auto& config) -> auto& { return config.boost.energy_drain_per_second; });
             add_response(
                 NSLOCTEXT("OptionsMenu", "BoostResponsePrefix", "Boost"),
                 [](auto& config) -> auto& { return config.boost.response; },
@@ -1378,10 +1311,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
             add_flight_toggle(
                 field_label(prefix, NSLOCTEXT("OptionsMenu", "BrakeAvailable", "Available")),
                 NSLOCTEXT("OptionsMenu", "BrakeAvailableTip", "Allow this braking action."),
-                [get_brake](FlightConfig const& config) { return get_brake(config).available; },
-                [get_brake](FlightConfig& config, bool const value) {
-                    get_brake(config).available = value;
-                });
+                [get_brake](auto& config) -> auto& { return get_brake(config).available; });
             if (!get_brake(settings->flight_model_profile(flight_scope).config).available) {
                 return;
             }
@@ -1393,10 +1323,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                 0.f,
                 100000.f,
                 100.f,
-                [get_brake](FlightConfig const& config) { return get_brake(config).target_speed; },
-                [get_brake](FlightConfig& config, float const value) {
-                    get_brake(config).target_speed = value;
-                });
+                [get_brake](auto& config) -> auto& { return get_brake(config).target_speed; });
             add_flight_slider(
                 field_label(prefix, NSLOCTEXT("OptionsMenu", "BrakeDeceleration", "Deceleration")),
                 NSLOCTEXT("OptionsMenu",
@@ -1405,10 +1332,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                 0.f,
                 100000.f,
                 100.f,
-                [get_brake](FlightConfig const& config) { return get_brake(config).deceleration; },
-                [get_brake](FlightConfig& config, float const value) {
-                    get_brake(config).deceleration = value;
-                });
+                [get_brake](auto& config) -> auto& { return get_brake(config).deceleration; });
             add_flight_slider(
                 field_label(prefix, NSLOCTEXT("OptionsMenu", "BrakeEnergyDrain", "Energy Drain")),
                 NSLOCTEXT("OptionsMenu",
@@ -1417,11 +1341,8 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                 0.f,
                 10.f,
                 0.01f,
-                [get_brake](FlightConfig const& config) {
+                [get_brake](auto& config) -> auto& {
                     return get_brake(config).energy_drain_per_second;
-                },
-                [get_brake](FlightConfig& config, float const value) {
-                    get_brake(config).energy_drain_per_second = value;
                 });
             add_response(
                 prefix,
@@ -1440,29 +1361,20 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
             0.f,
             10.f,
             0.01f,
-            [](FlightConfig const& config) { return config.energy_recharge_per_second; },
-            [](FlightConfig& config, float const value) {
-                config.energy_recharge_per_second = value;
-            });
+            [](auto& config) -> auto& { return config.energy_recharge_per_second; });
         add_speed_limit(
             NSLOCTEXT("OptionsMenu", "NormalResultantLimit", "Normal Resultant Speed Limit"),
             NSLOCTEXT("OptionsMenu",
                       "NormalResultantLimitTip",
                       "Maximum total world-space speed outside boost."),
-            [](FlightConfig const& config) { return config.maximum_resultant_speed; },
-            [](FlightConfig& config, float const value) {
-                config.maximum_resultant_speed = value;
-            });
+            [](auto& config) -> auto& { return config.maximum_resultant_speed; });
         if (current_config.boost.available) {
             add_speed_limit(
                 NSLOCTEXT("OptionsMenu", "BoostedResultantLimit", "Boosted Resultant Speed Limit"),
                 NSLOCTEXT("OptionsMenu",
                           "BoostedResultantLimitTip",
                           "Maximum total world-space speed while boost is effective."),
-                [](FlightConfig const& config) { return config.boosted_maximum_resultant_speed; },
-                [](FlightConfig& config, float const value) {
-                    config.boosted_maximum_resultant_speed = value;
-                });
+                [](auto& config) -> auto& { return config.boosted_maximum_resultant_speed; });
         }
         add_section(NSLOCTEXT("OptionsMenu", "FlightActionsSection", "Flight Actions and Limits"),
                     flight_rows);

@@ -9,7 +9,6 @@
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/levels/ExampleLevels.h>
 #include <SpaceGame/levels/LevelDefinition.h>
-#include <SpaceGame/levels/LevelLoader.h>
 #include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
@@ -68,7 +67,6 @@ void FLevelLoaderCameraScenario::load_fixture() {
     check(red_capital_index != INDEX_NONE);
     definition.entities[red_capital_index].position.X = 90000.0;
 
-    FLevelLoader loader{context_.orchestrator};
     auto const native{levels::authoring::to_native(definition).value()};
     auto const resolved{levels::LevelDefinition::make(
         {.metadata = native.metadata(),
@@ -77,7 +75,7 @@ void FLevelLoaderCameraScenario::load_fixture() {
          .settings = settings::Settings{.presentation = {.entity_overlay = {.enabled = false}}}})};
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     check(resolved);
-    auto const load_result{loader.load(*resolved)};
+    auto const load_result{context_.orchestrator.load_level(*resolved)};
     if (!checks.is_true(static_cast<bool>(load_result), TEXT("Playerless definition loads"))) {
         return;
     }
@@ -275,9 +273,8 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
     config->classes.player_ship_class = nullptr;
     orchestrator.set_level_config(*config);
 
-    FLevelLoader loader{orchestrator};
-    auto const player_result{
-        loader.load(levels::authoring::to_native(example_levels::make_example_draft()).value())};
+    auto const player_result{orchestrator.load_level(
+        levels::authoring::to_native(example_levels::make_example_draft()).value())};
     checks.is_true(!static_cast<bool>(player_result),
                    TEXT("Headless loading rejects player levels"));
     checks.are_equal(0,
@@ -290,7 +287,7 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
     auto const definition{reader.read_level_file(script_path)};
     checks.is_true(static_cast<bool>(definition), TEXT("Playerless fixture can be reloaded"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-    auto const result{loader.load(definition.value())};
+    auto const result{orchestrator.load_level(definition.value())};
     checks.is_true(static_cast<bool>(result),
                    TEXT("Playerless level loads without presentation classes"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
@@ -379,7 +376,6 @@ FLevelLoaderScenario::FLevelLoaderScenario(FSimulationTestContext& context)
 
 void FLevelLoaderScenario::load_fixture() {
     initialise_test_driver();
-    FLevelLoader loader{context_.orchestrator};
 
     auto invalid_definition{example_levels::make_example_draft()};
     invalid_definition.entities[1].team = static_cast<Team>(255);
@@ -405,7 +401,7 @@ void FLevelLoaderScenario::load_fixture() {
         return;
     }
 
-    auto const load_result{loader.load(scripted_definition.value())};
+    auto const load_result{context_.orchestrator.load_level(scripted_definition.value())};
     if (!checks.is_true(static_cast<bool>(load_result), TEXT("Valid definition loads"))) {
         return;
     }

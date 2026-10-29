@@ -21,6 +21,7 @@
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/presentation/LevelPresentation.h>
+#include <SpaceGamePresentation/presentation/LevelPresentationHost.h>
 #include <SpaceGameRendering/SparkRendererComponent.h>
 
 #include <SandboxCoreEngine/RotatorConversion.h>
@@ -45,6 +46,25 @@
 #include <array>
 
 namespace {
+template <typename Component>
+auto make_presentation_component(AActor& owner) -> Component* {
+    auto* const component{NewObject<Component>(&owner)};
+    owner.AddInstanceComponent(component);
+    component->RegisterComponent();
+    return component;
+}
+
+auto make_presentation_resources(AActor& owner, FLevelVisualConfig const& config)
+    -> FLevelPresentationResources {
+    return {.lasers = make_presentation_component<USandboxISMCComponent>(owner),
+            .capital_ships = make_presentation_component<UInstancedStaticMeshComponent>(owner),
+            .fighters = make_presentation_component<USandboxISMCComponent>(owner),
+            .turrets = make_presentation_component<UInstancedStaticMeshComponent>(owner),
+            .spinners = make_presentation_component<UInstancedStaticMeshComponent>(owner),
+            .sparks = make_presentation_component<USparkRendererComponent>(owner),
+            .config = config};
+}
+
 auto make_battle() -> ::ioj::sim::LevelSimInitData {
     ::ioj::sim::LevelSimInitData data;
     data.collision.grid_geometry = {{16, 16, 4}, {1000.f, 1000.f, 1000.f}};
@@ -167,22 +187,7 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
     ON_SCOPE_EXIT {
         owner->Destroy();
     };
-    FLevelPresentationResources resources;
-    resources.lasers = NewObject<USandboxISMCComponent>(owner);
-    owner->AddInstanceComponent(resources.lasers);
-    resources.lasers->RegisterComponent();
-    resources.sparks = NewObject<USparkRendererComponent>(owner);
-    owner->AddInstanceComponent(resources.sparks);
-    resources.sparks->RegisterComponent();
-    resources.fighters = NewObject<USandboxISMCComponent>(owner);
-    owner->AddInstanceComponent(resources.fighters);
-    resources.fighters->RegisterComponent();
-    for (auto** slot : {&resources.capital_ships, &resources.turrets, &resources.spinners}) {
-        *slot = NewObject<UInstancedStaticMeshComponent>(owner);
-        owner->AddInstanceComponent(*slot);
-        (*slot)->RegisterComponent();
-    }
-    resources.config = config->get_visual_config();
+    auto const resources{make_presentation_resources(*owner, config->get_visual_config())};
     auto headless_data{make_battle()};
     auto visible_data{make_battle()};
     add_mission(headless_data);
@@ -273,6 +278,113 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FLevelPresentationHostLifecycleTest,
+    "Sandbox.UnitTests.LevelSimulation.PresentationHostReusesComponentsAndNativeTurretTransforms",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+auto FLevelPresentationHostLifecycleTest::RunTest(FString const&) -> bool {
+    auto world{ioj::get_editor_world()};
+    auto* const config{ioj::load_default_level_config()};
+    if (!TestTrue(TEXT("Editor world is available for presentation"), world.has_value()) ||
+        !TestTrue(TEXT("Presentation assets load"), IsValid(config))) {
+        return false;
+    }
+    auto* const owner{world.value()->SpawnActor<AActor>()};
+    if (!TestTrue(TEXT("Presentation component owner is created"), IsValid(owner))) {
+        return false;
+    }
+    ON_SCOPE_EXIT {
+        owner->Destroy();
+    };
+
+    auto const resources{make_presentation_resources(*owner, config->get_visual_config())};
+    FLevelPresentationComponents const components{
+        .lasers = resources.lasers,
+        .capital_ships = resources.capital_ships,
+        .fighters = resources.fighters,
+        .turrets = resources.turrets,
+        .spinners = resources.spinners,
+        .sparks = resources.sparks,
+        .soft_targets = make_presentation_component<UInstancedStaticMeshComponent>(*owner),
+        .collision_grid =
+            make_presentation_component<UCollisionGridVisualizationComponent>(*owner)};
+
+    auto data{make_battle()};
+    std::array const locations{ioj::Vector3f{10.f, 20.f, 30.f}, ioj::Vector3f{-40.f, 50.f, 60.f}};
+    std::array const rotations{ioj::Rotator3f{15.f, 45.f, 75.f}, ioj::Rotator3f{-25.f, 35.f, 5.f}};
+    auto const count{static_cast<int32>(locations.size())};
+    auto& schedule{data.level_events.schedule};
+    schedule.add_initial_spawn_group(ioj::sim::EntityType::Turret, 0, count);
+    schedule.turret_spawns.add_uninitialised(count);
+    auto const turrets{schedule.turret_spawns.get_view()};
+    TArray<FTransform> expected;
+    for (int32 index{}; index < count; ++index) {
+        turrets.entity_indices()[index] = data.level_events.initialisation.entity_count++;
+        ioj::set_vector(turrets.view_locations(), index, locations[index]);
+        ioj::set_rotation(turrets.view_rotations(), index, rotations[index]);
+        turrets.teams()[index] = ioj::Team::Green;
+        turrets.healths()[index] = ioj::sim::Health{100};
+        turrets.laser_damages()[index] = 0;
+        expected.Emplace(FRotator{ioj::to_unreal(rotations[index])},
+                         FVector{ioj::to_unreal(locations[index])});
+    }
+
+    ioj::sim::GameMemory simulation_memory;
+    ioj::sim::LevelSim simulation{simulation_memory, MoveTemp(data)};
+    simulation.finish_initialisation();
+    FLevelPresentationHost host;
+    host.bind_components(components);
+    auto const initialise{[&](TArray<FTransform> transforms) {
+        host.initialise(resources.config,
+                        {},
+                        simulation.get_read_access(),
+                        simulation.get_mission(),
+                        simulation.get_spatial_query_manager(),
+                        MoveTemp(transforms));
+    }};
+    auto const check_transforms{[&] {
+        TestEqual(TEXT("Initial native turret count is presented"),
+                  components.turrets->GetNumInstances(),
+                  count);
+        for (int32 index{}; index < count; ++index) {
+            FTransform actual;
+            if (TestTrue(TEXT("Turret instance exists"),
+                         components.turrets->GetInstanceTransform(index, actual))) {
+                TestTrue(TEXT("Turret transform preserves position, rotation and scale"),
+                         actual.Equals(expected[index], 1.e-4));
+            }
+        }
+    }};
+
+    initialise({});
+    check_transforms();
+    TestEqual(TEXT("Presentation startup activates the HUD"),
+              host.get_hud_manager().get_state(),
+              ioj::EHUDManagerState::Active);
+    host.tick(0.0, simulation.get_read_access(), simulation.get_spatial_query_manager());
+    TestEqual(TEXT("Presentation never advances simulation"),
+              simulation.get_clock().get_completed_ticks().value(),
+              uint64{0});
+
+    host.reset();
+    TestNull(TEXT("Reset releases native presentation references"), host.get_presentation());
+    TestEqual(TEXT("Reset deactivates the HUD"),
+              host.get_hud_manager().get_state(),
+              ioj::EHUDManagerState::Disabled);
+    TestEqual(TEXT("Reset clears turret instances"), components.turrets->GetNumInstances(), 0);
+    TestEqual(
+        TEXT("Reset clears capital instances"), components.capital_ships->GetNumInstances(), 0);
+
+    expected[0].SetScale3D(FVector{2.0, 3.0, 4.0});
+    initialise({expected[0]});
+    check_transforms();
+    TestTrue(TEXT("Reinitialisation retains actor-owned components"),
+             host.make_resources(resources.config, {}).turrets == components.turrets);
+    host.reset();
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FLevelPresentationFrameChangesTest,
     "Sandbox.UnitTests.LevelSimulation.PresentationReconcilesCompleteFrames",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -291,22 +403,7 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     ON_SCOPE_EXIT {
         owner->Destroy();
     };
-    FLevelPresentationResources resources;
-    resources.lasers = NewObject<USandboxISMCComponent>(owner);
-    owner->AddInstanceComponent(resources.lasers);
-    resources.lasers->RegisterComponent();
-    resources.sparks = NewObject<USparkRendererComponent>(owner);
-    owner->AddInstanceComponent(resources.sparks);
-    resources.sparks->RegisterComponent();
-    resources.fighters = NewObject<USandboxISMCComponent>(owner);
-    owner->AddInstanceComponent(resources.fighters);
-    resources.fighters->RegisterComponent();
-    for (auto** slot : {&resources.capital_ships, &resources.turrets, &resources.spinners}) {
-        *slot = NewObject<UInstancedStaticMeshComponent>(owner);
-        owner->AddInstanceComponent(*slot);
-        (*slot)->RegisterComponent();
-    }
-    resources.config = config->get_visual_config();
+    auto resources{make_presentation_resources(*owner, config->get_visual_config())};
 
     auto scheduled_battle{make_scheduled_battle()};
     auto const scheduled_spawns{

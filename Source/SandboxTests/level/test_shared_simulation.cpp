@@ -89,8 +89,7 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     SHARED_SIMULATION_TEST(EntityInterface_ConvertsProxiesAndResolvesTargets,
                            ioj::FEntityInterfaceScenario)
     SHARED_SIMULATION_TEST(HUD_LateRegistrationSynchronisesAndUnregisters,
-                           ioj::FTestHUDManagerScenario,
-                           ioj::EHUDManagerScenario::LateHUDRegistrationSynchronisesAndUnregisters)
+                           ioj::FTestHUDManagerScenario)
     SHARED_SIMULATION_TEST(PlayerShip_LethalDamageDestroysPlayerShip,
                            ioj::FTestPlayerShipDeathScenario)
 };

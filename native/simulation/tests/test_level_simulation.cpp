@@ -387,10 +387,11 @@ TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
     auto const& clock{simulation.get_clock()};
     auto const dt{clock.get_tick_period()};
     simulation.advance(dt * 1.25);
-    simulation.stop_run_if_requested(true, Duration::make(dt * 2.0));
+    simulation.stop_run_if_requested(
+        {.stop_when_battle_resolved = true, .duration = Duration::make(dt * 2.0)});
     EXPECT_EQ(simulation.get_state(), OrchestratorState::Running)
         << "Two living teams and time remaining keep the run active";
-    simulation.stop_run_if_requested(false, Duration::make(dt));
+    simulation.stop_run_if_requested({.duration = Duration::make(dt)});
     EXPECT_EQ(simulation.get_state(), OrchestratorState::Paused) << "Completed run is paused";
     EXPECT_EQ(clock.get_completed_ticks().value(), std::uint64_t{1})
         << "Only one simulation tick completes";

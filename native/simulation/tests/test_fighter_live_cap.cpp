@@ -86,9 +86,12 @@ auto count_team(LevelSim const& simulation, Team const team) -> std::int32_t {
     return count;
 }
 
-void queue_damage(LevelSim& simulation, EntityId const target, std::int32_t const damage) {
+void queue_damage(LevelSim& simulation,
+                  EntityId const target,
+                  std::int32_t const damage,
+                  EntityId const instigator = {}) {
     DirectDamageEvents events;
-    events.add(target, damage, {});
+    events.add(target, damage, instigator);
     LevelSimTestAccess::queue_direct_damage_events(simulation, events.get_const_view());
 }
 
@@ -196,15 +199,9 @@ TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
     LevelSim parent_death_simulation{parent_death_simulation_memory, std::move(parent_death_data)};
     parent_death_simulation.finish_initialisation();
     parent_death_simulation.start();
-    DirectDamageEvents capital_damage;
-    capital_damage.add_uninitialised(1);
-    capital_damage.get_view().damaged_entities()[0] =
-        parent_death_simulation.get_read_access().get_capitals().get_entities().entity_ids()[0];
-    capital_damage.get_view().instigators()[0] =
-        parent_death_simulation.get_read_access().get_capitals().get_entities().entity_ids()[1];
-    capital_damage.get_view().damage_amounts()[0] = 100;
-    LevelSimTestAccess::queue_direct_damage_events(parent_death_simulation,
-                                                   capital_damage.get_const_view());
+    auto const& surviving_capitals{parent_death_simulation.get_capital_ships()};
+    queue_damage(
+        parent_death_simulation, surviving_capitals.get_id(0), 100, surviving_capitals.get_id(1));
     parent_death_simulation.advance(parent_death_simulation.get_clock().get_tick_period());
     parent_death_simulation.advance(parent_death_simulation.get_clock().get_tick_period());
     EXPECT_EQ(static_cast<std::int32_t>(
@@ -338,15 +335,8 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 1)
         << "Initial fighter fills the budget";
 
-    DirectDamageEvents damage;
-    damage.add_uninitialised(1);
-    damage.get_view().damaged_entities()[0] = simulation.get_fighters().get_entity_ids()[0];
-    auto const original_id{
-        simulation.get_read_access().get_fighters().get_entities().entity_ids()[0]};
-    damage.get_view().instigators()[0] =
-        simulation.get_read_access().get_capitals().get_entities().entity_ids()[0];
-    damage.get_view().damage_amounts()[0] = 100000;
-    LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
+    auto const original_id{simulation.get_fighters().get_entity_ids()[0]};
+    queue_damage(simulation, original_id, 100000, simulation.get_capital_ships().get_id(0));
     simulation.advance(simulation.get_clock().get_tick_period());
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 0)
         << "Dead fighter is removed at the end of Resolution";

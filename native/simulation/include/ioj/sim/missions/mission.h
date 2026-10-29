@@ -20,6 +20,8 @@ class Mission {
     // Inspection
     /* **************************************** */
     auto take_completions() -> std::vector<TeamCompletion>;
+    // Consume every pending completion; return the first for team, or empty without a match.
+    auto take_team_completion(std::optional<Team> team) -> std::optional<TeamCompletion>;
     auto objectives() const -> Objectives const& { return data_.objectives; }
     auto active_objectives() const -> std::span<ObjectiveId const> { return active_; }
     auto inactive_objectives() const -> std::span<ObjectiveId const> { return inactive_; }

@@ -11,15 +11,17 @@
 class USpaceGameLevelConfig;
 class UStaticMesh;
 class UWorld;
-class AActor;
 class ATestCapitalShipProxy;
 class ATestStaticTurretsProxy;
 class ATestTubeSpinnerProxy;
+class ATestSpaceShip;
 
 namespace ioj {
+struct FLevelLaunchOptions;
+
 using FLevelSimBuildResult = std::expected<sim::LevelSimInitData, FLevelStartErrors>;
 
-struct FProxyLevelSimBuild {
+struct SPACEGAME_API FLevelSimulationBuild {
     auto bind_proxy_entities(sim::LevelSim const& simulation) const -> FProxyEntityMap;
     void destroy_proxy_actors() const;
 
@@ -30,7 +32,29 @@ struct FProxyLevelSimBuild {
     TArray<ATestTubeSpinnerProxy*> spinner_proxies;
 };
 
-using FProxyLevelSimBuildResult = std::expected<FProxyLevelSimBuild, FLevelStartErrors>;
+using FLevelSimulationBuildResult = std::expected<FLevelSimulationBuild, FLevelStartErrors>;
+
+struct FLevelSimulationRequest {
+    UWorld& world;
+    USpaceGameLevelConfig const& config;
+    settings::TickSettings const& clock_settings;
+    ::FLevelMissionDefinition& mission;
+    FLevelLaunchOptions const& launch_options;
+    FString const& level_source;
+    FString const& settings_source;
+    levels::LevelDefinition const* definition{};
+    ATestSpaceShip* player{};
+    bool presentation_enabled{true};
+};
+
+SPACEGAME_API auto prepare_level_simulation(FLevelSimulationRequest const& request)
+    -> FLevelSimulationBuildResult;
+
+SPACEGAME_API void configure_player_actor(ATestSpaceShip& player,
+                                          USpaceGameLevelConfig const& config);
+SPACEGAME_API void apply_level_actor_configuration(UWorld& world,
+                                                   USpaceGameLevelConfig& config,
+                                                   ATestSpaceShip* player);
 
 SPACEGAME_API auto
     make_level_simulation_init_data(USpaceGameLevelConfig const& config,
@@ -48,13 +72,4 @@ SPACEGAME_API auto
                                     UStaticMesh const* player_collision_mesh = nullptr)
         -> FLevelSimBuildResult;
 
-SPACEGAME_API auto
-    make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
-                                          settings::TickSettings const& clock_settings,
-                                          UWorld& world,
-                                          ::FLevelMissionDefinition& mission_definition,
-                                          TOptional<sim::player::PlayerSpawnData> player = NullOpt,
-                                          AActor const* player_actor = nullptr,
-                                          UStaticMesh const* player_collision_mesh = nullptr)
-        -> FProxyLevelSimBuildResult;
 }

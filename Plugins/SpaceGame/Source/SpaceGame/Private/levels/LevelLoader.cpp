@@ -6,12 +6,13 @@
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
+#include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCoreEngine/VectorConversion.h>
 
 #include <Camera/CameraActor.h>
+#include <CoreGlobals.h>
 #include <Engine/World.h>
 #include <EngineUtils.h>
 #include <GameFramework/PlayerController.h>
@@ -19,7 +20,7 @@
 
 namespace ioj {
 namespace {
-void add_error(FLevelLoadResult& result, ELevelLoadErrorCode const code, FString message) {
+void add_error(FLevelLoadErrors& result, ELevelLoadErrorCode const code, FString message) {
     result.errors.Add(FLevelLoadError{.code = code, .message = MoveTemp(message)});
 }
 
@@ -45,9 +46,6 @@ class FSpawnedActorTransaction final {
     auto operator=(FSpawnedActorTransaction const&) -> FSpawnedActorTransaction& = delete;
 
     ~FSpawnedActorTransaction() {
-        if (committed_) {
-            return;
-        }
         for (auto* const actor : actors_) {
             if (IsValid(actor)) {
                 actor->Destroy();
@@ -56,17 +54,16 @@ class FSpawnedActorTransaction final {
     }
 
     void add(AActor& actor) { actors_.Add(&actor); }
-    void commit() noexcept { committed_ = true; }
+    void commit() noexcept { actors_.Reset(); }
   private:
     TArray<AActor*> actors_{};
-    bool committed_{false};
 };
 
 auto spawn_player(UWorld& world,
                   USpaceGameLevelConfig const& config,
                   levels::EntitySpawnDefinition const& entity,
                   FSpawnedActorTransaction& transaction,
-                  FLevelLoadResult& result) -> ATestSpaceShip* {
+                  FLevelLoadErrors& result) -> ATestSpaceShip* {
     auto const team{to_unreal(entity.team)};
     auto const transform{
         FTransform{FRotator{entity.rotation.pitch, entity.rotation.yaw, entity.rotation.roll},
@@ -113,7 +110,7 @@ auto spawn_initial_camera(UWorld& world,
                           ASpaceGamePlayerController& player_controller,
                           levels::LevelDefinition const& definition,
                           FSpawnedActorTransaction& transaction,
-                          FLevelLoadResult& result,
+                          FLevelLoadErrors& result,
                           EPlayerControlContext const control_context) -> bool {
     auto const transform{initial_camera_transform(definition)};
     auto* const camera{
@@ -144,79 +141,112 @@ auto spawn_initial_camera(UWorld& world,
 
 }
 
-auto FLevelLoader::load(levels::authoring::LevelSource const& input,
-                        EPlayerControlContext const playerless_control_context) const
-    -> FLevelLoadResult {
-    FLevelLoadResult result;
+auto FLevelLoadErrors::format(FStringView const source_path) const -> FString {
+    TArray<FString> messages;
+    messages.Reserve(errors.Num());
+    for (auto const& error : errors) {
+        messages.Add(error.message);
+    }
+    return FString::Printf(TEXT("Failed to load '%s':\n%s"),
+                           *FString{source_path},
+                           *FString::Join(messages, TEXT("\n")));
+}
 
-    if (orchestrator_.get_state() != sim::OrchestratorState::Uninitialised) {
-        add_error(result,
-                  ELevelLoadErrorCode::InvalidOrchestratorState,
-                  TEXT("Level loader requires an uninitialised orchestrator"));
-        return result;
+auto FLevelLoader::take_pending(UGameInstance* const game_instance)
+    -> std::expected<FPendingLevelDefinition, FString> {
+    auto* const subsystem{UGameSubsystem::get(game_instance)};
+    if (!IsValid(subsystem)) {
+        return std::unexpected{
+            FString{TEXT("Cannot load authored level: game subsystem is invalid")}};
+    }
+    auto pending{subsystem->take_pending_level()};
+    if (!pending.IsSet()) {
+        return std::unexpected{
+            FString{TEXT("No pending authored level was provided to GameRuntime.")}};
     }
 
-    auto* const world{orchestrator_.GetWorld()};
-    if (!IsValid(world)) {
-        add_error(result, ELevelLoadErrorCode::InvalidWorld, TEXT("Orchestrator world is invalid"));
-        return result;
+    auto const& options{pending->options};
+    if (!level_launch::is_valid_time_scale(options.requested_time_scale)) {
+        return std::unexpected{
+            FString::Printf(TEXT("Cannot load authored level: requested time scale %.17g is "
+                                 "outside the supported range (0, %.0f]."),
+                            options.requested_time_scale,
+                            level_launch::maximum_time_scale)};
+    }
+    if (options.presentation_mode == ELevelPresentationMode::SimulationOnly &&
+        !options.simulated_duration_seconds.IsSet()) {
+        return std::unexpected{
+            FString{TEXT("Cannot load authored level: simulation-only runs require a duration.")}};
+    }
+    if (options.simulated_duration_seconds.IsSet() &&
+        (!FMath::IsFinite(options.simulated_duration_seconds.GetValue()) ||
+         options.simulated_duration_seconds.GetValue() <= 0.0)) {
+        return std::unexpected{FString{
+            TEXT("Cannot load authored level: simulated duration must be finite and positive.")}};
+    }
+    return MoveTemp(pending.GetValue());
+}
+
+void FLevelLoader::report_failure(UWorld* const world, FString message) {
+    UE_LOG(LogSandbox, Error, TEXT("%s"), *message);
+#if WITH_EDITOR
+    if (IsValid(world) && world->WorldType == EWorldType::PIE) {
+        return;
+    }
+#endif
+    if (GIsAutomationTesting) {
+        return;
     }
 
-    if (!orchestrator_.prepare_level(&input)) {
-        add_error(result,
-                  ELevelLoadErrorCode::InvalidLevelConfig,
-                  TEXT("Failed to resolve game settings"));
-        return result;
+    auto* const game_instance{IsValid(world) ? world->GetGameInstance() : nullptr};
+    auto* const subsystem{UGameSubsystem::get(game_instance)};
+    if (IsValid(subsystem)) {
+        subsystem->set_level_launch_error(MoveTemp(message));
+        if (subsystem->return_to_level_select()) {
+            return;
+        }
     }
-    auto const& definition{orchestrator_.get_level_definition()};
-    auto const* const config{orchestrator_.get_level_config()};
+    if (IsValid(world)) {
+        UGameplayStatics::OpenLevel(world, UGameSubsystem::get_main_menu_level_name());
+    }
+}
+
+auto FLevelLoader::load(FLevelActorLoadRequest const& request)
+    -> std::expected<void, FLevelLoadErrors> {
+    std::expected<void, FLevelLoadErrors> result{std::unexpect};
+    auto& errors{result.error()};
+    auto& world{request.world};
+    auto const& definition{request.definition};
+    auto const& config{request.config};
     auto const has_player{!definition.player_entity_id().empty()};
-    auto const presentation_enabled{orchestrator_.is_presentation_enabled()};
-    if (!has_player && presentation_enabled &&
-        playerless_control_context != EPlayerControlContext::Observer &&
-        playerless_control_context != EPlayerControlContext::Benchmark) {
-        add_error(result,
+    auto const& visual{request.visual};
+    if (!has_player && visual &&
+        visual->playerless_control_context != EPlayerControlContext::Observer &&
+        visual->playerless_control_context != EPlayerControlContext::Benchmark) {
+        add_error(errors,
                   ELevelLoadErrorCode::InvalidDefinition,
                   TEXT("Playerless level requires Observer or Benchmark control context"));
         return result;
     }
-    if (has_player && !presentation_enabled) {
-        add_error(result,
+    if (has_player && !visual) {
+        add_error(errors,
                   ELevelLoadErrorCode::InvalidDefinition,
                   TEXT("Presentation-disabled simulation requires a playerless level"));
         return result;
     }
-    if (!IsValid(config) || (has_player && !IsValid(config->classes.player_ship_class))) {
-        add_error(result,
+    if (has_player && !IsValid(config.classes.player_ship_class)) {
+        add_error(errors,
                   ELevelLoadErrorCode::InvalidLevelConfig,
                   TEXT("Level configuration or required actor classes are invalid"));
         return result;
     }
 
-    if (IsValid(orchestrator_.get_player_ship()) || world_contains<ATestSpaceShip>(*world) ||
-        world_contains<ATestCapitalShipProxy>(*world) ||
-        world_contains<ATestStaticTurretsProxy>(*world)) {
-        add_error(result,
+    if (IsValid(request.player) || world_contains<ATestSpaceShip>(world) ||
+        world_contains<ATestCapitalShipProxy>(world) ||
+        world_contains<ATestStaticTurretsProxy>(world)) {
+        add_error(errors,
                   ELevelLoadErrorCode::ExistingLevelActors,
                   TEXT("World already contains authored gameplay actors"));
-        return result;
-    }
-
-    auto* const player_controller{
-        presentation_enabled
-            ? Cast<ASpaceGamePlayerController>(UGameplayStatics::GetPlayerController(world, 0))
-            : nullptr};
-    if (presentation_enabled && !IsValid(player_controller)) {
-        add_error(result,
-                  ELevelLoadErrorCode::MissingInfrastructure,
-                  TEXT("Authored level requires a space-game player controller"));
-        return result;
-    }
-
-    if (presentation_enabled && !orchestrator_.get_presentation_resources().is_valid()) {
-        add_error(result,
-                  ELevelLoadErrorCode::MissingInfrastructure,
-                  TEXT("Orchestrator simulation infrastructure is incomplete"));
         return result;
     }
 
@@ -224,28 +254,28 @@ auto FLevelLoader::load(levels::authoring::LevelSource const& input,
     ATestSpaceShip* player{nullptr};
     if (has_player) {
         player = spawn_player(
-            *world, *config, definition.entity(definition.player_entity_id()), transaction, result);
+            world, config, definition.entity(definition.player_entity_id()), transaction, errors);
         if (!IsValid(player)) {
             return result;
         }
     }
 
-    if (presentation_enabled && definition.camera()) {
-        if (!spawn_initial_camera(*world,
-                                  *player_controller,
+    if (visual && definition.camera()) {
+        if (!spawn_initial_camera(world,
+                                  visual->controller,
                                   definition,
                                   transaction,
-                                  result,
-                                  playerless_control_context)) {
+                                  errors,
+                                  visual->playerless_control_context)) {
             return result;
         }
-    } else if (presentation_enabled) {
+    } else if (visual) {
         check(IsValid(player));
-        orchestrator_.set_player_ship(*player);
-        player_controller->Possess(player);
+        request.player = player;
+        visual->controller.Possess(player);
     }
 
     transaction.commit();
-    return result;
+    return {};
 }
 }

@@ -54,7 +54,7 @@ struct Sim {
     }
     auto get_frame_changes() const -> std::span<EntityFrameChange const> { return frame_changes_; }
     void reset_frame_output() { frame_changes_.clear(); }
-    void set_config(CapitalShipSimConfig const& new_config) noexcept;
+    void initialise(CapitalShipSimConfig const& new_config);
 
     /* **************************************** */
     // Accessors
@@ -99,7 +99,6 @@ struct Sim {
     /* **************************************** */
     // Sim phases
     /* **************************************** */
-    void begin_play();
     void update_entity_lookup_table();
     void prepare_tick(float dt);
     void think(ThinkingInputs const inputs);

@@ -46,40 +46,30 @@ struct CollisionAgentStorage {
         Health const health{health_value};
         EntityId id;
         ledger.record_spawns(type, team, health, {&id, 1});
-        switch (type) {
-            case EntityType::CapitalShip: {
-                auto const row{capitals.num()};
-                capitals.add_defaulted(1);
-                auto out{capitals.get_view()};
-                out.entity_ids()[row] = id;
-                set_vector(out.view_locations().resolve(), row, location);
-                set_rotation(out.view_rotations(), row, rotation);
-                health_table.initialise_rows<EntityType::CapitalShip>(row, 1, health);
-                out.teams()[row] = team;
-                break;
-            }
-            case EntityType::Fighter: {
-                auto const row{fighters.num()};
-                fighters.add_defaulted(1);
-                auto out{fighters.get_view()};
-                out.entity_ids()[row] = id;
-                set_vector(out.view_locations().resolve(), row, location);
+        auto append = [&]<EntityType Type>(auto& storage) {
+            auto const row{storage.num()};
+            storage.add_defaulted(1);
+            auto const out{storage.get_view()};
+            out.entity_ids()[row] = id;
+            set_vector(out.view_locations().resolve(), row, location);
+            if constexpr (Type == EntityType::Fighter) {
                 set_vector(out.view_aim_directions(), row, forward_direction(rotation));
-                health_table.initialise_rows<EntityType::Fighter>(row, 1, health);
-                out.teams()[row] = team;
-                break;
-            }
-            case EntityType::Turret: {
-                auto const row{turrets.num()};
-                turrets.add_defaulted(1);
-                auto out{turrets.get_view()};
-                out.entity_ids()[row] = id;
-                set_vector(out.view_locations().resolve(), row, location);
+            } else {
                 set_rotation(out.view_rotations(), row, rotation);
-                health_table.initialise_rows<EntityType::Turret>(row, 1, health);
-                out.teams()[row] = team;
-                break;
             }
+            health_table.initialise_rows<Type>(row, 1, health);
+            out.teams()[row] = team;
+        };
+        switch (type) {
+            case EntityType::CapitalShip:
+                append.operator()<EntityType::CapitalShip>(capitals);
+                break;
+            case EntityType::Fighter:
+                append.operator()<EntityType::Fighter>(fighters);
+                break;
+            case EntityType::Turret:
+                append.operator()<EntityType::Turret>(turrets);
+                break;
             case EntityType::TubeSpinner: {
                 auto const row{spinners.num()};
                 spinners.add_defaulted(1);
@@ -331,37 +321,25 @@ inline auto observe_entity(CollisionAgentStorage const& owners, EntityId const i
         return EntityObservation{
             player->location, player->velocity, owners.player_team, player->health, 0};
     }
+    auto observe = [&]<EntityType Type>(auto entities,
+                                        vectors3f::ResolvedConstView velocities = {}) {
+        return observe_entity_columns(id,
+                                      entities.entity_ids(),
+                                      entities.view_locations().resolve(),
+                                      velocities,
+                                      owners.health_table.get_const_view<Type>(entities.num()),
+                                      entities.teams());
+    };
     switch (id.entity_type()) {
-        case EntityType::CapitalShip: {
-            auto const entities{owners.capitals.get_const_view()};
-            return observe_entity_columns(
-                id,
-                entities.entity_ids(),
-                entities.view_locations().resolve(),
-                {},
-                owners.health_table.get_const_view<EntityType::CapitalShip>(entities.num()),
-                entities.teams());
-        }
+        case EntityType::CapitalShip:
+            return observe.operator()<EntityType::CapitalShip>(owners.capitals.get_const_view());
         case EntityType::Fighter: {
             auto const entities{owners.fighters.get_const_view()};
-            return observe_entity_columns(
-                id,
-                entities.entity_ids(),
-                entities.view_locations().resolve(),
-                entities.view_velocities().resolve(),
-                owners.health_table.get_const_view<EntityType::Fighter>(entities.num()),
-                entities.teams());
+            return observe.operator()<EntityType::Fighter>(entities,
+                                                           entities.view_velocities().resolve());
         }
-        case EntityType::Turret: {
-            auto const entities{owners.turrets.get_const_view()};
-            return observe_entity_columns(
-                id,
-                entities.entity_ids(),
-                entities.view_locations().resolve(),
-                {},
-                owners.health_table.get_const_view<EntityType::Turret>(entities.num()),
-                entities.teams());
-        }
+        case EntityType::Turret:
+            return observe.operator()<EntityType::Turret>(owners.turrets.get_const_view());
         case EntityType::TubeSpinner: {
             auto const entities{owners.spinners.get_const_view()};
             return observe_entity_columns(

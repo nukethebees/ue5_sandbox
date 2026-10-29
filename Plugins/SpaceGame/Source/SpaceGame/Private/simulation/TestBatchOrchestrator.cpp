@@ -1,91 +1,24 @@
 #include "SpaceGame/simulation/TestBatchOrchestrator.h"
 
-#include "SpaceGame/levels/LevelLoader.h"
-#include "SpaceGame/system/GameSubsystem.h"
-#include <ioj/column_math.h>
-#include <ioj/invoke.h>
-#include <ioj/levels/team.h>
-#include <ioj/sim/entities/entity_ledger.h>
-#include <ioj/sim/levels/level_initialisation_data.h>
-#include <ioj/sim/missions/mission.h>
-#include <ioj/sim/sim_time.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
-#include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
-#include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
-#include <SpaceGame/entities/TestEntity.h>
-#include <SpaceGame/s7/GameSettingsReader.h>
-#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/settings/LevelSettingsFile.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
-#include <SpaceGame/telemetry/LevelTelemetryJson.h>
-#include <SpaceGame/telemetry/LevelTelemetryMetadata.h>
-#include <SpaceGamePresentation/presentation/HUDManager.h>
-#include <SpaceGamePresentation/simulation/CollisionGridVisualizationComponent.h>
-#include <SpaceGamePresentation/support/mesh.h>
+#include <SpaceGame/simulation/LevelWorldReset.h>
+#include <SpaceGame/telemetry/LevelTelemetryIntegration.h>
 #include <SpaceGameRendering/SparkRendererComponent.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
-#include <SandboxCore/array_utils.h>
 #include <SandboxCoreEngine/actor_utils.h>
-#include <SandboxCoreEngine/RotatorConversion.h>
-#include <SandboxCoreEngine/strings.h>
-#include <SandboxCoreEngine/TransformConversion.h>
 #include <SandboxCoreEngine/uobject_utils.h>
-#include <SandboxCoreEngine/VectorConversion.h>
 
+#include <Components/InstancedStaticMeshComponent.h>
 #include <CoreGlobals.h>
-#include <Engine/GameInstance.h>
-#include <Engine/LevelScriptActor.h>
-#include <Engine/StaticMesh.h>
-#include <Engine/StaticMeshSocket.h>
-#include <EngineUtils.h>
-#include <GameFramework/GameModeBase.h>
-#include <GameFramework/GameStateBase.h>
-#include <GameFramework/HUD.h>
-#include <GameFramework/PhysicsVolume.h>
-#include <GameFramework/PlayerController.h>
-#include <GameFramework/PlayerState.h>
-#include <GameFramework/WorldSettings.h>
-#include <HAL/FileManager.h>
-#include <HAL/IConsoleManager.h>
+#include <Engine/World.h>
 #include <Kismet/GameplayStatics.h>
-#include <Misc/FileHelper.h>
-#include <Misc/Paths.h>
 #include <SandboxISMCComponent.h>
-
-namespace {
-template <typename TActor, typename TConfig>
-void apply_actor_config(TActor& actor, TConfig* const config) {
-#if WITH_EDITOR
-    auto const* const world{actor.GetWorld()};
-    if (IsValid(world) && !world->IsGameWorld()) {
-        actor.Modify();
-    }
-#endif
-    actor.set_actor_config(config);
-}
-
-template <typename TActor, typename TConfig>
-void set_actor_config_on_all(UWorld& world, TConfig* const config) {
-    for (TActorIterator<TActor> it{&world}; it; ++it) {
-        apply_actor_config(**it, config);
-    }
-}
-
-void set_capital_proxy_config_on_all(UWorld& world, USpaceGameLevelConfig& config) {
-    for (TActorIterator<ATestCapitalShipProxy> it{&world}; it; ++it) {
-        auto& proxy{**it};
-#if WITH_EDITOR
-        if (!world.IsGameWorld()) {
-            proxy.Modify();
-        }
-#endif
-        proxy.set_level_config_asset(&config);
-    }
-}
-
-}
 
 FOnProxyEntitiesBound ATestBatchOrchestrator::on_proxy_entities_bound;
 
@@ -120,14 +53,13 @@ ATestBatchOrchestrator::ATestBatchOrchestrator() {
     laser_instances_->SetMobility(EComponentMobility::Movable);
     fighter_instances_->SetMobility(EComponentMobility::Movable);
     soft_target_instances_->SetMobility(EComponentMobility::Movable);
+    bind_presentation_components();
 }
-
 void ATestBatchOrchestrator::PostLoad() {
     Super::PostLoad();
-
+    bind_presentation_components();
     refresh_collision_grid_visualization();
 }
-
 void ATestBatchOrchestrator::BeginPlay() {
     Super::BeginPlay();
 
@@ -140,22 +72,26 @@ void ATestBatchOrchestrator::BeginPlay() {
     }
 }
 void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason) {
+    release_level(ioj::sim::LevelTelemetryRunEndReason::WorldEnd);
+    Super::EndPlay(end_play_reason);
+}
+void ATestBatchOrchestrator::release_level(ioj::sim::LevelTelemetryRunEndReason const reason) {
+    SetActorTickEnabled(false);
     if (level_simulation_.IsSet()) {
-        level_simulation_->finalize_telemetry_run(ioj::sim::LevelTelemetryRunEndReason::WorldEnd);
+        level_simulation_->finalize_telemetry_run(reason);
     }
-    hud_manager.deactivate();
     if (IsValid(player_ship)) {
         player_ship->unbind_simulation();
     }
-    persist_finalized_telemetry_run();
-    level_presentation_.Reset();
+    presentation_host_.reset();
+    if (level_simulation_.IsSet()) {
+        ioj::persist_finalized_level_telemetry_run(
+            *level_simulation_, launch_options_, presentation_enabled, GetGameInstance());
+    }
+
     level_simulation_.Reset();
-    level_definition_.Reset();
-    SetActorTickEnabled(false);
-
-    Super::EndPlay(end_play_reason);
+    prepared_level_.Reset();
 }
-
 void ATestBatchOrchestrator::start_simulation() {
     if (!level_simulation_.IsSet() && !begin_play()) {
         return;
@@ -176,135 +112,26 @@ void ATestBatchOrchestrator::pause_simulation() {
 void ATestBatchOrchestrator::reset_for_new_level() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::reset_for_new_level);
 
+    auto* const world{GetWorld()};
+    if (!IsValid(world)) {
+        UE_LOG(LogSandbox, Fatal, TEXT("Cannot reset level: world is invalid"));
+        return;
+    }
     if (level_simulation_.IsSet()) {
-        level_simulation_->finalize_telemetry_run(
-            ioj::sim::LevelTelemetryRunEndReason::OrchestratorReset);
         simulation_tick_settings.time_scale = level_simulation_->get_clock().get_time_scale();
     }
 
-    auto* const world{GetWorld()};
-    if (!IsValid(world)) {
-        UE_LOG(LogSandbox,
-               Fatal,
-               TEXT("ATestBatchOrchestrator::reset_for_new_level: World is invalid"));
-        return;
-    }
-
-    SetActorTickEnabled(false);
-
-    hud_manager.deactivate();
-    if (IsValid(player_ship)) {
-        player_ship->unbind_simulation();
-    }
-
-    persist_finalized_telemetry_run();
-    level_presentation_.Reset();
-    level_simulation_.Reset();
-    level_definition_.Reset();
-    settings_prepared_ = false;
-
+    release_level(ioj::sim::LevelTelemetryRunEndReason::OrchestratorReset);
     launch_options_ = {};
-    level_source_.Reset();
-    settings_source_.Reset();
-
-    collision_grid_visualization->clear_collision_bounds();
-    laser_instances_->clear_instances();
-    fighter_instances_->clear_instances();
-    for (auto* component :
-         {capital_instances_.Get(), turret_instances_.Get(), spinner_instances_.Get()}) {
-        component->ClearInstances();
-    }
-
-    TStaticArray<AActor*, 1> recreated_actors{};
-    int32 recreated_actor_count{0};
-    auto recreate_actor{[this, world, &recreated_actors, &recreated_actor_count]<typename T>(
-                            TObjectPtr<T>& actor) {
-        if (!IsValid(actor)) {
-            return;
-        }
-
-        auto* const old_actor{actor.Get()};
-        UClass* const actor_class{old_actor->GetClass()};
-        if (!IsValid(actor_class)) {
-            UE_LOG(LogSandbox,
-                   Fatal,
-                   TEXT("ATestBatchOrchestrator::reset_for_new_level: Actor class is invalid"));
-            return;
-        }
-
-        if (!old_actor->Destroy()) {
-            UE_LOG(LogSandbox,
-                   Fatal,
-                   TEXT("ATestBatchOrchestrator::reset_for_new_level: Failed to destroy %s"),
-                   *old_actor->GetName());
-            return;
-        }
-
-        auto* const replacement{world->SpawnActorDeferred<T>(actor_class, FTransform::Identity)};
-        if (!IsValid(replacement)) {
-            UE_LOG(LogSandbox,
-                   Fatal,
-                   TEXT("ATestBatchOrchestrator::reset_for_new_level: Failed to spawn %s"),
-                   *actor_class->GetName());
-            actor = nullptr;
-            return;
-        }
-
-        mission_definition.replace_startup_actor(old_actor, *replacement);
-        actor = replacement;
-        recreated_actors[recreated_actor_count] = replacement;
-        ++recreated_actor_count;
-    }};
-
-    recreate_actor(player_ship);
-
-    auto is_retained_actor{[this, &recreated_actors](AActor const* const actor) {
-        if (actor == this || ioj::actor_is_any<AWorldSettings,
-                                               AGameModeBase,
-                                               AGameStateBase,
-                                               APlayerController,
-                                               APlayerState,
-                                               AHUD,
-                                               ALevelScriptActor,
-                                               APhysicsVolume>(*actor)) {
-            return true;
-        }
-
-        for (auto* const recreated_actor : recreated_actors) {
-            if (actor == recreated_actor) {
-                return true;
-            }
-        }
-
-        return false;
-    }};
-    for (TActorIterator<AActor> it{world}; it;) {
-        auto* const actor{*it};
-        ++it;
-
-        if (!is_retained_actor(actor)) {
-            actor->Destroy();
-        }
-    }
-
-    constexpr auto apply_config{[](auto const actor_ptr, auto const* const actor_config) {
-        if (IsValid(actor_ptr)) {
-            apply_actor_config(*actor_ptr, actor_config);
-        }
-    }};
-
-    if (IsValid(level_config)) {
-        apply_config(player_ship, &level_config->player_ship);
-    }
-
-    for (int32 i{0}; i < recreated_actor_count; ++i) {
-        UGameplayStatics::FinishSpawningActor(recreated_actors[i], FTransform::Identity);
-    }
+    ioj::reset_level_world(*world,
+                           *this,
+                           player_ship,
+                           mission_definition,
+                           IsValid(level_config) ? &level_config->player_ship : nullptr);
 
     if (should_initialise_in_begin_play()) {
         begin_play();
     }
-
     on_reset.Broadcast(*this);
 }
 
@@ -329,28 +156,20 @@ auto ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) -> 
 #endif
 
     level_config = &config;
-    settings_prepared_ = false;
+    prepared_level_.Reset();
     refresh_collision_grid_visualization();
-    if (IsValid(player_ship)) {
-        apply_actor_config(*player_ship, &config.player_ship);
-    }
-
-    auto* const world{GetWorld()};
-    if (IsValid(world)) {
-        set_capital_proxy_config_on_all(*world, config);
-        set_actor_config_on_all<ATestStaticTurretsProxy>(*world, &config.turrets);
-        set_actor_config_on_all<ATestTubeSpinnerProxy>(*world, &config.tube_spinners);
+    if (auto* const world{GetWorld()}; IsValid(world)) {
+        ioj::apply_level_actor_configuration(*world, config, player_ship.Get());
+    } else if (IsValid(player_ship)) {
+        ioj::configure_player_actor(*player_ship, config);
     }
     return true;
 }
 void ATestBatchOrchestrator::set_start_mode(EOrchestratorStartMode const mode) {
     if (get_state() != ioj::sim::OrchestratorState::Uninitialised) {
-        UE_LOG(LogSandbox,
-               Error,
-               TEXT("ATestBatchOrchestrator::set_start_mode: Orchestrator is already initialised"));
+        UE_LOG(LogSandbox, Error, TEXT("Cannot change start mode after simulation initialisation"));
         return;
     }
-
     start_mode = mode;
 }
 void ATestBatchOrchestrator::set_presentation_enabled(bool const enabled) {
@@ -391,431 +210,12 @@ void ATestBatchOrchestrator::clear_player_ship() {
 }
 
 /* **************************************** */
-// Level initialization
-/* **************************************** */
-auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& effective_config,
-                                                   ioj::FLevelStartErrors& errors,
-                                                   TOptional<ioj::FProxyLevelSimBuild>& proxy_build,
-                                                   ioj::sim::collision::GridGeometry& grid_geometry)
-    -> bool {
-    auto& world{*GetWorld()};
-    auto const& config{effective_config};
-
-    TOptional<ioj::sim::player::PlayerSpawnData> player;
-    if (IsValid(player_ship)) {
-        player.Emplace(player_ship->make_spawn_data());
-    }
-
-    auto const* const player_collision_mesh{IsValid(player_ship) ? player_ship->get_collision_mesh()
-                                                                 : nullptr};
-    auto const clock_settings{simulation_tick_settings};
-
-    if (level_definition_.IsSet()) {
-        auto result{ioj::make_level_simulation_init_data(config,
-                                                         clock_settings,
-                                                         level_definition_.GetValue(),
-                                                         MoveTemp(player),
-                                                         {},
-                                                         player_collision_mesh)};
-        if (!result) {
-            errors = MoveTemp(result.error());
-            return false;
-        }
-
-        auto const presentation{make_presentation_resources()};
-        if (presentation_enabled && !presentation.is_valid()) {
-            errors.add(TEXT("Level presentation resources are incomplete"));
-            return false;
-        }
-
-        result->telemetry_metadata = make_level_telemetry_run_metadata(world, mission_definition);
-        result->telemetry_metadata.level_id = level_definition_->metadata().id.value;
-        result->telemetry_metadata.level_display_name = level_definition_->metadata().title;
-        result->telemetry_metadata.level_source = TCHAR_TO_UTF8(*level_source_);
-        result->telemetry_metadata.settings_source = TCHAR_TO_UTF8(*settings_source_);
-        if (launch_options_.simulated_duration_seconds.IsSet()) {
-            result->telemetry_metadata.requested_duration_seconds =
-                ioj::Duration::make(launch_options_.simulated_duration_seconds.GetValue());
-        }
-        result->telemetry_metadata.stop_when_battle_resolved =
-            launch_options_.stop_when_battle_resolved;
-        auto* const game_subsystem{ioj::UGameSubsystem::get(GetGameInstance())};
-        if (!IsValid(game_subsystem)) {
-            errors.add(TEXT("Cannot create level simulation without game memory"));
-            return false;
-        }
-
-        initial_turret_transforms_.Reset();
-        auto const& schedule{result->level_events.schedule};
-        auto const groups{
-            schedule.spawn_groups.get_const_view(0, schedule.initial_spawn_group_count)};
-        auto const group_count{groups.num()};
-        for (std::uint32_t group{}; group < group_count; ++group) {
-            if (groups.types()[group] != ::ioj::sim::EntityType::Turret) {
-                continue;
-            }
-            auto const turrets{schedule.turret_spawns.get_const_view(
-                groups.offsets()[group], groups.counts()[group].value())};
-            auto const turret_count{static_cast<int32>(turrets.num())};
-            for (int32 i{}; i < turret_count; ++i) {
-                initial_turret_transforms_.Emplace(
-                    FRotator{ioj::to_unreal(ioj::rotation_at(turrets.view_rotations(), i))},
-                    FVector{ioj::to_unreal(ioj::vector_at(turrets.view_locations(), i))});
-            }
-        }
-        grid_geometry = result->collision.grid_geometry;
-        level_simulation_.Emplace(game_subsystem->get_game_memory(), MoveTemp(result.value()));
-        return true;
-    }
-
-    auto result{ioj::make_proxy_level_simulation_init_data(config,
-                                                           clock_settings,
-                                                           world,
-                                                           mission_definition,
-                                                           MoveTemp(player),
-                                                           player_ship.Get(),
-                                                           player_collision_mesh)};
-    if (!result) {
-        errors = MoveTemp(result.error());
-        return false;
-    }
-
-    proxy_build.Emplace(MoveTemp(result.value()));
-    auto& data{proxy_build->data};
-    initial_turret_transforms_ = MoveTemp(proxy_build->initial_turret_transforms);
-
-    auto const presentation{make_presentation_resources()};
-    if (presentation_enabled && !presentation.is_valid()) {
-        errors.add(TEXT("Level presentation resources are incomplete"));
-        return false;
-    }
-
-    data.telemetry_metadata = make_level_telemetry_run_metadata(world, mission_definition);
-    data.telemetry_metadata.level_source = TCHAR_TO_UTF8(*level_source_);
-    data.telemetry_metadata.settings_source = TCHAR_TO_UTF8(*settings_source_);
-    auto* const game_subsystem{ioj::UGameSubsystem::get(GetGameInstance())};
-    if (!IsValid(game_subsystem)) {
-        errors.add(TEXT("Cannot create level simulation without game memory"));
-        return false;
-    }
-    grid_geometry = data.collision.grid_geometry;
-    level_simulation_.Emplace(game_subsystem->get_game_memory(), MoveTemp(data));
-    return true;
-}
-auto ATestBatchOrchestrator::begin_play() -> bool {
-    if (level_simulation_.IsSet()) {
-        handle_level_start_failure(TEXT("Level simulation is already initialized"));
-        return false;
-    }
-
-    auto* const world{GetWorld()};
-    if (!IsValid(world)) {
-        handle_level_start_failure(TEXT("Cannot start level: world is invalid"));
-        return false;
-    }
-
-    if (!IsValid(level_config)) {
-        handle_level_start_failure(TEXT("Cannot start level: level configuration is invalid"));
-        return false;
-    }
-
-    if (!settings_prepared_ && !prepare_level()) {
-        return false;
-    }
-
-    auto const* const effective_config{level_config.Get()};
-
-    ioj::FLevelStartErrors config_errors;
-    TArray<FString> config_error_messages;
-    effective_config->get_validation_errors(config_error_messages, presentation_enabled);
-    config_errors.append(MoveTemp(config_error_messages));
-
-    if (presentation_enabled && IsValid(player_ship) &&
-        !effective_config->player_ship.team_visual_data) {
-        config_errors.add(TEXT("player_ship.team_visual_data is null"));
-    }
-
-    if (config_errors.has_errors()) {
-        handle_level_start_failure(
-            FString::Printf(TEXT("Cannot start level: level configuration failed validation:\n%s"),
-                            *config_errors.format()));
-        return false;
-    }
-
-    if (!presentation_enabled &&
-        (IsValid(player_ship) || ioj::get_first_actor<ATestSpaceShip>(*world))) {
-        handle_level_start_failure(TEXT("Presentation-disabled levels must be playerless"));
-        return false;
-    }
-
-    ioj::FLevelStartErrors simulation_errors;
-    TOptional<ioj::FProxyLevelSimBuild> proxy_build;
-    ioj::sim::collision::GridGeometry grid_geometry{};
-    if (!initialise_simulation(*effective_config, simulation_errors, proxy_build, grid_geometry)) {
-        handle_level_start_failure(
-            FString::Printf(TEXT("Cannot start level:\n%s"), *simulation_errors.format()));
-        return false;
-    }
-
-    if (IsValid(player_ship) && get_player_ship_simulation()) {
-        player_ship->bind_simulation(*level_simulation_->get_player_ship_commands(),
-                                     *get_player_ship_simulation());
-    }
-
-    if (proxy_build.IsSet()) {
-        auto const proxy_entities{proxy_build->bind_proxy_entities(*level_simulation_)};
-        on_proxy_entities_bound.Broadcast(proxy_entities);
-        proxy_build->destroy_proxy_actors();
-    }
-    auto static_bounds{ioj::FLevelCollisionHost::extract_static_geometry(
-        *world, effective_config->collision_grid, grid_geometry)};
-    level_simulation_->set_static_collision(static_bounds);
-
-    level_simulation_->finish_initialisation();
-
-    if (presentation_enabled) {
-        level_presentation_.Emplace(make_presentation_resources(),
-                                    level_simulation_->get_read_access(),
-                                    MoveTemp(initial_turret_transforms_));
-    }
-    update_collision_bounds_visualization();
-    level_definition_.Reset();
-    level_source_.Reset();
-    settings_source_.Reset();
-
-    if (presentation_enabled) {
-        hud_manager.initialise(get_mission(),
-                               get_entity_ledger(),
-                               level_simulation_->get_capital_ships(),
-                               level_simulation_->get_fighters(),
-                               level_simulation_->get_turrets(),
-                               level_simulation_->get_spinners(),
-                               get_spatial_query_manager(),
-                               get_player_ship_simulation(),
-                               level_config->get_visual_config(),
-                               soft_target_instances_);
-        if (IsValid(player_ship)) {
-            if (auto* const controller{
-                    Cast<ASpaceGamePlayerController>(player_ship->GetController())};
-                IsValid(controller)) {
-                controller->activate_ship_control();
-            }
-        }
-    }
-
-    bool const automatic{
-        start_mode == EOrchestratorStartMode::Automatic ||
-        start_mode == EOrchestratorStartMode::AuthoredLevel ||
-        (start_mode == EOrchestratorStartMode::PausedInTest && !GIsAutomationTesting)};
-    if (automatic) {
-        level_simulation_->start();
-    }
-
-    SetActorTickEnabled(automatic);
-    return true;
-}
-void ATestBatchOrchestrator::handle_level_start_failure(FString message) {
-    SetActorTickEnabled(false);
-    UE_LOG(LogSandbox, Error, TEXT("%s"), *message);
-
-    auto* const world{GetWorld()};
-#if WITH_EDITOR
-    if (IsValid(world) && world->WorldType == EWorldType::PIE) {
-        return;
-    }
-#endif
-    if (GIsAutomationTesting) {
-        return;
-    }
-
-    auto* const game_instance{IsValid(world) ? world->GetGameInstance() : nullptr};
-    auto* const subsystem{ioj::UGameSubsystem::get(game_instance)};
-    if (IsValid(subsystem)) {
-        subsystem->set_level_launch_error(MoveTemp(message));
-        if (subsystem->return_to_level_select()) {
-            return;
-        }
-    }
-
-    if (IsValid(world)) {
-        UGameplayStatics::OpenLevel(world, ioj::UGameSubsystem::get_main_menu_level_name());
-    }
-}
-void ATestBatchOrchestrator::load_authored_level() {
-
-    auto* const world{GetWorld()};
-    auto* const game_instance{IsValid(world) ? world->GetGameInstance() : nullptr};
-    auto* const subsystem{ioj::UGameSubsystem::get(game_instance)};
-    if (!IsValid(subsystem)) {
-        handle_level_start_failure(TEXT("Cannot load authored level: game subsystem is invalid"));
-        return;
-    }
-
-    auto pending{subsystem->take_pending_level()};
-    if (!pending.IsSet()) {
-        auto const error{TEXT("No pending authored level was provided to GameRuntime.")};
-        handle_level_start_failure(error);
-        return;
-    }
-
-    auto const& options{pending->options};
-    if (!ioj::level_launch::is_valid_time_scale(options.requested_time_scale)) {
-        handle_level_start_failure(
-            FString::Printf(TEXT("Cannot load authored level: requested time scale %.17g is "
-                                 "outside the supported range (0, %.0f]."),
-                            options.requested_time_scale,
-                            ioj::level_launch::maximum_time_scale));
-        return;
-    }
-
-    if (options.presentation_mode == ioj::ELevelPresentationMode::SimulationOnly &&
-        !options.simulated_duration_seconds.IsSet()) {
-        handle_level_start_failure(
-            TEXT("Cannot load authored level: simulation-only runs require a duration."));
-        return;
-    }
-    if (options.simulated_duration_seconds.IsSet() &&
-        (!FMath::IsFinite(options.simulated_duration_seconds.GetValue()) ||
-         options.simulated_duration_seconds.GetValue() <= 0.0)) {
-        handle_level_start_failure(
-            TEXT("Cannot load authored level: simulated duration must be finite and positive."));
-        return;
-    }
-
-    launch_options_ = options;
-    presentation_enabled = options.presentation_mode == ioj::ELevelPresentationMode::Visual;
-
-    ioj::FLevelLoader loader{*this};
-    auto const result{loader.load(pending->source, options.control_context)};
-    if (!result) {
-        TArray<FString> messages;
-        messages.Reserve(result.errors.Num());
-        for (auto const& error : result.errors) {
-            messages.Add(error.message);
-        }
-        auto const message{FString::Printf(TEXT("Failed to load '%s':\n%s"),
-                                           *pending->source_path,
-                                           *FString::Join(messages, TEXT("\n")))};
-        handle_level_start_failure(message);
-        return;
-    }
-
-    if (!begin_play()) {
-        return;
-    }
-
-    if (options.launch_mode == ioj::ELevelLaunchMode::Paused) {
-        pause_simulation();
-    }
-}
-auto ATestBatchOrchestrator::should_initialise_in_begin_play() const noexcept -> bool {
-    return start_mode == EOrchestratorStartMode::Automatic ||
-           (start_mode == EOrchestratorStartMode::PausedInTest && !GIsAutomationTesting);
-}
-
-/* **************************************** */
-// Presentation and diagnostics
-/* **************************************** */
-
-void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
-    if (!IsValid(collision_grid_visualization)) {
-        UE_LOG(LogSandbox,
-               Error,
-               TEXT("Cannot refresh collision-grid visualization: component is invalid"));
-        return;
-    }
-
-    TOptional<FCollisionGridVisualizationSettings> settings;
-    if (presentation_enabled && IsValid(level_config)) {
-        auto const collision_grid{level_config->collision_grid};
-        settings.Emplace(FCollisionGridVisualizationSettings{
-            .dimensions = collision_grid.calculate_grid_dimensions(),
-            .cell_size = collision_grid.cell_size,
-            .line_colour = collision_grid.line_colour,
-            .line_thickness = collision_grid.line_thickness,
-            .show_grid = collision_grid.show_grid,
-        });
-    }
-
-    collision_grid_visualization->configure(MoveTemp(settings));
-}
-void ATestBatchOrchestrator::update_collision_bounds_visualization() {
-    if (!IsValid(collision_grid_visualization)) {
-        UE_LOG(LogSandbox,
-               Error,
-               TEXT("Cannot update collision-bounds visualization: component is invalid"));
-        return;
-    }
-
-    if (!presentation_enabled || !level_simulation_.IsSet()) {
-        collision_grid_visualization->clear_collision_bounds();
-        return;
-    }
-
-    auto const& spatial_queries{get_spatial_query_manager()};
-    collision_grid_visualization->update_collision_bounds(
-        spatial_queries.get_entity_collision_bounds(),
-        spatial_queries.get_static_collision_bounds());
-}
-
-/* **************************************** */
-// Simulation state
-/* **************************************** */
-void ATestBatchOrchestrator::Tick(float dt) {
-    Super::Tick(dt);
-
-    tick(static_cast<time_type>(dt));
-}
-void ATestBatchOrchestrator::tick(time_type const dt) {
-    if (get_state() != ioj::sim::OrchestratorState::Running) {
-        return;
-    }
-
-    auto const previous_tick{level_simulation_->get_clock().get_completed_ticks()};
-    level_simulation_->advance(dt);
-    update_collision_bounds_visualization();
-
-    if (presentation_enabled) {
-        hud_manager.advance(dt);
-    }
-
-    if (level_presentation_.IsSet()) {
-        level_presentation_->tick(dt, level_simulation_->get_read_access());
-    }
-
-    if (auto player{level_simulation_->get_player_ship_commands()};
-        player && player->consume_death_notification()) {
-        if (IsValid(player_ship)) {
-            player_ship->handle_simulation_death();
-        }
-    }
-
-    if (level_simulation_->get_clock().get_completed_ticks() != previous_tick) {
-        ioj::publish_mission_completion(
-            *level_simulation_, GetGameInstance(), on_mission_completed);
-        level_simulation_->stop_run_if_requested(
-            launch_options_.stop_when_battle_resolved,
-            launch_options_.simulated_duration_seconds.IsSet()
-                ? std::optional{ioj::Duration::make(
-                      launch_options_.simulated_duration_seconds.GetValue())}
-                : std::nullopt);
-    }
-    persist_finalized_telemetry_run();
-}
-auto ATestBatchOrchestrator::duration_to_tick_period(ioj::Duration const duration) const noexcept
-    -> tick_type {
-    auto const tick_rate{level_simulation_.IsSet() ? level_simulation_->get_clock().get_tick_rate()
-                                                   : simulation_tick_settings.tick_rate};
-    return ioj::sim::duration_to_tick_period(tick_rate, duration);
-}
-
-/* **************************************** */
-// Testing and level preparation
+// Level preparation and startup
 /* **************************************** */
 auto ATestBatchOrchestrator::prepare_level(ioj::levels::authoring::LevelSource const* const source)
     -> bool {
     check(get_state() == ioj::sim::OrchestratorState::Uninitialised);
-    if (settings_prepared_ && !source) {
+    if (prepared_level_.IsSet() && !source) {
         return true;
     }
 
@@ -830,34 +230,268 @@ auto ATestBatchOrchestrator::prepare_level(ioj::levels::authoring::LevelSource c
     if (!set_level_config(*loaded->config)) {
         return false;
     }
-    if (loaded->level) {
-        level_definition_ = MoveTemp(*loaded->level);
-    }
-    level_source_.Reset();
-    if (source) {
-        if (auto const* text{std::get_if<std::string>(source)}) {
-            level_source_ = UTF8_TO_TCHAR(text->c_str());
-        }
-    }
-    auto const& settings{loaded->simulation};
-    settings_source_ = MoveTemp(loaded->source);
-    simulation_tick_settings = settings.clock;
+
+    simulation_tick_settings = loaded->simulation.clock;
     if (start_mode == EOrchestratorStartMode::AuthoredLevel) {
         simulation_tick_settings.time_scale =
             ioj::PositiveFinite<time_type>::make(launch_options_.requested_time_scale);
     }
-    hud_manager.configure(settings.hud);
+    presentation_host_.get_hud_manager().configure(loaded->simulation.hud);
+    prepared_level_.Emplace(MoveTemp(*loaded));
 
     if (!IsValid(player_ship)) {
         player_ship = ioj::get_first_actor<ATestSpaceShip>(*world);
         if (IsValid(player_ship)) {
-            apply_actor_config(*player_ship, &level_config->player_ship);
+            ioj::configure_player_actor(*player_ship, *level_config);
         }
     }
-    settings_prepared_ = true;
     return true;
 }
+auto ATestBatchOrchestrator::load_level(ioj::levels::authoring::LevelSource const& source,
+                                        EPlayerControlContext const playerless_control_context)
+    -> std::expected<void, ioj::FLevelLoadErrors> {
+    auto const fail{[](ioj::ELevelLoadErrorCode const code,
+                       FString message) -> std::expected<void, ioj::FLevelLoadErrors> {
+        ioj::FLevelLoadErrors errors;
+        errors.errors.Add({.code = code, .message = MoveTemp(message)});
+        return std::unexpected{MoveTemp(errors)};
+    }};
+    if (get_state() != ioj::sim::OrchestratorState::Uninitialised) {
+        return fail(ioj::ELevelLoadErrorCode::InvalidOrchestratorState,
+                    TEXT("Level loader requires an uninitialised orchestrator"));
+    }
+    auto* const world{GetWorld()};
+    if (!IsValid(world)) {
+        return fail(ioj::ELevelLoadErrorCode::InvalidWorld, TEXT("Orchestrator world is invalid"));
+    }
+    if (!prepare_level(&source)) {
+        return fail(ioj::ELevelLoadErrorCode::InvalidLevelConfig,
+                    TEXT("Failed to resolve game settings"));
+    }
 
+    std::optional<ioj::FLevelVisualLoad> visual;
+    if (presentation_enabled) {
+        auto* const controller{
+            Cast<ASpaceGamePlayerController>(UGameplayStatics::GetPlayerController(world, 0))};
+        if (!IsValid(controller)) {
+            return fail(ioj::ELevelLoadErrorCode::MissingInfrastructure,
+                        TEXT("Authored level requires a space-game player controller"));
+        }
+        if (!get_presentation_resources().is_valid()) {
+            return fail(ioj::ELevelLoadErrorCode::MissingInfrastructure,
+                        TEXT("Orchestrator simulation infrastructure is incomplete"));
+        }
+        visual.emplace(*controller, playerless_control_context);
+    }
+
+    return ioj::FLevelLoader::load({.world = *world,
+                                    .config = *level_config,
+                                    .definition = get_level_definition(),
+                                    .player = player_ship,
+                                    .visual = visual});
+}
+auto ATestBatchOrchestrator::begin_play() -> bool {
+    if (level_simulation_.IsSet()) {
+        handle_level_start_failure(TEXT("Level simulation is already initialized"));
+        return false;
+    }
+    auto* const world{GetWorld()};
+    if (!IsValid(world)) {
+        handle_level_start_failure(TEXT("Cannot start level: world is invalid"));
+        return false;
+    }
+    if (!IsValid(level_config)) {
+        handle_level_start_failure(TEXT("Cannot start level: level configuration is invalid"));
+        return false;
+    }
+    if (!prepared_level_.IsSet() && !prepare_level()) {
+        return false;
+    }
+
+    auto const authored{prepared_level_->level.has_value()};
+    auto build{ioj::prepare_level_simulation({
+        .world = *world,
+        .config = *level_config,
+        .clock_settings = simulation_tick_settings,
+        .mission = mission_definition,
+        .launch_options = launch_options_,
+        .level_source = prepared_level_->level_source,
+        .settings_source = prepared_level_->source,
+        .definition = authored ? &*prepared_level_->level : nullptr,
+        .player = player_ship.Get(),
+        .presentation_enabled = presentation_enabled,
+    })};
+    if (!build) {
+        handle_level_start_failure(
+            FString::Printf(TEXT("Cannot start level:\n%s"), *build.error().format()));
+        return false;
+    }
+
+    auto const resources{get_presentation_resources()};
+    if (presentation_enabled && !resources.is_valid()) {
+        handle_level_start_failure(
+            TEXT("Cannot start level: Level presentation resources are incomplete"));
+        return false;
+    }
+    auto* const game_subsystem{ioj::UGameSubsystem::get(GetGameInstance())};
+    if (!IsValid(game_subsystem)) {
+        handle_level_start_failure(TEXT("Cannot create level simulation without game memory"));
+        return false;
+    }
+
+    auto const grid_geometry{build->data.collision.grid_geometry};
+    level_simulation_.Emplace(game_subsystem->get_game_memory(), MoveTemp(build->data));
+    if (IsValid(player_ship) && get_player_ship_simulation()) {
+        player_ship->bind_simulation(*level_simulation_->get_player_ship_commands(),
+                                     *get_player_ship_simulation());
+    }
+
+    if (!authored) {
+        auto const proxy_entities{build->bind_proxy_entities(*level_simulation_)};
+        on_proxy_entities_bound.Broadcast(proxy_entities);
+        build->destroy_proxy_actors();
+    }
+    auto const static_bounds{ioj::FLevelCollisionHost::extract_static_geometry(
+        *world, level_config->collision_grid, grid_geometry)};
+    level_simulation_->set_static_collision(static_bounds);
+    level_simulation_->finish_initialisation();
+
+    if (presentation_enabled) {
+        presentation_host_.initialise(resources.config,
+                                      resources.player,
+                                      level_simulation_->get_read_access(),
+                                      get_mission(),
+                                      get_spatial_query_manager(),
+                                      MoveTemp(build->initial_turret_transforms));
+        if (IsValid(player_ship)) {
+            if (auto* const controller{
+                    Cast<ASpaceGamePlayerController>(player_ship->GetController())};
+                IsValid(controller)) {
+                controller->activate_ship_control();
+            }
+        }
+    }
+    prepared_level_.Reset();
+
+    bool const automatic{
+        start_mode == EOrchestratorStartMode::Automatic ||
+        start_mode == EOrchestratorStartMode::AuthoredLevel ||
+        (start_mode == EOrchestratorStartMode::PausedInTest && !GIsAutomationTesting)};
+    if (automatic) {
+        level_simulation_->start();
+    }
+    SetActorTickEnabled(automatic);
+    return true;
+}
+void ATestBatchOrchestrator::handle_level_start_failure(FString message) {
+    SetActorTickEnabled(false);
+    ioj::FLevelLoader::report_failure(GetWorld(), MoveTemp(message));
+}
+void ATestBatchOrchestrator::load_authored_level() {
+    auto pending{ioj::FLevelLoader::take_pending(GetGameInstance())};
+    if (!pending) {
+        handle_level_start_failure(pending.error());
+        return;
+    }
+    launch_options_ = pending->options;
+    presentation_enabled = launch_options_.presentation_mode == ioj::ELevelPresentationMode::Visual;
+
+    auto const loaded{load_level(pending->source, launch_options_.control_context)};
+    if (!loaded) {
+        handle_level_start_failure(loaded.error().format(pending->source_path));
+        return;
+    }
+    if (begin_play() && launch_options_.launch_mode == ioj::ELevelLaunchMode::Paused) {
+        pause_simulation();
+    }
+}
+auto ATestBatchOrchestrator::should_initialise_in_begin_play() const noexcept -> bool {
+    return start_mode == EOrchestratorStartMode::Automatic ||
+           (start_mode == EOrchestratorStartMode::PausedInTest && !GIsAutomationTesting);
+}
+
+/* **************************************** */
+// Presentation integration
+/* **************************************** */
+void ATestBatchOrchestrator::bind_presentation_components() {
+    presentation_host_.bind_components({.lasers = laser_instances_,
+                                        .capital_ships = capital_instances_,
+                                        .fighters = fighter_instances_,
+                                        .turrets = turret_instances_,
+                                        .spinners = spinner_instances_,
+                                        .sparks = spark_renderer_,
+                                        .soft_targets = soft_target_instances_,
+                                        .collision_grid = collision_grid_visualization});
+}
+void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
+    TOptional<FCollisionGridVisualizationSettings> settings;
+    if (presentation_enabled && IsValid(level_config)) {
+        auto const& collision_grid{level_config->collision_grid};
+        settings.Emplace(FCollisionGridVisualizationSettings{
+            .dimensions = collision_grid.calculate_grid_dimensions(),
+            .cell_size = collision_grid.cell_size,
+            .line_colour = collision_grid.line_colour,
+            .line_thickness = collision_grid.line_thickness,
+            .show_grid = collision_grid.show_grid,
+        });
+    }
+    presentation_host_.configure_collision_grid(MoveTemp(settings));
+}
+auto ATestBatchOrchestrator::get_presentation_resources() const -> FLevelPresentationResources {
+    return presentation_host_.make_resources(
+        level_config->get_visual_config(),
+        IsValid(player_ship)
+            ? TOptional<FPlayerPresentationResources>{player_ship->get_presentation_resources()}
+            : NullOpt);
+}
+
+/* **************************************** */
+// Simulation state
+/* **************************************** */
+void ATestBatchOrchestrator::Tick(float dt) {
+    Super::Tick(dt);
+    tick(static_cast<time_type>(dt));
+}
+void ATestBatchOrchestrator::tick(time_type const dt) {
+    if (get_state() != ioj::sim::OrchestratorState::Running) {
+        return;
+    }
+
+    auto const previous_tick{level_simulation_->get_clock().get_completed_ticks()};
+    level_simulation_->advance(dt);
+    presentation_host_.tick(dt, level_simulation_->get_read_access(), get_spatial_query_manager());
+
+    if (auto player{level_simulation_->get_player_ship_commands()};
+        player && player->consume_death_notification()) {
+        if (IsValid(player_ship)) {
+            player_ship->handle_simulation_death();
+        }
+    }
+
+    if (level_simulation_->get_clock().get_completed_ticks() != previous_tick) {
+        ioj::publish_mission_completion(
+            *level_simulation_, GetGameInstance(), on_mission_completed);
+        level_simulation_->stop_run_if_requested({
+            .stop_when_battle_resolved = launch_options_.stop_when_battle_resolved,
+            .duration = launch_options_.simulated_duration_seconds.IsSet()
+                          ? std::optional{ioj::Duration::make(
+                                launch_options_.simulated_duration_seconds.GetValue())}
+                          : std::nullopt,
+        });
+    }
+    ioj::persist_finalized_level_telemetry_run(
+        *level_simulation_, launch_options_, presentation_enabled, GetGameInstance());
+}
+auto ATestBatchOrchestrator::duration_to_tick_period(ioj::Duration const duration) const noexcept
+    -> tick_type {
+    auto const tick_rate{level_simulation_.IsSet() ? level_simulation_->get_clock().get_tick_rate()
+                                                   : simulation_tick_settings.tick_rate};
+    return ioj::sim::duration_to_tick_period(tick_rate, duration);
+}
+
+/* **************************************** */
+// Editor commands
+/* **************************************** */
 #if WITH_EDITOR
 void ATestBatchOrchestrator::apply_level_config() {
     if (!IsValid(level_config)) {
@@ -866,110 +500,19 @@ void ATestBatchOrchestrator::apply_level_config() {
     }
     set_level_config(*level_config);
 }
-
 void ATestBatchOrchestrator::create_level_settings() {
-    auto* const world{GetWorld()};
-    if (!IsValid(world) || world->IsGameWorld()) {
-        UE_LOG(LogSandbox, Warning, TEXT("Create level settings requires an editor world."));
+    auto const path{ioj::create_level_settings_file(GetWorld())};
+    if (!path.IsSet()) {
         return;
     }
 
-    auto const filename{FPaths::MakeValidFileName(world->GetName()) + TEXT(".scm")};
-    auto const relative_path{FPaths::Combine(TEXT("LevelScripts/Settings"), filename)};
-    auto const path{FPaths::Combine(FPaths::ProjectDir(), relative_path)};
-    auto& files{IFileManager::Get()};
-    if (!files.FileExists(*path)) {
-        files.MakeDirectory(*FPaths::GetPath(path), true);
-        FString const source{
-            TEXT("(settings-layers\n  (load-script \"Settings/base.scm\")\n  (settings))\n")};
-        if (!FFileHelper::SaveStringToFile(source,
-                                           *path,
-                                           FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM,
-                                           &files,
-                                           FILEWRITE_NoReplaceExisting)) {
-            UE_LOG(LogSandbox, Error, TEXT("Cannot create settings file '%s'."), *path);
-            return;
-        }
-    }
-
     Modify();
-    settings_file.FilePath = relative_path;
-    settings_prepared_ = false;
+    settings_file.FilePath = path.GetValue();
+    prepared_level_.Reset();
     MarkPackageDirty();
-    UE_LOG(LogSandbox, Display, TEXT("Assigned level settings '%s'."), *relative_path);
+    UE_LOG(LogSandbox, Display, TEXT("Assigned level settings '%s'."), *path.GetValue());
 }
-
 void ATestBatchOrchestrator::prepare_level_button() {
     prepare_level();
 }
 #endif
-
-/* **************************************** */
-// Presentation and collision
-/* **************************************** */
-auto ATestBatchOrchestrator::make_presentation_resources() const -> FLevelPresentationResources {
-    return {
-        .lasers = laser_instances_,
-        .capital_ships = capital_instances_,
-        .fighters = fighter_instances_,
-        .turrets = turret_instances_,
-        .spinners = spinner_instances_,
-        .sparks = spark_renderer_,
-        .config = level_config->get_visual_config(),
-        .player =
-            IsValid(player_ship)
-                ? TOptional<FPlayerPresentationResources>{player_ship->get_presentation_resources()}
-                : NullOpt};
-}
-/* **************************************** */
-// Mission and telemetry
-/* **************************************** */
-void ATestBatchOrchestrator::handle_telemetry_persisted(FString run_id, FString error) {
-    if (launch_options_.results_navigation != ioj::ELevelResultsNavigation::Telemetry) {
-        return;
-    }
-    auto* const game_instance{GetGameInstance()};
-    auto* const subsystem{ioj::UGameSubsystem::get(game_instance)};
-    if (!IsValid(subsystem)) {
-        UE_LOG(LogSandbox, Error, TEXT("Cannot navigate to telemetry: subsystem is unavailable"));
-        return;
-    }
-    if (!subsystem->return_to_telemetry(MoveTemp(run_id), MoveTemp(error))) {
-        UE_LOG(LogSandbox, Error, TEXT("Cannot navigate to completed telemetry run"));
-    }
-}
-auto ATestBatchOrchestrator::take_finalized_telemetry_report()
-    -> TOptional<ioj::sim::LevelTelemetryReport> {
-    if (!level_simulation_.IsSet()) {
-        return {};
-    }
-    auto record{level_simulation_->take_finalized_telemetry_run()};
-    if (!record.has_value()) {
-        return {};
-    }
-    ioj::sim::LevelTelemetryReport report{std::move(record.value())};
-    report.started_paused = launch_options_.launch_mode == ioj::ELevelLaunchMode::Paused;
-    report.opens_telemetry =
-        launch_options_.results_navigation == ioj::ELevelResultsNavigation::Telemetry;
-    report.presentation_enabled = presentation_enabled;
-    return report;
-}
-void ATestBatchOrchestrator::persist_finalized_telemetry_run() {
-    if (GIsAutomationTesting) {
-        return;
-    }
-    auto finalized_report{take_finalized_telemetry_report()};
-    if (!finalized_report.IsSet()) {
-        return;
-    }
-    auto const& report{finalized_report.GetValue()};
-    auto const run_id{report.run.metadata.run_id};
-    auto const path{write_level_telemetry_run(report, level_telemetry_runs_directory())};
-    if (path) {
-        UE_LOG(LogSandbox, Display, TEXT("Wrote level telemetry run to '%s'"), **path);
-        handle_telemetry_persisted(UTF8_TO_TCHAR(run_id.c_str()), {});
-    } else {
-        UE_LOG(LogSandbox, Error, TEXT("Failed to write level telemetry run: %s"), *path.error());
-        handle_telemetry_persisted(UTF8_TO_TCHAR(run_id.c_str()), path.error());
-    }
-}

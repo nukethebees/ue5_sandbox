@@ -1,4 +1,5 @@
 #include "support/collision_agent_storage.h"
+#include "support/simulation_test_data.h"
 #include <ioj/column_math.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/entities/entity_tables.h>
@@ -28,15 +29,6 @@ namespace ioj::sim::tests {
 using ioj::testing::structurally_equal;
 using Handle = EntityInstanceHandle;
 
-auto vector_values(Vectors3f const& vectors) -> std::vector<Vector3f> {
-    auto const values{vectors.get_const_view().resolve()};
-    auto const count{values.num()};
-    std::vector<Vector3f> result(count);
-    for (std::uint32_t row{}; row < count; ++row) {
-        result[row] = values[row];
-    }
-    return result;
-}
 TEST(EntityTypeRuns, GroupsWithoutChangingIdsAndOmitsEmptyIds) {
     std::array const ids{EntityId{3, EntityType::Fighter},
                          EntityId{},
@@ -180,8 +172,10 @@ TEST(EntityMotion, CopiesMixedTypesAndReportsMissingEntitiesWithoutChangingIds) 
         std::ranges::transform(handles, validity.begin(), &EntityInstanceHandle::is_valid);
         EXPECT_PRED_FORMAT2(structurally_equal, original, ids);
         EXPECT_PRED_FORMAT2(structurally_equal, expected_validity, validity);
-        EXPECT_PRED_FORMAT2(structurally_equal, expected_locations, vector_values(locations));
-        EXPECT_PRED_FORMAT2(structurally_equal, expected_velocities, vector_values(velocities));
+        EXPECT_PRED_FORMAT2(
+            structurally_equal, expected_locations, copy_vectors(locations.get_const_view()));
+        EXPECT_PRED_FORMAT2(
+            structurally_equal, expected_velocities, copy_vectors(velocities.get_const_view()));
     }};
     expect_motion();
 

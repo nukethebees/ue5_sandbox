@@ -6,6 +6,37 @@ active storage layout, and component lifetime are separate concerns.
 See [phases and data validity](docs/phases-and-data-validity.md) for the publication and mutation
 contract.
 
+## Level ownership and phases
+
+`LevelSim` owns the clock, entity ledger and tables, concrete entity simulations, collision,
+mission, authored events and telemetry. It remains nonmovable because those owners retain
+references to one another. Declaration order keeps the clock, tables and frame-memory backing
+alive until their consumers have been destroyed.
+
+The level coordinates Preparation, Thinking, Action and Resolution through small, explicit
+phase methods. Each entity simulation receives only its phase inputs: queries, command sinks,
+combat events or scratch storage as required. These inputs borrow existing owners for the call;
+they do not change SoA storage or add runtime system dispatch.
+
+`collision::CollisionPipeline` owns the spatial-query manager, overlap response and reusable
+candidate IDs. It copies newly spawned identities after spawn commits and before entity-row
+preparation can reorder storage. Movement adds player and fighter candidates; the pipeline
+deduplicates them and refreshes the spatial index before overlap detection. Queries and temporary
+overlap results remain subject to the phase and scratch-lifetime contracts.
+
+Construction executes tick-zero events but leaves the level in `Initialisation`. The host may
+install static geometry before calling `finish_initialisation()`, which publishes entity lookups
+and the spatial index, begins telemetry and the mission in `StableSetup`, then leaves a paused
+level in `BetweenTicks`. Mission evaluation during a tick follows published deaths and precedes
+`ResolutionCommit`, while entity row mappings are still valid.
+
+Completion consumption and run stopping are explicit host operations after frame publication.
+`Mission::take_team_completion` consumes the pending batch and returns the first completion for
+the requested team; `LevelSim` uses it to finalize player-team telemetry. `RunStopConditions`
+selects battle resolution before duration when both apply. These policies do not advance time
+or reschedule tick phases. Unreal lifecycle and presentation ownership are described in the
+[SpaceGame architecture](../../Plugins/SpaceGame/ARCHITECTURE.md).
+
 ## Entity lookup
 
 `EntityId` is the persistent external identity: entity type and type-local lifetime offset.

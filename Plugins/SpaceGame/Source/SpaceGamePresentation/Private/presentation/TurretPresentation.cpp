@@ -61,6 +61,7 @@ void FTurretPresentation::begin_play_presentation(TArray<FTransform> initial_tra
     ismc_transforms = MoveTemp(initial_transforms);
     auto const entities{simulation().get_entities()};
     auto const count{static_cast<int32>(entities.num())};
+    ismc_transforms.Reserve(count);
     auto const locations{entities.view_locations()};
     auto const rotations{entities.view_rotations()};
     auto const pitches{rotations.pitches()};

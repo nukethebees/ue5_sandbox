@@ -97,10 +97,7 @@ auto make_fighter_navigation_test_data(tests::SimulationFixture const& config,
     data.fighters.separation_radius = PositiveFinite<float>::make(1500.f);
     data.fighters.separation_strength = NonNegativeFinite<float>::make(1.5f);
     data.capital_ships.fighter_spawn_slots = static_cast<std::int32_t>(spawn_slots.size());
-    data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
-    for (auto const& transform : spawn_slots) {
-        data.capital_ships.fighter_spawn_slots_relative_transforms.push_back(transform);
-    }
+    data.capital_ships.fighter_spawn_slots_relative_transforms = spawn_slots;
     tests::add_capital_spawn(data, source_location, Team::Green, 1, 0.f, 60.f, 100000);
     tests::add_capital_spawn(
         data, target_location, Team::Red, invalid_level_entity_index, 60.f, 60.f, 100000);
@@ -354,12 +351,7 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
     EXPECT_EQ(harness.get_ledger().get_issued_counts()[EntityType::Fighter],
               static_cast<std::uint32_t>(fighter_count))
         << "Dense fixture spawns exactly one fighter wave";
-    auto const locations{fighters.get_locations()};
-    result.locations.reserve(locations.num());
-    auto const location_count{locations.num()};
-    for (std::uint32_t i{}; i < location_count; ++i) {
-        result.locations.push_back(vector_at(locations, i));
-    }
+    result.locations = tests::copy_vectors(fighters.get_locations());
     return result;
 }
 

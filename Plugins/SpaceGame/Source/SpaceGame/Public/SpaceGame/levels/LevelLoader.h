@@ -1,11 +1,16 @@
 #pragma once
 
-#include <ioj/levels/authoring/level_source.h>
-#include <SpaceGame/ships/player/PlayerControlContext.h>
+#include <SpaceGame/system/GameSubsystem.h>
 
 #include <CoreMinimal.h>
 
-class ATestBatchOrchestrator;
+#include <expected>
+#include <optional>
+
+class ASpaceGamePlayerController;
+class ATestSpaceShip;
+class USpaceGameLevelConfig;
+class UWorld;
 
 namespace ioj {
 enum class ELevelLoadErrorCode : uint8 {
@@ -23,21 +28,31 @@ struct SPACEGAME_API FLevelLoadError {
     FString message{};
 };
 
-struct SPACEGAME_API FLevelLoadResult {
-    TArray<FLevelLoadError> errors{};
+struct SPACEGAME_API FLevelLoadErrors {
+    auto format(FStringView source_path) const -> FString;
 
-    explicit operator bool() const noexcept { return errors.IsEmpty(); }
+    TArray<FLevelLoadError> errors{};
+};
+
+struct FLevelVisualLoad {
+    ASpaceGamePlayerController& controller;
+    EPlayerControlContext playerless_control_context;
+};
+
+struct FLevelActorLoadRequest {
+    UWorld& world;
+    USpaceGameLevelConfig const& config;
+    levels::LevelDefinition const& definition;
+    TObjectPtr<ATestSpaceShip>& player;
+    std::optional<FLevelVisualLoad> visual;
 };
 
 class SPACEGAME_API FLevelLoader {
   public:
-    explicit FLevelLoader(ATestBatchOrchestrator& orchestrator)
-        : orchestrator_{orchestrator} {}
-
-    auto load(levels::authoring::LevelSource const& source,
-              EPlayerControlContext playerless_control_context =
-                  EPlayerControlContext::Observer) const -> FLevelLoadResult;
-  private:
-    ATestBatchOrchestrator& orchestrator_;
+    static auto take_pending(UGameInstance* game_instance)
+        -> std::expected<FPendingLevelDefinition, FString>;
+    static auto load(FLevelActorLoadRequest const& request)
+        -> std::expected<void, FLevelLoadErrors>;
+    static void report_failure(UWorld* world, FString message);
 };
 }

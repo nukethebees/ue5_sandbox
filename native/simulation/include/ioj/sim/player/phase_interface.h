@@ -13,8 +13,6 @@ class PhaseInterface {
         : simulation{new_target} {}
 
   private:
-    void begin_play() { simulation.begin_play(); }
-
     void prepare_tick(float const dt) { simulation.prepare_tick(dt); }
 
     void think(float const dt) { simulation.think(dt); }

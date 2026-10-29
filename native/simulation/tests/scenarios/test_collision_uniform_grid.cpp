@@ -14,6 +14,7 @@
 #include <array>
 #include <bit>
 #include <cstddef>
+#include <string>
 
 namespace ioj::sim {
 namespace {
@@ -174,13 +175,38 @@ auto run_sweeps(TraceFixture const& fixture,
 }
 
 struct ExpectedTrace {
-    char const* name;
+    std::string name;
     Vector3f start;
     Vector3f end;
     TraceHit::value_type expected_hit;
     Vector3f expected_location{};
     std::int32_t expected_entity_index{};
 };
+
+struct TraceGeometryCase {
+    char const* name;
+    Vector3f location;
+    Vector3f half_extents;
+    std::vector<ExpectedTrace> traces;
+};
+
+class UniformGridTraceGeometry : public ::testing::TestWithParam<TraceGeometryCase> {};
+
+auto axis_traces(float const start, float const end, float const contact)
+    -> std::vector<ExpectedTrace> {
+    std::vector<ExpectedTrace> cases;
+    for (std::int32_t axis{}; axis < 3; ++axis) {
+        for (auto const sign : {1.f, -1.f}) {
+            ExpectedTrace trace{
+                std::string{sign > 0.f ? "Positive " : "Negative "} + "XYZ" [axis], {}, {}, 1};
+            trace.start[axis] = sign * start;
+            trace.end[axis] = sign * end;
+            trace.expected_location[axis] = sign * contact;
+            cases.push_back(std::move(trace));
+        }
+    }
+    return cases;
+}
 
 void check_traces(TraceFixture const& fixture, std::span<ExpectedTrace const> const cases) {
     std::vector<Vector3f> starts{};
@@ -209,6 +235,33 @@ void check_traces(TraceFixture const& fixture, std::span<ExpectedTrace const> co
 
         EXPECT_EQ(fixture.handles[trace_case.expected_entity_index], entities[i]);
         EXPECT_LE(size(trace_case.expected_location - locations[i]), hit_location_tolerance);
+    }
+}
+
+void expect_same_trace_results(TraceHits const& baseline,
+                               TraceHits const& candidate,
+                               char const* const description,
+                               std::span<std::int32_t const> const permutation = {},
+                               Vector3f const translation = {},
+                               bool const compare_entities = true) {
+    SCOPED_TRACE(description);
+    ASSERT_EQ(candidate.num(), baseline.num());
+    auto const count{baseline.num()};
+    auto const expected{baseline.get_const_view().resolve()};
+    auto const actual{candidate.get_const_view().resolve()};
+    for (std::uint32_t i{}; i < count; ++i) {
+        SCOPED_TRACE(::testing::Message() << "index " << i);
+        auto const source{permutation.empty() ? i : static_cast<std::uint32_t>(permutation[i])};
+        EXPECT_EQ(expected.hits()[source], actual.hits()[i]);
+        if (expected.hits()[source].value() == 0 || actual.hits()[i].value() == 0) {
+            continue;
+        }
+        if (compare_entities) {
+            EXPECT_EQ(expected.entities()[source], actual.entities()[i]);
+        }
+        EXPECT_LE(
+            size(expected.view_locations()[source] + translation - actual.view_locations()[i]),
+            hit_location_tolerance);
     }
 }
 
@@ -489,64 +542,36 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceAxisParallelAndOrig
 
     std::array<Vector3f, 1> const entity_locations{{entity_centre}};
     TraceFixture const fixture{entity_locations, aabb_half_extents};
-    std::array<ExpectedTrace, 12> const cases{{
-        {"Positive X trace through origin",
-         {{-trace_extent, 0.f, 0.f}},
-         {{trace_extent, 0.f, 0.f}},
-         1,
-         {{-10.f, 0.f, 0.f}}},
-        {"Negative X trace through origin",
-         {{trace_extent, 0.f, 0.f}},
-         {{-trace_extent, 0.f, 0.f}},
-         1,
-         {{10.f, 0.f, 0.f}}},
-        {"Positive Y trace through origin",
-         {{0.f, -trace_extent, 0.f}},
-         {{0.f, trace_extent, 0.f}},
-         1,
-         {{0.f, -10.f, 0.f}}},
-        {"Negative Y trace through origin",
-         {{0.f, trace_extent, 0.f}},
-         {{0.f, -trace_extent, 0.f}},
-         1,
-         {{0.f, 10.f, 0.f}}},
-        {"Positive Z trace through origin",
-         {{0.f, 0.f, -trace_extent}},
-         {{0.f, 0.f, trace_extent}},
-         1,
-         {{0.f, 0.f, -10.f}}},
-        {"Negative Z trace through origin",
-         {{0.f, 0.f, trace_extent}},
-         {{0.f, 0.f, -trace_extent}},
-         1,
-         {{0.f, 0.f, 10.f}}},
-        {"X-parallel trace outside Y slab",
-         {{-trace_extent, outside_slab, 0.f}},
-         {{trace_extent, outside_slab, 0.f}},
-         0},
-        {"Y-parallel trace outside X slab",
-         {{outside_slab, -trace_extent, 0.f}},
-         {{outside_slab, trace_extent, 0.f}},
-         0},
-        {"Z-parallel trace outside X slab",
-         {{outside_slab, 0.f, -trace_extent}},
-         {{outside_slab, 0.f, trace_extent}},
-         0},
-        {"Signed-zero components preserve axis-parallel hit",
-         {{-trace_extent, -0.0f, 0.f}},
-         {{trace_extent, 0.0f, -0.0f}},
-         1,
-         {{-10.f, 0.f, 0.f}}},
-        {"Near-parallel trace inside slab",
-         {{-trace_extent, near_parallel_offset, 0.f}},
-         {{trace_extent, near_parallel_offset + near_parallel_delta, 0.f}},
-         1,
-         {{-10.f, near_parallel_entry_y, 0.f}}},
-        {"Near-parallel trace outside slab",
-         {{-trace_extent, outside_slab, 0.f}},
-         {{trace_extent, outside_slab + near_parallel_delta, 0.f}},
-         0},
-    }};
+    auto cases{axis_traces(-trace_extent, trace_extent, -10.f)};
+    cases.insert(cases.end(),
+                 {
+                     {"X-parallel trace outside Y slab",
+                      {{-trace_extent, outside_slab, 0.f}},
+                      {{trace_extent, outside_slab, 0.f}},
+                      0},
+                     {"Y-parallel trace outside X slab",
+                      {{outside_slab, -trace_extent, 0.f}},
+                      {{outside_slab, trace_extent, 0.f}},
+                      0},
+                     {"Z-parallel trace outside X slab",
+                      {{outside_slab, 0.f, -trace_extent}},
+                      {{outside_slab, 0.f, trace_extent}},
+                      0},
+                     {"Signed-zero components preserve axis-parallel hit",
+                      {{-trace_extent, -0.0f, 0.f}},
+                      {{trace_extent, 0.0f, -0.0f}},
+                      1,
+                      {{-10.f, 0.f, 0.f}}},
+                     {"Near-parallel trace inside slab",
+                      {{-trace_extent, near_parallel_offset, 0.f}},
+                      {{trace_extent, near_parallel_offset + near_parallel_delta, 0.f}},
+                      1,
+                      {{-10.f, near_parallel_entry_y, 0.f}}},
+                     {"Near-parallel trace outside slab",
+                      {{-trace_extent, outside_slab, 0.f}},
+                      {{trace_extent, outside_slab + near_parallel_delta, 0.f}},
+                      0},
+                 });
 
     check_traces(fixture, cases);
 }
@@ -560,175 +585,112 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceSurfaceContacts) {
 
     std::array<Vector3f, 1> const entity_locations{{entity_centre}};
     TraceFixture const fixture{entity_locations, aabb_half_extents};
-    std::array<ExpectedTrace, 15> const cases{{
-        {"Segment ends on negative X face",
-         {{-outside_face, 0.f, 0.f}},
-         {{-face, 0.f, 0.f}},
-         1,
-         {{-face, 0.f, 0.f}}},
-        {"Segment ends on positive X face",
-         {{outside_face, 0.f, 0.f}},
-         {{face, 0.f, 0.f}},
-         1,
-         {{face, 0.f, 0.f}}},
-        {"Segment ends on negative Y face",
-         {{0.f, -outside_face, 0.f}},
-         {{0.f, -face, 0.f}},
-         1,
-         {{0.f, -face, 0.f}}},
-        {"Segment ends on positive Y face",
-         {{0.f, outside_face, 0.f}},
-         {{0.f, face, 0.f}},
-         1,
-         {{0.f, face, 0.f}}},
-        {"Segment ends on negative Z face",
-         {{0.f, 0.f, -outside_face}},
-         {{0.f, 0.f, -face}},
-         1,
-         {{0.f, 0.f, -face}}},
-        {"Segment ends on positive Z face",
-         {{0.f, 0.f, outside_face}},
-         {{0.f, 0.f, face}},
-         1,
-         {{0.f, 0.f, face}}},
-        {"Segment starts on face and points outward",
-         {{face, 0.f, 0.f}},
-         {{outside_face, 0.f, 0.f}},
-         1,
-         {{face, 0.f, 0.f}}},
-        {"Segment starts on face and points inward",
-         {{-face, 0.f, 0.f}},
-         {{0.f, 0.f, 0.f}},
-         1,
-         {{-face, 0.f, 0.f}}},
-        {"Segment lies on AABB face",
-         {{-outside_face, face, 0.f}},
-         {{outside_face, face, 0.f}},
-         1,
-         {{-face, face, 0.f}}},
-        {"Segment lies on AABB edge",
-         {{-outside_face, face, face}},
-         {{outside_face, face, face}},
-         1,
-         {{-face, face, face}}},
-        {"Segment grazes AABB corner",
-         {{-outside_face, 0.f, 0.f}},
-         {{0.f, outside_face, outside_face}},
-         1,
-         {{-face, face, face}}},
-        {"Parallel segment just outside face",
-         {{-outside_face, just_outside_face, 0.f}},
-         {{outside_face, just_outside_face, 0.f}},
-         0},
-        {"Stationary point on face", {{face, 0.f, 0.f}}, {{face, 0.f, 0.f}}, 1, {{face, 0.f, 0.f}}},
-        {"Stationary point on corner",
-         {{face, face, face}},
-         {{face, face, face}},
-         1,
-         {{face, face, face}}},
-        {"Stationary point just outside face",
-         {{just_outside_face, 0.f, 0.f}},
-         {{just_outside_face, 0.f, 0.f}},
-         0},
-    }};
+    auto cases{axis_traces(-outside_face, -face, -face)};
+    cases.insert(cases.end(),
+                 {
+                     {"Segment starts on face and points outward",
+                      {{face, 0.f, 0.f}},
+                      {{outside_face, 0.f, 0.f}},
+                      1,
+                      {{face, 0.f, 0.f}}},
+                     {"Segment starts on face and points inward",
+                      {{-face, 0.f, 0.f}},
+                      {{0.f, 0.f, 0.f}},
+                      1,
+                      {{-face, 0.f, 0.f}}},
+                     {"Segment lies on AABB face",
+                      {{-outside_face, face, 0.f}},
+                      {{outside_face, face, 0.f}},
+                      1,
+                      {{-face, face, 0.f}}},
+                     {"Segment lies on AABB edge",
+                      {{-outside_face, face, face}},
+                      {{outside_face, face, face}},
+                      1,
+                      {{-face, face, face}}},
+                     {"Segment grazes AABB corner",
+                      {{-outside_face, 0.f, 0.f}},
+                      {{0.f, outside_face, outside_face}},
+                      1,
+                      {{-face, face, face}}},
+                     {"Parallel segment just outside face",
+                      {{-outside_face, just_outside_face, 0.f}},
+                      {{outside_face, just_outside_face, 0.f}},
+                      0},
+                     {"Stationary point on face",
+                      {{face, 0.f, 0.f}},
+                      {{face, 0.f, 0.f}},
+                      1,
+                      {{face, 0.f, 0.f}}},
+                     {"Stationary point on corner",
+                      {{face, face, face}},
+                      {{face, face, face}},
+                      1,
+                      {{face, face, face}}},
+                     {"Stationary point just outside face",
+                      {{just_outside_face, 0.f, 0.f}},
+                      {{just_outside_face, 0.f, 0.f}},
+                      0},
+                 });
 
     check_traces(fixture, cases);
 }
 
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceGridBoundaryTraversal) {
-    Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
-    constexpr float trace_extent{150.f};
-
-    {
-        std::array<Vector3f, 1> const entity_locations{{{{-10.f, 0.f, 0.f}}}};
-        TraceFixture const fixture{entity_locations, aabb_half_extents};
-        std::array<ExpectedTrace, 3> const cases{{
-            {"Y trace lies on X cell plane",
-             {{0.f, -trace_extent, 0.f}},
-             {{0.f, trace_extent, 0.f}},
-             1,
-             {{0.f, -10.f, 0.f}}},
-            {"Trace ends at origin from positive X cell",
-             {{trace_extent, 0.f, 0.f}},
-             {{0.f, 0.f, 0.f}},
-             1,
-             {{0.f, 0.f, 0.f}}},
-            {"Trace starts at origin toward negative X cell",
-             {{0.f, 0.f, 0.f}},
-             {{-trace_extent, 0.f, 0.f}},
-             1,
-             {{0.f, 0.f, 0.f}}},
-        }};
-        check_traces(fixture, cases);
-    }
-
-    {
-        std::array<Vector3f, 1> const entity_locations{{{{0.f, -10.f, 0.f}}}};
-        TraceFixture const fixture{entity_locations, aabb_half_extents};
-        std::array<ExpectedTrace, 2> const cases{{
-            {"X trace lies on Y cell plane",
-             {{-trace_extent, 0.f, 0.f}},
-             {{trace_extent, 0.f, 0.f}},
-             1,
-             {{-10.f, 0.f, 0.f}}},
-            {"Trace ends at origin from positive Y cell",
-             {{0.f, trace_extent, 0.f}},
-             {{0.f, 0.f, 0.f}},
-             1,
-             {{0.f, 0.f, 0.f}}},
-        }};
-        check_traces(fixture, cases);
-    }
-
-    {
-        std::array<Vector3f, 1> const entity_locations{{{{0.f, 0.f, -10.f}}}};
-        TraceFixture const fixture{entity_locations, aabb_half_extents};
-        std::array<ExpectedTrace, 2> const cases{{
-            {"X trace lies on Z cell plane",
-             {{-trace_extent, 0.f, 0.f}},
-             {{trace_extent, 0.f, 0.f}},
-             1,
-             {{-10.f, 0.f, 0.f}}},
-            {"Trace ends at origin from positive Z cell",
-             {{0.f, 0.f, trace_extent}},
-             {{0.f, 0.f, 0.f}},
-             1,
-             {{0.f, 0.f, 0.f}}},
-        }};
-        check_traces(fixture, cases);
-    }
-
-    {
-        std::array<Vector3f, 1> const entity_locations{{{{10.f, -10.f, 0.f}}}};
-        TraceFixture const fixture{entity_locations, aabb_half_extents};
-        std::array<ExpectedTrace, 2> const cases{{
-            {"Positive diagonal touches entity at cell edge",
-             {{-trace_extent, -trace_extent, 0.f}},
-             {{trace_extent, trace_extent, 0.f}},
-             1,
-             {{0.f, 0.f, 0.f}}},
-            {"Negative diagonal touches entity at cell edge",
-             {{trace_extent, trace_extent, 0.f}},
-             {{-trace_extent, -trace_extent, 0.f}},
-             1,
-             {{0.f, 0.f, 0.f}}},
-        }};
-        check_traces(fixture, cases);
-    }
-
-    {
-        std::array<Vector3f, 1> const entity_locations{{{{10.f, -10.f, -10.f}}}};
-        TraceFixture const fixture{entity_locations, aabb_half_extents};
-        std::array<ExpectedTrace, 1> const cases{{
-            {"Three-axis diagonal touches entity at cell corner",
-             {{-trace_extent, -trace_extent, -trace_extent}},
-             {{trace_extent, trace_extent, trace_extent}},
-             1,
-             {{0.f, 0.f, 0.f}}},
-        }};
-        check_traces(fixture, cases);
-    }
+TEST_P(UniformGridTraceGeometry, BoundaryAndDegenerateBatchesPreserveContacts) {
+    auto const& scenario{GetParam()};
+    TraceFixture const fixture{std::array{scenario.location}, scenario.half_extents};
+    check_traces(fixture, scenario.traces);
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    Collision,
+    UniformGridTraceGeometry,
+    ::testing::Values(
+        TraceGeometryCase{"XCellPlane",
+                          {-10, 0, 0},
+                          {10, 10, 10},
+                          {{"Y trace on plane", {0, -150, 0}, {0, 150, 0}, 1, {0, -10, 0}},
+                           {"Ends at origin", {150, 0, 0}, {}, 1, {}},
+                           {"Starts at origin", {}, {-150, 0, 0}, 1, {}}}},
+        TraceGeometryCase{"YCellPlane",
+                          {0, -10, 0},
+                          {10, 10, 10},
+                          {{"X trace on plane", {-150, 0, 0}, {150, 0, 0}, 1, {-10, 0, 0}},
+                           {"Ends at origin", {0, 150, 0}, {}, 1, {}}}},
+        TraceGeometryCase{"ZCellPlane",
+                          {0, 0, -10},
+                          {10, 10, 10},
+                          {{"X trace on plane", {-150, 0, 0}, {150, 0, 0}, 1, {-10, 0, 0}},
+                           {"Ends at origin", {0, 0, 150}, {}, 1, {}}}},
+        TraceGeometryCase{"CellEdge",
+                          {10, -10, 0},
+                          {10, 10, 10},
+                          {{"Positive diagonal", {-150, -150, 0}, {150, 150, 0}, 1, {}},
+                           {"Negative diagonal", {150, 150, 0}, {-150, -150, 0}, 1, {}}}},
+        TraceGeometryCase{"CellCorner",
+                          {10, -10, -10},
+                          {10, 10, 10},
+                          {{"Three-axis diagonal", {-150, -150, -150}, {150, 150, 150}, 1, {}}}},
+        TraceGeometryCase{"InteriorPoint",
+                          {25, 25, 25},
+                          {},
+                          {{"Crosses point", {0, 25, 25}, {50, 25, 25}, 1, {25, 25, 25}},
+                           {"Stationary on point", {25, 25, 25}, {25, 25, 25}, 1, {25, 25, 25}},
+                           {"Misses point", {0, 26, 25}, {50, 26, 25}, 0}}},
+        TraceGeometryCase{"InteriorPlane",
+                          {25, 25, 25},
+                          {0, 10, 10},
+                          {{"Crosses plane", {0, 25, 25}, {50, 25, 25}, 1, {25, 25, 25}}}},
+        TraceGeometryCase{"InteriorLine",
+                          {25, 25, 25},
+                          {10, 0, 0},
+                          {{"Crosses line", {25, 0, 25}, {25, 50, 25}, 1, {25, 25, 25}}}},
+        TraceGeometryCase{"GridCornerPoint",
+                          {},
+                          {},
+                          {{"Crosses point", {-25, 0, 0}, {25, 0, 0}, 1, {}},
+                           {"Stationary on point", {}, {}, 1, {}}}}),
+    [](auto const& info) { return info.param.name; });
 
 TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceShortAndNearParallelSegments) {
     Vector3f const entity_centre{};
@@ -825,74 +787,6 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceClipsToGridBounds) 
     }};
 
     check_traces(fixture, cases);
-}
-
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceDegenerateAABBs) {
-    Vector3f const cell_interior{{25.f, 25.f, 25.f}};
-    constexpr float trace_offset{25.f};
-
-    {
-        Vector3f const point_half_extents{};
-        std::array<Vector3f, 1> const entity_locations{{cell_interior}};
-        TraceFixture const fixture{entity_locations, point_half_extents};
-        std::array<ExpectedTrace, 3> const cases{{
-            {"Trace crosses point AABB in cell interior",
-             {{cell_interior.x() - trace_offset, cell_interior.y(), cell_interior.z()}},
-             {{cell_interior.x() + trace_offset, cell_interior.y(), cell_interior.z()}},
-             1,
-             cell_interior},
-            {"Stationary trace equals point AABB", cell_interior, cell_interior, 1, cell_interior},
-            {"Trace misses point AABB",
-             {{cell_interior.x() - trace_offset, cell_interior.y() + 1.f, cell_interior.z()}},
-             {{cell_interior.x() + trace_offset, cell_interior.y() + 1.f, cell_interior.z()}},
-             0},
-        }};
-        check_traces(fixture, cases);
-    }
-
-    {
-        Vector3f const plane_half_extents{{0.f, 10.f, 10.f}};
-        std::array<Vector3f, 1> const entity_locations{{cell_interior}};
-        TraceFixture const fixture{entity_locations, plane_half_extents};
-        std::array<ExpectedTrace, 1> const cases{{
-            {"Trace crosses plane AABB",
-             {{cell_interior.x() - trace_offset, cell_interior.y(), cell_interior.z()}},
-             {{cell_interior.x() + trace_offset, cell_interior.y(), cell_interior.z()}},
-             1,
-             cell_interior},
-        }};
-        check_traces(fixture, cases);
-    }
-
-    {
-        Vector3f const line_half_extents{{10.f, 0.f, 0.f}};
-        std::array<Vector3f, 1> const entity_locations{{cell_interior}};
-        TraceFixture const fixture{entity_locations, line_half_extents};
-        std::array<ExpectedTrace, 1> const cases{{
-            {"Trace crosses line AABB",
-             {{cell_interior.x(), cell_interior.y() - trace_offset, cell_interior.z()}},
-             {{cell_interior.x(), cell_interior.y() + trace_offset, cell_interior.z()}},
-             1,
-             cell_interior},
-        }};
-        check_traces(fixture, cases);
-    }
-
-    {
-        Vector3f const origin{};
-        Vector3f const point_half_extents{};
-        std::array<Vector3f, 1> const entity_locations{{origin}};
-        TraceFixture const fixture{entity_locations, point_half_extents};
-        std::array<ExpectedTrace, 2> const cases{{
-            {"Trace crosses point AABB on grid corner",
-             {{-trace_offset, 0.f, 0.f}},
-             {{trace_offset, 0.f, 0.f}},
-             1,
-             origin},
-            {"Stationary trace equals point AABB on grid corner", origin, origin, 1, origin},
-        }};
-        check_traces(fixture, cases);
-    }
 }
 
 TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceCrossCellNearestHit) {
@@ -1354,37 +1248,16 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceInvariancePropertie
 
     TraceFixture const baseline_fixture{entity_locations, aabb_half_extents, local_aabb_centre};
     auto const baseline_hits{run_traces(baseline_fixture, starts, ends)};
-    auto const baseline_hit_flags{baseline_hits.get_const_view().hits()};
-    auto const compare_same_entity_order{
-        [&baseline_hits, baseline_hit_flags](TraceHits const& candidate_hits,
-                                             char const* const description) {
-            auto const count{baseline_hits.num()};
-            auto const candidate_hit_flags{candidate_hits.get_const_view().hits()};
-            for (std::uint32_t i{}; i < count; ++i) {
-                SCOPED_TRACE(::testing::Message() << "index " << i);
-                EXPECT_EQ(baseline_hit_flags[i], candidate_hit_flags[i]) << description;
-                if (baseline_hit_flags[i].value() == 0 || candidate_hit_flags[i].value() == 0) {
-                    continue;
-                }
-                EXPECT_EQ(baseline_hits.get_const_view().entities()[i].raw_value(),
-                          candidate_hits.get_const_view().entities()[i].raw_value())
-                    << description;
-                EXPECT_LE(size(baseline_hits.get_const_view().view_locations()[i] -
-                               candidate_hits.get_const_view().view_locations()[i]),
-                          hit_location_tolerance)
-                    << description;
-            }
-        }};
 
     TraceFixture const coarse_fixture{
         entity_locations, aabb_half_extents, local_aabb_centre, {4, 4, 4}, {{200.f, 200.f, 200.f}}};
     auto const coarse_hits{run_traces(coarse_fixture, starts, ends)};
-    compare_same_entity_order(coarse_hits, "Coarse grid preserves trace results");
+    expect_same_trace_results(baseline_hits, coarse_hits, "Coarse grid");
 
     TraceFixture const fine_fixture{
         entity_locations, aabb_half_extents, local_aabb_centre, {16, 16, 16}, {{50.f, 50.f, 50.f}}};
     auto const fine_hits{run_traces(fine_fixture, starts, ends)};
-    compare_same_entity_order(fine_hits, "Fine grid preserves trace results");
+    expect_same_trace_results(baseline_hits, fine_hits, "Fine grid");
 
     std::array<std::int32_t, 6> const permutation{4, 1, 5, 0, 3, 2};
     std::vector<Vector3f> permuted_starts{};
@@ -1394,24 +1267,8 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceInvariancePropertie
         permuted_ends.push_back(ends[source_index]);
     }
     auto const permuted_hits{run_traces(baseline_fixture, permuted_starts, permuted_ends)};
-    auto const permuted_hit_flags{permuted_hits.get_const_view().hits()};
     auto const trace_count{static_cast<std::int32_t>(permutation.size())};
-    for (std::int32_t i{}; i < trace_count; ++i) {
-        SCOPED_TRACE(::testing::Message() << "index " << i);
-        auto const source_index{permutation[i]};
-        EXPECT_EQ(baseline_hit_flags[source_index], permuted_hit_flags[i])
-            << "Trace permutation preserves hit flag";
-        if (baseline_hit_flags[source_index].value() == 0 || permuted_hit_flags[i].value() == 0) {
-            continue;
-        }
-        EXPECT_EQ(baseline_hits.get_const_view().entities()[source_index],
-                  permuted_hits.get_const_view().entities()[i])
-            << "Trace permutation preserves entity";
-        EXPECT_LE(size(baseline_hits.get_const_view().view_locations()[source_index] -
-                       permuted_hits.get_const_view().view_locations()[i]),
-                  hit_location_tolerance)
-            << "Trace permutation preserves location";
-    }
+    expect_same_trace_results(baseline_hits, permuted_hits, "Trace permutation", permutation);
 
     std::array<Vector3f, 3> const reversed_entity_locations{{
         entity_locations[2],
@@ -1421,18 +1278,8 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceInvariancePropertie
     TraceFixture const reversed_fixture{
         reversed_entity_locations, aabb_half_extents, local_aabb_centre};
     auto const reversed_hits{run_traces(reversed_fixture, starts, ends)};
-    auto const reversed_hit_flags{reversed_hits.get_const_view().hits()};
-    for (std::int32_t i{}; i < trace_count; ++i) {
-        SCOPED_TRACE(::testing::Message() << "index " << i);
-        EXPECT_EQ(baseline_hit_flags[i], reversed_hit_flags[i])
-            << "Entity insertion order preserves hit flag";
-        if (baseline_hit_flags[i].value() != 0 && reversed_hit_flags[i].value() != 0) {
-            EXPECT_LE(size(baseline_hits.get_const_view().view_locations()[i] -
-                           reversed_hits.get_const_view().view_locations()[i]),
-                      hit_location_tolerance)
-                << "Entity insertion order preserves nearest location";
-        }
-    }
+    expect_same_trace_results(
+        baseline_hits, reversed_hits, "Entity insertion order", {}, {}, false);
 
     Vector3f const translation{{100.f, 0.f, 0.f}};
     std::vector<Vector3f> translated_entity_locations{};
@@ -1448,21 +1295,8 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceInvariancePropertie
     TraceFixture const translated_fixture{
         translated_entity_locations, aabb_half_extents, local_aabb_centre};
     auto const translated_hits{run_traces(translated_fixture, translated_starts, translated_ends)};
-    auto const translated_hit_flags{translated_hits.get_const_view().hits()};
-    for (std::int32_t i{}; i < trace_count; ++i) {
-        SCOPED_TRACE(::testing::Message() << "index " << i);
-        EXPECT_EQ(baseline_hit_flags[i], translated_hit_flags[i])
-            << "Whole-cell translation preserves hit flag";
-        if (baseline_hit_flags[i].value() != 0 && translated_hit_flags[i].value() != 0) {
-            EXPECT_EQ(baseline_hits.get_const_view().entities()[i].raw_value(),
-                      translated_hits.get_const_view().entities()[i].raw_value())
-                << "Whole-cell translation preserves entity";
-            EXPECT_LE(size(baseline_hits.get_const_view().view_locations()[i] + translation -
-                           translated_hits.get_const_view().view_locations()[i]),
-                      hit_location_tolerance)
-                << "Whole-cell translation preserves location";
-        }
-    }
+    expect_same_trace_results(
+        baseline_hits, translated_hits, "Whole-cell translation", {}, translation);
 }
 
 TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceEmptyBatchesAndOutputReuse) {

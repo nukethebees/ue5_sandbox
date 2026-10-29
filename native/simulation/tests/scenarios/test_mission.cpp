@@ -15,10 +15,16 @@ enum class MissionScenario : std::uint8_t {
     OutcomeCompletionIsLatched,
 };
 
-void run_worldless_mission_scenario(tests::SimulationFixture const& config,
-                                    MissionScenario const scenario) {
+struct MissionScenarioCase {
+    char const* name;
+    MissionScenario scenario;
+};
+using WorldlessMission = ::testing::TestWithParam<MissionScenarioCase>;
+
+TEST_P(WorldlessMission, ResolvesObjectiveLifecycle) {
     using Scenario = MissionScenario;
-    auto data{tests::make_simulation_data(config)};
+    auto const scenario{GetParam().scenario};
+    auto data{tests::make_simulation_data(tests::make_fixture())};
     data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     auto const spawn{[&](float x, Team team) {
@@ -128,42 +134,20 @@ void run_worldless_mission_scenario(tests::SimulationFixture const& config,
                   scenario == Scenario::AuthoredKillTarget ? 2u : 1u);
     }
 }
-TEST(WorldlessSpaceGameSimulation, Mission_SurviveTime) {
-    run_worldless_mission_scenario(tests::make_fixture(), MissionScenario::SurviveTime);
-}
-
-TEST(WorldlessSpaceGameSimulation, Mission_KillEnemies) {
-    run_worldless_mission_scenario(tests::make_fixture(), MissionScenario::KillEnemies);
-}
-
-TEST(WorldlessSpaceGameSimulation, Mission_KillEnemiesWithinTime) {
-    run_worldless_mission_scenario(tests::make_fixture(), MissionScenario::KillEnemiesWithinTime);
-}
-
-TEST(WorldlessSpaceGameSimulation, Mission_DefenceObjective) {
-    run_worldless_mission_scenario(tests::make_fixture(), MissionScenario::DefenceObjective);
-}
-
-TEST(WorldlessSpaceGameSimulation, Mission_RequiredKillsObjective) {
-    run_worldless_mission_scenario(tests::make_fixture(), MissionScenario::RequiredKillsObjective);
-}
-
-TEST(WorldlessSpaceGameSimulation, Mission_RequiredKillsTimeElapsed) {
-    run_worldless_mission_scenario(tests::make_fixture(),
-                                   MissionScenario::RequiredKillsTimeElapsed);
-}
-
-TEST(WorldlessSpaceGameSimulation, Mission_AutomaticKillTargetIncludesLastEnemy) {
-    run_worldless_mission_scenario(tests::make_fixture(), MissionScenario::AuthoredKillTarget);
-}
-
-TEST(WorldlessSpaceGameSimulation, Mission_SuccessIsTerminal) {
-    run_worldless_mission_scenario(tests::make_fixture(), MissionScenario::SuccessIsTerminal);
-}
-
-TEST(WorldlessSpaceGameSimulation, Mission_ExplicitCompletionIsLatched) {
-    run_worldless_mission_scenario(tests::make_fixture(),
-                                   MissionScenario::OutcomeCompletionIsLatched);
-}
+constexpr MissionScenarioCase mission_scenarios[]{
+    {"SurviveTime", MissionScenario::SurviveTime},
+    {"KillEnemies", MissionScenario::KillEnemies},
+    {"KillEnemiesWithinTime", MissionScenario::KillEnemiesWithinTime},
+    {"DefenceObjective", MissionScenario::DefenceObjective},
+    {"RequiredKillsObjective", MissionScenario::RequiredKillsObjective},
+    {"RequiredKillsTimeElapsed", MissionScenario::RequiredKillsTimeElapsed},
+    {"AutomaticKillTargetIncludesLastEnemy", MissionScenario::AuthoredKillTarget},
+    {"SuccessIsTerminal", MissionScenario::SuccessIsTerminal},
+    {"ExplicitCompletionIsLatched", MissionScenario::OutcomeCompletionIsLatched},
+};
+INSTANTIATE_TEST_SUITE_P(WorldlessSpaceGameSimulation,
+                         WorldlessMission,
+                         ::testing::ValuesIn(mission_scenarios),
+                         [](auto const& info) { return info.param.name; });
 
 }

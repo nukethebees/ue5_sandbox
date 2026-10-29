@@ -60,7 +60,7 @@ struct Sim {
     auto get_entities() const -> EntityStorage::ConstView {
         return entity_buffers.current().get_const_view();
     }
-    void set_config(FighterSimConfig const& new_config, FighterLevelData level_data) noexcept;
+    void initialise(FighterSimConfig const& new_config, FighterLevelData level_data);
 
     /* **************************************** */
     // Accessors
@@ -125,7 +125,6 @@ struct Sim {
     /* **************************************** */
     // Sim phases
     /* **************************************** */
-    void begin_play();
     void update_entity_lookup_table();
     void prepare_tick(float dt);
     void think(ThinkingInputs const inputs);

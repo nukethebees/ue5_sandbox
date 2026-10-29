@@ -30,8 +30,13 @@ namespace ioj::sim::capital_ships {
 /* **************************************** */
 // Configuration
 /* **************************************** */
-void Sim::set_config(CapitalShipSimConfig const& new_config) noexcept {
+void Sim::initialise(CapitalShipSimConfig const& new_config) {
     config = new_config;
+
+    SANDBOX_PROFILE_SCOPE("capital_ships::Sim::initialise");
+    profiling::plot("Sandbox/CapitalShipCount", 0);
+    assert(static_cast<std::size_t>(config.fighter_spawn_slots) ==
+           config.fighter_spawn_slots_relative_transforms.size());
 }
 Sim::Sim(EntityLedger& ledger, EntityTables& entity_tables, fighters::Sim& fighters)
     : ledger_{ledger}
@@ -41,12 +46,6 @@ Sim::Sim(EntityLedger& ledger, EntityTables& entity_tables, fighters::Sim& fight
 /* **************************************** */
 // Sim phases
 /* **************************************** */
-void Sim::begin_play() {
-    SANDBOX_PROFILE_SCOPE("capital_ships::Sim::begin_play");
-    profiling::plot("Sandbox/CapitalShipCount", 0);
-    assert(static_cast<std::size_t>(config.fighter_spawn_slots) ==
-           config.fighter_spawn_slots_relative_transforms.size());
-}
 void Sim::update_entity_lookup_table() {
     auto const rows{entities.get_const_view()};
     entity_tables_.publish<EntityType::CapitalShip>(

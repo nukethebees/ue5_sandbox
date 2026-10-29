@@ -107,8 +107,7 @@ auto Sim::get_navigation_tick_period(NavigationRiskTier const tier) const -> std
 /* **************************************** */
 // Configuration
 /* **************************************** */
-void Sim::set_config(FighterSimConfig const& new_config,
-                     FighterLevelData const level_data) noexcept {
+void Sim::initialise(FighterSimConfig const& new_config, FighterLevelData const level_data) {
     config = new_config;
     collision_radius_ = level_data.collision_radius;
 
@@ -126,17 +125,8 @@ void Sim::set_config(FighterSimConfig const& new_config,
     auto const participant_count{static_cast<std::uint32_t>(level_data.participating_teams.size())};
     per_team_limit =
         participant_count == 0 ? 0 : config.max_live_fighters.get() / participant_count;
-}
-Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_tables) noexcept
-    : simulation_clock{clock}
-    , ledger_{ledger}
-    , entity_tables_{entity_tables} {}
 
-/* **************************************** */
-// Sim phases
-/* **************************************** */
-void Sim::begin_play() {
-    SANDBOX_PROFILE_SCOPE("fighters::Sim::begin_play");
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::initialise");
     profiling::plot("Sandbox/FighterCount", 0);
     profiling::plot("Sandbox/FightersAvoiding", 0);
     profiling::plot("Sandbox/FighterNavigationTraces", 0);
@@ -184,6 +174,14 @@ void Sim::begin_play() {
     attack_retry_cooldown_tick_value = simulation_clock.duration_to_tick_period<std::int16_t>(
         Duration::make(config.attack_retry_cooldown));
 }
+Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_tables) noexcept
+    : simulation_clock{clock}
+    , ledger_{ledger}
+    , entity_tables_{entity_tables} {}
+
+/* **************************************** */
+// Sim phases
+/* **************************************** */
 void Sim::update_entity_lookup_table() {
     auto const rows{entity_buffers.current().get_const_view()};
     entity_tables_.publish<EntityType::Fighter>(rows.entity_ids(), rows.teams(), config.health);

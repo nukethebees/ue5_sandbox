@@ -17,10 +17,14 @@
 #include <SpaceGame/levels/LevelEntityResolution.h>
 #include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/system/GameSubsystem.h>
+#include <SpaceGame/telemetry/LevelTelemetryMetadata.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 
+#include <SandboxCoreEngine/actor_utils.h>
 #include <SandboxCoreEngine/RotatorConversion.h>
 #include <SandboxCoreEngine/strings.h>
 #include <SandboxCoreEngine/TransformConversion.h>
@@ -36,6 +40,25 @@
 
 namespace ioj::level_simulation_builder {
 using FProxyEntityIndexMap = TMap<AActor const*, uint32>;
+
+void modify_editor_actor(AActor& actor) {
+#if WITH_EDITOR
+    auto const* const world{actor.GetWorld()};
+    if (IsValid(world) && !world->IsGameWorld()) {
+        actor.Modify();
+    }
+#else
+    static_cast<void>(actor);
+#endif
+}
+
+template <typename TActor, typename TConfig>
+void configure_proxy_actors(UWorld& world, TConfig const& config) {
+    for (TActorIterator<TActor> it{&world}; it; ++it) {
+        modify_editor_actor(**it);
+        it->set_actor_config(&config);
+    }
+}
 
 template <typename T>
 auto to_optional(TOptional<T> const& value) -> std::optional<T> {
@@ -85,12 +108,17 @@ auto collect_proxy_actors(UWorld& world) -> TArray<TProxy*> {
     return result;
 }
 
-template <typename TProxy>
-void add_proxy_bindings(TArray<TProxy*> const& proxies, FProxyEntityMap& bindings) {
-    for (auto* const proxy : proxies) {
+template <typename TProxy, typename TEntityIds>
+void bind_proxies(TArray<TProxy*> const& proxies,
+                  TEntityIds const& entity_ids,
+                  FProxyEntityMap& bindings) {
+    auto const count{proxies.Num()};
+    for (int32 index{}; index < count; ++index) {
+        auto* const proxy{proxies[index]};
         check(IsValid(proxy));
-        auto const id{proxy->get_unique_id()};
+        auto const id{entity_ids[index]};
         check(id.is_valid());
+        proxy->set_unique_id(id);
         bindings.Add(proxy, id);
     }
 }
@@ -170,34 +198,40 @@ void validate_fighter_spawn_slots(sim::CapitalShipSimConfig const& capital_confi
 }
 
 namespace ioj {
-auto FProxyLevelSimBuild::bind_proxy_entities(sim::LevelSim const& simulation) const
+void configure_player_actor(ATestSpaceShip& player, USpaceGameLevelConfig const& config) {
+    level_simulation_builder::modify_editor_actor(player);
+    player.set_actor_config(&config.player_ship);
+}
+
+void apply_level_actor_configuration(UWorld& world,
+                                     USpaceGameLevelConfig& config,
+                                     ATestSpaceShip* const player) {
+    if (IsValid(player)) {
+        configure_player_actor(*player, config);
+    }
+    for (TActorIterator<ATestCapitalShipProxy> it{&world}; it; ++it) {
+        level_simulation_builder::modify_editor_actor(**it);
+        it->set_level_config_asset(&config);
+    }
+    level_simulation_builder::configure_proxy_actors<ATestStaticTurretsProxy>(world,
+                                                                              config.turrets);
+    level_simulation_builder::configure_proxy_actors<ATestTubeSpinnerProxy>(world,
+                                                                            config.tube_spinners);
+}
+
+auto FLevelSimulationBuild::bind_proxy_entities(sim::LevelSim const& simulation) const
     -> FProxyEntityMap {
-    auto const capital_count{capital_proxies.Num()};
-    auto const capital_entities{simulation.get_capital_ships().get_entities()};
-    for (int32 i{}; i < capital_count; ++i) {
-        capital_proxies[i]->set_unique_id(capital_entities.entity_ids()[i]);
-    }
-
-    auto const turret_entities{simulation.get_turrets().get_entities()};
-    auto const turret_count{turret_proxies.Num()};
-    for (int32 i{}; i < turret_count; ++i) {
-        turret_proxies[i]->set_unique_id(turret_entities.entity_ids()[i]);
-    }
-
-    auto const spinner_entities{simulation.get_spinners().get_entities()};
-    auto const spinner_count{spinner_proxies.Num()};
-    for (int32 i{}; i < spinner_count; ++i) {
-        spinner_proxies[i]->set_unique_id(spinner_entities.entity_ids()[i]);
-    }
-
     FProxyEntityMap bindings;
-    level_simulation_builder::add_proxy_bindings(capital_proxies, bindings);
-    level_simulation_builder::add_proxy_bindings(turret_proxies, bindings);
-    level_simulation_builder::add_proxy_bindings(spinner_proxies, bindings);
+    level_simulation_builder::bind_proxies(
+        capital_proxies, simulation.get_capital_ships().get_entities().entity_ids(), bindings);
+    level_simulation_builder::bind_proxies(
+        turret_proxies, simulation.get_turrets().get_entities().entity_ids(), bindings);
+    level_simulation_builder::bind_proxies(
+        spinner_proxies, simulation.get_spinners().get_entities().entity_ids(), bindings);
     return bindings;
 }
 
-void FProxyLevelSimBuild::destroy_proxy_actors() const {
+void FLevelSimulationBuild::destroy_proxy_actors() const {
     destroy_all_actors(capital_proxies);
     destroy_all_actors(turret_proxies);
     destroy_all_actors(spinner_proxies);
@@ -308,23 +342,23 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     return result;
 }
 
-auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
-                                           settings::TickSettings const& clock_settings,
-                                           UWorld& world,
-                                           ::FLevelMissionDefinition& mission_definition,
-                                           TOptional<sim::player::PlayerSpawnData> player,
-                                           AActor const* const player_actor,
-                                           UStaticMesh const* const player_collision_mesh)
-    -> FProxyLevelSimBuildResult {
+static auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
+                                                  settings::TickSettings const& clock_settings,
+                                                  UWorld& world,
+                                                  ::FLevelMissionDefinition& mission_definition,
+                                                  TOptional<sim::player::PlayerSpawnData> player,
+                                                  AActor const* const player_actor,
+                                                  UStaticMesh const* const player_collision_mesh)
+    -> FLevelSimulationBuildResult {
     using namespace level_simulation_builder;
 
     auto base_result{make_level_simulation_init_data(
         config, clock_settings, MoveTemp(player), player_collision_mesh)};
     if (!base_result) {
-        return FProxyLevelSimBuildResult{std::unexpect, MoveTemp(base_result.error())};
+        return FLevelSimulationBuildResult{std::unexpect, MoveTemp(base_result.error())};
     }
 
-    FProxyLevelSimBuildResult result{std::in_place};
+    FLevelSimulationBuildResult result{std::in_place};
     auto& build{result.value()};
     build.data = MoveTemp(base_result.value());
     build.capital_proxies = collect_proxy_actors<ATestCapitalShipProxy>(world);
@@ -408,7 +442,7 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
     clock.initialise(build.data.clock_settings);
     auto mission{compile_proxy_mission(mission_definition, entity_indices, clock)};
     if (!mission) {
-        return FProxyLevelSimBuildResult{std::unexpect, MoveTemp(mission.error())};
+        return FLevelSimulationBuildResult{std::unexpect, MoveTemp(mission.error())};
     }
     build.data.mission = std::move(*mission);
     build.data.result_metadata = {
@@ -433,9 +467,77 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
     }
 
     if (bounds_errors.has_errors()) {
-        return FProxyLevelSimBuildResult{std::unexpect, MoveTemp(bounds_errors)};
+        return FLevelSimulationBuildResult{std::unexpect, MoveTemp(bounds_errors)};
     }
 
+    return result;
+}
+
+auto prepare_level_simulation(FLevelSimulationRequest const& request)
+    -> FLevelSimulationBuildResult {
+    auto const& config{request.config};
+    auto const has_player{IsValid(request.player)};
+    TArray<FString> messages;
+    config.get_validation_errors(messages, request.presentation_enabled);
+    FLevelStartErrors errors;
+    errors.append(MoveTemp(messages));
+    if (request.presentation_enabled && has_player && !config.player_ship.team_visual_data) {
+        errors.add(TEXT("player_ship.team_visual_data is null"));
+    }
+    if (errors.has_errors()) {
+        return FLevelSimulationBuildResult{std::unexpect, MoveTemp(errors)};
+    }
+    if (!request.presentation_enabled &&
+        (has_player || get_first_actor<ATestSpaceShip>(request.world))) {
+        errors.add(TEXT("Presentation-disabled levels must be playerless"));
+        return FLevelSimulationBuildResult{std::unexpect, MoveTemp(errors)};
+    }
+
+    TOptional<sim::player::PlayerSpawnData> player;
+    if (has_player) {
+        player.Emplace(request.player->make_spawn_data());
+    }
+    auto const* const player_mesh{has_player ? request.player->get_collision_mesh() : nullptr};
+    auto result{[&]() -> FLevelSimulationBuildResult {
+        if (!request.definition) {
+            return make_proxy_level_simulation_init_data(config,
+                                                         request.clock_settings,
+                                                         request.world,
+                                                         request.mission,
+                                                         MoveTemp(player),
+                                                         request.player,
+                                                         player_mesh);
+        }
+
+        auto data{make_level_simulation_init_data(config,
+                                                  request.clock_settings,
+                                                  *request.definition,
+                                                  MoveTemp(player),
+                                                  {},
+                                                  player_mesh)};
+        if (!data) {
+            return FLevelSimulationBuildResult{std::unexpect, MoveTemp(data.error())};
+        }
+        return FLevelSimulationBuild{.data = MoveTemp(*data)};
+    }()};
+    if (!result) {
+        return result;
+    }
+
+    auto& metadata{result->data.telemetry_metadata};
+    metadata = make_level_telemetry_run_metadata(request.world, request.mission);
+    metadata.level_source = to_string(request.level_source);
+    metadata.settings_source = to_string(request.settings_source);
+    if (request.definition) {
+        metadata.level_id = request.definition->metadata().id.value;
+        metadata.level_display_name = request.definition->metadata().title;
+        auto const& options{request.launch_options};
+        if (options.simulated_duration_seconds.IsSet()) {
+            metadata.requested_duration_seconds =
+                Duration::make(options.simulated_duration_seconds.GetValue());
+        }
+        metadata.stop_when_battle_resolved = options.stop_when_battle_resolved;
+    }
     return result;
 }
 }

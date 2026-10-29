@@ -158,28 +158,16 @@ TEST(WorldlessSpaceGameSimulation, Entities_CollisionOverlapDamagesAndKills) {
     ASSERT_TRUE(harness.run_until_timeline_finished(2.0)) << "Collision damage timeline completes";
     ASSERT_GT(samples.num(), 2) << "Three collision ticks are recorded";
 
-    auto const& first{samples.value_at(0)};
-    auto const& second{samples.value_at(1)};
+    for (std::int32_t index{}; index < 3; ++index) {
+        SCOPED_TRACE(index);
+        auto const& sample{samples.value_at(index)};
+        auto const damage{(index + 1) * collision_damage_test::overlap_damage};
+        EXPECT_EQ(sample.dynamic_overlap_count, 1);
+        EXPECT_EQ(sample.player_health, collision_damage_test::player_health - damage);
+        EXPECT_EQ(sample.capital_health,
+                  index == 2 ? 0 : collision_damage_test::capital_health - damage);
+    }
     auto const& third{samples.value_at(2)};
-    EXPECT_EQ(1, first.dynamic_overlap_count) << "First tick detects one overlap";
-    EXPECT_EQ(1, second.dynamic_overlap_count) << "Second tick detects one overlap";
-    EXPECT_EQ(1, third.dynamic_overlap_count) << "Third tick detects one overlap";
-    EXPECT_EQ(collision_damage_test::player_health - collision_damage_test::overlap_damage,
-              first.player_health)
-        << "First overlap damages the player";
-    EXPECT_EQ(collision_damage_test::player_health - 2 * collision_damage_test::overlap_damage,
-              second.player_health)
-        << "Second overlap damages the player";
-    EXPECT_EQ(collision_damage_test::player_health - 3 * collision_damage_test::overlap_damage,
-              third.player_health)
-        << "Third overlap damages the player";
-    EXPECT_EQ(collision_damage_test::capital_health - collision_damage_test::overlap_damage,
-              first.capital_health)
-        << "First overlap damages the capital";
-    EXPECT_EQ(collision_damage_test::capital_health - 2 * collision_damage_test::overlap_damage,
-              second.capital_health)
-        << "Second overlap damages the capital";
-    EXPECT_EQ(0, third.capital_health) << "Third overlap kills the capital";
     EXPECT_TRUE(third.player_alive) << "Player survives the third overlap tick";
     EXPECT_TRUE(!entity_is_alive(harness.get_simulation(), capital_id))
         << "Capital death commits in the third overlap tick";

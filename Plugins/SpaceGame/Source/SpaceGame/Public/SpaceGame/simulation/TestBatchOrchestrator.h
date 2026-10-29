@@ -1,15 +1,13 @@
 #pragma once
 #include <ioj/sim/levels/level_sim.h>
-#include <ioj/sim/telemetry/report.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
+#include <SpaceGame/levels/LevelLoader.h>
 #include <SpaceGame/missions/LevelMissionDefinition.h>
 #include <SpaceGame/missions/MissionCompletion.h>
-#include <SpaceGame/simulation/LevelCollisionHost.h>
-#include <SpaceGame/simulation/LevelSimulationBuilder.h>
+#include <SpaceGame/s7/GameSettingsReader.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/system/GameSubsystem.h>
-#include <SpaceGamePresentation/presentation/HUDManager.h>
-#include <SpaceGamePresentation/presentation/LevelPresentation.h>
+#include <SpaceGamePresentation/presentation/LevelPresentationHost.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
@@ -68,8 +66,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto get_start_mode() const noexcept -> EOrchestratorStartMode { return start_mode; }
     void set_presentation_enabled(bool enabled);
     auto get_level_definition() const -> ioj::levels::LevelDefinition const& {
-        check(level_definition_.IsSet());
-        return level_definition_.GetValue();
+        check(prepared_level_.IsSet() && prepared_level_->level.has_value());
+        return *prepared_level_->level;
     }
     auto is_presentation_enabled() const noexcept -> bool { return presentation_enabled; }
 
@@ -145,13 +143,19 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         check(level_simulation_.IsSet());
         return level_simulation_->get_mission();
     }
-    auto get_hud_manager() noexcept -> ioj::FHUDManager& { return hud_manager; }
+    auto get_hud_manager() noexcept -> ioj::FHUDManager& {
+        return presentation_host_.get_hud_manager();
+    }
 
     /* **************************************** */
     // Testing and level preparation
     /* **************************************** */
 
     auto prepare_level(ioj::levels::authoring::LevelSource const* source = nullptr) -> bool;
+    auto load_level(
+        ioj::levels::authoring::LevelSource const& source,
+        EPlayerControlContext playerless_control_context = EPlayerControlContext::Observer)
+        -> std::expected<void, ioj::FLevelLoadErrors>;
 
     /* **************************************** */
     // Events, results, and presentation
@@ -161,12 +165,9 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         return level_simulation_.IsSet() ? &level_simulation_.GetValue() : nullptr;
     }
     auto get_level_presentation() const -> FLevelPresentation const* {
-        return level_presentation_.IsSet() ? &level_presentation_.GetValue() : nullptr;
+        return presentation_host_.get_presentation();
     }
-    auto take_finalized_telemetry_report() -> TOptional<ioj::sim::LevelTelemetryReport>;
-    auto get_presentation_resources() const -> FLevelPresentationResources {
-        return make_presentation_resources();
-    }
+    auto get_presentation_resources() const -> FLevelPresentationResources;
   protected:
     /* **************************************** */
     // Actor lifecycle
@@ -193,24 +194,14 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto begin_play() -> bool;
     void load_authored_level();
     auto should_initialise_in_begin_play() const noexcept -> bool;
-    auto initialise_simulation(USpaceGameLevelConfig const& effective_config,
-                               ioj::FLevelStartErrors& errors,
-                               TOptional<ioj::FProxyLevelSimBuild>& proxy_build,
-                               ioj::sim::collision::GridGeometry& grid_geometry) -> bool;
     void handle_level_start_failure(FString message);
-
-    /* **************************************** */
-    // Mission and telemetry
-    /* **************************************** */
-    void handle_telemetry_persisted(FString run_id, FString error);
-    void persist_finalized_telemetry_run();
+    void release_level(ioj::sim::LevelTelemetryRunEndReason reason);
 
     /* **************************************** */
     // Presentation
     /* **************************************** */
-    auto make_presentation_resources() const -> FLevelPresentationResources;
+    void bind_presentation_components();
     void refresh_collision_grid_visualization();
-    void update_collision_bounds_visualization();
     /* **************************************** */
     // State
     /* **************************************** */
@@ -243,7 +234,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     FOnMissionCompleted on_mission_completed;
   private:
     ioj::settings::TickSettings simulation_tick_settings{};
-    bool settings_prepared_{};
     UPROPERTY(EditAnywhere,
               Category = "Sandbox|Settings",
               meta = (FilePathFilter = "scm", RelativeToGameDir))
@@ -256,14 +246,10 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
     TObjectPtr<USpaceGameLevelConfig> level_config{nullptr};
 
-    ioj::FHUDManager hud_manager;
+    FLevelPresentationHost presentation_host_;
     TOptional<ioj::sim::LevelSim> level_simulation_;
-    TOptional<FLevelPresentation> level_presentation_;
-    TArray<FTransform> initial_turret_transforms_;
-    TOptional<ioj::levels::LevelDefinition> level_definition_;
+    TOptional<FLoadedGameSettings> prepared_level_;
     ioj::FLevelLaunchOptions launch_options_{};
-    FString level_source_{};
-    FString settings_source_{};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestSpaceShip> player_ship{nullptr};

@@ -84,7 +84,7 @@ struct Sim {
     auto get_active_flight_model_config() const noexcept -> FlightModelConfig const& {
         return get_active_flight_model_profile().config;
     }
-    void configure(PlayerSpawnData const& spawn) noexcept;
+    void initialise(PlayerSpawnData const& spawn);
     void set_config(PlayerSimConfig const& new_config) noexcept;
     void set_team(Team new_team) noexcept;
     void set_speed_sampling_enabled(bool enabled) noexcept { speed_sampling_enabled = enabled; }
@@ -177,7 +177,6 @@ struct Sim {
     /* **************************************** */
     // Tick phases
     /* **************************************** */
-    void begin_play();
     void update_entity_lookup_table();
     void prepare_tick(float dt);
     void think(float dt);

@@ -5,7 +5,6 @@
 #include <SpaceGame/input/SpaceGameInputModifier.h>
 #include <SpaceGame/input/SpaceGameInputUserSettings.h>
 #include <SpaceGame/levels/ExampleLevels.h>
-#include <SpaceGame/levels/LevelLoader.h>
 #include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/settings/GameSettingsSubsystem.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
@@ -159,9 +158,8 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
         if (!checks.is_valid(orchestrator, TEXT("Orchestrator exists"))) {
             return false;
         }
-        ioj::FLevelLoader loader{*orchestrator};
         if (!checks.is_true(
-                static_cast<bool>(loader.load(
+                static_cast<bool>(orchestrator->load_level(
                     ioj::levels::authoring::to_native(ioj::example_levels::make_example_draft())
                         .value())),
                 TEXT("Gameplay level loads directly"))) {

@@ -35,8 +35,15 @@ namespace ioj::sim::turrets {
 /* **************************************** */
 // Configuration
 /* **************************************** */
-void Sim::set_config(TurretSimConfig const& new_config) noexcept {
+void Sim::initialise(TurretSimConfig const& new_config) {
     config = new_config;
+
+    SANDBOX_PROFILE_SCOPE("turrets::Sim::initialise");
+    profiling::plot("Sandbox/TurretCount", 0);
+
+    cooldown_restart_ticks_ = simulation_clock.duration_to_tick_period<std::int16_t>(
+        Duration::make(config.laser.fire_cooldown));
+    cooldown_cleaner_ = 0;
 }
 Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_tables) noexcept
     : simulation_clock{clock}
@@ -145,14 +152,6 @@ void Sim::handle_dead_entities() {
 /* **************************************** */
 // Sim phases
 /* **************************************** */
-void Sim::begin_play() {
-    SANDBOX_PROFILE_SCOPE("turrets::Sim::begin_play");
-    profiling::plot("Sandbox/TurretCount", 0);
-
-    cooldown_restart_ticks_ = simulation_clock.duration_to_tick_period<std::int16_t>(
-        Duration::make(config.laser.fire_cooldown));
-    cooldown_cleaner_ = 0;
-}
 void Sim::update_entity_lookup_table() {
     auto const rows{entities.get_const_view()};
     entity_tables_.publish<EntityType::Turret>(rows.entity_ids(), rows.teams(), config.max_health);

@@ -52,7 +52,7 @@ namespace ioj::sim::player {
 /* **************************************** */
 // Construction and configuration
 /* **************************************** */
-void Sim::configure(PlayerSpawnData const& spawn) noexcept {
+void Sim::initialise(PlayerSpawnData const& spawn) {
     config = spawn.config;
     team = spawn.team;
 
@@ -70,6 +70,19 @@ void Sim::configure(PlayerSpawnData const& spawn) noexcept {
         EntityType::PlayerShip, team, spawn.health.health, {&unique_entity_id, 1});
     auto const initial_health{spawn.health.health};
     health_table_.initialise_rows<EntityType::PlayerShip>(0, 1, initial_health);
+
+    SANDBOX_PROFILE_SCOPE("PlayerShipSim::initialise");
+
+    state_.physical.velocity = Vector3d{};
+    state_.resources.thrust_energy = config.thrust_energy_max;
+    reset_flight_model_controller(state_, get_active_flight_model_config());
+
+    set_laser_mode(LaserFiringState::idle);
+    set_laser_fire_rate(laser_fire_rate);
+
+    configure_speed_sampling();
+    refresh_effective_action(state_);
+    planned_state_ = state_;
 }
 void Sim::set_config(PlayerSimConfig const& new_config) noexcept {
     config = new_config;
@@ -84,21 +97,6 @@ Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_table
 /* **************************************** */
 // Tick phases
 /* **************************************** */
-void Sim::begin_play() {
-    SANDBOX_PROFILE_SCOPE("PlayerShipSim::begin_play");
-
-    state_.physical.velocity = Vector3d{};
-    state_.resources.thrust_energy = config.thrust_energy_max;
-    reset_flight_model_controller(state_, get_active_flight_model_config());
-
-    set_laser_mode(LaserFiringState::idle);
-    set_laser_fire_rate(laser_fire_rate);
-
-    configure_speed_sampling();
-    refresh_effective_action(state_);
-    planned_state_ = state_;
-}
-
 void Sim::update_entity_lookup_table() {
     entity_tables_.publish<EntityType::PlayerShip>({&unique_entity_id, 1}, {&team, 1}, max_health_);
 }

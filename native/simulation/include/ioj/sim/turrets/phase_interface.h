@@ -12,8 +12,6 @@ class PhaseInterface {
     PhaseInterface(Sim& new_target)
         : simulation{new_target} {}
 
-    void begin_play() { simulation.begin_play(); }
-
     void prepare_tick(float const dt) { simulation.prepare_tick(dt); }
 
     void think(ThinkingInputs const inputs) { simulation.think(inputs); }

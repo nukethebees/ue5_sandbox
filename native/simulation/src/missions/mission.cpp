@@ -68,6 +68,18 @@ void Mission::tick(MissionEvaluationContext const& inputs) {
 auto Mission::take_completions() -> std::vector<TeamCompletion> {
     return std::exchange(completions_, {});
 }
+auto Mission::take_team_completion(std::optional<Team> const team)
+    -> std::optional<TeamCompletion> {
+    std::optional<TeamCompletion> result;
+    if (team) {
+        auto const found{std::ranges::find(completions_, *team, &TeamCompletion::team)};
+        if (found != completions_.end()) {
+            result = *found;
+        }
+    }
+    completions_.clear();
+    return result;
+}
 auto Mission::outcome(ObjectiveId const id) const -> std::optional<ObjectiveOutcome> {
     return data_.objectives.outcome(id);
 }

@@ -5,6 +5,14 @@
 
 namespace ioj::sim::tests {
 
+void add_overlap(collision::EntityEntityOverlaps& overlaps, EntityId first, EntityId second) {
+    auto const index{overlaps.num()};
+    overlaps.add_defaulted(1);
+    auto const columns{overlaps.get_view()};
+    columns.first_entities()[index] = first;
+    columns.second_entities()[index] = second;
+}
+
 TEST(OverlapHandler, QueuesEnvironmentalDamageForEachSupportedOverlapParticipant) {
 
     CollisionAgentStorage owners;
@@ -14,20 +22,8 @@ TEST(OverlapHandler, QueuesEnvironmentalDamageForEachSupportedOverlapParticipant
     owners.publish();
 
     collision::EntityEntityOverlaps entity_overlaps;
-    {
-        auto const index{entity_overlaps.num()};
-        entity_overlaps.add_defaulted(1);
-        auto const columns{entity_overlaps.get_view()};
-        columns.first_entities()[index] = capital;
-        columns.second_entities()[index] = fighter;
-    }
-    {
-        auto const index{entity_overlaps.num()};
-        entity_overlaps.add_defaulted(1);
-        auto const columns{entity_overlaps.get_view()};
-        columns.first_entities()[index] = fighter;
-        columns.second_entities()[index] = turret;
-    }
+    add_overlap(entity_overlaps, capital, fighter);
+    add_overlap(entity_overlaps, fighter, turret);
     collision::EntityStaticOverlaps static_overlaps;
     {
         auto const index{static_overlaps.num()};
@@ -76,27 +72,9 @@ TEST(OverlapHandler, FiltersUnsupportedRecipientsAndDefersRetirementChecksToDama
     owners.publish();
 
     collision::EntityEntityOverlaps first_pairs;
-    {
-        auto const index{first_pairs.num()};
-        first_pairs.add_defaulted(1);
-        auto const columns{first_pairs.get_view()};
-        columns.first_entities()[index] = fighter;
-        columns.second_entities()[index] = spinner;
-    }
-    {
-        auto const index{first_pairs.num()};
-        first_pairs.add_defaulted(1);
-        auto const columns{first_pairs.get_view()};
-        columns.first_entities()[index] = fighter;
-        columns.second_entities()[index] = doomed;
-    }
-    {
-        auto const index{first_pairs.num()};
-        first_pairs.add_defaulted(1);
-        auto const columns{first_pairs.get_view()};
-        columns.first_entities()[index] = fighter;
-        columns.second_entities()[index] = EntityId{};
-    }
+    add_overlap(first_pairs, fighter, spinner);
+    add_overlap(first_pairs, fighter, doomed);
+    add_overlap(first_pairs, fighter, {});
     alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
     FrameMemoryResource memory{backing};
     FrameScratchScope scope{memory};
@@ -116,13 +94,7 @@ TEST(OverlapHandler, FiltersUnsupportedRecipientsAndDefersRetirementChecksToDama
     auto const replacement{owners.spawn(EntityType::Turret)};
     owners.publish();
     collision::EntityEntityOverlaps retired_pair;
-    {
-        auto const index{retired_pair.num()};
-        retired_pair.add_defaulted(1);
-        auto const columns{retired_pair.get_view()};
-        columns.first_entities()[index] = fighter;
-        columns.second_entities()[index] = doomed;
-    }
+    add_overlap(retired_pair, fighter, doomed);
     handler.handle({retired_pair.get_const_view(), {}}, owners.combat_events);
     owners.combat_events.prepare(owners.entity_tables.lookups, &memory);
     auto const second_damage{owners.combat_events.all_events().get_const_view()};

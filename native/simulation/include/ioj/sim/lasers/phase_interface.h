@@ -12,8 +12,6 @@ class PhaseInterface {
     PhaseInterface(Sim& new_target)
         : simulation{new_target} {}
 
-    void begin_play() { simulation.begin_play(); }
-
     void simulate(ActionInputs const inputs) { simulation.simulate(inputs); }
 
     void commit_spawns() { simulation.commit_spawns(); }

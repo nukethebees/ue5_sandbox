@@ -1,7 +1,6 @@
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/test_setup.h>
-#include <SpaceGame/levels/LevelLoader.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -65,8 +64,7 @@ TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
                         :settings (settings :collision-grid (collision-grid {}))))",
                     grid)};
 
-                ioj::FLevelLoader loader{*orchestrator};
-                if (!checks.is_true(static_cast<bool>(loader.load(source)), label)) {
+                if (!checks.is_true(static_cast<bool>(orchestrator->load_level(source)), label)) {
                     return;
                 }
                 orchestrator->start_simulation();

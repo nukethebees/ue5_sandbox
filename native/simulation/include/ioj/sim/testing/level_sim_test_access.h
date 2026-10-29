@@ -13,7 +13,7 @@ namespace ioj::sim {
 
 struct LevelSimTestAccess {
     static auto spatial_queries(LevelSim& simulation) -> SpatialQueryManager& {
-        return simulation.query_manager_;
+        return simulation.collision_pipeline_.queries();
     }
 
     static void update_entity_lookup_tables(LevelSim& simulation) {
@@ -111,7 +111,7 @@ struct LevelSimTestAccess {
         SimClockTestAccess::set_phase(simulation.clock_, SimulationPhase::Thinking);
         fighters::ThinkingInputs const inputs{
             static_cast<float>(simulation.clock_.get_tick_period()),
-            simulation.query_manager_,
+            simulation.collision_pipeline_.queries(),
             *scratch_resource};
         simulation.fighters_simulation_.think(inputs);
         SimClockTestAccess::set_phase(simulation.clock_, previous_phase);
@@ -133,7 +133,7 @@ struct LevelSimTestAccess {
         auto& fighters{simulation.fighters_simulation_};
         fighters::ThinkingInputs const inputs{
             static_cast<float>(simulation.clock_.get_tick_period()),
-            simulation.query_manager_,
+            simulation.collision_pipeline_.queries(),
             *scratch_resource};
         fighters.refresh_target_data(inputs);
         fighters.plan_movement(inputs);

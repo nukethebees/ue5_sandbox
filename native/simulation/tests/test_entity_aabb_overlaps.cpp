@@ -11,6 +11,7 @@
 #include <array>
 #include <cstddef>
 #include <initializer_list>
+#include <optional>
 
 namespace ioj::sim::tests {
 
@@ -122,6 +123,18 @@ struct OverlapFixture {
         std::span<std::byte>{frame_memory_backing.data(), frame_memory_backing.size_bytes()}};
     SpatialQueryManager query_manager;
     collision::EntityAABBs entity_bounds;
+};
+
+struct OverlapEventFixture : OverlapFixture {
+    OverlapEventFixture() {
+        finish_spawning();
+        run_tick({{moved, {15.f, 0.f, 0.f}}});
+    }
+
+    collision::StaticGeometryIndex static_index{
+        add_static({{-10.f, -10.f, -10.f}}, {{10.f, 10.f, 10.f}})};
+    EntityId stationary{spawn({{0.f, 0.f, 0.f}})};
+    EntityId moved{spawn({{100.f, 0.f, 0.f}})};
 };
 
 void expect_empty_collision_events(collision::AABBOverlapEventsView const& events) {
@@ -318,23 +331,6 @@ TEST(EntityAABBOverlaps, DetectOverlapsUsesExistingSpatialIndex) {
     check_single_pair(events.entity_entity_overlaps, candidate, stationary);
 }
 
-TEST(EntityAABBOverlaps, RotatedConservativeWorldBoundsUseExistingBoundsRules) {
-    OverlapFixture fixture{{{40.f, 5.f, 5.f}}, {{30.f, 0.f, 0.f}}, {{5.f, 5.f, 5.f}}};
-    auto const rotated{fixture.spawn({{0.f, 0.f, 0.f}})};
-    auto const stationary{fixture.spawn({{0.f, 60.f, 0.f}}, EntityType::Turret)};
-    fixture.finish_spawning();
-
-    auto const rotation{Rotator3f{0.f, 90.f, 0.f}};
-    auto const expected_bounds{collision::make_entity_world_bounds(
-        fixture.entity_bounds, EntityType::CapitalShip, Vector3f{}, to_quaternion(rotation))};
-    EXPECT_TRUE(expected_bounds.min.y() <= 55.f && expected_bounds.max.y() >= 65.f)
-        << "Rotated conservative bounds reach the stationary entity";
-
-    fixture.run_tick({{rotated, {}, rotation}});
-
-    check_single_pair(fixture.get_entity_overlaps(), rotated, stationary);
-}
-
 TEST(EntityAABBOverlaps, MovingOutOfOverlapRemovesPairFromCurrentResult) {
     OverlapFixture fixture;
     auto const stationary{fixture.spawn({{0.f, 0.f, 0.f}})};
@@ -349,18 +345,64 @@ TEST(EntityAABBOverlaps, MovingOutOfOverlapRemovesPairFromCurrentResult) {
         << "Separated entities are absent from the current result";
 }
 
-TEST(EntityAABBOverlaps, MovedEntityOverlapsOneStaticAABB) {
-    OverlapFixture fixture;
-    auto const static_index{fixture.add_static({{-10.f, -10.f, -10.f}}, {{10.f, 10.f, 10.f}})};
-    auto const moved{fixture.spawn({{100.f, 0.f, 0.f}})};
+struct StaticOverlapCase {
+    char const* name;
+    float half_extent;
+    Vector3f minimum;
+    Vector3f maximum;
+    Vector3f start;
+    Vector3f end;
+    bool overlaps{true};
+};
+
+class StaticEntityAABBOverlaps : public testing::TestWithParam<StaticOverlapCase> {};
+
+TEST_P(StaticEntityAABBOverlaps, ReportsExactOverlapOnce) {
+    auto const& test{GetParam()};
+    OverlapFixture fixture{{{test.half_extent, test.half_extent, test.half_extent}}};
+    auto const static_index{fixture.add_static(test.minimum, test.maximum)};
+    auto const moved{fixture.spawn(test.start)};
     fixture.finish_spawning();
+    fixture.run_tick({{moved, test.end}});
 
-    fixture.run_tick({{moved, {15.f, 0.f, 0.f}}});
-
-    check_single_static_overlap(fixture.get_static_overlaps(), moved, static_index);
+    if (test.overlaps) {
+        check_single_static_overlap(fixture.get_static_overlaps(), moved, static_index);
+    } else {
+        EXPECT_EQ(fixture.get_static_overlaps().num(), 0);
+    }
     EXPECT_EQ(fixture.get_entity_overlaps().num(), 0)
         << "A static-only overlap produces no dynamic pair";
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    Geometry,
+    StaticEntityAABBOverlaps,
+    testing::Values(StaticOverlapCase{"MovedEntityOverlapsOneStaticAABB",
+                                      10.f,
+                                      {-10.f, -10.f, -10.f},
+                                      {10.f, 10.f, 10.f},
+                                      {100.f, 0.f, 0.f},
+                                      {15.f, 0.f, 0.f}},
+                    StaticOverlapCase{"SharedCellWithoutExactStaticOverlapProducesNoRecord",
+                                      5.f,
+                                      {30.f, 5.f, 5.f},
+                                      {40.f, 15.f, 15.f},
+                                      {100.f, 10.f, 10.f},
+                                      {10.f, 10.f, 10.f},
+                                      false},
+                    StaticOverlapCase{"MultiCellStaticColliderProducesOneRecord",
+                                      5.f,
+                                      {-120.f, -120.f, -120.f},
+                                      {120.f, 120.f, 120.f},
+                                      {400.f, 0.f, 0.f},
+                                      {}},
+                    StaticOverlapCase{"MultiCellEntityProducesOneStaticRecord",
+                                      120.f,
+                                      {-5.f, -5.f, -5.f},
+                                      {5.f, 5.f, 5.f},
+                                      {400.f, 0.f, 0.f},
+                                      {10.f, 0.f, 0.f}}),
+    [](auto const& test) { return test.param.name; });
 
 TEST(EntityAABBOverlaps, MovedEntityOverlapsMultipleStaticAABBs) {
     OverlapFixture fixture;
@@ -380,41 +422,6 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsMultipleStaticAABBs) {
                     overlaps.static_geometry_indices()[1] == second_static)
             << "Static overlaps are sorted by geometry index";
     }
-}
-
-TEST(EntityAABBOverlaps, SharedCellWithoutExactStaticOverlapProducesNoRecord) {
-    OverlapFixture fixture{{{5.f, 5.f, 5.f}}};
-    fixture.add_static({{30.f, 5.f, 5.f}}, {{40.f, 15.f, 15.f}});
-    auto const moved{fixture.spawn({{100.f, 10.f, 10.f}})};
-    fixture.finish_spawning();
-
-    fixture.run_tick({{moved, {10.f, 10.f, 10.f}}});
-
-    EXPECT_EQ(fixture.get_static_overlaps().num(), 0)
-        << "Static broad-phase cell sharing requires exact overlap";
-}
-
-TEST(EntityAABBOverlaps, MultiCellStaticColliderProducesOneRecord) {
-    OverlapFixture fixture{{{5.f, 5.f, 5.f}}};
-    auto const static_index{
-        fixture.add_static({{-120.f, -120.f, -120.f}}, {{120.f, 120.f, 120.f}})};
-    auto const moved{fixture.spawn({{400.f, 0.f, 0.f}})};
-    fixture.finish_spawning();
-
-    fixture.run_tick({{moved, {}}});
-
-    check_single_static_overlap(fixture.get_static_overlaps(), moved, static_index);
-}
-
-TEST(EntityAABBOverlaps, MultiCellEntityProducesOneStaticRecord) {
-    OverlapFixture fixture{{{120.f, 120.f, 120.f}}};
-    auto const static_index{fixture.add_static({{-5.f, -5.f, -5.f}}, {{5.f, 5.f, 5.f}})};
-    auto const moved{fixture.spawn({{400.f, 0.f, 0.f}})};
-    fixture.finish_spawning();
-
-    fixture.run_tick({{moved, {10.f, 0.f, 0.f}}});
-
-    check_single_static_overlap(fixture.get_static_overlaps(), moved, static_index);
 }
 
 TEST(EntityAABBOverlaps, MultipleMovedEntitiesProduceDistinctStaticRecords) {
@@ -437,31 +444,34 @@ TEST(EntityAABBOverlaps, MultipleMovedEntitiesProduceDistinctStaticRecords) {
     }
 }
 
-TEST(EntityAABBOverlaps, MovedEntityProducesDynamicAndStaticOverlapsTogether) {
-    OverlapFixture fixture;
-    auto const static_index{fixture.add_static({{-10.f, -10.f, -10.f}}, {{10.f, 10.f, 10.f}})};
-    auto const stationary{fixture.spawn({{0.f, 0.f, 0.f}})};
-    auto const moved{fixture.spawn({{100.f, 0.f, 0.f}})};
-    fixture.finish_spawning();
+class RotatedEntityAABBOverlaps : public testing::TestWithParam<bool> {};
 
-    fixture.run_tick({{moved, {15.f, 0.f, 0.f}}});
-
-    check_single_pair(fixture.get_entity_overlaps(), moved, stationary);
-    check_single_static_overlap(fixture.get_static_overlaps(), moved, static_index);
-}
-
-TEST(EntityAABBOverlaps, RotationOnlyMovementUsesConservativeBoundsForBothStreams) {
+TEST_P(RotatedEntityAABBOverlaps, RotationOnlyMovementUsesConservativeBounds) {
     OverlapFixture fixture{{{40.f, 5.f, 5.f}}, {{30.f, 0.f, 0.f}}, {{5.f, 5.f, 5.f}}};
-    auto const static_index{fixture.add_static({{-5.f, 55.f, -5.f}}, {{5.f, 65.f, 5.f}})};
+    std::optional<collision::StaticGeometryIndex> static_index;
+    if (GetParam()) {
+        static_index = fixture.add_static({{-5.f, 55.f, -5.f}}, {{5.f, 65.f, 5.f}});
+    }
     auto const rotated{fixture.spawn({{0.f, 0.f, 0.f}})};
     auto const stationary{fixture.spawn({{0.f, 60.f, 0.f}}, EntityType::Turret)};
     fixture.finish_spawning();
 
-    fixture.run_tick({{rotated, {}, {0.f, 90.f, 0.f}}});
+    auto const rotation{Rotator3f{0.f, 90.f, 0.f}};
+    auto const expected_bounds{collision::make_entity_world_bounds(
+        fixture.entity_bounds, EntityType::CapitalShip, Vector3f{}, to_quaternion(rotation))};
+    EXPECT_TRUE(expected_bounds.min.y() <= 55.f && expected_bounds.max.y() >= 65.f)
+        << "Rotated conservative bounds reach the stationary entity";
+    fixture.run_tick({{rotated, {}, rotation}});
 
     check_single_pair(fixture.get_entity_overlaps(), rotated, stationary);
-    check_single_static_overlap(fixture.get_static_overlaps(), rotated, static_index);
+    if (static_index) {
+        check_single_static_overlap(fixture.get_static_overlaps(), rotated, *static_index);
+    }
 }
+
+INSTANTIATE_TEST_SUITE_P(Streams, RotatedEntityAABBOverlaps, testing::Bool(), [](auto const& test) {
+    return test.param ? "Both" : "DynamicOnly";
+});
 
 TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
     OverlapFixture fixture{{{60.f, 60.f, 60.f}}};
@@ -564,36 +574,24 @@ TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
 }
 
 TEST(EntityAABBOverlaps, EventsMirrorAuthoritativeResults) {
-    OverlapFixture fixture;
-    auto const static_index{fixture.add_static({{-10.f, -10.f, -10.f}}, {{10.f, 10.f, 10.f}})};
-    auto const stationary{fixture.spawn({{0.f, 0.f, 0.f}})};
-    auto const moved{fixture.spawn({{100.f, 0.f, 0.f}})};
-    fixture.finish_spawning();
+    OverlapEventFixture fixture;
 
-    fixture.run_tick({{moved, {15.f, 0.f, 0.f}}});
-
-    check_single_pair(fixture.get_entity_overlaps(), moved, stationary);
-    check_single_static_overlap(fixture.get_static_overlaps(), moved, static_index);
+    check_single_pair(fixture.get_entity_overlaps(), fixture.moved, fixture.stationary);
+    check_single_static_overlap(fixture.get_static_overlaps(), fixture.moved, fixture.static_index);
 
     auto const events{fixture.query_manager.get_aabb_overlap_events()};
     EXPECT_EQ(static_cast<std::int32_t>(events.batches.size()), 1)
         << "The collision pass records one event batch";
     if (events.batches.size() == 1) {
         auto const batch{events.get_batch(0)};
-        check_single_pair(batch.entity_entity_overlaps, moved, stationary);
-        check_single_static_overlap(batch.entity_static_overlaps, moved, static_index);
+        check_single_pair(batch.entity_entity_overlaps, fixture.moved, fixture.stationary);
+        check_single_static_overlap(
+            batch.entity_static_overlaps, fixture.moved, fixture.static_index);
     }
 }
 
 TEST(EntityAABBOverlaps, ReinitialiseClearsResultsAndAllowsSubsequentUpdate) {
-    OverlapFixture fixture;
-    auto const static_index{fixture.add_static({{-10.f, -10.f, -10.f}}, {{10.f, 10.f, 10.f}})};
-    auto const stationary{fixture.spawn({{0.f, 0.f, 0.f}})};
-    auto const moved{fixture.spawn({{100.f, 0.f, 0.f}})};
-    fixture.finish_spawning();
-
-    std::array const handles{moved};
-    fixture.run_tick({{moved, {15.f, 0.f, 0.f}}});
+    OverlapEventFixture fixture;
 
     fixture.query_manager.initialise({{40, 40, 40}, {{50.f, 50.f, 50.f}}}, fixture.entity_bounds);
 
@@ -603,24 +601,20 @@ TEST(EntityAABBOverlaps, ReinitialiseClearsResultsAndAllowsSubsequentUpdate) {
     EXPECT_EQ(cleared_events.entity_static_overlaps.num(), 0)
         << "Reinitialisation clears static overlap events";
 
+    std::array const handles{fixture.moved};
     fixture.refresh_and_detect_overlaps(handles);
-    check_single_pair(fixture.get_entity_overlaps(), moved, stationary);
-    check_single_static_overlap(fixture.get_static_overlaps(), moved, static_index);
+    check_single_pair(fixture.get_entity_overlaps(), fixture.moved, fixture.stationary);
+    check_single_static_overlap(fixture.get_static_overlaps(), fixture.moved, fixture.static_index);
 }
 
 TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
-    OverlapFixture fixture;
-    auto const static_index{fixture.add_static({{-10.f, -10.f, -10.f}}, {{10.f, 10.f, 10.f}})};
-    auto const stationary{fixture.spawn({{0.f, 0.f, 0.f}})};
-    auto const moved{fixture.spawn({{100.f, 0.f, 0.f}})};
-    fixture.finish_spawning();
-
-    std::array const handles{moved};
-    fixture.run_tick({{moved, {15.f, 0.f, 0.f}}});
+    OverlapEventFixture fixture;
+    std::array const handles{fixture.moved};
 
     auto const first_events{fixture.query_manager.get_aabb_overlap_events()};
-    check_single_pair(first_events.entity_entity_overlaps, moved, stationary);
-    check_single_static_overlap(first_events.entity_static_overlaps, moved, static_index);
+    check_single_pair(first_events.entity_entity_overlaps, fixture.moved, fixture.stationary);
+    check_single_static_overlap(
+        first_events.entity_static_overlaps, fixture.moved, fixture.static_index);
     auto const* const entity_storage{first_events.entity_entity_overlaps.first_entities().data()};
     auto const* const static_storage{first_events.entity_static_overlaps.entities().data()};
 
@@ -636,8 +630,9 @@ TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
 
     fixture.refresh_and_detect_overlaps(handles);
     auto const recaptured_events{fixture.query_manager.get_aabb_overlap_events()};
-    check_single_pair(recaptured_events.entity_entity_overlaps, moved, stationary);
-    check_single_static_overlap(recaptured_events.entity_static_overlaps, moved, static_index);
+    check_single_pair(recaptured_events.entity_entity_overlaps, fixture.moved, fixture.stationary);
+    check_single_static_overlap(
+        recaptured_events.entity_static_overlaps, fixture.moved, fixture.static_index);
     EXPECT_TRUE(recaptured_events.entity_entity_overlaps.first_entities().data() == entity_storage)
         << "Dynamic event storage is reused after recapture";
     EXPECT_TRUE(recaptured_events.entity_static_overlaps.entities().data() == static_storage)

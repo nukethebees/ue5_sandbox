@@ -37,7 +37,7 @@ struct Sim {
     // Configuration
     /* **************************************** */
     auto get_entities() const -> EntityStorage::ConstView { return entities.get_const_view(); }
-    void set_config(SpinnerSimConfig const& new_config) noexcept;
+    void initialise(SpinnerSimConfig const& new_config);
 
     /* **************************************** */
     // Accessors
@@ -51,7 +51,6 @@ struct Sim {
     /* **************************************** */
     // Sim phases
     /* **************************************** */
-    void begin_play();
     void update_entity_lookup_table();
     void prepare_tick(float dt);
     void think(float dt);

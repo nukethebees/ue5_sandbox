@@ -77,7 +77,6 @@
     :friends ("sim::LevelSim")
     :friend-kind struct
     :target-storage reference
-    (method begin_play void)
     (method prepare_tick void
       (parameter dt "float const"))
     (method think void
@@ -98,7 +97,6 @@
     :friends ("sim::LevelSim")
     :friend-kind struct
     :target-storage reference
-    (method begin_play void)
     (method simulate void
       (parameter inputs (type-ref @lasers_action_inputs :suffix " const")))
     (method commit_spawns void)
@@ -115,7 +113,6 @@
     :friends ("sim::LevelSim")
     :friend-kind struct
     :target-storage reference
-    (method begin_play void)
     (method prepare_tick void
       (parameter dt "float const"))
     (method think void
@@ -139,7 +136,6 @@
     :friends ("sim::LevelSim")
     :friend-kind struct
     :target-storage reference
-    (method begin_play void)
     (method commit_orders void)
     (method prepare_tick void
       (parameter dt "float const"))
@@ -167,7 +163,6 @@
     :friends ("sim::LevelSim")
     :friend-kind struct
     :target-storage reference
-    (method begin_play void)
     (method prepare_tick void
       (parameter dt "float const"))
     (method think void
@@ -191,7 +186,6 @@
     :friends ("sim::LevelSim")
     :friend-kind struct
     :target-storage reference
-    (method begin_play void)
     (method prepare_tick void
       (parameter dt "float const"))
     (method think void

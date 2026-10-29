@@ -86,8 +86,11 @@ auto read_game_settings(FStringView const path,
     config->apply_settings(*simulation);
 
     config->presentation = effective.presentation;
+    auto const* const level_text{level ? std::get_if<std::string>(level) : nullptr};
     return FLoadedGameSettings{.config = config,
                                .simulation = std::move(*simulation),
                                .source = std::move(settings.source),
+                               .level_source =
+                                   level_text ? ioj::to_fstring(*level_text) : FString{},
                                .level = std::move(decoded_level)};
 }

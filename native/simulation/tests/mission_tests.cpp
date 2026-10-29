@@ -1,13 +1,16 @@
 #include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/mission_validation.h>
 #include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/levels/run_stop_conditions.h>
 #include <ioj/sim/missions/compiled_mission.h>
 #include <ioj/sim/missions/mission.h>
 #include <ioj/sim/sim_clock.h>
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <limits>
+#include <optional>
 
 namespace ioj::sim::tests {
 using namespace ioj::levels;
@@ -191,6 +194,128 @@ TEST_F(MissionTest, ReciprocalTeamsAndConsumeOnceCompletion) {
     tick(20);
     EXPECT_TRUE(mission.take_completions().empty());
 }
+
+struct TeamCompletionCase {
+    char const* name;
+    std::optional<Team> team;
+    std::optional<TeamOutcome> outcome;
+};
+
+class SelectedTeamCompletion
+    : public MissionTest
+    , public ::testing::WithParamInterface<TeamCompletionCase> {};
+
+TEST_P(SelectedTeamCompletion, ConsumesAllPendingResultsWhileSelectingTheRequestedTeam) {
+    auto attack{objective("attack", timer(1))};
+    auto defend{objective(
+        "defend", observed("attack", ObjectiveOutcome::Passed), ObjectiveOutcome::Failed)};
+    defend.team = Team::Red;
+    start({.objectives = {attack, defend},
+           .team_results = {{Team::Blue,
+                             {levels::ObjectiveName{"attack"}, ObjectiveOutcome::Passed},
+                             TeamOutcome::Victory},
+                            {Team::Red,
+                             {levels::ObjectiveName{"defend"}, ObjectiveOutcome::Failed},
+                             TeamOutcome::Defeat}}});
+    auto const& test_case{GetParam()};
+    EXPECT_FALSE(mission.take_team_completion(test_case.team));
+    tick(10);
+
+    auto const completion{mission.take_team_completion(test_case.team)};
+    ASSERT_EQ(completion.has_value(), test_case.outcome.has_value());
+    if (completion) {
+        EXPECT_EQ(completion->team, *test_case.team);
+        EXPECT_EQ(completion->outcome, *test_case.outcome);
+        EXPECT_EQ(completion->tick, SimTick{10});
+    }
+    EXPECT_TRUE(mission.take_completions().empty());
+    tick(20);
+    EXPECT_FALSE(mission.take_team_completion(test_case.team));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Mission,
+    SelectedTeamCompletion,
+    ::testing::Values(TeamCompletionCase{"VictoriousTeam", Team::Blue, TeamOutcome::Victory},
+                      TeamCompletionCase{"DefeatedTeam", Team::Red, TeamOutcome::Defeat},
+                      TeamCompletionCase{"UnrelatedTeam", Team::Green, std::nullopt},
+                      TeamCompletionCase{"NoPlayer", std::nullopt, std::nullopt}),
+    [](::testing::TestParamInfo<TeamCompletionCase> const& info) { return info.param.name; });
+
+struct RunStopCase {
+    char const* name;
+    RunStopConditions conditions;
+    bool future_spawns;
+    std::uint32_t living_teams;
+    SimTick completed_ticks;
+    std::optional<LevelTelemetryRunEndReason> reason;
+};
+
+using RunStopping = ::testing::TestWithParam<RunStopCase>;
+
+TEST_P(RunStopping, PreservesBattlePrecedenceFutureSpawnsAndDurationBoundaries) {
+    auto const& test_case{GetParam()};
+    SimClock clock;
+    clock.initialise({.tick_rate = Frequency::make(4.0)});
+    clock.completed_ticks = test_case.completed_ticks;
+    EntityLedger ledger;
+    std::array<EntityId, 1> ids;
+    std::array const teams{Team::Blue, Team::Red};
+    auto const team_count{test_case.living_teams};
+    for (std::uint32_t index{}; index < team_count; ++index) {
+        ledger.record_spawns(EntityType::Fighter, teams[index], Health{1}, ids);
+    }
+
+    EXPECT_EQ(test_case.conditions.stop_reason(clock, ledger, test_case.future_spawns),
+              test_case.reason);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    LevelRun,
+    RunStopping,
+    ::testing::Values(
+        RunStopCase{"Disabled", {}, false, 0, SimTick{4}, std::nullopt},
+        RunStopCase{"EmptyBattle",
+                    {true, {}},
+                    false,
+                    0,
+                    SimTick{0},
+                    LevelTelemetryRunEndReason::BattleResolved},
+        RunStopCase{"SingleTeam",
+                    {true, {}},
+                    false,
+                    1,
+                    SimTick{0},
+                    LevelTelemetryRunEndReason::BattleResolved},
+        RunStopCase{"TwoTeams", {true, {}}, false, 2, SimTick{0}, std::nullopt},
+        RunStopCase{"FutureSpawns", {true, {}}, true, 1, SimTick{0}, std::nullopt},
+        RunStopCase{
+            "BeforeDuration", {false, Duration::make(1.0)}, false, 2, SimTick{3}, std::nullopt},
+        RunStopCase{"AtDuration",
+                    {false, Duration::make(1.0)},
+                    false,
+                    2,
+                    SimTick{4},
+                    LevelTelemetryRunEndReason::DurationReached},
+        RunStopCase{"AfterDuration",
+                    {false, Duration::make(1.0)},
+                    false,
+                    2,
+                    SimTick{5},
+                    LevelTelemetryRunEndReason::DurationReached},
+        RunStopCase{"BattleBeforeDuration",
+                    {true, Duration::make(1.0)},
+                    false,
+                    1,
+                    SimTick{4},
+                    LevelTelemetryRunEndReason::BattleResolved},
+        RunStopCase{"DurationWithFutureSpawns",
+                    {true, Duration::make(1.0)},
+                    true,
+                    1,
+                    SimTick{4},
+                    LevelTelemetryRunEndReason::DurationReached}),
+    [](::testing::TestParamInfo<RunStopCase> const& info) { return info.param.name; });
 
 TEST_F(MissionTest, RootAndTeamConflictPrecedenceIsDeterministic) {
     auto source{objective("conflict", timer(0))};

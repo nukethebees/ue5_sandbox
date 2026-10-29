@@ -3,7 +3,7 @@
 #include <ioj/frame_memory_resource.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/collision/spatial_query_manager.h>
+#include <ioj/sim/collision/collision_pipeline.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_tables.h>
@@ -13,9 +13,9 @@
 #include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/levels/level_read_access.h>
 #include <ioj/sim/levels/level_sim_init_data.h>
+#include <ioj/sim/levels/run_stop_conditions.h>
 #include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/missions/mission.h>
-#include <ioj/sim/overlap_handler.h>
 #include <ioj/sim/player/command_interface.h>
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/sim_state.h>
@@ -77,7 +77,7 @@ struct LevelSim {
     /* **************************************** */
     void finalize_telemetry_run(LevelTelemetryRunEndReason reason);
     void stop_run(LevelTelemetryRunEndReason reason);
-    void stop_run_if_requested(bool stop_when_battle_resolved, std::optional<Duration> duration);
+    void stop_run_if_requested(RunStopConditions const& conditions);
     auto take_player_team_completion() -> std::optional<TeamCompletion>;
     auto take_finalized_telemetry_run() -> std::optional<LevelTelemetryRunRecord>;
 
@@ -108,7 +108,9 @@ struct LevelSim {
     auto get_result_metadata() const -> LevelResultMetadata const& { return result_metadata_; }
     auto get_level_id() const -> std::string const& { return result_metadata_.level_id; }
     auto get_level_title() const -> std::string const& { return result_metadata_.level_title; }
-    auto get_spatial_query_manager() const -> SpatialQueryManager const& { return query_manager_; }
+    auto get_spatial_query_manager() const -> SpatialQueryManager const& {
+        return collision_pipeline_.queries();
+    }
     auto get_level_telemetry_manager() const -> LevelTelemetryManager const& {
         return level_telemetry_manager_;
     }
@@ -123,10 +125,15 @@ struct LevelSim {
     /* **************************************** */
     // Subsystem setup
     /* **************************************** */
-    void configure_subsystems(LevelSimInitData const& data);
-    void configure_player(player::PlayerSpawnData const& spawn);
-    void initialise_spatial_queries(LevelSimInitData& data);
-    void begin_subsystems();
+    void initialise_subsystems(LevelSimInitData const& data);
+
+    /* **************************************** */
+    // Tick phases
+    /* **************************************** */
+    void prepare_tick(float tick_period, bool player_active);
+    void think_tick(float tick_period, bool player_active);
+    void act_tick(float tick_period, bool player_active);
+    void resolve_tick(bool player_active);
 
     SimClock clock_;
     OrchestratorState state_{OrchestratorState::Uninitialised};
@@ -136,9 +143,7 @@ struct LevelSim {
     EntityLedger entity_ledger_;
     CombatEvents combat_events_{entity_ledger_};
     EntityTables entity_tables_{clock_};
-    SpatialQueryManager query_manager_;
-    OverlapHandler overlap_handler_;
-    std::vector<EntityId> overlap_candidates_;
+    collision::CollisionPipeline collision_pipeline_;
 
     lasers::Sim lasers_simulation_;
     std::optional<player::Sim> player_ship_simulation_;

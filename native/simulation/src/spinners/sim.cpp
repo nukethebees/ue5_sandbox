@@ -24,8 +24,14 @@ namespace ioj::sim::spinners {
 /* **************************************** */
 // Configuration
 /* **************************************** */
-void Sim::set_config(SpinnerSimConfig const& new_config) noexcept {
+void Sim::initialise(SpinnerSimConfig const& new_config) {
     config = new_config;
+
+    SANDBOX_PROFILE_SCOPE("spinners::Sim::initialise");
+
+    cooldown_restart_ticks_ = simulation_clock.duration_to_tick_period<std::int16_t>(
+        Duration::make(config.laser.fire_cooldown));
+    cooldown_cleaner_ = 0;
 }
 Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_tables) noexcept
     : simulation_clock{clock}
@@ -35,13 +41,6 @@ Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_table
 /* **************************************** */
 // Sim phases
 /* **************************************** */
-void Sim::begin_play() {
-    SANDBOX_PROFILE_SCOPE("spinners::Sim::begin_play");
-
-    cooldown_restart_ticks_ = simulation_clock.duration_to_tick_period<std::int16_t>(
-        Duration::make(config.laser.fire_cooldown));
-    cooldown_cleaner_ = 0;
-}
 void Sim::update_entity_lookup_table() {
     entity_tables_.publish<EntityType::TubeSpinner>(
         entities.get_const_view().entity_ids(), {}, Health{1});
