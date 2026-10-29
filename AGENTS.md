@@ -12,8 +12,10 @@ Unreal Engine 5.8 project.
 
 * Use `coj`, the project workflow CLI. Start tasks with `coj --help`, then inspect relevant
   `coj <command> --help`. Prefer supported workflows over manual equivalents; skip unrelated help.
-* Begin new tasks with `coj prepare-worktree` in the current worktree. The maintainer installs
-  and updates `coj` and manages PATH; invoke it by name. If it cannot launch or is missing,
+* Run `coj prepare-worktree` in the current worktree once at the start of a fresh LLM session.
+  Do not repeat it for new tasks, follow-ups, context compaction, or delegated agents within
+  the same session. The maintainer installs and updates `coj` and manages PATH; invoke it by name.
+  If it cannot launch or is missing,
   halt and report it. If broken, report once; use a minimal alternative only under explicit
   maintainer instruction. Do not repeatedly retry or bypass it.
 * Use `coj git` for mutating Git operations. Ask the maintainer before using unsupported Git
