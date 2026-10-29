@@ -209,18 +209,21 @@ add_unreal_editor_target(validate-ui-glow-material-unreal
   FOLDER "Sandbox/Unreal/Maintenance"
 )
 
-sandbox_make_automation_exec_commands(material_compilation_test_commands
-  "StartsWith:SandboxShaders.MaterialCompilation")
-add_unreal_editor_test(SandboxShaders.MaterialCompilation
-  NO_LOCAL_DDC
-  ARGUMENTS
-    "${material_compilation_test_commands}"
-    -AllowCommandletRendering
-    -DDC-ForceMemoryCache
-  LABELS focused-material all
-  TIMEOUT 900
-)
-sandbox_set_automation_test_properties(SandboxShaders.MaterialCompilation)
+sandbox_project_enables_plugin(experiments_enabled "${IOJ_UPROJECT}" SandboxExperiments)
+if(experiments_enabled)
+  sandbox_make_automation_exec_commands(material_compilation_test_commands
+    "StartsWith:SandboxShaders.MaterialCompilation")
+  add_unreal_editor_test(SandboxShaders.MaterialCompilation
+    NO_LOCAL_DDC
+    ARGUMENTS
+      "${material_compilation_test_commands}"
+      -AllowCommandletRendering
+      -DDC-ForceMemoryCache
+    LABELS focused-material all
+    TIMEOUT 900
+  )
+  sandbox_set_automation_test_properties(SandboxShaders.MaterialCompilation)
+endif()
 
 sandbox_make_automation_exec_commands(included_function_compilation_test_commands
   "StartsWith:USFLoader.IncludedFunctionCompilation")

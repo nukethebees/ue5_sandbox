@@ -115,6 +115,8 @@ Normal editor builds exclude `SandboxExperiments`. Enable that plugin in
 `Sandbox.uproject` and rebuild when working on UI/shader showcases, their smoke
 tests, or `generate-slate-dsl-smoke-asset`. Module names are retained; showcase assets
 are mounted only when the plugin is enabled, with redirects for their old paths.
+The experiments-only `SandboxShaders.MaterialCompilation` CTest entry is registered
+only when this plugin is explicitly enabled; reconfigure CMake after changing it.
 The mesh-generation lab remains enabled because editor asset-generation commands
 use it. `SandboxISMCLab` is a separate, disabled-by-default plugin; enable it and
 rebuild before using ISMC demo maps or `coj benchmark sandbox-ismc`. The production

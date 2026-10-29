@@ -1,4 +1,17 @@
 include("${PROJECT_SOURCE_DIR}/cmake/unreal_arguments.cmake")
+include("${PROJECT_SOURCE_DIR}/cmake/unreal.cmake")
+
+set(plugin_fixture "${CMAKE_CURRENT_BINARY_DIR}/plugins.uproject")
+file(WRITE "${plugin_fixture}" [=[{"Plugins":[
+  {"Name":"EnabledPlugin","Enabled":true},
+  {"Name":"SandboxExperiments","Enabled":false}
+]}]=])
+sandbox_project_enables_plugin(plugin_enabled "${plugin_fixture}" EnabledPlugin)
+sandbox_assert_equal("explicitly enabled plugin" "${plugin_enabled}" ON)
+sandbox_project_enables_plugin(plugin_enabled "${plugin_fixture}" SandboxExperiments)
+sandbox_assert_equal("explicitly disabled plugin" "${plugin_enabled}" OFF)
+sandbox_project_enables_plugin(plugin_enabled "${plugin_fixture}" MissingPlugin)
+sandbox_assert_equal("absent opt-in plugin" "${plugin_enabled}" OFF)
 
 sandbox_make_automation_filter_expression(automation_expression
   Sandbox.UnitTests Sandbox.LevelTests.PlayerInputSmoke)
