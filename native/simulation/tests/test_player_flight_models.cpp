@@ -590,9 +590,7 @@ TEST(NativeSimulationFlightModels, EffectivelyUnlimitedLimitRemainsFinite) {
 
     player::integrate_flight_model(1.f / 60.f, config, intent, state);
     auto const current{state.physical.velocity};
-    EXPECT_TRUE(std::isfinite(current.x()));
-    EXPECT_TRUE(std::isfinite(current.y()));
-    EXPECT_TRUE(std::isfinite(current.z()));
+    EXPECT_TRUE(is_finite(current)) << ::testing::PrintToString(current.elements);
 }
 
 TEST(NativeSimulationFlightModels, DirectBrakeStrengthUsesConfiguredDeceleration) {

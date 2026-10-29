@@ -279,9 +279,7 @@ auto measure_fighter_cluster(std::span<Vector3f const> const locations,
 
     Vector3f centroid{Vector3f{}};
     for (auto const location : locations) {
-        result.finite =
-            result.finite && !(!std::isfinite(location.x()) || !std::isfinite(location.y()) ||
-                               !std::isfinite(location.z()));
+        result.finite = result.finite && is_finite(location);
         centroid += location;
     }
     centroid /= static_cast<float>(static_cast<std::int32_t>(locations.size()));
@@ -376,12 +374,10 @@ TEST(WorldlessSpaceGameSimulation, Fighters_NavigationDenseDeterminism) {
     EXPECT_EQ(first_result.collision_distance, second_result.collision_distance)
         << "Deterministic fixtures use equal collision distances";
 
-    auto const location_count{static_cast<std::int32_t>(first.size())};
-    for (std::int32_t i{}; i < location_count; ++i) {
-        EXPECT_TRUE(!(!std::isfinite(first[i].x()) || !std::isfinite(first[i].y()) ||
-                      !std::isfinite(first[i].z())))
-            << "Dense fighter location is finite";
-        EXPECT_EQ(first[i], second[i]) << "Identical fixtures produce identical fighter positions";
+    EXPECT_EQ(first, second) << "Identical fixtures produce identical fighter positions";
+    for (auto const location : first) {
+        EXPECT_TRUE(is_finite(location))
+            << "Dense fighter location is finite: " << ::testing::PrintToString(location.elements);
     }
     EXPECT_TRUE(first_result.saw_immediate_risk && second_result.saw_immediate_risk)
         << "Coincident groups enter the immediate-risk tier";

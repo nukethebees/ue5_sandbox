@@ -3,15 +3,6 @@
 
 #include <CQTest.h>
 
-namespace {
-void test_vector(FAutomationTestBase& test,
-                 TCHAR const* message,
-                 FVector3f const& actual,
-                 FVector3f const& expected) {
-    test.TestTrue(message, actual.Equals(expected, 0.001f));
-}
-}
-
 TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
 {
     TEST_METHOD(PacksTransformsAndTracksItsSourceRange)
@@ -46,11 +37,9 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
             TestRunner->TestTrue(TEXT("Quaternion error stays below 0.3 degrees"),
                                  orientation.AngularDistance(rotations[index]) <
                                      FMath::DegreesToRadians(0.3f));
-            for (int32 axis{0}; axis < 3; ++axis) {
-                TestRunner->TestEqual(TEXT("Position decodes relative to snapshot root"),
-                                      96.0f + value.position[axis] * ioj::ismc::position_quantum,
-                                      positions[index][axis]);
-            }
+            TestRunner->TestTrue(TEXT("Position decodes relative to snapshot root"),
+                                 (FVector3f{96.0f} + sandbox_ismc_tests::decode_position(value))
+                                     .Equals(positions[index], UE_KINDA_SMALL_NUMBER));
         }
     }
 
@@ -77,14 +66,10 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
             sandbox_ismc_tests::write_transform(writer, position, rotation);
             auto const expected{
                 local_box.TransformBy(FTransform3f{rotation, position}.ToMatrixWithScale())};
-            test_vector(*TestRunner,
-                        TEXT("Minimum matches Unreal transformed AABB"),
-                        writer.bounds().Min,
-                        expected.Min);
-            test_vector(*TestRunner,
-                        TEXT("Maximum matches Unreal transformed AABB"),
-                        writer.bounds().Max,
-                        expected.Max);
+            TestRunner->TestTrue(TEXT("Minimum matches Unreal transformed AABB"),
+                                 writer.bounds().Min.Equals(expected.Min, 0.001f));
+            TestRunner->TestTrue(TEXT("Maximum matches Unreal transformed AABB"),
+                                 writer.bounds().Max.Equals(expected.Max, 0.001f));
         }
     }
 
@@ -109,11 +94,8 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
             sandbox_ismc_tests::write_transform(writer, position, rotation);
             auto const& value{packed[0]};
             auto const q{ioj::ismc::unpack_quat32(value.rotation)};
-            FVector3f const decoded_position{FVector3f{static_cast<float>(value.position[0]),
-                                                       static_cast<float>(value.position[1]),
-                                                       static_cast<float>(value.position[2])} *
-                                             ioj::ismc::position_quantum};
-            FTransform3f const transform{FQuat4f{q.x(), q.y(), q.z(), q.w()}, decoded_position};
+            FTransform3f const transform{FQuat4f{q.x(), q.y(), q.z(), q.w()},
+                                         sandbox_ismc_tests::decode_position(value)};
             for (int32 corner{0}; corner < 8; ++corner) {
                 auto const point{origin + FVector3f{(corner & 1) ? extent.X : -extent.X,
                                                     (corner & 2) ? extent.Y : -extent.Y,
@@ -192,19 +174,13 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
                                                origin,
                                                extent};
         writer.set_transforms<ESandboxISMCBoundsMode::Calculate>(positions, rotations);
-        test_vector(*TestRunner,
-                    TEXT("SIMD minimum matches rotated Unreal basis"),
-                    writer.bounds().Min,
-                    expected.Min);
-        test_vector(*TestRunner,
-                    TEXT("SIMD maximum matches rotated Unreal basis"),
-                    writer.bounds().Max,
-                    expected.Max);
+        TestRunner->TestTrue(TEXT("SIMD minimum matches rotated Unreal basis"),
+                             writer.bounds().Min.Equals(expected.Min, 0.001f));
+        TestRunner->TestTrue(TEXT("SIMD maximum matches rotated Unreal basis"),
+                             writer.bounds().Max.Equals(expected.Max, 0.001f));
         writer.set_transforms<ESandboxISMCBoundsMode::Supplied>(positions, rotations);
-        test_vector(*TestRunner,
-                    TEXT("Supplied mode leaves bounds unchanged"),
-                    writer.bounds().Min,
-                    expected.Min);
+        TestRunner->TestTrue(TEXT("Supplied mode leaves bounds unchanged"),
+                             writer.bounds().Min.Equals(expected.Min, 0.001f));
         for (int32 index{}; index < count; ++index) {
             auto const rotation{rotations[index]};
             TestRunner->TestEqual(

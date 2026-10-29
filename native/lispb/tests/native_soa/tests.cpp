@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <numeric>
 #include <ranges>
 #include <span>
 #include <string>
@@ -490,8 +491,7 @@ TEST(NativeSoa, ResolvedSelfAppendPreservesAliasedColumnsAcrossGrowthAndAllocati
     state.reject_allocation = false;
     EXPECT_EQ(owner.append_from(source), first);
     auto const appended{owner.get_const_view().slice(first, 2).resolve()};
-    EXPECT_EQ(appended.values()[0], 3.0f);
-    EXPECT_EQ(appended.values()[1], 5.0f);
+    EXPECT_TRUE(std::ranges::equal(appended.values(), std::array{3.0f, 5.0f}));
     EXPECT_EQ(appended.view_positions()[0].x, 7.0f);
     EXPECT_EQ(appended.view_positions()[1].y, 11.0f);
     EXPECT_TRUE(appended.masks()[1].has(ApiField::Values));
@@ -511,9 +511,7 @@ TEST_P(IndexedSelfAppend, PreservesEveryColumnWithAndWithoutGrowth) {
     std::uint32_t column_index{};
     owner.get_view().each_column([&](auto column) {
         using Element = typename decltype(column)::value_type;
-        for (std::uint32_t row{}; row < first; ++row) {
-            column[row] = static_cast<Element>(column_index * 1000 + row);
-        }
+        std::iota(column.begin(), column.end(), static_cast<Element>(column_index * 1000));
         ++column_index;
     });
     auto const source{owner.get_const_view(1, 3).resolve()};
@@ -559,9 +557,7 @@ TEST(NativeSoa, PermutationAndSortingKeepNestedRowsAlignedAndRestoreScratch) {
     std::uint32_t column_index{};
     owner.get_view().each_column([&](auto column) {
         using Element = typename decltype(column)::value_type;
-        for (std::uint32_t row{}; row < 4; ++row) {
-            column[row] = static_cast<Element>(column_index * 100 + row);
-        }
+        std::iota(column.begin(), column.end(), static_cast<Element>(column_index * 100));
         ++column_index;
     });
     std::array const keys{3, 1, 3, 2};
@@ -676,9 +672,7 @@ TEST(NativeSoa, CompactSelfCopyPreservesEveryColumn) {
             std::uint32_t column_index{};
             view.each_column([&](auto column) {
                 using Element = std::remove_cvref_t<decltype(column[0])>;
-                for (std::uint32_t row{}; row < row_count; ++row) {
-                    column[row] = static_cast<Element>(column_index * 16 + row);
-                }
+                std::iota(column.begin(), column.end(), static_cast<Element>(column_index * 16));
                 ++column_index;
             });
             auto const capacity{owner.capacity()};
@@ -727,12 +721,9 @@ TEST(NativeSoa, LayoutGrowthAndMoves) {
         EXPECT_EQ(view.aligned256().back().value, 256);
         auto const nested{view.view_nested().view_starts()};
         EXPECT_EQ(nested.xs().back(), 0.f);
-        for (std::uint32_t i{}; i < previous; ++i) {
-            EXPECT_EQ(nested.ys()[i], static_cast<float>(i));
-        }
-        for (std::uint32_t i{}; i < count; ++i) {
-            nested.ys()[i] = static_cast<float>(i);
-        }
+        EXPECT_TRUE(
+            std::ranges::equal(nested.ys().first(previous), std::views::iota(0U, previous)));
+        std::iota(nested.ys().begin(), nested.ys().end(), 0.0f);
         std::uintptr_t previous_end{};
         auto const base{reinterpret_cast<std::uintptr_t>(view.bytes().data())};
         view.each_column([&](auto column) {
@@ -804,22 +795,15 @@ TEST(NativeSoa, SwapRemovalHandlesEveryBoundaryCase) {
         SingleRows owner;
         owner.set_num(6);
         auto columns{owner.get_view()};
-        for (std::uint32_t row{}; row < owner.num(); ++row) {
-            columns.values()[row] = row;
-            columns.view_positions().xs()[row] = static_cast<float>(row);
-        }
+        std::iota(columns.values().begin(), columns.values().end(), 0);
+        std::iota(columns.view_positions().xs().begin(), columns.view_positions().xs().end(), 0.0f);
 
         owner.remove_at_swap(index, count);
 
         ASSERT_EQ(owner.num(), expected.size());
         columns = owner.get_view();
-        std::uint32_t expected_index{};
-        for (auto const expected_value : expected) {
-            EXPECT_EQ(columns.values()[expected_index], expected_value);
-            EXPECT_EQ(columns.view_positions().xs()[expected_index],
-                      static_cast<float>(expected_value));
-            ++expected_index;
-        }
+        EXPECT_TRUE(std::ranges::equal(columns.values(), expected));
+        EXPECT_TRUE(std::ranges::equal(columns.view_positions().xs(), expected));
     };
     std::array const unchanged{0, 1, 2, 3, 4, 5};
     std::array const one_removed{0, 1, 5, 3, 4};
@@ -1091,11 +1075,8 @@ TEST(NativeSoa, CompactViewsAndBulkAppend) {
     Owner source{};
     source.set_num(129);
     auto view{source.get_view()};
-    auto const row_count{source.num()};
-    for (std::uint32_t row{}; row < row_count; ++row) {
-        view.values()[row] = row;
-        view.view_positions().xs()[row] = static_cast<float>(row);
-    }
+    std::iota(view.values().begin(), view.values().end(), 0);
+    std::iota(view.view_positions().xs().begin(), view.view_positions().xs().end(), 0.0f);
     source.reserve(1024);
     view = source.get_view();
     auto const slice{view.slice(1, 64)};
@@ -1171,10 +1152,8 @@ struct IndependentRows {
 
 TEST(NativeSoa, IndependentColumnsAppendDirectly) {
     IndependentRows source;
-    for (std::uint32_t row{}; row < source.num(); ++row) {
-        source.values_[row] = row + 100;
-        source.xs_[row] = static_cast<float>(row);
-    }
+    std::iota(source.values_.begin(), source.values_.end(), 100);
+    std::iota(source.xs_.begin(), source.xs_.end(), 0.0f);
     SingleRows destination{};
     destination.set_num(1);
     destination.get_view().values()[0] = -1;
@@ -1233,10 +1212,7 @@ TEST(NativeSoa, DescendingRemovalExhaustiveSubsets) {
             owner.remove_at_swap(std::span<std::uint32_t const>{indices});
             EXPECT_EQ(owner.capacity(), capacity);
             EXPECT_TRUE(std::ranges::equal(owner.get_view().values(), expected));
-            for (std::uint32_t row{}; row < final_count; ++row) {
-                EXPECT_EQ(owner.get_view().view_positions().xs()[row],
-                          static_cast<float>(expected[row]));
-            }
+            EXPECT_TRUE(std::ranges::equal(owner.get_view().view_positions().xs(), expected));
         }
     }
 }

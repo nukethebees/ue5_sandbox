@@ -95,22 +95,18 @@ void ASandboxISMCLabActor::regenerate_instances() {
         auto const instance_count = dimensions.X * dimensions.Y * dimensions.Z;
         instance_data_.SetNumUninitialized(instance_count);
 
-        auto const grid_extent = FVector3f{
-            static_cast<float>(dimensions.X - 1) * static_cast<float>(grid_spacing_.X),
-            static_cast<float>(dimensions.Y - 1) * static_cast<float>(grid_spacing_.Y),
-            static_cast<float>(dimensions.Z - 1) * static_cast<float>(grid_spacing_.Z),
-        };
+        auto const spacing{FVector3f{grid_spacing_}};
+        auto const grid_extent{FVector3f{static_cast<float>(dimensions.X - 1),
+                                        static_cast<float>(dimensions.Y - 1),
+                                        static_cast<float>(dimensions.Z - 1)} * spacing};
         auto const origin = grid_extent * -0.5f;
 
         for (auto z = 0; z < dimensions.Z; ++z) {
             for (auto y = 0; y < dimensions.Y; ++y) {
                 for (auto x = 0; x < dimensions.X; ++x) {
-                    auto const position =
-                        origin + FVector3f{
-                                     static_cast<float>(x) * static_cast<float>(grid_spacing_.X),
-                                     static_cast<float>(y) * static_cast<float>(grid_spacing_.Y),
-                                     static_cast<float>(z) * static_cast<float>(grid_spacing_.Z),
-                                 };
+                    auto const position{origin + FVector3f{static_cast<float>(x),
+                                                            static_cast<float>(y),
+                                                            static_cast<float>(z)} * spacing};
                     auto const instance_index{z * dimensions.X * dimensions.Y + y * dimensions.X +
                                               x};
                     instance_data_[instance_index] = {position, FQuat4f::Identity};

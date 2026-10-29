@@ -276,10 +276,7 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
                     auto const& value{packed[index]};
                     auto const q{ioj::ismc::unpack_quat32(value.rotation)};
                     FVector const location{FVector{root} +
-                                           FVector{static_cast<double>(value.position[0]),
-                                                   static_cast<double>(value.position[1]),
-                                                   static_cast<double>(value.position[2])} *
-                                               ioj::ismc::position_quantum};
+                                           FVector{sandbox_ismc_tests::decode_position(value)}};
                     reference->AddInstance(FTransform{FQuat{q.x(), q.y(), q.z(), q.w()}, location});
                     for (int32 channel{0}; channel < 3; ++channel) {
                         reference->SetCustomDataValue(

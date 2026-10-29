@@ -2,9 +2,11 @@
 #include <ioj/column_math.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
+#include <ioj/testing/vector_comparison.h>
 #include <ioj/vector_normalization.h>
 
 namespace ioj::sim::tests::fighter_target_refresh {
+using ioj::testing::floating_point_equal;
 
 auto make_world() -> LevelSimInitData {
     LevelSimInitData data;
@@ -23,12 +25,6 @@ auto make_world() -> LevelSimInitData {
     }
     data.collision.entity_bounds.set_half_extents(EntityType::CapitalShip, {{100.f, 100.f, 100.f}});
     return data;
-}
-
-void expect_vector(Vector3f const actual, Vector3f const expected) {
-    EXPECT_FLOAT_EQ(actual.x(), expected.x());
-    EXPECT_FLOAT_EQ(actual.y(), expected.y());
-    EXPECT_FLOAT_EQ(actual.z(), expected.z());
 }
 
 class FighterTargetRefresh : public ::testing::Test {
@@ -88,12 +84,13 @@ class FighterTargetRefresh : public ::testing::Test {
         EXPECT_FLOAT_EQ(entities.target_distance_sq()[index],
                         size_squared(state->location - next_location));
         auto const intercept{state->location + state->velocity * entities.intercept_times()[index]};
-        expect_vector(vector_at(entities.view_desired_aiming_directions(), index),
-                      native_math::safe_normal(intercept - location, 1.e-8f));
+        EXPECT_TRUE(
+            floating_point_equal(vector_at(entities.view_desired_aiming_directions(), index),
+                                 native_math::safe_normal(intercept - location, 1.e-8f)));
         auto const direction{native_math::safe_normal(offset, 1.e-8f)};
-        expect_vector(vector_at(entities.view_desired_move_locations(), index),
-                      state->location -
-                          direction * (1000.f * settings::AttackDistanceBand{}.get().desired));
+        EXPECT_TRUE(floating_point_equal(
+            vector_at(entities.view_desired_move_locations(), index),
+            state->location - direction * (1000.f * settings::AttackDistanceBand{}.get().desired)));
     }
 
     void kill_target() {
@@ -117,9 +114,9 @@ class FighterTargetRefresh : public ::testing::Test {
                                      entities.move_distances()[index]};
         EXPECT_FLOAT_EQ(entities.target_distances()[index], size(next_location));
         EXPECT_FLOAT_EQ(entities.target_distance_sq()[index], size_squared(next_location));
-        expect_vector(
+        EXPECT_TRUE(floating_point_equal(
             vector_at(entities.view_desired_aiming_directions(), index),
-            native_math::safe_normal(-vector_at(entities.view_locations(), index), 1.e-8f));
+            native_math::safe_normal(-vector_at(entities.view_locations(), index), 1.e-8f)));
     }
 
     GameMemory simulation_memory;

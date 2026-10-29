@@ -50,12 +50,6 @@ auto make_forward_x_view() -> OverlayView {
 
 class EntityOverlaySource : public testing::Test {
   protected:
-    EntityOverlaySource() {
-        for (auto const type : ioj::EnumTraits<sim::EntityType>::values) {
-            radii_[type] = 1.0f;
-        }
-    }
-
     void add_entity(EntityInput const input) {
         auto const index{entities_.positions.add(input.position)};
         entities_.healths.push_back(input.health);
@@ -88,7 +82,7 @@ class EntityOverlaySource : public testing::Test {
     }
 
     Entities entities_;
-    EntityTypeRadii radii_{};
+    EntityTypeRadii radii_{1.0f};
 };
 }
 

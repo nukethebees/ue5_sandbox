@@ -14,12 +14,9 @@ TEST_CLASS(GraphPlotSlateIntegration, "Sandbox.UnitTests")
         valid_style.desired_size = {480.0f, 240.0f};
         TestRunner->TestTrue(TEXT("Valid graph styles are accepted"),
                              widget->set_style(MoveTemp(valid_style)));
-        TestRunner->TestEqual(TEXT("Graph desired width follows its style"),
-                              widget->ComputeDesiredSize(1.0f).X,
-                              480.0);
-        TestRunner->TestEqual(TEXT("Graph desired height follows its style"),
-                              widget->ComputeDesiredSize(1.0f).Y,
-                              240.0);
+        TestRunner->TestTrue(TEXT("Graph desired size follows its style"),
+                             widget->ComputeDesiredSize(1.0f).Equals(FVector2D{480.0, 240.0},
+                                                                     UE_KINDA_SMALL_NUMBER));
 
         auto invalid_style{FGraphPlotStyle{}};
         invalid_style.left_margin = -1.0f;

@@ -288,13 +288,10 @@ TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
             if_count += expression->IsA<UMaterialExpressionIf>() ? 1 : 0;
         }
         custom_data_indices.Sort();
-        TestRunner->TestEqual(
-            TEXT("Six per-instance values are emitted"), custom_data_indices.Num(), 6);
-        for (int32 index{}; index < custom_data_indices.Num(); ++index) {
-            TestRunner->TestEqual(TEXT("Per-instance data indices remain contiguous"),
-                                  custom_data_indices[index],
-                                  index);
-        }
+        static_cast<void>(
+            Assert.AreEqual(TArray<int32>{0, 1, 2, 3, 4, 5},
+                            custom_data_indices,
+                            TEXT("Six contiguous per-instance data indices are emitted")));
         TestRunner->TestEqual(
             TEXT("RGB construction remains inside the procedural emissive node"), append_count, 0);
         TestRunner->TestEqual(TEXT("Range intensity emits four Lerp nodes"), lerp_count, 4);

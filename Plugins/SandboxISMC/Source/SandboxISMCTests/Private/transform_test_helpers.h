@@ -5,6 +5,13 @@
 #include "Containers/Array.h"
 
 namespace sandbox_ismc_tests {
+inline auto decode_position(FSandboxISMCRenderInstance const& instance) -> FVector3f {
+    return FVector3f{static_cast<float>(instance.position[0]),
+                     static_cast<float>(instance.position[1]),
+                     static_cast<float>(instance.position[2])} *
+           ioj::ismc::position_quantum;
+}
+
 template <typename Fill>
 void write_transforms(FSandboxISMCInstanceChunkWriter& chunk, int32 const count, Fill&& fill) {
     TArray<FVector3f, TInlineAllocator<1024>> positions;

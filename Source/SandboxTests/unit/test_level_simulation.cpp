@@ -43,6 +43,7 @@
 #include <SandboxISMCComponent.h>
 #include <Serialization/JsonSerializer.h>
 
+#include <algorithm>
 #include <array>
 
 namespace {
@@ -693,10 +694,8 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
 
         auto const live_count{lasers.get_num_instances()};
         auto const active{lasers.get_entities().active()};
-        int32 active_count{0};
-        for (uint32 index{}; index < live_count; ++index) {
-            active_count += active[index] != 0;
-        }
+        auto const active_count{static_cast<int32>(std::ranges::count_if(
+            active.first(live_count), [](auto const value) { return value != 0; }))};
         if (!TestEqual(TEXT("Only active lasers are submitted"),
                        component->get_instance_count(),
                        active_count)) {
@@ -724,10 +723,12 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
             auto const id{FMath::RoundToInt(source_y / 10.f)};
             auto const& expected{expected_material_data[id - 1]};
             auto const actual{writer.custom_data(index)};
-            auto const matches{actual[0] == expected.colour.R && actual[1] == expected.colour.G &&
-                               actual[2] == expected.colour.B &&
-                               actual[3] == expected.initial_lifetime &&
-                               actual[4] == expected.spawn_time};
+            auto const matches{std::ranges::equal(actual,
+                                                  std::array{expected.colour.R,
+                                                             expected.colour.G,
+                                                             expected.colour.B,
+                                                             expected.initial_lifetime,
+                                                             expected.spawn_time})};
             if (!matches) {
                 AddError(FString::Printf(
                     TEXT("Tick %d packed row %d (laser %d) has incorrect custom data"),

@@ -1,6 +1,7 @@
 #include "SandboxISMCComponent.h"
 #include "transform_test_helpers.h"
 
+#include "Algo/AllOf.h"
 #include "Engine/StaticMesh.h"
 #include "UObject/UnrealType.h"
 #include "UObject/UObjectGlobals.h"
@@ -311,12 +312,8 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                     });
             });
 
-        auto every_instance_visited_once{true};
-        for (auto const visit_count : visited) {
-            every_instance_visited_once &= visit_count == 1;
-        }
         TestRunner->TestTrue(TEXT("Parallel custom-data chunks cover every instance exactly once"),
-                             every_instance_visited_once);
+                             Algo::AllOf(visited, [](uint8 count) { return count == 1; }));
         TestRunner->TestEqual(TEXT("Parallel custom data retains the complete snapshot"),
                               component->get_instance_count(),
                               instance_count);
@@ -578,11 +575,9 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                             });
                     });
 
-                auto all_visited{true};
-                for (auto const value : visited) {
-                    all_visited &= value == 1;
-                }
-                TestRunner->TestTrue(TEXT("Every source row is visited exactly once"), all_visited);
+                TestRunner->TestTrue(
+                    TEXT("Every source row is visited exactly once"),
+                    Algo::AllOf(visited, [](uint8 visits) { return visits == 1; }));
                 TestRunner->TestEqual(TEXT("The complete boundary snapshot is retained"),
                                       component->get_instance_count(),
                                       count);

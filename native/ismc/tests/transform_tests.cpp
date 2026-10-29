@@ -11,20 +11,10 @@ namespace ioj::ismc {
 namespace {
 auto angular_error(Quaternion4f original, Quaternion4f decoded) -> double {
     // Double precision avoids acos amplification of float dot-product rounding.
-    double dot{};
-    double first_length{};
-    double second_length{};
-    for (auto index{0U}; index < 4; ++index) {
-        auto const a{static_cast<double>(original[index])};
-        auto const b{static_cast<double>(decoded[index])};
-        dot += a * b;
-        first_length += a * a;
-        second_length += b * b;
-    }
-    return 2.0 *
-           std::acos(
-               std::clamp(std::abs(dot) / std::sqrt(first_length * second_length), 0.0, 1.0)) *
-           180.0 / std::numbers::pi;
+    auto const first{Vector<double, 4>{original.components}};
+    auto const second{Vector<double, 4>{decoded.components}};
+    auto const cosine{dot(first, second) / std::sqrt(size_squared(first) * size_squared(second))};
+    return 2.0 * std::acos(std::clamp(std::abs(cosine), 0.0, 1.0)) * 180.0 / std::numbers::pi;
 }
 
 TEST(SandboxISMCPacking, GoldenQuaternionsAndSignEquivalence) {
@@ -184,9 +174,7 @@ TEST(SandboxISMCPacking, PositionDomainChoosesAnAlignedCentreAndRejectsExcessRan
 
 TEST(SandboxISMCPacking, LittleEndianGpuWords) {
     PackedTransform packed{};
-    packed.position[0] = -1;
-    packed.position[1] = 32767;
-    packed.position[2] = -32767;
+    packed.position = {-1, 32767, -32767};
     packed.rotation.bits = 0x80200803;
     EXPECT_EQ(packed.reserved, 0);
     auto const words{std::bit_cast<std::array<std::uint32_t, 3>>(packed)};

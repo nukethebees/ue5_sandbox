@@ -3,6 +3,7 @@
 #include <ioj/sim/collision/range_query_results.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/testing/entity_observations.h>
+#include <ioj/testing/vector_comparison.h>
 #include <ioj/vector_normalization.h>
 
 #include <gtest/gtest.h>
@@ -64,9 +65,7 @@ class BulkRangeQueries
                 auto const delta{state->location - locations[index]};
                 EXPECT_FLOAT_EQ(distances[match], size(delta));
                 auto const direction{native_math::safe_normal(delta, 1.e-8f)};
-                EXPECT_FLOAT_EQ(directions[match].x(), direction.x());
-                EXPECT_FLOAT_EQ(directions[match].y(), direction.y());
-                EXPECT_FLOAT_EQ(directions[match].z(), direction.z());
+                EXPECT_TRUE(ioj::testing::floating_point_equal(directions[match], direction));
             }
             std::ranges::sort(actual);
             std::ranges::sort(expected);

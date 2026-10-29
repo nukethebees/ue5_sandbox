@@ -40,11 +40,8 @@ TEST(WorldlessSpaceGameSimulation, PlayerShip_VersusCapital) {
     TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim&) {
         Sample sample{.player_location = player->get_physical_state().transform.location,
-                      .accessor_location = [&] {
-                          auto const location{
-                              observe_entity(harness.get_simulation(), player_id)->location};
-                          return Vector3d{location.x(), location.y(), location.z()};
-                      }()};
+                      .accessor_location =
+                          Vector3d{observe_entity(harness.get_simulation(), player_id)->location}};
         sample.fighter_target_locations = tests::copy_vectors(fighters.get_target_locations());
         sample.fighter_locations = tests::copy_vectors(fighters.get_locations());
         samples.add(harness.get_time(), std::move(sample));

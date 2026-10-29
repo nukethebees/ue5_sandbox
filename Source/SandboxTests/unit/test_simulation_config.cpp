@@ -11,6 +11,7 @@
 
 #include <SandboxCoreEngine/VectorConversion.h>
 
+#include <Algo/Compare.h>
 #include <CQTest.h>
 #include <Engine/StaticMesh.h>
 #include <Engine/StaticMeshActor.h>
@@ -281,12 +282,11 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
             runtime->capital_ships.fighter_spawn_slots_relative_transforms};
         auto const& source_transforms{
             source->capital_ships.fighter_spawn_slots_relative_transforms};
-        auto transforms_match{runtime_transforms.Num() == source_transforms.Num()};
-        for (int32 i{}; transforms_match && i < runtime_transforms.Num(); ++i) {
-            transforms_match = runtime_transforms[i].Equals(source_transforms[i]);
-        }
-        TestRunner->TestTrue(TEXT("Runtime fighter spawn transforms match their source"),
-                             transforms_match);
+        TestRunner->TestTrue(
+            TEXT("Runtime fighter spawn transforms match their source"),
+            Algo::Compare(runtime_transforms, source_transforms, [](auto const& a, auto const& b) {
+                return a.Equals(b);
+            }));
 
         ::ioj::levels::authoring::FDefinitionReader reader;
         auto const script_path{

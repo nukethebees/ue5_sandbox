@@ -94,10 +94,6 @@ void queue_damage(LevelSim& simulation,
     events.add(target, damage, instigator);
     LevelSimTestAccess::queue_direct_damage_events(simulation, events.get_const_view());
 }
-
-auto location_changed(Vector3f const before, Vector3f const after) -> bool {
-    return before.x() != after.x() || before.y() != after.y() || before.z() != after.z();
-}
 }
 
 TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
@@ -275,8 +271,7 @@ TEST(FighterLiveCap, FinalCapitalDeathOrphansFighters) {
     EXPECT_NE(after_index, EntityInstanceHandle::invalid_value)
         << "Orphaned fighter remains live while simulating";
     if (after_index != EntityInstanceHandle::invalid_value) {
-        EXPECT_TRUE(location_changed(before_location,
-                                     vector_at(fighter_simulation.get_locations(), after_index)))
+        EXPECT_NE(before_location, vector_at(fighter_simulation.get_locations(), after_index))
             << "Orphaned fighter continues moving";
     }
 

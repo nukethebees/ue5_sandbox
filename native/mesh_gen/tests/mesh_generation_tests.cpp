@@ -1,5 +1,6 @@
 #include <ioj/testing/math_diff.h>
 #include <ioj/testing/structural_diff.h>
+#include <ioj/vector_value_math.h>
 
 #include <mesh_gen/MeshGeneration.h>
 
@@ -27,24 +28,6 @@ namespace mesh_gen::tests {
 using ioj::testing::structurally_equal;
 namespace {
 
-[[nodiscard]] auto subtract(Vec3f const left, Vec3f const right) -> Vec3f {
-    return {left.x() - right.x(), left.y() - right.y(), left.z() - right.z()};
-}
-
-[[nodiscard]] auto cross(Vec3f const left, Vec3f const right) -> Vec3f {
-    return {left.y() * right.z() - left.z() * right.y(),
-            left.z() * right.x() - left.x() * right.z(),
-            left.x() * right.y() - left.y() * right.x()};
-}
-
-[[nodiscard]] auto dot(Vec3f const left, Vec3f const right) -> float {
-    return left.x() * right.x() + left.y() * right.y() + left.z() * right.z();
-}
-
-[[nodiscard]] auto length_squared(Vec3f const value) -> float {
-    return dot(value, value);
-}
-
 [[nodiscard]] auto nearly_equal(float const left, float const right, float const tolerance = 0.001f)
     -> bool {
     return std::abs(left - right) <= tolerance;
@@ -52,9 +35,7 @@ namespace {
 
 [[nodiscard]] auto nearly_equal(Vec3f const left, Vec3f const right, float const tolerance = 0.001f)
     -> bool {
-    return nearly_equal(left.x(), right.x(), tolerance) &&
-           nearly_equal(left.y(), right.y(), tolerance) &&
-           nearly_equal(left.z(), right.z(), tolerance);
+    return ioj::almost_equal(left, right, tolerance);
 }
 
 struct Bounds {
@@ -69,12 +50,8 @@ struct Bounds {
 [[nodiscard]] auto bounds_of(MeshData const& mesh) -> Bounds {
     Bounds bounds;
     for (auto const position : mesh.positions) {
-        bounds.minimum.x() = std::min(bounds.minimum.x(), position.x());
-        bounds.minimum.y() = std::min(bounds.minimum.y(), position.y());
-        bounds.minimum.z() = std::min(bounds.minimum.z(), position.z());
-        bounds.maximum.x() = std::max(bounds.maximum.x(), position.x());
-        bounds.maximum.y() = std::max(bounds.maximum.y(), position.y());
-        bounds.maximum.z() = std::max(bounds.maximum.z(), position.z());
+        bounds.minimum = ioj::component_min(bounds.minimum, position);
+        bounds.maximum = ioj::component_max(bounds.maximum, position);
     }
     return bounds;
 }
@@ -82,18 +59,11 @@ struct Bounds {
 void expect_valid_geometry(MeshData const& mesh) {
     ASSERT_TRUE(is_valid_mesh_data(mesh));
     for (auto const normal : mesh.normals) {
-        EXPECT_TRUE(std::isfinite(normal.x()));
-        EXPECT_TRUE(std::isfinite(normal.y()));
-        EXPECT_TRUE(std::isfinite(normal.z()));
-        EXPECT_TRUE(nearly_equal(length_squared(normal), 1.0f));
+        EXPECT_TRUE(ioj::is_finite(normal));
+        EXPECT_TRUE(nearly_equal(ioj::size_squared(normal), 1.0f));
     }
     for (auto const uv : mesh.uvs) {
-        EXPECT_TRUE(std::isfinite(uv.x()));
-        EXPECT_TRUE(std::isfinite(uv.y()));
-        EXPECT_GE(uv.x(), 0.0f);
-        EXPECT_LE(uv.x(), 1.0f);
-        EXPECT_GE(uv.y(), 0.0f);
-        EXPECT_LE(uv.y(), 1.0f);
+        EXPECT_EQ(uv, ioj::clamped(uv, {}, {1.0f, 1.0f}));
     }
 
     auto const triangle_count{mesh.indices.size() / 3};
@@ -104,9 +74,9 @@ void expect_valid_geometry(MeshData const& mesh) {
         auto const first{mesh.positions[first_index]};
         auto const second{mesh.positions[second_index]};
         auto const third{mesh.positions[third_index]};
-        auto const unreal_front_normal{cross(subtract(third, first), subtract(second, first))};
-        EXPECT_GT(length_squared(unreal_front_normal), 0.0f);
-        EXPECT_GT(dot(unreal_front_normal, mesh.normals[first_index]), 0.0f);
+        auto const unreal_front_normal{ioj::cross(third - first, second - first)};
+        EXPECT_GT(ioj::size_squared(unreal_front_normal), 0.0f);
+        EXPECT_GT(ioj::dot(unreal_front_normal, mesh.normals[first_index]), 0.0f);
     }
 }
 
@@ -276,9 +246,7 @@ TEST(AssemblyGeneration, AppendsOffsetsAndTransformsBuffers) {
     ASSERT_EQ(assembly.positions.size(), 48);
     ASSERT_EQ(assembly.indices.size(), 72);
     EXPECT_EQ(assembly.indices[36], box.indices[0] + 24);
-    EXPECT_TRUE(
-        nearly_equal(assembly.positions[24],
-                     {box.positions[0].x() + 100.0f, box.positions[0].y(), box.positions[0].z()}));
+    EXPECT_TRUE(nearly_equal(assembly.positions[24], box.positions[0] + Vec3f{100.0f, 0.0f, 0.0f}));
 
     MeshData source;
     source.positions.push_back({1.0f, 0.0f, 0.0f});
