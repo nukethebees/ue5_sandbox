@@ -371,8 +371,6 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
             }
         }
     }
-    prepared_level_.Reset();
-
     bool const automatic{
         start_mode == EOrchestratorStartMode::Automatic ||
         start_mode == EOrchestratorStartMode::AuthoredLevel ||

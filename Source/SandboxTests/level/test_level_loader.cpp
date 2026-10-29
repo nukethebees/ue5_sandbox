@@ -305,6 +305,10 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
                    TEXT("Headless startup has no presentation state"));
     checks.is_true(orchestrator.get_player_ship_simulation() == nullptr,
                    TEXT("Playerless battle does not create a dummy player simulation"));
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+    checks.is_true(orchestrator.get_level_definition().metadata().id.value ==
+                       definition->metadata().id.value,
+                   TEXT("Authored definition remains available after startup"));
 }
 
 void FLevelLoaderCameraScenario::check_runtime() {
