@@ -76,41 +76,32 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
         (void)slate_widget;
         widget->ActivateWidget();
 
-        auto* const resume_button{
-            Cast<ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("resume_button")))};
-        auto* const overview_button{
-            Cast<ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("overview_button")))};
-        auto* const forces_button{
-            Cast<ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("forces_button")))};
-        auto* const combat_button{
-            Cast<ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("combat_button")))};
-        auto* const telemetry_button{
-            Cast<ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("telemetry_button")))};
-        auto* const audio_button{
-            Cast<ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("audio_button")))};
-        auto* const controls_button{
-            Cast<ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("controls_button")))};
-        auto* const return_button{Cast<ioj::UMenuButtonWidget>(
-            widget->GetWidgetFromName(TEXT("return_to_level_select_button")))};
-        auto* const quit_button{
-            Cast<ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("quit_button")))};
-        auto* const page_heading{Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("page_heading")))};
+        auto const get_button{[widget](FName const name) {
+            return Cast<ioj::UMenuButtonWidget>(widget->GetWidgetFromName(name));
+        }};
+        auto const get_text{[widget](FName const name) {
+            return Cast<UTextBlock>(widget->GetWidgetFromName(name));
+        }};
+        auto* const resume_button{get_button(TEXT("resume_button"))};
+        auto* const overview_button{get_button(TEXT("overview_button"))};
+        auto* const forces_button{get_button(TEXT("forces_button"))};
+        auto* const combat_button{get_button(TEXT("combat_button"))};
+        auto* const telemetry_button{get_button(TEXT("telemetry_button"))};
+        auto* const audio_button{get_button(TEXT("audio_button"))};
+        auto* const controls_button{get_button(TEXT("controls_button"))};
+        auto* const return_button{get_button(TEXT("return_to_level_select_button"))};
+        auto* const quit_button{get_button(TEXT("quit_button"))};
+        auto* const page_heading{get_text(TEXT("page_heading"))};
         auto* const page_switcher{
             Cast<UWidgetSwitcher>(widget->GetWidgetFromName(TEXT("page_switcher")))};
         auto* const options_widget{widget->get_options_widget()};
-        auto* const elapsed_time_value{
-            Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("elapsed_time_value")))};
-        auto* const entities_spawned_value{
-            Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("entities_spawned_value")))};
-        auto* const entities_active_value{
-            Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("entities_active_value")))};
-        auto* const entities_destroyed_value{
-            Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("entities_destroyed_value")))};
-        auto* const kills_value{Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("kills_value")))};
-        auto* const lasers_fired_value{
-            Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("lasers_fired_value")))};
-        auto* const lasers_active_value{
-            Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("lasers_active_value")))};
+        auto* const elapsed_time_value{get_text(TEXT("elapsed_time_value"))};
+        auto* const entities_spawned_value{get_text(TEXT("entities_spawned_value"))};
+        auto* const entities_active_value{get_text(TEXT("entities_active_value"))};
+        auto* const entities_destroyed_value{get_text(TEXT("entities_destroyed_value"))};
+        auto* const kills_value{get_text(TEXT("kills_value"))};
+        auto* const lasers_fired_value{get_text(TEXT("lasers_fired_value"))};
+        auto* const lasers_active_value{get_text(TEXT("lasers_active_value"))};
         auto* const telemetry_graph_host{
             Cast<UNativeWidgetHost>(widget->GetWidgetFromName(TEXT("telemetry_graph_host")))};
         auto* const forces_table{
@@ -143,41 +134,33 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
                                  IsValid(Cast<UScrollBox>(widget->GetWidgetFromName(page_name))));
         }
 
+        auto const check_text{[this](UTextBlock const* const block,
+                                     TCHAR const* const expected,
+                                     TCHAR const* const description) {
+            TestRunner->TestEqual(description, block->GetText().ToString(), expected);
+        }};
         TestRunner->TestTrue(TEXT("Overview is active initially"),
                              widget->get_active_tab() == ioj::EPauseMenuTab::Overview);
         TestRunner->TestTrue(TEXT("Resume is the deterministic initial focus target"),
                              widget->GetDesiredFocusTarget() == resume_button);
-        TestRunner->TestEqual(TEXT("Overview heading is displayed"),
-                              page_heading->GetText().ToString(),
-                              TEXT("Overview"));
-        TestRunner->TestEqual(TEXT("Elapsed time is formatted for display"),
-                              elapsed_time_value->GetText().ToString(),
-                              TEXT("1:02:03"));
-        TestRunner->TestEqual(TEXT("Spawned entity count is displayed"),
-                              entities_spawned_value->GetText().ToString(),
-                              TEXT("25"));
-        TestRunner->TestEqual(TEXT("Active entity count is displayed"),
-                              entities_active_value->GetText().ToString(),
-                              TEXT("17"));
-        TestRunner->TestEqual(TEXT("Destroyed entity count is displayed"),
-                              entities_destroyed_value->GetText().ToString(),
-                              TEXT("8"));
-        TestRunner->TestEqual(
-            TEXT("Kill count is displayed"), kills_value->GetText().ToString(), TEXT("6"));
+        check_text(page_heading, TEXT("Overview"), TEXT("Overview heading is displayed"));
+        check_text(
+            elapsed_time_value, TEXT("1:02:03"), TEXT("Elapsed time is formatted for display"));
+        check_text(entities_spawned_value, TEXT("25"), TEXT("Spawned entity count is displayed"));
+        check_text(entities_active_value, TEXT("17"), TEXT("Active entity count is displayed"));
+        check_text(
+            entities_destroyed_value, TEXT("8"), TEXT("Destroyed entity count is displayed"));
+        check_text(kills_value, TEXT("6"), TEXT("Kill count is displayed"));
 
         forces_button->OnClicked().Broadcast();
         TestRunner->TestTrue(TEXT("Forces button activates Forces"),
                              widget->get_active_tab() == ioj::EPauseMenuTab::Forces);
-        TestRunner->TestEqual(TEXT("Forces heading is displayed"),
-                              page_heading->GetText().ToString(),
-                              TEXT("Forces"));
+        check_text(page_heading, TEXT("Forces"), TEXT("Forces heading is displayed"));
         auto* const fighter_count{
             Cast<UTextBlock>(forces_table->GetWidgetFromName(TEXT("entity_value_3_1")))};
         TestRunner->TestTrue(TEXT("Detailed fighter count is available"), IsValid(fighter_count));
         if (IsValid(fighter_count)) {
-            TestRunner->TestEqual(TEXT("Detailed fighter count is current"),
-                                  fighter_count->GetText().ToString(),
-                                  TEXT("12"));
+            check_text(fighter_count, TEXT("12"), TEXT("Detailed fighter count is current"));
         }
 
         combat_button->OnClicked().Broadcast();
@@ -190,12 +173,10 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Top-killer data is available"), IsValid(top_kills));
         TestRunner->TestTrue(TEXT("Team-kill data is available"), IsValid(turret_kills));
         if (IsValid(top_kills)) {
-            TestRunner->TestEqual(
-                TEXT("Top-killer data is current"), top_kills->GetText().ToString(), TEXT("5"));
+            check_text(top_kills, TEXT("5"), TEXT("Top-killer data is current"));
         }
         if (IsValid(turret_kills)) {
-            TestRunner->TestEqual(
-                TEXT("Team-kill data is current"), turret_kills->GetText().ToString(), TEXT("3"));
+            check_text(turret_kills, TEXT("3"), TEXT("Team-kill data is current"));
         }
 
         telemetry_button->OnClicked().Broadcast();
@@ -204,12 +185,8 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Telemetry page is displayed"),
                               page_switcher->GetActiveWidgetIndex(),
                               static_cast<int32>(ioj::EPauseMenuTab::Telemetry));
-        TestRunner->TestEqual(TEXT("Fired laser count is displayed"),
-                              lasers_fired_value->GetText().ToString(),
-                              TEXT("120"));
-        TestRunner->TestEqual(TEXT("Active laser count is displayed"),
-                              lasers_active_value->GetText().ToString(),
-                              TEXT("4"));
+        check_text(lasers_fired_value, TEXT("120"), TEXT("Fired laser count is displayed"));
+        check_text(lasers_active_value, TEXT("4"), TEXT("Active laser count is displayed"));
 
         auto* const telemetry_graph{
             static_cast<SGraphPlot*>(telemetry_graph_host->GetContent().Get())};
@@ -242,9 +219,8 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
             ioj::FPauseMenuData time_data;
             time_data.telemetry.elapsed_seconds = ioj::Duration::make(seconds);
             widget->prepare_for_open(*pause_action, MoveTemp(time_data));
-            TestRunner->TestEqual(TEXT("Elapsed-time boundary is formatted correctly"),
-                                  elapsed_time_value->GetText().ToString(),
-                                  expected);
+            check_text(
+                elapsed_time_value, expected, TEXT("Elapsed-time boundary is formatted correctly"));
         }};
         check_elapsed_time(0.0, TEXT("00:00"));
         check_elapsed_time(59.0, TEXT("00:59"));

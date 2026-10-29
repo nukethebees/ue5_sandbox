@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cmath>
 #include <format>
+#include <iterator>
 #include <limits>
 #include <utility>
 
@@ -14,6 +15,23 @@ using namespace generation;
 using namespace noise;
 
 namespace {
+template <typename Sample>
+auto generate_pixels(std::int32_t const width,
+                     std::int32_t const height,
+                     Pixel const fill,
+                     Sample sample) -> GeneratedImage {
+    auto image{make_image(width, height, fill)};
+    if (!image.is_valid()) {
+        return image;
+    }
+    for (std::int32_t y{}; y < height; ++y) {
+        for (std::int32_t x{}; x < width; ++x) {
+            image.pixels[y * width + x] = sample(x, y);
+        }
+    }
+    return image;
+}
+
 void chamfer_distance_transform(std::vector<float>& distances,
                                 std::int32_t const width,
                                 std::int32_t const height) {
@@ -245,22 +263,17 @@ auto generate_radial_gradient(RadialGradientParameters const& parameters) -> Gen
         return invalid_image(("Radial radii must satisfy 0 <= inner_radius < outer_radius."));
     }
 
-    auto image{make_image(parameters.width, parameters.height, transparent)};
-    if (!image.is_valid()) {
-        return image;
-    }
-
-    for (std::int32_t y{0}; y < parameters.height; ++y) {
-        for (std::int32_t x{0}; x < parameters.width; ++x) {
+    return generate_pixels(
+        parameters.width,
+        parameters.height,
+        transparent,
+        [&](std::int32_t const x, std::int32_t const y) {
             auto const distance{normalized_distance(x, y, parameters.width, parameters.height)};
             auto const value{
                 1.0f - smooth_step(parameters.inner_radius, parameters.outer_radius, distance)};
-            image.pixels[y * parameters.width + x] = grayscale_mask(value);
-        }
-    }
-    return image;
+            return grayscale_mask(value);
+        });
 }
-
 auto generate_ring_mask(RingMaskParameters const& parameters) -> GeneratedImage {
     if (parameters.radius < 0.0f || parameters.thickness <= 0.0f || parameters.falloff < 0.0f) {
         return invalid_image(
@@ -402,28 +415,22 @@ auto generate_noise(NoiseParameters const& parameters) -> GeneratedImage {
                               "[1, 16], and persistence in [0, 1]."));
     }
 
-    auto image{make_image(parameters.width, parameters.height, black)};
-    if (!image.is_valid()) {
-        return image;
-    }
-
-    for (std::int32_t y{0}; y < parameters.height; ++y) {
-        for (std::int32_t x{0}; x < parameters.width; ++x) {
-            auto const value{fractal_noise_sample(static_cast<float>(x),
-                                                  static_cast<float>(y),
-                                                  parameters.width,
-                                                  parameters.height,
-                                                  parameters.seed,
-                                                  parameters.base_scale,
-                                                  parameters.octave_count,
-                                                  parameters.persistence,
-                                                  parameters.tileable)};
-            image.pixels[y * parameters.width + x] = grayscale(value, 255);
-        }
-    }
-    return image;
+    return generate_pixels(parameters.width,
+                           parameters.height,
+                           black,
+                           [&](std::int32_t const x, std::int32_t const y) {
+                               auto const value{fractal_noise_sample(static_cast<float>(x),
+                                                                     static_cast<float>(y),
+                                                                     parameters.width,
+                                                                     parameters.height,
+                                                                     parameters.seed,
+                                                                     parameters.base_scale,
+                                                                     parameters.octave_count,
+                                                                     parameters.persistence,
+                                                                     parameters.tileable)};
+                               return grayscale(value, 255);
+                           });
 }
-
 auto generate_domain_warped_noise(DomainWarpedNoiseParameters const& parameters) -> GeneratedImage {
     if (parameters.base_scale <= 0.0f || parameters.warp_scale <= 0.0f ||
         parameters.warp_strength < 0.0f || parameters.base_octave_count <= 0 ||
@@ -435,52 +442,41 @@ auto generate_domain_warped_noise(DomainWarpedNoiseParameters const& parameters)
                               "persistence in [0, 1]."));
     }
 
-    auto image{make_image(parameters.width, parameters.height, black)};
-    if (!image.is_valid()) {
-        return image;
-    }
-
-    for (std::int32_t y{0}; y < parameters.height; ++y) {
-        for (std::int32_t x{0}; x < parameters.width; ++x) {
-            auto const warp_x{fractal_noise_sample(static_cast<float>(x),
-                                                   static_cast<float>(y),
-                                                   parameters.width,
-                                                   parameters.height,
-                                                   parameters.warp_seed,
-                                                   parameters.warp_scale,
-                                                   parameters.warp_octave_count,
-                                                   parameters.persistence,
-                                                   parameters.tileable) *
-                                  2.0f -
-                              1.0f};
-            auto const warp_y{fractal_noise_sample(static_cast<float>(x),
-                                                   static_cast<float>(y),
-                                                   parameters.width,
-                                                   parameters.height,
-                                                   parameters.warp_seed ^ 0xA511E9B3u,
-                                                   parameters.warp_scale,
-                                                   parameters.warp_octave_count,
-                                                   parameters.persistence,
-                                                   parameters.tileable) *
-                                  2.0f -
-                              1.0f};
-            auto const sample_x{static_cast<float>(x) + warp_x * parameters.warp_strength};
-            auto const sample_y{static_cast<float>(y) + warp_y * parameters.warp_strength};
-            auto const value{fractal_noise_sample(sample_x,
-                                                  sample_y,
-                                                  parameters.width,
-                                                  parameters.height,
-                                                  parameters.base_seed,
-                                                  parameters.base_scale,
-                                                  parameters.base_octave_count,
-                                                  parameters.persistence,
-                                                  parameters.tileable)};
-            image.pixels[y * parameters.width + x] = grayscale(value, 255);
-        }
-    }
-    return image;
+    return generate_pixels(parameters.width,
+                           parameters.height,
+                           black,
+                           [&](std::int32_t const x, std::int32_t const y) {
+                               auto const x_float{static_cast<float>(x)};
+                               auto const y_float{static_cast<float>(y)};
+                               auto const warp{[&](std::uint32_t const seed) {
+                                   return fractal_noise_sample(x_float,
+                                                               y_float,
+                                                               parameters.width,
+                                                               parameters.height,
+                                                               seed,
+                                                               parameters.warp_scale,
+                                                               parameters.warp_octave_count,
+                                                               parameters.persistence,
+                                                               parameters.tileable) *
+                                              2.0f -
+                                          1.0f;
+                               }};
+                               auto const warp_x{warp(parameters.warp_seed)};
+                               auto const warp_y{warp(parameters.warp_seed ^ 0xA511E9B3u)};
+                               auto const sample_x{x_float + warp_x * parameters.warp_strength};
+                               auto const sample_y{y_float + warp_y * parameters.warp_strength};
+                               auto const value{fractal_noise_sample(sample_x,
+                                                                     sample_y,
+                                                                     parameters.width,
+                                                                     parameters.height,
+                                                                     parameters.base_seed,
+                                                                     parameters.base_scale,
+                                                                     parameters.base_octave_count,
+                                                                     parameters.persistence,
+                                                                     parameters.tileable)};
+                               return grayscale(value, 255);
+                           });
 }
-
 auto generate_curl_noise_flow(CurlNoiseFlowParameters const& parameters) -> GeneratedImage {
     if (!std::isfinite(parameters.base_scale) || parameters.base_scale <= 0.0f ||
         parameters.octave_count <= 0 || parameters.octave_count > 16 ||
@@ -1014,22 +1010,23 @@ auto describe_request(GenerationRequest const& request) -> std::string {
             output_name = "signed_distance";
             break;
     }
-    return description +
-           std::format("; invert={}; contrast={:.6g}; threshold_enabled={}; "
-                       "threshold={:.6g}; threshold_softness={:.6g}; output={}; "
-                       "normal_strength={:.6g}; normal_wrap={}; "
-                       "distance_threshold={:.6g}; distance_range={:.6g}; distance_wrap={}",
-                       request.post_process.invert,
-                       request.post_process.contrast,
-                       request.post_process.threshold_enabled,
-                       request.post_process.threshold,
-                       request.post_process.threshold_softness,
-                       output_name,
-                       request.post_process.normal_strength,
-                       request.post_process.normal_wrap,
-                       request.post_process.distance_threshold,
-                       request.post_process.distance_range,
-                       request.post_process.distance_wrap);
+    std::format_to(std::back_inserter(description),
+                   "; invert={}; contrast={:.6g}; threshold_enabled={}; "
+                   "threshold={:.6g}; threshold_softness={:.6g}; output={}; "
+                   "normal_strength={:.6g}; normal_wrap={}; "
+                   "distance_threshold={:.6g}; distance_range={:.6g}; distance_wrap={}",
+                   request.post_process.invert,
+                   request.post_process.contrast,
+                   request.post_process.threshold_enabled,
+                   request.post_process.threshold,
+                   request.post_process.threshold_softness,
+                   output_name,
+                   request.post_process.normal_strength,
+                   request.post_process.normal_wrap,
+                   request.post_process.distance_threshold,
+                   request.post_process.distance_range,
+                   request.post_process.distance_wrap);
+    return description;
 }
 
 }

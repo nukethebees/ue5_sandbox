@@ -104,42 +104,6 @@ auto summarize(TArray<double> samples) -> FSummary {
     };
 }
 
-void append_summary(FString& output,
-                    TCHAR const* renderer,
-                    TCHAR const* metric,
-                    TCHAR const* unit,
-                    TCHAR const* mode,
-                    TCHAR const* visibility,
-                    TCHAR const* bounds,
-                    TCHAR const* custom_data,
-                    TCHAR const* workload,
-                    int32 const instance_count,
-                    int32 const updated_instance_count,
-                    double const update_percentage,
-                    TArray<double> const& samples) {
-    if (samples.IsEmpty()) {
-        return;
-    }
-
-    auto const summary{summarize(samples)};
-    output += FString::Printf(TEXT("%s,%s,%s,%s,%s,%s,%d,%d,%.3f,%s,%s,%d,%.6f,%.6f,%.6f,%.6f\n"),
-                              renderer,
-                              mode,
-                              visibility,
-                              bounds,
-                              custom_data,
-                              workload,
-                              instance_count,
-                              updated_instance_count,
-                              update_percentage,
-                              metric,
-                              unit,
-                              samples.Num(),
-                              summary.minimum_ms,
-                              summary.median_ms,
-                              summary.percentile_95_ms,
-                              summary.maximum_ms);
-}
 } // namespace
 
 ASandboxISMCBenchmarkActor::ASandboxISMCBenchmarkActor() {
@@ -1130,19 +1094,27 @@ bool ASandboxISMCBenchmarkActor::save_report() const {
                           TCHAR const* metric,
                           TCHAR const* unit,
                           TArray<double> const& samples) {
-        append_summary(csv,
-                       renderer,
-                       metric,
-                       unit,
-                       *mode_name,
-                       *visibility_name,
-                       *bounds_name,
-                       *custom_data_name,
-                       *workload,
-                       instance_count,
-                       updated_instance_count,
-                       update_percentage_,
-                       samples);
+        if (samples.IsEmpty()) {
+            return;
+        }
+        auto const summary{summarize(samples)};
+        csv += FString::Printf(TEXT("%s,%s,%s,%s,%s,%s,%d,%d,%.3f,%s,%s,%d,%.6f,%.6f,%.6f,%.6f\n"),
+                               renderer,
+                               *mode_name,
+                               *visibility_name,
+                               *bounds_name,
+                               *custom_data_name,
+                               *workload,
+                               instance_count,
+                               updated_instance_count,
+                               update_percentage_,
+                               metric,
+                               unit,
+                               samples.Num(),
+                               summary.minimum_ms,
+                               summary.median_ms,
+                               summary.percentile_95_ms,
+                               summary.maximum_ms);
     }};
 
     append(TEXT("benchmark"), TEXT("frame"), TEXT("ms"), frame_ms_);

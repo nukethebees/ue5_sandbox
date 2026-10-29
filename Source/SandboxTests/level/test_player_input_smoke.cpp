@@ -210,6 +210,16 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                    ioj::load_ship_control_context(ioj::EShipControlScope::Starfox));
     }
 
+    auto mode_active(ioj::sim::player::FlightModelSlot const slot) {
+        return [this, slot] {
+            auto const* const ship{IsValid(controller_.Get())
+                                       ? Cast<ATestSpaceShip>(controller_->GetPawn())
+                                       : nullptr};
+            return !checks.all_passed ||
+                   (IsValid(ship) && ship->get_active_flight_model_slot() == slot);
+        };
+    }
+
     void check_active_contexts(ioj::EShipControlScope const mode) {
         auto const* const controller{controller_.Get()};
         auto const* const input{
@@ -454,16 +464,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 }
                 controller_->ConsoleCommand(TEXT("Input.+key Four"), true);
             })
-            .Until(
-                [this] {
-                    auto const* const ship{IsValid(controller_.Get())
-                                               ? Cast<ATestSpaceShip>(controller_->GetPawn())
-                                               : nullptr};
-                    return !checks.all_passed ||
-                           (IsValid(ship) && ship->get_active_flight_model_slot() ==
-                                                 ioj::sim::player::FlightModelSlot::Fourth);
-                },
-                timeout)
+            .Until(mode_active(ioj::sim::player::FlightModelSlot::Fourth), timeout)
             .Then([this] {
                 controller_->ConsoleCommand(TEXT("Input.+key Gamepad_FaceButton_Bottom"), true);
             })
@@ -566,16 +567,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
         TestCommandBuilder.Do([this] { setup(); })
             .Until([this] { return !checks.all_passed || ready(); }, timeout)
             .Then([this] { controller_->ConsoleCommand(TEXT("Input.+key Four"), true); })
-            .Until(
-                [this] {
-                    auto const* const ship{IsValid(controller_.Get())
-                                               ? Cast<ATestSpaceShip>(controller_->GetPawn())
-                                               : nullptr};
-                    return !checks.all_passed ||
-                           (IsValid(ship) && ship->get_active_flight_model_slot() ==
-                                                 ioj::sim::player::FlightModelSlot::Fourth);
-                },
-                timeout)
+            .Until(mode_active(ioj::sim::player::FlightModelSlot::Fourth), timeout)
             .Then([this] {
                 controller_->ConsoleCommand(TEXT("Input.-key Four"), true);
                 check_active_contexts(ioj::EShipControlScope::Gunship);
@@ -686,16 +678,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 settings->ApplySettings();
                 controller_->ConsoleCommand(TEXT("Input.+key Two"), true);
             })
-            .Until(
-                [this] {
-                    auto const* const ship{IsValid(controller_.Get())
-                                               ? Cast<ATestSpaceShip>(controller_->GetPawn())
-                                               : nullptr};
-                    return !checks.all_passed ||
-                           (IsValid(ship) && ship->get_active_flight_model_slot() ==
-                                                 ioj::sim::player::FlightModelSlot::Second);
-                },
-                timeout)
+            .Until(mode_active(ioj::sim::player::FlightModelSlot::Second), timeout)
             .Then([this] {
                 controller_->ConsoleCommand(TEXT("Input.-key Two"), true);
                 controller_->ConsoleCommand(TEXT("Input.+key Gamepad_RightX 1.0"), true);
@@ -715,16 +698,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 controller_->ConsoleCommand(TEXT("Input.-key Gamepad_LeftX"), true);
                 controller_->ConsoleCommand(TEXT("Input.+key Four"), true);
             })
-            .Until(
-                [this] {
-                    auto const* const ship{IsValid(controller_.Get())
-                                               ? Cast<ATestSpaceShip>(controller_->GetPawn())
-                                               : nullptr};
-                    return !checks.all_passed ||
-                           (IsValid(ship) && ship->get_active_flight_model_slot() ==
-                                                 ioj::sim::player::FlightModelSlot::Fourth);
-                },
-                timeout)
+            .Until(mode_active(ioj::sim::player::FlightModelSlot::Fourth), timeout)
             .Then([this] {
                 controller_->ConsoleCommand(TEXT("Input.-key Four"), true);
                 controller_->ConsoleCommand(TEXT("Input.+key Gamepad_FaceButton_Bottom"), true);

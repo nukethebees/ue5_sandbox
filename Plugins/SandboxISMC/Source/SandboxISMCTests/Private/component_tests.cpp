@@ -7,6 +7,34 @@
 #include "UObject/UObjectGlobals.h"
 #include <CQTest.h>
 
+namespace {
+template <typename Fill>
+void submit_test_snapshot(
+    USandboxISMCComponent& component,
+    int32 const count,
+    Fill&& fill,
+    ESandboxISMCParallelism const parallelism = ESandboxISMCParallelism::Sequential) {
+    component.set_instances(count,
+                            FBox3f{FVector3f{-1000, -1000, -1000}, FVector3f{5000, 1000, 1000}},
+                            parallelism,
+                            Forward<Fill>(fill));
+}
+
+void write_indexed_instances(FSandboxISMCInstanceChunkWriter& chunk) {
+    auto const [first_index, chunk_count]{chunk.range()};
+    sandbox_ismc_tests::write_transforms(
+        chunk, chunk_count, [&](int32 local_index, FVector3f& position, FQuat4f& rotation) {
+            auto const instance_index{static_cast<float>(first_index + local_index)};
+            position = {instance_index, 0.0f, 0.0f};
+            rotation = FQuat4f::Identity;
+            auto custom_data{chunk.custom_data(local_index)};
+            custom_data[0] = instance_index;
+            custom_data[1] = 0.5f;
+            custom_data[2] = 1.0f;
+        });
+}
+}
+
 TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
 {
     TEST_METHOD(RefreshesPropertyAssignedAndReplacementMeshBounds)
@@ -22,13 +50,9 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
             return;
         }
         auto const verify_bounds{[&](UStaticMesh& mesh) {
-            component->set_instances(
-                1,
-                FBox3f{FVector3f{-1000, -1000, -1000}, FVector3f{5000, 1000, 1000}},
-                ESandboxISMCParallelism::Sequential,
-                [](FSandboxISMCInstanceChunkWriter& chunk) {
-                    sandbox_ismc_tests::write_transform(chunk);
-                });
+            submit_test_snapshot(*component, 1, [](FSandboxISMCInstanceChunkWriter& chunk) {
+                sandbox_ismc_tests::write_transform(chunk);
+            });
             auto const bounds{component->CalcBounds(FTransform::Identity)};
             TestRunner->TestTrue(TEXT("Bounds use the configured mesh origin"),
                                  bounds.Origin.Equals(mesh.GetBounds().Origin, 0.25));
@@ -71,22 +95,18 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
         TestRunner->TestEqual(
             TEXT("Reserve does not publish instances"), component->get_instance_count(), 0);
         auto const submit{[&](int32 count) {
-            component->set_instances(
-                count,
-                FBox3f{FVector3f{-1000, -1000, -1000}, FVector3f{5000, 1000, 1000}},
-                ESandboxISMCParallelism::Sequential,
-                [](FSandboxISMCInstanceChunkWriter& chunk) {
-                    sandbox_ismc_tests::write_transforms(
-                        chunk,
-                        chunk.num(),
-                        [&](int32 index, FVector3f& output_position, FQuat4f& output_rotation) {
-                            output_position = FVector3f::ZeroVector;
-                            output_rotation = FQuat4f::Identity;
-                            for (auto& value : chunk.custom_data(index)) {
-                                value = 1.0f;
-                            }
-                        });
-                });
+            submit_test_snapshot(*component, count, [](FSandboxISMCInstanceChunkWriter& chunk) {
+                sandbox_ismc_tests::write_transforms(
+                    chunk,
+                    chunk.num(),
+                    [&](int32 index, FVector3f& output_position, FQuat4f& output_rotation) {
+                        output_position = FVector3f::ZeroVector;
+                        output_rotation = FQuat4f::Identity;
+                        for (auto& value : chunk.custom_data(index)) {
+                            value = 1.0f;
+                        }
+                    });
+            });
         }};
         for (int32 slot{}; slot < 3; ++slot) {
             submit(1);
@@ -123,11 +143,8 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
 
         TArray<int32> chunk_offsets;
         TArray<int32> chunk_counts;
-        component->set_instances(
-            instance_count,
-            FBox3f{FVector3f{-1000, -1000, -1000}, FVector3f{5000, 1000, 1000}},
-            ESandboxISMCParallelism::Sequential,
-            [&](FSandboxISMCInstanceChunkWriter& chunk) {
+        submit_test_snapshot(
+            *component, instance_count, [&](FSandboxISMCInstanceChunkWriter& chunk) {
                 auto const [first_index, chunk_count]{chunk.range()};
                 chunk_offsets.Add(first_index);
                 chunk_counts.Add(chunk_count);
@@ -170,24 +187,9 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
         component->set_num_custom_data_floats(3);
 
         constexpr int32 instance_count{2050};
-        component->set_instances(
-            instance_count,
-            FBox3f{FVector3f{-1000, -1000, -1000}, FVector3f{5000, 1000, 1000}},
-            ESandboxISMCParallelism::Sequential,
-            [&](FSandboxISMCInstanceChunkWriter& chunk) {
-                auto const [first_index, chunk_count]{chunk.range()};
-                sandbox_ismc_tests::write_transforms(
-                    chunk,
-                    chunk_count,
-                    [&](int32 local_index, FVector3f& output_position, FQuat4f& output_rotation) {
-                        auto const instance_index{first_index + local_index};
-                        output_position = {static_cast<float>(instance_index), 0.0f, 0.0f};
-                        output_rotation = FQuat4f::Identity;
-                        auto custom_data{chunk.custom_data(local_index)};
-                        custom_data[0] = static_cast<float>(instance_index);
-                        custom_data[1] = 0.5f;
-                        custom_data[2] = 1.0f;
-                    });
+        submit_test_snapshot(
+            *component, instance_count, [](FSandboxISMCInstanceChunkWriter& chunk) {
+                write_indexed_instances(chunk);
             });
 
         auto const metrics{component->get_update_metrics()};
@@ -223,28 +225,10 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
 
         auto const submit{[&](int32 count) {
             auto written_count{0};
-            component->set_instances(
-                count,
-                FBox3f{FVector3f{-1000, -1000, -1000}, FVector3f{5000, 1000, 1000}},
-                ESandboxISMCParallelism::Sequential,
-                [&](FSandboxISMCInstanceChunkWriter& chunk) {
-                    auto const [first_index, chunk_count]{chunk.range()};
-                    written_count += chunk_count;
-                    sandbox_ismc_tests::write_transforms(
-                        chunk,
-                        chunk_count,
-                        [&](int32 local_index,
-                            FVector3f& output_position,
-                            FQuat4f& output_rotation) {
-                            auto const instance_index{first_index + local_index};
-                            output_position = {static_cast<float>(instance_index), 0.0f, 0.0f};
-                            output_rotation = FQuat4f::Identity;
-                            auto custom_data{chunk.custom_data(local_index)};
-                            custom_data[0] = static_cast<float>(instance_index);
-                            custom_data[1] = 0.5f;
-                            custom_data[2] = 1.0f;
-                        });
-                });
+            submit_test_snapshot(*component, count, [&](FSandboxISMCInstanceChunkWriter& chunk) {
+                written_count += chunk.range().count;
+                write_indexed_instances(chunk);
+            });
             TestRunner->TestEqual(TEXT("Only live instances are written"), written_count, count);
             TestRunner->TestEqual(TEXT("Retained capacity does not affect the live count"),
                                   component->get_instance_count(),
@@ -291,10 +275,9 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
         constexpr int32 instance_count{4097};
         TArray<uint8> visited;
         visited.SetNumZeroed(instance_count);
-        component->set_instances(
+        submit_test_snapshot(
+            *component,
             instance_count,
-            FBox3f{FVector3f{-1000, -1000, -1000}, FVector3f{5000, 1000, 1000}},
-            ESandboxISMCParallelism::Parallel,
             [&](FSandboxISMCInstanceChunkWriter& chunk) {
                 auto const [first_index, chunk_count]{chunk.range()};
                 sandbox_ismc_tests::write_transforms(
@@ -310,7 +293,8 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                         custom_data[1] = static_cast<float>(first_index);
                         custom_data[2] = static_cast<float>(local_index);
                     });
-            });
+            },
+            ESandboxISMCParallelism::Parallel);
 
         TestRunner->TestTrue(TEXT("Parallel custom-data chunks cover every instance exactly once"),
                              Algo::AllOf(visited, [](uint8 count) { return count == 1; }));
@@ -331,26 +315,18 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
         }
 
         component->set_static_mesh(*cube);
-        component->set_instances(
-            4,
-            FBox3f{FVector3f{-1000, -1000, -1000}, FVector3f{5000, 1000, 1000}},
-            ESandboxISMCParallelism::Sequential,
-            [&](FSandboxISMCInstanceChunkWriter& chunk) {
-                sandbox_ismc_tests::write_transforms(
-                    chunk,
-                    chunk.num(),
-                    [&](int32 index, FVector3f& output_position, FQuat4f& output_rotation) {
-                        output_position = {static_cast<float>(index), 0.0f, 0.0f};
-                        output_rotation = FQuat4f::Identity;
-                    });
-            });
-        component->set_instances(
-            1,
-            FBox3f{FVector3f{-1000, -1000, -1000}, FVector3f{5000, 1000, 1000}},
-            ESandboxISMCParallelism::Sequential,
-            [&](FSandboxISMCInstanceChunkWriter& chunk) {
-                sandbox_ismc_tests::write_transform(chunk, FVector3f{100.0f, 0.0f, 0.0f});
-            });
+        submit_test_snapshot(*component, 4, [&](FSandboxISMCInstanceChunkWriter& chunk) {
+            sandbox_ismc_tests::write_transforms(
+                chunk,
+                chunk.num(),
+                [&](int32 index, FVector3f& output_position, FQuat4f& output_rotation) {
+                    output_position = {static_cast<float>(index), 0.0f, 0.0f};
+                    output_rotation = FQuat4f::Identity;
+                });
+        });
+        submit_test_snapshot(*component, 1, [&](FSandboxISMCInstanceChunkWriter& chunk) {
+            sandbox_ismc_tests::write_transform(chunk, FVector3f{100.0f, 0.0f, 0.0f});
+        });
         TestRunner->TestEqual(TEXT("The newest snapshot replaces the previous pending snapshot"),
                               component->get_instance_count(),
                               1);
@@ -363,20 +339,16 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                               0.0);
 
         auto callback_invoked{false};
-        component->set_instances(
+        submit_test_snapshot(
+            *component,
             0,
-            FBox3f{FVector3f{-1000, -1000, -1000}, FVector3f{5000, 1000, 1000}},
-            ESandboxISMCParallelism::Parallel,
-            [&](FSandboxISMCInstanceChunkWriter&) { callback_invoked = true; });
+            [&](FSandboxISMCInstanceChunkWriter&) { callback_invoked = true; },
+            ESandboxISMCParallelism::Parallel);
         TestRunner->TestFalse(TEXT("Empty snapshots do not invoke the callback"), callback_invoked);
 
-        component->set_instances(
-            1,
-            FBox3f{FVector3f{-1000, -1000, -1000}, FVector3f{5000, 1000, 1000}},
-            ESandboxISMCParallelism::Sequential,
-            [&](FSandboxISMCInstanceChunkWriter& chunk) {
-                sandbox_ismc_tests::write_transform(chunk);
-            });
+        submit_test_snapshot(*component, 1, [&](FSandboxISMCInstanceChunkWriter& chunk) {
+            sandbox_ismc_tests::write_transform(chunk);
+        });
         component->set_static_mesh(*sphere);
         TestRunner->TestEqual(
             TEXT("Changing the mesh clears the snapshot"), component->get_instance_count(), 0);
@@ -405,10 +377,9 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
         }
 
         auto const submit{[&](USandboxISMCComponent& target, ESandboxISMCParallelism parallelism) {
-            target.set_instances(
+            submit_test_snapshot(
+                target,
                 instance_count,
-                FBox3f{FVector3f{-1000, -1000, -1000}, FVector3f{5000, 1000, 1000}},
-                parallelism,
                 [&](FSandboxISMCInstanceChunkWriter& chunk) {
                     auto const [first_index, chunk_count]{chunk.range()};
                     sandbox_ismc_tests::write_transforms(
@@ -421,7 +392,8 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                             output_position = positions[source_index];
                             output_rotation = rotations[source_index].Quaternion();
                         });
-                });
+                },
+                parallelism);
         }};
         submit(*sequential, ESandboxISMCParallelism::Sequential);
         submit(*parallel, ESandboxISMCParallelism::Parallel);
@@ -556,10 +528,9 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
             for (auto const count : counts) {
                 TArray<uint8> visited;
                 visited.SetNumZeroed(count);
-                component->set_instances(
+                submit_test_snapshot(
+                    *component,
                     count,
-                    FBox3f{FVector3f{-1000, -1000, -1000}, FVector3f{5000, 1000, 1000}},
-                    policy,
                     [&](FSandboxISMCInstanceChunkWriter& chunk) {
                         auto const [first_index, chunk_count]{chunk.range()};
                         sandbox_ismc_tests::write_transforms(
@@ -573,7 +544,8 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                                 output_position = {static_cast<float>(source_index), 0.0f, 0.0f};
                                 output_rotation = FQuat4f::Identity;
                             });
-                    });
+                    },
+                    policy);
 
                 TestRunner->TestTrue(
                     TEXT("Every source row is visited exactly once"),
