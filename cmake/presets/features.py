@@ -12,7 +12,7 @@ UNITY = Feature(
     display_name="Unity",
     cache_variables={
         "CMAKE_UNITY_BUILD": True,
-        "CMAKE_UNITY_BUILD_BATCH_SIZE": "32",
+        "CMAKE_UNITY_BUILD_BATCH_SIZE": "8",
     },
 )
 

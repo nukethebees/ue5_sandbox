@@ -61,7 +61,9 @@ Unreal Engine 5.8 project.
 # Builds
 
 * Drive all builds, including UBT, through CMake. Read [CMake style](cmake/STYLE.md) before editing CMake files.
-* Use non-unity builds for normal development work.
+* Use the native unity presets for normal development work; their default batch size is 8.
+  Preserve target-specific unity exclusions and use non-unity builds for include-isolation
+  checks or unity-specific failures. Keep Unreal's configured unity policy unless measuring it separately.
 * Set `IOJ_ROOT` to the absolute shared-tools/temp root. The maintainer installs stable tools
   under `%IOJ_ROOT%\tools\<ToolName>\bin`; invoke them from PATH. Never auto-install/update tools
   or construct local fallbacks. Report missing commands; use `--version` for manual source/install

@@ -54,7 +54,7 @@
       ],
       "cacheVariables": {
         "CMAKE_UNITY_BUILD": true,
-        "CMAKE_UNITY_BUILD_BATCH_SIZE": "32"
+        "CMAKE_UNITY_BUILD_BATCH_SIZE": "8"
       }
     },
     {
@@ -80,7 +80,7 @@
       "cacheVariables": {
         "IOJ_ENABLE_ASAN": true,
         "CMAKE_UNITY_BUILD": true,
-        "CMAKE_UNITY_BUILD_BATCH_SIZE": "32"
+        "CMAKE_UNITY_BUILD_BATCH_SIZE": "8"
       },
       "environment": {
         "ASAN_OPTIONS": "detect_odr_violation=0"
@@ -105,7 +105,7 @@
       ],
       "cacheVariables": {
         "CMAKE_UNITY_BUILD": true,
-        "CMAKE_UNITY_BUILD_BATCH_SIZE": "32"
+        "CMAKE_UNITY_BUILD_BATCH_SIZE": "8"
       }
     },
     {
@@ -131,7 +131,7 @@
       "cacheVariables": {
         "IOJ_ENABLE_ASAN": true,
         "CMAKE_UNITY_BUILD": true,
-        "CMAKE_UNITY_BUILD_BATCH_SIZE": "32"
+        "CMAKE_UNITY_BUILD_BATCH_SIZE": "8"
       },
       "environment": {
         "ASAN_OPTIONS": "detect_odr_violation=0"
@@ -156,7 +156,7 @@
       ],
       "cacheVariables": {
         "CMAKE_UNITY_BUILD": true,
-        "CMAKE_UNITY_BUILD_BATCH_SIZE": "32"
+        "CMAKE_UNITY_BUILD_BATCH_SIZE": "8"
       }
     },
     {
@@ -178,7 +178,7 @@
       ],
       "cacheVariables": {
         "CMAKE_UNITY_BUILD": true,
-        "CMAKE_UNITY_BUILD_BATCH_SIZE": "32"
+        "CMAKE_UNITY_BUILD_BATCH_SIZE": "8"
       }
     },
     {
