@@ -53,6 +53,16 @@ void expect_matching_edges(GeneratedImage const& image) {
     }
 }
 
+auto expect_seeded(auto generate, auto& parameters, auto seed_member, std::uint32_t changed_seed)
+    -> GeneratedImage {
+    auto first{generate(parameters)};
+    EXPECT_PRED_FORMAT2(structurally_equal, first, generate(parameters));
+    parameters.*seed_member = changed_seed;
+    auto const changed{generate(parameters)};
+    EXPECT_NE(first.pixels, changed.pixels);
+    return first;
+}
+
 auto pixel_checksum(GeneratedImage const& image) -> std::uint32_t {
     std::uint32_t checksum{2166136261u};
     for (auto const& pixel : image.pixels) {
@@ -307,12 +317,8 @@ TEST(ShockwaveFlipbookGenerator, FramesExpandFadeAndLeaveUnusedCellsEmpty) {
 
 TEST(SeededGenerators, StarfieldIsDeterministicSparseAndSeeded) {
     StarfieldParameters parameters{.width = 96, .height = 64, .seed = 12345u, .star_count = 40};
-    auto const first{generate_starfield(parameters)};
-    EXPECT_PRED_FORMAT2(structurally_equal, first, generate_starfield(parameters));
-    parameters.seed = 54321u;
-    auto const different_seed{generate_starfield(parameters)};
-
-    EXPECT_NE(first.pixels, different_seed.pixels);
+    auto const first{
+        expect_seeded(generate_starfield, parameters, &StarfieldParameters::seed, 54321u)};
 
     std::int32_t illuminated_pixel_count{0};
     for (auto const& pixel : first.pixels) {
@@ -330,12 +336,7 @@ TEST(SeededGenerators, NoiseIsDeterministicSeededNonconstantAndSpatiallyCoherent
                                .base_scale = 32.0f,
                                .octave_count = 4,
                                .persistence = 0.5f};
-    auto const first{generate_noise(parameters)};
-    EXPECT_PRED_FORMAT2(structurally_equal, first, generate_noise(parameters));
-    parameters.seed = 6789u;
-    auto const different_seed{generate_noise(parameters)};
-
-    EXPECT_NE(first.pixels, different_seed.pixels);
+    auto const first{expect_seeded(generate_noise, parameters, &NoiseParameters::seed, 6789u)};
 
     std::uint8_t minimum_value{255};
     std::uint8_t maximum_value{0};
@@ -390,12 +391,10 @@ TEST(DomainWarpedNoiseGenerator, IsDeterministicSeededNonconstantAndTileable) {
                                            .warp_octave_count = 3,
                                            .persistence = 0.55f,
                                            .tileable = true};
-    auto const first{generate_domain_warped_noise(parameters)};
-    EXPECT_PRED_FORMAT2(structurally_equal, first, generate_domain_warped_noise(parameters));
-    parameters.warp_seed += 1;
-    auto const changed_warp_seed{generate_domain_warped_noise(parameters)};
-
-    EXPECT_NE(first.pixels, changed_warp_seed.pixels);
+    auto const first{expect_seeded(generate_domain_warped_noise,
+                                   parameters,
+                                   &DomainWarpedNoiseParameters::warp_seed,
+                                   parameters.warp_seed + 1)};
     expect_matching_edges(first);
 
     auto const values{std::ranges::minmax(first.pixels, {}, &Pixel::red)};
@@ -412,12 +411,8 @@ TEST(CurlNoiseFlowGenerator, IsDeterministicNormalizedAndTileable) {
                                        .derivative_step = 1.5f,
                                        .strength = 0.8f,
                                        .tileable = true};
-    auto const first{generate_curl_noise_flow(parameters)};
-    EXPECT_PRED_FORMAT2(structurally_equal, first, generate_curl_noise_flow(parameters));
-    parameters.seed += 1;
-    auto const changed_seed{generate_curl_noise_flow(parameters)};
-
-    EXPECT_NE(first.pixels, changed_seed.pixels);
+    auto const first{expect_seeded(
+        generate_curl_noise_flow, parameters, &CurlNoiseFlowParameters::seed, parameters.seed + 1)};
     expect_matching_edges(first);
 
     for (auto const pixel : first.pixels) {
@@ -451,12 +446,8 @@ TEST(CellularNoiseGenerator, IsDeterministicSeededAndTileable) {
                                        .jitter = 0.8f,
                                        .mode = CellularMode::Distance,
                                        .tileable = true};
-    auto const first{generate_cellular_noise(parameters)};
-    EXPECT_PRED_FORMAT2(structurally_equal, first, generate_cellular_noise(parameters));
-    parameters.seed += 1;
-    auto const changed_seed{generate_cellular_noise(parameters)};
-
-    EXPECT_NE(first.pixels, changed_seed.pixels);
+    auto const first{expect_seeded(
+        generate_cellular_noise, parameters, &CellularNoiseParameters::seed, parameters.seed + 1)};
     expect_matching_edges(first);
 
     auto const values{std::ranges::minmax(first.pixels, {}, &Pixel::red)};
@@ -491,14 +482,8 @@ TEST(CellularNoiseGenerator, BorderModeProducesLinesAndCellInteriors) {
                                               .falloff = 1.25f,
                                               .tileable = true})};
 
-    std::int32_t bright_pixel_count{0};
-    std::int32_t dark_pixel_count{0};
-    for (auto const pixel : image.pixels) {
-        bright_pixel_count += pixel.red >= 220 ? 1 : 0;
-        dark_pixel_count += pixel.red <= 20 ? 1 : 0;
-    }
-    EXPECT_GT(bright_pixel_count, 0);
-    EXPECT_GT(dark_pixel_count, 0);
+    EXPECT_TRUE(std::ranges::any_of(image.pixels, [](Pixel pixel) { return pixel.red >= 220; }));
+    EXPECT_TRUE(std::ranges::any_of(image.pixels, [](Pixel pixel) { return pixel.red <= 20; }));
 }
 
 TEST(NormalMapGeneration, FlatHeightProducesNeutralNormal) {
@@ -584,15 +569,11 @@ TEST(SignedDistanceGeneration, TileableMasksProduceDeterministicSeamlessDistance
 
     expect_matching_edges(first);
 
-    std::int32_t inside_pixel_count{};
-    std::int32_t outside_pixel_count{};
     for (auto const pixel : first.pixels) {
-        inside_pixel_count += pixel.red > 128 ? 1 : 0;
-        outside_pixel_count += pixel.red < 128 ? 1 : 0;
         EXPECT_EQ(pixel, (Pixel{pixel.red, pixel.red, pixel.red, 255}));
     }
-    EXPECT_GT(inside_pixel_count, 0);
-    EXPECT_GT(outside_pixel_count, 0);
+    EXPECT_TRUE(std::ranges::any_of(first.pixels, [](Pixel pixel) { return pixel.red > 128; }));
+    EXPECT_TRUE(std::ranges::any_of(first.pixels, [](Pixel pixel) { return pixel.red < 128; }));
 }
 
 TEST(HexGridGenerator, ProducesCleanLineAndBackgroundRegions) {
@@ -602,16 +583,12 @@ TEST(HexGridGenerator, ProducesCleanLineAndBackgroundRegions) {
                                         .line_thickness = 1.5f,
                                         .falloff = 1.0f})};
 
-    std::int32_t bright_pixel_count{0};
-    std::int32_t dark_pixel_count{0};
     for (auto const& pixel : image.pixels) {
-        bright_pixel_count += pixel.red >= 220 ? 1 : 0;
-        dark_pixel_count += pixel.red <= 20 ? 1 : 0;
         EXPECT_EQ(pixel.red, pixel.alpha);
     }
 
-    EXPECT_GT(bright_pixel_count, 0);
-    EXPECT_GT(dark_pixel_count, 0);
+    EXPECT_TRUE(std::ranges::any_of(image.pixels, [](Pixel pixel) { return pixel.red >= 220; }));
+    EXPECT_TRUE(std::ranges::any_of(image.pixels, [](Pixel pixel) { return pixel.red <= 20; }));
 }
 
 }

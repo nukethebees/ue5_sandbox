@@ -7,18 +7,30 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <utility>
 
 namespace ioj::sim::tests {
+template <typename Enum, std::size_t Count>
+void expect_enum_contracts(std::array<Enum, Count> const& values,
+                           std::array<char const*, Count> const& names) {
+    for (std::size_t index{}; index < Count; ++index) {
+        SCOPED_TRACE(names[index]);
+        EXPECT_EQ(to_serialized_string(values[index]), names[index]);
+        EXPECT_EQ(std::to_underlying(values[index]), index);
+    }
+}
+
 TEST(NativeEnums, EntityTypeNamesAndSerializedNamesRemainStable) {
     for (auto const value : EnumTraits<EntityType>::values) {
         EXPECT_FALSE(to_string(value).empty());
     }
-    EXPECT_EQ(to_serialized_string(EntityType::PlayerShip), "player_ship");
-    EXPECT_EQ(to_serialized_string(EntityType::Turret), "turret");
-    EXPECT_EQ(to_serialized_string(EntityType::CapitalShip), "capital_ship");
-    EXPECT_EQ(to_serialized_string(EntityType::Fighter), "capital_ship_fighter");
-    EXPECT_EQ(to_serialized_string(EntityType::TubeSpinner), "tube_spinner");
+    using enum EntityType;
+    expect_enum_contracts(
+        std::array{PlayerShip, Turret, CapitalShip, Fighter, TubeSpinner},
+        std::array{
+            "player_ship", "turret", "capital_ship", "capital_ship_fighter", "tube_spinner"});
+    EXPECT_EQ(enum_count<EntityType>(), 5U);
 }
 
 TEST(NativeEnums, TeamSerializedNamesRoundTrip) {
@@ -26,12 +38,10 @@ TEST(NativeEnums, TeamSerializedNamesRoundTrip) {
         EXPECT_FALSE(to_string(value).empty());
         EXPECT_EQ(try_parse_serialized_team(to_serialized_string(value)), value);
     }
-    EXPECT_EQ(to_serialized_string(Team::White), "white");
-    EXPECT_EQ(to_serialized_string(Team::Red), "red");
-    EXPECT_EQ(to_serialized_string(Team::Green), "green");
-    EXPECT_EQ(to_serialized_string(Team::Blue), "blue");
-    EXPECT_EQ(to_serialized_string(Team::Orange), "orange");
-    EXPECT_EQ(to_serialized_string(Team::Yellow), "yellow");
+    using enum Team;
+    expect_enum_contracts(std::array{White, Red, Green, Blue, Orange, Yellow},
+                          std::array{"white", "red", "green", "blue", "orange", "yellow"});
+    EXPECT_EQ(enum_count<Team>(), 6U);
     EXPECT_FALSE(try_parse_serialized_team("count").has_value());
 }
 
@@ -43,48 +53,24 @@ TEST(NativeEnums, MissionAndTelemetrySerializedNamesRoundTrip) {
     for (auto const value : {TeamOutcome::Victory, TeamOutcome::Defeat}) {
         EXPECT_EQ(try_parse_serialized_team_outcome(to_serialized_string(value)), value);
     }
-    for (auto const value : {LevelTelemetryRunEndReason::MissionSucceeded,
-                             LevelTelemetryRunEndReason::MissionFailed,
-                             LevelTelemetryRunEndReason::BattleResolved,
-                             LevelTelemetryRunEndReason::DurationReached,
-                             LevelTelemetryRunEndReason::OrchestratorReset,
-                             LevelTelemetryRunEndReason::WorldEnd}) {
+    using enum LevelTelemetryRunEndReason;
+    std::array const reasons{MissionSucceeded,
+                             MissionFailed,
+                             BattleResolved,
+                             DurationReached,
+                             OrchestratorReset,
+                             WorldEnd};
+    for (auto const value : reasons) {
         EXPECT_EQ(try_parse_serialized_level_telemetry_run_end_reason(to_serialized_string(value)),
                   value);
     }
-    EXPECT_EQ(to_serialized_string(LevelTelemetryRunEndReason::MissionSucceeded),
-              "mission_succeeded");
-    EXPECT_EQ(to_serialized_string(LevelTelemetryRunEndReason::MissionFailed), "mission_failed");
-    EXPECT_EQ(to_serialized_string(LevelTelemetryRunEndReason::BattleResolved), "battle_resolved");
-    EXPECT_EQ(to_serialized_string(LevelTelemetryRunEndReason::DurationReached),
-              "duration_reached");
-    EXPECT_EQ(to_serialized_string(LevelTelemetryRunEndReason::OrchestratorReset),
-              "orchestrator_reset");
-    EXPECT_EQ(to_serialized_string(LevelTelemetryRunEndReason::WorldEnd), "world_end");
-}
-
-TEST(NativeEnums, PersistedEnumNumericValuesRemainStable) {
-    EXPECT_EQ(std::to_underlying(EntityType::PlayerShip), 0U);
-    EXPECT_EQ(std::to_underlying(EntityType::Turret), 1U);
-    EXPECT_EQ(std::to_underlying(EntityType::CapitalShip), 2U);
-    EXPECT_EQ(std::to_underlying(EntityType::Fighter), 3U);
-    EXPECT_EQ(std::to_underlying(EntityType::TubeSpinner), 4U);
-    EXPECT_EQ(enum_count<EntityType>(), 5U);
-
-    EXPECT_EQ(std::to_underlying(Team::White), 0U);
-    EXPECT_EQ(std::to_underlying(Team::Red), 1U);
-    EXPECT_EQ(std::to_underlying(Team::Green), 2U);
-    EXPECT_EQ(std::to_underlying(Team::Blue), 3U);
-    EXPECT_EQ(std::to_underlying(Team::Orange), 4U);
-    EXPECT_EQ(std::to_underlying(Team::Yellow), 5U);
-    EXPECT_EQ(enum_count<Team>(), 6U);
-
-    EXPECT_EQ(std::to_underlying(LevelTelemetryRunEndReason::MissionSucceeded), 0U);
-    EXPECT_EQ(std::to_underlying(LevelTelemetryRunEndReason::MissionFailed), 1U);
-    EXPECT_EQ(std::to_underlying(LevelTelemetryRunEndReason::BattleResolved), 2U);
-    EXPECT_EQ(std::to_underlying(LevelTelemetryRunEndReason::DurationReached), 3U);
-    EXPECT_EQ(std::to_underlying(LevelTelemetryRunEndReason::OrchestratorReset), 4U);
-    EXPECT_EQ(std::to_underlying(LevelTelemetryRunEndReason::WorldEnd), 5U);
+    expect_enum_contracts(reasons,
+                          std::array{"mission_succeeded",
+                                     "mission_failed",
+                                     "battle_resolved",
+                                     "duration_reached",
+                                     "orchestrator_reset",
+                                     "world_end"});
 }
 
 TEST(NativeEnums, PlayerEnumsPreserveHudNamesAndFireRateCount) {

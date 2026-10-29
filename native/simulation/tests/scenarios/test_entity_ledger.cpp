@@ -92,20 +92,16 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
     harness.timeline.finish_at(0.35);
     ASSERT_TRUE(harness.run_until_timeline_finished(1.0)) << "Player-kill timeline completes";
     ASSERT_FALSE(samples.is_empty()) << "Kill samples recorded";
-    auto const& before{samples.nearest_value(0.05)};
-    auto const& after{samples.nearest_value(0.3)};
-    auto const& final{samples.nearest_value(0.35)};
-    EXPECT_EQ(0, before.player_kills) << "Player kills are zero before event";
-    EXPECT_EQ(0, before.total_kills) << "Total kills are zero before event";
-    EXPECT_EQ(initial_alive_count, before.alive_count) << "All entities are alive before event";
-    EXPECT_EQ(expected_kills, after.player_kills) << "Kills are attributed to player ship";
-    EXPECT_EQ(expected_kills, after.total_kills) << "Total kill count matches killed entities";
-    EXPECT_EQ(initial_alive_count - expected_kills, after.alive_count)
-        << "Alive count reflects killed entities";
-    EXPECT_EQ(expected_kills, final.player_kills) << "Player kill count remains correct";
-    EXPECT_EQ(expected_kills, final.total_kills) << "Total kill count remains correct";
-    EXPECT_EQ(initial_alive_count - expected_kills, final.alive_count)
-        << "Alive count remains correct";
+    auto const expect_sample{[&](double const time, std::int32_t const kills) {
+        SCOPED_TRACE(time);
+        auto const& sample{samples.nearest_value(time)};
+        EXPECT_EQ(sample.player_kills, kills);
+        EXPECT_EQ(sample.total_kills, kills);
+        EXPECT_EQ(sample.alive_count, initial_alive_count - kills);
+    }};
+    expect_sample(0.05, 0);
+    expect_sample(0.3, expected_kills);
+    expect_sample(0.35, expected_kills);
 }
 
 TEST(WorldlessSpaceGameSimulation, EntityLedger_CountsTeams) {
