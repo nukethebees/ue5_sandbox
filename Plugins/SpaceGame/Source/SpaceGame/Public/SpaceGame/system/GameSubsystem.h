@@ -129,6 +129,10 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     /* **************************************** */
     // Lifecycle and services
     /* **************************************** */
+    UGameSubsystem(FObjectInitializer const& object_initializer = FObjectInitializer::Get());
+    UGameSubsystem(FVTableHelper& helper);
+    ~UGameSubsystem() override;
+
     virtual void Initialize(FSubsystemCollectionBase& collection) override;
     virtual void Deinitialize() override;
 

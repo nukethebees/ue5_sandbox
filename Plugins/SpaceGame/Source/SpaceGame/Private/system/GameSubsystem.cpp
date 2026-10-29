@@ -7,6 +7,7 @@
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/memory/GameMemoryBootstrap.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <ioj/sim/memory/game_memory.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
 
 #include <Engine/GameInstance.h>
@@ -81,6 +82,11 @@ auto query_platform_capabilities() -> FGameCapabilities {
 /* **************************************** */
 // Lifecycle and services
 /* **************************************** */
+UGameSubsystem::UGameSubsystem(FObjectInitializer const& object_initializer)
+    : Super(object_initializer) {}
+UGameSubsystem::UGameSubsystem(FVTableHelper& helper)
+    : Super(helper) {}
+UGameSubsystem::~UGameSubsystem() = default;
 auto UGameSubsystem::get(UGameInstance const* const game_instance) -> UGameSubsystem* {
     return IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>() : nullptr;
 }
