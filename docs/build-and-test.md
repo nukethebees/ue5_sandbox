@@ -54,6 +54,24 @@ this does not stop the shared background process or delete cached data.
 
 ### Compiler build profiling
 
+The editor target uses unity builds with a 64 KiB source-size target and an eight-file
+game-module threshold. Adaptive unity and private PCHs remain enabled. Native unity
+presets use batches of eight source files.
+
+Worker limits are machine-specific. On the Ryzen 9 9950X3D / 128 GB development machine,
+`Saved/UnrealBuildTool/BuildConfiguration.xml` uses the following section inside its
+`Configuration` element to allow 32 actions while retaining Unreal's memory limits:
+
+```xml
+<ParallelExecutor>
+  <ProcessorCountMultiplier>2.0</ProcessorCountMultiplier>
+</ParallelExecutor>
+```
+
+This ignored local setting must be applied separately in a new worktree. The measured
+clean Unreal executor time fell from 125.64 s (non-unity, 16 workers) to 46.37 s
+(unity, 32 workers), with caches bypassed; these are individual runs.
+
 Use `coj profile-build native` for native build timings and ClangBuildAnalyzer output,
 or `coj profile-build unreal` for a clean DebugGame editor capture including detailed
 UBA tracing. Results remain under `.local/build-profiles/`; temporary Unreal profiling

@@ -11,6 +11,9 @@ public class SandboxEditorTarget : TargetRules
         DefaultBuildSettings = BuildSettingsVersion.Latest;
         IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
         CppStandard = CppStandardVersion.Latest;
+        bUseUnityBuild = true;
+        NumIncludedBytesPerUnityCPP = 65536;
+        MinGameModuleSourceFilesForUnityBuild = 8;
         ExtraModuleNames.AddRange(new string[] { "Sandbox", "SandboxEditor" });
 
     }
