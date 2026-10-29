@@ -1,5 +1,6 @@
 #include "PSOPrecache.h"
 #include "SandboxISMCComponent.h"
+#include "transform_test_helpers.h"
 
 #include "AssetCompilingManager.h"
 #include "Components/MapTestSpawner.h"
@@ -78,18 +79,12 @@ TEST_CLASS(SandboxISMCRenderContracts, "SandboxISMC.RenderTests")
             unsupported->bAutomaticallySetUsageInEditor = false;
             component->SetMaterial(0, unsupported);
             component->SetCastShadow(true);
-            component->set_instances(
-                1,
-                FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
-                ESandboxISMCParallelism::Sequential,
-                [](FSandboxISMCInstanceChunkWriter& chunk) {
-                    {
-                        FVector3f const transform_positions[]{FVector3f::ZeroVector};
-                        FQuat4f const transform_rotations[]{FQuat4f::Identity};
-                        chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
-                            transform_positions, transform_rotations);
-                    }
-                });
+            component->set_instances(1,
+                                     FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
+                                     ESandboxISMCParallelism::Sequential,
+                                     [](FSandboxISMCInstanceChunkWriter& chunk) {
+                                         sandbox_ismc_tests::write_transform(chunk);
+                                     });
             component->RegisterComponent();
             world.SendAllEndOfFrameUpdates();
 
@@ -209,18 +204,12 @@ TEST_CLASS(SandboxISMCRenderContracts, "SandboxISMC.RenderTests")
             actor->SetRootComponent(component);
             actor->AddInstanceComponent(component);
             component->set_static_mesh(*NewObject<UStaticMesh>(component));
-            component->set_instances(
-                1,
-                FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
-                ESandboxISMCParallelism::Sequential,
-                [](FSandboxISMCInstanceChunkWriter& chunk) {
-                    {
-                        FVector3f const transform_positions[]{FVector3f::ZeroVector};
-                        FQuat4f const transform_rotations[]{FQuat4f::Identity};
-                        chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
-                            transform_positions, transform_rotations);
-                    }
-                });
+            component->set_instances(1,
+                                     FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
+                                     ESandboxISMCParallelism::Sequential,
+                                     [](FSandboxISMCInstanceChunkWriter& chunk) {
+                                         sandbox_ismc_tests::write_transform(chunk);
+                                     });
             TestRunner->AddExpectedError(
                 TEXT("requires initialized, non-empty, inlined, non-optional LOD0"),
                 EAutomationExpectedErrorFlags::Contains,
@@ -237,18 +226,12 @@ TEST_CLASS(SandboxISMCRenderContracts, "SandboxISMC.RenderTests")
             FAssetCompilingManager::Get().FinishAllCompilation();
             mesh->GetRenderData()->LODResources[0].bBuffersInlined = false;
             component->set_static_mesh(*mesh);
-            component->set_instances(
-                1,
-                FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
-                ESandboxISMCParallelism::Sequential,
-                [](FSandboxISMCInstanceChunkWriter& chunk) {
-                    {
-                        FVector3f const transform_positions[]{FVector3f::ZeroVector};
-                        FQuat4f const transform_rotations[]{FQuat4f::Identity};
-                        chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
-                            transform_positions, transform_rotations);
-                    }
-                });
+            component->set_instances(1,
+                                     FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
+                                     ESandboxISMCParallelism::Sequential,
+                                     [](FSandboxISMCInstanceChunkWriter& chunk) {
+                                         sandbox_ismc_tests::write_transform(chunk);
+                                     });
             TestRunner->AddExpectedError(
                 TEXT("requires initialized, non-empty, inlined, non-optional LOD0"),
                 EAutomationExpectedErrorFlags::Contains,

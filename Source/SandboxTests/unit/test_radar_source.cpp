@@ -14,38 +14,6 @@
 #include <vector>
 
 namespace ioj::test_radar_source {
-auto make_view(tests::FDisplayEntityTestData const& entities,
-               std::span<sim::EntityId const> ids = {})
-    -> std::vector<presentation::AgentDisplayBatch> {
-    std::vector<presentation::AgentDisplayBatch> batches;
-    auto const count{entities.num()};
-    batches.reserve(count);
-    for (int32 i{}; i < count; ++i) {
-        batches.push_back({entities.entity_types[static_cast<std::size_t>(i)],
-                           ids.empty() ? ids : ids.subspan(i, 1),
-                           entities.motion.get_const_view(i, 1).view_locations(),
-                           entities.motion.get_const_view(i, 1).view_velocities(),
-                           sim::HealthConstView{std::span{entities.healths}.subspan(i, 1)},
-                           std::span{entities.teams}.subspan(i, 1)});
-    }
-    return batches;
-}
-
-void add_entity(tests::FDisplayEntityTestData& entities,
-                FVector3f const location,
-                ETestTeam const team,
-                sim::EntityType const type,
-                bool const alive = true) {
-    auto const index{entities.num()};
-    entities.add_defaulted(1);
-    set_vector(entities.motion.get_view().view_locations(), index, Vector3f{location});
-    entities.teams[index] = to_native(team);
-    entities.entity_types[index] = type;
-    auto const owner{
-        sim::EntityId(static_cast<std::uint32_t>(index), entities.entity_types[index])};
-    entities.add_health(index, owner, alive ? 100 : 0);
-}
-
 auto glyph(FRadarInstance const& instance) -> ERadarGlyph {
     return static_cast<ERadarGlyph>(instance.packed_glyph_and_flags & 0xffu);
 }
@@ -75,54 +43,67 @@ auto nonlinear_settings() -> ioj::settings::Radar {
     settings.combat_display_radius = 0.45f;
     return ioj::presentation::sanitize_radar_settings(settings);
 }
+struct FRadarScene {
+    void add_entity(FVector3f const location,
+                    ETestTeam const team,
+                    sim::EntityType const type,
+                    bool const alive = true) {
+        auto const index{entities.num()};
+        entities.add_defaulted(1);
+        set_vector(entities.motion.get_view().view_locations(), index, Vector3f{location});
+        entities.teams[index] = to_native(team);
+        entities.entity_types[index] = type;
+        entities.add_health(
+            index, sim::EntityId(static_cast<std::uint32_t>(index), type), alive ? 100 : 0);
+        objective_roles.Add(EEntityOverlayObjectiveRole::None);
+    }
+
+    auto collect(FRadarFrame& frame,
+                 settings::Radar const& settings = linear_settings(),
+                 FTransform const& transform = FTransform::Identity) const {
+        return collect_radar_instances(entities.make_batches(entities.entity_ids),
+                                       objective_roles,
+                                       colours,
+                                       transform,
+                                       entities.entity_ids[0],
+                                       ETestTeam::Blue,
+                                       settings,
+                                       frame);
+    }
+
+    tests::FDisplayEntityTestData entities;
+    TArray<EEntityOverlayObjectiveRole> objective_roles;
+    FRadarContactColours colours;
+};
 } // namespace ioj::test_radar_source
 
 TEST_CLASS(RadarSource, "Sandbox.UnitTests")
 {
     TEST_METHOD(FiltersMapsAndOrdersContacts)
     {
-        ioj::tests::FDisplayEntityTestData entities;
-        ioj::test_radar_source::add_entity(
-            entities, FVector3f::ZeroVector, ETestTeam::Blue, ::ioj::sim::EntityType::PlayerShip);
-        ioj::test_radar_source::add_entity(
-            entities, {50.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Fighter);
-        ioj::test_radar_source::add_entity(
-            entities, {0.0f, 50.0f, 25.0f}, ETestTeam::Green, ::ioj::sim::EntityType::CapitalShip);
-        ioj::test_radar_source::add_entity(
-            entities, {-50.0f, 0.0f, 0.0f}, ETestTeam::Yellow, ::ioj::sim::EntityType::Turret);
-        ioj::test_radar_source::add_entity(
-            entities, {0.0f, -50.0f, 0.0f}, ETestTeam::White, ::ioj::sim::EntityType::TubeSpinner);
-        ioj::test_radar_source::add_entity(
-            entities, {100.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Turret);
-        ioj::test_radar_source::add_entity(
-            entities, {25.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Fighter, false);
-        ioj::test_radar_source::add_entity(
-            entities, {101.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::CapitalShip);
+        ioj::test_radar_source::FRadarScene scene;
+        scene.add_entity(
+            FVector3f::ZeroVector, ETestTeam::Blue, ::ioj::sim::EntityType::PlayerShip);
+        scene.add_entity({50.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Fighter);
+        scene.add_entity(
+            {0.0f, 50.0f, 25.0f}, ETestTeam::Green, ::ioj::sim::EntityType::CapitalShip);
+        scene.add_entity({-50.0f, 0.0f, 0.0f}, ETestTeam::Yellow, ::ioj::sim::EntityType::Turret);
+        scene.add_entity(
+            {0.0f, -50.0f, 0.0f}, ETestTeam::White, ::ioj::sim::EntityType::TubeSpinner);
+        scene.add_entity({100.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Turret);
+        scene.add_entity(
+            {25.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Fighter, false);
+        scene.add_entity({101.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::CapitalShip);
 
-        std::vector<::ioj::sim::EntityId> ids;
-        for (int32 index{}; index < entities.num(); ++index) {
-            ids.push_back(::ioj::sim::EntityId(static_cast<std::uint32_t>(index),
-                                               entities.entity_types[index]));
-        }
-        TArray<EEntityOverlayObjectiveRole> objective_roles;
-        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
-        objective_roles[2] = EEntityOverlayObjectiveRole::Defend;
-        objective_roles[3] = EEntityOverlayObjectiveRole::Destroy;
-        objective_roles[7] = EEntityOverlayObjectiveRole::Defend;
+        scene.objective_roles[2] = EEntityOverlayObjectiveRole::Defend;
+        scene.objective_roles[3] = EEntityOverlayObjectiveRole::Destroy;
+        scene.objective_roles[7] = EEntityOverlayObjectiveRole::Defend;
 
-        FRadarContactColours colours;
-        colours.hostile = FLinearColor::Red;
+        scene.colours.hostile = FLinearColor::Red;
 
         FRadarFrame frame;
         auto& instances{frame.instances};
-        auto const result{collect_radar_instances(ioj::test_radar_source::make_view(entities, ids),
-                                                  objective_roles,
-                                                  colours,
-                                                  FTransform::Identity,
-                                                  ids[0],
-                                                  ETestTeam::Blue,
-                                                  ioj::test_radar_source::linear_settings(),
-                                                  frame)};
+        auto const result{scene.collect(frame)};
 
         TestRunner->TestEqual(
             TEXT("All alive non-player rows are candidates"), result.candidate_count, 6);
@@ -163,39 +144,21 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         zero_range_settings.combat_range = UE_SMALL_NUMBER;
         zero_range_settings.tactical_range = UE_SMALL_NUMBER;
         zero_range_settings.combat_display_radius = 1.0f;
-        auto const zero_range_result{
-            collect_radar_instances(ioj::test_radar_source::make_view(entities, ids),
-                                    objective_roles,
-                                    colours,
-                                    FTransform::Identity,
-                                    ids[0],
-                                    ETestTeam::Blue,
-                                    zero_range_settings,
-                                    frame)};
+        auto const zero_range_result{scene.collect(frame, zero_range_settings)};
         TestRunner->TestEqual(
             TEXT("Zero range retains only the player"), zero_range_result.visible_count, 1);
     }
 
     TEST_METHOD(UsesPlayerRelativeContactColours)
     {
-        ioj::tests::FDisplayEntityTestData entities;
-        ioj::test_radar_source::add_entity(
-            entities, FVector3f::ZeroVector, ETestTeam::Blue, ::ioj::sim::EntityType::PlayerShip);
-        ioj::test_radar_source::add_entity(
-            entities, {10.0f, 0.0f, 0.0f}, ETestTeam::Blue, ::ioj::sim::EntityType::Fighter);
-        ioj::test_radar_source::add_entity(
-            entities, {20.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::CapitalShip);
-        ioj::test_radar_source::add_entity(
-            entities, {30.0f, 0.0f, 0.0f}, ETestTeam::White, ::ioj::sim::EntityType::Turret);
+        ioj::test_radar_source::FRadarScene scene;
+        scene.add_entity(
+            FVector3f::ZeroVector, ETestTeam::Blue, ::ioj::sim::EntityType::PlayerShip);
+        scene.add_entity({10.0f, 0.0f, 0.0f}, ETestTeam::Blue, ::ioj::sim::EntityType::Fighter);
+        scene.add_entity({20.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::CapitalShip);
+        scene.add_entity({30.0f, 0.0f, 0.0f}, ETestTeam::White, ::ioj::sim::EntityType::Turret);
 
-        std::vector<::ioj::sim::EntityId> ids;
-        for (int32 index{}; index < entities.num(); ++index) {
-            ids.push_back(::ioj::sim::EntityId(static_cast<std::uint32_t>(index),
-                                               entities.entity_types[index]));
-        }
-        TArray<EEntityOverlayObjectiveRole> objective_roles;
-        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
-        FRadarContactColours colours{
+        scene.colours = FRadarContactColours{
             .friendly = FLinearColor::Blue,
             .hostile = FLinearColor::Red,
             .neutral = FLinearColor::White,
@@ -203,14 +166,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         FRadarFrame frame;
         auto& instances{frame.instances};
 
-        static_cast<void>(collect_radar_instances(ioj::test_radar_source::make_view(entities, ids),
-                                                  objective_roles,
-                                                  colours,
-                                                  FTransform::Identity,
-                                                  ids[0],
-                                                  ETestTeam::Blue,
-                                                  ioj::test_radar_source::linear_settings(),
-                                                  frame));
+        static_cast<void>(scene.collect(frame));
 
         TestRunner->TestEqual(
             TEXT("Same-team contact is friendly"), instances[0].packed_color, 0xffff0000u);
@@ -228,43 +184,21 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         auto const world_contact{
             FVector3f{player_location + no_roll_rotation.RotateVector(FVector{local_contact})}};
 
-        ioj::tests::FDisplayEntityTestData entities;
-        ioj::test_radar_source::add_entity(entities,
-                                           FVector3f{player_location},
-                                           ETestTeam::Blue,
-                                           ::ioj::sim::EntityType::PlayerShip);
-        ioj::test_radar_source::add_entity(
-            entities, world_contact, ETestTeam::Red, ::ioj::sim::EntityType::Fighter);
-        std::vector<::ioj::sim::EntityId> ids;
-        for (int32 index{}; index < entities.num(); ++index) {
-            ids.push_back(::ioj::sim::EntityId(static_cast<std::uint32_t>(index),
-                                               entities.entity_types[index]));
-        }
-        TArray<EEntityOverlayObjectiveRole> objective_roles;
-        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
-        FRadarContactColours colours;
+        ioj::test_radar_source::FRadarScene scene;
+        scene.add_entity(
+            FVector3f{player_location}, ETestTeam::Blue, ::ioj::sim::EntityType::PlayerShip);
+        scene.add_entity(world_contact, ETestTeam::Red, ::ioj::sim::EntityType::Fighter);
         FRadarFrame no_roll_frame;
         FRadarFrame rolled_frame;
         auto& no_roll_instances{no_roll_frame.instances};
         auto& rolled_instances{rolled_frame.instances};
 
-        static_cast<void>(collect_radar_instances(ioj::test_radar_source::make_view(entities, ids),
-                                                  objective_roles,
-                                                  colours,
-                                                  FTransform{no_roll_rotation, player_location},
-                                                  ids[0],
-                                                  ETestTeam::Blue,
-                                                  ioj::test_radar_source::linear_settings(),
-                                                  no_roll_frame));
-        static_cast<void>(
-            collect_radar_instances(ioj::test_radar_source::make_view(entities, ids),
-                                    objective_roles,
-                                    colours,
-                                    FTransform{FRotator{28.0, 37.0, 120.0}, player_location},
-                                    ids[0],
-                                    ETestTeam::Blue,
-                                    ioj::test_radar_source::linear_settings(),
-                                    rolled_frame));
+        static_cast<void>(scene.collect(no_roll_frame,
+                                        ioj::test_radar_source::linear_settings(),
+                                        FTransform{no_roll_rotation, player_location}));
+        static_cast<void>(scene.collect(rolled_frame,
+                                        ioj::test_radar_source::linear_settings(),
+                                        FTransform{FRotator{28.0, 37.0, 120.0}, player_location}));
 
         TestRunner->TestEqual(
             TEXT("Each orientation emits contact and player"), no_roll_instances.Num(), 2);
@@ -286,46 +220,18 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
     TEST_METHOD(ContactMappingDoesNotDependOnOtherContacts)
     {
         auto const settings{ioj::test_radar_source::nonlinear_settings()};
-        ioj::tests::FDisplayEntityTestData entities;
-        ioj::test_radar_source::add_entity(
-            entities, FVector3f::ZeroVector, ETestTeam::Blue, ::ioj::sim::EntityType::PlayerShip);
-        ioj::test_radar_source::add_entity(
-            entities, {250.0f, -80.0f, 40.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Fighter);
-        std::vector<::ioj::sim::EntityId> ids;
-        for (int32 index{}; index < entities.num(); ++index) {
-            ids.push_back(::ioj::sim::EntityId(static_cast<std::uint32_t>(index),
-                                               entities.entity_types[index]));
-        }
-        TArray<EEntityOverlayObjectiveRole> objective_roles;
-        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
-        FRadarContactColours colours;
+        ioj::test_radar_source::FRadarScene scene;
+        scene.add_entity(
+            FVector3f::ZeroVector, ETestTeam::Blue, ::ioj::sim::EntityType::PlayerShip);
+        scene.add_entity({250.0f, -80.0f, 40.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Fighter);
         FRadarFrame frame;
 
-        static_cast<void>(collect_radar_instances(ioj::test_radar_source::make_view(entities, ids),
-                                                  objective_roles,
-                                                  colours,
-                                                  FTransform::Identity,
-                                                  ids[0],
-                                                  ETestTeam::Blue,
-                                                  settings,
-                                                  frame));
+        static_cast<void>(scene.collect(frame, settings));
         auto const original_position{frame.instances[0].radar_position};
 
-        ioj::test_radar_source::add_entity(entities,
-                                           {1500.0f, 100.0f, 0.0f},
-                                           ETestTeam::Green,
-                                           ::ioj::sim::EntityType::CapitalShip);
-        ids.push_back(::ioj::sim::EntityId(static_cast<std::uint32_t>(entities.num() - 1),
-                                           entities.entity_types.back()));
-        objective_roles.Add(EEntityOverlayObjectiveRole::None);
-        static_cast<void>(collect_radar_instances(ioj::test_radar_source::make_view(entities, ids),
-                                                  objective_roles,
-                                                  colours,
-                                                  FTransform::Identity,
-                                                  ids[0],
-                                                  ETestTeam::Blue,
-                                                  settings,
-                                                  frame));
+        scene.add_entity(
+            {1500.0f, 100.0f, 0.0f}, ETestTeam::Green, ::ioj::sim::EntityType::CapitalShip);
+        static_cast<void>(scene.collect(frame, settings));
         TestRunner->TestTrue(TEXT("An unrelated contact does not move an existing contact"),
                              ioj::test_radar_source::nearly_equal(
                                  original_position, frame.instances[0].radar_position));
@@ -338,34 +244,18 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
     TEST_METHOD(FixedMaximumRangeExcludesAllOutOfRangeContacts)
     {
         auto const settings{ioj::test_radar_source::nonlinear_settings()};
-        ioj::tests::FDisplayEntityTestData entities;
-        ioj::test_radar_source::add_entity(
-            entities, FVector3f::ZeroVector, ETestTeam::Blue, ::ioj::sim::EntityType::PlayerShip);
-        ioj::test_radar_source::add_entity(
-            entities, {1999.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Fighter);
-        ioj::test_radar_source::add_entity(
-            entities, {2000.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::CapitalShip);
-        ioj::test_radar_source::add_entity(
-            entities, {1600.0f, 0.0f, 1200.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Turret);
-        std::vector<::ioj::sim::EntityId> ids;
-        for (int32 index{}; index < entities.num(); ++index) {
-            ids.push_back(::ioj::sim::EntityId(static_cast<std::uint32_t>(index),
-                                               entities.entity_types[index]));
-        }
-        TArray<EEntityOverlayObjectiveRole> objective_roles;
-        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
-        objective_roles[2] = EEntityOverlayObjectiveRole::Destroy;
-        objective_roles[3] = EEntityOverlayObjectiveRole::Defend;
+        ioj::test_radar_source::FRadarScene scene;
+        scene.add_entity(
+            FVector3f::ZeroVector, ETestTeam::Blue, ::ioj::sim::EntityType::PlayerShip);
+        scene.add_entity({1999.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Fighter);
+        scene.add_entity(
+            {2000.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::CapitalShip);
+        scene.add_entity({1600.0f, 0.0f, 1200.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Turret);
+        scene.objective_roles[2] = EEntityOverlayObjectiveRole::Destroy;
+        scene.objective_roles[3] = EEntityOverlayObjectiveRole::Defend;
         FRadarFrame frame;
 
-        auto const result{collect_radar_instances(ioj::test_radar_source::make_view(entities, ids),
-                                                  objective_roles,
-                                                  FRadarContactColours{},
-                                                  FTransform::Identity,
-                                                  ids[0],
-                                                  ETestTeam::Blue,
-                                                  settings,
-                                                  frame)};
+        auto const result{scene.collect(frame, settings)};
         TestRunner->TestEqual(TEXT("Only a contact inside the 3D maximum and player are visible"),
                               result.visible_count,
                               2);

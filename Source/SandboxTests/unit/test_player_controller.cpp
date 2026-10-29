@@ -3,6 +3,7 @@
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestEnhancedInputSubsystem.h>
+#include <SandboxTests/support/TestShipInputs.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
@@ -25,26 +26,8 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
         auto* const subsystem{NewObject<USandboxTestEnhancedInputSubsystem>(controller)};
         subsystem->initialise();
         FSpaceShipControllerInputs input;
-        input.starfox = NewObject<UInputMappingContext>(controller);
-        input.fighter = NewObject<UInputMappingContext>(controller);
-        input.skater = NewObject<UInputMappingContext>(controller);
-        input.gunship = NewObject<UInputMappingContext>(controller);
         auto* const action{NewObject<UInputAction>(controller)};
-        input.translate_forward = action;
-        input.translate_right = action;
-        input.translate_up = action;
-        input.pitch = action;
-        input.yaw = action;
-        input.roll = action;
-        input.accelerate = action;
-        input.brake = action;
-        input.boost = action;
-        input.emergency_brake = action;
-        input.fire_primary = action;
-        input.select_starfox = action;
-        input.select_fighter = action;
-        input.select_skater = action;
-        input.select_gunship = action;
+        ioj::tests::configure_ship_inputs(input, *controller, *action);
         FPlayerControllerTestAccess::prepare_input(*controller, *component, *subsystem, input);
         TestRunner->TestTrue(TEXT("Benchmark binds without possession"),
                              FPlayerControllerTestAccess::select_context(
@@ -168,26 +151,8 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
         auto* const subsystem{NewObject<USandboxTestEnhancedInputSubsystem>(controller)};
         subsystem->initialise();
         FSpaceShipControllerInputs input;
-        input.starfox = NewObject<UInputMappingContext>(controller);
-        input.fighter = NewObject<UInputMappingContext>(controller);
-        input.skater = NewObject<UInputMappingContext>(controller);
-        input.gunship = NewObject<UInputMappingContext>(controller);
         auto* const action{NewObject<UInputAction>(controller)};
-        input.translate_forward = action;
-        input.translate_right = action;
-        input.translate_up = action;
-        input.pitch = action;
-        input.yaw = action;
-        input.roll = action;
-        input.accelerate = action;
-        input.brake = action;
-        input.boost = action;
-        input.emergency_brake = action;
-        input.fire_primary = action;
-        input.select_starfox = action;
-        input.select_fighter = action;
-        input.select_skater = action;
-        input.select_gunship = action;
+        ioj::tests::configure_ship_inputs(input, *controller, *action);
         FPlayerControllerTestAccess::prepare_input(*controller, *component, *subsystem, input);
         FPlayerControllerTestAccess::prepare_completion(*controller);
         controller->Possess(ship);

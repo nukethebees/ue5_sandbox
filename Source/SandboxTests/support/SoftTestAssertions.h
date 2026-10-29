@@ -76,7 +76,7 @@ struct FSoftTestAssertions {
                    Description const& description) {
         using Element = std::remove_cvref_t<decltype(exp[0])>;
         return all_equal_impl<&TestEqualityTraits<Element>::is_equal_with_tolerance>(
-            exp, got, tolerance, description);
+            exp, got, description, tolerance);
     }
 
     /* ---------------------------------------------------------------------------- */
@@ -106,26 +106,7 @@ struct FSoftTestAssertions {
                    VectorTraits<T>::Element const tolerance,
                    Description const& description,
                    int32 const i = INDEX_NONE) {
-        auto const dist{T::Dist(lhs, rhs)};
-        auto const result{FMath::IsNearlyZero(dist, tolerance)};
-        store_result(result);
-        if (should_display_result(result)) {
-            reset_message(i);
-            message += format_message(TEXT(R"({0} 
-Check non-zero dist:
-    Distance : {1}
-    From     : {2}
-    To       : {3} 
-    Tolerance: {4})"),
-                                      description,
-                                      dist,
-                                      lhs,
-                                      rhs,
-                                      tolerance);
-            display_result(result, message);
-        }
-
-        return result;
+        return check_distance<true>(lhs, rhs, tolerance, description, i);
     }
     template <IsUnrealVector T, SoftTestDescription Description>
     bool not_dist_zero(T const& lhs,
@@ -133,26 +114,7 @@ Check non-zero dist:
                        VectorTraits<T>::Element const tolerance,
                        Description const& description,
                        int32 const i = INDEX_NONE) {
-        auto const dist{T::Dist(lhs, rhs)};
-        auto const result{!FMath::IsNearlyZero(dist, tolerance)};
-        store_result(result);
-        if (should_display_result(result)) {
-            reset_message(i);
-            message += format_message(TEXT(R"({0} 
-Check non-zero dist:
-    Distance : {1}
-    From     : {2}
-    To       : {3} 
-    Tolerance: {4})"),
-                                      description,
-                                      dist,
-                                      lhs,
-                                      rhs,
-                                      tolerance);
-            display_result(result, message);
-        }
-
-        return result;
+        return check_distance<false>(lhs, rhs, tolerance, description, i);
     }
 
     template <IsUnrealVector T, SoftTestDescription Description>
@@ -166,7 +128,7 @@ Check non-zero dist:
         store_result(result);
         if (should_display_result(result)) {
             reset_message(i);
-            message += format_message(TEXT(R"({0} 
+            message += format_message(TEXT(R"({0}
 Check dist > {1}:
     Distance : {2}
     From     : {3}
@@ -307,8 +269,8 @@ Check dist > {1}:
         return result;
     }
 
-    template <auto is_equal, typename T, SoftTestDescription Description>
-    bool all_equal_impl(T const& exp, T const& got, Description const& description) {
+    template <auto is_equal, typename T, SoftTestDescription Description, typename... Args>
+    bool all_equal_impl(T const& exp, T const& got, Description const& description, Args... args) {
         indices.Reset();
 
         auto const n_exp{num(exp)};
@@ -322,33 +284,7 @@ Check dist > {1}:
         }
 
         for (int32 i{0}; i < n_exp; ++i) {
-            if (!is_equal(exp[i], got[i])) {
-                indices.Add(i);
-            }
-        }
-
-        return display_all_equal_result(exp, got, description);
-    }
-
-    template <auto is_equal, typename T, typename Tolerance, SoftTestDescription Description>
-    bool all_equal_impl(T const& exp,
-                        T const& got,
-                        Tolerance const tolerance,
-                        Description const& description) {
-        indices.Reset();
-
-        auto const n_exp{num(exp)};
-        auto const n_got{num(got)};
-        if (n_exp != n_got) {
-            store_result(false);
-            message = format_message(
-                TEXT("{0} (Expected {1} elements, got {2})"), description, n_exp, n_got);
-            display_result(false, message);
-            return false;
-        }
-
-        for (int32 i{0}; i < n_exp; ++i) {
-            if (!is_equal(exp[i], got[i], tolerance)) {
+            if (!is_equal(exp[i], got[i], args...)) {
                 indices.Add(i);
             }
         }
@@ -380,6 +316,35 @@ Check dist > {1}:
         display_result(false, message);
 
         return false;
+    }
+
+    template <bool expect_zero, IsUnrealVector T, SoftTestDescription Description>
+    bool check_distance(T const& lhs,
+                        T const& rhs,
+                        VectorTraits<T>::Element const tolerance,
+                        Description const& description,
+                        int32 const i) {
+        auto const dist{T::Dist(lhs, rhs)};
+        auto const result{FMath::IsNearlyZero(dist, tolerance) == expect_zero};
+        store_result(result);
+        if (should_display_result(result)) {
+            reset_message(i);
+            message += format_message(TEXT(R"({0}
+Check {5} dist:
+    Distance : {1}
+    From     : {2}
+    To       : {3}
+    Tolerance: {4})"),
+                                      description,
+                                      dist,
+                                      lhs,
+                                      rhs,
+                                      tolerance,
+                                      expect_zero ? TEXT("zero") : TEXT("non-zero"));
+            display_result(result, message);
+        }
+
+        return result;
     }
 
     template <auto comparison, typename T, SoftTestDescription Description>

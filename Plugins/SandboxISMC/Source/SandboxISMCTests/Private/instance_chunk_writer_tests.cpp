@@ -1,4 +1,5 @@
 #include "SandboxISMCInstanceChunkWriter.h"
+#include "transform_test_helpers.h"
 
 #include <CQTest.h>
 
@@ -73,12 +74,7 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
                 center,
                 extent};
             FVector3f const position{10.0f, -20.0f, 30.0f};
-            {
-                FVector3f const transform_positions[]{position};
-                FQuat4f const transform_rotations[]{rotation};
-                writer.set_transforms<ESandboxISMCBoundsMode::Calculate>(transform_positions,
-                                                                         transform_rotations);
-            }
+            sandbox_ismc_tests::write_transform(writer, position, rotation);
             auto const expected{
                 local_box.TransformBy(FTransform3f{rotation, position}.ToMatrixWithScale())};
             test_vector(*TestRunner,
@@ -110,12 +106,7 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
                                            static_cast<float>(random.FRandRange(-180.0f, 180.0f)),
                                            static_cast<float>(random.FRandRange(-180.0f, 180.0f))}
                                     .Quaternion()};
-            {
-                FVector3f const transform_positions[]{position};
-                FQuat4f const transform_rotations[]{rotation};
-                writer.set_transforms<ESandboxISMCBoundsMode::Calculate>(transform_positions,
-                                                                         transform_rotations);
-            }
+            sandbox_ismc_tests::write_transform(writer, position, rotation);
             auto const& value{packed[0]};
             auto const q{ioj::ismc::unpack_quat32(value.rotation)};
             FVector3f const decoded_position{FVector3f{static_cast<float>(value.position[0]),

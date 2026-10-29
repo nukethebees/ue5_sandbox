@@ -145,8 +145,6 @@ Retract earlier completion estimates if new issues invalidate validation or requ
 * Separate related code blocks with whitespace. Make long-function control flow easy to scan
   while keeping coupled statements together. In non-trivial functions, separate distinct guards,
   validation, setup, state transitions, loops, and final publication/returns with blank lines.
-* Briefly explain hard-to-read intent or constraints in present imperative comments, for example,
-  "Preserve the original encoding when replacing the setting."
 * Group large classes' member declarations and definitions by category using:
   ```cpp
   /* **************************************** */

@@ -1,4 +1,5 @@
 #include "SandboxISMCComponent.h"
+#include "transform_test_helpers.h"
 
 #include "Components/MapTestSpawner.h"
 #include "Components/SceneComponent.h"
@@ -53,22 +54,20 @@ TEST_CLASS(SandboxISMCRenderLifecycle, "SandboxISMC.RenderTests")
                     ESandboxISMCParallelism::Auto,
                     [=](FSandboxISMCInstanceChunkWriter& chunk) {
                         auto const [first_index, chunk_count]{chunk.range()};
-                        TArray<FVector3f, TInlineAllocator<1024>> transform_positions;
-                        transform_positions.SetNumUninitialized(chunk.num());
-                        TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
-                        transform_rotations.SetNumUninitialized(chunk.num());
-                        for (auto local_index = 0; local_index < chunk_count; ++local_index) {
-                            auto const instance_index{first_index + local_index};
-                            transform_positions[local_index] = {
-                                static_cast<float>(instance_index), value, 0.0f};
-                            transform_rotations[local_index] = FQuat4f::Identity;
-                            auto custom_data{chunk.custom_data(local_index)};
-                            custom_data[0] = value;
-                            custom_data[1] = static_cast<float>(instance_index);
-                            custom_data[2] = 1.0f;
-                        }
-                        chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
-                            transform_positions, transform_rotations);
+                        sandbox_ismc_tests::write_transforms(
+                            chunk,
+                            chunk_count,
+                            [&](int32 local_index,
+                                FVector3f& output_position,
+                                FQuat4f& output_rotation) {
+                                auto const instance_index{first_index + local_index};
+                                output_position = {static_cast<float>(instance_index), value, 0.0f};
+                                output_rotation = FQuat4f::Identity;
+                                auto custom_data{chunk.custom_data(local_index)};
+                                custom_data[0] = value;
+                                custom_data[1] = static_cast<float>(instance_index);
+                                custom_data[2] = 1.0f;
+                            });
                     });
             }};
 

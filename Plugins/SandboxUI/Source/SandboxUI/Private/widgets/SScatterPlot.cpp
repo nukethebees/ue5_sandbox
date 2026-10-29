@@ -1,53 +1,11 @@
 #include "SandboxUI/widgets/SScatterPlot.h"
 
+#include "ChartPainter.h"
 #include "WidgetMath.h"
 
 #include "Internationalization/Text.h"
 #include "Rendering/DrawElementTypes.h"
 #include "Styling/CoreStyle.h"
-
-namespace {
-void draw_scatter_plot_box(FSlateWindowElementList& out_draw_elements,
-                           int32 const layer_id,
-                           FGeometry const& geometry,
-                           FVector2f const position,
-                           FVector2f const size,
-                           ESlateDrawEffect const draw_effect,
-                           FLinearColor const color) {
-    if (size.X <= 0.0f || size.Y <= 0.0f) {
-        return;
-    }
-
-    auto const paint_geometry{geometry.ToPaintGeometry(size, FSlateLayoutTransform{position})};
-    FSlateDrawElement::MakeBox(out_draw_elements,
-                               layer_id,
-                               paint_geometry,
-                               FCoreStyle::Get().GetBrush("WhiteBrush"),
-                               draw_effect,
-                               color);
-}
-
-void draw_scatter_plot_label(FSlateWindowElementList& out_draw_elements,
-                             int32 const layer_id,
-                             FGeometry const& geometry,
-                             FVector2f const position,
-                             FVector2f const size,
-                             FText const& label,
-                             FSlateFontInfo const& font,
-                             ESlateDrawEffect const draw_effect,
-                             FLinearColor const color) {
-    if (size.X <= 0.0f || size.Y <= 0.0f || label.IsEmpty()) {
-        return;
-    }
-
-    auto const label_geometry{geometry.ToPaintGeometry(size, FSlateLayoutTransform{position})};
-    out_draw_elements.PushClip(FSlateClippingZone{label_geometry});
-    FSlateDrawElement::MakeText(
-        out_draw_elements, layer_id, label_geometry, label, font, draw_effect, color);
-    out_draw_elements.PopClip();
-}
-
-}
 
 FScatterPlotStyle::FScatterPlotStyle()
     : label_font{FCoreStyle::GetDefaultFontStyle("Regular", 8)} {}
@@ -177,6 +135,8 @@ int32 SScatterPlot::OnPaint(FPaintArgs const&,
 
     auto const enabled{ShouldBeEnabled(parent_enabled)};
     auto const draw_effect{enabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect};
+    SandboxUI::Widgets::FChartPainter const painter{
+        out_draw_elements, allotted_geometry, draw_effect};
     auto const inherited_tint{widget_style.GetColorAndOpacityTint()};
     auto const point_geometry{
         build_scatter_plot_geometry(points_, domain_, plot_size, style_.point_size)};
@@ -186,13 +146,10 @@ int32 SScatterPlot::OnPaint(FPaintArgs const&,
             allotted_geometry.ToPaintGeometry(plot_size, FSlateLayoutTransform{plot_origin})};
         out_draw_elements.PushClip(FSlateClippingZone{clip_geometry});
         for (auto const& point : point_geometry) {
-            draw_scatter_plot_box(out_draw_elements,
-                                  point_layer,
-                                  allotted_geometry,
-                                  plot_origin + point.position,
-                                  point.size,
-                                  draw_effect,
-                                  point.color * inherited_tint);
+            painter.box(point_layer,
+                        plot_origin + point.position,
+                        point.size,
+                        point.color * inherited_tint);
         }
         out_draw_elements.PopClip();
     }
@@ -200,20 +157,14 @@ int32 SScatterPlot::OnPaint(FPaintArgs const&,
     auto const axis_layer{point_layer + 1};
     auto const axis_tint{style_.axis_color * inherited_tint};
     auto const axis_origin{FVector2f{plot_origin.X - style_.axis_thickness, plot_origin.Y}};
-    draw_scatter_plot_box(out_draw_elements,
-                          axis_layer,
-                          allotted_geometry,
-                          axis_origin,
-                          {style_.axis_thickness, plot_size.Y + style_.axis_thickness},
-                          draw_effect,
-                          axis_tint);
-    draw_scatter_plot_box(out_draw_elements,
-                          axis_layer,
-                          allotted_geometry,
-                          {axis_origin.X, axis_origin.Y + plot_size.Y},
-                          {plot_size.X + style_.axis_thickness, style_.axis_thickness},
-                          draw_effect,
-                          axis_tint);
+    painter.box(axis_layer,
+                axis_origin,
+                {style_.axis_thickness, plot_size.Y + style_.axis_thickness},
+                axis_tint);
+    painter.box(axis_layer,
+                {axis_origin.X, axis_origin.Y + plot_size.Y},
+                {plot_size.X + style_.axis_thickness, style_.axis_thickness},
+                axis_tint);
 
     if (!is_valid_scatter_plot_domain(domain_)) {
         return axis_layer;
@@ -222,45 +173,33 @@ int32 SScatterPlot::OnPaint(FPaintArgs const&,
     auto const label_tint{style_.label_color * inherited_tint};
     auto const x_label_y{plot_origin.Y + plot_size.Y + style_.axis_thickness};
     auto const half_plot_width{plot_size.X * 0.5f};
-    draw_scatter_plot_label(out_draw_elements,
-                            axis_layer,
-                            allotted_geometry,
-                            {plot_origin.X, x_label_y},
-                            {half_plot_width, x_label_height},
-                            FText::AsNumber(domain_.minimum_x),
-                            style_.label_font,
-                            draw_effect,
-                            label_tint);
-    draw_scatter_plot_label(out_draw_elements,
-                            axis_layer,
-                            allotted_geometry,
-                            {plot_origin.X + half_plot_width, x_label_y},
-                            {half_plot_width, x_label_height},
-                            FText::AsNumber(domain_.maximum_x),
-                            style_.label_font,
-                            draw_effect,
-                            label_tint);
+    painter.label(axis_layer,
+                  {plot_origin.X, x_label_y},
+                  {half_plot_width, x_label_height},
+                  FText::AsNumber(domain_.minimum_x),
+                  style_.label_font,
+                  label_tint);
+    painter.label(axis_layer,
+                  {plot_origin.X + half_plot_width, x_label_y},
+                  {half_plot_width, x_label_height},
+                  FText::AsNumber(domain_.maximum_x),
+                  style_.label_font,
+                  label_tint);
 
     auto const half_plot_height{plot_size.Y * 0.5f};
     auto const y_label_x{style_.chart_padding.Left};
-    draw_scatter_plot_label(out_draw_elements,
-                            axis_layer,
-                            allotted_geometry,
-                            {y_label_x, plot_origin.Y},
-                            {y_label_width, half_plot_height},
-                            FText::AsNumber(domain_.maximum_y),
-                            style_.label_font,
-                            draw_effect,
-                            label_tint);
-    draw_scatter_plot_label(out_draw_elements,
-                            axis_layer,
-                            allotted_geometry,
-                            {y_label_x, plot_origin.Y + half_plot_height},
-                            {y_label_width, half_plot_height},
-                            FText::AsNumber(domain_.minimum_y),
-                            style_.label_font,
-                            draw_effect,
-                            label_tint);
+    painter.label(axis_layer,
+                  {y_label_x, plot_origin.Y},
+                  {y_label_width, half_plot_height},
+                  FText::AsNumber(domain_.maximum_y),
+                  style_.label_font,
+                  label_tint);
+    painter.label(axis_layer,
+                  {y_label_x, plot_origin.Y + half_plot_height},
+                  {y_label_width, half_plot_height},
+                  FText::AsNumber(domain_.minimum_y),
+                  style_.label_font,
+                  label_tint);
     return axis_layer;
 }
 

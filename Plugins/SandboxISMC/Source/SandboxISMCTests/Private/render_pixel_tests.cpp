@@ -1,4 +1,5 @@
 #include "SandboxISMCComponent.h"
+#include "transform_test_helpers.h"
 
 #include "AssetCompilingManager.h"
 #include "Components/InstancedStaticMeshComponent.h"
@@ -97,26 +98,23 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
             ESandboxISMCParallelism::Auto,
             [&](FSandboxISMCInstanceChunkWriter& chunk) {
                 auto const [offset, chunk_count]{chunk.range()};
-                TArray<FVector3f, TInlineAllocator<1024>> transform_positions;
-                transform_positions.SetNumUninitialized(chunk.num());
-                TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
-                transform_rotations.SetNumUninitialized(chunk.num());
-                for (auto local_index = 0; local_index < chunk_count; ++local_index) {
-                    auto const index{offset + local_index};
-                    auto position{FVector3f{0.0f, 10000.0f, 0.0f}};
-                    auto data{chunk.custom_data(local_index)};
-                    data[0] = data[1] = data[2] = 0.0f;
-                    for (auto slot = 0; slot < 3; ++slot) {
-                        if (index == visible_indices[slot]) {
-                            position = {0.0f, static_cast<float>((slot - 1) * 128), height};
-                            data[(slot + colour_shift) % 3] = 1.0f;
+                sandbox_ismc_tests::write_transforms(
+                    chunk,
+                    chunk_count,
+                    [&](int32 local_index, FVector3f& output_position, FQuat4f& output_rotation) {
+                        auto const index{offset + local_index};
+                        auto position{FVector3f{0.0f, 10000.0f, 0.0f}};
+                        auto data{chunk.custom_data(local_index)};
+                        data[0] = data[1] = data[2] = 0.0f;
+                        for (auto slot = 0; slot < 3; ++slot) {
+                            if (index == visible_indices[slot]) {
+                                position = {0.0f, static_cast<float>((slot - 1) * 128), height};
+                                data[(slot + colour_shift) % 3] = 1.0f;
+                            }
                         }
-                    }
-                    transform_positions[local_index] = position;
-                    transform_rotations[local_index] = rotation;
-                }
-                chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(transform_positions,
-                                                                        transform_rotations);
+                        output_position = position;
+                        output_rotation = rotation;
+                    });
             });
         submitted_frame_ = GFrameCounter;
     }
@@ -293,20 +291,17 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
                     domain,
                     ESandboxISMCParallelism::Sequential,
                     [&](FSandboxISMCInstanceChunkWriter& chunk) {
-                        TArray<FVector3f, TInlineAllocator<1024>> transform_positions;
-                        transform_positions.SetNumUninitialized(chunk.num());
-                        TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
-                        transform_rotations.SetNumUninitialized(chunk.num());
-                        for (int32 index{0}; index < 3; ++index) {
-                            transform_positions[index] = positions[index];
-                            transform_rotations[index] = rotations[index];
-                            auto data{chunk.custom_data(index)};
-                            for (int32 channel{0}; channel < 3; ++channel) {
-                                data[channel] = channel == index ? 1.0f : 0.0f;
-                            }
-                        }
-                        chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
-                            transform_positions, transform_rotations);
+                        sandbox_ismc_tests::write_transforms(
+                            chunk,
+                            3,
+                            [&](int32 index, FVector3f& output_position, FQuat4f& output_rotation) {
+                                output_position = positions[index];
+                                output_rotation = rotations[index];
+                                auto data{chunk.custom_data(index)};
+                                for (int32 channel{0}; channel < 3; ++channel) {
+                                    data[channel] = channel == index ? 1.0f : 0.0f;
+                                }
+                            });
                     });
                 spawner->GetWorld().SendAllEndOfFrameUpdates();
                 FlushRenderingCommands();

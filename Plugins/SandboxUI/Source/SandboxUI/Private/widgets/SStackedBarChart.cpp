@@ -1,32 +1,11 @@
 #include "SandboxUI/widgets/SStackedBarChart.h"
 
+#include "ChartPainter.h"
 #include <ioj/ui/chart_layout.h>
 #include <ioj/ui/stacked_bar_chart.h>
 
 #include "Rendering/DrawElementTypes.h"
 #include "Styling/CoreStyle.h"
-
-namespace {
-void draw_stacked_bar_box(FSlateWindowElementList& out_draw_elements,
-                          int32 const layer_id,
-                          FGeometry const& geometry,
-                          FVector2f const position,
-                          FVector2f const size,
-                          ESlateDrawEffect const draw_effect,
-                          FLinearColor const color) {
-    if (size.X <= 0.0f || size.Y <= 0.0f) {
-        return;
-    }
-
-    auto const paint_geometry{geometry.ToPaintGeometry(size, FSlateLayoutTransform{position})};
-    FSlateDrawElement::MakeBox(out_draw_elements,
-                               layer_id,
-                               paint_geometry,
-                               FCoreStyle::Get().GetBrush("WhiteBrush"),
-                               draw_effect,
-                               color);
-}
-}
 
 struct SStackedBarChart::FData {
     ioj::ui::stacked_bar_chart::Data native;
@@ -142,6 +121,8 @@ int32 SStackedBarChart::OnPaint(FPaintArgs const&,
 
     auto const enabled{ShouldBeEnabled(parent_enabled)};
     auto const draw_effect{enabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect};
+    SandboxUI::Widgets::FChartPainter const painter{
+        out_draw_elements, allotted_geometry, draw_effect};
     auto const inherited_tint{widget_style.GetColorAndOpacityTint()};
     auto const chart_geometry{ioj::ui::stacked_bar_chart::build_geometry(
         data_->native.bars(), {plot_size.X, plot_size.Y}, style_.bar_gap)};
@@ -151,14 +132,10 @@ int32 SStackedBarChart::OnPaint(FPaintArgs const&,
             allotted_geometry.ToPaintGeometry(plot_size, FSlateLayoutTransform{plot_origin})};
         out_draw_elements.PushClip(FSlateClippingZone{clip_geometry});
         for (auto const& segment : chart_geometry.segments) {
-            draw_stacked_bar_box(
-                out_draw_elements,
-                segment_layer,
-                allotted_geometry,
-                plot_origin + FVector2f{segment.position.x(), segment.position.y()},
-                FVector2f{segment.size.x(), segment.size.y()},
-                draw_effect,
-                segment_colors_[segment.bar_index][segment.segment_index] * inherited_tint);
+            painter.box(segment_layer,
+                        plot_origin + FVector2f{segment.position.x(), segment.position.y()},
+                        FVector2f{segment.size.x(), segment.size.y()},
+                        segment_colors_[segment.bar_index][segment.segment_index] * inherited_tint);
         }
         out_draw_elements.PopClip();
     }
@@ -166,20 +143,14 @@ int32 SStackedBarChart::OnPaint(FPaintArgs const&,
     auto const axis_layer{segment_layer + 1};
     auto const axis_tint{style_.axis_color * inherited_tint};
     auto const axis_origin{FVector2f{style_.chart_padding.Left, style_.chart_padding.Top}};
-    draw_stacked_bar_box(out_draw_elements,
-                         axis_layer,
-                         allotted_geometry,
-                         axis_origin,
-                         {style_.axis_thickness, plot_size.Y + style_.axis_thickness},
-                         draw_effect,
-                         axis_tint);
-    draw_stacked_bar_box(out_draw_elements,
-                         axis_layer,
-                         allotted_geometry,
-                         {axis_origin.X, axis_origin.Y + plot_size.Y},
-                         {plot_size.X + style_.axis_thickness, style_.axis_thickness},
-                         draw_effect,
-                         axis_tint);
+    painter.box(axis_layer,
+                axis_origin,
+                {style_.axis_thickness, plot_size.Y + style_.axis_thickness},
+                axis_tint);
+    painter.box(axis_layer,
+                {axis_origin.X, axis_origin.Y + plot_size.Y},
+                {plot_size.X + style_.axis_thickness, style_.axis_thickness},
+                axis_tint);
 
     if (label_height <= 0.0f || chart_geometry.slot_width <= 0.0f) {
         return axis_layer;
@@ -190,24 +161,10 @@ int32 SStackedBarChart::OnPaint(FPaintArgs const&,
     auto const bar_count{labels_.Num()};
     for (int32 bar_index{0}; bar_index < bar_count; ++bar_index) {
         auto const& label{labels_[bar_index]};
-        if (label.IsEmpty()) {
-            continue;
-        }
-
         auto const label_position{FVector2f{
             plot_origin.X + static_cast<float>(bar_index) * chart_geometry.slot_width, label_y}};
         auto const label_size{FVector2f{chart_geometry.slot_width, label_height}};
-        auto const label_geometry{
-            allotted_geometry.ToPaintGeometry(label_size, FSlateLayoutTransform{label_position})};
-        out_draw_elements.PushClip(FSlateClippingZone{label_geometry});
-        FSlateDrawElement::MakeText(out_draw_elements,
-                                    axis_layer,
-                                    label_geometry,
-                                    label,
-                                    style_.label_font,
-                                    draw_effect,
-                                    label_tint);
-        out_draw_elements.PopClip();
+        painter.label(axis_layer, label_position, label_size, label, style_.label_font, label_tint);
     }
     return axis_layer;
 }

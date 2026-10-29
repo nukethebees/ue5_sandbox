@@ -18,6 +18,12 @@ struct FTemporaryScriptDirectory {
     FTemporaryScriptDirectory() { IFileManager::Get().MakeDirectory(*path, true); }
 
     ~FTemporaryScriptDirectory() { IFileManager::Get().DeleteDirectory(*path, false, true); }
+
+    auto write(TCHAR const* const filename, FString const& source) const -> bool {
+        auto const filename_path{FPaths::Combine(path, filename)};
+        IFileManager::Get().MakeDirectory(*FPaths::GetPath(filename_path), true);
+        return FFileHelper::SaveStringToFile(source, *filename_path);
+    }
 };
 
 auto write_test_root(FString const& directory) -> FString {
@@ -88,29 +94,22 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
     TEST_METHOD(LoadsOnlyDefinitionsSelectedByRoot)
     {
         FTemporaryScriptDirectory directory;
-        auto const alpha_path{FPaths::Combine(directory.path, TEXT("alpha.scm"))};
-        auto const bravo_path{FPaths::Combine(directory.path, TEXT("Bravo.SCM"))};
-        auto const invalid_path{FPaths::Combine(directory.path, TEXT("invalid.scm"))};
-        auto const ignored_path{FPaths::Combine(directory.path, TEXT("ignored.txt"))};
-        auto const nested_directory{FPaths::Combine(directory.path, TEXT("nested"))};
-        IFileManager::Get().MakeDirectory(*nested_directory, true);
 
         auto const files_written{
-            FFileHelper::SaveStringToFile(valid_level_script(TEXT("alpha"), TEXT("Alpha Level")),
-                                          *alpha_path) &&
-            FFileHelper::SaveStringToFile(
-                valid_camera_level_script(TEXT("bravo"), TEXT("Bravo Level")), *bravo_path) &&
-            FFileHelper::SaveStringToFile(TEXT("(level :title \"Broken\")"), *invalid_path) &&
-            FFileHelper::SaveStringToFile(TEXT("not a level"), *ignored_path) &&
-            FFileHelper::SaveStringToFile(valid_level_script(TEXT("nested"), TEXT("Nested Level")),
-                                          *FPaths::Combine(nested_directory, TEXT("nested.scm")))};
+            directory.write(TEXT("alpha.scm"),
+                            valid_level_script(TEXT("alpha"), TEXT("Alpha Level"))) &&
+            directory.write(TEXT("Bravo.SCM"),
+                            valid_camera_level_script(TEXT("bravo"), TEXT("Bravo Level"))) &&
+            directory.write(TEXT("invalid.scm"), TEXT("(level :title \"Broken\")")) &&
+            directory.write(TEXT("ignored.txt"), TEXT("not a level")) &&
+            directory.write(TEXT("nested/nested.scm"),
+                            valid_level_script(TEXT("nested"), TEXT("Nested Level")))};
         if (!TestRunner->TestTrue(TEXT("Test scripts are written"), files_written)) {
             return;
         }
 
         auto const root{write_test_root(directory.path)};
-        FFileHelper::SaveStringToFile(TEXT("(undefined-unselected-file)"),
-                                      *FPaths::Combine(directory.path, TEXT("unselected.scm")));
+        directory.write(TEXT("unselected.scm"), TEXT("(undefined-unselected-file)"));
         auto const result{::ioj::levels::authoring::load_level_script_catalog(root)};
         TestRunner->TestTrue(TEXT("Catalog directory is readable"), result.error.IsEmpty());
         TestRunner->TestEqual(
@@ -153,13 +152,9 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
     TEST_METHOD(RejectsDuplicateLevelIds)
     {
         FTemporaryScriptDirectory directory;
-        auto const alpha_path{FPaths::Combine(directory.path, TEXT("alpha.scm"))};
-        auto const bravo_path{FPaths::Combine(directory.path, TEXT("bravo.scm"))};
         auto const files_written{
-            FFileHelper::SaveStringToFile(valid_level_script(TEXT("shared"), TEXT("Alpha")),
-                                          *alpha_path) &&
-            FFileHelper::SaveStringToFile(valid_level_script(TEXT("shared"), TEXT("Bravo")),
-                                          *bravo_path)};
+            directory.write(TEXT("alpha.scm"), valid_level_script(TEXT("shared"), TEXT("Alpha"))) &&
+            directory.write(TEXT("bravo.scm"), valid_level_script(TEXT("shared"), TEXT("Bravo")))};
         if (!TestRunner->TestTrue(TEXT("Test scripts are written"), files_written)) {
             return;
         }
@@ -184,16 +179,12 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
     TEST_METHOD(ParsesCampaignOrderingAndReferences)
     {
         FTemporaryScriptDirectory directory;
-        auto const campaign_directory{FPaths::Combine(directory.path, TEXT("Campaigns"))};
-        IFileManager::Get().MakeDirectory(*campaign_directory, true);
         auto const files_written{
-            FFileHelper::SaveStringToFile(valid_level_script(TEXT("alpha"), TEXT("Alpha")),
-                                          *FPaths::Combine(directory.path, TEXT("alpha.scm"))) &&
-            FFileHelper::SaveStringToFile(valid_level_script(TEXT("bravo"), TEXT("Bravo")),
-                                          *FPaths::Combine(directory.path, TEXT("bravo.scm"))) &&
-            FFileHelper::SaveStringToFile(
-                TEXT("(campaign :id 'main :title \"Main Campaign\" :levels '(bravo alpha))"),
-                *FPaths::Combine(campaign_directory, TEXT("main.scm")))};
+            directory.write(TEXT("alpha.scm"), valid_level_script(TEXT("alpha"), TEXT("Alpha"))) &&
+            directory.write(TEXT("bravo.scm"), valid_level_script(TEXT("bravo"), TEXT("Bravo"))) &&
+            directory.write(
+                TEXT("Campaigns/main.scm"),
+                TEXT("(campaign :id 'main :title \"Main Campaign\" :levels '(bravo alpha))"))};
         if (!TestRunner->TestTrue(TEXT("Campaign fixtures are written"), files_written)) {
             return;
         }
@@ -217,17 +208,14 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
     TEST_METHOD(RejectsMissingCampaignAndUnlockReferences)
     {
         FTemporaryScriptDirectory directory;
-        auto const campaign_directory{FPaths::Combine(directory.path, TEXT("Campaigns"))};
-        IFileManager::Get().MakeDirectory(*campaign_directory, true);
         auto const files_written{
-            FFileHelper::SaveStringToFile(
+            directory.write(
+                TEXT("locked.scm"),
                 valid_level_script(TEXT("locked"),
                                    TEXT("Locked"),
-                                   TEXT(":unlock (list (level-completed 'missing))")),
-                *FPaths::Combine(directory.path, TEXT("locked.scm"))) &&
-            FFileHelper::SaveStringToFile(
-                TEXT("(campaign :id 'main :title \"Main\" :levels '(missing))"),
-                *FPaths::Combine(campaign_directory, TEXT("main.scm")))};
+                                   TEXT(":unlock (list (level-completed 'missing))"))) &&
+            directory.write(TEXT("Campaigns/main.scm"),
+                            TEXT("(campaign :id 'main :title \"Main\" :levels '(missing))"))};
         if (!TestRunner->TestTrue(TEXT("Invalid fixtures are written"), files_written)) {
             return;
         }
@@ -244,17 +232,12 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
     TEST_METHOD(RejectsDuplicateCampaignIds)
     {
         FTemporaryScriptDirectory directory;
-        auto const campaign_directory{FPaths::Combine(directory.path, TEXT("Campaigns"))};
-        IFileManager::Get().MakeDirectory(*campaign_directory, true);
         auto const files_written{
-            FFileHelper::SaveStringToFile(valid_level_script(TEXT("alpha"), TEXT("Alpha")),
-                                          *FPaths::Combine(directory.path, TEXT("alpha.scm"))) &&
-            FFileHelper::SaveStringToFile(
-                TEXT("(campaign :id 'shared :title \"First\" :levels '(alpha))"),
-                *FPaths::Combine(campaign_directory, TEXT("first.scm"))) &&
-            FFileHelper::SaveStringToFile(
-                TEXT("(campaign :id 'shared :title \"Second\" :levels '(alpha))"),
-                *FPaths::Combine(campaign_directory, TEXT("second.scm")))};
+            directory.write(TEXT("alpha.scm"), valid_level_script(TEXT("alpha"), TEXT("Alpha"))) &&
+            directory.write(TEXT("Campaigns/first.scm"),
+                            TEXT("(campaign :id 'shared :title \"First\" :levels '(alpha))")) &&
+            directory.write(TEXT("Campaigns/second.scm"),
+                            TEXT("(campaign :id 'shared :title \"Second\" :levels '(alpha))"))};
         if (!TestRunner->TestTrue(TEXT("Duplicate campaign fixtures are written"), files_written)) {
             return;
         }

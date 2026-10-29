@@ -53,12 +53,10 @@ TStrongObjectPtr<UWidgetBlueprintGenerationDataAsset> create_generator() {
 
 TEST_CLASS(WidgetBlueprintGenerator, "SandboxEditor.UnitTests")
 {
-    TEST_METHOD(DefaultRoot)
-    {
+    template <typename VerifyRoot>
+    void check_generated_root(UClass & widget_class, FName const name, VerifyRoot&& verify_root) {
         auto const generator{create_generator()};
-        auto& entry{add_test_entry(*generator,
-                                   *UWidgetBlueprintGeneratorDefaultRootTestWidget::StaticClass(),
-                                   TEXT("WBP_GeneratorDefaultRootTest"))};
+        auto& entry{add_test_entry(*generator, widget_class, name)};
         generator->generate_widgets();
 
         auto* const widget_blueprint{find_generated_widget(entry.widget_name)};
@@ -72,61 +70,50 @@ TEST_CLASS(WidgetBlueprintGenerator, "SandboxEditor.UnitTests")
                                      delete_generated_widget(widget_blueprint));
                 return;
             }
-
             auto* const root_widget{widget_tree->RootWidget.Get()};
             if (TestRunner->TestTrue(TEXT("Generated Widget Blueprint has a root"),
                                      IsValid(root_widget))) {
-                TestRunner->TestTrue(TEXT("Default root is a CanvasPanel"),
-                                     root_widget->IsA<UCanvasPanel>());
-                TestRunner->TestEqual(TEXT("Default root retains its name"),
-                                      root_widget->GetFName(),
-                                      FName{TEXT("RootCanvas")});
+                verify_root(*widget_tree, *root_widget);
             }
-
             TestRunner->TestTrue(TEXT("Generated Widget Blueprint has a generated class"),
                                  IsValid(widget_blueprint->GeneratedClass));
             TestRunner->TestTrue(TEXT("Generated Widget Blueprint finished compiled and valid"),
                                  widget_blueprint->Status == BS_UpToDate);
         }
-
         TestRunner->TestTrue(TEXT("Generated Widget Blueprint is deleted during cleanup"),
                              delete_generated_widget(widget_blueprint));
     }
 
+    TEST_METHOD(DefaultRoot)
+    {
+        check_generated_root(*UWidgetBlueprintGeneratorDefaultRootTestWidget::StaticClass(),
+                             TEXT("WBP_GeneratorDefaultRootTest"),
+                             [this](UWidgetTree&, UWidget& root_widget) {
+                                 TestRunner->TestTrue(TEXT("Default root is a CanvasPanel"),
+                                                      root_widget.IsA<UCanvasPanel>());
+                                 TestRunner->TestEqual(TEXT("Default root retains its name"),
+                                                       root_widget.GetFName(),
+                                                       FName{TEXT("RootCanvas")});
+                             });
+    }
+
     TEST_METHOD(PanelRoot)
     {
-        auto const generator{create_generator()};
-        auto& entry{add_test_entry(*generator,
-                                   *UWidgetBlueprintGeneratorPanelRootTestWidget::StaticClass(),
-                                   TEXT("WBP_GeneratorPanelRootTest"))};
-        generator->generate_widgets();
-
-        auto* const widget_blueprint{find_generated_widget(entry.widget_name)};
-        TestRunner->TestFalse(TEXT("Successful generation clears the row"), entry.generate);
-        if (TestRunner->TestTrue(TEXT("Generated Widget Blueprint is registered and valid"),
-                                 IsValid(widget_blueprint))) {
-            auto* const widget_tree{widget_blueprint->WidgetTree.Get()};
-            if (!TestRunner->TestTrue(TEXT("Generated Widget Blueprint has a valid Widget Tree"),
-                                      IsValid(widget_tree))) {
-                TestRunner->TestTrue(TEXT("Generated Widget Blueprint is deleted during cleanup"),
-                                     delete_generated_widget(widget_blueprint));
-                return;
-            }
-
-            auto* const root_widget{widget_tree->RootWidget.Get()};
-            if (TestRunner->TestTrue(TEXT("Generated Widget Blueprint has a root"),
-                                     IsValid(root_widget))) {
+        check_generated_root(
+            *UWidgetBlueprintGeneratorPanelRootTestWidget::StaticClass(),
+            TEXT("WBP_GeneratorPanelRootTest"),
+            [this](UWidgetTree& widget_tree, UWidget& root_widget) {
                 TestRunner->TestEqual(TEXT("GeneratorRoot becomes the Widget Tree root"),
-                                      root_widget->GetFName(),
+                                      root_widget.GetFName(),
                                       FName{TEXT("root_widget")});
                 TestRunner->TestTrue(TEXT("GeneratorRoot has the expected panel type"),
-                                     root_widget->IsA<UVerticalBox>());
+                                     root_widget.IsA<UVerticalBox>());
 
-                auto* const text_widget{widget_tree->FindWidget(TEXT("text_widget"))};
+                auto* const text_widget{widget_tree.FindWidget(TEXT("text_widget"))};
                 TestRunner->TestTrue(TEXT("Generated text_widget exists"), IsValid(text_widget));
 
                 TArray<UWidget*> generated_widgets;
-                widget_tree->GetAllWidgets(generated_widgets);
+                widget_tree.GetAllWidgets(generated_widgets);
                 int32 root_widget_count{0};
                 FName const root_widget_name{TEXT("root_widget")};
 
@@ -138,16 +125,7 @@ TEST_CLASS(WidgetBlueprintGenerator, "SandboxEditor.UnitTests")
 
                 TestRunner->TestEqual(
                     TEXT("GeneratorRoot is constructed only once"), root_widget_count, 1);
-            }
-
-            TestRunner->TestTrue(TEXT("Generated Widget Blueprint has a generated class"),
-                                 IsValid(widget_blueprint->GeneratedClass));
-            TestRunner->TestTrue(TEXT("Generated Widget Blueprint finished compiled and valid"),
-                                 widget_blueprint->Status == BS_UpToDate);
-        }
-
-        TestRunner->TestTrue(TEXT("Generated Widget Blueprint is deleted during cleanup"),
-                             delete_generated_widget(widget_blueprint));
+            });
     }
 
     TEST_METHOD(NonPanelRootFails)

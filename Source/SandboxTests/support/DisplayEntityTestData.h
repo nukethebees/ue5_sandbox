@@ -4,6 +4,7 @@
 #include <ioj/sim/fighters/fighter_entity_data.h>
 
 #include <cstdint>
+#include <span>
 #include <vector>
 
 namespace ioj::tests {
@@ -26,6 +27,23 @@ struct FDisplayEntityTestData {
 
     void set_health(std::int32_t const row, sim::Health::value_type const health) {
         healths[row] = sim::Health{health};
+    }
+
+    auto make_batches(std::span<sim::EntityId const> ids = {}) const
+        -> std::vector<presentation::AgentDisplayBatch> {
+        std::vector<presentation::AgentDisplayBatch> batches;
+        auto const count{num()};
+        batches.reserve(count);
+        for (std::int32_t i{}; i < count; ++i) {
+            auto const row{motion.get_const_view(i, 1)};
+            batches.push_back({entity_types[static_cast<std::size_t>(i)],
+                               ids.empty() ? ids : ids.subspan(i, 1),
+                               row.view_locations(),
+                               row.view_velocities(),
+                               sim::HealthConstView{std::span{healths}.subspan(i, 1)},
+                               std::span{teams}.subspan(i, 1)});
+        }
+        return batches;
     }
 
     sim::FighterEntityData motion;

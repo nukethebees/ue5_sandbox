@@ -71,7 +71,17 @@ constexpr TCHAR showcase_object_path[]{
 constexpr TCHAR showcase_package_path[]{TEXT("/SandboxExperiments/ShaderShowcase/SandboxShaders_Showcase")};
 
 template <typename ActorType>
-int32 count_actor_type(UWorld const& world) {
+void find_first_actor(AActor* candidate, ActorType*& found) {
+    if (found == nullptr) {
+        found = Cast<ActorType>(candidate);
+    }
+}
+
+UMaterialInstanceDynamic* dynamic_material(UStaticMeshComponent* mesh) {
+    return IsValid(mesh) ? Cast<UMaterialInstanceDynamic>(mesh->GetMaterial(0)) : nullptr;
+}
+
+int32 count_actor_type(UWorld const& world, UClass* actor_class) {
     auto const level{world.PersistentLevel};
     if (!IsValid(level)) {
         return 0;
@@ -79,7 +89,7 @@ int32 count_actor_type(UWorld const& world) {
 
     int32 count{0};
     for (AActor const* const actor : level->Actors) {
-        if (IsValid(actor) && actor->IsA<ActorType>()) {
+        if (IsValid(actor) && actor->IsA(actor_class)) {
             ++count;
         }
     }
@@ -117,79 +127,57 @@ TEST_CLASS(ShaderInfrastructure, "SandboxShaders.UnitTests")
 
     TEST_METHOD(LoadsMaterialsAndComposedShowcase)
     {
-        TestRunner->TestNotNull(TEXT("Energy shield material loads"),
-                                LoadObject<UMaterial>(nullptr, shield_material_path));
-        TestRunner->TestNotNull(TEXT("Space field display material loads"),
-                                LoadObject<UMaterial>(nullptr, display_material_path));
-        TestRunner->TestNotNull(TEXT("Shield impact material loads"),
-                                LoadObject<UMaterial>(nullptr, impact_material_path));
-        TestRunner->TestNotNull(TEXT("Vertex ripple material loads"),
-                                LoadObject<UMaterial>(nullptr, ripple_material_path));
-        TestRunner->TestNotNull(TEXT("Vertex ripple grid loads"),
-                                LoadObject<UStaticMesh>(nullptr, ripple_mesh_path));
-        TestRunner->TestNotNull(TEXT("Radar display material loads"),
-                                LoadObject<UMaterial>(nullptr, radar_material_path));
-        TestRunner->TestNotNull(TEXT("Tactical scan material loads"),
-                                LoadObject<UMaterial>(nullptr, tactical_scan_material_path));
-        TestRunner->TestNotNull(TEXT("Warp field material loads"),
-                                LoadObject<UMaterial>(nullptr, warp_field_material_path));
-        TestRunner->TestNotNull(TEXT("Warp backdrop material loads"),
-                                LoadObject<UMaterial>(nullptr, warp_backdrop_material_path));
-        TestRunner->TestNotNull(TEXT("Raymarched anomaly material loads"),
-                                LoadObject<UMaterial>(nullptr, anomaly_material_path));
-        TestRunner->TestNotNull(TEXT("Engine exhaust material loads"),
-                                LoadObject<UMaterial>(nullptr, exhaust_material_path));
-        TestRunner->TestNotNull(TEXT("Planet surface material loads"),
-                                LoadObject<UMaterial>(nullptr, planet_surface_material_path));
-        TestRunner->TestNotNull(TEXT("Planet atmosphere material loads"),
-                                LoadObject<UMaterial>(nullptr, planet_atmosphere_material_path));
-        TestRunner->TestNotNull(TEXT("Construction spawn material loads"),
-                                LoadObject<UMaterial>(nullptr, construction_material_path));
-        TestRunner->TestNotNull(TEXT("Energy beam material loads"),
-                                LoadObject<UMaterial>(nullptr, energy_beam_material_path));
+        struct FAssetCase {
+            TCHAR const* description;
+            UObject* asset;
+        };
+        FAssetCase const assets[]{
+            {TEXT("Energy shield material loads"), LoadObject<UMaterial>(nullptr, shield_material_path)},
+            {TEXT("Space field display material loads"), LoadObject<UMaterial>(nullptr, display_material_path)},
+            {TEXT("Shield impact material loads"), LoadObject<UMaterial>(nullptr, impact_material_path)},
+            {TEXT("Vertex ripple material loads"), LoadObject<UMaterial>(nullptr, ripple_material_path)},
+            {TEXT("Vertex ripple grid loads"), LoadObject<UStaticMesh>(nullptr, ripple_mesh_path)},
+            {TEXT("Radar display material loads"), LoadObject<UMaterial>(nullptr, radar_material_path)},
+            {TEXT("Tactical scan material loads"), LoadObject<UMaterial>(nullptr, tactical_scan_material_path)},
+            {TEXT("Warp field material loads"), LoadObject<UMaterial>(nullptr, warp_field_material_path)},
+            {TEXT("Warp backdrop material loads"), LoadObject<UMaterial>(nullptr, warp_backdrop_material_path)},
+            {TEXT("Raymarched anomaly material loads"), LoadObject<UMaterial>(nullptr, anomaly_material_path)},
+            {TEXT("Engine exhaust material loads"), LoadObject<UMaterial>(nullptr, exhaust_material_path)},
+            {TEXT("Planet surface material loads"), LoadObject<UMaterial>(nullptr, planet_surface_material_path)},
+            {TEXT("Planet atmosphere material loads"), LoadObject<UMaterial>(nullptr, planet_atmosphere_material_path)},
+            {TEXT("Construction spawn material loads"), LoadObject<UMaterial>(nullptr, construction_material_path)},
+            {TEXT("Energy beam material loads"), LoadObject<UMaterial>(nullptr, energy_beam_material_path)},
+        };
+        for (auto const& asset : assets) {
+            TestRunner->TestNotNull(asset.description, asset.asset);
+        }
 
         auto* const world{LoadObject<UWorld>(nullptr, showcase_object_path)};
         if (!TestRunner->TestNotNull(TEXT("Showcase map loads"), world)) {
             return;
         }
-        TestRunner->TestEqual(TEXT("Showcase contains one shield experiment"),
-                              count_actor_type<AEnergyShieldExperimentActor>(*world),
-                              1);
-        TestRunner->TestEqual(TEXT("Showcase contains one space field experiment"),
-                              count_actor_type<ASpaceEnergyFieldExperimentActor>(*world),
-                              1);
-        TestRunner->TestEqual(TEXT("Showcase contains one shield impact experiment"),
-                              count_actor_type<AShieldImpactExperimentActor>(*world),
-                              1);
-        TestRunner->TestEqual(TEXT("Showcase contains one vertex ripple experiment"),
-                              count_actor_type<AVertexRippleExperimentActor>(*world),
-                              1);
-        TestRunner->TestEqual(TEXT("Showcase contains one radar display experiment"),
-                              count_actor_type<ARadarDisplayExperimentActor>(*world),
-                              1);
-        TestRunner->TestEqual(TEXT("Showcase contains one tactical scan experiment"),
-                              count_actor_type<ATacticalScanExperimentActor>(*world),
-                              1);
-        TestRunner->TestEqual(TEXT("Showcase contains one warp field experiment"),
-                              count_actor_type<AWarpFieldExperimentActor>(*world),
-                              1);
-        TestRunner->TestEqual(TEXT("Showcase contains one raymarched anomaly experiment"),
-                              count_actor_type<ARaymarchedAnomalyExperimentActor>(*world),
-                              1);
-        TestRunner->TestEqual(TEXT("Showcase contains one engine exhaust experiment"),
-                              count_actor_type<AEngineExhaustExperimentActor>(*world),
-                              1);
-        TestRunner->TestEqual(TEXT("Showcase contains one planet atmosphere experiment"),
-                              count_actor_type<APlanetAtmosphereExperimentActor>(*world),
-                              1);
-        TestRunner->TestEqual(TEXT("Showcase contains one construction spawn experiment"),
-                              count_actor_type<AConstructionSpawnExperimentActor>(*world),
-                              1);
-        TestRunner->TestEqual(TEXT("Showcase contains one energy beam experiment"),
-                              count_actor_type<AEnergyBeamExperimentActor>(*world),
-                              1);
-        TestRunner->TestEqual(
-            TEXT("Showcase contains one camera"), count_actor_type<ACameraActor>(*world), 1);
+        struct FActorCase {
+            TCHAR const* description;
+            UClass* actor_class;
+        };
+        FActorCase const actors[]{
+            {TEXT("Showcase contains one shield experiment"), AEnergyShieldExperimentActor::StaticClass()},
+            {TEXT("Showcase contains one space field experiment"), ASpaceEnergyFieldExperimentActor::StaticClass()},
+            {TEXT("Showcase contains one shield impact experiment"), AShieldImpactExperimentActor::StaticClass()},
+            {TEXT("Showcase contains one vertex ripple experiment"), AVertexRippleExperimentActor::StaticClass()},
+            {TEXT("Showcase contains one radar display experiment"), ARadarDisplayExperimentActor::StaticClass()},
+            {TEXT("Showcase contains one tactical scan experiment"), ATacticalScanExperimentActor::StaticClass()},
+            {TEXT("Showcase contains one warp field experiment"), AWarpFieldExperimentActor::StaticClass()},
+            {TEXT("Showcase contains one raymarched anomaly experiment"), ARaymarchedAnomalyExperimentActor::StaticClass()},
+            {TEXT("Showcase contains one engine exhaust experiment"), AEngineExhaustExperimentActor::StaticClass()},
+            {TEXT("Showcase contains one planet atmosphere experiment"), APlanetAtmosphereExperimentActor::StaticClass()},
+            {TEXT("Showcase contains one construction spawn experiment"), AConstructionSpawnExperimentActor::StaticClass()},
+            {TEXT("Showcase contains one energy beam experiment"), AEnergyBeamExperimentActor::StaticClass()},
+            {TEXT("Showcase contains one camera"), ACameraActor::StaticClass()},
+        };
+        for (auto const& actor : actors) {
+            TestRunner->TestEqual(actor.description, count_actor_type(*world, actor.actor_class), 1);
+        }
     }
 
     TEST_METHOD(UpdatesSpaceDustBoundsWhenVolumeChanges)
@@ -234,89 +222,67 @@ TEST_CLASS(MaterialCompilation, "SandboxShaders.MaterialCompilation")
             return;
         }
 
-        auto* const shield_material{LoadObject<UMaterial>(nullptr, shield_material_path)};
-        auto* const display_material{LoadObject<UMaterial>(nullptr, display_material_path)};
-        auto* const impact_material{LoadObject<UMaterial>(nullptr, impact_material_path)};
-        auto* const ripple_material{LoadObject<UMaterial>(nullptr, ripple_material_path)};
-        auto* const radar_material{LoadObject<UMaterial>(nullptr, radar_material_path)};
-        auto* const tactical_scan_material{
-            LoadObject<UMaterial>(nullptr, tactical_scan_material_path)};
-        auto* const warp_field_material{LoadObject<UMaterial>(nullptr, warp_field_material_path)};
-        auto* const anomaly_material{LoadObject<UMaterial>(nullptr, anomaly_material_path)};
-        auto* const exhaust_material{LoadObject<UMaterial>(nullptr, exhaust_material_path)};
-        auto* const planet_surface_material{
-            LoadObject<UMaterial>(nullptr, planet_surface_material_path)};
-        auto* const planet_atmosphere_material{
-            LoadObject<UMaterial>(nullptr, planet_atmosphere_material_path)};
-        auto* const celestial_analytic_material{
-            LoadObject<UMaterial>(nullptr, celestial_analytic_material_path)};
-        auto* const construction_material{
-            LoadObject<UMaterial>(nullptr, construction_material_path)};
-        auto* const energy_beam_material{LoadObject<UMaterial>(nullptr, energy_beam_material_path)};
-        auto* const space_dust_material{LoadObject<UMaterial>(nullptr, space_dust_material_path)};
-        if (!TestRunner->TestNotNull(TEXT("Energy shield material loads"), shield_material) ||
-            !TestRunner->TestNotNull(TEXT("Space field material loads"), display_material) ||
-            !TestRunner->TestNotNull(TEXT("Shield impact material loads"), impact_material) ||
-            !TestRunner->TestNotNull(TEXT("Vertex ripple material loads"), ripple_material) ||
-            !TestRunner->TestNotNull(TEXT("Radar display material loads"), radar_material) ||
-            !TestRunner->TestNotNull(TEXT("Tactical scan material loads"),
-                                     tactical_scan_material) ||
-            !TestRunner->TestNotNull(TEXT("Warp field material loads"), warp_field_material) ||
-            !TestRunner->TestNotNull(TEXT("Raymarched anomaly material loads"), anomaly_material) ||
-            !TestRunner->TestNotNull(TEXT("Engine exhaust material loads"), exhaust_material) ||
-            !TestRunner->TestNotNull(TEXT("Planet surface material loads"),
-                                     planet_surface_material) ||
-            !TestRunner->TestNotNull(TEXT("Planet atmosphere material loads"),
-                                     planet_atmosphere_material) ||
-            !TestRunner->TestNotNull(TEXT("Celestial analytic material loads"),
-                                     celestial_analytic_material) ||
-            !TestRunner->TestNotNull(TEXT("Construction spawn material loads"),
-                                     construction_material) ||
-            !TestRunner->TestNotNull(TEXT("Energy beam material loads"), energy_beam_material) ||
-            !TestRunner->TestNotNull(TEXT("Space dust material loads"), space_dust_material)) {
-            return;
+        struct FMaterialCase {
+            TCHAR const* load_description;
+            TCHAR const* compile_description;
+            UMaterial* material;
+        };
+        FMaterialCase const materials[]{
+            {TEXT("Energy shield material loads"),
+             TEXT("Energy shield shader compiles without errors"),
+             LoadObject<UMaterial>(nullptr, shield_material_path)},
+            {TEXT("Space field material loads"),
+             TEXT("Space field display shader compiles without errors"),
+             LoadObject<UMaterial>(nullptr, display_material_path)},
+            {TEXT("Shield impact material loads"),
+             TEXT("Shield impact shader compiles without errors"),
+             LoadObject<UMaterial>(nullptr, impact_material_path)},
+            {TEXT("Vertex ripple material loads"),
+             TEXT("Vertex ripple shader compiles without errors"),
+             LoadObject<UMaterial>(nullptr, ripple_material_path)},
+            {TEXT("Radar display material loads"),
+             TEXT("Radar display shader compiles without errors"),
+             LoadObject<UMaterial>(nullptr, radar_material_path)},
+            {TEXT("Tactical scan material loads"),
+             TEXT("Tactical scan shader compiles without errors"),
+             LoadObject<UMaterial>(nullptr, tactical_scan_material_path)},
+            {TEXT("Warp field material loads"),
+             TEXT("Warp field shader compiles without errors"),
+             LoadObject<UMaterial>(nullptr, warp_field_material_path)},
+            {TEXT("Raymarched anomaly material loads"),
+             TEXT("Raymarched anomaly shader compiles without errors"),
+             LoadObject<UMaterial>(nullptr, anomaly_material_path)},
+            {TEXT("Engine exhaust material loads"),
+             TEXT("Engine exhaust shader compiles without errors"),
+             LoadObject<UMaterial>(nullptr, exhaust_material_path)},
+            {TEXT("Planet surface material loads"),
+             TEXT("Planet surface shader compiles without errors"),
+             LoadObject<UMaterial>(nullptr, planet_surface_material_path)},
+            {TEXT("Planet atmosphere material loads"),
+             TEXT("Planet atmosphere shader compiles without errors"),
+             LoadObject<UMaterial>(nullptr, planet_atmosphere_material_path)},
+            {TEXT("Celestial analytic material loads"),
+             TEXT("Celestial analytic shader compiles without errors"),
+             LoadObject<UMaterial>(nullptr, celestial_analytic_material_path)},
+            {TEXT("Construction spawn material loads"),
+             TEXT("Construction spawn shader compiles without errors"),
+             LoadObject<UMaterial>(nullptr, construction_material_path)},
+            {TEXT("Energy beam material loads"),
+             TEXT("Energy beam shader compiles without errors"),
+             LoadObject<UMaterial>(nullptr, energy_beam_material_path)},
+            {TEXT("Space dust material loads"),
+             TEXT("Space dust shader compiles without errors"),
+             LoadObject<UMaterial>(nullptr, space_dust_material_path)},
+        };
+        for (auto const& material : materials) {
+            if (!TestRunner->TestNotNull(material.load_description, material.material)) {
+                return;
+            }
         }
-        TestRunner->TestTrue(TEXT("Energy shield shader compiles without errors"),
-                             UMaterialEditingLibrary::RecompileMaterial(shield_material).IsEmpty());
-        TestRunner->TestTrue(
-            TEXT("Space field display shader compiles without errors"),
-            UMaterialEditingLibrary::RecompileMaterial(display_material).IsEmpty());
-        TestRunner->TestTrue(TEXT("Shield impact shader compiles without errors"),
-                             UMaterialEditingLibrary::RecompileMaterial(impact_material).IsEmpty());
-        TestRunner->TestTrue(TEXT("Vertex ripple shader compiles without errors"),
-                             UMaterialEditingLibrary::RecompileMaterial(ripple_material).IsEmpty());
-        TestRunner->TestTrue(TEXT("Radar display shader compiles without errors"),
-                             UMaterialEditingLibrary::RecompileMaterial(radar_material).IsEmpty());
-        TestRunner->TestTrue(
-            TEXT("Tactical scan shader compiles without errors"),
-            UMaterialEditingLibrary::RecompileMaterial(tactical_scan_material).IsEmpty());
-        TestRunner->TestTrue(
-            TEXT("Warp field shader compiles without errors"),
-            UMaterialEditingLibrary::RecompileMaterial(warp_field_material).IsEmpty());
-        TestRunner->TestTrue(
-            TEXT("Raymarched anomaly shader compiles without errors"),
-            UMaterialEditingLibrary::RecompileMaterial(anomaly_material).IsEmpty());
-        TestRunner->TestTrue(
-            TEXT("Engine exhaust shader compiles without errors"),
-            UMaterialEditingLibrary::RecompileMaterial(exhaust_material).IsEmpty());
-        TestRunner->TestTrue(
-            TEXT("Planet surface shader compiles without errors"),
-            UMaterialEditingLibrary::RecompileMaterial(planet_surface_material).IsEmpty());
-        TestRunner->TestTrue(
-            TEXT("Planet atmosphere shader compiles without errors"),
-            UMaterialEditingLibrary::RecompileMaterial(planet_atmosphere_material).IsEmpty());
-        TestRunner->TestTrue(
-            TEXT("Celestial analytic shader compiles without errors"),
-            UMaterialEditingLibrary::RecompileMaterial(celestial_analytic_material).IsEmpty());
-        TestRunner->TestTrue(
-            TEXT("Construction spawn shader compiles without errors"),
-            UMaterialEditingLibrary::RecompileMaterial(construction_material).IsEmpty());
-        TestRunner->TestTrue(
-            TEXT("Energy beam shader compiles without errors"),
-            UMaterialEditingLibrary::RecompileMaterial(energy_beam_material).IsEmpty());
-        TestRunner->TestTrue(
-            TEXT("Space dust shader compiles without errors"),
-            UMaterialEditingLibrary::RecompileMaterial(space_dust_material).IsEmpty());
+        for (auto const& material : materials) {
+            TestRunner->TestTrue(material.compile_description,
+                                 UMaterialEditingLibrary::RecompileMaterial(material.material).IsEmpty());
+        }
 
         auto* const level_editor{
             GEditor != nullptr ? GEditor->GetEditorSubsystem<ULevelEditorSubsystem>() : nullptr};
@@ -340,42 +306,18 @@ TEST_CLASS(MaterialCompilation, "SandboxShaders.MaterialCompilation")
         AConstructionSpawnExperimentActor* construction{nullptr};
         AEnergyBeamExperimentActor* energy_beam{nullptr};
         for (TActorIterator<AActor> actor_iterator{world}; actor_iterator; ++actor_iterator) {
-            if (space_field == nullptr) {
-                space_field = Cast<ASpaceEnergyFieldExperimentActor>(*actor_iterator);
-            }
-            if (shield == nullptr) {
-                shield = Cast<AEnergyShieldExperimentActor>(*actor_iterator);
-            }
-            if (impact == nullptr) {
-                impact = Cast<AShieldImpactExperimentActor>(*actor_iterator);
-            }
-            if (ripple == nullptr) {
-                ripple = Cast<AVertexRippleExperimentActor>(*actor_iterator);
-            }
-            if (radar == nullptr) {
-                radar = Cast<ARadarDisplayExperimentActor>(*actor_iterator);
-            }
-            if (tactical_scan == nullptr) {
-                tactical_scan = Cast<ATacticalScanExperimentActor>(*actor_iterator);
-            }
-            if (warp_field == nullptr) {
-                warp_field = Cast<AWarpFieldExperimentActor>(*actor_iterator);
-            }
-            if (anomaly == nullptr) {
-                anomaly = Cast<ARaymarchedAnomalyExperimentActor>(*actor_iterator);
-            }
-            if (exhaust == nullptr) {
-                exhaust = Cast<AEngineExhaustExperimentActor>(*actor_iterator);
-            }
-            if (planet_atmosphere == nullptr) {
-                planet_atmosphere = Cast<APlanetAtmosphereExperimentActor>(*actor_iterator);
-            }
-            if (construction == nullptr) {
-                construction = Cast<AConstructionSpawnExperimentActor>(*actor_iterator);
-            }
-            if (energy_beam == nullptr) {
-                energy_beam = Cast<AEnergyBeamExperimentActor>(*actor_iterator);
-            }
+            find_first_actor(*actor_iterator, space_field);
+            find_first_actor(*actor_iterator, shield);
+            find_first_actor(*actor_iterator, impact);
+            find_first_actor(*actor_iterator, ripple);
+            find_first_actor(*actor_iterator, radar);
+            find_first_actor(*actor_iterator, tactical_scan);
+            find_first_actor(*actor_iterator, warp_field);
+            find_first_actor(*actor_iterator, anomaly);
+            find_first_actor(*actor_iterator, exhaust);
+            find_first_actor(*actor_iterator, planet_atmosphere);
+            find_first_actor(*actor_iterator, construction);
+            find_first_actor(*actor_iterator, energy_beam);
         }
         if (!TestRunner->TestNotNull(TEXT("Space field actor is active"), space_field) ||
             !TestRunner->TestNotNull(TEXT("Shield actor is active"), shield) ||
@@ -476,9 +418,7 @@ TEST_CLASS(MaterialCompilation, "SandboxShaders.MaterialCompilation")
             TEXT("Planet atmosphere owns surface and shell meshes"), planet_meshes.Num(), 2);
         UMaterialInstanceDynamic* planet_atmosphere_instance{nullptr};
         for (auto* const planet_mesh : planet_meshes) {
-            auto* const candidate{IsValid(planet_mesh)
-                                      ? Cast<UMaterialInstanceDynamic>(planet_mesh->GetMaterial(0))
-                                      : nullptr};
+            auto* const candidate{dynamic_material(planet_mesh)};
             if (IsValid(candidate) &&
                 candidate->K2_GetScalarParameterValue(TEXT("Density")) > 0.0f) {
                 planet_atmosphere_instance = candidate;
@@ -491,9 +431,7 @@ TEST_CLASS(MaterialCompilation, "SandboxShaders.MaterialCompilation")
                 : -1.0f,
             3.25f);
         auto* const construction_instance{
-            IsValid(construction_mesh)
-                ? Cast<UMaterialInstanceDynamic>(construction_mesh->GetMaterial(0))
-                : nullptr};
+            dynamic_material(construction_mesh)};
         TestRunner->TestEqual(
             TEXT("Construction progress reached its material"),
             IsValid(construction_instance)
@@ -501,9 +439,7 @@ TEST_CLASS(MaterialCompilation, "SandboxShaders.MaterialCompilation")
                 : -1.0f,
             1.0f);
         auto* const energy_beam_instance{
-            IsValid(energy_beam_mesh)
-                ? Cast<UMaterialInstanceDynamic>(energy_beam_mesh->GetMaterial(0))
-                : nullptr};
+            dynamic_material(energy_beam_mesh)};
         TestRunner->TestEqual(TEXT("Long beam preset scales cylinder to endpoint distance"),
                               IsValid(energy_beam_mesh)
                                   ? static_cast<float>(energy_beam_mesh->GetRelativeScale3D().Z)
@@ -527,17 +463,12 @@ TEST_CLASS(MaterialCompilation, "SandboxShaders.MaterialCompilation")
                 IsValid(scan_post_process->Settings.WeightedBlendables.Array[0].Object));
 
         auto* const impact_instance{
-            IsValid(impact_mesh) ? Cast<UMaterialInstanceDynamic>(impact_mesh->GetMaterial(0))
-                                 : nullptr};
-        auto* const warp_instance{IsValid(warp_mesh)
-                                      ? Cast<UMaterialInstanceDynamic>(warp_mesh->GetMaterial(0))
-                                      : nullptr};
+            dynamic_material(impact_mesh)};
+        auto* const warp_instance{dynamic_material(warp_mesh)};
         auto* const anomaly_instance{
-            IsValid(anomaly_mesh) ? Cast<UMaterialInstanceDynamic>(anomaly_mesh->GetMaterial(0))
-                                  : nullptr};
+            dynamic_material(anomaly_mesh)};
         auto* const exhaust_instance{
-            IsValid(exhaust_mesh) ? Cast<UMaterialInstanceDynamic>(exhaust_mesh->GetMaterial(0))
-                                  : nullptr};
+            dynamic_material(exhaust_mesh)};
         auto* const scan_instance{
             IsValid(scan_post_process) &&
                     !scan_post_process->Settings.WeightedBlendables.Array.IsEmpty()

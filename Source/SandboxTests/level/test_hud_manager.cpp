@@ -1,27 +1,21 @@
 #include "test_hud_manager_scenario.h"
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/missions/compiled_mission.h>
-#include <ioj/time_series_data.h>
-#include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
-#include <SandboxTests/support/time_series_test_data.h>
 #include <SandboxTests/support/WorldlessSimulationTest.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
-#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGamePresentation/presentation/HUDManager.h>
 #include <SpaceGamePresentation/presentation/widgets/ShipHudWidget.h>
 
-#include <SandboxCoreEngine/actor_utils.h>
-#include <SandboxCoreEngine/enums.h>
+#include <SandboxCore/container_ops.h>
 
 #include <Engine/World.h>
 #include <GameFramework/PlayerController.h>
-#include <Kismet/GameplayStatics.h>
 #include <Misc/Optional.h>
 
 #include <array>
@@ -40,7 +34,7 @@ auto defence_objectives() -> levels::MissionDefinition {
                         .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExprIndex, 3>{
                             0, 1, levels::absent_expression}}}}};
 }
-auto count_worldless_hud_entities(ioj::FHUDManager const& manager) -> int32 {
+auto count_cached_hud_entities(ioj::FHUDManager const& manager) -> int32 {
     int32 count{};
     for (auto const& team : manager.get_entity_count_data().alive_per_team_and_type) {
         for (auto const value : team) {
@@ -55,7 +49,6 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
                                         FSoftTestAssertions& checks,
                                         USpaceGameLevelConfig const& config,
                                         EHUDManagerScenario const scenario) {
-    check(scenario != EHUDManagerScenario::LateHUDRegistrationSynchronisesAndUnregisters);
     auto data{make_worldless_simulation_test_data(config)};
     data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
@@ -125,7 +118,7 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
     checks.are_equal(0, hud.get_registered_hud_count(), TEXT("No HUD widgets are registered"));
     checks.are_equal(ioj::EHUDManagerState::Active, hud.get_state(), TEXT("HUD manager is active"));
     checks.are_equal(harness.get_ledger().count_alive(),
-                     count_worldless_hud_entities(hud),
+                     count_cached_hud_entities(hud),
                      TEXT("Initial entity cache matches ledger"));
     checks.are_equal(static_cast<int32>(mission.active_objectives().size()),
                      hud.get_mission_data().active,
@@ -134,7 +127,7 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
         return;
     }
 
-    auto const initial_count{count_worldless_hud_entities(hud)};
+    auto const initial_count{count_cached_hud_entities(hud)};
     if (scenario == EHUDManagerScenario::EntityCountPollingContinuesWithoutHUD) {
         harness.timeline.then_after(0.1, [&] { harness.queue_kills(std::array{first_capital}); });
     } else if (scenario == EHUDManagerScenario::MissionAndDefenceDataUpdateWithoutHUD) {
@@ -153,7 +146,7 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
 
     if (scenario == EHUDManagerScenario::EntityCountPollingContinuesWithoutHUD) {
         checks.are_equal(initial_count - 1,
-                         count_worldless_hud_entities(hud),
+                         count_cached_hud_entities(hud),
                          TEXT("Entity cache updates without a HUD"));
     } else if (scenario == EHUDManagerScenario::MissionAndDefenceDataUpdateWithoutHUD) {
         checks.are_equal(1, hud.get_mission_data().completed, TEXT("Resolved objective is cached"));
@@ -175,266 +168,12 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
     }
 }
 
-FTestHUDManagerScenario::FTestHUDManagerScenario(FSimulationTestContext& context,
-                                                 EHUDManagerScenario const scenario)
-    : FSimulationTestScenario{context}
-    , scenario_{scenario} {}
+FTestHUDManagerScenario::FTestHUDManagerScenario(FSimulationTestContext& context)
+    : FSimulationTestScenario{context} {}
 
 void FTestHUDManagerScenario::on_tear_down() {
     check_headless_hud_manager_matches_simulation();
     reset(checks, test_driver, headless_hud_manager);
-}
-
-/* ------------------------------------------------------------------------------------------ */
-// Initial cache
-/* ------------------------------------------------------------------------------------------ */
-void FTestHUDManagerScenario::initial_caches_process_samples() {
-    if (!initialise_headless_hud_manager()) {
-        return;
-    }
-
-    auto* const orchestrator{&context_.orchestrator};
-    if (!checks.not_nullptr(orchestrator, TEXT("Orchestrator is available"))) {
-        return;
-    }
-
-    auto const& hud_manager{get_headless_hud_manager()};
-    auto const& ledger{orchestrator->get_entity_ledger()};
-    auto const& mission{orchestrator->get_mission()};
-    auto const* const player_ship{orchestrator->get_player_ship()};
-
-    checks.are_equal(
-        0, hud_manager.get_registered_hud_count(), TEXT("No HUD widgets are registered"));
-    checks.are_equal(
-        ioj::EHUDManagerState::Active, hud_manager.get_state(), TEXT("HUD manager is active"));
-    checks.are_equal(ledger.count_alive(),
-                     count_cached_entities(hud_manager),
-                     TEXT("Initial entity count cache matches the ledger"));
-
-    auto const& mission_data{hud_manager.get_mission_data()};
-    checks.are_equal(static_cast<int32>(mission.active_objectives().size()),
-                     mission_data.active,
-                     TEXT("Active objective count is cached"));
-
-    if (IsValid(player_ship)) {
-        auto const& player_data{hud_manager.get_player_status_data()};
-        checks.is_true(player_data.has_player_ship, TEXT("Player HUD state is available"));
-        auto const player_health{player_ship->get_health_info()};
-        checks.are_equal(player_health.health,
-                         player_data.health.health,
-                         TEXT("Player current health is cached"));
-        checks.are_equal(player_health.max_health,
-                         player_data.health.max_health,
-                         TEXT("Player maximum health is cached"));
-        checks.are_equal(
-            player_ship->get_speed(), player_data.speed, TEXT("Player speed is cached"));
-        checks.are_equal(player_ship->get_persistent_forward_target_speed(),
-                         player_data.target_speed,
-                         TEXT("Player target speed is cached"));
-    }
-
-    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-}
-
-/* ------------------------------------------------------------------------------------------ */
-// Defence mission
-/* ------------------------------------------------------------------------------------------ */
-void FTestHUDManagerScenario::defence_pre_begin_play(UWorld& world,
-                                                     USpaceGameLevelConfig const& config) {
-    auto* const defended{spawn_capital_proxy(
-        world, config, checks, FName{TEXT("defended_capital")}, FVector::ZeroVector)};
-    if (!IsValid(defended)) {
-        return;
-    }
-    spawn_capital_proxy(
-        world, config, checks, FName{TEXT("required_enemy_capital")}, FVector{2000.f, 0.f, 0.f});
-}
-
-void FTestHUDManagerScenario::configure_defence_mission(UWorld& world,
-                                                        ATestBatchOrchestrator& orchestrator) {
-    auto const capitals{get_actors<ATestCapitalShipProxy>(world)};
-    auto const find_capital{[&capitals](FName const test_name) {
-        auto* const* const capital{
-            capitals.FindByPredicate([test_name](ATestCapitalShipProxy const* const candidate) {
-                return candidate->get_test_name() == test_name;
-            })};
-        check(capital);
-        return *capital;
-    }};
-    auto* const defended{find_capital(FName{TEXT("defended_capital")})};
-    auto& definition{orchestrator.get_mission_definition()};
-    definition.objectives = defence_objectives();
-    definition.entity_bindings.Add(FName{TEXT("defended")}, defended);
-}
-
-void FTestHUDManagerScenario::defence_begin() {
-    initialise_test_driver();
-    if (!initialise_headless_hud_manager()) {
-        return;
-    }
-    checks.are_equal(
-        1, get_headless_hud_manager().get_mission_data().active, TEXT("Objective starts active"));
-    auto const& capitals{test_driver->get_capital_ships()};
-    std::array const handles{capitals.get_id(0), capitals.get_id(1)};
-    test_driver->timeline.then_after(damage_queue_time,
-                                     [this, handles] { test_driver->queue_kills(handles); });
-    begin_timed_sampling(
-        test_duration,
-        FSimulationSampleCallback::CreateRaw(this, &FTestHUDManagerScenario::defence_on_tick),
-        defence_samples);
-}
-
-void FTestHUDManagerScenario::defence_on_tick(ATestBatchOrchestrator&) {
-    tick_headless_hud_manager();
-    auto const& hud{get_headless_hud_manager()};
-    defence_samples.add(test_driver->get_time(),
-                        FDefenceSample{hud.get_mission_data().completed,
-                                       hud.get_mission_data().active,
-                                       hud.get_registered_hud_count()});
-}
-
-void FTestHUDManagerScenario::defence_process_samples() {
-    check_samples_recorded(defence_samples.num(), checks, TEXT("Objective samples recorded"));
-    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-    auto const& sample{defence_samples.nearest_value(test_duration)};
-    checks.are_equal(1, sample.completed, TEXT("Completed objective is cached"));
-    checks.are_equal(0, sample.active, TEXT("Completed objective leaves active set"));
-    checks.are_equal(0, sample.registered_hud_count, TEXT("Objectives update without a HUD"));
-    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-}
-
-/* ------------------------------------------------------------------------------------------ */
-// Timed mission
-/* ------------------------------------------------------------------------------------------ */
-void FTestHUDManagerScenario::mission_time_pre_begin_play(UWorld& world,
-                                                          USpaceGameLevelConfig const& config) {
-    defence_pre_begin_play(world, config);
-}
-
-void FTestHUDManagerScenario::mission_time_begin() {
-    initialise_test_driver();
-    if (!initialise_headless_hud_manager()) {
-        return;
-    }
-    begin_timed_sampling(
-        test_duration,
-        FSimulationSampleCallback::CreateRaw(this, &FTestHUDManagerScenario::mission_time_on_tick),
-        mission_time_samples);
-}
-
-void FTestHUDManagerScenario::mission_time_on_tick(ATestBatchOrchestrator&) {
-    tick_headless_hud_manager();
-    auto const& hud{get_headless_hud_manager()};
-    mission_time_samples.add(
-        test_driver->get_time(),
-        FMissionTimeSample{hud.get_mission_data().completed, hud.get_registered_hud_count()});
-}
-
-void FTestHUDManagerScenario::mission_time_process_samples() {
-    check_samples_recorded(
-        mission_time_samples.num(), checks, TEXT("Mission-time samples recorded"));
-    if (mission_time_samples.is_empty()) {
-        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-        return;
-    }
-
-    auto const& sample{mission_time_samples.nearest_value(test_duration)};
-
-    checks.are_equal(1, sample.completed, TEXT("Timer completion is cached"));
-    checks.are_equal(
-        0, sample.registered_hud_count, TEXT("Timer completion updates without a HUD"));
-
-    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-}
-
-/* ------------------------------------------------------------------------------------------ */
-// Player kill
-/* ------------------------------------------------------------------------------------------ */
-void FTestHUDManagerScenario::player_kill_pre_begin_play(UWorld& world,
-                                                         USpaceGameLevelConfig const& config) {
-    auto* const player_ship{
-        spawn_player_ship(world, config.classes.player_ship_class, &config.player_ship)};
-    if (!checks.is_valid(player_ship, TEXT("Player ship is spawned"))) {
-        return;
-    }
-
-    spawn_capital_proxy(world,
-                        config,
-                        checks,
-                        FName{TEXT("player_kill_target_capital")},
-                        FVector{2000.f, 0.f, 0.f});
-}
-
-void FTestHUDManagerScenario::player_kill_begin() {
-    initialise_test_driver();
-
-    auto* player_ship{get_first_actor<ATestSpaceShip>(test_driver->world)};
-    if (!checks.is_true(IsValid(player_ship), TEXT("Got player ship"))) {
-        return;
-    }
-    test_driver->orchestrator.set_player_ship(*player_ship);
-
-    if (!initialise_headless_hud_manager()) {
-        return;
-    }
-    auto const& capitals{test_driver->get_capital_ships()};
-    check(capitals.get_num_instances() == 1);
-
-    std::array<sim::EntityId, 1> const targets{capitals.get_entities().entity_ids()[0]};
-    auto const instigator{player_ship->get_unique_id()};
-    test_driver->timeline.then_after(damage_queue_time, [this, targets, instigator] {
-        test_driver->queue_kills(targets, instigator);
-    });
-    begin_timed_sampling(
-        test_duration,
-        FSimulationSampleCallback::CreateRaw(this, &FTestHUDManagerScenario::player_kill_on_tick),
-        player_samples);
-}
-
-void FTestHUDManagerScenario::player_kill_on_tick(ATestBatchOrchestrator&) {
-    tick_headless_hud_manager();
-    auto const& hud_manager{get_headless_hud_manager()};
-    auto const& data{hud_manager.get_player_status_data()};
-    auto const& player_ship{test_driver->get_player_ship()};
-    auto const& kill_data{hud_manager.get_kill_data()};
-    int32 top_killer_kills{0};
-    for (auto const& entry : kill_data.top_killers) {
-        if (entry.entity_id == player_ship.get_unique_id()) {
-            top_killer_kills = entry.kills;
-            break;
-        }
-    }
-
-    auto const player_team_row{kill_data.team_kill_matrix.get_team_kills(player_ship.get_team())};
-    int32 player_team_matrix_kills{0};
-    for (int32 const kills : player_team_row) {
-        player_team_matrix_kills += kills;
-    }
-
-    player_samples.add(test_driver->get_time(),
-                       FPlayerSample{data.points,
-                                     top_killer_kills,
-                                     player_team_matrix_kills,
-                                     hud_manager.get_registered_hud_count()});
-}
-
-void FTestHUDManagerScenario::player_kill_process_samples() {
-    check_samples_recorded(player_samples.num(), checks, TEXT("Player samples recorded"));
-    if (player_samples.is_empty()) {
-        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-        return;
-    }
-
-    auto const& before_sample{player_samples.nearest_value(early_sample_time)};
-    auto const& sample{player_samples.nearest_value(test_duration)};
-    checks.are_equal(0, before_sample.top_killer_kills, TEXT("Top killers start empty"));
-    checks.are_equal(0, before_sample.player_team_matrix_kills, TEXT("Kill matrix starts empty"));
-    checks.are_equal(1, sample.points, TEXT("Player kill count is cached"));
-    checks.are_equal(1, sample.top_killer_kills, TEXT("Top-killer data is cached"));
-    checks.are_equal(1, sample.player_team_matrix_kills, TEXT("Kill matrix is cached"));
-    checks.are_equal(0, sample.registered_hud_count, TEXT("Player data updates without a HUD"));
-
-    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -461,7 +200,7 @@ void FTestHUDManagerScenario::registration_process_samples() {
     // may already have been sampled, which masked the late-registration startup bug.
     auto& hud_manager{get_headless_hud_manager()};
     checks.are_equal(orchestrator->get_entity_ledger().count_alive(),
-                     count_cached_entities(hud_manager),
+                     count_cached_hud_entities(hud_manager),
                      TEXT("Cache exists before HUD registration"));
 
     auto* const ui_data{test_batch_game_ui_data::get_data_asset()};
@@ -512,66 +251,6 @@ void FTestHUDManagerScenario::registration_process_samples() {
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 }
 
-/* ------------------------------------------------------------------------------------------ */
-// Polling scenario
-/* ------------------------------------------------------------------------------------------ */
-void FTestHUDManagerScenario::entity_count_pre_begin_play(UWorld& world,
-                                                          USpaceGameLevelConfig const& config) {
-    spawn_capital_proxy(
-        world, config, checks, FName{TEXT("entity_count_capital")}, FVector::ZeroVector);
-}
-
-void FTestHUDManagerScenario::entity_count_begin() {
-    initialise_test_driver();
-    if (!initialise_headless_hud_manager()) {
-        return;
-    }
-    auto const& hud_manager{get_headless_hud_manager()};
-    initial_alive_count = count_cached_entities(hud_manager);
-    checks.are_equal(0,
-                     hud_manager.get_registered_hud_count(),
-                     TEXT("Entity cache starts with no registered HUD"));
-
-    auto const& capitals{test_driver->get_capital_ships()};
-    check(capitals.get_num_instances() == 1);
-    std::array<sim::EntityId, 1> const targets{capitals.get_id(0)};
-    test_driver->timeline.then_after(damage_queue_time,
-                                     [this, targets] { test_driver->queue_kills(targets); });
-    begin_timed_sampling(
-        test_duration,
-        FSimulationSampleCallback::CreateRaw(this, &FTestHUDManagerScenario::entity_count_on_tick),
-        entity_count_samples);
-}
-
-void FTestHUDManagerScenario::entity_count_on_tick(ATestBatchOrchestrator& orchestrator) {
-    tick_headless_hud_manager();
-    entity_count_samples.add(
-        test_driver->get_time(),
-        FEntityCountSample{count_cached_entities(get_headless_hud_manager()),
-                           orchestrator.get_hud_manager().get_registered_hud_count()});
-}
-
-void FTestHUDManagerScenario::entity_count_process_samples() {
-    check_samples_recorded(
-        entity_count_samples.num(), checks, TEXT("Entity-count samples recorded"));
-    if (entity_count_samples.is_empty()) {
-        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-        return;
-    }
-
-    auto const& early_sample{entity_count_samples.nearest_value(early_sample_time)};
-    auto const& final_sample{entity_count_samples.nearest_value(test_duration)};
-    checks.are_equal(initial_alive_count,
-                     early_sample.cached_alive_count,
-                     TEXT("Entity cache waits for its polling period"));
-    checks.are_equal(initial_alive_count - 1,
-                     final_sample.cached_alive_count,
-                     TEXT("Entity cache updates after the polling period"));
-    checks.are_equal(
-        0, final_sample.registered_hud_count, TEXT("Entity cache still has no registered HUD"));
-
-    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-}
 /* ------------------------------------------------------------------------------------------ */
 // Shared
 /* ------------------------------------------------------------------------------------------ */
@@ -634,8 +313,9 @@ void FTestHUDManagerScenario::check_headless_hud_manager_matches_simulation() {
     auto& local_hud_manager{get_headless_hud_manager()};
     local_hud_manager.force_sample();
     simulation_hud_manager.force_sample();
-    check_mission_data_equal(local_hud_manager.get_mission_data(),
-                             simulation_hud_manager.get_mission_data());
+    checks.is_true(local_hud_manager.get_mission_data() ==
+                       simulation_hud_manager.get_mission_data(),
+                   TEXT("Objective caches match"));
     checks.is_true(local_hud_manager.get_entity_count_data() ==
                        simulation_hud_manager.get_entity_count_data(),
                    TEXT("Headless and simulation entity-count caches match"));
@@ -651,11 +331,6 @@ void FTestHUDManagerScenario::check_headless_hud_manager_matches_simulation() {
     check_sampled_speed_data_equal(local_hud_manager.get_sampled_speed_data(),
                                    simulation_hud_manager.get_sampled_speed_data());
 #endif
-}
-
-void FTestHUDManagerScenario::check_mission_data_equal(
-    hud_manager::FMissionDataCache const& local, hud_manager::FMissionDataCache const& simulation) {
-    checks.is_true(local == simulation, TEXT("Objective caches match"));
 }
 
 #if WITH_EDITOR
@@ -678,66 +353,8 @@ void FTestHUDManagerScenario::check_sampled_speed_data_equal(
 }
 #endif
 
-auto FTestHUDManagerScenario::count_cached_entities(ioj::FHUDManager const& manager) -> int32 {
-    int32 total{0};
-    auto const& counts{manager.get_entity_count_data().alive_per_team_and_type};
-    constexpr int32 n_teams{enum_count<ETestTeam>()};
-    constexpr int32 n_types{enum_count<sim::EntityType>()};
-    for (int32 team{0}; team < n_teams; ++team) {
-        for (int32 type{0}; type < n_types; ++type) {
-            total += counts[team][type];
-        }
-    }
-    return total;
-}
-
 void FTestHUDManagerScenario::run() {
-    switch (scenario_) {
-        case EHUDManagerScenario::InitialCachesPopulateWithoutHUD:
-            TestCommandBuilder.Do([this] { initial_caches_process_samples(); });
-            break;
-        case EHUDManagerScenario::EntityCountPollingContinuesWithoutHUD:
-            run_until_timeline_finished(
-                [this] {
-                    entity_count_pre_begin_play(context_.world, context_.config);
-                    entity_count_begin();
-                },
-                timeout,
-                [this] { entity_count_process_samples(); });
-            break;
-        case EHUDManagerScenario::MissionAndDefenceDataUpdateWithoutHUD:
-            run_until_timeline_finished(
-                [this] {
-                    defence_pre_begin_play(context_.world, context_.config);
-                    configure_defence_mission(context_.world, context_.orchestrator);
-                    defence_begin();
-                },
-                timeout,
-                [this] { defence_process_samples(); });
-            break;
-        case EHUDManagerScenario::PlayerStateAndKillsUpdateWithoutHUD:
-            run_until_timeline_finished(
-                [this] {
-                    player_kill_pre_begin_play(context_.world, context_.config);
-                    player_kill_begin();
-                },
-                timeout,
-                [this] { player_kill_process_samples(); });
-            break;
-        case EHUDManagerScenario::MissionTimeUsesSimulationClockWithoutHUD:
-            run_until_timeline_finished(
-                [this] {
-                    mission_time_pre_begin_play(context_.world, context_.config);
-                    configure_defence_mission(context_.world, context_.orchestrator);
-                    mission_time_begin();
-                },
-                timeout,
-                [this] { mission_time_process_samples(); });
-            break;
-        case EHUDManagerScenario::LateHUDRegistrationSynchronisesAndUnregisters:
-            TestCommandBuilder.Do([this] { registration_process_samples(); });
-            break;
-    }
+    TestCommandBuilder.Do([this] { registration_process_samples(); });
 }
 
 }

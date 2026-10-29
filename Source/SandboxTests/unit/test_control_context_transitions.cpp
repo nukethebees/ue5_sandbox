@@ -5,6 +5,7 @@
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestEnhancedInputSubsystem.h>
+#include <SandboxTests/support/TestShipInputs.h>
 #include <SpaceGame/ships/player/PlayerControlContexts.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
@@ -71,26 +72,8 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
         auto const* const input_property{
             FindFProperty<FStructProperty>(defaults->GetClass(), TEXT("input"))};
         ship_input_ = *input_property->ContainerPtrToValuePtr<FSpaceShipControllerInputs>(defaults);
-        ship_input_.starfox = NewObject<UInputMappingContext>(controller_);
-        ship_input_.fighter = NewObject<UInputMappingContext>(controller_);
-        ship_input_.skater = NewObject<UInputMappingContext>(controller_);
-        ship_input_.gunship = NewObject<UInputMappingContext>(controller_);
         auto* const action{NewObject<UInputAction>(controller_)};
-        ship_input_.translate_forward = action;
-        ship_input_.translate_right = action;
-        ship_input_.translate_up = action;
-        ship_input_.pitch = action;
-        ship_input_.yaw = action;
-        ship_input_.roll = action;
-        ship_input_.accelerate = action;
-        ship_input_.brake = action;
-        ship_input_.boost = action;
-        ship_input_.emergency_brake = action;
-        ship_input_.fire_primary = action;
-        ship_input_.select_starfox = action;
-        ship_input_.select_fighter = action;
-        ship_input_.select_skater = action;
-        ship_input_.select_gunship = action;
+        ioj::tests::configure_ship_inputs(ship_input_, *controller_, *action);
         global_input_.mapping_context = NewObject<UInputMappingContext>(controller_);
         global_input_.toggle_menu = action;
         benchmark_input_.mapping_context = NewObject<UInputMappingContext>(controller_);
