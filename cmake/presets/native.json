@@ -195,6 +195,15 @@
       }
     },
     {
+      "name": "lispb-host",
+      "displayName": "Shared Release Lispb host tool",
+      "inherits": "windows-clang-cl",
+      "cacheVariables": {
+        "IOJ_LISPB_ONLY": true,
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
       "name": "win-x64-clangcl-debug-tidy",
       "displayName": "Native Windows x64 clang-cl Debug + clang-tidy",
       "inherits": "win-x64-clangcl-debug",
@@ -208,6 +217,13 @@
     }
   ],
   "buildPresets": [
+    {
+      "name": "lispb-host",
+      "configurePreset": "lispb-host",
+      "targets": [
+        "lispb"
+      ]
+    },
     {
       "name": "native-lean",
       "configurePreset": "native-lean",
@@ -615,6 +631,19 @@
     }
   ],
   "workflowPresets": [
+    {
+      "name": "lispb-host",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "lispb-host"
+        },
+        {
+          "type": "build",
+          "name": "lispb-host"
+        }
+      ]
+    },
     {
       "name": "native-lean",
       "steps": [

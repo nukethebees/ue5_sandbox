@@ -26,6 +26,13 @@ option(IOJ_WITH_UNREAL "Configure Unreal Engine integration and targets" ON)
 option(IOJ_ENABLE_ASAN "Instrument native targets with AddressSanitizer" OFF)
 option(IOJ_ENABLE_CLANG_TIDY "Run clang-tidy for first-party native targets" OFF)
 option(IOJ_BUILD_DEVELOPER_TOOLS "Configure developer applications and their test/build dependencies" ON)
+option(IOJ_LISPB_ONLY "Configure only the shared Lispb host build driver" OFF)
+
+if(IOJ_LISPB_ONLY)
+  include(cmake/lispb_host_tool.cmake)
+  add_custom_target(lispb DEPENDS lispb-executable)
+  return()
+endif()
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 add_subdirectory(cmake)

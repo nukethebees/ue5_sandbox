@@ -1,0 +1,30 @@
+cmake_minimum_required(VERSION 4.4.2)
+
+set(host_build [==[@lispb_host_build@]==])
+file(MAKE_DIRECTORY "${host_build}")
+file(LOCK "${host_build}/build.lock" GUARD PROCESS TIMEOUT 300)
+set(ENV{LLVM_ROOT} [==[@LLVM_ROOT@]==])
+
+if(NOT EXISTS "${host_build}/configured")
+  file(WRITE "${host_build}/initial-cache.cmake" [====[@lispb_host_cache@]====])
+  set(generator_arguments -G [==[@CMAKE_GENERATOR@]==])
+  if(NOT [==[@CMAKE_GENERATOR_PLATFORM@]==] STREQUAL "")
+    list(APPEND generator_arguments -A [==[@CMAKE_GENERATOR_PLATFORM@]==])
+  endif()
+  if(NOT [==[@CMAKE_GENERATOR_TOOLSET@]==] STREQUAL "")
+    list(APPEND generator_arguments -T [==[@CMAKE_GENERATOR_TOOLSET@]==])
+  endif()
+  execute_process(
+    COMMAND "${CMAKE_COMMAND}" -S [==[@PROJECT_SOURCE_DIR@]==] -B "${host_build}"
+      ${generator_arguments} -C "${host_build}/initial-cache.cmake"
+    COMMAND_ERROR_IS_FATAL ANY
+  )
+  file(WRITE "${host_build}/configured" "")
+endif()
+
+# Let the host build system track source, header and CMake changes on every invocation.
+execute_process(
+  COMMAND "${CMAKE_COMMAND}" --build "${host_build}"
+    --config [==[@IOJ_HOST_TOOLS_CONFIGURATION@]==] --target lispb
+  COMMAND_ERROR_IS_FATAL ANY
+)

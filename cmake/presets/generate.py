@@ -157,6 +157,14 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
     )
     configure_presets.append(
         {
+            "name": "lispb-host",
+            "displayName": "Shared Release Lispb host tool",
+            "inherits": "windows-clang-cl",
+            "cacheVariables": {"IOJ_LISPB_ONLY": True, "CMAKE_BUILD_TYPE": "Release"},
+        }
+    )
+    configure_presets.append(
+        {
             "name": CLANG_TIDY_CONFIGURATION,
             "displayName": "Native Windows x64 clang-cl Debug + clang-tidy",
             "inherits": "win-x64-clangcl-debug",
@@ -171,6 +179,8 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
     )
     document["configurePresets"] = configure_presets
     document["buildPresets"] = [
+        {"name": "lispb-host", "configurePreset": "lispb-host",
+         "targets": ["lispb"]},
         {"name": "native-lean", "configurePreset": "native-lean",
          "targets": ["native-core", "native-memory", "native-simulation"]},
         {"name": "task-start", "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
@@ -298,6 +308,9 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
         },
     ]
     document["workflowPresets"] = [
+        {"name": "lispb-host", "steps": [
+            {"type": "configure", "name": "lispb-host"},
+            {"type": "build", "name": "lispb-host"}]},
         {"name": "native-lean", "steps": [
             {"type": "configure", "name": "native-lean"},
             {"type": "build", "name": "native-lean"}]},
