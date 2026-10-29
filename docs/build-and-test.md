@@ -54,6 +54,13 @@ this does not stop the shared background process or delete cached data.
 
 ### Compiler build profiling
 
+Use `coj profile-build native` for native build timings and ClangBuildAnalyzer output,
+or `coj profile-build unreal` for a clean DebugGame editor capture including detailed
+UBA tracing. Results remain under `.local/build-profiles/`; temporary Unreal profiling
+configuration is restored after success or failure. See the
+[profiling workflow](../tools/rust/crates/coj/docs/usage.md#build-profiling) for profile
+commands, cleanup and artifact details.
+
 Configure with `-DIOJ_ENABLE_BUILD_PROFILING=ON` to enable compiler timing on targets
 using `sandbox::native_defaults`. Other targets can link `ioj::build_profiling`
 privately, or propagate it through their own interface libraries. The option defaults

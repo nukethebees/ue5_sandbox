@@ -4,6 +4,7 @@ use serde_json::json;
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::fs::{self, File};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
@@ -27,6 +28,10 @@ struct Profile {
     #[serde(default)]
     environment: BTreeMap<String, String>,
     steps: Vec<Step>,
+    #[serde(default)]
+    cleanup_steps: Vec<Step>,
+    #[serde(default)]
+    timestamp_output: bool,
 }
 
 #[derive(Deserialize)]
@@ -41,6 +46,8 @@ fn execute(
     command: &[String],
     environment: &BTreeMap<String, String>,
     log: &Path,
+    events: Option<&Mutex<File>>,
+    started: Instant,
 ) -> Result<i32, String> {
     let log = Mutex::new(File::create(log).map_err(|e| e.to_string())?);
     let mut child = Command::new(&command[0])
@@ -55,14 +62,35 @@ fn execute(
     let stdout = child.stdout.take().unwrap();
     let stderr = child.stderr.take().unwrap();
     let (out, err) = std::thread::scope(|scope| {
-        let out = scope.spawn(|| crate::tidy::tee(stdout, &log));
-        let err = scope.spawn(|| crate::tidy::tee(stderr, &log));
+        let out = scope.spawn(|| tee(stdout, &log, events, started));
+        let err = scope.spawn(|| tee(stderr, &log, events, started));
         (out.join().unwrap(), err.join().unwrap())
     });
     let status = child.wait().map_err(|e| e.to_string())?;
     out.and(err)
         .map_err(|e| format!("Cannot write command log: {e}"))?;
     Ok(status.code().unwrap_or(1))
+}
+
+fn tee(
+    reader: impl Read,
+    log: &Mutex<File>,
+    events: Option<&Mutex<File>>,
+    started: Instant,
+) -> std::io::Result<()> {
+    for line in BufReader::new(reader).split(b'\n') {
+        let line = line?;
+        let line = String::from_utf8_lossy(&line);
+        let line = line.trim_end_matches('\r');
+        let mut log = log.lock().unwrap();
+        writeln!(log, "{line}")?;
+        if let Some(events) = events {
+            let event = json!({"seconds":started.elapsed().as_secs_f64(), "line":line});
+            writeln!(events.lock().unwrap(), "{event}")?;
+        }
+        println!("{line}");
+    }
+    Ok(())
 }
 
 pub fn run(arguments: &[OsString]) -> Result<i32, String> {
@@ -92,6 +120,7 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
         || profile
             .steps
             .iter()
+            .chain(&profile.cleanup_steps)
             .any(|step| step.command.first().is_none_or(|s| s.trim().is_empty()))
     {
         return Err("A profile needs steps with nonempty commands".into());
@@ -115,7 +144,7 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
 
     let expand =
         |value: &str| value.replace("{output}", &output.to_string_lossy().replace('\\', "/"));
-    for step in &mut profile.steps {
+    for step in profile.steps.iter_mut().chain(&mut profile.cleanup_steps) {
         step.command = step.command.iter().map(|arg| expand(arg)).collect();
     }
     for value in profile.environment.values_mut() {
@@ -177,7 +206,14 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
         "# Build profile\n\nProfile: `{}`\n\nRevision: `{revision}`\n\nccache: bypassed. Times are wall-clock seconds; traced builds include instrumentation overhead.\n\n| Step | Seconds | Exit code | Log |\n|---|---:|---:|---|\n",
         profile_path.display()
     );
-    for (index, step) in profile.steps.iter().enumerate() {
+    let started = Instant::now();
+    let events = profile
+        .timestamp_output
+        .then(|| File::create(output.join("lines.jsonl")))
+        .transpose()
+        .map_err(|e| e.to_string())?
+        .map(Mutex::new);
+    let mut run_step = |index: usize, step: &Step| -> Result<i32, String> {
         let log_name = format!("{index:02}.log");
         println!("\n{}: {:?}", step.name, step.command);
         let start = Instant::now();
@@ -186,6 +222,8 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
             &step.command,
             &profile.environment,
             &output.join(&log_name),
+            events.as_ref(),
+            started,
         );
         let seconds = start.elapsed().as_secs_f64();
         let code = result.as_ref().copied().unwrap_or(1);
@@ -209,11 +247,27 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
         if let Err(error) = result {
             eprintln!("{error}");
         }
-        if code != 0 {
-            eprintln!("Stopped; logs and timings retained in {}", output.display());
-            return Ok(code);
+        Ok(code)
+    };
+    let mut result = (|| {
+        for (index, step) in profile.steps.iter().enumerate() {
+            let code = run_step(index, step)?;
+            if code != 0 {
+                eprintln!("Stopped; logs and timings retained in {}", output.display());
+                return Ok(code);
+            }
+        }
+        Ok(0)
+    })();
+    for (index, step) in profile.cleanup_steps.iter().enumerate() {
+        let cleanup = run_step(profile.steps.len() + index, step);
+        if !matches!(cleanup, Ok(0)) {
+            eprintln!("Cleanup failed: {cleanup:?}");
+            if matches!(result, Ok(0)) {
+                result = cleanup;
+            }
         }
     }
     println!("Report: {}", output.join("report.md").display());
-    Ok(0)
+    result
 }

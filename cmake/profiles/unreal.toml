@@ -1,0 +1,28 @@
+trace_directory = "{output}/build"
+timestamp_output = true
+
+[environment]
+UnrealBuildTool_UnrealBuildAccelerator__Cache = ""
+UnrealBuildTool_UnrealBuildAccelerator__WriteCache = "False"
+UE_TELEMETRY_DIR = "{output}/unreal/telemetry"
+UE_TELEMETRY_SCOPE_ID = "coj-profile-build"
+
+[[steps]]
+name = "Configure DebugGame"
+command = ["cmake", "--preset", "debug-game", "-B", "{output}/build", "-DIOJ_ENABLE_BUILD_PROFILING=ON", "-DIOJ_ENABLE_UBA_CACHE=OFF"]
+
+[[steps]]
+name = "Enable temporary UBA tracing"
+command = ["pwsh", "-NoProfile", "-File", "cmake/profiles/unreal.ps1", "-Operation", "Prepare", "-OutputDirectory", "{output}/unreal"]
+
+[[steps]]
+name = "Clean Unreal DebugGame"
+command = ["cmake", "-P", "cmake/profiles/clean_unreal.cmake"]
+
+[[steps]]
+name = "Build DebugGame editor and native prerequisites"
+command = ["cmake", "--build", "{output}/build", "--target", "editor"]
+
+[[cleanup_steps]]
+name = "Restore Unreal configuration and collect artifacts"
+command = ["pwsh", "-NoProfile", "-File", "cmake/profiles/unreal.ps1", "-Operation", "Restore", "-OutputDirectory", "{output}/unreal"]

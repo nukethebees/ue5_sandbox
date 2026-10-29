@@ -74,7 +74,7 @@ Use `--checks=-clang-analyzer-*` to omit static-analyzer checks for one run with
 ```powershell
 coj profile-build native-core
 coj profile-build native
-coj profile-build debug-game
+coj profile-build unreal
 coj profile-build .local/my-build.toml
 ```
 
@@ -83,6 +83,9 @@ Profiles live in `cmake/profiles/*.toml`. Each `[[steps]]` entry has a `name` an
 can invoke CMake workflows or individual configure/build phases. `{output}` expands
 to a unique run directory under the gitignored `.local/build-profiles/` directory.
 An optional `[environment]` table sets child-process environment variables.
+`[[cleanup_steps]]` uses the same command format and runs after success or failure,
+including failure to launch a command. `timestamp_output = true` also records output
+lines in `lines.jsonl`, with elapsed seconds from the start of the run.
 
 The runner streams output to the terminal and numbered logs, and writes `report.md`
 and `results.json` containing commands, wall times, exit codes, revision and worktree
@@ -98,11 +101,20 @@ only. Analyzer output is the final numbered log; its capture is `clang.bin`.
 
 The supplied profiles use fresh CMake trees inside each run directory, retaining
 their cache, Ninja log and raw traces without modifying the normal native build tree.
-`native` builds test binaries but does not run tests. `debug-game` bypasses the UBA
-result cache and measures native prerequisites and the editor separately. Unreal's
-project intermediates are retained, so it is **not a clean Unreal rebuild**. Its Clang
-analysis covers native compilation; the current MSVC Unreal compilation is in the
-build log, not the Clang report. Unreal's normal published native binaries are updated.
+`native` builds test binaries but does not run tests. `unreal` bypasses the UBA result
+cache and cleans the project's DebugGame editor objects and reflection outputs before
+building `editor` and its native prerequisites. It temporarily enables detailed UBA
+tracing in the project-local configuration, then restores the original bytes even if
+a command fails. The `unreal/` artifact directory retains the configuration backup,
+action graph, UBT logs, telemetry and `Trace.uba` when produced. Installed engine
+outputs are retained. Its Clang analysis covers native compilation; the current MSVC
+Unreal compilation is in UBA traces and build logs, not the Clang report. Unreal's
+normal published native binaries are updated.
+
+If the profiling process is forcibly terminated, restore
+`unreal/BuildConfiguration.original.xml` to `Saved/UnrealBuildTool/BuildConfiguration.xml`;
+if the artifact instead contains `BuildConfiguration.original.absent`, remove that
+project configuration file. Normal command failures restore it automatically.
 
 Use the existing exclusive jobs-board workflow around a measurement. The runner
 does not acquire tickets. Compiler instrumentation adds overhead; use these captures
