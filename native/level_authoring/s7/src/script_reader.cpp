@@ -134,7 +134,7 @@ auto DefinitionReader::resolve_level(LevelSource const& source, settings::Settin
 }
 
 auto DefinitionReader::read_root_file(std::filesystem::path const& path,
-                                      settings::Settings base) const
+                                      settings::Settings const& base) const
     -> std::expected<DefinitionCatalog, Diagnostics> {
     auto const full_path{std::filesystem::absolute(path)};
     lispb::Strings strings;

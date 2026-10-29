@@ -19,7 +19,7 @@ class DefinitionReader {
         -> LevelDefinitionReadResult;
     // Resolve all imports relative to the root file's directory. Each call starts fresh.
     [[nodiscard]] auto read_root_file(std::filesystem::path const& path,
-                                      settings::Settings base = {}) const
+                                      settings::Settings const& base = {}) const
         -> std::expected<DefinitionCatalog, Diagnostics>;
     [[nodiscard]] auto read_level_source(std::string_view source,
                                          settings::Settings base = {}) const

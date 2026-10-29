@@ -50,16 +50,26 @@ void check_numeric_sources(NumericReaderCase const& test, bool const accepted) {
 
 void check_numeric_sources(NumericReaderCase const& test, bool const accepted) {
     switch (test.type) {
-        case NumericType::Int32:
-            return check_numeric_sources<std::int32_t>(test, accepted);
-        case NumericType::Int64:
-            return check_numeric_sources<std::int64_t>(test, accepted);
-        case NumericType::UInt64:
-            return check_numeric_sources<std::uint64_t>(test, accepted);
-        case NumericType::Float:
-            return check_numeric_sources<float>(test, accepted);
-        case NumericType::Double:
-            return check_numeric_sources<double>(test, accepted);
+        case NumericType::Int32: {
+            check_numeric_sources<std::int32_t>(test, accepted);
+            return;
+        }
+        case NumericType::Int64: {
+            check_numeric_sources<std::int64_t>(test, accepted);
+            return;
+        }
+        case NumericType::UInt64: {
+            check_numeric_sources<std::uint64_t>(test, accepted);
+            return;
+        }
+        case NumericType::Float: {
+            check_numeric_sources<float>(test, accepted);
+            return;
+        }
+        case NumericType::Double: {
+            check_numeric_sources<double>(test, accepted);
+            return;
+        }
     }
 }
 

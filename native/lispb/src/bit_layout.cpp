@@ -11,6 +11,7 @@
 #include <lispb/strings.h>
 
 #include <algorithm>
+#include <cassert>
 #include <limits>
 #include <map>
 #include <set>
@@ -368,7 +369,9 @@ class BitLayoutResolver {
             auto const source_name{std::string{graph_.strings().view(children_.name[row])}};
             auto const source_path{source_prefix.empty() ? source_name
                                                          : source_prefix + "." + source_name};
-            auto const child_extent{*extent(child, source_path)};
+            auto const required_extent{extent(child, source_path)};
+            assert(required_extent.has_value());
+            auto const child_extent{*required_extent};
             auto const relative{is_union ? 0
                                 : msb    ? *width(type, source_prefix) - cursor - child_extent
                                          : cursor};

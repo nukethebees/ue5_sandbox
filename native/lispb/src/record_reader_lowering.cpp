@@ -29,8 +29,8 @@ auto reader_header_path(std::string_view const header) -> std::string {
 
 namespace record_reader {
 auto bound_literal(LoweringContext& context, StringId const bound) -> std::string {
-    auto const text{context.text(bound)};
-    if (text.find('.') != std::string::npos) {
+    auto text{context.text(bound)};
+    if (text.contains('.')) {
         return text;
     }
     if (text == "-9223372036854775808") {

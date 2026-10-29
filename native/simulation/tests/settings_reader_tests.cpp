@@ -48,6 +48,7 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelMission) {
 
     auto const base_values{DefinitionReader{root}.read_settings_file(root / "Settings/base.scm")};
     ASSERT_TRUE(base_values);
+    // NOLINTNEXTLINE(performance-unnecessary-copy-initialization) -- Independent mutation snapshot.
     auto const original{*base_values};
     auto const level{DefinitionReader{}.read_level_source(R"(
       (level :id 'settings-mission :title "Settings and mission" :player 'player

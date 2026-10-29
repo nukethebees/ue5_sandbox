@@ -1920,8 +1920,8 @@ TEST(SemanticTypeGraph, RejectsInvalidPackedDefaultsAcrossEncodings) {
                             "(member value @SignedSentinel :default 128)",
                             "(member value @Child :default 1)",
                             "(member value @Choices :default 1)",
-                            "(member kind @Kind) (member payload @Choices :tag kind) "
-                            "(member value @Health :default 999)"}) {
+                            ("(member kind @Kind) (member payload @Choices :tag kind) "
+                             "(member value @Health :default 999)")}) {
         SCOPED_TRACE(body);
         lispb::codegen::CompilerTestContext context;
         auto const source{std::string{R"((module values :header "Values.h"

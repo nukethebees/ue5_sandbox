@@ -320,6 +320,7 @@ TEST(GeneratedS7Reader, OverridesEngagedOptionalRecordsWithoutLosingPresence) {
 TEST(GeneratedS7Reader, AppliesOverrideChainsFromDistinctSourcesWithoutMutatingTheBase) {
     auto const base{
         read_record_source(R"('(:record :child (:child :name "original" :count 5)))").value()};
+    // NOLINTNEXTLINE(performance-unnecessary-copy-initialization) -- Independent mutation snapshot.
     auto const original{base};
     Interpreter interpreter;
     auto first{

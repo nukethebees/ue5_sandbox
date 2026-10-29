@@ -106,9 +106,9 @@ auto minimum_enum_bits(EnumCode const minimum, EnumCode const maximum, bool cons
 
 } // namespace
 
-EnumDomains::EnumDomains(codegen::Declarations const& decls)
-    : declarations_{&decls}
-    , declarations_to_domains_(decls.enums.name.size()) {}
+EnumDomains::EnumDomains(codegen::Declarations const& declarations)
+    : declarations_{&declarations}
+    , declarations_to_domains_(declarations.enums.name.size()) {}
 
 auto EnumDomains::index(EnumDomainId const id) const -> std::uint32_t {
     assert(id.value != 0 && id.value <= values_.size());

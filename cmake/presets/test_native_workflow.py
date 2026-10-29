@@ -18,6 +18,7 @@ PRESET_DIRECTORY = Path(__file__).resolve().parent
 TIDY_SCOPES = {
     "core": ("core", "profiling"),
     "simulation": ("simulation", "simulation_benchmark"),
+    "presentation": ("presentation",),
     "layout": ("layout",),
     "lispb": ("lispb",),
     "memory": ("memory",),

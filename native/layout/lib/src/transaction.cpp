@@ -275,10 +275,10 @@ void repair_member_metadata(DocumentState& state,
             std::vector<DeclarationHandle> active;
             auto walk = [&](auto&& self,
                             ReferencedDeclaration current,
-                            std::string path,
-                            std::string renamed_path,
-                            std::string source,
-                            std::string renamed_source,
+                            std::string const& path,
+                            std::string const& renamed_path,
+                            std::string const& source,
+                            std::string const& renamed_source,
                             bool affected) -> void {
                 if (std::ranges::find(active, current.declaration) != active.end()) {
                     return;

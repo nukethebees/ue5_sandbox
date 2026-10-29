@@ -19,7 +19,8 @@ TEST(NativeSimulation, LevelTelemetryBlockHistoryTest) {
     GameMemory memory{{.root_capacity_bytes = block_bytes * 8}};
     LevelTelemetryBlockHistory history{memory, {.block_bytes = block_bytes}};
 
-    for (SimTick tick{}; tick.value() < 64; tick.set_value(tick.value() + 1)) {
+    auto const full_block_end{SimTick{64}};
+    for (SimTick tick{}; tick < full_block_end; tick.set_value(tick.value() + 1)) {
         auto columns{history.append_uninitialized()};
         columns.completed_ticks()[0] = tick;
         columns.validity_masks()[0] = active_entities_mask;
@@ -54,7 +55,8 @@ TEST(NativeSimulation, LevelTelemetryBlockHistoryTest) {
 
     history.reset();
     EXPECT_EQ(history.num(), std::int32_t{0}) << "Reset clears logical rows";
-    for (SimTick tick{}; tick.value() < 65; tick.set_value(tick.value() + 1)) {
+    auto const reused_blocks_end{SimTick{65}};
+    for (SimTick tick{}; tick < reused_blocks_end; tick.set_value(tick.value() + 1)) {
         auto columns{history.append_uninitialized()};
         columns.completed_ticks()[0] = tick;
     }

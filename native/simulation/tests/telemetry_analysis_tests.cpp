@@ -15,16 +15,18 @@ auto metric(Analysis const& analysis, Metric const id) -> MetricSeries const& {
 
 TEST(TelemetryAnalysis, EmptyAndSingleSampleRunsDoNotInventIntervals) {
     std::array<LevelTelemetryBattleSample, 1> samples{};
-    for (std::size_t count{}; count <= samples.size(); ++count) {
-        SCOPED_TRACE(count);
-        auto const analysis{analyze({.battle_samples = std::span{samples}.first(count)})};
+    std::span<LevelTelemetryBattleSample const> const sample_view{samples};
+    std::array const cases{sample_view.first(0), sample_view};
+    for (auto const battle_samples : cases) {
+        SCOPED_TRACE(battle_samples.size());
+        auto const analysis{analyze({.battle_samples = battle_samples})};
         ASSERT_EQ(analysis.metrics.size(), static_cast<std::size_t>(Metric::Count));
         for (auto const& series : analysis.metrics) {
             EXPECT_TRUE(series.values.empty());
             EXPECT_TRUE(series.simulated_elapsed_seconds.empty());
             EXPECT_FALSE(series.weighted_mean);
         }
-        EXPECT_EQ(analysis.battle_shots.size(), count);
+        EXPECT_EQ(analysis.battle_shots.size(), battle_samples.size());
     }
 }
 
@@ -104,7 +106,8 @@ TEST(TelemetryAnalysis, WeightsEntityCountsByIntervalDurationAcrossTeams) {
                                Metric::CapitalShips,
                                Metric::CapitalShipFighters,
                                Metric::TubeSpinners};
-    for (std::size_t type{}; type < types.size(); ++type) {
+    auto const type_count{types.size()};
+    for (std::size_t type{}; type < type_count; ++type) {
         samples[1].alive[0][type] = 1;
         samples[1].alive[1][type] = 2;
         samples[2].alive[0][type] = 5;

@@ -746,7 +746,8 @@ TEST(GeneratedEnum, PackedStringsPreserveCategoriesLayoutsAndTerminators) {
                              EMissingNames::Count}) {
         for (auto const text :
              {to_string(value), to_display_string(value), to_serialized_string(value)}) {
-            EXPECT_EQ(text.data()[text.size()], '\0');
+            auto const* terminator{text.data() + text.size()};
+            EXPECT_EQ(*terminator, '\0');
         }
     }
     auto const& table{ioj::enum_strings<EPlainFixture, Name>};
@@ -764,8 +765,12 @@ TEST(GeneratedEnum, PackedStringsShareLookupAcrossCharacterAndOffsetTypes) {
     static_assert(utf32(Value::First) == U"\U0001f680");
     static_assert(utf16(Value::Second) == u"second");
     static_assert(utf32(Value::Second) == U"second");
-    EXPECT_EQ(utf16(Value::First).data()[utf16(Value::First).size()], u'\0');
-    EXPECT_EQ(utf32(Value::Second).data()[utf32(Value::Second).size()], U'\0');
+    auto const first{utf16(Value::First)};
+    auto const second{utf32(Value::Second)};
+    auto const* first_terminator{first.data() + first.size()};
+    auto const* second_terminator{second.data() + second.size()};
+    EXPECT_EQ(*first_terminator, u'\0');
+    EXPECT_EQ(*second_terminator, U'\0');
 }
 
 TEST(GeneratedIntegerScalar, PreservesRawSentinelsWithoutImplicitConversions) {
