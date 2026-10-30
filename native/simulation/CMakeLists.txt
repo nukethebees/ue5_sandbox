@@ -3,6 +3,7 @@ include(target_policy.cmake)
 add_library(native-simulation STATIC)
 
 add_subdirectory(src)
+add_subdirectory(include/ioj/sim/collision)
 add_subdirectory(include/ioj/sim/entities)
 add_subdirectory(include/ioj/sim/missions)
 
