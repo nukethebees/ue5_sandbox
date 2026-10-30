@@ -355,7 +355,7 @@ struct StaticOverlapCase {
     bool overlaps{true};
 };
 
-class StaticEntityAABBOverlaps : public testing::TestWithParam<StaticOverlapCase> {};
+class StaticEntityAABBOverlaps : public ::testing::TestWithParam<StaticOverlapCase> {};
 
 TEST_P(StaticEntityAABBOverlaps, ReportsExactOverlapOnce) {
     auto const& test{GetParam()};
@@ -377,31 +377,31 @@ TEST_P(StaticEntityAABBOverlaps, ReportsExactOverlapOnce) {
 INSTANTIATE_TEST_SUITE_P(
     Geometry,
     StaticEntityAABBOverlaps,
-    testing::Values(StaticOverlapCase{"MovedEntityOverlapsOneStaticAABB",
-                                      10.f,
-                                      {-10.f, -10.f, -10.f},
-                                      {10.f, 10.f, 10.f},
-                                      {100.f, 0.f, 0.f},
-                                      {15.f, 0.f, 0.f}},
-                    StaticOverlapCase{"SharedCellWithoutExactStaticOverlapProducesNoRecord",
-                                      5.f,
-                                      {30.f, 5.f, 5.f},
-                                      {40.f, 15.f, 15.f},
-                                      {100.f, 10.f, 10.f},
-                                      {10.f, 10.f, 10.f},
-                                      false},
-                    StaticOverlapCase{"MultiCellStaticColliderProducesOneRecord",
-                                      5.f,
-                                      {-120.f, -120.f, -120.f},
-                                      {120.f, 120.f, 120.f},
-                                      {400.f, 0.f, 0.f},
-                                      {}},
-                    StaticOverlapCase{"MultiCellEntityProducesOneStaticRecord",
-                                      120.f,
-                                      {-5.f, -5.f, -5.f},
-                                      {5.f, 5.f, 5.f},
-                                      {400.f, 0.f, 0.f},
-                                      {10.f, 0.f, 0.f}}),
+    ::testing::Values(StaticOverlapCase{"MovedEntityOverlapsOneStaticAABB",
+                                        10.f,
+                                        {-10.f, -10.f, -10.f},
+                                        {10.f, 10.f, 10.f},
+                                        {100.f, 0.f, 0.f},
+                                        {15.f, 0.f, 0.f}},
+                      StaticOverlapCase{"SharedCellWithoutExactStaticOverlapProducesNoRecord",
+                                        5.f,
+                                        {30.f, 5.f, 5.f},
+                                        {40.f, 15.f, 15.f},
+                                        {100.f, 10.f, 10.f},
+                                        {10.f, 10.f, 10.f},
+                                        false},
+                      StaticOverlapCase{"MultiCellStaticColliderProducesOneRecord",
+                                        5.f,
+                                        {-120.f, -120.f, -120.f},
+                                        {120.f, 120.f, 120.f},
+                                        {400.f, 0.f, 0.f},
+                                        {}},
+                      StaticOverlapCase{"MultiCellEntityProducesOneStaticRecord",
+                                        120.f,
+                                        {-5.f, -5.f, -5.f},
+                                        {5.f, 5.f, 5.f},
+                                        {400.f, 0.f, 0.f},
+                                        {10.f, 0.f, 0.f}}),
     [](auto const& test) { return test.param.name; });
 
 TEST(EntityAABBOverlaps, MovedEntityOverlapsMultipleStaticAABBs) {
@@ -444,7 +444,7 @@ TEST(EntityAABBOverlaps, MultipleMovedEntitiesProduceDistinctStaticRecords) {
     }
 }
 
-class RotatedEntityAABBOverlaps : public testing::TestWithParam<bool> {};
+class RotatedEntityAABBOverlaps : public ::testing::TestWithParam<bool> {};
 
 TEST_P(RotatedEntityAABBOverlaps, RotationOnlyMovementUsesConservativeBounds) {
     OverlapFixture fixture{{{40.f, 5.f, 5.f}}, {{30.f, 0.f, 0.f}}, {{5.f, 5.f, 5.f}}};
@@ -469,9 +469,10 @@ TEST_P(RotatedEntityAABBOverlaps, RotationOnlyMovementUsesConservativeBounds) {
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(Streams, RotatedEntityAABBOverlaps, testing::Bool(), [](auto const& test) {
-    return test.param ? "Both" : "DynamicOnly";
-});
+INSTANTIATE_TEST_SUITE_P(Streams,
+                         RotatedEntityAABBOverlaps,
+                         ::testing::Bool(),
+                         [](auto const& test) { return test.param ? "Both" : "DynamicOnly"; });
 
 TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
     OverlapFixture fixture{{{60.f, 60.f, 60.f}}};
