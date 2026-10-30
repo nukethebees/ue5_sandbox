@@ -136,8 +136,7 @@ TEST(DocumentSettings, DistributionOwnersSurviveRenameAndRestoreAfterDeletion) {
     ASSERT_TRUE(doc.valid());
     auto const type{doc.find_type("game", "Payload").value()};
     auto const owner{doc.find_declaration(doc.types().identity(type)).value()};
-    std::array const weights{UnionDistributionEntry{"small", 3},
-                             UnionDistributionEntry{"large", 1}};
+    std::array<UnionDistributionEntry, 2> const weights{{{"small", 3}, {"large", 1}}};
     auto edit{doc.transaction()};
     edit.set_union_distribution("game", "Payload", weights);
     edit.rename_declaration("game", "Payload", "Message");

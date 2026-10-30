@@ -116,13 +116,13 @@ AnalysisCase const cases[]{
                    .unsigned_value_bits = 32,
                    .provenance = {}});
          AccessSet const accesses{{"wide", AccessOperation::read}};
-         std::array const requests{
-             AnalysisRequest{.type = type,
-                             .abi = &abi,
-                             .element_count = 100,
-                             .multiplicity = 3,
-                             .accesses = &accesses},
-             AnalysisRequest{.type = type, .abi = &wide, .element_count = 100}};
+         std::array<AnalysisRequest, 2> const requests{
+             {{.type = type,
+               .abi = &abi,
+               .element_count = 100,
+               .multiplicity = 3,
+               .accesses = &accesses},
+              {.type = type, .abi = &wide, .element_count = 100}}};
          analyze_requests(context, requests);
          auto const& storage{context.storage};
          EXPECT_EQ(*storage.types.aggregate()[storage.runs[1].analysis.value]->size_bytes -
@@ -146,8 +146,7 @@ AnalysisCase const cases[]{
           (member bytes std::uint8_t :count 10)
     (projections (cpp)))))",
      [](AnalysisContext& context) {
-         std::array const entries{UnionDistributionEntry{"word", 3},
-                                  UnionDistributionEntry{"bytes", 1}};
+         std::array<UnionDistributionEntry, 2> const entries{{{"word", 3}, {"bytes", 1}}};
          auto const run{
              run_analysis(context, "Value", {.element_count = 100, .union_distribution = entries})};
          auto const& result{context.storage.types.aggregate()[run.analysis.value].value()};

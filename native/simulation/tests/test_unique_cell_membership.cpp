@@ -30,7 +30,7 @@ TEST_F(UniqueCellMembership, EmptyInputAndEmptyCellsReplacePreviousOutput) {
     EXPECT_TRUE(output.is_empty());
 
     output.add(id);
-    std::array const cells{collision::CellCoord{0, 0, 0}};
+    std::array<collision::CellCoord, 1> const cells{{{0, 0, 0}}};
     queries.collect_unique_entities_in_cells(cells, output);
     EXPECT_TRUE(output.is_empty());
 }
@@ -41,9 +41,7 @@ TEST_F(UniqueCellMembership, OverlappingMembershipAndRepeatedCellsReturnEachEnti
     owners.spawn(EntityType::Turret, {{150.f, 50.f, 50.f}});
     rebuild();
 
-    std::array const cells{collision::CellCoord{4, 4, 4},
-                           collision::CellCoord{3, 4, 4},
-                           collision::CellCoord{4, 4, 4}};
+    std::array<collision::CellCoord, 3> const cells{{{4, 4, 4}, {3, 4, 4}, {4, 4, 4}}};
     queries.collect_unique_entities_in_cells(cells, output);
 
     ASSERT_EQ(output.num(), 2u);
@@ -58,7 +56,7 @@ TEST_F(UniqueCellMembership, OrderIsIndependentOfCellOrderAndOutputIsReused) {
     auto const second{owners.spawn(EntityType::Fighter, {{50.f, 50.f, 50.f}})};
     rebuild();
 
-    std::array cells{collision::CellCoord{4, 4, 4}, collision::CellCoord{3, 4, 4}};
+    std::array<collision::CellCoord, 2> cells{{{4, 4, 4}, {3, 4, 4}}};
     queries.collect_unique_entities_in_cells(cells, output);
     ASSERT_EQ(output.num(), 2u);
     EXPECT_EQ(output[0], first);
@@ -88,7 +86,7 @@ TEST_F(UniqueCellMembership, IncludesAllTeamsAndMoreThan128Entities) {
     }
     rebuild();
 
-    std::array const cells{collision::CellCoord{4, 4, 4}};
+    std::array<collision::CellCoord, 1> const cells{{{4, 4, 4}}};
     queries.collect_unique_entities_in_cells(cells, output);
     EXPECT_EQ(output.num(), count);
     EXPECT_TRUE(std::ranges::equal(output.view(), owners.fighters.get_const_view().entity_ids()));
@@ -99,7 +97,7 @@ TEST_F(UniqueCellMembership, MembershipChangesOnlyWhenGridIsRebuilt) {
     rebuild();
     owners.set(id, {{150.f, 50.f, 50.f}}, {}, 0);
 
-    std::array const cells{collision::CellCoord{4, 4, 4}};
+    std::array<collision::CellCoord, 1> const cells{{{4, 4, 4}}};
     queries.collect_unique_entities_in_cells(cells, output);
     ASSERT_EQ(output.num(), 1u);
     EXPECT_EQ(output[0], id);
@@ -113,7 +111,7 @@ TEST_F(UniqueCellMembership, StaticGeometryIsNotEntityMembership) {
     rebuild();
     queries.add_static_collision_aabb({{40.f, 40.f, 40.f}}, {{60.f, 60.f, 60.f}});
 
-    std::array const cells{collision::CellCoord{4, 4, 4}};
+    std::array<collision::CellCoord, 1> const cells{{{4, 4, 4}}};
     queries.collect_unique_entities_in_cells(cells, output);
     EXPECT_TRUE(output.is_empty());
 }

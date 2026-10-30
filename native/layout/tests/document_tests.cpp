@@ -519,8 +519,7 @@ TEST(DocumentLoad, ResolvesNamedSourcesAndOwnsTheirContents) {
         std::string second{
             R"((module second :header "Second.h" (record Ship (member position Point)
     (projections (cpp)))))"};
-        std::array sources{DocumentSource{"first.lispb", first},
-                           DocumentSource{"second.lispb", second}};
+        std::array<DocumentSource, 2> sources{{{"first.lispb", first}, {"second.lispb", second}}};
         return editor.from_sources(sources);
     }()};
     ASSERT_TRUE(doc.valid()) << diagnostic_messages(editor);

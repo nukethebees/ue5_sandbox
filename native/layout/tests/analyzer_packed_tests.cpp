@@ -233,13 +233,13 @@ AnalysisCase const cases[]{
                    .unsigned_value_bits = 32,
                    .provenance = {}});
          AbiProfile const unknown{"unknown"};
-         std::array const requests{
-             AnalysisRequest{.type = type, .abi = &abi, .element_count = 100},
-             AnalysisRequest{.type = type, .abi = &wide, .element_count = 100},
-             AnalysisRequest{.type = type, .abi = &unknown, .element_count = 100},
-             AnalysisRequest{.type = type,
-                             .abi = &abi,
-                             .element_count = std::numeric_limits<std::uint64_t>::max()}};
+         std::array<AnalysisRequest, 4> const requests{
+             {{.type = type, .abi = &abi, .element_count = 100},
+              {.type = type, .abi = &wide, .element_count = 100},
+              {.type = type, .abi = &unknown, .element_count = 100},
+              {.type = type,
+               .abi = &abi,
+               .element_count = std::numeric_limits<std::uint64_t>::max()}}};
          analyze_requests(context, requests, true);
          auto const& storage{context.storage};
          auto const& first{storage.types.packed()[storage.runs[0].analysis.value].value()};

@@ -55,7 +55,7 @@
     (member nested nested VectorGroups)
     (member aligned64 array @aligned64)
     (member aligned256 array @aligned256))
-  (record ApiPair (member x float) (member y float) (projections (cpp)))
+  (record ApiPair :comparison equality (member x float) (member y float) (projections (cpp)))
   (struct ApiCoordinates
     :layout-only true
     :equivalent-type ApiPair

@@ -32,8 +32,8 @@ TEST(PhysicalFacts, GeneratedCppAgreesForPointersNestedRecordsAndAlignedExternal
           std::tuple{"Second", sizeof(Second), alignof(Second)},
           std::tuple{"Envelope", sizeof(Envelope), alignof(Envelope)}}) {
         SCOPED_TRACE(name);
-        std::array requests{AnalysisRequest{.type = *document.find_type("native_soa_fixture", name),
-                                            .abi = &profile}};
+        std::array<AnalysisRequest, 1> requests{
+            {{.type = *document.find_type("native_soa_fixture", name), .abi = &profile}}};
         Analyzer::analyze(context, requests);
         auto const& facts{storage.types.physical()[storage.runs.front().analysis.value]};
         ASSERT_TRUE(facts);
@@ -46,11 +46,11 @@ TEST(PhysicalFacts, GeneratedCppAgreesForPointersNestedRecordsAndAlignedExternal
     EXPECT_EQ(storage.components.offset_bytes()[first], offsetof(Envelope, pairs));
     EXPECT_EQ(storage.components.offset_bytes()[first + 1], offsetof(Envelope, node));
     EXPECT_EQ(storage.components.offset_bytes()[first + 2], offsetof(Envelope, aligned));
-    std::array requests{
-        AnalysisRequest{.type = *document.find_type("native_soa_fixture", "PairRows"),
-                        .abi = &profile,
-                        .element_count = 7,
-                        .default_capacity = 7}};
+    std::array<AnalysisRequest, 1> requests{
+        {{.type = *document.find_type("native_soa_fixture", "PairRows"),
+          .abi = &profile,
+          .element_count = 7,
+          .default_capacity = 7}}};
     Analyzer::analyze(context, requests);
     auto const first_column{
         storage.types.soa()[storage.runs.front().analysis.value]->columns.begin};
@@ -81,11 +81,9 @@ TEST(PhysicalFacts, SoaOwnersHavePhysicalFactsAndLayoutsHaveNoPhysicalObject) {
     owner.alignment_bytes = alignof(ApiOwner);
     owner.origin = FactOrigin::compiler_probe;
     profile.set("ioj::native_soa_fixture::ApiOwner", owner);
-    std::array requests{
-        AnalysisRequest{.type = *document.find_type("native_soa_fixture", "ApiOwner"),
-                        .abi = &profile},
-        AnalysisRequest{.type = *document.find_type("native_soa_fixture", "ApiCoordinates"),
-                        .abi = &profile}};
+    std::array<AnalysisRequest, 2> requests{
+        {{.type = *document.find_type("native_soa_fixture", "ApiOwner"), .abi = &profile},
+         {.type = *document.find_type("native_soa_fixture", "ApiCoordinates"), .abi = &profile}}};
     AnalysisStorage storage;
     AnalysisContext context{document, storage};
     Analyzer::analyze(context, requests);
@@ -110,8 +108,8 @@ TEST_P(PhysicalSpelling, DoesNotGuessUnsupportedOrMissingRepresentations) {
         test.spelling + "\") (projections (cpp))))")};
     ASSERT_TRUE(document.valid()) << diagnostic_messages(editor);
     auto const profile{AbiProfile::host_common()};
-    std::array requests{
-        AnalysisRequest{.type = *document.find_type("test", "Value"), .abi = &profile}};
+    std::array<AnalysisRequest, 1> requests{
+        {{.type = *document.find_type("test", "Value"), .abi = &profile}}};
     AnalysisStorage storage;
     AnalysisContext context{document, storage};
     analyze_requests(context, requests, !test.known);
@@ -153,8 +151,8 @@ TEST(PhysicalFacts, PointerPolicyRetainsManualEvidence) {
     pointer.provenance = "Unverified SDK assumption";
     profile.set("void*", pointer);
     profile.set_object_pointer_representation("void*");
-    std::array requests{
-        AnalysisRequest{.type = *document.find_type("test", "Value"), .abi = &profile}};
+    std::array<AnalysisRequest, 1> requests{
+        {{.type = *document.find_type("test", "Value"), .abi = &profile}}};
     AnalysisStorage storage;
     AnalysisContext context{document, storage};
     Analyzer::analyze(context, requests);
@@ -178,8 +176,8 @@ TEST(PhysicalFacts, SuppliedFactsCannotSilentlyReplaceGeneratedLayout) {
     incorrect.size_bytes = 64;
     incorrect.alignment_bytes = 8;
     profile.set("Value", incorrect);
-    std::array requests{
-        AnalysisRequest{.type = *document.find_type("test", "Value"), .abi = &profile}};
+    std::array<AnalysisRequest, 1> requests{
+        {{.type = *document.find_type("test", "Value"), .abi = &profile}}};
     AnalysisStorage storage;
     AnalysisContext context{document, storage};
     Analyzer::analyze(context, requests);

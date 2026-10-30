@@ -4,21 +4,20 @@
 
 #include <gtest/gtest.h>
 
+#include <format>
+
 namespace ioj::testing {
 template <std::floating_point T, std::size_t N>
-auto floating_point_equal(Vector<T, N> const& actual,
-                          std::type_identity_t<Vector<T, N>> const& expected)
-    -> ::testing::AssertionResult {
+void expect_floating_point_equal(Vector<T, N> const& actual,
+                                 std::type_identity_t<Vector<T, N>> const& expected) {
     for (std::size_t component{}; component < N; ++component) {
-        if (!::testing::internal::FloatingPoint<T>{actual[component]}.AlmostEquals(
-                ::testing::internal::FloatingPoint<T>{expected[component]})) {
-            return ::testing::AssertionFailure()
-                << "Component " << component << " is not equal within 4 ULPs.\nActual: "
-                << ::testing::PrintToString(actual.elements)
-                << "\nExpected: " << ::testing::PrintToString(expected.elements);
+        SCOPED_TRACE(std::format("Component {}", component));
+        if constexpr (std::same_as<T, float>) {
+            EXPECT_FLOAT_EQ(actual[component], expected[component]);
+        } else {
+            EXPECT_DOUBLE_EQ(actual[component], expected[component]);
         }
     }
-    return ::testing::AssertionSuccess();
 }
 
 template <std::floating_point T, std::size_t N>

@@ -52,20 +52,20 @@ auto make_battle() -> LevelSimInitData {
     data.lasers.n_preallocated_instances = ::ioj::NonNegative<std::int32_t>::make(16);
     data.capital_ships.fighter_spawn_slots = 0;
     data.level_events.initialisation.entity_count = 2;
-    std::array capitals{InitialCapital{.entity = 0,
-                                       .location = {{-1000.f, 0.f, 0.f}},
-                                       .rotation = {},
-                                       .team = Team::Green,
-                                       .health = 100,
-                                       .initial_spawn_delay = 60.f,
-                                       .spawn_cooldown = 60.f},
-                        InitialCapital{.entity = 1,
-                                       .location = {{1000.f, 0.f, 0.f}},
-                                       .rotation = {},
-                                       .team = Team::White,
-                                       .health = 100,
-                                       .initial_spawn_delay = 60.f,
-                                       .spawn_cooldown = 60.f}};
+    std::array<InitialCapital, 2> capitals{{{.entity = 0,
+                                             .location = {{-1000.f, 0.f, 0.f}},
+                                             .rotation = {},
+                                             .team = Team::Green,
+                                             .health = 100,
+                                             .initial_spawn_delay = 60.f,
+                                             .spawn_cooldown = 60.f},
+                                            {.entity = 1,
+                                             .location = {{1000.f, 0.f, 0.f}},
+                                             .rotation = {},
+                                             .team = Team::White,
+                                             .health = 100,
+                                             .initial_spawn_delay = 60.f,
+                                             .spawn_cooldown = 60.f}}};
     initialise_spawns(data, capitals, {}, {});
     for (auto const type : EnumTraits<EntityType>::values) {
         data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});

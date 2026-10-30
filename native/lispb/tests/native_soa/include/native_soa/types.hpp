@@ -1979,6 +1979,8 @@ struct SingleAlignmentRows
 };
 
 struct ApiPair {
+    bool operator==(ApiPair const&) const = default;
+
     float x;
     float y;
 };

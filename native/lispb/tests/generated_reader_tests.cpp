@@ -329,8 +329,8 @@ TEST(GeneratedS7Reader, AppliesOverrideChainsFromDistinctSourcesWithoutMutatingT
         interpreter.evaluate_ast("'(:record :child (:child :count 3) :enabled #f)").value()};
     Reader const first_reader{first};
     Reader const second_reader{second};
-    std::array const overrides{Override{first_reader, first.root, "base.scm"},
-                               Override{second_reader, second.root, "level.scm"}};
+    std::array<Override, 2> const overrides{
+        {{first_reader, first.root, "base.scm"}, {second_reader, second.root, "level.scm"}}};
 
     auto expected{base};
     expected.child.count = 3;

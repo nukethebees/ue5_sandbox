@@ -10,7 +10,7 @@
 
 TEST(GraphPlot, ResolvesRangesAndTransformsImplicitSeries) {
     std::array const y{10.0f, 20.0f, 30.0f};
-    std::array const series{ioj::ui::graph::SeriesView{.x = {}, .y = y}};
+    std::array<ioj::ui::graph::SeriesView, 1> const series{{{.x = {}, .y = y}}};
     std::array const valid{std::uint8_t{1}};
 
     auto const x_range{ioj::ui::graph::resolve_x_range(series, valid, {})};
@@ -29,7 +29,7 @@ TEST(GraphPlot, ResolvesRangesAndTransformsImplicitSeries) {
 }
 
 TEST(GraphPlot, StepAfterAddsTransitionPoints) {
-    std::array const points{ioj::ui::graph::Point2d{0.0, 2.0}, ioj::ui::graph::Point2d{1.0, 4.0}};
+    std::array<ioj::ui::graph::Point2d, 2> const points{{{0.0, 2.0}, {1.0, 4.0}}};
     auto const rendered{ioj::ui::graph::transform_points(
         points, {0.0, 1.0}, {2.0, 4.0}, 100.0f, 50.0f, ioj::ui::graph::Interpolation::StepAfter)};
     ASSERT_EQ(rendered.size(), 3);
@@ -55,7 +55,7 @@ TEST(GraphPlot, DecimationPreservesNarrowSpike) {
 TEST(GraphPlot, ResolvesYRangeInsideTheFixedXWindow) {
     std::array const x{0.0f, 1.0f, 2.0f, 3.0f};
     std::array const y{100.0f, 2.0f, 3.0f, 200.0f};
-    std::array const series{ioj::ui::graph::SeriesView{.x = x, .y = y}};
+    std::array<ioj::ui::graph::SeriesView, 1> const series{{{.x = x, .y = y}}};
     std::array const valid{std::uint8_t{1}};
     auto const axis{ioj::ui::graph::AxisSettings{.range_mode = ioj::ui::graph::RangeMode::Fixed,
                                                  .fixed_range = {0.5, 2.5}}};
@@ -66,7 +66,7 @@ TEST(GraphPlot, ResolvesYRangeInsideTheFixedXWindow) {
 
 TEST(GraphPlot, HandlesConstantIncludeZeroAndInvalidRanges) {
     std::array const y{5.0f, 5.0f};
-    std::array const series{ioj::ui::graph::SeriesView{.x = {}, .y = y}};
+    std::array<ioj::ui::graph::SeriesView, 1> const series{{{.x = {}, .y = y}}};
     std::array const valid{std::uint8_t{1}};
     auto const include_zero{
         ioj::ui::graph::AxisSettings{.range_mode = ioj::ui::graph::RangeMode::AutoIncludeZero}};
@@ -97,8 +97,7 @@ TEST(GraphPlot, FindsNearestVisibleXAcrossSeries) {
     std::array const first_x{0.0f, 2.0f, 5.0f};
     std::array const first_y{1.0f, 2.0f, 3.0f};
     std::array const second_y{4.0f, 5.0f};
-    std::array const series{ioj::ui::graph::SeriesView{first_x, first_y},
-                            ioj::ui::graph::SeriesView{{}, second_y}};
+    std::array<ioj::ui::graph::SeriesView, 2> const series{{{first_x, first_y}, {{}, second_y}}};
     EXPECT_EQ(ioj::ui::graph::nearest_x(series, 3.1), 2.0);
     EXPECT_EQ(ioj::ui::graph::nearest_sample_index(series[0], 3.1), 1);
 
@@ -108,7 +107,7 @@ TEST(GraphPlot, FindsNearestVisibleXAcrossSeries) {
 
     std::array const tied_x{0.0f, 2.0f};
     EXPECT_EQ(ioj::ui::graph::nearest_sample_index({tied_x, second_y}, 1.0), 0);
-    std::array const tied_series{ioj::ui::graph::SeriesView{tied_x, second_y}};
+    std::array<ioj::ui::graph::SeriesView, 1> const tied_series{{{tied_x, second_y}}};
     EXPECT_EQ(ioj::ui::graph::nearest_x(tied_series, 1.0), 0.0);
 }
 

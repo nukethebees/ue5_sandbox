@@ -65,7 +65,7 @@ class BulkRangeQueries
                 auto const delta{state->location - locations[index]};
                 EXPECT_FLOAT_EQ(distances[match], size(delta));
                 auto const direction{native_math::safe_normal(delta, 1.e-8f)};
-                EXPECT_TRUE(ioj::testing::floating_point_equal(directions[match], direction));
+                ioj::testing::expect_floating_point_equal(directions[match], direction);
             }
             std::ranges::sort(actual);
             std::ranges::sort(expected);

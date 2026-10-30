@@ -95,9 +95,9 @@ AnalysisCase const cases[]{
          auto const sentinel{doc.find_type("game", "Sentinel").value()};
          auto const presence{doc.find_type("game", "Presence").value()};
          auto const abi{AbiProfile::host_common()};
-         std::array const requests{
-             AnalysisRequest{.type = sentinel, .abi = &abi, .element_count = 100},
-             AnalysisRequest{.type = presence, .abi = &abi, .element_count = 100}};
+         std::array<AnalysisRequest, 2> const requests{
+             {{.type = sentinel, .abi = &abi, .element_count = 100},
+              {.type = presence, .abi = &abi, .element_count = 100}}};
          analyze_requests(context, requests);
          auto const& storage{context.storage};
          auto const& first{
@@ -135,9 +135,9 @@ AnalysisCase const cases[]{
          auto const coarse{doc.find_type("game", "Coarse").value()};
          auto const fine{doc.find_type("game", "Fine").value()};
          auto const abi{AbiProfile::host_common()};
-         std::array const requests{
-             AnalysisRequest{.type = coarse, .abi = &abi, .element_count = 10},
-             AnalysisRequest{.type = fine, .abi = &abi, .element_count = 10}};
+         std::array<AnalysisRequest, 2> const requests{
+             {{.type = coarse, .abi = &abi, .element_count = 10},
+              {.type = fine, .abi = &abi, .element_count = 10}}};
          analyze_requests(context, requests);
          auto const& storage{context.storage};
          auto const& first{scalar_result(context, storage.scalars.quantized_encoding(), "Coarse")};
@@ -204,9 +204,10 @@ AnalysisCase const cases[]{
         (integer-scalar Domain :signed false :minimum 0 :maximum 16384)
         (integer-varint Value :source Domain :encoding unsigned)))",
      [](AnalysisContext& context) {
-         std::array const entries{IntegerVarintDistributionEntry{.value = 0, .weight = 1},
-                                  IntegerVarintDistributionEntry{.value = 128, .weight = 3},
-                                  IntegerVarintDistributionEntry{.value = 16384, .weight = 1}};
+         std::array<IntegerVarintDistributionEntry, 3> const entries{
+             {{.value = 0, .weight = 1},
+              {.value = 128, .weight = 3},
+              {.value = 16384, .weight = 1}}};
          auto const run{run_analysis(
              context, "Value", {.element_count = 100, .varint_distribution = entries})};
          EXPECT_EQ(context.storage.totals[0].minimum_total_bytes, 100);
@@ -231,9 +232,9 @@ AnalysisCase const cases[]{
          auto const first{doc.find_type("game", "Signed").value()};
          auto const second{doc.find_type("game", "Zigzag").value()};
          auto const abi{AbiProfile::host_common()};
-         std::array const requests{
-             AnalysisRequest{.type = first, .abi = &abi, .element_count = 100},
-             AnalysisRequest{.type = second, .abi = &abi, .element_count = 100}};
+         std::array<AnalysisRequest, 2> const requests{
+             {{.type = first, .abi = &abi, .element_count = 100},
+              {.type = second, .abi = &abi, .element_count = 100}}};
          analyze_requests(context, requests);
          EXPECT_TRUE(compare_runs(context, 0, 1));
          EXPECT_EQ(context.storage.totals[0].minimum_total_bytes, 100);
@@ -261,8 +262,8 @@ AnalysisCase const cases[]{
                  context.document.find_type("game", std::string{"First"} + suffix).value()};
              auto const second{
                  context.document.find_type("game", std::string{"Second"} + suffix).value()};
-             std::array const requests{AnalysisRequest{.type = first, .abi = &abi},
-                                       AnalysisRequest{.type = second, .abi = &abi}};
+             std::array<AnalysisRequest, 2> const requests{
+                 {{.type = first, .abi = &abi}, {.type = second, .abi = &abi}}};
              analyze_requests(context, requests);
              EXPECT_FALSE(compare_runs(context, 0, 1));
              expect_analysis_diagnostics(context);
@@ -273,14 +274,14 @@ AnalysisCase const cases[]{
         (integer-scalar Domain :signed false :minimum 0 :maximum 128)
         (integer-varint Value :source Domain :encoding unsigned)))",
      [](AnalysisContext& context) {
-         std::array const invalid{IntegerVarintDistributionEntry{.value = 129, .weight = 1}};
+         std::array<IntegerVarintDistributionEntry, 1> const invalid{{{.value = 129, .weight = 1}}};
          auto const rejected{
              run_analysis(context, "Value", {.varint_distribution = invalid}, true)};
          auto const row{rejected.distribution->value};
          EXPECT_EQ(context.storage.distributions.entries()[row].count, 0);
          EXPECT_FALSE(context.storage.distributions.expected_extent_bytes()[row]);
-         std::array const overflow{IntegerVarintDistributionEntry{
-             .value = 128, .weight = std::numeric_limits<std::uint64_t>::max()}};
+         std::array<IntegerVarintDistributionEntry, 1> const overflow{
+             {{.value = 128, .weight = std::numeric_limits<std::uint64_t>::max()}}};
          auto const run{run_analysis(context, "Value", {.varint_distribution = overflow}, true)};
          EXPECT_FALSE(context.storage.distributions.total_extent_bytes()[run.distribution->value]);
          EXPECT_EQ(context.storage.distributions.expected_extent_bytes()[run.distribution->value],

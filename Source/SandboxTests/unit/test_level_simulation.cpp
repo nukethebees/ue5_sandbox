@@ -311,8 +311,8 @@ auto FLevelPresentationHostLifecycleTest::RunTest(FString const&) -> bool {
             make_presentation_component<UCollisionGridVisualizationComponent>(*owner)};
 
     auto data{make_battle()};
-    std::array const locations{ioj::Vector3f{10.f, 20.f, 30.f}, ioj::Vector3f{-40.f, 50.f, 60.f}};
-    std::array const rotations{ioj::Rotator3f{15.f, 45.f, 75.f}, ioj::Rotator3f{-25.f, 35.f, 5.f}};
+    std::array<ioj::Vector3f, 2> const locations{{{10.f, 20.f, 30.f}, {-40.f, 50.f, 60.f}}};
+    std::array<ioj::Rotator3f, 2> const rotations{{{15.f, 45.f, 75.f}, {-25.f, 35.f, 5.f}}};
     auto const count{static_cast<int32>(locations.size())};
     auto& schedule{data.level_events.schedule};
     schedule.add_initial_spawn_group(ioj::sim::EntityType::Turret, 0, count);

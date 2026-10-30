@@ -13,6 +13,7 @@
 #include <ranges>
 #include <span>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -281,8 +282,7 @@ TEST(NativeSoa, PartialAppendDefaultsUnspecifiedColumnsAcrossGrowthAndReuse) {
     EXPECT_EQ(owner.append_value(owner.values()[0]), row);
     EXPECT_EQ(owner.values()[row], 17.0f);
     EXPECT_FALSE(owner.masks()[row].has(ApiField::Values));
-    EXPECT_EQ(owner.view_positions()[row].x, 0.0f);
-    EXPECT_EQ(owner.view_positions()[row].y, 0.0f);
+    EXPECT_EQ(owner.view_positions()[row], (ApiPair{0.0f, 0.0f}));
 
     owner.masks()[0].set(ApiField::Values);
     owner.view_positions().set(0, ApiPair{3.0f, 4.0f});
@@ -291,8 +291,7 @@ TEST(NativeSoa, PartialAppendDefaultsUnspecifiedColumnsAcrossGrowthAndReuse) {
     EXPECT_EQ(owner.num(), 1U);
     EXPECT_EQ(owner.values()[0], 0.0f);
     EXPECT_FALSE(owner.masks()[0].has(ApiField::Values));
-    EXPECT_EQ(owner.view_positions()[0].x, 0.0f);
-    EXPECT_EQ(owner.view_positions()[0].y, 0.0f);
+    EXPECT_EQ(owner.view_positions()[0], (ApiPair{0.0f, 0.0f}));
 }
 
 TEST(NativeSoa, NestedEquivalentValuesSupportOwnerAndMutableViewRowOperations) {
@@ -300,10 +299,8 @@ TEST(NativeSoa, NestedEquivalentValuesSupportOwnerAndMutableViewRowOperations) {
     EXPECT_EQ(owner.add(1.0f, ApiMask{}, ApiPair{2.0f, 3.0f}), 0U);
     EXPECT_EQ(owner.add(4.0f, ApiMask{}, 5.0f, 6.0f), 1U);
     EXPECT_EQ(owner.values()[0], 1.0f);
-    EXPECT_EQ(owner.view_positions()[0].x, 2.0f);
-    EXPECT_EQ(owner.view_positions()[0].y, 3.0f);
-    EXPECT_EQ(owner.view_positions()[1].x, 5.0f);
-    EXPECT_EQ(owner.view_positions()[1].y, 6.0f);
+    EXPECT_EQ(owner.view_positions()[0], (ApiPair{2.0f, 3.0f}));
+    EXPECT_EQ(owner.view_positions()[1], (ApiPair{5.0f, 6.0f}));
 
     ApiMask mask{};
     mask.set(ApiField::Values);
@@ -312,19 +309,16 @@ TEST(NativeSoa, NestedEquivalentValuesSupportOwnerAndMutableViewRowOperations) {
     view.set(1, 10.0f, mask, ApiPair{11.0f, 12.0f});
     EXPECT_EQ(view.values()[0], 7.0f);
     EXPECT_TRUE(view.masks()[0].has(ApiField::Values));
-    EXPECT_EQ(view.view_positions()[0].x, 8.0f);
-    EXPECT_EQ(view.view_positions()[0].y, 9.0f);
+    EXPECT_EQ(view.view_positions()[0], (ApiPair{8.0f, 9.0f}));
     EXPECT_EQ(view.values()[1], 10.0f);
     EXPECT_TRUE(view.masks()[1].has(ApiField::Values));
-    EXPECT_EQ(view.view_positions()[1].x, 11.0f);
-    EXPECT_EQ(view.view_positions()[1].y, 12.0f);
+    EXPECT_EQ(view.view_positions()[1], (ApiPair{11.0f, 12.0f}));
 
     auto const resolved{view.resolve()};
     resolved.set(1, 13.0f, ApiMask{}, ApiPair{14.0f, 15.0f});
     EXPECT_EQ(view.values()[1], 13.0f);
     EXPECT_FALSE(view.masks()[1].has(ApiField::Values));
-    EXPECT_EQ(view.view_positions()[1].x, 14.0f);
-    EXPECT_EQ(view.view_positions()[1].y, 15.0f);
+    EXPECT_EQ(view.view_positions()[1], (ApiPair{14.0f, 15.0f}));
 }
 
 TEST(NativeSoa, ResolvedViewsBorrowColumnsAndPreserveNestedLogicalApi) {
@@ -414,8 +408,7 @@ TEST(NativeSoa, ScalarInsertionAndAssignmentPreserveNestedColumnsAcrossGrowth) {
                         owner.view_positions().ys()[0]),
               first);
     EXPECT_EQ(owner.values()[first], 1.0f);
-    EXPECT_EQ(owner.view_positions()[first].x, 2.0f);
-    EXPECT_EQ(owner.view_positions()[first].y, 3.0f);
+    EXPECT_EQ(owner.view_positions()[first], (ApiPair{2.0f, 3.0f}));
 
     auto rows{owner.get_view().resolve()};
     rows.set(first, 4.0f, ApiMask{}, 5.0f, 6.0f);
@@ -426,16 +419,14 @@ TEST(NativeSoa, ScalarInsertionAndAssignmentPreserveNestedColumnsAcrossGrowth) {
     EXPECT_EQ(owner.view_positions()[first].x, 8.0f);
     auto const positions{owner.view_positions()};
     positions.set(first, positions.ys()[first], positions.xs()[first]);
-    EXPECT_EQ(positions.xs()[first], 9.0f);
-    EXPECT_EQ(positions.ys()[first], 8.0f);
+    EXPECT_EQ(positions[first], (ApiPair{9.0f, 8.0f}));
     static_assert(std::is_same_v<decltype(std::as_const(owner).values()), std::span<float const>>);
 }
 
 TEST(NativeSoa, OrdinaryColumnsMapEquivalentValuesForOwnersAndBothViews) {
     EquivalentOwner owner;
     EXPECT_EQ(owner.add(ApiPair{3.0f, 7.0f}), 0U);
-    EXPECT_EQ(owner[0].x, 3.0f);
-    EXPECT_EQ(owner[0].y, 7.0f);
+    EXPECT_EQ(owner[0], (ApiPair{3.0f, 7.0f}));
     owner.get_view().set(0, ApiPair{11.0f, 13.0f});
     EXPECT_EQ(owner[0].y, 13.0f);
     owner.get_view().resolve().set(0, ApiPair{17.0f, 19.0f});
@@ -450,7 +441,7 @@ TEST(NativeSoa, OrdinaryColumnsMapEquivalentValuesForOwnersAndBothViews) {
     EXPECT_EQ(mapped.horizontal()[0], 31.0f);
     EXPECT_EQ(mapped.get_const_view().resolve()[0].y(), 37.0f);
     mapped.get_view().resolve().set(0, Vector3f{43.0f, 47.0f, 53.0f});
-    EXPECT_EQ(mapped[0].z(), 53.0f);
+    EXPECT_EQ(mapped[0], (Vector3f{43.0f, 47.0f, 53.0f}));
 }
 
 TEST(NativeSoa, EmptyResolvedViewsCanBeSlicedAndConverted) {
@@ -643,66 +634,69 @@ TEST(NativeSoa, LogicalApiAcceptsIndependentColumnsAndCompactSourcesDuringGrowth
     EXPECT_EQ(owner.get_const_view().first_x(), 2.0f);
 }
 
-TEST(NativeSoa, CompactSelfCopyPreservesEveryColumn) {
-    struct CopyRange {
-        char const* name;
-        std::uint32_t source;
-        std::uint32_t destination;
-        std::uint32_t count;
-        bool single_element{};
-    };
-    constexpr CopyRange cases[]{
-        {"source before destination", 0, 2, 5},
-        {"destination before source", 2, 0, 5},
-        {"identical ranges", 1, 1, 5},
-        {"disjoint forward", 0, 5, 3},
-        {"disjoint backward", 5, 0, 3},
-        {"one element", 3, 6, 1, true},
-        {"identical element", 3, 3, 1, true},
-        {"empty range", 2, 4, 0},
-    };
-    constexpr std::uint32_t row_count{8};
-    for (auto const& range : cases) {
-        SCOPED_TRACE(range.name);
-        for (bool const sliced : {false, true}) {
-            SCOPED_TRACE(sliced);
-            SingleRows owner{};
-            owner.set_num(row_count);
-            auto const view{owner.get_view()};
-            std::uint32_t column_index{};
-            view.each_column([&](auto column) {
-                using Element = std::remove_cvref_t<decltype(column[0])>;
-                std::iota(column.begin(), column.end(), static_cast<Element>(column_index * 16));
-                ++column_index;
-            });
-            auto const capacity{owner.capacity()};
-            auto const source_first{sliced ? range.source : 0};
-            auto const source{owner.get_const_view(source_first, row_count - source_first)};
-            if (range.single_element) {
-                owner.copy_element(range.destination, source, range.source - source_first);
-            } else {
-                owner.copy_elements(
-                    range.destination, source, range.source - source_first, range.count);
-            }
+struct CopyRange {
+    char const* name;
+    std::uint32_t source;
+    std::uint32_t destination;
+    std::uint32_t count;
+    bool single_element{};
+};
 
-            EXPECT_EQ(owner.num(), row_count);
-            EXPECT_EQ(owner.capacity(), capacity);
-            column_index = 0;
-            view.each_column([&](auto const column) {
-                using Element = std::remove_cvref_t<decltype(column[0])>;
-                SCOPED_TRACE(column_index);
-                for (std::uint32_t row{}; row < row_count; ++row) {
-                    auto const copied{row >= range.destination &&
-                                      row < range.destination + range.count};
-                    auto const original{copied ? range.source + row - range.destination : row};
-                    EXPECT_EQ(column[row], static_cast<Element>(column_index * 16 + original));
-                }
-                ++column_index;
-            });
-            EXPECT_EQ(column_index, 7);
-        }
+using CompactSelfCopy = ::testing::TestWithParam<std::tuple<CopyRange, bool>>;
+
+TEST_P(CompactSelfCopy, PreservesEveryColumn) {
+    auto const& [range, sliced]{GetParam()};
+    constexpr std::uint32_t row_count{8};
+    SingleRows owner{};
+    owner.set_num(row_count);
+    auto const view{owner.get_view()};
+    std::uint32_t column_index{};
+    view.each_column([&](auto column) {
+        using Element = std::remove_cvref_t<decltype(column[0])>;
+        std::iota(column.begin(), column.end(), static_cast<Element>(column_index * 16));
+        ++column_index;
+    });
+    auto const capacity{owner.capacity()};
+    auto const source_first{sliced ? range.source : 0};
+    auto const source{owner.get_const_view(source_first, row_count - source_first)};
+    if (range.single_element) {
+        owner.copy_element(range.destination, source, range.source - source_first);
+    } else {
+        owner.copy_elements(range.destination, source, range.source - source_first, range.count);
     }
+
+    EXPECT_EQ(owner.num(), row_count);
+    EXPECT_EQ(owner.capacity(), capacity);
+    column_index = 0;
+    view.each_column([&](auto const column) {
+        using Element = std::remove_cvref_t<decltype(column[0])>;
+        SCOPED_TRACE(column_index);
+        for (std::uint32_t row{}; row < row_count; ++row) {
+            auto const copied{row >= range.destination && row < range.destination + range.count};
+            auto const original{copied ? range.source + row - range.destination : row};
+            EXPECT_EQ(column[row], static_cast<Element>(column_index * 16 + original));
+        }
+        ++column_index;
+    });
+    EXPECT_EQ(column_index, 7);
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    NativeSoa,
+    CompactSelfCopy,
+    ::testing::Combine(::testing::Values(CopyRange{"SourceBeforeDestination", 0, 2, 5},
+                                         CopyRange{"DestinationBeforeSource", 2, 0, 5},
+                                         CopyRange{"IdenticalRanges", 1, 1, 5},
+                                         CopyRange{"DisjointForward", 0, 5, 3},
+                                         CopyRange{"DisjointBackward", 5, 0, 3},
+                                         CopyRange{"OneElement", 3, 6, 1, true},
+                                         CopyRange{"IdenticalElement", 3, 3, 1, true},
+                                         CopyRange{"EmptyRange", 2, 4, 0}),
+                       ::testing::Bool()),
+    ([](auto const& info) {
+        auto const& [range, sliced]{info.param};
+        return std::string{range.name} + (sliced ? "Sliced" : "Whole");
+    }));
 
 TEST(NativeSoa, LayoutGrowthAndMoves) {
     SingleAlignmentRows owner{};

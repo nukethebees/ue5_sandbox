@@ -6,7 +6,7 @@
 #include <ioj/vector_normalization.h>
 
 namespace ioj::sim::tests::fighter_target_refresh {
-using ioj::testing::floating_point_equal;
+using ioj::testing::expect_floating_point_equal;
 
 auto make_world() -> LevelSimInitData {
     LevelSimInitData data;
@@ -84,13 +84,12 @@ class FighterTargetRefresh : public ::testing::Test {
         EXPECT_FLOAT_EQ(entities.target_distance_sq()[index],
                         size_squared(state->location - next_location));
         auto const intercept{state->location + state->velocity * entities.intercept_times()[index]};
-        EXPECT_TRUE(
-            floating_point_equal(vector_at(entities.view_desired_aiming_directions(), index),
-                                 native_math::safe_normal(intercept - location, 1.e-8f)));
+        expect_floating_point_equal(vector_at(entities.view_desired_aiming_directions(), index),
+                                    native_math::safe_normal(intercept - location, 1.e-8f));
         auto const direction{native_math::safe_normal(offset, 1.e-8f)};
-        EXPECT_TRUE(floating_point_equal(
+        expect_floating_point_equal(
             vector_at(entities.view_desired_move_locations(), index),
-            state->location - direction * (1000.f * settings::AttackDistanceBand{}.get().desired)));
+            state->location - direction * (1000.f * settings::AttackDistanceBand{}.get().desired));
     }
 
     void kill_target() {
@@ -114,9 +113,9 @@ class FighterTargetRefresh : public ::testing::Test {
                                      entities.move_distances()[index]};
         EXPECT_FLOAT_EQ(entities.target_distances()[index], size(next_location));
         EXPECT_FLOAT_EQ(entities.target_distance_sq()[index], size_squared(next_location));
-        EXPECT_TRUE(floating_point_equal(
+        expect_floating_point_equal(
             vector_at(entities.view_desired_aiming_directions(), index),
-            native_math::safe_normal(-vector_at(entities.view_locations(), index), 1.e-8f)));
+            native_math::safe_normal(-vector_at(entities.view_locations(), index), 1.e-8f));
     }
 
     GameMemory simulation_memory;

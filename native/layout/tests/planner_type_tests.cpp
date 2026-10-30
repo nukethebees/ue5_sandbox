@@ -69,9 +69,9 @@ TEST(AnalysisBatch, ReusesPhysicalRowsAcrossCountsAndSeparatesAbiScenarios) {
     auto const type{document.find_type("test", "Value").value()};
     auto const known{AbiProfile::host_common()};
     AbiProfile const unknown{"unknown"};
-    std::array requests{AnalysisRequest{.type = type, .abi = &known, .element_count = 10},
-                        AnalysisRequest{.type = type, .abi = &known, .element_count = 20},
-                        AnalysisRequest{.type = type, .abi = &unknown, .element_count = 10}};
+    std::array<AnalysisRequest, 3> requests{{{.type = type, .abi = &known, .element_count = 10},
+                                             {.type = type, .abi = &known, .element_count = 20},
+                                             {.type = type, .abi = &unknown, .element_count = 10}}};
     AnalysisStorage storage;
     AnalysisContext context{document, storage};
     Analyzer::analyze(context, requests);
@@ -109,8 +109,8 @@ TEST(AnalysisBatch, ExternalFactsApplyOnlyToTheirRequestedTarget) {
     facts.provenance = "SDK assumption";
     supplied.set("OpaqueVector", facts);
     auto const unknown{AbiProfile::host_common()};
-    std::array requests{AnalysisRequest{.type = type, .abi = &supplied},
-                        AnalysisRequest{.type = type, .abi = &unknown}};
+    std::array<AnalysisRequest, 2> requests{
+        {{.type = type, .abi = &supplied}, {.type = type, .abi = &unknown}}};
     AnalysisStorage storage;
     AnalysisContext context{document, storage};
     Analyzer::analyze(context, requests);
@@ -137,8 +137,8 @@ TEST(AnalysisBatch, VariantOverflowDoesNotAlterAuthoredSchema) {
     ASSERT_TRUE(document.commit(edit));
     auto const type{document.find_type("test", "Value").value()};
     auto const abi{AbiProfile::host_common()};
-    std::array requests{AnalysisRequest{.type = type, .abi = &abi},
-                        AnalysisRequest{.type = type, .abi = &abi, .variant = variant}};
+    std::array<AnalysisRequest, 2> requests{
+        {{.type = type, .abi = &abi}, {.type = type, .abi = &abi, .variant = variant}}};
     AnalysisStorage storage;
     AnalysisContext context{document, storage};
     Analyzer::analyze(context, requests);

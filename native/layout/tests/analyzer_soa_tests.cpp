@@ -85,10 +85,10 @@ AnalysisCase const cases[]{
                    .unsigned_value_bits = 32,
                    .provenance = {}});
          AbiProfile const unknown{"unknown"};
-         std::array const requests{
-             AnalysisRequest{.type = type, .abi = &abi, .default_capacity = 3},
-             AnalysisRequest{.type = type, .abi = &wide, .default_capacity = 3},
-             AnalysisRequest{.type = type, .abi = &unknown, .default_capacity = 3}};
+         std::array<AnalysisRequest, 3> const requests{
+             {{.type = type, .abi = &abi, .default_capacity = 3},
+              {.type = type, .abi = &wide, .default_capacity = 3},
+              {.type = type, .abi = &unknown, .default_capacity = 3}}};
          analyze_requests(context, requests, true);
          auto const& storage{context.storage};
          auto const first{storage.types.soa()[storage.runs[0].analysis.value]->columns.begin + 1};
@@ -137,15 +137,16 @@ AnalysisCase const cases[]{
          auto const& doc{context.document};
          auto const abi{AbiProfile::host_common()};
          AccessSet const accesses{{"x", AccessOperation::read}};
-         std::array const requests{AnalysisRequest{.type = doc.find_type("game", "Row").value(),
-                                                   .abi = &abi,
-                                                   .element_count = 100,
-                                                   .accesses = &accesses},
-                                   AnalysisRequest{.type = doc.find_type("game", "Columns").value(),
-                                                   .abi = &abi,
-                                                   .element_count = 100,
-                                                   .default_capacity = 100,
-                                                   .accesses = &accesses}};
+         std::array<AnalysisRequest, 2> const requests{
+             {{.type = doc.find_type("game", "Row").value(),
+               .abi = &abi,
+               .element_count = 100,
+               .accesses = &accesses},
+              {.type = doc.find_type("game", "Columns").value(),
+               .abi = &abi,
+               .element_count = 100,
+               .default_capacity = 100,
+               .accesses = &accesses}}};
          analyze_requests(context, requests);
          auto const record{context.storage.runs[0].access->value};
          auto const soa{context.storage.runs[1].access->value};
