@@ -609,10 +609,10 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 },
                 timeout)
             .Then([this] {
-                auto* const router{
-                    controller_->GetLocalPlayer()->GetSubsystem<UCommonUIActionRouterBase>()};
-                auto const user{static_cast<uint32>(
-                    controller_->GetLocalPlayer()->GetSlateUser()->GetUserIndex())};
+                auto* const local_player{controller_->GetLocalPlayer()};
+                auto* const router{local_player->GetSubsystem<UCommonUIActionRouterBase>()};
+                auto const user{static_cast<uint32>(local_player->GetSlateUser()->GetUserIndex())};
+                auto const viewport{local_player->ViewportClient->GetGameViewportWidget()};
                 FKeyEvent const accept{
                     EKeys::Gamepad_FaceButton_Bottom, FModifierKeysState{}, user, false, 0, 0};
                 checks.is_true(
@@ -623,11 +623,11 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 checks.is_true(FSlateApplication::Get().GetPressedMouseButtons().Contains(
                                    EKeys::LeftMouseButton),
                                TEXT("Menu Accept still synthesizes mouse down"));
+                FSlateApplication::Get().SetUserFocus(user, viewport);
                 send_slate_key(EKeys::Gamepad_FaceButton_Bottom, false);
                 checks.is_true(!FSlateApplication::Get().GetPressedMouseButtons().Contains(
                                    EKeys::LeftMouseButton),
                                TEXT("Menu Accept releases the synthetic mouse button"));
-                // NullRHI has no rendered hit-test grid for clicking Resume.
                 FPlayerControllerTestAccess::toggle_pause(*controller_);
             })
             .Until(

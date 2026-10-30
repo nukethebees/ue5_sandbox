@@ -491,8 +491,13 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     ::ioj::sim::LevelSim deaths{deaths_memory, MoveTemp(death_data)};
     deaths.finish_initialisation();
     resources.config.presentation.capital_ships.n_small_explosions = 3;
-    resources.config.capital_ships.small_death_explosion = NewObject<UNiagaraSystem>(owner);
-    resources.config.capital_ships.main_death_explosion = NewObject<UNiagaraSystem>(owner);
+    auto* const explosion{LoadObject<UNiagaraSystem>(
+        nullptr, TEXT("/SandboxNiagara/Templates/NS_SandboxNiagaraSeed.NS_SandboxNiagaraSeed"))};
+    if (!TestNotNull(TEXT("Death-effect fixture is a valid authored Niagara system"), explosion)) {
+        return false;
+    }
+    resources.config.capital_ships.small_death_explosion = explosion;
+    resources.config.capital_ships.main_death_explosion = explosion;
     resources.config.presentation.capital_ships.time_between_explosions = 10.f;
     resources.config.presentation.capital_ships.large_explosion_delay = 100.f;
     FLevelPresentation death_effects{resources, deaths.get_read_access(), {}};
