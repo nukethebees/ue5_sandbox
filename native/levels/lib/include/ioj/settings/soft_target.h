@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/constrained_numbers.h"
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 
@@ -141,8 +142,8 @@ struct SoftTarget {
     float bracket_start_radius_multiplier{2.5f};
     float opacity{0.70f};
     float pulse_opacity_boost{0.08f};
-    float pulse_duration{0.15f};
-    float fade_out_duration{0.15f};
+    ioj::NonNegativeFinite<float> pulse_duration{0.15f};
+    ioj::NonNegativeFinite<float> fade_out_duration{0.15f};
 };
 } // namespace ioj::settings
 namespace ioj {

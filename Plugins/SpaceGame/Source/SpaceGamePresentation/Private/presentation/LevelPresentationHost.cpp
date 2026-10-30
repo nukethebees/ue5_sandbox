@@ -41,16 +41,7 @@ void FLevelPresentationHost::initialise(FLevelVisualConfig const& config,
     auto const resources{make_resources(config, MoveTemp(player))};
     presentation_.Emplace(resources, view, MoveTemp(initial_turret_transforms));
     update_collision_bounds(spatial_queries);
-    hud_manager_.initialise(mission,
-                            view.get_entity_ledger(),
-                            view.get_capitals(),
-                            view.get_fighters(),
-                            view.get_turrets(),
-                            view.get_spinners(),
-                            spatial_queries,
-                            view.get_player(),
-                            config,
-                            components_.soft_targets);
+    hud_manager_.initialise(mission, view, spatial_queries, config, components_.soft_targets);
 }
 
 void FLevelPresentationHost::reset() {

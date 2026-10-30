@@ -14,6 +14,7 @@
 
 #include <SandboxCore/container_ops.h>
 
+#include <Components/TextBlock.h>
 #include <Engine/World.h>
 #include <GameFramework/PlayerController.h>
 #include <Misc/Optional.h>
@@ -106,13 +107,8 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
 
     ioj::FHUDManager hud;
     hud.initialise(mission,
-                   harness.get_ledger(),
-                   simulation.get_capital_ships(),
-                   simulation.get_fighters(),
-                   simulation.get_turrets(),
-                   simulation.get_spinners(),
+                   simulation.get_read_access(),
                    simulation.get_spatial_query_manager(),
-                   simulation.get_player_ship_simulation(),
                    config.get_visual_config(),
                    nullptr);
     checks.are_equal(0, hud.get_registered_hud_count(), TEXT("No HUD widgets are registered"));
@@ -232,6 +228,15 @@ void FTestHUDManagerScenario::registration_process_samples() {
                      hud_manager.get_registered_hud_count(),
                      TEXT("Late HUD is registered and synchronised immediately"));
 
+    hud_manager.set_selected_mapping_context(TEXT("registered_update"));
+    hud_manager.tick(1);
+    auto* const imc{Cast<UUserWidget>(hud->GetWidgetFromName(TEXT("selected_imc_widget")))};
+    auto* const text{imc ? Cast<UTextBlock>(imc->GetWidgetFromName(TEXT("value_text"))) : nullptr};
+    if (checks.not_nullptr(text, TEXT("Selected mapping context text exists"))) {
+        checks.is_true(text->GetText().ToString().Contains(TEXT("registered_update")),
+                       TEXT("Registered ship HUD receives flight updates"));
+    }
+
     hud_manager.unregister_hud(*hud);
     checks.are_equal(0, hud_manager.get_registered_hud_count(), TEXT("HUD unregisters cleanly"));
     hud_manager.register_hud(*hud);
@@ -268,18 +273,11 @@ auto FTestHUDManagerScenario::initialise_headless_hud_manager() -> bool {
         orchestrator->start_simulation();
     }
 
-    auto const& entity_ledger{orchestrator->get_entity_ledger()};
-
     headless_hud_manager.Emplace();
     headless_hud_manager->configure(orchestrator->get_hud_manager().settings());
     headless_hud_manager->initialise(orchestrator->get_mission(),
-                                     entity_ledger,
-                                     orchestrator->get_level_simulation()->get_capital_ships(),
-                                     orchestrator->get_level_simulation()->get_fighters(),
-                                     orchestrator->get_level_simulation()->get_turrets(),
-                                     orchestrator->get_level_simulation()->get_spinners(),
+                                     orchestrator->get_level_simulation()->get_read_access(),
                                      orchestrator->get_spatial_query_manager(),
-                                     orchestrator->get_player_ship_simulation(),
                                      orchestrator->get_level_config()->get_visual_config(),
                                      nullptr);
     return true;

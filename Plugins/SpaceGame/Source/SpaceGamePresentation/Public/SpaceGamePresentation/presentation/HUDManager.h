@@ -7,6 +7,7 @@
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/fixed_tick_loop.h>
+#include <ioj/sim/levels/level_read_access.h>
 #include <ioj/sim/levels/simulation_settings.h>
 #include <ioj/sim/player/fire_rate.h>
 #include <ioj/sim/player/flight_model_config.h>
@@ -39,21 +40,7 @@ namespace ioj::sim {
 class Mission;
 struct SpatialQueryManager;
 }
-namespace ioj::sim::player {
-struct Sim;
-}
-namespace ioj::sim::capital_ships {
-struct Sim;
-}
-namespace ioj::sim::fighters {
-struct Sim;
-}
-namespace ioj::sim::turrets {
-struct Sim;
-}
-namespace ioj::sim::spinners {
-struct Sim;
-}
+
 namespace ioj {
 enum class EHUDManagerState : uint8 {
     Disabled,
@@ -156,13 +143,8 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     auto settings() const -> sim::HudSettings const& { return settings_; }
 
     void initialise(sim::Mission const& new_mission,
-                    sim::EntityLedger const& new_entity_ledger,
-                    sim::capital_ships::Sim const& new_capitals,
-                    sim::fighters::Sim const& new_fighters,
-                    sim::turrets::Sim const& new_turrets,
-                    sim::spinners::Sim const& new_spinners,
+                    sim::LevelReadAccess view,
                     sim::SpatialQueryManager const& new_spatial_query_manager,
-                    sim::player::Sim const* new_player_ship,
                     FLevelVisualConfig const& level_config,
                     UInstancedStaticMeshComponent* soft_target_instances = nullptr);
     void deactivate();
@@ -235,6 +217,8 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     bool collect_sampled_speed_data();
 #endif
 
+    template <typename Hud>
+    void update_hud(Hud& hud, hud_manager::FDataChanges const& changes);
     void update_huds(hud_manager::FDataChanges const& changes);
     void synchronise_hud(USimulationHudWidget& hud) const;
     void update_mission_hud(USimulationHudWidget& hud) const;
@@ -245,20 +229,16 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     void update_sampled_speed_hud(UShipHudWidget& hud) const;
 #endif
 
-    bool validate_player_ship_for_collection() const;
+    auto read_access() const -> sim::LevelReadAccess const& { return simulation_.GetValue(); }
+    auto player_for_collection() const -> sim::player::Sim const*;
 
     sim::HudSettings settings_;
 
     EHUDManagerState state{EHUDManagerState::Disabled};
     TArray<FRegisteredHud> registered_huds;
-    sim::player::Sim const* player_ship{nullptr};
-    sim::Mission const* mission{nullptr};
-    sim::EntityLedger const* entity_ledger{nullptr};
-    sim::capital_ships::Sim const* capitals_{};
-    sim::fighters::Sim const* fighters_{};
-    sim::turrets::Sim const* turrets_{};
-    sim::spinners::Sim const* spinners_{};
-    sim::SpatialQueryManager const* spatial_query_manager{nullptr};
+    TOptional<sim::LevelReadAccess> simulation_;
+    sim::Mission const* mission{};
+    sim::SpatialQueryManager const* spatial_query_manager{};
     sim::FixedTickLoop tick_loop_{};
     PeriodicTickCountdown8 update_timers;
 
@@ -279,8 +259,6 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     FEntityOverlayHealthMaximums entity_overlay_maximum_health_;
     TArray<EEntityOverlayObjectiveRole> entity_overlay_objective_roles_;
     ioj::settings::SoftTarget soft_target_selection_settings_;
-    ioj::NonNegativeFinite<float> soft_target_pulse_duration_{0.15f};
-    ioj::NonNegativeFinite<float> soft_target_fade_out_duration_{0.15f};
     float seconds_per_tick_{0.0f};
     TWeakObjectPtr<UInstancedStaticMeshComponent> soft_target_instances_;
     float soft_target_mesh_vertical_radius_{0.0f};

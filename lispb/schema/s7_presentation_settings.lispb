@@ -62,8 +62,8 @@
     (member bracket_start_radius_multiplier float :initializer 2.5f :finite true)
     (member opacity float :initializer 0.70f :finite true)
     (member pulse_opacity_boost float :initializer 0.08f :finite true)
-    (member pulse_duration float :initializer 0.15f :finite true)
-    (member fade_out_duration float :initializer 0.15f :finite true)
+    (member pulse_duration @settings_nonnegative_float :initializer 0.15f)
+    (member fade_out_duration @settings_nonnegative_float :initializer 0.15f)
     (projections (cpp))))
 
 (module presentation_entity_overlay
