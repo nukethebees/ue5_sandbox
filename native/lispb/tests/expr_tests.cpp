@@ -240,12 +240,12 @@ TEST_F(ExprTest, CollectsMemberObjectAndSubscriptIndexDependencies) {
 
 TEST_F(ExprTest, EscapesStringContentsWithoutConsumingFollowingDigits) {
     expect_rendered(ir.string_literal(""), "\"\"");
-    expect_rendered(ir.string_literal("a\"b\\c\n\r\t"), "\"a\\\"b\\\\c\\n\\r\\t\"");
+    expect_rendered(ir.string_literal("a\"b\\c\n\r\t"), R"("a\"b\\c\n\r\t")");
     expect_rendered(ir.string_literal(std::string_view{"\0"
                                                        "7\001"
                                                        "f\177",
                                                        5}),
-                    "\"\\0007\\001f\\177\"");
+                    R"("\0007\001f\177")");
     expect_rendered(ir.string_literal("caf\xc3\xa9"), "\"caf\xc3\xa9\"");
     EXPECT_EQ(escape_cpp_string(std::string_view{"\0"
                                                  "7\001"

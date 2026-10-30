@@ -210,7 +210,7 @@ TEST(NativeSettings, DecodesPresentationLayersIntoExistingNativeValues) {
     presentation.entity_overlay.enabled = false;
     presentation.entity_overlay.bar_size_pixels = {32, 6};
     presentation.entity_overlay.soft_target.opacity = 0.5f;
-    presentation.entity_overlay.soft_target.pulse_duration = 0.3f;
+    presentation.entity_overlay.soft_target.pulse_duration = ioj::NonNegativeFinite<float>{0.3f};
     presentation.capital_ships.n_small_explosions = 3;
     presentation.radar.combat_range = 150000;
     EXPECT_PRED_FORMAT2(structurally_equal, expected, *source);

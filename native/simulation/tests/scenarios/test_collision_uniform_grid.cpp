@@ -251,11 +251,13 @@ void expect_same_trace_results(TraceHits const& baseline,
     auto const count{baseline.num()};
     auto const expected{baseline.get_const_view().resolve()};
     auto const actual{candidate.get_const_view().resolve()};
+    auto const expected_hits{expected.hits()};
+    auto const actual_hits{actual.hits()};
     for (std::uint32_t i{}; i < count; ++i) {
         SCOPED_TRACE(::testing::Message() << "index " << i);
         auto const source{permutation.empty() ? i : static_cast<std::uint32_t>(permutation[i])};
-        EXPECT_EQ(expected.hits()[source], actual.hits()[i]);
-        if (expected.hits()[source].value() == 0 || actual.hits()[i].value() == 0) {
+        EXPECT_EQ(expected_hits[source], actual_hits[i]);
+        if (expected_hits[source].value() == 0 || actual_hits[i].value() == 0) {
             continue;
         }
         if (compare_entities) {

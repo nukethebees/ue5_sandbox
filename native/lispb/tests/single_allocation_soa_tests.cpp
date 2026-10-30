@@ -75,8 +75,8 @@ TEST(SingleAllocationSoa, RowOperationsUseNestedEquivalentValues) {
             (member points nested Points))))"))};
     auto const& output{files.front().content};
     expect_contains_all(output,
-                        {"void set(size_type index, std::int32_t const new_ids, Point const "
-                         "new_points) const",
+                        {("void set(size_type index, std::int32_t const new_ids, Point const "
+                          "new_points) const"),
                          "view_points().set(index, new_points);",
                          "set(index, (value.x), (value.y));",
                          "size_type add(std::int32_t const new_ids, Point const new_points)",

@@ -578,8 +578,8 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
          "PROJECT_API auto LexToString(EMode const value) -> TCHAR const*;",
          "namespace project {\nPROJECT_API auto to_string_view",
          "PROJECT_API auto LexToSerializedString(EMode const value) -> TCHAR const*;",
-         "PROJECT_API auto try_parse_serialized(FStringView const value, EMode& result) -> "
-         "bool;"});
+         ("PROJECT_API auto try_parse_serialized(FStringView const value, EMode& result) -> "
+          "bool;")});
     EXPECT_FALSE(output.header.contains("auto to_string(EMode"));
 
     EXPECT_TRUE(output.source.contains("#include \"Project/Modes.h\""));
@@ -836,8 +836,8 @@ TEST(Lowering, EnumEscapingAndSparseDisplayCasesPreserveFallbacks) {
         }))};
 
     expect_contains_all(output.header,
-                        {"UMETA(DisplayName = \"Quote\\\" Slash\\\\\\n\\t\")",
-                         "TEXT(\"Ready\\000Quote\\\" Slash\\\\\\n\\t\")"});
+                        {R"(UMETA(DisplayName = "Quote\" Slash\\\n\t"))",
+                         R"(TEXT("Ready\000Quote\" Slash\\\n\t"))"});
     expect_contains_all(output.source,
                         {"return ioj::enum_string<ioj::Display>(value).data();",
                          "if (value == TEXT(\"a\\\"b\\\\c\\n\")) {\n"

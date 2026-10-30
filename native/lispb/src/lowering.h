@@ -39,7 +39,7 @@ auto lower_enum(LoweringContext& context,
                 std::optional<StringId> helper_namespace) -> DeclarationEmission;
 auto lower_soa_declaration(LoweringContext& context, DeclarationHandle schema)
     -> DeclarationEmission;
-auto lower_facade(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission;
+auto lower_facade(LoweringContext& context, DeclarationHandle facade) -> DeclarationEmission;
 auto lower_settings_module(LoweringContext& context, ModuleHandle module) -> ModuleId;
 
 } // namespace lispb::codegen::detail

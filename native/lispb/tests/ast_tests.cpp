@@ -86,7 +86,7 @@ TEST_F(AstTest, RendersStaticAssertionsWithOptionalMessages) {
                                                   ir.store_text("Value must be \"valid\"."))};
 
     expect_rendered(without_message, "static_assert(sizeof(Value) == 16);");
-    expect_rendered(with_message, "static_assert(valid<Value>, \"Value must be \\\"valid\\\".\");");
+    expect_rendered(with_message, R"(static_assert(valid<Value>, "Value must be \"valid\".");)");
 
     auto const dependency{ir.types.dependency("a::valid", "a/validation.h")};
     auto const predicate{ir.call(ir.type_reference(ir.types.named("a::valid", {dependency})), {})};
