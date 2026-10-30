@@ -20,6 +20,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace slate_codegen::detail {
 using lispb::test_support::expect_contains_all;
@@ -120,8 +121,25 @@ TEST(SlateDsl, ExplicitParametersDetermineSignatureAndRoles) {
     EXPECT_TRUE(output.contains(".Text(label)"));
 }
 
-TEST(SlateDsl, LetBindingsSupportValuesAndMargins) {
-    auto document{parse_source(R"(
+struct RenderingCase {
+    char const* name;
+    std::string_view source;
+    std::vector<std::string_view> expected;
+};
+
+using SlateRendering = ::testing::TestWithParam<RenderingCase>;
+
+TEST_P(SlateRendering, RendersExpectedText) {
+    auto const& test{GetParam()};
+    auto document{parse_source(test.source)};
+    expect_contains_all(document.render(), test.expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    SlateDsl,
+    SlateRendering,
+    ::testing::Values(RenderingCase{"LetBindingsSupportValuesAndMargins",
+                                    R"(
 (widget-class FOwner
   (function Build
     (params)
@@ -130,18 +148,13 @@ TEST(SlateDsl, LetBindingsSupportValuesAndMargins) {
       (vbox
         (auto :padding gap
           (SBox :WidthOverride width))))))
-)")};
-
-    auto const output{document.render()};
-    expect_contains_all(output,
-                        {"auto const gap{FMargin{0.0f, 0.0f, 0.0f, 10.0f}};",
-                         "auto const width{512.0f};",
-                         "vbox_auto_slot(FMargin{gap})",
-                         ".WidthOverride(width)"});
-}
-
-TEST(SlateDsl, ValueParametersWorkInLetBindingsAndPadding) {
-    auto document{parse_source(R"(
+)",
+                                    {"auto const gap{FMargin{0.0f, 0.0f, 0.0f, 10.0f}};",
+                                     "auto const width{512.0f};",
+                                     "vbox_auto_slot(FMargin{gap})",
+                                     ".WidthOverride(width)"}},
+                      RenderingCase{"ValueParametersWorkInLetBindingsAndPadding",
+                                    R"(
 (widget-class FOwner
   (function Build
     (params
@@ -151,17 +164,12 @@ TEST(SlateDsl, ValueParametersWorkInLetBindingsAndPadding) {
       (vbox
         (auto :padding padding
           (SBox :WidthOverride box_width))))))
-)")};
-
-    auto const output{document.render()};
-    expect_contains_all(output,
-                        {"auto const box_width{width};",
-                         "vbox_auto_slot(FMargin{padding})",
-                         ".WidthOverride(box_width)"});
-}
-
-TEST(SlateDsl, RendersSupportedTreeForms) {
-    auto document{parse_source(R"(
+)",
+                                    {"auto const box_width{width};",
+                                     "vbox_auto_slot(FMargin{padding})",
+                                     ".WidthOverride(box_width)"}},
+                      RenderingCase{"RendersSupportedTreeForms",
+                                    R"(
 (widget-class FOwner
   (function Build
     (params (value title))
@@ -174,20 +182,15 @@ TEST(SlateDsl, RendersSupportedTreeForms) {
         (STextBlock :Text title))
       (slot Body
         (assign child_ SBox)))))
-)")};
-
-    auto const output{document.render()};
-    expect_contains_all(output,
-                        {"NSLOCTEXT(\"Tests\", \"Description\", \"Description text\")",
-                         ".State(&self_, &ThisClass::current_state)",
-                         ".OnClicked_UObject(&self_, &ThisClass::handle_clicked)",
-                         ".Header()",
-                         ".Body()",
-                         "SAssignNew(self_.child_, SBox)"});
-}
-
-TEST(SlateDsl, RendersBoxOptionsAndMultipleFunctions) {
-    auto document{parse_source(R"(
+)",
+                                    {"NSLOCTEXT(\"Tests\", \"Description\", \"Description text\")",
+                                     ".State(&self_, &ThisClass::current_state)",
+                                     ".OnClicked_UObject(&self_, &ThisClass::handle_clicked)",
+                                     ".Header()",
+                                     ".Body()",
+                                     "SAssignNew(self_.child_, SBox)"}},
+                      RenderingCase{"RendersBoxOptionsAndMultipleFunctions",
+                                    R"(
 (widget-class FOwner
   (function BuildControls
     (params)
@@ -197,19 +200,14 @@ TEST(SlateDsl, RendersBoxOptionsAndMultipleFunctions) {
   (function BuildPreview
     (params)
     (SImage)))
-)")};
-
-    auto const output{document.render()};
-    expect_contains_all(output,
-                        {"auto BuildControls()",
-                         "auto BuildPreview()",
-                         "vbox_fill_slot(2.0f, FMargin{1.0f, 2.0f})",
-                         ".HAlign(HAlign_Right)",
-                         ".VAlign(VAlign_Bottom)"});
-}
-
-TEST(SlateDsl, RendersValueParametersAsBoxOptions) {
-    auto document{parse_source(R"(
+)",
+                                    {"auto BuildControls()",
+                                     "auto BuildPreview()",
+                                     "vbox_fill_slot(2.0f, FMargin{1.0f, 2.0f})",
+                                     ".HAlign(HAlign_Right)",
+                                     ".VAlign(VAlign_Bottom)"}},
+                      RenderingCase{"RendersValueParametersAsBoxOptions",
+                                    R"(
 (widget-class FOwner
   (function Build
     (params
@@ -220,14 +218,11 @@ TEST(SlateDsl, RendersValueParametersAsBoxOptions) {
       (fill :weight fill_width :halign horizontal_alignment :valign vertical_alignment
         (SButton))))
 )
-)")};
-
-    auto const output{document.render()};
-    expect_contains_all(output,
-                        {"hbox_fill_slot(fill_width)",
-                         ".HAlign(horizontal_alignment)",
-                         ".VAlign(vertical_alignment)"});
-}
+)",
+                                    {"hbox_fill_slot(fill_width)",
+                                     ".HAlign(horizontal_alignment)",
+                                     ".VAlign(vertical_alignment)"}}),
+    [](auto const& info) { return info.param.name; });
 
 struct InvalidParameterCase {
     char const* name;

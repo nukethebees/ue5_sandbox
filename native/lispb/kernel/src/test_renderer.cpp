@@ -18,6 +18,7 @@
 #include <lispb/strings.h>
 
 #include <cassert>
+#include <cctype>
 #include <cstddef>
 #include <span>
 #include <string>
@@ -26,6 +27,21 @@
 
 namespace kernel_codegen::detail {
 namespace {
+
+auto pascal_case(std::string_view const name) -> std::string {
+    std::string result;
+    bool uppercase{true};
+    for (unsigned char const character : name) {
+        if (!std::isalnum(character)) {
+            uppercase = true;
+        } else {
+            result += uppercase ? static_cast<char>(std::toupper(character))
+                                : static_cast<char>(character);
+            uppercase = false;
+        }
+    }
+    return result;
+}
 
 auto span_argument(lispb::codegen::CppIR& cpp, std::string const& type, lispb::StringId const name)
     -> lispb::codegen::Expr {
@@ -69,6 +85,10 @@ auto reference_expression(lispb::codegen::CppIR& cpp,
                           lispb::codegen::CppTypeId const type,
                           ReferenceValue const& value) -> lispb::codegen::Expr {
     if (auto const* literal{std::get_if<std::string>(&value)}) {
+        if (cpp.types.spelling(type) == "float") {
+            return cpp.literal(*literal +
+                               (literal->find_first_of(".eE") == std::string::npos ? ".0f" : "f"));
+        }
         return cpp.literal(*literal);
     }
 
@@ -88,7 +108,7 @@ auto array_initializer(lispb::codegen::CppIR& cpp,
     for (auto const& value : values) {
         elements.push_back(reference_expression(cpp, type, value));
     }
-    return cpp.call(cpp.template_id(cpp.named("make_array"), {cpp.type_reference(type)}), elements);
+    return cpp.init_list(elements);
 }
 
 struct FixtureArray {
@@ -129,8 +149,7 @@ void append_case(lispb::codegen::CppIR& cpp,
     auto const count{fixture.expected.size()};
     auto const array_type{
         cpp.types.intern("std::array<" + type + ", " + std::to_string(count) + ">")};
-    lispb::codegen::Nodes body{
-        cpp.expr_stmt(cpp.call(cpp.named("SCOPED_TRACE"), {cpp.named("Count")}))};
+    auto& body{output};
     for (std::size_t index{}; index < document.operations.operands(expanded.operation(id)).size();
          ++index) {
         auto const operand{document.operations.operands(expanded.operation(id))[index]};
@@ -171,9 +190,6 @@ void append_case(lispb::codegen::CppIR& cpp,
                                {cpp.call(cpp.member_access(cpp.named(destination), "data")),
                                 cpp.call(cpp.member_access(cpp.named("expected"), "data")),
                                 cpp.named("Count")})));
-
-    output.push_back(cpp.raw("for (std::size_t const Count : {0, 1, 7, 8, 9, 31})"));
-    output.push_back(cpp.block(body));
 }
 
 }
@@ -191,24 +207,21 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
              2)
         .add(cpp.include(cpp.strings.intern("gtest/gtest.h"), lispb::codegen::IncludeStyle::system),
              2);
-    for (auto const include :
-         {"array", "cmath", "cstddef", "cstdint", "limits", "span", "type_traits"}) {
+    for (auto const include : {"array",
+                               "cmath",
+                               "cstddef",
+                               "cstdint",
+                               "limits",
+                               "span",
+                               "string",
+                               "tuple",
+                               "type_traits"}) {
         file_nodes.add(
             cpp.include(cpp.strings.intern(include), lispb::codegen::IncludeStyle::system));
     }
     file_nodes.new_lines(2);
-    auto const suite{"Generated_" + document.text(document.modules.name(module))};
-    auto const make_array{cpp.function("make_array", "std::array<T, sizeof...(Values)>")};
-    cpp.set_function_template(
-        make_array,
-        cpp.template_declaration(
-            {cpp.type_template_parameter(cpp.strings.intern("T")),
-             cpp.type_template_parameter(cpp.strings.intern("Values"), {}, true)}));
-    cpp.set_function_parameters(make_array, {cpp.parameter("Values...", "values")});
-    cpp.set_function_body(make_array,
-                          {cpp.return_stmt(cpp.raw_expr("{static_cast<T>(values)...}"))});
-    cpp.function_flags(make_array).set_is_constexpr(true);
-    cpp.function_flags(make_array).set_define_in_header(true);
+    auto const suite{"Generated" + pascal_case(document.text(document.modules.name(module)))};
+    auto const namespace_name{suite + "Tests"};
     auto const expect_value{cpp.function("expect_value", "void")};
     cpp.function_flags(expect_value).set_define_in_header(true);
     cpp.set_function_template(
@@ -251,40 +264,78 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
                                               {cpp.subscript(cpp.named("actual"), index),
                                                cpp.subscript(cpp.named("expected"), index)}))}))});
     lispb::codegen::Nodes cases;
+    std::vector<lispb::codegen::Expr> case_values;
     std::vector<FixtureArray> arrays;
     auto const range{document.modules.expanded_variants(module)};
     assert(fixtures.size() == range.count);
     auto const end{range.offset + range.count};
     for (auto variant_index{range.offset}; variant_index < end; ++variant_index) {
         auto const id{ExpandedVariantId{variant_index}};
-        cases.push_back(cpp.raw("TEST(" + suite + ", " + raw_name(document, id) + ")"));
-        cases.push_back(cpp.lines(1));
+        auto const name{raw_name(document, id)};
+        auto const check{cpp.function(name, "void")};
+        cpp.function_flags(check).set_define_in_header(true);
+        cpp.set_function_parameters(check, {cpp.parameter("std::size_t const", "Count")});
         lispb::codegen::Nodes body;
         append_case(cpp,
                     body,
                     arrays,
-                    suite,
+                    namespace_name,
                     emission,
                     document,
                     id,
                     fixtures[variant_index - range.offset]);
-        cases.push_back(cpp.block(body));
+        cpp.set_function_body(check, body);
+        cases.push_back(cpp.header_function(check));
         cases.push_back(cpp.lines(2));
+        case_values.push_back(
+            cpp.init_list({cpp.string_literal(pascal_case(name)), cpp.named(name)}));
     }
-    lispb::codegen::Nodes declarations{cpp.header_function(make_array),
-                                       cpp.lines(2),
-                                       cpp.header_function(expect_value),
+    lispb::codegen::Nodes declarations{cpp.header_function(expect_value),
                                        cpp.lines(2),
                                        cpp.header_function(expect_prefix),
                                        cpp.lines(2)};
     for (auto const& array : arrays) {
-        declarations.push_back(cpp.variable(cpp.types.intern("inline constexpr auto"),
-                                            array.name,
-                                            array_initializer(cpp, array.type, *array.values)));
+        declarations.push_back(
+            cpp.variable(cpp.types.intern("inline constexpr std::array<" +
+                                          std::string{cpp.types.spelling(array.type)} + ", " +
+                                          std::to_string(array.values->size()) + ">"),
+                         array.name,
+                         array_initializer(cpp, array.type, *array.values)));
         declarations.push_back(cpp.lines(2));
     }
     declarations.insert(declarations.end(), cases.begin(), cases.end());
-    file_nodes.add(cpp.namespace_node(cpp.strings.intern(suite), declarations));
+    declarations.push_back(cpp.using_declaration(cpp.strings.intern("KernelCheck"),
+                                                 cpp.types.intern("void (*)(std::size_t)")));
+    declarations.push_back(cpp.lines(2));
+    declarations.push_back(cpp.record(
+        cpp.strings.intern("KernelCase"),
+        {cpp.instance_member(cpp.types.intern("char const*"), cpp.strings.intern("name")),
+         cpp.instance_member(cpp.types.intern("KernelCheck"), cpp.strings.intern("run"))}));
+    declarations.push_back(cpp.lines(2));
+    declarations.push_back(
+        cpp.variable(cpp.types.intern("inline constexpr std::array<KernelCase, " +
+                                      std::to_string(case_values.size()) + ">"),
+                     cpp.strings.intern("cases"),
+                     cpp.init_list({cpp.init_list(case_values)})));
+    declarations.push_back(cpp.lines(2));
+    declarations.push_back(cpp.using_declaration(
+        cpp.strings.intern(suite),
+        cpp.types.intern("::testing::TestWithParam<std::tuple<KernelCase, std::size_t>>")));
+    declarations.push_back(cpp.lines(2));
+    declarations.push_back(cpp.raw("TEST_P(" + suite + R"(, MatchesReference) {
+    auto const& [test, count]{GetParam()};
+    test.run(count);
+}
+INSTANTIATE_TEST_SUITE_P(Kernels, )" +
+                                   suite +
+                                   ", ::testing::Combine(::testing::ValuesIn(cases), "
+                                   "::testing::Values<std::size_t>(0, 1, 7, 8, 9, 31)), " +
+                                   R"(([](auto const& info) {
+    auto const& [test, count]{info.param};
+    return std::string{test.name} + "Count" + std::to_string(count);
+}));
+)"));
+    file_nodes.add(cpp.namespace_node(cpp.strings.intern(namespace_name), declarations));
     auto const file{cpp.files.append(*document.emissions.tests(emission), file_nodes.build())};
     auto& flags{cpp.files.flags[cpp.files.index(file)]};
     flags.set_pragma_once(false);

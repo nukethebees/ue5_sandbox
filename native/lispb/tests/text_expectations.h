@@ -7,9 +7,10 @@
 #include <string_view>
 
 namespace lispb::test_support {
+template <typename Fragments = std::initializer_list<std::string_view>>
 inline void
     expect_contains_all(std::string_view const text,
-                        std::initializer_list<std::string_view> const expected,
+                        Fragments const& expected,
                         std::source_location const location = std::source_location::current()) {
     for (auto const fragment : expected) {
         if (!text.contains(fragment)) {
@@ -20,9 +21,10 @@ inline void
     }
 }
 
+template <typename Fragments = std::initializer_list<std::string_view>>
 inline void
     expect_contains_none(std::string_view const text,
-                         std::initializer_list<std::string_view> const forbidden,
+                         Fragments const& forbidden,
                          std::source_location const location = std::source_location::current()) {
     for (auto const fragment : forbidden) {
         if (text.contains(fragment)) {

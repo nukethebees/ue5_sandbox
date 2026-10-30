@@ -135,15 +135,12 @@ auto literal_source(std::string_view const types, std::string_view const literal
 
 TEST(KernelParser, ParsesTypedMapDeclaration) {
     auto document{parse_document("test.lispb", valid_source)};
-
-    ASSERT_EQ(document.data.modules.size(), 1);
-    ASSERT_EQ(document.data.modules.operations(ModuleId{0}).size(), 1);
-    EXPECT_EQ(
-        document.data.operations.operands(document.data.modules.operations(ModuleId{0})[0]).size(),
-        2);
-    EXPECT_EQ(
-        document.data.operations.variants(document.data.modules.operations(ModuleId{0})[0]).size(),
-        2);
+    auto const& data{document.data};
+    ASSERT_EQ(data.modules.size(), 1);
+    auto const operations{data.modules.operations(ModuleId{0})};
+    ASSERT_EQ(operations.size(), 1);
+    EXPECT_EQ(data.operations.operands(operations[0]).size(), 2);
+    EXPECT_EQ(data.operations.variants(operations[0]).size(), 2);
 }
 
 TEST(KernelRenderer, GeneratesConcreteOverloadsAndSourceLoops) {
@@ -174,21 +171,89 @@ TEST(KernelRenderer, GeneratesConcreteOverloadsAndSourceLoops) {
                                        "lhs.size_bytes(), rhs.data(), rhs.size_bytes())"));
 }
 
-TEST(KernelRenderer, GeneratesFusedComponentMapBindings) {
-    auto document{parse_document("test.lispb", component_source)};
-    auto const files{render_document(document)};
+struct RenderingCase {
+    char const* name;
+    std::string_view source;
+    std::vector<std::vector<std::string_view>> expected;
+    std::vector<std::string_view> forbidden_source;
+};
 
-    ASSERT_EQ(files.size(), 2);
-    expect_contains_all(files[0].content,
-                        {"std::span<float const> from_x",
-                         "std::span<float const> from_y",
-                         "std::span<float const> from_z",
-                         "void lerp_3d_in_place("});
-    expect_contains_all(files[1].content,
-                        {"from_x[i] = from_x[i] + alpha * (to_x[i] - from_x[i]);",
-                         "from_y[i] = from_y[i] + alpha * (to_y[i] - from_y[i]);",
-                         "from_z[i] = from_z[i] + alpha * (to_z[i] - from_z[i]);"});
+using KernelRendering = ::testing::TestWithParam<RenderingCase>;
+
+TEST_P(KernelRendering, RendersExpectedArtifacts) {
+    auto const& test{GetParam()};
+    auto const files{render_source(test.source)};
+    auto const count{test.expected.size()};
+    ASSERT_EQ(files.size(), count);
+    for (std::size_t index{}; index < count; ++index) {
+        SCOPED_TRACE(index);
+        expect_contains_all(files[index].content, test.expected[index]);
+    }
+    lispb::test_support::expect_contains_none(files[1].content, test.forbidden_source);
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    KernelRenderer,
+    KernelRendering,
+    ::testing::Values(RenderingCase{"GeneratesFusedComponentMapBindings",
+                                    component_source,
+                                    {{"std::span<float const> from_x",
+                                      "std::span<float const> from_y",
+                                      "std::span<float const> from_z",
+                                      "void lerp_3d_in_place("},
+                                     {"from_x[i] = from_x[i] + alpha * (to_x[i] - from_x[i]);",
+                                      "from_y[i] = from_y[i] + alpha * (to_y[i] - from_y[i]);",
+                                      "from_z[i] = from_z[i] + alpha * (to_z[i] - from_z[i]);"}},
+                                    {}},
+                      RenderingCase{"RendersNamedConstantsForEachConcreteFloatingType",
+                                    R"(
+(kernel-module constants
+  (emit
+    (header "ArrayKernels.h")
+    (source "ArrayKernels.cpp")
+    (tests "ArrayKernelsTests.cpp")
+    (header-include "ArrayKernels.h")
+    (namespace ioj))
+  (type-set floating float double)
+  (map classify
+    (types floating)
+    (operand data array)
+    (output out)
+    (expression (+ data (+ (constant nan)
+                           (+ (constant infinity) (constant negative-infinity)))))
+    (variants
+      (out-of-place classify))))
+)",
+                                    {{},
+                                     {"#include <limits>",
+                                      "std::numeric_limits<float>::quiet_NaN()",
+                                      "std::numeric_limits<float>::infinity()",
+                                      "-std::numeric_limits<float>::infinity()",
+                                      "std::numeric_limits<double>::quiet_NaN()",
+                                      "-std::numeric_limits<double>::infinity()"},
+                                     {}},
+                                    {}},
+                      RenderingCase{"TreatsBareNanAndInfAsOperandReferences",
+                                    R"(
+(kernel-module constants
+  (emit
+    (header "ArrayKernels.h")
+    (source "ArrayKernels.cpp")
+    (header-include "ArrayKernels.h")
+    (namespace ioj))
+  (type-set floating float)
+  (map add
+    (types floating)
+    (operand nan array)
+    (operand inf scalar)
+    (output out)
+    (expression (+ nan inf))
+    (variants
+      (out-of-place add))))
+)",
+                                    {{}, {"nan[i] + inf"}},
+                                    {"#include <limits>"}}),
+    [](auto const& info) { return info.param.name; });
 
 struct InvalidDeclarationCase {
     char const* name;
@@ -286,10 +351,10 @@ TEST(KernelReferenceEvaluator, EvaluatesEveryOperatorForEveryNumericType) {
 
     ASSERT_EQ(files.size(), 3);
     expect_contains_all(files[2].content,
-                        {"make_array<std::int32_t>(",
-                         "make_array<std::uint32_t>(",
-                         "make_array<float>(",
-                         "make_array<double>("});
+                        {"std::array<std::int32_t, 31>",
+                         "std::array<std::uint32_t, 31>",
+                         "std::array<float, 31>",
+                         "std::array<double, 31>"});
 }
 
 TEST(KernelRenderer, QualifiesSharedFixturesWhenAnOperandShadowsTheirName) {
@@ -305,8 +370,8 @@ TEST(KernelRenderer, QualifiesSharedFixturesWhenAnOperandShadowsTheirName) {
 
     ASSERT_EQ(files.size(), 3);
     auto const& tests{files[2].content};
-    EXPECT_TRUE(tests.contains("inline constexpr auto fixture_values_0{make_array<float>("));
-    EXPECT_TRUE(tests.contains("auto fixture_values_0{Generated_literals::fixture_values_0};"))
+    EXPECT_TRUE(tests.contains("inline constexpr std::array<float, 31> fixture_values_0{"));
+    EXPECT_TRUE(tests.contains("auto fixture_values_0{GeneratedLiteralsTests::fixture_values_0};"))
         << tests;
     EXPECT_FALSE(tests.contains("auto fixture_values_0{fixture_values_0};"));
 }
@@ -368,62 +433,6 @@ TEST(KernelRenderer, PairwiseDisjointChecksEveryArray) {
                          "lhs.data(), lhs.size_bytes(), out.data(), out.size_bytes()))",
                          "arithmetic_detail::require(!arithmetic_detail::ranges_overlap("
                          "rhs.data(), rhs.size_bytes(), out.data(), out.size_bytes()))"});
-}
-
-TEST(KernelRenderer, RendersNamedConstantsForEachConcreteFloatingType) {
-    constexpr std::string_view source = R"(
-(kernel-module constants
-  (emit
-    (header "ArrayKernels.h")
-    (source "ArrayKernels.cpp")
-    (tests "ArrayKernelsTests.cpp")
-    (header-include "ArrayKernels.h")
-    (namespace ioj))
-  (type-set floating float double)
-  (map classify
-    (types floating)
-    (operand data array)
-    (output out)
-    (expression (+ data (+ (constant nan)
-                           (+ (constant infinity) (constant negative-infinity)))))
-    (variants
-      (out-of-place classify))))
-)";
-
-    auto const files{render_source(source)};
-
-    expect_contains_all(files[1].content,
-                        {"#include <limits>",
-                         "std::numeric_limits<float>::quiet_NaN()",
-                         "std::numeric_limits<float>::infinity()",
-                         "-std::numeric_limits<float>::infinity()",
-                         "std::numeric_limits<double>::quiet_NaN()",
-                         "-std::numeric_limits<double>::infinity()"});
-}
-
-TEST(KernelRenderer, TreatsBareNanAndInfAsOperandReferences) {
-    constexpr std::string_view source = R"(
-(kernel-module constants
-  (emit
-    (header "ArrayKernels.h")
-    (source "ArrayKernels.cpp")
-    (header-include "ArrayKernels.h")
-    (namespace ioj))
-  (type-set floating float)
-  (map add
-    (types floating)
-    (operand nan array)
-    (operand inf scalar)
-    (output out)
-    (expression (+ nan inf))
-    (variants
-      (out-of-place add))))
-)";
-
-    auto const files{render_source(source)};
-
-    EXPECT_TRUE(files[1].content.contains("nan[i] + inf"));
-    EXPECT_FALSE(files[1].content.contains("#include <limits>"));
 }
 
 TEST(KernelRenderer, NormalizesAndTypesFiniteDecimalLiterals) {

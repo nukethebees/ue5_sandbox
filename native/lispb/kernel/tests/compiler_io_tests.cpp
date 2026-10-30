@@ -113,7 +113,7 @@ TEST(KernelCompiler, EmitsReferenceTestsWhenRequested) {
 
     ASSERT_EQ(compile(project, {"array_math.lispb"}), 0);
     EXPECT_TRUE(project.read("generated/ArrayKernels.h").contains("std::span<float const>"));
-    EXPECT_TRUE(project.read("generated/ArrayKernelsTests.cpp").contains("TEST("));
+    EXPECT_TRUE(project.read("generated/ArrayKernelsTests.cpp").contains("TEST_P("));
     EXPECT_TRUE(project.read("generated/.lispb-outputs").contains("ArrayKernelsTests.cpp"));
 }
 
