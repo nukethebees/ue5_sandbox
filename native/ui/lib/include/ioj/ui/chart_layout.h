@@ -3,6 +3,8 @@
 #include "ioj/ui/types.h"
 #include <ioj/constrained_numbers.h>
 
+#include <algorithm>
+
 namespace ioj::ui::chart_layout {
 struct Options {
     Insets padding{};
@@ -24,26 +26,7 @@ inline constexpr auto settings_policy{ConstrainedValuePolicy{
     },
     "Chart layout requires finite nonnegative dimensions and positive axis thickness"}};
 
-class Settings {
-    using Value = ConstrainedValue<Options, settings_policy>;
-  public:
-    constexpr Settings() = default;
-    explicit consteval Settings(Options const options)
-        : value_{options} {}
-
-    static constexpr auto try_make(Options const options) -> std::optional<Settings> {
-        auto const value{Value::try_make(options)};
-        return value ? std::optional{Settings{*value}} : std::nullopt;
-    }
-
-    auto get_ref() const& noexcept -> Options const& { return value_.get_ref(); }
-    auto get_ref() const&& -> Options const& = delete;
-  private:
-    explicit constexpr Settings(Value const value)
-        : value_{value} {}
-
-    Value value_;
-};
+using Settings = ConstrainedValue<Options, settings_policy>;
 
 struct Layout {
     Vector2f plot_origin{};
@@ -52,5 +35,27 @@ struct Layout {
     float y_label_area_width{};
 };
 
-[[nodiscard]] auto make_layout(Vector2f widget_size, Settings settings) noexcept -> Layout;
+[[nodiscard]] inline auto make_layout(Vector2f const widget_size,
+                                      Settings const validated_settings) noexcept -> Layout {
+    auto const& settings{validated_settings.get_ref()};
+    auto const available_width{
+        std::max(widget_size.x() - settings.padding.left - settings.padding.right, 0.0f)};
+    auto const available_height{
+        std::max(widget_size.y() - settings.padding.top - settings.padding.bottom, 0.0f)};
+    Layout result;
+    if (!settings.show_axes) {
+        result.plot_origin = {settings.padding.left, settings.padding.top};
+        result.plot_size = {available_width, available_height};
+        return result;
+    }
+    result.label_area_height = std::min(settings.label_area_height, available_height);
+    result.y_label_area_width = std::min(settings.y_label_area_width, available_width);
+    result.plot_origin = {settings.padding.left + result.y_label_area_width +
+                              settings.axis_thickness,
+                          settings.padding.top};
+    result.plot_size = {
+        std::max(available_width - result.y_label_area_width - settings.axis_thickness, 0.0f),
+        std::max(available_height - result.label_area_height - settings.axis_thickness, 0.0f)};
+    return result;
+}
 }

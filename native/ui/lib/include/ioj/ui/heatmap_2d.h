@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ioj/ui/types.h"
+#include <ioj/constrained_numbers.h>
 #include <ioj/min_max.h>
 
 #include <cstddef>
@@ -14,7 +15,7 @@ inline constexpr std::uint32_t invalid_index{std::numeric_limits<std::uint32_t>:
 inline constexpr std::size_t maximum_cells_per_batch{
     (static_cast<std::size_t>(std::numeric_limits<std::uint16_t>::max()) + 1U) / 4U};
 
-struct Grid {
+struct GridData {
     using ColumnCount = std::int32_t;
     using RowCount = std::int32_t;
 
@@ -23,10 +24,39 @@ struct Grid {
     std::vector<float> values;
 };
 
+inline constexpr auto grid_policy{ConstrainedValuePolicy{
+    [](GridData const& grid) {
+        if (grid.columns == 0 && grid.rows == 0) {
+            return grid.values.empty();
+        }
+        auto const count{static_cast<std::int64_t>(grid.columns) * grid.rows};
+        return grid.columns > 0 && grid.rows > 0 &&
+               count <= std::numeric_limits<std::int32_t>::max() &&
+               count == static_cast<std::int64_t>(grid.values.size());
+    },
+    "Heatmap dimensions must match its values and fit an int32 cell count"}};
+using Grid = ConstrainedValue<GridData, grid_policy>;
+
+inline constexpr auto range_policy{ConstrainedValuePolicy{
+    [](MinMax<float> const range) {
+        constexpr auto limit{std::numeric_limits<float>::max()};
+        return range.min >= -limit && range.min <= limit && range.max >= -limit &&
+               range.max <= limit && range.min < range.max;
+    },
+    "Heatmap range must have finite ordered endpoints"}};
+using ValidRange = ConstrainedValue<MinMax<float>, range_policy>;
+
 struct Domain {
     MinMax<float> x{};
     MinMax<float> y{};
 };
+
+inline constexpr auto domain_policy{ConstrainedValuePolicy{
+    [](Domain const domain) { return ValidRange::valid(domain.x) && ValidRange::valid(domain.y); },
+    "Heatmap domains must have finite ordered endpoints"}};
+using ValidDomain = ConstrainedValue<Domain, domain_policy>;
+
+class Data;
 
 struct ColorStop {
     float position{};
@@ -53,13 +83,10 @@ struct MeshBatch {
     std::vector<std::uint16_t> indices;
 };
 
-[[nodiscard]] auto is_valid_grid(Grid const& grid) noexcept -> bool;
-[[nodiscard]] auto is_valid_domain(Domain domain) noexcept -> bool;
 [[nodiscard]] auto is_valid_color_stops(std::span<ColorStop const> stops) noexcept -> bool;
 [[nodiscard]] auto build_color_lut(std::span<ColorStop const> stops, std::int32_t entry_count = 256)
     -> std::vector<Color4f>;
-[[nodiscard]] auto build_cell_geometry(Grid const& grid,
-                                       MinMax<float> range,
+[[nodiscard]] auto build_cell_geometry(Data const& data,
                                        std::span<Color4f const> color_lut,
                                        Vector2f plot_size) -> std::vector<CellGeometry>;
 [[nodiscard]] auto build_mesh_batches(std::span<CellGeometry const> cells, Vector2f plot_origin)
@@ -67,17 +94,17 @@ struct MeshBatch {
 
 class Data {
   public:
-    [[nodiscard]] auto set_grid(Grid grid) -> bool;
+    void set_grid(Grid grid) { grid_ = std::move(grid); }
     void clear_grid();
-    [[nodiscard]] auto set_value_range(MinMax<float> range) -> bool;
-    [[nodiscard]] auto set_domain(Domain domain) -> bool;
+    void set_value_range(ValidRange range) { value_range_ = range; }
+    void set_domain(ValidDomain domain) { domain_ = domain; }
 
-    [[nodiscard]] auto grid() const noexcept -> Grid const& { return grid_; }
-    [[nodiscard]] auto value_range() const noexcept -> MinMax<float> { return value_range_; }
-    [[nodiscard]] auto domain() const noexcept -> Domain { return domain_; }
+    [[nodiscard]] auto grid() const noexcept -> GridData const& { return grid_.get_ref(); }
+    [[nodiscard]] auto value_range() const noexcept -> MinMax<float> { return value_range_.get(); }
+    [[nodiscard]] auto domain() const noexcept -> Domain { return domain_.get(); }
   private:
     Grid grid_;
-    MinMax<float> value_range_;
-    Domain domain_;
+    ValidRange value_range_;
+    ValidDomain domain_;
 };
 }

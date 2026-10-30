@@ -7,6 +7,16 @@
 #include <vector>
 
 namespace {
+auto build_cells(ioj::ui::heatmap_2d::GridData grid,
+                 ioj::MinMax<float> range,
+                 std::span<ioj::ui::Color4f const> colors,
+                 ioj::ui::Vector2f size) {
+    using namespace ioj::ui::heatmap_2d;
+    Data data;
+    data.set_grid(Grid::make(std::move(grid)));
+    data.set_value_range(ValidRange::make(range));
+    return build_cell_geometry(data, colors, size);
+}
 auto grayscale_stops() -> std::vector<ioj::ui::heatmap_2d::ColorStop> {
     return {{.position = 0.0f, .color = {0.0f, 0.0f, 0.0f, 1.0f}},
             {.position = 1.0f, .color = {1.0f, 1.0f, 1.0f, 1.0f}}};
@@ -15,14 +25,14 @@ auto grayscale_stops() -> std::vector<ioj::ui::heatmap_2d::ColorStop> {
 
 TEST(Heatmap2D, ValidatesGridsRangesDomainsAndColorStops) {
     using namespace ioj::ui::heatmap_2d;
-    EXPECT_TRUE(is_valid_grid({}));
-    EXPECT_TRUE(is_valid_grid({2, 2, {0.0f, 1.0f, 2.0f, 3.0f}}));
-    EXPECT_FALSE(is_valid_grid({2, 2, {0.0f, 1.0f}}));
-    EXPECT_FALSE(is_valid_grid({.columns = 2, .rows = 0, .values = {}}));
-    EXPECT_TRUE(Data{}.set_value_range({-1.0f, 1.0f}));
-    EXPECT_FALSE(Data{}.set_value_range({1.0f, 1.0f}));
-    EXPECT_TRUE(is_valid_domain({{-1.0f, 1.0f}, {-2.0f, 2.0f}}));
-    EXPECT_FALSE(is_valid_domain({{1.0f, -1.0f}, {-2.0f, 2.0f}}));
+    EXPECT_TRUE(Grid::try_make({}));
+    EXPECT_TRUE(Grid::try_make({2, 2, {0.0f, 1.0f, 2.0f, 3.0f}}));
+    EXPECT_FALSE(Grid::try_make({2, 2, {0.0f, 1.0f}}));
+    EXPECT_FALSE(Grid::try_make({.columns = 2, .rows = 0, .values = {}}));
+    EXPECT_TRUE(ValidRange::try_make({-1.0f, 1.0f}));
+    EXPECT_FALSE(ValidRange::try_make({1.0f, 1.0f}));
+    EXPECT_TRUE(ValidDomain::try_make({{-1.0f, 1.0f}, {-2.0f, 2.0f}}));
+    EXPECT_FALSE(ValidDomain::try_make({{1.0f, -1.0f}, {-2.0f, 2.0f}}));
     EXPECT_TRUE(is_valid_color_stops(grayscale_stops()));
     EXPECT_FALSE(is_valid_color_stops({{{0.0f, {}}, {0.8f, {}}}}));
 }
@@ -37,9 +47,9 @@ TEST(Heatmap2D, BuildsColorLookupTable) {
 
 TEST(Heatmap2D, BuildsBottomUpVisibleCellGeometry) {
     using namespace ioj::ui::heatmap_2d;
-    Grid const grid{2, 2, {1.0f, 2.0f, 3.0f, 4.0f}};
-    auto const cells{build_cell_geometry(
-        grid, {0.0f, 4.0f}, build_color_lut(grayscale_stops(), 5), {100.0f, 80.0f})};
+    GridData const grid{2, 2, {1.0f, 2.0f, 3.0f, 4.0f}};
+    auto const cells{
+        build_cells(grid, {0.0f, 4.0f}, build_color_lut(grayscale_stops(), 5), {100.0f, 80.0f})};
     ASSERT_EQ(cells.size(), 4);
     EXPECT_EQ(cells[0].size, (ioj::ui::Vector2f{50.0f, 40.0f}));
     EXPECT_FLOAT_EQ(cells[0].position.y(), 40.0f);
@@ -47,9 +57,9 @@ TEST(Heatmap2D, BuildsBottomUpVisibleCellGeometry) {
     EXPECT_EQ(cells[2].cell_index, 2);
     EXPECT_EQ(cells[3].color, (ioj::ui::Color4f{1.0f, 1.0f, 1.0f, 1.0f}));
 
-    Grid const sparse{3, 1, {0.0f, std::numeric_limits<float>::quiet_NaN(), 2.0f}};
-    auto const visible{build_cell_geometry(
-        sparse, {0.0f, 1.0f}, build_color_lut(grayscale_stops(), 5), {90.0f, 30.0f})};
+    GridData const sparse{3, 1, {0.0f, std::numeric_limits<float>::quiet_NaN(), 2.0f}};
+    auto const visible{
+        build_cells(sparse, {0.0f, 1.0f}, build_color_lut(grayscale_stops(), 5), {90.0f, 30.0f})};
     ASSERT_EQ(visible.size(), 1);
     EXPECT_EQ(visible[0].cell_index, 2);
     EXPECT_EQ(visible[0].color, (ioj::ui::Color4f{1.0f, 1.0f, 1.0f, 1.0f}));
@@ -57,10 +67,10 @@ TEST(Heatmap2D, BuildsBottomUpVisibleCellGeometry) {
 
 TEST(Heatmap2D, UsesTheFullUint16IndexRangeInOneMaximumSizeBatch) {
     using namespace ioj::ui::heatmap_2d;
-    Grid grid{.columns = 128, .rows = 128, .values = {}};
+    GridData grid{.columns = 128, .rows = 128, .values = {}};
     grid.values.assign(128 * 128, 1.0f);
-    auto const cells{build_cell_geometry(
-        grid, {0.0f, 1.0f}, build_color_lut(grayscale_stops(), 5), {256.0f, 256.0f})};
+    auto const cells{
+        build_cells(grid, {0.0f, 1.0f}, build_color_lut(grayscale_stops(), 5), {256.0f, 256.0f})};
     auto const batches{build_mesh_batches(cells, {10.0f, 20.0f})};
     ASSERT_EQ(batches.size(), 1);
     EXPECT_EQ(batches[0].vertices.size(), 128 * 128 * 4);
@@ -103,12 +113,12 @@ TEST(Heatmap2D, ReservesAxisLabelsOrUsesBarePaddedArea) {
 TEST(Heatmap2D, OwnsRejectsAndClearsGridSnapshots) {
     using namespace ioj::ui::heatmap_2d;
     Data data;
-    Grid grid{2, 1, {1.0f, 2.0f}};
-    ASSERT_TRUE(data.set_grid(grid));
+    GridData grid{2, 1, {1.0f, 2.0f}};
+    data.set_grid(Grid::make(grid));
     grid.values[0] = 100.0f;
     EXPECT_FLOAT_EQ(data.grid().values[0], 1.0f);
-    ASSERT_TRUE(data.set_grid({1, 1, {3.0f}}));
-    EXPECT_FALSE(data.set_grid({2, 2, {9.0f}}));
+    data.set_grid(Grid::make({1, 1, {3.0f}}));
+    EXPECT_FALSE(Grid::try_make({2, 2, {9.0f}}));
     EXPECT_EQ(data.grid().values, (std::vector<float>{3.0f}));
     data.clear_grid();
     EXPECT_TRUE(data.grid().values.empty());

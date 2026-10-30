@@ -27,8 +27,8 @@ auto to_unreal(ioj::ui::Vector2f const value) -> FVector2f {
     return {value.x(), value.y()};
 }
 
-auto to_native(FHeatmapGrid const& grid) -> ioj::ui::heatmap_2d::Grid {
-    ioj::ui::heatmap_2d::Grid result{.columns = grid.columns, .rows = grid.rows};
+auto to_native(FHeatmapGrid const& grid) -> ioj::ui::heatmap_2d::GridData {
+    ioj::ui::heatmap_2d::GridData result{.columns = grid.columns, .rows = grid.rows};
     result.values.reserve(static_cast<std::size_t>(grid.values.Num()));
     for (auto const value : grid.values) {
         result.values.push_back(value);
@@ -36,7 +36,7 @@ auto to_native(FHeatmapGrid const& grid) -> ioj::ui::heatmap_2d::Grid {
     return result;
 }
 
-auto to_unreal(ioj::ui::heatmap_2d::Grid const& grid) -> FHeatmapGrid {
+auto to_unreal(ioj::ui::heatmap_2d::GridData const& grid) -> FHeatmapGrid {
     FHeatmapGrid result{.columns = grid.columns, .rows = grid.rows};
     result.values.Reserve(static_cast<int32>(grid.values.size()));
     for (auto const value : grid.values) {
@@ -113,8 +113,8 @@ SHeatmap2D::SHeatmap2D()
 SHeatmap2D::~SHeatmap2D() = default;
 
 void SHeatmap2D::Construct(FArguments const& args) {
-    static_cast<void>(data_->native.set_value_range(args._ValueRange));
-    static_cast<void>(data_->native.set_domain(to_native(args._Domain)));
+    static_cast<void>(set_value_range(args._ValueRange));
+    static_cast<void>(set_domain(args._Domain));
 
     style_ = args._Style;
     if (!is_valid_style(style_)) {
@@ -124,10 +124,11 @@ void SHeatmap2D::Construct(FArguments const& args) {
 }
 
 bool SHeatmap2D::set_grid(FHeatmapGrid grid) {
-    auto native_grid{to_native(grid)};
-    if (!data_->native.set_grid(std::move(native_grid))) {
+    auto native_grid{ioj::ui::heatmap_2d::Grid::try_make(to_native(grid))};
+    if (!native_grid) {
         return false;
     }
+    data_->native.set_grid(std::move(*native_grid));
     invalidate_heatmap_cache(false);
     Invalidate(EInvalidateWidgetReason::Paint);
     return true;
@@ -144,18 +145,22 @@ void SHeatmap2D::clear_grid() {
 }
 
 bool SHeatmap2D::set_value_range(ioj::MinMax<float> const range) {
-    if (!data_->native.set_value_range(range)) {
+    auto const valid{ioj::ui::heatmap_2d::ValidRange::try_make(range)};
+    if (!valid) {
         return false;
     }
+    data_->native.set_value_range(*valid);
     invalidate_heatmap_cache(false);
     Invalidate(EInvalidateWidgetReason::Paint);
     return true;
 }
 
 bool SHeatmap2D::set_domain(FHeatmapDomain const domain) {
-    if (!data_->native.set_domain(to_native(domain))) {
+    auto const valid{ioj::ui::heatmap_2d::ValidDomain::try_make(to_native(domain))};
+    if (!valid) {
         return false;
     }
+    data_->native.set_domain(*valid);
     Invalidate(EInvalidateWidgetReason::Paint);
     return true;
 }
@@ -219,7 +224,7 @@ int32 SHeatmap2D::OnPaint(FPaintArgs const&,
     if (cache.local_geometry_dirty || cache.plot_origin != plot_origin ||
         cache.plot_size != plot_size) {
         cache.cells = ioj::ui::heatmap_2d::build_cell_geometry(
-            data_->native.grid(), data_->native.value_range(), cache.color_lut, layout.plot_size);
+            data_->native, cache.color_lut, layout.plot_size);
         cache.local_batches =
             ioj::ui::heatmap_2d::build_mesh_batches(cache.cells, layout.plot_origin);
         cache.transformed_batches.SetNum(static_cast<int32>(cache.local_batches.size()));

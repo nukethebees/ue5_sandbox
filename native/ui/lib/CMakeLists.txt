@@ -1,7 +1,6 @@
 add_library(native-ui STATIC)
 target_sources(native-ui
   PRIVATE
-    src/chart_layout.cpp
     src/entity_overlay.cpp
     src/graph_plot.cpp
     src/heatmap_2d.cpp
@@ -17,7 +16,7 @@ target_include_directories(native-ui
 target_link_libraries(native-ui
   PUBLIC
     sandbox::native_defaults
-    native-core-headers
+    native-core
 )
 ioj_enable_warnings(native-ui)
 ioj_apply_native_abi(native-ui)

@@ -24,22 +24,6 @@ auto lerp(Color4f const from, Color4f const to, float const alpha) noexcept -> C
 }
 }
 
-auto is_valid_grid(Grid const& grid) noexcept -> bool {
-    if (grid.columns == 0 && grid.rows == 0) {
-        return grid.values.empty();
-    }
-    if (grid.columns <= 0 || grid.rows <= 0) {
-        return false;
-    }
-    auto const expected{static_cast<std::int64_t>(grid.columns) * grid.rows};
-    return expected <= std::numeric_limits<std::int32_t>::max() &&
-           expected == static_cast<std::int64_t>(grid.values.size());
-}
-
-auto is_valid_domain(Domain const domain) noexcept -> bool {
-    return is_positive_finite(domain.x) && is_positive_finite(domain.y);
-}
-
 auto is_valid_color_stops(std::span<ColorStop const> const stops) noexcept -> bool {
     if (stops.size() < 2 || stops.front().position != 0.0f || stops.back().position != 1.0f) {
         return false;
@@ -80,13 +64,13 @@ auto build_color_lut(std::span<ColorStop const> const stops, std::int32_t const 
     return result;
 }
 
-auto build_cell_geometry(Grid const& grid,
-                         MinMax<float> const range,
+auto build_cell_geometry(Data const& data,
                          std::span<Color4f const> const color_lut,
                          Vector2f const plot_size) -> std::vector<CellGeometry> {
-    if (!is_valid_grid(grid) || grid.values.empty() || !is_positive_finite(range) ||
-        color_lut.empty() || !is_finite(plot_size) || plot_size.x() <= 0.0f ||
-        plot_size.y() <= 0.0f) {
+    auto const& grid{data.grid()};
+    auto const range{data.value_range()};
+    if (grid.values.empty() || color_lut.empty() || !is_finite(plot_size) ||
+        plot_size.x() <= 0.0f || plot_size.y() <= 0.0f) {
         return {};
     }
     std::vector<CellGeometry> result;
@@ -156,31 +140,8 @@ auto build_mesh_batches(std::span<CellGeometry const> const cells, Vector2f cons
     return result;
 }
 
-auto Data::set_grid(Grid grid) -> bool {
-    if (!is_valid_grid(grid)) {
-        return false;
-    }
-    grid_ = std::move(grid);
-    return true;
-}
-
 void Data::clear_grid() {
     grid_ = {};
 }
 
-auto Data::set_value_range(MinMax<float> const range) -> bool {
-    if (!is_positive_finite(range)) {
-        return false;
-    }
-    value_range_ = range;
-    return true;
-}
-
-auto Data::set_domain(Domain const domain) -> bool {
-    if (!is_valid_domain(domain)) {
-        return false;
-    }
-    domain_ = domain;
-    return true;
-}
 }
