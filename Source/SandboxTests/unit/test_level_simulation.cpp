@@ -230,7 +230,8 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
         append(simulation.get_capital_ships(), ::ioj::sim::EntityType::CapitalShip);
         append(simulation.get_fighters(), ::ioj::sim::EntityType::Fighter);
         append(simulation.get_turrets(), ::ioj::sim::EntityType::Turret);
-        samples.add(simulation.get_clock().get_simulation_time(), std::move(snapshot));
+        auto const& clk{simulation.get_clock()};
+        samples.add(clk.get_simulation_time(), std::move(snapshot));
     }};
     headless_harness.on_end_tick = [&](::ioj::sim::LevelSim& simulation) {
         record(headless_samples, simulation);
@@ -333,6 +334,7 @@ auto FLevelPresentationHostLifecycleTest::RunTest(FString const&) -> bool {
     ioj::sim::GameMemory simulation_memory;
     ioj::sim::LevelSim simulation{simulation_memory, MoveTemp(data)};
     simulation.finish_initialisation();
+    auto const& clk{simulation.get_clock()};
     FLevelPresentationHost host;
     host.bind_components(components);
     auto const initialise{[&](TArray<FTransform> transforms) {
@@ -364,7 +366,7 @@ auto FLevelPresentationHostLifecycleTest::RunTest(FString const&) -> bool {
               ioj::EHUDManagerState::Active);
     host.tick(0.0, simulation.get_read_access(), simulation.get_spatial_query_manager());
     TestEqual(TEXT("Presentation never advances simulation"),
-              simulation.get_clock().get_completed_ticks().value(),
+              clk.get_completed_ticks().value(),
               uint64{0});
 
     host.reset();
@@ -650,15 +652,15 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
     ::ioj::sim::GameMemory simulation_memory;
     ::ioj::sim::LevelSim simulation{simulation_memory, MoveTemp(data)};
     simulation.finish_initialisation();
+    auto const& clk{simulation.get_clock()};
     auto const& lasers{simulation.get_lasers()};
     FLaserPresentation presentation{*component};
 
     simulation.start();
-    auto const dt{simulation.get_clock().get_tick_period()};
+    auto const dt{clk.get_tick_period()};
     constexpr int32 simulated_seconds{3};
     constexpr int32 spawns_per_tick{6};
-    auto const tick_count{static_cast<int32>(simulation.get_clock().tick_loop.tick_rate.get_hz()) *
-                          simulated_seconds};
+    auto const tick_count{static_cast<int32>(clk.tick_loop.tick_rate.get_hz()) * simulated_seconds};
     TArray<FExpectedMaterialData> expected_material_data;
     expected_material_data.Reserve(tick_count * spawns_per_tick);
 
@@ -686,7 +688,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
             expected_material_data.Add(
                 {.colour = colour,
                  .initial_lifetime = initial_lifetime,
-                 .spawn_time = static_cast<float>(simulation.get_clock().get_simulation_time())});
+                 .spawn_time = static_cast<float>(clk.get_simulation_time())});
         }
 
         ::ioj::sim::LevelSimTestAccess::queue_laser_spawns(simulation, requests.get_const_view());
@@ -767,9 +769,10 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     ::ioj::sim::GameMemory simulation_memory;
     ::ioj::sim::LevelSim simulation{simulation_memory, MoveTemp(data)};
     simulation.finish_initialisation();
+    auto const clk_period{simulation.get_clock().get_tick_period()};
     simulation.start();
     simulation.advance(1.0);
-    simulation.advance(4.0 * simulation.get_clock().get_tick_period());
+    simulation.advance(4.0 * clk_period);
     simulation.finalize_telemetry_run(::ioj::sim::LevelTelemetryRunEndReason::WorldEnd);
     auto record{simulation.take_finalized_telemetry_run()};
     if (!TestTrue(TEXT("Telemetry JSON fixture produces a run record"), record.has_value())) {

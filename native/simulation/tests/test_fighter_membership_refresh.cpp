@@ -106,7 +106,8 @@ TEST_F(FighterMembershipRefresh, RepeatedRefreshesAndUnchangedTickAllocateNothin
     EXPECT_EQ(refresh(), 0u);
     auto const revision{fighter_sim.get_membership_revision()};
     simulation.start();
-    simulation.advance(simulation.get_clock().get_tick_period());
+    auto const clk_period{simulation.get_clock().get_tick_period()};
+    simulation.advance(clk_period);
     EXPECT_EQ(fighter_sim.get_membership_revision(), revision);
     expect_membership(simulation);
     EXPECT_EQ(refresh(), 0u);
@@ -225,7 +226,8 @@ TEST_F(FighterMembershipRefresh, PendingReparentingChangesMembershipOnlyWhenComm
     expect_membership_cached(revision);
 
     simulation.start();
-    simulation.advance(simulation.get_clock().get_tick_period());
+    auto const clk_period{simulation.get_clock().get_tick_period()};
+    simulation.advance(clk_period);
     EXPECT_GT(fighter_sim.get_membership_revision(), revision);
     EXPECT_EQ(fighter_sim.get_num_instances(), 5);
     EXPECT_EQ(capital_sim.get_fighter_ids(1).size(), 3u);

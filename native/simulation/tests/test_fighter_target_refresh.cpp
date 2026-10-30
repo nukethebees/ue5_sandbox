@@ -97,7 +97,8 @@ class FighterTargetRefresh : public ::testing::Test {
         damage.add(target, 100, {});
         LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
         simulation.start();
-        simulation.advance(simulation.get_clock().get_tick_period());
+        auto const clk_period{simulation.get_clock().get_tick_period()};
+        simulation.advance(clk_period);
         simulation.pause();
     }
 

@@ -502,6 +502,7 @@ TEST(NativeSimulation, LevelSimCollisionBoundsTest) {
     LevelSim simulation{simulation_memory, std::move(data)};
     simulation.set_static_collision(static_bounds);
     simulation.finish_initialisation();
+    auto const clk_period{simulation.get_clock().get_tick_period()};
 
     auto const& queries{simulation.get_spatial_query_manager()};
     auto const initial_bounds{queries.get_entity_collision_bounds()};
@@ -511,7 +512,7 @@ TEST(NativeSimulation, LevelSimCollisionBoundsTest) {
     EXPECT_EQ(queries.get_static_collision_bounds().num(), 1);
 
     simulation.start();
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
     auto const current_static_bounds{queries.get_static_collision_bounds()};
     ASSERT_EQ(current_static_bounds.num(), 1);
     EXPECT_EQ(current_static_bounds.view_min_points()[0].y(), 490.f);

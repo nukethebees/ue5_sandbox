@@ -73,9 +73,10 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
 
 void start_and_tick(LevelSim& simulation) {
     simulation.finish_initialisation();
+    auto const clk_period{simulation.get_clock().get_tick_period()};
     simulation.start();
-    simulation.advance(simulation.get_clock().get_tick_period());
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
+    simulation.advance(clk_period);
 }
 
 auto count_team(LevelSim const& simulation, Team const team) -> std::int32_t {
@@ -138,8 +139,9 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
     LevelSim empty_simulation{empty_simulation_memory,
                               make_cap_battle(std::span<Team const>{}, 10, 0)};
     empty_simulation.finish_initialisation();
+    auto const empty_clk_period{empty_simulation.get_clock().get_tick_period()};
     empty_simulation.start();
-    empty_simulation.advance(empty_simulation.get_clock().get_tick_period());
+    empty_simulation.advance(empty_clk_period);
     EXPECT_EQ(empty_simulation.get_fighters().get_num_instances(), 0)
         << "A zero-team simulation remains empty";
 }
@@ -180,10 +182,11 @@ TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
     start_and_tick(simulation);
+    auto const clk_period{simulation.get_clock().get_tick_period()};
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 6)
         << "Full and partial waves stop at the team cap";
 
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
     auto const& capital_simulation{simulation.get_capital_ships()};
     EXPECT_EQ(static_cast<std::int32_t>(capital_simulation.get_fighter_ids(0).size()), 4)
         << "First capital owns its full accepted wave";
@@ -194,12 +197,13 @@ TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
     GameMemory parent_death_simulation_memory;
     LevelSim parent_death_simulation{parent_death_simulation_memory, std::move(parent_death_data)};
     parent_death_simulation.finish_initialisation();
+    auto const parent_death_clk_period{parent_death_simulation.get_clock().get_tick_period()};
     parent_death_simulation.start();
     auto const& surviving_capitals{parent_death_simulation.get_capital_ships()};
     queue_damage(
         parent_death_simulation, surviving_capitals.get_id(0), 100, surviving_capitals.get_id(1));
-    parent_death_simulation.advance(parent_death_simulation.get_clock().get_tick_period());
-    parent_death_simulation.advance(parent_death_simulation.get_clock().get_tick_period());
+    parent_death_simulation.advance(parent_death_clk_period);
+    parent_death_simulation.advance(parent_death_clk_period);
     EXPECT_EQ(static_cast<std::int32_t>(
                   parent_death_simulation.get_capital_ships().get_fighter_ids(0).size()),
               2)
@@ -221,6 +225,7 @@ TEST(FighterLiveCap, FinalCapitalDeathOrphansFighters) {
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
     start_and_tick(simulation);
+    auto const clk_period{simulation.get_clock().get_tick_period()};
 
     auto const& capital_simulation{simulation.get_capital_ships()};
     auto const& fighter_simulation{simulation.get_fighters()};
@@ -238,7 +243,7 @@ TEST(FighterLiveCap, FinalCapitalDeathOrphansFighters) {
         << "Final capital begins with its fighter wave";
 
     queue_damage(simulation, white_capital, 100000);
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
 
     EXPECT_TRUE(!capital_simulation.find_first_index_on_team(Team::White).has_value())
         << "Final capital is removed";
@@ -265,7 +270,7 @@ TEST(FighterLiveCap, FinalCapitalDeathOrphansFighters) {
     auto const tracked_index{observe_entity_row(simulation, tracked_fighter)};
     auto const before_location{vector_at(fighter_simulation.get_locations(), tracked_index)};
     for (std::int32_t tick{}; tick < 10; ++tick) {
-        simulation.advance(simulation.get_clock().get_tick_period());
+        simulation.advance(clk_period);
     }
     auto const after_index{observe_entity_row(simulation, tracked_fighter)};
     EXPECT_NE(after_index, EntityInstanceHandle::invalid_value)
@@ -276,7 +281,7 @@ TEST(FighterLiveCap, FinalCapitalDeathOrphansFighters) {
     }
 
     queue_damage(simulation, tracked_fighter, 100000);
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
     EXPECT_EQ(observe_entity_row(simulation, tracked_fighter), EntityInstanceHandle::invalid_value)
         << "Orphaned fighter dies through normal damage resolution";
     EXPECT_EQ(count_team(simulation, Team::White), 1)
@@ -294,12 +299,13 @@ TEST(FighterLiveCap, PendingLaunchSurvivesFinalCapitalDeathUnowned) {
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
+    auto const clk_period{simulation.get_clock().get_tick_period()};
     simulation.start();
 
     auto const white_capital{simulation.get_capital_ships().get_id(0)};
     queue_damage(simulation, white_capital, 100000);
-    simulation.advance(simulation.get_clock().get_tick_period());
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
+    simulation.advance(clk_period);
 
     auto const& capital_simulation{simulation.get_capital_ships()};
     auto const& fighter_simulation{simulation.get_fighters()};
@@ -327,12 +333,13 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, make_data()};
     start_and_tick(simulation);
+    auto const clk_period{simulation.get_clock().get_tick_period()};
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 1)
         << "Initial fighter fills the budget";
 
     auto const original_id{simulation.get_fighters().get_entity_ids()[0]};
     queue_damage(simulation, original_id, 100000, simulation.get_capital_ships().get_id(0));
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 0)
         << "Dead fighter is removed at the end of Resolution";
     expect_entity_unregistered(simulation, original_id);
@@ -340,9 +347,9 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
     FighterOrderQueue stale_orders;
     stale_orders.add(original_id, FighterOrder{1, 0}, FighterTask::Standby, {});
     LevelSimTestAccess::queue_fighter_orders(simulation, stale_orders);
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 0);
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 1)
         << "Exactly one replacement uses the released slot";
 
@@ -352,14 +359,14 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
     stale_orders.add(
         EntityId(100000, EntityType::Fighter), FighterOrder{1, 0}, FighterTask::Standby, {});
     LevelSimTestAccess::queue_fighter_orders(simulation, stale_orders);
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
     EXPECT_EQ(simulation.get_fighters().get_tasks()[0], FighterTask::Attack);
 
     FighterOrderQueue valid_orders;
     valid_orders.add(replacement_id, FighterOrder{1, 0}, FighterTask::Standby, {});
     LevelSimTestAccess::queue_fighter_orders(simulation, valid_orders);
     EXPECT_EQ(simulation.get_fighters().get_tasks()[0], FighterTask::Attack);
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
     EXPECT_EQ(simulation.get_fighters().get_tasks()[0], FighterTask::Standby);
 
     GameMemory reconstructed_memory;
@@ -377,12 +384,13 @@ TEST(FighterLiveCap, UnknownTeamRejected) {
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
     start_and_tick(simulation);
+    auto const clk_period{simulation.get_clock().get_tick_period()};
 
     FighterSpawnQueue spawns;
     spawns.add_defaulted(1);
     spawns.get_view().teams()[0] = Team::White;
     LevelSimTestAccess::queue_fighter_spawns(simulation, spawns.get_const_view());
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
 
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 0)
         << "Unknown team creates no fighter";

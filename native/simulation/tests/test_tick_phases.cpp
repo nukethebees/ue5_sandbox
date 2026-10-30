@@ -130,6 +130,7 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
+    auto const clk_period{simulation.get_clock().get_tick_period()};
 
     auto const& ledger{simulation.get_entity_ledger()};
 
@@ -139,7 +140,7 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
     EXPECT_EQ(simulation.get_turrets().get_num_instances(), 0);
 
     simulation.start();
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
 
     auto const view{simulation.get_read_access()};
     auto const& turrets{view.get_turrets().get_entities()};
@@ -154,7 +155,7 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
     auto const events{queries.get_aabb_overlap_events()};
     EXPECT_EQ(events.entity_entity_overlaps.num(), 1);
 
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
 
     EXPECT_EQ(observe_entity(simulation, turret)->health.value(), 75);
     EXPECT_EQ(ledger.count_alive(), 2);
@@ -180,12 +181,13 @@ TEST(TickPhases, CarrierSpawnIsDeferredAndParticipatesInLaunchOverlaps) {
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
+    auto const clk_period{simulation.get_clock().get_tick_period()};
 
     simulation.start();
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
 
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 0);
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
 
     auto const view{simulation.get_read_access()};
     auto const& fighters{view.get_fighters().get_entities()};
@@ -209,6 +211,7 @@ TEST(TickPhases, ThinkingFireIsDeferredWithActionMovementSnapshot) {
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
+    auto const clk_period{simulation.get_clock().get_tick_period()};
 
     auto commands{simulation.get_player_ship_commands()};
     commands->set_right_input(1.f);
@@ -220,12 +223,12 @@ TEST(TickPhases, ThinkingFireIsDeferredWithActionMovementSnapshot) {
     EXPECT_EQ(simulation.get_lasers().get_num_instances(), 0);
 
     simulation.start();
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
 
     EXPECT_NEAR(player.get_physical_state().transform.location.y(), 100.0, 0.001);
 
     EXPECT_EQ(simulation.get_read_access().get_lasers().get_entities().num(), 0);
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
 
     auto const lasers{simulation.get_read_access().get_lasers().get_entities()};
     ASSERT_EQ(lasers.num(), 1);
@@ -242,10 +245,11 @@ TEST(TickPhases, ActionMovementIsVisibleToSameTickOverlapDetection) {
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
+    auto const clk_period{simulation.get_clock().get_tick_period()};
     simulation.get_player_ship_commands()->set_right_input(1.f);
 
     simulation.start();
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
 
     auto const* const player{simulation.get_player_ship_simulation()};
     EXPECT_NEAR(player->get_physical_state().transform.location.y(), 100.0, 0.001);
@@ -304,12 +308,13 @@ TEST(TickPhases, DelayedObjectiveSeesSameTickResolvedDeathWithoutDuplicateOverla
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
+    auto const clk_period{simulation.get_clock().get_tick_period()};
 
     auto const& ledger{simulation.get_entity_ledger()};
     auto const& capitals{simulation.get_capital_ships()};
 
     simulation.start();
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
 
     EXPECT_EQ(simulation.get_turrets().get_num_instances(), 0);
     auto const& turret_view{simulation.get_read_access().get_turrets()};
@@ -328,7 +333,7 @@ TEST(TickPhases, DelayedObjectiveSeesSameTickResolvedDeathWithoutDuplicateOverla
     auto const& queries{simulation.get_spatial_query_manager()};
     EXPECT_EQ(queries.get_aabb_overlap_events().entity_entity_overlaps.num(), 1);
 
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
     EXPECT_EQ(simulation.get_turrets().get_num_instances(), 0);
     expect_entity_unregistered(simulation, dead_id);
 }
@@ -380,18 +385,19 @@ TEST(TickPhases, AcceptedFireSurvivesShooterDeathAndDeathCannotBeHealed) {
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
+    auto const clk_period{simulation.get_clock().get_tick_period()};
     auto const* player{simulation.get_player_ship_simulation()};
     simulation.get_player_ship_commands()->start_fire_laser();
     DirectDamageEvents damage;
     damage.add(player->unique_entity_id, 100, {});
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
     simulation.start();
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
     EXPECT_TRUE(is_dead(player->get_health().health));
     EXPECT_EQ(simulation.get_lasers().get_number_spawned(), 0);
     simulation.get_player_ship_commands()->add_health(Health{100});
     EXPECT_TRUE(is_dead(player->get_health().health));
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
     EXPECT_EQ(simulation.get_lasers().get_number_spawned(), 1);
     EXPECT_EQ(simulation.get_lasers().get_num_instances(), 1);
     EXPECT_EQ(observe_entity_row(simulation, player->unique_entity_id),
@@ -407,16 +413,17 @@ TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
+    auto const clk_period{simulation.get_clock().get_tick_period()};
     lasers::LaserSpawnRequests shot;
     tests::add_laser_spawn(
         shot, {}, {}, {}, 25, 1000.f, 50.f, {}, {Team::Green, EntityType::PlayerShip});
     LevelSimTestAccess::queue_laser_spawns(simulation, shot.get_const_view());
     simulation.start();
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
     EXPECT_EQ(simulation.get_read_access().get_capitals().get_healths().health(0).value(), 75);
     EXPECT_EQ(simulation.get_lasers().get_num_instances(), 0);
     EXPECT_EQ(simulation.get_read_access().get_lasers().get_entities().num(), 0);
-    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(clk_period);
     EXPECT_EQ(simulation.get_read_access().get_lasers().get_entities().num(), 0);
 }
 
@@ -512,13 +519,14 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
     simulation.finish_initialisation();
     auto const initial{simulation.get_read_access().get_capitals().get_entities()};
     std::vector<EntityId> visual_ids{initial.entity_ids().begin(), initial.entity_ids().end()};
+    auto const clk_period{simulation.get_clock().get_tick_period()};
     auto const survivor_id{initial.entity_ids()[2]};
     DirectDamageEvents damage;
     damage.add(initial.entity_ids()[0], 100, {});
     damage.add(initial.entity_ids()[1], 100, {});
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
     simulation.start();
-    simulation.advance(simulation.get_clock().get_tick_period() * 2.0);
+    simulation.advance(clk_period * 2.0);
     auto const& final{simulation.get_read_access().get_capitals()};
     ASSERT_EQ(final.get_frame_changes().size(), 2);
     EXPECT_EQ(simulation.get_entity_ledger().get_frame_deaths(EntityType::CapitalShip).size(), 2);

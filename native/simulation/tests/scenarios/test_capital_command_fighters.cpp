@@ -12,14 +12,15 @@ TEST(WorldlessSpaceGameSimulation, CapitalCommandFightersRetargetAfterKills) {
     tests::add_capital_spawn(data, Vector3f{{17030.f, 12170.f, 4360.f}}, Team::Red, 0);
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
+    auto const& clk{harness.get_simulation().get_clock()};
     auto const& capitals{harness.get_simulation().get_capital_ships()};
     auto const& fighters{harness.get_simulation().get_fighters()};
     auto const first_target{capitals.get_id(1)};
     EntityId second_target;
     SimTick final_kill_tick{};
-    harness.on_end_tick = [&](LevelSim& simulation) {
+    harness.on_end_tick = [&](LevelSim&) {
         if (final_kill_tick.value() != 0 &&
-            simulation.get_clock().get_completed_ticks() == SimTick{final_kill_tick.value() + 2}) {
+            clk.get_completed_ticks() == SimTick{final_kill_tick.value() + 2}) {
             for (auto const task : fighters.get_tasks()) {
                 EXPECT_EQ(Task::Attack, task)
                     << "Capital orders do not change effective tasks in Thinking";
@@ -36,30 +37,30 @@ TEST(WorldlessSpaceGameSimulation, CapitalCommandFightersRetargetAfterKills) {
                             << "Main capital spawned fighters";
                         harness.queue_kills(std::array{first_target});
                     })
-        .then_after(
-            3.0 / 60.0,
-            [&] {
-                second_target = capitals.get_target_id(0);
-                EXPECT_TRUE(second_target.is_valid() && second_target != first_target)
-                    << "Capital retargets after its first target dies";
-                for (auto const fighter_id : capitals.get_fighter_ids(0)) {
-                    auto const index{observe_entity_row(harness.get_simulation(), fighter_id)};
-                    EXPECT_EQ(second_target, fighters.get_target_ids()[index])
-                        << "Fighter follows the replacement capital target";
-                }
-                std::vector<EntityId> enemies;
-                auto const entities{capitals.get_entities()};
-                auto const entity_count{entities.num()};
-                auto const teams{entities.teams()};
-                auto const entity_ids{entities.entity_ids()};
-                for (std::uint32_t index{}; index < entity_count; ++index) {
-                    if (teams[index] != Team::Green) {
-                        enemies.push_back(entity_ids[index]);
-                    }
-                }
-                harness.queue_kills(enemies);
-                final_kill_tick = harness.get_simulation().get_clock().get_completed_ticks();
-            })
+        .then_after(3.0 / 60.0,
+                    [&] {
+                        second_target = capitals.get_target_id(0);
+                        EXPECT_TRUE(second_target.is_valid() && second_target != first_target)
+                            << "Capital retargets after its first target dies";
+                        for (auto const fighter_id : capitals.get_fighter_ids(0)) {
+                            auto const index{
+                                observe_entity_row(harness.get_simulation(), fighter_id)};
+                            EXPECT_EQ(second_target, fighters.get_target_ids()[index])
+                                << "Fighter follows the replacement capital target";
+                        }
+                        std::vector<EntityId> enemies;
+                        auto const entities{capitals.get_entities()};
+                        auto const entity_count{entities.num()};
+                        auto const teams{entities.teams()};
+                        auto const entity_ids{entities.entity_ids()};
+                        for (std::uint32_t index{}; index < entity_count; ++index) {
+                            if (teams[index] != Team::Green) {
+                                enemies.push_back(entity_ids[index]);
+                            }
+                        }
+                        harness.queue_kills(enemies);
+                        final_kill_tick = clk.get_completed_ticks();
+                    })
         .then_after(3.0 / 60.0,
                     [&] {
                         auto const fighter_ids{fighters.get_entity_ids()};

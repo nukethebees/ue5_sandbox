@@ -91,6 +91,7 @@ TEST_P(WorldlessMission, ResolvesObjectiveLifecycle) {
     auto const required_id{required ? capitals.get_id(ordinary ? 2 : 1) : EntityId{}};
     auto const second_id{second ? capitals.get_id(2) : EntityId{}};
     harness.finish_initialisation();
+    auto const& clk{simulation.get_clock()};
 
     if (scenario == Scenario::KillEnemies) {
         harness.timeline.then_after(0.01,
@@ -111,7 +112,7 @@ TEST_P(WorldlessMission, ResolvesObjectiveLifecycle) {
     }
     auto gated{false};
     harness.on_end_tick = [&](LevelSim&) {
-        if (simulation.get_clock().get_simulation_time() >= 0.1 &&
+        if (clk.get_simulation_time() >= 0.1 &&
             !simulation.get_mission().outcome(ioj::sim::ObjectiveId{0})) {
             gated = true;
         }

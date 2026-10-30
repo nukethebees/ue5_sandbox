@@ -33,31 +33,32 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     auto& simulation{harness.get_simulation()};
+    auto const& clk{simulation.get_clock()};
     if (scenario == SimulationCoreRegressionScenario::FixedTickLifecycle) {
         std::int32_t end_tick_calls{};
         harness.on_end_tick = [&](LevelSim&) { ++end_tick_calls; };
         simulation.start();
-        auto const period{simulation.get_clock().get_tick_period()};
+        auto const period{clk.get_tick_period()};
         harness.advance(period * 0.5);
-        EXPECT_EQ(std::uint64_t{0}, simulation.get_clock().get_completed_ticks().value())
+        EXPECT_EQ(std::uint64_t{0}, clk.get_completed_ticks().value())
             << "Half tick is accumulated";
         harness.advance(period * 0.5);
-        EXPECT_EQ(std::uint64_t{1}, simulation.get_clock().get_completed_ticks().value())
+        EXPECT_EQ(std::uint64_t{1}, clk.get_completed_ticks().value())
             << "Two half ticks advance once";
         EXPECT_EQ(1, end_tick_calls) << "End-tick hook executes once per completed tick";
         harness.advance(period * 3.25);
-        EXPECT_EQ(std::uint64_t{4}, simulation.get_clock().get_completed_ticks().value())
+        EXPECT_EQ(std::uint64_t{4}, clk.get_completed_ticks().value())
             << "Large delta catches up deterministically";
         EXPECT_EQ(2, end_tick_calls) << "Catch-up is observed once after the completed advance";
-        EXPECT_NEAR(period * 4.0, simulation.get_clock().get_simulation_time(), 1.e-9)
+        EXPECT_NEAR(period * 4.0, clk.get_simulation_time(), 1.e-9)
             << "Simulation time derives from completed ticks";
         simulation.pause();
         harness.advance(period * 10.0);
-        EXPECT_EQ(std::uint64_t{4}, simulation.get_clock().get_completed_ticks().value())
+        EXPECT_EQ(std::uint64_t{4}, clk.get_completed_ticks().value())
             << "Paused simulation ignores time";
         simulation.start();
         harness.advance(period * 0.75);
-        EXPECT_EQ(std::uint64_t{5}, simulation.get_clock().get_completed_ticks().value())
+        EXPECT_EQ(std::uint64_t{5}, clk.get_completed_ticks().value())
             << "Resume preserves accumulated fraction";
         EXPECT_EQ(3, end_tick_calls) << "Resumed tick executes one hook";
         return;
