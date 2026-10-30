@@ -1,5 +1,6 @@
 #include "image_generation_utilities.h"
 
+#include <cassert>
 #include <limits>
 
 namespace sandbox::image {
@@ -44,10 +45,7 @@ auto grayscale_mask(float const value) -> Pixel {
 auto make_image(std::int32_t const width, std::int32_t const height, Pixel const fill)
     -> GeneratedImage {
     GeneratedImage image{.width = width, .height = height, .pixels = {}, .error = {}};
-    if (!valid_dimensions(width, height)) {
-        image.error = "Image dimensions must be positive and fit in an int32 pixel count.";
-        return image;
-    }
+    assert(valid_dimensions(width, height));
 
     image.pixels.assign(static_cast<std::size_t>(width * height), fill);
     return image;

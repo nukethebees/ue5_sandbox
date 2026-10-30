@@ -562,7 +562,11 @@ auto generate_to_png(image::GenerationRequest const& request,
         return std::unexpected(ensured.error());
     }
 
-    auto const encoded{png::encode(image::generate_image(request))};
+    auto const valid{image::Validated<image::GenerationRequest>::try_make(request)};
+    if (!valid) {
+        return std::unexpected("Invalid image generation parameters");
+    }
+    auto const encoded{png::encode(image::generate_image(*valid))};
     if (!encoded) {
         return std::unexpected("Could not generate " + request.output_name + ": " +
                                encoded.error());

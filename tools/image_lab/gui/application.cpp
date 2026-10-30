@@ -706,7 +706,10 @@ auto Application::draw_preview() const -> void {
 auto Application::refresh_preview() -> void {
     auto const preview_request{
         image::scale_request_for_preview(request_, maximum_preview_dimension, tiled_preview_)};
-    auto const generated{image::generate_image(preview_request)};
+    auto const valid{image::Validated<image::GenerationRequest>::try_make(preview_request)};
+    auto const generated{valid ? image::generate_image(*valid)
+                               : image::GeneratedImage{
+                                     .pixels = {}, .error = "Invalid image generation parameters"}};
     if (!generated.is_valid()) {
         status_ = generated.error;
         if (preview_texture_ != nullptr) {

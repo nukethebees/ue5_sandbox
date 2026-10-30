@@ -16,22 +16,12 @@ using namespace generation;
 using namespace noise;
 
 namespace {
-using NonNegative = ioj::NonNegativeFinite<float>;
-using Positive = ioj::PositiveFinite<float>;
-
-constexpr auto in_closed_range(auto const value, auto const lower, auto const upper) -> bool {
-    return value >= lower && value <= upper;
-}
-
 template <typename Sample>
 auto generate_pixels(std::int32_t const width,
                      std::int32_t const height,
                      Pixel const fill,
                      Sample sample) -> GeneratedImage {
     auto image{make_image(width, height, fill)};
-    if (!image.is_valid()) {
-        return image;
-    }
     for (std::int32_t y{}; y < height; ++y) {
         for (std::int32_t x{}; x < width; ++x) {
             image.pixels[y * width + x] = sample(x, y);
@@ -77,29 +67,6 @@ void chamfer_distance_transform(std::vector<float>& distances,
 auto apply_post_process(GeneratedImage image,
                         ImagePostProcessParameters const& parameters,
                         bool const alpha_is_intensity) -> GeneratedImage {
-    if (!image.is_valid()) {
-        return image;
-    }
-    if (!NonNegative::valid(parameters.contrast)) {
-        return invalid_image("Post-process contrast must be finite and non-negative.");
-    }
-    if (parameters.threshold_enabled &&
-        (!in_closed_range(parameters.threshold, 0.0f, 1.0f) ||
-         !in_closed_range(parameters.threshold_softness, 0.0f, 1.0f))) {
-        return invalid_image(
-            "Post-process threshold and threshold softness must be finite and in [0, 1].");
-    }
-    if (parameters.output == ImagePostProcessParameters::Output::NormalMap &&
-        !NonNegative::valid(parameters.normal_strength)) {
-        return invalid_image("Normal-map strength must be finite and non-negative.");
-    }
-    if (parameters.output == ImagePostProcessParameters::Output::SignedDistance &&
-        (!in_closed_range(parameters.distance_threshold, 0.0f, 1.0f) ||
-         !in_closed_range(parameters.distance_range, 1.0f, 4096.0f))) {
-        return invalid_image("Signed-distance threshold must be in [0, 1] and its finite pixel "
-                             "range must be in [1, 4096].");
-    }
-
     auto const transform{[&parameters](std::uint8_t const channel) {
         auto value{static_cast<float>(channel) / 255.0f};
         value = (value - 0.5f) * parameters.contrast + 0.5f;
@@ -126,13 +93,14 @@ auto apply_post_process(GeneratedImage image,
         }
     }
     if (parameters.output == ImagePostProcessParameters::Output::NormalMap) {
-        return generate_normal_map(image, parameters.normal_strength, parameters.normal_wrap);
+        return detail::generate_normal_map(
+            image, parameters.normal_strength, parameters.normal_wrap);
     }
     if (parameters.output == ImagePostProcessParameters::Output::SignedDistance) {
-        return generate_signed_distance_field(image,
-                                              parameters.distance_threshold,
-                                              parameters.distance_range,
-                                              parameters.distance_wrap);
+        return detail::generate_signed_distance_field(image,
+                                                      parameters.distance_threshold,
+                                                      parameters.distance_range,
+                                                      parameters.distance_wrap);
     }
     return image;
 }
@@ -144,14 +112,9 @@ auto hex_signed_distance(float const x, float const y, float const radius) -> fl
 }
 }
 
+namespace detail {
 auto generate_normal_map(GeneratedImage const& height_image, float const strength, bool const wrap)
     -> GeneratedImage {
-    if (!height_image.is_valid()) {
-        return invalid_image("Normal-map input must be a valid image.");
-    }
-    if (!NonNegative::valid(strength)) {
-        return invalid_image("Normal-map strength must be finite and non-negative.");
-    }
 
     auto normal_map{make_image(height_image.width, height_image.height, black)};
     auto const period_x{wrap && height_image.width > 1 ? height_image.width - 1
@@ -198,14 +161,6 @@ auto generate_signed_distance_field(GeneratedImage const& mask_image,
                                     float const threshold,
                                     float const distance_range,
                                     bool const wrap) -> GeneratedImage {
-    if (!mask_image.is_valid()) {
-        return invalid_image("Signed-distance input must be a valid image.");
-    }
-    if (!in_closed_range(threshold, 0.0f, 1.0f) ||
-        !in_closed_range(distance_range, 1.0f, 4096.0f)) {
-        return invalid_image("Signed-distance threshold must be in [0, 1] and its finite pixel "
-                             "range must be in [1, 4096].");
-    }
 
     auto const padding{wrap ? generation::ceil_to_int(distance_range) + 1 : 0};
     auto const padded_width64{static_cast<std::int64_t>(mask_image.width) + 2ll * padding};
@@ -264,10 +219,7 @@ auto generate_signed_distance_field(GeneratedImage const& mask_image,
     return distance_field;
 }
 
-auto generate_radial_gradient(RadialGradientParameters const& parameters) -> GeneratedImage {
-    if (parameters.inner_radius < 0.0f || parameters.outer_radius <= parameters.inner_radius) {
-        return invalid_image("Radial radii must satisfy 0 <= inner_radius < outer_radius.");
-    }
+auto generate_image(RadialGradientInput const& parameters) -> GeneratedImage {
 
     return generate_pixels(
         parameters.width,
@@ -280,16 +232,9 @@ auto generate_radial_gradient(RadialGradientParameters const& parameters) -> Gen
             return grayscale_mask(value);
         });
 }
-auto generate_ring_mask(RingMaskParameters const& parameters) -> GeneratedImage {
-    if (parameters.radius < 0.0f || parameters.thickness <= 0.0f || parameters.falloff < 0.0f) {
-        return invalid_image(
-            ("Ring radius and falloff must be non-negative and thickness must be positive."));
-    }
+auto generate_image(RingMaskInput const& parameters) -> GeneratedImage {
 
     auto image{make_image(parameters.width, parameters.height, transparent)};
-    if (!image.is_valid()) {
-        return image;
-    }
 
     auto const half_thickness{parameters.thickness * 0.5f};
     for (std::int32_t y{0}; y < parameters.height; ++y) {
@@ -305,30 +250,9 @@ auto generate_ring_mask(RingMaskParameters const& parameters) -> GeneratedImage 
     return image;
 }
 
-auto generate_shockwave_flipbook(ShockwaveFlipbookParameters const& parameters) -> GeneratedImage {
-    if (parameters.columns <= 0 || parameters.rows <= 0 || parameters.frame_count <= 0 ||
-        parameters.columns > std::numeric_limits<std::int32_t>::max() / parameters.rows ||
-        parameters.frame_count > parameters.columns * parameters.rows) {
-        return invalid_image(
-            ("Flipbook grid dimensions must be positive and contain every frame."));
-    }
-    if (parameters.width <= 0 || parameters.height <= 0 ||
-        parameters.width % parameters.columns != 0 || parameters.height % parameters.rows != 0) {
-        return invalid_image(
-            ("Flipbook image dimensions must be positive and divisible by the grid."));
-    }
-    if (parameters.start_radius < 0.0f || parameters.end_radius < parameters.start_radius ||
-        parameters.thickness <= 0.0f || parameters.falloff < 0.0f ||
-        !in_closed_range(parameters.start_intensity, 0.0f, 1.0f) ||
-        !in_closed_range(parameters.end_intensity, 0.0f, 1.0f)) {
-        return invalid_image("Shockwave radii must increase, thickness must be positive, "
-                             "falloff must be non-negative, and intensities must be in [0, 1].");
-    }
+auto generate_image(ShockwaveFlipbookInput const& parameters) -> GeneratedImage {
 
     auto image{make_image(parameters.width, parameters.height, transparent)};
-    if (!image.is_valid()) {
-        return image;
-    }
 
     auto const frame_width{parameters.width / parameters.columns};
     auto const frame_height{parameters.height / parameters.rows};
@@ -363,20 +287,10 @@ auto generate_shockwave_flipbook(ShockwaveFlipbookParameters const& parameters) 
     return image;
 }
 
-auto generate_starfield(StarfieldParameters const& parameters) -> GeneratedImage {
-    if (parameters.star_count < 0 || !in_closed_range(parameters.minimum_brightness, 0.0f, 1.0f) ||
-        parameters.minimum_radius <= 0.0f ||
-        parameters.maximum_radius < parameters.minimum_radius) {
-        return invalid_image("Starfield parameters require a non-negative star count, "
-                             "brightness in [0, 1], and 0 < minimum_radius <= "
-                             "maximum_radius.");
-    }
+auto generate_image(StarfieldInput const& parameters) -> GeneratedImage {
 
     auto const background{parameters.transparent_background ? transparent : black};
     auto image{make_image(parameters.width, parameters.height, background)};
-    if (!image.is_valid()) {
-        return image;
-    }
 
     DeterministicRandom random{parameters.seed};
     for (std::int32_t star_index{0}; star_index < parameters.star_count; ++star_index) {
@@ -413,12 +327,7 @@ auto generate_starfield(StarfieldParameters const& parameters) -> GeneratedImage
     return image;
 }
 
-auto generate_noise(NoiseParameters const& parameters) -> GeneratedImage {
-    if (parameters.base_scale <= 0.0f || !in_closed_range(parameters.octave_count, 1, 16) ||
-        !in_closed_range(parameters.persistence, 0.0f, 1.0f)) {
-        return invalid_image("Noise parameters require base_scale > 0, octave_count in "
-                             "[1, 16], and persistence in [0, 1].");
-    }
+auto generate_image(NoiseInput const& parameters) -> GeneratedImage {
 
     return generate_pixels(parameters.width,
                            parameters.height,
@@ -436,15 +345,7 @@ auto generate_noise(NoiseParameters const& parameters) -> GeneratedImage {
                                return grayscale(value, 255);
                            });
 }
-auto generate_domain_warped_noise(DomainWarpedNoiseParameters const& parameters) -> GeneratedImage {
-    if (parameters.base_scale <= 0.0f || parameters.warp_scale <= 0.0f ||
-        parameters.warp_strength < 0.0f || !in_closed_range(parameters.base_octave_count, 1, 16) ||
-        !in_closed_range(parameters.warp_octave_count, 1, 16) ||
-        !in_closed_range(parameters.persistence, 0.0f, 1.0f)) {
-        return invalid_image("Domain-warped noise requires positive base and warp scales, a "
-                             "non-negative warp strength, octave counts in [1, 16], and "
-                             "persistence in [0, 1].");
-    }
+auto generate_image(DomainWarpedNoiseInput const& parameters) -> GeneratedImage {
 
     return generate_pixels(parameters.width,
                            parameters.height,
@@ -481,21 +382,9 @@ auto generate_domain_warped_noise(DomainWarpedNoiseParameters const& parameters)
                                return grayscale(value, 255);
                            });
 }
-auto generate_curl_noise_flow(CurlNoiseFlowParameters const& parameters) -> GeneratedImage {
-    if (!Positive::valid(parameters.base_scale) ||
-        !in_closed_range(parameters.octave_count, 1, 16) ||
-        !in_closed_range(parameters.persistence, 0.0f, 1.0f) ||
-        !Positive::valid(parameters.derivative_step) ||
-        !in_closed_range(parameters.strength, 0.0f, 1.0f)) {
-        return invalid_image("Curl-noise flow parameters require a positive finite scale and "
-                             "derivative step, octave_count in [1, 16], and persistence and "
-                             "strength in [0, 1].");
-    }
+auto generate_image(CurlNoiseFlowInput const& parameters) -> GeneratedImage {
 
     auto image{make_image(parameters.width, parameters.height, Pixel{128, 128, 128, 255})};
-    if (!image.is_valid()) {
-        return image;
-    }
 
     auto const sample{[&parameters](float const x, float const y) {
         return fractal_noise_sample(x,
@@ -534,17 +423,9 @@ auto generate_curl_noise_flow(CurlNoiseFlowParameters const& parameters) -> Gene
     return image;
 }
 
-auto generate_cellular_noise(CellularNoiseParameters const& parameters) -> GeneratedImage {
-    if (!Positive::valid(parameters.cell_size) || !in_closed_range(parameters.jitter, 0.0f, 1.0f) ||
-        !NonNegative::valid(parameters.edge_width) || !NonNegative::valid(parameters.falloff)) {
-        return invalid_image("Cellular noise requires a positive finite cell size, jitter in "
-                             "[0, 1], and non-negative finite edge width and falloff.");
-    }
+auto generate_image(CellularNoiseInput const& parameters) -> GeneratedImage {
 
     auto image{make_image(parameters.width, parameters.height, black)};
-    if (!image.is_valid()) {
-        return image;
-    }
 
     auto const cell_count_x{std::max(
         1, generation::round_to_int(static_cast<float>(parameters.width) / parameters.cell_size))};
@@ -622,17 +503,9 @@ auto generate_cellular_noise(CellularNoiseParameters const& parameters) -> Gener
     return image;
 }
 
-auto generate_hex_grid(HexGridParameters const& parameters) -> GeneratedImage {
-    if (parameters.cell_radius <= 0.0f || parameters.line_thickness <= 0.0f ||
-        parameters.falloff < 0.0f) {
-        return invalid_image("Hex grid parameters require positive cell radius and line "
-                             "thickness, with a non-negative falloff.");
-    }
+auto generate_image(HexGridInput const& parameters) -> GeneratedImage {
 
     auto image{make_image(parameters.width, parameters.height, transparent)};
-    if (!image.is_valid()) {
-        return image;
-    }
 
     auto const horizontal_spacing{std::sqrt(3.0f) * parameters.cell_radius};
     auto const vertical_spacing{1.5f * parameters.cell_radius};
@@ -666,6 +539,8 @@ auto generate_hex_grid(HexGridParameters const& parameters) -> GeneratedImage {
         }
     }
     return image;
+}
+
 }
 
 auto make_default_request(GeneratorType const generator) -> GenerationRequest {
@@ -831,40 +706,40 @@ auto default_generation_requests() -> std::vector<GenerationRequest> {
     };
 }
 
-auto generate_image(GenerationRequest const& request) -> GeneratedImage {
+auto detail::generate_image(GenerationRequest const& request) -> GeneratedImage {
     GeneratedImage image;
     bool alpha_is_intensity{false};
     switch (request.generator) {
         case GeneratorType::RadialGradient:
-            image = generate_radial_gradient(request.radial_gradient);
+            image = generate_image(request.radial_gradient);
             alpha_is_intensity = true;
             break;
         case GeneratorType::RingMask:
-            image = generate_ring_mask(request.ring_mask);
+            image = generate_image(request.ring_mask);
             alpha_is_intensity = true;
             break;
         case GeneratorType::ShockwaveFlipbook:
-            image = generate_shockwave_flipbook(request.shockwave_flipbook);
+            image = generate_image(request.shockwave_flipbook);
             alpha_is_intensity = true;
             break;
         case GeneratorType::Starfield:
-            image = generate_starfield(request.starfield);
+            image = generate_image(request.starfield);
             alpha_is_intensity = request.starfield.transparent_background;
             break;
         case GeneratorType::Noise:
-            image = generate_noise(request.noise);
+            image = generate_image(request.noise);
             break;
         case GeneratorType::DomainWarpedNoise:
-            image = generate_domain_warped_noise(request.domain_warped_noise);
+            image = generate_image(request.domain_warped_noise);
             break;
         case GeneratorType::CurlNoiseFlow:
-            image = generate_curl_noise_flow(request.curl_noise_flow);
+            image = generate_image(request.curl_noise_flow);
             break;
         case GeneratorType::CellularNoise:
-            image = generate_cellular_noise(request.cellular_noise);
+            image = generate_image(request.cellular_noise);
             break;
         case GeneratorType::HexGrid:
-            image = generate_hex_grid(request.hex_grid);
+            image = generate_image(request.hex_grid);
             alpha_is_intensity = true;
             break;
     }

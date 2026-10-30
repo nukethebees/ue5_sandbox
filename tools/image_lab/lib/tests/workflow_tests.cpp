@@ -236,7 +236,9 @@ TEST(ImageLabWorkflow, GeneratesAPngWithTheRequestedName) {
     ASSERT_TRUE(decoded.has_value()) << decoded.error();
     EXPECT_EQ(decoded->width, 3u);
     EXPECT_EQ(decoded->height, 2u);
-    EXPECT_EQ(decoded->scanlines, expected_scanlines(image::generate_image(request)));
+    EXPECT_EQ(decoded->scanlines,
+              expected_scanlines(image::generate_image(
+                  image::Validated<image::GenerationRequest>::make(request))));
 }
 
 TEST(ImageLabWorkflow, GeneratesEveryDefaultPresetAndRejectsUnsafeNames) {
