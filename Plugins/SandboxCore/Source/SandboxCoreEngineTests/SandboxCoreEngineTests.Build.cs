@@ -18,6 +18,7 @@ public class SandboxCoreEngineTests : ModuleRules
             "CoreUObject",
             "CQTest",
             "Engine",
+            "LevelEditor",
             "UnrealEd",
             "SandboxCore",
             "SandboxCoreEngine",
