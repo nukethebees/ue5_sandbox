@@ -20,16 +20,24 @@ TEST(SettingsSlider, ConvertsClampsAndStepsConfiguredRange) {
 }
 
 TEST(ChartLayout, ReservesPaddingAxisAndLabelArea) {
-    auto const layout{ioj::ui::chart_layout::make_layout({200.0f, 100.0f},
-                                                         {.padding = {10.0f, 10.0f, 10.0f, 10.0f},
-                                                          .axis_thickness = 1.0f,
-                                                          .label_area_height = 20.0f})};
+    using namespace ioj::ui::chart_layout;
+    EXPECT_FALSE(Settings::try_make({.padding = {.left = -1.f}}));
+    EXPECT_FALSE(Settings::try_make({.axis_thickness = 0.f}));
+    EXPECT_FALSE(Settings::try_make({.label_area_height = std::numeric_limits<float>::infinity()}));
+    EXPECT_FALSE(
+        Settings::try_make({.y_label_area_width = std::numeric_limits<float>::quiet_NaN()}));
+
+    auto const layout{ioj::ui::chart_layout::make_layout(
+        {200.0f, 100.0f},
+        ioj::ui::chart_layout::Settings{{.padding = {10.0f, 10.0f, 10.0f, 10.0f},
+                                         .axis_thickness = 1.0f,
+                                         .label_area_height = 20.0f}})};
     EXPECT_EQ(layout.plot_origin, (ioj::ui::Vector2f{11.0f, 10.0f}));
     EXPECT_EQ(layout.plot_size, (ioj::ui::Vector2f{179.0f, 59.0f}));
     EXPECT_FLOAT_EQ(layout.label_area_height, 20.0f);
 
     auto const collapsed{ioj::ui::chart_layout::make_layout(
-        {5.0f, 5.0f}, {.padding = {10.0f, 10.0f, 10.0f, 10.0f}})};
+        {5.0f, 5.0f}, ioj::ui::chart_layout::Settings{{.padding = {10.0f, 10.0f, 10.0f, 10.0f}}})};
     EXPECT_EQ(collapsed.plot_size, (ioj::ui::Vector2f{}));
     EXPECT_FLOAT_EQ(collapsed.label_area_height, 0.0f);
 }

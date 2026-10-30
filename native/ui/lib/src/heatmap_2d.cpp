@@ -36,11 +36,6 @@ auto is_valid_grid(Grid const& grid) noexcept -> bool {
            expected == static_cast<std::int64_t>(grid.values.size());
 }
 
-auto is_valid_value_range(ValueRange const range) noexcept -> bool {
-    return std::isfinite(range.minimum) && std::isfinite(range.maximum) &&
-           range.maximum > range.minimum;
-}
-
 auto is_valid_domain(Domain const domain) noexcept -> bool {
     return is_positive_finite(domain.x) && is_positive_finite(domain.y);
 }
@@ -86,10 +81,10 @@ auto build_color_lut(std::span<ColorStop const> const stops, std::int32_t const 
 }
 
 auto build_cell_geometry(Grid const& grid,
-                         ValueRange const range,
+                         MinMax<float> const range,
                          std::span<Color4f const> const color_lut,
                          Vector2f const plot_size) -> std::vector<CellGeometry> {
-    if (!is_valid_grid(grid) || grid.values.empty() || !is_valid_value_range(range) ||
+    if (!is_valid_grid(grid) || grid.values.empty() || !is_positive_finite(range) ||
         color_lut.empty() || !is_finite(plot_size) || plot_size.x() <= 0.0f ||
         plot_size.y() <= 0.0f) {
         return {};
@@ -98,14 +93,14 @@ auto build_cell_geometry(Grid const& grid,
     result.reserve(grid.values.size());
     auto const cell_size{Vector2f{plot_size.x() / static_cast<float>(grid.columns),
                                   plot_size.y() / static_cast<float>(grid.rows)}};
-    auto const range_size{range.maximum - range.minimum};
+    auto const range_size{range.max - range.min};
     auto const lut_max{static_cast<std::int32_t>(color_lut.size() - 1)};
     for (std::size_t i{}; i < grid.values.size(); ++i) {
         auto const value{grid.values[i]};
-        if (!std::isfinite(value) || value <= range.minimum) {
+        if (!std::isfinite(value) || value <= range.min) {
             continue;
         }
-        auto const normalized{std::clamp((value - range.minimum) / range_size, 0.0f, 1.0f)};
+        auto const normalized{std::clamp((value - range.min) / range_size, 0.0f, 1.0f)};
         auto const lut_index{std::clamp(
             static_cast<std::int32_t>(std::lround(normalized * static_cast<float>(lut_max))),
             std::int32_t{},
@@ -173,8 +168,8 @@ void Data::clear_grid() {
     grid_ = {};
 }
 
-auto Data::set_value_range(ValueRange const range) -> bool {
-    if (!is_valid_value_range(range)) {
+auto Data::set_value_range(MinMax<float> const range) -> bool {
+    if (!is_positive_finite(range)) {
         return false;
     }
     value_range_ = range;

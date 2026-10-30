@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/ui/chart_layout.h>
+
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
 #include "Fonts/SlateFontInfo.h"
@@ -69,4 +71,5 @@ class SANDBOXUI_API SStackedBarChart : public SLeafWidget {
     TArray<FText> labels_;
     TArray<TArray<FLinearColor>> segment_colors_;
     FStackedBarChartStyle style_;
+    ioj::ui::chart_layout::Settings layout_settings_;
 };

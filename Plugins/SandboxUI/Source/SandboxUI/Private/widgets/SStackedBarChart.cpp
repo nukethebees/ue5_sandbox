@@ -24,6 +24,8 @@ void SStackedBarChart::Construct(FArguments const& args) {
     if (!is_valid_style(style_)) {
         style_ = FStackedBarChartStyle{};
     }
+    layout_settings_ = *SandboxUI::Widgets::chart_layout_settings(
+        style_.chart_padding, style_.axis_thickness, style_.label_area_height);
 }
 
 void SStackedBarChart::set_bars(TArray<FStackedBar> bars) {
@@ -70,6 +72,8 @@ bool SStackedBarChart::set_style(FStackedBarChartStyle style) {
         return false;
     }
 
+    layout_settings_ = *SandboxUI::Widgets::chart_layout_settings(
+        style.chart_padding, style.axis_thickness, style.label_area_height);
     style_ = MoveTemp(style);
     Invalidate(EInvalidateWidgetReason::LayoutAndVolatility);
     return true;
@@ -107,10 +111,8 @@ int32 SStackedBarChart::OnPaint(FPaintArgs const&,
                                 bool const parent_enabled) const {
     check_invariants();
     auto const widget_size{FVector2f{allotted_geometry.GetLocalSize()}};
-    auto const native_layout{ioj::ui::chart_layout::make_layout(
-        {widget_size.X, widget_size.Y},
-        SandboxUI::Widgets::chart_layout_settings(
-            style_.chart_padding, style_.axis_thickness, style_.label_area_height))};
+    auto const native_layout{
+        ioj::ui::chart_layout::make_layout({widget_size.X, widget_size.Y}, layout_settings_)};
     auto const plot_size{FVector2f{native_layout.plot_size.x(), native_layout.plot_size.y()}};
     auto const plot_origin{FVector2f{native_layout.plot_origin.x(), native_layout.plot_origin.y()}};
     auto const label_height{native_layout.label_area_height};
@@ -166,10 +168,10 @@ int32 SStackedBarChart::OnPaint(FPaintArgs const&,
 }
 
 bool SStackedBarChart::is_valid_style(FStackedBarChartStyle const& style) {
-    return ioj::ui::chart_layout::is_valid(
-               {style.desired_size.X, style.desired_size.Y},
-               SandboxUI::Widgets::chart_layout_settings(
-                   style.chart_padding, style.axis_thickness, style.label_area_height)) &&
+    return SandboxUI::Widgets::is_nonnegative_vector(style.desired_size) &&
+           SandboxUI::Widgets::chart_layout_settings(
+               style.chart_padding, style.axis_thickness, style.label_area_height)
+               .has_value() &&
            FMath::IsFinite(style.bar_gap) && style.bar_gap >= 0.0f;
 }
 

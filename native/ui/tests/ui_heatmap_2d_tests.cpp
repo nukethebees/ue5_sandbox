@@ -19,8 +19,8 @@ TEST(Heatmap2D, ValidatesGridsRangesDomainsAndColorStops) {
     EXPECT_TRUE(is_valid_grid({2, 2, {0.0f, 1.0f, 2.0f, 3.0f}}));
     EXPECT_FALSE(is_valid_grid({2, 2, {0.0f, 1.0f}}));
     EXPECT_FALSE(is_valid_grid({.columns = 2, .rows = 0, .values = {}}));
-    EXPECT_TRUE(is_valid_value_range({-1.0f, 1.0f}));
-    EXPECT_FALSE(is_valid_value_range({1.0f, 1.0f}));
+    EXPECT_TRUE(Data{}.set_value_range({-1.0f, 1.0f}));
+    EXPECT_FALSE(Data{}.set_value_range({1.0f, 1.0f}));
     EXPECT_TRUE(is_valid_domain({{-1.0f, 1.0f}, {-2.0f, 2.0f}}));
     EXPECT_FALSE(is_valid_domain({{1.0f, -1.0f}, {-2.0f, 2.0f}}));
     EXPECT_TRUE(is_valid_color_stops(grayscale_stops()));
@@ -86,15 +86,15 @@ TEST(Heatmap2D, RestartsIndicesForTheFirstCellAfterAMaximumSizeBatch) {
 
 TEST(Heatmap2D, ReservesAxisLabelsOrUsesBarePaddedArea) {
     using namespace ioj::ui::chart_layout;
-    Settings settings{.padding = {10.0f, 10.0f, 10.0f, 10.0f},
-                      .axis_thickness = 1.0f,
-                      .label_area_height = 20.0f,
-                      .y_label_area_width = 36.0f};
-    auto const axes{make_layout({200.0f, 100.0f}, settings)};
+    Options settings{.padding = {10.0f, 10.0f, 10.0f, 10.0f},
+                     .axis_thickness = 1.0f,
+                     .label_area_height = 20.0f,
+                     .y_label_area_width = 36.0f};
+    auto const axes{make_layout({200.0f, 100.0f}, *Settings::try_make(settings))};
     EXPECT_EQ(axes.plot_origin, (ioj::ui::Vector2f{47.0f, 10.0f}));
     EXPECT_EQ(axes.plot_size, (ioj::ui::Vector2f{143.0f, 59.0f}));
     settings.show_axes = false;
-    auto const bare{make_layout({200.0f, 100.0f}, settings)};
+    auto const bare{make_layout({200.0f, 100.0f}, *Settings::try_make(settings))};
     EXPECT_EQ(bare.plot_origin, (ioj::ui::Vector2f{10.0f, 10.0f}));
     EXPECT_EQ(bare.plot_size, (ioj::ui::Vector2f{180.0f, 80.0f}));
     EXPECT_FLOAT_EQ(bare.label_area_height, 0.0f);

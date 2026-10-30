@@ -1,19 +1,10 @@
 #include "ioj/ui/chart_layout.h"
 
 #include <algorithm>
-#include <cmath>
 
 namespace ioj::ui::chart_layout {
-auto is_valid(Vector2f const desired_size, Settings const settings) noexcept -> bool {
-    auto const nonnegative{[](float const value) { return std::isfinite(value) && value >= 0.0f; }};
-    return nonnegative(desired_size.x()) && nonnegative(desired_size.y()) &&
-           nonnegative(settings.padding.left) && nonnegative(settings.padding.right) &&
-           nonnegative(settings.padding.top) && nonnegative(settings.padding.bottom) &&
-           std::isfinite(settings.axis_thickness) && settings.axis_thickness > 0.0f &&
-           nonnegative(settings.label_area_height) && nonnegative(settings.y_label_area_width);
-}
-
-auto make_layout(Vector2f const widget_size, Settings const settings) noexcept -> Layout {
+auto make_layout(Vector2f const widget_size, Settings const validated_settings) noexcept -> Layout {
+    auto const& settings{validated_settings.get_ref()};
     auto const available_width{
         std::max(widget_size.x() - settings.padding.left - settings.padding.right, 0.0f)};
     auto const available_height{

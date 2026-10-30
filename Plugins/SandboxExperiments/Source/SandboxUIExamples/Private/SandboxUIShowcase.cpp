@@ -331,7 +331,7 @@ auto heat_peak(float const x,
 
 auto make_smooth_heatmap(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
     FHeatmapDomain const domain{0.0f, 320.0f, 0.0f, 240.0f};
-    auto heatmap{builder.BuildHeatmap(FHeatmapValueRange{0.0f, 1.0f}, domain)};
+    auto heatmap{builder.BuildHeatmap(ioj::MinMax<float>{0.0f, 1.0f}, domain)};
     FHeatmapGrid grid{.columns = 32, .rows = 24};
     grid.values.Reserve(grid.columns * grid.rows);
     for (int32 row{0}; row < grid.rows; ++row) {
@@ -349,7 +349,7 @@ auto make_smooth_heatmap(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
 
 auto make_sparse_heatmap(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
     FHeatmapDomain const domain{-120.0f, 120.0f, -80.0f, 80.0f};
-    auto heatmap{builder.BuildHeatmap(FHeatmapValueRange{0.18f, 1.0f}, domain)};
+    auto heatmap{builder.BuildHeatmap(ioj::MinMax<float>{0.18f, 1.0f}, domain)};
     FHeatmapGrid grid{.columns = 30, .rows = 20};
     grid.values.Reserve(grid.columns * grid.rows);
     for (int32 row{0}; row < grid.rows; ++row) {

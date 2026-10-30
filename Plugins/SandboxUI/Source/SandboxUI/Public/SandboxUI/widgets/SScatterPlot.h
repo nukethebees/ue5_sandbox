@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/ui/chart_layout.h>
+
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
 #include "Fonts/SlateFontInfo.h"
@@ -83,4 +85,5 @@ class SANDBOXUI_API SScatterPlot : public SLeafWidget {
     TArray<FScatterPlotPoint> points_;
     FScatterPlotDomain domain_;
     FScatterPlotStyle style_;
+    ioj::ui::chart_layout::Settings layout_settings_;
 };

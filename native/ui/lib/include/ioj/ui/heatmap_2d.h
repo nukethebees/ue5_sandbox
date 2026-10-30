@@ -23,11 +23,6 @@ struct Grid {
     std::vector<float> values;
 };
 
-struct ValueRange {
-    float minimum{};
-    float maximum{1.0f};
-};
-
 struct Domain {
     MinMax<float> x{};
     MinMax<float> y{};
@@ -59,13 +54,12 @@ struct MeshBatch {
 };
 
 [[nodiscard]] auto is_valid_grid(Grid const& grid) noexcept -> bool;
-[[nodiscard]] auto is_valid_value_range(ValueRange range) noexcept -> bool;
 [[nodiscard]] auto is_valid_domain(Domain domain) noexcept -> bool;
 [[nodiscard]] auto is_valid_color_stops(std::span<ColorStop const> stops) noexcept -> bool;
 [[nodiscard]] auto build_color_lut(std::span<ColorStop const> stops, std::int32_t entry_count = 256)
     -> std::vector<Color4f>;
 [[nodiscard]] auto build_cell_geometry(Grid const& grid,
-                                       ValueRange range,
+                                       MinMax<float> range,
                                        std::span<Color4f const> color_lut,
                                        Vector2f plot_size) -> std::vector<CellGeometry>;
 [[nodiscard]] auto build_mesh_batches(std::span<CellGeometry const> cells, Vector2f plot_origin)
@@ -75,15 +69,15 @@ class Data {
   public:
     [[nodiscard]] auto set_grid(Grid grid) -> bool;
     void clear_grid();
-    [[nodiscard]] auto set_value_range(ValueRange range) -> bool;
+    [[nodiscard]] auto set_value_range(MinMax<float> range) -> bool;
     [[nodiscard]] auto set_domain(Domain domain) -> bool;
 
     [[nodiscard]] auto grid() const noexcept -> Grid const& { return grid_; }
-    [[nodiscard]] auto value_range() const noexcept -> ValueRange { return value_range_; }
+    [[nodiscard]] auto value_range() const noexcept -> MinMax<float> { return value_range_; }
     [[nodiscard]] auto domain() const noexcept -> Domain { return domain_; }
   private:
     Grid grid_;
-    ValueRange value_range_;
+    MinMax<float> value_range_;
     Domain domain_;
 };
 }

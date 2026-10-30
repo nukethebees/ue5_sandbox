@@ -45,14 +45,6 @@ auto to_unreal(ioj::ui::heatmap_2d::Grid const& grid) -> FHeatmapGrid {
     return result;
 }
 
-auto to_native(FHeatmapValueRange const range) -> ioj::ui::heatmap_2d::ValueRange {
-    return {range.minimum, range.maximum};
-}
-
-auto to_unreal(ioj::ui::heatmap_2d::ValueRange const range) -> FHeatmapValueRange {
-    return {range.minimum, range.maximum};
-}
-
 auto to_native(FHeatmapDomain const domain) -> ioj::ui::heatmap_2d::Domain {
     return {{domain.minimum_x, domain.maximum_x}, {domain.minimum_y, domain.maximum_y}};
 }
@@ -71,7 +63,8 @@ auto native_color_stops(TConstArrayView<FHeatmapColorStop> const stops)
     return result;
 }
 
-auto native_layout_settings(FHeatmap2DStyle const& style) -> ioj::ui::chart_layout::Settings {
+auto native_layout_settings(FHeatmap2DStyle const& style)
+    -> std::optional<ioj::ui::chart_layout::Settings> {
     return SandboxUI::Widgets::chart_layout_settings(style.chart_padding,
                                                      style.axis_thickness,
                                                      style.x_label_area_height,
@@ -120,13 +113,14 @@ SHeatmap2D::SHeatmap2D()
 SHeatmap2D::~SHeatmap2D() = default;
 
 void SHeatmap2D::Construct(FArguments const& args) {
-    static_cast<void>(data_->native.set_value_range(to_native(args._ValueRange)));
+    static_cast<void>(data_->native.set_value_range(args._ValueRange));
     static_cast<void>(data_->native.set_domain(to_native(args._Domain)));
 
     style_ = args._Style;
     if (!is_valid_style(style_)) {
         style_ = FHeatmap2DStyle{};
     }
+    layout_settings_ = *native_layout_settings(style_);
 }
 
 bool SHeatmap2D::set_grid(FHeatmapGrid grid) {
@@ -149,8 +143,8 @@ void SHeatmap2D::clear_grid() {
     Invalidate(EInvalidateWidgetReason::Paint);
 }
 
-bool SHeatmap2D::set_value_range(FHeatmapValueRange const range) {
-    if (!data_->native.set_value_range(to_native(range))) {
+bool SHeatmap2D::set_value_range(ioj::MinMax<float> const range) {
+    if (!data_->native.set_value_range(range)) {
         return false;
     }
     invalidate_heatmap_cache(false);
@@ -170,8 +164,8 @@ auto SHeatmap2D::get_grid() const -> FHeatmapGrid {
     return to_unreal(data_->native.grid());
 }
 
-auto SHeatmap2D::get_value_range() const noexcept -> FHeatmapValueRange {
-    return to_unreal(data_->native.value_range());
+auto SHeatmap2D::get_value_range() const noexcept -> ioj::MinMax<float> {
+    return data_->native.value_range();
 }
 
 auto SHeatmap2D::get_domain() const noexcept -> FHeatmapDomain {
@@ -183,6 +177,7 @@ bool SHeatmap2D::set_style(FHeatmap2DStyle style) {
         return false;
     }
 
+    layout_settings_ = *native_layout_settings(style);
     style_ = MoveTemp(style);
     invalidate_heatmap_cache(true);
     Invalidate(EInvalidateWidgetReason::LayoutAndVolatility);
@@ -201,8 +196,8 @@ int32 SHeatmap2D::OnPaint(FPaintArgs const&,
                           FWidgetStyle const& widget_style,
                           bool const parent_enabled) const {
     auto const widget_size{FVector2f{allotted_geometry.GetLocalSize()}};
-    auto const layout{ioj::ui::chart_layout::make_layout({widget_size.X, widget_size.Y},
-                                                         native_layout_settings(style_))};
+    auto const layout{
+        ioj::ui::chart_layout::make_layout({widget_size.X, widget_size.Y}, layout_settings_)};
     auto const plot_origin{to_unreal(layout.plot_origin)};
     auto const plot_size{to_unreal(layout.plot_size)};
     auto const enabled{ShouldBeEnabled(parent_enabled)};
@@ -359,8 +354,8 @@ int32 SHeatmap2D::OnPaint(FPaintArgs const&,
 }
 
 bool SHeatmap2D::is_valid_style(FHeatmap2DStyle const& style) {
-    return ioj::ui::chart_layout::is_valid({style.desired_size.X, style.desired_size.Y},
-                                           native_layout_settings(style)) &&
+    return SandboxUI::Widgets::is_nonnegative_vector(style.desired_size) &&
+           native_layout_settings(style).has_value() &&
            is_finite_heatmap_color(style.background_color) &&
            ioj::ui::heatmap_2d::is_valid_color_stops(native_color_stops(style.color_stops)) &&
            is_finite_heatmap_color(style.axis_color) && is_finite_heatmap_color(style.label_color);

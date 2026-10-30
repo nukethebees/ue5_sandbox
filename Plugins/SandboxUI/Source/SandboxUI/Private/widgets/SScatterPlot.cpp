@@ -8,7 +8,8 @@
 #include "Styling/CoreStyle.h"
 
 namespace {
-auto native_layout_settings(FScatterPlotStyle const& style) -> ioj::ui::chart_layout::Settings {
+auto native_layout_settings(FScatterPlotStyle const& style)
+    -> std::optional<ioj::ui::chart_layout::Settings> {
     return SandboxUI::Widgets::chart_layout_settings(style.chart_padding,
                                                      style.axis_thickness,
                                                      style.x_label_area_height,
@@ -81,6 +82,7 @@ void SScatterPlot::Construct(FArguments const& args) {
     if (!is_valid_style(style_)) {
         style_ = FScatterPlotStyle{};
     }
+    layout_settings_ = *native_layout_settings(style_);
 }
 
 void SScatterPlot::set_points(TArray<FScatterPlotPoint> points) {
@@ -112,6 +114,7 @@ bool SScatterPlot::set_style(FScatterPlotStyle style) {
         return false;
     }
 
+    layout_settings_ = *native_layout_settings(style);
     style_ = MoveTemp(style);
     Invalidate(EInvalidateWidgetReason::LayoutAndVolatility);
     return true;
@@ -130,8 +133,7 @@ int32 SScatterPlot::OnPaint(FPaintArgs const&,
                             bool const parent_enabled) const {
     auto const widget_size{FVector2f{allotted_geometry.GetLocalSize()}};
     auto const layout{ioj::ui::chart_layout::make_layout(
-        {FMath::Max(widget_size.X, 0.0f), FMath::Max(widget_size.Y, 0.0f)},
-        native_layout_settings(style_))};
+        {FMath::Max(widget_size.X, 0.0f), FMath::Max(widget_size.Y, 0.0f)}, layout_settings_)};
     auto const x_label_height{layout.label_area_height};
     auto const y_label_width{layout.y_label_area_width};
     auto const plot_size{FVector2f{layout.plot_size.x(), layout.plot_size.y()}};
@@ -208,8 +210,8 @@ int32 SScatterPlot::OnPaint(FPaintArgs const&,
 }
 
 bool SScatterPlot::is_valid_style(FScatterPlotStyle const& style) {
-    return ioj::ui::chart_layout::is_valid({style.desired_size.X, style.desired_size.Y},
-                                           native_layout_settings(style)) &&
+    return SandboxUI::Widgets::is_nonnegative_vector(style.desired_size) &&
+           native_layout_settings(style).has_value() &&
            SandboxUI::Widgets::is_finite_vector(style.point_size) && style.point_size.X > 0.0f &&
            style.point_size.Y > 0.0f;
 }

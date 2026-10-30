@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/ui/chart_layout.h>
+
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
 #include "Fonts/SlateFontInfo.h"
@@ -73,5 +75,6 @@ class SANDBOXUI_API SHistogram : public SLeafWidget {
     static bool is_valid_style(FHistogramStyle const& style);
     TUniquePtr<FData> data_;
     FHistogramStyle style_;
+    ioj::ui::chart_layout::Settings layout_settings_;
     int32 hovered_bin_{INDEX_NONE};
 };

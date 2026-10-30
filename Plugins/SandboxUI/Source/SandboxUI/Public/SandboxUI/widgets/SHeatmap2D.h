@@ -1,5 +1,8 @@
 #pragma once
 
+#include <ioj/min_max.h>
+#include <ioj/ui/chart_layout.h>
+
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
 #include "Fonts/SlateFontInfo.h"
@@ -14,11 +17,6 @@ struct SANDBOXUI_API FHeatmapGrid {
     int32 columns{0};
     int32 rows{0};
     TArray<float> values;
-};
-
-struct SANDBOXUI_API FHeatmapValueRange {
-    float minimum{0.0f};
-    float maximum{1.0f};
 };
 
 struct SANDBOXUI_API FHeatmapDomain {
@@ -52,7 +50,7 @@ struct SANDBOXUI_API FHeatmap2DStyle {
 class SANDBOXUI_API SHeatmap2D : public SLeafWidget {
   public:
     SLATE_BEGIN_ARGS(SHeatmap2D) {}
-    SLATE_ARGUMENT(FHeatmapValueRange, ValueRange)
+    SLATE_ARGUMENT(ioj::MinMax<float>, ValueRange)
     SLATE_ARGUMENT(FHeatmapDomain, Domain)
     SLATE_ARGUMENT(FHeatmap2DStyle, Style)
     SLATE_END_ARGS()
@@ -64,12 +62,12 @@ class SANDBOXUI_API SHeatmap2D : public SLeafWidget {
 
     [[nodiscard]] bool set_grid(FHeatmapGrid grid);
     void clear_grid();
-    [[nodiscard]] bool set_value_range(FHeatmapValueRange range);
+    [[nodiscard]] bool set_value_range(ioj::MinMax<float> range);
     [[nodiscard]] bool set_domain(FHeatmapDomain domain);
     [[nodiscard]] bool set_style(FHeatmap2DStyle style);
 
     auto get_grid() const -> FHeatmapGrid;
-    auto get_value_range() const noexcept -> FHeatmapValueRange;
+    auto get_value_range() const noexcept -> ioj::MinMax<float>;
     auto get_domain() const noexcept -> FHeatmapDomain;
     auto get_style() const noexcept -> FHeatmap2DStyle const& { return style_; }
 
@@ -90,5 +88,6 @@ class SANDBOXUI_API SHeatmap2D : public SLeafWidget {
 
     TUniquePtr<FData> data_;
     FHeatmap2DStyle style_;
+    ioj::ui::chart_layout::Settings layout_settings_;
     TUniquePtr<FRenderCache> render_cache_;
 };

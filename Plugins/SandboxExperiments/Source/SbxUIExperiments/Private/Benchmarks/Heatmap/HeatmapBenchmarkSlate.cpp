@@ -31,10 +31,10 @@ auto make_native_grid(TConstArrayView<float> const values, int32 const resolutio
 }
 
 void prepare_slate_heatmap(ioj::ui::heatmap_2d::Grid const& grid,
-                           FHeatmapValueRange const range,
+                           ioj::MinMax<float> const range,
                            std::span<ioj::ui::Color4f const> const color_lut) {
     auto const cells{ioj::ui::heatmap_2d::build_cell_geometry(
-        grid, {range.minimum, range.maximum}, color_lut, {512.0f, 512.0f})};
+        grid, range, color_lut, {512.0f, 512.0f})};
     [[maybe_unused]] auto const batches{ioj::ui::heatmap_2d::build_mesh_batches(cells, {})};
 }
 }

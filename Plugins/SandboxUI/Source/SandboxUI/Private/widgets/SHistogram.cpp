@@ -26,6 +26,8 @@ void SHistogram::Construct(FArguments const& args) {
     if (!is_valid_style(style_)) {
         style_ = FHistogramStyle{};
     }
+    layout_settings_ = *SandboxUI::Widgets::chart_layout_settings(
+        style_.chart_padding, style_.axis_thickness, style_.label_area_height);
 
     if (!data_->native.set_configuration(
             args._DomainMinimum, args._DomainMaximum, args._BinCount)) {
@@ -89,6 +91,8 @@ bool SHistogram::set_style(FHistogramStyle style) {
         return false;
     }
 
+    layout_settings_ = *SandboxUI::Widgets::chart_layout_settings(
+        style.chart_padding, style.axis_thickness, style.label_area_height);
     style_ = MoveTemp(style);
     Invalidate(EInvalidateWidgetReason::LayoutAndVolatility);
     return true;
@@ -106,10 +110,8 @@ int32 SHistogram::OnPaint(FPaintArgs const&,
                           FWidgetStyle const& widget_style,
                           bool const parent_enabled) const {
     auto const widget_size{FVector2f{allotted_geometry.GetLocalSize()}};
-    auto const native_layout{ioj::ui::chart_layout::make_layout(
-        {widget_size.X, widget_size.Y},
-        SandboxUI::Widgets::chart_layout_settings(
-            style_.chart_padding, style_.axis_thickness, style_.label_area_height))};
+    auto const native_layout{
+        ioj::ui::chart_layout::make_layout({widget_size.X, widget_size.Y}, layout_settings_)};
     auto const plot_size{FVector2f{native_layout.plot_size.x(), native_layout.plot_size.y()}};
     auto const plot_origin{FVector2f{native_layout.plot_origin.x(), native_layout.plot_origin.y()}};
     auto const label_height{native_layout.label_area_height};
@@ -200,10 +202,8 @@ int32 SHistogram::OnPaint(FPaintArgs const&,
 
 auto SHistogram::OnMouseMove(FGeometry const& geometry, FPointerEvent const& event) -> FReply {
     auto const widget_size{FVector2f{geometry.GetLocalSize()}};
-    auto const native_layout{ioj::ui::chart_layout::make_layout(
-        {widget_size.X, widget_size.Y},
-        SandboxUI::Widgets::chart_layout_settings(
-            style_.chart_padding, style_.axis_thickness, style_.label_area_height))};
+    auto const native_layout{
+        ioj::ui::chart_layout::make_layout({widget_size.X, widget_size.Y}, layout_settings_)};
     auto const plot_size{FVector2f{native_layout.plot_size.x(), native_layout.plot_size.y()}};
     auto const plot_origin{FVector2f{native_layout.plot_origin.x(), native_layout.plot_origin.y()}};
     auto const local{FVector2f{geometry.AbsoluteToLocal(event.GetScreenSpacePosition())}};
@@ -240,9 +240,9 @@ void SHistogram::OnMouseLeave(FPointerEvent const& event) {
 }
 
 bool SHistogram::is_valid_style(FHistogramStyle const& style) {
-    return ioj::ui::chart_layout::is_valid(
-               {style.desired_size.X, style.desired_size.Y},
-               SandboxUI::Widgets::chart_layout_settings(
-                   style.chart_padding, style.axis_thickness, style.label_area_height)) &&
+    return SandboxUI::Widgets::is_nonnegative_vector(style.desired_size) &&
+           SandboxUI::Widgets::chart_layout_settings(
+               style.chart_padding, style.axis_thickness, style.label_area_height)
+               .has_value() &&
            FMath::IsFinite(style.bar_gap) && style.bar_gap >= 0.0f;
 }
