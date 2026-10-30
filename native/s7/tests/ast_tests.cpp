@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 namespace ioj::s7::tests {
 TEST(SchemeAst, OwnsValuesAfterInterpreterAndSourceAreDestroyed) {
@@ -64,30 +65,38 @@ TEST(SchemeAst, CopiesMixedPayloadsIndependently) {
     EXPECT_EQ(copy.text(inner[4]), "b");
 }
 
-TEST(SchemeAst, RejectsUnsupportedAndMalformedData) {
+struct InvalidAstCase {
+    char const* name;
+    std::string_view source;
+    AstErrorCode code;
+};
+
+using InvalidSchemeAst = ::testing::TestWithParam<InvalidAstCase>;
+
+TEST_P(InvalidSchemeAst, RejectsUnsupportedAndMalformedData) {
     Interpreter interpreter;
-    struct Case {
-        std::string_view source;
-        AstErrorCode code;
-    };
-    Case const cases[]{
-        {"(lambda () 1)", AstErrorCode::UnsupportedValue},
-        {"(vector 1 2)", AstErrorCode::UnsupportedValue},
-        {"'(1 . 2)", AstErrorCode::ImproperList},
-        {"(let ((x (list 1))) (set-cdr! x x) x)", AstErrorCode::CyclicStructure},
-        {"(let ((x (list 1))) (set-car! x x) x)", AstErrorCode::CyclicStructure},
-        {"(error 'test \"bad source\")", AstErrorCode::EvaluationFailed},
-    };
-    for (auto const& test : cases) {
-        auto const result{interpreter.evaluate_ast(test.source)};
-        ASSERT_FALSE(result) << test.source;
-        ASSERT_EQ(result.error().size(), 1u);
-        EXPECT_EQ(result.error()[0].code, test.code) << test.source;
-        EXPECT_FALSE(result.error()[0].node_path.empty());
-        EXPECT_FALSE(result.error()[0].message.empty());
-    }
+    auto const& test{GetParam()};
+    auto const result{interpreter.evaluate_ast(test.source)};
+    ASSERT_FALSE(result) << test.source;
+    ASSERT_EQ(result.error().size(), 1u);
+    auto const& error{result.error()[0]};
+    EXPECT_EQ(error.code, test.code) << test.source;
+    EXPECT_FALSE(error.node_path.empty());
+    EXPECT_FALSE(error.message.empty());
     EXPECT_TRUE(interpreter.evaluate_ast("'(1 2)"));
 }
+
+constexpr InvalidAstCase invalid_ast_cases[]{
+    {"Procedure", "(lambda () 1)", AstErrorCode::UnsupportedValue},
+    {"Vector", "(vector 1 2)", AstErrorCode::UnsupportedValue},
+    {"ImproperList", "'(1 . 2)", AstErrorCode::ImproperList},
+    {"CyclicTail", "(let ((x (list 1))) (set-cdr! x x) x)", AstErrorCode::CyclicStructure},
+    {"CyclicHead", "(let ((x (list 1))) (set-car! x x) x)", AstErrorCode::CyclicStructure},
+    {"EvaluationFailure", "(error 'test \"bad source\")", AstErrorCode::EvaluationFailed}};
+INSTANTIATE_TEST_SUITE_P(SchemeAst,
+                         InvalidSchemeAst,
+                         ::testing::ValuesIn(invalid_ast_cases),
+                         [](auto const& info) { return info.param.name; });
 
 TEST(SchemeAst, AcceptsSharedAcyclicLists) {
     Interpreter interpreter;

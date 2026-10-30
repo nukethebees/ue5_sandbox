@@ -243,31 +243,44 @@ TEST(SlateCompiler, ReportsMissingIncludesAndCycles) {
     expect_contains_all(error, {"include cycle", "First.lispb", "Second.lispb"});
 }
 
-TEST(SlateCompiler, RejectsInvalidMacroDeclarationsAndInvocations) {
-    TemporaryProject project{"slate", "macro-errors"};
-    struct Case {
-        std::string_view source;
-        std::string_view expected;
-    };
-    Case const cases[]{
-        {"(defmacro thing () (SImage)) (defmacro thing () (SButton))", "duplicate macro"},
-        {"(defmacro thing (x x) (SImage))", "duplicate macro parameter"},
-        {"(defmacro thing (x) (SImage :Image $missing))", "unknown macro parameter"},
-        {"(defmacro vbox () (SImage))", "built-in form"},
-        {"(defmacro Thing () (SImage))", "lowercase letter"},
-        {"(defmacro thing (x) $x) (thing)", "expects 1 arguments"},
-        {"(defmacro thing () (thing)) (thing)", "recursive macro expansion"},
-        {"(defmacro first () (second)) (defmacro second () (first)) (first)",
-         "recursive macro expansion"},
-        {"(widget-class SPanel (include \"Other.lispb\"))", "top-level source declarations"},
-        {"$missing", "outside a template"},
-    };
-    for (auto const& test : cases) {
-        SCOPED_TRACE(test.source);
-        project.write("panel.lispb", test.source);
-        EXPECT_TRUE(compile_error(project).contains(test.expected));
-    }
+struct InvalidMacroCase {
+    char const* name;
+    std::string_view source;
+    std::string_view expected;
+};
+
+using InvalidSlateMacro = ::testing::TestWithParam<InvalidMacroCase>;
+
+TEST_P(InvalidSlateMacro, RejectsInvalidMacroDeclarationsAndInvocations) {
+    auto const& test{GetParam()};
+    TemporaryProject project{"slate", test.name};
+    project.write("panel.lispb", test.source);
+    EXPECT_TRUE(compile_error(project).contains(test.expected)) << test.source;
 }
+
+constexpr InvalidMacroCase invalid_macro_cases[]{
+    {"DuplicateMacro",
+     "(defmacro thing () (SImage)) (defmacro thing () (SButton))",
+     "duplicate macro"},
+    {"DuplicateParameter", "(defmacro thing (x x) (SImage))", "duplicate macro parameter"},
+    {"UnknownParameter",
+     "(defmacro thing (x) (SImage :Image $missing))",
+     "unknown macro parameter"},
+    {"BuiltinName", "(defmacro vbox () (SImage))", "built-in form"},
+    {"UppercaseName", "(defmacro Thing () (SImage))", "lowercase letter"},
+    {"WrongArity", "(defmacro thing (x) $x) (thing)", "expects 1 arguments"},
+    {"DirectRecursion", "(defmacro thing () (thing)) (thing)", "recursive macro expansion"},
+    {"IndirectRecursion",
+     "(defmacro first () (second)) (defmacro second () (first)) (first)",
+     "recursive macro expansion"},
+    {"NestedInclude",
+     "(widget-class SPanel (include \"Other.lispb\"))",
+     "top-level source declarations"},
+    {"UnboundPlaceholder", "$missing", "outside a template"}};
+INSTANTIATE_TEST_SUITE_P(SlateCompiler,
+                         InvalidSlateMacro,
+                         ::testing::ValuesIn(invalid_macro_cases),
+                         [](auto const& info) { return info.param.name; });
 
 TEST(SlateCompiler, ReportsMacroDefinitionAndInvocationForSemanticErrors) {
     TemporaryProject project{"slate", "macro-diagnostics"};

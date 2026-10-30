@@ -21,32 +21,25 @@ struct RotateCase {
     float expected;
 };
 
-template <std::floating_point T>
-void expect_desired_yaws() {
-    constexpr auto pi{std::numbers::pi_v<T>};
-    struct Case {
-        T start_x;
-        T start_y;
-        T end_x;
-        T end_y;
-        T expected;
-    };
-    Case const cases[]{
-        {T{0}, T{0}, T{1}, T{0}, T{0}},
-        {T{0}, T{0}, T{0}, T{1}, pi / T{2}},
-        {T{0}, T{0}, T{-1}, T{0}, pi},
-        {T{0}, T{0}, T{0}, T{-1}, -pi / T{2}},
-        {T{10}, T{20}, T{11}, T{21}, pi / T{4}},
-        {T{10}, T{20}, T{9}, T{21}, T{3} * pi / T{4}},
-        {T{10}, T{20}, T{9}, T{19}, T{-3} * pi / T{4}},
-        {T{10}, T{20}, T{11}, T{19}, -pi / T{4}},
-    };
+struct DesiredYawCase {
+    char const* name;
+    float start_x;
+    float start_y;
+    float end_x;
+    float end_y;
+    float numerator;
+    float denominator;
+};
 
-    for (auto const& [start_x, start_y, end_x, end_y, expected] : cases) {
-        T out[]{T{123}};
-        ioj::kernel::compute_desired_yaws_radians(&start_x, &start_y, &end_x, &end_y, out, 1);
-        EXPECT_NEAR(out[0], expected, static_cast<T>(1e-6));
-    }
+template <std::floating_point T>
+void expect_desired_yaw(DesiredYawCase const& test) {
+    T const coordinates[]{test.start_x, test.start_y, test.end_x, test.end_y};
+    T out[]{T{123}};
+    ioj::kernel::compute_desired_yaws_radians(
+        coordinates, coordinates + 1, coordinates + 2, coordinates + 3, out, 1);
+    auto const expected{static_cast<T>(test.numerator) * std::numbers::pi_v<T> /
+                        static_cast<T>(test.denominator)};
+    EXPECT_NEAR(out[0], expected, static_cast<T>(1e-6));
 }
 }
 
@@ -200,10 +193,28 @@ TEST(NativeCoreRotation, RotatesRadians) {
     EXPECT_NEAR(current[0], -pi / 4.0f, 1e-6f);
 }
 
-TEST(NativeCoreRotation, ComputesDesiredYawForFloatAndDouble) {
-    expect_desired_yaws<float>();
-    expect_desired_yaws<double>();
+using DesiredYaw = ::testing::TestWithParam<DesiredYawCase>;
 
+TEST_P(DesiredYaw, ComputesDesiredYawForFloatAndDouble) {
+    auto const& test{GetParam()};
+    expect_desired_yaw<float>(test);
+    expect_desired_yaw<double>(test);
+}
+
+constexpr DesiredYawCase desired_yaw_cases[]{{"East", 0, 0, 1, 0, 0, 1},
+                                             {"North", 0, 0, 0, 1, 1, 2},
+                                             {"West", 0, 0, -1, 0, 1, 1},
+                                             {"South", 0, 0, 0, -1, -1, 2},
+                                             {"NorthEast", 10, 20, 11, 21, 1, 4},
+                                             {"NorthWest", 10, 20, 9, 21, 3, 4},
+                                             {"SouthWest", 10, 20, 9, 19, -3, 4},
+                                             {"SouthEast", 10, 20, 11, 19, -1, 4}};
+INSTANTIATE_TEST_SUITE_P(NativeCoreRotation,
+                         DesiredYaw,
+                         ::testing::ValuesIn(desired_yaw_cases),
+                         [](auto const& info) { return info.param.name; });
+
+TEST(NativeCoreRotation, DesiredYawPreservesOutputForZeroCount) {
     float out[]{123.0f};
     ioj::kernel::compute_desired_yaws_radians<float>(nullptr, nullptr, nullptr, nullptr, out, 0);
     EXPECT_EQ(out[0], 123.0f);
