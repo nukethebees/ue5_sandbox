@@ -422,6 +422,26 @@
           "label": "^(all|developer-tool)$"
         }
       }
+    },
+    {
+      "name": "debug-game-all-unreal-tests",
+      "inherits": "test-base",
+      "configurePreset": "debug-game",
+      "filter": {
+        "include": {
+          "label": "^unreal-all$"
+        }
+      }
+    },
+    {
+      "name": "debug-game-msvc-all-unreal-tests",
+      "inherits": "test-base",
+      "configurePreset": "debug-game-msvc",
+      "filter": {
+        "include": {
+          "label": "^unreal-all$"
+        }
+      }
     }
   ],
   "workflowPresets": [

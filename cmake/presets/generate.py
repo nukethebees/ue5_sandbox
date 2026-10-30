@@ -597,6 +597,16 @@ def make_unreal_document() -> dict[str, Any]:
             ]
         )
 
+    for suffix in ("", "-msvc"):
+        test_presets.append(
+            {
+                "name": f"debug-game{suffix}-all-unreal-tests",
+                "inherits": "test-base",
+                "configurePreset": f"debug-game{suffix}",
+                "filter": {"include": {"label": "^unreal-all$"}},
+            }
+        )
+
     workflow_presets: list[dict[str, Any]] = []
     for suffix, _, _, _ in compiler_variants:
         for name, _, _, _ in unreal_configurations:

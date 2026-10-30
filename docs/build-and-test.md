@@ -193,6 +193,23 @@ game/native integration workflow; `debug-game-full-tests` additionally includes 
 developer tools and is for explicitly requested broad validation. `debug-game` prepares an
 editor-ready build without running tests. Use `development` for Development configuration.
 
+Run all project Unreal automation, including render and material tests, in one editor process:
+
+```powershell
+cmake --build --preset debug-game
+ctest --preset debug-game-all-unreal-tests
+```
+
+The test preset selects the single `Sandbox.AllEditorTests` entry using its `unreal-all` label
+and reuses the existing `debug-game` build directory without configuring or building. Skip the
+build command when the editor is already current. Other test presets exclude this entry;
+unfiltered CTest includes it alongside the individual entries.
+
+The run uses a real graphics RHI, offscreen rendering and the persistent worktree DDC. It
+includes optional shader experiment tests when their plugin is enabled, and excludes benchmarks
+and native/tool tests. Use `debug-game-msvc-all-unreal-tests` with an existing `debug-game-msvc`
+build for the MSVC native toolchain.
+
 Unreal modules using `CppStandard.Latest` cannot consume the installed engine's shared
 PCHs. Engine-facing modules declare `PrivatePCHHeaderFile` in their `.Build.cs` files
 to retain PCHs with that standard. Keep these headers limited to stable engine headers

@@ -249,3 +249,30 @@ add_unreal_editor_test(SandboxEditor.MaterialSynth
   TIMEOUT 900
 )
 sandbox_set_automation_test_properties(SandboxEditor.MaterialSynth)
+
+set(all_editor_automation_filters
+  ${IOJ_UNIT_AUTOMATION_FILTERS}
+  ${IOJ_LEVEL_AUTOMATION_FILTERS}
+  SandboxISMC.ModuleLoadSmoke
+  SandboxISMC.RenderTests
+  Sandbox.SparkRenderTests
+  SandboxEditor.MaterialSynth
+  USFLoader.UnitTests
+  USFLoader.IncludedFunctionCompilation
+)
+if(experiments_enabled)
+  list(APPEND all_editor_automation_filters SandboxShaders.MaterialCompilation)
+endif()
+sandbox_make_automation_filter_expression(all_editor_automation_expression
+  ${all_editor_automation_filters})
+sandbox_make_automation_exec_commands(all_editor_automation_commands
+  "${all_editor_automation_expression}")
+add_unreal_editor_test(Sandbox.AllEditorTests
+  ARGUMENTS
+    "${all_editor_automation_commands}"
+    -RenderOffscreen
+    -AllowCommandletRendering
+  LABELS unreal-all
+  TIMEOUT 1800
+)
+sandbox_set_automation_test_properties(Sandbox.AllEditorTests)
