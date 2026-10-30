@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <string>
@@ -79,59 +80,62 @@ struct GenerationCase {
     bool valid{true};
 };
 
-GenerationCase const generation_cases[]{
-    {"RadialGradient", [] { return generate_radial_gradient({.width = 48, .height = 32}); }},
-    {"RingMask", [] { return generate_ring_mask({.width = 48, .height = 32}); }},
-    {"ShockwaveFlipbook", [] { return generate_shockwave_flipbook({.width = 48, .height = 32}); }},
-    {"Starfield", [] { return generate_starfield({.width = 48, .height = 32}); }},
-    {"Noise", [] { return generate_noise({.width = 48, .height = 32}); }},
-    {"DomainWarpedNoise", [] { return generate_domain_warped_noise({.width = 48, .height = 32}); }},
-    {"CurlNoiseFlow", [] { return generate_curl_noise_flow({.width = 48, .height = 32}); }},
-    {"CellularNoise", [] { return generate_cellular_noise({.width = 48, .height = 32}); }},
-    {"HexGrid", [] { return generate_hex_grid({.width = 48, .height = 32}); }},
-    {"SignedDistance",
-     [] {
-         return generate_signed_distance_field(
-             generate_ring_mask({.width = 48, .height = 32}), 0.5f, 8.0f, false);
-     }},
-    {"InvalidDimensions", [] { return generate_radial_gradient({.width = 0}); }, false},
-    {"InvalidRingThickness", [] { return generate_ring_mask({.thickness = 0.0f}); }, false},
-    {"InvalidFlipbookWidth", [] { return generate_shockwave_flipbook({.width = 255}); }, false},
-    {"InvalidStarRadius", [] { return generate_starfield({.minimum_radius = -1.0f}); }, false},
-    {"InvalidNoiseScale", [] { return generate_noise({.base_scale = 0.0f}); }, false},
-    {"InvalidWarpOctaves",
-     [] { return generate_domain_warped_noise({.warp_octave_count = 0}); },
-     false},
-    {"InvalidDerivativeStep",
-     [] { return generate_curl_noise_flow({.derivative_step = 0.0f}); },
-     false},
-    {"InvalidCellularJitter", [] { return generate_cellular_noise({.jitter = 2.0f}); }, false},
-    {"InvalidHexRadius", [] { return generate_hex_grid({.cell_radius = 0.0f}); }, false},
-    {"InvalidNormalStrength",
-     [] {
-         auto request{make_default_request(GeneratorType::Noise)};
-         request.post_process = {.output = ImagePostProcessParameters::Output::NormalMap,
-                                 .normal_strength = -1.0f};
-         return generate_image(request);
-     },
-     false},
-    {"InvalidDistanceRange",
-     [] {
-         auto request{make_default_request(GeneratorType::RingMask)};
-         request.post_process = {.output = ImagePostProcessParameters::Output::SignedDistance,
-                                 .distance_range = 0.0f};
-         return generate_image(request);
-     },
-     false},
-    {"InvalidContrast",
-     [] {
-         auto request{make_default_request(GeneratorType::RadialGradient)};
-         request.radial_gradient = {.width = 65, .height = 65};
-         request.post_process.contrast = -1.0f;
-         return generate_image(request);
-     },
-     false},
-};
+auto const generation_cases{[] {
+    constexpr std::int32_t w{48};
+    constexpr std::int32_t h{32};
+    return std::to_array<GenerationCase>({
+        {"RadialGradient", [] { return generate_radial_gradient({w, h}); }},
+        {"RingMask", [] { return generate_ring_mask({w, h}); }},
+        {"ShockwaveFlipbook", [] { return generate_shockwave_flipbook({w, h}); }},
+        {"Starfield", [] { return generate_starfield({w, h}); }},
+        {"Noise", [] { return generate_noise({w, h}); }},
+        {"DomainWarpedNoise", [] { return generate_domain_warped_noise({w, h}); }},
+        {"CurlNoiseFlow", [] { return generate_curl_noise_flow({w, h}); }},
+        {"CellularNoise", [] { return generate_cellular_noise({w, h}); }},
+        {"HexGrid", [] { return generate_hex_grid({w, h}); }},
+        {"SignedDistance",
+         [] {
+             return generate_signed_distance_field(generate_ring_mask({w, h}), 0.5f, 8.0f, false);
+         }},
+        {"InvalidDimensions", [] { return generate_radial_gradient({.width = 0}); }, false},
+        {"InvalidRingThickness", [] { return generate_ring_mask({.thickness = 0.0f}); }, false},
+        {"InvalidFlipbookWidth", [] { return generate_shockwave_flipbook({.width = 255}); }, false},
+        {"InvalidStarRadius", [] { return generate_starfield({.minimum_radius = -1.0f}); }, false},
+        {"InvalidNoiseScale", [] { return generate_noise({.base_scale = 0.0f}); }, false},
+        {"InvalidWarpOctaves",
+         [] { return generate_domain_warped_noise({.warp_octave_count = 0}); },
+         false},
+        {"InvalidDerivativeStep",
+         [] { return generate_curl_noise_flow({.derivative_step = 0.0f}); },
+         false},
+        {"InvalidCellularJitter", [] { return generate_cellular_noise({.jitter = 2.0f}); }, false},
+        {"InvalidHexRadius", [] { return generate_hex_grid({.cell_radius = 0.0f}); }, false},
+        {"InvalidNormalStrength",
+         [] {
+             auto request{make_default_request(GeneratorType::Noise)};
+             request.post_process = {.output = ImagePostProcessParameters::Output::NormalMap,
+                                     .normal_strength = -1.0f};
+             return generate_image(request);
+         },
+         false},
+        {"InvalidDistanceRange",
+         [] {
+             auto request{make_default_request(GeneratorType::RingMask)};
+             request.post_process = {.output = ImagePostProcessParameters::Output::SignedDistance,
+                                     .distance_range = 0.0f};
+             return generate_image(request);
+         },
+         false},
+        {"InvalidContrast",
+         [] {
+             auto request{make_default_request(GeneratorType::RadialGradient)};
+             request.radial_gradient = {.width = 65, .height = 65};
+             request.post_process.contrast = -1.0f;
+             return generate_image(request);
+         },
+         false},
+    });
+}()};
 
 class ImageGeneratorBuffers : public testing::TestWithParam<GenerationCase> {};
 

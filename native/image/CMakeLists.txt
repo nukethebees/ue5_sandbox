@@ -14,6 +14,7 @@ target_link_libraries(sandbox-image
   PUBLIC
     sandbox::native_defaults
   PRIVATE
+    native-core-headers
     ioj::core_pch
 )
 ioj_enable_warnings(sandbox-image)

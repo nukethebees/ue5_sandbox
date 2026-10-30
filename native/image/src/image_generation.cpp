@@ -2,6 +2,7 @@
 
 #include "image_generation_utilities.h"
 #include "noise_sampling.h"
+#include <ioj/constrained_numbers.h>
 
 #include <algorithm>
 #include <cmath>
@@ -15,6 +16,13 @@ using namespace generation;
 using namespace noise;
 
 namespace {
+using NonNegative = ioj::NonNegativeFinite<float>;
+using Positive = ioj::PositiveFinite<float>;
+
+constexpr auto in_closed_range(auto const value, auto const lower, auto const upper) -> bool {
+    return value >= lower && value <= upper;
+}
+
 template <typename Sample>
 auto generate_pixels(std::int32_t const width,
                      std::int32_t const height,
@@ -72,26 +80,24 @@ auto apply_post_process(GeneratedImage image,
     if (!image.is_valid()) {
         return image;
     }
-    if (!std::isfinite(parameters.contrast) || parameters.contrast < 0.0f) {
-        return invalid_image(("Post-process contrast must be finite and non-negative."));
+    if (!NonNegative::valid(parameters.contrast)) {
+        return invalid_image("Post-process contrast must be finite and non-negative.");
     }
     if (parameters.threshold_enabled &&
-        (!std::isfinite(parameters.threshold) || parameters.threshold < 0.0f ||
-         parameters.threshold > 1.0f || !std::isfinite(parameters.threshold_softness) ||
-         parameters.threshold_softness < 0.0f || parameters.threshold_softness > 1.0f)) {
+        (!in_closed_range(parameters.threshold, 0.0f, 1.0f) ||
+         !in_closed_range(parameters.threshold_softness, 0.0f, 1.0f))) {
         return invalid_image(
-            ("Post-process threshold and threshold softness must be finite and in [0, 1]."));
+            "Post-process threshold and threshold softness must be finite and in [0, 1].");
     }
     if (parameters.output == ImagePostProcessParameters::Output::NormalMap &&
-        (!std::isfinite(parameters.normal_strength) || parameters.normal_strength < 0.0f)) {
-        return invalid_image(("Normal-map strength must be finite and non-negative."));
+        !NonNegative::valid(parameters.normal_strength)) {
+        return invalid_image("Normal-map strength must be finite and non-negative.");
     }
     if (parameters.output == ImagePostProcessParameters::Output::SignedDistance &&
-        (!std::isfinite(parameters.distance_threshold) || parameters.distance_threshold < 0.0f ||
-         parameters.distance_threshold > 1.0f || !std::isfinite(parameters.distance_range) ||
-         parameters.distance_range < 1.0f || parameters.distance_range > 4096.0f)) {
-        return invalid_image(("Signed-distance threshold must be in [0, 1] and its finite pixel "
-                              "range must be in [1, 4096]."));
+        (!in_closed_range(parameters.distance_threshold, 0.0f, 1.0f) ||
+         !in_closed_range(parameters.distance_range, 1.0f, 4096.0f))) {
+        return invalid_image("Signed-distance threshold must be in [0, 1] and its finite pixel "
+                             "range must be in [1, 4096].");
     }
 
     auto const transform{[&parameters](std::uint8_t const channel) {
@@ -141,10 +147,10 @@ auto hex_signed_distance(float const x, float const y, float const radius) -> fl
 auto generate_normal_map(GeneratedImage const& height_image, float const strength, bool const wrap)
     -> GeneratedImage {
     if (!height_image.is_valid()) {
-        return invalid_image(("Normal-map input must be a valid image."));
+        return invalid_image("Normal-map input must be a valid image.");
     }
-    if (!std::isfinite(strength) || strength < 0.0f) {
-        return invalid_image(("Normal-map strength must be finite and non-negative."));
+    if (!NonNegative::valid(strength)) {
+        return invalid_image("Normal-map strength must be finite and non-negative.");
     }
 
     auto normal_map{make_image(height_image.width, height_image.height, black)};
@@ -193,12 +199,12 @@ auto generate_signed_distance_field(GeneratedImage const& mask_image,
                                     float const distance_range,
                                     bool const wrap) -> GeneratedImage {
     if (!mask_image.is_valid()) {
-        return invalid_image(("Signed-distance input must be a valid image."));
+        return invalid_image("Signed-distance input must be a valid image.");
     }
-    if (!std::isfinite(threshold) || threshold < 0.0f || threshold > 1.0f ||
-        !std::isfinite(distance_range) || distance_range < 1.0f || distance_range > 4096.0f) {
-        return invalid_image(("Signed-distance threshold must be in [0, 1] and its finite pixel "
-                              "range must be in [1, 4096]."));
+    if (!in_closed_range(threshold, 0.0f, 1.0f) ||
+        !in_closed_range(distance_range, 1.0f, 4096.0f)) {
+        return invalid_image("Signed-distance threshold must be in [0, 1] and its finite pixel "
+                             "range must be in [1, 4096].");
     }
 
     auto const padding{wrap ? generation::ceil_to_int(distance_range) + 1 : 0};
@@ -207,7 +213,7 @@ auto generate_signed_distance_field(GeneratedImage const& mask_image,
     if (padded_width64 > std::numeric_limits<std::int32_t>::max() ||
         padded_height64 > std::numeric_limits<std::int32_t>::max() ||
         padded_width64 * padded_height64 > std::numeric_limits<std::int32_t>::max()) {
-        return invalid_image(("Signed-distance padded dimensions exceed the supported size."));
+        return invalid_image("Signed-distance padded dimensions exceed the supported size.");
     }
     auto const padded_width{static_cast<std::int32_t>(padded_width64)};
     auto const padded_height{static_cast<std::int32_t>(padded_height64)};
@@ -260,7 +266,7 @@ auto generate_signed_distance_field(GeneratedImage const& mask_image,
 
 auto generate_radial_gradient(RadialGradientParameters const& parameters) -> GeneratedImage {
     if (parameters.inner_radius < 0.0f || parameters.outer_radius <= parameters.inner_radius) {
-        return invalid_image(("Radial radii must satisfy 0 <= inner_radius < outer_radius."));
+        return invalid_image("Radial radii must satisfy 0 <= inner_radius < outer_radius.");
     }
 
     return generate_pixels(
@@ -313,10 +319,10 @@ auto generate_shockwave_flipbook(ShockwaveFlipbookParameters const& parameters) 
     }
     if (parameters.start_radius < 0.0f || parameters.end_radius < parameters.start_radius ||
         parameters.thickness <= 0.0f || parameters.falloff < 0.0f ||
-        parameters.start_intensity < 0.0f || parameters.start_intensity > 1.0f ||
-        parameters.end_intensity < 0.0f || parameters.end_intensity > 1.0f) {
-        return invalid_image(("Shockwave radii must increase, thickness must be positive, "
-                              "falloff must be non-negative, and intensities must be in [0, 1]."));
+        !in_closed_range(parameters.start_intensity, 0.0f, 1.0f) ||
+        !in_closed_range(parameters.end_intensity, 0.0f, 1.0f)) {
+        return invalid_image("Shockwave radii must increase, thickness must be positive, "
+                             "falloff must be non-negative, and intensities must be in [0, 1].");
     }
 
     auto image{make_image(parameters.width, parameters.height, transparent)};
@@ -358,12 +364,12 @@ auto generate_shockwave_flipbook(ShockwaveFlipbookParameters const& parameters) 
 }
 
 auto generate_starfield(StarfieldParameters const& parameters) -> GeneratedImage {
-    if (parameters.star_count < 0 || parameters.minimum_brightness < 0.0f ||
-        parameters.minimum_brightness > 1.0f || parameters.minimum_radius <= 0.0f ||
+    if (parameters.star_count < 0 || !in_closed_range(parameters.minimum_brightness, 0.0f, 1.0f) ||
+        parameters.minimum_radius <= 0.0f ||
         parameters.maximum_radius < parameters.minimum_radius) {
-        return invalid_image(("Starfield parameters require a non-negative star count, "
-                              "brightness in [0, 1], and 0 < minimum_radius <= "
-                              "maximum_radius."));
+        return invalid_image("Starfield parameters require a non-negative star count, "
+                             "brightness in [0, 1], and 0 < minimum_radius <= "
+                             "maximum_radius.");
     }
 
     auto const background{parameters.transparent_background ? transparent : black};
@@ -408,11 +414,10 @@ auto generate_starfield(StarfieldParameters const& parameters) -> GeneratedImage
 }
 
 auto generate_noise(NoiseParameters const& parameters) -> GeneratedImage {
-    if (parameters.base_scale <= 0.0f || parameters.octave_count <= 0 ||
-        parameters.octave_count > 16 || parameters.persistence < 0.0f ||
-        parameters.persistence > 1.0f) {
-        return invalid_image(("Noise parameters require base_scale > 0, octave_count in "
-                              "[1, 16], and persistence in [0, 1]."));
+    if (parameters.base_scale <= 0.0f || !in_closed_range(parameters.octave_count, 1, 16) ||
+        !in_closed_range(parameters.persistence, 0.0f, 1.0f)) {
+        return invalid_image("Noise parameters require base_scale > 0, octave_count in "
+                             "[1, 16], and persistence in [0, 1].");
     }
 
     return generate_pixels(parameters.width,
@@ -433,13 +438,12 @@ auto generate_noise(NoiseParameters const& parameters) -> GeneratedImage {
 }
 auto generate_domain_warped_noise(DomainWarpedNoiseParameters const& parameters) -> GeneratedImage {
     if (parameters.base_scale <= 0.0f || parameters.warp_scale <= 0.0f ||
-        parameters.warp_strength < 0.0f || parameters.base_octave_count <= 0 ||
-        parameters.base_octave_count > 16 || parameters.warp_octave_count <= 0 ||
-        parameters.warp_octave_count > 16 || parameters.persistence < 0.0f ||
-        parameters.persistence > 1.0f) {
-        return invalid_image(("Domain-warped noise requires positive base and warp scales, a "
-                              "non-negative warp strength, octave counts in [1, 16], and "
-                              "persistence in [0, 1]."));
+        parameters.warp_strength < 0.0f || !in_closed_range(parameters.base_octave_count, 1, 16) ||
+        !in_closed_range(parameters.warp_octave_count, 1, 16) ||
+        !in_closed_range(parameters.persistence, 0.0f, 1.0f)) {
+        return invalid_image("Domain-warped noise requires positive base and warp scales, a "
+                             "non-negative warp strength, octave counts in [1, 16], and "
+                             "persistence in [0, 1].");
     }
 
     return generate_pixels(parameters.width,
@@ -478,15 +482,14 @@ auto generate_domain_warped_noise(DomainWarpedNoiseParameters const& parameters)
                            });
 }
 auto generate_curl_noise_flow(CurlNoiseFlowParameters const& parameters) -> GeneratedImage {
-    if (!std::isfinite(parameters.base_scale) || parameters.base_scale <= 0.0f ||
-        parameters.octave_count <= 0 || parameters.octave_count > 16 ||
-        !std::isfinite(parameters.persistence) || parameters.persistence < 0.0f ||
-        parameters.persistence > 1.0f || !std::isfinite(parameters.derivative_step) ||
-        parameters.derivative_step <= 0.0f || !std::isfinite(parameters.strength) ||
-        parameters.strength < 0.0f || parameters.strength > 1.0f) {
-        return invalid_image(("Curl-noise flow parameters require a positive finite scale and "
-                              "derivative step, octave_count in [1, 16], and persistence and "
-                              "strength in [0, 1]."));
+    if (!Positive::valid(parameters.base_scale) ||
+        !in_closed_range(parameters.octave_count, 1, 16) ||
+        !in_closed_range(parameters.persistence, 0.0f, 1.0f) ||
+        !Positive::valid(parameters.derivative_step) ||
+        !in_closed_range(parameters.strength, 0.0f, 1.0f)) {
+        return invalid_image("Curl-noise flow parameters require a positive finite scale and "
+                             "derivative step, octave_count in [1, 16], and persistence and "
+                             "strength in [0, 1].");
     }
 
     auto image{make_image(parameters.width, parameters.height, Pixel{128, 128, 128, 255})};
@@ -532,12 +535,10 @@ auto generate_curl_noise_flow(CurlNoiseFlowParameters const& parameters) -> Gene
 }
 
 auto generate_cellular_noise(CellularNoiseParameters const& parameters) -> GeneratedImage {
-    if (!std::isfinite(parameters.cell_size) || parameters.cell_size <= 0.0f ||
-        !std::isfinite(parameters.jitter) || parameters.jitter < 0.0f || parameters.jitter > 1.0f ||
-        !std::isfinite(parameters.edge_width) || parameters.edge_width < 0.0f ||
-        !std::isfinite(parameters.falloff) || parameters.falloff < 0.0f) {
-        return invalid_image(("Cellular noise requires a positive finite cell size, jitter in "
-                              "[0, 1], and non-negative finite edge width and falloff."));
+    if (!Positive::valid(parameters.cell_size) || !in_closed_range(parameters.jitter, 0.0f, 1.0f) ||
+        !NonNegative::valid(parameters.edge_width) || !NonNegative::valid(parameters.falloff)) {
+        return invalid_image("Cellular noise requires a positive finite cell size, jitter in "
+                             "[0, 1], and non-negative finite edge width and falloff.");
     }
 
     auto image{make_image(parameters.width, parameters.height, black)};
@@ -624,8 +625,8 @@ auto generate_cellular_noise(CellularNoiseParameters const& parameters) -> Gener
 auto generate_hex_grid(HexGridParameters const& parameters) -> GeneratedImage {
     if (parameters.cell_radius <= 0.0f || parameters.line_thickness <= 0.0f ||
         parameters.falloff < 0.0f) {
-        return invalid_image(("Hex grid parameters require positive cell radius and line "
-                              "thickness, with a non-negative falloff."));
+        return invalid_image("Hex grid parameters require positive cell radius and line "
+                             "thickness, with a non-negative falloff.");
     }
 
     auto image{make_image(parameters.width, parameters.height, transparent)};
