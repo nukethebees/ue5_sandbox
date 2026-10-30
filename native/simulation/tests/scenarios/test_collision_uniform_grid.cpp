@@ -185,9 +185,11 @@ struct ExpectedTrace {
 
 struct TraceGeometryCase {
     char const* name;
-    Vector3f location;
+    std::vector<Vector3f> locations;
     Vector3f half_extents;
     std::vector<ExpectedTrace> traces;
+    collision::CellCoord grid_dimensions{trace_grid_dims};
+    Vector3f cell_dimensions{trace_cell_dims};
 };
 
 class UniformGridTraceGeometry : public ::testing::TestWithParam<TraceGeometryCase> {};
@@ -365,44 +367,6 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridContainsAllEntityTypes) {
 /* ------------------------------------------------------------------------------------------ */
 // Trace scenarios
 /* ------------------------------------------------------------------------------------------ */
-TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceHitsAndMisses) {
-    TraceFixture const fixture{std::array{Vector3f{}}, {10.f, 10.f, 10.f}};
-    std::array const cases{
-        ExpectedTrace{"Left to right", {-150, 0, 0}, {150, 0, 0}, 1, {-10, 0, 0}},
-        ExpectedTrace{"Right to left", {150, 0, 0}, {-150, 0, 0}, 1, {10, 0, 0}},
-        ExpectedTrace{"Diagonal", {-150, -150, -150}, {150, 150, 150}, 1, {-10, -10, -10}},
-        ExpectedTrace{"Off axis", {-150, 25, 0}, {150, 25, 0}, 0},
-        ExpectedTrace{"Inside origin", {}, {150, 0, 0}, 1, {}},
-    };
-    check_traces(fixture, cases);
-}
-
-TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceStopsAtEndpoint) {
-    TraceFixture const fixture{std::array{Vector3f{50, 0, 0}}, {10, 10, 10}};
-    check_traces(fixture, std::array{ExpectedTrace{"AABB beyond endpoint", {}, {20, 0, 0}, 0}});
-}
-
-TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceReturnsNearestHit) {
-    TraceFixture const fixture{std::array{Vector3f{60, 0, 0}, Vector3f{20, 0, 0}}, {5, 5, 5}};
-    check_traces(
-        fixture,
-        std::array{ExpectedTrace{"Nearest of two entities", {}, {90, 0, 0}, 1, {15, 0, 0}, 1}});
-}
-
-TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceHandlesZeroLengthTraces) {
-    TraceFixture const fixture{std::array{Vector3f{50, 0, 0}}, {10, 10, 10}};
-    check_traces(
-        fixture,
-        std::array{ExpectedTrace{"Stationary point inside", {50, 0, 0}, {50, 0, 0}, 1, {50, 0, 0}},
-                   ExpectedTrace{"Stationary point outside", {}, {}, 0}});
-}
-
-TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceIncludesNegativeEndpointBoundary) {
-    TraceFixture const fixture{std::array{Vector3f{-10, 0, 0}}, {10, 10, 10}};
-    check_traces(fixture,
-                 std::array{ExpectedTrace{"Negative endpoint contact", {10, 0, 0}, {}, 1, {}}});
-}
-
 TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceAppliesAABBCentre) {
     // A quarter turn moves the offset centre into a different grid cell and swaps X/Y extents.
     TraceFixture rotated{std::array{Vector3f{}},
@@ -536,117 +500,59 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceAppliesAABBCentre) {
     }
 }
 
-TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceAxisParallelAndOrigin) {
-    Vector3f const entity_centre{};
-    Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
-    constexpr float trace_extent{150.f};
-    constexpr float outside_slab{11.f};
-    constexpr float near_parallel_offset{9.f};
-    constexpr float near_parallel_delta{0.0001f};
-    auto const near_parallel_entry_y{near_parallel_offset +
-                                     near_parallel_delta *
-                                         ((trace_extent - 10.f) / (2.f * trace_extent))};
-
-    std::array<Vector3f, 1> const entity_locations{{entity_centre}};
-    TraceFixture const fixture{entity_locations, aabb_half_extents};
-    auto cases{axis_traces(-trace_extent, trace_extent, -10.f)};
-    cases.insert(cases.end(),
-                 {
-                     {"X-parallel trace outside Y slab",
-                      {{-trace_extent, outside_slab, 0.f}},
-                      {{trace_extent, outside_slab, 0.f}},
-                      0},
-                     {"Y-parallel trace outside X slab",
-                      {{outside_slab, -trace_extent, 0.f}},
-                      {{outside_slab, trace_extent, 0.f}},
-                      0},
-                     {"Z-parallel trace outside X slab",
-                      {{outside_slab, 0.f, -trace_extent}},
-                      {{outside_slab, 0.f, trace_extent}},
-                      0},
-                     {"Signed-zero components preserve axis-parallel hit",
-                      {{-trace_extent, -0.0f, 0.f}},
-                      {{trace_extent, 0.0f, -0.0f}},
-                      1,
-                      {{-10.f, 0.f, 0.f}}},
-                     {"Near-parallel trace inside slab",
-                      {{-trace_extent, near_parallel_offset, 0.f}},
-                      {{trace_extent, near_parallel_offset + near_parallel_delta, 0.f}},
-                      1,
-                      {{-10.f, near_parallel_entry_y, 0.f}}},
-                     {"Near-parallel trace outside slab",
-                      {{-trace_extent, outside_slab, 0.f}},
-                      {{trace_extent, outside_slab + near_parallel_delta, 0.f}},
-                      0},
-                 });
-
-    check_traces(fixture, cases);
-}
-
-TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceSurfaceContacts) {
-    Vector3f const entity_centre{};
-    Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
-    constexpr float outside_face{20.f};
-    constexpr float face{10.f};
-    constexpr float just_outside_face{10.5f};
-
-    std::array<Vector3f, 1> const entity_locations{{entity_centre}};
-    TraceFixture const fixture{entity_locations, aabb_half_extents};
-    auto cases{axis_traces(-outside_face, -face, -face)};
-    cases.insert(cases.end(),
-                 {
-                     {"Segment starts on face and points outward",
-                      {{face, 0.f, 0.f}},
-                      {{outside_face, 0.f, 0.f}},
-                      1,
-                      {{face, 0.f, 0.f}}},
-                     {"Segment starts on face and points inward",
-                      {{-face, 0.f, 0.f}},
-                      {{0.f, 0.f, 0.f}},
-                      1,
-                      {{-face, 0.f, 0.f}}},
-                     {"Segment lies on AABB face",
-                      {{-outside_face, face, 0.f}},
-                      {{outside_face, face, 0.f}},
-                      1,
-                      {{-face, face, 0.f}}},
-                     {"Segment lies on AABB edge",
-                      {{-outside_face, face, face}},
-                      {{outside_face, face, face}},
-                      1,
-                      {{-face, face, face}}},
-                     {"Segment grazes AABB corner",
-                      {{-outside_face, 0.f, 0.f}},
-                      {{0.f, outside_face, outside_face}},
-                      1,
-                      {{-face, face, face}}},
-                     {"Parallel segment just outside face",
-                      {{-outside_face, just_outside_face, 0.f}},
-                      {{outside_face, just_outside_face, 0.f}},
-                      0},
-                     {"Stationary point on face",
-                      {{face, 0.f, 0.f}},
-                      {{face, 0.f, 0.f}},
-                      1,
-                      {{face, 0.f, 0.f}}},
-                     {"Stationary point on corner",
-                      {{face, face, face}},
-                      {{face, face, face}},
-                      1,
-                      {{face, face, face}}},
-                     {"Stationary point just outside face",
-                      {{just_outside_face, 0.f, 0.f}},
-                      {{just_outside_face, 0.f, 0.f}},
-                      0},
-                 });
-
-    check_traces(fixture, cases);
-}
-
-TEST_P(UniformGridTraceGeometry, BoundaryAndDegenerateBatchesPreserveContacts) {
+TEST_P(UniformGridTraceGeometry, ReturnsExpectedContacts) {
     auto const& scenario{GetParam()};
-    TraceFixture const fixture{std::array{scenario.location}, scenario.half_extents};
+    TraceFixture const fixture{scenario.locations,
+                               scenario.half_extents,
+                               {},
+                               scenario.grid_dimensions,
+                               scenario.cell_dimensions};
+    if (scenario.grid_dimensions == collision::CellCoord{1, 1, 1}) {
+        EXPECT_EQ(fixture.grid.num_cells().value(), 1);
+        EXPECT_EQ(fixture.grid.get_cell_entities({}).size(), 1);
+    }
     check_traces(fixture, scenario.traces);
+}
+
+auto axis_parallel_traces() -> std::vector<ExpectedTrace> {
+    auto cases{axis_traces(-150.f, 150.f, -10.f)};
+    cases.insert(
+        cases.end(),
+        {
+            {"X-parallel trace outside Y slab", {-150, 11, 0}, {150, 11, 0}, 0},
+            {"Y-parallel trace outside X slab", {11, -150, 0}, {11, 150, 0}, 0},
+            {"Z-parallel trace outside X slab", {11, 0, -150}, {11, 0, 150}, 0},
+            {"Signed-zero components preserve axis-parallel hit",
+             {-150, -0.f, 0},
+             {150, 0, -0.f},
+             1,
+             {-10, 0, 0}},
+            {"Near-parallel trace inside slab",
+             {-150, 9, 0},
+             {150, 9.f + .0001f, 0},
+             1,
+             {-10, 9.f + .0001f * (140.f / 300.f), 0}},
+            {"Near-parallel trace outside slab", {-150, 11, 0}, {150, 11.f + .0001f, 0}, 0},
+        });
+    return cases;
+}
+
+auto surface_contacts() -> std::vector<ExpectedTrace> {
+    auto cases{axis_traces(-20.f, -10.f, -10.f)};
+    cases.insert(
+        cases.end(),
+        {
+            {"Segment starts on face and points outward", {10, 0, 0}, {20, 0, 0}, 1, {10, 0, 0}},
+            {"Segment starts on face and points inward", {-10, 0, 0}, {}, 1, {-10, 0, 0}},
+            {"Segment lies on AABB face", {-20, 10, 0}, {20, 10, 0}, 1, {-10, 10, 0}},
+            {"Segment lies on AABB edge", {-20, 10, 10}, {20, 10, 10}, 1, {-10, 10, 10}},
+            {"Segment grazes AABB corner", {-20, 0, 0}, {0, 20, 20}, 1, {-10, 10, 10}},
+            {"Parallel segment just outside face", {-20, 10.5f, 0}, {20, 10.5f, 0}, 0},
+            {"Stationary point on face", {10, 0, 0}, {10, 0, 0}, 1, {10, 0, 0}},
+            {"Stationary point on corner", {10, 10, 10}, {10, 10, 10}, 1, {10, 10, 10}},
+            {"Stationary point just outside face", {10.5f, 0, 0}, {10.5f, 0, 0}, 0},
+        });
+    return cases;
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -654,319 +560,317 @@ INSTANTIATE_TEST_SUITE_P(
     UniformGridTraceGeometry,
     ::testing::Values(
         TraceGeometryCase{"XCellPlane",
-                          {-10, 0, 0},
+                          {{-10, 0, 0}},
                           {10, 10, 10},
                           {{"Y trace on plane", {0, -150, 0}, {0, 150, 0}, 1, {0, -10, 0}},
                            {"Ends at origin", {150, 0, 0}, {}, 1, {}},
                            {"Starts at origin", {}, {-150, 0, 0}, 1, {}}}},
         TraceGeometryCase{"YCellPlane",
-                          {0, -10, 0},
+                          {{0, -10, 0}},
                           {10, 10, 10},
                           {{"X trace on plane", {-150, 0, 0}, {150, 0, 0}, 1, {-10, 0, 0}},
                            {"Ends at origin", {0, 150, 0}, {}, 1, {}}}},
         TraceGeometryCase{"ZCellPlane",
-                          {0, 0, -10},
+                          {{0, 0, -10}},
                           {10, 10, 10},
                           {{"X trace on plane", {-150, 0, 0}, {150, 0, 0}, 1, {-10, 0, 0}},
                            {"Ends at origin", {0, 0, 150}, {}, 1, {}}}},
         TraceGeometryCase{"CellEdge",
-                          {10, -10, 0},
+                          {{10, -10, 0}},
                           {10, 10, 10},
                           {{"Positive diagonal", {-150, -150, 0}, {150, 150, 0}, 1, {}},
                            {"Negative diagonal", {150, 150, 0}, {-150, -150, 0}, 1, {}}}},
         TraceGeometryCase{"CellCorner",
-                          {10, -10, -10},
+                          {{10, -10, -10}},
                           {10, 10, 10},
                           {{"Three-axis diagonal", {-150, -150, -150}, {150, 150, 150}, 1, {}}}},
         TraceGeometryCase{"InteriorPoint",
-                          {25, 25, 25},
+                          {{25, 25, 25}},
                           {},
                           {{"Crosses point", {0, 25, 25}, {50, 25, 25}, 1, {25, 25, 25}},
                            {"Stationary on point", {25, 25, 25}, {25, 25, 25}, 1, {25, 25, 25}},
                            {"Misses point", {0, 26, 25}, {50, 26, 25}, 0}}},
         TraceGeometryCase{"InteriorPlane",
-                          {25, 25, 25},
+                          {{25, 25, 25}},
                           {0, 10, 10},
                           {{"Crosses plane", {0, 25, 25}, {50, 25, 25}, 1, {25, 25, 25}}}},
         TraceGeometryCase{"InteriorLine",
-                          {25, 25, 25},
+                          {{25, 25, 25}},
                           {10, 0, 0},
                           {{"Crosses line", {25, 0, 25}, {25, 50, 25}, 1, {25, 25, 25}}}},
         TraceGeometryCase{"GridCornerPoint",
-                          {},
+                          {{}},
                           {},
                           {{"Crosses point", {-25, 0, 0}, {25, 0, 0}, 1, {}},
-                           {"Stationary on point", {}, {}, 1, {}}}}),
+                           {"Stationary on point", {}, {}, 1, {}}}},
+        TraceGeometryCase{"HitsAndMisses",
+                          {{}},
+                          {10, 10, 10},
+                          {
+                              {"Left to right", {-150, 0, 0}, {150, 0, 0}, 1, {-10, 0, 0}},
+                              {"Right to left", {150, 0, 0}, {-150, 0, 0}, 1, {10, 0, 0}},
+                              {"Diagonal", {-150, -150, -150}, {150, 150, 150}, 1, {-10, -10, -10}},
+                              {"Off axis", {-150, 25, 0}, {150, 25, 0}, 0},
+                              {"Inside origin", {}, {150, 0, 0}, 1, {}},
+                          }},
+        TraceGeometryCase{"StopsAtEndpoint",
+                          {{50, 0, 0}},
+                          {10, 10, 10},
+                          {{"AABB beyond endpoint", {}, {20, 0, 0}, 0}}},
+        TraceGeometryCase{"NearestHit",
+                          {{60, 0, 0}, {20, 0, 0}},
+                          {5, 5, 5},
+                          {{"Nearest of two entities", {}, {90, 0, 0}, 1, {15, 0, 0}, 1}}},
+        TraceGeometryCase{"ZeroLength",
+                          {{50, 0, 0}},
+                          {10, 10, 10},
+                          {{"Stationary point inside", {50, 0, 0}, {50, 0, 0}, 1, {50, 0, 0}},
+                           {"Stationary point outside", {}, {}, 0}}},
+        TraceGeometryCase{"NegativeEndpointBoundary",
+                          {{-10, 0, 0}},
+                          {10, 10, 10},
+                          {{"Negative endpoint contact", {10, 0, 0}, {}, 1, {}}}},
+        TraceGeometryCase{"AxisParallelAndOrigin", {{}}, {10, 10, 10}, axis_parallel_traces()},
+        TraceGeometryCase{"SurfaceContacts", {{}}, {10, 10, 10}, surface_contacts()},
+        TraceGeometryCase{
+            "ShortAndNearParallelSegments",
+            {{}},
+            {10, 10, 10},
+            {
+                {"Short segment stops before face", {-20.f, 0.f, 0.f}, {-10.5f, 0.f, 0.f}, 0},
+                {"Short segment stops on face",
+                 {-20.f, 0.f, 0.f},
+                 {-10.f, 0.f, 0.f},
+                 1,
+                 {-10.f, 0.f, 0.f}},
+                {"Short segment crosses face",
+                 {-10.25f, 0.f, 0.f},
+                 {-9.75f, 0.f, 0.f},
+                 1,
+                 {-10.f, 0.f, 0.f}},
+                {"Very short segment remains inside",
+                 {0.f, 1.f, 2.f},
+                 {0.001f, 1.f, 2.f},
+                 1,
+                 {0.f, 1.f, 2.f}},
+                {"Segment remains entirely inside",
+                 {-1.f, 2.f, 3.f},
+                 {1.f, 2.f, 3.f},
+                 1,
+                 {-1.f, 2.f, 3.f}},
+                {"Very short segment remains outside", {20.f, 0.f, 0.f}, {20.001f, 0.f, 0.f}, 0},
+                {"Segment points away from AABB", {-20.f, 0.f, 0.f}, {-21.f, 0.f, 0.f}, 0},
+            }},
+        TraceGeometryCase{
+            "ClipsToGridBounds",
+            {{}},
+            {10, 10, 10},
+            {
+                {"X segment crosses grid from outside",
+                 {-500.f, 0.f, 0.f},
+                 {500.f, 0.f, 0.f},
+                 1,
+                 {-10.f, 0.f, 0.f}},
+                {"Reverse X segment crosses grid from outside",
+                 {500.f, 0.f, 0.f},
+                 {-500.f, 0.f, 0.f},
+                 1,
+                 {10.f, 0.f, 0.f}},
+                {"Y segment crosses grid from outside",
+                 {0.f, -500.f, 0.f},
+                 {0.f, 500.f, 0.f},
+                 1,
+                 {0.f, -10.f, 0.f}},
+                {"Segment starts on negative grid boundary",
+                 {-400.f, 0.f, 0.f},
+                 {0.f, 0.f, 0.f},
+                 1,
+                 {-10.f, 0.f, 0.f}},
+                {"Segment starts on positive grid boundary",
+                 {400.f, 0.f, 0.f},
+                 {0.f, 0.f, 0.f},
+                 1,
+                 {10.f, 0.f, 0.f}},
+                {"Outside segment stops at grid before AABB",
+                 {-500.f, 0.f, 0.f},
+                 {-400.f, 0.f, 0.f},
+                 0},
+                {"Segment remains fully outside grid", {-500.f, 0.f, 0.f}, {-525.f, 0.f, 0.f}, 0},
+                {"Distant X segment crosses grid",
+                 {-20000.f, 0.f, 0.f},
+                 {20000.f, 0.f, 0.f},
+                 1,
+                 {-10.f, 0.f, 0.f}},
+                {"Distant segment remains outside negative grid boundary",
+                 {-20000.f, 0.f, 0.f},
+                 {-19000.f, 0.f, 0.f},
+                 0},
+                {"Distant segment remains outside positive grid boundary",
+                 {19000.f, 0.f, 0.f},
+                 {20000.f, 0.f, 0.f},
+                 0},
+            }},
+        TraceGeometryCase{"CrossCellNearestHit",
+                          {{150, 0, 0}, {-150, 0, 0}},
+                          {10, 10, 10},
+                          {
+                              {"Positive trace returns nearest entity in earlier cell",
+                               {-300.f, 0.f, 0.f},
+                               {300.f, 0.f, 0.f},
+                               1,
+                               {-160.f, 0.f, 0.f},
+                               1},
+                              {"Negative trace returns nearest entity in earlier cell",
+                               {300.f, 0.f, 0.f},
+                               {-300.f, 0.f, 0.f},
+                               1,
+                               {160.f, 0.f, 0.f},
+                               0},
+                          }},
+        TraceGeometryCase{"RepeatedAcrossCells",
+                          {{}},
+                          {160, 10, 10},
+                          {
+                              {"AABB repeated across cells returns one stable contact",
+                               {-300.f, 0.f, 0.f},
+                               {300.f, 0.f, 0.f},
+                               1,
+                               {-160.f, 0.f, 0.f}},
+                          }},
+        TraceGeometryCase{"NonuniformGrid",
+                          {{25, -30, 40}},
+                          {15, 20, 25},
+                          {
+                              {"Positive X trace in nonuniform grid",
+                               {-190.f, -30.f, 40.f},
+                               {190.f, -30.f, 40.f},
+                               1,
+                               {10.f, -30.f, 40.f}},
+                              {"Negative Y trace in nonuniform grid",
+                               {25.f, 300.f, 40.f},
+                               {25.f, -300.f, 40.f},
+                               1,
+                               {25.f, -10.f, 40.f}},
+                              {"Positive Z trace in nonuniform grid",
+                               {25.f, -30.f, -300.f},
+                               {25.f, -30.f, 300.f},
+                               1,
+                               {25.f, -30.f, 15.f}},
+                              {"Nonuniform-grid trace outside AABB slab",
+                               {-190.f, -5.f, 40.f},
+                               {190.f, -5.f, 40.f},
+                               0},
+                          },
+                          {5, 7, 3},
+                          {80, 125, 250}},
+        TraceGeometryCase{"NonuniformGridBoundary",
+                          {{-55, -30, 40}},
+                          {15, 20, 25},
+                          {
+                              {"Trace follows cell boundary in odd nonuniform grid",
+                               {-40.f, -300.f, 40.f},
+                               {-40.f, 300.f, 40.f},
+                               1,
+                               {-40.f, -50.f, 40.f}},
+                          },
+                          {5, 7, 3},
+                          {80, 125, 250}},
+        TraceGeometryCase{"SingleCell",
+                          {{}},
+                          {10, 10, 10},
+                          {
+                              {"Diagonal trace crosses single-cell grid",
+                               {-100.f, -100.f, -100.f},
+                               {100.f, 100.f, 100.f},
+                               1,
+                               {-10.f, -10.f, -10.f}},
+                              {"Stationary trace hits inside single-cell grid", {}, {}, 1, {}},
+                              {"Trace enters single-cell grid from positive boundary",
+                               {50.f, 0.f, 0.f},
+                               {},
+                               1,
+                               {10.f, 0.f, 0.f}},
+                              {"Trace along excluded single-cell positive boundary",
+                               {50.f, -20.f, 0.f},
+                               {50.f, 20.f, 0.f},
+                               0},
+                          },
+                          {1, 1, 1},
+                          {100, 120, 140}},
+        TraceGeometryCase{
+            "BoundaryPrecision",
+            {{}},
+            {10, 10, 10},
+            {
+                {"Parallel trace exactly on face",
+                 {-20.f, 10.f, 0.f},
+                 {20.f, 10.f, 0.f},
+                 1,
+                 {-10.f, 10.f, 0.f}},
+                {"Parallel trace one float inside face",
+                 {-20.f, std::nextafter(10.f, 0.f), 0.f},
+                 {20.f, std::nextafter(10.f, 0.f), 0.f},
+                 1,
+                 {-10.f, std::nextafter(10.f, 0.f), 0.f}},
+                {"Parallel trace one float outside face",
+                 {-20.f, std::nextafter(10.f, std::numeric_limits<float>::infinity()), 0.f},
+                 {20.f, std::nextafter(10.f, std::numeric_limits<float>::infinity()), 0.f},
+                 0},
+                {"Endpoint one float before face",
+                 {-20.f, 0.f, 0.f},
+                 {std::nextafter(-10.f, -std::numeric_limits<float>::infinity()), 0.f, 0.f},
+                 0},
+                {"Endpoint exactly on face",
+                 {-20.f, 0.f, 0.f},
+                 {-10.f, 0.f, 0.f},
+                 1,
+                 {-10.f, 0.f, 0.f}},
+                {"Endpoint one float beyond face",
+                 {-20.f, 0.f, 0.f},
+                 {std::nextafter(-10.f, 0.f), 0.f, 0.f},
+                 1,
+                 {-10.f, 0.f, 0.f}},
+            }},
+        TraceGeometryCase{"ProductionScale",
+                          {{-999000, 0, 0}, {999000, 0, 0}},
+                          {1000, 1000, 1000},
+                          {
+                              {"Trace starts on negative production grid boundary",
+                               {-1000000.f, 0.f, 0.f},
+                               {-990000.f, 0.f, 0.f},
+                               1,
+                               {-1000000.f, 0.f, 0.f},
+                               0},
+                              {"Trace ends on positive production grid boundary",
+                               {990000.f, 0.f, 0.f},
+                               {1000000.f, 0.f, 0.f},
+                               1,
+                               {998000.f, 0.f, 0.f},
+                               1},
+                              {"Trace follows negative production grid boundary",
+                               {-1000000.f, -5000.f, 0.f},
+                               {-1000000.f, 5000.f, 0.f},
+                               1,
+                               {-1000000.f, -1000.f, 0.f},
+                               0},
+                              {"Trace follows positive production grid boundary",
+                               {1000000.f, -5000.f, 0.f},
+                               {1000000.f, 5000.f, 0.f},
+                               0},
+                              {"Trace follows one float inside positive production grid boundary",
+                               {std::nextafter(1000000.f, 0.f), -5000.f, 0.f},
+                               {std::nextafter(1000000.f, 0.f), 5000.f, 0.f},
+                               1,
+                               {std::nextafter(1000000.f, 0.f), -1000.f, 0.f},
+                               1},
+                              {"Outside trace only touches positive production grid boundary",
+                               {1010000.f, 0.f, 0.f},
+                               {1000000.f, 0.f, 0.f},
+                               0},
+                          },
+                          grid_dims,
+                          cell_dims}),
     [](auto const& info) { return info.param.name; });
-
-TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceShortAndNearParallelSegments) {
-    Vector3f const entity_centre{};
-    Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
-    constexpr float face{-10.f};
-
-    std::array<Vector3f, 1> const entity_locations{{entity_centre}};
-    TraceFixture const fixture{entity_locations, aabb_half_extents};
-    std::array<ExpectedTrace, 7> const cases{{
-        {"Short segment stops before face", {{-20.f, 0.f, 0.f}}, {{-10.5f, 0.f, 0.f}}, 0},
-        {"Short segment stops on face",
-         {{-20.f, 0.f, 0.f}},
-         {{face, 0.f, 0.f}},
-         1,
-         {{face, 0.f, 0.f}}},
-        {"Short segment crosses face",
-         {{-10.25f, 0.f, 0.f}},
-         {{-9.75f, 0.f, 0.f}},
-         1,
-         {{face, 0.f, 0.f}}},
-        {"Very short segment remains inside",
-         {{0.f, 1.f, 2.f}},
-         {{0.001f, 1.f, 2.f}},
-         1,
-         {{0.f, 1.f, 2.f}}},
-        {"Segment remains entirely inside",
-         {{-1.f, 2.f, 3.f}},
-         {{1.f, 2.f, 3.f}},
-         1,
-         {{-1.f, 2.f, 3.f}}},
-        {"Very short segment remains outside", {{20.f, 0.f, 0.f}}, {{20.001f, 0.f, 0.f}}, 0},
-        {"Segment points away from AABB", {{-20.f, 0.f, 0.f}}, {{-21.f, 0.f, 0.f}}, 0},
-    }};
-
-    check_traces(fixture, cases);
-}
-
-TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceClipsToGridBounds) {
-    Vector3f const entity_centre{};
-    Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
-    constexpr float grid_extent{400.f};
-    constexpr float outside_grid{500.f};
-    constexpr float distant_outside_grid{20000.f};
-
-    std::array<Vector3f, 1> const entity_locations{{entity_centre}};
-    TraceFixture const fixture{entity_locations, aabb_half_extents};
-    std::array<ExpectedTrace, 10> const cases{{
-        {"X segment crosses grid from outside",
-         {{-outside_grid, 0.f, 0.f}},
-         {{outside_grid, 0.f, 0.f}},
-         1,
-         {{-10.f, 0.f, 0.f}}},
-        {"Reverse X segment crosses grid from outside",
-         {{outside_grid, 0.f, 0.f}},
-         {{-outside_grid, 0.f, 0.f}},
-         1,
-         {{10.f, 0.f, 0.f}}},
-        {"Y segment crosses grid from outside",
-         {{0.f, -outside_grid, 0.f}},
-         {{0.f, outside_grid, 0.f}},
-         1,
-         {{0.f, -10.f, 0.f}}},
-        {"Segment starts on negative grid boundary",
-         {{-grid_extent, 0.f, 0.f}},
-         {{0.f, 0.f, 0.f}},
-         1,
-         {{-10.f, 0.f, 0.f}}},
-        {"Segment starts on positive grid boundary",
-         {{grid_extent, 0.f, 0.f}},
-         {{0.f, 0.f, 0.f}},
-         1,
-         {{10.f, 0.f, 0.f}}},
-        {"Outside segment stops at grid before AABB",
-         {{-outside_grid, 0.f, 0.f}},
-         {{-grid_extent, 0.f, 0.f}},
-         0},
-        {"Segment remains fully outside grid",
-         {{-outside_grid, 0.f, 0.f}},
-         {{-outside_grid - 25.f, 0.f, 0.f}},
-         0},
-        {"Distant X segment crosses grid",
-         {{-distant_outside_grid, 0.f, 0.f}},
-         {{distant_outside_grid, 0.f, 0.f}},
-         1,
-         {{-10.f, 0.f, 0.f}}},
-        {"Distant segment remains outside negative grid boundary",
-         {{-distant_outside_grid, 0.f, 0.f}},
-         {{-distant_outside_grid + 1000.f, 0.f, 0.f}},
-         0},
-        {"Distant segment remains outside positive grid boundary",
-         {{distant_outside_grid - 1000.f, 0.f, 0.f}},
-         {{distant_outside_grid, 0.f, 0.f}},
-         0},
-    }};
-
-    check_traces(fixture, cases);
-}
-
-TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceCrossCellNearestHit) {
-    Vector3f const positive_entity_centre{{150.f, 0.f, 0.f}};
-    Vector3f const negative_entity_centre{{-150.f, 0.f, 0.f}};
-    Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
-    constexpr float trace_extent{300.f};
-
-    {
-        std::array<Vector3f, 2> const entity_locations{{
-            positive_entity_centre,
-            negative_entity_centre,
-        }};
-        TraceFixture const fixture{entity_locations, aabb_half_extents};
-        std::array<ExpectedTrace, 2> const cases{{
-            {"Positive trace returns nearest entity in earlier cell",
-             {{-trace_extent, 0.f, 0.f}},
-             {{trace_extent, 0.f, 0.f}},
-             1,
-             {{-160.f, 0.f, 0.f}},
-             1},
-            {"Negative trace returns nearest entity in earlier cell",
-             {{trace_extent, 0.f, 0.f}},
-             {{-trace_extent, 0.f, 0.f}},
-             1,
-             {{160.f, 0.f, 0.f}},
-             0},
-        }};
-        check_traces(fixture, cases);
-    }
-
-    {
-        Vector3f const wide_aabb_half_extents{{160.f, 10.f, 10.f}};
-        std::array<Vector3f, 1> const entity_locations{{{{0.f, 0.f, 0.f}}}};
-        TraceFixture const fixture{entity_locations, wide_aabb_half_extents};
-        std::array<ExpectedTrace, 1> const cases{{
-            {"AABB repeated across cells returns one stable contact",
-             {{-trace_extent, 0.f, 0.f}},
-             {{trace_extent, 0.f, 0.f}},
-             1,
-             {{-160.f, 0.f, 0.f}}},
-        }};
-        check_traces(fixture, cases);
-    }
-}
-
-TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceVariedGridGeometry) {
-    collision::CellCoord const fixture_grid_dims{5, 7, 3};
-    Vector3f const fixture_cell_dims{{80.f, 125.f, 250.f}};
-    Vector3f const entity_centre{{25.f, -30.f, 40.f}};
-    Vector3f const aabb_half_extents{{15.f, 20.f, 25.f}};
-
-    std::array<Vector3f, 1> const entity_locations{{entity_centre}};
-    TraceFixture const fixture{
-        entity_locations, aabb_half_extents, Vector3f{}, fixture_grid_dims, fixture_cell_dims};
-    std::array<ExpectedTrace, 4> const cases{{
-        {"Positive X trace in nonuniform grid",
-         {{-190.f, -30.f, 40.f}},
-         {{190.f, -30.f, 40.f}},
-         1,
-         {{10.f, -30.f, 40.f}}},
-        {"Negative Y trace in nonuniform grid",
-         {{25.f, 300.f, 40.f}},
-         {{25.f, -300.f, 40.f}},
-         1,
-         {{25.f, -10.f, 40.f}}},
-        {"Positive Z trace in nonuniform grid",
-         {{25.f, -30.f, -300.f}},
-         {{25.f, -30.f, 300.f}},
-         1,
-         {{25.f, -30.f, 15.f}}},
-        {"Nonuniform-grid trace outside AABB slab",
-         {{-190.f, -5.f, 40.f}},
-         {{190.f, -5.f, 40.f}},
-         0},
-    }};
-    check_traces(fixture, cases);
-
-    Vector3f const boundary_entity_centre{{-55.f, -30.f, 40.f}};
-    std::array<Vector3f, 1> const boundary_entity_locations{{boundary_entity_centre}};
-    TraceFixture const boundary_fixture{boundary_entity_locations,
-                                        aabb_half_extents,
-                                        Vector3f{},
-                                        fixture_grid_dims,
-                                        fixture_cell_dims};
-    std::array<ExpectedTrace, 1> const boundary_cases{{
-        {"Trace follows cell boundary in odd nonuniform grid",
-         {{-40.f, -300.f, 40.f}},
-         {{-40.f, 300.f, 40.f}},
-         1,
-         {{-40.f, -50.f, 40.f}}},
-    }};
-    check_traces(boundary_fixture, boundary_cases);
-
-    collision::CellCoord const single_cell_grid_dims{1, 1, 1};
-    Vector3f const single_cell_dims{{100.f, 120.f, 140.f}};
-    Vector3f const single_cell_half_extents{{10.f, 10.f, 10.f}};
-    std::array<Vector3f, 1> const single_cell_locations{{Vector3f{}}};
-    TraceFixture const single_cell_fixture{single_cell_locations,
-                                           single_cell_half_extents,
-                                           Vector3f{},
-                                           single_cell_grid_dims,
-                                           single_cell_dims};
-    EXPECT_EQ(1, single_cell_fixture.grid.num_cells().value()) << "Single-cell grid has one cell";
-    EXPECT_EQ(1, static_cast<std::int32_t>(single_cell_fixture.grid.get_cell_entities({}).size()))
-        << "Single-cell grid contains its entity";
-
-    std::array<ExpectedTrace, 4> const single_cell_cases{{
-        {"Diagonal trace crosses single-cell grid",
-         {{-100.f, -100.f, -100.f}},
-         {{100.f, 100.f, 100.f}},
-         1,
-         {{-10.f, -10.f, -10.f}}},
-        {"Stationary trace hits inside single-cell grid", Vector3f{}, Vector3f{}, 1, Vector3f{}},
-        {"Trace enters single-cell grid from positive boundary",
-         {{50.f, 0.f, 0.f}},
-         Vector3f{},
-         1,
-         {{10.f, 0.f, 0.f}}},
-        {"Trace along excluded single-cell positive boundary",
-         {{50.f, -20.f, 0.f}},
-         {{50.f, 20.f, 0.f}},
-         0},
-    }};
-    check_traces(single_cell_fixture, single_cell_cases);
-}
-
-TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceBoundaryPrecision) {
-    Vector3f const entity_centre{};
-    Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
-    constexpr float face{10.f};
-    constexpr float negative_face{-face};
-    constexpr float trace_extent{20.f};
-    auto const inside_face{std::nextafter(face, 0.f)};
-    auto const outside_face{std::nextafter(face, std::numeric_limits<float>::infinity())};
-    auto const before_negative_face{
-        std::nextafter(negative_face, -std::numeric_limits<float>::infinity())};
-    auto const after_negative_face{std::nextafter(negative_face, 0.f)};
-
-    std::array<Vector3f, 1> const entity_locations{{entity_centre}};
-    TraceFixture const fixture{entity_locations, aabb_half_extents};
-    std::array<ExpectedTrace, 6> const cases{{
-        {"Parallel trace exactly on face",
-         {{-trace_extent, face, 0.f}},
-         {{trace_extent, face, 0.f}},
-         1,
-         {{negative_face, face, 0.f}}},
-        {"Parallel trace one float inside face",
-         {{-trace_extent, inside_face, 0.f}},
-         {{trace_extent, inside_face, 0.f}},
-         1,
-         {{negative_face, inside_face, 0.f}}},
-        {"Parallel trace one float outside face",
-         {{-trace_extent, outside_face, 0.f}},
-         {{trace_extent, outside_face, 0.f}},
-         0},
-        {"Endpoint one float before face",
-         {{-trace_extent, 0.f, 0.f}},
-         {{before_negative_face, 0.f, 0.f}},
-         0},
-        {"Endpoint exactly on face",
-         {{-trace_extent, 0.f, 0.f}},
-         {{negative_face, 0.f, 0.f}},
-         1,
-         {{negative_face, 0.f, 0.f}}},
-        {"Endpoint one float beyond face",
-         {{-trace_extent, 0.f, 0.f}},
-         {{after_negative_face, 0.f, 0.f}},
-         1,
-         {{negative_face, 0.f, 0.f}}},
-    }};
-    check_traces(fixture, cases);
-}
 
 TEST(WorldlessSpaceGameSimulation, CollisionUniformGridRebuildLifecycle) {
     Vector3f const initial_location{{-150.f, 0.f, 0.f}};
@@ -1390,52 +1294,6 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridDenseAndWideAABBs) {
          {{-160.f, -160.f, -160.f}}},
     }};
     check_traces(wide_fixture, wide_cases);
-}
-
-TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceProductionScale) {
-    constexpr float grid_boundary{1000000.f};
-    auto const inside_positive_grid_boundary{std::nextafter(grid_boundary, 0.f)};
-    Vector3f const aabb_half_extents{{1000.f, 1000.f, 1000.f}};
-    Vector3f const negative_entity{{-999000.f, 0.f, 0.f}};
-    Vector3f const positive_entity{{999000.f, 0.f, 0.f}};
-    std::array<Vector3f, 2> const entity_locations{{negative_entity, positive_entity}};
-    TraceFixture const fixture{
-        entity_locations, aabb_half_extents, Vector3f{}, grid_dims, cell_dims};
-    std::array<ExpectedTrace, 6> const cases{{
-        {"Trace starts on negative production grid boundary",
-         {{-grid_boundary, 0.f, 0.f}},
-         {{-990000.f, 0.f, 0.f}},
-         1,
-         {{-grid_boundary, 0.f, 0.f}},
-         0},
-        {"Trace ends on positive production grid boundary",
-         {{990000.f, 0.f, 0.f}},
-         {{grid_boundary, 0.f, 0.f}},
-         1,
-         {{998000.f, 0.f, 0.f}},
-         1},
-        {"Trace follows negative production grid boundary",
-         {{-grid_boundary, -5000.f, 0.f}},
-         {{-grid_boundary, 5000.f, 0.f}},
-         1,
-         {{-grid_boundary, -1000.f, 0.f}},
-         0},
-        {"Trace follows positive production grid boundary",
-         {{grid_boundary, -5000.f, 0.f}},
-         {{grid_boundary, 5000.f, 0.f}},
-         0},
-        {"Trace follows one float inside positive production grid boundary",
-         {{inside_positive_grid_boundary, -5000.f, 0.f}},
-         {{inside_positive_grid_boundary, 5000.f, 0.f}},
-         1,
-         {{inside_positive_grid_boundary, -1000.f, 0.f}},
-         1},
-        {"Outside trace only touches positive production grid boundary",
-         {{grid_boundary + 10000.f, 0.f, 0.f}},
-         {{grid_boundary, 0.f, 0.f}},
-         0},
-    }};
-    check_traces(fixture, cases);
 }
 
 TEST(WorldlessSpaceGameSimulation, CollisionUniformGridStaticGeometry) {
