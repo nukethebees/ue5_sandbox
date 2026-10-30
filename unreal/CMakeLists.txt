@@ -241,12 +241,10 @@ sandbox_set_automation_test_properties(USFLoader.IncludedFunctionCompilation)
 sandbox_make_automation_exec_commands(material_synth_test_commands
   "SandboxEditor.MaterialSynth")
 add_unreal_editor_test(SandboxEditor.MaterialSynth
-  NO_LOCAL_DDC
   ARGUMENTS
     "${material_synth_test_commands}"
     -RenderOffscreen
     -AllowCommandletRendering
-    -DDC-ForceMemoryCache
   LABELS "material-synth;all"
   TIMEOUT 900
 )
