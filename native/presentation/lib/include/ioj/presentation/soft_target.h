@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/constrained_numbers.h>
 #include <ioj/presentation/agent_display_batch.h>
 #include <ioj/settings/soft_target.h>
 #include <ioj/sim/entities/entity_type_radii.h>
@@ -30,9 +31,15 @@ struct SoftTargetContext {
     float maximum_overlay_range{};
 };
 
+inline constexpr auto soft_target_range_policy{
+    ConstrainedValuePolicy{[](float const value) { return value >= 0.f && value <= 1.f; },
+                           "Soft-target range alpha must be in [0, 1]"}};
+
+using SoftTargetRange = ConstrainedValue<float, soft_target_range_policy>;
+
 struct SoftTargetResult {
     sim::EntityId id{};
-    float range_alpha{};
+    SoftTargetRange range_alpha{};
     float indicator_radius_pixels{};
     float world_units_per_pixel{};
     bool previous_target_can_fade{};
@@ -40,7 +47,7 @@ struct SoftTargetResult {
 
 struct SoftTargetVisual {
     sim::EntityId entity{};
-    float range_alpha{};
+    SoftTargetRange range_alpha{};
     float radius_pixels{};
     float world_units_per_pixel{};
 };
@@ -52,17 +59,24 @@ struct SoftTargetMarker {
     float visibility{};
 };
 
-struct SoftTargetState {
+struct SoftTargetTiming {
+    NonNegativeFinite<float> delta_seconds{};
+    NonNegativeFinite<float> pulse_duration{};
+    NonNegativeFinite<float> fade_duration{};
+};
+
+class SoftTargetState {
+  public:
     auto advance(std::span<AgentDisplayBatch const> batches,
                  SoftTargetResult const& selected,
-                 float delta_seconds,
-                 float pulse_duration,
-                 float fade_duration) -> std::array<SoftTargetMarker, 2>;
+                 SoftTargetTiming timing) -> std::array<SoftTargetMarker, 2>;
 
-    SoftTargetVisual active{};
-    SoftTargetVisual fading{};
-    float pulse_remaining{};
-    float fade_remaining{};
+    auto current_target() const noexcept -> sim::EntityId { return active_.entity; }
+  private:
+    SoftTargetVisual active_{};
+    SoftTargetVisual fading_{};
+    float pulse_remaining_{};
+    float fade_remaining_{};
 };
 
 auto select_soft_target(std::span<AgentDisplayBatch const> batches,

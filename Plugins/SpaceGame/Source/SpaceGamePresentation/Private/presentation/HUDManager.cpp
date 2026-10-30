@@ -149,8 +149,10 @@ void FHUDManager::initialise(sim::Mission const& new_mission,
         .turret = level_config.turrets.simulation.max_health.get().value(),
     };
     soft_target_selection_settings_ = overlay.soft_target;
-    soft_target_pulse_duration_ = FMath::Max(overlay.soft_target.pulse_duration, 0.0f);
-    soft_target_fade_out_duration_ = FMath::Max(overlay.soft_target.fade_out_duration, 0.0f);
+    soft_target_pulse_duration_ =
+        ioj::NonNegativeFinite<float>::make(FMath::Max(overlay.soft_target.pulse_duration, 0.0f));
+    soft_target_fade_out_duration_ = ioj::NonNegativeFinite<float>::make(
+        FMath::Max(overlay.soft_target.fade_out_duration, 0.0f));
     top_killer_ids_buffer.Reset();
     entity_overlay_objective_roles_.Reset();
     top_killer_ids_buffer.Reserve(entity_ledger->get_num_unique_ids_issued());
@@ -492,14 +494,15 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
                                 .effective_weapon_range = player_ship->get_laser_effective_range(),
                                 .maximum_overlay_range = entity_overlay_settings_.maximum_range},
                                soft_target_selection_settings_,
-                               registration.soft_targets.active.entity);
+                               registration.soft_targets.current_target());
     }
 
-    auto const markers{registration.soft_targets.advance(batches,
-                                                         soft_target,
-                                                         delta_seconds,
-                                                         soft_target_pulse_duration_,
-                                                         soft_target_fade_out_duration_)};
+    auto const markers{registration.soft_targets.advance(
+        batches,
+        soft_target,
+        {ioj::NonNegativeFinite<float>::make(delta_seconds > 0.f ? delta_seconds : 0.f),
+         soft_target_pulse_duration_,
+         soft_target_fade_out_duration_})};
 
     if (render_world_target) {
         auto const neutral_color{hud->get_soft_target_neutral_colour()};
@@ -619,11 +622,11 @@ void FHUDManager::add_world_soft_target(presentation::SoftTargetMarker const& ta
     }
 
     auto const target_fit_radius{visual.radius_pixels * visual.world_units_per_pixel};
-    auto const clamped_range_alpha{FMath::Clamp(visual.range_alpha, 0.0f, 1.0f)};
+    auto const range_alpha{visual.range_alpha.get()};
     auto const closing_scale{FMath::Lerp(
         FMath::Max(entity_overlay_settings_.soft_target.bracket_start_radius_multiplier, 1.0f),
         1.0f,
-        clamped_range_alpha)};
+        range_alpha)};
     auto const uniform_scale{target_fit_radius * closing_scale / soft_target_mesh_vertical_radius_};
     if (!FMath::IsFinite(uniform_scale) || uniform_scale <= UE_SMALL_NUMBER) {
         return;
@@ -643,8 +646,7 @@ void FHUDManager::add_world_soft_target(presentation::SoftTargetMarker const& ta
         return;
     }
 
-    auto const smooth_range{clamped_range_alpha * clamped_range_alpha *
-                            (3.0f - 2.0f * clamped_range_alpha)};
+    auto const smooth_range{range_alpha * range_alpha * (3.0f - 2.0f * range_alpha)};
     auto const color_alpha{smooth_range * smooth_range};
     auto const color{FMath::Lerp(neutral_color, in_range_color, color_alpha)};
     auto const opacity{
@@ -660,7 +662,7 @@ void FHUDManager::add_world_soft_target(presentation::SoftTargetMarker const& ta
     instance_custom_data[soft_target_world::color_blue_index] = color.B;
     instance_custom_data[soft_target_world::opacity_index] = opacity;
     instance_custom_data[soft_target_world::pulse_index] = FMath::Clamp(target.pulse, 0.0f, 1.0f);
-    instance_custom_data[soft_target_world::range_alpha_index] = clamped_range_alpha;
+    instance_custom_data[soft_target_world::range_alpha_index] = range_alpha;
     custom_data.Append(instance_custom_data, soft_target_world::custom_data_count);
 }
 

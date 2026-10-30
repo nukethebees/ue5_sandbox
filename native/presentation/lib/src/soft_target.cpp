@@ -22,7 +22,7 @@ struct SoftTargetCandidate {
     float centre_distance_pixels{no_candidate_distance};
     float centre_score_pixels{no_candidate_distance};
     float surface_distance{no_candidate_distance};
-    float range_alpha{0.0f};
+    float range_alpha{};
     float indicator_radius_pixels{0.0f};
     float world_units_per_pixel{0.0f};
 };
@@ -74,10 +74,9 @@ auto is_supported_entity_type(::ioj::sim::EntityType const type) -> bool {
 
 auto SoftTargetState::advance(std::span<AgentDisplayBatch const> const batches,
                               SoftTargetResult const& selected,
-                              float const delta_seconds,
-                              float const pulse_duration,
-                              float const fade_duration) -> std::array<SoftTargetMarker, 2> {
-    sim::EntityId const ids[]{active.entity, fading.entity, selected.id};
+                              SoftTargetTiming const timing) -> std::array<SoftTargetMarker, 2> {
+    auto const [delta_seconds, pulse_duration, fade_duration]{timing};
+    sim::EntityId const ids[]{active_.entity, fading_.entity, selected.id};
     std::optional<Vector3f> positions[3];
     for (auto const& batch : batches) {
         auto const locations{batch.locations};
@@ -95,60 +94,58 @@ auto SoftTargetState::advance(std::span<AgentDisplayBatch const> const batches,
     }
     auto active_location{positions[0]};
     auto fading_location{positions[1]};
-    auto const nonnegative = [](float const value) { return value > 0.f ? value : 0.f; };
-    auto const elapsed{nonnegative(delta_seconds)};
     auto const clear_fading = [this] {
-        fading = {};
-        fade_remaining = 0.f;
+        fading_ = {};
+        fade_remaining_ = 0.f;
     };
-    pulse_remaining = nonnegative(pulse_remaining - elapsed);
-    if (fading.entity.is_valid()) {
-        fade_remaining = nonnegative(fade_remaining - elapsed);
-        if (!fading_location || fade_remaining <= 0.f) {
+    pulse_remaining_ = std::max(pulse_remaining_ - delta_seconds.get(), 0.f);
+    if (fading_.entity.is_valid()) {
+        fade_remaining_ = std::max(fade_remaining_ - delta_seconds.get(), 0.f);
+        if (!fading_location || fade_remaining_ <= 0.f) {
             clear_fading();
         }
     }
 
     auto const begin_fade = [&] {
-        if (!active.entity.is_valid() || !active_location || fade_duration <= 0.f) {
+        if (!active_.entity.is_valid() || !active_location || fade_duration <= 0.f) {
             return;
         }
-        fading = active;
+        fading_ = active_;
         fading_location = active_location;
-        fade_remaining = fade_duration;
+        fade_remaining_ = fade_duration;
     };
     if (selected.id.is_valid()) {
-        if (selected.id != active.entity) {
-            if (selected.id == fading.entity) {
+        if (selected.id != active_.entity) {
+            if (selected.id == fading_.entity) {
                 clear_fading();
             }
             begin_fade();
-            pulse_remaining = 0.f;
-        } else if (active.range_alpha < 1.f && selected.range_alpha >= 1.f) {
-            pulse_remaining = pulse_duration;
+            pulse_remaining_ = 0.f;
+        } else if (active_.range_alpha < 1.f && selected.range_alpha >= 1.f) {
+            pulse_remaining_ = pulse_duration;
         }
-        active = {.entity = selected.id,
-                  .range_alpha =
-                      nonnegative(selected.range_alpha < 1.f ? selected.range_alpha : 1.f),
-                  .radius_pixels = selected.indicator_radius_pixels,
-                  .world_units_per_pixel = selected.world_units_per_pixel};
+        active_ = {.entity = selected.id,
+                   .range_alpha = selected.range_alpha,
+                   .radius_pixels = selected.indicator_radius_pixels,
+                   .world_units_per_pixel = selected.world_units_per_pixel};
         active_location = positions[2];
     } else {
         if (selected.previous_target_can_fade) {
             begin_fade();
         }
-        active = {};
-        pulse_remaining = 0.f;
+        active_ = {};
+        pulse_remaining_ = 0.f;
     }
 
     return {
-        SoftTargetMarker{.visual = active,
-                         .location = active.entity.is_valid() ? active_location : std::nullopt,
-                         .pulse = pulse_duration > 0.f ? pulse_remaining / pulse_duration : 0.f,
+        SoftTargetMarker{.visual = active_,
+                         .location = active_.entity.is_valid() ? active_location : std::nullopt,
+                         .pulse = pulse_duration > 0.f ? pulse_remaining_ / pulse_duration : 0.f,
                          .visibility = 1.f},
-        SoftTargetMarker{.visual = fading,
-                         .location = fading.entity.is_valid() ? fading_location : std::nullopt,
-                         .visibility = fade_duration > 0.f ? fade_remaining / fade_duration : 0.f}};
+        SoftTargetMarker{.visual = fading_,
+                         .location = fading_.entity.is_valid() ? fading_location : std::nullopt,
+                         .visibility =
+                             fade_duration > 0.f ? fade_remaining_ / fade_duration : 0.f}};
 }
 
 auto select_soft_target(std::span<::ioj::presentation::AgentDisplayBatch const> const batches,
@@ -275,7 +272,7 @@ auto select_soft_target(std::span<::ioj::presentation::AgentDisplayBatch const> 
                                                 .centre_distance_pixels = centre_distance,
                                                 .centre_score_pixels = centre_score,
                                                 .surface_distance = surface_distance,
-                                                .range_alpha = std::clamp(range_alpha, 0.0f, 1.0f),
+                                                .range_alpha = range_alpha,
                                                 .indicator_radius_pixels =
                                                     std::clamp(projected_radius + bounds_padding,
                                                                minimum_indicator_radius,
@@ -317,7 +314,7 @@ auto select_soft_target(std::span<::ioj::presentation::AgentDisplayBatch const> 
 
     if (!has_selected_candidate) {
         if (has_current_candidate) {
-            return {.range_alpha = current_candidate.range_alpha,
+            return {.range_alpha = SoftTargetRange::make(current_candidate.range_alpha),
                     .indicator_radius_pixels = current_candidate.indicator_radius_pixels,
                     .world_units_per_pixel = current_candidate.world_units_per_pixel,
                     .previous_target_can_fade = true};
@@ -325,7 +322,7 @@ auto select_soft_target(std::span<::ioj::presentation::AgentDisplayBatch const> 
         return {};
     }
     return {.id = selected_candidate.id,
-            .range_alpha = selected_candidate.range_alpha,
+            .range_alpha = SoftTargetRange::make(selected_candidate.range_alpha),
             .indicator_radius_pixels = selected_candidate.indicator_radius_pixels,
             .world_units_per_pixel = selected_candidate.world_units_per_pixel};
 }

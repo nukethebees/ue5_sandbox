@@ -103,11 +103,25 @@ TEST_F(EntityOverlaySource, RetainsAndSwitchesWithHysteresis) {
     auto const retained{select_target(entity_id(1))};
     EXPECT_EQ(retained.id.raw_value(), entity_id(1).raw_value())
         << "Small improvement does not switch";
+    constexpr NonNegativeFinite<float> duration{0.5f};
+    constexpr NonNegativeFinite<float> half_duration{0.25f};
+    SoftTargetState state;
+    auto markers{state.advance(make_view(entities_), retained, {{}, duration, duration})};
+    EXPECT_EQ(state.current_target(), retained.id);
+    EXPECT_EQ(markers[0].location, entities_.positions.get_const_view()[1]);
 
     entities_.positions.get_view().ys()[0] = 50.0f;
     auto const switched{select_target(entity_id(1))};
     EXPECT_EQ(switched.id.raw_value(), entity_id(0).raw_value())
         << "Materially better candidate switches";
+    markers = state.advance(make_view(entities_), switched, {{}, duration, duration});
+    EXPECT_EQ(markers[1].visual.entity, retained.id);
+    EXPECT_FLOAT_EQ(markers[1].visibility, 1.f);
+    markers = state.advance(make_view(entities_), switched, {half_duration, duration, duration});
+    EXPECT_FLOAT_EQ(markers[1].visibility, 0.5f);
+    markers = state.advance(
+        make_view(entities_), switched, {NonNegativeFinite<float>{1.f}, duration, duration});
+    EXPECT_FALSE(markers[1].visual.entity.is_valid());
 
     entities_.positions.get_view().ys()[0] = 250.0f;
     entities_.positions.get_view().ys()[1] = 250.0f;
@@ -145,6 +159,9 @@ TEST_F(EntityOverlaySource, NearestSurfaceResolvesCentredTargetsAndHysteresis) {
 
 TEST_F(EntityOverlaySource, NormalizesRangeAlphaUsingTargetSurfaceDistance) {
     add_entity({.position = {5000.0f, 0.0f, 0.0f}});
+    constexpr NonNegativeFinite<float> duration{0.5f};
+    constexpr NonNegativeFinite<float> half_duration{0.25f};
+    SoftTargetState state;
 
     auto const comfortably_out_of_range{select_target()};
     EXPECT_EQ(comfortably_out_of_range.range_alpha, 0.0f)
@@ -153,12 +170,22 @@ TEST_F(EntityOverlaySource, NormalizesRangeAlphaUsingTargetSurfaceDistance) {
     entities_.positions.get_view().xs()[0] = 2500.0f;
     auto const approaching{select_target()};
     EXPECT_EQ(approaching.range_alpha, 0.5f);
+    static_cast<void>(state.advance(make_view(entities_), approaching, {{}, duration, {}}));
 
     entities_.positions.get_view().xs()[0] = 1100.0f;
     radii_[sim::EntityType::Turret] = 100.0f;
     auto const at_range_boundary{select_target()};
     EXPECT_EQ(at_range_boundary.range_alpha, 1.0f)
         << "Surface at range boundary has full range alpha";
+    auto markers{state.advance(make_view(entities_), at_range_boundary, {{}, duration, {}})};
+    EXPECT_FLOAT_EQ(markers[0].pulse, 1.f);
+    markers = state.advance(make_view(entities_), at_range_boundary, {half_duration, duration, {}});
+    EXPECT_FLOAT_EQ(markers[0].pulse, 0.5f);
+    markers = state.advance(
+        make_view(entities_), at_range_boundary, {NonNegativeFinite<float>{1.f}, {}, {}});
+    EXPECT_FLOAT_EQ(markers[0].pulse, 0.f);
+    markers = state.advance(make_view(entities_), {.previous_target_can_fade = true}, {{}, {}, {}});
+    EXPECT_FALSE(markers[1].visual.entity.is_valid());
 
     entities_.positions.get_view().xs()[0] = 500.0f;
     auto const inside_range{select_target()};

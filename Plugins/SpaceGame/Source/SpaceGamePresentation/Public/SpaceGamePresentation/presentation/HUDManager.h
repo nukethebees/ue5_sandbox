@@ -279,8 +279,8 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     FEntityOverlayHealthMaximums entity_overlay_maximum_health_;
     TArray<EEntityOverlayObjectiveRole> entity_overlay_objective_roles_;
     ioj::settings::SoftTarget soft_target_selection_settings_;
-    float soft_target_pulse_duration_{0.15f};
-    float soft_target_fade_out_duration_{0.15f};
+    ioj::NonNegativeFinite<float> soft_target_pulse_duration_{0.15f};
+    ioj::NonNegativeFinite<float> soft_target_fade_out_duration_{0.15f};
     float seconds_per_tick_{0.0f};
     TWeakObjectPtr<UInstancedStaticMeshComponent> soft_target_instances_;
     float soft_target_mesh_vertical_radius_{0.0f};
