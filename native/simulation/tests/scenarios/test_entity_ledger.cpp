@@ -104,16 +104,16 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
     expect_sample(0.35, expected_kills);
 }
 
-TEST(WorldlessSpaceGameSimulation, EntityLedger_CountsTeams) {
+TEST(WorldlessSpaceGameSimulation, EntityLedgerCountsTeams) {
     run_worldless_entity_ledger_scenario(tests::make_fixture(), EntityLedgerScenario::TeamCounts);
 }
 
-TEST(WorldlessSpaceGameSimulation, EntityLedger_OnePlayerKill) {
+TEST(WorldlessSpaceGameSimulation, EntityLedgerOnePlayerKill) {
     run_worldless_entity_ledger_scenario(tests::make_fixture(),
                                          EntityLedgerScenario::OnePlayerKill);
 }
 
-TEST(WorldlessSpaceGameSimulation, EntityLedger_TwoPlayerKills) {
+TEST(WorldlessSpaceGameSimulation, EntityLedgerTwoPlayerKills) {
     run_worldless_entity_ledger_scenario(tests::make_fixture(),
                                          EntityLedgerScenario::TwoPlayerKills);
 }

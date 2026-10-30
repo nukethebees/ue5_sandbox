@@ -44,17 +44,17 @@ void run_worldless_turret_acquisition_regression(
         << "Turrets without valid targets do not fire";
 }
 
-TEST(WorldlessSpaceGameSimulation, Turrets_NoOtherEntityRemainsIdle) {
+TEST(WorldlessSpaceGameSimulation, TurretsNoOtherEntityRemainsIdle) {
     run_worldless_turret_acquisition_regression(tests::make_fixture(),
                                                 TurretAcquisitionRegressionScenario::NoOtherEntity);
 }
 
-TEST(WorldlessSpaceGameSimulation, Turrets_FriendlyOnlyRemainsIdle) {
+TEST(WorldlessSpaceGameSimulation, TurretsFriendlyOnlyRemainsIdle) {
     run_worldless_turret_acquisition_regression(tests::make_fixture(),
                                                 TurretAcquisitionRegressionScenario::FriendlyOnly);
 }
 
-TEST(WorldlessSpaceGameSimulation, Turrets_EnemyOutsideDetectionRadiusRemainsIdle) {
+TEST(WorldlessSpaceGameSimulation, TurretsEnemyOutsideDetectionRadiusRemainsIdle) {
     run_worldless_turret_acquisition_regression(
         tests::make_fixture(), TurretAcquisitionRegressionScenario::EnemyOutsideRadius);
 }

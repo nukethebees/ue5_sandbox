@@ -105,7 +105,7 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
     EXPECT_EQ(0, harness.get_ledger().count_kills()) << "Unattributed death does not create a kill";
 }
 
-TEST(WorldlessSpaceGameSimulation, Entities_CollisionOverlapDamagesAndKills) {
+TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
     auto const config{tests::make_fixture()};
     struct Sample {
         std::int32_t player_health{};
@@ -178,12 +178,12 @@ TEST(WorldlessSpaceGameSimulation, Entities_CollisionOverlapDamagesAndKills) {
                 LifeState::Unknown)
         << "Collision death is environmental";
 }
-TEST(WorldlessSpaceGameSimulation, Orchestrator_FixedStepPauseResumeAndCatchUp) {
+TEST(WorldlessSpaceGameSimulation, OrchestratorFixedStepPauseResumeAndCatchUp) {
     run_worldless_simulation_core_regression(tests::make_fixture(),
                                              SimulationCoreRegressionScenario::FixedTickLifecycle);
 }
 
-TEST(WorldlessSpaceGameSimulation, Entities_NonLethalThenLethalDamageCleansUpAtomically) {
+TEST(WorldlessSpaceGameSimulation, EntitiesNonLethalThenLethalDamageCleansUpAtomically) {
     run_worldless_simulation_core_regression(tests::make_fixture(),
                                              SimulationCoreRegressionScenario::DamageLifecycle);
 }

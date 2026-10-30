@@ -6,7 +6,7 @@
 #include <array>
 
 namespace ioj::sim {
-TEST(WorldlessSpaceGameSimulation, SpatialQuery_EmptyBatchesAndWorld) {
+TEST(WorldlessSpaceGameSimulation, SpatialQueryEmptyBatchesAndWorld) {
     auto const config{tests::make_fixture()};
     alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
         query_backing{};
@@ -35,7 +35,7 @@ TEST(WorldlessSpaceGameSimulation, SpatialQuery_EmptyBatchesAndWorld) {
         << "Empty world has no arbitrary enemy";
 }
 
-TEST(WorldlessSpaceGameSimulation, SpatialQuery_TeamAndInclusiveRadiusFiltering) {
+TEST(WorldlessSpaceGameSimulation, SpatialQueryTeamAndInclusiveRadiusFiltering) {
     auto const config{tests::make_fixture()};
     alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
         query_backing{};

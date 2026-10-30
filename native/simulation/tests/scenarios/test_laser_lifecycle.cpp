@@ -145,20 +145,20 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
     }
 }
 
-TEST(WorldlessSpaceGameSimulation, Lasers_QueuedSpawnHitsOnLaterTick) {
+TEST(WorldlessSpaceGameSimulation, LasersQueuedSpawnHitsOnLaterTick) {
     run_worldless_laser_lifecycle(tests::make_fixture(), LaserLifecycleScenario::Hit);
 }
 
-TEST(WorldlessSpaceGameSimulation, Lasers_SimultaneousHitsCauseOneDeath) {
+TEST(WorldlessSpaceGameSimulation, LasersSimultaneousHitsCauseOneDeath) {
     run_worldless_laser_lifecycle(tests::make_fixture(),
                                   LaserLifecycleScenario::SimultaneousLethalHits);
 }
 
-TEST(WorldlessSpaceGameSimulation, Lasers_MissExpiresWithoutDamage) {
+TEST(WorldlessSpaceGameSimulation, LasersMissExpiresWithoutDamage) {
     run_worldless_laser_lifecycle(tests::make_fixture(), LaserLifecycleScenario::Miss);
 }
 
-TEST(WorldlessSpaceGameSimulation, Lasers_WorldBlockerConsumesProjectileWithoutEntityDamage) {
+TEST(WorldlessSpaceGameSimulation, LasersWorldBlockerConsumesProjectileWithoutEntityDamage) {
     run_worldless_laser_lifecycle(tests::make_fixture(), LaserLifecycleScenario::WorldBlocker);
 }
 

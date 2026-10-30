@@ -3,7 +3,7 @@
 #include <ioj/sim/testing/entity_observations.h>
 
 namespace ioj::sim {
-TEST(WorldlessSpaceGameSimulation, CapitalCommandFighters_RetargetAfterKills) {
+TEST(WorldlessSpaceGameSimulation, CapitalCommandFightersRetargetAfterKills) {
     auto const config{tests::make_fixture()};
     using Task = fighters::Sim::Task;
     auto data{tests::make_simulation_data(config)};

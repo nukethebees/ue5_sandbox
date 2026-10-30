@@ -295,7 +295,7 @@ auto count_memberships(collision::CollisionUniformGrid const& grid,
 }
 }
 
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridContainsAllEntityTypes) {
+TEST(WorldlessSpaceGameSimulation, CollisionUniformGridContainsAllEntityTypes) {
     auto const config{tests::make_fixture()};
     auto data{tests::make_simulation_data(config)};
     auto const player_index{tests::add_player_spawn(
@@ -365,7 +365,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridContainsAllEntityTypes) 
 /* ------------------------------------------------------------------------------------------ */
 // Trace scenarios
 /* ------------------------------------------------------------------------------------------ */
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceHitsAndMisses) {
+TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceHitsAndMisses) {
     TraceFixture const fixture{std::array{Vector3f{}}, {10.f, 10.f, 10.f}};
     std::array const cases{
         ExpectedTrace{"Left to right", {-150, 0, 0}, {150, 0, 0}, 1, {-10, 0, 0}},
@@ -377,19 +377,19 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceHitsAndMisses) {
     check_traces(fixture, cases);
 }
 
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceStopsAtEndpoint) {
+TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceStopsAtEndpoint) {
     TraceFixture const fixture{std::array{Vector3f{50, 0, 0}}, {10, 10, 10}};
     check_traces(fixture, std::array{ExpectedTrace{"AABB beyond endpoint", {}, {20, 0, 0}, 0}});
 }
 
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceReturnsNearestHit) {
+TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceReturnsNearestHit) {
     TraceFixture const fixture{std::array{Vector3f{60, 0, 0}, Vector3f{20, 0, 0}}, {5, 5, 5}};
     check_traces(
         fixture,
         std::array{ExpectedTrace{"Nearest of two entities", {}, {90, 0, 0}, 1, {15, 0, 0}, 1}});
 }
 
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceHandlesZeroLengthTraces) {
+TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceHandlesZeroLengthTraces) {
     TraceFixture const fixture{std::array{Vector3f{50, 0, 0}}, {10, 10, 10}};
     check_traces(
         fixture,
@@ -397,13 +397,13 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceHandlesZeroLengthTr
                    ExpectedTrace{"Stationary point outside", {}, {}, 0}});
 }
 
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceIncludesNegativeEndpointBoundary) {
+TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceIncludesNegativeEndpointBoundary) {
     TraceFixture const fixture{std::array{Vector3f{-10, 0, 0}}, {10, 10, 10}};
     check_traces(fixture,
                  std::array{ExpectedTrace{"Negative endpoint contact", {10, 0, 0}, {}, 1, {}}});
 }
 
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceAppliesAABBCentre) {
+TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceAppliesAABBCentre) {
     // A quarter turn moves the offset centre into a different grid cell and swaps X/Y extents.
     TraceFixture rotated{std::array{Vector3f{}},
                          Vector3f{{20.f, 5.f, 10.f}},
@@ -536,7 +536,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceAppliesAABBCentre) 
     }
 }
 
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceAxisParallelAndOrigin) {
+TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceAxisParallelAndOrigin) {
     Vector3f const entity_centre{};
     Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
     constexpr float trace_extent{150.f};
@@ -583,7 +583,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceAxisParallelAndOrig
     check_traces(fixture, cases);
 }
 
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceSurfaceContacts) {
+TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceSurfaceContacts) {
     Vector3f const entity_centre{};
     Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
     constexpr float outside_face{20.f};
@@ -699,7 +699,7 @@ INSTANTIATE_TEST_SUITE_P(
                            {"Stationary on point", {}, {}, 1, {}}}}),
     [](auto const& info) { return info.param.name; });
 
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceShortAndNearParallelSegments) {
+TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceShortAndNearParallelSegments) {
     Vector3f const entity_centre{};
     Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
     constexpr float face{-10.f};
@@ -735,7 +735,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceShortAndNearParalle
     check_traces(fixture, cases);
 }
 
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceClipsToGridBounds) {
+TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceClipsToGridBounds) {
     Vector3f const entity_centre{};
     Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
     constexpr float grid_extent{400.f};
@@ -796,7 +796,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceClipsToGridBounds) 
     check_traces(fixture, cases);
 }
 
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceCrossCellNearestHit) {
+TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceCrossCellNearestHit) {
     Vector3f const positive_entity_centre{{150.f, 0.f, 0.f}};
     Vector3f const negative_entity_centre{{-150.f, 0.f, 0.f}};
     Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
@@ -840,7 +840,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceCrossCellNearestHit
     }
 }
 
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceVariedGridGeometry) {
+TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceVariedGridGeometry) {
     collision::CellCoord const fixture_grid_dims{5, 7, 3};
     Vector3f const fixture_cell_dims{{80.f, 125.f, 250.f}};
     Vector3f const entity_centre{{25.f, -30.f, 40.f}};
@@ -921,7 +921,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceVariedGridGeometry)
     check_traces(single_cell_fixture, single_cell_cases);
 }
 
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceBoundaryPrecision) {
+TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceBoundaryPrecision) {
     Vector3f const entity_centre{};
     Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
     constexpr float face{10.f};
@@ -968,7 +968,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceBoundaryPrecision) 
     check_traces(fixture, cases);
 }
 
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridRebuildLifecycle) {
+TEST(WorldlessSpaceGameSimulation, CollisionUniformGridRebuildLifecycle) {
     Vector3f const initial_location{{-150.f, 0.f, 0.f}};
     Vector3f const moved_location{{150.f, 0.f, 0.f}};
     Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
@@ -1116,7 +1116,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridRebuildLifecycle) {
     }
 }
 
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceDeterministicReferenceSweep) {
+TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceDeterministicReferenceSweep) {
     std::array<std::int32_t, 3> const seeds{0x51A8B3, 0x19C0DE, 0x7A11CE};
     constexpr std::int32_t entity_count{32};
     constexpr std::int32_t trace_count{512};
@@ -1213,7 +1213,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceDeterministicRefere
     }
 }
 
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceInvarianceProperties) {
+TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceInvarianceProperties) {
     TraceFixture tied{std::vector<Vector3f>{Vector3f{}, Vector3f{}}, {{10.f, 10.f, 10.f}}};
     std::array<Vector3f, 1> const tied_starts{{{{-20.f, 0.f, 0.f}}}};
     std::array<Vector3f, 1> const tied_ends{{{{20.f, 0.f, 0.f}}}};
@@ -1306,7 +1306,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceInvariancePropertie
         baseline_hits, translated_hits, "Whole-cell translation", {}, translation);
 }
 
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceEmptyBatchesAndOutputReuse) {
+TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceEmptyBatchesAndOutputReuse) {
     Vector3f const aabb_half_extents{{10.f, 10.f, 10.f}};
     std::array<Vector3f, 0> const no_entities{};
     TraceFixture const empty_fixture{no_entities, aabb_half_extents};
@@ -1352,7 +1352,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceEmptyBatchesAndOutp
         << "Reused output records later entity";
 }
 
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridDenseAndWideAABBs) {
+TEST(WorldlessSpaceGameSimulation, CollisionUniformGridDenseAndWideAABBs) {
     constexpr std::int32_t dense_entity_count{2048};
     Vector3f const dense_location{{25.f, 25.f, 25.f}};
     Vector3f const dense_half_extents{{1.f, 1.f, 1.f}};
@@ -1392,7 +1392,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridDenseAndWideAABBs) {
     check_traces(wide_fixture, wide_cases);
 }
 
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceProductionScale) {
+TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceProductionScale) {
     constexpr float grid_boundary{1000000.f};
     auto const inside_positive_grid_boundary{std::nextafter(grid_boundary, 0.f)};
     Vector3f const aabb_half_extents{{1000.f, 1000.f, 1000.f}};
@@ -1438,7 +1438,7 @@ TEST(WorldlessSpaceGameSimulation, Collision_UniformGridTraceProductionScale) {
     check_traces(fixture, cases);
 }
 
-TEST(WorldlessSpaceGameSimulation, Collision_UniformGridStaticGeometry) {
+TEST(WorldlessSpaceGameSimulation, CollisionUniformGridStaticGeometry) {
     Vector3f const dynamic_location{{100.f, 0.f, 0.f}};
     Vector3f const half_extents{{10.f, 10.f, 10.f}};
     std::array<Vector3f, 1> const dynamic_locations{{dynamic_location}};

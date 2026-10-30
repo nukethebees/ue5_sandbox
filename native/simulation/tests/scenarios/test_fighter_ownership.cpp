@@ -21,7 +21,7 @@ inline constexpr std::int32_t collision_resilient_health{1'000'000};
 /* **************************************** */
 // Simultaneous capital deaths
 /* **************************************** */
-TEST(WorldlessSpaceGameSimulation, Capitals_SimultaneousReassignment) {
+TEST(WorldlessSpaceGameSimulation, CapitalsSimultaneousReassignment) {
     auto const config{tests::make_fixture()};
     struct Sample {
         std::vector<EntityId> capitals{};
@@ -269,16 +269,16 @@ void run_worldless_fighter_ownership(tests::SimulationFixture const& config,
     EXPECT_TRUE(fighter_kill_checked) << "Fighter removal is checked";
     EXPECT_TRUE(capital_kill_checked) << "Capital removal is checked";
 }
-TEST(WorldlessSpaceGameSimulation, FighterOwnership_KillFightersOnly) {
+TEST(WorldlessSpaceGameSimulation, FighterOwnershipKillFightersOnly) {
     run_worldless_fighter_ownership(tests::make_fixture(),
                                     FighterOwnershipScenario::KillFightersOnly);
 }
 
-TEST(WorldlessSpaceGameSimulation, FighterOwnership_KillCapital) {
+TEST(WorldlessSpaceGameSimulation, FighterOwnershipKillCapital) {
     run_worldless_fighter_ownership(tests::make_fixture(), FighterOwnershipScenario::KillCapital);
 }
 
-TEST(WorldlessSpaceGameSimulation, FighterOwnership_All) {
+TEST(WorldlessSpaceGameSimulation, FighterOwnershipAll) {
     run_worldless_fighter_ownership(tests::make_fixture(), FighterOwnershipScenario::All);
 }
 

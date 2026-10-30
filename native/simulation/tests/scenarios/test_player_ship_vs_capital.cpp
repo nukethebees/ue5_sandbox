@@ -8,7 +8,7 @@ namespace player_vs_capital_test {
 inline constexpr std::int32_t collision_resilient_health{1'000'000};
 }
 
-TEST(WorldlessSpaceGameSimulation, PlayerShip_VersusCapital) {
+TEST(WorldlessSpaceGameSimulation, PlayerShipVersusCapital) {
     auto const config{tests::make_fixture()};
     auto data{tests::make_simulation_data(config)};
     data.fighters.health = ::ioj::settings::PositiveHealth::make(

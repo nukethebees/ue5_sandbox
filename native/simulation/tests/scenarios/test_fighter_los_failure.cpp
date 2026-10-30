@@ -3,7 +3,7 @@
 #include <ioj/sim/fighters/sim.h>
 
 namespace ioj::sim {
-TEST(WorldlessSpaceGameSimulation, Fighters_LineOfSightFailureHandling) {
+TEST(WorldlessSpaceGameSimulation, FightersLineOfSightFailureHandling) {
     auto const config{tests::make_fixture()};
     auto data{tests::make_simulation_data(config)};
     auto const blue{tests::add_capital_spawn(

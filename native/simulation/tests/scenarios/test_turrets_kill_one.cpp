@@ -77,7 +77,7 @@ void run_worldless_turret_combat(tests::SimulationFixture const& config,
     }
 }
 
-TEST(WorldlessSpaceGameSimulation, Turrets_LineOfSightBlocking) {
+TEST(WorldlessSpaceGameSimulation, TurretsLineOfSightBlocking) {
     auto const config{tests::make_fixture()};
     auto data{tests::make_simulation_data(config)};
     data.capital_ships.fighter_spawn_slots = 0;
@@ -106,7 +106,7 @@ TEST(WorldlessSpaceGameSimulation, Turrets_LineOfSightBlocking) {
         << "Turrets stop firing after line of sight is blocked";
 }
 
-TEST(WorldlessSpaceGameSimulation, Turrets_SearchRequiresLineOfSight) {
+TEST(WorldlessSpaceGameSimulation, TurretsSearchRequiresLineOfSight) {
     auto const config{tests::make_fixture()};
     auto data{tests::make_simulation_data(config)};
     data.capital_ships.fighter_spawn_slots = 0;
@@ -134,11 +134,11 @@ TEST(WorldlessSpaceGameSimulation, Turrets_SearchRequiresLineOfSight) {
     }
 }
 
-TEST(WorldlessSpaceGameSimulation, Turrets_KillEnemy) {
+TEST(WorldlessSpaceGameSimulation, TurretsKillEnemy) {
     run_worldless_turret_combat(tests::make_fixture(), TurretCombatScenario::KillEnemy);
 }
 
-TEST(WorldlessSpaceGameSimulation, Turrets_ZeroDamage) {
+TEST(WorldlessSpaceGameSimulation, TurretsZeroDamage) {
     run_worldless_turret_combat(tests::make_fixture(), TurretCombatScenario::ZeroDamage);
 }
 

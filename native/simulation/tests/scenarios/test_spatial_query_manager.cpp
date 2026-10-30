@@ -9,7 +9,7 @@
 
 namespace ioj::sim {
 using ioj::testing::structurally_equal;
-TEST(WorldlessSpaceGameSimulation, SpatialQuery_ResolvesLineOfSightBatches) {
+TEST(WorldlessSpaceGameSimulation, SpatialQueryResolvesLineOfSightBatches) {
     auto const config{tests::make_fixture()};
     alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
         query_backing{};

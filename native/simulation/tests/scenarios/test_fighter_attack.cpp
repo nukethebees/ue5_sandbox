@@ -19,7 +19,7 @@ auto contains(Vector3f const minimum, Vector3f const maximum, Vector3f const poi
 }
 }
 
-TEST(WorldlessSpaceGameSimulation, Fighters_ObstacleAvoidance) {
+TEST(WorldlessSpaceGameSimulation, FightersObstacleAvoidance) {
     auto const config{tests::make_fixture()};
     constexpr float source_x{-15000.f};
     constexpr float target_x{15000.f};
@@ -104,7 +104,7 @@ auto make_fighter_navigation_test_data(tests::SimulationFixture const& config,
     return data;
 }
 
-TEST(WorldlessSpaceGameSimulation, Fighters_NavigationCapitalObstruction) {
+TEST(WorldlessSpaceGameSimulation, FightersNavigationCapitalObstruction) {
     auto const config{tests::make_fixture()};
     Vector3f const source{{-18000.f, -7000.f, 0.f}};
     Vector3f const obstacle{{0.f, 0.f, 0.f}};
@@ -173,7 +173,7 @@ TEST(WorldlessSpaceGameSimulation, Fighters_NavigationCapitalObstruction) {
     EXPECT_TRUE(maximum_x > expanded_max.x()) << "Fighter progresses beyond the capital";
 }
 
-TEST(WorldlessSpaceGameSimulation, Fighters_NavigationClearPath) {
+TEST(WorldlessSpaceGameSimulation, FightersNavigationClearPath) {
     auto const config{tests::make_fixture()};
     auto data{
         make_fighter_navigation_test_data(config,
@@ -228,7 +228,7 @@ TEST(WorldlessSpaceGameSimulation, Fighters_NavigationClearPath) {
     EXPECT_TRUE(!saw_avoidance) << "Clear path never applies hard avoidance";
 }
 
-TEST(WorldlessSpaceGameSimulation, Fighters_NavigationSeparation) {
+TEST(WorldlessSpaceGameSimulation, FightersNavigationSeparation) {
     auto const config{tests::make_fixture()};
     auto data{
         make_fighter_navigation_test_data(config,
@@ -353,7 +353,7 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
     return result;
 }
 
-TEST(WorldlessSpaceGameSimulation, Fighters_NavigationDenseDeterminism) {
+TEST(WorldlessSpaceGameSimulation, FightersNavigationDenseDeterminism) {
     auto const config{tests::make_fixture()};
     auto const first_id{EntityId(7, EntityType::Fighter)};
     auto const second_id{EntityId(100, EntityType::Fighter)};
@@ -385,7 +385,7 @@ TEST(WorldlessSpaceGameSimulation, Fighters_NavigationDenseDeterminism) {
         << "Identical fixtures schedule the same number of queries";
 }
 
-TEST(WorldlessSpaceGameSimulation, Fighters_NavigationLargeCluster) {
+TEST(WorldlessSpaceGameSimulation, FightersNavigationLargeCluster) {
     auto const config{tests::make_fixture()};
     constexpr std::int32_t fighter_count{48};
     auto const result{run_dense_navigation_fixture(config, fighter_count, 10.0)};
@@ -406,7 +406,7 @@ TEST(WorldlessSpaceGameSimulation, Fighters_NavigationLargeCluster) {
         << "Large cluster exercises immediate-risk navigation";
 }
 
-TEST(WorldlessSpaceGameSimulation, Fighters_NavigationHardAvoidanceAuthority) {
+TEST(WorldlessSpaceGameSimulation, FightersNavigationHardAvoidanceAuthority) {
     auto const config{tests::make_fixture()};
     Vector3f const obstacle_min{{-1000.f, -1000.f, -1500.f}};
     Vector3f const obstacle_max{{1000.f, 1000.f, 1500.f}};
@@ -462,7 +462,7 @@ TEST(WorldlessSpaceGameSimulation, Fighters_NavigationHardAvoidanceAuthority) {
     EXPECT_LE(avoidance_transitions, 6) << "Held hard steering does not flap pathologically";
 }
 
-TEST(WorldlessSpaceGameSimulation, Fighters_NavigationFrequency) {
+TEST(WorldlessSpaceGameSimulation, FightersNavigationFrequency) {
     auto const config{tests::make_fixture()};
     auto data{
         make_fighter_navigation_test_data(config,
@@ -489,7 +489,7 @@ TEST(WorldlessSpaceGameSimulation, Fighters_NavigationFrequency) {
         << "Risky fighters have a higher per-fighter query rate over the same duration";
 }
 
-TEST(WorldlessSpaceGameSimulation, Fighters_AttackCapital) {
+TEST(WorldlessSpaceGameSimulation, FightersAttackCapital) {
     auto const config{tests::make_fixture()};
     auto data{tests::make_simulation_data(config)};
     data.fighters.laser.projectile_speed = PositiveFinite<float>::make(20000.f);
