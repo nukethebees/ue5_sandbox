@@ -89,6 +89,7 @@ list(TRANSFORM lasers_headers PREPEND "../include/ioj/sim/lasers/")
 
 set(levels_headers
   level_event_types.h
+  level_memory_manager.h
   level_read_access.h
   level_sim.h
   reference_level_simulation_data.h
@@ -165,6 +166,7 @@ target_sources(native-simulation
     fixed_tick.cpp
     lasers/laser_frame_output.cpp
     levels/level_event_types.cpp
+    levels/level_memory_manager.cpp
     levels/level_read_access.cpp
     levels/level_sim.cpp
     telemetry/manager.cpp

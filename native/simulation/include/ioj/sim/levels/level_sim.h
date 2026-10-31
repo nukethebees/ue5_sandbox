@@ -11,6 +11,7 @@
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/levels/level_event_manager.h>
+#include <ioj/sim/levels/level_memory_manager.h>
 #include <ioj/sim/levels/level_read_access.h>
 #include <ioj/sim/levels/level_sim_init_data.h>
 #include <ioj/sim/levels/run_stop_conditions.h>
@@ -118,7 +119,7 @@ struct LevelSim {
         return level_telemetry_manager_;
     }
     auto get_frame_memory_stats() const noexcept -> FrameMemoryStats {
-        return frame_memory_.get_stats();
+        return memory_manager_.get_frame_memory().get_stats();
     }
   private:
     void refresh_spatial_index();
@@ -141,8 +142,7 @@ struct LevelSim {
     SimClock clock_;
     OrchestratorState state_{OrchestratorState::Uninitialised};
 
-    memory::Block frame_memory_block_;
-    FrameMemoryResource frame_memory_;
+    LevelMemoryManager memory_manager_;
     EntityLedger entity_ledger_;
     CombatEvents combat_events_{entity_ledger_};
     EntityTables entity_tables_{clock_};
