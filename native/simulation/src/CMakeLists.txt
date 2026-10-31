@@ -117,6 +117,8 @@ set(tasks_headers
   instruction_count.h
   instruction_data.h
   instruction_handle.h
+  program_handle.h
+  programs.h
   task_allocation_context.h
   task_entity_count.h
   task_id.h
@@ -183,6 +185,7 @@ target_sources(native-simulation
     collision/spatial.cpp
     step_response.cpp
     tasks/task_manager.cpp
+    tasks/tasks.cpp
     tasks/executor_table.cpp
 
     ${simulation_headers}
