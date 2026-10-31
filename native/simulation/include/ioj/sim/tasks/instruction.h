@@ -22,13 +22,14 @@ using InstructionTypeUnderlying = std::uint8_t;
 // Logical bit width: 8.
 enum class InstructionType : InstructionTypeUnderlying {
     Kill = 0,
+    Idle = 1,
 };
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_instruction_type(std::string_view const value) noexcept
     -> std::optional<InstructionType> {
-    std::array<std::string_view, 1> constexpr names{"kill"};
+    std::array<std::string_view, 2> constexpr names{"kill", "idle"};
     return ioj::try_parse_enum<InstructionType>(value, names);
 }
 
@@ -46,7 +47,7 @@ struct Instruction : detail::InstructionBase {
 
     // type
     static constexpr PackedField<storage_type, InstructionType, 0, 8> type_layout{
-        {static_cast<InstructionType>(0ULL), static_cast<InstructionType>(0ULL)}};
+        {static_cast<InstructionType>(0ULL), static_cast<InstructionType>(1ULL)}};
 
     // data
     static constexpr PackedField<storage_type, storage_type, 8, 32> data_layout{};
@@ -88,13 +89,19 @@ struct Instruction : detail::InstructionBase {
                 static_cast<storage_type>(data_kill_value.raw_value()))))};
         return result;
     }
+    [[nodiscard]] static constexpr auto make_data_idle() noexcept -> Instruction {
+        auto result{
+            from_raw(packed_pack<decltype(type_layout)>(ioj::sim::tasks::InstructionType::Idle))};
+        return result;
+    }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() &&
                (is_valid_type(extract<decltype(type_layout)>()) &&
-                (extract<decltype(type_layout)>() == ioj::sim::tasks::InstructionType::Kill &&
-                 (extract<decltype(data_kill_layout)>() != data_kill_invalid_value &&
-                  is_valid_data_kill_entity_type(
-                      extract<decltype(data_kill_entity_type_layout)>()))));
+                ((extract<decltype(type_layout)>() == ioj::sim::tasks::InstructionType::Kill &&
+                  (extract<decltype(data_kill_layout)>() != data_kill_invalid_value &&
+                   is_valid_data_kill_entity_type(
+                       extract<decltype(data_kill_entity_type_layout)>()))) ||
+                 extract<decltype(type_layout)>() == ioj::sim::tasks::InstructionType::Idle));
     }
     [[nodiscard]] constexpr auto type() const noexcept -> decltype(type_layout)::value_type {
         return extract<decltype(type_layout)>();
@@ -137,4 +144,4 @@ static_assert(valid_packed_value_layout<Instruction>());
 } // namespace ioj::sim::tasks
 template <>
 inline constexpr auto ioj::enum_strings<::ioj::sim::tasks::InstructionType, ioj::Serialized>{
-    ioj::PackedStrings{"kill", std::array<std::uint8_t, 2>{0, 5}}};
+    ioj::PackedStrings{"kill\000idle", std::array<std::uint8_t, 3>{0, 5, 10}}};

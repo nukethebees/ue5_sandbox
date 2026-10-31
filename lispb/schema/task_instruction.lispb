@@ -5,9 +5,12 @@
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value Kill :value "0" :serialized-name "kill")
+    (value Idle :value "1" :serialized-name "idle")
     (projections (cpp)))
+  (record Idle)
   (union InstructionData
-    (case Kill @native_unique_id))
+    (case Kill @native_unique_id)
+    (case Idle @Idle))
   (record Instruction :layout packed :bits 64
     (member type @InstructionType)
     (member data @InstructionData :bits 56 :tag type)
