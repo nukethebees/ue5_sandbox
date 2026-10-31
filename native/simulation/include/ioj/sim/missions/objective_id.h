@@ -30,9 +30,8 @@ struct ObjectiveId : detail::ObjectiveIdBase {
     static constexpr PackedField<storage_type, std::uint32_t, 0, 32> index_layout{};
 
     constexpr ObjectiveId() noexcept = default;
-    constexpr explicit ObjectiveId(decltype(index_layout)::value_type const index_value) noexcept {
-        value_ = 0;
-        insert<decltype(index_layout)>(index_value);
+    constexpr explicit ObjectiveId(decltype(index_layout)::value_type const index_value) noexcept
+        : Base{index_value} {
         assert((value_ != invalid_value));
     }
 

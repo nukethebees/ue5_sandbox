@@ -32,11 +32,11 @@ struct RuleId : detail::RuleIdBase {
 
     constexpr RuleId() noexcept = default;
     constexpr explicit RuleId(decltype(index_layout)::value_type const index_value,
-                              decltype(type_layout)::value_type const type_value) noexcept {
+                              decltype(type_layout)::value_type const type_value) noexcept
+        : Base{static_cast<storage_type>(packed_pack<decltype(index_layout)>(index_value) |
+                                         packed_pack<decltype(type_layout)>(type_value))} {
         assert((is_valid_index(index_value)));
-        insert<decltype(index_layout)>(index_value);
         assert((is_valid_type(type_value)));
-        insert<decltype(type_layout)>(type_value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(RuleId const&) const noexcept = default;

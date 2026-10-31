@@ -26,9 +26,8 @@ struct Health : detail::HealthBase {
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{};
 
     constexpr Health() noexcept = default;
-    constexpr explicit Health(value_type const value) noexcept {
-        insert<decltype(value_layout)>(value);
-    }
+    constexpr explicit Health(value_type const value) noexcept
+        : Base{static_cast<storage_type>(value)} {}
 
     [[nodiscard]] constexpr auto operator<=>(Health const& other) const noexcept {
         return value() <=> other.value();

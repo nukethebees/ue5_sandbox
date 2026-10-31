@@ -30,9 +30,8 @@ struct StaticGeometryIndex : detail::StaticGeometryIndexBase {
     static constexpr value_type Invalid{static_cast<value_type>(4294967295ULL)};
 
     constexpr StaticGeometryIndex() noexcept = default;
-    constexpr explicit StaticGeometryIndex(value_type const value) noexcept {
-        insert<decltype(value_layout)>(value);
-    }
+    constexpr explicit StaticGeometryIndex(value_type const value) noexcept
+        : Base{value} {}
 
     [[nodiscard]] constexpr auto operator<=>(StaticGeometryIndex const&) const noexcept = default;
 
@@ -68,9 +67,8 @@ struct CellIndex : detail::CellIndexBase {
     static constexpr value_type Invalid{static_cast<value_type>(4294967295ULL)};
 
     constexpr CellIndex() noexcept = default;
-    constexpr explicit CellIndex(value_type const value) noexcept {
-        insert<decltype(value_layout)>(value);
-    }
+    constexpr explicit CellIndex(value_type const value) noexcept
+        : Base{value} {}
 
     [[nodiscard]] constexpr auto operator<=>(CellIndex const&) const noexcept = default;
 
@@ -104,9 +102,8 @@ struct GridCellCount : detail::GridCellCountBase {
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{};
 
     constexpr GridCellCount() noexcept = default;
-    constexpr explicit GridCellCount(value_type const value) noexcept {
-        insert<decltype(value_layout)>(value);
-    }
+    constexpr explicit GridCellCount(value_type const value) noexcept
+        : Base{value} {}
 
     [[nodiscard]] constexpr auto operator<=>(GridCellCount const&) const noexcept = default;
 
@@ -141,9 +138,9 @@ struct SphereInBoundsResult : detail::SphereInBoundsResultBase {
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{};
 
     constexpr SphereInBoundsResult() noexcept = default;
-    constexpr explicit SphereInBoundsResult(value_type const value) noexcept {
+    constexpr explicit SphereInBoundsResult(value_type const value) noexcept
+        : Base{packed_pack<decltype(value_layout)>(value)} {
         assert((is_valid_value(value)));
-        insert<decltype(value_layout)>(value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(SphereInBoundsResult const&) const noexcept = default;

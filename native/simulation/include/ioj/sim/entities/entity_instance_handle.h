@@ -28,9 +28,9 @@ struct EntityFrameIndex : detail::EntityFrameIndexBase {
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{};
 
     constexpr EntityFrameIndex() noexcept = default;
-    constexpr explicit EntityFrameIndex(value_type const value) noexcept {
+    constexpr explicit EntityFrameIndex(value_type const value) noexcept
+        : Base{packed_pack<decltype(value_layout)>(value)} {
         assert((is_valid_value(value)));
-        insert<decltype(value_layout)>(value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(EntityFrameIndex const&) const noexcept = default;
@@ -66,9 +66,9 @@ struct QuantisedHealth : detail::QuantisedHealthBase {
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{};
 
     constexpr QuantisedHealth() noexcept = default;
-    constexpr explicit QuantisedHealth(value_type const value) noexcept {
+    constexpr explicit QuantisedHealth(value_type const value) noexcept
+        : Base{packed_pack<decltype(value_layout)>(value)} {
         assert((is_valid_value(value)));
-        insert<decltype(value_layout)>(value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(QuantisedHealth const&) const noexcept = default;
@@ -118,14 +118,14 @@ struct EntityInstanceHandle : detail::EntityInstanceHandleBase {
     constexpr explicit EntityInstanceHandle(
         decltype(index_layout)::value_type const index_value,
         decltype(team_layout)::value_type const team_value,
-        decltype(health_state_layout)::value_type const health_state_value) noexcept {
-        value_ = 0;
+        decltype(health_state_layout)::value_type const health_state_value) noexcept
+        : Base{static_cast<storage_type>(
+              packed_pack<decltype(index_layout)>(index_value) |
+              packed_pack<decltype(team_layout)>(team_value) |
+              packed_pack<decltype(health_state_layout)>(health_state_value))} {
         assert((is_valid_index(index_value)));
-        insert<decltype(index_layout)>(index_value);
         assert((is_valid_team(team_value)));
-        insert<decltype(team_layout)>(team_value);
         assert((is_valid_health_state(health_state_value)));
-        insert<decltype(health_state_layout)>(health_state_value);
         assert((value_ != invalid_value));
     }
 

@@ -26,9 +26,8 @@ struct SimTick : detail::SimTickBase {
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{};
 
     constexpr SimTick() noexcept = default;
-    constexpr explicit SimTick(value_type const value) noexcept {
-        insert<decltype(value_layout)>(value);
-    }
+    constexpr explicit SimTick(value_type const value) noexcept
+        : Base{value} {}
 
     [[nodiscard]] constexpr auto operator<=>(SimTick const&) const noexcept = default;
 

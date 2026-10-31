@@ -39,12 +39,12 @@ struct FunctionFlags : detail::FunctionFlagsBase {
         decltype(is_constexpr_layout)::value_type const is_constexpr_value,
         decltype(is_inline_layout)::value_type const is_inline_value,
         decltype(is_nodiscard_layout)::value_type const is_nodiscard_value,
-        decltype(define_in_header_layout)::value_type const define_in_header_value) noexcept {
-        insert<decltype(is_constexpr_layout)>(is_constexpr_value);
-        insert<decltype(is_inline_layout)>(is_inline_value);
-        insert<decltype(is_nodiscard_layout)>(is_nodiscard_value);
-        insert<decltype(define_in_header_layout)>(define_in_header_value);
-    }
+        decltype(define_in_header_layout)::value_type const define_in_header_value) noexcept
+        : Base{static_cast<storage_type>(
+              ioj::packed_pack<decltype(is_constexpr_layout)>(is_constexpr_value) |
+              ioj::packed_pack<decltype(is_inline_layout)>(is_inline_value) |
+              ioj::packed_pack<decltype(is_nodiscard_layout)>(is_nodiscard_value) |
+              ioj::packed_pack<decltype(define_in_header_layout)>(define_in_header_value))} {}
 
     [[nodiscard]] constexpr auto operator<=>(FunctionFlags const&) const noexcept = default;
 

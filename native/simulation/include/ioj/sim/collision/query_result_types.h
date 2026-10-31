@@ -27,9 +27,9 @@ struct TraceHit : detail::TraceHitBase {
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{};
 
     constexpr TraceHit() noexcept = default;
-    constexpr explicit TraceHit(value_type const value) noexcept {
+    constexpr explicit TraceHit(value_type const value) noexcept
+        : Base{packed_pack<decltype(value_layout)>(value)} {
         assert((is_valid_value(value)));
-        insert<decltype(value_layout)>(value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(TraceHit const&) const noexcept = default;
@@ -65,9 +65,9 @@ struct LineQueryResult : detail::LineQueryResultBase {
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{};
 
     constexpr LineQueryResult() noexcept = default;
-    constexpr explicit LineQueryResult(value_type const value) noexcept {
+    constexpr explicit LineQueryResult(value_type const value) noexcept
+        : Base{packed_pack<decltype(value_layout)>(value)} {
         assert((is_valid_value(value)));
-        insert<decltype(value_layout)>(value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(LineQueryResult const&) const noexcept = default;

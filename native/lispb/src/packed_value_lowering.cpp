@@ -1092,6 +1092,29 @@ class PackedEmitter {
             }
         }
     }
+    auto encode_field(schema::BitPlacement const& placement, Expr input) -> Expr {
+        if (placement.offset != 0 || placement.bits != layout_.storage_bits) {
+            return pack(field_name(placement) + "_layout", input);
+        }
+
+        auto const already_storage{aggregate(placement) || !addressable(placement) ||
+                                   value_type(context_, placement.type, placement.bits) ==
+                                       integer_type(layout_.storage_bits)};
+        return already_storage ? input : cast("storage_type", input);
+    }
+    auto combine_fields(std::span<Expr const> fields) -> Expr {
+        if (fields.empty()) {
+            return number(0);
+        }
+
+        auto encoded{fields.front()};
+        auto const count{fields.size()};
+        for (std::size_t index{1}; index < count; ++index) {
+            encoded = binary(BinaryOperator::bitwise_or, encoded, fields[index]);
+        }
+
+        return count == 1 ? encoded : cast("storage_type", encoded);
+    }
     void constructor(std::optional<std::uint32_t> choice) {
         std::vector<std::uint32_t> inputs;
         parameters(std::nullopt, choice, inputs);
@@ -1099,16 +1122,14 @@ class PackedEmitter {
             return;
         }
         std::vector<FunctionParameterId> params;
+        std::vector<Expr> fields;
         Nodes body;
         auto const result{ir_.named("result")};
         auto const target{choice ? ir_.member_access(result, "value_") : raw()};
         if (choice) {
-            body.push_back(ir_.variable("auto", "result", invoke("from_raw", {number(0)})));
             for (auto const& guard : layout_.placements[*choice].guards) {
-                body.push_back(insert_member(guard.path + "_layout", guard_code(guard), result));
+                fields.push_back(pack(guard.path + "_layout", guard_code(guard)));
             }
-        } else if (layout_.default_raw_value.value_or(0) != 0) {
-            body.push_back(ir_.assignment(raw(), number(0)));
         }
         bool validate_record{};
         for (auto const index : inputs) {
@@ -1135,9 +1156,14 @@ class PackedEmitter {
                             ? cast("storage_type", member_call(argument, "raw_value"))
                             : argument;
             }
-            body.push_back(insert_member(
-                name + "_layout", encoded, choice ? std::optional<Expr>{result} : std::nullopt));
+            fields.push_back(encode_field(input, encoded));
         }
+
+        auto const encoded{combine_fields(fields)};
+        if (choice) {
+            body.push_back(ir_.variable("auto", "result", invoke("from_raw", {encoded})));
+        }
+
         if (validate_record) {
             body.push_back(
                 assertion(choice ? member_call(result, "is_valid") : invoke("is_valid")));
@@ -1162,7 +1188,7 @@ class PackedEmitter {
             ir_.function_flags(ctor).set_define_in_header(true);
             ir_.set_function_noexcept(ctor);
             ir_.set_function_parameters(ctor, params);
-            ir_.set_function_body(ctor, body);
+            ir_.set_function_body(ctor, body, {ir_.member_initializer(text("Base"), encoded)});
             constructors_.push_back(ir_.header_function(ctor));
         }
     }

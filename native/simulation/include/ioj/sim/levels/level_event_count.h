@@ -26,9 +26,8 @@ struct LevelEventCount : detail::LevelEventCountBase {
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{};
 
     constexpr LevelEventCount() noexcept = default;
-    constexpr explicit LevelEventCount(value_type const value) noexcept {
-        insert<decltype(value_layout)>(value);
-    }
+    constexpr explicit LevelEventCount(value_type const value) noexcept
+        : Base{value} {}
 
     [[nodiscard]] constexpr auto operator<=>(LevelEventCount const&) const noexcept = default;
 

@@ -123,9 +123,8 @@ struct MethodCount : detail::MethodCountBase {
         value_layout{};
 
     constexpr MethodCount() noexcept = default;
-    constexpr explicit MethodCount(value_type const value) noexcept {
-        insert<decltype(value_layout)>(value);
-    }
+    constexpr explicit MethodCount(value_type const value) noexcept
+        : Base{value} {}
 
     [[nodiscard]] constexpr auto operator<=>(MethodCount const&) const noexcept = default;
 

@@ -38,9 +38,9 @@ struct ReaderHealth : detail::ReaderHealthBase {
         value_layout{{static_cast<value_type>(0ULL), static_cast<value_type>(100ULL)}};
 
     constexpr ReaderHealth() noexcept = default;
-    constexpr explicit ReaderHealth(value_type const value) noexcept {
+    constexpr explicit ReaderHealth(value_type const value) noexcept
+        : Base{value} {
         assert((is_valid_value(value)));
-        insert<decltype(value_layout)>(value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(ReaderHealth const&) const noexcept = default;

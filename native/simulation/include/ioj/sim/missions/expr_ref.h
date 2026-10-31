@@ -34,11 +34,10 @@ struct ExprRef : detail::ExprRefBase {
 
     constexpr ExprRef() noexcept = default;
     constexpr explicit ExprRef(decltype(index_layout)::value_type const index_value,
-                               decltype(leaf_layout)::value_type const leaf_value) noexcept {
-        value_ = 0;
+                               decltype(leaf_layout)::value_type const leaf_value) noexcept
+        : Base{static_cast<storage_type>(packed_pack<decltype(index_layout)>(index_value) |
+                                         packed_pack<decltype(leaf_layout)>(leaf_value))} {
         assert((is_valid_index(index_value)));
-        insert<decltype(index_layout)>(index_value);
-        insert<decltype(leaf_layout)>(leaf_value);
         assert((value_ != invalid_value));
     }
 

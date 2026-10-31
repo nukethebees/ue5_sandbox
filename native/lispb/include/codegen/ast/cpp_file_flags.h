@@ -34,11 +34,11 @@ struct CppFileFlags : detail::CppFileFlagsBase {
     constexpr explicit CppFileFlags(
         decltype(pragma_once_layout)::value_type const pragma_once_value,
         decltype(clang_format_off_layout)::value_type const clang_format_off_value,
-        decltype(format_generated_layout)::value_type const format_generated_value) noexcept {
-        insert<decltype(pragma_once_layout)>(pragma_once_value);
-        insert<decltype(clang_format_off_layout)>(clang_format_off_value);
-        insert<decltype(format_generated_layout)>(format_generated_value);
-    }
+        decltype(format_generated_layout)::value_type const format_generated_value) noexcept
+        : Base{static_cast<storage_type>(
+              ioj::packed_pack<decltype(pragma_once_layout)>(pragma_once_value) |
+              ioj::packed_pack<decltype(clang_format_off_layout)>(clang_format_off_value) |
+              ioj::packed_pack<decltype(format_generated_layout)>(format_generated_value))} {}
 
     [[nodiscard]] constexpr auto operator<=>(CppFileFlags const&) const noexcept = default;
 

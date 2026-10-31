@@ -39,9 +39,9 @@ struct NavigationRiskCode : detail::NavigationRiskCodeBase {
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{};
 
     constexpr NavigationRiskCode() noexcept = default;
-    constexpr explicit NavigationRiskCode(value_type const value) noexcept {
+    constexpr explicit NavigationRiskCode(value_type const value) noexcept
+        : Base{packed_pack<decltype(value_layout)>(value)} {
         assert((is_valid_value(value)));
-        insert<decltype(value_layout)>(value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(NavigationRiskCode const&) const noexcept = default;
@@ -78,9 +78,8 @@ struct NavigationScanCount : detail::NavigationScanCountBase {
     static constexpr PackedField<storage_type, value_type, 0, storage.encoded_bits> value_layout{};
 
     constexpr NavigationScanCount() noexcept = default;
-    constexpr explicit NavigationScanCount(value_type const value) noexcept {
-        insert<decltype(value_layout)>(value);
-    }
+    constexpr explicit NavigationScanCount(value_type const value) noexcept
+        : Base{value} {}
 
     [[nodiscard]] constexpr auto operator<=>(NavigationScanCount const&) const noexcept = default;
 
@@ -117,9 +116,9 @@ struct AvoidanceChoice : detail::AvoidanceChoiceBase {
     static constexpr value_type StopMovement{static_cast<value_type>(-2LL)};
 
     constexpr AvoidanceChoice() noexcept = default;
-    constexpr explicit AvoidanceChoice(value_type const value) noexcept {
+    constexpr explicit AvoidanceChoice(value_type const value) noexcept
+        : Base{static_cast<storage_type>(value)} {
         assert((is_valid_value(value)));
-        insert<decltype(value_layout)>(value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(AvoidanceChoice const& other) const noexcept {

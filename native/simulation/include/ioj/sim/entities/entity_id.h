@@ -37,12 +37,12 @@ struct EntityId : detail::EntityIdBase {
     constexpr EntityId() noexcept = default;
     constexpr explicit EntityId(
         decltype(index_layout)::value_type const index_value,
-        decltype(entity_type_layout)::value_type const entity_type_value) noexcept {
-        value_ = 0;
+        decltype(entity_type_layout)::value_type const entity_type_value) noexcept
+        : Base{static_cast<storage_type>(
+              packed_pack<decltype(index_layout)>(index_value) |
+              packed_pack<decltype(entity_type_layout)>(entity_type_value))} {
         assert((is_valid_index(index_value)));
-        insert<decltype(index_layout)>(index_value);
         assert((is_valid_entity_type(entity_type_value)));
-        insert<decltype(entity_type_layout)>(entity_type_value);
         assert((value_ != invalid_value));
     }
 

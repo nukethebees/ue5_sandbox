@@ -81,11 +81,11 @@ struct Instruction : detail::InstructionBase {
     }
     [[nodiscard]] static constexpr auto make_data_kill(EntityId const data_kill_value) noexcept
         -> Instruction {
-        auto result{from_raw(0)};
-        result.insert<decltype(type_layout)>(ioj::sim::tasks::InstructionType::Kill);
         assert((data_kill_value.is_valid()));
-        result.insert<decltype(data_kill_layout)>(
-            static_cast<storage_type>(data_kill_value.raw_value()));
+        auto result{from_raw(static_cast<storage_type>(
+            packed_pack<decltype(type_layout)>(ioj::sim::tasks::InstructionType::Kill) |
+            packed_pack<decltype(data_kill_layout)>(
+                static_cast<storage_type>(data_kill_value.raw_value()))))};
         return result;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {

@@ -29,9 +29,9 @@ struct RegisteredInt : detail::RegisteredIntBase {
         value_layout{{static_cast<value_type>(-100LL), static_cast<value_type>(100ULL)}};
 
     constexpr RegisteredInt() noexcept = default;
-    constexpr explicit RegisteredInt(value_type const value) noexcept {
+    constexpr explicit RegisteredInt(value_type const value) noexcept
+        : Base{ioj::packed_pack<decltype(value_layout)>(value)} {
         assert((is_valid_value(value)));
-        insert<decltype(value_layout)>(value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(RegisteredInt const& other) const noexcept {
@@ -74,9 +74,9 @@ struct StandardInt : detail::StandardIntBase {
         value_layout{{static_cast<value_type>(-100LL), static_cast<value_type>(100ULL)}};
 
     constexpr StandardInt() noexcept = default;
-    constexpr explicit StandardInt(value_type const value) noexcept {
+    constexpr explicit StandardInt(value_type const value) noexcept
+        : Base{ioj::packed_pack<decltype(value_layout)>(value)} {
         assert((is_valid_value(value)));
-        insert<decltype(value_layout)>(value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(StandardInt const& other) const noexcept {
@@ -120,9 +120,9 @@ struct DamageCode : detail::DamageCodeBase {
     static constexpr value_type Laser{static_cast<value_type>(1ULL)};
 
     constexpr DamageCode() noexcept = default;
-    constexpr explicit DamageCode(value_type const value) noexcept {
+    constexpr explicit DamageCode(value_type const value) noexcept
+        : Base{ioj::packed_pack<decltype(value_layout)>(value)} {
         assert((is_valid_value(value)));
-        insert<decltype(value_layout)>(value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(DamageCode const&) const noexcept = default;
@@ -165,9 +165,9 @@ struct DamageReason : detail::DamageReasonBase {
     static constexpr value_type Invalid{static_cast<value_type>(255ULL)};
 
     constexpr DamageReason() noexcept = default;
-    constexpr explicit DamageReason(value_type const value) noexcept {
+    constexpr explicit DamageReason(value_type const value) noexcept
+        : Base{value} {
         assert((is_valid_value(value)));
-        insert<decltype(value_layout)>(value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(DamageReason const&) const noexcept = default;
@@ -207,9 +207,9 @@ struct Health : detail::HealthBase {
         value_layout{{static_cast<value_type>(0ULL), static_cast<value_type>(1000ULL)}};
 
     constexpr Health() noexcept = default;
-    constexpr explicit Health(value_type const value) noexcept {
+    constexpr explicit Health(value_type const value) noexcept
+        : Base{ioj::packed_pack<decltype(value_layout)>(value)} {
         assert((is_valid_value(value)));
-        insert<decltype(value_layout)>(value);
     }
 
     [[nodiscard]] constexpr auto operator<=>(Health const&) const noexcept = default;
