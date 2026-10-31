@@ -31,7 +31,7 @@ struct RadarScene {
                                std::span{ids}.subspan(index, 1),
                                locations.get_const_view(index, 1),
                                velocities.get_const_view(index, 1),
-                               sim::HealthConstView{std::span{healths}.subspan(index, 1)},
+                               sim::HealthConstView{types[index], healths},
                                std::span{teams}.subspan(index, 1)});
         }
         return collect_radar_instances(

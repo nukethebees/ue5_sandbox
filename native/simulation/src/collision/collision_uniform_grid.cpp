@@ -186,7 +186,7 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
             }
         } else {
             for (std::uint32_t row{}; row < count; ++row) {
-                if (is_dead(healths.health(row))) {
+                if (is_dead(healths.health(ids[row]))) {
                     continue;
                 }
                 append_row(row);

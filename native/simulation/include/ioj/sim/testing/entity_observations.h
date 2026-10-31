@@ -32,7 +32,7 @@ inline auto observe_entity_columns(EntityId const id,
     return EntityObservation{locations[row],
                              velocities.is_empty() ? Vector3f{} : velocities[row],
                              teams.empty() ? Team::White : teams[row],
-                             healths.is_empty() ? Health{1} : healths.health(row),
+                             healths.is_empty() ? Health{1} : healths.health(id),
                              row};
 }
 

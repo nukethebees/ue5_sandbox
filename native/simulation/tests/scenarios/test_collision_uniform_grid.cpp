@@ -910,8 +910,8 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridRebuildLifecycle) {
              {{moved_location.x() - aabb_half_extents.x(), 0.f, 0.f}}},
         }};
         check_traces(authoritative, owner_cases);
-        authoritative.owners.health_table.get_view<EntityType::CapitalShip>(owner.num())
-            .set_health(0, Health{0});
+        authoritative.owners.health_table.get_view<EntityType::CapitalShip>().set_health(
+            owner.entity_ids()[0], Health{0});
         authoritative.owners.rebuild(authoritative.grid, authoritative.aabbs);
         std::array<ExpectedTrace, 1> const dead_owner_cases{{
             {"Rebuild removes dead owners before subsequent queries",

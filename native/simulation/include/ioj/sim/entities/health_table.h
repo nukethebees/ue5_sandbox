@@ -1,14 +1,12 @@
 #pragma once
 
-#include <ioj/range_fits.h>
 #include <ioj/sim/entities/entity_identity_layout.h>
-#include <ioj/sim/entities/entity_instance_handle.h>
 #include <ioj/sim/entities/entity_table_operations.h>
 #include <ioj/sim/entities/health.h>
 #include <ioj/subspan.h>
 
-#include <algorithm>
 #include <cassert>
+#include <cstddef>
 #include <span>
 #include <utility>
 #include <vector>
@@ -33,53 +31,66 @@ inline constexpr auto layout{[] {
     }
     return result;
 }()};
+
+[[nodiscard]] inline auto index(EntityId const id,
+                                [[maybe_unused]] EntityType const type,
+                                [[maybe_unused]] std::size_t const capacity) noexcept
+    -> std::size_t {
+    assert(id.is_valid() && id.entity_type() == type && id.index() < capacity);
+    return id.index();
+}
 }
 
 class HealthConstView {
   public:
     HealthConstView() = default;
-    explicit HealthConstView(std::span<Health const> const values) noexcept
-        : values_{values} {}
-    [[nodiscard]] auto num() const noexcept -> std::uint32_t {
-        return static_cast<std::uint32_t>(values_.size());
-    }
+    explicit HealthConstView(EntityType const type, std::span<Health const> const values) noexcept
+        : type_{type}
+        , values_{values} {}
+
     [[nodiscard]] auto is_empty() const noexcept -> bool { return values_.empty(); }
     [[nodiscard]] auto values() const noexcept -> std::span<Health const> { return values_; }
-    [[nodiscard]] auto health(EntityFrameIndex::value_type const row) const -> Health {
-        assert(row < values_.size());
-        return values_[row];
+    [[nodiscard]] auto health(EntityId const id) const -> Health {
+        return values_[health_storage::index(id, type_, values_.size())];
     }
-    void copy_to(std::span<Health> const output) const {
-        assert(output.size() == values_.size());
-        std::ranges::copy(values_, output.begin());
+    void copy_to(std::span<EntityId const> const ids, std::span<Health> const output) const {
+        assert(output.size() == ids.size());
+        auto const count{ids.size()};
+        for (std::size_t index{}; index < count; ++index) {
+            output[index] = health(ids[index]);
+        }
     }
   private:
+    EntityType type_{};
     std::span<Health const> values_;
 };
 
 class HealthView {
   public:
     HealthView() = default;
-    explicit HealthView(std::span<Health> const values) noexcept
-        : values_{values} {}
-    [[nodiscard]] auto num() const noexcept -> std::uint32_t {
-        return static_cast<std::uint32_t>(values_.size());
-    }
+    explicit HealthView(EntityType const type, std::span<Health> const values) noexcept
+        : type_{type}
+        , values_{values} {}
+
     [[nodiscard]] auto is_empty() const noexcept -> bool { return values_.empty(); }
-    [[nodiscard]] auto health(EntityFrameIndex::value_type const row) const -> Health {
-        assert(row < values_.size());
-        return values_[row];
+    [[nodiscard]] auto health(EntityId const id) const -> Health {
+        return values_[health_storage::index(id, type_, values_.size())];
     }
-    void set_health(EntityFrameIndex::value_type const row, Health const value) const {
-        assert(row < values_.size());
-        values_[row] = value;
+    void set_health(EntityId const id, Health const value) const {
+        values_[health_storage::index(id, type_, values_.size())] = value;
     }
-    void copy_from(std::span<Health const> const input) const {
-        assert(input.size() == values_.size());
-        std::ranges::copy(input, values_.begin());
+    void copy_from(std::span<EntityId const> const ids, std::span<Health const> const input) const {
+        assert(input.size() == ids.size());
+        auto const count{ids.size()};
+        for (std::size_t index{}; index < count; ++index) {
+            set_health(ids[index], input[index]);
+        }
     }
-    void copy_to(std::span<Health> const output) const { HealthConstView{values_}.copy_to(output); }
+    void copy_to(std::span<EntityId const> const ids, std::span<Health> const output) const {
+        HealthConstView{type_, values_}.copy_to(ids, output);
+    }
   private:
+    EntityType type_{};
     std::span<Health> values_;
 };
 
@@ -91,64 +102,41 @@ class HealthTable : public EntityTableOperations {
     HealthTable()
         : values_(health_storage::layout.capacity) {}
 
+    [[nodiscard]] auto health(EntityId const id) const -> Health {
+        return values_[storage_index(id)];
+    }
+    void set_health(EntityId const id, Health const value) { values_[storage_index(id)] = value; }
+
     template <EntityType Type>
-    void initialise_rows(EntityFrameIndex::value_type const first,
-                         std::span<Health const> const initial_values) {
-        [[maybe_unused]] auto const count{
-            static_cast<EntityFrameIndex::value_type>(initial_values.size())};
-        assert(fits_index_range(first, count));
-        assert(fits_capacity(Type, first + count));
-        auto const subspan{Subspan{health_storage::layout.offsets[Type] + first, count}};
-        std::ranges::copy(initial_values, subspan(values_).begin());
+    void initialise_entities(std::span<EntityId const> const ids,
+                             std::span<Health const> const initial_values) {
+        get_view<Type>().copy_from(ids, initial_values);
     }
 
     template <EntityType Type>
-    void initialise_rows(EntityFrameIndex::value_type const first,
-                         EntityFrameIndex::value_type const count,
-                         Health const initial_value) {
-        assert(fits_index_range(first, count));
-        assert(fits_capacity(Type, first + count));
-        auto const subspan{Subspan{health_storage::layout.offsets[Type] + first, count}};
-        std::ranges::fill(subspan(values_), initial_value);
-    }
-
-    template <EntityType Type>
-    void remove_rows(std::size_t const count,
-                     std::span<EntityFrameIndex::value_type const> const rows) {
-        remove_rows_impl(Type, count, rows);
-    }
-
-    template <EntityType Type>
-    void apply_permutation(std::span<std::int32_t> const order) {
-        apply_permutation_impl(Type, order);
+    void initialise_entities(std::span<EntityId const> const ids, Health const initial_value) {
+        auto const view{get_view<Type>()};
+        for (auto const id : ids) {
+            view.set_health(id, initial_value);
+        }
     }
   private:
     friend struct EntityTableOperations;
 
     template <typename Self, typename Func>
-    decltype(auto)
-        with_columns(this Self& self, EntityType const type, std::size_t const count, Func&& func) {
-        assert(Self::fits_capacity(type, count));
-        return std::forward<Func>(func)(
-            Subspan{health_storage::layout.offsets[type], count}(self.values_));
+    decltype(auto) with_columns(this Self& self, EntityType const type, Func&& func) {
+        auto const subspan{
+            Subspan{health_storage::layout.offsets[type], health_storage::layout.capacities[type]}};
+        return std::forward<Func>(func)(subspan(self.values_));
     }
 
     [[nodiscard]] static constexpr auto is_supported_type(EntityType const type) noexcept -> bool {
         return has_health(type);
     }
 
-    [[nodiscard]] static constexpr auto fits_capacity(EntityType const type,
-                                                      std::size_t const count) noexcept -> bool {
-        return count <= health_storage::layout.capacities[type];
-    }
-
-    [[nodiscard]] static constexpr auto
-        fits_index_range(EntityFrameIndex::value_type const first,
-                         EntityFrameIndex::value_type const count) noexcept -> bool {
-        return range_fits(first,
-                          count,
-                          EntityInstanceHandle::index_layout.range.min,
-                          EntityInstanceHandle::index_layout.range.max);
+    [[nodiscard]] static auto storage_index(EntityId const id) noexcept -> std::size_t {
+        assert(is_entity_identity_offset(id) && has_health(id.entity_type()));
+        return health_storage::layout.offsets[id.entity_type()] + id.index();
     }
 
     std::vector<Health> values_;

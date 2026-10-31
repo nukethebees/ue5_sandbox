@@ -61,7 +61,7 @@ struct Sim {
         return entities_.get_const_view().entity_ids();
     }
     auto get_healths() const -> HealthConstView {
-        return entity_tables_.health.get_const_view<EntityType::Fighter>(entities_.num());
+        return entity_tables_.health.get_const_view<EntityType::Fighter>();
     }
     auto get_locations() const { return entities_.get_const_view().view_locations(); }
     auto has_id(EntityId fighter) const -> bool;

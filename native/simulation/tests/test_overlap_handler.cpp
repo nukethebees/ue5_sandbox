@@ -104,7 +104,7 @@ TEST(OverlapHandler, FiltersUnsupportedRecipientsAndDefersRetirementChecksToDama
 
     owners.combat_events.reset();
     auto const fighter_data{owners.fighters.get_const_view()};
-    owners.health_table.get_view<EntityType::Fighter>(fighter_data.num()).set_health(0, Health{0});
+    owners.health_table.set_health(fighter_data.entity_ids()[0], Health{0});
     owners.publish();
     handler.handle({retired_pair.get_const_view(), {}}, owners.combat_events);
     owners.combat_events.prepare(owners.entity_tables.lookups, &memory);

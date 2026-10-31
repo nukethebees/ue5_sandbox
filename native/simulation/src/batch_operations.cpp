@@ -39,7 +39,6 @@ void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
     local_indices_to_remove.resize(removal_count + static_cast<std::size_t>(n_direct_events));
     entity_death_info.add_uninitialised(n_direct_events);
 
-    assert(healths.num() == static_cast<std::uint32_t>(entity_ids.size()));
     auto current_removal_count{static_cast<std::uint32_t>(removal_count)};
     auto current_death_count{death_count};
     auto const removal_storage{std::span{local_indices_to_remove}};
@@ -58,7 +57,7 @@ void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
         auto const local_index{handles[id.index()].index()};
         assert(local_index < entity_ids.size());
         assert(entity_ids[local_index] == id);
-        if (is_dead(healths.health(local_index))) {
+        if (is_dead(healths.health(id))) {
             continue;
         }
         auto const requested_damage{damage_amounts[element]};
@@ -66,10 +65,10 @@ void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
         if (requested_damage == 0) {
             continue;
         }
-        auto health{healths.health(local_index)};
+        auto health{healths.health(id)};
         auto const applied_damage{Health{std::min(health.value(), requested_damage)}};
         health.set_value(health.value() - requested_damage);
-        healths.set_health(local_index, health);
+        healths.set_health(id, health);
         applied_damages[event_index] = applied_damage;
         // The populated prefix grows as this loop discovers deaths.
         // NOLINTNEXTLINE(ioj-loop-view-accessor-call)

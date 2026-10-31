@@ -132,10 +132,11 @@ void expect_health_mappings(LevelSim const& simulation) {
     auto const world{simulation.get_read_access()};
     auto const& table{simulation.get_entity_tables().health};
     auto validate = [&]<EntityType Type>(auto const& entities, HealthConstView const healths) {
-        ASSERT_EQ(healths.num(), entities.num());
-        auto const direct{table.get_const_view<Type>(entities.num())};
+        auto const direct{table.get_const_view<Type>()};
         EXPECT_EQ(direct.values().data(), healths.values().data());
-        EXPECT_EQ(direct.num(), healths.num());
+        for (auto const id : entities.entity_ids()) {
+            EXPECT_EQ(direct.health(id), healths.health(id));
+        }
     };
 
     validate.operator()<EntityType::CapitalShip>(world.get_capitals().get_entities(),
@@ -145,8 +146,7 @@ void expect_health_mappings(LevelSim const& simulation) {
     validate.operator()<EntityType::Turret>(world.get_turrets().get_entities(),
                                             world.get_turrets().get_healths());
     if (auto const* const player{simulation.get_player_ship_simulation()}) {
-        EXPECT_EQ(table.get_const_view<EntityType::PlayerShip>(1).health(0),
-                  player->get_health().health);
+        EXPECT_EQ(table.health(player->unique_entity_id), player->get_health().health);
     }
 }
 }
@@ -610,19 +610,20 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     EXPECT_EQ(simulation.get_entity_ledger().count_alive(), 5)
         << "Every compiled initial entity is registered";
     auto const& health_table{simulation.get_entity_tables().health};
-    EXPECT_EQ(health_table.get_const_view<EntityType::PlayerShip>(1).health(0),
-              player->get_health().health)
+    EXPECT_EQ(health_table.health(player->unique_entity_id), player->get_health().health)
         << "Player health is stored in the world health table";
     auto const& turret_view{simulation.get_turrets()};
     auto const turrets{turret_view.get_entities()};
     auto const turret_count{turrets.num()};
     auto const turret_teams{turrets.teams()};
-    auto const turret_healths{health_table.get_const_view<EntityType::Turret>(turret_count)};
+    auto const turret_ids{turrets.entity_ids()};
+    auto const turret_healths{health_table.get_const_view<EntityType::Turret>()};
     for (std::uint32_t i{}; i < turret_count; ++i) {
         auto const rotated{turret_teams[i] == Team::Green};
-        EXPECT_EQ(turret_healths.health(i), turret_view.get_healths().health(i))
+        EXPECT_EQ(turret_healths.health(turret_ids[i]),
+                  turret_view.get_healths().health(turret_ids[i]))
             << "Turret health is allocated in the world health table";
-        EXPECT_EQ(turret_view.get_healths().health(i).value(), rotated ? 20 : 30)
+        EXPECT_EQ(turret_view.get_healths().health(turret_ids[i]).value(), rotated ? 20 : 30)
             << "Compiled turret health is retained";
         EXPECT_EQ(turrets.view_rotations().yaws()[i], rotated ? 90.f : 0.f)
             << "Compiled turret rotation is retained";

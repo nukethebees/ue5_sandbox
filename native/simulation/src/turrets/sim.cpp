@@ -111,7 +111,8 @@ auto Sim::register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data)
     auto const new_entity_ids{entities_entity_ids.subspan(first_new_index, n_to_add)};
     ledger_.record_spawns(EntityType::Turret, spawn_data_teams, spawn_data_healths, new_entity_ids);
     std::vector<EntityId> new_ids{new_entity_ids.begin(), new_entity_ids.end()};
-    entity_tables_.health.initialise_rows<EntityType::Turret>(first_new_index, spawn_data_healths);
+    entity_tables_.health.initialise_entities<EntityType::Turret>(new_entity_ids,
+                                                                  spawn_data_healths);
     make_deterministic_biases(std::span<EntityId const>{entities_entity_ids}.subspan(
                                   static_cast<std::size_t>(first_new_index), spawn_count),
                               std::span<std::uint32_t>{entities.integral_biases()}.subspan(
@@ -201,7 +202,7 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::resolve_damage_events");
 
     auto const entities{this->entities.get_view()};
-    auto const healths{entity_tables_.health.get_view<EntityType::Turret>(entities.num())};
+    auto const healths{entity_tables_.health.get_view<EntityType::Turret>()};
     sim::resolve_damage_events(inputs.combat_events.events_for(EntityType::Turret),
                                entity_tables_.lookups.for_type(EntityType::Turret),
                                entities.entity_ids(),
@@ -227,11 +228,6 @@ void Sim::remove_components() {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::remove_components");
 
     sort_and_deduplicate_removal_indices(local_indices_to_remove);
-    if (local_indices_to_remove.empty()) {
-        return;
-    }
-
-    entity_tables_.health.remove_rows<EntityType::Turret>(entities.num(), local_indices_to_remove);
 }
 void Sim::remove_entities() {
     assert(is_removal_allowed(entity_tables_.lookups.clock()));

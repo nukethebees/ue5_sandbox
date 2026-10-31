@@ -83,10 +83,11 @@ void FFighterPresentation::update_ismc() {
     auto const data{simulation().get_entities()};
     auto const count{static_cast<int32>(data.num())};
     auto const locations{data.view_locations()};
+    auto const ids{data.entity_ids()};
     FBox3f position_bounds{ForceInit};
     visible_indices_.Reset();
     for (int32 index{}; index < count; ++index) {
-        if (::ioj::sim::is_alive(healths.health(index))) {
+        if (::ioj::sim::is_alive(healths.health(ids[index]))) {
             visible_indices_.Add(index);
             position_bounds += ioj::to_unreal(::ioj::vector_at(locations, index));
         }

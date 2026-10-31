@@ -48,7 +48,7 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
 
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::resolve_damage_events");
     auto const entities{this->entities.get_view()};
-    auto const healths{entity_tables_.health.get_view<EntityType::CapitalShip>(entities.num())};
+    auto const healths{entity_tables_.health.get_view<EntityType::CapitalShip>()};
     sim::resolve_damage_events(inputs.combat_events.events_for(EntityType::CapitalShip),
                                entity_tables_.lookups.for_type(EntityType::CapitalShip),
                                entities.entity_ids(),
@@ -68,12 +68,6 @@ void Sim::remove_components() {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::remove_components");
 
     sort_and_deduplicate_removal_indices(local_indices_to_remove);
-    if (local_indices_to_remove.empty()) {
-        return;
-    }
-
-    entity_tables_.health.remove_rows<EntityType::CapitalShip>(entities.num(),
-                                                               local_indices_to_remove);
 }
 void Sim::remove_entities() {
     assert(is_removal_allowed(entity_tables_.lookups.clock()));
@@ -106,12 +100,7 @@ auto Sim::get_team(EntityId const id) const noexcept -> Team {
     return entities.get_const_view().teams()[index];
 }
 auto Sim::get_health(EntityId const id) const noexcept -> Health {
-    auto const ids{entities.get_const_view().entity_ids()};
-    auto const found{std::ranges::find(ids, id)};
-    assert(found != ids.end());
-    auto const index{static_cast<EntityFrameIndex::value_type>(found - ids.begin())};
-    return entity_tables_.health.get_const_view<EntityType::CapitalShip>(entities.num())
-        .health(index);
+    return get_healths().health(id);
 }
 auto Sim::find_first_index_on_team(Team const team) const noexcept -> std::optional<std::uint32_t> {
     auto const entities{this->entities.get_const_view()};
@@ -146,7 +135,8 @@ auto Sim::register_ships(LevelCapitalSpawnEvents::ConstView const spawn_data)
     auto const new_entity_ids{entities.right(n_to_add).entity_ids()};
     ledger_.record_spawns(EntityType::CapitalShip, spawn_teams, spawn_healths, new_entity_ids);
     std::vector<EntityId> new_ids{new_entity_ids.begin(), new_entity_ids.end()};
-    entity_tables_.health.initialise_rows<EntityType::CapitalShip>(first_new_index, spawn_healths);
+    entity_tables_.health.initialise_entities<EntityType::CapitalShip>(new_entity_ids,
+                                                                       spawn_healths);
     auto const entities{this->entities.get_const_view()};
     auto const locations{entities.view_locations().resolve()};
     auto const rotations{entities.view_rotations().resolve()};

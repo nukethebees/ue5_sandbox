@@ -112,7 +112,7 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
     std::array ids{victim};
     std::array<Health, 1> initial_healths{Health{10}};
     HealthTable health_table;
-    health_table.initialise_rows<EntityType::Fighter>(0, initial_healths);
+    health_table.initialise_entities<EntityType::Fighter>(ids, initial_healths);
     std::vector<std::uint32_t> removals;
     EntityDeathInfo deaths;
     Vectors3f locations;
@@ -123,14 +123,14 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
                               indexes.for_type(EntityType::Fighter),
                               ids,
                               locations.get_const_view().resolve(),
-                              health_table.get_view<EntityType::Fighter>(ids.size()),
+                              health_table.get_view<EntityType::Fighter>(),
                               removals,
                               deaths,
                               ledger,
                               &frame_memory);
     }
 
-    EXPECT_EQ(health_table.get_const_view<EntityType::Fighter>(ids.size()).health(0).value(), -6);
+    EXPECT_EQ(health_table.get_const_view<EntityType::Fighter>().health(victim).value(), -6);
     EXPECT_EQ(removals, std::vector<std::uint32_t>{0});
     ASSERT_EQ(deaths.num(), 1);
     EXPECT_EQ(deaths.get_view().victims()[0], victim);

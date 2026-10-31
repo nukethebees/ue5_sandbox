@@ -285,7 +285,7 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::resolve_damage_events");
 
     auto const data{entities_.get_view()};
-    auto const healths{entity_tables_.health.get_view<EntityType::Fighter>(data.num())};
+    auto const healths{entity_tables_.health.get_view<EntityType::Fighter>()};
     auto const damage_events{inputs.combat_events.events_for(EntityType::Fighter)};
     sim::resolve_damage_events(damage_events,
                                entity_tables_.lookups.for_type(EntityType::Fighter),
@@ -308,12 +308,6 @@ void Sim::remove_components() {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::remove_components");
 
     sort_and_deduplicate_removal_indices(local_indices_to_remove);
-    if (local_indices_to_remove.empty()) {
-        return;
-    }
-
-    entity_tables_.health.remove_rows<EntityType::Fighter>(entities_.num(),
-                                                           local_indices_to_remove);
 }
 void Sim::remove_entities() {
     assert(is_removal_allowed(entity_tables_.lookups.clock()));
@@ -978,7 +972,7 @@ void Sim::commit_spawns() {
     auto const entity_ids{new_data.entity_ids()};
     auto const teams{new_data.teams()};
     ledger_.record_spawns(EntityType::Fighter, teams, config.health, entity_ids);
-    entity_tables_.health.initialise_rows<EntityType::Fighter>(n_cur, n_new, config.health);
+    entity_tables_.health.initialise_entities<EntityType::Fighter>(entity_ids, config.health);
     make_deterministic_biases(
         std::span<EntityId const>{data.entity_ids()}.subspan(n_cur, n_new),
         std::span<std::uint32_t>{data.integral_biases()}.subspan(n_cur, n_new),

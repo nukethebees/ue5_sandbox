@@ -409,7 +409,12 @@ TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {
     LevelSimTestAccess::queue_laser_spawns(simulation, shot.get_const_view());
     simulation.start();
     simulation.advance(clk_period);
-    EXPECT_EQ(simulation.get_read_access().get_capitals().get_healths().health(0).value(), 75);
+    EXPECT_EQ(simulation.get_read_access()
+                  .get_capitals()
+                  .get_healths()
+                  .health(simulation.get_read_access().get_capitals().get_id(0))
+                  .value(),
+              75);
     EXPECT_EQ(simulation.get_lasers().get_num_instances(), 0);
     EXPECT_EQ(simulation.get_read_access().get_lasers().get_entities().num(), 0);
     simulation.advance(clk_period);

@@ -24,12 +24,14 @@ auto make_view(Entities const& entities) -> std::vector<::ioj::presentation::Age
     auto const count{entities.num()};
     batches.reserve(count);
     for (std::int32_t i{}; i < count; ++i) {
-        batches.push_back({entities.entity_types[static_cast<std::size_t>(i)],
-                           std::span{entities.entity_ids}.subspan(i, 1),
-                           entities.positions.get_const_view(i, 1),
-                           {},
-                           ::ioj::sim::HealthConstView{std::span{entities.healths}.subspan(i, 1)},
-                           std::span{entities.teams}.subspan(i, 1)});
+        batches.push_back(
+            {entities.entity_types[static_cast<std::size_t>(i)],
+             std::span{entities.entity_ids}.subspan(i, 1),
+             entities.positions.get_const_view(i, 1),
+             {},
+             ::ioj::sim::HealthConstView{entities.entity_types[static_cast<std::size_t>(i)],
+                                         entities.healths},
+             std::span{entities.teams}.subspan(i, 1)});
     }
     return batches;
 }

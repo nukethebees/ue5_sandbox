@@ -1,9 +1,7 @@
 #include <ioj/sim/tasks/executor_table.h>
 
-#include <ioj/range_fits.h>
 #include <ioj/subspan.h>
 
-#include <algorithm>
 #include <cassert>
 
 namespace ioj::sim::tasks {
@@ -17,11 +15,6 @@ inline constexpr EntityTypeSizes offsets{[] {
     }
     return result;
 }()};
-
-[[nodiscard]] constexpr auto fits_capacity(EntityType const type, std::size_t const count) noexcept
-    -> bool {
-    return count <= entity_lifetime_capacities[type];
-}
 }
 
 ExecutorTable::ExecutorTable(std::pmr::memory_resource& resource)
@@ -29,33 +22,19 @@ ExecutorTable::ExecutorTable(std::pmr::memory_resource& resource)
     , pending_tasks(entity_identity_capacity, &resource)
     , current_instructions(entity_identity_capacity, &resource) {}
 
-auto ExecutorTable::subspan_for(EntityType const type, std::size_t const count) -> Subspan {
-    assert(executor_storage::fits_capacity(type, count));
-    return Subspan{executor_storage::offsets[type], count};
+auto ExecutorTable::subspan_for(EntityType const type) -> Subspan {
+    return Subspan{executor_storage::offsets[type], entity_lifetime_capacities[type]};
 }
 
-void ExecutorTable::initialise_rows(EntityType const type,
-                                    EntityFrameIndex::value_type const first,
-                                    EntityFrameIndex::value_type const count) {
-    assert(range_fits(first,
-                      count,
-                      EntityInstanceHandle::index_layout.range.min,
-                      EntityInstanceHandle::index_layout.range.max));
-    auto const end{static_cast<std::size_t>(first) + count};
-    auto const view{get_view(type, end)};
-    auto const subspan{Subspan{first, count}};
-    std::ranges::fill(subspan(view.current_tasks), TaskId{});
-    std::ranges::fill(subspan(view.pending_tasks), TaskId{});
-    std::ranges::fill(subspan(view.current_instructions), InstructionHandle{});
-}
-
-void ExecutorTable::remove_rows(EntityType const type,
-                                std::size_t const count,
-                                std::span<EntityFrameIndex::value_type const> const rows) {
-    remove_rows_impl(type, count, rows);
-}
-
-void ExecutorTable::apply_permutation(EntityType const type, std::span<std::int32_t> const order) {
-    apply_permutation_impl(type, order);
+void ExecutorTable::initialise_entities(EntityType const type,
+                                        std::span<EntityId const> const ids) {
+    auto const view{get_view(type)};
+    for (auto const id : ids) {
+        assert(id.is_valid() && id.entity_type() == type && id.index() < view.current_tasks.size());
+        auto const index{id.index()};
+        view.current_tasks[index] = TaskId{};
+        view.pending_tasks[index] = TaskId{};
+        view.current_instructions[index] = InstructionHandle{};
+    }
 }
 }

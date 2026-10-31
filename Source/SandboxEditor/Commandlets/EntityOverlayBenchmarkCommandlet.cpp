@@ -28,7 +28,7 @@ auto make_view(::ioj::sim::TurretEntityData const& entities,
               data.entity_ids(),
               data.view_locations(),
               {},
-              health_table.get_const_view<::ioj::sim::EntityType::Turret>(data.num()),
+              health_table.get_const_view<::ioj::sim::EntityType::Turret>(),
               data.teams()}}};
 }
 
@@ -82,7 +82,8 @@ auto write_debug_frames(FString const& output_directory) -> bool {
         entities.get_view().teams()[index] =
             static_cast<::ioj::Team>(index % ioj::enum_count<::ioj::Team>());
     }
-    health_table.initialise_rows<::ioj::sim::EntityType::Turret>(0, health);
+    health_table.initialise_entities<::ioj::sim::EntityType::Turret>(
+        entities.get_const_view().entity_ids(), health);
 
     FMatrix44f projection{FMatrix44f::Identity};
     FMemory::Memzero(projection.M, sizeof(projection.M));

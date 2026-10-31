@@ -1,9 +1,9 @@
 #pragma once
-
 #include <ioj/range_fits.h>
 #include <ioj/sim/entities/entity_identity_layout.h>
 #include <ioj/sim/entities/entity_instance_handle.h>
 #include <ioj/sim/entities/health.h>
+#include <ioj/sim/entities/health_table.h>
 #include <ioj/sim/entities/quantise_health.h>
 
 #include <algorithm>
@@ -30,10 +30,9 @@ class EntityLookupTable {
 
     void publish_rows(std::span<EntityId const> const ids,
                       std::span<Team const> const teams,
-                      std::span<Health const> const healths = {},
+                      HealthConstView const healths = {},
                       Health const maximum = Health{1}) {
         assert(teams.empty() || teams.size() == ids.size());
-        assert(healths.empty() || healths.size() == ids.size());
         assert(range_fits<std::size_t>(0,
                                        ids.size(),
                                        EntityInstanceHandle::index_layout.range.min,
@@ -45,13 +44,14 @@ class EntityLookupTable {
             auto const id{ids[row]};
             assert(valid_lookup_id(id, type_, handle_count));
             auto& handle{handles_[id.index()]};
-            if (!healths.empty() && is_dead(healths[row])) {
+            auto const health{healths.is_empty() ? Health{} : healths.health(id)};
+            if (!healths.is_empty() && is_dead(health)) {
                 handle = {};
                 continue;
             }
             auto const team{teams.empty() ? Team::White : teams[row]};
-            auto const health_state{healths.empty() ? QuantisedHealth::value_type{3}
-                                                    : quantise_health(healths[row], maximum)};
+            auto const health_state{healths.is_empty() ? QuantisedHealth::value_type{3}
+                                                       : quantise_health(health, maximum)};
             handle = EntityInstanceHandle{row, team, health_state};
         }
     }

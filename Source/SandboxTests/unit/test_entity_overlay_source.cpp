@@ -16,13 +16,13 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
         std::array const healths{ioj::sim::Health{20}};
         std::array const teams{ioj::Team::Red};
         std::array const roles{ioj::ui::entity_overlay::ObjectiveRole::None};
-        std::array const batches{
-            ioj::presentation::AgentDisplayBatch{ioj::sim::EntityType::Turret,
-                                                 ids,
-                                                 positions.get_const_view(),
-                                                 {},
-                                                 ioj::sim::HealthConstView{healths},
-                                                 teams}};
+        std::array const batches{ioj::presentation::AgentDisplayBatch{
+            ioj::sim::EntityType::Turret,
+            ids,
+            positions.get_const_view(),
+            {},
+            ioj::sim::HealthConstView{ioj::sim::EntityType::Turret, healths},
+            teams}};
         ioj::sim::EntityTypeRadii radii{1.f};
         radii[ioj::sim::EntityType::Turret] = 100.f;
 

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <ioj/sim/entities/entity_identity_layout.h>
-#include <ioj/sim/entities/entity_instance_handle.h>
 #include <ioj/sim/entities/entity_table_operations.h>
 #include <ioj/sim/tasks/instruction_handle.h>
 #include <ioj/sim/tasks/task_id.h>
@@ -16,12 +15,14 @@
 
 namespace ioj::sim::tasks {
 struct ExecutorConstView {
+    EntityType entity_type{};
     std::span<TaskId const> current_tasks;
     std::span<TaskId const> pending_tasks;
     std::span<InstructionHandle const> current_instructions;
 };
 
 struct ExecutorView {
+    EntityType entity_type{};
     std::span<TaskId> current_tasks;
     std::span<TaskId> pending_tasks;
     std::span<InstructionHandle> current_instructions;
@@ -33,39 +34,19 @@ struct ExecutorTable : EntityTableOperations {
 
     explicit ExecutorTable(std::pmr::memory_resource& resource = *std::pmr::new_delete_resource());
 
-    void initialise_rows(EntityType type,
-                         EntityFrameIndex::value_type first,
-                         EntityFrameIndex::value_type count);
-    // Remove descending owner rows by swapping each with the remaining last row.
-    void remove_rows(EntityType type,
-                     std::size_t count,
-                     std::span<EntityFrameIndex::value_type const> rows);
-    void apply_permutation(EntityType type, std::span<std::int32_t> order);
+    void initialise_entities(EntityType type, std::span<EntityId const> ids);
 
     template <EntityType Type>
-    void initialise_rows(EntityFrameIndex::value_type const first,
-                         EntityFrameIndex::value_type const count) {
-        initialise_rows(Type, first, count);
-    }
-
-    template <EntityType Type>
-    void remove_rows(std::size_t const count,
-                     std::span<EntityFrameIndex::value_type const> const rows) {
-        remove_rows(Type, count, rows);
-    }
-
-    template <EntityType Type>
-    void apply_permutation(std::span<std::int32_t> const order) {
-        apply_permutation(Type, order);
+    void initialise_entities(std::span<EntityId const> const ids) {
+        initialise_entities(Type, ids);
     }
 
   private:
     friend struct ioj::sim::EntityTableOperations;
 
     template <typename Self, typename Func>
-    decltype(auto)
-        with_columns(this Self& self, EntityType const type, std::size_t const count, Func&& func) {
-        auto const subspan{subspan_for(type, count)};
+    decltype(auto) with_columns(this Self& self, EntityType const type, Func&& func) {
+        auto const subspan{subspan_for(type)};
         return std::forward<Func>(func)(subspan(self.current_tasks),
                                         subspan(self.pending_tasks),
                                         subspan(self.current_instructions));
@@ -75,10 +56,10 @@ struct ExecutorTable : EntityTableOperations {
         return static_cast<std::size_t>(type) < EntityTypeSizes::size();
     }
 
-    [[nodiscard]] static auto subspan_for(EntityType type, std::size_t count) -> Subspan;
+    [[nodiscard]] static auto subspan_for(EntityType type) -> Subspan;
 
   public:
-    // Keep columns at their preallocated size; use views for active rows.
+    // Keep lifetime slots allocated; index each type's view with EntityId::index().
     std::pmr::vector<TaskId> current_tasks;
     std::pmr::vector<TaskId> pending_tasks;
     std::pmr::vector<InstructionHandle> current_instructions;

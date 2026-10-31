@@ -40,7 +40,7 @@ struct Sim {
     /* **************************************** */
     auto get_entities() const -> EntityStorage::ConstView { return entities.get_const_view(); }
     auto get_healths() const -> HealthConstView {
-        return entity_tables_.health.get_const_view<EntityType::Turret>(entities.num());
+        return entity_tables_.health.get_const_view<EntityType::Turret>();
     }
     auto get_frame_changes() const -> std::span<EntityFrameChange const> { return frame_changes_; }
     auto get_death_locations() const -> std::span<Vector3f const> { return death_locations_; }

@@ -223,7 +223,7 @@ void FTurretPresentation::draw_debugging_shapes() const {
             auto const entity_id{ids[i]};
 
             auto const msg{FString::Printf(
-                TEXT("[%u] HP=%d"), entity_id.raw_value(), healths.health(i).value())};
+                TEXT("[%u] HP=%d"), entity_id.raw_value(), healths.health(entity_id).value())};
             auto const msg_location{turret_location + text_offset};
             drawer.draw_string(msg_location, msg);
         }

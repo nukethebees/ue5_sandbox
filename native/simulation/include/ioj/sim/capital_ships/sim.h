@@ -39,7 +39,7 @@ struct Sim {
     /* **************************************** */
     auto get_entities() const -> EntityStorage::ConstView { return entities.get_const_view(); }
     auto get_healths() const -> HealthConstView {
-        return entity_tables_.health.get_const_view<EntityType::CapitalShip>(entities.num());
+        return entity_tables_.health.get_const_view<EntityType::CapitalShip>();
     }
     auto get_frame_changes() const -> std::span<EntityFrameChange const> { return frame_changes_; }
     void reset_frame_output() { frame_changes_.clear(); }

@@ -202,9 +202,11 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
         FEntitySnapshot snapshot;
         auto append = [&snapshot](auto const& view, ::ioj::sim::EntityType const type) {
             auto const entities{view.get_entities()};
+            auto const ids{entities.entity_ids()};
+            auto const healths{view.get_healths()};
             auto const entity_count{entities.num()};
             for (uint32 index{}; index < entity_count; ++index) {
-                snapshot.healths.push_back(view.get_healths().health(index));
+                snapshot.healths.push_back(healths.health(ids[index]));
                 snapshot.locations.push_back(::ioj::vector_at(entities.view_locations(), index));
                 snapshot.teams.push_back(entities.teams()[index]);
                 snapshot.types.push_back(type);

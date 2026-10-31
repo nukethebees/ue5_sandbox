@@ -212,8 +212,8 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
                                                         &query_memory),
               1);
     EXPECT_EQ(nearby_ids[0], moved);
-    fixture.owners.health_table.get_view<EntityType::CapitalShip>(owner.num())
-        .set_health(0, Health{0});
+    fixture.owners.health_table.get_view<EntityType::CapitalShip>().set_health(
+        owner.entity_ids()[0], Health{0});
     fixture.owners.publish();
     fixture.owners.refresh(fixture.query_manager);
     EXPECT_EQ(queries.collect_non_team_entities_in_range(
