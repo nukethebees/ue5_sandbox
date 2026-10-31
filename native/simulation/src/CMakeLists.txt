@@ -66,6 +66,15 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/sim_state.h
   ../include/ioj/sim/sim_tick.h
   ../include/ioj/sim/tasks/instruction.h
+  ../include/ioj/sim/tasks/instruction_count.h
+  ../include/ioj/sim/tasks/instruction_data.h
+  ../include/ioj/sim/tasks/instruction_handle.h
+  ../include/ioj/sim/tasks/task_allocation_context.h
+  ../include/ioj/sim/tasks/task_entity_count.h
+  ../include/ioj/sim/tasks/task_id.h
+  ../include/ioj/sim/tasks/task_manager.h
+  ../include/ioj/sim/tasks/tasks.h
+  ../include/ioj/sim/tasks/executor_table.h
   ../include/ioj/sim/sim_time.h
   ../include/ioj/sim/collision/spatial_query_manager.h
   ../include/ioj/sim/collision/spatial.h
@@ -103,6 +112,8 @@ target_sources(native-simulation PRIVATE
   collision/spatial_range_queries.cpp
   collision/spatial.cpp
   step_response.cpp
+  tasks/task_manager.cpp
+  tasks/executor_table.cpp
 )
 
 add_subdirectory(capital_ships)
