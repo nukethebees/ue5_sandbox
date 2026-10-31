@@ -8,11 +8,11 @@
 struct FPlayerControllerTestAccess {
     static void prepare_completion(ASpaceGamePlayerController& controller) {
         controller.modal_ui_.completion_menu_ = NewObject<ioj::ULevelCompletionWidget>(&controller);
-        controller.modal_ui_.begin_suspend(EPlayerControlContext::Player);
+        controller.modal_ui_.begin_suspend(::ioj::levels::ControlContext::Player);
     }
 
     static auto restore_context(ASpaceGamePlayerController const& controller) {
-        return controller.modal_ui_.resume_context(EPlayerControlContext::None);
+        return controller.modal_ui_.resume_context(::ioj::levels::ControlContext::None);
     }
 
     static void prepare_input(ASpaceGamePlayerController& controller,
@@ -64,7 +64,7 @@ struct FPlayerControllerTestAccess {
         controller.EndPlay(EEndPlayReason::Destroyed);
     }
     static auto select_context(ASpaceGamePlayerController& controller,
-                               EPlayerControlContext context) -> bool {
+                               ::ioj::levels::ControlContext context) -> bool {
         return controller.control_contexts_.set_control_context(context);
     }
 };

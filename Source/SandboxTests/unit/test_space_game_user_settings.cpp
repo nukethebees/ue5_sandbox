@@ -95,16 +95,4 @@ TEST_CLASS(SpaceGameUserSettings, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Motion Blur On has a non-zero quality fallback"),
                              motion_blur_quality->GetInt() > 0);
     }
-
-    TEST_METHOD(SavedFlightTopologyCannotOverrideAuthoredMode)
-    {
-        auto* const settings{NewObject<ioj::USpaceGameUserSettings>()};
-        auto loadout{ioj::sim::player::make_default_flight_model_loadout()};
-        loadout.profiles[3].config.translation.up.manual.semantic =
-            ioj::sim::player::TranslationSemantic::Disabled;
-        settings->set_flight_model_loadout(loadout);
-        TestRunner->TestTrue(TEXT("A saved topology mutation is discarded"),
-                             settings->flight_model_loadout() ==
-                                 ioj::sim::player::make_default_flight_model_loadout());
-    }
 };

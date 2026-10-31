@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ioj/time_series_data.h>
 #include <SandboxTests/support/SimulationTestScenario.h>
 
 class AActor;
@@ -13,13 +12,6 @@ class FTestBatchOrchestratorResetScenario final : public FSimulationTestScenario
     static constexpr int32 owned_actor_count{1};
     static constexpr int32 max_transient_actor_count{64};
 
-    struct FSimulationSample {
-        int32 actor_count{0};
-        int32 ledger_alive{0};
-        uint32 capital_count{0};
-        uint32 fighter_count{0};
-        uint32 laser_count{0};
-    };
   public:
     explicit FTestBatchOrchestratorResetScenario(FSimulationTestContext& context);
     void run() override;
@@ -29,21 +21,16 @@ class FTestBatchOrchestratorResetScenario final : public FSimulationTestScenario
     auto is_core_runtime_actor(AActor const& actor) const -> bool;
     void save_old_owned_actors(ATestBatchOrchestrator const& orchestrator);
     void save_old_transient_actors(ATestBatchOrchestrator const& orchestrator);
-    void sample(ATestBatchOrchestrator& orchestrator);
-    void on_end_tick(ATestBatchOrchestrator& orchestrator);
     void start_initial_simulation();
     void reset_simulation();
     void check_reset();
 
     FTimespan const timeout{0, 0, 3};
-    TimeSeriesData<FSimulationSample> initial_samples;
-    TimeSeriesData<FSimulationSample> reset_samples;
     TStaticArray<TWeakObjectPtr<AActor>, blocker_count> blockers{};
     TStaticArray<AActor*, owned_actor_count> old_owned_actors{};
     TStaticArray<AActor*, max_transient_actor_count> old_transient_actors{};
     int32 old_transient_actor_count{0};
     int32 initial_actor_count{0};
     int32 initial_ledger_alive{0};
-    bool reset_complete{false};
 };
 }

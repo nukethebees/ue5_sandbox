@@ -48,12 +48,12 @@ TEST(SaveGameBrowser, RefreshReplacesCachedSummaries) {
                             save_game_browser_test::no_report};
 
     browser.refresh();
-    EXPECT_EQ(browser.get_summaries().size(), 1) << "First refresh has one summary";
+    ASSERT_EQ(browser.get_summaries().size(), 1) << "First refresh has one summary";
     EXPECT_EQ(browser.get_summaries()[0].profile_id, std::string{"first"})
         << "First refresh uses first result";
 
     browser.refresh();
-    EXPECT_EQ(browser.get_summaries().size(), 1) << "Second refresh still has one summary";
+    ASSERT_EQ(browser.get_summaries().size(), 1) << "Second refresh still has one summary";
     EXPECT_EQ(browser.get_summaries()[0].profile_id, std::string{"second"})
         << "Second refresh replaces first result";
     browser.refresh();
@@ -76,6 +76,7 @@ TEST(SaveGameBrowser, OrderIsNewestFirstAndDeterministic) {
     browser.refresh();
 
     auto const summaries{browser.get_summaries()};
+    ASSERT_EQ(summaries.size(), 3);
     EXPECT_EQ(summaries[0].profile_id, std::string{"alpha"})
         << "Alphabetical tie-breaker comes first";
     EXPECT_EQ(summaries[1].profile_id, std::string{"zulu"}) << "Second tied profile follows";
@@ -105,7 +106,7 @@ TEST(SaveGameBrowser, ReportsAreLoadedLazilyAndRefreshInvalidatesTheCache) {
     EXPECT_TRUE(report_load_count == 0) << "Refresh does not load a report";
     EXPECT_TRUE(browser.get_loaded_profile_report() == nullptr) << "No report is initially cached";
 
-    EXPECT_TRUE(browser.load_profile_report("profile")) << "Known profile report loads";
+    ASSERT_TRUE(browser.load_profile_report("profile")) << "Known profile report loads";
     EXPECT_TRUE(report_load_count == 1) << "Report source is called once";
     EXPECT_EQ(browser.get_loaded_profile_report()->outcomes.size(), 1)
         << "Loaded report retains its outcome";

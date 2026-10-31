@@ -119,15 +119,15 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
             sentinel, ETriggerEvent::Started, [](FInputActionValue const&) {});
         contexts_.set_ship(ship_);
         TestRunner->TestTrue(TEXT("None to Player succeeds"),
-                             contexts_.set_control_context(EPlayerControlContext::Player));
+                             contexts_.set_control_context(::ioj::levels::ControlContext::Player));
         auto const count{component_->GetActionEventBindings().Num()};
         TestRunner->TestTrue(TEXT("Repeated Player succeeds"),
-                             contexts_.set_control_context(EPlayerControlContext::Player));
+                             contexts_.set_control_context(::ioj::levels::ControlContext::Player));
         TestRunner->TestEqual(TEXT("Player handlers are not duplicated"),
                               component_->GetActionEventBindings().Num(),
                               count);
         TestRunner->TestTrue(TEXT("Player to None succeeds"),
-                             contexts_.set_control_context(EPlayerControlContext::None));
+                             contexts_.set_control_context(::ioj::levels::ControlContext::None));
         TestRunner->TestFalse(TEXT("Ship mapping is removed"),
                               subsystem_->HasMappingContext(ship_input_.starfox));
         TestRunner->TestTrue(TEXT("Global mapping remains in None"),
@@ -149,7 +149,7 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
         using Slot = ::ioj::sim::player::FlightModelSlot;
         contexts_.set_ship(ship_);
         TestRunner->TestTrue(TEXT("Player context binds"),
-                             contexts_.set_control_context(EPlayerControlContext::Player));
+                             contexts_.set_control_context(::ioj::levels::ControlContext::Player));
         auto assert_mode = [this](Slot const slot, UInputMappingContext* const active) {
             TestRunner->TestTrue(TEXT("Native flight slot is selected"),
                                  ship_->get_active_flight_model_slot() == slot);
@@ -181,7 +181,7 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
     TEST_METHOD(UnbindNeutralisesAllContinuousAndHeldShipInput)
     {
         contexts_.set_ship(ship_);
-        contexts_.set_control_context(EPlayerControlContext::Player);
+        contexts_.set_control_context(::ioj::levels::ControlContext::Player);
         ship_->set_forward_input(1.f);
         ship_->set_right_input(1.f);
         ship_->set_up_input(1.f);
@@ -193,7 +193,7 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
         ship_->start_brake();
         ship_->start_emergency_brake();
         ship_->start_fire_laser();
-        contexts_.set_control_context(EPlayerControlContext::None);
+        contexts_.set_control_context(::ioj::levels::ControlContext::None);
         auto const& intent{ship_simulation_.get_flight_intent()};
         TestRunner->TestTrue(TEXT("Translation and rotation clear"),
                              intent.translation == ioj::Vector3d{} &&
@@ -207,11 +207,13 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
 
     TEST_METHOD(BenchmarkRepeatAndShutdownRemoveEveryOwnedBinding)
     {
-        TestRunner->TestTrue(TEXT("Benchmark works without pawn or camera"),
-                             contexts_.set_control_context(EPlayerControlContext::Benchmark));
+        TestRunner->TestTrue(
+            TEXT("Benchmark works without pawn or camera"),
+            contexts_.set_control_context(::ioj::levels::ControlContext::Benchmark));
         auto const count{component_->GetActionEventBindings().Num()};
-        TestRunner->TestTrue(TEXT("Benchmark repeated request succeeds"),
-                             contexts_.set_control_context(EPlayerControlContext::Benchmark));
+        TestRunner->TestTrue(
+            TEXT("Benchmark repeated request succeeds"),
+            contexts_.set_control_context(::ioj::levels::ControlContext::Benchmark));
         TestRunner->TestEqual(TEXT("Benchmark handler is not duplicated"),
                               component_->GetActionEventBindings().Num(),
                               count);
@@ -229,14 +231,15 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
 
     TEST_METHOD(RejectedContextDoesNotDisturbActiveInput)
     {
-        contexts_.set_control_context(EPlayerControlContext::Benchmark);
+        contexts_.set_control_context(::ioj::levels::ControlContext::Benchmark);
         auto const count{component_->GetActionEventBindings().Num()};
         TestRunner->AddExpectedError(
             TEXT("Requested context cannot bind"), EAutomationExpectedErrorFlags::Contains, 1);
         TestRunner->TestFalse(TEXT("Player without ship is rejected"),
-                              contexts_.set_control_context(EPlayerControlContext::Player));
+                              contexts_.set_control_context(::ioj::levels::ControlContext::Player));
         TestRunner->TestTrue(TEXT("Benchmark remains active"),
-                             contexts_.get_active_context() == EPlayerControlContext::Benchmark);
+                             contexts_.get_active_context() ==
+                                 ::ioj::levels::ControlContext::Benchmark);
         TestRunner->TestEqual(TEXT("Preflight leaves bindings unchanged"),
                               component_->GetActionEventBindings().Num(),
                               count);
@@ -247,20 +250,20 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
     TEST_METHOD(NoneRetainsGlobalPolicyAcrossTransitions)
     {
         contexts_.set_camera(camera_);
-        contexts_.set_control_context(EPlayerControlContext::Benchmark);
-        contexts_.set_control_context(EPlayerControlContext::None);
+        contexts_.set_control_context(::ioj::levels::ControlContext::Benchmark);
+        contexts_.set_control_context(::ioj::levels::ControlContext::None);
         TestRunner->TestFalse(TEXT("Successful Benchmark to None retains disabled global mapping"),
                               subsystem_->HasMappingContext(global_input_.mapping_context));
         TestRunner->TestFalse(TEXT("None removes Benchmark mapping"),
                               subsystem_->HasMappingContext(benchmark_input_.mapping_context));
-        contexts_.set_control_context(EPlayerControlContext::Observer);
+        contexts_.set_control_context(::ioj::levels::ControlContext::Observer);
         TestRunner->TestTrue(TEXT("Observer re-enables global mapping"),
                              subsystem_->HasMappingContext(global_input_.mapping_context));
     }
 
     TEST_METHOD(ReinitialisationIsIdempotentAndReleasesOldComponent)
     {
-        contexts_.set_control_context(EPlayerControlContext::Benchmark);
+        contexts_.set_control_context(::ioj::levels::ControlContext::Benchmark);
         auto const count{component_->GetActionEventBindings().Num()};
         TestRunner->TestTrue(TEXT("Repeated setup succeeds"), initialise());
         TestRunner->TestEqual(TEXT("Setup does not duplicate global or gameplay input"),

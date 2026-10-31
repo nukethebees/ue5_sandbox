@@ -64,11 +64,12 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
         snapshot.cumulative_kill_count_data.add(4, 6);
         data.alive_per_team_and_type[std::to_underlying(ETestTeam::Red)]
                                     [std::to_underlying(ioj::sim::EntityType::Fighter)] = 12;
-        data.top_killers.Add({ioj::sim::EntityId(7, ioj::sim::EntityType::CapitalShip),
-                              ioj::sim::EntityType::CapitalShip,
-                              ETestTeam::Blue,
-                              5});
-        data.team_kill_matrix.set(ETestTeam::Green, ioj::sim::EntityType::Turret, 3);
+        data.top_killers.push_back({ioj::sim::EntityId(7, ioj::sim::EntityType::CapitalShip),
+                                    ioj::sim::EntityType::CapitalShip,
+                                    ioj::Team::Blue,
+                                    5});
+        data.team_kill_matrix[std::to_underlying(ioj::Team::Green)]
+                             [std::to_underlying(ioj::sim::EntityType::Turret)] = 3;
         widget->prepare_for_open(*pause_action, MoveTemp(data));
 
         FCommonInputBase::GetInputSettings()->LoadData();

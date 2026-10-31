@@ -1,4 +1,5 @@
 #include <ioj/column_math.h>
+#include <ioj/levels/level_definition.h>
 #include <ioj/levels/team.h>
 #include <ioj/sim/collision/world_aabbs.h>
 #include <ioj/sim/entities/entity_type.h>
@@ -7,7 +8,6 @@
 #include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/levels/level_sim.h>
 #include <ioj/sim/missions/compiled_mission.h>
-#include <ioj/sim/telemetry/report_json.h>
 #include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
@@ -15,8 +15,6 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestNiagaraComponent.h>
 #include <SandboxTests/support/WorldlessSimulationTest.h>
-#include <SpaceGame/levels/LevelDefinition.h>
-#include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
@@ -29,7 +27,6 @@
 #include <SandboxCoreEngine/TransformConversion.h>
 #include <SandboxCoreEngine/VectorConversion.h>
 
-#include <Dom/JsonObject.h>
 #include <Engine/StaticMesh.h>
 #include <Engine/World.h>
 #include <HAL/FileManager.h>
@@ -41,7 +38,6 @@
 #include <NiagaraComponent.h>
 #include <NiagaraSystem.h>
 #include <SandboxISMCComponent.h>
-#include <Serialization/JsonSerializer.h>
 
 #include <algorithm>
 #include <array>
@@ -100,36 +96,30 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
     data.level_events = {};
     data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
 
-    ioj::FLevelBuilder builder;
-    builder.set_metadata(
-        {.id = ioj::FLevelId{FName{TEXT("scheduled-battle")}}, .title = TEXT("Scheduled Battle")});
-    auto const hero{builder.add_entity({
-        .id = ioj::FLevelEntityId{FName{TEXT("hero")}},
-        .archetype = ioj::level_archetypes::capital_ship,
-        .team = ::ioj::Team::Blue,
-        .position = FVector{-1000.0, 0.0, 0.0},
-    })};
-    builder.add_entity({
-        .id = ioj::FLevelEntityId{FName{TEXT("enemy")}},
-        .archetype = ioj::level_archetypes::capital_ship,
-        .team = ::ioj::Team::Red,
-        .position = FVector{1000.0, 0.0, 0.0},
-        .spawn_time_seconds = 0.21,
-    });
-    builder.set_camera({
-        .target_entity_ids = {hero},
-        .offset_direction = FVector{-1.0, 0.0, 0.0},
-        .distance = 1000.0,
-    });
-    builder.set_mission(
-        {.objectives = {
-             {.id = ioj::levels::ObjectiveName{"primary"},
-              .team = ioj::Team::Blue,
-              .expressions = {{ioj::levels::EntityDestroyedExpr{
-                  .entity = ioj::levels::EntityId{"enemy"}}}},
-              .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExprIndex, 3>{
-                  0, ioj::levels::absent_expression, ioj::levels::absent_expression}}}}});
-    auto const definition{ioj::levels::authoring::to_native(builder.finish())};
+    auto const definition{ioj::levels::LevelDefinition::make(
+        {.metadata = {.id = ioj::levels::LevelId{"scheduled-battle"}, .title = "Scheduled Battle"},
+         .camera = ioj::levels::LevelCameraDefinition{.target_entity_ids = {ioj::levels::EntityId{
+                                                          "hero"}},
+                                                      .offset_direction = {-1.0, 0.0, 0.0},
+                                                      .distance = 1000.0},
+         .mission =
+             ioj::levels::MissionDefinition{
+                 .objectives =
+                     {{.id = ioj::levels::ObjectiveName{"primary"},
+                       .team = ioj::Team::Blue,
+                       .expressions = {{ioj::levels::EntityDestroyedExpr{
+                           .entity = ioj::levels::EntityId{"enemy"}}}},
+                       .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExprIndex, 3>{
+                           0, ioj::levels::absent_expression, ioj::levels::absent_expression}}}}},
+         .entities = {{.id = ioj::levels::EntityId{"hero"},
+                       .archetype = ioj::levels::EntityArchetype::CapitalShip,
+                       .team = ioj::Team::Blue,
+                       .position = {-1000.0, 0.0, 0.0}},
+                      {.id = ioj::levels::EntityId{"enemy"},
+                       .archetype = ioj::levels::EntityArchetype::CapitalShip,
+                       .team = ioj::Team::Red,
+                       .position = {1000.0, 0.0, 0.0},
+                       .spawn_time_seconds = 0.21}}})};
     check(definition);
     ::ioj::sim::SimClock clock;
     clock.initialise(data.clock_settings);
@@ -752,206 +742,38 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
     return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FLevelTelemetryRunRecordTest,
-                                 "Sandbox.UnitTests.LevelTelemetryRunRecord",
-                                 EAutomationTestFlags::EditorContext |
-                                     EAutomationTestFlags::EngineFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FLevelTelemetryFileAdapterTest,
+    "Sandbox.UnitTests.LevelSimulation.TelemetryFileAdapterWritesNativeReport",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
+auto FLevelTelemetryFileAdapterTest::RunTest(FString const&) -> bool {
     auto data{make_battle()};
-    data.telemetry_metadata = ::ioj::sim::LevelTelemetryRunMetadata{
-        .run_id = "12345678-1234-1234-1234-123456789abc",
-        .map_name = "TelemetryTest",
-        .level_id = "telemetry-test",
-        .level_display_name = "Telemetry Test",
-        .launched_utc = "2026-09-06T12:00:00Z",
-    };
-    ::ioj::sim::GameMemory simulation_memory;
-    ::ioj::sim::LevelSim simulation{simulation_memory, MoveTemp(data)};
+    data.telemetry_metadata.run_id = "12345678-1234-1234-1234-123456789abc";
+    ::ioj::sim::GameMemory memory;
+    ::ioj::sim::LevelSim simulation{memory, std::move(data)};
     simulation.finish_initialisation();
-    auto const clk_period{simulation.get_clock().get_tick_period()};
-    simulation.start();
-    simulation.advance(1.0);
-    simulation.advance(4.0 * clk_period);
     simulation.finalize_telemetry_run(::ioj::sim::LevelTelemetryRunEndReason::WorldEnd);
-    auto record{simulation.take_finalized_telemetry_run()};
-    if (!TestTrue(TEXT("Telemetry JSON fixture produces a run record"), record.has_value())) {
+    auto run{simulation.take_finalized_telemetry_run()};
+    if (!TestTrue(TEXT("Native run is finalized"), run.has_value())) {
         return false;
     }
-
-    ioj::sim::LevelTelemetryReport report{*record};
-    auto const serialized{ioj::sim::serialize_level_telemetry_report(report)};
-    if (!TestTrue(TEXT("Report serialization succeeds"), serialized.has_value())) {
-        return false;
-    }
-    auto const json{ioj::to_fstring(*serialized)};
-    TSharedPtr<FJsonObject> root;
-    auto reader{TJsonReaderFactory<>::Create(json)};
-    if (!TestTrue(TEXT("Serialized run is valid JSON"),
-                  FJsonSerializer::Deserialize(reader, root)) ||
-        !TestNotNull(TEXT("Serialized run has a root object"), root.Get())) {
-        return false;
-    }
-    TestEqual(TEXT("JSON records current schema version"),
-              root->GetIntegerField(TEXT("schema_version")),
-              ::ioj::sim::LevelTelemetryRunRecord::schema_version);
-    TestFalse(TEXT("Reports do not contain wall-clock throughput history"),
-              root->HasField(TEXT("completed_ticks_by_real_time")));
-    TestFalse(TEXT("Reports do not contain performance windows"),
-              root->HasField(TEXT("performance_windows")));
-    auto const simulation_json{root->GetObjectField(TEXT("simulation"))};
-    TestFalse(TEXT("Reports do not contain timing configuration"),
-              simulation_json->HasField(TEXT("detailed_timing")) ||
-                  simulation_json->HasField(TEXT("detailed_timing_tick_stride")) ||
-                  simulation_json->HasField(TEXT("performance_window_seconds")));
-    TestFalse(TEXT("Reports do not contain measured run duration"),
-              root->GetObjectField(TEXT("completion"))->HasField(TEXT("wall_elapsed_seconds")));
-    auto const series_json{root->GetObjectField(TEXT("tick_series"))};
-    auto const battle_samples_json{root->GetArrayField(TEXT("battle_samples"))};
-    TestFalse(TEXT("Reports do not contain engineering metrics"),
-              series_json->HasField(TEXT("range_query_count")) ||
-                  series_json->HasField(TEXT("requested_time_scale")));
-    TestTrue(TEXT("Reports retain battle and projectile samples"),
-             !battle_samples_json.IsEmpty() &&
-                 battle_samples_json.Last()->AsObject()->HasField(TEXT("combat")) &&
-                 battle_samples_json.Last()->AsObject()->HasField(TEXT("active_lasers")) &&
-                 !battle_samples_json.Last()->AsObject()->HasField(TEXT("range_query_count")));
-
-    auto parse_current_root = [&root]() {
-        FString mutated_json;
-        auto writer{TJsonWriterFactory<>::Create(&mutated_json)};
-        FJsonSerializer::Serialize(root.ToSharedRef(), writer);
-        return ioj::sim::deserialize_level_telemetry_report(ioj::to_string(mutated_json));
-    };
-    root->SetStringField(TEXT("future_field"), TEXT("ignored"));
-    auto const round_trip{parse_current_root()};
-    if (TestTrue(TEXT("Current report round trips"), round_trip.has_value())) {
-        TestEqual(TEXT("Round trip preserves the run id"),
-                  round_trip->run.metadata.run_id,
-                  report.run.metadata.run_id);
-        TestEqual(TEXT("Round trip preserves completed ticks"),
-                  round_trip->run.completion.completed_ticks.value(),
-                  report.run.completion.completed_ticks.value());
-        auto const& actual{round_trip->run.battle_samples};
-        auto const& expected{report.run.battle_samples};
-        TestTrue(TEXT("Round trip preserves force and combat history"),
-                 actual.size() == expected.size() && !actual.empty() &&
-                     actual.back().alive == expected.back().alive &&
-                     actual.back().combat.shots == expected.back().combat.shots);
-    }
-
-    root->SetStringField(TEXT("performance_windows"), TEXT("discarded malformed timing data"));
-    root->SetStringField(TEXT("completed_ticks_by_real_time"), TEXT("discarded malformed mapping"));
-    simulation_json->SetStringField(TEXT("detailed_timing"), TEXT("discarded"));
-    simulation_json->SetStringField(TEXT("performance_window_seconds"), TEXT("discarded"));
-    root->GetObjectField(TEXT("completion"))
-        ->SetStringField(TEXT("wall_elapsed_seconds"), TEXT("discarded"));
-    series_json->SetStringField(TEXT("range_query_count"), TEXT("discarded"));
-    series_json->SetStringField(TEXT("requested_time_scale"), TEXT("discarded"));
-    battle_samples_json.Last()->AsObject()->SetStringField(TEXT("range_query_count"),
-                                                           TEXT("discarded"));
-    for (int32 version{1}; version < ioj::sim::LevelTelemetryRunRecord::schema_version; ++version) {
-        root->SetNumberField(TEXT("schema_version"), version);
-        TestFalse(TEXT("Reports from the retired mission schema are rejected"),
-                  parse_current_root().has_value());
-    }
-    root->SetNumberField(TEXT("schema_version"), ioj::sim::LevelTelemetryRunRecord::schema_version);
-    TestFalse(TEXT("Malformed JSON returns an error"),
-              ioj::sim::deserialize_level_telemetry_report("{").has_value());
-    root->SetNumberField(TEXT("schema_version"), 999);
-    FString unsupported_json;
-    auto unsupported_writer{TJsonWriterFactory<>::Create(&unsupported_json)};
-    FJsonSerializer::Serialize(root.ToSharedRef(), unsupported_writer);
-    TestFalse(
-        TEXT("Unsupported schemas return an error"),
-        ioj::sim::deserialize_level_telemetry_report(ioj::to_string(unsupported_json)).has_value());
-    root->SetNumberField(TEXT("schema_version"),
-                         ::ioj::sim::LevelTelemetryRunRecord::schema_version);
-
-    auto const completion_json{root->GetObjectField(TEXT("completion"))};
-    auto const original_reason{completion_json->GetStringField(TEXT("reason"))};
-    completion_json->SetStringField(TEXT("reason"), TEXT("future_reason"));
-    TestFalse(TEXT("Unknown completion enums return an error"), parse_current_root().has_value());
-    completion_json->SetStringField(TEXT("reason"), original_reason);
-
-    auto const tick_series_json{root->GetObjectField(TEXT("tick_series"))};
-    auto const active_entities_json{tick_series_json->GetObjectField(TEXT("active_entities"))};
-    auto const original_active_values{active_entities_json->GetArrayField(TEXT("values"))};
-    auto misaligned_active_values{original_active_values};
-    misaligned_active_values.Add(MakeShared<FJsonValueNumber>(0.0));
-    active_entities_json->SetArrayField(TEXT("values"), MoveTemp(misaligned_active_values));
-    TestFalse(TEXT("Misaligned sparse arrays return an error"), parse_current_root().has_value());
-    active_entities_json->SetArrayField(TEXT("values"), original_active_values);
-
-    auto const spawned_json{tick_series_json->GetObjectField(TEXT("spawned_entities"))};
-    auto const original_spawned_ticks{spawned_json->GetArrayField(TEXT("ticks"))};
-    auto const original_spawned_values{spawned_json->GetArrayField(TEXT("values"))};
-    spawned_json->SetArrayField(
-        TEXT("ticks"), {MakeShared<FJsonValueNumber>(0.0), MakeShared<FJsonValueNumber>(0.0)});
-    spawned_json->SetArrayField(
-        TEXT("values"), {MakeShared<FJsonValueNumber>(1.0), MakeShared<FJsonValueNumber>(1.0)});
-    TestFalse(TEXT("Non-increasing sparse ticks return an error"),
-              parse_current_root().has_value());
-    spawned_json->SetArrayField(TEXT("ticks"), original_spawned_ticks);
-    spawned_json->SetArrayField(TEXT("values"), original_spawned_values);
-
-    spawned_json->SetArrayField(TEXT("ticks"), {MakeShared<FJsonValueNumber>(0.0)});
-    spawned_json->SetArrayField(TEXT("values"), {MakeShared<FJsonValueNumber>(-1.0)});
-    TestFalse(TEXT("Negative counter values return an error"), parse_current_root().has_value());
-    spawned_json->SetArrayField(TEXT("ticks"), original_spawned_ticks);
-    spawned_json->SetArrayField(TEXT("values"), original_spawned_values);
-
-    auto const sample_json{battle_samples_json.Last()->AsObject()};
-    auto const original_alive{sample_json->GetArrayField(TEXT("alive"))};
-    auto invalid_alive{original_alive};
-    invalid_alive[0] = MakeShared<FJsonValueNull>();
-    sample_json->SetArrayField(TEXT("alive"), MoveTemp(invalid_alive));
-    TestFalse(TEXT("Null flattened counter values return an error"),
-              parse_current_root().has_value());
-    sample_json->SetArrayField(TEXT("alive"), original_alive);
-
-    auto const original_active_lasers{sample_json->Values.FindRef(TEXT("active_lasers"))};
-    sample_json->SetField(TEXT("active_lasers"), MakeShared<FJsonValueNull>());
-    TestFalse(TEXT("Null optional battle counters return an error"),
-              parse_current_root().has_value());
-    sample_json->SetNumberField(TEXT("active_lasers"), 0.5);
-    TestFalse(TEXT("Fractional optional battle counters return an error"),
-              parse_current_root().has_value());
-    sample_json->SetField(TEXT("active_lasers"), original_active_lasers);
-
-    auto const original_completed_ticks{completion_json->Values.FindRef(TEXT("completed_ticks"))};
-    completion_json->SetNumberField(TEXT("completed_ticks"), 9007199254740994.0);
-    TestFalse(TEXT("Precision-unsafe uint64 values return an error"),
-              parse_current_root().has_value());
-    completion_json->SetField(TEXT("completed_ticks"), original_completed_ticks);
-
-    auto precision_unsafe_report{report};
-    precision_unsafe_report.run.completion.completed_ticks =
-        ::ioj::sim::SimTick{9007199254740994ULL};
-    TestTrue(TEXT("Serialization rejects precision-unsafe uint64 values"),
-             !ioj::sim::serialize_level_telemetry_report(precision_unsafe_report).has_value());
-
-    TestFalse(TEXT("Telemetry does not duplicate mission objective metadata"),
-              completion_json->HasField(TEXT("objective_id")));
-    TestFalse(TEXT("Telemetry does not infer a winning team"),
-              completion_json->HasField(TEXT("winning_team")));
-
-    auto const output_directory{FPaths::Combine(FPaths::ProjectSavedDir(),
-                                                TEXT("Automation"),
-                                                TEXT("Telemetry"),
-                                                FGuid::NewGuid().ToString())};
+    ioj::sim::LevelTelemetryReport report{std::move(*run)};
+    auto const directory{FPaths::Combine(
+        FPaths::ProjectSavedDir(), TEXT("Automation/Telemetry"), FGuid::NewGuid().ToString())};
     ON_SCOPE_EXIT {
-        IFileManager::Get().DeleteDirectory(*output_directory, false, true);
+        IFileManager::Get().DeleteDirectory(*directory, false, true);
     };
-    auto const output_path{write_level_telemetry_run(report, output_directory)};
-    if (!TestTrue(TEXT("Run writer creates an output file"), output_path.has_value())) {
+    auto const path{write_level_telemetry_run(report, directory)};
+    if (!TestTrue(TEXT("Unreal file adapter writes the report"), path.has_value())) {
         return false;
     }
-    FString written_json;
-    TestTrue(TEXT("Written output can be read"),
-             FFileHelper::LoadFileToString(written_json, **output_path));
-    TestTrue(TEXT("Atomic writer removes its temporary file"),
-             IFileManager::Get().FileSize(*(*output_path + TEXT(".tmp"))) < 0);
-
+    FString text;
+    TestTrue(TEXT("Report can be read through Unreal"),
+             FFileHelper::LoadFileToString(text, **path));
+    TestTrue(TEXT("Written report retains the native run"),
+             ioj::to_string(text).find(report.run.metadata.run_id) != std::string::npos);
+    TestTrue(TEXT("Atomic publication leaves no temporary file"),
+             IFileManager::Get().FileSize(*(*path + TEXT(".tmp"))) < 0);
     return true;
 }

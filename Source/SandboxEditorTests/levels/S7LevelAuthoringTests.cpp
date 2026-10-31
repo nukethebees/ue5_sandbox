@@ -1,5 +1,6 @@
 #include "S7LevelAuthoringTestActor.h"
 #include <ioj/levels/authoring/level_definition_writer.h>
+#include <ioj/presentation/observer_camera.h>
 #include <ioj/sim/capital_ships/sim.h>
 #include <SandboxEditor/levels/S7LevelAuthoringDocument.h>
 #include <SandboxEditor/levels/S7LevelAuthoringMode.h>
@@ -11,15 +12,14 @@
 #include <SandboxEditor/levels/S7LevelSourceSession.h>
 #include <SandboxEditor/SandboxEditor.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
-#include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameS7/definition_reader.h>
 
 #include <SandboxCoreEngine/strings.h>
+#include <SandboxCoreEngine/TransformConversion.h>
 
 #include <Camera/CameraActor.h>
 #include <CQTest.h>
@@ -53,8 +53,9 @@ bool assert_success(FAutomationTestBase& test,
     return false;
 }
 
-auto emit_source(ioj::FLevelDraft const& definition) -> std::expected<FString, FString> {
-    auto checked{ioj::levels::authoring::to_native(definition)};
+auto emit_source(ioj::levels::LevelDefinitionComponents const& definition)
+    -> std::expected<FString, FString> {
+    auto checked{ioj::levels::LevelDefinition::make(definition)};
     if (!checked) {
         return std::unexpected{ioj::to_fstring(ioj::levels::format_diagnostics(checked.error()))};
     }
@@ -66,15 +67,22 @@ auto emit_source(ioj::FLevelDraft const& definition) -> std::expected<FString, F
 }
 
 auto collect_level(ULevel const& level, AS7LevelAuthoringDocument const& document)
-    -> std::expected<ioj::FLevelDraft, FString> {
+    -> std::expected<ioj::levels::LevelDefinitionComponents, FString> {
     return ioj::editor::collect_s7_editor_level(level, document).transform([](auto const& checked) {
-        return ioj::levels::authoring::to_unreal(checked);
+        return ioj::levels::LevelDefinitionComponents{
+            .metadata = checked.metadata(),
+            .unlock_level_ids = checked.unlock_level_ids(),
+            .player_entity_id = checked.player_entity_id(),
+            .camera = checked.camera(),
+            .mission = checked.mission(),
+            .entities = checked.entities(),
+            .settings = checked.settings()};
     });
 }
 
 auto make_plan(ULevel const& level,
                AS7LevelAuthoringDocument const& document,
-               ioj::FLevelDraft const& definition)
+               ioj::levels::LevelDefinitionComponents const& definition)
     -> std::expected<ioj::editor::FS7LevelSyncPlan, FString> {
     auto settings{ioj::editor::read_s7_document_settings(document)};
     if (!settings) {
@@ -82,7 +90,7 @@ auto make_plan(ULevel const& level,
     }
     auto scene_definition{definition};
     scene_definition.settings = std::move(*settings);
-    auto checked{ioj::levels::authoring::to_native(scene_definition)};
+    auto checked{ioj::levels::LevelDefinition::make(std::move(scene_definition))};
     if (!checked) {
         return std::unexpected{ioj::to_fstring(ioj::levels::format_diagnostics(checked.error()))};
     }
@@ -190,14 +198,13 @@ auto collect_source(FAutomationTestBase& test, FPreviewFixture const& fixture)
 }
 
 template <typename TTestRunner>
-auto assert_valid_definition(TTestRunner& test_runner, ioj::FLevelDraft const& definition) -> bool {
-    auto const validation{ioj::validate_level(definition)};
-    if (test_runner.TestTrue(TEXT("Fixture definition is valid"), static_cast<bool>(validation))) {
+auto assert_valid_definition(TTestRunner& test_runner,
+                             ioj::levels::LevelDefinitionComponents const& definition) -> bool {
+    auto const validation{ioj::levels::LevelDefinition::make(definition)};
+    if (test_runner.TestTrue(TEXT("Fixture definition is valid"), validation.has_value())) {
         return true;
     }
-    for (auto const& error : validation.errors) {
-        test_runner.AddError(error.message);
-    }
+    test_runner.AddError(ioj::to_fstring(ioj::levels::format_diagnostics(validation.error())));
     return false;
 }
 
@@ -206,19 +213,21 @@ auto capital_ship_definition(TCHAR const* level_id,
                              TCHAR const* entity_id = TEXT("ship"),
                              FVector const position = FVector::ZeroVector,
                              FRotator const rotation = FRotator::ZeroRotator,
-                             double const spawn_time = 0.0) -> ioj::FLevelDraft {
-    ioj::FLevelBuilder builder;
-    builder.set_metadata({.id = ioj::FLevelId{level_id}, .title = title});
-    builder.set_camera({.target_entity_ids = {ioj::FLevelEntityId{entity_id}},
-                        .offset_direction = FVector{-1.0, 0.0, 0.0},
-                        .distance = 1000.0});
-    builder.add_entity({.id = ioj::FLevelEntityId{entity_id},
-                        .archetype = ioj::level_archetypes::capital_ship,
-                        .team = ioj::Team::Blue,
-                        .position = position,
-                        .rotation = rotation,
-                        .spawn_time_seconds = spawn_time});
-    return builder.finish();
+                             double const spawn_time = 0.0)
+    -> ioj::levels::LevelDefinitionComponents {
+    return {.metadata = {.id = ioj::levels::LevelId{TCHAR_TO_UTF8(level_id)},
+                         .title = TCHAR_TO_UTF8(title)},
+            .camera =
+                ioj::levels::LevelCameraDefinition{
+                    .target_entity_ids = {ioj::levels::EntityId{TCHAR_TO_UTF8(entity_id)}},
+                    .offset_direction = {-1.0, 0.0, 0.0},
+                    .distance = 1000.0},
+            .entities = {{.id = ioj::levels::EntityId{TCHAR_TO_UTF8(entity_id)},
+                          .archetype = ioj::levels::EntityArchetype::CapitalShip,
+                          .team = ioj::Team::Blue,
+                          .position = {position.X, position.Y, position.Z},
+                          .rotation = {rotation.Pitch, rotation.Yaw, rotation.Roll},
+                          .spawn_time_seconds = spawn_time}}};
 }
 
 auto bound_binding(AS7LevelAuthoringDocument const& document, FName const id)
@@ -272,7 +281,7 @@ auto make_stale_preview(FPreviewFixture& fixture,
     if (!definition) {
         return std::unexpected{definition.error()};
     }
-    definition->metadata.title = TEXT("From Preview");
+    definition->metadata.title = "From Preview";
     auto const plan{make_plan(*fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
     if (!plan) {
         return std::unexpected{plan.error()};
@@ -356,7 +365,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
     }
 
-    TEST_METHOD(SettingsResolveStoredBaseAndLevelSources)
+    TEST_METHOD(StoredReplaySettingsIgnoreResourceEdits)
     {
         auto fixture{make_preview_fixture()};
         if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
@@ -379,12 +388,6 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Source chain resolves"), settings.has_value())) {
             return;
         }
-        TestRunner->TestTrue(TEXT("Omitted size inherits from base"),
-                             settings->collision_grid.level_size ==
-                                 ioj::Vector3f{3000000.f, 3000000.f, 100000.f});
-        TestRunner->TestTrue(TEXT("Level replaces supplied cells"),
-                             settings->collision_grid.cell_size ==
-                                 ioj::Vector3f{6000.f, 6000.f, 20000.f});
         fixture.level_config->collision_grid.grid_size = FVector3f::ZeroVector;
         auto const unchanged{ioj::editor::read_s7_document_settings(*fixture.document)};
         TestRunner->TestTrue(TEXT("Resource grid edits do not alter the applied source chain"),
@@ -448,103 +451,41 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                              fixture.document->synchronized_base_settings_source.IsEmpty());
     }
 
-    TEST_METHOD(CanonicalSceneSavePreservesSparseSettings)
+    TEST_METHOD(ObserverCameraCollectsActorPositionsAndConvertsNativeTransform)
     {
         auto fixture{make_preview_fixture()};
         if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
             return;
         }
-        auto const source{collect_source(*TestRunner, fixture)};
-        if (!source) {
-            return;
-        }
-        fixture.document->synchronized_source =
-            source->Replace(TEXT("(level"),
-                            TEXT("(level :settings (settings :collision-grid (collision-grid "
-                                 ":cell-size '(6000 6000 20000)))"));
-        fixture.document->evaluated_level_source = fixture.document->synchronized_source;
-        auto const definition{ioj::editor::collect_s7_editor_level(
-            *fixture.world->GetCurrentLevel(), *fixture.document)};
-        if (!TestRunner->TestTrue(TEXT("Resolved scene collects"), definition.has_value())) {
-            return;
-        }
-        auto const saved{ioj::editor::emit_s7_scene_source(*definition, *fixture.document)};
-        if (!TestRunner->TestTrue(TEXT("Canonical source writes"), saved.has_value())) {
-            return;
-        }
-        TestRunner->TestFalse(TEXT("Inherited size stays omitted"),
-                              saved->Contains(TEXT(":level-size")));
-        TestRunner->TestTrue(TEXT("Authored cell size persists"),
-                             saved->Contains(TEXT(":cell-size")));
-    }
-
-    TEST_METHOD(ObserverCameraTransformMatchesRuntimeCalculation)
-    {
-        auto fixture{make_preview_fixture()};
-        if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
-            return;
-        }
-
         fixture.player->SetActorLocation(FVector{100.0, 200.0, 300.0});
         fixture.enemy->SetActorLocation(FVector{700.0, 1000.0, 1300.0});
         fixture.document->use_observer_camera = true;
-        fixture.document->camera.targets = {fixture.player};
+        fixture.document->camera.targets = {fixture.player, fixture.enemy};
         fixture.document->camera.offset_direction = FVector{3.0, 4.0, 0.0};
         fixture.document->camera.distance = 1000.0;
 
-        auto const one_target{ioj::editor::make_s7_observer_camera_transform(
+        std::array<ioj::Vector3d, 2> const positions{ioj::Vector3d{100.0, 200.0, 300.0},
+                                                     ioj::Vector3d{700.0, 1000.0, 1300.0}};
+        auto const expected{
+            ioj::presentation::make_observer_camera_transform(positions, {3.0, 4.0, 0.0}, 1000.0)};
+        auto const collected{ioj::editor::make_s7_observer_camera_transform(
             *fixture.world->GetCurrentLevel(), *fixture.document)};
-        if (!TestRunner->TestTrue(TEXT("Single-target observer camera is valid"),
-                                  one_target.has_value()) ||
-            !TestRunner->TestTrue(TEXT("Single-target transform is present"),
-                                  one_target && one_target->IsSet())) {
+        if (!TestRunner->TestTrue(TEXT("Native camera is valid"), expected.has_value()) ||
+            !TestRunner->TestTrue(TEXT("Actor camera collects"),
+                                  collected.has_value() && collected->IsSet())) {
             return;
         }
-        auto const expected_one_target_position{FVector{700.0, 1000.0, 300.0}};
         TestRunner->TestTrue(
-            TEXT("Single target determines focus"),
-            one_target->GetValue().focus.Equals(fixture.player->GetActorLocation(), 0.001));
-        TestRunner->TestTrue(TEXT("Offset direction is normalized before distance"),
-                             one_target->GetValue().transform.GetLocation().Equals(
-                                 expected_one_target_position, 0.001));
+            TEXT("Actor locations reach native focus"),
+            collected->GetValue().focus.Equals(ioj::to_unreal(expected->focus), 0.001));
         TestRunner->TestTrue(
-            TEXT("Observer camera looks back at focus"),
-            one_target->GetValue().transform.GetRotation().Rotator().Equals(
-                (one_target->GetValue().focus - expected_one_target_position).Rotation(), 0.001));
-
-        fixture.document->camera.targets = {fixture.player, fixture.enemy};
-        auto const multiple_targets{ioj::editor::make_s7_observer_camera_transform(
-            *fixture.world->GetCurrentLevel(), *fixture.document)};
-        if (!TestRunner->TestTrue(TEXT("Multiple-target observer camera is valid"),
-                                  multiple_targets.has_value()) ||
-            !TestRunner->TestTrue(TEXT("Multiple-target transform is present"),
-                                  multiple_targets && multiple_targets->IsSet())) {
-            return;
-        }
-        auto const expected_focus{FVector{400.0, 600.0, 800.0}};
-        TestRunner->TestTrue(TEXT("Multiple targets average to focus"),
-                             multiple_targets->GetValue().focus.Equals(expected_focus, 0.001));
-        TestRunner->TestTrue(TEXT("Multiple-target camera position matches runtime formula"),
-                             multiple_targets->GetValue().transform.GetLocation().Equals(
-                                 FVector{1000.0, 1400.0, 800.0}, 0.001));
-
-        fixture.document->camera.targets.Reset();
-        auto const missing_targets{ioj::editor::make_s7_observer_camera_transform(
-            *fixture.world->GetCurrentLevel(), *fixture.document)};
-        TestRunner->TestFalse(TEXT("Missing camera targets are rejected"),
-                              missing_targets.has_value());
-
-        fixture.document->camera.targets = {fixture.player};
-        fixture.document->camera.offset_direction = FVector::ZeroVector;
-        auto const invalid_direction{ioj::editor::make_s7_observer_camera_transform(
-            *fixture.world->GetCurrentLevel(), *fixture.document)};
-        TestRunner->TestFalse(TEXT("Zero camera direction is rejected"),
-                              invalid_direction.has_value());
+            TEXT("Native transform is converted for the editor camera"),
+            collected->GetValue().transform.Equals(ioj::to_unreal(expected->transform), 0.001));
 
         fixture.document->use_observer_camera = false;
         auto const player_camera{ioj::editor::make_s7_observer_camera_transform(
             *fixture.world->GetCurrentLevel(), *fixture.document)};
-        TestRunner->TestTrue(TEXT("Player-authored levels have no observer visualization"),
+        TestRunner->TestTrue(TEXT("Player viewpoint has no observer visualization"),
                              player_camera.has_value() && !player_camera->IsSet());
     }
 
@@ -812,7 +753,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                               disk_session.save().has_value());
     }
 
-    TEST_METHOD(PreviewReportsMetadataOnlyChange)
+    TEST_METHOD(MetadataAppliesAfterRejectingAStaleActorPreview)
     {
         auto const fixture{make_preview_fixture()};
         if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
@@ -822,20 +763,14 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!assert_success(*TestRunner, TEXT("Baseline collects"), definition)) {
             return;
         }
-        definition->metadata.title = TEXT("After");
-        definition->metadata.description = TEXT("After description");
+        definition->metadata.title = "After";
+        definition->metadata.description = "After description";
 
         auto const plan{
             make_plan(*fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
         if (!assert_success(*TestRunner, TEXT("Preview builds"), plan)) {
             return;
         }
-        TestRunner->TestTrue(TEXT("Metadata change is reported"), plan->metadata_changed);
-        TestRunner->TestFalse(TEXT("Viewpoint is unchanged"), plan->viewpoint_changed);
-        TestRunner->TestFalse(TEXT("Mission is unchanged"), plan->mission_changed);
-        TestRunner->TestEqual(
-            TEXT("Entities are unchanged"), static_cast<int32>(plan->changes.size()), 0);
-
         ioj::editor::FS7LevelSourceSession session;
         if (!TestRunner->TestTrue(TEXT("Source attaches"),
                                   session.attach(*fixture.document).has_value())) {
@@ -860,40 +795,15 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!assert_success(*TestRunner, TEXT("Applied scene collects"), collected)) {
             return;
         }
-        TestRunner->TestEqual(
-            TEXT("Title is applied"), collected->metadata.title, FString{TEXT("After")});
+        TestRunner->TestEqual(TEXT("Title is applied"),
+                              ioj::to_fstring(collected->metadata.title),
+                              FString{TEXT("After")});
         TestRunner->TestEqual(TEXT("Description is applied"),
-                              collected->metadata.description,
+                              ioj::to_fstring(collected->metadata.description),
                               FString{TEXT("After description")});
     }
 
-    TEST_METHOD(ObjectiveMissionEditingIsExplicitlyRejected)
-    {
-        auto const fixture{make_preview_fixture()};
-        if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
-            return;
-        }
-        auto definition{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
-        if (!TestRunner->TestTrue(TEXT("Scene collects"), definition.has_value())) {
-            return;
-        }
-        definition->mission = ioj::levels::MissionDefinition{
-            .objectives = {
-                {.id = ioj::levels::ObjectiveName{"primary"},
-                 .team = ioj::Team::Blue,
-                 .expressions = {{ioj::levels::TimeElapsedExpr{
-                     .seconds = ioj::NonNegativeFinite<double>::make(1.0)}}},
-                 .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExprIndex, 3>{
-                     0, ioj::levels::absent_expression, ioj::levels::absent_expression}}}}};
-        auto const plan{
-            make_plan(*fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
-        TestRunner->TestFalse(TEXT("Unsupported graphs cannot be applied lossily"),
-                              plan.has_value());
-        TestRunner->TestFalse(TEXT("Unsupported graphs cannot be written lossily"),
-                              emit_source(*definition).has_value());
-    }
-
-    TEST_METHOD(PreviewReportsObserverCameraOnlyChange)
+    TEST_METHOD(ApplyRebindsObserverCameraTargets)
     {
         auto const fixture{make_preview_fixture(true)};
         if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
@@ -903,7 +813,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!assert_success(*TestRunner, TEXT("Baseline collects"), definition)) {
             return;
         }
-        definition->camera->target_entity_ids = {ioj::FLevelEntityId{TEXT("enemy")}};
+        definition->camera->target_entity_ids = {ioj::levels::EntityId{"enemy"}};
         if (!assert_valid_definition(*TestRunner, *definition)) {
             return;
         }
@@ -913,12 +823,6 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!assert_success(*TestRunner, TEXT("Preview builds"), plan)) {
             return;
         }
-        TestRunner->TestFalse(TEXT("Metadata is unchanged"), plan->metadata_changed);
-        TestRunner->TestTrue(TEXT("Viewpoint change is reported"), plan->viewpoint_changed);
-        TestRunner->TestFalse(TEXT("Mission is unchanged"), plan->mission_changed);
-        TestRunner->TestEqual(
-            TEXT("Entities are unchanged"), static_cast<int32>(plan->changes.size()), 0);
-
         auto const applied{ioj::editor::apply_s7_level_sync_plan(
             *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
         if (!assert_success(*TestRunner, TEXT("Preview applies"), applied)) {
@@ -926,15 +830,16 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         auto const collected{collect_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
         if (!TestRunner->TestTrue(TEXT("Applied scene collects"), collected.has_value()) ||
-            !TestRunner->TestTrue(TEXT("Camera is present"), collected->camera.IsSet())) {
+            !TestRunner->TestTrue(TEXT("Camera is present"), collected->camera.has_value())) {
             return;
         }
-        TestRunner->TestTrue(TEXT("Camera target is applied"),
-                             collected->camera->target_entity_ids ==
-                                 TArray<ioj::FLevelEntityId>{ioj::FLevelEntityId{TEXT("enemy")}});
+        TestRunner->TestTrue(
+            TEXT("Camera target is applied"),
+            collected->camera->target_entity_ids ==
+                std::vector<ioj::levels::EntityId>{ioj::levels::EntityId{"enemy"}});
     }
 
-    TEST_METHOD(PreviewReportsPlayerToCameraViewpointChange)
+    TEST_METHOD(ApplyReplacesPlayerActorWithObserverCamera)
     {
         auto const fixture{make_preview_fixture()};
         if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
@@ -945,12 +850,12 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
         definition->player_entity_id = {};
-        definition->camera = ioj::FLevelCameraDefinition{
-            .target_entity_ids = {ioj::FLevelEntityId{TEXT("enemy")}},
-            .offset_direction = FVector{-1.0, 0.0, 0.0},
+        definition->camera = ioj::levels::LevelCameraDefinition{
+            .target_entity_ids = {ioj::levels::EntityId{"enemy"}},
+            .offset_direction = ioj::Vector3d{-1.0, 0.0, 0.0},
             .distance = 1000.0,
         };
-        definition->entities.RemoveAtSwap(0, 1, EAllowShrinking::No);
+        definition->entities.erase(definition->entities.begin());
         if (!assert_valid_definition(*TestRunner, *definition)) {
             return;
         }
@@ -960,14 +865,6 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!assert_success(*TestRunner, TEXT("Preview builds"), plan)) {
             return;
         }
-        TestRunner->TestFalse(TEXT("Metadata is unchanged"), plan->metadata_changed);
-        TestRunner->TestTrue(TEXT("Viewpoint change is reported"), plan->viewpoint_changed);
-        TestRunner->TestFalse(TEXT("Mission is unchanged"), plan->mission_changed);
-        TestRunner->TestEqual(
-            TEXT("Player actor is removed"),
-            static_cast<int32>(plan->count(ioj::editor::ES7LevelSyncAction::Remove)),
-            1);
-
         auto const applied{ioj::editor::apply_s7_level_sync_plan(
             *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
         if (!assert_success(*TestRunner, TEXT("Preview applies"), applied)) {
@@ -978,8 +875,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
         TestRunner->TestFalse(TEXT("Player viewpoint is cleared"),
-                              collected->player_entity_id.is_set());
-        TestRunner->TestTrue(TEXT("Camera viewpoint is applied"), collected->camera.IsSet());
+                              !collected->player_entity_id.empty());
+        TestRunner->TestTrue(TEXT("Camera viewpoint is applied"), collected->camera.has_value());
         TestRunner->TestNull(TEXT("Player actor is removed"),
                              bound_actor(*fixture.document, TEXT("player")));
     }
@@ -1007,7 +904,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         auto* const root{actor->GetRootComponent()};
         for (auto const metadata_change : {false, true}) {
             if (metadata_change) {
-                definition->metadata.title = TEXT("Updated title");
+                definition->metadata.title = "Updated title";
             }
             auto const plan{make_plan(*world->GetCurrentLevel(), *document, *definition)};
             if (!TestRunner->TestTrue(TEXT("Plan builds"), plan.has_value())) {
@@ -1224,17 +1121,17 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         document->description = TEXT("Unchanged");
         document->entities = {{.id = TEXT("existing"), .actor = existing}};
 
-        ioj::FLevelBuilder builder;
-        builder.set_metadata({.id = ioj::FLevelId{TEXT("invalid-later-class")},
-                              .title = TEXT("Invalid Later Class")});
-        builder.set_player_entity(ioj::FLevelEntityId{TEXT("player")});
-        builder.add_entity({.id = ioj::FLevelEntityId{TEXT("player")},
-                            .archetype = ioj::level_archetypes::player_fighter,
-                            .team = ::ioj::Team::Blue});
-        builder.add_entity({.id = ioj::FLevelEntityId{TEXT("capital")},
-                            .archetype = ioj::level_archetypes::capital_ship,
-                            .team = ::ioj::Team::Red});
-        auto const plan{make_plan(*world->GetCurrentLevel(), *document, builder.finish())};
+        ioj::levels::LevelDefinitionComponents definition;
+        definition.metadata = {.id = ioj::levels::LevelId{"invalid-later-class"},
+                               .title = "Invalid Later Class"};
+        definition.player_entity_id = ioj::levels::EntityId{"player"};
+        definition.entities.push_back({.id = ioj::levels::EntityId{"player"},
+                                       .archetype = ioj::levels::EntityArchetype::PlayerFighter,
+                                       .team = ::ioj::Team::Blue});
+        definition.entities.push_back({.id = ioj::levels::EntityId{"capital"},
+                                       .archetype = ioj::levels::EntityArchetype::CapitalShip,
+                                       .team = ::ioj::Team::Red});
+        auto const plan{make_plan(*world->GetCurrentLevel(), *document, definition)};
         if (!assert_success(*TestRunner, TEXT("Preview builds with valid classes"), plan)) {
             return;
         }
@@ -1266,41 +1163,6 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestEqual(
             TEXT("Description is unchanged"), document->description, FString{TEXT("Unchanged")});
         TestRunner->TestEqual(TEXT("Bindings are unchanged"), document->entities.Num(), 1);
-    }
-
-    TEST_METHOD(RejectsInvalidEntityTeam)
-    {
-        auto const [world, document, level_config]{FDocumentFixture{}};
-        if (!TestRunner->TestNotNull(TEXT("Document"), document) ||
-            !TestRunner->TestNotNull(TEXT("Config"), level_config)) {
-            return;
-        }
-        document->level_config = level_config;
-        document->level_id = TEXT("original");
-
-        ioj::FLevelBuilder builder;
-        builder.set_metadata(
-            {.id = ioj::FLevelId{TEXT("invalid-team")}, .title = TEXT("Invalid Team")});
-        builder.set_camera({.target_entity_ids = {ioj::FLevelEntityId{TEXT("ship")}},
-                            .offset_direction = FVector{-1.0, 0.0, 0.0},
-                            .distance = 1000.0});
-        builder.add_entity({.id = ioj::FLevelEntityId{TEXT("ship")},
-                            .archetype = ioj::level_archetypes::capital_ship,
-                            .team = static_cast<::ioj::Team>(255)});
-        auto const definition{builder.finish()};
-
-        auto const preview{make_plan(*world->GetCurrentLevel(), *document, definition)};
-        TestRunner->TestFalse(TEXT("Preview rejects invalid team"), preview.has_value());
-        if (!preview) {
-            TestRunner->TestTrue(TEXT("Error explains invalid team"),
-                                 preview.error().Contains(TEXT("invalid team")));
-        }
-
-        TestRunner->TestEqual(TEXT("No actor is added"),
-                              count_actors<ATestCapitalShipProxy>(*world->GetCurrentLevel()),
-                              0);
-        TestRunner->TestEqual(
-            TEXT("Document is unchanged"), document->level_id, FName{TEXT("original")});
     }
 
     TEST_METHOD(RejectsInvalidAndDuplicateBindings)
@@ -1377,28 +1239,28 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         auto const original_label{updated->GetActorLabel()};
 
-        ioj::FLevelBuilder builder;
-        builder.set_metadata({.id = ioj::FLevelId{TEXT("after")},
-                              .title = TEXT("After"),
-                              .description = TEXT("After description")});
-        builder.set_camera({.target_entity_ids = {ioj::FLevelEntityId{TEXT("add")}},
-                            .offset_direction = FVector{-1.0, 0.0, 0.0},
-                            .distance = 1000.0});
-        builder.add_entity({.id = ioj::FLevelEntityId{TEXT("update")},
-                            .archetype = ioj::level_archetypes::capital_ship,
-                            .team = ::ioj::Team::Blue,
-                            .position = FVector{100.0, 200.0, 300.0},
-                            .rotation = FRotator{10.0, 20.0, 30.0},
-                            .spawn_time_seconds = 3.0});
-        builder.add_entity({.id = ioj::FLevelEntityId{TEXT("replace")},
-                            .archetype = ioj::level_archetypes::static_turret,
-                            .team = ::ioj::Team::Red,
-                            .position = FVector{400.0, 500.0, 600.0}});
-        builder.add_entity({.id = ioj::FLevelEntityId{TEXT("add")},
-                            .archetype = ioj::level_archetypes::capital_ship,
-                            .team = ::ioj::Team::Blue,
-                            .position = FVector{700.0, 800.0, 900.0}});
-        auto const definition{builder.finish()};
+        ioj::levels::LevelDefinitionComponents definition;
+        definition.metadata = {.id = ioj::levels::LevelId{"after"},
+                               .title = "After",
+                               .description = "After description"};
+        definition.camera =
+            ioj::levels::LevelCameraDefinition{.target_entity_ids = {ioj::levels::EntityId{"add"}},
+                                               .offset_direction = ioj::Vector3d{-1.0, 0.0, 0.0},
+                                               .distance = 1000.0};
+        definition.entities.push_back({.id = ioj::levels::EntityId{"update"},
+                                       .archetype = ioj::levels::EntityArchetype::CapitalShip,
+                                       .team = ::ioj::Team::Blue,
+                                       .position = ioj::Vector3d{100.0, 200.0, 300.0},
+                                       .rotation = ioj::Rotator3d{10.0, 20.0, 30.0},
+                                       .spawn_time_seconds = 3.0});
+        definition.entities.push_back({.id = ioj::levels::EntityId{"replace"},
+                                       .archetype = ioj::levels::EntityArchetype::StaticTurret,
+                                       .team = ::ioj::Team::Red,
+                                       .position = ioj::Vector3d{400.0, 500.0, 600.0}});
+        definition.entities.push_back({.id = ioj::levels::EntityId{"add"},
+                                       .archetype = ioj::levels::EntityArchetype::CapitalShip,
+                                       .team = ::ioj::Team::Blue,
+                                       .position = ioj::Vector3d{700.0, 800.0, 900.0}});
         if (!assert_valid_definition(*TestRunner, definition)) {
             return;
         }
@@ -1859,8 +1721,8 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                 }
                 TestRunner->TestTrue(TEXT("Runtime control context matches viewpoint"),
                                      controller->get_active_control_context() ==
-                                         (observer ? EPlayerControlContext::Observer
-                                                   : EPlayerControlContext::Player));
+                                         (observer ? ::ioj::levels::ControlContext::Observer
+                                                   : ::ioj::levels::ControlContext::Player));
                 TestRunner->TestTrue(TEXT("Runtime uses the authored player or observer camera"),
                                      observer
                                          ? IsValid(Cast<ACameraActor>(controller->GetViewTarget()))

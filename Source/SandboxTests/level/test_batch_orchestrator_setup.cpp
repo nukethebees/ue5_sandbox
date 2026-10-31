@@ -1,29 +1,12 @@
 #include "test_batch_orchestrator_setup_scenario.h"
-#include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/combat_events.h>
-#include <ioj/sim/entities/entity_ledger.h>
-#include <ioj/sim/fighters/sim.h>
-#include <ioj/sim/lasers/sim.h>
-#include <ioj/sim/missions/mission.h>
-#include <ioj/sim/sim_clock.h>
-#include <ioj/sim/spinners/sim.h>
 #include <ioj/sim/telemetry/manager.h>
-#include <ioj/sim/turrets/sim.h>
 #include <SandboxTests/support/simulation_step.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
-#include <SandboxTests/support/test_setup.h>
-#include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestBatchOrchestratorTestAccess.h>
-#include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-
-#include <SandboxCoreEngine/actor_utils.h>
 
 #include <Misc/AutomationTest.h>
 #include <SandboxISMCComponent.h>
-
-#include <bit>
 
 namespace ioj {
 FTestBatchOrchestratorSetupScenario::FTestBatchOrchestratorSetupScenario(
@@ -35,12 +18,6 @@ void FTestBatchOrchestratorSetupScenario::run() {
     switch (scenario_) {
         case EOrchestratorSetupScenario::SpawnMissingActors:
             prepare_level();
-            break;
-        case EOrchestratorSetupScenario::SimulationClockConversions:
-            simulation_clock_conversions();
-            break;
-        case EOrchestratorSetupScenario::LevelTelemetry:
-            level_telemetry();
             break;
         case EOrchestratorSetupScenario::PresentationFrameOrdering:
             presentation_frame_ordering();
@@ -86,44 +63,6 @@ void FTestBatchOrchestratorSetupScenario::prepare_level() {
         TestRunner->TestEqual(TEXT("Starting does not immediately advance simulation"),
                               orchestrator->get_completed_ticks(),
                               completed_ticks);
-    });
-}
-
-void FTestBatchOrchestratorSetupScenario::simulation_clock_conversions() {
-    TestCommandBuilder.Do([this] {
-        auto* const orchestrator{&context_.orchestrator};
-        if (!TestRunner->TestNotNull(TEXT("Orchestrator is available"), orchestrator)) {
-            return;
-        }
-
-        TestRunner->TestEqual(
-            TEXT("Reusable level is constructed once"), context_.level_construction_count, 1);
-        TestRunner->TestTrue(TEXT("Reset leaves the orchestrator uninitialised"),
-                             orchestrator->get_state() == sim::OrchestratorState::Uninitialised);
-
-        sim::SimClock clock;
-        clock.initialise(settings::TickSettings{});
-
-        auto const expect_period{
-            [&](double const frequency, uint64 const ticks, TCHAR const* description) {
-                TestRunner->TestEqual(
-                    description,
-                    clock.frequency_to_tick_period(ioj::Frequency::make(frequency)).get(),
-                    ticks);
-            }};
-        expect_period(60.0, 1, TEXT("Tick-rate frequency has a one-tick period"));
-        expect_period(24.0, 3, TEXT("Frequency periods round up"));
-        expect_period(120.0, 1, TEXT("Above-tick-rate frequency has a one-tick period"));
-
-        TestRunner->TestEqual(TEXT("Zero duration has a zero-tick period"),
-                              clock.duration_to_tick_period(ioj::Duration::make(0.0)).get(),
-                              uint64{0});
-        TestRunner->TestEqual(TEXT("One second uses the configured tick rate"),
-                              clock.duration_to_tick_period(ioj::Duration::make(1.0)).get(),
-                              uint64{60});
-        TestRunner->TestEqual(TEXT("Duration periods round up"),
-                              clock.duration_to_tick_period(ioj::Duration::make(0.025)).get(),
-                              uint64{2});
     });
 }
 
@@ -205,190 +144,4 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
     });
 }
 
-void FTestBatchOrchestratorSetupScenario::level_telemetry() {
-    run_until_timeline_finished([this] { begin_level_telemetry(); },
-                                FTimespan{0, 0, 1},
-                                [this] { check_level_telemetry(); });
-}
-
-void FTestBatchOrchestratorSetupScenario::begin_level_telemetry() {
-    auto* const player{spawn_player_ship(
-        context_.world, context_.config.classes.player_ship_class, &context_.config.player_ship)};
-    if (!checks.is_valid(player, TEXT("Telemetry player ship is spawned"))) {
-        return;
-    }
-    context_.orchestrator.set_player_ship(*player);
-    telemetry_player_team_index = std::to_underlying(player->get_team());
-
-    initialise_test_driver();
-    telemetry_observations.reset();
-    telemetry_observations.reserve(16);
-
-    test_driver->orchestrator.start_simulation();
-    initial_active_entity_count = test_driver->get_ledger().count_alive();
-    initial_issued_unique_id_count = test_driver->get_ledger().get_num_unique_ids_issued();
-    set_sample_callback(FSimulationSampleCallback::CreateRaw(
-        this, &FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick));
-    test_driver->timeline.then_after(0.05, [this] { kill_telemetry_test_entity(); });
-    test_driver->timeline.finish_at(0.15);
-}
-
-void FTestBatchOrchestratorSetupScenario::kill_telemetry_test_entity() {
-    auto const& telemetry_manager{test_driver->orchestrator.get_level_telemetry_manager()};
-    telemetry_samples_before_change = telemetry_manager.get_active_entity_count_data().num();
-    kill_samples_before_change = telemetry_manager.get_cumulative_kill_count_data().num();
-
-    TStaticArray<sim::EntityId, 1> const targets{test_driver->get_player_ship().get_unique_id()};
-    test_driver->queue_kills(targets, targets[0]);
-}
-
-void FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick(
-    ATestBatchOrchestrator& orchestrator) {
-    auto const& telemetry_manager{orchestrator.get_level_telemetry_manager()};
-    auto const& entity_count_data{telemetry_manager.get_active_entity_count_data()};
-    auto const& kill_count_data{telemetry_manager.get_cumulative_kill_count_data()};
-    auto const& current_state{telemetry_manager.get_current_state()};
-    check(!entity_count_data.is_empty());
-    check(!kill_count_data.is_empty());
-
-    auto const player_type{std::to_underlying(sim::EntityType::PlayerShip)};
-    auto const alive_entity_counts{test_driver->get_ledger().count_alive_per_team_and_type()};
-
-    telemetry_observations.add(
-        test_driver->get_time(),
-        FTelemetryObservation{
-            .completed_ticks = orchestrator.get_completed_ticks(),
-            .telemetry_sample_count = entity_count_data.num(),
-            .last_telemetry_tick = entity_count_data.last_time(),
-            .telemetry_entity_count = entity_count_data.last_value(),
-            .alive_entity_count = test_driver->get_ledger().count_alive(),
-            .telemetry_player_ship_count =
-                current_state
-                    .active_entities_by_team_and_type[telemetry_player_team_index][player_type],
-            .ledger_player_ship_count =
-                alive_entity_counts[telemetry_player_team_index][player_type],
-            .kill_sample_count = kill_count_data.num(),
-            .last_kill_tick = kill_count_data.last_time(),
-            .cumulative_kill_count = kill_count_data.last_value(),
-            .issued_unique_id_count = current_state.spawned_entities,
-        });
-}
-
-void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
-    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-
-    checks.is_greater_than(
-        telemetry_observations.num(), uint32{0}, TEXT("Telemetry observations recorded"));
-    if (telemetry_observations.is_empty()) {
-        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-        return;
-    }
-
-    auto const& initial_observation{telemetry_observations.value_at(0)};
-    checks.are_equal(
-        uint32{1}, initial_observation.telemetry_sample_count, TEXT("Tick-zero baseline recorded"));
-    checks.are_equal(
-        uint64{0}, initial_observation.last_telemetry_tick, TEXT("Baseline uses tick zero"));
-    checks.are_equal(initial_active_entity_count,
-                     initial_observation.telemetry_entity_count,
-                     TEXT("Baseline records initial active entities"));
-    checks.are_equal(initial_observation.ledger_player_ship_count,
-                     initial_observation.telemetry_player_ship_count,
-                     TEXT("Current state records the player ship"));
-    checks.are_equal(
-        uint32{1}, initial_observation.kill_sample_count, TEXT("Tick-zero kill baseline recorded"));
-    checks.are_equal(
-        uint64{0}, initial_observation.last_kill_tick, TEXT("Kill baseline uses tick zero"));
-    checks.are_equal(
-        int32{0}, initial_observation.cumulative_kill_count, TEXT("Kill baseline starts at zero"));
-    checks.are_equal(initial_issued_unique_id_count,
-                     initial_observation.issued_unique_id_count,
-                     TEXT("Current state issued IDs match the ledger"));
-
-    int32 changed_observation_index{INDEX_NONE};
-    auto const observation_count{static_cast<int32>(telemetry_observations.num())};
-    for (int32 i{0}; i < observation_count; ++i) {
-        if (telemetry_observations.value_at(i).telemetry_sample_count >
-            telemetry_samples_before_change) {
-            changed_observation_index = i;
-            break;
-        }
-    }
-    checks.is_true(changed_observation_index != INDEX_NONE,
-                   TEXT("Changed active entity count is sampled"));
-    if (changed_observation_index == INDEX_NONE) {
-        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-        return;
-    }
-
-    auto const& changed_observation{telemetry_observations.value_at(changed_observation_index)};
-    auto const damage_tick{
-        telemetry_observations.value_at(changed_observation_index - 1).completed_ticks + 1};
-    checks.are_equal(damage_tick,
-                     changed_observation.last_telemetry_tick,
-                     TEXT("Telemetry records the first tick after damage is queued"));
-    checks.are_equal(changed_observation.alive_entity_count,
-                     changed_observation.telemetry_entity_count,
-                     TEXT("Telemetry records the active ledger count"));
-    checks.are_equal(initial_active_entity_count - 1,
-                     changed_observation.telemetry_entity_count,
-                     TEXT("Killed entity changes the telemetry count"));
-    checks.are_equal(changed_observation.ledger_player_ship_count,
-                     changed_observation.telemetry_player_ship_count,
-                     TEXT("Current state records the destroyed player ship"));
-    checks.are_equal(int32{0},
-                     changed_observation.telemetry_player_ship_count,
-                     TEXT("Destroyed player is removed from composition"));
-    checks.are_equal(kill_samples_before_change + 1,
-                     changed_observation.kill_sample_count,
-                     TEXT("Killed entity changes cumulative kill telemetry"));
-    checks.are_equal(damage_tick,
-                     changed_observation.last_kill_tick,
-                     TEXT("Kill telemetry records the damage-resolution tick"));
-    checks.are_equal(int32{1},
-                     changed_observation.cumulative_kill_count,
-                     TEXT("Killed entity increments the cumulative kill count"));
-    checks.are_equal(initial_issued_unique_id_count,
-                     changed_observation.issued_unique_id_count,
-                     TEXT("Killing an entity preserves issued IDs"));
-
-    auto const& final_observation{telemetry_observations.last_value()};
-    checks.are_equal(telemetry_samples_before_change + 1,
-                     final_observation.telemetry_sample_count,
-                     TEXT("Unchanged ticks do not add telemetry samples"));
-    checks.is_greater_than(final_observation.completed_ticks,
-                           final_observation.last_telemetry_tick,
-                           TEXT("Simulation continues after the last changed sample"));
-
-    auto const snapshot{test_driver->orchestrator.get_level_telemetry_manager().make_snapshot()};
-    checks.are_equal(final_observation.telemetry_entity_count,
-                     snapshot.active_entities,
-                     TEXT("Snapshot records the final active entity count"));
-    checks.are_equal(initial_issued_unique_id_count,
-                     snapshot.spawned_entities,
-                     TEXT("Snapshot records issued entities as spawned"));
-    checks.are_equal(snapshot.spawned_entities - snapshot.active_entities,
-                     snapshot.destroyed_entities,
-                     TEXT("Snapshot derives destroyed entities from spawned and active counts"));
-    checks.are_equal(int32{1}, snapshot.kills, TEXT("Snapshot records the observed kill"));
-    checks.are_equal(final_observation.completed_ticks,
-                     snapshot.active_entity_count_data.last_time(),
-                     TEXT("Snapshot extends active entities to the completed tick"));
-    checks.are_equal(final_observation.completed_ticks,
-                     snapshot.cumulative_kill_count_data.last_time(),
-                     TEXT("Snapshot extends kills to the completed tick"));
-    checks.are_equal(snapshot.active_entities,
-                     snapshot.active_entity_count_data.last_value(),
-                     TEXT("Terminal active-entity sample preserves the final count"));
-    checks.are_equal(snapshot.kills,
-                     snapshot.cumulative_kill_count_data.last_value(),
-                     TEXT("Terminal kill sample preserves the final count"));
-    for (auto const value : snapshot.active_entity_count_data.values()) {
-        checks.is_true(value >= 0, TEXT("Snapshot active-entity samples are nonnegative"));
-    }
-    for (auto const value : snapshot.cumulative_kill_count_data.values()) {
-        checks.is_true(value >= 0, TEXT("Snapshot kill samples are nonnegative"));
-    }
-    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-}
 }

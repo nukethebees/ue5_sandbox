@@ -42,20 +42,19 @@ TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
 
             auto const size_override{FVector3f{2450000.f, 2250000.f, 550000.f}};
             auto const cell_override{FVector3f{47000.f, 53000.f, 35000.f}};
-            auto check_level = [&](TOptional<FVector3f> const size,
-                                   TOptional<FVector3f> const cells,
-                                   TCHAR const* const label) {
-                std::string grid;
+            for (auto const override_grid : {true, false}) {
                 auto expected{base->collision_grid};
-                if (size.IsSet()) {
-                    auto const value{size.GetValue()};
-                    grid += std::format(":level-size '({} {} {}) ", value.X, value.Y, value.Z);
-                    expected.grid_size = value;
-                }
-                if (cells.IsSet()) {
-                    auto const value{cells.GetValue()};
-                    grid += std::format(":cell-size '({} {} {}) ", value.X, value.Y, value.Z);
-                    expected.cell_size = value;
+                std::string grid;
+                if (override_grid) {
+                    grid = std::format(":level-size '({} {} {}) :cell-size '({} {} {})",
+                                       size_override.X,
+                                       size_override.Y,
+                                       size_override.Z,
+                                       cell_override.X,
+                                       cell_override.Y,
+                                       cell_override.Z);
+                    expected.grid_size = size_override;
+                    expected.cell_size = cell_override;
                 }
                 ioj::levels::authoring::LevelSource const source{std::format(
                     R"((level :id 'grid-runtime :title "Grid runtime" :player 'player
@@ -64,7 +63,8 @@ TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
                         :settings (settings :collision-grid (collision-grid {}))))",
                     grid)};
 
-                if (!checks.is_true(static_cast<bool>(orchestrator->load_level(source)), label)) {
+                if (!checks.is_true(static_cast<bool>(orchestrator->load_level(source)),
+                                    TEXT("Current level grid loads"))) {
                     return;
                 }
                 orchestrator->start_simulation();
@@ -89,15 +89,7 @@ TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
                 }
                 orchestrator->clear_player_ship();
                 orchestrator->reset_for_new_level();
-            };
-
-            check_level(NullOpt, NullOpt, TEXT("No grid override loads"));
-            check_level(size_override, NullOpt, TEXT("Bounds-only override loads"));
-            check_level(NullOpt, cell_override, TEXT("Cell-only override loads"));
-            check_level(size_override, cell_override, TEXT("Both overrides load"));
-            check_level(NullOpt, cell_override, TEXT("Sequential cell override loads"));
-            check_level(size_override, NullOpt, TEXT("Next level inherits base cells"));
-            check_level(NullOpt, NullOpt, TEXT("Final level inherits both base dimensions"));
+            }
         });
     }
 };

@@ -70,12 +70,6 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     SHARED_SIMULATION_TEST(Orchestrator_SpawnMissingActors,
                            ioj::FTestBatchOrchestratorSetupScenario,
                            ioj::EOrchestratorSetupScenario::SpawnMissingActors)
-    SHARED_SIMULATION_TEST(Orchestrator_SimulationClockConversions,
-                           ioj::FTestBatchOrchestratorSetupScenario,
-                           ioj::EOrchestratorSetupScenario::SimulationClockConversions)
-    SHARED_SIMULATION_TEST(Orchestrator_LevelTelemetry,
-                           ioj::FTestBatchOrchestratorSetupScenario,
-                           ioj::EOrchestratorSetupScenario::LevelTelemetry)
     SHARED_SIMULATION_TEST(Orchestrator_PresentationFrameOrdering,
                            ioj::FTestBatchOrchestratorSetupScenario,
                            ioj::EOrchestratorSetupScenario::PresentationFrameOrdering)

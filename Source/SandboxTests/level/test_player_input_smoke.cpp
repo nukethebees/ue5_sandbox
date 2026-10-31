@@ -1,11 +1,10 @@
+#include <ioj/levels/level_definition.h>
 #include <ioj/sim/player/sim.h>
 #include <SandboxTests/support/PlayerControllerTestAccess.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SpaceGame/input/CanonicalShipControls.h>
 #include <SpaceGame/input/SpaceGameInputModifier.h>
 #include <SpaceGame/input/SpaceGameInputUserSettings.h>
-#include <SpaceGame/levels/ExampleLevels.h>
-#include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/settings/GameSettingsSubsystem.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
@@ -158,10 +157,15 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
         if (!checks.is_valid(orchestrator, TEXT("Orchestrator exists"))) {
             return false;
         }
+        auto definition{ioj::levels::LevelDefinition::make({
+            .metadata = {.id = ioj::levels::LevelId{"input-smoke"}, .title = "Input Smoke"},
+            .player_entity_id = ioj::levels::EntityId{"player"},
+            .entities = {{.id = ioj::levels::EntityId{"player"},
+                          .archetype = ioj::levels::EntityArchetype::PlayerFighter,
+                          .team = ioj::Team::Blue}},
+        })};
         if (!checks.is_true(
-                static_cast<bool>(orchestrator->load_level(
-                    ioj::levels::authoring::to_native(ioj::example_levels::make_example_draft())
-                        .value())),
+                static_cast<bool>(orchestrator->load_level(std::move(definition).value())),
                 TEXT("Gameplay level loads directly"))) {
             return false;
         }
@@ -188,8 +192,8 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
         checks.is_true(controller->GetClass()->GetOutermost()->GetName() ==
                            TEXT("/SpaceGame/Players/BP_SpaceGamePlayerController"),
                        TEXT("Canonical runtime controller Blueprint is used"));
-        for (auto const& definition : ioj::canonical_ship_control_contexts()) {
-            auto* const context{ioj::load_ship_control_context(definition.scope)};
+        for (auto const& control : ioj::canonical_ship_control_contexts()) {
+            auto* const context{ioj::load_ship_control_context(control.scope)};
             checks.is_true(IsValid(context) && settings->IsMappingContextRegistered(context),
                            TEXT("Canonical context registered without opening Options"));
         }
@@ -203,7 +207,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
         auto const* const ship{IsValid(controller) ? Cast<ATestSpaceShip>(controller->GetPawn())
                                                    : nullptr};
         return IsValid(subsystem) && IsValid(ship) && ship->has_simulation() &&
-               controller->get_active_control_context() == EPlayerControlContext::Player &&
+               controller->get_active_control_context() == ::ioj::levels::ControlContext::Player &&
                subsystem->HasMappingContext(
                    ioj::load_ship_control_context(ioj::EShipControlScope::General)) &&
                subsystem->HasMappingContext(
@@ -635,7 +639,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                     return !checks.all_passed ||
                            (!FPlayerControllerTestAccess::has_modal(*controller_) &&
                             controller_->get_active_control_context() ==
-                                EPlayerControlContext::Player);
+                                ::ioj::levels::ControlContext::Player);
                 },
                 timeout)
             .Then([this] {
@@ -854,12 +858,12 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 checks.is_true(
                     settings->set_control_binding(remap_address_, EKeys::Gamepad_RightY, false),
                     TEXT("Canonical remap previews in the edit transaction"));
-                settings->set_setting(ioj::EGameSetting::InvertGamepadPitch,
-                                      ioj::FGameSettingValue{!original_pitch_inversion_});
-                settings->set_setting(ioj::EGameSetting::InvertGamepadYaw,
-                                      ioj::FGameSettingValue{!original_yaw_inversion_});
-                settings->set_setting(ioj::EGameSetting::InvertGamepadRoll,
-                                      ioj::FGameSettingValue{!original_roll_inversion_});
+                settings->set_setting(ioj::GameSetting::InvertGamepadPitch,
+                                      ioj::GameSettingValue{!original_pitch_inversion_});
+                settings->set_setting(ioj::GameSetting::InvertGamepadYaw,
+                                      ioj::GameSettingValue{!original_yaw_inversion_});
+                settings->set_setting(ioj::GameSetting::InvertGamepadRoll,
+                                      ioj::GameSettingValue{!original_roll_inversion_});
                 settings->apply();
                 checks.is_true(pitch_mapping_uses(*settings, EKeys::Gamepad_RightY),
                                TEXT("Apply retains the remap in the active key profile"));
@@ -897,12 +901,12 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 auto* const settings{
                     controller->GetGameInstance()->GetSubsystem<ioj::UGameSettingsSubsystem>()};
                 settings->begin_edit(controller->GetLocalPlayer());
-                settings->set_setting(ioj::EGameSetting::InvertGamepadPitch,
-                                      ioj::FGameSettingValue{original_pitch_inversion_});
-                settings->set_setting(ioj::EGameSetting::InvertGamepadYaw,
-                                      ioj::FGameSettingValue{original_yaw_inversion_});
-                settings->set_setting(ioj::EGameSetting::InvertGamepadRoll,
-                                      ioj::FGameSettingValue{original_roll_inversion_});
+                settings->set_setting(ioj::GameSetting::InvertGamepadPitch,
+                                      ioj::GameSettingValue{original_pitch_inversion_});
+                settings->set_setting(ioj::GameSetting::InvertGamepadYaw,
+                                      ioj::GameSettingValue{original_yaw_inversion_});
+                settings->set_setting(ioj::GameSetting::InvertGamepadRoll,
+                                      ioj::GameSettingValue{original_roll_inversion_});
                 checks.is_true(settings->set_control_binding(
                                    remap_address_, EKeys::Gamepad_FaceButton_Right, false),
                                TEXT("A second remap can be previewed"));

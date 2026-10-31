@@ -101,7 +101,7 @@ void FTestPlayerShipDeathScenario::on_end_tick(ATestBatchOrchestrator&) {
                               player_ship_id)] == sim::LifeState::Alive,
                           IsValid(controller) && IsValid(controller->GetPawn()),
                           IsValid(controller) && controller->get_active_control_context() ==
-                                                     EPlayerControlContext::Player});
+                                                     ::ioj::levels::ControlContext::Player});
 }
 
 void FTestPlayerShipDeathScenario::check_player_ship_death() {

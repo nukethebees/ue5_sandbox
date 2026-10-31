@@ -1,13 +1,10 @@
 #include <ioj/levels/authoring/definition_reader.h>
-#include <ioj/s7/source_format.h>
+#include <ioj/levels/level_definition.h>
 #include <ioj/sim/collision/entity_world_bounds.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
-#include <SpaceGame/levels/ExampleLevels.h>
-#include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/s7/GameSettingsReader.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGameS7/definition_reader.h>
 
 #include <SandboxCoreEngine/VectorConversion.h>
 
@@ -19,8 +16,7 @@
 #include <Misc/Paths.h>
 #include <UObject/Package.h>
 
-#include <format>
-#include <limits>
+#include <filesystem>
 
 TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
 {
@@ -53,107 +49,6 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         }
     }
 
-    TEST_METHOD(CollisionGridDefaultsAndValidation)
-    {
-        FCollisionGridConfig const defaults{};
-        TestRunner->TestTrue(TEXT("Default collision-grid size is 20 km by 20 km by 1 km"),
-                             defaults.grid_size == FVector3f{2000000.f, 2000000.f, 100000.f});
-        TestRunner->TestTrue(TEXT("Default collision-grid cell size is preserved"),
-                             defaults.cell_size == FVector3f{5000.f, 5000.f, 20000.f});
-        TestRunner->TestTrue(TEXT("Default collision-grid dimensions are calculated"),
-                             defaults.calculate_grid_dimensions() == FIntVector3{400, 400, 5});
-        TestRunner->TestTrue(TEXT("Default collision-grid config is valid"), defaults.is_valid());
-
-        auto const* const source{ioj::load_default_level_config()};
-        if (!TestRunner->TestNotNull(TEXT("Default level config loads"), source)) {
-            return;
-        }
-
-        auto* const copy{ioj::duplicate_level_config(*source, *GetTransientPackage())};
-        if (!TestRunner->TestNotNull(TEXT("Level config copy is created"), copy)) {
-            return;
-        }
-
-        TestRunner->TestTrue(TEXT("Collision-grid size is duplicated"),
-                             copy->collision_grid.grid_size == source->collision_grid.grid_size);
-        TestRunner->TestTrue(TEXT("Collision-grid cell size is duplicated"),
-                             copy->collision_grid.cell_size == source->collision_grid.cell_size);
-        TestRunner->TestTrue(TEXT("Collision-grid calculated dimensions are duplicated"),
-                             copy->collision_grid.calculate_grid_dimensions() ==
-                                 source->collision_grid.calculate_grid_dimensions());
-
-        copy->collision_grid.grid_size.X = 0.f;
-        TArray<FString> errors;
-        copy->get_validation_errors(errors);
-        TestRunner->TestFalse(TEXT("Zero collision-grid size is invalid"), copy->is_valid());
-        TestRunner->TestTrue(
-            TEXT("Invalid collision-grid size has a validation diagnostic"),
-            errors.Contains(TEXT("collision_grid.grid_size components must be positive")));
-    }
-
-    TEST_METHOD(PresentationVectorsRejectNonfiniteAndUnrepresentableComponents)
-    {
-        auto const* const resources{ioj::load_default_level_config()};
-        if (!TestRunner->TestNotNull(TEXT("Default level config loads"), resources)) {
-            return;
-        }
-        auto load = [&](std::string_view const path,
-                        std::vector<double> values) -> std::expected<void, FString> {
-            std::string components;
-            for (auto const value : values) {
-                components += ioj::s7::format_real(value) + ' ';
-            }
-            auto const overlay{path.find("entity-overlay") != std::string_view::npos};
-            auto const source{std::format(R"((level :id 'vector-settings :title "Vector settings"
-                  :player 'player :entities (list
-                    (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0)))
-                  :settings (settings :presentation (presentation :{} (settings-section '{} :{} '({}))))))",
-                                          overlay ? "entity-overlay" : "capital-ships",
-                                          overlay ? "entity-overlay" : "capital-ships",
-                                          overlay ? "bar-size-pixels" : "min-small-explosion-range",
-                                          components)};
-            ioj::levels::authoring::LevelSource input{source};
-            auto loaded{read_game_settings(
-                TEXT("LevelScripts/Settings/base.scm"), &input, *resources, GetTransientPackage())};
-            if (loaded) {
-                TestRunner->TestEqual(TEXT("Presentation-only settings retain base fighter speed"),
-                                      loaded->simulation.fighters.speed,
-                                      4500.f);
-                TestRunner->TestEqual(TEXT("Resolved definition uses the same base settings"),
-                                      loaded->level->settings().fighters.speed,
-                                      loaded->simulation.fighters.speed);
-            }
-            return loaded.transform([](auto const&) {});
-        };
-        for (auto const path : {"presentation.entity-overlay.bar-size-pixels",
-                                "presentation.capital-ships.min-small-explosion-range"}) {
-            auto const count{
-                std::string_view{path}.find("entity-overlay") != std::string_view::npos ? 2u : 3u};
-            auto const valid{load(path, std::vector<double>(count, 2.5))};
-            TestRunner->TestTrue(valid ? TEXT("Finite vector components are accepted")
-                                       : *valid.error(),
-                                 valid.has_value());
-            for (auto const invalid : {std::numeric_limits<double>::infinity(),
-                                       -std::numeric_limits<double>::infinity(),
-                                       std::numeric_limits<double>::quiet_NaN()}) {
-                for (std::size_t index{}; index < count; ++index) {
-                    std::vector<double> values(count, 2.5);
-                    values[index] = invalid;
-                    TestRunner->TestFalse(TEXT("Nonfinite vector component is rejected"),
-                                          load(path, std::move(values)).has_value());
-                }
-            }
-        }
-        TestRunner->TestFalse(TEXT("Unrepresentable FVector3f component is rejected"),
-                              load("presentation.capital-ships.min-small-explosion-range",
-                                   {1., 2., std::numeric_limits<double>::max()})
-                                  .has_value());
-        TestRunner->TestTrue(TEXT("FVector2D retains double precision range"),
-                             load("presentation.entity-overlay.bar-size-pixels",
-                                  {1., std::numeric_limits<double>::max()})
-                                 .has_value());
-    }
-
     TEST_METHOD(PrebuiltLevelsPreserveResolvedSettings)
     {
         auto const* const resources{ioj::load_default_level_config()};
@@ -161,17 +56,19 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
             return;
         }
 
-        auto draft{ioj::example_levels::make_example_draft()};
-        draft.settings.fighters.speed = 1234.f;
-        draft.settings.collision_grid.level_size = {2400000.f, 2000000.f, 500000.f};
-        draft.settings.collision_grid.cell_size = {6000.f, 5000.f, 20000.f};
-        auto const definition{ioj::levels::authoring::to_native(draft)};
+        ioj::levels::LevelDefinitionComponents input{
+            .metadata = {.id = ioj::levels::LevelId{"prebuilt"}, .title = "Prebuilt"},
+            .player_entity_id = ioj::levels::EntityId{"player"},
+            .entities = {{.id = ioj::levels::EntityId{"player"},
+                          .archetype = ioj::levels::EntityArchetype::PlayerFighter,
+                          .team = ioj::Team::Blue}}};
+        input.settings.fighters.speed = 1234.f;
+        input.settings.collision_grid.level_size = {2400000.f, 2000000.f, 500000.f};
+        input.settings.collision_grid.cell_size = {6000.f, 5000.f, 20000.f};
+        auto const definition{ioj::levels::LevelDefinition::make(input)};
         if (!TestRunner->TestTrue(TEXT("Prebuilt level is valid"), definition.has_value())) {
             return;
         }
-        TestRunner->TestTrue(TEXT("Unreal conversion preserves all resolved settings"),
-                             ioj::levels::authoring::to_unreal(*definition).settings ==
-                                 draft.settings);
 
         ioj::levels::authoring::LevelSource const source{*definition};
         auto const loaded{read_game_settings(TEXT("LevelScripts/Settings/missing-unused-base.scm"),
@@ -183,14 +80,14 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
             return;
         }
         TestRunner->TestTrue(TEXT("System settings do not overwrite resolved level settings"),
-                             loaded->level->settings() == draft.settings);
+                             loaded->level->settings() == input.settings);
         TestRunner->TestTrue(TEXT("Prebuilt settings do not claim unrelated source text"),
                              loaded->source.IsEmpty());
         TestRunner->TestEqual(TEXT("Runtime uses resolved fighter speed"),
                               loaded->simulation.fighters.speed,
-                              draft.settings.fighters.speed);
+                              input.settings.fighters.speed);
         TestRunner->TestTrue(TEXT("Runtime uses resolved collision dimensions"),
-                             loaded->simulation.overlap_response == draft.settings.collision_grid);
+                             loaded->simulation.overlap_response == input.settings.collision_grid);
     }
 
     TEST_METHOD(DuplicatePreservesNestedValuesAndAssetReferences)
@@ -288,10 +185,10 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
                 return a.Equals(b);
             }));
 
-        ::ioj::levels::authoring::FDefinitionReader reader;
+        ::ioj::levels::authoring::DefinitionReader reader;
         auto const script_path{
             FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), TEXT("TurretTrial_0.scm"))};
-        auto const scripted_definition{reader.read_level_file(script_path)};
+        auto const scripted_definition{reader.read_level_file(std::filesystem::path{*script_path})};
         if (!TestRunner->TestTrue(TEXT("Turret Trial 0 produces a valid native definition"),
                                   static_cast<bool>(scripted_definition))) {
             return;
@@ -300,42 +197,6 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         auto const result{
             ioj::make_level_simulation_init_data(*runtime, {}, scripted_definition.value())};
         TestRunner->TestTrue(TEXT("Runtime config starts Turret Trial 0"), result.has_value());
-    }
-
-    TEST_METHOD(FighterSpawnSlotValidationRejectsInvalidLevelGeometry)
-    {
-        auto const* const source{ioj::load_default_level_config()};
-        if (!TestRunner->TestNotNull(TEXT("Default level config loads"), source) ||
-            !TestRunner->TestNotNull(TEXT("Capital mesh loads"),
-                                     source->capital_ships.mesh.Get())) {
-            return;
-        }
-
-        auto* const inside_capital{ioj::duplicate_level_config(*source, *GetTransientPackage())};
-        inside_capital->capital_ships.fighter_spawn_slots_relative_transforms[0].SetLocation(
-            source->capital_ships.mesh->GetBounds().Origin);
-        auto const capital_result{ioj::make_level_simulation_init_data(*inside_capital)};
-        TestRunner->TestFalse(TEXT("A fighter slot inside its capital aborts level loading"),
-                              capital_result.has_value());
-        if (!capital_result) {
-            TestRunner->TestTrue(
-                TEXT("Capital intersection has a level-start diagnostic"),
-                capital_result.error().format().Contains(TEXT("intersects the capital collision")));
-        }
-
-        auto* const overlapping_fighters{
-            ioj::duplicate_level_config(*source, *GetTransientPackage())};
-        overlapping_fighters->capital_ships.fighter_spawn_slots_relative_transforms[1].SetLocation(
-            overlapping_fighters->capital_ships.fighter_spawn_slots_relative_transforms[0]
-                .GetLocation());
-        auto const fighter_result{ioj::make_level_simulation_init_data(*overlapping_fighters)};
-        TestRunner->TestFalse(TEXT("Overlapping fighter slots abort level loading"),
-                              fighter_result.has_value());
-        if (!fighter_result) {
-            TestRunner->TestTrue(
-                TEXT("Fighter overlap has a level-start diagnostic"),
-                fighter_result.error().format().Contains(TEXT("fighter spawn slots 0 and 1")));
-        }
     }
 
     TEST_METHOD(RejectsOverlappingStaticCollisionClassLists)

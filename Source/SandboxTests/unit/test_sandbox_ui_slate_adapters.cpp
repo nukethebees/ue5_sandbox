@@ -170,27 +170,28 @@ TEST_CLASS(SandboxUISlateAdapters, "Sandbox.UnitTests")
     TEST_METHOD(EntityOverlayConvertsOrderingAndPackedColor)
     {
         FEntityOverlayCollector collector;
-        TArray<FEntityOverlayInstance> output;
+        TArray<ioj::ui::entity_overlay::Instance> output;
         collector.begin(FVector3f::ZeroVector, 100.0f, output);
         TestRunner->TestTrue(
             TEXT("An objective is accepted"),
             collector.try_add(
-                {1.0f, 0.0f, 0.0f}, 0.25f, 10.0f, EEntityOverlayObjectiveRole::Defend));
+                {1.0f, 0.0f, 0.0f}, 0.25f, 10.0f, ioj::ui::entity_overlay::ObjectiveRole::Defend));
         TestRunner->TestTrue(TEXT("A later ordinary contact is accepted"),
                              collector.try_add({2.0f, 0.0f, 0.0f}, 0.5f, 20.0f));
         auto const fill_color{FLinearColor{-1.0f, 0.5f, 2.0f, 0.25f}};
-        TestRunner->TestTrue(TEXT("A colored objective is accepted"),
-                             collector.try_add_colored({3.0f, 0.0f, 0.0f},
-                                                       0.75f,
-                                                       30.0f,
-                                                       fill_color,
-                                                       EEntityOverlayObjectiveRole::Destroy));
+        TestRunner->TestTrue(
+            TEXT("A colored objective is accepted"),
+            collector.try_add_colored({3.0f, 0.0f, 0.0f},
+                                      0.75f,
+                                      30.0f,
+                                      fill_color,
+                                      ioj::ui::entity_overlay::ObjectiveRole::Destroy));
 
         TestRunner->TestEqual(TEXT("The Unreal output keeps ordinary contacts first"),
-                              output[0].world_position.X,
+                              output[0].world_position.x(),
                               2.0f);
         TestRunner->TestEqual(TEXT("Objective swapping preserves the earlier objective"),
-                              output[1].world_position.X,
+                              output[1].world_position.x(),
                               1.0f);
         auto const expected{ioj::ui::entity_overlay::pack_display_data(
             ioj::ui::entity_overlay::ObjectiveRole::Destroy,

@@ -31,7 +31,7 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
         FPlayerControllerTestAccess::prepare_input(*controller, *component, *subsystem, input);
         TestRunner->TestTrue(TEXT("Benchmark binds without possession"),
                              FPlayerControllerTestAccess::select_context(
-                                 *controller, EPlayerControlContext::Benchmark));
+                                 *controller, ::ioj::levels::ControlContext::Benchmark));
         auto const* const benchmark_property{
             FindFProperty<FStructProperty>(controller->GetClass(), TEXT("benchmark_input"))};
         auto const& benchmark{
@@ -42,7 +42,7 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
         FPlayerControllerTestAccess::end_play(*controller);
         TestRunner->TestTrue(TEXT("EndPlay leaves None"),
                              controller->get_active_control_context() ==
-                                 EPlayerControlContext::None);
+                                 ::ioj::levels::ControlContext::None);
         TestRunner->TestFalse(TEXT("EndPlay releases modal state"),
                               FPlayerControllerTestAccess::has_modal(*controller));
         TestRunner->TestFalse(TEXT("EndPlay removes the context mapping"),
@@ -65,10 +65,10 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
         controller->SetupInputComponent();
         TestRunner->TestTrue(TEXT("Main menu has no gameplay context"),
                              controller->get_active_control_context() ==
-                                 EPlayerControlContext::None);
-        TestRunner->TestFalse(
-            TEXT("Main menu rejects Observer activation"),
-            controller->activate_playerless_camera(*camera, EPlayerControlContext::Observer));
+                                 ::ioj::levels::ControlContext::None);
+        TestRunner->TestFalse(TEXT("Main menu rejects Observer activation"),
+                              controller->activate_playerless_camera(
+                                  *camera, ::ioj::levels::ControlContext::Observer));
         TestRunner->TestTrue(TEXT("Main menu does not create a simulation HUD"),
                              controller->get_active_hud() == nullptr);
         TestRunner->TestTrue(TEXT("Main menu does not create a benchmark HUD"),
@@ -96,7 +96,7 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
         controller->UnPossess();
         TestRunner->TestTrue(TEXT("A lost ship is not required to close the modal"),
                              FPlayerControllerTestAccess::restore_context(*controller) ==
-                                 EPlayerControlContext::None);
+                                 ::ioj::levels::ControlContext::None);
         ship->Destroy();
         controller->Destroy();
     }
@@ -158,12 +158,12 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
         controller->Possess(ship);
         TestRunner->TestTrue(TEXT("Completion keeps gameplay control disabled"),
                              controller->get_active_control_context() ==
-                                 EPlayerControlContext::None);
+                                 ::ioj::levels::ControlContext::None);
         TestRunner->TestFalse(TEXT("Completion does not install the ship mapping"),
                               subsystem->HasMappingContext(input.starfox));
         TestRunner->TestTrue(TEXT("Replacement ship is restored when the modal closes"),
                              FPlayerControllerTestAccess::restore_context(*controller) ==
-                                 EPlayerControlContext::Player);
+                                 ::ioj::levels::ControlContext::Player);
         controller->UnPossess();
         FPlayerControllerTestAccess::shutdown_input(*controller);
         ship->Destroy();

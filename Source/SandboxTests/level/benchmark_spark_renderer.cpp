@@ -209,7 +209,7 @@ TEST_CLASS(SparkRendererBenchmark, "SandboxBenchmarks.SparkBenchmark")
     }
 
     void prefill_particle_pool() {
-        TArray<FSparkParticleRecord> particles;
+        TArray<ioj::presentation::SparkParticleRecord> particles;
         particles.SetNumUninitialized(capacity_);
         auto const columns{FMath::Max(
             FMath::CeilToInt(FMath::Sqrt(static_cast<float>(capacity_) * 16.0f / 9.0f)), 1)};
@@ -224,20 +224,22 @@ TEST_CLASS(SparkRendererBenchmark, "SandboxBenchmarks.SparkBenchmark")
                                                  : FVector3f{0.0f, -1000.0f, 4000.0f}};
             auto& particle{particles[index]};
             particle.initial_position_spawn_time =
-                FVector4f{0.0f,
-                          FMath::Lerp(-9500.0f, 9500.0f, column_alpha),
-                          FMath::Lerp(-5000.0f, 5000.0f, row_alpha),
-                          0.0f};
+                ioj::Vector<float, 4>{0.0f,
+                                      FMath::Lerp(-9500.0f, 9500.0f, column_alpha),
+                                      FMath::Lerp(-5000.0f, 5000.0f, row_alpha),
+                                      0.0f};
             particle.initial_velocity_lifetime =
-                FVector4f{velocity.X, velocity.Y, velocity.Z, 1000.0f};
-            particle.emissive_colour_size = (index & 1) == 0 ? FVector4f{40.0f, 4.0f, 0.8f, 20.0f}
-                                                             : FVector4f{2.0f, 8.0f, 40.0f, 20.0f};
-            particle.streak_time_reserved = FVector4f{0.025f, 0.0f, 0.0f, 0.0f};
+                ioj::Vector<float, 4>{velocity.X, velocity.Y, velocity.Z, 1000.0f};
+            particle.emissive_colour_size = (index & 1) == 0
+                                              ? ioj::Vector<float, 4>{40.0f, 4.0f, 0.8f, 20.0f}
+                                              : ioj::Vector<float, 4>{2.0f, 8.0f, 40.0f, 20.0f};
+            particle.streak_time_reserved = ioj::Vector<float, 4>{0.025f, 0.0f, 0.0f, 0.0f};
         }
-        renderer_->submit_particles(particles, 0.0f);
+        renderer_->submit_particles(
+            {particles.GetData(), static_cast<std::size_t>(particles.Num())}, 0.0f);
     }
 
-    auto make_burst(int32 const impact_index) const -> FSparkBurst {
+    auto make_burst(int32 const impact_index) const -> ioj::presentation::SparkBurst {
         auto const grid_index{frame_index_ * impacts_per_frame_ + impact_index};
         auto const column{grid_index % 20};
         auto const row{(grid_index / 20) % 10};
@@ -247,9 +249,9 @@ TEST_CLASS(SparkRendererBenchmark, "SandboxBenchmarks.SparkBenchmark")
                     .location = {0.0f,
                                  -14250.0f + static_cast<float>(column) * 1500.0f,
                                  -6750.0f + static_cast<float>(row) * 1500.0f},
-                    .direction = FVector3f::UpVector,
-                    .colour = (grid_index & 1) == 0 ? FVector3f{1.0f, 0.1f, 0.02f}
-                                                    : FVector3f{0.05f, 0.2f, 1.0f},
+                    .direction = {0.f, 0.f, 1.f},
+                    .colour = (grid_index & 1) == 0 ? ioj::Vector3f{1.0f, 0.1f, 0.02f}
+                                                    : ioj::Vector3f{0.05f, 0.2f, 1.0f},
                     .seed = 0x5a17b00bu ^ static_cast<uint32>(grid_index),
                 },
             .style = {.count = sparks_per_hit_,

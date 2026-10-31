@@ -94,9 +94,9 @@ TEST_CLASS(SparkRendererPixels, "Sandbox.SparkRenderTests")
     void set_time(float const effect_time, bool const spawn) {
         if (spawn) {
             effects_->queue_burst({
-                .emission = {.location = FVector3f::ZeroVector,
-                             .direction = FVector3f::UpVector,
-                             .colour = FVector3f{1.0f, 0.0f, 0.0f},
+                .emission = {.location = {},
+                             .direction = {0.f, 0.f, 1.f},
+                             .colour = {1.f, 0.f, 0.f},
                              .seed = 0x12345678u},
                 .style = {.count = 1,
                           .speed = {1000.0f, 1000.0f},

@@ -2,14 +2,9 @@
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/lasers/sim.h>
-#include <ioj/sim/spinners/sim.h>
-#include <ioj/sim/turrets/sim.h>
-#include <ioj/time_series_data.h>
-#include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
-#include <SandboxTests/support/time_series_test_data.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -26,7 +21,6 @@
 #include <GameFramework/PlayerController.h>
 #include <GameFramework/PlayerState.h>
 #include <GameFramework/WorldSettings.h>
-#include <Misc/Optional.h>
 #include <SandboxISMCComponent.h>
 
 namespace ioj {
@@ -92,43 +86,17 @@ void FTestBatchOrchestratorResetScenario::save_old_transient_actors(
     }
 }
 
-void FTestBatchOrchestratorResetScenario::sample(ATestBatchOrchestrator& orchestrator) {
-    FSimulationSample const sample{
-        .actor_count = count_actors(*test_driver->get_world()),
-        .ledger_alive = test_driver->get_ledger().count_alive(),
-        .capital_count = orchestrator.get_capital_ships()->get_num_instances(),
-        .fighter_count = orchestrator.get_fighters()->get_num_instances(),
-        .laser_count = orchestrator.get_lasers()->get_num_instances(),
-    };
-
-    if (reset_complete) {
-        reset_samples.add(orchestrator.get_simulation_time(), sample);
-    } else {
-        initial_samples.add(orchestrator.get_simulation_time(), sample);
-    }
-}
-
-void FTestBatchOrchestratorResetScenario::on_end_tick(ATestBatchOrchestrator& orchestrator) {
-    sample(orchestrator);
-}
-
 void FTestBatchOrchestratorResetScenario::start_initial_simulation() {
     initialise_test_driver();
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
-    reset_and_reserve_time_series(
-        test_driver->orchestrator, reset_time, initial_samples, reset_samples);
-    set_sample_callback(FSimulationSampleCallback::CreateRaw(
-        this, &FTestBatchOrchestratorResetScenario::on_end_tick));
     test_driver->orchestrator.start_simulation();
     test_driver->orchestrator.SetActorTickEnabled(false);
 }
 
 void FTestBatchOrchestratorResetScenario::reset_simulation() {
-    check(!initial_samples.is_empty());
-
-    initial_actor_count = initial_samples.last_value().actor_count;
-    initial_ledger_alive = initial_samples.last_value().ledger_alive;
+    initial_actor_count = count_actors(*test_driver->get_world());
+    initial_ledger_alive = test_driver->get_ledger().count_alive();
     save_old_owned_actors(test_driver->orchestrator);
     save_old_transient_actors(test_driver->orchestrator);
     auto const& initial_telemetry{
@@ -152,9 +120,6 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
     }
     checks.is_true(test_driver->orchestrator.get_level_simulation() == nullptr,
                    TEXT("Level reset destroys the previous simulation"));
-    reset_complete = true;
-    set_sample_callback(FSimulationSampleCallback::CreateRaw(
-        this, &FTestBatchOrchestratorResetScenario::on_end_tick));
     test_driver->orchestrator.start_simulation();
     test_driver->orchestrator.SetActorTickEnabled(false);
     auto const& telemetry{
@@ -168,18 +133,20 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
 }
 
 void FTestBatchOrchestratorResetScenario::check_reset() {
-    check_samples_recorded(initial_samples.num(), checks, TEXT("Initial samples recorded"));
-    check_samples_recorded(reset_samples.num(), checks, TEXT("Reset samples recorded"));
-    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-
-    auto const& reset_sample{reset_samples.last_value()};
-    checks.is_true(reset_sample.actor_count < initial_actor_count,
+    checks.is_true(count_actors(*test_driver->get_world()) < initial_actor_count,
                    TEXT("Reset removes transient level actors"));
     checks.are_equal(1, initial_ledger_alive, TEXT("Initial simulation contains one entity"));
-    checks.are_equal(0, reset_sample.ledger_alive, TEXT("Reset clears ledger entities"));
-    checks.are_equal(0u, reset_sample.capital_count, TEXT("Reset clears capital instances"));
-    checks.are_equal(0u, reset_sample.fighter_count, TEXT("Reset clears fighter instances"));
-    checks.are_equal(0u, reset_sample.laser_count, TEXT("Reset clears projectile instances"));
+    checks.are_equal(
+        0, test_driver->get_ledger().count_alive(), TEXT("Reset clears ledger entities"));
+    checks.are_equal(0u,
+                     test_driver->orchestrator.get_capital_ships()->get_num_instances(),
+                     TEXT("Reset clears capital instances"));
+    checks.are_equal(0u,
+                     test_driver->orchestrator.get_fighters()->get_num_instances(),
+                     TEXT("Reset clears fighter instances"));
+    checks.are_equal(0u,
+                     test_driver->orchestrator.get_lasers()->get_num_instances(),
+                     TEXT("Reset clears projectile instances"));
 
     for (auto const& blocker : blockers) {
         checks.is_true(!is_actor_in_world(*test_driver->get_world(), blocker.Get()),
@@ -220,12 +187,9 @@ void FTestBatchOrchestratorResetScenario::run() {
             },
             timeout)
         .Then([this] { reset_simulation(); })
-        .Until(
-            [this] {
-                advance_sample();
-                return !reset_samples.is_empty();
-            },
-            timeout)
-        .Then([this] { check_reset(); });
+        .Then([this] {
+            advance_sample();
+            check_reset();
+        });
 }
 }

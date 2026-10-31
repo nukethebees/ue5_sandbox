@@ -1,9 +1,10 @@
 #pragma once
 
-#include <ioj/time_series_data.h>
 #include <SandboxTests/support/SimulationTestScenario.h>
 
 #include <UObject/StrongObjectPtr.h>
+
+#include <optional>
 
 class USpaceGameLevelConfig;
 
@@ -34,8 +35,7 @@ class FLevelLoaderCameraScenario final : public FSimulationTestScenario {
     void check_runtime();
     void on_tear_down() override;
 
-    TimeSeriesData<int32> entity_counts_;
-    TimeSeriesData<FModalSample> modal_samples_;
+    std::optional<FModalSample> modal_sample_;
     TWeakObjectPtr<AActor> camera_;
     TStrongObjectPtr<USpaceGameLevelConfig> original_config_;
 };
@@ -51,20 +51,6 @@ class FLevelLoaderScenario final : public FSimulationTestScenario {
         bool resumed_with_ship{false};
         bool bindings_restored{false};
     };
-    struct FSample {
-        int32 authored_entities{0};
-        int32 blue_players{0};
-        int32 blue_capitals{0};
-        int32 red_capitals{0};
-        int32 red_turrets{0};
-        int32 active_objectives{};
-        FName mission_level_name{NAME_None};
-        FString mission_level_display_name{};
-        FVector3f blue_capital_position{FVector3f::ZeroVector};
-        FVector3f red_capital_position{FVector3f::ZeroVector};
-        FVector3f red_turret_position{FVector3f::ZeroVector};
-    };
-
     inline static FTimespan const timeout{0, 0, 2};
   public:
     explicit FLevelLoaderScenario(FSimulationTestContext& context);
@@ -75,7 +61,6 @@ class FLevelLoaderScenario final : public FSimulationTestScenario {
     void sample_controller_lifecycle();
     void check_runtime();
 
-    TimeSeriesData<FSample> samples;
-    TimeSeriesData<FControlLifecycleSample> control_samples_;
+    std::optional<FControlLifecycleSample> control_sample_;
 };
 }
