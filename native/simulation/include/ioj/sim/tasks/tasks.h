@@ -13,11 +13,11 @@ class Tasks {
   public:
     using Counts = std::vector<TaskEntityCount>;
 
-    // Immutable during allocation and execution.
+    // Immutable
     std::vector<InstructionHandle> base_instructions;
     std::vector<InstructionCount> instruction_counts;
 
-    // Updated during allocation.
+    // Mutable
     EnumArray<EntityType, Counts> entity_allocations;
 };
 }
