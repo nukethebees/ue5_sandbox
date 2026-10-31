@@ -26,8 +26,8 @@ enum class ConditionType : ConditionTypeUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<sim::ConditionType>{MinMax<sim::ConditionType>{
-    sim::ConditionType::EntityDestroyed, sim::ConditionType::EntityKillsReached}};
+inline constexpr MinMax<sim::ConditionType> enum_range<sim::ConditionType>{
+    sim::ConditionType::EntityDestroyed, sim::ConditionType::EntityKillsReached};
 } // namespace ioj
 
 namespace ioj {

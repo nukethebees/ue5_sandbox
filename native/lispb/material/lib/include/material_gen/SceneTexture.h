@@ -34,8 +34,8 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<material_synth::SceneTexture>{MinMax<material_synth::SceneTexture>{
-    material_synth::SceneTexture::post_process_input0, material_synth::SceneTexture::scene_depth}};
+inline constexpr MinMax<material_synth::SceneTexture> enum_range<material_synth::SceneTexture>{
+    material_synth::SceneTexture::post_process_input0, material_synth::SceneTexture::scene_depth};
 } // namespace ioj
 
 template <>

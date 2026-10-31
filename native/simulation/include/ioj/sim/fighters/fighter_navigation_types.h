@@ -26,9 +26,9 @@ enum class NavigationRiskTier : NavigationRiskTierUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<sim::fighters::NavigationRiskTier>{
-    MinMax<sim::fighters::NavigationRiskTier>{sim::fighters::NavigationRiskTier::Clear,
-                                              sim::fighters::NavigationRiskTier::Immediate}};
+inline constexpr MinMax<sim::fighters::NavigationRiskTier>
+    enum_range<sim::fighters::NavigationRiskTier>{sim::fighters::NavigationRiskTier::Clear,
+                                                  sim::fighters::NavigationRiskTier::Immediate};
 } // namespace ioj
 
 namespace ioj::sim::fighters {

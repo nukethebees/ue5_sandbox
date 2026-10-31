@@ -34,9 +34,9 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::SemanticRelationUnit>{
-    MinMax<lispb::codegen::SemanticRelationUnit>{lispb::codegen::SemanticRelationUnit::elements,
-                                                 lispb::codegen::SemanticRelationUnit::bytes}};
+inline constexpr MinMax<lispb::codegen::SemanticRelationUnit>
+    enum_range<lispb::codegen::SemanticRelationUnit>{lispb::codegen::SemanticRelationUnit::elements,
+                                                     lispb::codegen::SemanticRelationUnit::bytes};
 } // namespace ioj
 
 template <>

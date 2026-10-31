@@ -34,9 +34,8 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::SoaMemberKind>{
-    MinMax<lispb::codegen::SoaMemberKind>{lispb::codegen::SoaMemberKind::array,
-                                          lispb::codegen::SoaMemberKind::nested}};
+inline constexpr MinMax<lispb::codegen::SoaMemberKind> enum_range<lispb::codegen::SoaMemberKind>{
+    lispb::codegen::SoaMemberKind::array, lispb::codegen::SoaMemberKind::nested};
 } // namespace ioj
 
 template <>

@@ -33,8 +33,8 @@ using EGameTextStyleUnderlying = std::uint8_t;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<::EGameTextStyle>{
-    MinMax<::EGameTextStyle>{::EGameTextStyle::Body, ::EGameTextStyle::Disabled}};
+inline constexpr MinMax<::EGameTextStyle> enum_range<::EGameTextStyle>{::EGameTextStyle::Body,
+                                                                       ::EGameTextStyle::Disabled};
 } // namespace ioj
 
 // Logical bit width: 1.
@@ -48,8 +48,8 @@ using EGameButtonStyleUnderlying = std::uint8_t;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<::EGameButtonStyle>{
-    MinMax<::EGameButtonStyle>{::EGameButtonStyle::Primary, ::EGameButtonStyle::Secondary}};
+inline constexpr MinMax<::EGameButtonStyle> enum_range<::EGameButtonStyle>{
+    ::EGameButtonStyle::Primary, ::EGameButtonStyle::Secondary};
 } // namespace ioj
 
 // Logical bit width: 4.
@@ -70,8 +70,8 @@ using EGameUiIconUnderlying = std::uint8_t;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<::EGameUiIcon>{
-    MinMax<::EGameUiIcon>{::EGameUiIcon::Hive, ::EGameUiIcon::LevelComplete}};
+inline constexpr MinMax<::EGameUiIcon> enum_range<::EGameUiIcon>{::EGameUiIcon::Hive,
+                                                                 ::EGameUiIcon::LevelComplete};
 } // namespace ioj
 
 namespace ioj {

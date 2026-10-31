@@ -70,6 +70,6 @@ enum class DiagnosticCode : DiagnosticCodeUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<levels::DiagnosticCode>{MinMax<levels::DiagnosticCode>{
-    levels::DiagnosticCode::MissingLevelId, levels::DiagnosticCode::UnlockCycle}};
+inline constexpr MinMax<levels::DiagnosticCode> enum_range<levels::DiagnosticCode>{
+    levels::DiagnosticCode::MissingLevelId, levels::DiagnosticCode::UnlockCycle};
 } // namespace ioj

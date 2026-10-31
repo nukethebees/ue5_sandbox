@@ -34,9 +34,10 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<kernel_codegen::detail::VariantKind>{
-    MinMax<kernel_codegen::detail::VariantKind>{kernel_codegen::detail::VariantKind::out_of_place,
-                                                kernel_codegen::detail::VariantKind::in_place}};
+inline constexpr MinMax<kernel_codegen::detail::VariantKind>
+    enum_range<kernel_codegen::detail::VariantKind>{
+        kernel_codegen::detail::VariantKind::out_of_place,
+        kernel_codegen::detail::VariantKind::in_place};
 } // namespace ioj
 
 template <>

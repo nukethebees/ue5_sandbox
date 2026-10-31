@@ -73,9 +73,9 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::NativeEnumHelper>{
-    MinMax<lispb::codegen::NativeEnumHelper>{lispb::codegen::NativeEnumHelper::to_string,
-                                             lispb::codegen::NativeEnumHelper::formatter}};
+inline constexpr MinMax<lispb::codegen::NativeEnumHelper>
+    enum_range<lispb::codegen::NativeEnumHelper>{lispb::codegen::NativeEnumHelper::to_string,
+                                                 lispb::codegen::NativeEnumHelper::formatter};
 } // namespace ioj
 
 template <>

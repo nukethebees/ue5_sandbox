@@ -69,7 +69,7 @@ enum class Team : TeamUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<Team>{MinMax<Team>{Team::White, Team::Yellow}};
+inline constexpr MinMax<Team> enum_range<Team>{Team::White, Team::Yellow};
 } // namespace ioj
 
 namespace ioj {

@@ -289,8 +289,8 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<levels::authoring::Property>{MinMax<levels::authoring::Property>{
-    levels::authoring::Property::Id, levels::authoring::Property::SpawnCooldown}};
+inline constexpr MinMax<levels::authoring::Property> enum_range<levels::authoring::Property>{
+    levels::authoring::Property::Id, levels::authoring::Property::SpawnCooldown};
 } // namespace ioj
 
 namespace ioj::levels::authoring {
@@ -314,9 +314,9 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<levels::authoring::ExpressionSyntax>{
-    MinMax<levels::authoring::ExpressionSyntax>{levels::authoring::ExpressionSyntax::Definition,
-                                                levels::authoring::ExpressionSyntax::Reference}};
+inline constexpr MinMax<levels::authoring::ExpressionSyntax>
+    enum_range<levels::authoring::ExpressionSyntax>{levels::authoring::ExpressionSyntax::Definition,
+                                                    levels::authoring::ExpressionSyntax::Reference};
 } // namespace ioj
 
 namespace ioj::levels::authoring {
@@ -343,9 +343,8 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<levels::authoring::RecordKind>{
-    MinMax<levels::authoring::RecordKind>{levels::authoring::RecordKind::Level,
-                                          levels::authoring::RecordKind::LevelCompleted}};
+inline constexpr MinMax<levels::authoring::RecordKind> enum_range<levels::authoring::RecordKind>{
+    levels::authoring::RecordKind::Level, levels::authoring::RecordKind::LevelCompleted};
 } // namespace ioj
 
 namespace ioj {

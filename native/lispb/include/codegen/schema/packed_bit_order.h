@@ -34,9 +34,9 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::PackedBitOrder>{
-    MinMax<lispb::codegen::PackedBitOrder>{lispb::codegen::PackedBitOrder::least_significant_first,
-                                           lispb::codegen::PackedBitOrder::most_significant_first}};
+inline constexpr MinMax<lispb::codegen::PackedBitOrder> enum_range<lispb::codegen::PackedBitOrder>{
+    lispb::codegen::PackedBitOrder::least_significant_first,
+    lispb::codegen::PackedBitOrder::most_significant_first};
 } // namespace ioj
 
 template <>

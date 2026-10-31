@@ -71,8 +71,8 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::TargetKind>{
-    MinMax<lispb::TargetKind>{lispb::TargetKind::none, lispb::TargetKind::group}};
+inline constexpr MinMax<lispb::TargetKind> enum_range<lispb::TargetKind>{lispb::TargetKind::none,
+                                                                         lispb::TargetKind::group};
 } // namespace ioj
 
 template <>

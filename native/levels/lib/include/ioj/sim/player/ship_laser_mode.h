@@ -35,8 +35,8 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<sim::ShipLaserMode>{
-    MinMax<sim::ShipLaserMode>{sim::ShipLaserMode::Single, sim::ShipLaserMode::Hyper}};
+inline constexpr MinMax<sim::ShipLaserMode> enum_range<sim::ShipLaserMode>{
+    sim::ShipLaserMode::Single, sim::ShipLaserMode::Hyper};
 } // namespace ioj
 
 namespace ioj {

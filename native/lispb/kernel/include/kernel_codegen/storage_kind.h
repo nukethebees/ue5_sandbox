@@ -34,9 +34,9 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<kernel_codegen::detail::StorageKind>{
-    MinMax<kernel_codegen::detail::StorageKind>{kernel_codegen::detail::StorageKind::array,
-                                                kernel_codegen::detail::StorageKind::scalar}};
+inline constexpr MinMax<kernel_codegen::detail::StorageKind>
+    enum_range<kernel_codegen::detail::StorageKind>{kernel_codegen::detail::StorageKind::array,
+                                                    kernel_codegen::detail::StorageKind::scalar};
 } // namespace ioj
 
 template <>

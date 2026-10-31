@@ -22,9 +22,9 @@ enum class PackedState : PackedStateUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<codegen_compile_fixture::PackedState>{
-    MinMax<codegen_compile_fixture::PackedState>{codegen_compile_fixture::PackedState::Zero,
-                                                 codegen_compile_fixture::PackedState::Max}};
+inline constexpr MinMax<codegen_compile_fixture::PackedState>
+    enum_range<codegen_compile_fixture::PackedState>{codegen_compile_fixture::PackedState::Zero,
+                                                     codegen_compile_fixture::PackedState::Max};
 } // namespace ioj
 
 namespace codegen_compile_fixture {
@@ -49,9 +49,9 @@ enum class TinyState : TinyStateUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<codegen_compile_fixture::TinyState>{
-    MinMax<codegen_compile_fixture::TinyState>{codegen_compile_fixture::TinyState::Zero,
-                                               codegen_compile_fixture::TinyState::Max}};
+inline constexpr MinMax<codegen_compile_fixture::TinyState>
+    enum_range<codegen_compile_fixture::TinyState>{codegen_compile_fixture::TinyState::Zero,
+                                                   codegen_compile_fixture::TinyState::Max};
 } // namespace ioj
 
 namespace codegen_compile_fixture {
@@ -67,9 +67,9 @@ enum class DomainState : DomainStateUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<codegen_compile_fixture::DomainState>{
-    MinMax<codegen_compile_fixture::DomainState>{codegen_compile_fixture::DomainState::Zero,
-                                                 codegen_compile_fixture::DomainState::One}};
+inline constexpr MinMax<codegen_compile_fixture::DomainState>
+    enum_range<codegen_compile_fixture::DomainState>{codegen_compile_fixture::DomainState::Zero,
+                                                     codegen_compile_fixture::DomainState::One};
 } // namespace ioj
 
 namespace ioj {

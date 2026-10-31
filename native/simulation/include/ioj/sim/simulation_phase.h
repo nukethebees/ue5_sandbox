@@ -24,6 +24,6 @@ enum class SimulationPhase : SimulationPhaseUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<sim::SimulationPhase>{MinMax<sim::SimulationPhase>{
-    sim::SimulationPhase::Preparation, sim::SimulationPhase::BetweenTicks}};
+inline constexpr MinMax<sim::SimulationPhase> enum_range<sim::SimulationPhase>{
+    sim::SimulationPhase::Preparation, sim::SimulationPhase::BetweenTicks};
 } // namespace ioj

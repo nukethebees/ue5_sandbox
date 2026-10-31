@@ -36,9 +36,10 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<kernel_codegen::detail::BinaryOperator>{
-    MinMax<kernel_codegen::detail::BinaryOperator>{kernel_codegen::detail::BinaryOperator::add,
-                                                   kernel_codegen::detail::BinaryOperator::divide}};
+inline constexpr MinMax<kernel_codegen::detail::BinaryOperator>
+    enum_range<kernel_codegen::detail::BinaryOperator>{
+        kernel_codegen::detail::BinaryOperator::add,
+        kernel_codegen::detail::BinaryOperator::divide};
 } // namespace ioj
 
 template <>

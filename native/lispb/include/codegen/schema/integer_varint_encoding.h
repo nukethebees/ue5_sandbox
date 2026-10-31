@@ -35,10 +35,10 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::IntegerVarintEncoding>{
-    MinMax<lispb::codegen::IntegerVarintEncoding>{
+inline constexpr MinMax<lispb::codegen::IntegerVarintEncoding>
+    enum_range<lispb::codegen::IntegerVarintEncoding>{
         lispb::codegen::IntegerVarintEncoding::unsigned_varint,
-        lispb::codegen::IntegerVarintEncoding::zigzag_varint}};
+        lispb::codegen::IntegerVarintEncoding::zigzag_varint};
 } // namespace ioj
 
 template <>

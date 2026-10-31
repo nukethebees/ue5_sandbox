@@ -141,9 +141,8 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::SchemaProperty>{
-    MinMax<lispb::codegen::SchemaProperty>{lispb::codegen::SchemaProperty::api_name,
-                                           lispb::codegen::SchemaProperty::value_type}};
+inline constexpr MinMax<lispb::codegen::SchemaProperty> enum_range<lispb::codegen::SchemaProperty>{
+    lispb::codegen::SchemaProperty::api_name, lispb::codegen::SchemaProperty::value_type};
 } // namespace ioj
 
 template <>

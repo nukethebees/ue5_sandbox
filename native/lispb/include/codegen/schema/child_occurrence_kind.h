@@ -34,9 +34,9 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::ChildOccurrenceKind>{
-    MinMax<lispb::codegen::ChildOccurrenceKind>{lispb::codegen::ChildOccurrenceKind::value,
-                                                lispb::codegen::ChildOccurrenceKind::reserved}};
+inline constexpr MinMax<lispb::codegen::ChildOccurrenceKind>
+    enum_range<lispb::codegen::ChildOccurrenceKind>{lispb::codegen::ChildOccurrenceKind::value,
+                                                    lispb::codegen::ChildOccurrenceKind::reserved};
 } // namespace ioj
 
 template <>

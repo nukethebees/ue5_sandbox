@@ -20,6 +20,6 @@ using ETestShipFireRateUnderlying = uint8;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<::ETestShipFireRate>{
-    MinMax<::ETestShipFireRate>{::ETestShipFireRate::Single, ::ETestShipFireRate::FullAuto}};
+inline constexpr MinMax<::ETestShipFireRate> enum_range<::ETestShipFireRate>{
+    ::ETestShipFireRate::Single, ::ETestShipFireRate::FullAuto};
 } // namespace ioj

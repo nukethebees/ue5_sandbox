@@ -454,9 +454,9 @@ auto enum_range_declaration(LoweringContext& context,
                            "::" + context.text(context.declarations.enumerators.name[value])));
     };
     auto const variable{
-        ir.variable(ir.types.intern("auto"),
+        ir.variable(range_type,
                     ir.template_id(ir.named("enum_range"), {ir.type_reference(enum_type)}),
-                    ir.init_list({enumerator(first), enumerator(last)}, range_type),
+                    ir.init_list({enumerator(first), enumerator(last)}),
                     {.template_declaration = ir.template_specialization(),
                      .is_inline = true,
                      .is_constexpr = true})};

@@ -38,8 +38,8 @@ using ioj::to_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<levels::EntityArchetype>{MinMax<levels::EntityArchetype>{
-    levels::EntityArchetype::PlayerFighter, levels::EntityArchetype::StaticTurret}};
+inline constexpr MinMax<levels::EntityArchetype> enum_range<levels::EntityArchetype>{
+    levels::EntityArchetype::PlayerFighter, levels::EntityArchetype::StaticTurret};
 } // namespace ioj
 
 namespace ioj {

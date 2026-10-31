@@ -19,6 +19,6 @@ using ETeamOutcomeUnderlying = uint8;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<::ETeamOutcome>{
-    MinMax<::ETeamOutcome>{::ETeamOutcome::Victory, ::ETeamOutcome::Defeat}};
+inline constexpr MinMax<::ETeamOutcome> enum_range<::ETeamOutcome>{::ETeamOutcome::Victory,
+                                                                   ::ETeamOutcome::Defeat};
 } // namespace ioj

@@ -34,8 +34,8 @@ enum class FloatingPointFormat : FloatingPointFormatUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::FloatingPointFormat>{
-    MinMax<lispb::codegen::FloatingPointFormat>{
+inline constexpr MinMax<lispb::codegen::FloatingPointFormat>
+    enum_range<lispb::codegen::FloatingPointFormat>{
         lispb::codegen::FloatingPointFormat::ieee754_binary16,
-        lispb::codegen::FloatingPointFormat::ieee754_binary64}};
+        lispb::codegen::FloatingPointFormat::ieee754_binary64};
 } // namespace ioj

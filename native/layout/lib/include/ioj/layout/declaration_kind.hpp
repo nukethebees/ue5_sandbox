@@ -35,8 +35,8 @@ using ioj::to_display_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<layout::DeclarationKind>{MinMax<layout::DeclarationKind>{
-    layout::DeclarationKind::external, layout::DeclarationKind::facade}};
+inline constexpr MinMax<layout::DeclarationKind> enum_range<layout::DeclarationKind>{
+    layout::DeclarationKind::external, layout::DeclarationKind::facade};
 } // namespace ioj
 
 template <>

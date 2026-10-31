@@ -34,9 +34,8 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<material_synth::PositionSpace>{
-    MinMax<material_synth::PositionSpace>{material_synth::PositionSpace::world,
-                                          material_synth::PositionSpace::local}};
+inline constexpr MinMax<material_synth::PositionSpace> enum_range<material_synth::PositionSpace>{
+    material_synth::PositionSpace::world, material_synth::PositionSpace::local};
 } // namespace ioj
 
 template <>

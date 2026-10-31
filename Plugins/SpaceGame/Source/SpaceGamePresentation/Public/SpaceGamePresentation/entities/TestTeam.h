@@ -23,8 +23,8 @@ using ETestTeamUnderlying = uint8;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<::ETestTeam>{
-    MinMax<::ETestTeam>{::ETestTeam::White, ::ETestTeam::Yellow}};
+inline constexpr MinMax<::ETestTeam> enum_range<::ETestTeam>{::ETestTeam::White,
+                                                             ::ETestTeam::Yellow};
 } // namespace ioj
 
 namespace ioj {

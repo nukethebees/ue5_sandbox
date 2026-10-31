@@ -30,8 +30,8 @@ using ioj::to_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<sim::EntityType>{
-    MinMax<sim::EntityType>{sim::EntityType::PlayerShip, sim::EntityType::TubeSpinner}};
+inline constexpr MinMax<sim::EntityType> enum_range<sim::EntityType>{sim::EntityType::PlayerShip,
+                                                                     sim::EntityType::TubeSpinner};
 } // namespace ioj
 
 namespace ioj {

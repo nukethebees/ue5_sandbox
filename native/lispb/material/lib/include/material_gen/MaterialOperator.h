@@ -201,9 +201,9 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<material_synth::MaterialOperator>{
-    MinMax<material_synth::MaterialOperator>{material_synth::MaterialOperator::float2,
-                                             material_synth::MaterialOperator::custom}};
+inline constexpr MinMax<material_synth::MaterialOperator>
+    enum_range<material_synth::MaterialOperator>{material_synth::MaterialOperator::float2,
+                                                 material_synth::MaterialOperator::custom};
 } // namespace ioj
 
 template <>

@@ -133,9 +133,8 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<material_synth::MaterialClause>{
-    MinMax<material_synth::MaterialClause>{material_synth::MaterialClause::asset,
-                                           material_synth::MaterialClause::world_position_offset}};
+inline constexpr MinMax<material_synth::MaterialClause> enum_range<material_synth::MaterialClause>{
+    material_synth::MaterialClause::asset, material_synth::MaterialClause::world_position_offset};
 } // namespace ioj
 
 template <>

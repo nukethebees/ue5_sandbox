@@ -83,10 +83,10 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<kernel_codegen::detail::OperationField>{
-    MinMax<kernel_codegen::detail::OperationField>{
+inline constexpr MinMax<kernel_codegen::detail::OperationField>
+    enum_range<kernel_codegen::detail::OperationField>{
         kernel_codegen::detail::OperationField::operand,
-        kernel_codegen::detail::OperationField::aliasing}};
+        kernel_codegen::detail::OperationField::aliasing};
 } // namespace ioj
 
 template <>

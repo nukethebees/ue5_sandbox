@@ -34,8 +34,8 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::Access>{MinMax<lispb::codegen::Access>{
-    lispb::codegen::Access::public_, lispb::codegen::Access::private_}};
+inline constexpr MinMax<lispb::codegen::Access> enum_range<lispb::codegen::Access>{
+    lispb::codegen::Access::public_, lispb::codegen::Access::private_};
 } // namespace ioj
 
 template <>

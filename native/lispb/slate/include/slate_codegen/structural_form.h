@@ -125,10 +125,10 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<slate_codegen::detail::StructuralForm>{
-    MinMax<slate_codegen::detail::StructuralForm>{
+inline constexpr MinMax<slate_codegen::detail::StructuralForm>
+    enum_range<slate_codegen::detail::StructuralForm>{
         slate_codegen::detail::StructuralForm::widget_class,
-        slate_codegen::detail::StructuralForm::params}};
+        slate_codegen::detail::StructuralForm::params};
 } // namespace ioj
 
 template <>

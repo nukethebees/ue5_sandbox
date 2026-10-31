@@ -106,10 +106,10 @@ enum class Opcode : OpcodeUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<codegen_compile_fixture::unified::Opcode>{
-    MinMax<codegen_compile_fixture::unified::Opcode>{
+inline constexpr MinMax<codegen_compile_fixture::unified::Opcode>
+    enum_range<codegen_compile_fixture::unified::Opcode>{
         codegen_compile_fixture::unified::Opcode::KillEntity,
-        codegen_compile_fixture::unified::Opcode::Jump}};
+        codegen_compile_fixture::unified::Opcode::Jump};
 } // namespace ioj
 
 namespace codegen_compile_fixture::unified {

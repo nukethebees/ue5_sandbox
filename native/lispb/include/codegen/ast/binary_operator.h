@@ -38,9 +38,8 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::BinaryOperator>{
-    MinMax<lispb::codegen::BinaryOperator>{lispb::codegen::BinaryOperator::equal,
-                                           lispb::codegen::BinaryOperator::three_way}};
+inline constexpr MinMax<lispb::codegen::BinaryOperator> enum_range<lispb::codegen::BinaryOperator>{
+    lispb::codegen::BinaryOperator::equal, lispb::codegen::BinaryOperator::three_way};
 } // namespace ioj
 
 template <>

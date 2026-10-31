@@ -34,10 +34,10 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<material_synth::TextureSamplerType>{
-    MinMax<material_synth::TextureSamplerType>{
+inline constexpr MinMax<material_synth::TextureSamplerType>
+    enum_range<material_synth::TextureSamplerType>{
         material_synth::TextureSamplerType::linear_color,
-        material_synth::TextureSamplerType::linear_grayscale}};
+        material_synth::TextureSamplerType::linear_grayscale};
 } // namespace ioj
 
 template <>

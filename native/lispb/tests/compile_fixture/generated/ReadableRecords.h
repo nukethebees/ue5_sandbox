@@ -34,9 +34,9 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<codegen_compile_fixture::ReaderEnum>{
-    MinMax<codegen_compile_fixture::ReaderEnum>{codegen_compile_fixture::ReaderEnum::Mixed,
-                                                codegen_compile_fixture::ReaderEnum::Mixed}};
+inline constexpr MinMax<codegen_compile_fixture::ReaderEnum>
+    enum_range<codegen_compile_fixture::ReaderEnum>{codegen_compile_fixture::ReaderEnum::Mixed,
+                                                    codegen_compile_fixture::ReaderEnum::Mixed};
 } // namespace ioj
 
 namespace codegen_compile_fixture {

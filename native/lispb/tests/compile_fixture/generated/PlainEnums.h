@@ -44,10 +44,10 @@ using ioj::to_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<codegen_compile_fixture::EPlainFixture>{
-    MinMax<codegen_compile_fixture::EPlainFixture>{
+inline constexpr MinMax<codegen_compile_fixture::EPlainFixture>
+    enum_range<codegen_compile_fixture::EPlainFixture>{
         codegen_compile_fixture::EPlainFixture::First,
-        codegen_compile_fixture::EPlainFixture::ReadableName}};
+        codegen_compile_fixture::EPlainFixture::ReadableName};
 } // namespace ioj
 
 namespace codegen_compile_fixture {
@@ -77,10 +77,10 @@ using ioj::to_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<codegen_compile_fixture::ENameOnlyFixture>{
-    MinMax<codegen_compile_fixture::ENameOnlyFixture>{
+inline constexpr MinMax<codegen_compile_fixture::ENameOnlyFixture>
+    enum_range<codegen_compile_fixture::ENameOnlyFixture>{
         codegen_compile_fixture::ENameOnlyFixture::First,
-        codegen_compile_fixture::ENameOnlyFixture::Second}};
+        codegen_compile_fixture::ENameOnlyFixture::Second};
 } // namespace ioj
 
 namespace codegen_compile_fixture {
@@ -114,10 +114,10 @@ using ioj::to_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<codegen_compile_fixture::EReorderedFixture>{
-    MinMax<codegen_compile_fixture::EReorderedFixture>{
+inline constexpr MinMax<codegen_compile_fixture::EReorderedFixture>
+    enum_range<codegen_compile_fixture::EReorderedFixture>{
         codegen_compile_fixture::EReorderedFixture::First,
-        codegen_compile_fixture::EReorderedFixture::Later}};
+        codegen_compile_fixture::EReorderedFixture::Later};
 } // namespace ioj
 
 namespace codegen_compile_fixture {
@@ -139,10 +139,10 @@ using ioj::to_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<codegen_compile_fixture::EMissingNames>{
-    MinMax<codegen_compile_fixture::EMissingNames>{
+inline constexpr MinMax<codegen_compile_fixture::EMissingNames>
+    enum_range<codegen_compile_fixture::EMissingNames>{
         codegen_compile_fixture::EMissingNames::Unnamed,
-        codegen_compile_fixture::EMissingNames::Escaped}};
+        codegen_compile_fixture::EMissingNames::Escaped};
 } // namespace ioj
 
 namespace ioj {

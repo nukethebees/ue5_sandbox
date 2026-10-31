@@ -26,8 +26,8 @@ using ioj::to_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<sim::player::BoostBrakeState>{MinMax<sim::player::BoostBrakeState>{
-    sim::player::BoostBrakeState::None, sim::player::BoostBrakeState::EmergencyBrake}};
+inline constexpr MinMax<sim::player::BoostBrakeState> enum_range<sim::player::BoostBrakeState>{
+    sim::player::BoostBrakeState::None, sim::player::BoostBrakeState::EmergencyBrake};
 } // namespace ioj
 
 template <>

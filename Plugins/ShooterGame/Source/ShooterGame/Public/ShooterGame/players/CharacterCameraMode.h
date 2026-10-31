@@ -24,8 +24,8 @@ using ECharacterCameraModeUnderlying = std::uint8_t;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<::ECharacterCameraMode>{MinMax<::ECharacterCameraMode>{
-    ::ECharacterCameraMode::FirstPerson, ::ECharacterCameraMode::ThirdPerson}};
+inline constexpr MinMax<::ECharacterCameraMode> enum_range<::ECharacterCameraMode>{
+    ::ECharacterCameraMode::FirstPerson, ::ECharacterCameraMode::ThirdPerson};
 } // namespace ioj
 
 namespace ioj {

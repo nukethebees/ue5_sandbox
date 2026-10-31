@@ -32,7 +32,7 @@ enum class ParameterPassing : ParameterPassingUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::ParameterPassing>{
-    MinMax<lispb::codegen::ParameterPassing>{lispb::codegen::ParameterPassing::const_reference,
-                                             lispb::codegen::ParameterPassing::value}};
+inline constexpr MinMax<lispb::codegen::ParameterPassing>
+    enum_range<lispb::codegen::ParameterPassing>{lispb::codegen::ParameterPassing::const_reference,
+                                                 lispb::codegen::ParameterPassing::value};
 } // namespace ioj

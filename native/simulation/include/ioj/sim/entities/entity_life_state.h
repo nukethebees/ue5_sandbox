@@ -21,8 +21,8 @@ enum class LifeState : LifeStateUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<sim::LifeState>{
-    MinMax<sim::LifeState>{sim::LifeState::Alive, sim::LifeState::Combat}};
+inline constexpr MinMax<sim::LifeState> enum_range<sim::LifeState>{sim::LifeState::Alive,
+                                                                   sim::LifeState::Combat};
 } // namespace ioj
 
 namespace ioj::sim {

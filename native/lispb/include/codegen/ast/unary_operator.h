@@ -28,9 +28,8 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::UnaryOperator>{
-    MinMax<lispb::codegen::UnaryOperator>{lispb::codegen::UnaryOperator::logical_not,
-                                          lispb::codegen::UnaryOperator::negate}};
+inline constexpr MinMax<lispb::codegen::UnaryOperator> enum_range<lispb::codegen::UnaryOperator>{
+    lispb::codegen::UnaryOperator::logical_not, lispb::codegen::UnaryOperator::negate};
 } // namespace ioj
 
 template <>

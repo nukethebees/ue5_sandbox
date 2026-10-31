@@ -35,9 +35,9 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<slate_codegen::detail::SlotOption>{
-    MinMax<slate_codegen::detail::SlotOption>{slate_codegen::detail::SlotOption::weight,
-                                              slate_codegen::detail::SlotOption::valign}};
+inline constexpr MinMax<slate_codegen::detail::SlotOption>
+    enum_range<slate_codegen::detail::SlotOption>{slate_codegen::detail::SlotOption::weight,
+                                                  slate_codegen::detail::SlotOption::valign};
 } // namespace ioj
 
 template <>

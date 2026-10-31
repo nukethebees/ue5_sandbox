@@ -31,8 +31,8 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::ProjectProperty>{MinMax<lispb::ProjectProperty>{
-    lispb::ProjectProperty::language_version, lispb::ProjectProperty::targets}};
+inline constexpr MinMax<lispb::ProjectProperty> enum_range<lispb::ProjectProperty>{
+    lispb::ProjectProperty::language_version, lispb::ProjectProperty::targets};
 } // namespace ioj
 
 template <>

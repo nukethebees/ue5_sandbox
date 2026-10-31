@@ -60,7 +60,7 @@ enum class SettingControlKind : SettingControlKindUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::SettingControlKind>{
-    MinMax<lispb::codegen::SettingControlKind>{lispb::codegen::SettingControlKind::toggle,
-                                               lispb::codegen::SettingControlKind::custom}};
+inline constexpr MinMax<lispb::codegen::SettingControlKind>
+    enum_range<lispb::codegen::SettingControlKind>{lispb::codegen::SettingControlKind::toggle,
+                                                   lispb::codegen::SettingControlKind::custom};
 } // namespace ioj

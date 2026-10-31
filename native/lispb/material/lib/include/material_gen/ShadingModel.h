@@ -34,8 +34,8 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<material_synth::ShadingModel>{MinMax<material_synth::ShadingModel>{
-    material_synth::ShadingModel::default_lit, material_synth::ShadingModel::unlit}};
+inline constexpr MinMax<material_synth::ShadingModel> enum_range<material_synth::ShadingModel>{
+    material_synth::ShadingModel::default_lit, material_synth::ShadingModel::unlit};
 } // namespace ioj
 
 template <>

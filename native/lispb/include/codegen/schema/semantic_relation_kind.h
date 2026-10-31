@@ -86,9 +86,10 @@ using ioj::to_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::SemanticRelationKind>{
-    MinMax<lispb::codegen::SemanticRelationKind>{lispb::codegen::SemanticRelationKind::index_into,
-                                                 lispb::codegen::SemanticRelationKind::references}};
+inline constexpr MinMax<lispb::codegen::SemanticRelationKind>
+    enum_range<lispb::codegen::SemanticRelationKind>{
+        lispb::codegen::SemanticRelationKind::index_into,
+        lispb::codegen::SemanticRelationKind::references};
 } // namespace ioj
 
 template <>

@@ -34,8 +34,8 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::RecordKind>{MinMax<lispb::codegen::RecordKind>{
-    lispb::codegen::RecordKind::struct_, lispb::codegen::RecordKind::union_}};
+inline constexpr MinMax<lispb::codegen::RecordKind> enum_range<lispb::codegen::RecordKind>{
+    lispb::codegen::RecordKind::struct_, lispb::codegen::RecordKind::union_};
 } // namespace ioj
 
 template <>

@@ -75,9 +75,9 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::PackedFieldKind>{
-    MinMax<lispb::codegen::PackedFieldKind>{lispb::codegen::PackedFieldKind::unsigned_integer,
-                                            lispb::codegen::PackedFieldKind::mini_float}};
+inline constexpr MinMax<lispb::codegen::PackedFieldKind>
+    enum_range<lispb::codegen::PackedFieldKind>{lispb::codegen::PackedFieldKind::unsigned_integer,
+                                                lispb::codegen::PackedFieldKind::mini_float};
 } // namespace ioj
 
 template <>

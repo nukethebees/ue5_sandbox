@@ -37,8 +37,8 @@ using ioj::to_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<sim::ShipFireRate>{
-    MinMax<sim::ShipFireRate>{sim::ShipFireRate::Single, sim::ShipFireRate::FullAuto}};
+inline constexpr MinMax<sim::ShipFireRate> enum_range<sim::ShipFireRate>{
+    sim::ShipFireRate::Single, sim::ShipFireRate::FullAuto};
 } // namespace ioj
 
 namespace ioj {

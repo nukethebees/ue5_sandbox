@@ -94,9 +94,9 @@ enum class CountedState : CountedStateUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<packed_lookup_fixture::CountedState>{
-    MinMax<packed_lookup_fixture::CountedState>{packed_lookup_fixture::CountedState::First,
-                                                packed_lookup_fixture::CountedState::Last}};
+inline constexpr MinMax<packed_lookup_fixture::CountedState>
+    enum_range<packed_lookup_fixture::CountedState>{packed_lookup_fixture::CountedState::First,
+                                                    packed_lookup_fixture::CountedState::Last};
 } // namespace ioj
 
 namespace ioj::packed_lookup_fixture {

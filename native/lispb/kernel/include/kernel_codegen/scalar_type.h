@@ -35,9 +35,9 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<kernel_codegen::detail::ScalarType>{
-    MinMax<kernel_codegen::detail::ScalarType>{kernel_codegen::detail::ScalarType::int32,
-                                               kernel_codegen::detail::ScalarType::float64}};
+inline constexpr MinMax<kernel_codegen::detail::ScalarType>
+    enum_range<kernel_codegen::detail::ScalarType>{kernel_codegen::detail::ScalarType::int32,
+                                                   kernel_codegen::detail::ScalarType::float64};
 } // namespace ioj
 
 template <>

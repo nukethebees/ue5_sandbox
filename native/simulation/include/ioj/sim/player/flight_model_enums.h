@@ -22,9 +22,8 @@ enum class FlightModelPreset : FlightModelPresetUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<sim::player::FlightModelPreset>{
-    MinMax<sim::player::FlightModelPreset>{sim::player::FlightModelPreset::Starfox,
-                                           sim::player::FlightModelPreset::Gunship}};
+inline constexpr MinMax<sim::player::FlightModelPreset> enum_range<sim::player::FlightModelPreset>{
+    sim::player::FlightModelPreset::Starfox, sim::player::FlightModelPreset::Gunship};
 } // namespace ioj
 
 namespace ioj::sim::player {
@@ -42,8 +41,8 @@ enum class FlightModelSlot : FlightModelSlotUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<sim::player::FlightModelSlot>{MinMax<sim::player::FlightModelSlot>{
-    sim::player::FlightModelSlot::First, sim::player::FlightModelSlot::Fourth}};
+inline constexpr MinMax<sim::player::FlightModelSlot> enum_range<sim::player::FlightModelSlot>{
+    sim::player::FlightModelSlot::First, sim::player::FlightModelSlot::Fourth};
 } // namespace ioj
 
 namespace ioj::sim::player {
@@ -61,9 +60,9 @@ enum class TranslationSemantic : TranslationSemanticUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<sim::player::TranslationSemantic>{
-    MinMax<sim::player::TranslationSemantic>{sim::player::TranslationSemantic::Disabled,
-                                             sim::player::TranslationSemantic::Acceleration}};
+inline constexpr MinMax<sim::player::TranslationSemantic>
+    enum_range<sim::player::TranslationSemantic>{sim::player::TranslationSemantic::Disabled,
+                                                 sim::player::TranslationSemantic::Acceleration};
 } // namespace ioj
 
 namespace ioj::sim::player {
@@ -80,9 +79,8 @@ enum class RotationSemantic : RotationSemanticUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<sim::player::RotationSemantic>{
-    MinMax<sim::player::RotationSemantic>{sim::player::RotationSemantic::Disabled,
-                                          sim::player::RotationSemantic::AngularAcceleration}};
+inline constexpr MinMax<sim::player::RotationSemantic> enum_range<sim::player::RotationSemantic>{
+    sim::player::RotationSemantic::Disabled, sim::player::RotationSemantic::AngularAcceleration};
 } // namespace ioj
 
 namespace ioj::sim::player {
@@ -98,8 +96,8 @@ enum class ReferenceFrame : ReferenceFrameUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<sim::player::ReferenceFrame>{MinMax<sim::player::ReferenceFrame>{
-    sim::player::ReferenceFrame::Ship, sim::player::ReferenceFrame::World}};
+inline constexpr MinMax<sim::player::ReferenceFrame> enum_range<sim::player::ReferenceFrame>{
+    sim::player::ReferenceFrame::Ship, sim::player::ReferenceFrame::World};
 } // namespace ioj
 
 namespace ioj::sim::player {
@@ -115,9 +113,10 @@ enum class TranslationInputSource : TranslationInputSourceUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<sim::player::TranslationInputSource>{
-    MinMax<sim::player::TranslationInputSource>{sim::player::TranslationInputSource::Axis,
-                                                sim::player::TranslationInputSource::Accelerator}};
+inline constexpr MinMax<sim::player::TranslationInputSource>
+    enum_range<sim::player::TranslationInputSource>{
+        sim::player::TranslationInputSource::Axis,
+        sim::player::TranslationInputSource::Accelerator};
 } // namespace ioj
 
 namespace ioj::sim::player {
@@ -134,8 +133,8 @@ enum class ResponseMode : ResponseModeUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<sim::player::ResponseMode>{MinMax<sim::player::ResponseMode>{
-    sim::player::ResponseMode::Direct, sim::player::ResponseMode::SecondOrder}};
+inline constexpr MinMax<sim::player::ResponseMode> enum_range<sim::player::ResponseMode>{
+    sim::player::ResponseMode::Direct, sim::player::ResponseMode::SecondOrder};
 } // namespace ioj
 
 namespace ioj::sim::player {
@@ -152,10 +151,10 @@ enum class FacingVelocityCoupling : FacingVelocityCouplingUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<sim::player::FacingVelocityCoupling>{
-    MinMax<sim::player::FacingVelocityCoupling>{
+inline constexpr MinMax<sim::player::FacingVelocityCoupling>
+    enum_range<sim::player::FacingVelocityCoupling>{
         sim::player::FacingVelocityCoupling::Independent,
-        sim::player::FacingVelocityCoupling::LockedToFacing}};
+        sim::player::FacingVelocityCoupling::LockedToFacing};
 } // namespace ioj
 
 namespace ioj::sim::player {
@@ -178,8 +177,8 @@ enum class FlightModelConfigError : FlightModelConfigErrorUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<sim::player::FlightModelConfigError>{
-    MinMax<sim::player::FlightModelConfigError>{
+inline constexpr MinMax<sim::player::FlightModelConfigError>
+    enum_range<sim::player::FlightModelConfigError>{
         sim::player::FlightModelConfigError::InvalidEnumValue,
-        sim::player::FlightModelConfigError::InvalidSecondOrderDampingRatio}};
+        sim::player::FlightModelConfigError::InvalidSecondOrderDampingRatio};
 } // namespace ioj

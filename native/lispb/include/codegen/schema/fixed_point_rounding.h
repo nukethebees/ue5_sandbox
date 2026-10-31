@@ -34,9 +34,9 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::FixedPointRounding>{
-    MinMax<lispb::codegen::FixedPointRounding>{lispb::codegen::FixedPointRounding::nearest_even,
-                                               lispb::codegen::FixedPointRounding::toward_zero}};
+inline constexpr MinMax<lispb::codegen::FixedPointRounding>
+    enum_range<lispb::codegen::FixedPointRounding>{lispb::codegen::FixedPointRounding::nearest_even,
+                                                   lispb::codegen::FixedPointRounding::toward_zero};
 } // namespace ioj
 
 template <>

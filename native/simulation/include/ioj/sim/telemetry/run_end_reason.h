@@ -75,9 +75,9 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<sim::LevelTelemetryRunEndReason>{
-    MinMax<sim::LevelTelemetryRunEndReason>{sim::LevelTelemetryRunEndReason::MissionSucceeded,
-                                            sim::LevelTelemetryRunEndReason::WorldEnd}};
+inline constexpr MinMax<sim::LevelTelemetryRunEndReason>
+    enum_range<sim::LevelTelemetryRunEndReason>{sim::LevelTelemetryRunEndReason::MissionSucceeded,
+                                                sim::LevelTelemetryRunEndReason::WorldEnd};
 } // namespace ioj
 
 template <>

@@ -38,9 +38,10 @@ using ioj::to_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<slate_codegen::detail::ParameterKind>{
-    MinMax<slate_codegen::detail::ParameterKind>{slate_codegen::detail::ParameterKind::value,
-                                                 slate_codegen::detail::ParameterKind::existing}};
+inline constexpr MinMax<slate_codegen::detail::ParameterKind>
+    enum_range<slate_codegen::detail::ParameterKind>{
+        slate_codegen::detail::ParameterKind::value,
+        slate_codegen::detail::ParameterKind::existing};
 } // namespace ioj
 
 template <>

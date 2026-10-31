@@ -110,7 +110,7 @@ enum class DeclarationKind : DeclarationKindUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::DeclarationKind>{
-    MinMax<lispb::codegen::DeclarationKind>{lispb::codegen::DeclarationKind::enumeration,
-                                            lispb::codegen::DeclarationKind::facade}};
+inline constexpr MinMax<lispb::codegen::DeclarationKind>
+    enum_range<lispb::codegen::DeclarationKind>{lispb::codegen::DeclarationKind::enumeration,
+                                                lispb::codegen::DeclarationKind::facade};
 } // namespace ioj

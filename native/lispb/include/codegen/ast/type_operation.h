@@ -37,9 +37,8 @@ using ioj::to_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::TypeOperation>{
-    MinMax<lispb::codegen::TypeOperation>{lispb::codegen::TypeOperation::add_element,
-                                          lispb::codegen::TypeOperation::set_element}};
+inline constexpr MinMax<lispb::codegen::TypeOperation> enum_range<lispb::codegen::TypeOperation>{
+    lispb::codegen::TypeOperation::add_element, lispb::codegen::TypeOperation::set_element};
 } // namespace ioj
 
 template <>

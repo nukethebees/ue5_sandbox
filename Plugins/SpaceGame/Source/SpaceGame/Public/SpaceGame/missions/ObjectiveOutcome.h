@@ -20,6 +20,6 @@ using EObjectiveOutcomeUnderlying = uint8;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<::EObjectiveOutcome>{
-    MinMax<::EObjectiveOutcome>{::EObjectiveOutcome::Passed, ::EObjectiveOutcome::Expired}};
+inline constexpr MinMax<::EObjectiveOutcome> enum_range<::EObjectiveOutcome>{
+    ::EObjectiveOutcome::Passed, ::EObjectiveOutcome::Expired};
 } // namespace ioj

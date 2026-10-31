@@ -89,9 +89,9 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::EnumConversion>{
-    MinMax<lispb::codegen::EnumConversion>{lispb::codegen::EnumConversion::lex_to_string,
-                                           lispb::codegen::EnumConversion::try_parse_serialized}};
+inline constexpr MinMax<lispb::codegen::EnumConversion> enum_range<lispb::codegen::EnumConversion>{
+    lispb::codegen::EnumConversion::lex_to_string,
+    lispb::codegen::EnumConversion::try_parse_serialized};
 } // namespace ioj
 
 template <>

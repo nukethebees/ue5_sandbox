@@ -33,8 +33,8 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::LayoutKind>{MinMax<lispb::codegen::LayoutKind>{
-    lispb::codegen::LayoutKind::native, lispb::codegen::LayoutKind::packed}};
+inline constexpr MinMax<lispb::codegen::LayoutKind> enum_range<lispb::codegen::LayoutKind>{
+    lispb::codegen::LayoutKind::native, lispb::codegen::LayoutKind::packed};
 } // namespace ioj
 
 template <>

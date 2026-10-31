@@ -33,8 +33,8 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::PathBase>{
-    MinMax<lispb::PathBase>{lispb::PathBase::project, lispb::PathBase::build}};
+inline constexpr MinMax<lispb::PathBase> enum_range<lispb::PathBase>{lispb::PathBase::project,
+                                                                     lispb::PathBase::build};
 } // namespace ioj
 
 template <>

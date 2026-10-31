@@ -35,9 +35,8 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::EnumReflection>{
-    MinMax<lispb::codegen::EnumReflection>{lispb::codegen::EnumReflection::none,
-                                           lispb::codegen::EnumReflection::blueprint}};
+inline constexpr MinMax<lispb::codegen::EnumReflection> enum_range<lispb::codegen::EnumReflection>{
+    lispb::codegen::EnumReflection::none, lispb::codegen::EnumReflection::blueprint};
 } // namespace ioj
 
 template <>

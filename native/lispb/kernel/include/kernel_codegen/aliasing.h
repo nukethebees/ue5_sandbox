@@ -33,9 +33,10 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<kernel_codegen::detail::Aliasing>{
-    MinMax<kernel_codegen::detail::Aliasing>{kernel_codegen::detail::Aliasing::output_disjoint,
-                                             kernel_codegen::detail::Aliasing::pairwise_disjoint}};
+inline constexpr MinMax<kernel_codegen::detail::Aliasing>
+    enum_range<kernel_codegen::detail::Aliasing>{
+        kernel_codegen::detail::Aliasing::output_disjoint,
+        kernel_codegen::detail::Aliasing::pairwise_disjoint};
 } // namespace ioj
 
 template <>

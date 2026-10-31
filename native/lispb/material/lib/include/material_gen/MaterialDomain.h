@@ -35,9 +35,8 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<material_synth::MaterialDomain>{
-    MinMax<material_synth::MaterialDomain>{material_synth::MaterialDomain::ui,
-                                           material_synth::MaterialDomain::post_process}};
+inline constexpr MinMax<material_synth::MaterialDomain> enum_range<material_synth::MaterialDomain>{
+    material_synth::MaterialDomain::ui, material_synth::MaterialDomain::post_process};
 } // namespace ioj
 
 template <>

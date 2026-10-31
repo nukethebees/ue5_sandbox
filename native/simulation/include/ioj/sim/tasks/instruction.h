@@ -39,8 +39,8 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<sim::tasks::InstructionType>{MinMax<sim::tasks::InstructionType>{
-    sim::tasks::InstructionType::Kill, sim::tasks::InstructionType::Idle}};
+inline constexpr MinMax<sim::tasks::InstructionType> enum_range<sim::tasks::InstructionType>{
+    sim::tasks::InstructionType::Kill, sim::tasks::InstructionType::Idle};
 } // namespace ioj
 
 namespace ioj::sim::tasks {

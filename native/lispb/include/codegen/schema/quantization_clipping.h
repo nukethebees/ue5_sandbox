@@ -34,9 +34,9 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::QuantizationClipping>{
-    MinMax<lispb::codegen::QuantizationClipping>{lispb::codegen::QuantizationClipping::reject,
-                                                 lispb::codegen::QuantizationClipping::clamp}};
+inline constexpr MinMax<lispb::codegen::QuantizationClipping>
+    enum_range<lispb::codegen::QuantizationClipping>{lispb::codegen::QuantizationClipping::reject,
+                                                     lispb::codegen::QuantizationClipping::clamp};
 } // namespace ioj
 
 template <>

@@ -65,10 +65,10 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<kernel_codegen::detail::EmissionField>{
-    MinMax<kernel_codegen::detail::EmissionField>{
+inline constexpr MinMax<kernel_codegen::detail::EmissionField>
+    enum_range<kernel_codegen::detail::EmissionField>{
         kernel_codegen::detail::EmissionField::header,
-        kernel_codegen::detail::EmissionField::namespace_}};
+        kernel_codegen::detail::EmissionField::namespace_};
 } // namespace ioj
 
 template <>

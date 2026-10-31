@@ -21,6 +21,6 @@ enum class TickPlayerShipState : TickPlayerShipStateUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<sim::TickPlayerShipState>{MinMax<sim::TickPlayerShipState>{
-    sim::TickPlayerShipState::NotPresent, sim::TickPlayerShipState::PresentDead}};
+inline constexpr MinMax<sim::TickPlayerShipState> enum_range<sim::TickPlayerShipState>{
+    sim::TickPlayerShipState::NotPresent, sim::TickPlayerShipState::PresentDead};
 } // namespace ioj

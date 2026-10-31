@@ -33,7 +33,7 @@ enum class RecordComparison : RecordComparisonUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::RecordComparison>{
-    MinMax<lispb::codegen::RecordComparison>{lispb::codegen::RecordComparison::none,
-                                             lispb::codegen::RecordComparison::three_way}};
+inline constexpr MinMax<lispb::codegen::RecordComparison>
+    enum_range<lispb::codegen::RecordComparison>{lispb::codegen::RecordComparison::none,
+                                                 lispb::codegen::RecordComparison::three_way};
 } // namespace ioj

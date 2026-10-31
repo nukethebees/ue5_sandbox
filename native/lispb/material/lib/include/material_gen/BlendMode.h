@@ -64,8 +64,8 @@ using ioj::to_serialized_string;
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<material_synth::BlendMode>{MinMax<material_synth::BlendMode>{
-    material_synth::BlendMode::additive, material_synth::BlendMode::alpha_composite}};
+inline constexpr MinMax<material_synth::BlendMode> enum_range<material_synth::BlendMode>{
+    material_synth::BlendMode::additive, material_synth::BlendMode::alpha_composite};
 } // namespace ioj
 
 template <>

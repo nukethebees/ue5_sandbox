@@ -20,7 +20,8 @@ enum class TraceEntityFilter : TraceEntityFilterUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<sim::collision::TraceEntityFilter>{
-    MinMax<sim::collision::TraceEntityFilter>{sim::collision::TraceEntityFilter::None,
-                                              sim::collision::TraceEntityFilter::ExcludeFighters}};
+inline constexpr MinMax<sim::collision::TraceEntityFilter>
+    enum_range<sim::collision::TraceEntityFilter>{
+        sim::collision::TraceEntityFilter::None,
+        sim::collision::TraceEntityFilter::ExcludeFighters};
 } // namespace ioj

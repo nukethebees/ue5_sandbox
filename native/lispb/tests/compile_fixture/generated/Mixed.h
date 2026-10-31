@@ -102,9 +102,9 @@ enum class Kind : KindUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<codegen_compile_fixture::mixed::Kind>{
-    MinMax<codegen_compile_fixture::mixed::Kind>{codegen_compile_fixture::mixed::Kind::Data,
-                                                 codegen_compile_fixture::mixed::Kind::Data}};
+inline constexpr MinMax<codegen_compile_fixture::mixed::Kind>
+    enum_range<codegen_compile_fixture::mixed::Kind>{codegen_compile_fixture::mixed::Kind::Data,
+                                                     codegen_compile_fixture::mixed::Kind::Data};
 } // namespace ioj
 
 namespace codegen_compile_fixture::mixed {

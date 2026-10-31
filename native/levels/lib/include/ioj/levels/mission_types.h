@@ -34,8 +34,8 @@ enum class ObjectiveOutcome : ObjectiveOutcomeUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<ObjectiveOutcome>{
-    MinMax<ObjectiveOutcome>{ObjectiveOutcome::Passed, ObjectiveOutcome::Expired}};
+inline constexpr MinMax<ObjectiveOutcome> enum_range<ObjectiveOutcome>{ObjectiveOutcome::Passed,
+                                                                       ObjectiveOutcome::Expired};
 } // namespace ioj
 
 namespace ioj {
@@ -57,8 +57,8 @@ enum class TeamOutcome : TeamOutcomeUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<TeamOutcome>{
-    MinMax<TeamOutcome>{TeamOutcome::Victory, TeamOutcome::Defeat}};
+inline constexpr MinMax<TeamOutcome> enum_range<TeamOutcome>{TeamOutcome::Victory,
+                                                             TeamOutcome::Defeat};
 } // namespace ioj
 
 namespace ioj {
@@ -75,8 +75,7 @@ enum class ExprResult : ExprResultUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<ExprResult>{
-    MinMax<ExprResult>{ExprResult::Pending, ExprResult::False}};
+inline constexpr MinMax<ExprResult> enum_range<ExprResult>{ExprResult::Pending, ExprResult::False};
 } // namespace ioj
 
 namespace ioj {
@@ -144,8 +143,7 @@ enum class ExprType : ExprTypeUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<ExprType>{
-    MinMax<ExprType>{ExprType::All, ExprType::EntityKillsReached}};
+inline constexpr MinMax<ExprType> enum_range<ExprType>{ExprType::All, ExprType::EntityKillsReached};
 } // namespace ioj
 
 namespace ioj {

@@ -33,7 +33,7 @@ enum class SettingApplyMode : SettingApplyModeUnderlying {
 
 namespace ioj {
 template <>
-inline constexpr auto enum_range<lispb::codegen::SettingApplyMode>{
-    MinMax<lispb::codegen::SettingApplyMode>{lispb::codegen::SettingApplyMode::immediate,
-                                             lispb::codegen::SettingApplyMode::confirm}};
+inline constexpr MinMax<lispb::codegen::SettingApplyMode>
+    enum_range<lispb::codegen::SettingApplyMode>{lispb::codegen::SettingApplyMode::immediate,
+                                                 lispb::codegen::SettingApplyMode::confirm};
 } // namespace ioj
