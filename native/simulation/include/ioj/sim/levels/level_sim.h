@@ -88,9 +88,6 @@ struct LevelSim {
     /* **************************************** */
     auto get_state() const noexcept -> OrchestratorState { return state_; }
     auto get_clock() const noexcept -> SimClock const& { return clock_; }
-    auto has_future_authored_spawns() const noexcept -> bool {
-        return event_manager_.has_future_spawns();
-    }
     auto get_player_ship_simulation() const -> player::Sim const* {
         return player_ship_simulation_.has_value() ? &player_ship_simulation_.value() : nullptr;
     }
