@@ -19,6 +19,7 @@ TIDY_SCOPES = {
     "core": ("core", "profiling"),
     "simulation": ("simulation", "simulation_benchmark"),
     "presentation": ("presentation",),
+    "profiles": ("profiles",),
     "layout": ("layout",),
     "lispb": ("lispb",),
     "memory": ("memory",),

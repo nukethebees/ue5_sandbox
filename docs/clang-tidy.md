@@ -44,6 +44,7 @@ and do not automatically discover dependents or inspect Git changes.
 | `core` | `core`, `profiling` |
 | `simulation` | `simulation`, `simulation_benchmark` |
 | `presentation` | `presentation` |
+| `profiles` | `profiles` |
 | `layout` | `layout` |
 | `lispb` | `lispb` |
 | `memory` | `memory` |
