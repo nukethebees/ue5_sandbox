@@ -1,7 +1,6 @@
 #include <ioj/sim/tasks/executor_table.h>
 
 #include <ioj/range_fits.h>
-#include <ioj/soa_permutation.h>
 #include <ioj/subspan.h>
 
 #include <algorithm>
@@ -59,24 +58,12 @@ void ExecutorTable::initialise_rows(EntityType const type,
 }
 
 void ExecutorTable::remove_rows(EntityType const type,
-                                std::size_t count,
+                                std::size_t const count,
                                 std::span<EntityFrameIndex::value_type const> const rows) {
-    auto const view{get_view(type, count)};
-    [[maybe_unused]] auto previous{count};
-    for (auto const row : rows) {
-        assert(row < previous && row < count);
-        previous = row;
-        auto const last{--count};
-        view.current_tasks[row] = view.current_tasks[last];
-        view.pending_tasks[row] = view.pending_tasks[last];
-        view.current_instructions[row] = view.current_instructions[last];
-    }
+    remove_rows_impl(type, count, rows);
 }
 
 void ExecutorTable::apply_permutation(EntityType const type, std::span<std::int32_t> const order) {
-    auto const view{get_view(type, order.size())};
-    ioj::apply_permutation(view.current_tasks, order);
-    ioj::apply_permutation(view.pending_tasks, order);
-    ioj::apply_permutation(view.current_instructions, order);
+    apply_permutation_impl(type, order);
 }
 }

@@ -2,6 +2,7 @@
 
 #include <ioj/sim/entities/entity_identity_layout.h>
 #include <ioj/sim/entities/entity_instance_handle.h>
+#include <ioj/sim/entities/entity_table_operations.h>
 #include <ioj/sim/tasks/instruction_handle.h>
 #include <ioj/sim/tasks/task_id.h>
 
@@ -23,7 +24,7 @@ struct ExecutorView {
     std::span<InstructionHandle> current_instructions;
 };
 
-struct ExecutorTable {
+struct ExecutorTable : EntityTableOperations {
     ExecutorTable();
 
     // Views use EntityInstanceHandle::index() within the selected entity type.
@@ -67,6 +68,16 @@ struct ExecutorTable {
         apply_permutation(Type, order);
     }
 
+  private:
+    friend struct ioj::sim::EntityTableOperations;
+
+    template <typename Func>
+    void with_columns(EntityType const type, std::size_t const count, Func&& func) {
+        auto const view{get_view(type, count)};
+        func(view.current_tasks, view.pending_tasks, view.current_instructions);
+    }
+
+  public:
     // Keep columns at their preallocated size; use views for active rows.
     std::vector<TaskId> current_tasks;
     std::vector<TaskId> pending_tasks;

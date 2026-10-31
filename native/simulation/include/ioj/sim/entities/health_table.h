@@ -3,8 +3,8 @@
 #include <ioj/range_fits.h>
 #include <ioj/sim/entities/entity_identity_layout.h>
 #include <ioj/sim/entities/entity_instance_handle.h>
+#include <ioj/sim/entities/entity_table_operations.h>
 #include <ioj/sim/entities/health.h>
-#include <ioj/soa_permutation.h>
 #include <ioj/subspan.h>
 
 #include <algorithm>
@@ -82,7 +82,7 @@ class HealthView {
     std::span<Health> values_;
 };
 
-class HealthTable {
+class HealthTable : public EntityTableOperations {
   public:
     HealthTable()
         : values_(health_storage::layout.capacity) {}
@@ -132,24 +132,25 @@ class HealthTable {
     }
 
     template <EntityType Type>
-    void remove_rows(std::size_t count, std::span<EntityFrameIndex::value_type const> const rows) {
-        assert(fits_capacity(Type, count));
-        auto const values{Subspan{health_storage::layout.offsets[Type], count}(values_)};
-        [[maybe_unused]] auto previous{count};
-        for (auto const row : rows) {
-            assert(row < previous && row < count);
-            previous = row;
-            values[row] = values[--count];
-        }
+    void remove_rows(std::size_t const count,
+                     std::span<EntityFrameIndex::value_type const> const rows) {
+        remove_rows_impl(Type, count, rows);
     }
 
     template <EntityType Type>
     void apply_permutation(std::span<std::int32_t> const order) {
-        assert(fits_capacity(Type, order.size()));
-        auto const subspan{Subspan{health_storage::layout.offsets[Type], order.size()}};
-        ioj::apply_permutation(subspan(values_), order);
+        apply_permutation_impl(Type, order);
     }
   private:
+    friend struct EntityTableOperations;
+
+    template <typename Func>
+    void with_columns(EntityType const type, std::size_t const count, Func&& func) {
+        assert(fits_capacity(type, count));
+        auto const subspan{Subspan{health_storage::layout.offsets[type], count}};
+        func(subspan(values_));
+    }
+
     [[nodiscard]] static constexpr auto fits_capacity(EntityType const type,
                                                       std::size_t const count) noexcept -> bool {
         return count <= health_storage::layout.capacities[type];
