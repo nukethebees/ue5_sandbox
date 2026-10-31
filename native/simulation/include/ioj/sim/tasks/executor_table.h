@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory_resource>
 #include <span>
 #include <utility>
 #include <vector>
@@ -30,7 +31,7 @@ struct ExecutorTable : EntityTableOperations {
     using view_type = ExecutorView;
     using const_view_type = ExecutorConstView;
 
-    ExecutorTable();
+    explicit ExecutorTable(std::pmr::memory_resource& resource = *std::pmr::new_delete_resource());
 
     void initialise_rows(EntityType type,
                          EntityFrameIndex::value_type first,
@@ -78,8 +79,8 @@ struct ExecutorTable : EntityTableOperations {
 
   public:
     // Keep columns at their preallocated size; use views for active rows.
-    std::vector<TaskId> current_tasks;
-    std::vector<TaskId> pending_tasks;
-    std::vector<InstructionHandle> current_instructions;
+    std::pmr::vector<TaskId> current_tasks;
+    std::pmr::vector<TaskId> pending_tasks;
+    std::pmr::vector<InstructionHandle> current_instructions;
 };
 }

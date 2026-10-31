@@ -1,10 +1,13 @@
 #include <ioj/sim/tasks/task_manager.h>
 
 #include <cassert>
-#include <limits>
 
 namespace ioj::sim::tasks {
-TaskManager::TaskManager() {
+TaskManager::TaskManager(std::pmr::memory_resource& resource)
+    : instructions_{&resource}
+    , instruction_data_{resource}
+    , programs_{resource}
+    , tasks_{resource} {
     reset();
 }
 
@@ -21,16 +24,19 @@ void TaskManager::reset() {
     static_cast<void>(add_program({Instruction::make_data_idle()}));
 }
 
+void TaskManager::reserve_instructions(std::size_t const count) {
+    assert(fits_instruction_range(0, count));
+    instructions_.reserve(count);
+}
+
 auto TaskManager::add_program(std::span<Instruction const> const program) -> ProgramHandle {
-    assert(!program.empty());
-    assert(program.size() <= (std::numeric_limits<InstructionCount>::max)());
+    assert(is_valid_program_size(program.size()));
 
     auto const first{instructions_.size()};
-    assert(first < InstructionHandle::invalid_value);
-    assert(program.size() <= InstructionHandle::invalid_value - first);
+    assert(fits_instruction_range(first, program.size()));
 
     auto const index{programs_.starts.size()};
-    assert(index < ProgramHandle::invalid_value);
+    assert(is_valid_program_index(index));
 
     instructions_.insert(instructions_.end(), program.begin(), program.end());
     programs_.starts.push_back(

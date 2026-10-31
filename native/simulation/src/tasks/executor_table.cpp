@@ -24,10 +24,10 @@ inline constexpr EntityTypeSizes offsets{[] {
 }
 }
 
-ExecutorTable::ExecutorTable()
-    : current_tasks(entity_identity_capacity)
-    , pending_tasks(entity_identity_capacity)
-    , current_instructions(entity_identity_capacity) {}
+ExecutorTable::ExecutorTable(std::pmr::memory_resource& resource)
+    : current_tasks(entity_identity_capacity, &resource)
+    , pending_tasks(entity_identity_capacity, &resource)
+    , current_instructions(entity_identity_capacity, &resource) {}
 
 auto ExecutorTable::subspan_for(EntityType const type, std::size_t const count) -> Subspan {
     assert(executor_storage::fits_capacity(type, count));
