@@ -422,36 +422,14 @@ foreach(restriction IN ITEMS COPY DESTRUCTOR DEFAULT)
   set_tests_properties("SingleAllocationRejects${restriction}" PROPERTIES
     LABELS "all;native;codegen;compile-contract;subprocess" RESOURCE_LOCK codegen-negative-build)
 endforeach()
-add_test(NAME CodegenCliRejectsUnknownArgument COMMAND lispb-executable generate --unknown value)
-set_tests_properties(CodegenCliRejectsUnknownArgument PROPERTIES
+add_test(NAME CodegenCliRejectsInvalidArguments
+  COMMAND "${CMAKE_COMMAND}"
+    "-DEXECUTABLE=$<TARGET_FILE:lispb-executable>"
+    "-DPROJECT_FILE=${PROJECT_SOURCE_DIR}/lispb/project.lispb"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/reject_cli_arguments.cmake"
+)
+set_tests_properties(CodegenCliRejectsInvalidArguments PROPERTIES
   LABELS "unit;all;native;codegen"
-  WILL_FAIL TRUE
-)
-add_test(NAME CodegenCliRejectsMissingArgumentValue COMMAND lispb-executable generate --target)
-set_tests_properties(CodegenCliRejectsMissingArgumentValue PROPERTIES
-  LABELS "unit;all;native;codegen"
-  WILL_FAIL TRUE
-)
-add_test(NAME CodegenCliRejectsOptionAsArgumentValue
-  COMMAND lispb-executable generate --project --target
-)
-set_tests_properties(CodegenCliRejectsOptionAsArgumentValue PROPERTIES
-  LABELS "unit;all;native;codegen"
-  WILL_FAIL TRUE
-)
-add_test(NAME CodegenCliRejectsDuplicateArguments
-  COMMAND lispb-executable generate --target sandbox-code --target sandbox-code
-)
-set_tests_properties(CodegenCliRejectsDuplicateArguments PROPERTIES
-  LABELS "unit;all;native;codegen"
-  WILL_FAIL TRUE
-)
-add_test(NAME CodegenCliReportsMissingProject
-  COMMAND lispb-executable generate --project missing-project.lispb --target sandbox-code
-)
-set_tests_properties(CodegenCliReportsMissingProject PROPERTIES
-  LABELS "unit;all;native;codegen"
-  WILL_FAIL TRUE
 )
 
 add_custom_target(generate-code

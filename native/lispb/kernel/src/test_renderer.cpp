@@ -174,22 +174,28 @@ void append_case(lispb::codegen::CppIR& cpp,
             : document.operations.output(expanded.operation(id))};
     if (document.variants.kind(expanded.variant(id)) == VariantKind::out_of_place) {
         body.push_back(cpp.variable(array_type, destination));
+        body.push_back(
+            cpp.expr_stmt(cpp.call(cpp.member_access(cpp.named(destination), "fill"),
+                                   {cpp.static_cast_expr(element_type, cpp.literal("-12345"))})));
     }
     body.push_back(cpp.variable("auto const&",
                                 "expected",
                                 fixture_array(cpp, arrays, suite, element_type, fixture.expected)));
 
+    body.push_back(cpp.variable("auto const", "before", cpp.named(destination)));
     auto const function{cpp.named(document.text(document.emissions.cpp_namespace(emission)) + "::" +
                                   document.text(document.variants.name(expanded.variant(id))))};
     body.push_back(cpp.expr_stmt(cpp.call(function, test_arguments(cpp, document, id))));
 
-    auto const expect_prefix{
-        cpp.type_reference(cpp.types.named(std::string{suite} + "::expect_prefix"))};
+    auto const expect_result{
+        cpp.type_reference(cpp.types.named(std::string{suite} + "::expect_result"))};
     body.push_back(
-        cpp.expr_stmt(cpp.call(expect_prefix,
+        cpp.expr_stmt(cpp.call(expect_result,
                                {cpp.call(cpp.member_access(cpp.named(destination), "data")),
                                 cpp.call(cpp.member_access(cpp.named("expected"), "data")),
-                                cpp.named("Count")})));
+                                cpp.call(cpp.member_access(cpp.named("before"), "data")),
+                                cpp.named("Count"),
+                                cpp.call(cpp.member_access(cpp.named(destination), "size"))})));
 }
 
 }
@@ -211,6 +217,7 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
                                "cmath",
                                "cstddef",
                                "cstdint",
+                               "cstring",
                                "limits",
                                "span",
                                "string",
@@ -243,26 +250,43 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
     EXPECT_EQ(actual, expected);
 }
 )")});
-    auto const expect_prefix{cpp.function("expect_prefix", "void")};
-    cpp.function_flags(expect_prefix).set_define_in_header(true);
+    auto const expect_result{cpp.function("expect_result", "void")};
+    cpp.function_flags(expect_result).set_define_in_header(true);
     cpp.set_function_template(
-        expect_prefix,
+        expect_result,
         cpp.template_declaration({cpp.type_template_parameter(cpp.strings.intern("T"))}));
-    cpp.set_function_parameters(expect_prefix,
+    cpp.set_function_parameters(expect_result,
                                 {cpp.parameter("T const*", "actual"),
                                  cpp.parameter("T const*", "expected"),
-                                 cpp.parameter("std::size_t const", "count")});
+                                 cpp.parameter("T const*", "before"),
+                                 cpp.parameter("std::size_t const", "count"),
+                                 cpp.parameter("std::size_t const", "storage_count")});
     auto const index{cpp.named("i")};
     cpp.set_function_body(
-        expect_prefix,
+        expect_result,
         {cpp.for_stmt(
-            cpp.variable("std::size_t", "i"),
-            cpp.binary(lispb::codegen::BinaryOperator::less, index, cpp.named("count")),
-            cpp.unary(lispb::codegen::UnaryOperator::preincrement, index),
-            cpp.block({cpp.expr_stmt(cpp.call(cpp.named("SCOPED_TRACE"), {index})),
-                       cpp.expr_stmt(cpp.call(cpp.named("expect_value"),
-                                              {cpp.subscript(cpp.named("actual"), index),
-                                               cpp.subscript(cpp.named("expected"), index)}))}))});
+             cpp.variable("std::size_t", "i"),
+             cpp.binary(lispb::codegen::BinaryOperator::less, index, cpp.named("count")),
+             cpp.unary(lispb::codegen::UnaryOperator::preincrement, index),
+             cpp.block({cpp.expr_stmt(cpp.call(cpp.named("SCOPED_TRACE"), {index})),
+                        cpp.expr_stmt(cpp.call(cpp.named("expect_value"),
+                                               {cpp.subscript(cpp.named("actual"), index),
+                                                cpp.subscript(cpp.named("expected"), index)}))})),
+         cpp.expr_stmt(cpp.call(cpp.named("EXPECT_EQ"),
+                                {cpp.call(cpp.named("std::memcmp"),
+                                          {cpp.binary(lispb::codegen::BinaryOperator::add,
+                                                      cpp.named("actual"),
+                                                      cpp.named("count")),
+                                           cpp.binary(lispb::codegen::BinaryOperator::add,
+                                                      cpp.named("before"),
+                                                      cpp.named("count")),
+                                           cpp.binary(lispb::codegen::BinaryOperator::multiply,
+                                                      cpp.parenthesized(cpp.binary(
+                                                          lispb::codegen::BinaryOperator::subtract,
+                                                          cpp.named("storage_count"),
+                                                          cpp.named("count"))),
+                                                      cpp.sizeof_type(cpp.types.intern("T")))}),
+                                 cpp.literal("0")}))});
     lispb::codegen::Nodes cases;
     std::vector<lispb::codegen::Expr> case_values;
     std::vector<FixtureArray> arrays;
@@ -292,7 +316,7 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
     }
     lispb::codegen::Nodes declarations{cpp.header_function(expect_value),
                                        cpp.lines(2),
-                                       cpp.header_function(expect_prefix),
+                                       cpp.header_function(expect_result),
                                        cpp.lines(2)};
     for (auto const& array : arrays) {
         declarations.push_back(

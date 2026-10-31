@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <span>
 #include <string>
@@ -34,11 +35,16 @@ void expect_value(T const actual, T const expected) {
 }
 
 template <typename T>
-void expect_prefix(T const* actual, T const* expected, std::size_t const count) {
+void expect_result(T const* actual,
+                   T const* expected,
+                   T const* before,
+                   std::size_t const count,
+                   std::size_t const storage_count) {
     for (std::size_t i{}; i < count; ++i) {
         SCOPED_TRACE(i);
         expect_value(actual[i], expected[i]);
     }
+    EXPECT_EQ(std::memcmp(actual + count, before + count, (storage_count - count) * sizeof(T)), 0);
 }
 
 inline constexpr std::array<std::int32_t, 31> fixture_values_0{
@@ -754,247 +760,283 @@ void add_int32_array_scalar_in_place_raw(std::size_t const Count) {
     auto data{fixture_values_0};
     auto const value{static_cast<std::int32_t>(-4)};
     auto const& expected{fixture_values_1};
+    auto const before{data};
     ioj::add_in_place(std::span<std::int32_t>{data.data(), Count}, value);
-    expect_prefix(data.data(), expected.data(), Count);
+    expect_result(data.data(), expected.data(), before.data(), Count, data.size());
 }
 
 void add_float_array_scalar_in_place_raw(std::size_t const Count) {
     auto data{fixture_values_2};
     auto const value{static_cast<float>(-0.5f)};
     auto const& expected{fixture_values_3};
+    auto const before{data};
     ioj::add_in_place(std::span<float>{data.data(), Count}, value);
-    expect_prefix(data.data(), expected.data(), Count);
+    expect_result(data.data(), expected.data(), before.data(), Count, data.size());
 }
 
 void add_double_array_scalar_in_place_raw(std::size_t const Count) {
     auto data{fixture_values_4};
     auto const value{static_cast<double>(-0.5)};
     auto const& expected{fixture_values_5};
+    auto const before{data};
     ioj::add_in_place(std::span<double>{data.data(), Count}, value);
-    expect_prefix(data.data(), expected.data(), Count);
+    expect_result(data.data(), expected.data(), before.data(), Count, data.size());
 }
 
 void subtract_int32_array_scalar_in_place_raw(std::size_t const Count) {
     auto data{fixture_values_0};
     auto const value{static_cast<std::int32_t>(-4)};
     auto const& expected{fixture_values_6};
+    auto const before{data};
     ioj::subtract_in_place(std::span<std::int32_t>{data.data(), Count}, value);
-    expect_prefix(data.data(), expected.data(), Count);
+    expect_result(data.data(), expected.data(), before.data(), Count, data.size());
 }
 
 void subtract_float_array_scalar_in_place_raw(std::size_t const Count) {
     auto data{fixture_values_2};
     auto const value{static_cast<float>(-0.5f)};
     auto const& expected{fixture_values_7};
+    auto const before{data};
     ioj::subtract_in_place(std::span<float>{data.data(), Count}, value);
-    expect_prefix(data.data(), expected.data(), Count);
+    expect_result(data.data(), expected.data(), before.data(), Count, data.size());
 }
 
 void subtract_double_array_scalar_in_place_raw(std::size_t const Count) {
     auto data{fixture_values_4};
     auto const value{static_cast<double>(-0.5)};
     auto const& expected{fixture_values_8};
+    auto const before{data};
     ioj::subtract_in_place(std::span<double>{data.data(), Count}, value);
-    expect_prefix(data.data(), expected.data(), Count);
+    expect_result(data.data(), expected.data(), before.data(), Count, data.size());
 }
 
 void multiply_int32_array_array_raw(std::size_t const Count) {
     auto lhs{fixture_values_0};
     auto rhs{fixture_values_9};
     std::array<std::int32_t, 31> out{};
+    out.fill(static_cast<std::int32_t>(-12345));
     auto const& expected{fixture_values_10};
+    auto const before{out};
     ioj::multiply(std::span<std::int32_t const>{lhs.data(), Count},
                   std::span<std::int32_t const>{rhs.data(), Count},
                   std::span<std::int32_t>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void multiply_int32_array_scalar_raw(std::size_t const Count) {
     auto lhs{fixture_values_0};
     auto const rhs{static_cast<std::int32_t>(-4)};
     std::array<std::int32_t, 31> out{};
+    out.fill(static_cast<std::int32_t>(-12345));
     auto const& expected{fixture_values_11};
+    auto const before{out};
     ioj::multiply(std::span<std::int32_t const>{lhs.data(), Count},
                   rhs,
                   std::span<std::int32_t>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void multiply_float_array_array_raw(std::size_t const Count) {
     auto lhs{fixture_values_2};
     auto rhs{fixture_values_12};
     std::array<float, 31> out{};
+    out.fill(static_cast<float>(-12345));
     auto const& expected{fixture_values_13};
+    auto const before{out};
     ioj::multiply(std::span<float const>{lhs.data(), Count},
                   std::span<float const>{rhs.data(), Count},
                   std::span<float>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void multiply_float_array_scalar_raw(std::size_t const Count) {
     auto lhs{fixture_values_2};
     auto const rhs{static_cast<float>(-0.5f)};
     std::array<float, 31> out{};
+    out.fill(static_cast<float>(-12345));
     auto const& expected{fixture_values_14};
+    auto const before{out};
     ioj::multiply(
         std::span<float const>{lhs.data(), Count}, rhs, std::span<float>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void multiply_double_array_array_raw(std::size_t const Count) {
     auto lhs{fixture_values_4};
     auto rhs{fixture_values_15};
     std::array<double, 31> out{};
+    out.fill(static_cast<double>(-12345));
     auto const& expected{fixture_values_16};
+    auto const before{out};
     ioj::multiply(std::span<double const>{lhs.data(), Count},
                   std::span<double const>{rhs.data(), Count},
                   std::span<double>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void multiply_double_array_scalar_raw(std::size_t const Count) {
     auto lhs{fixture_values_4};
     auto const rhs{static_cast<double>(-0.5)};
     std::array<double, 31> out{};
+    out.fill(static_cast<double>(-12345));
     auto const& expected{fixture_values_17};
+    auto const before{out};
     ioj::multiply(
         std::span<double const>{lhs.data(), Count}, rhs, std::span<double>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void multiply_int32_array_array_in_place_raw(std::size_t const Count) {
     auto lhs{fixture_values_0};
     auto rhs{fixture_values_9};
     auto const& expected{fixture_values_10};
+    auto const before{lhs};
     ioj::multiply_in_place(std::span<std::int32_t>{lhs.data(), Count},
                            std::span<std::int32_t const>{rhs.data(), Count});
-    expect_prefix(lhs.data(), expected.data(), Count);
+    expect_result(lhs.data(), expected.data(), before.data(), Count, lhs.size());
 }
 
 void multiply_int32_array_scalar_in_place_raw(std::size_t const Count) {
     auto lhs{fixture_values_0};
     auto const rhs{static_cast<std::int32_t>(-4)};
     auto const& expected{fixture_values_11};
+    auto const before{lhs};
     ioj::multiply_in_place(std::span<std::int32_t>{lhs.data(), Count}, rhs);
-    expect_prefix(lhs.data(), expected.data(), Count);
+    expect_result(lhs.data(), expected.data(), before.data(), Count, lhs.size());
 }
 
 void multiply_float_array_array_in_place_raw(std::size_t const Count) {
     auto lhs{fixture_values_2};
     auto rhs{fixture_values_12};
     auto const& expected{fixture_values_13};
+    auto const before{lhs};
     ioj::multiply_in_place(std::span<float>{lhs.data(), Count},
                            std::span<float const>{rhs.data(), Count});
-    expect_prefix(lhs.data(), expected.data(), Count);
+    expect_result(lhs.data(), expected.data(), before.data(), Count, lhs.size());
 }
 
 void multiply_float_array_scalar_in_place_raw(std::size_t const Count) {
     auto lhs{fixture_values_2};
     auto const rhs{static_cast<float>(-0.5f)};
     auto const& expected{fixture_values_14};
+    auto const before{lhs};
     ioj::multiply_in_place(std::span<float>{lhs.data(), Count}, rhs);
-    expect_prefix(lhs.data(), expected.data(), Count);
+    expect_result(lhs.data(), expected.data(), before.data(), Count, lhs.size());
 }
 
 void multiply_double_array_array_in_place_raw(std::size_t const Count) {
     auto lhs{fixture_values_4};
     auto rhs{fixture_values_15};
     auto const& expected{fixture_values_16};
+    auto const before{lhs};
     ioj::multiply_in_place(std::span<double>{lhs.data(), Count},
                            std::span<double const>{rhs.data(), Count});
-    expect_prefix(lhs.data(), expected.data(), Count);
+    expect_result(lhs.data(), expected.data(), before.data(), Count, lhs.size());
 }
 
 void multiply_double_array_scalar_in_place_raw(std::size_t const Count) {
     auto lhs{fixture_values_4};
     auto const rhs{static_cast<double>(-0.5)};
     auto const& expected{fixture_values_17};
+    auto const before{lhs};
     ioj::multiply_in_place(std::span<double>{lhs.data(), Count}, rhs);
-    expect_prefix(lhs.data(), expected.data(), Count);
+    expect_result(lhs.data(), expected.data(), before.data(), Count, lhs.size());
 }
 
 void divide_int32_array_scalar_in_place_raw(std::size_t const Count) {
     auto data{fixture_values_0};
     auto const value{static_cast<std::int32_t>(-4)};
     auto const& expected{fixture_values_18};
+    auto const before{data};
     ioj::divide_in_place(std::span<std::int32_t>{data.data(), Count}, value);
-    expect_prefix(data.data(), expected.data(), Count);
+    expect_result(data.data(), expected.data(), before.data(), Count, data.size());
 }
 
 void divide_float_array_scalar_in_place_raw(std::size_t const Count) {
     auto data{fixture_values_2};
     auto const value{static_cast<float>(-0.5f)};
     auto const& expected{fixture_values_19};
+    auto const before{data};
     ioj::divide_in_place(std::span<float>{data.data(), Count}, value);
-    expect_prefix(data.data(), expected.data(), Count);
+    expect_result(data.data(), expected.data(), before.data(), Count, data.size());
 }
 
 void divide_double_array_scalar_in_place_raw(std::size_t const Count) {
     auto data{fixture_values_4};
     auto const value{static_cast<double>(-0.5)};
     auto const& expected{fixture_values_20};
+    auto const before{data};
     ioj::divide_in_place(std::span<double>{data.data(), Count}, value);
-    expect_prefix(data.data(), expected.data(), Count);
+    expect_result(data.data(), expected.data(), before.data(), Count, data.size());
 }
 
 void add_arrays_int32_array_array_raw(std::size_t const Count) {
     auto lhs{fixture_values_0};
     auto rhs{fixture_values_9};
     std::array<std::int32_t, 31> out{};
+    out.fill(static_cast<std::int32_t>(-12345));
     auto const& expected{fixture_values_21};
+    auto const before{out};
     ioj::add_arrays(std::span<std::int32_t const>{lhs.data(), Count},
                     std::span<std::int32_t const>{rhs.data(), Count},
                     std::span<std::int32_t>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void add_arrays_float_array_array_raw(std::size_t const Count) {
     auto lhs{fixture_values_2};
     auto rhs{fixture_values_12};
     std::array<float, 31> out{};
+    out.fill(static_cast<float>(-12345));
     auto const& expected{fixture_values_22};
+    auto const before{out};
     ioj::add_arrays(std::span<float const>{lhs.data(), Count},
                     std::span<float const>{rhs.data(), Count},
                     std::span<float>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void add_arrays_double_array_array_raw(std::size_t const Count) {
     auto lhs{fixture_values_4};
     auto rhs{fixture_values_15};
     std::array<double, 31> out{};
+    out.fill(static_cast<double>(-12345));
     auto const& expected{fixture_values_23};
+    auto const before{out};
     ioj::add_arrays(std::span<double const>{lhs.data(), Count},
                     std::span<double const>{rhs.data(), Count},
                     std::span<double>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void add_arrays_int32_array_array_in_place_raw(std::size_t const Count) {
     auto lhs{fixture_values_0};
     auto rhs{fixture_values_9};
     auto const& expected{fixture_values_21};
+    auto const before{lhs};
     ioj::add_arrays_in_place(std::span<std::int32_t>{lhs.data(), Count},
                              std::span<std::int32_t const>{rhs.data(), Count});
-    expect_prefix(lhs.data(), expected.data(), Count);
+    expect_result(lhs.data(), expected.data(), before.data(), Count, lhs.size());
 }
 
 void add_arrays_float_array_array_in_place_raw(std::size_t const Count) {
     auto lhs{fixture_values_2};
     auto rhs{fixture_values_12};
     auto const& expected{fixture_values_22};
+    auto const before{lhs};
     ioj::add_arrays_in_place(std::span<float>{lhs.data(), Count},
                              std::span<float const>{rhs.data(), Count});
-    expect_prefix(lhs.data(), expected.data(), Count);
+    expect_result(lhs.data(), expected.data(), before.data(), Count, lhs.size());
 }
 
 void add_arrays_double_array_array_in_place_raw(std::size_t const Count) {
     auto lhs{fixture_values_4};
     auto rhs{fixture_values_15};
     auto const& expected{fixture_values_23};
+    auto const before{lhs};
     ioj::add_arrays_in_place(std::span<double>{lhs.data(), Count},
                              std::span<double const>{rhs.data(), Count});
-    expect_prefix(lhs.data(), expected.data(), Count);
+    expect_result(lhs.data(), expected.data(), before.data(), Count, lhs.size());
 }
 
 void lerp_float_array_array_array_raw(std::size_t const Count) {
@@ -1002,12 +1044,14 @@ void lerp_float_array_array_array_raw(std::size_t const Count) {
     auto to{fixture_values_12};
     auto alpha{fixture_values_24};
     std::array<float, 31> out{};
+    out.fill(static_cast<float>(-12345));
     auto const& expected{fixture_values_25};
+    auto const before{out};
     ioj::lerp_1d(std::span<float const>{from.data(), Count},
                  std::span<float const>{to.data(), Count},
                  std::span<float const>{alpha.data(), Count},
                  std::span<float>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void lerp_float_array_array_scalar_raw(std::size_t const Count) {
@@ -1015,12 +1059,14 @@ void lerp_float_array_array_scalar_raw(std::size_t const Count) {
     auto to{fixture_values_12};
     auto const alpha{static_cast<float>(1e+10f)};
     std::array<float, 31> out{};
+    out.fill(static_cast<float>(-12345));
     auto const& expected{fixture_values_26};
+    auto const before{out};
     ioj::lerp_1d(std::span<float const>{from.data(), Count},
                  std::span<float const>{to.data(), Count},
                  alpha,
                  std::span<float>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void lerp_double_array_array_array_raw(std::size_t const Count) {
@@ -1028,12 +1074,14 @@ void lerp_double_array_array_array_raw(std::size_t const Count) {
     auto to{fixture_values_15};
     auto alpha{fixture_values_27};
     std::array<double, 31> out{};
+    out.fill(static_cast<double>(-12345));
     auto const& expected{fixture_values_28};
+    auto const before{out};
     ioj::lerp_1d(std::span<double const>{from.data(), Count},
                  std::span<double const>{to.data(), Count},
                  std::span<double const>{alpha.data(), Count},
                  std::span<double>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void lerp_double_array_array_scalar_raw(std::size_t const Count) {
@@ -1041,12 +1089,14 @@ void lerp_double_array_array_scalar_raw(std::size_t const Count) {
     auto to{fixture_values_15};
     auto const alpha{static_cast<double>(10000000000)};
     std::array<double, 31> out{};
+    out.fill(static_cast<double>(-12345));
     auto const& expected{fixture_values_29};
+    auto const before{out};
     ioj::lerp_1d(std::span<double const>{from.data(), Count},
                  std::span<double const>{to.data(), Count},
                  alpha,
                  std::span<double>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void lerp_float_array_array_array_in_place_raw(std::size_t const Count) {
@@ -1054,10 +1104,11 @@ void lerp_float_array_array_array_in_place_raw(std::size_t const Count) {
     auto to{fixture_values_12};
     auto alpha{fixture_values_24};
     auto const& expected{fixture_values_25};
+    auto const before{from};
     ioj::lerp_1d_in_place(std::span<float>{from.data(), Count},
                           std::span<float const>{to.data(), Count},
                           std::span<float const>{alpha.data(), Count});
-    expect_prefix(from.data(), expected.data(), Count);
+    expect_result(from.data(), expected.data(), before.data(), Count, from.size());
 }
 
 void lerp_float_array_array_scalar_in_place_raw(std::size_t const Count) {
@@ -1065,9 +1116,10 @@ void lerp_float_array_array_scalar_in_place_raw(std::size_t const Count) {
     auto to{fixture_values_12};
     auto const alpha{static_cast<float>(1e+10f)};
     auto const& expected{fixture_values_26};
+    auto const before{from};
     ioj::lerp_1d_in_place(
         std::span<float>{from.data(), Count}, std::span<float const>{to.data(), Count}, alpha);
-    expect_prefix(from.data(), expected.data(), Count);
+    expect_result(from.data(), expected.data(), before.data(), Count, from.size());
 }
 
 void lerp_double_array_array_array_in_place_raw(std::size_t const Count) {
@@ -1075,10 +1127,11 @@ void lerp_double_array_array_array_in_place_raw(std::size_t const Count) {
     auto to{fixture_values_15};
     auto alpha{fixture_values_27};
     auto const& expected{fixture_values_28};
+    auto const before{from};
     ioj::lerp_1d_in_place(std::span<double>{from.data(), Count},
                           std::span<double const>{to.data(), Count},
                           std::span<double const>{alpha.data(), Count});
-    expect_prefix(from.data(), expected.data(), Count);
+    expect_result(from.data(), expected.data(), before.data(), Count, from.size());
 }
 
 void lerp_double_array_array_scalar_in_place_raw(std::size_t const Count) {
@@ -1086,9 +1139,10 @@ void lerp_double_array_array_scalar_in_place_raw(std::size_t const Count) {
     auto to{fixture_values_15};
     auto const alpha{static_cast<double>(10000000000)};
     auto const& expected{fixture_values_29};
+    auto const before{from};
     ioj::lerp_1d_in_place(
         std::span<double>{from.data(), Count}, std::span<double const>{to.data(), Count}, alpha);
-    expect_prefix(from.data(), expected.data(), Count);
+    expect_result(from.data(), expected.data(), before.data(), Count, from.size());
 }
 
 void add_scaled_float_array_array_array_raw(std::size_t const Count) {
@@ -1096,12 +1150,14 @@ void add_scaled_float_array_array_array_raw(std::size_t const Count) {
     auto value{fixture_values_12};
     auto scale{fixture_values_24};
     std::array<float, 31> out{};
+    out.fill(static_cast<float>(-12345));
     auto const& expected{fixture_values_30};
+    auto const before{out};
     ioj::add_scaled(std::span<float const>{base.data(), Count},
                     std::span<float const>{value.data(), Count},
                     std::span<float const>{scale.data(), Count},
                     std::span<float>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void add_scaled_float_array_array_scalar_raw(std::size_t const Count) {
@@ -1109,12 +1165,14 @@ void add_scaled_float_array_array_scalar_raw(std::size_t const Count) {
     auto value{fixture_values_12};
     auto const scale{static_cast<float>(1e+10f)};
     std::array<float, 31> out{};
+    out.fill(static_cast<float>(-12345));
     auto const& expected{fixture_values_31};
+    auto const before{out};
     ioj::add_scaled(std::span<float const>{base.data(), Count},
                     std::span<float const>{value.data(), Count},
                     scale,
                     std::span<float>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void add_scaled_double_array_array_array_raw(std::size_t const Count) {
@@ -1122,12 +1180,14 @@ void add_scaled_double_array_array_array_raw(std::size_t const Count) {
     auto value{fixture_values_15};
     auto scale{fixture_values_27};
     std::array<double, 31> out{};
+    out.fill(static_cast<double>(-12345));
     auto const& expected{fixture_values_32};
+    auto const before{out};
     ioj::add_scaled(std::span<double const>{base.data(), Count},
                     std::span<double const>{value.data(), Count},
                     std::span<double const>{scale.data(), Count},
                     std::span<double>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void add_scaled_double_array_array_scalar_raw(std::size_t const Count) {
@@ -1135,12 +1195,14 @@ void add_scaled_double_array_array_scalar_raw(std::size_t const Count) {
     auto value{fixture_values_15};
     auto const scale{static_cast<double>(10000000000)};
     std::array<double, 31> out{};
+    out.fill(static_cast<double>(-12345));
     auto const& expected{fixture_values_33};
+    auto const before{out};
     ioj::add_scaled(std::span<double const>{base.data(), Count},
                     std::span<double const>{value.data(), Count},
                     scale,
                     std::span<double>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void add_scaled_float_array_array_array_in_place_raw(std::size_t const Count) {
@@ -1148,10 +1210,11 @@ void add_scaled_float_array_array_array_in_place_raw(std::size_t const Count) {
     auto value{fixture_values_12};
     auto scale{fixture_values_24};
     auto const& expected{fixture_values_30};
+    auto const before{base};
     ioj::add_scaled_in_place(std::span<float>{base.data(), Count},
                              std::span<float const>{value.data(), Count},
                              std::span<float const>{scale.data(), Count});
-    expect_prefix(base.data(), expected.data(), Count);
+    expect_result(base.data(), expected.data(), before.data(), Count, base.size());
 }
 
 void add_scaled_float_array_array_scalar_in_place_raw(std::size_t const Count) {
@@ -1159,9 +1222,10 @@ void add_scaled_float_array_array_scalar_in_place_raw(std::size_t const Count) {
     auto value{fixture_values_12};
     auto const scale{static_cast<float>(1e+10f)};
     auto const& expected{fixture_values_31};
+    auto const before{base};
     ioj::add_scaled_in_place(
         std::span<float>{base.data(), Count}, std::span<float const>{value.data(), Count}, scale);
-    expect_prefix(base.data(), expected.data(), Count);
+    expect_result(base.data(), expected.data(), before.data(), Count, base.size());
 }
 
 void add_scaled_double_array_array_array_in_place_raw(std::size_t const Count) {
@@ -1169,10 +1233,11 @@ void add_scaled_double_array_array_array_in_place_raw(std::size_t const Count) {
     auto value{fixture_values_15};
     auto scale{fixture_values_27};
     auto const& expected{fixture_values_32};
+    auto const before{base};
     ioj::add_scaled_in_place(std::span<double>{base.data(), Count},
                              std::span<double const>{value.data(), Count},
                              std::span<double const>{scale.data(), Count});
-    expect_prefix(base.data(), expected.data(), Count);
+    expect_result(base.data(), expected.data(), before.data(), Count, base.size());
 }
 
 void add_scaled_double_array_array_scalar_in_place_raw(std::size_t const Count) {
@@ -1180,9 +1245,10 @@ void add_scaled_double_array_array_scalar_in_place_raw(std::size_t const Count) 
     auto value{fixture_values_15};
     auto const scale{static_cast<double>(10000000000)};
     auto const& expected{fixture_values_33};
+    auto const before{base};
     ioj::add_scaled_in_place(
         std::span<double>{base.data(), Count}, std::span<double const>{value.data(), Count}, scale);
-    expect_prefix(base.data(), expected.data(), Count);
+    expect_result(base.data(), expected.data(), before.data(), Count, base.size());
 }
 
 void subtract_scaled_float_array_array_array_raw(std::size_t const Count) {
@@ -1190,12 +1256,14 @@ void subtract_scaled_float_array_array_array_raw(std::size_t const Count) {
     auto value{fixture_values_12};
     auto scale{fixture_values_24};
     std::array<float, 31> out{};
+    out.fill(static_cast<float>(-12345));
     auto const& expected{fixture_values_34};
+    auto const before{out};
     ioj::subtract_scaled(std::span<float const>{base.data(), Count},
                          std::span<float const>{value.data(), Count},
                          std::span<float const>{scale.data(), Count},
                          std::span<float>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void subtract_scaled_float_array_array_scalar_raw(std::size_t const Count) {
@@ -1203,12 +1271,14 @@ void subtract_scaled_float_array_array_scalar_raw(std::size_t const Count) {
     auto value{fixture_values_12};
     auto const scale{static_cast<float>(1e+10f)};
     std::array<float, 31> out{};
+    out.fill(static_cast<float>(-12345));
     auto const& expected{fixture_values_35};
+    auto const before{out};
     ioj::subtract_scaled(std::span<float const>{base.data(), Count},
                          std::span<float const>{value.data(), Count},
                          scale,
                          std::span<float>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void subtract_scaled_double_array_array_array_raw(std::size_t const Count) {
@@ -1216,12 +1286,14 @@ void subtract_scaled_double_array_array_array_raw(std::size_t const Count) {
     auto value{fixture_values_15};
     auto scale{fixture_values_27};
     std::array<double, 31> out{};
+    out.fill(static_cast<double>(-12345));
     auto const& expected{fixture_values_36};
+    auto const before{out};
     ioj::subtract_scaled(std::span<double const>{base.data(), Count},
                          std::span<double const>{value.data(), Count},
                          std::span<double const>{scale.data(), Count},
                          std::span<double>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void subtract_scaled_double_array_array_scalar_raw(std::size_t const Count) {
@@ -1229,12 +1301,14 @@ void subtract_scaled_double_array_array_scalar_raw(std::size_t const Count) {
     auto value{fixture_values_15};
     auto const scale{static_cast<double>(10000000000)};
     std::array<double, 31> out{};
+    out.fill(static_cast<double>(-12345));
     auto const& expected{fixture_values_37};
+    auto const before{out};
     ioj::subtract_scaled(std::span<double const>{base.data(), Count},
                          std::span<double const>{value.data(), Count},
                          scale,
                          std::span<double>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void subtract_scaled_float_array_array_array_in_place_raw(std::size_t const Count) {
@@ -1242,10 +1316,11 @@ void subtract_scaled_float_array_array_array_in_place_raw(std::size_t const Coun
     auto value{fixture_values_12};
     auto scale{fixture_values_24};
     auto const& expected{fixture_values_34};
+    auto const before{base};
     ioj::subtract_scaled_in_place(std::span<float>{base.data(), Count},
                                   std::span<float const>{value.data(), Count},
                                   std::span<float const>{scale.data(), Count});
-    expect_prefix(base.data(), expected.data(), Count);
+    expect_result(base.data(), expected.data(), before.data(), Count, base.size());
 }
 
 void subtract_scaled_float_array_array_scalar_in_place_raw(std::size_t const Count) {
@@ -1253,9 +1328,10 @@ void subtract_scaled_float_array_array_scalar_in_place_raw(std::size_t const Cou
     auto value{fixture_values_12};
     auto const scale{static_cast<float>(1e+10f)};
     auto const& expected{fixture_values_35};
+    auto const before{base};
     ioj::subtract_scaled_in_place(
         std::span<float>{base.data(), Count}, std::span<float const>{value.data(), Count}, scale);
-    expect_prefix(base.data(), expected.data(), Count);
+    expect_result(base.data(), expected.data(), before.data(), Count, base.size());
 }
 
 void subtract_scaled_double_array_array_array_in_place_raw(std::size_t const Count) {
@@ -1263,10 +1339,11 @@ void subtract_scaled_double_array_array_array_in_place_raw(std::size_t const Cou
     auto value{fixture_values_15};
     auto scale{fixture_values_27};
     auto const& expected{fixture_values_36};
+    auto const before{base};
     ioj::subtract_scaled_in_place(std::span<double>{base.data(), Count},
                                   std::span<double const>{value.data(), Count},
                                   std::span<double const>{scale.data(), Count});
-    expect_prefix(base.data(), expected.data(), Count);
+    expect_result(base.data(), expected.data(), before.data(), Count, base.size());
 }
 
 void subtract_scaled_double_array_array_scalar_in_place_raw(std::size_t const Count) {
@@ -1274,9 +1351,10 @@ void subtract_scaled_double_array_array_scalar_in_place_raw(std::size_t const Co
     auto value{fixture_values_15};
     auto const scale{static_cast<double>(10000000000)};
     auto const& expected{fixture_values_37};
+    auto const before{base};
     ioj::subtract_scaled_in_place(
         std::span<double>{base.data(), Count}, std::span<double const>{value.data(), Count}, scale);
-    expect_prefix(base.data(), expected.data(), Count);
+    expect_result(base.data(), expected.data(), before.data(), Count, base.size());
 }
 
 void size_squared_3d_float_array_array_array_raw(std::size_t const Count) {
@@ -1284,12 +1362,14 @@ void size_squared_3d_float_array_array_array_raw(std::size_t const Count) {
     auto y{fixture_values_12};
     auto z{fixture_values_24};
     std::array<float, 31> out{};
+    out.fill(static_cast<float>(-12345));
     auto const& expected{fixture_values_38};
+    auto const before{out};
     ioj::size_squared_3d(std::span<float const>{x.data(), Count},
                          std::span<float const>{y.data(), Count},
                          std::span<float const>{z.data(), Count},
                          std::span<float>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void size_squared_3d_double_array_array_array_raw(std::size_t const Count) {
@@ -1297,12 +1377,14 @@ void size_squared_3d_double_array_array_array_raw(std::size_t const Count) {
     auto y{fixture_values_15};
     auto z{fixture_values_27};
     std::array<double, 31> out{};
+    out.fill(static_cast<double>(-12345));
     auto const& expected{fixture_values_39};
+    auto const before{out};
     ioj::size_squared_3d(std::span<double const>{x.data(), Count},
                          std::span<double const>{y.data(), Count},
                          std::span<double const>{z.data(), Count},
                          std::span<double>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void distance_squared_3d_float_array_array_array_array_array_array_raw(std::size_t const Count) {
@@ -1313,7 +1395,9 @@ void distance_squared_3d_float_array_array_array_array_array_array_raw(std::size
     auto by{fixture_values_2};
     auto bz{fixture_values_12};
     std::array<float, 31> out{};
+    out.fill(static_cast<float>(-12345));
     auto const& expected{fixture_values_41};
+    auto const before{out};
     ioj::distance_squared_3d(std::span<float const>{ax.data(), Count},
                              std::span<float const>{ay.data(), Count},
                              std::span<float const>{az.data(), Count},
@@ -1321,7 +1405,7 @@ void distance_squared_3d_float_array_array_array_array_array_array_raw(std::size
                              std::span<float const>{by.data(), Count},
                              std::span<float const>{bz.data(), Count},
                              std::span<float>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void distance_squared_3d_double_array_array_array_array_array_array_raw(std::size_t const Count) {
@@ -1332,7 +1416,9 @@ void distance_squared_3d_double_array_array_array_array_array_array_raw(std::siz
     auto by{fixture_values_4};
     auto bz{fixture_values_15};
     std::array<double, 31> out{};
+    out.fill(static_cast<double>(-12345));
     auto const& expected{fixture_values_43};
+    auto const before{out};
     ioj::distance_squared_3d(std::span<double const>{ax.data(), Count},
                              std::span<double const>{ay.data(), Count},
                              std::span<double const>{az.data(), Count},
@@ -1340,7 +1426,7 @@ void distance_squared_3d_double_array_array_array_array_array_array_raw(std::siz
                              std::span<double const>{by.data(), Count},
                              std::span<double const>{bz.data(), Count},
                              std::span<double>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void dot_product_3d_float_array_array_array_array_array_array_raw(std::size_t const Count) {
@@ -1351,7 +1437,9 @@ void dot_product_3d_float_array_array_array_array_array_array_raw(std::size_t co
     auto by{fixture_values_2};
     auto bz{fixture_values_12};
     std::array<float, 31> out{};
+    out.fill(static_cast<float>(-12345));
     auto const& expected{fixture_values_44};
+    auto const before{out};
     ioj::dot_product_3d(std::span<float const>{ax.data(), Count},
                         std::span<float const>{ay.data(), Count},
                         std::span<float const>{az.data(), Count},
@@ -1359,7 +1447,7 @@ void dot_product_3d_float_array_array_array_array_array_array_raw(std::size_t co
                         std::span<float const>{by.data(), Count},
                         std::span<float const>{bz.data(), Count},
                         std::span<float>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 void dot_product_3d_double_array_array_array_array_array_array_raw(std::size_t const Count) {
@@ -1370,7 +1458,9 @@ void dot_product_3d_double_array_array_array_array_array_array_raw(std::size_t c
     auto by{fixture_values_4};
     auto bz{fixture_values_15};
     std::array<double, 31> out{};
+    out.fill(static_cast<double>(-12345));
     auto const& expected{fixture_values_45};
+    auto const before{out};
     ioj::dot_product_3d(std::span<double const>{ax.data(), Count},
                         std::span<double const>{ay.data(), Count},
                         std::span<double const>{az.data(), Count},
@@ -1378,7 +1468,7 @@ void dot_product_3d_double_array_array_array_array_array_array_raw(std::size_t c
                         std::span<double const>{by.data(), Count},
                         std::span<double const>{bz.data(), Count},
                         std::span<double>{out.data(), Count});
-    expect_prefix(out.data(), expected.data(), Count);
+    expect_result(out.data(), expected.data(), before.data(), Count, out.size());
 }
 
 using KernelCheck = void (*)(std::size_t);

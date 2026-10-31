@@ -3,7 +3,7 @@
 
 #include <gtest/gtest.h>
 
-#include <atomic>
+#include <array>
 #include <cstdint>
 #include <span>
 #include <thread>
@@ -88,7 +88,14 @@ TEST(NativeCoreLockFreeMpscQueue, AcceptsMultipleConcurrentProducers) {
     }
 
     auto values{queue.swap_and_consume()};
-    EXPECT_EQ(values.size(), static_cast<std::size_t>(producer_count * values_per_producer));
+    ASSERT_EQ(values.size(), static_cast<std::size_t>(producer_count * values_per_producer));
+    std::array<bool, producer_count * values_per_producer> seen{};
+    for (auto const value : values) {
+        ASSERT_GE(value, 0);
+        ASSERT_LT(value, seen.size());
+        EXPECT_FALSE(seen[value]) << "Duplicate payload " << value;
+        seen[value] = true;
+    }
 }
 
 TEST(NativeCoreLockFreeMpscQueueSoa, StoresColumnsAndPreservesRowOrder) {

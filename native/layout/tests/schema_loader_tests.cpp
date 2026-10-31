@@ -179,12 +179,14 @@ TEST_F(DocumentFiles, SavesInMemorySourcesAndRegistryAsIndependentProject) {
 }
 
 TEST_F(DocumentFiles, InvalidLoadReportsAnOperationDiagnostic) {
+    auto const before_target{editor.diagnostics().size()};
     auto missing_target{editor.load(files.path("project.lispb"), "missing")};
     EXPECT_FALSE(missing_target.valid());
-    EXPECT_GT(editor.diagnostics().size(), 0);
+    EXPECT_GT(editor.diagnostics().size(), before_target);
+    auto const before_file{editor.diagnostics().size()};
     auto missing_file{editor.load(files.path("missing.lispb"), "game")};
     EXPECT_FALSE(missing_file.valid());
-    EXPECT_GT(editor.diagnostics().size(), 0);
+    EXPECT_GT(editor.diagnostics().size(), before_file);
 }
 
 TEST_F(DocumentFiles, FailedStagingPreservesPublishedFilesAndDraftHistory) {
