@@ -1,4 +1,3 @@
-#include <ioj/sim/testing/sim_clock_test_access.h>
 #pragma once
 #include <ioj/column_math.h>
 #include <ioj/sim/collision/entity_cell_data.h>
@@ -35,14 +34,14 @@ struct CollisionGridTestAccess {
 
 namespace ioj::sim::tests {
 struct CollisionAgentStorage {
-    CollisionAgentStorage() { SimClockTestAccess::set_phase(clock, SimulationPhase::Preparation); }
+    CollisionAgentStorage() { clock.advance_to(SimulationPhase::Preparation); }
 
     auto spawn(EntityType type,
                Vector3f location = {},
                Rotator3f rotation = {},
                Health::value_type health_value = 100,
                Team team = Team::Blue) -> EntityId {
-        SimClockTestAccess::set_phase(clock, SimulationPhase::Preparation);
+        clock.advance_to(SimulationPhase::Preparation);
         Health const health{health_value};
         EntityId id;
         ledger.record_spawns(type, team, health, {&id, 1});
@@ -141,7 +140,7 @@ struct CollisionAgentStorage {
     }
 
     void remove(EntityId id) {
-        SimClockTestAccess::set_phase(clock, SimulationPhase::Preparation);
+        clock.advance_to(SimulationPhase::Preparation);
         auto const row{find_row(id)};
         assert(row != EntityInstanceHandle::invalid_value);
         entity_tables.lookups.for_type(id.entity_type()).retire({&id, 1});
@@ -172,7 +171,7 @@ struct CollisionAgentStorage {
     }
 
     void publish() {
-        SimClockTestAccess::set_phase(clock, SimulationPhase::Preparation);
+        clock.advance_to(SimulationPhase::Preparation);
         auto const capital_rows{capitals.get_const_view()};
         auto const fighter_rows{fighters.get_const_view()};
         auto const turret_rows{turrets.get_const_view()};
@@ -188,7 +187,7 @@ struct CollisionAgentStorage {
             player_ids,
             player_ids.empty() ? std::span<Team const>{} : std::span<Team const>{&player_team, 1},
             Health{100});
-        SimClockTestAccess::set_phase(clock, SimulationPhase::Thinking);
+        clock.advance_to(SimulationPhase::Thinking);
     }
 
     auto find_row(EntityId id) const -> std::uint32_t {

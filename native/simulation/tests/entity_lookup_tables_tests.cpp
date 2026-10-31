@@ -84,7 +84,7 @@ TEST(EntityLookupTables, ResolvesArbitraryIdsInCallerOrder) {
         .publish_rows(fighters, std::array{Team::Blue, Team::Blue});
     lookups.for_type(EntityType::CapitalShip).publish_rows(capitals, std::array{Team::Red});
     lookups.for_type(EntityType::Fighter).retire(std::span{fighters}.last(1));
-    SimClockTestAccess::set_phase(clock, SimulationPhase::Thinking);
+    clock.advance_to(SimulationPhase::Thinking);
     std::array const ids{fighters[0], EntityId{}, capitals[0], fighters[0], fighters[1]};
     std::array<std::uint32_t, ids.size()> order;
     std::array<EntityInstanceHandle, ids.size()> handles;
@@ -101,7 +101,7 @@ TEST(EntityLookupTables, ResolvesTypeRunsAndPreservesDuplicateAndMissingSlots) {
     std::array const capitals{EntityId{0, EntityType::CapitalShip}};
     lookups.for_type(EntityType::Fighter).publish_rows(fighters, std::array{Team::Blue, Team::Red});
     lookups.for_type(EntityType::CapitalShip).publish_rows(capitals, std::array{Team::Green});
-    SimClockTestAccess::set_phase(clock, SimulationPhase::Thinking);
+    clock.advance_to(SimulationPhase::Thinking);
 
     std::array const ids{capitals[0],
                          fighters[1],
@@ -200,7 +200,7 @@ TEST(EntityLookupTables, ResolutionHealthChangesBeforeHandlesRetire) {
     CollisionAgentStorage owners;
     auto const id{owners.spawn(EntityType::Fighter, {{10, 0, 0}})};
     owners.publish();
-    SimClockTestAccess::set_phase(owners.clock, SimulationPhase::Resolution);
+    owners.clock.advance_to(SimulationPhase::Resolution);
     owners.set(id, {{20, 0, 0}}, {}, 0);
     std::array const ids{id};
     EXPECT_EQ(owners.health_table.get_const_view<EntityType::Fighter>(1).health(0).value(), 0);

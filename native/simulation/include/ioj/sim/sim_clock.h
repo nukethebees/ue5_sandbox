@@ -44,25 +44,7 @@ struct SimClock {
     [[nodiscard]] static constexpr auto permits_transition(SimulationPhase const from,
                                                            SimulationPhase const to) noexcept
         -> bool {
-        switch (from) {
-            case SimulationPhase::Initialisation:
-                return to == SimulationPhase::StableSetup;
-            case SimulationPhase::StableSetup:
-                return to == SimulationPhase::BetweenTicks;
-            case SimulationPhase::BetweenTicks:
-                return to == SimulationPhase::Preparation;
-            case SimulationPhase::Preparation:
-                return to == SimulationPhase::Thinking;
-            case SimulationPhase::Thinking:
-                return to == SimulationPhase::Action;
-            case SimulationPhase::Action:
-                return to == SimulationPhase::Resolution;
-            case SimulationPhase::Resolution:
-                return to == SimulationPhase::ResolutionCommit;
-            case SimulationPhase::ResolutionCommit:
-                return to == SimulationPhase::BetweenTicks;
-        }
-        return false;
+        return next_phase(from) == to;
     }
 
     void transition_to(SimulationPhase const next) noexcept {
@@ -70,8 +52,41 @@ struct SimClock {
         phase_ = next;
     }
 
+    // Advances phase state only; revisiting the current phase traverses a full cycle.
+    // Initialisation cannot be revisited, and StableSetup is only reachable from Initialisation.
+    void advance_to(SimulationPhase const next) noexcept {
+        assert(next != SimulationPhase::Initialisation);
+        assert(next != SimulationPhase::StableSetup || phase_ == SimulationPhase::Initialisation);
+
+        do {
+            phase_ = next_phase(phase_);
+        } while (phase_ != next);
+    }
+
   private:
-    friend struct SimClockTestAccess;
+    [[nodiscard]] static constexpr auto next_phase(SimulationPhase const phase) noexcept
+        -> SimulationPhase {
+        switch (phase) {
+            case SimulationPhase::Initialisation:
+                return SimulationPhase::StableSetup;
+            case SimulationPhase::StableSetup:
+                return SimulationPhase::BetweenTicks;
+            case SimulationPhase::BetweenTicks:
+                return SimulationPhase::Preparation;
+            case SimulationPhase::Preparation:
+                return SimulationPhase::Thinking;
+            case SimulationPhase::Thinking:
+                return SimulationPhase::Action;
+            case SimulationPhase::Action:
+                return SimulationPhase::Resolution;
+            case SimulationPhase::Resolution:
+                return SimulationPhase::ResolutionCommit;
+            case SimulationPhase::ResolutionCommit:
+                return SimulationPhase::BetweenTicks;
+        }
+        std::unreachable();
+    }
+
     SimulationPhase phase_{SimulationPhase::Initialisation};
 };
 } // namespace ioj::sim
