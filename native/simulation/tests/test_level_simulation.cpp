@@ -88,8 +88,7 @@ auto make_scheduled_battle() -> LevelSimInitData {
             (entity :id 'enemy :archetype 'capital-ship :team 'red :position '(1000 0 0)
               :spawn-at 0.21))))")};
     assert(definition);
-    LevelState level_state{LevelState::Uninitialised};
-    SimClock clock{level_state};
+    SimClock clock;
     clock.initialise(data.clock_settings);
     auto compiled{levels::compile_level(*definition, clock, data.capital_ships, data.turrets)};
     assert(compiled);
@@ -382,8 +381,7 @@ TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimu
     auto data{make_battle()};
     data.clock_settings.tick_rate = Frequency::make(10.0);
     data.capital_ships.max_health = ::ioj::settings::PositiveHealth::make(Health{100});
-    LevelState level_state{LevelState::Uninitialised};
-    SimClock clock{level_state};
+    SimClock clock;
     clock.initialise(data.clock_settings);
     auto compiled{levels::compile_level(*authored, clock, data.capital_ships, data.turrets)};
     ASSERT_TRUE(compiled);
@@ -432,8 +430,7 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
             {Team::Green,
              {ObjectiveName{"player"}, ObjectiveOutcome::Passed},
              TeamOutcome::Defeat}}};
-    LevelState level_state{LevelState::Uninitialised};
-    SimClock clock{level_state};
+    SimClock clock;
     clock.initialise(data.clock_settings);
     auto compiled{CompiledMission::compile(definition, {}, clock)};
     ASSERT_TRUE(compiled);

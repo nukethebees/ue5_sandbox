@@ -76,8 +76,7 @@ TEST(EntityLookupTables, PublishedCountIncludesDeadRowsUntilRepublished) {
 }
 
 TEST(EntityLookupTables, ResolvesArbitraryIdsInCallerOrder) {
-    LevelState level_state{LevelState::Running};
-    SimClock clock{level_state};
+    SimClock clock;
     EntityLookupTables lookups{clock};
     std::array const fighters{EntityId{2, EntityType::Fighter}, EntityId{3, EntityType::Fighter}};
     std::array const capitals{EntityId{0, EntityType::CapitalShip}};
@@ -96,8 +95,7 @@ TEST(EntityLookupTables, ResolvesArbitraryIdsInCallerOrder) {
 }
 
 TEST(EntityLookupTables, ResolvesTypeRunsAndPreservesDuplicateAndMissingSlots) {
-    LevelState level_state{LevelState::Running};
-    SimClock clock{level_state};
+    SimClock clock;
     EntityLookupTables lookups{clock};
     std::array const fighters{EntityId{2, EntityType::Fighter}, EntityId{5, EntityType::Fighter}};
     std::array const capitals{EntityId{0, EntityType::CapitalShip}};

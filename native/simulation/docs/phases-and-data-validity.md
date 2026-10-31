@@ -9,8 +9,9 @@ Each tick advances in one direction:
 
 Initialisation spawns and configures entities. Each type publishes its initial lookup state before
 entering `LevelState::StableSetup`. Mission initialisation and setup queries run there, without
-structural mutation, before entering `LevelState::Paused`. The clock remains in `BetweenTicks`
-throughout setup and borrows the level state for access checks.
+structural mutation, before entering `LevelState::Paused`. Setup uses Preparation for population
+and Thinking for initial queries, then resets the clock to `BetweenTicks`, tick zero, and an empty
+time accumulator. Configured tick rate and time scale are preserved.
 
 | Phase | Storage layout and lookup rows | Component values |
 |---|---|---|
@@ -23,7 +24,9 @@ throughout setup and borrows the level state for access checks.
 
 General entity lookups are permitted in `LevelState::StableSetup`, or while Running in Thinking,
 Action, and Resolution. Initialisation permits structural mutation but forbids general lookups;
-Paused and Stopped permit neither. The level owns the lifecycle state, which must outlive its clock.
+Paused and Stopped permit neither. The clock owns no lifecycle state: its predicates check the
+current operation's phase. Callers must establish the lifecycle contract at level boundaries;
+`is_lookup_allowed(phase, state)` is available when both values are needed explicitly.
 Preparation may still hold stale rows while owners spawn or reorder. Each owner updates its own
 table when ready; dependent cross-type reads begin in Thinking, after all updates finish.
 Each update rebuilds complete handles for all active rows. Health changes are not queued.

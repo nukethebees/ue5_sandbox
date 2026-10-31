@@ -36,8 +36,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     static_assert(FieldMask::field_count == 41);
     static_assert(sizeof(FieldMask) == sizeof(std::uint64_t));
 
-    LevelState level_state{LevelState::Uninitialised};
-    SimClock clock{level_state};
+    SimClock clock;
     clock.initialise({});
     EntityLedger entity_ledger;
     CombatEvents combat_events{entity_ledger};

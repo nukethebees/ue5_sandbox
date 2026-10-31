@@ -26,8 +26,7 @@ inline void install_mission(LevelSimInitData& data, levels::ObjectiveDefinition 
     for (std::uint32_t index{}; index < count; ++index) {
         names.push_back(mission_entity(index));
     }
-    LevelState level_state{LevelState::Uninitialised};
-    SimClock clock{level_state};
+    SimClock clock;
     clock.initialise(data.clock_settings);
     auto compiled{CompiledMission::compile(definition, names, clock)};
     ASSERT_TRUE(compiled.has_value());

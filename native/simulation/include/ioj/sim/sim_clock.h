@@ -2,7 +2,6 @@
 
 #include <ioj/settings/tick_settings.h>
 #include <ioj/sim/fixed_tick_loop.h>
-#include <ioj/sim/levels/level_state.h>
 #include <ioj/sim/sim_time.h>
 #include <ioj/sim/simulation_phase.h>
 
@@ -15,13 +14,17 @@ struct SimClock {
     using tick_type = SimTick;
     using time_type = SimTime;
 
-    // The lifecycle state must outlive the clock.
-    explicit SimClock(LevelState const& level_state) noexcept
-        : level_state_{level_state} {}
-
     void initialise(settings::TickSettings const& settings) {
         tick_loop = {.tick_rate = settings.tick_rate, .time_scale = settings.time_scale};
         completed_ticks = SimTick{};
+        phase_ = SimulationPhase::Preparation;
+    }
+
+    // Finish setup by resetting tick progress while retaining the configured timing.
+    void reset() noexcept {
+        tick_loop.initialise();
+        completed_ticks = SimTick{};
+        phase_ = SimulationPhase::BetweenTicks;
     }
 
     template <std::integral Counter = tick_type::value_type>
@@ -41,7 +44,6 @@ struct SimClock {
     auto get_time_scale() const noexcept -> PositiveFinite<time_type> {
         return tick_loop.time_scale;
     }
-    auto get_level_state() const noexcept -> LevelState { return level_state_; }
 
     [[nodiscard]] auto phase() const noexcept -> SimulationPhase { return phase_; }
 
@@ -79,7 +81,6 @@ struct SimClock {
     tick_type completed_ticks{};
 
   private:
-    LevelState const& level_state_;
-    SimulationPhase phase_{SimulationPhase::BetweenTicks};
+    SimulationPhase phase_{SimulationPhase::Preparation};
 };
 } // namespace ioj::sim

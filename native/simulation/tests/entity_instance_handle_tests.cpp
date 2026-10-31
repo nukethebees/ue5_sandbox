@@ -43,15 +43,22 @@ TEST(SimulationPhases, RejectsBackwardsTransitionsAndSkippedStages) {
 
 TEST(SimulationPhases, AllowsStableSetupAndSuccessiveTicks) {
     LevelState level_state{LevelState::Uninitialised};
-    SimClock clock{level_state};
-    EXPECT_FALSE(is_lookup_allowed(clock));
+    SimClock clock;
+    EXPECT_FALSE(is_lookup_allowed(clock.phase(), level_state));
     EXPECT_TRUE(is_preparation_mutation_allowed(clock));
-    EXPECT_EQ(clock.phase(), SimulationPhase::BetweenTicks);
+    EXPECT_EQ(clock.phase(), SimulationPhase::Preparation);
     level_state = LevelState::StableSetup;
+    EXPECT_TRUE(is_lookup_allowed(clock.phase(), level_state));
+    clock.advance_to(SimulationPhase::Thinking);
     EXPECT_TRUE(is_lookup_allowed(clock));
-    EXPECT_FALSE(is_structural_mutation_allowed(clock));
+    clock.tick_loop.accumulator = 1.0;
+    clock.completed_ticks = SimTick{17};
+    clock.reset();
+    EXPECT_EQ(clock.phase(), SimulationPhase::BetweenTicks);
+    EXPECT_EQ(clock.get_completed_ticks(), SimTick{});
+    EXPECT_EQ(clock.tick_loop.accumulator, 0.0);
     level_state = LevelState::Paused;
-    EXPECT_FALSE(is_lookup_allowed(clock));
+    EXPECT_FALSE(is_lookup_allowed(clock.phase(), level_state));
     EXPECT_FALSE(is_structural_mutation_allowed(clock));
     level_state = LevelState::Running;
     for (int tick{}; tick < 2; ++tick) {
@@ -80,11 +87,9 @@ TEST(SimulationPhases, AllowsStableSetupAndSuccessiveTicks) {
     EXPECT_EQ(clock.phase(), SimulationPhase::Thinking);
     EXPECT_EQ(clock.get_completed_ticks(), SimTick{});
     level_state = LevelState::Paused;
-    EXPECT_FALSE(is_lookup_allowed(clock));
-    EXPECT_FALSE(is_structural_mutation_allowed(clock));
+    EXPECT_FALSE(is_lookup_allowed(clock.phase(), level_state));
     level_state = LevelState::Stopped;
-    EXPECT_FALSE(is_lookup_allowed(clock));
-    EXPECT_FALSE(is_structural_mutation_allowed(clock));
+    EXPECT_FALSE(is_lookup_allowed(clock.phase(), level_state));
 }
 
 }

@@ -27,8 +27,9 @@ overlap results remain subject to the phase and scratch-lifetime contracts.
 Construction executes tick-zero events but leaves the level in `LevelState::Uninitialised`. The
 host may install static geometry before calling `finish_initialisation()`, which publishes entity lookups
 and the spatial index, begins telemetry and the mission in `LevelState::StableSetup`, then enters
-`LevelState::Paused`. The clock borrows that lifecycle state and remains in `BetweenTicks` during
-setup; its phase enum contains only the repeating tick cycle. Mission evaluation during a tick
+`LevelState::Paused`. Setup uses Preparation for population and Thinking for stable queries, then
+resets the independent clock to tick zero and `BetweenTicks` before returning. Its phase enum
+contains only the repeating tick cycle. Mission evaluation during a tick
 follows published deaths and precedes `ResolutionCommit`, while entity row mappings are still valid.
 
 Completion consumption and run stopping are explicit host operations after frame publication.

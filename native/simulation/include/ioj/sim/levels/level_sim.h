@@ -134,7 +134,7 @@ struct LevelSim {
     void resolve_tick(bool player_active);
 
     LevelState state_{LevelState::Uninitialised};
-    SimClock clock_{state_};
+    SimClock clock_;
 
     LevelMemoryManager memory_manager_;
     EntityLedger entity_ledger_;

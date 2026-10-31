@@ -43,8 +43,7 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
     FBenchmarkControlInputs benchmark_input_;
     FGlobalControlInputs global_input_;
     FPlayerControlContexts contexts_;
-    ::ioj::sim::LevelState level_state_{::ioj::sim::LevelState::Uninitialised};
-    ::ioj::sim::SimClock clock_{level_state_};
+    ::ioj::sim::SimClock clock_;
     ::ioj::sim::EntityLedger ledger_;
     ::ioj::sim::EntityTables tables_{clock_};
     ::ioj::sim::player::Sim ship_simulation_{clock_, ledger_, tables_};

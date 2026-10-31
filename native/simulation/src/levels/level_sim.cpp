@@ -58,6 +58,7 @@ void LevelSim::finish_initialisation() {
     refresh_spatial_index();
 
     state_ = LevelState::StableSetup;
+    clock_.advance_to(SimulationPhase::Thinking);
 
     level_telemetry_manager_.initialise();
     {
@@ -70,6 +71,7 @@ void LevelSim::finish_initialisation() {
                         &frame_memory});
     }
 
+    clock_.reset();
     state_ = LevelState::Paused;
 }
 void LevelSim::start() {

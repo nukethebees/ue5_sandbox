@@ -64,8 +64,7 @@ TEST(SimulationClock, ConvertsDurationsAndFrequencies) {
 }
 
 TEST(SimulationClock, InitialisesRuntimeStateFromStaticSettings) {
-    LevelState level_state{LevelState::Uninitialised};
-    SimClock clock{level_state};
+    SimClock clock;
     clock.tick_loop.accumulator = 1.0;
     clock.completed_ticks = SimTick{17};
     clock.initialise(
@@ -75,6 +74,16 @@ TEST(SimulationClock, InitialisesRuntimeStateFromStaticSettings) {
     EXPECT_DOUBLE_EQ(clock.get_time_scale().get(), 2.0);
     EXPECT_DOUBLE_EQ(clock.tick_loop.accumulator, 0.0);
     EXPECT_EQ(clock.get_completed_ticks().value(), 0);
+
+    clock.tick_loop.accumulator = 0.25;
+    clock.completed_ticks = SimTick{3};
+    clock.advance_to(SimulationPhase::Resolution);
+    clock.reset();
+    EXPECT_EQ(clock.phase(), SimulationPhase::BetweenTicks);
+    EXPECT_EQ(clock.get_completed_ticks(), SimTick{});
+    EXPECT_DOUBLE_EQ(clock.tick_loop.accumulator, 0.0);
+    EXPECT_DOUBLE_EQ(clock.get_tick_period(), 0.1);
+    EXPECT_DOUBLE_EQ(clock.get_time_scale().get(), 2.0);
 }
 
 TEST(SimulationSettings, AcceptsFrequenciesAboveTickRate) {

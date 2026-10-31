@@ -114,8 +114,7 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
                        .position = {1000.0, 0.0, 0.0},
                        .spawn_time_seconds = 0.21}}})};
     check(definition);
-    ::ioj::sim::LevelState level_state{::ioj::sim::LevelState::Uninitialised};
-    ::ioj::sim::SimClock clock{level_state};
+    ::ioj::sim::SimClock clock;
     clock.initialise(data.clock_settings);
     auto compiled{ioj::levels::compile_level(*definition, clock, data.capital_ships, data.turrets)};
     check(compiled);
@@ -138,8 +137,7 @@ void add_mission(::ioj::sim::LevelSimInitData& data) {
              .when = {ioj::levels::ObjectiveName{"primary"}, ioj::ObjectiveOutcome::Passed},
              .result = ioj::TeamOutcome::Victory}}};
     std::array const ids{ioj::levels::EntityId{"hero"}, ioj::levels::EntityId{"enemy"}};
-    ioj::sim::LevelState level_state{ioj::sim::LevelState::Uninitialised};
-    ioj::sim::SimClock clock{level_state};
+    ioj::sim::SimClock clock;
     clock.initialise(data.clock_settings);
     auto compiled{ioj::sim::CompiledMission::compile(definition, ids, clock)};
     check(compiled);
