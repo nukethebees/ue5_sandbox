@@ -2,6 +2,7 @@
 
 #include <ioj/range_fits.h>
 #include <ioj/soa_permutation.h>
+#include <ioj/subspan.h>
 
 #include <algorithm>
 #include <cassert>
@@ -32,18 +33,14 @@ ExecutorTable::ExecutorTable()
 auto ExecutorTable::get_const_view(EntityType const type, std::size_t const count) const
     -> ExecutorConstView {
     assert(executor_storage::fits_capacity(type, count));
-    auto const base{executor_storage::offsets[type]};
-    return {std::span{current_tasks}.subspan(base, count),
-            std::span{pending_tasks}.subspan(base, count),
-            std::span{current_instructions}.subspan(base, count)};
+    auto const subspan{Subspan{executor_storage::offsets[type], count}};
+    return subspan.make_view<ExecutorConstView>(current_tasks, pending_tasks, current_instructions);
 }
 
 auto ExecutorTable::get_view(EntityType const type, std::size_t const count) -> ExecutorView {
     assert(executor_storage::fits_capacity(type, count));
-    auto const base{executor_storage::offsets[type]};
-    return {std::span{current_tasks}.subspan(base, count),
-            std::span{pending_tasks}.subspan(base, count),
-            std::span{current_instructions}.subspan(base, count)};
+    auto const subspan{Subspan{executor_storage::offsets[type], count}};
+    return subspan.make_view<ExecutorView>(current_tasks, pending_tasks, current_instructions);
 }
 
 void ExecutorTable::initialise_rows(EntityType const type,
@@ -55,9 +52,10 @@ void ExecutorTable::initialise_rows(EntityType const type,
                       EntityInstanceHandle::index_layout.range.max));
     auto const end{static_cast<std::size_t>(first) + count};
     auto const view{get_view(type, end)};
-    std::ranges::fill(view.current_tasks.subspan(first, count), TaskId{});
-    std::ranges::fill(view.pending_tasks.subspan(first, count), TaskId{});
-    std::ranges::fill(view.current_instructions.subspan(first, count), InstructionHandle{});
+    auto const subspan{Subspan{first, count}};
+    std::ranges::fill(subspan(view.current_tasks), TaskId{});
+    std::ranges::fill(subspan(view.pending_tasks), TaskId{});
+    std::ranges::fill(subspan(view.current_instructions), InstructionHandle{});
 }
 
 void ExecutorTable::remove_rows(EntityType const type,

@@ -5,6 +5,7 @@
 #include <ioj/sim/entities/entity_instance_handle.h>
 #include <ioj/sim/entities/health.h>
 #include <ioj/soa_permutation.h>
+#include <ioj/subspan.h>
 
 #include <algorithm>
 #include <cassert>
@@ -90,24 +91,24 @@ class HealthTable {
     [[nodiscard]] auto get_const_view(EntityType const type, std::size_t const count) const
         -> HealthConstView {
         assert(has_health(type) && fits_capacity(type, count));
-        return HealthConstView{
-            std::span{values_}.subspan(health_storage::layout.offsets[type], count)};
+        auto const subspan{Subspan{health_storage::layout.offsets[type], count}};
+        return HealthConstView{subspan(values_)};
     }
 
     template <EntityType Type>
     [[nodiscard]] auto get_const_view(std::size_t const count) const -> HealthConstView {
         static_assert(has_health(Type));
         assert(fits_capacity(Type, count));
-        constexpr auto base{health_storage::layout.offsets[Type]};
-        return HealthConstView{std::span{values_}.subspan(base, count)};
+        auto const subspan{Subspan{health_storage::layout.offsets[Type], count}};
+        return HealthConstView{subspan(values_)};
     }
 
     template <EntityType Type>
     [[nodiscard]] auto get_view(std::size_t const count) -> HealthView {
         static_assert(has_health(Type));
         assert(fits_capacity(Type, count));
-        constexpr auto base{health_storage::layout.offsets[Type]};
-        return HealthView{std::span{values_}.subspan(base, count)};
+        auto const subspan{Subspan{health_storage::layout.offsets[Type], count}};
+        return HealthView{subspan(values_)};
     }
 
     template <EntityType Type>
@@ -117,8 +118,8 @@ class HealthTable {
             static_cast<EntityFrameIndex::value_type>(initial_values.size())};
         assert(fits_index_range(first, count));
         assert(fits_capacity(Type, first + count));
-        constexpr auto base{health_storage::layout.offsets[Type]};
-        std::ranges::copy(initial_values, values_.begin() + base + first);
+        auto const subspan{Subspan{health_storage::layout.offsets[Type] + first, count}};
+        std::ranges::copy(initial_values, subspan(values_).begin());
     }
 
     template <EntityType Type>
@@ -127,27 +128,27 @@ class HealthTable {
                          Health const initial_value) {
         assert(fits_index_range(first, count));
         assert(fits_capacity(Type, first + count));
-        constexpr auto base{health_storage::layout.offsets[Type]};
-        std::fill_n(values_.begin() + base + first, count, initial_value);
+        auto const subspan{Subspan{health_storage::layout.offsets[Type] + first, count}};
+        std::ranges::fill(subspan(values_), initial_value);
     }
 
     template <EntityType Type>
     void remove_rows(std::size_t count, std::span<EntityFrameIndex::value_type const> const rows) {
         assert(fits_capacity(Type, count));
-        constexpr auto base{health_storage::layout.offsets[Type]};
+        auto const values{Subspan{health_storage::layout.offsets[Type], count}(values_)};
         [[maybe_unused]] auto previous{count};
         for (auto const row : rows) {
             assert(row < previous && row < count);
             previous = row;
-            values_[base + row] = values_[base + --count];
+            values[row] = values[--count];
         }
     }
 
     template <EntityType Type>
     void apply_permutation(std::span<std::int32_t> const order) {
         assert(fits_capacity(Type, order.size()));
-        constexpr auto base{health_storage::layout.offsets[Type]};
-        ioj::apply_permutation(std::span{values_}.subspan(base, order.size()), order);
+        auto const subspan{Subspan{health_storage::layout.offsets[Type], order.size()}};
+        ioj::apply_permutation(subspan(values_), order);
     }
   private:
     [[nodiscard]] static constexpr auto fits_capacity(EntityType const type,
