@@ -77,10 +77,10 @@ struct SPACEGAME_API FObserverControlContext {
     void publish_speed() const;
     auto get_camera() const -> ACameraActor*;
 
-    inline static constexpr float movement_speeds_[]{5000.f, 15000.f, 50000.f, 150000.f, 500000.f};
-    inline static constexpr int32 initial_speed_index_{2};
-    inline static constexpr float boost_multiplier_{4.f};
-    inline static constexpr float look_sensitivity_{0.1f};
+    static constexpr float movement_speeds_[]{5000.f, 15000.f, 50000.f, 150000.f, 500000.f};
+    static constexpr int32 initial_speed_index_{2};
+    static constexpr float boost_multiplier_{4.f};
+    static constexpr float look_sensitivity_{0.1f};
 
     TWeakObjectPtr<ASpaceGamePlayerController> owner_;
     TWeakObjectPtr<UEnhancedInputComponent> input_component_;

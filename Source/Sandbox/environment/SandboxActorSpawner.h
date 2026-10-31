@@ -45,5 +45,5 @@ class SANDBOX_API ASandboxActorSpawner : public AActor {
     UPROPERTY(VisibleAnywhere, Category = "Spawner")
     TArray<AActor*> spawned_actors{};
   private:
-    inline static constexpr int32 unlimited_spawn_limit{std::numeric_limits<int32>::max()};
+    static constexpr int32 unlimited_spawn_limit{std::numeric_limits<int32>::max()};
 };

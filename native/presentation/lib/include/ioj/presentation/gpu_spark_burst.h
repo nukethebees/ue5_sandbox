@@ -7,7 +7,7 @@
 
 namespace ioj::presentation {
 struct alignas(16) GpuSparkBurst {
-    inline static constexpr std::uint32_t direct_particle_indices{
+    static constexpr std::uint32_t direct_particle_indices{
         std::numeric_limits<std::uint32_t>::max()};
 
     Vector<float, 4> location_spawn_time{};

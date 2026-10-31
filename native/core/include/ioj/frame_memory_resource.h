@@ -35,7 +35,7 @@ struct FrameMemoryStats {
 
 class FrameMemoryResource final : public std::pmr::memory_resource {
   public:
-    inline static constexpr std::size_t backing_alignment{64};
+    static constexpr std::size_t backing_alignment{64};
 
     explicit FrameMemoryResource(std::span<std::byte> backing);
     ~FrameMemoryResource() override;

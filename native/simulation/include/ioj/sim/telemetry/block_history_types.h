@@ -5,7 +5,7 @@
 
 namespace ioj::sim {
 struct LevelTelemetryHistoryConfig {
-    inline static constexpr std::size_t default_block_bytes{10u * 1024u * 1024u};
+    static constexpr std::size_t default_block_bytes{10u * 1024u * 1024u};
 
     std::size_t block_bytes{default_block_bytes};
 };

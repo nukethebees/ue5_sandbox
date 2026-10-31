@@ -20,7 +20,7 @@ class CppIR;
 // Consume completed C++ IR, build its lookup environments, then emit source text.
 class CppRenderer {
   public:
-    inline static constexpr std::string_view default_indent{"    "};
+    static constexpr std::string_view default_indent{"    "};
 
     explicit CppRenderer(CppIR const& ir, std::string_view indent_text = default_indent);
     // Reset lookup state for each entry point; the same renderer can emit multiple files.

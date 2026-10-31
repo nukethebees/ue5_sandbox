@@ -92,8 +92,8 @@ struct PackedStorage {
     static_assert(EncodedBits > 0 && EncodedBits <= std::numeric_limits<Storage>::digits,
                   "Packed encoding must fit in storage");
 
-    inline static constexpr int encoded_bits{EncodedBits};
-    inline static constexpr int storage_bits{std::numeric_limits<Storage>::digits};
+    static constexpr int encoded_bits{EncodedBits};
+    static constexpr int storage_bits{std::numeric_limits<Storage>::digits};
 
     Storage default_raw_value{};
 };
@@ -111,17 +111,17 @@ struct PackedField {
         "Packed field requires an integer, one-bit bool, or unsigned enum value type wide enough "
         "for its bits");
 
-    inline static constexpr int offset{Offset};
-    inline static constexpr int bits{Bits};
-    inline static constexpr int magnitude_bits{Bits - (std::is_signed_v<Value> ? 1 : 0)};
-    inline static constexpr storage_type value_mask{[] {
+    static constexpr int offset{Offset};
+    static constexpr int bits{Bits};
+    static constexpr int magnitude_bits{Bits - (std::is_signed_v<Value> ? 1 : 0)};
+    static constexpr storage_type value_mask{[] {
         if constexpr (Bits > 0 && Bits < std::numeric_limits<Storage>::digits) {
             return static_cast<Storage>((Storage{1} << Bits) - Storage{1});
         } else {
             return (std::numeric_limits<Storage>::max)();
         }
     }()};
-    inline static constexpr storage_type mask{[] {
+    static constexpr storage_type mask{[] {
         if constexpr (Offset >= 0 && Offset < std::numeric_limits<Storage>::digits) {
             return static_cast<Storage>(value_mask << Offset);
         } else {

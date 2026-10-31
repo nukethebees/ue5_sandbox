@@ -75,8 +75,8 @@ class Archive {
         return -1;
     }
 
-    inline static constexpr std::string_view prefix{"flight-model:2:"};
-    inline static constexpr char digits[]{"0123456789abcdef"};
+    static constexpr std::string_view prefix{"flight-model:2:"};
+    static constexpr char digits[]{"0123456789abcdef"};
     std::string_view input_{};
     std::string output_{prefix};
     std::size_t cursor_{prefix.size()};

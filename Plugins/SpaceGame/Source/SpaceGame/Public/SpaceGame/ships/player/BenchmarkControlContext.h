@@ -40,7 +40,7 @@ struct SPACEGAME_API FBenchmarkControlContext {
     void shutdown();
     auto is_bound() const -> bool { return bound_; }
   private:
-    inline static constexpr int32 mapping_priority_{100};
+    static constexpr int32 mapping_priority_{100};
     TWeakObjectPtr<ASpaceGamePlayerController> owner_;
     TWeakObjectPtr<UEnhancedInputComponent> component_;
     TWeakObjectPtr<UObject> subsystem_object_;

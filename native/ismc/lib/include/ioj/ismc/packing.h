@@ -24,7 +24,7 @@ struct PackingParameters {
 };
 
 struct TransformBounds {
-    inline static constexpr float limit{std::numeric_limits<float>::max()};
+    static constexpr float limit{std::numeric_limits<float>::max()};
     Vector3f minimum{limit, limit, limit};
     Vector3f maximum{-limit, -limit, -limit};
 

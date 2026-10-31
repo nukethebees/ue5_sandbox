@@ -12,7 +12,7 @@ namespace ioj::sim {
 struct EntityTypeRuns {
     using Offset = std::uint32_t;
     using Count = std::uint32_t;
-    inline static constexpr std::uint32_t capacity{enum_count<EntityType>()};
+    static constexpr std::uint32_t capacity{enum_count<EntityType>()};
     FixedArray<EntityType, capacity> types;
     FixedArray<Offset, capacity> offsets;
     FixedArray<Count, capacity> counts;

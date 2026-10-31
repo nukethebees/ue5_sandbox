@@ -10,7 +10,7 @@
 namespace ioj::sim {
 class EntityIdAllocator {
   public:
-    inline static constexpr std::uint32_t invalid_index{std::numeric_limits<std::uint32_t>::max()};
+    static constexpr std::uint32_t invalid_index{std::numeric_limits<std::uint32_t>::max()};
     [[nodiscard]] auto allocate(EntityType const type, std::uint32_t const history_row)
         -> EntityId {
         if (std::to_underlying(type) >= enum_count<EntityType>()) {

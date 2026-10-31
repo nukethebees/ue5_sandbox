@@ -22,7 +22,7 @@ struct SPACEGAME_API FGlobalPlayerInput {
     void shutdown();
     auto is_mapping_enabled() const -> bool { return mapping_enabled_; }
   private:
-    inline static constexpr int32 mapping_priority_{100};
+    static constexpr int32 mapping_priority_{100};
     TWeakObjectPtr<UEnhancedInputComponent> component_;
     TWeakObjectPtr<UObject> subsystem_object_;
     IEnhancedInputSubsystemInterface* subsystem_{nullptr};

@@ -78,10 +78,10 @@ struct Sim {
     using NavigationScratch = fighters::NavigationScratch;
     using NavigationRiskTier = fighters::NavigationRiskTier;
 
-    inline static constexpr std::uint32_t n_avoidance_choices{avoidance_direction_count};
-    inline static constexpr std::uint8_t clear_scans_to_end_avoidance{2};
-    inline static constexpr std::uint8_t lower_risk_scans_to_demote{2};
-    inline static constexpr std::uint32_t max_separation_neighbours{separation_neighbour_limit};
+    static constexpr std::uint32_t n_avoidance_choices{avoidance_direction_count};
+    static constexpr std::uint8_t clear_scans_to_end_avoidance{2};
+    static constexpr std::uint8_t lower_risk_scans_to_demote{2};
+    static constexpr std::uint32_t max_separation_neighbours{separation_neighbour_limit};
 
     /* **************************************** */
     // Navigation

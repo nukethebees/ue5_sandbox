@@ -8,8 +8,8 @@ USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FShipHealth {
     GENERATED_BODY()
 
-    inline static constexpr int32 default_max_health{100};
-    inline static constexpr int32 upgraded_max_health{150};
+    static constexpr int32 default_max_health{100};
+    static constexpr int32 upgraded_max_health{150};
 
     FShipHealth() = default;
     FShipHealth(int32 const health, int32 const max_health)

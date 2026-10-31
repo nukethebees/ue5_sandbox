@@ -37,9 +37,9 @@ class Strings {
     [[nodiscard]] auto slice_count() const -> std::size_t;
   private:
     friend class TemporaryStringScope;
-    inline static constexpr std::uint32_t temporary_bit{std::uint32_t{1} << 31};
-    inline static constexpr std::uint32_t offset_mask{temporary_bit - 1};
-    inline static constexpr std::uint32_t unused_length{~std::uint32_t{}};
+    static constexpr std::uint32_t temporary_bit{std::uint32_t{1} << 31};
+    static constexpr std::uint32_t offset_mask{temporary_bit - 1};
+    static constexpr std::uint32_t unused_length{~std::uint32_t{}};
 
     [[nodiscard]] auto slice_record(StringId id) const -> StringSlice;
     [[nodiscard]] auto append_text(std::string_view text, bool temporary) -> StringSlice;

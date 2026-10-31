@@ -6,8 +6,8 @@
 
 namespace ioj::sim {
 struct ShipHealth {
-    inline static constexpr Health default_max_health{100};
-    inline static constexpr Health upgraded_max_health{150};
+    static constexpr Health default_max_health{100};
+    static constexpr Health upgraded_max_health{150};
 
     ShipHealth() = default;
     ShipHealth(Health const health_value, Health const maximum)

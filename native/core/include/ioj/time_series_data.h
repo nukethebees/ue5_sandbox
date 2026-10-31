@@ -99,7 +99,7 @@ class XYSeriesData {
         return is_empty() ? index_none : num() - 1;
     }
 
-    inline static constexpr size_type index_none{std::numeric_limits<size_type>::max()};
+    static constexpr size_type index_none{std::numeric_limits<size_type>::max()};
   private:
     std::vector<time_type> times_;
     std::vector<value_type> values_;

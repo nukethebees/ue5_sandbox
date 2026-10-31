@@ -35,10 +35,10 @@ class CollisionGridStaticStorage {
     using RangeCount = std::uint16_t;
     using CellMembershipCount = std::uint32_t;
 
-    inline static constexpr CellRangeIndex invalid_cell_range_index{
+    static constexpr CellRangeIndex invalid_cell_range_index{
         std::numeric_limits<std::uint32_t>::max()};
 
-    inline static constexpr AabbIndex invalid_aabb_index{std::numeric_limits<AabbIndex>::max()};
+    static constexpr AabbIndex invalid_aabb_index{std::numeric_limits<AabbIndex>::max()};
 
     /* **************************************** */
     // Storage lifecycle and building

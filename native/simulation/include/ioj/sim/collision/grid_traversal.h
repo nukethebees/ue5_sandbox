@@ -17,7 +17,7 @@ class GridTraversal {
     [[nodiscard]] auto current_cell() const noexcept -> CellCoord;
     [[nodiscard]] auto advance() noexcept -> bool;
   private:
-    inline static constexpr float no_axis_crossing_t{std::numeric_limits<float>::infinity()};
+    static constexpr float no_axis_crossing_t{std::numeric_limits<float>::infinity()};
 
     CellCoord current_cell_;
     CellCoord end_cell_;

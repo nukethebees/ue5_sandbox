@@ -13,8 +13,8 @@ namespace lispb::codegen {
 
 // Pack an 8-bit declaration kind and a 24-bit row index. Default construction denotes null.
 struct CppDeclarationId {
-    inline static constexpr std::uint32_t index_mask{0x00ffffffu};
-    inline static constexpr std::uint32_t kind_shift{24};
+    static constexpr std::uint32_t index_mask{0x00ffffffu};
+    static constexpr std::uint32_t kind_shift{24};
 
     CppDeclarationId() = default;
     explicit CppDeclarationId(NodeId node);

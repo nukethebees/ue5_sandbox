@@ -8,8 +8,8 @@
 namespace lispb::schema {
 
 struct TypeDefinitionId {
-    inline static constexpr std::uint32_t index_mask{0x00ffffffu};
-    inline static constexpr std::uint32_t kind_shift{24};
+    static constexpr std::uint32_t index_mask{0x00ffffffu};
+    static constexpr std::uint32_t kind_shift{24};
 
     std::uint32_t value{0xffffffffu};
     [[nodiscard]] constexpr auto kind() const -> TypeDefinitionKind {
