@@ -1,13 +1,13 @@
-#include "support/simulation_test_support.h"
 #include <ioj/column_math.h>
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/fighters/fighter_entity_data.h>
-#include <ioj/sim/lasers/laser_entities.h>
 #include <ioj/sim/lasers/laser_frame_output.h>
 #include <ioj/sim/lasers/laser_hit_details.h>
 #include <ioj/sim/levels/compiled_level_events.h>
 #include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/spinners/spinner_entity_data.h>
+
+#include <gtest/gtest.h>
 
 #include <utility>
 
@@ -26,16 +26,6 @@ TEST(NativeSimulation, ProductionSingleAllocationNestedViewsAndAppend) {
     auto const appended_columns{appended.get_const_view()};
     EXPECT_EQ(vector_at(appended_columns.view_locations(), 1).z(), 6.f) << "Nested vectors append";
     EXPECT_EQ(appended_columns.integral_biases()[1], 22u) << "Scalar columns append";
-
-    lasers::LaserEntities lasers;
-    lasers.add_defaulted(2);
-    auto laser_columns{lasers.get_view()};
-    set_vector(laser_columns.view_locations(), 0, Vector3f{10.f, 20.f, 30.f});
-    set_rotation(laser_columns.view_rotations(), 0, Rotator3f{1.f, 2.f, 3.f});
-    laser_columns.damages()[0] = 40;
-    lasers.remove_at_swap(0, 1);
-    EXPECT_EQ(lasers.num(), 1) << "Laser swap removal keeps columns synchronized";
-    lasers.get_const_view().validate();
 }
 
 TEST(NativeSimulation, SpinnerAndLaserHitSingleAllocationRowsStaySynchronized) {

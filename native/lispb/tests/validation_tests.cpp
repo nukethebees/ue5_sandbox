@@ -306,7 +306,7 @@ auto plain_soa(CompilerTestContext& context, std::string name = "Data")
 auto valid_enum_module(CompilerTestContext& context) -> ModuleHandle {
     return parse_test_manifest(context, R"(
       (module enums :header "Enums.h" :source "Enums.cpp" :helper-namespace project
-        (enum EMode uint8 :conversions (lex-to-string) :reflection uenum
+        (enum EMode uint8 :conversions (string-view) :reflection uenum
           (value Value) (projections (cpp))))
     )")
         .modules.front();
@@ -1715,7 +1715,7 @@ TEST(Validation, RejectsInvalidStaticTableGroups) {
           Case{"point", "@missing", {"ids"}, false, "missing"},
           Case{"point", "FPoint", {}, false, "must have columns"},
           Case{"point", "FPoint", {"missing"}, false, "references unknown column"},
-          Case{"point", "FPoint", {"ids", "ids"}, false, "Duplicate"}}) {
+          Case{"point", "FPoint", {"ids", "ids"}, false, "columns contains duplicate name"}}) {
         SCOPED_TRACE(test.diagnostic);
         CompilerTestContext context;
         auto const module{valid_static_table_module(context)};

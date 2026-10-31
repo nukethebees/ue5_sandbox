@@ -6,7 +6,7 @@ function(expect_rejection diagnostic)
     ERROR_VARIABLE error
   )
   string(FIND "${output}${error}" "${diagnostic}" diagnostic_position)
-  if(NOT result STREQUAL "1" OR diagnostic_position EQUAL -1)
+  if(NOT result STREQUAL "2" OR diagnostic_position EQUAL -1)
     message(FATAL_ERROR
       "Expected rejection '${diagnostic}', got exit ${result}:\n${output}${error}"
     )

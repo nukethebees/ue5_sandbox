@@ -26,9 +26,8 @@ constexpr float collision_max_distance{20000.f};
 constexpr float miss_max_distance{500.f};
 }
 
-void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
-                                   LaserLifecycleScenario const scenario) {
-    auto data{tests::make_simulation_data(config)};
+void run_worldless_laser_lifecycle(LaserLifecycleScenario const scenario) {
+    auto data{tests::make_simulation_data(tests::make_fixture())};
     data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     tests::add_capital_spawn(data,
@@ -122,20 +121,19 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
 }
 
 TEST(WorldlessSpaceGameSimulation, LasersQueuedSpawnHitsOnLaterTick) {
-    run_worldless_laser_lifecycle(tests::make_fixture(), LaserLifecycleScenario::Hit);
+    run_worldless_laser_lifecycle(LaserLifecycleScenario::Hit);
 }
 
 TEST(WorldlessSpaceGameSimulation, LasersSimultaneousHitsCauseOneDeath) {
-    run_worldless_laser_lifecycle(tests::make_fixture(),
-                                  LaserLifecycleScenario::SimultaneousLethalHits);
+    run_worldless_laser_lifecycle(LaserLifecycleScenario::SimultaneousLethalHits);
 }
 
 TEST(WorldlessSpaceGameSimulation, LasersMissExpiresWithoutDamage) {
-    run_worldless_laser_lifecycle(tests::make_fixture(), LaserLifecycleScenario::Miss);
+    run_worldless_laser_lifecycle(LaserLifecycleScenario::Miss);
 }
 
 TEST(WorldlessSpaceGameSimulation, LasersWorldBlockerConsumesProjectileWithoutEntityDamage) {
-    run_worldless_laser_lifecycle(tests::make_fixture(), LaserLifecycleScenario::WorldBlocker);
+    run_worldless_laser_lifecycle(LaserLifecycleScenario::WorldBlocker);
 }
 
 }

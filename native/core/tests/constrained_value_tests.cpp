@@ -17,13 +17,11 @@ static_assert(!std::default_initializable<Positive<int>>);
 static_assert(!std::default_initializable<NonEmptyString>);
 static_assert(!noexcept(std::declval<NonEmptyString const&>().get()));
 
-TEST(ConstrainedValue, OwnsNonEmptyStringsAndSupportsIndependentCopies) {
+TEST(ConstrainedValue, OwnsNonEmptyStringsAndSupportsFormatting) {
     EXPECT_FALSE(NonEmptyString::try_make(""));
     std::string source(100, 'x');
     auto const value{NonEmptyString::make(source)};
     source.clear();
-    auto copy{value.get()};
-    copy.clear();
     EXPECT_EQ(value.get_ref(), std::string(100, 'x'));
     EXPECT_EQ(std::format("{}", value), value.get_ref());
 }

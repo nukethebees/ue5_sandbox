@@ -152,9 +152,8 @@ TEST(WorldlessSpaceGameSimulation, CapitalsSimultaneousReassignment) {
 /* **************************************** */
 // Capital fighter ownership lifecycle
 /* **************************************** */
-void run_worldless_fighter_ownership(tests::SimulationFixture const& config,
-                                     bool const kill_fighters_first) {
-    auto data{tests::make_simulation_data(config)};
+void run_worldless_fighter_ownership(bool const kill_fighters_first) {
+    auto data{tests::make_simulation_data(tests::make_fixture())};
     data.capital_ships.spawn_delay = 10.f;
     data.capital_ships.max_health = ::ioj::settings::PositiveHealth::make(Health{10000});
     data.fighters.speed = 2000.f;
@@ -257,11 +256,11 @@ void run_worldless_fighter_ownership(tests::SimulationFixture const& config,
         << "Capital fighter ID timeline completes";
 }
 TEST(WorldlessSpaceGameSimulation, FighterOwnershipKillCapital) {
-    run_worldless_fighter_ownership(tests::make_fixture(), false);
+    run_worldless_fighter_ownership(false);
 }
 
 TEST(WorldlessSpaceGameSimulation, FighterOwnershipAll) {
-    run_worldless_fighter_ownership(tests::make_fixture(), true);
+    run_worldless_fighter_ownership(true);
 }
 
 }
