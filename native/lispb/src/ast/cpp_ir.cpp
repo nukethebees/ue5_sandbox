@@ -315,7 +315,6 @@ auto CppIR::static_member(CppTypeId type,
 auto CppIR::constexpr_member(CppTypeId type,
                              StringId name,
                              Expr initializer,
-                             bool is_inline,
                              TemplateId template_declaration) -> NodeId {
     assert(initializer);
     auto const index{constexpr_members_.name.size()};
@@ -323,7 +322,6 @@ auto CppIR::constexpr_member(CppTypeId type,
     constexpr_members_.name.push_back(name);
     constexpr_members_.initializer.push_back(initializer);
     constexpr_members_.template_declaration.push_back(template_declaration);
-    constexpr_members_.is_inline.push_back(is_inline);
     return ir_detail::node(NodeKind::constexpr_member, index);
 }
 
@@ -697,8 +695,7 @@ void CppIR::clear() {
     clear(constexpr_members_.type,
           constexpr_members_.name,
           constexpr_members_.initializer,
-          constexpr_members_.template_declaration,
-          constexpr_members_.is_inline);
+          constexpr_members_.template_declaration);
     clear(function_nodes_.function,
           function_nodes_.owner,
           function_nodes_.declaration,

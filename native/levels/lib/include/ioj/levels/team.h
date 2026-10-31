@@ -68,12 +68,12 @@ enum class Team : TeamUnderlying {
 namespace ioj {
 template <>
 struct EnumTraits<::ioj::Team> {
-    inline static constexpr std::array values{::ioj::Team::White,
-                                              ::ioj::Team::Red,
-                                              ::ioj::Team::Green,
-                                              ::ioj::Team::Blue,
-                                              ::ioj::Team::Orange,
-                                              ::ioj::Team::Yellow};
+    static constexpr std::array values{::ioj::Team::White,
+                                       ::ioj::Team::Red,
+                                       ::ioj::Team::Green,
+                                       ::ioj::Team::Blue,
+                                       ::ioj::Team::Orange,
+                                       ::ioj::Team::Yellow};
 };
 
 template <>

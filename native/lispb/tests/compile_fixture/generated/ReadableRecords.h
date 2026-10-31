@@ -292,7 +292,7 @@ struct ReadableRecord {
 namespace ioj {
 template <>
 struct EnumTraits<::codegen_compile_fixture::ReaderEnum> {
-    inline static constexpr std::array values{::codegen_compile_fixture::ReaderEnum::Mixed};
+    static constexpr std::array values{::codegen_compile_fixture::ReaderEnum::Mixed};
 };
 
 } // namespace ioj

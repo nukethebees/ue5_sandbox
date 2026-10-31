@@ -177,7 +177,6 @@ class CppIR {
     auto constexpr_member(CppTypeId type,
                           StringId name,
                           Expr initializer,
-                          bool is_inline = false,
                           TemplateId template_declaration = {}) -> NodeId;
     auto enumerator(StringId name,
                     std::optional<StringId> initializer = {},

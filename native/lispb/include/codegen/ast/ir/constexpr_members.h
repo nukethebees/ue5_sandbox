@@ -5,7 +5,6 @@
 #include <codegen/ast/template_id.h>
 #include <lispb/indices.h>
 
-#include <cstdint>
 #include <vector>
 
 namespace lispb::codegen::ir {
@@ -15,7 +14,6 @@ struct ConstexprMembers {
     std::vector<StringId> name;
     std::vector<Expr> initializer;
     std::vector<TemplateId> template_declaration;
-    std::vector<std::uint8_t> is_inline;
 };
 
 }

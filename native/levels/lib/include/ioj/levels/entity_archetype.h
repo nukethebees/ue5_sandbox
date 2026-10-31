@@ -37,9 +37,9 @@ using ioj::to_string;
 namespace ioj {
 template <>
 struct EnumTraits<::ioj::levels::EntityArchetype> {
-    inline static constexpr std::array values{::ioj::levels::EntityArchetype::PlayerFighter,
-                                              ::ioj::levels::EntityArchetype::CapitalShip,
-                                              ::ioj::levels::EntityArchetype::StaticTurret};
+    static constexpr std::array values{::ioj::levels::EntityArchetype::PlayerFighter,
+                                       ::ioj::levels::EntityArchetype::CapitalShip,
+                                       ::ioj::levels::EntityArchetype::StaticTurret};
 };
 
 } // namespace ioj

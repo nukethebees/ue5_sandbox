@@ -116,9 +116,9 @@ enum class ExprType : ExprTypeUnderlying {
 namespace ioj {
 template <>
 struct EnumTraits<::ioj::ObjectiveOutcome> {
-    inline static constexpr std::array values{::ioj::ObjectiveOutcome::Passed,
-                                              ::ioj::ObjectiveOutcome::Failed,
-                                              ::ioj::ObjectiveOutcome::Expired};
+    static constexpr std::array values{::ioj::ObjectiveOutcome::Passed,
+                                       ::ioj::ObjectiveOutcome::Failed,
+                                       ::ioj::ObjectiveOutcome::Expired};
 };
 
 template <>
@@ -133,8 +133,7 @@ inline constexpr auto ioj::enum_strings<::ioj::ObjectiveOutcome, ioj::Serialized
 namespace ioj {
 template <>
 struct EnumTraits<::ioj::TeamOutcome> {
-    inline static constexpr std::array values{::ioj::TeamOutcome::Victory,
-                                              ::ioj::TeamOutcome::Defeat};
+    static constexpr std::array values{::ioj::TeamOutcome::Victory, ::ioj::TeamOutcome::Defeat};
 };
 
 } // namespace ioj
@@ -145,13 +144,13 @@ inline constexpr auto ioj::enum_strings<::ioj::TeamOutcome, ioj::Serialized>{
 namespace ioj {
 template <>
 struct EnumTraits<::ioj::ExprType> {
-    inline static constexpr std::array values{::ioj::ExprType::All,
-                                              ::ioj::ExprType::Any,
-                                              ::ioj::ExprType::EntityDestroyed,
-                                              ::ioj::ExprType::EntityReachedPosition,
-                                              ::ioj::ExprType::TimeElapsed,
-                                              ::ioj::ExprType::ObjectiveResolved,
-                                              ::ioj::ExprType::EntityKillsReached};
+    static constexpr std::array values{::ioj::ExprType::All,
+                                       ::ioj::ExprType::Any,
+                                       ::ioj::ExprType::EntityDestroyed,
+                                       ::ioj::ExprType::EntityReachedPosition,
+                                       ::ioj::ExprType::TimeElapsed,
+                                       ::ioj::ExprType::ObjectiveResolved,
+                                       ::ioj::ExprType::EntityKillsReached};
 };
 
 } // namespace ioj

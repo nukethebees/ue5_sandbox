@@ -309,7 +309,6 @@ TEST_F(AstTest, RendersClassInheritanceAndMemberInitializers) {
                 ir.template_id(ir.named("std::is_constructible_v"),
                                {ir.type_reference(types.intern("int")),
                                 ir.type_reference(types.intern("TArg"))}),
-                true,
                 ir.template_declaration({ir.type_template_parameter(ir.strings.intern("TArg"))})),
         },
         RecordKind::class_)};
@@ -327,7 +326,7 @@ TEST_F(AstTest, RendersClassInheritanceAndMemberInitializers) {
               "    static constexpr int answer{42};\n"
               "\n"
               "    template <typename TArg>\n"
-              "    inline static constexpr bool "
+              "    static constexpr bool "
               "supports_value{std::is_constructible_v<int, TArg>};\n"
               "};");
 }

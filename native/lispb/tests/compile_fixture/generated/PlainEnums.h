@@ -105,9 +105,8 @@ using ioj::to_string;
 namespace ioj {
 template <>
 struct EnumTraits<::codegen_compile_fixture::EPlainFixture> {
-    inline static constexpr std::array values{
-        ::codegen_compile_fixture::EPlainFixture::First,
-        ::codegen_compile_fixture::EPlainFixture::ReadableName};
+    static constexpr std::array values{::codegen_compile_fixture::EPlainFixture::First,
+                                       ::codegen_compile_fixture::EPlainFixture::ReadableName};
 };
 
 template <>
@@ -151,9 +150,9 @@ inline constexpr auto
 namespace ioj {
 template <>
 struct EnumTraits<::codegen_compile_fixture::EMissingNames> {
-    inline static constexpr std::array values{::codegen_compile_fixture::EMissingNames::Unnamed,
-                                              ::codegen_compile_fixture::EMissingNames::Empty,
-                                              ::codegen_compile_fixture::EMissingNames::Escaped};
+    static constexpr std::array values{::codegen_compile_fixture::EMissingNames::Unnamed,
+                                       ::codegen_compile_fixture::EMissingNames::Empty,
+                                       ::codegen_compile_fixture::EMissingNames::Escaped};
 };
 
 } // namespace ioj

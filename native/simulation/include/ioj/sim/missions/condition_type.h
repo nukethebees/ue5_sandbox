@@ -25,11 +25,11 @@ enum class ConditionType : ConditionTypeUnderlying {
 namespace ioj {
 template <>
 struct EnumTraits<::ioj::sim::ConditionType> {
-    inline static constexpr std::array values{::ioj::sim::ConditionType::EntityDestroyed,
-                                              ::ioj::sim::ConditionType::EntityReachedPosition,
-                                              ::ioj::sim::ConditionType::TimeElapsed,
-                                              ::ioj::sim::ConditionType::ObjectiveResolved,
-                                              ::ioj::sim::ConditionType::EntityKillsReached};
+    static constexpr std::array values{::ioj::sim::ConditionType::EntityDestroyed,
+                                       ::ioj::sim::ConditionType::EntityReachedPosition,
+                                       ::ioj::sim::ConditionType::TimeElapsed,
+                                       ::ioj::sim::ConditionType::ObjectiveResolved,
+                                       ::ioj::sim::ConditionType::EntityKillsReached};
 };
 
 template <>

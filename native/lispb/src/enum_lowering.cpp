@@ -508,8 +508,7 @@ auto native_enum_traits(LoweringContext& context,
             {ir.constexpr_member(
                 ir.types.intern("std::array", {ir.types.dependency("std::array", "array")}),
                 ir.strings.intern("values"),
-                ir.init_list(values),
-                true)})};
+                ir.init_list(values))})};
         ir.set_record_template(traits, ir.template_specialization());
         result.add(traits, 2);
     }

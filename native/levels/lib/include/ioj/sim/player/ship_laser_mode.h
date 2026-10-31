@@ -34,9 +34,9 @@ using ioj::to_serialized_string;
 namespace ioj {
 template <>
 struct EnumTraits<::ioj::sim::ShipLaserMode> {
-    inline static constexpr std::array values{::ioj::sim::ShipLaserMode::Single,
-                                              ::ioj::sim::ShipLaserMode::Double,
-                                              ::ioj::sim::ShipLaserMode::Hyper};
+    static constexpr std::array values{::ioj::sim::ShipLaserMode::Single,
+                                       ::ioj::sim::ShipLaserMode::Double,
+                                       ::ioj::sim::ShipLaserMode::Hyper};
 };
 
 } // namespace ioj

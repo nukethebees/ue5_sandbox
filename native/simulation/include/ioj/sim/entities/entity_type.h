@@ -29,11 +29,11 @@ using ioj::to_string;
 namespace ioj {
 template <>
 struct EnumTraits<::ioj::sim::EntityType> {
-    inline static constexpr std::array values{::ioj::sim::EntityType::PlayerShip,
-                                              ::ioj::sim::EntityType::Turret,
-                                              ::ioj::sim::EntityType::CapitalShip,
-                                              ::ioj::sim::EntityType::Fighter,
-                                              ::ioj::sim::EntityType::TubeSpinner};
+    static constexpr std::array values{::ioj::sim::EntityType::PlayerShip,
+                                       ::ioj::sim::EntityType::Turret,
+                                       ::ioj::sim::EntityType::CapitalShip,
+                                       ::ioj::sim::EntityType::Fighter,
+                                       ::ioj::sim::EntityType::TubeSpinner};
 };
 
 template <>

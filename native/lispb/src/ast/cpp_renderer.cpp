@@ -1195,9 +1195,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
         }
         case NodeKind::constexpr_member: {
             template_prefix(ir_.constexpr_members_.template_declaration[i]);
-            member(ir_.constexpr_members_,
-                   ir_.constexpr_members_.is_inline[i] ? "inline static constexpr "
-                                                       : "static constexpr ");
+            member(ir_.constexpr_members_, "static constexpr ");
             break;
         }
         case NodeKind::function: {

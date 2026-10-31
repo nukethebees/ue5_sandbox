@@ -36,9 +36,9 @@ using ioj::to_string;
 namespace ioj {
 template <>
 struct EnumTraits<::ioj::sim::ShipFireRate> {
-    inline static constexpr std::array values{::ioj::sim::ShipFireRate::Single,
-                                              ::ioj::sim::ShipFireRate::Burst3,
-                                              ::ioj::sim::ShipFireRate::FullAuto};
+    static constexpr std::array values{::ioj::sim::ShipFireRate::Single,
+                                       ::ioj::sim::ShipFireRate::Burst3,
+                                       ::ioj::sim::ShipFireRate::FullAuto};
 };
 
 template <>
