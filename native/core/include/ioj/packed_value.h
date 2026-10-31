@@ -204,7 +204,13 @@ struct PackedValueBase {
         assert(value == canonical_raw(value));
         return std::bit_cast<Derived>(value);
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        if constexpr (requires { Derived::invalid_value; }) {
+            return value_ != Derived::invalid_value;
+        } else {
+            return true;
+        }
+    }
 
   private:
     [[nodiscard]] static constexpr auto canonical_raw(storage_type const value) noexcept
