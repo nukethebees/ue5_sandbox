@@ -89,7 +89,7 @@ class HealthTable {
 
     [[nodiscard]] auto get_const_view(EntityType const type, std::size_t const count) const
         -> HealthConstView {
-        assert(has_health(type) && count <= health_storage::layout.capacities[type]);
+        assert(has_health(type) && fits_capacity(type, count));
         return HealthConstView{
             std::span{values_}.subspan(health_storage::layout.offsets[type], count)};
     }
@@ -97,7 +97,7 @@ class HealthTable {
     template <EntityType Type>
     [[nodiscard]] auto get_const_view(std::size_t const count) const -> HealthConstView {
         static_assert(has_health(Type));
-        assert(count <= health_storage::layout.capacities[Type]);
+        assert(fits_capacity(Type, count));
         constexpr auto base{health_storage::layout.offsets[Type]};
         return HealthConstView{std::span{values_}.subspan(base, count)};
     }
@@ -105,7 +105,7 @@ class HealthTable {
     template <EntityType Type>
     [[nodiscard]] auto get_view(std::size_t const count) -> HealthView {
         static_assert(has_health(Type));
-        assert(count <= health_storage::layout.capacities[Type]);
+        assert(fits_capacity(Type, count));
         constexpr auto base{health_storage::layout.offsets[Type]};
         return HealthView{std::span{values_}.subspan(base, count)};
     }
@@ -115,11 +115,8 @@ class HealthTable {
                          std::span<Health const> const initial_values) {
         [[maybe_unused]] auto const count{
             static_cast<EntityFrameIndex::value_type>(initial_values.size())};
-        assert(range_fits(first,
-                          count,
-                          EntityInstanceHandle::index_layout.range.min,
-                          EntityInstanceHandle::index_layout.range.max));
-        assert(first + count <= health_storage::layout.capacities[Type]);
+        assert(fits_index_range(first, count));
+        assert(fits_capacity(Type, first + count));
         constexpr auto base{health_storage::layout.offsets[Type]};
         std::ranges::copy(initial_values, values_.begin() + base + first);
     }
@@ -128,18 +125,15 @@ class HealthTable {
     void initialise_rows(EntityFrameIndex::value_type const first,
                          EntityFrameIndex::value_type const count,
                          Health const initial_value) {
-        assert(range_fits(first,
-                          count,
-                          EntityInstanceHandle::index_layout.range.min,
-                          EntityInstanceHandle::index_layout.range.max));
-        assert(first + count <= health_storage::layout.capacities[Type]);
+        assert(fits_index_range(first, count));
+        assert(fits_capacity(Type, first + count));
         constexpr auto base{health_storage::layout.offsets[Type]};
         std::fill_n(values_.begin() + base + first, count, initial_value);
     }
 
     template <EntityType Type>
     void remove_rows(std::size_t count, std::span<EntityFrameIndex::value_type const> const rows) {
-        assert(count <= health_storage::layout.capacities[Type]);
+        assert(fits_capacity(Type, count));
         constexpr auto base{health_storage::layout.offsets[Type]};
         [[maybe_unused]] auto previous{count};
         for (auto const row : rows) {
@@ -151,11 +145,25 @@ class HealthTable {
 
     template <EntityType Type>
     void apply_permutation(std::span<std::int32_t> const order) {
-        assert(order.size() <= health_storage::layout.capacities[Type]);
+        assert(fits_capacity(Type, order.size()));
         constexpr auto base{health_storage::layout.offsets[Type]};
         ioj::apply_permutation(std::span{values_}.subspan(base, order.size()), order);
     }
   private:
+    [[nodiscard]] static constexpr auto fits_capacity(EntityType const type,
+                                                      std::size_t const count) noexcept -> bool {
+        return count <= health_storage::layout.capacities[type];
+    }
+
+    [[nodiscard]] static constexpr auto
+        fits_index_range(EntityFrameIndex::value_type const first,
+                         EntityFrameIndex::value_type const count) noexcept -> bool {
+        return range_fits(first,
+                          count,
+                          EntityInstanceHandle::index_layout.range.min,
+                          EntityInstanceHandle::index_layout.range.max);
+    }
+
     std::vector<Health> values_;
 };
 }
