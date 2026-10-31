@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -21,6 +23,10 @@ enum class ScalarType : ScalarTypeUnderlying {
     float32,
     float64,
 };
+
+[[nodiscard]] constexpr auto enum_range(ScalarType) noexcept -> ioj::MinMax<ScalarType> {
+    return {ScalarType::int32, ScalarType::float64};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_scalar_type(std::string_view const value) noexcept

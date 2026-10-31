@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/packed_value.h"
 
 #include <cassert>
@@ -99,6 +101,10 @@ enum class Opcode : OpcodeUnderlying {
     MoveTo,
     Jump,
 };
+
+[[nodiscard]] constexpr auto enum_range(Opcode) noexcept -> ioj::MinMax<Opcode> {
+    return {Opcode::KillEntity, Opcode::Jump};
+}
 
 struct EntityId;
 
@@ -463,8 +469,7 @@ struct Instruction : detail::InstructionBase {
     using packed_integer_tag = ioj::packed::integer_tag;
 
     // opcode
-    static constexpr ioj::PackedField<storage_type, Opcode, 0, 6> opcode_layout{
-        {static_cast<Opcode>(0ULL), static_cast<Opcode>(2ULL)}};
+    static constexpr ioj::PackedField<storage_type, Opcode, 0, 6> opcode_layout{};
 
     // payload
     static constexpr ioj::PackedField<storage_type, storage_type, 6, 32> payload_layout{};
@@ -642,15 +647,13 @@ struct IndependentUnions : detail::IndependentUnionsBase {
     using packed_integer_tag = ioj::packed::integer_tag;
 
     // opcode_a
-    static constexpr ioj::PackedField<storage_type, Opcode, 0, 6> opcode_a_layout{
-        {static_cast<Opcode>(0ULL), static_cast<Opcode>(2ULL)}};
+    static constexpr ioj::PackedField<storage_type, Opcode, 0, 6> opcode_a_layout{};
 
     // payload_a
     static constexpr ioj::PackedField<storage_type, storage_type, 6, 8> payload_a_layout{};
 
     // opcode_b
-    static constexpr ioj::PackedField<storage_type, Opcode, 14, 6> opcode_b_layout{
-        {static_cast<Opcode>(0ULL), static_cast<Opcode>(2ULL)}};
+    static constexpr ioj::PackedField<storage_type, Opcode, 14, 6> opcode_b_layout{};
 
     // payload_b
     static constexpr ioj::PackedField<storage_type, storage_type, 20, 8> payload_b_layout{};
@@ -900,8 +903,7 @@ struct TaggedProjected : detail::TaggedProjectedBase {
     using packed_integer_tag = ioj::packed::integer_tag;
 
     // opcode
-    static constexpr ioj::PackedField<storage_type, Opcode, 0, 6> opcode_layout{
-        {static_cast<Opcode>(0ULL), static_cast<Opcode>(2ULL)}};
+    static constexpr ioj::PackedField<storage_type, Opcode, 0, 6> opcode_layout{};
 
     // payload
     static constexpr ioj::PackedField<storage_type, storage_type, 6, 8> payload_layout{};

@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
 #include <cstdint>
 #include <optional>
@@ -23,6 +25,10 @@ enum class EnumConversion : EnumConversionUnderlying {
     lex_to_serialized_string,
     try_parse_serialized,
 };
+
+[[nodiscard]] constexpr auto enum_range(EnumConversion) noexcept -> ioj::MinMax<EnumConversion> {
+    return {EnumConversion::lex_to_string, EnumConversion::try_parse_serialized};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto

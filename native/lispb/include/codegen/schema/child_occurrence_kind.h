@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,6 +21,11 @@ enum class ChildOccurrenceKind : ChildOccurrenceKindUnderlying {
     value,
     reserved,
 };
+
+[[nodiscard]] constexpr auto enum_range(ChildOccurrenceKind) noexcept
+    -> ioj::MinMax<ChildOccurrenceKind> {
+    return {ChildOccurrenceKind::value, ChildOccurrenceKind::reserved};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto

@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,6 +21,11 @@ enum class TextureSamplerType : TextureSamplerTypeUnderlying {
     linear_color,
     linear_grayscale,
 };
+
+[[nodiscard]] constexpr auto enum_range(TextureSamplerType) noexcept
+    -> ioj::MinMax<TextureSamplerType> {
+    return {TextureSamplerType::linear_color, TextureSamplerType::linear_grayscale};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto

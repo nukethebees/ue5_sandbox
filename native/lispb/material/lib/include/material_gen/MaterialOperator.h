@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
 #include <cstdint>
 #include <optional>
@@ -44,6 +46,11 @@ enum class MaterialOperator : MaterialOperatorUnderlying {
     shader_call,
     custom,
 };
+
+[[nodiscard]] constexpr auto enum_range(MaterialOperator) noexcept
+    -> ioj::MinMax<MaterialOperator> {
+    return {MaterialOperator::float2, MaterialOperator::custom};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto

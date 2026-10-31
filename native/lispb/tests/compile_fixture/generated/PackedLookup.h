@@ -3,12 +3,13 @@
 
 #pragma once
 
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/packed_value.h"
 
 #include <cassert>
 #include <compare>
 #include <cstdint>
-
 namespace ioj::packed_lookup_fixture {
 struct LookupByte;
 
@@ -89,6 +90,10 @@ enum class CountedState : CountedStateUnderlying {
     Count,
 };
 
+[[nodiscard]] constexpr auto enum_range(CountedState) noexcept -> MinMax<CountedState> {
+    return {CountedState::First, CountedState::Last};
+}
+
 struct CountedValue;
 
 namespace detail {
@@ -102,8 +107,7 @@ struct CountedValue : detail::CountedValueBase {
     using packed_integer_tag = packed::integer_tag;
 
     // state
-    static constexpr PackedField<storage_type, CountedState, 0, 8> state_layout{
-        {static_cast<CountedState>(0ULL), static_cast<CountedState>(1ULL)}};
+    static constexpr PackedField<storage_type, CountedState, 0, 8> state_layout{};
 
     constexpr CountedValue() noexcept = default;
     constexpr explicit CountedValue(decltype(state_layout)::value_type const state_value) noexcept

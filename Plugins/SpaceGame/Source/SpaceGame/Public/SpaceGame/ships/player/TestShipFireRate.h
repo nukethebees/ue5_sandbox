@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_traits.h"
+
 #include "CoreMinimal.h"
 
 #include "TestShipFireRate.generated.h"
@@ -15,3 +17,8 @@ enum class ETestShipFireRate : uint8 {
 };
 
 using ETestShipFireRateUnderlying = uint8;
+
+[[nodiscard]] constexpr auto enum_range(ETestShipFireRate) noexcept
+    -> ioj::MinMax<ETestShipFireRate> {
+    return {ETestShipFireRate::Single, ETestShipFireRate::FullAuto};
+}

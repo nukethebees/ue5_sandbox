@@ -6,6 +6,7 @@
 #include "ioj/enum_formatter.h"
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
 #include <array>
 #include <cstddef>
@@ -25,6 +26,10 @@ enum class Team : TeamUnderlying {
     Orange = 4,
     Yellow = 5,
 };
+
+[[nodiscard]] constexpr auto enum_range(Team) noexcept -> MinMax<Team> {
+    return {Team::White, Team::Yellow};
+}
 [[nodiscard]] constexpr auto try_parse_serialized_team(std::string_view const value) noexcept
     -> std::optional<Team> {
     switch (value.size()) {

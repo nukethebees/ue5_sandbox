@@ -5,6 +5,8 @@
 
 #include "ioj/enum_formatter.h"
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -21,6 +23,10 @@ enum class TypeOperation : TypeOperationUnderlying {
     remove_at_swap,
     set_element,
 };
+
+[[nodiscard]] constexpr auto enum_range(TypeOperation) noexcept -> ioj::MinMax<TypeOperation> {
+    return {TypeOperation::add_element, TypeOperation::set_element};
+}
 
 using ioj::to_serialized_string;
 using ioj::to_string;

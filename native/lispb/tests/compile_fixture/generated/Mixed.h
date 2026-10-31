@@ -5,6 +5,7 @@
 
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/packed_value.h"
 #include "Records.h"
 #include "SignatureSecond.h"
@@ -21,6 +22,7 @@
 namespace codegen_compile_fixture {
 struct ApiPair;
 } // namespace codegen_compile_fixture
+#include "ioj/enum_traits.h"
 namespace codegen_compile_fixture::mixed {
 struct MethodConsumer;
 
@@ -95,6 +97,10 @@ using KindUnderlying = std::uint8_t;
 enum class Kind : KindUnderlying {
     Data,
 };
+
+[[nodiscard]] constexpr auto enum_range(Kind) noexcept -> ioj::MinMax<Kind> {
+    return {Kind::Data, Kind::Data};
+}
 
 struct Position {
     float x;

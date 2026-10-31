@@ -3,8 +3,10 @@
 
 #pragma once
 
-#include <cstdint>
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
+#include <cstdint>
 namespace ioj::sim {
 using LifeStateUnderlying = std::uint8_t;
 
@@ -14,6 +16,10 @@ enum class LifeState : LifeStateUnderlying {
     Unknown,
     Combat,
 };
+
+[[nodiscard]] constexpr auto enum_range(LifeState) noexcept -> MinMax<LifeState> {
+    return {LifeState::Alive, LifeState::Combat};
+}
 
 using DeathReasonUnderlying = std::uint8_t;
 

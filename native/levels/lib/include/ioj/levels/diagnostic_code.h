@@ -3,8 +3,10 @@
 
 #pragma once
 
-#include <cstdint>
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
+#include <cstdint>
 namespace ioj::levels {
 using DiagnosticCodeUnderlying = std::uint8_t;
 
@@ -63,5 +65,9 @@ enum class DiagnosticCode : DiagnosticCodeUnderlying {
     UnavailableLevel,
     UnlockCycle,
 };
+
+[[nodiscard]] constexpr auto enum_range(DiagnosticCode) noexcept -> MinMax<DiagnosticCode> {
+    return {DiagnosticCode::MissingLevelId, DiagnosticCode::UnlockCycle};
+}
 
 } // namespace ioj::levels

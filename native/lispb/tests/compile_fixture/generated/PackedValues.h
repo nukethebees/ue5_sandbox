@@ -724,8 +724,7 @@ struct CheckedValue : detail::CheckedValueBase {
     static constexpr ioj::PackedField<storage_type, std::uint32_t, 0, 24> serial_layout{};
 
     // state
-    static constexpr ioj::PackedField<storage_type, DomainState, 24, 8> state_layout{
-        {static_cast<DomainState>(0ULL), static_cast<DomainState>(1ULL)}};
+    static constexpr ioj::PackedField<storage_type, DomainState, 24, 8> state_layout{};
 
     constexpr CheckedValue() noexcept = default;
     constexpr explicit CheckedValue(decltype(serial_layout)::value_type const serial_value,

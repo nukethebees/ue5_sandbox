@@ -3,6 +3,9 @@
 
 #pragma once
 
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
+
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -18,6 +21,11 @@ enum class SettingControlKind : SettingControlKindUnderlying {
     integer_range,
     custom,
 };
+
+[[nodiscard]] constexpr auto enum_range(SettingControlKind) noexcept
+    -> ioj::MinMax<SettingControlKind> {
+    return {SettingControlKind::toggle, SettingControlKind::custom};
+}
 
 [[nodiscard]] constexpr auto
     try_parse_serialized_setting_control_kind(std::string_view const value) noexcept

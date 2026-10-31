@@ -5,6 +5,7 @@
 
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -57,6 +58,10 @@ enum class Property : PropertyUnderlying {
     InitialSpawnDelay,
     SpawnCooldown,
 };
+
+[[nodiscard]] constexpr auto enum_range(Property) noexcept -> MinMax<Property> {
+    return {Property::Id, Property::SpawnCooldown};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_property(std::string_view const value) noexcept
@@ -292,6 +297,10 @@ enum class ExpressionSyntax : ExpressionSyntaxUnderlying {
     Reference,
 };
 
+[[nodiscard]] constexpr auto enum_range(ExpressionSyntax) noexcept -> MinMax<ExpressionSyntax> {
+    return {ExpressionSyntax::Definition, ExpressionSyntax::Reference};
+}
+
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_expression_syntax(std::string_view const value) noexcept
@@ -316,6 +325,10 @@ enum class RecordKind : RecordKindUnderlying {
     TeamResult,
     LevelCompleted,
 };
+
+[[nodiscard]] constexpr auto enum_range(RecordKind) noexcept -> MinMax<RecordKind> {
+    return {RecordKind::Level, RecordKind::LevelCompleted};
+}
 
 using ioj::to_serialized_string;
 

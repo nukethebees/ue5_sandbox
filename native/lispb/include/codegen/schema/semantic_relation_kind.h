@@ -5,6 +5,8 @@
 
 #include "ioj/enum_formatter.h"
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
 #include <cstdint>
 #include <optional>
@@ -25,6 +27,11 @@ enum class SemanticRelationKind : SemanticRelationKindUnderlying {
     encoded_as,
     references,
 };
+
+[[nodiscard]] constexpr auto enum_range(SemanticRelationKind) noexcept
+    -> ioj::MinMax<SemanticRelationKind> {
+    return {SemanticRelationKind::index_into, SemanticRelationKind::references};
+}
 
 using ioj::to_serialized_string;
 using ioj::to_string;

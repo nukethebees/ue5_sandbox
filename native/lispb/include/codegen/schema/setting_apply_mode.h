@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,6 +21,11 @@ enum class SettingApplyMode : SettingApplyModeUnderlying {
     deferred,
     confirm,
 };
+
+[[nodiscard]] constexpr auto enum_range(SettingApplyMode) noexcept
+    -> ioj::MinMax<SettingApplyMode> {
+    return {SettingApplyMode::immediate, SettingApplyMode::confirm};
+}
 
 [[nodiscard]] constexpr auto
     try_parse_serialized_setting_apply_mode(std::string_view const value) noexcept

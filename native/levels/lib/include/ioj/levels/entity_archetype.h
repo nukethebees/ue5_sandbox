@@ -6,6 +6,7 @@
 #include "ioj/enum_formatter.h"
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -22,6 +23,10 @@ enum class EntityArchetype : EntityArchetypeUnderlying {
     CapitalShip,
     StaticTurret,
 };
+
+[[nodiscard]] constexpr auto enum_range(EntityArchetype) noexcept -> MinMax<EntityArchetype> {
+    return {EntityArchetype::PlayerFighter, EntityArchetype::StaticTurret};
+}
 
 using ioj::to_serialized_string;
 using ioj::to_string;

@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
 #include <cstdint>
 
@@ -22,6 +24,10 @@ enum class ProjectProperty : ProjectPropertyUnderlying {
     artifact,
     targets,
 };
+
+[[nodiscard]] constexpr auto enum_range(ProjectProperty) noexcept -> ioj::MinMax<ProjectProperty> {
+    return {ProjectProperty::language_version, ProjectProperty::targets};
+}
 
 using ioj::to_serialized_string;
 

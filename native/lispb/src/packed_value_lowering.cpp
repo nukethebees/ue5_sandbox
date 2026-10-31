@@ -394,10 +394,13 @@ class PackedEmitter {
             minimum = definitions.integer_scalars.minimum_value[row];
             maximum = definitions.integer_scalars.maximum_value[row];
         } else if (definition.kind() == schema::TypeDefinitionKind::enumeration) {
-            auto const domain{definitions.enums.domain[definition]};
-            if (auto const range{graph_.enum_domains().contiguous_value_range(domain)}) {
-                minimum = PackedIntegerValue{range->min};
-                maximum = PackedIntegerValue{range->max};
+            auto const declaration{graph_.source_declaration(logical)};
+            if (!context_.declarations.enums.cpp_projection[declaration]) {
+                auto const domain{definitions.enums.domain[definition]};
+                if (auto const range{graph_.enum_domains().contiguous_value_range(domain)}) {
+                    minimum = PackedIntegerValue{range->min};
+                    maximum = PackedIntegerValue{range->max};
+                }
             }
         } else if (definition.kind() == schema::TypeDefinitionKind::fixed_point) {
             auto const row{definitions.fixed_points.index(definition)};

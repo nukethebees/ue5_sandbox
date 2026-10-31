@@ -6,6 +6,7 @@
 #include "ioj/constrained_strings.h"
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "PlainEnums.h"
 
 #include <array>
@@ -26,6 +27,10 @@ using ReaderEnumUnderlying = std::uint8_t;
 enum class ReaderEnum : ReaderEnumUnderlying {
     Mixed,
 };
+
+[[nodiscard]] constexpr auto enum_range(ReaderEnum) noexcept -> ioj::MinMax<ReaderEnum> {
+    return {ReaderEnum::Mixed, ReaderEnum::Mixed};
+}
 
 using ioj::to_serialized_string;
 

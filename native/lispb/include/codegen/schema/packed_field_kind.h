@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
 #include <cstdint>
 #include <optional>
@@ -21,6 +23,10 @@ enum class PackedFieldKind : PackedFieldKindUnderlying {
     fixed_point,
     mini_float,
 };
+
+[[nodiscard]] constexpr auto enum_range(PackedFieldKind) noexcept -> ioj::MinMax<PackedFieldKind> {
+    return {PackedFieldKind::unsigned_integer, PackedFieldKind::mini_float};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto

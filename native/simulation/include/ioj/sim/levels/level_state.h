@@ -3,8 +3,10 @@
 
 #pragma once
 
-#include <cstdint>
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
+#include <cstdint>
 namespace ioj::sim {
 using LevelStateUnderlying = std::uint8_t;
 
@@ -16,5 +18,9 @@ enum class LevelState : LevelStateUnderlying {
     Running,
     Stopped,
 };
+
+[[nodiscard]] constexpr auto enum_range(LevelState) noexcept -> MinMax<LevelState> {
+    return {LevelState::Uninitialised, LevelState::Stopped};
+}
 
 } // namespace ioj::sim

@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -20,6 +22,10 @@ enum class Access : AccessUnderlying {
     protected_,
     private_,
 };
+
+[[nodiscard]] constexpr auto enum_range(Access) noexcept -> ioj::MinMax<Access> {
+    return {Access::public_, Access::private_};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_access(std::string_view const value) noexcept

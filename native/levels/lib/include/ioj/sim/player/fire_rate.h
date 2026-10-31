@@ -5,6 +5,7 @@
 
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -22,6 +23,10 @@ enum class ShipFireRate : ShipFireRateUnderlying {
     Burst3 = 1,
     FullAuto = 2,
 };
+
+[[nodiscard]] constexpr auto enum_range(ShipFireRate) noexcept -> MinMax<ShipFireRate> {
+    return {ShipFireRate::Single, ShipFireRate::FullAuto};
+}
 
 using ioj::to_serialized_string;
 using ioj::to_string;

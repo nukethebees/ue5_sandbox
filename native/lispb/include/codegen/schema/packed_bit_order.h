@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,6 +21,10 @@ enum class PackedBitOrder : PackedBitOrderUnderlying {
     least_significant_first,
     most_significant_first,
 };
+
+[[nodiscard]] constexpr auto enum_range(PackedBitOrder) noexcept -> ioj::MinMax<PackedBitOrder> {
+    return {PackedBitOrder::least_significant_first, PackedBitOrder::most_significant_first};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto

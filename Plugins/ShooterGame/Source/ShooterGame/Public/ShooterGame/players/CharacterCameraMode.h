@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
 #include "CoreMinimal.h"
 
@@ -20,6 +21,11 @@ enum class ECharacterCameraMode : uint8 {
 };
 
 using ECharacterCameraModeUnderlying = std::uint8_t;
+
+[[nodiscard]] constexpr auto enum_range(ECharacterCameraMode) noexcept
+    -> ioj::MinMax<ECharacterCameraMode> {
+    return {ECharacterCameraMode::FirstPerson, ECharacterCameraMode::ThirdPerson};
+}
 
 namespace ioj {
 template <>

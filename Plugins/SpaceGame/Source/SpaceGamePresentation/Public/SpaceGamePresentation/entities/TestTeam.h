@@ -21,6 +21,10 @@ enum class ETestTeam : uint8 {
 
 using ETestTeamUnderlying = uint8;
 
+[[nodiscard]] constexpr auto enum_range(ETestTeam) noexcept -> ioj::MinMax<ETestTeam> {
+    return {ETestTeam::White, ETestTeam::Yellow};
+}
+
 namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<::ETestTeam>() noexcept -> std::size_t {

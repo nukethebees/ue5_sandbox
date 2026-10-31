@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,6 +21,10 @@ enum class VariantKind : VariantKindUnderlying {
     out_of_place,
     in_place,
 };
+
+[[nodiscard]] constexpr auto enum_range(VariantKind) noexcept -> ioj::MinMax<VariantKind> {
+    return {VariantKind::out_of_place, VariantKind::in_place};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto

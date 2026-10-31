@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
 #include <cstdint>
 #include <optional>
@@ -21,6 +23,11 @@ enum class LevelTelemetryRunEndReason : LevelTelemetryRunEndReasonUnderlying {
     OrchestratorReset = 4,
     WorldEnd = 5,
 };
+
+[[nodiscard]] constexpr auto enum_range(LevelTelemetryRunEndReason) noexcept
+    -> MinMax<LevelTelemetryRunEndReason> {
+    return {LevelTelemetryRunEndReason::MissionSucceeded, LevelTelemetryRunEndReason::WorldEnd};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto

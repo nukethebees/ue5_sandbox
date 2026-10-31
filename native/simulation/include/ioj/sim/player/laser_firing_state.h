@@ -3,6 +3,9 @@
 
 #pragma once
 
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
+
 #include <cstdint>
 
 namespace ioj::sim {
@@ -13,5 +16,9 @@ enum class LaserFiringState : LaserFiringStateUnderlying {
     idle = 0,
     burst = 1,
 };
+
+[[nodiscard]] constexpr auto enum_range(LaserFiringState) noexcept -> MinMax<LaserFiringState> {
+    return {LaserFiringState::idle, LaserFiringState::burst};
+}
 
 } // namespace ioj::sim

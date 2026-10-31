@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,6 +21,10 @@ enum class Aliasing : AliasingUnderlying {
     output_disjoint,
     pairwise_disjoint,
 };
+
+[[nodiscard]] constexpr auto enum_range(Aliasing) noexcept -> ioj::MinMax<Aliasing> {
+    return {Aliasing::output_disjoint, Aliasing::pairwise_disjoint};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_aliasing(std::string_view const value) noexcept

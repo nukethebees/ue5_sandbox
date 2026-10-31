@@ -108,8 +108,7 @@ struct EntityInstanceHandle : detail::EntityInstanceHandleBase {
     static constexpr PackedField<storage_type, std::uint32_t, 0, 18> index_layout{};
 
     // team
-    static constexpr PackedField<storage_type, Team, 18, 3> team_layout{
-        {static_cast<Team>(0ULL), static_cast<Team>(5ULL)}};
+    static constexpr PackedField<storage_type, Team, 18, 3> team_layout{};
 
     // health_state
     static constexpr PackedField<storage_type, std::uint8_t, 21, 2> health_state_layout{};

@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -18,6 +20,11 @@ enum class ParameterPassing : ParameterPassingUnderlying {
     const_reference,
     value,
 };
+
+[[nodiscard]] constexpr auto enum_range(ParameterPassing) noexcept
+    -> ioj::MinMax<ParameterPassing> {
+    return {ParameterPassing::const_reference, ParameterPassing::value};
+}
 
 [[nodiscard]] constexpr auto
     try_parse_serialized_parameter_passing(std::string_view const value) noexcept

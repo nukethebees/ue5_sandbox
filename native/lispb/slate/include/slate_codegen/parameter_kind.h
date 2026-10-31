@@ -5,6 +5,8 @@
 
 #include "ioj/enum_formatter.h"
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -22,6 +24,10 @@ enum class ParameterKind : ParameterKindUnderlying {
     factory,
     existing,
 };
+
+[[nodiscard]] constexpr auto enum_range(ParameterKind) noexcept -> ioj::MinMax<ParameterKind> {
+    return {ParameterKind::value, ParameterKind::existing};
+}
 
 using ioj::to_serialized_string;
 using ioj::to_string;

@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
 #include <cstdint>
 #include <optional>
@@ -21,6 +23,10 @@ enum class TargetKind : TargetKindUnderlying {
     material,
     group,
 };
+
+[[nodiscard]] constexpr auto enum_range(TargetKind) noexcept -> ioj::MinMax<TargetKind> {
+    return {TargetKind::none, TargetKind::group};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_target_kind(std::string_view const value) noexcept

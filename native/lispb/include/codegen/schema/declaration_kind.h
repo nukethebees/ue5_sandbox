@@ -3,6 +3,9 @@
 
 #pragma once
 
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
+
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -26,6 +29,10 @@ enum class DeclarationKind : DeclarationKindUnderlying {
     static_table,
     facade,
 };
+
+[[nodiscard]] constexpr auto enum_range(DeclarationKind) noexcept -> ioj::MinMax<DeclarationKind> {
+    return {DeclarationKind::enumeration, DeclarationKind::facade};
+}
 
 [[nodiscard]] constexpr auto
     try_parse_serialized_declaration_kind(std::string_view const value) noexcept

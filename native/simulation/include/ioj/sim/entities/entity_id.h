@@ -31,8 +31,7 @@ struct EntityId : detail::EntityIdBase {
     static constexpr PackedField<storage_type, std::uint32_t, 0, 24> index_layout{};
 
     // entity_type
-    static constexpr PackedField<storage_type, EntityType, 24, 8> entity_type_layout{
-        {static_cast<EntityType>(0ULL), static_cast<EntityType>(4ULL)}};
+    static constexpr PackedField<storage_type, EntityType, 24, 8> entity_type_layout{};
 
     constexpr EntityId() noexcept = default;
     constexpr explicit EntityId(

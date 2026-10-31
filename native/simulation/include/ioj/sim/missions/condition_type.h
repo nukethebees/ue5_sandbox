@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
 #include <array>
 #include <cstddef>
@@ -20,6 +21,10 @@ enum class ConditionType : ConditionTypeUnderlying {
     ObjectiveResolved,
     EntityKillsReached,
 };
+
+[[nodiscard]] constexpr auto enum_range(ConditionType) noexcept -> MinMax<ConditionType> {
+    return {ConditionType::EntityDestroyed, ConditionType::EntityKillsReached};
+}
 
 } // namespace ioj::sim
 namespace ioj {

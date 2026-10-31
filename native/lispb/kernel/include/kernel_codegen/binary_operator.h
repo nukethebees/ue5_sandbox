@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -21,6 +23,10 @@ enum class BinaryOperator : BinaryOperatorUnderlying {
     multiply,
     divide,
 };
+
+[[nodiscard]] constexpr auto enum_range(BinaryOperator) noexcept -> ioj::MinMax<BinaryOperator> {
+    return {BinaryOperator::add, BinaryOperator::divide};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto

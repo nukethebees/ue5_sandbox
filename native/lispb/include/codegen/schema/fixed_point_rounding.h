@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,6 +21,11 @@ enum class FixedPointRounding : FixedPointRoundingUnderlying {
     nearest_even,
     toward_zero,
 };
+
+[[nodiscard]] constexpr auto enum_range(FixedPointRounding) noexcept
+    -> ioj::MinMax<FixedPointRounding> {
+    return {FixedPointRounding::nearest_even, FixedPointRounding::toward_zero};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto

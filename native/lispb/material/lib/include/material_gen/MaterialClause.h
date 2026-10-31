@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
 #include <cstdint>
 #include <optional>
@@ -31,6 +33,10 @@ enum class MaterialClause : MaterialClauseUnderlying {
     opacity_mask,
     world_position_offset,
 };
+
+[[nodiscard]] constexpr auto enum_range(MaterialClause) noexcept -> ioj::MinMax<MaterialClause> {
+    return {MaterialClause::asset, MaterialClause::world_position_offset};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto

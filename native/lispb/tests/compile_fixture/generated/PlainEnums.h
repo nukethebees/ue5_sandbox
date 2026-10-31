@@ -6,6 +6,7 @@
 #include "ioj/enum_formatter.h"
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -22,6 +23,10 @@ enum class EPlainFixture : EPlainFixtureUnderlying {
     First,
     ReadableName,
 };
+
+[[nodiscard]] constexpr auto enum_range(EPlainFixture) noexcept -> ioj::MinMax<EPlainFixture> {
+    return {EPlainFixture::First, EPlainFixture::ReadableName};
+}
 
 using ioj::to_display_string;
 using ioj::to_serialized_string;
@@ -47,6 +52,11 @@ enum class ENameOnlyFixture : ENameOnlyFixtureUnderlying {
     Second,
 };
 
+[[nodiscard]] constexpr auto enum_range(ENameOnlyFixture) noexcept
+    -> ioj::MinMax<ENameOnlyFixture> {
+    return {ENameOnlyFixture::First, ENameOnlyFixture::Second};
+}
+
 using ioj::to_string;
 [[nodiscard]] constexpr auto try_parse_name_only_fixture(std::string_view const value) noexcept
     -> std::optional<ENameOnlyFixture> {
@@ -69,6 +79,11 @@ enum class EReorderedFixture : EReorderedFixtureUnderlying {
     First = 0,
     Second,
 };
+
+[[nodiscard]] constexpr auto enum_range(EReorderedFixture) noexcept
+    -> ioj::MinMax<EReorderedFixture> {
+    return {EReorderedFixture::First, EReorderedFixture::Later};
+}
 
 using ioj::to_serialized_string;
 using ioj::to_string;
@@ -96,6 +111,10 @@ enum class EMissingNames : EMissingNamesUnderlying {
     Escaped,
     Count,
 };
+
+[[nodiscard]] constexpr auto enum_range(EMissingNames) noexcept -> ioj::MinMax<EMissingNames> {
+    return {EMissingNames::Unnamed, EMissingNames::Escaped};
+}
 
 using ioj::to_display_string;
 using ioj::to_serialized_string;

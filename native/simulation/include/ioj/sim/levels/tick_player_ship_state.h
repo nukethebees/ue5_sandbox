@@ -3,8 +3,10 @@
 
 #pragma once
 
-#include <cstdint>
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
+#include <cstdint>
 namespace ioj::sim {
 using TickPlayerShipStateUnderlying = std::uint8_t;
 
@@ -14,5 +16,10 @@ enum class TickPlayerShipState : TickPlayerShipStateUnderlying {
     PresentAlive,
     PresentDead,
 };
+
+[[nodiscard]] constexpr auto enum_range(TickPlayerShipState) noexcept
+    -> MinMax<TickPlayerShipState> {
+    return {TickPlayerShipState::NotPresent, TickPlayerShipState::PresentDead};
+}
 
 } // namespace ioj::sim

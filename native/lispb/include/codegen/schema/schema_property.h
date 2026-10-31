@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
 #include <cstdint>
 
@@ -132,6 +134,10 @@ enum class SchemaProperty : SchemaPropertyUnderlying {
     value,
     value_type,
 };
+
+[[nodiscard]] constexpr auto enum_range(SchemaProperty) noexcept -> ioj::MinMax<SchemaProperty> {
+    return {SchemaProperty::api_name, SchemaProperty::value_type};
+}
 
 using ioj::to_serialized_string;
 

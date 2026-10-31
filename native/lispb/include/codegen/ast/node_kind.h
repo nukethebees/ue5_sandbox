@@ -3,8 +3,10 @@
 
 #pragma once
 
-#include <cstdint>
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
+#include <cstdint>
 namespace lispb::codegen {
 using NodeKindUnderlying = std::uint8_t;
 
@@ -41,5 +43,9 @@ enum class NodeKind : NodeKindUnderlying {
     line_directive,
     for_stmt,
 };
+
+[[nodiscard]] constexpr auto enum_range(NodeKind) noexcept -> ioj::MinMax<NodeKind> {
+    return {NodeKind::invalid, NodeKind::for_stmt};
+}
 
 } // namespace lispb::codegen

@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
 namespace ioj::layout {
 using DeclarationKindUnderlying = int;
@@ -26,6 +28,10 @@ enum class DeclarationKind : DeclarationKindUnderlying {
     static_table,
     facade,
 };
+
+[[nodiscard]] constexpr auto enum_range(DeclarationKind) noexcept -> MinMax<DeclarationKind> {
+    return {DeclarationKind::external, DeclarationKind::facade};
+}
 
 using ioj::to_display_string;
 

@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,6 +21,10 @@ enum class SoaMemberKind : SoaMemberKindUnderlying {
     array,
     nested,
 };
+
+[[nodiscard]] constexpr auto enum_range(SoaMemberKind) noexcept -> ioj::MinMax<SoaMemberKind> {
+    return {SoaMemberKind::array, SoaMemberKind::nested};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto

@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
 #include <cstdint>
 #include <optional>
@@ -20,6 +22,10 @@ enum class BlendMode : BlendModeUnderlying {
     masked,
     alpha_composite,
 };
+
+[[nodiscard]] constexpr auto enum_range(BlendMode) noexcept -> ioj::MinMax<BlendMode> {
+    return {BlendMode::additive, BlendMode::alpha_composite};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_blend_mode(std::string_view const value) noexcept

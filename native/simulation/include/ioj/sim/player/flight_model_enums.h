@@ -3,8 +3,10 @@
 
 #pragma once
 
-#include <cstdint>
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
+#include <cstdint>
 namespace ioj::sim::player {
 using FlightModelPresetUnderlying = std::uint8_t;
 
@@ -16,6 +18,10 @@ enum class FlightModelPreset : FlightModelPresetUnderlying {
     Gunship,
 };
 
+[[nodiscard]] constexpr auto enum_range(FlightModelPreset) noexcept -> MinMax<FlightModelPreset> {
+    return {FlightModelPreset::Starfox, FlightModelPreset::Gunship};
+}
+
 using FlightModelSlotUnderlying = std::uint8_t;
 
 // Logical bit width: 2.
@@ -25,6 +31,10 @@ enum class FlightModelSlot : FlightModelSlotUnderlying {
     Third,
     Fourth,
 };
+
+[[nodiscard]] constexpr auto enum_range(FlightModelSlot) noexcept -> MinMax<FlightModelSlot> {
+    return {FlightModelSlot::First, FlightModelSlot::Fourth};
+}
 
 using TranslationSemanticUnderlying = std::uint8_t;
 
@@ -36,6 +46,11 @@ enum class TranslationSemantic : TranslationSemanticUnderlying {
     Acceleration,
 };
 
+[[nodiscard]] constexpr auto enum_range(TranslationSemantic) noexcept
+    -> MinMax<TranslationSemantic> {
+    return {TranslationSemantic::Disabled, TranslationSemantic::Acceleration};
+}
+
 using RotationSemanticUnderlying = std::uint8_t;
 
 // Logical bit width: 2.
@@ -45,6 +60,10 @@ enum class RotationSemantic : RotationSemanticUnderlying {
     AngularAcceleration,
 };
 
+[[nodiscard]] constexpr auto enum_range(RotationSemantic) noexcept -> MinMax<RotationSemantic> {
+    return {RotationSemantic::Disabled, RotationSemantic::AngularAcceleration};
+}
+
 using ReferenceFrameUnderlying = std::uint8_t;
 
 // Logical bit width: 1.
@@ -53,6 +72,10 @@ enum class ReferenceFrame : ReferenceFrameUnderlying {
     World,
 };
 
+[[nodiscard]] constexpr auto enum_range(ReferenceFrame) noexcept -> MinMax<ReferenceFrame> {
+    return {ReferenceFrame::Ship, ReferenceFrame::World};
+}
+
 using TranslationInputSourceUnderlying = std::uint8_t;
 
 // Logical bit width: 1.
@@ -60,6 +83,11 @@ enum class TranslationInputSource : TranslationInputSourceUnderlying {
     Axis,
     Accelerator,
 };
+
+[[nodiscard]] constexpr auto enum_range(TranslationInputSource) noexcept
+    -> MinMax<TranslationInputSource> {
+    return {TranslationInputSource::Axis, TranslationInputSource::Accelerator};
+}
 
 using ResponseModeUnderlying = std::uint8_t;
 
@@ -70,6 +98,10 @@ enum class ResponseMode : ResponseModeUnderlying {
     SecondOrder,
 };
 
+[[nodiscard]] constexpr auto enum_range(ResponseMode) noexcept -> MinMax<ResponseMode> {
+    return {ResponseMode::Direct, ResponseMode::SecondOrder};
+}
+
 using FacingVelocityCouplingUnderlying = std::uint8_t;
 
 // Logical bit width: 2.
@@ -78,6 +110,11 @@ enum class FacingVelocityCoupling : FacingVelocityCouplingUnderlying {
     AlignToFacing,
     LockedToFacing,
 };
+
+[[nodiscard]] constexpr auto enum_range(FacingVelocityCoupling) noexcept
+    -> MinMax<FacingVelocityCoupling> {
+    return {FacingVelocityCoupling::Independent, FacingVelocityCoupling::LockedToFacing};
+}
 
 using FlightModelConfigErrorUnderlying = std::uint8_t;
 
@@ -93,5 +130,11 @@ enum class FlightModelConfigError : FlightModelConfigErrorUnderlying {
     InvalidSecondOrderSettlingTime,
     InvalidSecondOrderDampingRatio,
 };
+
+[[nodiscard]] constexpr auto enum_range(FlightModelConfigError) noexcept
+    -> MinMax<FlightModelConfigError> {
+    return {FlightModelConfigError::InvalidEnumValue,
+            FlightModelConfigError::InvalidSecondOrderDampingRatio};
+}
 
 } // namespace ioj::sim::player

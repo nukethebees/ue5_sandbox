@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
 #include <cstdint>
 
@@ -29,6 +31,10 @@ enum class BinaryOperator : BinaryOperatorUnderlying {
     less_equal,
     three_way,
 };
+
+[[nodiscard]] constexpr auto enum_range(BinaryOperator) noexcept -> ioj::MinMax<BinaryOperator> {
+    return {BinaryOperator::equal, BinaryOperator::three_way};
+}
 
 using ioj::to_serialized_string;
 

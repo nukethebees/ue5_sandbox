@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,6 +21,11 @@ enum class RecordComparison : RecordComparisonUnderlying {
     equality,
     three_way,
 };
+
+[[nodiscard]] constexpr auto enum_range(RecordComparison) noexcept
+    -> ioj::MinMax<RecordComparison> {
+    return {RecordComparison::none, RecordComparison::three_way};
+}
 
 [[nodiscard]] constexpr auto
     try_parse_serialized_record_comparison(std::string_view const value) noexcept

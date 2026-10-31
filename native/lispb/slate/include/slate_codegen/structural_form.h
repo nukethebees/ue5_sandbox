@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
 #include <cstdint>
 #include <optional>
@@ -28,6 +30,10 @@ enum class StructuralForm : StructuralFormUnderlying {
     let_,
     params,
 };
+
+[[nodiscard]] constexpr auto enum_range(StructuralForm) noexcept -> ioj::MinMax<StructuralForm> {
+    return {StructuralForm::widget_class, StructuralForm::params};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto

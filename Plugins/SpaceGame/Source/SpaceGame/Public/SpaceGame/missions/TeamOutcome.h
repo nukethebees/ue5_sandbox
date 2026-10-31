@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_traits.h"
+
 #include "CoreMinimal.h"
 
 #include "TeamOutcome.generated.h"
@@ -14,3 +16,7 @@ enum class ETeamOutcome : uint8 {
 };
 
 using ETeamOutcomeUnderlying = uint8;
+
+[[nodiscard]] constexpr auto enum_range(ETeamOutcome) noexcept -> ioj::MinMax<ETeamOutcome> {
+    return {ETeamOutcome::Victory, ETeamOutcome::Defeat};
+}

@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,6 +21,11 @@ enum class FloatingPointFormat : FloatingPointFormatUnderlying {
     ieee754_binary32,
     ieee754_binary64,
 };
+
+[[nodiscard]] constexpr auto enum_range(FloatingPointFormat) noexcept
+    -> ioj::MinMax<FloatingPointFormat> {
+    return {FloatingPointFormat::ieee754_binary16, FloatingPointFormat::ieee754_binary64};
+}
 
 [[nodiscard]] constexpr auto
     try_parse_serialized_floating_point_format(std::string_view const value) noexcept

@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
 #include <cstdint>
 
@@ -19,6 +21,10 @@ enum class UnaryOperator : UnaryOperatorUnderlying {
     bitwise_not,
     negate,
 };
+
+[[nodiscard]] constexpr auto enum_range(UnaryOperator) noexcept -> ioj::MinMax<UnaryOperator> {
+    return {UnaryOperator::logical_not, UnaryOperator::negate};
+}
 
 using ioj::to_serialized_string;
 

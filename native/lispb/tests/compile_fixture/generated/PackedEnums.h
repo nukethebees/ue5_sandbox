@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -16,6 +17,10 @@ enum class PackedState : PackedStateUnderlying {
     AB = 0xAB,
     Max = 0xFF,
 };
+
+[[nodiscard]] constexpr auto enum_range(PackedState) noexcept -> ioj::MinMax<PackedState> {
+    return {PackedState::Zero, PackedState::Max};
+}
 
 using OpaqueStateUnderlying = std::uint32_t;
 
@@ -34,6 +39,10 @@ enum class TinyState : TinyStateUnderlying {
     Max = 3,
 };
 
+[[nodiscard]] constexpr auto enum_range(TinyState) noexcept -> ioj::MinMax<TinyState> {
+    return {TinyState::Zero, TinyState::Max};
+}
+
 using DomainStateUnderlying = std::uint8_t;
 
 // Logical bit width: 8.
@@ -41,6 +50,10 @@ enum class DomainState : DomainStateUnderlying {
     Zero,
     One,
 };
+
+[[nodiscard]] constexpr auto enum_range(DomainState) noexcept -> ioj::MinMax<DomainState> {
+    return {DomainState::Zero, DomainState::One};
+}
 
 } // namespace codegen_compile_fixture
 namespace ioj {

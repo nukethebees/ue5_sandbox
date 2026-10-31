@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
 #include <cstdint>
 #include <optional>
@@ -23,6 +25,10 @@ enum class OperationField : OperationFieldUnderlying {
     variants,
     aliasing,
 };
+
+[[nodiscard]] constexpr auto enum_range(OperationField) noexcept -> ioj::MinMax<OperationField> {
+    return {OperationField::operand, OperationField::aliasing};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto

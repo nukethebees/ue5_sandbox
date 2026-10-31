@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
 #include <cstdint>
 
@@ -17,6 +19,10 @@ enum class BoostBrakeState : BoostBrakeStateUnderlying {
     Brake = 2,
     EmergencyBrake = 3,
 };
+
+[[nodiscard]] constexpr auto enum_range(BoostBrakeState) noexcept -> MinMax<BoostBrakeState> {
+    return {BoostBrakeState::None, BoostBrakeState::EmergencyBrake};
+}
 
 using ioj::to_string;
 

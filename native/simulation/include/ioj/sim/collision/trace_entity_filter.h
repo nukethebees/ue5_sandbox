@@ -3,8 +3,10 @@
 
 #pragma once
 
-#include <cstdint>
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
+#include <cstdint>
 namespace ioj::sim::collision {
 using TraceEntityFilterUnderlying = std::uint8_t;
 
@@ -13,5 +15,9 @@ enum class TraceEntityFilter : TraceEntityFilterUnderlying {
     None,
     ExcludeFighters,
 };
+
+[[nodiscard]] constexpr auto enum_range(TraceEntityFilter) noexcept -> MinMax<TraceEntityFilter> {
+    return {TraceEntityFilter::None, TraceEntityFilter::ExcludeFighters};
+}
 
 } // namespace ioj::sim::collision

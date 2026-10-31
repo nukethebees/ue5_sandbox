@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -21,6 +23,10 @@ enum class SlotOption : SlotOptionUnderlying {
     halign,
     valign,
 };
+
+[[nodiscard]] constexpr auto enum_range(SlotOption) noexcept -> ioj::MinMax<SlotOption> {
+    return {SlotOption::weight, SlotOption::valign};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_slot_option(std::string_view const value) noexcept

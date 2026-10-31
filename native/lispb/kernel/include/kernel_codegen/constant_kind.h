@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -20,6 +22,10 @@ enum class ConstantKind : ConstantKindUnderlying {
     infinity,
     negative_infinity,
 };
+
+[[nodiscard]] constexpr auto enum_range(ConstantKind) noexcept -> ioj::MinMax<ConstantKind> {
+    return {ConstantKind::nan, ConstantKind::negative_infinity};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto

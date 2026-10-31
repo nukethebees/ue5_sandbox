@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,6 +21,10 @@ enum class SceneTexture : SceneTextureUnderlying {
     post_process_input0,
     scene_depth,
 };
+
+[[nodiscard]] constexpr auto enum_range(SceneTexture) noexcept -> ioj::MinMax<SceneTexture> {
+    return {SceneTexture::post_process_input0, SceneTexture::scene_depth};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto

@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -19,6 +21,10 @@ enum class OperationKind : OperationKindUnderlying {
     map,
     component_map,
 };
+
+[[nodiscard]] constexpr auto enum_range(OperationKind) noexcept -> ioj::MinMax<OperationKind> {
+    return {OperationKind::map, OperationKind::component_map};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto

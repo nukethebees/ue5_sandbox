@@ -5,6 +5,7 @@
 
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
 #include "CoreMinimal.h"
 
@@ -30,6 +31,10 @@ enum class EGameTextStyle : uint8 {
 
 using EGameTextStyleUnderlying = std::uint8_t;
 
+[[nodiscard]] constexpr auto enum_range(EGameTextStyle) noexcept -> ioj::MinMax<EGameTextStyle> {
+    return {EGameTextStyle::Body, EGameTextStyle::Disabled};
+}
+
 // Logical bit width: 1.
 UENUM()
 enum class EGameButtonStyle : uint8 {
@@ -38,6 +43,11 @@ enum class EGameButtonStyle : uint8 {
 };
 
 using EGameButtonStyleUnderlying = std::uint8_t;
+
+[[nodiscard]] constexpr auto enum_range(EGameButtonStyle) noexcept
+    -> ioj::MinMax<EGameButtonStyle> {
+    return {EGameButtonStyle::Primary, EGameButtonStyle::Secondary};
+}
 
 // Logical bit width: 4.
 UENUM()
@@ -54,6 +64,10 @@ enum class EGameUiIcon : uint8 {
 };
 
 using EGameUiIconUnderlying = std::uint8_t;
+
+[[nodiscard]] constexpr auto enum_range(EGameUiIcon) noexcept -> ioj::MinMax<EGameUiIcon> {
+    return {EGameUiIcon::Hive, EGameUiIcon::LevelComplete};
+}
 
 namespace ioj {
 template <>

@@ -5,6 +5,7 @@
 
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
 #include <array>
 #include <cstddef>
@@ -21,6 +22,10 @@ enum class EntityType : EntityTypeUnderlying {
     Fighter = 3,
     TubeSpinner = 4,
 };
+
+[[nodiscard]] constexpr auto enum_range(EntityType) noexcept -> MinMax<EntityType> {
+    return {EntityType::PlayerShip, EntityType::TubeSpinner};
+}
 
 using ioj::to_serialized_string;
 using ioj::to_string;

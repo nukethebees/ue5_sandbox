@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -20,6 +22,10 @@ enum class SettingDevice : SettingDeviceUnderlying {
     keyboard_mouse,
     controller,
 };
+
+[[nodiscard]] constexpr auto enum_range(SettingDevice) noexcept -> ioj::MinMax<SettingDevice> {
+    return {SettingDevice::shared, SettingDevice::controller};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto

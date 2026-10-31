@@ -27,8 +27,7 @@ struct RuleId : detail::RuleIdBase {
     static constexpr PackedField<storage_type, std::uint32_t, 0, 24> index_layout{};
 
     // type
-    static constexpr PackedField<storage_type, ConditionType, 24, 8> type_layout{
-        {static_cast<ConditionType>(0ULL), static_cast<ConditionType>(4ULL)}};
+    static constexpr PackedField<storage_type, ConditionType, 24, 8> type_layout{};
 
     constexpr RuleId() noexcept = default;
     constexpr explicit RuleId(decltype(index_layout)::value_type const index_value,

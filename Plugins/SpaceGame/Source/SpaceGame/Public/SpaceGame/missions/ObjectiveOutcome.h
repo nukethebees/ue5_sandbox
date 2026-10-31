@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_traits.h"
+
 #include "CoreMinimal.h"
 
 #include "ObjectiveOutcome.generated.h"
@@ -15,3 +17,8 @@ enum class EObjectiveOutcome : uint8 {
 };
 
 using EObjectiveOutcomeUnderlying = uint8;
+
+[[nodiscard]] constexpr auto enum_range(EObjectiveOutcome) noexcept
+    -> ioj::MinMax<EObjectiveOutcome> {
+    return {EObjectiveOutcome::Passed, EObjectiveOutcome::Expired};
+}

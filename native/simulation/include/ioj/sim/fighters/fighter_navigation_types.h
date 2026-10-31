@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/packed_value.h"
 
 #include <cassert>
@@ -20,6 +21,10 @@ enum class NavigationRiskTier : NavigationRiskTierUnderlying {
     Active = 2,
     Immediate = 3,
 };
+
+[[nodiscard]] constexpr auto enum_range(NavigationRiskTier) noexcept -> MinMax<NavigationRiskTier> {
+    return {NavigationRiskTier::Clear, NavigationRiskTier::Immediate};
+}
 
 struct NavigationRiskCode;
 

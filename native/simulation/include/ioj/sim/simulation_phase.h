@@ -3,8 +3,10 @@
 
 #pragma once
 
-#include <cstdint>
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 
+#include <cstdint>
 namespace ioj::sim {
 using SimulationPhaseUnderlying = std::uint8_t;
 
@@ -17,5 +19,9 @@ enum class SimulationPhase : SimulationPhaseUnderlying {
     ResolutionCommit,
     BetweenTicks,
 };
+
+[[nodiscard]] constexpr auto enum_range(SimulationPhase) noexcept -> MinMax<SimulationPhase> {
+    return {SimulationPhase::Preparation, SimulationPhase::BetweenTicks};
+}
 
 } // namespace ioj::sim

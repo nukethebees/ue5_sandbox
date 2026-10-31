@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/parse_enum.h"
 
 #include <array>
@@ -20,6 +22,11 @@ enum class IntegerVarintEncoding : IntegerVarintEncodingUnderlying {
     signed_varint,
     zigzag_varint,
 };
+
+[[nodiscard]] constexpr auto enum_range(IntegerVarintEncoding) noexcept
+    -> ioj::MinMax<IntegerVarintEncoding> {
+    return {IntegerVarintEncoding::unsigned_varint, IntegerVarintEncoding::zigzag_varint};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto

@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ioj/enum_strings.h"
+#include "ioj/enum_traits.h"
+#include "ioj/min_max.h"
 #include "ioj/packed_value.h"
 #include "ioj/parse_enum.h"
 #include "ioj/sim/entities/entity_id.h"
@@ -24,6 +26,10 @@ enum class InstructionType : InstructionTypeUnderlying {
     Kill = 0,
     Idle = 1,
 };
+
+[[nodiscard]] constexpr auto enum_range(InstructionType) noexcept -> MinMax<InstructionType> {
+    return {InstructionType::Kill, InstructionType::Idle};
+}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
@@ -46,8 +52,7 @@ struct Instruction : detail::InstructionBase {
     using packed_integer_tag = packed::integer_tag;
 
     // type
-    static constexpr PackedField<storage_type, InstructionType, 0, 8> type_layout{
-        {static_cast<InstructionType>(0ULL), static_cast<InstructionType>(1ULL)}};
+    static constexpr PackedField<storage_type, InstructionType, 0, 8> type_layout{};
 
     // data
     static constexpr PackedField<storage_type, storage_type, 8, 32> data_layout{};
@@ -60,8 +65,7 @@ struct Instruction : detail::InstructionBase {
     static constexpr PackedField<storage_type, std::uint32_t, 8, 24> data_kill_index_layout{};
 
     // data_kill_entity_type
-    static constexpr PackedField<storage_type, EntityType, 32, 8> data_kill_entity_type_layout{
-        {static_cast<EntityType>(0ULL), static_cast<EntityType>(4ULL)}};
+    static constexpr PackedField<storage_type, EntityType, 32, 8> data_kill_entity_type_layout{};
 
     constexpr Instruction() noexcept = delete;
 

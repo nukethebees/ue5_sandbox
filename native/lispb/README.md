@@ -75,7 +75,7 @@ their scalar properties. Integer definitions can also supply domains for packed 
 quantization, varints, and optionals. Size and alignment come from the selected ABI profile.
 The project's [common scalars](../../lispb/schema/common_scalars.lispb) provide standard examples.
 
-Native enums emit only the helpers selected with `:helpers`:
+Native enums select optional helpers with `:helpers`:
 
 ```lisp
 (enum State std::uint8_t
@@ -90,11 +90,17 @@ Available helpers are `to-string`, `try-parse`, `to-display-string`, `to-seriali
 `try-parse-serialized`, `traits` (`ioj::EnumTraits<Enum>::values`), and `formatter`.
 The [formatter helper](docs/enum-formatting.md) requires `to-string` and supports selecting
 serialized/display representations when those helpers are present. Omit the list
-or use `:helpers ()` for a bare enum. Display formatting falls back
+or use `:helpers ()` to omit optional helpers. Display formatting falls back
 to the enumerator name. Serialized helpers require `:serialized-name` on every non-count value.
 Unknown or duplicate helpers are errors. Existing native schemas must explicitly select the
 helpers they need; `:native-api true` no longer selects them automatically. Unreal enums use
 the existing `:conversions` list instead.
+
+Generated enums with known numeric values also expose `enum_range(Enum)`, found through ADL,
+and `ioj::enum_min<Enum>` / `ioj::enum_max<Enum>`. Bounds exclude the count enumerator and include
+sentinels. Sparse enums expose bounds too; these do not imply that every intervening value is
+valid. Packed enum fields use these bounds by default, so their layout declarations need no
+explicit range initializer. Empty enums and enums with unresolved C++ expressions omit bounds.
 
 Compiler keyword enums live in `schema/`, with dialect-specific enums in `slate/schema/`,
 `kernel/schema/`, and `material/schema/`. Use their generated serialized-name lookups for closed

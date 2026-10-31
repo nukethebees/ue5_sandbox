@@ -28,6 +28,7 @@
 #include <codegen/schema/enumerator_schemas.h>
 #include <codegen/schema/module_settings_store.h>
 #include <codegen/schema/native_enum_helper.h>
+#include <codegen/schema/packed_integer_value.h>
 #include <lispb/indices.h>
 #include <lispb/schema/enum_domains.h>
 #include <lispb/schema/enum_storage_requirement.h>
@@ -409,6 +410,61 @@ auto enum_bit_width_comment(LoweringContext& context, DeclarationHandle const sc
               : "Logical bit width depends on the enumerator expressions.");
 }
 
+auto enum_range_declaration(LoweringContext& context,
+                            DeclarationHandle const schema,
+                            CppTypeId const enum_type) -> Nodes {
+    auto& ir{context.ir};
+    auto const& domains{context.semantic.enum_domains()};
+    auto const domain{domains.find(schema)};
+    auto const values{domains.values(domain)};
+    auto const count{values.size()};
+    std::optional<PackedIntegerValue> minimum;
+    std::optional<PackedIntegerValue> maximum;
+    EnumeratorId first{};
+    EnumeratorId last{};
+    for (std::size_t ordinal{}; ordinal < count; ++ordinal) {
+        auto const value{values[ordinal]};
+        if (value == domains.count_value[domain]) {
+            continue;
+        }
+        auto const code{domains.code(domain, ordinal)};
+        if (!code) {
+            return {};
+        }
+        auto const number{PackedIntegerValue::from_parts(code->negative, code->magnitude)};
+        if (!minimum || packed_integer_less(number, *minimum)) {
+            minimum = number;
+            first = value;
+        }
+        if (!maximum || packed_integer_less(*maximum, number)) {
+            maximum = number;
+            last = value;
+        }
+    }
+    if (!minimum) {
+        return {};
+    }
+
+    auto const range_type{ir.types.template_type(
+        ir.types.named("ioj::MinMax", {ir.types.dependency("ioj::MinMax", "ioj/min_max.h")}),
+        {enum_type})};
+    auto enumerator = [&](EnumeratorId const value) {
+        return ir.named(std::string{ir.types.spelling(enum_type)} +
+                        "::" + context.text(context.declarations.enumerators.name[value]));
+    };
+    auto const function{ir.function("enum_range", "auto")};
+    ir.set_function_parameters(function, {ir.parameter(enum_type, "")});
+    ir.set_function_return_type(function, range_type, ReturnSyntax::trailing);
+    ir.set_function_noexcept(function);
+    auto& flags{ir.function_flags(function)};
+    flags.set_is_nodiscard(true);
+    flags.set_is_constexpr(true);
+    flags.set_define_in_header(true);
+    ir.set_function_body(function,
+                         {ir.return_stmt(ir.init_list({enumerator(first), enumerator(last)}))});
+    return {ir.header_function(function)};
+}
+
 auto native_enum_declaration(LoweringContext& context, DeclarationHandle const schema) -> Nodes {
     auto& ir{context.ir};
     auto const& enums{context.declarations.enums};
@@ -420,6 +476,9 @@ auto native_enum_declaration(LoweringContext& context, DeclarationHandle const s
     decls.add(ir.enumeration(
                   enums.name[schema], ir.types.intern(alias), enum_values(context, schema, false)),
               2);
+    decls.append(
+        enum_range_declaration(context, schema, ir.types.intern(context.text(enums.name[schema]))));
+    decls.new_lines(2);
 
     auto const helpers{context.declarations.items(enums.helpers[schema])};
     for (auto const helper : {NativeEnumHelper::to_string,
@@ -565,6 +624,8 @@ auto unreal_projection_header(LoweringContext& context,
                   projections.name[projection], underlying, enum_values(context, schema, true)),
               2);
     decls.add(ir.using_declaration(ir.strings.intern(name + "Underlying"), underlying), 2);
+    decls.append(enum_range_declaration(context, schema, ir.types.intern(name)));
+    decls.new_lines(2);
     if (projections.enum_array[projection]) {
         decls.add(
             ir.namespace_node(ir.strings.intern("ioj"),
@@ -656,9 +717,7 @@ auto lower_enum(LoweringContext& context,
             std::ranges::contains(context.declarations.items(enums.helpers[schema]),
                                   NativeEnumHelper::traits) ||
             enums.enum_array[schema]};
-        if (needs_traits) {
-            prefix.add(ir.include(ir.store_text("ioj/enum_traits.h"), IncludeStyle::quoted), 2);
-        }
+        prefix.add(ir.include(ir.store_text("ioj/enum_traits.h"), IncludeStyle::quoted), 2);
         emission.header_prefix = prefix.build();
         NodeListBuilder decls{ir};
         decls.append(
@@ -696,14 +755,10 @@ auto lower_enum(LoweringContext& context,
             projection_nodes.insert(
                 projection_nodes.begin(),
                 {ir.include(ir.store_text("CoreMinimal.h"), IncludeStyle::quoted),
+                 ir.include(ir.store_text("ioj/enum_traits.h"), IncludeStyle::quoted),
                  ir.include(ir.store_text(generated_header), IncludeStyle::quoted)});
             auto const module_name{context.text(settings_store.name[settings]) + "_" +
                                    context.text(projections.name[projection])};
-            if (projections.enum_array[projection]) {
-                projection_nodes.insert(
-                    projection_nodes.begin() + 1,
-                    ir.include(ir.store_text("ioj/enum_traits.h"), IncludeStyle::quoted));
-            }
             auto const projection_file{
                 ir.files.append(projections.header[projection], projection_nodes)};
             ir.files.flags[ir.files.index(projection_file)].set_clang_format_off(true);
@@ -752,9 +807,12 @@ auto lower_enum(LoweringContext& context,
         // Preserve the built-in spelling required by UnrealHeaderTool for reflected enums.
         decls.add(ir.using_declaration(ir.strings.intern(underlying_alias), underlying), 2);
     }
+    decls.append(
+        enum_range_declaration(context, schema, ir.types.intern(context.text(enums.name[schema]))));
+    decls.new_lines(2);
+    emission.header_prefix.push_back(
+        ir.include(ir.store_text("ioj/enum_traits.h"), IncludeStyle::quoted));
     if (enums.enum_array[schema]) {
-        emission.header_prefix.push_back(
-            ir.include(ir.store_text("ioj/enum_traits.h"), IncludeStyle::quoted));
         emission.header_global.push_back(ir.namespace_node(
             ir.strings.intern("ioj"),
             {enum_count_specialization(
