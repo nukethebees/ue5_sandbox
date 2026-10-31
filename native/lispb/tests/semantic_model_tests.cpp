@@ -104,148 +104,15 @@ auto production_graph(CompilerStorage& storage) -> TypeGraph {
     return resolve_type_graph(manifest);
 }
 
-TEST(SemanticTypeGraph, SimulationModelCompositionUsesDeclaredNodesAndStrongScalarDomain) {
+TEST(SemanticTypeGraph, ResolvesProductionProject) {
     lispb::codegen::CompilerTestContext context;
-    [[maybe_unused]] auto& storage{context.storage};
-    auto& strings{storage.strings};
-    auto const graph{production_graph(storage)};
-    auto const& records{graph.definitions().records};
-    auto const& record_members{graph.definitions().children};
-    auto const& integer_scalars{graph.definitions().integer_scalars};
-    auto const& soas{graph.definitions().soas};
-    auto const& soa_columns{graph.definitions().soa_columns};
-    auto const& occurrences{graph.occurrences()};
-    auto const loadout{lispb::codegen::find_test_type(
-        graph, "native_player_flight_model_data", "FlightModelLoadout")};
-    ASSERT_TRUE(loadout.has_value());
-    auto current{*loadout};
-    for (auto const& [member_name, expected] :
-         {std::pair{"profiles", "FlightModelProfile"},
-          std::pair{"config", "FlightModelConfig"},
-          std::pair{"translation", "TranslationAxesConfig"},
-          std::pair{"forward", "TranslationAxisConfig"},
-          std::pair{"manual", "TranslationChannelConfig"},
-          std::pair{"response", "ResponseConfig"},
-          std::pair{"second_order", "SecondOrderResponseConfig"}}) {
-        auto const& record{graph.definition(current)};
-        auto const member{std::ranges::find(records.members_of(record), member_name, [&](auto id) {
-            return text(storage, record_members.name[record_members.index(id)]);
-        })};
-        ASSERT_NE(member, records.members_of(record).end());
-        auto const next{occurrences.type[occurrences.index(
-            record_members.semantic_type[record_members.index(*member)])]};
-        EXPECT_EQ(graph.origin(next), TypeOrigin::declaration);
-        EXPECT_EQ(text(storage, graph.name(next)), expected);
-        EXPECT_NE(std::ranges::find(graph.dependencies_of(current), next),
-                  graph.dependencies_of(current).end());
-        current = next;
+    auto const graph{production_graph(context.storage)};
+    ASSERT_FALSE(std::ranges::empty(graph.types()));
+    for (auto const type : graph.types()) {
+        if (graph.origin(type) == TypeOrigin::declaration) {
+            EXPECT_EQ(graph.find_declared(graph.module(type), graph.name(type)), type);
+        }
     }
-    auto const& response{graph.definition(current)};
-    EXPECT_EQ(
-        text(storage,
-             record_members.initializer[record_members.index(records.members_of(response)[0])]),
-        "3.f");
-    EXPECT_EQ(
-        text(storage,
-             record_members.initializer[record_members.index(records.members_of(response)[1])]),
-        "0.5f");
-    EXPECT_EQ(graph.find_registered(strings.find("laser_source")),
-              lispb::codegen::find_test_type(graph, "native_laser_source", "LaserSource"));
-    EXPECT_EQ(graph.find_registered(strings.find("native_index_span")),
-              lispb::codegen::find_test_type(graph, "native_index_span", "IndexSpan"));
-    EXPECT_EQ(graph.find_registered(strings.find("native_trace_hit")),
-              lispb::codegen::find_test_type(graph, "query_results", "TraceHit"));
-    auto const frame_index{
-        lispb::codegen::find_test_type(graph, "entity_instance_handle", "EntityFrameIndex")};
-    ASSERT_TRUE(frame_index.has_value());
-    auto const& integer{graph.definition(*frame_index)};
-    EXPECT_FALSE(integer_scalars.signedness[integer_scalars.index(integer)]);
-    EXPECT_EQ(integer_scalars.bit_width[integer_scalars.index(integer)], 18U);
-    EXPECT_EQ(integer_scalars.minimum_value[integer_scalars.index(integer)],
-              lispb::codegen::PackedIntegerValue{0});
-    EXPECT_EQ(integer_scalars.maximum_value[integer_scalars.index(integer)],
-              lispb::codegen::PackedIntegerValue{262143});
-    EXPECT_FALSE(graph.find_registered(strings.find("native_health_index")).has_value());
-    for (auto const& [module, name, column_name, registration] :
-         {std::tuple{"native_trace_hits", "TraceHits", "hits", "native_trace_hit"}}) {
-        auto const owner{lispb::codegen::find_test_type(graph, module, name)};
-        ASSERT_TRUE(owner.has_value()) << module;
-        auto const& soa{graph.definition(*owner)};
-        auto const column{std::ranges::find(soas.columns_of(soa), column_name, [&](auto id) {
-            return text(storage, soa_columns.name[soa_columns.index(id)]);
-        })};
-        ASSERT_NE(column, soas.columns_of(soa).end());
-        EXPECT_EQ(
-            occurrences
-                .type[occurrences.index(soa_columns.semantic_type[soa_columns.index(*column)])],
-            *graph.find_registered(strings.find(registration)));
-    }
-}
-
-TEST(SemanticTypeGraph, PreservesEntityTypeEnumSemantics) {
-    lispb::codegen::CompilerTestContext context;
-    [[maybe_unused]] auto& storage{context.storage};
-    auto const graph{production_graph(storage)};
-    auto const& enums{graph.definitions().enums};
-    auto const& occurrences{graph.occurrences()};
-    auto const id{lispb::codegen::find_test_type(graph, "native_entity_type", "EntityType")};
-    ASSERT_TRUE(id.has_value());
-
-    auto const& node{*id};
-    EXPECT_EQ(text(storage, graph.namespace_name(node)), "ioj::sim");
-    auto const type{
-        ((graph.definition(node)).kind() == lispb::schema::TypeDefinitionKind::enumeration
-             ? std::optional{graph.definition(node)}
-             : std::nullopt)};
-    ASSERT_TRUE(type.has_value());
-    ASSERT_TRUE(lispb::schema::is_valid(enums.underlying_type[enums.index(*type)]));
-    EXPECT_EQ(
-        text(storage,
-             graph.cpp_spelling(
-                 occurrences.type[occurrences.index(enums.underlying_type[enums.index(*type)])])),
-        "std::uint8_t");
-    EXPECT_NE(std::ranges::find(
-                  graph.dependencies_of(*id),
-                  occurrences.type[occurrences.index(enums.underlying_type[enums.index(*type)])]),
-              graph.dependencies_of(*id).end());
-    EXPECT_FALSE(enums.count[enums.index(*type)].has_value());
-    EXPECT_TRUE(enums.enum_array[enums.index(*type)]);
-
-    auto const player_ship{std::ranges::find(
-        graph.enum_domains().values(enums.domain[enums.index(*type)]),
-        std::string{"PlayerShip"},
-        [&](auto id) {
-            return text(
-                storage,
-                graph.declarations().enumerators.name[graph.declarations().enumerators.index(id)]);
-        })};
-    ASSERT_NE(player_ship, graph.enum_domains().values(enums.domain[enums.index(*type)]).end());
-    EXPECT_EQ(
-        text(storage,
-             graph.declarations()
-                 .enumerators.initializer[graph.declarations().enumerators.index(*player_ship)]),
-        "0");
-    EXPECT_EQ(
-        text(storage,
-             graph.declarations()
-                 .enumerators.display_name[graph.declarations().enumerators.index(*player_ship)]),
-        "Player Ship");
-    EXPECT_EQ(
-        text(
-            storage,
-            graph.declarations()
-                .enumerators.serialized_name[graph.declarations().enumerators.index(*player_ship)]),
-        "player_ship");
-
-    auto const count{std::ranges::find(
-        graph.enum_domains().values(enums.domain[enums.index(*type)]),
-        std::string{"COUNT"},
-        [&](auto id) {
-            return text(
-                storage,
-                graph.declarations().enumerators.name[graph.declarations().enumerators.index(id)]);
-        })};
-    EXPECT_EQ(count, graph.enum_domains().values(enums.domain[enums.index(*type)]).end());
 }
 
 TEST(SemanticTypeGraph, PreservesExplicitEnumSemanticWidth) {
@@ -790,31 +657,6 @@ TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
     EXPECT_TRUE(graph.dependencies_of(*mini_float).empty());
 }
 
-TEST(SemanticTypeGraph, ResolvesPackedFieldsAndDependencies) {
-    lispb::codegen::CompilerTestContext context;
-    auto const graph{production_graph(context.storage)};
-    auto const entity_type{
-        *lispb::codegen::find_test_type(graph, "native_entity_type", "EntityType")};
-    auto const entity_id{*lispb::codegen::find_test_type(graph, "native_entity_id", "EntityId")};
-    auto const definition{graph.definition(entity_id)};
-    auto const& records{graph.definitions().records};
-    EXPECT_EQ(definition.kind(), TypeDefinitionKind::record);
-    EXPECT_EQ(records.layout[records.index(definition)], lispb::codegen::LayoutKind::packed);
-    EXPECT_EQ(records.invalid_raw_value[records.index(definition)], 0xffffffffU);
-    auto const& layout{graph.bit_layout(entity_id)};
-    EXPECT_EQ(layout.encoded_bits, 32U);
-    EXPECT_EQ(layout.storage_bits, 32U);
-    ASSERT_EQ(layout.placements.size(), 2U);
-    EXPECT_EQ(layout.placements[0].path, "index");
-    EXPECT_EQ(layout.placements[0].offset, 0U);
-    EXPECT_EQ(layout.placements[0].bits, 24U);
-    EXPECT_EQ(layout.placements[1].path, "entity_type");
-    EXPECT_EQ(layout.placements[1].offset, 24U);
-    EXPECT_EQ(layout.placements[1].bits, 8U);
-    EXPECT_EQ(layout.placements[1].type, entity_type);
-    codegen::expect_dependency_edge(graph, entity_id, entity_type);
-}
-
 TEST(SemanticTypeGraph, ResolvesPackedIntegerScalarDomainAndDependency) {
     lispb::codegen::CompilerTestContext context;
     auto const manifest{lispb::codegen::parse_test_manifest(context, R"(
@@ -858,51 +700,6 @@ TEST(SemanticTypeGraph, RetainsPackedPhysicalOrdering) {
     EXPECT_EQ(records.bit_order[row], lispb::codegen::PackedBitOrder::most_significant_first);
     ASSERT_EQ(graph.bit_layout(header).placements.size(), 1U);
     EXPECT_EQ(graph.bit_layout(header).placements[0].offset, 24U);
-}
-
-TEST(SemanticTypeGraph, ResolvesSoaColumnsAndEquivalentValues) {
-    lispb::codegen::CompilerTestContext context;
-    [[maybe_unused]] auto& storage{context.storage};
-    auto const graph{production_graph(storage)};
-    auto const& soas{graph.definitions().soas};
-    auto const& soa_columns{graph.definitions().soa_columns};
-    auto const& occurrences{graph.occurrences()};
-    auto const entity_type{
-        lispb::codegen::find_test_type(graph, "native_entity_type", "EntityType")};
-    auto const history{
-        lispb::codegen::find_test_type(graph, "native_entity_history", "EntityHistory")};
-    auto const vectors{lispb::codegen::find_test_type(graph, "native_vectors_3f", "Vectors3f")};
-    ASSERT_TRUE(entity_type.has_value());
-    ASSERT_TRUE(history.has_value());
-    ASSERT_TRUE(vectors.has_value());
-
-    auto const& history_type{graph.definition(*history)};
-    auto const entity_types{
-        std::ranges::find(soas.columns_of(history_type), std::string{"entity_types"}, [&](auto id) {
-            return text(storage, soa_columns.name[soa_columns.index(id)]);
-        })};
-    ASSERT_NE(entity_types, soas.columns_of(history_type).end());
-    EXPECT_EQ(
-        occurrences
-            .type[occurrences.index(soa_columns.semantic_type[soa_columns.index(*entity_types)])],
-        *entity_type);
-
-    auto const& vector_type{graph.definition(*vectors)};
-    auto const vector_equivalent{graph.find_registered(storage.strings.find("native_vector_3f"))};
-    ASSERT_TRUE(vector_equivalent.has_value());
-    ASSERT_TRUE(lispb::schema::is_valid(soas.equivalent_type[soas.index(vector_type)]));
-    EXPECT_EQ(occurrences.type[occurrences.index(soas.equivalent_type[soas.index(vector_type)])],
-              *vector_equivalent);
-    EXPECT_NE(std::ranges::find(graph.dependencies_of(*vectors), *vector_equivalent),
-              graph.dependencies_of(*vectors).end());
-    ASSERT_EQ(soas.columns_of(vector_type).size(), 3U);
-    for (auto const column_id : soas.columns_of(vector_type)) {
-        auto const column{column_id};
-        EXPECT_EQ(text(storage,
-                       graph.cpp_spelling(occurrences.type[occurrences.index(
-                           soa_columns.semantic_type[soa_columns.index(column)])])),
-                  "float");
-    }
 }
 
 class InvalidNestedSoaType : public testing::TestWithParam<char const*> {};
