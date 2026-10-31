@@ -93,6 +93,12 @@ namespace lispb::codegen {
 class CppTypes;
 class CppRenderer;
 
+struct VariableOptions {
+    TemplateId template_declaration{};
+    bool is_inline{};
+    bool is_constexpr{};
+};
+
 class CppIR {
   public:
     CppIR(Strings& strings, CppTypes& types)
@@ -143,6 +149,10 @@ class CppIR {
         -> NodeId {
         return assignment(target, value, std::span<TypeDependencyId const>{dependencies});
     }
+    auto variable(CppTypeId type,
+                  Expr name,
+                  std::optional<Expr> initializer = {},
+                  VariableOptions options = {}) -> NodeId;
     auto variable(CppTypeId type, StringId name, std::optional<Expr> initializer = {}) -> NodeId;
     auto variable(CppTypeId type, std::string_view name, std::optional<Expr> initializer = {})
         -> NodeId;

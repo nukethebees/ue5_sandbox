@@ -445,6 +445,11 @@ void CppRenderer::collect_environment(EnvironmentId environment,
             case NodeKind::constexpr_member:
                 add_name(ir_.constexpr_members_.name[i], declaration);
                 break;
+            case NodeKind::variable_declaration_stmt:
+                if (ir_.variable_declaration_stmt_nodes_.template_declaration[i]) {
+                    add_expr(ir_.variable_declaration_stmt_nodes_.name[i], declaration);
+                }
+                break;
             case NodeKind::function:
                 if (!ir_.function_nodes_.owner[i]) {
                     add_expr(ir_.functions_.name[ir_.function_nodes_.function[i].value],
@@ -1070,22 +1075,29 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
             expr(ir_.assignment_stmt_nodes_.value[i]);
             output += ';';
             break;
-        case NodeKind::variable_declaration_stmt:
+        case NodeKind::variable_declaration_stmt: {
+            auto const& variables{ir_.variable_declaration_stmt_nodes_};
+            template_prefix(variables.template_declaration[i]);
             indent();
-            type(ir_.variable_declaration_stmt_nodes_.type[i]);
+            if (variables.is_inline[i]) {
+                output += "inline ";
+            }
+            if (variables.is_constexpr[i]) {
+                output += "constexpr ";
+            }
+            type(variables.type[i]);
             output += ' ';
-            text(ir_.variable_declaration_stmt_nodes_.name[i]);
+            expr(variables.name[i]);
             state.environments.declare(
-                state.current,
-                ir_.strings.intern(ir_.variable_declaration_stmt_nodes_.name[i]),
-                CppDeclarationId{node});
-            if (auto const initializer{ir_.variable_declaration_stmt_nodes_.initializer[i]}) {
+                enclosing, declaration_name(variables.name[i]), CppDeclarationId{node});
+            if (auto const initializer{variables.initializer[i]}) {
                 initialize(*initializer);
             } else {
                 output += "{}";
             }
             output += ';';
             break;
+        }
         case NodeKind::static_assert_:
             write_prefix("static_assert(");
             expr(ir_.static_assert_nodes_.condition[i]);

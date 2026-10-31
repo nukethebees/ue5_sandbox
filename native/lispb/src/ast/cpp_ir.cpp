@@ -200,12 +200,22 @@ auto CppIR::assignment(Expr target, Expr value, std::span<TypeDependencyId const
     return ir_detail::node(NodeKind::assignment_stmt, index);
 }
 
-auto CppIR::variable(CppTypeId type, StringId name, std::optional<Expr> initializer) -> NodeId {
+auto CppIR::variable(CppTypeId type,
+                     Expr name,
+                     std::optional<Expr> initializer,
+                     VariableOptions const options) -> NodeId {
     auto const index{variable_declaration_stmt_nodes_.type.size()};
     variable_declaration_stmt_nodes_.type.push_back(type);
     variable_declaration_stmt_nodes_.name.push_back(name);
     variable_declaration_stmt_nodes_.initializer.push_back(initializer);
+    variable_declaration_stmt_nodes_.template_declaration.push_back(options.template_declaration);
+    variable_declaration_stmt_nodes_.is_inline.push_back(options.is_inline);
+    variable_declaration_stmt_nodes_.is_constexpr.push_back(options.is_constexpr);
     return ir_detail::node(NodeKind::variable_declaration_stmt, index);
+}
+
+auto CppIR::variable(CppTypeId type, StringId name, std::optional<Expr> initializer) -> NodeId {
+    return variable(type, named(name), initializer);
 }
 
 auto CppIR::variable(CppTypeId type, std::string_view name, std::optional<Expr> initializer)
@@ -671,7 +681,10 @@ void CppIR::clear() {
           assignment_stmt_nodes_.dependencies);
     clear(variable_declaration_stmt_nodes_.type,
           variable_declaration_stmt_nodes_.name,
-          variable_declaration_stmt_nodes_.initializer);
+          variable_declaration_stmt_nodes_.initializer,
+          variable_declaration_stmt_nodes_.template_declaration,
+          variable_declaration_stmt_nodes_.is_inline,
+          variable_declaration_stmt_nodes_.is_constexpr);
     clear(static_assert_nodes_.condition, static_assert_nodes_.message);
     clear(new_lines_nodes_.count);
     clear(access_specifier_nodes_.access, access_specifier_nodes_.indentation);
@@ -1006,7 +1019,9 @@ void CppIR::collect_dependencies(NodeId node, std::vector<TypeDependencyId>& res
             collect_dependencies(assignment_stmt_nodes_.value[i], result);
             break;
         case NodeKind::variable_declaration_stmt:
+            collect_dependencies(variable_declaration_stmt_nodes_.template_declaration[i], result);
             type(variable_declaration_stmt_nodes_.type[i]);
+            collect_dependencies(variable_declaration_stmt_nodes_.name[i], result);
             if (auto const initializer{variable_declaration_stmt_nodes_.initializer[i]}) {
                 collect_dependencies(*initializer, result);
             }
