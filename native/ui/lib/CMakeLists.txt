@@ -6,6 +6,7 @@ target_sources(native-ui
     src/heatmap_2d.cpp
     src/histogram.cpp
     src/radar_2d.cpp
+    src/radar.cpp
     src/settings_slider.cpp
     src/stacked_bar_chart.cpp
 )

@@ -1,7 +1,9 @@
 #include <ioj/sim/telemetry/json_validation.h>
 #include <ioj/sim/telemetry/report_json.h>
+#include <ioj/sim/telemetry/run_catalog.h>
 
 #include <gtest/gtest.h>
+#include <nlohmann/json.hpp>
 
 #include <limits>
 
@@ -39,12 +41,12 @@ TEST(LevelTelemetryJsonValidation, RejectsInvalidRecordInvariants) {
 }
 
 TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
-    LevelTelemetryReport report;
+    auto report{make_run_report({},
+                                {.launch_mode = levels::LaunchMode::Paused,
+                                 .results_navigation = levels::ResultsNavigation::Telemetry},
+                                true)};
     report.run.metadata.run_id = "run-1";
     report.run.metadata.level_display_name = "Convoy \"alpha\"\n\xc3\xa9";
-    report.presentation_enabled = true;
-    report.started_paused = true;
-    report.opens_telemetry = true;
     report.run.tick_rate_hz = Frequency::make(120.0);
     report.run.completion.reason = LevelTelemetryRunEndReason::MissionSucceeded;
     report.run.completion.completed_ticks = SimTick{240};
@@ -77,6 +79,12 @@ TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
     ASSERT_EQ(parsed->run.battle_samples.size(), 1);
     EXPECT_EQ(parsed->run.battle_samples[0].combat.shots, sample.combat.shots);
     EXPECT_EQ(parsed->run.battle_samples[0].combat.damage_dealt, sample.combat.damage_dealt);
+    auto const summary{summarize_run(*parsed)};
+    EXPECT_EQ(summary.simulated_seconds, 2.0);
+    EXPECT_EQ(summary.active_entities, 1);
+    EXPECT_TRUE(summary.mission_complete);
+    EXPECT_EQ(summary.shots, 3);
+    EXPECT_EQ(summary.damage_dealt, 12.5);
 
     auto const reject_number{[&](std::string const& field, std::string const& replacement) {
         SCOPED_TRACE(field + " = " + replacement);
@@ -115,6 +123,39 @@ TEST(LevelTelemetryJsonValidation, NativeCodecRejectsInvalidInputAndReturnsError
     report.run.completion.completed_ticks = SimTick{0};
     report.run.completion.reason = static_cast<LevelTelemetryRunEndReason>(255);
     EXPECT_FALSE(serialize_level_telemetry_report(report).has_value());
+}
+
+TEST(LevelTelemetryJsonValidation, RejectsCorruptSparseSeriesAndBattleSamples) {
+    LevelTelemetryReport report;
+    report.run.completion.completed_ticks = SimTick{1};
+    report.run.tick_series.active_entities.add(0, 1);
+    report.run.tick_series.active_entities.add(1, 0);
+    report.run.battle_samples.push_back({.completed_tick = SimTick{1}, .active_lasers = 3});
+    auto const serialized{serialize_level_telemetry_report(report)};
+    ASSERT_TRUE(serialized) << serialized.error();
+    auto const valid = nlohmann::json::parse(*serialized);
+    struct Case {
+        char const* name;
+        void (*mutate)(nlohmann::json&);
+    };
+    for (auto const test :
+         {Case{"unknown reason",
+               [](auto& json) { json["completion"]["reason"] = "future_reason"; }},
+          Case{"misaligned sparse arrays",
+               [](auto& json) { json["tick_series"]["active_entities"]["values"].push_back(1); }},
+          Case{"non-increasing ticks",
+               [](auto& json) { json["tick_series"]["active_entities"]["ticks"] = {0, 0}; }},
+          Case{"null flattened count",
+               [](auto& json) { json["battle_samples"][0]["alive"][0] = nullptr; }},
+          Case{"null optional counter",
+               [](auto& json) { json["battle_samples"][0]["active_lasers"] = nullptr; }},
+          Case{"fractional optional counter",
+               [](auto& json) { json["battle_samples"][0]["active_lasers"] = 0.5; }}}) {
+        SCOPED_TRACE(test.name);
+        auto invalid = valid;
+        test.mutate(invalid);
+        EXPECT_FALSE(deserialize_level_telemetry_report(invalid.dump()));
+    }
 }
 
 } // namespace ioj::sim::telemetry::tests

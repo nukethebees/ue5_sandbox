@@ -965,15 +965,15 @@ TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
         }))};
 
     expect_contains_all(output.header,
-                        {"enum class EGameSetting : uint8",
-                         "using FGameSettingValue = std::variant<bool, float>",
+                        {"enum class GameSetting : std::uint8_t",
+                         "using GameSettingValue = std::variant<bool, float>",
                          "void set_vsync(bool const value)",
                          "auto operator==(FSettingsState const&) const -> bool = default"});
-    EXPECT_TRUE(output.source.contains("ESettingApplyMode::Deferred"));
-    EXPECT_TRUE(output.header.contains("enum class EGameSettingDevice"));
+    EXPECT_TRUE(output.source.contains("SettingApplyMode::Deferred"));
+    EXPECT_TRUE(output.header.contains("enum class GameSettingDevice"));
     expect_contains_all(output.source,
-                        {"EGameSettingDevice::Controller",
-                         "EGameSettingOptionProvider::FrameLimits",
+                        {"GameSettingDevice::Controller",
+                         "GameSettingOptionProvider::FrameLimits",
                          "std::get_if<float>"});
 }
 

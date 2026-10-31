@@ -4,6 +4,10 @@ target_sources(native-presentation
     src/boom_audio_library.cpp
     src/radar.cpp
     src/soft_target.cpp
+    src/entity_overlay.cpp
+    src/observer_camera.cpp
+    src/hud_model.cpp
+    src/sparks.cpp
 )
 target_include_directories(native-presentation
   PUBLIC

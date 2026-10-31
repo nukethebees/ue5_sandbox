@@ -9,6 +9,8 @@ link the resulting artifacts through thin adapters.
 - `core/`, `memory/`, `image/`, `mesh_gen/`, and `profiling/`: reusable native systems.
 - `simulation/` and `simulation_benchmark/`: worldless combat simulation, tests, and runners.
 - `levels/`: shared declarative definitions, typed IDs, semantic and catalog validation.
+- `persistence/`: profiles, progression, result publication, and atomic filesystem storage.
+- `presentation/` and `ui/`: HUD snapshots, radar/overlay collectors, camera math, and CPU effects.
 - `level_authoring/`: AST parsers, Scheme loading, and editor serialization; see its [architecture](level_authoring/ARCHITECTURE.md).
 - `s7/`: sandboxed Scheme evaluation and an owned flat data AST.
 - `common/`: small ASCII, file, and grid-dimension utilities.
@@ -85,3 +87,8 @@ MSVC tests remain enabled.
 Simulation tests and benchmarks load tuning from `LevelScripts/Settings/base.scm`. The checked-in
 `simulation/src/levels/reference_level_simulation_data.cpp` retains mesh/socket geometry so native
 validation does not require Unreal assets.
+
+Application settings descriptors and edit transactions are native. Flight-model settings use the
+versioned `flight-model:2:` text codec; previous Unreal/Base64 development values are intentionally
+unsupported and restore the authored defaults. Display, CVar and Enhanced Input persistence remain
+engine adapters.

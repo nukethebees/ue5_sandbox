@@ -45,6 +45,27 @@ TEST(S7LevelDefinition, DecodesScheduledSpawnsAndMissionObjectives) {
               EntityId{"enemy"});
 }
 
+TEST(S7LevelDefinition, DecodesPlayerMissionMetadataAndPlacement) {
+    auto const result{DefinitionReader{}.read_level_source(R"(
+      (level :id 'player-mission :title "Player Mission" :par-time 75.5 :player 'player
+        :mission (mission :objectives (list
+          (objective :id 'primary :team 'blue :pass (entity-destroyed 'enemy))))
+        :entities (list
+          (entity :id 'player :archetype 'player-fighter :team 'blue
+            :position '(100 200 300) :rotation '(0 45 0))
+          (entity :id 'enemy :archetype 'capital-ship :team 'red
+            :position '(-1000 0 0) :rotation '(0 180 0))))
+    )")};
+    ASSERT_TRUE(result) << format_diagnostics(result.error());
+    EXPECT_EQ(result->metadata().id, LevelId{"player-mission"});
+    EXPECT_EQ(result->metadata().title, "Player Mission");
+    EXPECT_EQ(result->metadata().par_time_seconds, 75.5f);
+    EXPECT_EQ(result->player_entity_id(), EntityId{"player"});
+    EXPECT_EQ(result->entity(EntityId{"player"}).position, (Vector3d{100., 200., 300.}));
+    EXPECT_EQ(result->entity(EntityId{"player"}).rotation, (Rotator3d{0., 45., 0.}));
+    EXPECT_EQ(result->mission()->objectives[0].team, Team::Blue);
+}
+
 TEST(S7LevelDefinition, DecodesPlayerlessCameraDefinition) {
     auto const result{DefinitionReader{}.read_level_source(valid_camera_level)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());

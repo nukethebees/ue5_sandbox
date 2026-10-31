@@ -197,28 +197,28 @@
 
 
 (type int_point
-  :spelling "FIntPoint"
-  :header "CoreMinimal.h"
+  :spelling "ioj::ScreenResolution"
+  :header "ioj/settings/game_settings_types.h"
   :pass-by value)
 
 (type game_window_mode
-  :spelling "EGameWindowMode"
-  :header "SpaceGame/settings/GameSettingsTypes.h"
+  :spelling "GameWindowMode"
+  :header "ioj/settings/game_settings_types.h"
   :pass-by value)
 
 (type game_anti_aliasing_method
-  :spelling "EGameAntiAliasingMethod"
-  :header "SpaceGame/settings/GameSettingsTypes.h"
+  :spelling "GameAntiAliasingMethod"
+  :header "ioj/settings/game_settings_types.h"
   :pass-by value)
 
 (type game_quality_level
-  :spelling "EGameQualityLevel"
-  :header "SpaceGame/settings/GameSettingsTypes.h"
+  :spelling "GameQualityLevel"
+  :header "ioj/settings/game_settings_types.h"
   :pass-by value)
 
 (type game_graphics_preset
-  :spelling "EGameGraphicsPreset"
-  :header "SpaceGame/settings/GameSettingsTypes.h"
+  :spelling "GameGraphicsPreset"
+  :header "ioj/settings/game_settings_types.h"
   :pass-by value)
 
 

@@ -3,6 +3,7 @@
 #include <array>
 #include <cassert>
 #include <cmath>
+#include <utility>
 
 namespace ioj::sim::player::flight_model_config_detail {
 [[nodiscard]] auto valid_enum(TranslationSemantic const value) noexcept -> bool {
@@ -461,5 +462,15 @@ auto flight_model_profile(FlightModelLoadout const& loadout, FlightModelSlot con
     auto const index{static_cast<std::size_t>(slot)};
     assert(index < loadout.profiles.size());
     return loadout.profiles[index];
+}
+
+auto try_set_flight_model_profile(FlightModelLoadout& loadout,
+                                  FlightModelSlot const slot,
+                                  FlightModelProfile profile) noexcept -> bool {
+    if (!validate_flight_model_config(profile.config)) {
+        return false;
+    }
+    flight_model_profile(loadout, slot) = std::move(profile);
+    return true;
 }
 }

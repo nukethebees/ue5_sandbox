@@ -1,11 +1,10 @@
 (settings-module game_settings
-  :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/settings/GameSettings.generated.h"
-  :source "Plugins/SpaceGame/Source/SpaceGame/Private/settings/GameSettings.generated.cpp"
-  :header-include "SpaceGame/settings/GameSettings.generated.h"
+  :header "native/levels/lib/include/ioj/settings/game_settings.h"
+  :source "native/levels/lib/src/game_settings.cpp"
+  :header-include "ioj/settings/game_settings.h"
   :namespace ioj
-  :api-name TGameSettingsAccess
-  :state-name FGameSettingsState
-  :export-specifier SPACEGAME_API
+  :api-name GameSettingsAccess
+  :state-name GameSettingsState
   (category video "Video")
   (category gameplay "Gameplay")
   (category audio "Audio")

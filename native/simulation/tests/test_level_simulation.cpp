@@ -5,6 +5,7 @@
 #include <ioj/sim/collision/world_aabbs.h>
 #include <ioj/sim/levels/initial_spawns.h>
 #include <ioj/sim/levels/level_compilation.h>
+#include <ioj/sim/levels/level_simulation_builder.h>
 #include <ioj/sim/missions/compiled_mission.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/laser_spawns.h>
@@ -182,6 +183,84 @@ TEST(NativeSimulation, ScheduledSpawnsAndObjectivesUseSimulationTicks) {
 /* **************************************** */
 // Initialization and spatial queries
 /* **************************************** */
+
+TEST(NativeSimulation, BuildsAndControlsAHeadlessPlayerFromNativeDefinitionAndGeometry) {
+    auto definition{levels::LevelDefinition::make(
+        {.metadata = {.id = levels::LevelId{"headless-player"}, .title = "Headless player"},
+         .player_entity_id = levels::EntityId{"player"},
+         .entities = {{.id = levels::EntityId{"player"},
+                       .archetype = levels::EntityArchetype::PlayerFighter,
+                       .team = Team::Blue,
+                       .position = {1200.0, 200.0, 0.0},
+                       .overrides = {.health = 275}}},
+         .settings = {.tick = {.tick_rate = Frequency::make(30.0)},
+                      .fighters = {.speed = 1234.f}}})};
+    ASSERT_TRUE(definition);
+    auto const fixture{make_fixture()};
+    auto geometry{make_simulation_data(fixture)};
+    geometry.player = fixture.player;
+    auto built{sim::make_level_simulation_init_data(*definition, std::move(geometry))};
+    ASSERT_TRUE(built) << built.error().front();
+    ASSERT_TRUE(built->player);
+    EXPECT_EQ(built->player->transform.location, (Vector3d{1200.0, 200.0, 0.0}));
+    EXPECT_EQ(built->player->team, Team::Blue);
+    EXPECT_EQ(built->player->health.health, Health{275});
+    EXPECT_EQ(built->player->left_socket, fixture.player.left_socket);
+    EXPECT_EQ(built->player->right_socket, fixture.player.right_socket);
+    EXPECT_EQ(built->player->body_transform, fixture.player.body_transform);
+    EXPECT_EQ(built->fighters.speed, 1234.f);
+    EXPECT_EQ(built->clock_settings.tick_rate.get_hz(), 30.0);
+    EXPECT_EQ(built->result_metadata.level_id, "headless-player");
+
+    GameMemory memory;
+    LevelSim simulation{memory, std::move(*built)};
+    simulation.finish_initialisation();
+    auto const* player{simulation.get_player_ship_simulation()};
+    ASSERT_NE(player, nullptr);
+    auto commands{simulation.get_player_ship_commands()};
+    ASSERT_TRUE(commands);
+    commands->set_forward_input(1.f);
+    simulation.start();
+    simulation.advance(0.5);
+    EXPECT_EQ(simulation.get_clock().get_completed_ticks().value(), 15);
+    EXPECT_GT(player->get_physical_state().transform.location.x(), 1200.0);
+    EXPECT_EQ(simulation.get_entity_ledger().count_alive(), 1);
+}
+
+TEST(NativeSimulation, NativeStartupRejectsInvalidSpawnGeometryBeforeConstructingWorld) {
+    auto data{make_simulation_data(make_fixture())};
+    data.capital_ships.fighter_spawn_slots_relative_transforms[0].location =
+        Vector3d{data.collision.entity_bounds.get_centre(EntityType::CapitalShip)};
+    auto invalid{validate_level_simulation_init_data(data)};
+    ASSERT_FALSE(invalid);
+    EXPECT_TRUE(std::ranges::any_of(invalid.error(), [](auto const& error) {
+        return error.contains("intersects the capital collision");
+    }));
+
+    data = make_simulation_data(make_fixture());
+    data.capital_ships.fighter_spawn_slots_relative_transforms[1] =
+        data.capital_ships.fighter_spawn_slots_relative_transforms[0];
+    invalid = validate_level_simulation_init_data(data);
+    ASSERT_FALSE(invalid);
+    EXPECT_TRUE(std::ranges::any_of(invalid.error(), [](auto const& error) {
+        return error.contains("fighter spawn slots 0 and 1");
+    }));
+}
+
+TEST(NativeSimulation, NativeStartupRejectsFutureSpawnsOutsideGrid) {
+    auto definition{levels::authoring::DefinitionReader{}.read_level_source(R"(
+      (level :id 'geometry :title "Geometry"
+        :camera (camera :look-at '(capital) :offset-direction '(-1 0 0) :distance 1000)
+        :entities (list (entity :id 'capital :archetype 'capital-ship :team 'blue
+                               :position '(2000000 0 0) :spawn-at 5))))")};
+    ASSERT_TRUE(definition);
+    auto input{make_simulation_data(make_fixture())};
+    auto built{sim::make_level_simulation_init_data(*definition, std::move(input))};
+    ASSERT_FALSE(built);
+    EXPECT_TRUE(std::ranges::any_of(built.error(), [](auto const& error) {
+        return error.contains("outside the collision grid");
+    }));
+}
 
 TEST(NativeSimulation, ScheduledSpawnQueryableInThinkingSameTick) {
     auto data{make_scheduled_battle()};

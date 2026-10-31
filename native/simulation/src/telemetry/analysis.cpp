@@ -6,6 +6,48 @@
 #include <utility>
 
 namespace ioj::sim::telemetry {
+auto metric_title(Metric const metric) noexcept -> std::string_view {
+    switch (metric) {
+        case Metric::ActiveEntities:
+            return "Active entities";
+        case Metric::PlayerShips:
+            return "Active player ships";
+        case Metric::Turrets:
+            return "Active turrets";
+        case Metric::CapitalShips:
+            return "Active capital ships";
+        case Metric::CapitalShipFighters:
+            return "Active capital-ship fighters";
+        case Metric::TubeSpinners:
+            return "Active tube spinners";
+        case Metric::ActiveLasers:
+            return "Active lasers";
+        case Metric::SpawnRate:
+            return "Spawn rate";
+        case Metric::DestructionRate:
+            return "Destruction rate";
+        case Metric::KillRate:
+            return "Kill rate";
+        case Metric::LaserFireRate:
+            return "Laser-fire rate";
+        case Metric::Count:
+            return {};
+    }
+    return {};
+}
+auto metric_units(Metric const metric) noexcept -> std::string_view {
+    switch (metric) {
+        case Metric::SpawnRate:
+        case Metric::DestructionRate:
+        case Metric::KillRate:
+        case Metric::LaserFireRate:
+            return "/s";
+        case Metric::Count:
+            return {};
+        default:
+            return "count";
+    }
+}
 namespace {
 struct MetricBuilder {
     explicit MetricBuilder(Metric const metric) { series.metric = metric; }

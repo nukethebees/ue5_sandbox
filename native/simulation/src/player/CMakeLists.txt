@@ -14,6 +14,8 @@ target_sources(native-simulation PRIVATE
   ../../include/ioj/sim/player/sim.h
   ../../include/ioj/sim/player/space_ship_common.h
   flight_model_config.cpp
+  flight_model_settings_codec.cpp
+  game_settings_session.cpp
   flight_model_evaluator.cpp
   scalar_response.cpp
   sim.cpp

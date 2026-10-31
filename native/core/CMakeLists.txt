@@ -56,6 +56,9 @@ target_sources(native-core
     src/rotator3d.cpp
     src/array_math.cpp
     src/array_utils.cpp
+    src/arc.cpp
+    src/display_name.cpp
+    src/linear_travel.cpp
     src/countdown.cpp
     src/trigonometry.cpp
     src/frame_memory_resource.cpp
@@ -125,6 +128,9 @@ target_sources(native-core-tests
     tests/array_math_tests.cpp
     tests/vector_lerp_tests.cpp
     tests/array_utils_tests.cpp
+    tests/arc_tests.cpp
+    tests/display_name_tests.cpp
+    tests/linear_travel_tests.cpp
     tests/container_tests.cpp
     tests/constrained_value_tests.cpp
     tests/fixed_array_tests.cpp

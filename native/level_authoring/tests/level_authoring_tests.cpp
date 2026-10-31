@@ -146,8 +146,14 @@ TEST(NativeSettings, PreservesExactIntegersAndRejectsOutOfRangeConversions) {
 }
 
 TEST(NativeSettings, AssignsWholeVectorsOnlyAfterEveryComponentConverts) {
-    Vector3f target{1.f, 2.f, 3.f};
+    Vector2d size{1., 2.};
     OverrideReader reader;
+    ASSERT_TRUE(reader.assign("'(3 4)", size));
+    EXPECT_EQ(size, (Vector2d{3., 4.}));
+    EXPECT_FALSE(reader.assign("'(5 6 7)", size));
+    EXPECT_EQ(size, (Vector2d{3., 4.}));
+
+    Vector3f target{1.f, 2.f, 3.f};
     EXPECT_FALSE(reader.assign("'(4 5)", target, "vector"));
     EXPECT_FALSE(reader.assign("'(4 5 1e100)", target, "vector"));
     EXPECT_EQ(target, (Vector3f{1.f, 2.f, 3.f}));
@@ -621,6 +627,58 @@ TEST(NativeSourceSession, ReadsUtf8BomText) {
     EXPECT_EQ(read_file(path).value(), session.buffer());
 }
 
+TEST(NativeSourceSession, ParsesUnsavedBuffersAndCapturesIndependentLibraryReplay) {
+    TemporaryLevelDirectory directory;
+    auto const path{directory.path() / "level.scm"};
+    auto const library{directory.path() / "Libraries" / "metadata.scm"};
+    auto source{minimal_source()};
+    source.replace(source.find("\"Test\""), 6, "shared-title");
+    source.insert(0, "(load-script \"metadata.scm\") ");
+    source.insert(source.size() - 1,
+                  " :settings (settings :collision-grid (collision-grid :cell-size shared-cells))");
+    ASSERT_TRUE(write_files({{path, source},
+                             {library,
+                              "(define shared-title \"From Library\") "
+                              "(define shared-cells '(6000 6000 20000))"}}));
+
+    SourceSession session;
+    EXPECT_FALSE(session.read());
+    ASSERT_TRUE(session.load(path));
+    auto loaded{session.read()};
+    ASSERT_TRUE(loaded) << format_diagnostics(loaded.error());
+    EXPECT_EQ(loaded->metadata().title, "From Library");
+
+    auto edited{source};
+    edited.replace(edited.find("shared-title"), 12, "\"From Buffer\"");
+    session.set_buffer(edited);
+    auto const replay{session.read_replay()};
+    ASSERT_TRUE(replay) << format_diagnostics(replay.error());
+    EXPECT_EQ(replay->definition.metadata().title, "From Buffer");
+    EXPECT_EQ(read_file(path).value(), source);
+
+    ASSERT_TRUE(write_files({{library,
+                              "(define shared-title \"Changed Library\") "
+                              "(define shared-cells '(7000 7000 20000))"}}));
+    auto const refreshed{session.read()};
+    ASSERT_TRUE(refreshed);
+    EXPECT_EQ(refreshed->settings().collision_grid.cell_size, (Vector3f{7000.f, 7000.f, 20000.f}));
+    auto const captured{DefinitionReader{}.read_level_source(replay->evaluated_source)};
+    ASSERT_TRUE(captured) << format_diagnostics(captured.error());
+    EXPECT_EQ(captured->metadata().title, "From Buffer");
+    EXPECT_EQ(captured->settings().collision_grid.cell_size, (Vector3f{6000.f, 6000.f, 20000.f}));
+    auto const settings{resolve_document_settings(
+        "(settings :collision-grid (collision-grid :level-size '(3000000 3000000 100000)))",
+        replay->evaluated_source,
+        {},
+        {},
+        {})};
+    ASSERT_TRUE(settings) << format_diagnostics(settings.error());
+    EXPECT_EQ(settings->collision_grid.cell_size, (Vector3f{6000.f, 6000.f, 20000.f}));
+    EXPECT_EQ(settings->collision_grid.level_size, (Vector3f{3000000.f, 3000000.f, 100000.f}));
+    EXPECT_FALSE(resolve_document_settings("invalid", replay->evaluated_source, {}, {}, {}));
+    EXPECT_FALSE(resolve_document_settings({}, "invalid", {}, {}, {}));
+}
+
 TEST(NativeLevelAuthoringReader, ReadsFileWithRootRelativeLibrary) {
     TemporaryLevelDirectory directory;
     auto source{minimal_source()};
@@ -671,6 +729,7 @@ TEST(NativeLevelAuthoringReader, RootControlsImportsAndPreservesFailuresAndSourc
     ASSERT_EQ(levels.size(), 3u);
     ASSERT_EQ(catalog->campaigns.size(), 1u);
     ASSERT_TRUE(levels[0].definition);
+    EXPECT_EQ(levels[0].source_text, "(define shared-title \"Shared\")\n" + source);
     EXPECT_EQ(levels[0].definition->metadata().title, "Shared");
     ASSERT_FALSE(levels[1].definition);
     EXPECT_EQ(levels[1].definition.error().front().source_path, root / "broken.scm");
@@ -1094,6 +1153,41 @@ TEST(NativeLevelAuthoringCatalog, ValidatesCampaignIdsAndLevelReferences) {
                  {1, "second.scm", {CampaignId{"second"}, "Second", {LevelId{"a"}}}}};
     EXPECT_TRUE(validate_campaign_catalog(campaigns, levels).empty());
 }
+
+TEST(NativeLevelAuthoringCatalog, ResolvesInvalidEntriesAndOrdersValidCampaigns) {
+    DefinitionCatalog catalog{
+        .levels = {{"first.scm", checked_level("same")},
+                   {"second.scm", checked_level("same")},
+                   {"valid.scm", checked_level("valid")}},
+        .campaigns =
+            {{"zulu.scm", CampaignDefinition{CampaignId{"zulu"}, "Zulu", {LevelId{"valid"}}}},
+             {"invalid.scm",
+              CampaignDefinition{CampaignId{"invalid"}, "Invalid", {LevelId{"same"}}}},
+             {"second-alpha.scm", CampaignDefinition{CampaignId{"b"}, "alpha", {LevelId{"valid"}}}},
+             {"first-alpha.scm", CampaignDefinition{CampaignId{"a"}, "Alpha", {LevelId{"valid"}}}}},
+    };
+    auto const errors{resolve_catalog(catalog)};
+    EXPECT_EQ(errors.size(), 3u);
+    EXPECT_FALSE(catalog.levels[0].definition);
+    EXPECT_FALSE(catalog.levels[1].definition);
+    ASSERT_TRUE(catalog.levels[2].definition);
+    EXPECT_EQ(catalog_category(*catalog.levels[2].definition), LevelCatalogCategory::Mission);
+    EXPECT_EQ(catalog.campaigns[0].source_path, "first-alpha.scm");
+    EXPECT_EQ(catalog.campaigns[1].source_path, "second-alpha.scm");
+    EXPECT_EQ(catalog.campaigns[2].source_path, "zulu.scm");
+    ASSERT_FALSE(catalog.campaigns[3].definition);
+    EXPECT_TRUE(
+        has_code(catalog.campaigns[3].definition.error(), DiagnosticCode::UnavailableLevel));
+
+    auto camera{make_level("camera")};
+    camera.player_entity_id = {};
+    camera.entities[0].archetype = EntityArchetype::CapitalShip;
+    camera.camera = LevelCameraDefinition{{EntityId{"player"}}, {-1., 0., 0.}, 1000.};
+    auto const definition{LevelDefinition::make(std::move(camera))};
+    ASSERT_TRUE(definition);
+    EXPECT_EQ(catalog_category(*definition), LevelCatalogCategory::BattleViewer);
+}
+
 TEST(NativeLevelAuthoringFixtures, ReadsEveryCheckedInLevelAndCampaign) {
     std::filesystem::path const root{IOJ_LEVEL_SCRIPTS};
     std::vector<LevelCatalogEntry> levels;

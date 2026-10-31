@@ -12,4 +12,5 @@ target_sources(native-simulation PRIVATE
   report.cpp
   report_json.cpp
   json_validation.cpp
+  run_catalog.cpp
 )

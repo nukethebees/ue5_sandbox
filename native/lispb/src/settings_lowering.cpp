@@ -132,12 +132,11 @@ auto setting_type_name(LoweringContext& context, SettingId const setting) -> std
 }
 
 auto text_literal(CppIR& ir, std::string_view const value) -> Expr {
-    return ir.call(ir.named("TEXT", {ir.types.dependency("TEXT", "CoreMinimal.h")}),
-                   {ir.string_literal(value)});
+    return ir.string_literal(value);
 }
 
 auto text_value(CppIR& ir, std::string_view const value) -> Expr {
-    return ir.call(ir.named("FText::FromString"), {text_literal(ir, value)});
+    return ir.string_literal(value);
 }
 
 auto build_functions(LoweringContext& context,
@@ -151,7 +150,7 @@ auto build_functions(LoweringContext& context,
     auto const state{ir.named("state")};
     auto const id{ir.named("id")};
     auto const value{ir.named("value")};
-    auto const id_parameter{ir.parameter("EGameSetting const", "id")};
+    auto const id_parameter{ir.parameter("GameSetting const", "id")};
     auto create = [&](std::string_view const name, std::string_view const return_type) {
         auto const type{ir.types.intern(return_type)};
         auto const function{ir.function(name, type)};
@@ -162,50 +161,50 @@ auto build_functions(LoweringContext& context,
     };
 
     auto const categories{create("game_setting_category_descriptors",
-                                 "TConstArrayView<FGameSettingCategoryDescriptor>")};
+                                 "std::span<GameSettingCategoryDescriptor const>")};
     ir.set_function_body(categories, {ir.return_stmt(ir.named("category_descriptors"))});
 
     auto const descriptors{
-        create("game_setting_descriptors", "TConstArrayView<FGameSettingDescriptor>")};
+        create("game_setting_descriptors", "std::span<GameSettingDescriptor const>")};
     ir.set_function_body(descriptors, {ir.return_stmt(ir.named("descriptors"))});
 
-    auto const descriptor{create("game_setting_descriptor", "FGameSettingDescriptor const&")};
+    auto const descriptor{create("game_setting_descriptor", "GameSettingDescriptor const&")};
     ir.set_function_parameters(descriptor, {id_parameter});
     ir.set_function_body(
         descriptor,
         {ir.return_stmt(ir.subscript(ir.named("descriptors"),
-                                     ir.static_cast_expr(ir.types.intern("int32"), id)))});
+                                     ir.static_cast_expr(ir.types.intern("std::size_t"), id)))});
 
-    auto const getter{create("game_setting_value", "FGameSettingValue")};
+    auto const getter{create("game_setting_value", "GameSettingValue")};
     ir.set_function_parameters(getter,
                                {ir.parameter(state_name + " const&", "state"), id_parameter});
     std::vector<SwitchCaseId> getter_cases;
     for (auto const setting : settings) {
         auto const name{decls.settings.name[setting]};
         getter_cases.push_back(ir.switch_case(
-            ir.named("EGameSetting::" + title_case(context.text(name))),
+            ir.named("GameSetting::" + title_case(context.text(name))),
             ir.block({ir.return_stmt(ir.init_list({ir.member_access(state, name)},
-                                                  ir.types.intern("FGameSettingValue")))})));
+                                                  ir.types.intern("GameSettingValue")))})));
     }
     auto const first_name{decls.settings.name[settings.front()]};
     ir.set_function_body(getter,
                          {ir.switch_stmt(id, getter_cases),
-                          ir.expr_stmt(ir.call(ir.named("checkNoEntry"))),
+                          ir.expr_stmt(ir.call(ir.named("assert"), {ir.literal("false")})),
                           ir.return_stmt(ir.init_list({ir.member_access(state, first_name)},
-                                                      ir.types.intern("FGameSettingValue")))});
+                                                      ir.types.intern("GameSettingValue")))});
 
     auto const setter{create("set_game_setting_value", "bool")};
     ir.set_function_parameters(setter,
                                {ir.parameter(state_name + "&", "state"),
                                 id_parameter,
-                                ir.parameter("FGameSettingValue const&", "value")});
+                                ir.parameter("GameSettingValue const&", "value")});
     std::vector<SwitchCaseId> setter_cases;
     auto const setting_count{settings.size()};
     for (std::size_t index{}; index < setting_count; ++index) {
         auto const name{decls.settings.name[settings[index]]};
         auto const typed_value{ir.named("typed_value")};
         setter_cases.push_back(ir.switch_case(
-            ir.named("EGameSetting::" + title_case(context.text(name))),
+            ir.named("GameSetting::" + title_case(context.text(name))),
             ir.block({
                 ir.variable("auto const*",
                             "typed_value",
@@ -256,8 +255,8 @@ auto settings_api(LoweringContext& context,
             setter,
             {ir.expr_stmt(ir.call(
                 ir.member_access(ir.call(ir.named("derived")), "set_setting"),
-                {ir.named("EGameSetting::" + title_case(context.text(name))),
-                 ir.init_list({ir.named("value")}, ir.types.intern("FGameSettingValue"))}))});
+                {ir.named("GameSetting::" + title_case(context.text(name))),
+                 ir.init_list({ir.named("value")}, ir.types.intern("GameSettingValue"))}))});
         members.add(ir.header_function(setter), 2);
     }
     members.add(ir.access(Access::private_), 1);
@@ -338,29 +337,30 @@ auto build_header(LoweringContext& context,
         for (auto const& value : names) {
             values.push_back(ir.enumerator(ir.strings.intern(value)));
         }
-        header.add(ir.enumeration(ir.strings.intern(name), ir.types.intern("uint8"), values), 2);
+        header.add(ir.enumeration(ir.strings.intern(name), ir.types.intern("std::uint8_t"), values),
+                   2);
     };
-    add_enum("EGameSetting", setting_names);
-    add_enum("EGameSettingCategory", category_names);
-    add_enum("ESettingApplyMode", {"Immediate", "Deferred", "Confirm"});
-    add_enum("ESettingControlKind", {"Toggle", "Choice", "FloatRange", "IntegerRange", "Custom"});
-    add_enum("EGameSettingDevice", {"Shared", "KeyboardMouse", "Controller"});
-    add_enum("EGameSettingValueType", type_names);
+    add_enum("GameSetting", setting_names);
+    add_enum("GameSettingCategory", category_names);
+    add_enum("SettingApplyMode", {"Immediate", "Deferred", "Confirm"});
+    add_enum("SettingControlKind", {"Toggle", "Choice", "FloatRange", "IntegerRange", "Custom"});
+    add_enum("GameSettingDevice", {"Shared", "KeyboardMouse", "Controller"});
+    add_enum("GameSettingValueType", type_names);
     std::vector<std::string> backend_names;
     for (auto const& backend : backends) {
         backend_names.push_back(title_case(backend));
     }
-    add_enum("EGameSettingBackend", backend_names);
+    add_enum("GameSettingBackend", backend_names);
     std::vector<std::string> option_names{"None"};
     for (auto const& provider : option_providers) {
         option_names.push_back(title_case(provider));
     }
-    add_enum("EGameSettingOptionProvider", option_names);
+    add_enum("GameSettingOptionProvider", option_names);
     std::vector<std::string> availability_names{"Always"};
     for (auto const& provider : availability_providers) {
         availability_names.push_back(title_case(provider));
     }
-    add_enum("EGameSettingAvailabilityProvider", availability_names);
+    add_enum("GameSettingAvailabilityProvider", availability_names);
 
     auto add_record =
         [&](std::string_view const name,
@@ -375,25 +375,25 @@ auto build_header(LoweringContext& context,
             ir.set_record_dependencies(record, dependencies);
             header.add(record, 2);
         };
-    add_record("FGameSettingCategoryDescriptor",
-               {{"EGameSettingCategory", "id"}, {"FText", "label"}});
-    add_record("FGameSettingDescriptor",
-               {{"EGameSetting", "id"},
-                {"EGameSettingCategory", "category"},
-                {"EGameSettingValueType", "value_type"},
-                {"EGameSettingBackend", "backend"},
-                {"ESettingApplyMode", "apply_mode"},
-                {"EGameSettingDevice", "device"},
-                {"ESettingControlKind", "control_kind"},
-                {"EGameSettingOptionProvider", "options_provider"},
-                {"EGameSettingAvailabilityProvider", "availability_provider"},
-                {"TCHAR const*", "name"},
-                {"FText", "label"},
-                {"FText", "tooltip"},
+    add_record("GameSettingCategoryDescriptor",
+               {{"GameSettingCategory", "id"}, {"std::string_view", "label"}});
+    add_record("GameSettingDescriptor",
+               {{"GameSetting", "id"},
+                {"GameSettingCategory", "category"},
+                {"GameSettingValueType", "value_type"},
+                {"GameSettingBackend", "backend"},
+                {"SettingApplyMode", "apply_mode"},
+                {"GameSettingDevice", "device"},
+                {"SettingControlKind", "control_kind"},
+                {"GameSettingOptionProvider", "options_provider"},
+                {"GameSettingAvailabilityProvider", "availability_provider"},
+                {"char const*", "name"},
+                {"std::string_view", "label"},
+                {"std::string_view", "tooltip"},
                 {"double", "minimum"},
                 {"double", "maximum"},
                 {"double", "step"},
-                {"TCHAR const*", "custom_row"}});
+                {"char const*", "custom_row"}});
 
     NodeListBuilder state_members{ir};
     for (std::size_t index{}; index < setting_count; ++index) {
@@ -416,7 +416,7 @@ auto build_header(LoweringContext& context,
     ir.set_record_dependencies(state, dependencies);
     header.add(state, 2).add(
         ir.using_declaration(
-            ir.strings.intern("FGameSettingValue"),
+            ir.strings.intern("GameSettingValue"),
             ir.types.intern("std::variant<" + join(value_types, ", ") + ">", dependencies)),
         2);
     for (auto const function : functions) {
@@ -450,8 +450,7 @@ auto build_source(LoweringContext& context,
     for (auto const category : decls.items(modules.categories[module_row])) {
         auto const row{category_schemas.index(category)};
         categories.push_back(ir.init_list({
-            enum_value("EGameSettingCategory",
-                       title_case(context.text(category_schemas.name[row]))),
+            enum_value("GameSettingCategory", title_case(context.text(category_schemas.name[row]))),
             text_value(ir, context.text(category_schemas.label[row])),
         }));
     }
@@ -462,18 +461,18 @@ auto build_source(LoweringContext& context,
         auto const options{controls.options_provider[control_row]};
         auto const availability{controls.availability_provider[control_row]};
         descriptors.push_back(ir.init_list({
-            enum_value("EGameSetting", title_case(context.text(setting_schemas.name[row]))),
-            enum_value("EGameSettingCategory",
+            enum_value("GameSetting", title_case(context.text(setting_schemas.name[row]))),
+            enum_value("GameSettingCategory",
                        title_case(context.text(setting_schemas.category[row]))),
-            enum_value("EGameSettingValueType", setting_type_name(context, setting)),
-            enum_value("EGameSettingBackend",
+            enum_value("GameSettingValueType", setting_type_name(context, setting)),
+            enum_value("GameSettingBackend",
                        title_case(context.text(setting_schemas.backend[row]))),
-            enum_value("ESettingApplyMode", enum_name(setting_schemas.apply_mode[row])),
-            enum_value("EGameSettingDevice", enum_name(setting_schemas.device[row])),
-            enum_value("ESettingControlKind", enum_name(controls.kind[control_row])),
-            enum_value("EGameSettingOptionProvider",
+            enum_value("SettingApplyMode", enum_name(setting_schemas.apply_mode[row])),
+            enum_value("GameSettingDevice", enum_name(setting_schemas.device[row])),
+            enum_value("SettingControlKind", enum_name(controls.kind[control_row])),
+            enum_value("GameSettingOptionProvider",
                        options ? title_case(context.text(*options)) : "None"),
-            enum_value("EGameSettingAvailabilityProvider",
+            enum_value("GameSettingAvailabilityProvider",
                        availability ? title_case(context.text(*availability)) : "Always"),
             text_literal(ir, context.text(setting_schemas.name[row])),
             text_value(ir, context.text(setting_schemas.label[row])),
@@ -487,13 +486,15 @@ auto build_source(LoweringContext& context,
 
     NodeListBuilder globals{ir};
     globals
-        .add(ir.static_member(ir.types.intern("TArray<FGameSettingCategoryDescriptor> const"),
+        .add(ir.static_member(ir.types.intern("std::array<GameSettingCategoryDescriptor, " +
+                                              std::to_string(categories.size()) + "> const"),
                               ir.strings.intern("category_descriptors"),
-                              ir.init_list(categories)),
+                              ir.init_list({ir.init_list(categories)})),
              2)
-        .add(ir.static_member(ir.types.intern("TArray<FGameSettingDescriptor> const"),
+        .add(ir.static_member(ir.types.intern("std::array<GameSettingDescriptor, " +
+                                              std::to_string(descriptors.size()) + "> const"),
                               ir.strings.intern("descriptors"),
-                              ir.init_list(descriptors)));
+                              ir.init_list({ir.init_list(descriptors)})));
     NodeListBuilder source{ir};
     source.add(ir.namespace_node(ir.strings.intern(""), globals.build()), 2);
     for (auto const function : functions) {
@@ -519,9 +520,11 @@ auto lower_settings_module(LoweringContext& context, ModuleHandle module) -> Mod
     auto const settings_row{settings_store.index(settings)};
     auto const setting_list{context.declarations.items(modules.settings_list[module_row])};
     std::vector<TypeDependencyId> dependencies{
-        ir.types.dependency("uint8", "CoreMinimal.h"),
-        ir.types.dependency("FText", "CoreMinimal.h"),
-        ir.types.dependency("TConstArrayView", "Containers/ArrayView.h"),
+        ir.types.dependency("std::uint8_t", "cstdint"),
+        ir.types.dependency("std::span", "span"),
+        ir.types.dependency("std::string_view", "string_view"),
+        ir.types.dependency("std::array", "array"),
+        ir.types.dependency("assert", "cassert"),
         ir.types.dependency("std::variant", "variant"),
     };
     std::vector<CppTypeId> setting_types;

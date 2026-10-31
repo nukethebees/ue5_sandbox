@@ -28,7 +28,7 @@ TEST(SimulationSettingsReader, AppliesSparseNestedLayersIncludingExplicitDefault
     expected.fighters.laser.max_distance = ::ioj::PositiveFinite<float>::make(50000);
     expected.turrets.laser.damage = 23;
     EXPECT_PRED_FORMAT2(structurally_equal, expected, *source);
-    auto const resolved{s7::resolve_simulation_settings(*source)};
+    auto const resolved{sim::resolve_simulation_settings(*source)};
     ASSERT_TRUE(resolved) << resolved.error().front().message;
     FighterSimConfig const expected_fighters{
         .laser = {.damage = 31, .max_distance = PositiveFinite<float>{50000.f}}};
@@ -60,7 +60,7 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelMission) {
                                                           *base_values)};
     ASSERT_TRUE(level) << level.error().front().message;
     auto const mission{level->mission()};
-    auto const resolved{s7::resolve_simulation_settings(level->settings())};
+    auto const resolved{sim::resolve_simulation_settings(level->settings())};
     ASSERT_TRUE(resolved);
     auto expected{*base_values};
     expected.fighters.laser.damage = 77;
@@ -95,7 +95,7 @@ TEST(SimulationSettingsReader, ReplacesWholeAttackBandsAcrossLayersAndLevelOverr
           (attack-distance-band :minimum-ratio 0.8 :desired-ratio 0.85 :maximum-ratio 1)))
         (settings :fighters (fighters :speed 5000))))")};
     ASSERT_TRUE(source);
-    auto const resolved{s7::resolve_simulation_settings(*source)};
+    auto const resolved{sim::resolve_simulation_settings(*source)};
     ASSERT_TRUE(resolved) << resolved.error().front().message;
     FighterSimConfig expected{
         .speed = 5000, .attack_distance_band = *AttackDistanceBand::try_make({0.8f, 0.85f, 1.f})};
@@ -110,7 +110,7 @@ TEST(SimulationSettingsReader, ReplacesWholeAttackBandsAcrossLayersAndLevelOverr
           (attack-distance-band :minimum-ratio 0 :desired-ratio 0 :maximum-ratio 0)))))",
                                                           *source)};
     ASSERT_TRUE(level) << level.error().front().message;
-    auto const overridden{s7::resolve_simulation_settings(level->settings())};
+    auto const overridden{sim::resolve_simulation_settings(level->settings())};
     ASSERT_TRUE(overridden) << overridden.error().front().message;
     expected.attack_distance_band = *AttackDistanceBand::try_make({0.f, 0.f, 0.f});
     EXPECT_PRED_FORMAT2(structurally_equal, expected, overridden->fighters);
@@ -133,7 +133,7 @@ TEST(SimulationSettingsReader, ResolvesCollisionGridThroughOrdinaryLevelSettings
     ASSERT_TRUE(level) << levels::format_diagnostics(level.error());
     EXPECT_PRED_FORMAT2(structurally_equal, original, level->settings());
     EXPECT_PRED_FORMAT2(structurally_equal, original, base);
-    auto const resolved{s7::resolve_simulation_settings(level->settings())};
+    auto const resolved{sim::resolve_simulation_settings(level->settings())};
     ASSERT_TRUE(resolved) << levels::format_diagnostics(resolved.error());
     EXPECT_PRED_FORMAT2(structurally_equal, original.collision_grid, resolved->overlap_response);
 
@@ -196,7 +196,7 @@ TEST(SimulationSettingsReader, RetainsUnknownFieldConversionAndFinalValidationEr
         SCOPED_TRACE(test.source);
         auto const source{DefinitionReader{}.read_settings_source(test.source)};
         auto const resolved{source
-                                ? s7::resolve_simulation_settings(*source)
+                                ? sim::resolve_simulation_settings(*source)
                                 : s7::SimulationSettingsReadResult{std::unexpect, source.error()}};
         ASSERT_FALSE(resolved);
         ASSERT_FALSE(resolved.error().empty());

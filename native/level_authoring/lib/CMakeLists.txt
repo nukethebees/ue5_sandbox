@@ -12,6 +12,8 @@ target_sources(native-level-authoring
     src/identifiers.cpp
     src/scene.cpp
     src/source_session.cpp
+    src/definition_catalog.cpp
+    src/launch_state.cpp
 )
 target_include_directories(native-level-authoring
   PUBLIC
@@ -37,6 +39,7 @@ target_sources(native-level-authoring-s7
   PRIVATE
     ../s7/src/level_definition_writer.cpp
     ../s7/src/script_reader.cpp
+    ../s7/src/source_session_reader.cpp
     ../s7/src/starfield_reader.cpp
 )
 target_include_directories(native-level-authoring-s7

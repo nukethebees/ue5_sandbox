@@ -1,11 +1,9 @@
 lispb-outputs-v1
 Plugins/ShooterGame/Source/ShooterGame/Public/ShooterGame/players/CharacterCameraMode.h
-Plugins/SpaceGame/Source/SpaceGame/Private/settings/GameSettings.generated.cpp
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/ObjectiveOutcome.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/ObjectiveOutcomeConversion.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TeamOutcome.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TeamOutcomeConversion.h
-Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/settings/GameSettings.generated.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRate.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRateConversion.h
 Plugins/SpaceGame/Source/SpaceGamePresentation/Private/ui/style/GameUiStyleTypes.cpp
@@ -42,6 +40,7 @@ native/levels/lib/include/ioj/settings/capital_presentation.h
 native/levels/lib/include/ioj/settings/capital_presentation_reader.h
 native/levels/lib/include/ioj/settings/entity_overlay.h
 native/levels/lib/include/ioj/settings/entity_overlay_reader.h
+native/levels/lib/include/ioj/settings/game_settings.h
 native/levels/lib/include/ioj/settings/laser_presentation.h
 native/levels/lib/include/ioj/settings/laser_presentation_reader.h
 native/levels/lib/include/ioj/settings/player_presentation.h
@@ -79,6 +78,7 @@ native/levels/lib/include/ioj/sim/spinners/spinner_sim_config.h
 native/levels/lib/include/ioj/sim/spinners/spinner_sim_config_reader.h
 native/levels/lib/include/ioj/sim/turrets/turret_sim_config.h
 native/levels/lib/include/ioj/sim/turrets/turret_sim_config_reader.h
+native/levels/lib/src/game_settings.cpp
 native/simulation/include/ioj/sim/capital_ships/capital_entity_data.h
 native/simulation/include/ioj/sim/capital_ships/phase_interface.h
 native/simulation/include/ioj/sim/collision/cell_coord_bounds.h

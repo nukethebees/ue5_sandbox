@@ -10,6 +10,9 @@ target_sources(native-levels
     lib/src/campaign_definition.cpp
     lib/src/diagnostics.cpp
     lib/src/catalog_validation.cpp
+    lib/src/game_settings.cpp
+    lib/src/game_settings_edit_state.cpp
+    lib/src/input_response.cpp
 )
 target_include_directories(native-levels
   PUBLIC

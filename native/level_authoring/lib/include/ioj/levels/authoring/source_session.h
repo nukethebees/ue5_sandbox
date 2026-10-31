@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/levels/level_definition.h>
+
 #include <cstdint>
 #include <expected>
 #include <filesystem>
@@ -39,6 +41,11 @@ struct SourceSessionState {
 
 enum class SourceOverwritePolicy { RefuseExisting, ReplaceExisting };
 
+struct SourceReplay {
+    LevelDefinition definition;
+    std::string evaluated_source;
+};
+
 // Own UTF-8 source independently of the editor document. Detach before attaching
 // another document, even when both documents use the same path.
 class SourceSession {
@@ -64,6 +71,13 @@ class SourceSession {
                                            SourceOverwritePolicy overwrite)
         -> std::expected<void, std::string>;
     [[nodiscard]] auto refresh_external_conflict() -> std::expected<void, std::string>;
+
+    [[nodiscard]] auto read(settings::Settings base = {},
+                            std::filesystem::path const& library_root = {}) const
+        -> std::expected<LevelDefinition, Diagnostics>;
+    [[nodiscard]] auto read_replay(settings::Settings base = {},
+                                   std::filesystem::path const& library_root = {}) const
+        -> std::expected<SourceReplay, Diagnostics>;
 
     [[nodiscard]] auto path() const -> std::filesystem::path const& { return path_; }
     [[nodiscard]] auto buffer() const -> std::string const& { return state_.buffer_text; }

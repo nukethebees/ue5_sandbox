@@ -412,11 +412,10 @@ void Sim::select_flight_model_slot(FlightModelSlot const slot) noexcept {
 
 auto Sim::set_flight_model_slot_profile(FlightModelSlot const slot,
                                         FlightModelProfile profile) noexcept -> bool {
-    if (!validate_flight_model_config(profile.config)) {
+    if (!try_set_flight_model_profile(flight_models_, slot, std::move(profile))) {
         return false;
     }
 
-    flight_model_profile(flight_models_, slot) = profile;
     if (active_flight_model_slot_ == slot) {
         reset_flight_model_controller(state_, get_active_flight_model_config(), false);
         refresh_effective_action(state_);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ioj/levels/diagnostics.h>
+#include <ioj/settings/settings.h>
 #include <ioj/settings/tick_settings.h>
 #include <ioj/sim/capital_ships/capital_ship_sim_config.h>
 #include <ioj/sim/collision/overlap_response_config.h>
@@ -30,6 +31,9 @@ struct SimulationSettings {
     OverlapResponseConfig overlap_response{};
     HudSettings hud{};
 };
+
+[[nodiscard]] auto resolve_simulation_settings(settings::Settings const& source)
+    -> std::expected<SimulationSettings, levels::Diagnostics>;
 
 // Validate the complete result after all default and level overrides have been applied.
 [[nodiscard]] auto validate_settings(SimulationSettings const& settings)

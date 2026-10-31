@@ -75,6 +75,20 @@ TEST(LevelDefinition, DuplicateAuthoredEntityIdFailsValidation) {
     expect_error(definition, DiagnosticCode::DuplicateEntityId);
 }
 
+TEST(LevelDefinition, RejectsMissingIdentityInvalidArchetypesAndNonfinitePlacement) {
+    auto definition{camera_level()};
+    definition.metadata.id = {};
+    expect_error(definition, DiagnosticCode::MissingLevelId);
+
+    definition = camera_level();
+    definition.entities[0].archetype = static_cast<EntityArchetype>(255);
+    expect_error(definition, DiagnosticCode::UnsupportedArchetype);
+
+    definition = camera_level();
+    definition.entities[0].position.x() = std::numeric_limits<double>::quiet_NaN();
+    expect_error(definition, DiagnosticCode::InvalidPlacement);
+}
+
 TEST(LevelDefinition, ObjectiveCyclesAreValidated) {
     auto definition{camera_level()};
     ObjectiveDefinition objective{.id = ObjectiveName{"primary"}, .team = Team::Blue};

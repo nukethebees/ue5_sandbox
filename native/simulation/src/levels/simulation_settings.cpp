@@ -7,6 +7,25 @@
 #include <utility>
 
 namespace ioj::sim {
+auto resolve_simulation_settings(settings::Settings const& source)
+    -> std::expected<SimulationSettings, levels::Diagnostics> {
+    SimulationSettings result{
+        .clock = source.tick,
+        .player = source.player_ship,
+        .lasers = source.laser_projectiles,
+        .capital_ships = source.capital_ships,
+        .fighters = source.fighters,
+        .turrets = source.turrets,
+        .spinners = source.tube_spinners,
+        .overlap_response = source.collision_grid,
+        .hud = source.hud,
+    };
+    if (auto valid{validate_settings(result)}; !valid) {
+        return std::unexpected{std::move(valid.error())};
+    }
+    return result;
+}
+
 auto validate_settings(SimulationSettings const& settings)
     -> std::expected<void, levels::Diagnostics> {
     levels::Diagnostics errors;

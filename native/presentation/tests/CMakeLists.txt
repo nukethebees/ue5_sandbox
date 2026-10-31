@@ -4,6 +4,8 @@ target_sources(native-presentation-tests
     boom_audio_library_tests.cpp
     radar_tests.cpp
     soft_target_tests.cpp
+    observer_camera_tests.cpp
+    spark_tests.cpp
 )
 target_link_libraries(native-presentation-tests
   PRIVATE

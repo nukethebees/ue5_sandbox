@@ -154,6 +154,12 @@ auto DefinitionReader::read_root_file(std::filesystem::path const& path,
     auto catalog{parse_catalog(*ast, full_path.parent_path(), base)};
     if (catalog) {
         for (auto& entry : catalog->levels) {
+            auto source{read_source(entry.source_path)};
+            if (source) {
+                entry.source_text = std::move(*source);
+            } else if (entry.definition) {
+                entry.definition = std::unexpected{std::move(source.error())};
+            }
             entry.definition = with_source_path(std::move(entry.definition), entry.source_path);
         }
         for (auto& entry : catalog->campaigns) {

@@ -1,3 +1,4 @@
+#include <ioj/presentation/entity_overlay.h>
 #include <ioj/presentation/soft_target.h>
 #include <ioj/vectors3f.h>
 
@@ -94,6 +95,55 @@ TEST_F(EntityOverlaySource, SelectsOnlyTheBestValidHostile) {
 
     auto const selected{select_target()};
     EXPECT_EQ(selected.id.raw_value(), entity_id(1).raw_value()) << "Nearest hostile is selected";
+}
+
+TEST_F(EntityOverlaySource, FiltersEligibilityRangeAndNormalizesHealth) {
+    add_entity({.position = {10.f, 0.f, 0.f},
+                .health = sim::Health{10},
+                .type = EntityType::Turret,
+                .radius = 50.f});
+    add_entity({.position = {20.f, 0.f, 0.f},
+                .health = sim::Health{25},
+                .type = EntityType::Fighter,
+                .radius = 100.f});
+    add_entity({.position = {30.f, 0.f, 0.f},
+                .health = sim::Health{2500},
+                .type = EntityType::CapitalShip,
+                .radius = 1000.f});
+    add_entity({.position = {40.f, 0.f, 0.f},
+                .health = sim::Health{},
+                .type = EntityType::Turret,
+                .radius = 50.f});
+    add_entity({.position = {50.f, 0.f, 0.f}, .type = EntityType::PlayerShip});
+    add_entity({.position = {60.f, 0.f, 0.f}, .type = EntityType::TubeSpinner});
+    add_entity({.position = {101.f, 0.f, 0.f}, .type = EntityType::Turret, .radius = 50.f});
+    std::vector<ui::entity_overlay::ObjectiveRole> roles(entities_.num());
+    std::vector<ui::entity_overlay::Instance> output;
+    EntityOverlayTeamColours colours;
+    colours.turret[Team::Red] = {0.f, 0.f, 1.f, 1.f};
+    auto const result{collect_entity_overlay_instances(
+        make_view(entities_), radii_, roles, colours, {5000, 50, 20}, {}, 100.f, output)};
+    ASSERT_EQ(result.candidate_count, 3);
+    EXPECT_FLOAT_EQ(output[0].health, 0.5f);
+    EXPECT_FLOAT_EQ(output[1].health, 0.5f);
+    EXPECT_FLOAT_EQ(output[2].health, 0.5f);
+    EXPECT_FLOAT_EQ(output[0].world_radius, 50.f);
+    EXPECT_FLOAT_EQ(output[1].world_radius, 100.f);
+    EXPECT_FLOAT_EQ(output[2].world_radius, 1000.f);
+    EXPECT_EQ(output[0].display_data,
+              ui::entity_overlay::pack_display_data(ui::entity_overlay::ObjectiveRole::None,
+                                                    {0.f, 0.f, 1.f, 1.f}));
+}
+
+TEST_F(EntityOverlaySource, ExcludesDeadAndClampsExcessHealth) {
+    add_entity({.health = sim::Health{-10}});
+    add_entity({.health = sim::Health{40}});
+    std::vector<ui::entity_overlay::ObjectiveRole> roles(entities_.num());
+    std::vector<ui::entity_overlay::Instance> output;
+    static_cast<void>(collect_entity_overlay_instances(
+        make_view(entities_), radii_, roles, {}, {5000, 50, 20}, {}, 100.f, output));
+    ASSERT_EQ(output.size(), 1);
+    EXPECT_FLOAT_EQ(output[0].health, 1.f);
 }
 
 TEST_F(EntityOverlaySource, RetainsAndSwitchesWithHysteresis) {
@@ -214,6 +264,43 @@ TEST_F(EntityOverlaySource, ReportsWorldScaleSeparatelyFromClampedIndicatorRadiu
     auto const nearer{select_target()};
     EXPECT_TRUE(nearer.world_units_per_pixel < distant.world_units_per_pixel)
         << "World units per pixel shrink as the target approaches";
+}
+
+TEST(SoftTargetVisual, SizesBracketAndCombinesRangePulseAndFade) {
+    SoftTargetMarker marker{.visual = {.range_alpha = SoftTargetRange::make(0.5f),
+                                       .radius_pixels = 10.f,
+                                       .world_units_per_pixel = 2.f},
+                            .location = Vector3f{},
+                            .pulse = 0.5f,
+                            .visibility = 0.4f};
+    settings::SoftTarget settings;
+    settings.bracket_start_radius_multiplier = 3.f;
+    settings.opacity = 0.6f;
+    settings.pulse_opacity_boost = 0.2f;
+    auto const sample{[&] {
+        return make_world_soft_target_visual(
+            marker, settings, 4.f, {1.f, 0.f, 0.f, 0.5f}, {0.f, 1.f, 0.f, 1.f});
+    }};
+    auto visual{sample()};
+    ASSERT_TRUE(visual);
+    EXPECT_FLOAT_EQ(visual->scale, 10.f);
+    EXPECT_FLOAT_EQ(visual->colour.r, 0.75f);
+    EXPECT_FLOAT_EQ(visual->colour.g, 0.25f);
+    EXPECT_FLOAT_EQ(visual->colour.a, 0.175f);
+    EXPECT_FLOAT_EQ(visual->pulse, 0.5f);
+
+    marker.visual.range_alpha = SoftTargetRange::make(1.f);
+    visual = sample();
+    ASSERT_TRUE(visual);
+    EXPECT_FLOAT_EQ(visual->scale, 5.f);
+    EXPECT_FLOAT_EQ(visual->colour.g, 1.f);
+    marker.visual.range_alpha = SoftTargetRange::make(0.f);
+    EXPECT_FLOAT_EQ(sample()->scale, 15.f);
+    marker.visibility = 0.f;
+    EXPECT_FALSE(sample());
+    marker.visibility = 1.f;
+    marker.location.reset();
+    EXPECT_FALSE(sample());
 }
 
 TEST_F(EntityOverlaySource, TiesUseEntityIdentityRegardlessOfBatchOrdering) {

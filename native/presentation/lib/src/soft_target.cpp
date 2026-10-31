@@ -72,6 +72,43 @@ auto is_supported_entity_type(::ioj::sim::EntityType const type) -> bool {
 
 }
 
+auto make_world_soft_target_visual(SoftTargetMarker const& marker,
+                                   settings::SoftTarget const& settings,
+                                   float const mesh_vertical_radius,
+                                   ui::Color4f const neutral_colour,
+                                   ui::Color4f const in_range_colour)
+    -> std::optional<WorldSoftTargetVisual> {
+    auto const& visual{marker.visual};
+    if (!marker.location || marker.visibility <= 0.f || visual.world_units_per_pixel <= 1.e-8f ||
+        mesh_vertical_radius <= 1.e-8f) {
+        return std::nullopt;
+    }
+
+    auto const range_alpha{visual.range_alpha.get()};
+    auto const closing_scale{
+        std::lerp(std::max(settings.bracket_start_radius_multiplier, 1.f), 1.f, range_alpha)};
+    auto const scale{visual.radius_pixels * visual.world_units_per_pixel * closing_scale /
+                     mesh_vertical_radius};
+    if (!std::isfinite(scale) || scale <= 1.e-8f) {
+        return std::nullopt;
+    }
+
+    auto const smooth_range{range_alpha * range_alpha * (3.f - 2.f * range_alpha)};
+    auto const colour_alpha{smooth_range * smooth_range};
+    auto const mix{[colour_alpha](float const from, float const to) {
+        return std::lerp(from, to, colour_alpha);
+    }};
+    ui::Color4f colour{mix(neutral_colour.r, in_range_colour.r),
+                       mix(neutral_colour.g, in_range_colour.g),
+                       mix(neutral_colour.b, in_range_colour.b),
+                       mix(neutral_colour.a, in_range_colour.a)};
+    colour.a = std::clamp((settings.opacity + marker.pulse * settings.pulse_opacity_boost) *
+                              marker.visibility * colour.a,
+                          0.f,
+                          1.f);
+    return WorldSoftTargetVisual{scale, colour, std::clamp(marker.pulse, 0.f, 1.f), range_alpha};
+}
+
 auto SoftTargetState::advance(std::span<AgentDisplayBatch const> const batches,
                               SoftTargetResult const& selected,
                               SoftTargetTiming const timing) -> std::array<SoftTargetMarker, 2> {

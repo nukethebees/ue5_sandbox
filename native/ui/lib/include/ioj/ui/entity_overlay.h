@@ -2,9 +2,11 @@
 
 #include "ioj/ui/types.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <optional>
+#include <type_traits>
 
 namespace ioj::ui::entity_overlay {
 inline constexpr std::uint32_t invalid_index{std::numeric_limits<std::uint32_t>::max()};
@@ -20,6 +22,14 @@ struct Instance {
     float world_radius{};
     std::uint32_t display_data{};
 };
+
+static_assert(sizeof(Instance) == sizeof(float) * 6);
+static_assert(std::is_standard_layout_v<Instance>);
+static_assert(std::is_trivially_copyable_v<Instance>);
+static_assert(offsetof(Instance, world_position) == 0);
+static_assert(offsetof(Instance, health) == sizeof(float) * 3);
+static_assert(offsetof(Instance, world_radius) == sizeof(float) * 4);
+static_assert(offsetof(Instance, display_data) == sizeof(float) * 5);
 
 struct Addition {
     Instance instance{};

@@ -17,4 +17,7 @@ namespace ioj::sim::player {
     -> FlightModelProfile&;
 [[nodiscard]] auto flight_model_profile(FlightModelLoadout const& loadout,
                                         FlightModelSlot slot) noexcept -> FlightModelProfile const&;
+[[nodiscard]] auto try_set_flight_model_profile(FlightModelLoadout& loadout,
+                                                FlightModelSlot slot,
+                                                FlightModelProfile profile) noexcept -> bool;
 }

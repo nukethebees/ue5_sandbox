@@ -44,4 +44,11 @@ class DefinitionReader {
   private:
     std::filesystem::path script_library_root_{};
 };
+
+[[nodiscard]] auto resolve_document_settings(std::string_view base_source,
+                                             std::string_view level_source,
+                                             settings::Settings initial,
+                                             std::filesystem::path const& base_library_root,
+                                             std::filesystem::path const& level_library_root)
+    -> SettingsReadResult;
 }

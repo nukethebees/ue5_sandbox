@@ -22,4 +22,6 @@ target_sources(native-simulation
     level_event_schedule.cpp
     level_spawn_manager.cpp
     simulation_settings.cpp
+    level_simulation_builder.cpp
+    ../../include/ioj/sim/levels/level_simulation_builder.h
 )

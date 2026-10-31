@@ -1,5 +1,10 @@
 add_native_simulation_test(native-simulation-tests)
-target_link_libraries(native-simulation-tests PRIVATE native-test-support)
+target_link_libraries(native-simulation-tests
+  PRIVATE
+    native-test-support
+    native-presentation
+    nlohmann_json::nlohmann_json
+)
 target_sources(native-simulation-tests PRIVATE
   entity_lookup_tables_tests.cpp
   entity_ledger_tests.cpp
@@ -8,6 +13,7 @@ target_sources(native-simulation-tests PRIVATE
   entity_instance_handle_tests.cpp
   enum_tests.cpp
   flight_model_config_tests.cpp
+  game_settings_tests.cpp
   scalar_response_tests.cpp
   test_tick_phases.cpp
   test_level_simulation.cpp
@@ -23,6 +29,7 @@ target_sources(native-simulation-tests PRIVATE
   test_level_telemetry_block_history.cpp
   test_level_telemetry_manager.cpp
   telemetry_analysis_tests.cpp
+  telemetry_run_catalog_tests.cpp
   test_level_telemetry_json_validation.cpp
   test_game_memory.cpp
   test_spinner_spawning.cpp
@@ -49,6 +56,7 @@ target_sources(native-simulation-tests PRIVATE
   fixed_tick_tests.cpp
   settings_reader_tests.cpp
   health_table_tests.cpp
+  hud_model_tests.cpp
   index_span_tests.cpp
   ship_health_tests.cpp
   spatial_tests.cpp

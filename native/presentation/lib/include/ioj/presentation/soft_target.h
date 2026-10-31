@@ -65,6 +65,20 @@ struct SoftTargetTiming {
     NonNegativeFinite<float> fade_duration{};
 };
 
+struct WorldSoftTargetVisual {
+    float scale{};
+    ui::Color4f colour{};
+    float pulse{};
+    float range_alpha{};
+};
+
+auto make_world_soft_target_visual(SoftTargetMarker const& marker,
+                                   settings::SoftTarget const& settings,
+                                   float mesh_vertical_radius,
+                                   ui::Color4f neutral_colour,
+                                   ui::Color4f in_range_colour)
+    -> std::optional<WorldSoftTargetVisual>;
+
 class SoftTargetState {
   public:
     auto advance(std::span<AgentDisplayBatch const> batches,
