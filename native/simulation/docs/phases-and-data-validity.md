@@ -7,6 +7,10 @@ Each tick advances in one direction:
 `SimClock::transition_to` asserts the permitted transitions. `LevelState` owns the level lifecycle;
 `BetweenTicks` performs no work and introduces no wait.
 
+Each catch-up tick samples player simulation presence and health, then dispatches a
+`TickPlayerShipState` specialization for all of that tick's phases: `NotPresent`, `PresentAlive`,
+or `PresentDead`. A death during Resolution affects the next tick's dispatch.
+
 Initialisation spawns and configures entities. Each type publishes its initial lookup state before
 entering `LevelState::StableSetup`. Mission initialisation and setup queries run there, without
 structural mutation, before entering `LevelState::Paused`. Setup uses Preparation for population

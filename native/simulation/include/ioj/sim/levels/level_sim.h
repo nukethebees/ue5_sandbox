@@ -16,6 +16,7 @@
 #include <ioj/sim/levels/level_sim_init_data.h>
 #include <ioj/sim/levels/level_state.h>
 #include <ioj/sim/levels/run_stop_conditions.h>
+#include <ioj/sim/levels/tick_player_ship_state.h>
 #include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/missions/mission.h>
 #include <ioj/sim/player/command_interface.h>
@@ -128,10 +129,16 @@ struct LevelSim {
     /* **************************************** */
     // Tick phases
     /* **************************************** */
-    void prepare_tick(float tick_period, bool player_active);
-    void think_tick(float tick_period, bool player_active);
-    void act_tick(float tick_period, bool player_active);
-    void resolve_tick(bool player_active);
+    template <TickPlayerShipState PlayerState>
+    void advance_tick(float tick_period);
+    template <TickPlayerShipState PlayerState>
+    void prepare_tick(float tick_period);
+    template <TickPlayerShipState PlayerState>
+    void think_tick(float tick_period);
+    template <TickPlayerShipState PlayerState>
+    void act_tick(float tick_period);
+    template <TickPlayerShipState PlayerState>
+    void resolve_tick();
 
     LevelState state_{LevelState::Uninitialised};
     SimClock clock_;

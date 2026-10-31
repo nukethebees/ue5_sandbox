@@ -173,13 +173,13 @@ void LevelSim::advance(time_type const dt) {
 
     while (clock_.tick_loop.try_tick()) {
         auto const tick_period{static_cast<float>(clock_.tick_loop.get_tick_period())};
-        auto const player_active{player_ship_simulation_.has_value() &&
-                                 player_ship_simulation_->is_alive()};
-
-        prepare_tick(tick_period, player_active);
-        think_tick(tick_period, player_active);
-        act_tick(tick_period, player_active);
-        resolve_tick(player_active);
+        if (!player_ship_simulation_) {
+            advance_tick<TickPlayerShipState::NotPresent>(tick_period);
+        } else if (player_ship_simulation_->is_alive()) {
+            advance_tick<TickPlayerShipState::PresentAlive>(tick_period);
+        } else {
+            advance_tick<TickPlayerShipState::PresentDead>(tick_period);
+        }
 
         profiling::mark_frame("Simulation");
         clock_.transition_to(SimulationPhase::BetweenTicks);
@@ -192,7 +192,15 @@ void LevelSim::advance(time_type const dt) {
 /* **************************************** */
 // Tick phases
 /* **************************************** */
-void LevelSim::prepare_tick(float const tick_period, bool const player_active) {
+template <TickPlayerShipState PlayerState>
+void LevelSim::advance_tick(float const tick_period) {
+    prepare_tick<PlayerState>(tick_period);
+    think_tick<PlayerState>(tick_period);
+    act_tick<PlayerState>(tick_period);
+    resolve_tick<PlayerState>();
+}
+template <TickPlayerShipState PlayerState>
+void LevelSim::prepare_tick(float const tick_period) {
     capital_ships::PhaseInterface capital_ships_phase{capital_ships_simulation_};
     fighters::PhaseInterface fighters_phase{fighters_simulation_};
     turrets::PhaseInterface turrets_phase{turrets_simulation_};
@@ -218,9 +226,9 @@ void LevelSim::prepare_tick(float const tick_period, bool const player_active) {
         fighters_simulation_.get_entities().entity_ids(),
         turrets_simulation_.get_entities().entity_ids());
 
-    if (player_active) {
+    if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
         player::PhaseInterface{*player_ship_simulation_}.prepare_tick(tick_period);
-    } else if (player_ship_simulation_) {
+    } else if constexpr (PlayerState == TickPlayerShipState::PresentDead) {
         player_ship_simulation_->update_entity_lookup_table();
     }
     capital_ships_phase.prepare_tick();
@@ -230,7 +238,8 @@ void LevelSim::prepare_tick(float const tick_period, bool const player_active) {
 
     refresh_spatial_index();
 }
-void LevelSim::think_tick(float const tick_period, bool const player_active) {
+template <TickPlayerShipState PlayerState>
+void LevelSim::think_tick(float const tick_period) {
     fighters::PhaseInterface fighters_phase{fighters_simulation_};
     turrets::PhaseInterface turrets_phase{turrets_simulation_};
     spinners::PhaseInterface spinners_phase{spinners_simulation_};
@@ -250,19 +259,20 @@ void LevelSim::think_tick(float const tick_period, bool const player_active) {
 
     turrets_phase.think(turret_inputs);
     fighters_phase.think(fighter_inputs);
-    if (player_active) {
+    if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
         player::PhaseInterface{*player_ship_simulation_}.think(tick_period);
     }
     spinners_phase.think(tick_period);
 
-    if (player_active) {
+    if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
         player::PhaseInterface{*player_ship_simulation_}.generate_fire_commands();
     }
     fighters_phase.generate_fire_commands(fighter_inputs);
     turrets_phase.generate_fire_commands(turret_inputs);
     spinners_phase.generate_fire_commands();
 }
-void LevelSim::act_tick(float const tick_period, bool const player_active) {
+template <TickPlayerShipState PlayerState>
+void LevelSim::act_tick(float const tick_period) {
     fighters::PhaseInterface fighters_phase{fighters_simulation_};
     spinners::PhaseInterface spinners_phase{spinners_simulation_};
     lasers::PhaseInterface lasers_phase{lasers_simulation_};
@@ -277,7 +287,7 @@ void LevelSim::act_tick(float const tick_period, bool const player_active) {
         lasers_phase.simulate(inputs);
     }
 
-    if (player_active) {
+    if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
         auto const before{player_ship_simulation_->get_physical_state().transform};
         player::ActionInputs const inputs{lasers_simulation_};
         player::PhaseInterface{*player_ship_simulation_}.apply_movement(inputs);
@@ -300,7 +310,8 @@ void LevelSim::act_tick(float const tick_period, bool const player_active) {
                                                    combat_events_,
                                                    frame_memory);
 }
-void LevelSim::resolve_tick(bool const player_active) {
+template <TickPlayerShipState PlayerState>
+void LevelSim::resolve_tick() {
     capital_ships::PhaseInterface capital_ships_phase{capital_ships_simulation_};
     fighters::PhaseInterface fighters_phase{fighters_simulation_};
     turrets::PhaseInterface turrets_phase{turrets_simulation_};
@@ -320,7 +331,7 @@ void LevelSim::resolve_tick(bool const player_active) {
         fighters::ResolutionInputs const fighter_inputs{combat_events_, frame_memory};
         turrets::ResolutionInputs const turret_inputs{combat_events_, frame_memory};
 
-        if (player_active) {
+        if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
             player::ResolutionInputs const inputs{combat_events_, frame_memory};
             player::PhaseInterface{*player_ship_simulation_}.resolve_damage_events(inputs);
         }

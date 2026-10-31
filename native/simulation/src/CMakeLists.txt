@@ -93,6 +93,7 @@ set(levels_headers
   level_sim.h
   level_state.h
   reference_level_simulation_data.h
+  tick_player_ship_state.h
 )
 
 list(TRANSFORM levels_headers PREPEND "../include/ioj/sim/levels/")

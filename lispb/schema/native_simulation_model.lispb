@@ -23,6 +23,16 @@
     (value BetweenTicks)
     (projections (cpp))))
 
+(module native_tick_player_ship_state
+  :header "native/simulation/include/ioj/sim/levels/tick_player_ship_state.h"
+  :header-include "ioj/sim/levels/tick_player_ship_state.h"
+  :namespace ioj::sim
+  (enum TickPlayerShipState std::uint8_t
+    (value NotPresent)
+    (value PresentAlive)
+    (value PresentDead)
+    (projections (cpp))))
+
 (module native_collision_trace_entity_filter
   :header "native/simulation/include/ioj/sim/collision/trace_entity_filter.h"
   :header-include "ioj/sim/collision/trace_entity_filter.h"
