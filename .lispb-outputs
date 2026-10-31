@@ -152,6 +152,8 @@ native/simulation/include/ioj/sim/simulation_phase.h
 native/simulation/include/ioj/sim/spinners/phase_interface.h
 native/simulation/include/ioj/sim/spinners/spinner_entity_data.h
 native/simulation/include/ioj/sim/tasks/instruction.h
+native/simulation/include/ioj/sim/tasks/instruction_handle.h
+native/simulation/include/ioj/sim/tasks/task_id.h
 native/simulation/include/ioj/sim/telemetry/current_state.h
 native/simulation/include/ioj/sim/telemetry/history.h
 native/simulation/include/ioj/sim/telemetry/navigation_telemetry.h
