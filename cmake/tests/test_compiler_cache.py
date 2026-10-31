@@ -14,6 +14,8 @@ class CompilerCacheTests(unittest.TestCase):
             root = Path(directory)
             compiler = root / Path(self.compiler).name
             shutil.copy2(self.compiler, compiler)
+            msvc_compiler = root / "cl.exe"
+            shutil.copy2(self.msvc_compiler, msvc_compiler)
             (root / "ccache.conf").write_text("")
             environment = os.environ.copy()
             environment.pop("CCACHE_DISABLE", None)
@@ -32,6 +34,7 @@ class CompilerCacheTests(unittest.TestCase):
             (root / "CMakeLists.txt").write_text(
                 'cmake_minimum_required(VERSION 4.4.2)\n'
                 'project(PchCache LANGUAGES CXX)\n'
+                f'set(msvc_cl "{msvc_compiler.as_posix()}")\n'
                 f'include("{module.as_posix()}")\n'
                 'add_library(probe OBJECT probe.cpp)\n'
                 'target_precompile_headers(probe PRIVATE pch.hpp)\n'
@@ -73,16 +76,67 @@ class CompilerCacheTests(unittest.TestCase):
             self.assertEqual(replaced.count("Result: cache_miss"), 2, replaced)
             self.assertNotIn("Result: direct_cache_hit", replaced)
 
+            timestamp = pch.stat().st_mtime_ns
+            old_msvc_hash = hashlib.sha256(msvc_compiler.read_bytes()).hexdigest()
+            with msvc_compiler.open("ab") as output:
+                output.write(b"\0IOJ MSVC compatibility identity regression\0")
+            new_msvc_hash = hashlib.sha256(msvc_compiler.read_bytes()).hexdigest()
+            self.assertNotEqual(old_msvc_hash, new_msvc_hash)
+            offset = log.stat().st_size
+            run(self.cmake, "--build", str(build))
+            rules = (build / "build.ninja").read_text()
+            self.assertIn(f"IOJ_PCH_MSVC_SHA256={new_msvc_hash}", rules)
+            self.assertNotIn(f"IOJ_PCH_MSVC_SHA256={old_msvc_hash}", rules)
+            self.assertGreater(pch.stat().st_mtime_ns, timestamp)
+            replaced = log.read_text()[offset:]
+            self.assertEqual(replaced.count("Result: cache_miss"), 2, replaced)
+            self.assertNotIn("Result: direct_cache_hit", replaced)
+            timestamp = pch.stat().st_mtime_ns
+            run(self.cmake, "--build", str(build))
+            self.assertEqual(pch.stat().st_mtime_ns, timestamp)
+
+    def test_msvc_reconfigure_preserves_unchanged_pch(self):
+        with tempfile.TemporaryDirectory(prefix="msvc-pch-") as directory:
+            root = Path(directory)
+            module = self.source_dir / "cmake/compiler_cache.cmake"
+            toolchain = self.source_dir / "cmake/toolchains/windows-msvc.cmake"
+            (root / "pch.hpp").write_text("#pragma once\nstruct Value { int number; };\n")
+            (root / "probe.cpp").write_text("int read(Value const& value) { return value.number; }\n")
+            (root / "CMakeLists.txt").write_text(
+                'cmake_minimum_required(VERSION 4.4.2)\n'
+                'project(MsvcPch LANGUAGES CXX)\n'
+                f'include("{module.as_posix()}")\n'
+                'add_library(probe OBJECT probe.cpp)\n'
+                'target_precompile_headers(probe PRIVATE pch.hpp)\n'
+            )
+            build = root / "build"
+            configure = (self.cmake, "-S", str(root), "-B", str(build), "-G", "Ninja",
+                         f"--toolchain={toolchain}", "-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY")
+
+            def run(*command):
+                result = subprocess.run(command, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+            run(*configure)
+            run(self.cmake, "--build", str(build))
+            pch = next(build.rglob("*.pch"))
+            timestamp = pch.stat().st_mtime_ns
+            run(*configure)
+            run(self.cmake, "--build", str(build))
+            self.assertEqual(pch.stat().st_mtime_ns, timestamp)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--source-dir", type=Path, required=True)
     parser.add_argument("--cmake", required=True)
     parser.add_argument("--compiler", required=True)
+    parser.add_argument("--msvc-compiler", required=True)
     parser.add_argument("--archiver", required=True)
     arguments = parser.parse_args()
     CompilerCacheTests.source_dir = arguments.source_dir.resolve()
     CompilerCacheTests.cmake = arguments.cmake
     CompilerCacheTests.compiler = arguments.compiler
+    CompilerCacheTests.msvc_compiler = arguments.msvc_compiler
     CompilerCacheTests.archiver = arguments.archiver
     unittest.main(argv=[__file__])

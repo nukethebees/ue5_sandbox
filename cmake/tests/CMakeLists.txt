@@ -6,6 +6,7 @@ if(WIN32 AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
       --source-dir "${PROJECT_SOURCE_DIR}"
       --cmake "${CMAKE_COMMAND}"
       --compiler "${CMAKE_CXX_COMPILER}"
+      --msvc-compiler "${msvc_cl}"
       --archiver "${CMAKE_AR}"
   )
   set_tests_properties(CMake.CompilerCache PROPERTIES
