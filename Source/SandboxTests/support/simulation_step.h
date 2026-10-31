@@ -6,9 +6,12 @@ namespace ioj {
 template <typename Observe>
 void advance_simulation(ATestBatchOrchestrator& orchestrator, double const dt, Observe&& observe) {
     orchestrator.SetActorTickEnabled(false);
-    auto const previous_tick{orchestrator.get_completed_ticks()};
+    auto const* const level{orchestrator.get_level_simulation()};
+    check(level);
+    auto const& clock{level->get_clock()};
+    auto const previous_tick{clock.get_completed_ticks()};
     orchestrator.tick(dt);
-    if (orchestrator.get_completed_ticks() != previous_tick) {
+    if (clock.get_completed_ticks() != previous_tick) {
         observe(orchestrator);
     }
     orchestrator.SetActorTickEnabled(false);

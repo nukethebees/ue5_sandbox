@@ -67,7 +67,7 @@ void FTestPlayerShipDeathScenario::queue_player_ship_death() {
     player_ship = const_cast<ATestSpaceShip*>(ship);
     player_ship_id = ship->get_unique_id();
 
-    auto const& ledger{test_driver->orchestrator.get_entity_ledger()};
+    auto const& ledger{test_driver->orchestrator.get_level_simulation()->get_entity_ledger()};
     checks.is_true(ledger.is_valid_unique_id(player_ship_id), TEXT("Player ship ID is valid"));
 
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);

@@ -53,16 +53,16 @@ void FTestBatchOrchestratorSetupScenario::prepare_level() {
                              orchestrator->get_level_simulation());
         initialise_test_driver();
 
-        auto const completed_ticks{orchestrator->get_completed_ticks()};
         orchestrator->start_simulation();
 
         TestRunner->TestTrue(TEXT("Starting transitions the orchestrator to running"),
                              orchestrator->get_state() == sim::LevelState::Running);
         TestRunner->TestTrue(TEXT("Running orchestrator ticks"),
                              orchestrator->IsActorTickEnabled());
-        TestRunner->TestEqual(TEXT("Starting does not immediately advance simulation"),
-                              orchestrator->get_completed_ticks(),
-                              completed_ticks);
+        TestRunner->TestEqual(
+            TEXT("Starting does not immediately advance simulation"),
+            orchestrator->get_level_simulation()->get_clock().get_completed_ticks().value(),
+            uint64{0});
     });
 }
 
@@ -88,9 +88,10 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
         };
         TimeSeriesData<FFrameObservation> observations;
         auto const observe{[&observations](ATestBatchOrchestrator& owner) {
+            auto const& clock{owner.get_level_simulation()->get_clock()};
             observations.add(
-                owner.get_simulation_time(),
-                FFrameObservation{owner.get_completed_ticks(),
+                clock.get_simulation_time(),
+                FFrameObservation{clock.get_completed_ticks().value(),
                                   owner.get_level_presentation()->get_last_completed_tick()});
         }};
         auto const dt{orchestrator.get_level_simulation()->get_clock().get_tick_period()};

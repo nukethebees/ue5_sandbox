@@ -1,5 +1,5 @@
-#include <ioj/levels/launch_options.h>
 #pragma once
+#include <ioj/levels/launch_options.h>
 #include <ioj/sim/levels/level_sim.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
 #include <SpaceGame/levels/LevelLoader.h>
@@ -81,14 +81,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         return level_simulation_.IsSet() ? level_simulation_->get_state()
                                          : ioj::sim::LevelState::Uninitialised;
     }
-    auto get_completed_ticks() const noexcept -> tick_type {
-        return level_simulation_.IsSet()
-                 ? level_simulation_->get_clock().get_completed_ticks().value()
-                 : 0;
-    }
-    auto get_simulation_time() const noexcept -> time_type {
-        return level_simulation_.IsSet() ? level_simulation_->get_clock().get_simulation_time()
-                                         : 0.0;
+    auto get_level_simulation() const -> ioj::sim::LevelSim const* {
+        return level_simulation_.IsSet() ? &level_simulation_.GetValue() : nullptr;
     }
     auto was_launched_paused() const noexcept -> bool {
         return launch_options_.launch_mode == ioj::levels::LaunchMode::Paused;
@@ -100,53 +94,18 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         }
         auto const end_tick{duration_to_tick_period(
             ioj::Duration::make(launch_options_.simulated_duration_seconds.value()))};
-        auto const completed_ticks{get_completed_ticks()};
+        auto const completed_ticks{
+            level_simulation_.IsSet() ? level_simulation_->get_clock().get_completed_ticks().value()
+                                      : 0};
         return completed_ticks >= end_tick ? 0 : end_tick - completed_ticks;
     }
 
     /* **************************************** */
-    // Player and combat simulations
+    // Player actor
     /* **************************************** */
     auto get_player_ship() const -> ATestSpaceShip const*;
-    auto get_player_ship_simulation() const noexcept -> ioj::sim::player::Sim const*;
     void set_player_ship(ATestSpaceShip& new_player_ship);
     void clear_player_ship();
-    auto get_lasers() const noexcept -> ioj::sim::lasers::Sim const* {
-        return level_simulation_.IsSet() ? &level_simulation_->get_lasers() : nullptr;
-    }
-    auto get_capital_ships() const noexcept -> ioj::sim::capital_ships::Sim const* {
-        return level_simulation_.IsSet() ? &level_simulation_->get_capital_ships() : nullptr;
-    }
-    auto get_fighters() const noexcept -> ioj::sim::fighters::Sim const* {
-        return level_simulation_.IsSet() ? &level_simulation_->get_fighters() : nullptr;
-    }
-
-    /* **************************************** */
-    // Simulation services
-    /* **************************************** */
-    auto get_entity_ledger() const noexcept -> ioj::sim::EntityLedger const& {
-        check(level_simulation_.IsSet());
-        return level_simulation_->get_entity_ledger();
-    }
-    auto get_level_telemetry_manager() const noexcept -> ioj::sim::LevelTelemetryManager const& {
-        check(level_simulation_.IsSet());
-        return level_simulation_->get_level_telemetry_manager();
-    }
-    auto get_spatial_query_manager() const noexcept -> ioj::sim::SpatialQueryManager const& {
-        check(level_simulation_.IsSet());
-        return level_simulation_->get_spatial_query_manager();
-    }
-    auto get_level_id() const -> std::string const& {
-        check(level_simulation_.IsSet());
-        return level_simulation_->get_level_id();
-    }
-    auto get_mission() const noexcept -> ioj::sim::Mission const& {
-        check(level_simulation_.IsSet());
-        return level_simulation_->get_mission();
-    }
-    auto get_hud_manager() noexcept -> ioj::FHUDManager& {
-        return presentation_host_.get_hud_manager();
-    }
 
     /* **************************************** */
     // Testing and level preparation
@@ -162,8 +121,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     // Events, results, and presentation
     /* **************************************** */
     auto get_mission_definition() -> FLevelMissionDefinition& { return mission_definition; }
-    auto get_level_simulation() const -> ioj::sim::LevelSim const* {
-        return level_simulation_.IsSet() ? &level_simulation_.GetValue() : nullptr;
+    auto get_hud_manager() noexcept -> ioj::FHUDManager& {
+        return presentation_host_.get_hud_manager();
     }
     auto get_level_presentation() const -> FLevelPresentation const* {
         return presentation_host_.get_presentation();

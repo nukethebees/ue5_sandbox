@@ -29,10 +29,14 @@ not become a second, static representation of simulated entities.
 
 Install the harvested bounds before `LevelSim::finish_initialisation()`. That boundary publishes
 lookup rows and the spatial index, enters `LevelState::StableSetup`, initializes telemetry and the
-mission, then enters `LevelState::Paused`. Its clock stays in `BetweenTicks` throughout setup.
+mission, then resets its clock to tick zero and `BetweenTicks` and enters `LevelState::Paused`.
 Initialize presentation and HUD afterward, then activate controls and apply the requested start
 mode. Proxy turret transforms retain authored
 scale; authored levels derive initial turret transforms from the initialized native state.
+
+Use `get_level_simulation()` for native timing, entity simulations, queries, mission and telemetry.
+It returns null before construction and after release. Actor accessors cover configuration,
+presentation, player actors and launch behavior; `get_state()` also covers the absence of a level.
 
 A running Unreal frame advances the native fixed ticks before presenting the completed frame.
 Presentation observes the final tick of a catch-up frame. Player death and mission-completion

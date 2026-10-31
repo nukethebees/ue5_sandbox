@@ -99,9 +99,12 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
     initial_ledger_alive = test_driver->get_ledger().count_alive();
     save_old_owned_actors(test_driver->orchestrator);
     save_old_transient_actors(test_driver->orchestrator);
-    auto const& initial_telemetry{
-        test_driver->orchestrator.get_level_telemetry_manager().get_active_entity_count_data()};
-    checks.is_true(!initial_telemetry.is_empty(), TEXT("Initial level telemetry is populated"));
+    {
+        auto const* const level{test_driver->orchestrator.get_level_simulation()};
+        check(level);
+        auto const& telemetry{level->get_level_telemetry_manager().get_active_entity_count_data()};
+        checks.is_true(!telemetry.is_empty(), TEXT("Initial level telemetry is populated"));
+    }
     auto const resources{test_driver->orchestrator.get_presentation_resources()};
     test_driver->orchestrator.reset_for_new_level();
     auto const retained{test_driver->orchestrator.get_presentation_resources()};
@@ -122,8 +125,9 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
                    TEXT("Level reset destroys the previous simulation"));
     test_driver->orchestrator.start_simulation();
     test_driver->orchestrator.SetActorTickEnabled(false);
-    auto const& telemetry{
-        test_driver->orchestrator.get_level_telemetry_manager().get_active_entity_count_data()};
+    auto const* const level{test_driver->orchestrator.get_level_simulation()};
+    check(level);
+    auto const& telemetry{level->get_level_telemetry_manager().get_active_entity_count_data()};
     checks.are_equal(uint32{1}, telemetry.num(), TEXT("Restart records one telemetry baseline"));
     checks.are_equal(uint64{0}, telemetry.last_time(), TEXT("Restart baseline uses tick zero"));
     checks.are_equal(test_driver->get_ledger().count_alive(),
@@ -133,20 +137,19 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
 }
 
 void FTestBatchOrchestratorResetScenario::check_reset() {
+    auto const* const level{test_driver->orchestrator.get_level_simulation()};
+    check(level);
     checks.is_true(count_actors(*test_driver->get_world()) < initial_actor_count,
                    TEXT("Reset removes transient level actors"));
     checks.are_equal(1, initial_ledger_alive, TEXT("Initial simulation contains one entity"));
     checks.are_equal(
         0, test_driver->get_ledger().count_alive(), TEXT("Reset clears ledger entities"));
-    checks.are_equal(0u,
-                     test_driver->orchestrator.get_capital_ships()->get_num_instances(),
-                     TEXT("Reset clears capital instances"));
-    checks.are_equal(0u,
-                     test_driver->orchestrator.get_fighters()->get_num_instances(),
-                     TEXT("Reset clears fighter instances"));
-    checks.are_equal(0u,
-                     test_driver->orchestrator.get_lasers()->get_num_instances(),
-                     TEXT("Reset clears projectile instances"));
+    checks.are_equal(
+        0u, level->get_capital_ships().get_num_instances(), TEXT("Reset clears capital instances"));
+    checks.are_equal(
+        0u, level->get_fighters().get_num_instances(), TEXT("Reset clears fighter instances"));
+    checks.are_equal(
+        0u, level->get_lasers().get_num_instances(), TEXT("Reset clears projectile instances"));
 
     for (auto const& blocker : blockers) {
         checks.is_true(!is_actor_in_world(*test_driver->get_world(), blocker.Get()),

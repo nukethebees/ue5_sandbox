@@ -185,14 +185,10 @@ void ATestBatchOrchestrator::set_presentation_enabled(bool const enabled) {
 }
 
 /* **************************************** */
-// Player and combat simulations
+// Player actor
 /* **************************************** */
 auto ATestBatchOrchestrator::get_player_ship() const -> ATestSpaceShip const* {
     return player_ship.Get();
-}
-auto ATestBatchOrchestrator::get_player_ship_simulation() const noexcept
-    -> ioj::sim::player::Sim const* {
-    return level_simulation_.IsSet() ? level_simulation_->get_player_ship_simulation() : nullptr;
 }
 void ATestBatchOrchestrator::set_player_ship(ATestSpaceShip& new_player_ship) {
     if (level_simulation_.IsSet()) {
@@ -346,9 +342,10 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
 
     auto const grid_geometry{build->data.collision.grid_geometry};
     level_simulation_.Emplace(game_subsystem->get_game_memory(), MoveTemp(build->data));
-    if (IsValid(player_ship) && get_player_ship_simulation()) {
+    auto const* const player_simulation{level_simulation_->get_player_ship_simulation()};
+    if (IsValid(player_ship) && player_simulation) {
         player_ship->bind_simulation(*level_simulation_->get_player_ship_commands(),
-                                     *get_player_ship_simulation());
+                                     *player_simulation);
     }
 
     if (!authored) {
@@ -365,8 +362,8 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         presentation_host_.initialise(resources.config,
                                       resources.player,
                                       level_simulation_->get_read_access(),
-                                      get_mission(),
-                                      get_spatial_query_manager(),
+                                      level_simulation_->get_mission(),
+                                      level_simulation_->get_spatial_query_manager(),
                                       MoveTemp(build->initial_turret_transforms));
         if (IsValid(player_ship)) {
             if (auto* const controller{
@@ -463,7 +460,8 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
 
     auto const previous_tick{level_simulation_->get_clock().get_completed_ticks()};
     level_simulation_->advance(dt);
-    presentation_host_.tick(dt, level_simulation_->get_read_access(), get_spatial_query_manager());
+    presentation_host_.tick(
+        dt, level_simulation_->get_read_access(), level_simulation_->get_spatial_query_manager());
 
     if (auto player{level_simulation_->get_player_ship_commands()};
         player && player->consume_death_notification()) {

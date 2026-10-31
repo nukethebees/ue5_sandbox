@@ -34,7 +34,9 @@ auto TestSimulationDriver::from_world(UWorld& world) -> TestSimulationDriver {
 }
 
 auto TestSimulationDriver::get_ledger() const -> ::ioj::sim::EntityLedger const& {
-    return orchestrator.get_entity_ledger();
+    auto const* const level{orchestrator.get_level_simulation()};
+    check(level);
+    return level->get_entity_ledger();
 }
 
 auto TestSimulationDriver::get_player_ship() const -> ATestSpaceShip const& {
@@ -43,14 +45,14 @@ auto TestSimulationDriver::get_player_ship() const -> ATestSpaceShip const& {
     return *actor;
 }
 auto TestSimulationDriver::get_capital_ships() const -> ::ioj::sim::capital_ships::Sim const& {
-    auto const simulation{orchestrator.get_capital_ships()};
-    check(simulation);
-    return *simulation;
+    auto const* const level{orchestrator.get_level_simulation()};
+    check(level);
+    return level->get_capital_ships();
 }
 auto TestSimulationDriver::get_fighters() const -> ::ioj::sim::fighters::Sim const& {
-    auto const& simulation{orchestrator.get_fighters()};
-    check(simulation);
-    return *simulation;
+    auto const* const level{orchestrator.get_level_simulation()};
+    check(level);
+    return level->get_fighters();
 }
 
 void TestSimulationDriver::queue_damage(std::span<sim::EntityId const> const targets,
@@ -87,14 +89,19 @@ bool TestSimulationDriver::should_export_results() const {
 }
 
 void TestSimulationDriver::set_wait_until_tick_from_now(uint64 wait_cycles) {
-    tick_wait_end = orchestrator.get_completed_ticks() + wait_cycles;
+    auto const* const level{orchestrator.get_level_simulation()};
+    auto const completed_ticks{level ? level->get_clock().get_completed_ticks().value() : 0};
+    tick_wait_end = completed_ticks + wait_cycles;
 }
 bool TestSimulationDriver::tick_wait_completed() const {
-    return orchestrator.get_completed_ticks() >= tick_wait_end;
+    auto const* const level{orchestrator.get_level_simulation()};
+    auto const completed_ticks{level ? level->get_clock().get_completed_ticks().value() : 0};
+    return completed_ticks >= tick_wait_end;
 }
 
 auto TestSimulationDriver::get_time() const -> time_type {
-    return orchestrator.get_simulation_time();
+    auto const* const level{orchestrator.get_level_simulation()};
+    return level ? level->get_clock().get_simulation_time() : 0.0;
 }
 void TestSimulationDriver::set_delta_time_wait(time_type dt) {
     check(dt > time_type{0});

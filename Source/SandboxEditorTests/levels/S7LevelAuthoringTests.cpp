@@ -1728,18 +1728,21 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                                          ? IsValid(Cast<ACameraActor>(controller->GetViewTarget()))
                                          : controller->GetPawn() == orchestrator.get_player_ship());
                 auto const initial_capitals{observer ? 1 : 0};
+                auto const* const level{orchestrator.get_level_simulation()};
+                check(level);
+                auto const& clock{level->get_clock()};
                 TestRunner->TestEqual(TEXT("Delayed entity is absent at startup"),
-                                      orchestrator.get_capital_ships()->get_num_instances(),
+                                      level->get_capital_ships().get_num_instances(),
                                       initial_capitals);
                 TestRunner->TestTrue(TEXT("Startup precedes scheduled spawn"),
-                                     orchestrator.get_simulation_time() < 4.0);
-                orchestrator.tick(FMath::Max(0.0, 4.0 - orchestrator.get_simulation_time()));
+                                     clock.get_simulation_time() < 4.0);
+                orchestrator.tick(FMath::Max(0.0, 4.0 - clock.get_simulation_time()));
                 TestRunner->TestEqual(TEXT("Delayed entity remains absent before its time"),
-                                      orchestrator.get_capital_ships()->get_num_instances(),
+                                      level->get_capital_ships().get_num_instances(),
                                       initial_capitals);
                 orchestrator.tick(1.1);
                 TestRunner->TestEqual(TEXT("Existing authored scheduler spawns the entity"),
-                                      orchestrator.get_capital_ships()->get_num_instances(),
+                                      level->get_capital_ships().get_num_instances(),
                                       initial_capitals + 1);
             })
             .Then([this, fixture] {
