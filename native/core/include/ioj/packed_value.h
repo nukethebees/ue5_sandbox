@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/enum_traits.h>
 #include <ioj/min_max.h>
 
 #include <bit>
@@ -129,14 +130,18 @@ struct PackedField {
         }
     }()};
 
-    MinMax<Value> range{[] {
-        if constexpr (std::is_signed_v<Value>) {
+    [[nodiscard]] static constexpr auto default_range() noexcept -> MinMax<Value> {
+        if constexpr (HasEnumRange<Value>) {
+            return {enum_min<Value>, enum_max<Value>};
+        } else if constexpr (std::is_signed_v<Value>) {
             auto const maximum{static_cast<Value>(value_mask >> 1)};
             return MinMax<Value>{static_cast<Value>(-maximum - Value{1}), maximum};
         } else {
             return MinMax<Value>{Value{}, static_cast<Value>(value_mask)};
         }
-    }()};
+    }
+
+    MinMax<Value> range{default_range()};
 };
 
 template <typename Field>
