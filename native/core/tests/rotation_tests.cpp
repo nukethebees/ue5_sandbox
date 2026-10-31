@@ -187,10 +187,16 @@ TEST(NativeCoreRotation, RotatesRadians) {
     float out[1]{};
 
     ioj::kernel::rotate_towards_1d_radians(current, target, pi / 4.0f, 1.0f, out, 1);
-    EXPECT_NEAR(out[0], 3.0f * pi / 4.0f, 1e-6f);
+    EXPECT_NEAR(out[0], pi / 4.0f, 1e-6f);
 
     ioj::kernel::rotate_towards_1d_radians_normalised_in_place(current, target, pi / 4.0f, 1.0f, 1);
-    EXPECT_NEAR(current[0], -pi / 4.0f, 1e-6f);
+    EXPECT_NEAR(current[0], pi / 4.0f, 1e-6f);
+
+    current[0] = 3.0f * pi / 4.0f;
+    float const wrapped_target[]{-3.0f * pi / 4.0f};
+    ioj::kernel::rotate_towards_1d_radians_normalised_in_place(
+        current, wrapped_target, pi / 2.0f, 1.0f, 1);
+    EXPECT_NEAR(current[0], wrapped_target[0], 1e-6f);
 }
 
 using DesiredYaw = ::testing::TestWithParam<DesiredYawCase>;
