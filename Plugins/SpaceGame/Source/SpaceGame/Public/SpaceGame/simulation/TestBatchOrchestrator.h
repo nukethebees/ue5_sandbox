@@ -1,3 +1,4 @@
+#include <ioj/levels/launch_options.h>
 #pragma once
 #include <ioj/sim/levels/level_sim.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
@@ -90,15 +91,15 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
                                          : 0.0;
     }
     auto was_launched_paused() const noexcept -> bool {
-        return launch_options_.launch_mode == ioj::ELevelLaunchMode::Paused;
+        return launch_options_.launch_mode == ioj::levels::LaunchMode::Paused;
     }
     auto get_benchmark_ticks_remaining() const noexcept -> TOptional<tick_type> {
-        if (launch_options_.control_context != EPlayerControlContext::Benchmark ||
-            !launch_options_.simulated_duration_seconds.IsSet()) {
+        if (launch_options_.control_context != ::ioj::levels::ControlContext::Benchmark ||
+            !launch_options_.simulated_duration_seconds.has_value()) {
             return NullOpt;
         }
         auto const end_tick{duration_to_tick_period(
-            ioj::Duration::make(launch_options_.simulated_duration_seconds.GetValue()))};
+            ioj::Duration::make(launch_options_.simulated_duration_seconds.value()))};
         auto const completed_ticks{get_completed_ticks()};
         return completed_ticks >= end_tick ? 0 : end_tick - completed_ticks;
     }
@@ -152,9 +153,9 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
 
     auto prepare_level(ioj::levels::authoring::LevelSource const* source = nullptr) -> bool;
-    auto load_level(
-        ioj::levels::authoring::LevelSource const& source,
-        EPlayerControlContext playerless_control_context = EPlayerControlContext::Observer)
+    auto load_level(ioj::levels::authoring::LevelSource const& source,
+                    ::ioj::levels::ControlContext playerless_control_context =
+                        ::ioj::levels::ControlContext::Observer)
         -> std::expected<void, ioj::FLevelLoadErrors>;
 
     /* **************************************** */
@@ -249,7 +250,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     FLevelPresentationHost presentation_host_;
     TOptional<ioj::sim::LevelSim> level_simulation_;
     TOptional<FLoadedGameSettings> prepared_level_;
-    ioj::FLevelLaunchOptions launch_options_{};
+    ioj::levels::LaunchOptions launch_options_{};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestSpaceShip> player_ship{nullptr};

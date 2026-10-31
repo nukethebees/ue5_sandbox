@@ -26,19 +26,19 @@ void UTopKillersWidget::NativePreConstruct() {
         team_colours[ETestTeam::Orange] = FLinearColor(1.f, 0.35f, 0.f, 1.f);
         team_colours[ETestTeam::Yellow] = FLinearColor::Yellow;
 
-        top_killers.Reset();
-        top_killers.Add({ioj::sim::EntityId(14, ioj::sim::EntityType::Fighter),
-                         ioj::sim::EntityType::Fighter,
-                         ETestTeam::Green,
-                         18});
-        top_killers.Add({ioj::sim::EntityId(7, ioj::sim::EntityType::Turret),
-                         ioj::sim::EntityType::Turret,
-                         ETestTeam::Red,
-                         13});
-        top_killers.Add({ioj::sim::EntityId(2, ioj::sim::EntityType::CapitalShip),
-                         ioj::sim::EntityType::CapitalShip,
-                         ETestTeam::Blue,
-                         9});
+        top_killers.clear();
+        top_killers.push_back({ioj::sim::EntityId(14, ioj::sim::EntityType::Fighter),
+                               ioj::sim::EntityType::Fighter,
+                               ioj::Team::Green,
+                               18});
+        top_killers.push_back({ioj::sim::EntityId(7, ioj::sim::EntityType::Turret),
+                               ioj::sim::EntityType::Turret,
+                               ioj::Team::Red,
+                               13});
+        top_killers.push_back({ioj::sim::EntityId(2, ioj::sim::EntityType::CapitalShip),
+                               ioj::sim::EntityType::CapitalShip,
+                               ioj::Team::Blue,
+                               9});
     }
 
     rebuild_table();
@@ -50,9 +50,8 @@ auto UTopKillersWidget::RebuildWidget() -> TSharedRef<SWidget> {
 }
 
 void UTopKillersWidget::set_top_killers(
-    TConstArrayView<ioj::ship_hud::FTopKillerEntry> const new_entries) {
-    top_killers.Reset(new_entries.Num());
-    top_killers.Append(new_entries.GetData(), new_entries.Num());
+    std::span<ioj::presentation::TopKillerEntry const> const new_entries) {
+    top_killers.assign(new_entries.begin(), new_entries.end());
 
     rebuild_table();
 }
@@ -147,7 +146,7 @@ void UTopKillersWidget::rebuild_table() {
     add_heading(TEXT("team_heading"), column_team, data_alignment, INVTEXT("Team"));
     add_heading(TEXT("kills_heading"), column_kills, data_alignment, INVTEXT("Kills"));
 
-    auto const n_entries{FMath::Min(top_killers.Num(), max_entries)};
+    auto const n_entries{FMath::Min(static_cast<int32>(top_killers.size()), max_entries)};
     for (int32 entry_index{0}; entry_index < n_entries; ++entry_index) {
         auto const row{entry_index + 1};
         auto const& entry{top_killers[entry_index]};
@@ -188,11 +187,11 @@ void UTopKillersWidget::rebuild_table() {
                   column_type,
                   entity_alignment,
                   FText::FromString(ioj::get_entity_display_name(entry.entity_type)));
-        auto* const team_text{add_value(
-            FString::Printf(TEXT("team_%d"), entry_index),
-            column_team,
-            data_alignment,
-            FText::FromString(ioj::to_fstring(ioj::to_string(ioj::to_native(entry.team)))))};
+        auto* const team_text{
+            add_value(FString::Printf(TEXT("team_%d"), entry_index),
+                      column_team,
+                      data_alignment,
+                      FText::FromString(ioj::to_fstring(ioj::to_string(entry.team))))};
         add_value(FString::Printf(TEXT("kills_%d"), entry_index),
                   column_kills,
                   data_alignment,
@@ -200,7 +199,7 @@ void UTopKillersWidget::rebuild_table() {
 
         auto* border{WidgetTree->ConstructWidget<UBorder>(
             UBorder::StaticClass(), *FString::Printf(TEXT("team_border_%d"), entry_index))};
-        auto const team_colour{team_colours[entry.team]};
+        auto const team_colour{team_colours[ioj::to_unreal(entry.team)]};
         auto const wash_opacity{hud_style_ ? hud_style_->team_wash_opacity : 0.3f};
         border->SetBrushColor(team_colour.CopyWithNewOpacity(wash_opacity));
         auto* border_slot{top_killers_grid->AddChildToGrid(border, row, column_team)};

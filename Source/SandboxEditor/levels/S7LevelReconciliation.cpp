@@ -83,7 +83,7 @@ auto make_s7_level_sync_plan(ULevel const& level,
     if (!support) {
         return std::unexpected{to_fstring(levels::format_diagnostics(support.error()))};
     }
-    auto const simulation{s7::resolve_simulation_settings(definition.settings())};
+    auto const simulation{sim::resolve_simulation_settings(definition.settings())};
     if (!simulation) {
         return std::unexpected{to_fstring(levels::format_diagnostics(simulation.error()))};
     }

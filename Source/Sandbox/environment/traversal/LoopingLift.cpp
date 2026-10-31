@@ -1,30 +1,21 @@
 #include "Sandbox/environment/traversal/LoopingLift.h"
 
+#include <ioj/vector_value_math.h>
+
+#include <SandboxCoreEngine/VectorConversion.h>
+
 ALoopingLift::ALoopingLift() {
     PrimaryActorTick.bCanEverTick = true;
 }
 void ALoopingLift::BeginPlay() {
     Super::BeginPlay();
-    origin = GetActorLocation();
-    going_up = true;
+    auto const origin{ioj::Vector3d{GetActorLocation()}};
+    travel_ = {.start = origin, .end = origin + ioj::Vector3d{0., 0., distance}};
 }
 void ALoopingLift::Tick(float DeltaTime) {
     Super::Tick(DeltaTime);
 
-    auto const up{GetActorLocation()};
-    auto const dist_from_origin{up.Z - origin.Z};
-
-    if (going_up) {
-        if (dist_from_origin < distance) {
-            AddActorWorldOffset(FVector::UpVector * speed * DeltaTime);
-        } else {
-            going_up = false;
-        }
-    } else {
-        if (dist_from_origin > 0) {
-            AddActorWorldOffset(FVector::DownVector * speed * DeltaTime);
-        } else {
-            going_up = true;
-        }
-    }
+    auto const step{
+        ioj::advance_linear_travel(travel_, ioj::Vector3d{GetActorLocation()}, speed, DeltaTime)};
+    SetActorLocation(ioj::to_unreal(step.location));
 }

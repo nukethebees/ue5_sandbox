@@ -2,14 +2,14 @@
 #include "/Engine/Public/Platform.ush"
 #endif
 
-struct FRadarInstance {
+struct RadarInstance {
     float3 radar_position;
     float size_scale;
     uint packed_color;
     uint packed_glyph_and_flags;
 };
 
-StructuredBuffer<FRadarInstance> Instances;
+StructuredBuffer<RadarInstance> Instances;
 int2 OutputSize;
 float4 PlaneColor;
 float4 StructureColor;
@@ -263,7 +263,7 @@ LineOutput radar_structure_vs(uint const vertex_id : SV_VertexID,
 
 LineOutput radar_stem_vs(uint const vertex_id : SV_VertexID,
                          uint const instance_id : SV_InstanceID) {
-    FRadarInstance const instance = Instances[instance_id];
+    RadarInstance const instance = Instances[instance_id];
     uint const flags = (instance.packed_glyph_and_flags >> 8u) & 0xffu;
     float const emphasized = flags == 0u ? 0.0 : 1.0;
     float const pixel_scale = logical_pixel_scale();
@@ -349,7 +349,7 @@ float glyph_base_size(uint const glyph) {
 
 GlyphOutput radar_glyph_vs(uint const vertex_id : SV_VertexID,
                            uint const instance_id : SV_InstanceID) {
-    FRadarInstance const instance = Instances[instance_id];
+    RadarInstance const instance = Instances[instance_id];
     GlyphOutput output;
     output.glyph = instance.packed_glyph_and_flags & 0xffu;
     output.flags = (instance.packed_glyph_and_flags >> 8u) & 0xffu;

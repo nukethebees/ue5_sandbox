@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SpaceGame/ships/player/PlayerControlContext.h>
+#include <ioj/levels/launch_options.h>
 
 #include <Components/SlateWrapperTypes.h>
 #include <CoreMinimal.h>
@@ -20,7 +20,7 @@ struct SPACEGAME_API FPlayerHudLifecycle {
     auto initialise(ASpaceGamePlayerController& owner,
                     ATestBatchOrchestrator* orchestrator,
                     UTestBatchGameUiData* ui_data,
-                    EPlayerControlContext context,
+                    ::ioj::levels::ControlContext context,
                     float observer_speed) -> bool;
     void shutdown();
     auto initialise_benchmark(ASpaceGamePlayerController& owner,

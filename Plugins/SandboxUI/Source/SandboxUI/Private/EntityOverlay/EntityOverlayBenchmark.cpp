@@ -142,7 +142,7 @@ auto run_entity_overlay_benchmark(int32 const warmup_iterations, int32 const mea
     int32 const candidate_counts[]{100, 1000, 10000};
     for (auto const count : candidate_counts) {
         auto source{make_source(count, EBenchmarkVisibility::Visible)};
-        TArray<FEntityOverlayInstance> collected;
+        TArray<ioj::ui::entity_overlay::Instance> collected;
         FEntityOverlayCollector collector;
         TArray<double> collection_samples;
         collection_samples.Reserve(measured_iterations);

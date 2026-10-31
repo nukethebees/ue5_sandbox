@@ -16,10 +16,10 @@ struct SScriptLevelSelectViewBuilder;
 }
 
 namespace ioj::s7 {
-using ioj::levels::authoring::ELevelCatalogCategory;
+using ioj::levels::authoring::LevelCatalogCategory;
 
 DECLARE_DELEGATE_OneParam(FOnLevelRowSelected, int32);
-DECLARE_DELEGATE_OneParam(FOnLevelCategorySelected, ELevelCatalogCategory);
+DECLARE_DELEGATE_OneParam(FOnLevelCategorySelected, LevelCatalogCategory);
 DECLARE_DELEGATE_OneParam(FOnBattleSpeedChanged, TOptional<double>);
 DECLARE_DELEGATE_TwoParams(FOnBattleDurationChanged, TOptional<double>, bool);
 DECLARE_DELEGATE_OneParam(FOnBattleBoolChanged, bool);
@@ -55,7 +55,7 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     auto catalog_title() const -> FText;
     auto directive_title() const -> FText;
     auto launch_text() const -> FText;
-    auto handle_category_selected(ELevelCatalogCategory category) -> FReply;
+    auto handle_category_selected(LevelCatalogCategory category) -> FReply;
     auto handle_level_selected(int32 button_index) -> FReply;
     auto handle_action(FSimpleDelegate delegate) -> FReply;
     void handle_battle_speed_changed(FText const& text);
@@ -94,7 +94,7 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     TSharedPtr<SGameButton> battle_viewer_category_button_{};
     TSharedPtr<SGameButton> benchmark_category_button_{};
     TArray<TSharedPtr<SGameButton>> level_buttons_{};
-    ELevelCatalogCategory category_{ELevelCatalogCategory::Mission};
+    LevelCatalogCategory category_{LevelCatalogCategory::Mission};
     int32 selected_button_index_{INDEX_NONE};
     bool selected_level_can_launch_{};
     bool battle_speed_valid_{true};

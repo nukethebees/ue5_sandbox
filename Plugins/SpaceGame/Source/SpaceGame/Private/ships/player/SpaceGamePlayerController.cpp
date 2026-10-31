@@ -311,16 +311,16 @@ void ASpaceGamePlayerController::on_player_ship_flight_model_selected() {
 }
 void ASpaceGamePlayerController::activate_ship_control() {
     if (!begin_play_finished_ || !can_activate_gameplay_control() ||
-        !control_contexts_.can_bind_context(EPlayerControlContext::Player)) {
+        !control_contexts_.can_bind_context(::ioj::levels::ControlContext::Player)) {
         return;
     }
     bind_orchestrator_events();
     modal_ui_.initialise_root(*this, ui_data);
-    control_contexts_.set_control_context(EPlayerControlContext::Player);
+    control_contexts_.set_control_context(::ioj::levels::ControlContext::Player);
     hud_.initialise(*this,
                     orchestrator_.Get(),
                     ui_data,
-                    EPlayerControlContext::Player,
+                    ::ioj::levels::ControlContext::Player,
                     control_contexts_.get_observer_speed());
 }
 void ASpaceGamePlayerController::OnUnPossess() {
@@ -388,7 +388,7 @@ void ASpaceGamePlayerController::on_orchestrator_reset(ATestBatchOrchestrator& o
     modal_ui_.clear_modals(*this);
     hud_.restore_after_modal();
     return_to_level_select_pending_ = false;
-    control_contexts_.set_control_context(EPlayerControlContext::None);
+    control_contexts_.set_control_context(::ioj::levels::ControlContext::None);
     hud_.shutdown();
     hud_.shutdown_benchmark(*this);
 
@@ -490,13 +490,13 @@ void ASpaceGamePlayerController::on_input_user_settings_initialized(
     static_cast<void>(settings);
     initialise_input_user_settings();
 }
-auto ASpaceGamePlayerController::activate_playerless_camera(ACameraActor& camera,
-                                                            EPlayerControlContext const context)
-    -> bool {
+auto ASpaceGamePlayerController::activate_playerless_camera(
+    ACameraActor& camera, ::ioj::levels::ControlContext const context) -> bool {
     if (!can_activate_gameplay_control()) {
         return false;
     }
-    if (context != EPlayerControlContext::Observer && context != EPlayerControlContext::Benchmark) {
+    if (context != ::ioj::levels::ControlContext::Observer &&
+        context != ::ioj::levels::ControlContext::Benchmark) {
         UE_LOG(LogSandboxController,
                Error,
                TEXT("ASpaceGamePlayerController::activate_playerless_camera: Context must be "
@@ -518,15 +518,15 @@ auto ASpaceGamePlayerController::activate_playerless_camera(ACameraActor& camera
         return false;
     }
 
-    if (context == EPlayerControlContext::Observer) {
+    if (context == ::ioj::levels::ControlContext::Observer) {
         hud_.shutdown_benchmark(*this);
         if (!modal_ui_.initialise_root(*this, ui_data) ||
             !hud_.initialise(*this,
                              orchestrator_.Get(),
                              ui_data,
-                             EPlayerControlContext::Observer,
+                             ::ioj::levels::ControlContext::Observer,
                              control_contexts_.get_observer_speed())) {
-            control_contexts_.set_control_context(EPlayerControlContext::None);
+            control_contexts_.set_control_context(::ioj::levels::ControlContext::None);
             return false;
         }
         FInputModeGameAndUI input_mode{};
@@ -538,7 +538,7 @@ auto ASpaceGamePlayerController::activate_playerless_camera(ACameraActor& camera
         hud_.shutdown();
         modal_ui_.shutdown(*this);
         if (!hud_.initialise_benchmark(*this, orchestrator_.Get(), ui_data)) {
-            control_contexts_.set_control_context(EPlayerControlContext::None);
+            control_contexts_.set_control_context(::ioj::levels::ControlContext::None);
             return false;
         }
     }
@@ -553,7 +553,7 @@ void ASpaceGamePlayerController::set_observer_look_active(bool const active) {
         return;
     }
 
-    if (get_active_control_context() == EPlayerControlContext::Observer) {
+    if (get_active_control_context() == ::ioj::levels::ControlContext::Observer) {
         FInputModeGameAndUI input_mode{};
         input_mode.SetHideCursorDuringCapture(false);
         input_mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
@@ -615,17 +615,18 @@ void ASpaceGamePlayerController::show_initial_pause_menu() {
     auto* const orchestrator{orchestrator_.Get()};
     if (!IsValid(orchestrator) || !orchestrator->was_launched_paused() ||
         orchestrator->get_state() != ioj::sim::OrchestratorState::Paused || !is_gameplay_mode() ||
-        get_active_control_context() == EPlayerControlContext::Benchmark ||
+        get_active_control_context() == ::ioj::levels::ControlContext::Benchmark ||
         return_to_level_select_pending_ || modal_ui_.has_modal()) {
         return;
     }
 
-    auto const restore_context{get_active_control_context() == EPlayerControlContext::None &&
+    auto const restore_context{get_active_control_context() ==
+                                           ::ioj::levels::ControlContext::None &&
                                        IsValid(Cast<Pawn>(GetPawn()))
-                                   ? EPlayerControlContext::Player
+                                   ? ::ioj::levels::ControlContext::Player
                                    : get_active_control_context()};
     modal_ui_.begin_suspend(restore_context);
-    if (!control_contexts_.set_control_context(EPlayerControlContext::None)) {
+    if (!control_contexts_.set_control_context(::ioj::levels::ControlContext::None)) {
         modal_ui_.clear_resume();
         return;
     }
@@ -674,7 +675,7 @@ auto ASpaceGamePlayerController::suspend_gameplay_for_modal() -> bool {
 
     modal_ui_.begin_suspend(get_active_control_context());
     orchestrator->pause_simulation();
-    if (!control_contexts_.set_control_context(EPlayerControlContext::None)) {
+    if (!control_contexts_.set_control_context(::ioj::levels::ControlContext::None)) {
         modal_ui_.clear_resume();
         orchestrator->start_simulation();
         return false;
@@ -701,14 +702,14 @@ void ASpaceGamePlayerController::resume_game() {
     }
 
     auto const target_context{modal_ui_.resume_context(IsValid(Cast<Pawn>(GetPawn()))
-                                                           ? EPlayerControlContext::Player
-                                                           : EPlayerControlContext::None)};
+                                                           ? ::ioj::levels::ControlContext::Player
+                                                           : ::ioj::levels::ControlContext::None)};
     if (!control_contexts_.set_control_context(target_context)) {
         return;
     }
     hud_.restore_after_modal();
     modal_ui_.clear_resume();
-    if (target_context == EPlayerControlContext::Player) {
+    if (target_context == ::ioj::levels::ControlContext::Player) {
         hud_.initialise(
             *this, orchestrator, ui_data, target_context, control_contexts_.get_observer_speed());
     }
@@ -791,7 +792,7 @@ void ASpaceGamePlayerController::return_to_level_select() {
     modal_ui_.clear_menus(*this);
     hud_.cancel_restore();
     hud_.shutdown_benchmark(*this);
-    control_contexts_.set_control_context(EPlayerControlContext::None);
+    control_contexts_.set_control_context(::ioj::levels::ControlContext::None);
 }
 void ASpaceGamePlayerController::quit_game() {
     if (!is_gameplay_mode()) {

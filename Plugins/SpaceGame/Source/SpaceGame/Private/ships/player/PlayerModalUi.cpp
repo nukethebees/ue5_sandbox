@@ -10,6 +10,8 @@
 #include <SpaceGame/ui/PauseMenuWidget.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
+#include <SandboxCoreEngine/strings.h>
+
 #include <Engine/GameInstance.h>
 #include <InputAction.h>
 
@@ -70,19 +72,25 @@ auto FPlayerModalUi::show_main_menu(ASpaceGamePlayerController& owner) -> bool {
     }
     auto* const game_instance{owner.GetGameInstance()};
     auto* const subsystem{ioj::UGameSubsystem::get(game_instance)};
-    auto level_select_request{IsValid(subsystem) ? subsystem->take_level_select_request()
-                                                 : TOptional<ioj::FLevelSelectRequest>{}};
-    auto const show_level_select{IsValid(subsystem) && (level_select_request.IsSet() ||
+    auto level_select_request{IsValid(subsystem)
+                                  ? subsystem->take_level_select_request()
+                                  : std::optional<ioj::levels::authoring::MenuRequest>{}};
+    auto const show_level_select{IsValid(subsystem) && (level_select_request.has_value() ||
                                                         subsystem->has_level_launch_error())};
     auto const preferred_level_id{
-        level_select_request.IsSet() ? level_select_request->preferred_level_id : NAME_None};
-    auto const show_telemetry{level_select_request.IsSet() &&
+        level_select_request.has_value()
+            ? FName{*ioj::to_fstring(level_select_request->preferred_level_id.value)}
+            : NAME_None};
+    auto const show_telemetry{level_select_request.has_value() &&
                               level_select_request->destination ==
-                                  ioj::EMainMenuDestination::Telemetry};
+                                  ioj::levels::authoring::MenuDestination::Telemetry};
     auto const telemetry_run_id{
-        level_select_request.IsSet() ? level_select_request->selected_telemetry_run_id : FString{}};
-    auto const telemetry_error{level_select_request.IsSet() ? level_select_request->telemetry_error
-                                                            : FString{}};
+        level_select_request.has_value()
+            ? ioj::to_fstring(level_select_request->selected_telemetry_run_id)
+            : FString{}};
+    auto const telemetry_error{level_select_request.has_value()
+                                   ? ioj::to_fstring(level_select_request->telemetry_error)
+                                   : FString{}};
     if (!root_->show_main_menu(show_level_select,
                                preferred_level_id,
                                show_telemetry,
@@ -218,25 +226,16 @@ auto FPlayerModalUi::is_completion_active() const -> bool {
 /* **************************************** */
 // Gameplay restoration
 /* **************************************** */
-void FPlayerModalUi::begin_suspend(EPlayerControlContext const context) {
-    restore_context_ = context;
-    resume_pending_ = true;
+void FPlayerModalUi::begin_suspend(ioj::levels::ControlContext const context) {
+    resume_.suspend(context);
 }
 void FPlayerModalUi::clear_resume() {
-    restore_context_ = EPlayerControlContext::None;
-    resume_pending_ = false;
+    resume_.clear();
 }
 void FPlayerModalUi::on_ship_changed(bool const has_ship) {
-    if (!resume_pending_) {
-        return;
-    }
-    if (has_ship) {
-        restore_context_ = EPlayerControlContext::Player;
-    } else if (restore_context_ == EPlayerControlContext::Player) {
-        restore_context_ = EPlayerControlContext::None;
-    }
+    resume_.on_player_changed(has_ship);
 }
-auto FPlayerModalUi::resume_context(EPlayerControlContext const fallback) const
-    -> EPlayerControlContext {
-    return resume_pending_ ? restore_context_ : fallback;
+auto FPlayerModalUi::resume_context(ioj::levels::ControlContext const fallback) const
+    -> ioj::levels::ControlContext {
+    return resume_.context(fallback);
 }

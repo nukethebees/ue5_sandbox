@@ -2,6 +2,7 @@
 
 #include "SpaceGame/input/SpaceGameInputUserSettings.h"
 #include "SpaceGame/settings/SpaceGameUserSettings.h"
+#include <ioj/settings/game_settings_edit_state.h>
 
 #include "Engine/Engine.h"
 #include "Engine/LocalPlayer.h"
@@ -11,26 +12,26 @@
 namespace ioj {
 namespace {
 
-auto to_game_window_mode(EWindowMode::Type const value) -> EGameWindowMode {
+auto to_game_window_mode(EWindowMode::Type const value) -> GameWindowMode {
     switch (value) {
         case EWindowMode::Fullscreen: {
-            return EGameWindowMode::Fullscreen;
+            return GameWindowMode::Fullscreen;
         }
         case EWindowMode::WindowedFullscreen: {
-            return EGameWindowMode::Borderless;
+            return GameWindowMode::Borderless;
         }
         default: {
-            return EGameWindowMode::Windowed;
+            return GameWindowMode::Windowed;
         }
     }
 }
 
-auto to_engine_window_mode(EGameWindowMode const value) -> EWindowMode::Type {
+auto to_engine_window_mode(GameWindowMode const value) -> EWindowMode::Type {
     switch (value) {
-        case EGameWindowMode::Fullscreen: {
+        case GameWindowMode::Fullscreen: {
             return EWindowMode::Fullscreen;
         }
-        case EGameWindowMode::Borderless: {
+        case GameWindowMode::Borderless: {
             return EWindowMode::WindowedFullscreen;
         }
         default: {
@@ -39,28 +40,13 @@ auto to_engine_window_mode(EGameWindowMode const value) -> EWindowMode::Type {
     }
 }
 
-auto to_quality(int32 const value) -> EGameQualityLevel {
-    return static_cast<EGameQualityLevel>(FMath::Clamp(value, 0, 3));
-}
-
-auto graphics_preset(FGameSettingsState const& state) -> EGameGraphicsPreset {
-    auto const quality{state.view_distance_quality};
-    if (state.aa_quality != quality || state.shadow_quality != quality ||
-        state.global_illumination_quality != quality || state.reflections_quality != quality ||
-        state.post_processing_quality != quality || state.texture_quality != quality ||
-        state.effects_quality != quality || state.shading_quality != quality) {
-        return EGameGraphicsPreset::Custom;
-    }
-    return static_cast<EGameGraphicsPreset>(static_cast<uint8>(quality) + 1);
-}
-
-auto make_option(FGameSettingValue value, TCHAR const* label) -> FGameSettingOption {
-    return FGameSettingOption{MoveTemp(value), FText::FromString(label)};
+auto to_quality(int32 const value) -> GameQualityLevel {
+    return static_cast<GameQualityLevel>(FMath::Clamp(value, 0, 3));
 }
 
 auto read_settings(USpaceGameUserSettings& settings,
                    USpaceGameInputUserSettings const& input,
-                   FIntPoint const resolution) -> FGameSettingsState {
+                   FIntPoint const resolution) -> GameSettingsState {
     float normalized_scale{};
     float resolution_scale{};
     float minimum_scale{};
@@ -68,8 +54,8 @@ auto read_settings(USpaceGameUserSettings& settings,
     settings.GetResolutionScaleInformationEx(
         normalized_scale, resolution_scale, minimum_scale, maximum_scale);
 
-    FGameSettingsState result{
-        .resolution = resolution,
+    GameSettingsState result{
+        .resolution = {resolution.X, resolution.Y},
         .window_mode = to_game_window_mode(settings.GetFullscreenMode()),
         .vsync = settings.IsVSyncEnabled(),
         .frame_rate_limit = settings.GetFrameRateLimit(),
@@ -112,7 +98,7 @@ void FGameSettingsBackend::set_local_player(ULocalPlayer* const local_player) {
     local_player_ = local_player;
 }
 
-auto FGameSettingsBackend::read() const -> FGameSettingsState {
+auto FGameSettingsBackend::read() const -> GameSettingsState {
     auto* const settings{user_settings()};
     if (settings == nullptr) {
         return {};
@@ -124,7 +110,7 @@ auto FGameSettingsBackend::read() const -> FGameSettingsState {
     return read_settings(*settings, *input, settings->GetScreenResolution());
 }
 
-auto FGameSettingsBackend::defaults() const -> FGameSettingsState {
+auto FGameSettingsBackend::defaults() const -> GameSettingsState {
     auto* defaults{NewObject<USpaceGameUserSettings>()};
     defaults->SetToDefaults();
 
@@ -137,43 +123,43 @@ auto FGameSettingsBackend::defaults() const -> FGameSettingsState {
     return read_settings(*defaults, *GetDefault<USpaceGameInputUserSettings>(), resolution);
 }
 
-void FGameSettingsBackend::preview_immediate(FGameSettingsState const& state,
-                                             EGameSetting const setting) const {
+void FGameSettingsBackend::preview_immediate(GameSettingsState const& state,
+                                             GameSetting const setting) const {
     auto* settings{user_settings()};
     if (settings == nullptr) {
         return;
     }
     switch (setting) {
-        case EGameSetting::MasterVolume: {
+        case GameSetting::MasterVolume: {
             settings->set_master_volume(state.master_volume);
             break;
         }
-        case EGameSetting::MusicVolume: {
+        case GameSetting::MusicVolume: {
             settings->set_music_volume(state.music_volume);
             break;
         }
-        case EGameSetting::SfxVolume: {
+        case GameSetting::SfxVolume: {
             settings->set_sfx_volume(state.sfx_volume);
             break;
         }
-        case EGameSetting::UIVolume: {
+        case GameSetting::UIVolume: {
             settings->set_ui_volume(state.ui_volume);
             break;
         }
-        case EGameSetting::Bees: {
+        case GameSetting::Bees: {
             settings->set_bees(state.bees);
             break;
         }
-        case EGameSetting::MouseTurnSensitivity:
-        case EGameSetting::GamepadTurnSensitivity:
-        case EGameSetting::GamepadTurnDeadZone:
-        case EGameSetting::GamepadMoveDeadZone:
-        case EGameSetting::InvertMousePitch:
-        case EGameSetting::InvertMouseYaw:
-        case EGameSetting::InvertGamepadPitch:
-        case EGameSetting::InvertGamepadYaw:
-        case EGameSetting::InvertGamepadRoll:
-        case EGameSetting::InvertGamepadVerticalTranslation: {
+        case GameSetting::MouseTurnSensitivity:
+        case GameSetting::GamepadTurnSensitivity:
+        case GameSetting::GamepadTurnDeadZone:
+        case GameSetting::GamepadMoveDeadZone:
+        case GameSetting::InvertMousePitch:
+        case GameSetting::InvertMouseYaw:
+        case GameSetting::InvertGamepadPitch:
+        case GameSetting::InvertGamepadYaw:
+        case GameSetting::InvertGamepadRoll:
+        case GameSetting::InvertGamepadVerticalTranslation: {
             apply_input_settings(state);
             break;
         }
@@ -183,7 +169,7 @@ void FGameSettingsBackend::preview_immediate(FGameSettingsState const& state,
     }
 }
 
-void FGameSettingsBackend::apply_non_display(FGameSettingsState const& state) const {
+void FGameSettingsBackend::apply_non_display(GameSettingsState const& state) const {
     auto* settings{user_settings()};
     if (settings == nullptr) {
         return;
@@ -193,7 +179,7 @@ void FGameSettingsBackend::apply_non_display(FGameSettingsState const& state) co
     apply_input_settings(state);
 }
 
-void FGameSettingsBackend::apply_input_settings(FGameSettingsState const& state) const {
+void FGameSettingsBackend::apply_input_settings(GameSettingsState const& state) const {
     if (auto* const input_settings{input_user_settings()}) {
         input_settings->set_mouse_turn_sensitivity(state.mouse_turn_sensitivity);
         input_settings->set_gamepad_turn_sensitivity(state.gamepad_turn_sensitivity);
@@ -210,12 +196,12 @@ void FGameSettingsBackend::apply_input_settings(FGameSettingsState const& state)
     }
 }
 
-void FGameSettingsBackend::apply_display(FGameSettingsState const& state) const {
+void FGameSettingsBackend::apply_display(GameSettingsState const& state) const {
     auto* settings{user_settings()};
     if (settings == nullptr) {
         return;
     }
-    settings->SetScreenResolution(state.resolution);
+    settings->SetScreenResolution({state.resolution.width, state.resolution.height});
     settings->SetFullscreenMode(to_engine_window_mode(state.window_mode));
     settings->ApplyResolutionSettings(false);
 }
@@ -239,94 +225,29 @@ void FGameSettingsBackend::save() const {
     }
 }
 
-auto FGameSettingsBackend::options(EGameSettingOptionProvider const provider) const
+auto FGameSettingsBackend::options(GameSettingOptionProvider const provider) const
     -> TArray<FGameSettingOption> {
+    std::vector<ScreenResolution> resolutions;
+    if (provider == GameSettingOptionProvider::SupportedResolutions) {
+        TArray<FIntPoint> available;
+        UKismetSystemLibrary::GetSupportedFullscreenResolutions(available);
+        resolutions.reserve(available.Num());
+        for (auto const value : available) {
+            resolutions.push_back({value.X, value.Y});
+        }
+    }
+    auto const choices{game_setting_choices(provider, resolutions)};
     TArray<FGameSettingOption> result;
-    switch (provider) {
-        case EGameSettingOptionProvider::SupportedResolutions: {
-            TArray<FIntPoint> resolutions;
-            UKismetSystemLibrary::GetSupportedFullscreenResolutions(resolutions);
-            resolutions.Sort([](FIntPoint const& left, FIntPoint const& right) {
-                return left.X == right.X ? left.Y < right.Y : left.X < right.X;
-            });
-            FIntPoint previous{-1, -1};
-            for (auto const resolution : resolutions) {
-                if (resolution == previous) {
-                    continue;
-                }
-                previous = resolution;
-                result.Add(FGameSettingOption{
-                    FGameSettingValue{resolution},
-                    FText::FromString(FString::Printf(TEXT("%d x %d"), resolution.X, resolution.Y)),
-                });
-            }
-            break;
-        }
-        case EGameSettingOptionProvider::WindowModes: {
-            result = {
-                make_option(EGameWindowMode::Windowed, TEXT("Windowed")),
-                make_option(EGameWindowMode::Borderless, TEXT("Borderless")),
-                make_option(EGameWindowMode::Fullscreen, TEXT("Fullscreen")),
-            };
-            break;
-        }
-        case EGameSettingOptionProvider::FrameRateLimits: {
-            result.Add(make_option(0.0f, TEXT("Uncapped")));
-            for (auto const limit : {30, 60, 90, 120, 144, 165, 240}) {
-                result.Add(FGameSettingOption{
-                    FGameSettingValue{static_cast<float>(limit)},
-                    FText::AsNumber(limit),
-                });
-            }
-            break;
-        }
-        case EGameSettingOptionProvider::AAMethods: {
-            result = {
-                make_option(EGameAntiAliasingMethod::Off, TEXT("Off")),
-                make_option(EGameAntiAliasingMethod::FXAA, TEXT("FXAA")),
-                make_option(EGameAntiAliasingMethod::TAA, TEXT("TAA")),
-                make_option(EGameAntiAliasingMethod::TSR, TEXT("TSR")),
-                make_option(EGameAntiAliasingMethod::SMAA, TEXT("SMAA")),
-            };
-            break;
-        }
-        case EGameSettingOptionProvider::GraphicsPresets: {
-            result = {
-                make_option(EGameGraphicsPreset::Custom, TEXT("Custom")),
-                make_option(EGameGraphicsPreset::Low, TEXT("Low")),
-                make_option(EGameGraphicsPreset::Medium, TEXT("Medium")),
-                make_option(EGameGraphicsPreset::High, TEXT("High")),
-                make_option(EGameGraphicsPreset::Epic, TEXT("Epic")),
-            };
-            break;
-        }
-        case EGameSettingOptionProvider::QualityLevels: {
-            result = {
-                make_option(EGameQualityLevel::Low, TEXT("Low")),
-                make_option(EGameQualityLevel::Medium, TEXT("Medium")),
-                make_option(EGameQualityLevel::High, TEXT("High")),
-                make_option(EGameQualityLevel::Epic, TEXT("Epic")),
-            };
-            break;
-        }
-        case EGameSettingOptionProvider::None: {
-            break;
-        }
+    result.Reserve(static_cast<int32>(choices.size()));
+    for (auto const& choice : choices) {
+        auto const* number{std::get_if<float>(&choice.value)};
+        auto label{provider == GameSettingOptionProvider::FrameRateLimits && number != nullptr &&
+                           *number > 0.f
+                       ? FText::AsNumber(static_cast<int32>(*number))
+                       : FText::FromString(UTF8_TO_TCHAR(choice.label.c_str()))};
+        result.Add({choice.value, MoveTemp(label)});
     }
     return result;
-}
-
-auto FGameSettingsBackend::is_available(EGameSettingAvailabilityProvider const provider,
-                                        FGameSettingsState const& state) const -> bool {
-    switch (provider) {
-        case EGameSettingAvailabilityProvider::AAQuality: {
-            return state.aa_method != EGameAntiAliasingMethod::Off;
-        }
-        case EGameSettingAvailabilityProvider::Always: {
-            return true;
-        }
-    }
-    return true;
 }
 
 auto FGameSettingsBackend::user_settings() const -> USpaceGameUserSettings* {
@@ -365,7 +286,7 @@ auto FGameSettingsBackend::input_user_settings() const -> USpaceGameInputUserSet
 }
 
 void FGameSettingsBackend::write_non_display(USpaceGameUserSettings& settings,
-                                             FGameSettingsState const& state) const {
+                                             GameSettingsState const& state) const {
     settings.SetVSyncEnabled(state.vsync);
     settings.SetFrameRateLimit(state.frame_rate_limit);
     settings.SetResolutionScaleValueEx(state.resolution_scale);

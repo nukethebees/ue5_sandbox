@@ -45,7 +45,7 @@ auto FPlayerControlContexts::initialise(ASpaceGamePlayerController& owner,
     return set_control_context(previous_context);
 }
 void FPlayerControlContexts::shutdown() {
-    set_control_context(EPlayerControlContext::None);
+    set_control_context(::ioj::levels::ControlContext::None);
     benchmark_.shutdown();
     observer_.shutdown();
     ship_.shutdown();
@@ -57,79 +57,82 @@ void FPlayerControlContexts::shutdown() {
     initialised_ = false;
 }
 void FPlayerControlContexts::set_ship(ATestSpaceShip* const ship) {
-    if ((!ship || player_ship_.Get() != ship) && active_context_ == EPlayerControlContext::Player) {
-        set_control_context(EPlayerControlContext::None);
+    if ((!ship || player_ship_.Get() != ship) &&
+        active_context_ == ::ioj::levels::ControlContext::Player) {
+        set_control_context(::ioj::levels::ControlContext::None);
     }
     player_ship_ = ship;
     ship_.set_ship(ship);
 }
 void FPlayerControlContexts::set_camera(ACameraActor* const camera) {
     if ((!camera || camera_.Get() != camera) &&
-        active_context_ == EPlayerControlContext::Observer) {
-        set_control_context(EPlayerControlContext::None);
+        active_context_ == ::ioj::levels::ControlContext::Observer) {
+        set_control_context(::ioj::levels::ControlContext::None);
     }
     camera_ = camera;
     observer_.set_camera(camera);
 }
-auto FPlayerControlContexts::can_bind_context(EPlayerControlContext const context) const -> bool {
+auto FPlayerControlContexts::can_bind_context(::ioj::levels::ControlContext const context) const
+    -> bool {
     switch (context) {
-        case EPlayerControlContext::None: {
+        case ::ioj::levels::ControlContext::None: {
             return true;
         }
-        case EPlayerControlContext::Player: {
+        case ::ioj::levels::ControlContext::Player: {
             return ship_.can_bind();
         }
-        case EPlayerControlContext::Observer: {
+        case ::ioj::levels::ControlContext::Observer: {
             return observer_.can_bind();
         }
-        case EPlayerControlContext::Benchmark: {
+        case ::ioj::levels::ControlContext::Benchmark: {
             return benchmark_.can_bind();
         }
     }
     return false;
 }
-void FPlayerControlContexts::bind_context(EPlayerControlContext const context) {
+void FPlayerControlContexts::bind_context(::ioj::levels::ControlContext const context) {
     switch (context) {
-        case EPlayerControlContext::None: {
+        case ::ioj::levels::ControlContext::None: {
             return;
         }
-        case EPlayerControlContext::Player: {
+        case ::ioj::levels::ControlContext::Player: {
             global_.set_mapping_enabled(true);
             ship_.bind();
             break;
         }
-        case EPlayerControlContext::Observer: {
+        case ::ioj::levels::ControlContext::Observer: {
             global_.set_mapping_enabled(true);
             observer_.bind();
             break;
         }
-        case EPlayerControlContext::Benchmark: {
+        case ::ioj::levels::ControlContext::Benchmark: {
             global_.set_mapping_enabled(false);
             benchmark_.bind();
             break;
         }
     }
 }
-void FPlayerControlContexts::unbind_context(EPlayerControlContext const context) {
+void FPlayerControlContexts::unbind_context(::ioj::levels::ControlContext const context) {
     switch (context) {
-        case EPlayerControlContext::None: {
+        case ::ioj::levels::ControlContext::None: {
             break;
         }
-        case EPlayerControlContext::Player: {
+        case ::ioj::levels::ControlContext::Player: {
             ship_.unbind();
             break;
         }
-        case EPlayerControlContext::Observer: {
+        case ::ioj::levels::ControlContext::Observer: {
             observer_.unbind();
             break;
         }
-        case EPlayerControlContext::Benchmark: {
+        case ::ioj::levels::ControlContext::Benchmark: {
             benchmark_.unbind();
             break;
         }
     }
 }
-auto FPlayerControlContexts::set_control_context(EPlayerControlContext const context) -> bool {
+auto FPlayerControlContexts::set_control_context(::ioj::levels::ControlContext const context)
+    -> bool {
     if (!can_bind_context(context)) {
         UE_LOG(LogSandboxController,
                Error,

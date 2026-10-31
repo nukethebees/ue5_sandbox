@@ -1,6 +1,8 @@
 #include <SpaceGame/telemetry/LevelTelemetryIntegration.h>
 
+#include <ioj/levels/launch_options.h>
 #include <ioj/sim/levels/level_sim.h>
+#include <ioj/sim/telemetry/run_catalog.h>
 #include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
@@ -11,7 +13,7 @@
 
 namespace ioj {
 auto take_finalized_level_telemetry_report(sim::LevelSim& simulation,
-                                           FLevelLaunchOptions const& launch_options,
+                                           ::ioj::levels::LaunchOptions const& launch_options,
                                            bool const presentation_enabled)
     -> TOptional<sim::LevelTelemetryReport> {
     auto record{simulation.take_finalized_telemetry_run()};
@@ -19,16 +21,12 @@ auto take_finalized_level_telemetry_report(sim::LevelSim& simulation,
         return {};
     }
 
-    sim::LevelTelemetryReport report{std::move(record.value())};
-    report.started_paused = launch_options.launch_mode == ELevelLaunchMode::Paused;
-    report.opens_telemetry =
-        launch_options.results_navigation == ELevelResultsNavigation::Telemetry;
-    report.presentation_enabled = presentation_enabled;
-    return report;
+    return sim::telemetry::make_run_report(
+        std::move(*record), launch_options, presentation_enabled);
 }
 
 void persist_finalized_level_telemetry_run(sim::LevelSim& simulation,
-                                           FLevelLaunchOptions const& launch_options,
+                                           ::ioj::levels::LaunchOptions const& launch_options,
                                            bool const presentation_enabled,
                                            UGameInstance* const game_instance) {
     if (GIsAutomationTesting) {
@@ -52,7 +50,7 @@ void persist_finalized_level_telemetry_run(sim::LevelSim& simulation,
         error = path.error();
     }
 
-    if (launch_options.results_navigation != ELevelResultsNavigation::Telemetry) {
+    if (launch_options.results_navigation != ::ioj::levels::ResultsNavigation::Telemetry) {
         return;
     }
 

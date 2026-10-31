@@ -1,26 +1,19 @@
 #include "SpaceGame/simulation/LevelSimulationBuilder.h"
 
-#include <ioj/column_math.h>
-#include <ioj/rotator_math.h>
-#include <ioj/sim/collision/entity_world_bounds.h>
 #include <ioj/sim/entities/entity_type.h>
-#include <ioj/sim/lasers/laser_source.h>
-#include <ioj/sim/levels/fighter_spawn_slot_validation.h>
 #include <ioj/sim/levels/initial_spawns.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/level_initialisation_data.h>
+#include <ioj/sim/levels/level_simulation_builder.h>
 #include <ioj/sim/missions/compiled_mission.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/entities/TestEntity.h>
-#include <SpaceGame/levels/LevelEntityResolution.h>
-#include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGame/telemetry/LevelTelemetryMetadata.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 
@@ -123,78 +116,13 @@ void bind_proxies(TArray<TProxy*> const& proxies,
     }
 }
 
-auto proxy_fits_collision_grid(AActor const& actor,
-                               sim::EntityType const type,
-                               sim::LevelSimInitData const& data,
-                               USpaceGameLevelConfig const& config,
-                               FLevelStartErrors& errors) -> bool {
-    auto const transform{actor.GetActorTransform()};
-    auto const bounds{
-        sim::collision::make_entity_world_bounds(data.collision.entity_bounds,
-                                                 type,
-                                                 Vector3f{transform.GetLocation()},
-                                                 Quaternion4f{transform.GetRotation()})};
-    auto const coordinates{
-        sim::collision::to_cell_coord_bounds(data.collision.grid_geometry, bounds.min, bounds.max)};
-    if (sim::collision::is_cell_coord_in_bounds(data.collision.grid_geometry, coordinates.min) &&
-        sim::collision::is_cell_coord_in_bounds(data.collision.grid_geometry, coordinates.max)) {
-        return true;
-    }
-
-    auto const& grid{data.collision.grid_geometry};
-    auto const half_size{to_unreal(sim::collision::grid_half_size(grid))};
-    auto const min{to_unreal(bounds.min)};
-    auto const max{to_unreal(bounds.max)};
-    errors.add(FString::Printf(
-        TEXT("Actor '%s' has collision bounds %s to %s outside the grid (%s to %s) in '%s'. "
-             "Increase collision_grid.grid_size or move the actor."),
-        *actor.GetName(),
-        *min.ToString(),
-        *max.ToString(),
-        *(-half_size).ToString(),
-        *half_size.ToString(),
-        *config.GetPathName()));
-    return false;
-}
-
-void append_fighter_spawn_slot_errors(
-    std::vector<levels::FighterSpawnSlotValidationError> const& validation_errors,
-    sim::CapitalShipSimConfig const& capital_config,
-    FLevelStartErrors& errors) {
-    for (auto const& error : validation_errors) {
-        switch (error.kind) {
-            case ::ioj::levels::FighterSpawnSlotValidationErrorKind::IntersectsCapital: {
-                auto const location{Vector3f{
-                    capital_config.fighter_spawn_slots_relative_transforms[error.first_slot]
-                        .location}};
-                errors.add(FString::Printf(
-                    TEXT("fighter spawn slot %d at %s intersects the capital collision bounds plus "
-                         "fighter clearance"),
-                    error.first_slot,
-                    *to_unreal(location).ToString()));
-                break;
-            }
-            case ::ioj::levels::FighterSpawnSlotValidationErrorKind::SlotsOverlap:
-                errors.add(FString::Printf(
-                    TEXT("fighter spawn slots %d and %d have overlapping collision bounds plus "
-                         "%.1f cm clearance"),
-                    error.first_slot,
-                    error.second_slot,
-                    error.clearance));
-                break;
-        }
+void append_native_errors(sim::LevelSimulationBuildErrors const& messages,
+                          FLevelStartErrors& errors) {
+    for (auto const& message : messages) {
+        errors.add(to_fstring(message));
     }
 }
 
-void validate_fighter_spawn_slots(sim::CapitalShipSimConfig const& capital_config,
-                                  sim::FighterSimConfig const& fighter_config,
-                                  sim::collision::EntityAABBs const& entity_bounds,
-                                  FLevelStartErrors& errors) {
-    append_fighter_spawn_slot_errors(
-        levels::validate_fighter_spawn_slots(capital_config, fighter_config, entity_bounds),
-        capital_config,
-        errors);
-}
 }
 
 namespace ioj {
@@ -302,11 +230,8 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
         return FLevelSimBuildResult{std::unexpect, MoveTemp(bounds.error())};
     }
     data.collision.entity_bounds = MoveTemp(bounds.value());
-    // A capital's rigid world transform preserves slot clearance. Comparing expanded world AABBs
-    // would report false overlaps when the capital is rotated.
-    level_simulation_builder::validate_fighter_spawn_slots(
-        data.capital_ships, data.fighters, data.collision.entity_bounds, errors);
-    if (errors.has_errors()) {
+    if (auto valid{sim::validate_level_simulation_init_data(data)}; !valid) {
+        level_simulation_builder::append_native_errors(valid.error(), errors);
         return FLevelSimBuildResult{std::unexpect, MoveTemp(errors)};
     }
     return result;
@@ -326,20 +251,13 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     }
     auto& data{result.value()};
     data.collision.static_bounds = MoveTemp(static_bounds);
-    sim::SimClock clock;
-    clock.initialise(clock_settings);
-    auto compiled{levels::compile_level(definition, clock, data.capital_ships, data.turrets)};
-    if (!compiled) {
+    auto native{sim::make_level_simulation_init_data(definition, std::move(data), clock_settings)};
+    if (!native) {
         FLevelStartErrors errors;
-        for (auto const& error : compiled.error()) {
-            errors.add(to_fstring(error));
-        }
+        level_simulation_builder::append_native_errors(native.error(), errors);
         return FLevelSimBuildResult{std::unexpect, MoveTemp(errors)};
     }
-    data.level_events = std::move(compiled->events);
-    data.mission = std::move(compiled->mission);
-    data.result_metadata = std::move(compiled->result_metadata);
-    return result;
+    return FLevelSimBuildResult{std::in_place, std::move(*native)};
 }
 
 static auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
@@ -449,25 +367,10 @@ static auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& c
         .level_id = TCHAR_TO_UTF8(*mission_definition.level_id.ToString()),
         .level_title = TCHAR_TO_UTF8(*mission_definition.level_display_name)};
 
-    FLevelStartErrors bounds_errors;
-    auto const fits{[&](AActor const& actor, sim::EntityType const type) {
-        return proxy_fits_collision_grid(actor, type, build.data, config, bounds_errors);
-    }};
-    if (build.data.player.has_value()) {
-        fits(*player_actor, sim::EntityType::PlayerShip);
-    }
-    for (auto const* const proxy : build.capital_proxies) {
-        fits(*proxy, sim::EntityType::CapitalShip);
-    }
-    for (auto const* const proxy : build.turret_proxies) {
-        fits(*proxy, sim::EntityType::Turret);
-    }
-    for (auto const* const proxy : build.spinner_proxies) {
-        fits(*proxy, sim::EntityType::TubeSpinner);
-    }
-
-    if (bounds_errors.has_errors()) {
-        return FLevelSimulationBuildResult{std::unexpect, MoveTemp(bounds_errors)};
+    if (auto valid{sim::validate_level_simulation_init_data(build.data)}; !valid) {
+        FLevelStartErrors errors;
+        append_native_errors(valid.error(), errors);
+        return FLevelSimulationBuildResult{std::unexpect, MoveTemp(errors)};
     }
 
     return result;
@@ -487,17 +390,20 @@ auto prepare_level_simulation(FLevelSimulationRequest const& request)
     if (errors.has_errors()) {
         return FLevelSimulationBuildResult{std::unexpect, MoveTemp(errors)};
     }
-    if (!request.presentation_enabled &&
-        (has_player || get_first_actor<ATestSpaceShip>(request.world))) {
-        errors.add(TEXT("Presentation-disabled levels must be playerless"));
-        return FLevelSimulationBuildResult{std::unexpect, MoveTemp(errors)};
+    auto const needs_player{request.definition && !request.definition->player_entity_id().empty()};
+    auto const* player_source{has_player ? request.player : nullptr};
+    if (!player_source && needs_player) {
+        player_source = config.classes.player_ship_class.GetDefaultObject();
+        if (!IsValid(player_source)) {
+            errors.add(TEXT("Player geometry requires a configured player ship class"));
+            return FLevelSimulationBuildResult{std::unexpect, MoveTemp(errors)};
+        }
     }
-
     TOptional<sim::player::PlayerSpawnData> player;
-    if (has_player) {
-        player.Emplace(request.player->make_spawn_data());
+    if (player_source) {
+        player.Emplace(player_source->make_spawn_data());
     }
-    auto const* const player_mesh{has_player ? request.player->get_collision_mesh() : nullptr};
+    auto const* const player_mesh{player_source ? player_source->get_collision_mesh() : nullptr};
     auto result{[&]() -> FLevelSimulationBuildResult {
         if (!request.definition) {
             return make_proxy_level_simulation_init_data(config,
@@ -532,9 +438,9 @@ auto prepare_level_simulation(FLevelSimulationRequest const& request)
         metadata.level_id = request.definition->metadata().id.value;
         metadata.level_display_name = request.definition->metadata().title;
         auto const& options{request.launch_options};
-        if (options.simulated_duration_seconds.IsSet()) {
+        if (options.simulated_duration_seconds.has_value()) {
             metadata.requested_duration_seconds =
-                Duration::make(options.simulated_duration_seconds.GetValue());
+                Duration::make(*options.simulated_duration_seconds);
         }
         metadata.stop_when_battle_resolved = options.stop_when_battle_resolved;
     }

@@ -1,7 +1,7 @@
 #pragma once
 
+#include "ioj/settings/game_settings.h"
 #include "SpaceGame/settings/ControlSettingsTypes.h"
-#include "SpaceGame/settings/GameSettings.generated.h"
 #include "SpaceGame/ui/main_menu/ControlChordCapture.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 #include "SpaceGamePresentation/audio/GameAudio.h"
@@ -26,9 +26,9 @@ enum class EControlsFocusKind : uint8 { Device, Scope, Binding };
 
 struct FControlsFocusIdentity {
     EControlsFocusKind kind{EControlsFocusKind::Device};
-    EGameSettingDevice device{EGameSettingDevice::Shared};
+    GameSettingDevice device{GameSettingDevice::Shared};
     EShipControlScope scope{EShipControlScope::General};
-    FControlBindingIdentity binding{};
+    ControlBindingIdentity binding{};
 
     auto operator==(FControlsFocusIdentity const& other) const -> bool {
         return kind == other.kind && device == other.device && scope == other.scope &&
@@ -106,7 +106,7 @@ class SGameOptionsView final : public SCompoundWidget {
     auto build_header() -> TSharedRef<SWidget>;
     auto build_body() -> TSharedRef<SWidget>;
     auto build_footer() -> TSharedRef<SWidget>;
-    auto build_category_page(EGameSettingCategory category) -> TSharedRef<SWidget>;
+    auto build_category_page(GameSettingCategory category) -> TSharedRef<SWidget>;
     auto build_controls_page() -> TSharedRef<SWidget>;
 
     /* **************************************** */
@@ -136,8 +136,8 @@ class SGameOptionsView final : public SCompoundWidget {
     /* **************************************** */
     // Settings and prompts
     /* **************************************** */
-    auto build_setting_row(FGameSettingDescriptor const& descriptor,
-                           TFunction<void()>& focus_action) -> TSharedRef<SWidget>;
+    auto build_setting_row(GameSettingDescriptor const& descriptor, TFunction<void()>& focus_action)
+        -> TSharedRef<SWidget>;
     auto build_system_page() -> TSharedRef<SWidget>;
     auto build_dirty_prompt() -> TSharedRef<SWidget>;
     auto build_display_prompt() -> TSharedRef<SWidget>;
@@ -151,9 +151,9 @@ class SGameOptionsView final : public SCompoundWidget {
     // Formatting and focus helpers
     /* **************************************** */
     auto tab_text(EOptionsTab tab) const -> FText;
-    auto setting_float(EGameSetting setting) const -> float;
-    auto format_range_value(FGameSettingDescriptor const& descriptor) const -> FText;
-    auto active_category() const -> TOptional<EGameSettingCategory>;
+    auto setting_float(GameSetting setting) const -> float;
+    auto format_range_value(GameSettingDescriptor const& descriptor) const -> FText;
+    auto active_category() const -> TOptional<GameSettingCategory>;
     auto controls_device_type() const -> EHardwareDevicePrimaryType;
     auto controls_focus_identity() const -> TOptional<FControlsFocusIdentity>;
     auto binding_focus_identity(FControlBindingView const& binding) const -> FControlsFocusIdentity;
@@ -224,7 +224,7 @@ class SGameOptionsView final : public SCompoundWidget {
     bool dirty_prompt_visible_{};
     bool display_prompt_visible_{};
     bool binding_management_visible_{};
-    EGameSettingDevice controls_device_{EGameSettingDevice::KeyboardMouse};
+    GameSettingDevice controls_device_{GameSettingDevice::KeyboardMouse};
     EShipControlScope controls_scope_{EShipControlScope::General};
 };
 

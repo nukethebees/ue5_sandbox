@@ -3,8 +3,8 @@
 #include "ioj/presentation/agent_display_batch.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/entities/entity_type_radii.h"
-#include "SpaceGamePresentation/entities/TeamColours.h"
 #include <ioj/presentation/soft_target.h>
+#include <SpaceGamePresentation/entities/TestTeam.h>
 
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
 
@@ -21,38 +21,10 @@ struct SPACEGAMEPRESENTATION_API FSoftTargetSelectionContext {
     float maximum_overlay_range{0.0f};
 };
 
-struct SPACEGAMEPRESENTATION_API FEntityOverlayHealthMaximums {
-    int32 capital_ship{1};
-    int32 fighter{1};
-    int32 turret{1};
-};
-
-struct SPACEGAMEPRESENTATION_API FEntityOverlayTeamColours {
-    FTeamColours capital_ship;
-    FTeamColours fighter;
-    FTeamColours turret;
-};
-
-struct SPACEGAMEPRESENTATION_API FEntityOverlayCollectionResult {
-    int32 candidate_count{0};
-    int32 invalid_health_count{0};
-};
-
 [[nodiscard]] SPACEGAMEPRESENTATION_API auto
     select_soft_target(std::span<::ioj::presentation::AgentDisplayBatch const> batches,
                        ::ioj::sim::EntityTypeRadii const& entity_type_radii,
-                       TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
+                       std::span<ioj::ui::entity_overlay::ObjectiveRole const> objective_roles,
                        FSoftTargetSelectionContext const& context,
                        ioj::settings::SoftTarget const& settings,
                        ::ioj::sim::EntityId current_target) -> ioj::presentation::SoftTargetResult;
-
-[[nodiscard]] SPACEGAMEPRESENTATION_API auto collect_entity_overlay_instances(
-    std::span<::ioj::presentation::AgentDisplayBatch const> batches,
-    ::ioj::sim::EntityTypeRadii const& entity_type_radii,
-    TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
-    FEntityOverlayTeamColours const& team_colours,
-    FEntityOverlayHealthMaximums const& maximum_health,
-    FVector3f origin,
-    float maximum_range,
-    TArray<FEntityOverlayInstance>& output_instances,
-    FEntityOverlayCollector& collector) -> FEntityOverlayCollectionResult;

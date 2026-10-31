@@ -3,6 +3,8 @@
 #include "SpaceGamePresentation/presentation/widgets/Vector2DWidget.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
+#include <SandboxCoreEngine/VectorConversion.h>
+
 #include <Blueprint/WidgetTree.h>
 #include <Components/UniformGridPanel.h>
 #include <Components/UniformGridSlot.h>
@@ -12,10 +14,10 @@ void UFlightVectorDebugWidget::NativePreConstruct() {
 
     if (IsDesignTime()) {
         data_ = {
-            .turn_input = FVector2D{0.4f, -0.2f},
-            .move_input = FVector2D{-0.3f, 0.8f},
-            .target_velocity = FVector2D{0.2f, 0.9f},
-            .local_velocity = FVector2D{-0.6f, 0.7f},
+            .turn_input = ioj::Vector2f{0.4f, -0.2f},
+            .move_input = ioj::Vector2f{-0.3f, 0.8f},
+            .target_velocity = ioj::Vector2f{0.2f, 0.9f},
+            .local_velocity = ioj::Vector2f{-0.6f, 0.7f},
         };
     }
 
@@ -23,7 +25,7 @@ void UFlightVectorDebugWidget::NativePreConstruct() {
     update_widgets();
 }
 
-void UFlightVectorDebugWidget::update(ioj::ship_hud::FFlightVectorDebugData const& data) {
+void UFlightVectorDebugWidget::update(ioj::presentation::FlightVectorDebugData const& data) {
     data_ = data;
     update_widgets();
 }
@@ -73,16 +75,16 @@ void UFlightVectorDebugWidget::update_widgets() {
     }
 
     if (turn_input_widget_) {
-        turn_input_widget_->update(data_.turn_input);
+        turn_input_widget_->update(ioj::to_unreal(ioj::Vector2d{data_.turn_input}));
     }
     if (move_input_widget_) {
-        move_input_widget_->update(data_.move_input);
+        move_input_widget_->update(ioj::to_unreal(ioj::Vector2d{data_.move_input}));
     }
     if (target_velocity_widget_) {
-        target_velocity_widget_->update(data_.target_velocity);
+        target_velocity_widget_->update(ioj::to_unreal(ioj::Vector2d{data_.target_velocity}));
     }
     if (local_velocity_widget_) {
-        local_velocity_widget_->update(data_.local_velocity);
+        local_velocity_widget_->update(ioj::to_unreal(ioj::Vector2d{data_.local_velocity}));
     }
 }
 

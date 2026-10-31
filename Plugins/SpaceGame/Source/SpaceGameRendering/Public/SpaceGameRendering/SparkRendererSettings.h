@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/presentation/sparks.h>
+
 #include <CoreMinimal.h>
 
 #include "SparkRendererSettings.generated.h"
@@ -7,6 +9,15 @@
 USTRUCT(BlueprintType)
 struct SPACEGAMERENDERING_API FSparkRendererSettings {
     GENERATED_BODY()
+
+    auto to_native() const -> ioj::presentation::SparkRendererSettings {
+        return {capacity,
+                maximum_draw_distance,
+                ioj::Vector3f{acceleration},
+                minimum_thickness_pixels,
+                maximum_thickness_pixels,
+                maximum_length_pixels};
+    }
 
     UPROPERTY(EditAnywhere, Category = "Sparks", meta = (ClampMin = "1"))
     int32 capacity{100000};

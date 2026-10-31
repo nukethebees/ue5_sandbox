@@ -22,18 +22,18 @@ auto make_frame(int32 const contact_count) -> FRadarFrame {
         auto const fraction{static_cast<float>(index) / static_cast<float>(contact_count)};
         auto const radius{0.18f + 0.68f * FMath::Fmod(index * 0.618034f, 1.0f)};
         auto const angle{fraction * 17.0f + index * 0.37f};
-        auto const flags{index % 31 == 0   ? ERadarContactFlags::Selected
-                         : index % 23 == 0 ? ERadarContactFlags::DestroyObjective
-                         : index % 19 == 0 ? ERadarContactFlags::DefendObjective
-                                           : ERadarContactFlags::None};
+        auto const flags{index % 31 == 0   ? ioj::ui::radar::ContactFlags::Selected
+                         : index % 23 == 0 ? ioj::ui::radar::ContactFlags::DestroyObjective
+                         : index % 19 == 0 ? ioj::ui::radar::ContactFlags::DefendObjective
+                                           : ioj::ui::radar::ContactFlags::None};
         frame.instances[index] = {
-            .radar_position = FVector3f{radius * FMath::Cos(angle),
+            .radar_position = ioj::Vector3f{radius * FMath::Cos(angle),
                                         radius * FMath::Sin(angle),
                                         -0.9f + 1.8f * FMath::Fmod(index * 0.414214f, 1.0f)},
             .size_scale = 0.85f + static_cast<float>(index % 4) * 0.15f,
             .packed_color = pack_radar_color(colors[index % UE_ARRAY_COUNT(colors)]),
             .packed_glyph_and_flags =
-                pack_radar_display(static_cast<ERadarGlyph>(1 + index % 6), flags),
+                ioj::ui::radar::pack_display(static_cast<ioj::ui::radar::Glyph>(1 + index % 6), flags),
         };
     }
     return frame;

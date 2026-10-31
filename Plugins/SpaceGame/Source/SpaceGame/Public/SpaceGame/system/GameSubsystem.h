@@ -1,10 +1,9 @@
 #pragma once
-#include "SpaceGame/levels/LevelDefinition.h"
-#include "SpaceGame/persistence/SaveGameBrowser.h"
-#include "SpaceGame/ships/player/PlayerControlContext.h"
 #include "SpaceGamePresentation/audio/GameAudio.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
+#include <ioj/levels/authoring/launch_state.h>
 #include <ioj/levels/authoring/level_source.h>
+#include <ioj/persistence/save_browser.h>
 
 #include "Subsystems/GameInstanceSubsystem.h"
 
@@ -72,56 +71,6 @@ struct SPACEGAME_API FGameCapabilities {
 #endif
 };
 
-enum class ELevelLaunchMode : uint8 {
-    Running,
-    Paused,
-};
-
-enum class ELevelPresentationMode : uint8 {
-    Visual,
-    SimulationOnly,
-};
-
-enum class ELevelResultsNavigation : uint8 {
-    None,
-    Telemetry,
-};
-
-namespace level_launch {
-inline constexpr double default_time_scale{1.0};
-inline constexpr double maximum_time_scale{100.0};
-
-SPACEGAME_API auto is_valid_time_scale(double value) noexcept -> bool;
-}
-
-struct SPACEGAME_API FLevelLaunchOptions {
-    ELevelLaunchMode launch_mode{ELevelLaunchMode::Running};
-    double requested_time_scale{level_launch::default_time_scale};
-    ELevelPresentationMode presentation_mode{ELevelPresentationMode::Visual};
-    TOptional<double> simulated_duration_seconds{};
-    bool stop_when_battle_resolved{};
-    ELevelResultsNavigation results_navigation{ELevelResultsNavigation::None};
-    EPlayerControlContext control_context{EPlayerControlContext::Player};
-};
-
-struct SPACEGAME_API FPendingLevelDefinition {
-    levels::authoring::LevelSource source;
-    FString source_path{};
-    FLevelLaunchOptions options{};
-};
-
-enum class EMainMenuDestination : uint8 {
-    LevelSelect,
-    Telemetry,
-};
-
-struct SPACEGAME_API FLevelSelectRequest {
-    FName preferred_level_id{NAME_None};
-    EMainMenuDestination destination{EMainMenuDestination::LevelSelect};
-    FString selected_telemetry_run_id{};
-    FString telemetry_error{};
-};
-
 UCLASS()
 class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     GENERATED_BODY()
@@ -139,7 +88,7 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     static auto get(UGameInstance const* game_instance) -> UGameSubsystem*;
     auto get_game_memory() noexcept -> sim::GameMemory&;
     auto get_platform_capabilities() const -> FGameCapabilities const&;
-    auto get_save_game_browser() -> FSaveGameBrowser&;
+    auto get_save_game_browser() -> persistence::SaveGameBrowser&;
     auto get_audio() -> FGameAudioFacade;
     void start_menu_ambience();
     void stop_menu_ambience();
@@ -157,12 +106,12 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     /* **************************************** */
     void set_pending_level(levels::authoring::LevelSource source,
                            FString source_path,
-                           FLevelLaunchOptions options = {});
-    auto take_pending_level() -> TOptional<FPendingLevelDefinition>;
+                           levels::LaunchOptions options = {});
+    auto take_pending_level() -> std::optional<levels::authoring::PendingLevel>;
 
     [[nodiscard]] auto return_to_level_select(FName preferred_level_id = NAME_None) -> bool;
     [[nodiscard]] auto return_to_telemetry(FString run_id, FString error = {}) -> bool;
-    auto take_level_select_request() -> TOptional<FLevelSelectRequest>;
+    auto take_level_select_request() -> std::optional<levels::authoring::MenuRequest>;
     static auto get_main_menu_level_name() -> FName;
 
     /* **************************************** */
@@ -180,10 +129,7 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     FGameAudio audio_;
     FGameCapabilities platform_capabilities_;
     TUniquePtr<sim::GameMemory> game_memory_{};
-    FSaveGameBrowser save_game_browser_;
-    TOptional<FPendingLevelDefinition> pending_level_{NullOpt};
-    TOptional<FLevelSelectRequest> level_select_request_{NullOpt};
-    FString level_launch_error_{};
-    bool level_transition_in_progress_{false};
+    persistence::SaveGameBrowser save_game_browser_;
+    levels::authoring::LaunchState launch_state_;
 };
 }

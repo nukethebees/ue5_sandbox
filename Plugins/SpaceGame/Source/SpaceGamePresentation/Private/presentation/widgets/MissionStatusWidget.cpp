@@ -1,7 +1,7 @@
 #include "SpaceGamePresentation/presentation/widgets/MissionStatusWidget.h"
 
+#include <ioj/presentation/hud_data.h>
 #include <SandboxGameShared/ui/widgets/ValueWidget.h>
-#include <SpaceGamePresentation/presentation/HUDManager.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
@@ -47,15 +47,13 @@ void UMissionStatusWidget::NativePreConstruct() {
     }
     configure_labels();
     if (IsDesignTime()) {
-        set_mission_data({.active_titles = TEXT("Protect the convoy"),
-                          .active = 1,
-                          .completed = 2,
-                          .inactive = 1});
+        set_mission_data(
+            {.active_titles = "Protect the convoy", .active = 1, .completed = 2, .inactive = 1});
     }
 }
 
-void UMissionStatusWidget::set_mission_data(ioj::hud_manager::FMissionDataCache const& data) {
-    mission_mode_widget->update(data.active_titles);
+void UMissionStatusWidget::set_mission_data(ioj::presentation::MissionHudData const& data) {
+    mission_mode_widget->update(ioj::to_fstring(data.active_titles));
     mission_time_widget->update(data.active);
     enemies_remaining_widget->update(data.completed);
     time_remaining_widget->update(data.inactive);

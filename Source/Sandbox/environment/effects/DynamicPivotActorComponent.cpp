@@ -1,6 +1,12 @@
 #include "Sandbox/environment/effects/DynamicPivotActorComponent.h"
 
-#include "Camera/CameraActor.h"
+#include <ioj/presentation/observer_camera.h>
+#include <ioj/rotator_math.h>
+#include <ioj/vector_value_math.h>
+#include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
+
+#include <SandboxCoreEngine/TransformConversion.h>
+
 #include "Engine/HitResult.h"
 #include "Engine/World.h"
 
@@ -11,12 +17,11 @@ void UDynamicPivotActorComponent::BeginPlay() {
     Super::BeginPlay();
 
     auto const* const owner{GetOwner()};
-    if (owner) {
-        pivot_point = owner->GetActorLocation();
+    if (!owner) {
+        UE_LOG(LogSandbox, Warning, TEXT("Dynamic pivot component has no owner."));
+        return;
     }
-
-    // Get arrow used for positioning
-    // If it doesn't exist then do a raycast instead
+    pivot_point = owner->GetActorLocation();
     auto const start{owner->GetActorLocation()};
 
     TArray<UActorComponent*> components{owner->GetComponents().Array()};
@@ -53,21 +58,21 @@ void UDynamicPivotActorComponent::TickComponent(float DeltaTime,
 
 void UDynamicPivotActorComponent::update_position(float delta_time) {
     current_angle_deg += rotation_speed_deg_per_sec * delta_time;
-    current_angle_deg += rotation_speed_deg_per_sec * delta_time;
-
-    float const radians{FMath::DegreesToRadians(current_angle_deg)};
-    FVector const rotated_offset{
-        initial_offset.X * FMath::Cos(radians) - initial_offset.Y * FMath::Sin(radians),
-        initial_offset.X * FMath::Sin(radians) + initial_offset.Y * FMath::Cos(radians),
-        initial_offset.Z // preserve height
-    };
-
     auto* const owner{GetOwner()};
-    if (owner) {
-        FVector const new_location{pivot_point + rotated_offset};
-        FRotator const look_rotation{(pivot_point - new_location).Rotation()};
-
-        owner->SetActorLocation(new_location);
-        owner->SetActorRotation(look_rotation);
+    if (!owner) {
+        UE_LOG(LogSandbox, Warning, TEXT("Dynamic pivot component has no owner."));
+        return;
     }
+    auto const rotation{ioj::to_quaternion(ioj::Rotator3d{0.0, current_angle_deg, 0.0})};
+    auto const offset{ioj::rotate_vector(rotation, ioj::Vector3d{initial_offset})};
+    auto const pivot{ioj::Vector3d{pivot_point}};
+    auto const camera{ioj::presentation::make_observer_camera_transform(
+        std::span{&pivot, 1}, offset, ioj::size(offset))};
+    if (!camera) {
+        UE_LOG(LogSandbox, Warning, TEXT("Dynamic pivot requires a finite, nonzero offset."));
+        SetComponentTickEnabled(false);
+        return;
+    }
+    auto const transform{ioj::to_unreal(camera->transform)};
+    owner->SetActorLocationAndRotation(transform.GetLocation(), transform.GetRotation());
 }

@@ -1,5 +1,6 @@
+#include <ioj/levels/launch_options.h>
 #pragma once
-
+#include <ioj/persistence/progression.h>
 #include <SpaceGame/ui/main_menu/LevelSelectWidget.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyle.h>
 #include <SpaceGameS7/level_script_catalog.h>
@@ -7,33 +8,21 @@
 #include "ScriptLevelSelectWidget.generated.h"
 
 namespace ioj {
-enum class ELevelLaunchMode : uint8;
-struct FLevelLaunchOptions;
-struct FLevelProgressSummary;
 class UGameSubsystem;
 }
 
 namespace ioj::s7 {
-using ioj::levels::authoring::ELevelCatalogCategory;
 using ioj::levels::authoring::FCampaignScriptEntry;
 using ioj::levels::authoring::FLevelScriptEntry;
+using ioj::levels::authoring::LevelCatalogCategory;
 
 class SScriptLevelSelectView;
-
-enum class ELevelCompletionIndicatorState : uint8 {
-    Incomplete,
-    Completed,
-    ParAchieved,
-};
-
-SPACEGAMES7_API auto level_completion_indicator_state(FLevelProgressSummary const& progress,
-                                                      TOptional<float> par_time_seconds)
-    -> ELevelCompletionIndicatorState;
 
 struct FLevelSelectViewRow {
     FText text{};
     bool heading{};
-    ELevelCompletionIndicatorState indicator_state{ELevelCompletionIndicatorState::Incomplete};
+    persistence::CompletionIndicatorState indicator_state{
+        persistence::CompletionIndicatorState::Incomplete};
 };
 
 struct FLevelSelectViewState {
@@ -45,7 +34,7 @@ struct FLevelSelectViewState {
     FText details{};
     FText script{};
     FText launch_mode_status{};
-    ELevelCatalogCategory category{ELevelCatalogCategory::Mission};
+    LevelCatalogCategory category{LevelCatalogCategory::Mission};
     TOptional<double> playerless_time_scale{};
     int32 selected_button_index{INDEX_NONE};
     bool can_launch{};
@@ -62,10 +51,10 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ULevelSelectWidget {
     }
     [[nodiscard]] auto can_launch_selected_level() const noexcept -> bool {
         return view_state_.can_launch &&
-               (active_category_ == ELevelCatalogCategory::Mission ||
+               (active_category_ == LevelCatalogCategory::Mission ||
                 (get_active_playerless_time_scale().IsSet() && battle_duration_valid_));
     }
-    [[nodiscard]] auto get_active_category() const noexcept -> ELevelCatalogCategory {
+    [[nodiscard]] auto get_active_category() const noexcept -> LevelCatalogCategory {
         return active_category_;
     }
     void refresh() override;
@@ -77,10 +66,10 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ULevelSelectWidget {
     auto NativeOnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
   private:
-    void launch_selected_level(FLevelLaunchOptions options);
+    void launch_selected_level(::ioj::levels::LaunchOptions options);
     void refresh_levels();
     void rebuild_catalog(FName focus_level_id);
-    void select_category(ELevelCatalogCategory category);
+    void select_category(LevelCatalogCategory category);
     void select_level(int32 button_index);
     void set_battle_time_scale(TOptional<double> time_scale);
     void set_battle_duration(TOptional<double> duration, bool valid);
@@ -89,8 +78,8 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ULevelSelectWidget {
 
     [[nodiscard]] auto get_active_playerless_time_scale() const noexcept
         -> TOptional<double> const& {
-        return active_category_ == ELevelCatalogCategory::Benchmark ? benchmark_time_scale_
-                                                                    : battle_viewer_time_scale_;
+        return active_category_ == LevelCatalogCategory::Benchmark ? benchmark_time_scale_
+                                                                   : battle_viewer_time_scale_;
     }
 
     void handle_launch();
@@ -109,7 +98,7 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ULevelSelectWidget {
     UGameSubsystem* game_{nullptr};
     int32 selected_entry_index_{INDEX_NONE};
     FName selected_level_id_{NAME_None};
-    ELevelCatalogCategory active_category_{ELevelCatalogCategory::Mission};
+    LevelCatalogCategory active_category_{LevelCatalogCategory::Mission};
     TOptional<double> battle_viewer_time_scale_{1.0};
     TOptional<double> benchmark_time_scale_{10.0};
     TOptional<double> battle_duration_{300.0};

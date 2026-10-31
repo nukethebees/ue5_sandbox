@@ -11,20 +11,17 @@
 #include "HAL/PlatformTime.h"
 
 namespace ioj {
-constexpr double display_confirmation_duration_seconds{15.0};
 
 /* **************************************** */
 // Lifecycle
 /* **************************************** */
 void UGameSettingsSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
-    edit_state_.begin(backend_.read(), backend_.defaults());
-    if (auto* const settings{Cast<USpaceGameUserSettings>(GEngine->GetGameUserSettings())}) {
-        flight_model_loadout_ = settings->flight_model_loadout();
-    } else {
-        flight_model_loadout_ = sim::player::make_default_flight_model_loadout();
-    }
-    applied_flight_model_loadout_ = flight_model_loadout_;
+    auto const* settings{Cast<USpaceGameUserSettings>(GEngine->GetGameUserSettings())};
+    session_.initialise(backend_.read(),
+                        backend_.defaults(),
+                        settings != nullptr ? settings->flight_model_loadout()
+                                            : sim::player::make_default_flight_model_loadout());
 }
 
 void UGameSettingsSubsystem::Deinitialize() {
@@ -39,32 +36,29 @@ void UGameSettingsSubsystem::Deinitialize() {
 // Edit sessions and display confirmation
 /* **************************************** */
 void UGameSettingsSubsystem::begin_edit(ULocalPlayer* const local_player) {
-    if (awaiting_display_confirmation_) {
+    if (session_.is_awaiting_display_confirmation()) {
         return;
     }
     backend_.set_local_player(local_player);
     editing_local_player_ = local_player;
-    edit_state_.begin(backend_.read(), backend_.defaults());
-    flight_model_loadout_ = applied_flight_model_loadout_;
+    if (!session_.begin_edit(backend_.read(), backend_.defaults())) {
+        return;
+    }
     capture_input_edit_state();
-    editing_ = true;
     settings_changed.Broadcast();
 }
 
 void UGameSettingsSubsystem::cancel() {
-    if (!editing_ || awaiting_display_confirmation_) {
+    if (!session_.is_editing() || session_.is_awaiting_display_confirmation()) {
         return;
     }
-    auto const before{edit_state_.pending()};
+    auto const before{session_.settings_state()};
     restore_input_edit_state();
-    preview_immediate_settings(edit_state_.applied());
-    edit_state_.cancel();
-    flight_model_loadout_ = applied_flight_model_loadout_;
+    preview_immediate_settings(session_.applied_state());
+    session_.cancel();
     flight_model_config_changed.Broadcast();
-    editing_ = false;
     for (auto const& descriptor : game_setting_descriptors()) {
-        if (game_setting_value(before, descriptor.id) !=
-            game_setting_value(edit_state_.pending(), descriptor.id)) {
+        if (game_setting_value(before, descriptor.id) != session_.value(descriptor.id)) {
             setting_changed.Broadcast(descriptor.id);
         }
     }
@@ -72,67 +66,50 @@ void UGameSettingsSubsystem::cancel() {
 }
 
 void UGameSettingsSubsystem::apply() {
-    if (!editing_ || awaiting_display_confirmation_ || !is_dirty()) {
+    if (!session_.is_editing() || session_.is_awaiting_display_confirmation() || !is_dirty()) {
         return;
     }
-
-    auto const& pending{edit_state_.pending()};
-    auto const& applied{edit_state_.applied()};
-    auto const display_changed{pending.resolution != applied.resolution ||
-                               pending.window_mode != applied.window_mode};
-    auto const input_changed{input_is_dirty() ||
-                             edit_state_.is_dirty(EGameSettingCategory::Controls)};
+    auto const& pending{session_.settings_state()};
+    auto const bindings_changed{input_is_dirty()};
+    auto const input_changed{bindings_changed || session_.is_dirty(GameSettingCategory::Controls)};
     backend_.apply_non_display(pending);
     if (auto* const settings{Cast<USpaceGameUserSettings>(GEngine->GetGameUserSettings())}) {
-        settings->set_flight_model_loadout(flight_model_loadout_);
+        settings->set_flight_model_loadout(session_.flight_model_loadout());
     }
-    applied_flight_model_loadout_ = flight_model_loadout_;
-    capture_input_edit_state();
     if (input_changed) {
         if (auto* const input_settings{input_user_settings()}) {
             input_settings->ApplySettings();
             input_settings->AsyncSaveSettings();
         }
     }
-    if (!display_changed) {
+    auto const result{session_.apply(FPlatformTime::Seconds(), bindings_changed)};
+    capture_input_edit_state();
+    if (result == GameSettingsApplyResult::Applied) {
         backend_.save();
-        edit_state_.commit_all();
         settings_changed.Broadcast();
         return;
     }
-
-    for (auto const& descriptor : game_setting_descriptors()) {
-        if (descriptor.apply_mode != ESettingApplyMode::Confirm) {
-            edit_state_.commit_setting(descriptor.id);
-        }
-    }
-
-    backend_.apply_display(edit_state_.pending());
-    awaiting_display_confirmation_ = true;
-    display_confirmation_deadline_ =
-        FPlatformTime::Seconds() + display_confirmation_duration_seconds;
+    backend_.apply_display(session_.settings_state());
     display_confirmation_ticker_ = FTSTicker::GetCoreTicker().AddTicker(
         FTickerDelegate::CreateUObject(this, &ThisClass::tick_display_confirmation), 0.25f);
     display_confirmation_changed.Broadcast(true);
     settings_changed.Broadcast();
 }
 
-void UGameSettingsSubsystem::reset_category(EGameSettingCategory const category) {
-    if (!editing_ || awaiting_display_confirmation_) {
+void UGameSettingsSubsystem::reset_category(GameSettingCategory const category) {
+    auto const before{session_.settings_state()};
+    if (!session_.reset_category(category)) {
         return;
     }
-    auto const before{edit_state_.pending()};
-    edit_state_.reset_category(category);
-    if (category == EGameSettingCategory::Controls) {
-        flight_model_loadout_ = sim::player::make_default_flight_model_loadout();
+    if (category == GameSettingCategory::Controls) {
         flight_model_config_changed.Broadcast();
         reset_all_control_bindings();
     }
     for (auto const& descriptor : game_setting_descriptors()) {
         if (descriptor.category == category &&
-            descriptor.apply_mode == ESettingApplyMode::Immediate &&
-            game_setting_value(before, descriptor.id) != edit_state_.value(descriptor.id)) {
-            backend_.preview_immediate(edit_state_.pending(), descriptor.id);
+            descriptor.apply_mode == SettingApplyMode::Immediate &&
+            game_setting_value(before, descriptor.id) != session_.value(descriptor.id)) {
+            backend_.preview_immediate(session_.settings_state(), descriptor.id);
             setting_changed.Broadcast(descriptor.id);
         }
     }
@@ -140,13 +117,11 @@ void UGameSettingsSubsystem::reset_category(EGameSettingCategory const category)
 }
 
 void UGameSettingsSubsystem::confirm_display_changes() {
-    if (!awaiting_display_confirmation_) {
+    if (!session_.confirm_display()) {
         return;
     }
     backend_.confirm_display();
     backend_.save();
-    edit_state_.commit_all();
-    awaiting_display_confirmation_ = false;
     if (display_confirmation_ticker_.IsValid()) {
         FTSTicker::GetCoreTicker().RemoveTicker(display_confirmation_ticker_);
         display_confirmation_ticker_.Reset();
@@ -156,13 +131,11 @@ void UGameSettingsSubsystem::confirm_display_changes() {
 }
 
 void UGameSettingsSubsystem::revert_display_changes() {
-    if (!awaiting_display_confirmation_) {
+    if (!session_.revert_display()) {
         return;
     }
     backend_.revert_display();
     backend_.save();
-    edit_state_.cancel();
-    awaiting_display_confirmation_ = false;
     if (display_confirmation_ticker_.IsValid()) {
         FTSTicker::GetCoreTicker().RemoveTicker(display_confirmation_ticker_);
         display_confirmation_ticker_.Reset();
@@ -174,44 +147,45 @@ void UGameSettingsSubsystem::revert_display_changes() {
 /* **************************************** */
 // Settings state
 /* **************************************** */
-auto UGameSettingsSubsystem::settings_state() const -> FGameSettingsState const& {
-    return edit_state_.pending();
+auto UGameSettingsSubsystem::settings_state() const -> GameSettingsState const& {
+    return session_.settings_state();
 }
 
-auto UGameSettingsSubsystem::applied_state() const -> FGameSettingsState const& {
-    return edit_state_.applied();
+auto UGameSettingsSubsystem::applied_state() const -> GameSettingsState const& {
+    return session_.applied_state();
 }
 
-auto UGameSettingsSubsystem::default_state() const -> FGameSettingsState const& {
-    return edit_state_.defaults();
+auto UGameSettingsSubsystem::default_state() const -> GameSettingsState const& {
+    return session_.default_state();
 }
 
-auto UGameSettingsSubsystem::value(EGameSetting const setting) const -> FGameSettingValue {
-    return edit_state_.value(setting);
+auto UGameSettingsSubsystem::value(GameSetting const setting) const -> GameSettingValue {
+    return session_.value(setting);
 }
 
-void UGameSettingsSubsystem::set_setting(EGameSetting const setting,
-                                         FGameSettingValue const& value) {
-    if (!editing_ || awaiting_display_confirmation_) {
+void UGameSettingsSubsystem::set_setting(GameSetting const setting, GameSettingValue const& value) {
+    if (!session_.is_editing() || session_.is_awaiting_display_confirmation()) {
         return;
     }
     auto const& descriptor{game_setting_descriptor(setting)};
     auto normalized{normalize_value(descriptor, value)};
-    if (!normalized.IsSet() || !edit_state_.set_setting(setting, normalized.GetValue())) {
-        UE_LOG(
-            LogTemp, Warning, TEXT("Rejected invalid value for game setting %s"), descriptor.name);
+    if (!normalized || !session_.set_setting(setting, *normalized)) {
+        UE_LOG(LogTemp,
+               Warning,
+               TEXT("Rejected invalid value for game setting %s"),
+               UTF8_TO_TCHAR(descriptor.name));
         return;
     }
-    if (descriptor.apply_mode == ESettingApplyMode::Immediate) {
-        backend_.preview_immediate(edit_state_.pending(), setting);
+    if (descriptor.apply_mode == SettingApplyMode::Immediate) {
+        backend_.preview_immediate(session_.settings_state(), setting);
     }
     setting_changed.Broadcast(setting);
     settings_changed.Broadcast();
 }
 
-auto UGameSettingsSubsystem::descriptors(EGameSettingCategory const category) const
-    -> TArray<FGameSettingDescriptor const*> {
-    TArray<FGameSettingDescriptor const*> result;
+auto UGameSettingsSubsystem::descriptors(GameSettingCategory const category) const
+    -> TArray<GameSettingDescriptor const*> {
+    TArray<GameSettingDescriptor const*> result;
     for (auto const& descriptor : game_setting_descriptors()) {
         if (descriptor.category == category) {
             result.Add(&descriptor);
@@ -220,79 +194,64 @@ auto UGameSettingsSubsystem::descriptors(EGameSettingCategory const category) co
     return result;
 }
 
-auto UGameSettingsSubsystem::options(EGameSetting const setting) const
+auto UGameSettingsSubsystem::options(GameSetting const setting) const
     -> TArray<FGameSettingOption> {
     return backend_.options(game_setting_descriptor(setting).options_provider);
 }
 
-auto UGameSettingsSubsystem::is_available(EGameSetting const setting) const -> bool {
-    return backend_.is_available(game_setting_descriptor(setting).availability_provider,
-                                 edit_state_.pending());
+auto UGameSettingsSubsystem::is_available(GameSetting const setting) const -> bool {
+    return game_setting_is_available(game_setting_descriptor(setting).availability_provider,
+                                     session_.settings_state());
 }
 
 auto UGameSettingsSubsystem::is_dirty() const -> bool {
-    return edit_state_.is_dirty() || input_is_dirty() ||
-           flight_model_loadout_ != applied_flight_model_loadout_;
+    return session_.is_dirty() || input_is_dirty();
 }
 
-auto UGameSettingsSubsystem::is_dirty(EGameSettingCategory const category) const -> bool {
-    return edit_state_.is_dirty(category) ||
-           (category == EGameSettingCategory::Controls &&
-            (input_is_dirty() || flight_model_loadout_ != applied_flight_model_loadout_));
+auto UGameSettingsSubsystem::is_dirty(GameSettingCategory const category) const -> bool {
+    return session_.is_dirty(category) ||
+           (category == GameSettingCategory::Controls && input_is_dirty());
 }
 
-auto UGameSettingsSubsystem::is_at_defaults(EGameSettingCategory const category) const -> bool {
-    if (category == EGameSettingCategory::Controls) {
+auto UGameSettingsSubsystem::is_at_defaults(GameSettingCategory const category) const -> bool {
+    if (category == GameSettingCategory::Controls) {
         auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
-        auto const has_modified_binding{
-            bindings.ContainsByPredicate([](auto const& binding) { return binding.modified; })};
-        return edit_state_.is_at_defaults(category) && !has_modified_binding &&
-               flight_model_loadout_ == sim::player::make_default_flight_model_loadout();
+        if (bindings.ContainsByPredicate([](auto const& binding) { return binding.modified; })) {
+            return false;
+        }
     }
-    return edit_state_.is_at_defaults(category);
+    return session_.is_at_defaults(category);
 }
 
 auto UGameSettingsSubsystem::flight_model_profile(EShipControlScope const scope) const
     -> sim::player::FlightModelProfile const& {
     check(scope != EShipControlScope::General);
-    return sim::player::flight_model_profile(flight_model_loadout_, flight_model_slot(scope));
+    return session_.flight_model_profile(flight_model_slot(scope));
 }
 
 auto UGameSettingsSubsystem::flight_model_loadout() const
     -> sim::player::FlightModelLoadout const& {
-    return flight_model_loadout_;
+    return session_.flight_model_loadout();
 }
 
 auto UGameSettingsSubsystem::set_flight_model_profile(EShipControlScope const scope,
                                                       sim::player::FlightModelProfile profile)
     -> bool {
-    if (!editing_ || awaiting_display_confirmation_ || scope == EShipControlScope::General) {
+    if (scope == EShipControlScope::General ||
+        !session_.set_flight_model_profile(flight_model_slot(scope), profile)) {
         return false;
     }
-    auto const slot{flight_model_slot(scope)};
-    auto const preset{sim::player::flight_model_profile(flight_model_loadout_, slot).base_preset};
-    if (profile.base_preset != preset ||
-        !sim::player::matches_authored_flight_model_topology(profile.config, preset) ||
-        !sim::player::validate_flight_model_config(profile.config)) {
-        return false;
-    }
-    profile.customized = true;
-    sim::player::flight_model_profile(flight_model_loadout_, slot) = profile;
     flight_model_config_changed.Broadcast();
     settings_changed.Broadcast();
     return true;
 }
 
 auto UGameSettingsSubsystem::is_awaiting_display_confirmation() const -> bool {
-    return awaiting_display_confirmation_;
+    return session_.is_awaiting_display_confirmation();
 }
 
 auto UGameSettingsSubsystem::display_confirmation_seconds_remaining() const -> int32 {
-    if (!awaiting_display_confirmation_) {
-        return 0;
-    }
-    return FMath::Max(
-        0, FMath::CeilToInt32(display_confirmation_deadline_ - FPlatformTime::Seconds()));
+    return session_.display_confirmation_seconds_remaining(FPlatformTime::Seconds());
 }
 
 /* **************************************** */
@@ -300,10 +259,10 @@ auto UGameSettingsSubsystem::display_confirmation_seconds_remaining() const -> i
 /* **************************************** */
 auto UGameSettingsSubsystem::tick_display_confirmation(float const delta_seconds) -> bool {
     static_cast<void>(delta_seconds);
-    if (!awaiting_display_confirmation_) {
+    if (!session_.is_awaiting_display_confirmation()) {
         return false;
     }
-    if (FPlatformTime::Seconds() >= display_confirmation_deadline_) {
+    if (session_.display_confirmation_expired(FPlatformTime::Seconds())) {
         revert_display_changes();
         return false;
     }
@@ -311,46 +270,24 @@ auto UGameSettingsSubsystem::tick_display_confirmation(float const delta_seconds
     return true;
 }
 
-void UGameSettingsSubsystem::preview_immediate_settings(FGameSettingsState const& state) {
+void UGameSettingsSubsystem::preview_immediate_settings(GameSettingsState const& state) {
     for (auto const& descriptor : game_setting_descriptors()) {
-        if (descriptor.apply_mode == ESettingApplyMode::Immediate) {
+        if (descriptor.apply_mode == SettingApplyMode::Immediate) {
             backend_.preview_immediate(state, descriptor.id);
         }
     }
 }
 
-auto UGameSettingsSubsystem::normalize_value(FGameSettingDescriptor const& descriptor,
-                                             FGameSettingValue const& value) const
-    -> TOptional<FGameSettingValue> {
-    if (descriptor.control_kind == ESettingControlKind::FloatRange) {
-        auto const* typed_value{std::get_if<float>(&value)};
-        if (typed_value == nullptr) {
-            return {};
-        }
-        auto const clamped{FMath::Clamp(*typed_value,
-                                        static_cast<float>(descriptor.minimum),
-                                        static_cast<float>(descriptor.maximum))};
-        return FGameSettingValue{clamped};
-    }
-    if (descriptor.control_kind == ESettingControlKind::IntegerRange) {
-        auto const* typed_value{std::get_if<int32>(&value)};
-        if (typed_value == nullptr) {
-            return {};
-        }
-        auto const clamped{FMath::Clamp(*typed_value,
-                                        static_cast<int32>(descriptor.minimum),
-                                        static_cast<int32>(descriptor.maximum))};
-        return FGameSettingValue{clamped};
-    }
-    if (descriptor.control_kind == ESettingControlKind::Choice) {
-        auto const choices{backend_.options(descriptor.options_provider)};
-        auto const found{choices.ContainsByPredicate(
-            [&value](FGameSettingOption const& option) { return option.value == value; })};
-        if (!found) {
-            return {};
+auto UGameSettingsSubsystem::normalize_value(GameSettingDescriptor const& descriptor,
+                                             GameSettingValue const& value) const
+    -> std::optional<GameSettingValue> {
+    std::vector<GameSettingValue> choices;
+    if (descriptor.control_kind == SettingControlKind::Choice) {
+        for (auto const& option : backend_.options(descriptor.options_provider)) {
+            choices.push_back(option.value);
         }
     }
-    return value;
+    return normalize_game_setting_value(descriptor, value, choices, true);
 }
 
 auto UGameSettingsSubsystem::input_user_settings() const -> USpaceGameInputUserSettings* {
@@ -480,26 +417,16 @@ auto UGameSettingsSubsystem::binding_conflicts(FControlBindingAddress const& add
     if (!key.IsValid()) {
         return {};
     }
-
     auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
-    auto const* const target{bindings.FindByPredicate(
-        [&address](auto const& binding) { return binding.address == address; })};
-    if (target == nullptr) {
-        return {};
+    auto const native{native_control_bindings(bindings)};
+    TArray<FControlBindingView> result;
+    for (auto const index :
+         control_binding_conflicts(native,
+                                   native_control_binding_address(address),
+                                   TCHAR_TO_UTF8(*key.GetFName().ToString().ToLower()))) {
+        result.Add(bindings[static_cast<int32>(index)]);
     }
-
-    return bindings.FilterByPredicate([&address, key, target](auto const& binding) {
-        auto const same_chord_scope{(!target->chord.IsSet() && !binding.chord.IsSet()) ||
-                                    (target->chord.IsSet() && binding.chord.IsSet() &&
-                                     target->chord->address == binding.chord->address)};
-        auto const same_runtime_scope{target->scope == EShipControlScope::General ||
-                                      binding.scope == EShipControlScope::General ||
-                                      target->scope == binding.scope};
-        return same_runtime_scope && same_chord_scope &&
-               binding.address.profile_id == address.profile_id &&
-               binding.address.hardware_device_id == address.hardware_device_id &&
-               binding.address != address && binding.current_key == key;
-    });
+    return result;
 }
 
 auto UGameSettingsSubsystem::chord_binding_conflicts(FControlBindingAddress const& address,
@@ -510,27 +437,14 @@ auto UGameSettingsSubsystem::chord_binding_conflicts(FControlBindingAddress cons
         return {};
     }
     auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
-    auto const* const target{bindings.FindByPredicate(
-        [&address](auto const& binding) { return binding.address == address; })};
-    if (target == nullptr || !target->chord.IsSet()) {
-        return {};
-    }
-
+    auto const native{native_control_bindings(bindings)};
     TArray<FControlBindingView> result;
-    for (auto const& binding : bindings) {
-        if (binding.address.profile_id != address.profile_id ||
-            binding.address.hardware_device_id != address.hardware_device_id ||
-            binding.address == address || binding.address == target->chord->address) {
-            continue;
-        }
-        auto const conflicts_with_activator{!binding.chord.IsSet() &&
-                                            binding.current_key == activator_key};
-        auto const conflicts_with_action{binding.chord.IsSet() &&
-                                         binding.chord->address == target->chord->address &&
-                                         binding.current_key == action_key};
-        if (conflicts_with_activator || conflicts_with_action) {
-            result.Add(binding);
-        }
+    for (auto const index : control_chord_binding_conflicts(
+             native,
+             native_control_binding_address(address),
+             TCHAR_TO_UTF8(*activator_key.GetFName().ToString().ToLower()),
+             TCHAR_TO_UTF8(*action_key.GetFName().ToString().ToLower()))) {
+        result.Add(bindings[static_cast<int32>(index)]);
     }
     return result;
 }
@@ -586,7 +500,7 @@ auto UGameSettingsSubsystem::set_control_binding(FControlBindingAddress const& a
                                                  FKey const key,
                                                  bool const replace_conflicts) -> bool {
     auto* const settings{input_user_settings()};
-    if (!editing_ || settings == nullptr || !key.IsValid() ||
+    if (!session_.is_editing() || settings == nullptr || !key.IsValid() ||
         address.profile_id != settings->GetActiveKeyProfileId()) {
         return false;
     }
@@ -634,7 +548,7 @@ auto UGameSettingsSubsystem::set_control_chord(FControlBindingAddress const& add
                                                FKey const action_key,
                                                bool const replace_conflicts) -> bool {
     auto* const settings{input_user_settings()};
-    if (!editing_ || settings == nullptr || !can_hold_chord_key(activator_key) ||
+    if (!session_.is_editing() || settings == nullptr || !can_hold_chord_key(activator_key) ||
         !action_key.IsValid() || activator_key == action_key ||
         address.profile_id != settings->GetActiveKeyProfileId()) {
         return false;
@@ -696,7 +610,7 @@ auto UGameSettingsSubsystem::set_control_chord(FControlBindingAddress const& add
 
 auto UGameSettingsSubsystem::clear_control_binding(FControlBindingAddress const& address) -> bool {
     auto* const settings{input_user_settings()};
-    if (!editing_ || settings == nullptr ||
+    if (!session_.is_editing() || settings == nullptr ||
         address.profile_id != settings->GetActiveKeyProfileId()) {
         return false;
     }
@@ -729,7 +643,7 @@ auto UGameSettingsSubsystem::clear_control_binding(FControlBindingAddress const&
 
 auto UGameSettingsSubsystem::reset_control_binding(FControlBindingAddress const& address) -> bool {
     auto* const settings{input_user_settings()};
-    if (!editing_ || settings == nullptr) {
+    if (!session_.is_editing() || settings == nullptr) {
         return false;
     }
     if (!unmap_control_binding(*settings, address)) {
@@ -741,7 +655,7 @@ auto UGameSettingsSubsystem::reset_control_binding(FControlBindingAddress const&
 
 auto UGameSettingsSubsystem::reset_all_control_bindings() -> bool {
     auto* const settings{input_user_settings()};
-    if (!editing_ || settings == nullptr) {
+    if (!session_.is_editing() || settings == nullptr) {
         return false;
     }
     auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
@@ -758,7 +672,7 @@ auto UGameSettingsSubsystem::reset_all_control_bindings() -> bool {
 // Input edit state
 /* **************************************** */
 void UGameSettingsSubsystem::capture_input_edit_state() {
-    applied_control_bindings_ = all_control_bindings();
+    applied_control_bindings_ = native_control_bindings(all_control_bindings());
 }
 
 void UGameSettingsSubsystem::restore_input_edit_state() {
@@ -769,28 +683,22 @@ void UGameSettingsSubsystem::restore_input_edit_state() {
 
     for (auto const& binding : applied_control_bindings_) {
         if (binding.current_key == binding.default_key) {
-            static_cast<void>(unmap_control_binding(*settings, binding.address));
+            static_cast<void>(
+                unmap_control_binding(*settings, engine_control_binding_address(binding.address)));
         } else {
             static_cast<void>(
-                map_control_binding(*settings, binding.address, binding.current_key, true));
+                map_control_binding(*settings,
+                                    engine_control_binding_address(binding.address),
+                                    FKey{FName{UTF8_TO_TCHAR(binding.current_key.c_str())}},
+                                    true));
         }
     }
     settings->ApplySettings();
 }
 
 auto UGameSettingsSubsystem::input_is_dirty() const -> bool {
-    auto const current{all_control_bindings()};
-    if (current.Num() != applied_control_bindings_.Num()) {
-        return true;
-    }
-    auto const count{current.Num()};
-    for (int32 index{}; index < count; ++index) {
-        if (current[index].address != applied_control_bindings_[index].address ||
-            current[index].current_key != applied_control_bindings_[index].current_key) {
-            return true;
-        }
-    }
-    return false;
+    return control_bindings_changed(native_control_bindings(all_control_bindings()),
+                                    applied_control_bindings_);
 }
 
 } // namespace ioj

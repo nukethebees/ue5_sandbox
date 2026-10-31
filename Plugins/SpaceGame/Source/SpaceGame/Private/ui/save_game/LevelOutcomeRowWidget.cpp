@@ -1,8 +1,10 @@
 #include "SpaceGame/ui/save_game/LevelOutcomeRowWidget.h"
 
-#include "SpaceGame/persistence/SaveGameBrowser.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <ioj/persistence/save_browser.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
+
+#include <SandboxCoreEngine/strings.h>
 
 #include <Components/Button.h>
 #include <Components/TextBlock.h>
@@ -27,7 +29,7 @@ void ULevelOutcomeRowWidget::NativeOnInitialized() {
     row_button->OnClicked.AddDynamic(this, &ThisClass::handle_clicked);
 }
 
-void ULevelOutcomeRowWidget::set_outcome(FLevelOutcomeSummary const& outcome) {
+void ULevelOutcomeRowWidget::set_outcome(persistence::LevelOutcomeSummary const& outcome) {
     if (!IsValid(display_name_text)) {
         UE_LOG(LogSandboxUI,
                Warning,
@@ -35,8 +37,8 @@ void ULevelOutcomeRowWidget::set_outcome(FLevelOutcomeSummary const& outcome) {
         return;
     }
 
-    outcome_id_ = outcome.outcome_id;
-    display_name_text->SetText(FText::FromString(outcome.display_name));
+    outcome_id_ = to_fstring(outcome.outcome_id);
+    display_name_text->SetText(FText::FromString(to_fstring(outcome.display_name)));
 }
 
 void ULevelOutcomeRowWidget::set_selected(bool const is_selected) {

@@ -1,28 +1,18 @@
 #include "SpaceGamePresentation/presentation/HUDManager.h"
 
 #include "ioj/sim/collision/spatial_query_manager.h"
-#include "ioj/sim/missions/mission.h"
 #include "ioj/sim/player/sim.h"
 #include "SpaceGamePresentation/entities/TestTeamVisualData.h"
 #include "SpaceGamePresentation/presentation/widgets/ShipHudWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/SimulationHudWidget.h"
-#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
-#include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/entities/entity_type.h>
-#include <ioj/sim/fighters/sim.h>
-#include <ioj/sim/spinners/sim.h>
-#include <ioj/sim/turrets/sim.h>
-#include <ioj/timing.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include <SandboxCoreEngine/strings.h>
-#include <SandboxCoreEngine/TransformConversion.h>
 #include <SandboxCoreEngine/VectorConversion.h>
 
-#include <Algo/Sort.h>
 #include <Blueprint/WidgetLayoutLibrary.h>
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Engine/StaticMesh.h>
@@ -30,9 +20,8 @@
 #include <Materials/MaterialInterface.h>
 #include <ProfilingDebugging/CountersTrace.h>
 
-#include <algorithm>
 #include <concepts>
-#include <utility>
+#include <span>
 
 TRACE_DECLARE_INT_COUNTER(SandboxEntityOverlayCandidateCount,
                           TEXT("Sandbox/EntityOverlay/CandidateCount"));
@@ -51,49 +40,13 @@ void FHUDManager::initialise(sim::Mission const& new_mission,
                              FLevelVisualConfig const& level_config,
                              UInstancedStaticMeshComponent* const soft_target_instances) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::initialise);
-    update_timers.reset();
-    mission_data_buffers = {};
-    entity_count_data_buffers = {};
-    kill_data_ = {};
-    player_status_data_buffers = {};
-    player_flight_data_buffers = {};
-    selected_mapping_context.Reset();
-    has_mission_data = false;
-#if WITH_EDITOR
-    sampled_speed_data_buffers = {};
-    has_sampled_speed_data = false;
-#endif
-
-    tick_loop_.initialise();
-    auto const update_tick_rate{tick_loop_.tick_rate.get_hz()};
-    seconds_per_tick_ = static_cast<float>(1.0 / update_tick_rate);
-
-    std::array const periods{settings_.player_status_update_period,
-                             settings_.entity_count_update_period,
-                             settings_.mission_status_update_period};
-    auto const n_periods{periods.size()};
-    for (std::size_t i{}; i < n_periods; ++i) {
-        if (!valid_periods(periods[i].get())) {
-            UE_LOG(LogSandboxUI, Fatal, TEXT("FHUDManager::initialise: Invalid update period."));
-        }
-
-        auto const tick_count{FMath::CeilToInt64(periods[i] * update_tick_rate)};
-        if (!std::in_range<PeriodicTickCountdown8::counter_type>(tick_count)) {
-            UE_LOG(LogSandboxUI, Fatal, TEXT("FHUDManager::initialise: Invalid tick period."));
-        }
-        auto const tick_period{PeriodicTickCountdown8::period_type::make(
-            static_cast<PeriodicTickCountdown8::counter_type>(tick_count))};
-        update_timers.add_started(tick_period);
-    }
-
-    simulation_.Emplace(view);
-    mission = &new_mission;
+    model_.initialise(new_mission, view);
     spatial_query_manager = &new_spatial_query_manager;
-    auto const& entity_ledger{view.get_entity_ledger()};
     auto const& entity_overlay_settings{level_config.entity_overlay};
-    auto const& overlay{level_config.presentation.entity_overlay};
     entity_overlay_resources_ = entity_overlay_settings;
-    entity_overlay_settings_ = overlay;
+    entity_overlay_settings_ =
+        presentation::sanitize_entity_overlay_settings(level_config.presentation.entity_overlay);
+    auto const& overlay{entity_overlay_settings_};
     soft_target_instances_ = soft_target_instances;
     warned_multiple_world_target_views_ = false;
     configure_world_soft_target_renderer();
@@ -115,44 +68,37 @@ void FHUDManager::initialise(sim::Mission const& new_mission,
         .screen_offset_pixels = FVector2f{ioj::to_unreal(overlay.screen_offset_pixels)},
         .minimum_world_radius = FMath::Min(fighter_radius, capital_radius),
         .maximum_world_radius = FMath::Max(fighter_radius, capital_radius),
-        .minimum_bar_scale = FMath::Max(overlay.minimum_bar_scale, 0.01f),
-        .maximum_bar_scale =
-            FMath::Max(overlay.maximum_bar_scale, FMath::Max(overlay.minimum_bar_scale, 0.01f)),
+        .minimum_bar_scale = overlay.minimum_bar_scale,
+        .maximum_bar_scale = overlay.maximum_bar_scale,
         .inset_pixels = overlay.inset_pixels,
         .maximum_inset_height_ratio = overlay.maximum_inset_height_ratio,
-        .objective_bar_height_scale = FMath::Clamp(overlay.objective_bar_height_scale, 1.0f, 2.0f),
+        .objective_bar_height_scale = overlay.objective_bar_height_scale,
         .objective_frame_pixels = overlay.objective_frame_pixels,
         .screen_edge_padding_pixels = overlay.screen_edge_padding_pixels,
         .background_color = entity_overlay_settings.background_color,
         .fill_color = entity_overlay_settings.fill_color,
     };
-    entity_overlay_team_colours_ = {
-        .capital_ship = UTestTeamVisualData::build_team_colour_cache(
-            level_config.capital_ships.team_visual_data),
-        .fighter =
-            UTestTeamVisualData::build_team_colour_cache(level_config.fighters.team_visual_data),
-        .turret =
-            UTestTeamVisualData::build_team_colour_cache(level_config.turrets.team_visual_data),
+    auto native_colours = [](UTestTeamVisualData const* data) {
+        auto const colours{UTestTeamVisualData::build_team_colour_cache(data)};
+        EnumArray<Team, ui::Color4f> result;
+        constexpr auto count{enum_count<Team>()};
+        for (std::size_t index{}; index < count; ++index) {
+            auto const colour{colours[static_cast<ETestTeam>(index)]};
+            result[static_cast<Team>(index)] = {colour.R, colour.G, colour.B, colour.A};
+        }
+        return result;
     };
+    entity_overlay_team_colours_ = {
+        .capital_ship = native_colours(level_config.capital_ships.team_visual_data),
+        .fighter = native_colours(level_config.fighters.team_visual_data),
+        .turret = native_colours(level_config.turrets.team_visual_data)};
     entity_overlay_maximum_health_ = {
         .capital_ship = level_config.capital_ships.simulation.max_health.get().value(),
         .fighter = level_config.fighters.simulation.health.get().value(),
         .turret = level_config.turrets.simulation.max_health.get().value(),
     };
     soft_target_selection_settings_ = overlay.soft_target;
-    top_killer_ids_buffer.Reset();
     entity_overlay_objective_roles_.Reset();
-    top_killer_ids_buffer.Reserve(entity_ledger.get_num_unique_ids_issued());
-    state = EHUDManagerState::Active;
-
-    collect_mission_data();
-    collect_entity_count_data();
-    collect_kill_data();
-    collect_player_status_data();
-    collect_player_flight_data();
-#if WITH_EDITOR
-    collect_sampled_speed_data();
-#endif
 
     for (auto const& registration : registered_huds) {
         auto* const hud{registration.hud.Get()};
@@ -187,7 +133,6 @@ void FHUDManager::deactivate() {
     TRACE_COUNTER_SET(SandboxRadarCandidateCount, 0);
     TRACE_COUNTER_SET(SandboxRadarVisibleCount, 0);
     TRACE_COUNTER_SET(SandboxRadarUploadBytes, 0);
-    update_timers.reset();
     clear_world_soft_targets();
     for (auto& registration : registered_huds) {
         auto* const hud{registration.hud.Get()};
@@ -200,63 +145,35 @@ void FHUDManager::deactivate() {
         }
     }
     registered_huds.Reset();
-    simulation_.Reset();
-    mission = nullptr;
+    model_.deactivate();
     spatial_query_manager = nullptr;
-    mission_data_buffers = {};
-    entity_count_data_buffers = {};
-    kill_data_ = {};
-    player_status_data_buffers = {};
-    player_flight_data_buffers = {};
-    top_killer_ids_buffer.Reset();
     entity_overlay_objective_roles_.Reset();
-    has_mission_data = false;
-    seconds_per_tick_ = 0.0f;
     soft_target_instances_ = nullptr;
     soft_target_mesh_vertical_radius_ = 0.0f;
     warned_multiple_world_target_views_ = false;
-    state = EHUDManagerState::Disabled;
-#if WITH_EDITOR
-    sampled_speed_data_buffers = {};
-    has_sampled_speed_data = false;
-#endif
 }
 
 void FHUDManager::advance(double const dt) {
-    tick_loop_.add_time(dt);
-    while (tick_loop_.try_tick()) {
-        tick(1);
-    }
-}
-void FHUDManager::tick(PeriodicTickCountdown8::counter_type const num_ticks) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::tick);
-    check(num_ticks >= 0);
-    if (state != EHUDManagerState::Active) {
+    if (!model_.active()) {
         return;
     }
-
-    auto const changes{collect_data(num_ticks)};
-    update_huds(changes);
-    update_entity_overlays(static_cast<float>(num_ticks) * seconds_per_tick_);
+    update_huds(model_.advance(dt));
+    update_entity_overlays(static_cast<float>(dt));
     update_radars();
 }
-
-void FHUDManager::force_sample() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::force_sample);
-    if (state != EHUDManagerState::Active) {
+void FHUDManager::tick(PeriodicTickCountdown8::counter_type const num_ticks) {
+    if (!model_.active()) {
         return;
     }
-
-    hud_manager::FDataChanges changes;
-    changes.mission = collect_mission_data();
-    changes.entity_counts = collect_entity_count_data();
-    collect_kill_data();
-    changes.player_status = collect_player_status_data();
-    changes.player_flight = collect_player_flight_data();
-#if WITH_EDITOR
-    changes.sampled_speed = collect_sampled_speed_data();
-#endif
-    update_huds(changes);
+    update_huds(model_.tick(num_ticks));
+    update_entity_overlays(static_cast<float>(num_ticks) * model_.seconds_per_tick());
+    update_radars();
+}
+void FHUDManager::force_sample() {
+    if (!model_.active()) {
+        return;
+    }
+    update_huds(model_.force_sample());
     update_entity_overlays(0.0f);
     update_radars();
 }
@@ -273,7 +190,7 @@ void FHUDManager::register_hud(USimulationHudWidget& hud) {
     registration.entity_overlay_frame_store =
         MakeShared<FEntityOverlayFrameStore, ESPMode::ThreadSafe>();
     hud.set_entity_overlay_style(entity_overlay_style_);
-    if (state == EHUDManagerState::Active && entity_overlay_settings_.enabled) {
+    if (model_.active() && entity_overlay_settings_.enabled) {
         hud.set_entity_overlay_frame_store(registration.entity_overlay_frame_store);
     } else {
         hud.set_entity_overlay_frame_store({});
@@ -281,11 +198,11 @@ void FHUDManager::register_hud(USimulationHudWidget& hud) {
     if (auto* const ship_hud{registration.ship_hud.Get()}; IsValid(ship_hud)) {
         registration.radar_frame_store = MakeShared<FRadarFrameStore, ESPMode::ThreadSafe>();
         ship_hud->set_radar_style(radar_style_);
-        ship_hud->set_radar_frame_store(state == EHUDManagerState::Active && radar_settings_.enabled
+        ship_hud->set_radar_frame_store(model_.active() && radar_settings_.enabled
                                             ? registration.radar_frame_store
                                             : FRadarFrameStorePtr{});
     }
-    if (state == EHUDManagerState::Active) {
+    if (model_.active()) {
         synchronise_hud(hud);
         // Registration can precede the first HUD tick, or follow new simulation spawns.
         if (entity_overlay_settings_.enabled || radar_settings_.enabled) {
@@ -315,35 +232,7 @@ void FHUDManager::unregister_hud(USimulationHudWidget& hud) {
 }
 
 void FHUDManager::set_selected_mapping_context(FString const& context_name) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::set_selected_mapping_context);
-    if (selected_mapping_context == context_name) {
-        return;
-    }
-
-    selected_mapping_context = context_name;
-}
-
-auto FHUDManager::collect_data(PeriodicTickCountdown8::counter_type const num_ticks)
-    -> hud_manager::FDataChanges {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_data);
-    hud_manager::FDataChanges changes;
-    changes.player_flight = collect_player_flight_data();
-#if WITH_EDITOR
-    changes.sampled_speed = collect_sampled_speed_data();
-#endif
-
-    update_timers.tick(num_ticks);
-    if (update_timers.try_consume(FHUDUpdateTimerIndex::player_status)) {
-        changes.player_status = collect_player_status_data();
-    }
-    if (update_timers.try_consume(FHUDUpdateTimerIndex::mission_status)) {
-        changes.mission = collect_mission_data();
-    }
-    if (update_timers.try_consume(FHUDUpdateTimerIndex::entity_counts)) {
-        changes.entity_counts = collect_entity_count_data();
-        collect_kill_data();
-    }
-    return changes;
+    model_.set_selected_mapping_context(TCHAR_TO_UTF8(*context_name));
 }
 
 void FHUDManager::update_entity_overlays(float const delta_seconds) {
@@ -380,43 +269,11 @@ void FHUDManager::update_entity_overlays(float const delta_seconds) {
     }
 }
 
-auto FHUDManager::display_batches() const -> std::array<presentation::AgentDisplayBatch, 4> {
-    auto const& view{read_access()};
-    auto const& capitals_sim{view.get_capitals()};
-    auto const& fighters_sim{view.get_fighters()};
-    auto const& turrets_sim{view.get_turrets()};
-    auto const capitals{capitals_sim.get_entities()};
-    auto const fighters{fighters_sim.get_entities()};
-    auto const turrets{turrets_sim.get_entities()};
-    auto const spinners{view.get_spinners().get_entities()};
-    using sim::EntityType;
-    return {{
-        {EntityType::CapitalShip,
-         capitals.entity_ids(),
-         capitals.view_locations(),
-         {},
-         capitals_sim.get_healths(),
-         capitals.teams()},
-        {EntityType::Fighter,
-         fighters.entity_ids(),
-         fighters.view_locations(),
-         fighters.view_velocities(),
-         fighters_sim.get_healths(),
-         fighters.teams()},
-        {EntityType::Turret,
-         turrets.entity_ids(),
-         turrets.view_locations(),
-         {},
-         turrets_sim.get_healths(),
-         turrets.teams()},
-        {EntityType::TubeSpinner, spinners.entity_ids(), spinners.view_locations(), {}, {}, {}},
-    }};
-}
-
 void FHUDManager::update_entity_overlay_objective_roles() {
     // Generic expressions do not imply a unique defend/destroy presentation role.
-    entity_overlay_objective_roles_.Init(EEntityOverlayObjectiveRole::None,
-                                         presentation::display_entity_count(display_batches()));
+    entity_overlay_objective_roles_.Init(
+        ui::entity_overlay::ObjectiveRole::None,
+        presentation::display_entity_count(model_.display_batches()));
 }
 
 void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
@@ -452,17 +309,18 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
     }
     controller->GetPlayerViewPoint(camera_location, camera_rotation);
 
-    auto const batches{display_batches()};
+    auto const batches{model_.display_batches()};
     auto const& entity_radii{spatial_query_manager->get_entity_type_radii()};
     ioj::presentation::SoftTargetResult soft_target;
-    if (auto const* player_ship{registration.ship_hud.IsValid() ? player_for_collection()
+    if (auto const* player_ship{registration.ship_hud.IsValid() ? model_.player_for_collection()
                                                                 : nullptr}) {
         auto const firing_transform{player_ship->get_middle_socket()};
         auto const camera_transform{FRotationMatrix{camera_rotation}};
         soft_target =
             select_soft_target(batches,
                                entity_radii,
-                               entity_overlay_objective_roles_,
+                               {entity_overlay_objective_roles_.GetData(),
+                                static_cast<std::size_t>(entity_overlay_objective_roles_.Num())},
                                {.view = overlay_view,
                                 .aim_origin = FVector3f{to_unreal(firing_transform.location)},
                                 .aim_direction = FVector3f{to_unreal(firing_transform.forward())},
@@ -509,21 +367,26 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
         }
     }
 
-    auto const result{collect_entity_overlay_instances(batches,
-                                                       entity_radii,
-                                                       entity_overlay_objective_roles_,
-                                                       entity_overlay_team_colours_,
-                                                       entity_overlay_maximum_health_,
-                                                       overlay_view.camera_origin,
-                                                       entity_overlay_settings_.maximum_range,
-                                                       frame.instances,
-                                                       registration.entity_overlay_collector)};
+    auto const result{presentation::collect_entity_overlay_instances(
+        batches,
+        entity_radii,
+        std::span{entity_overlay_objective_roles_.GetData(),
+                  static_cast<std::size_t>(entity_overlay_objective_roles_.Num())},
+        entity_overlay_team_colours_,
+        entity_overlay_maximum_health_,
+        Vector3f{overlay_view.camera_origin},
+        entity_overlay_settings_.maximum_range,
+        registration.overlay_instances)};
+    frame.instances.Reset();
+    frame.instances.Append(registration.overlay_instances.data(),
+                           static_cast<int32>(registration.overlay_instances.size()));
     registration.entity_overlay_frame_store->publish();
 
     TRACE_COUNTER_SET(SandboxEntityOverlayCandidateCount, result.candidate_count);
     TRACE_COUNTER_SET(SandboxEntityOverlayInvalidHealthCount, result.invalid_health_count);
     TRACE_COUNTER_SET(SandboxEntityOverlayUploadBytes,
-                      static_cast<int64>(result.candidate_count) * sizeof(FEntityOverlayInstance));
+                      static_cast<int64>(registration.overlay_instances.size()) *
+                          sizeof(ui::entity_overlay::Instance));
 }
 
 void FHUDManager::configure_world_soft_target_renderer() {
@@ -591,21 +454,17 @@ void FHUDManager::add_world_soft_target(presentation::SoftTargetMarker const& ta
                                         FLinearColor const in_range_color,
                                         FWorldSoftTargetCustomDataBuffer& custom_data) {
     auto* const instances{soft_target_instances_.Get()};
-    auto const& visual{target.visual};
-    if (!IsValid(instances) || !instances->IsVisible() || !target.location ||
-        target.visibility <= 0.0f || visual.world_units_per_pixel <= UE_SMALL_NUMBER ||
-        soft_target_mesh_vertical_radius_ <= UE_SMALL_NUMBER) {
+    if (!IsValid(instances) || !instances->IsVisible()) {
         return;
     }
 
-    auto const target_fit_radius{visual.radius_pixels * visual.world_units_per_pixel};
-    auto const range_alpha{visual.range_alpha.get()};
-    auto const closing_scale{FMath::Lerp(
-        FMath::Max(entity_overlay_settings_.soft_target.bracket_start_radius_multiplier, 1.0f),
-        1.0f,
-        range_alpha)};
-    auto const uniform_scale{target_fit_radius * closing_scale / soft_target_mesh_vertical_radius_};
-    if (!FMath::IsFinite(uniform_scale) || uniform_scale <= UE_SMALL_NUMBER) {
+    auto const visual{presentation::make_world_soft_target_visual(
+        target,
+        entity_overlay_settings_.soft_target,
+        soft_target_mesh_vertical_radius_,
+        {neutral_color.R, neutral_color.G, neutral_color.B, neutral_color.A},
+        {in_range_color.R, in_range_color.G, in_range_color.B, in_range_color.A})};
+    if (!visual) {
         return;
     }
 
@@ -616,30 +475,21 @@ void FHUDManager::add_world_soft_target(presentation::SoftTargetMarker const& ta
     }
     auto const camera_up{FRotationMatrix{camera_rotation}.GetUnitAxis(EAxis::Z)};
     auto const rotation{FRotationMatrix::MakeFromZY(facing_direction, camera_up).ToQuat()};
-    FTransform const transform{rotation, location, FVector{uniform_scale}};
+    FTransform const transform{rotation, location, FVector{visual->scale}};
     auto const instance_index{instances->AddInstance(transform, true)};
     if (instance_index == INDEX_NONE) {
         UE_LOG(LogSandboxUI, Error, TEXT("FHUDManager: Failed to add world soft-target instance."));
         return;
     }
 
-    auto const smooth_range{range_alpha * range_alpha * (3.0f - 2.0f * range_alpha)};
-    auto const color_alpha{smooth_range * smooth_range};
-    auto const color{FMath::Lerp(neutral_color, in_range_color, color_alpha)};
-    auto const opacity{
-        FMath::Clamp((entity_overlay_settings_.soft_target.opacity +
-                      target.pulse * entity_overlay_settings_.soft_target.pulse_opacity_boost) *
-                         target.visibility * color.A,
-                     0.0f,
-                     1.0f)};
     check(custom_data.Num() == instance_index * soft_target_world::custom_data_count);
     float instance_custom_data[soft_target_world::custom_data_count]{};
-    instance_custom_data[soft_target_world::color_red_index] = color.R;
-    instance_custom_data[soft_target_world::color_green_index] = color.G;
-    instance_custom_data[soft_target_world::color_blue_index] = color.B;
-    instance_custom_data[soft_target_world::opacity_index] = opacity;
-    instance_custom_data[soft_target_world::pulse_index] = FMath::Clamp(target.pulse, 0.0f, 1.0f);
-    instance_custom_data[soft_target_world::range_alpha_index] = range_alpha;
+    instance_custom_data[soft_target_world::color_red_index] = visual->colour.r;
+    instance_custom_data[soft_target_world::color_green_index] = visual->colour.g;
+    instance_custom_data[soft_target_world::color_blue_index] = visual->colour.b;
+    instance_custom_data[soft_target_world::opacity_index] = visual->colour.a;
+    instance_custom_data[soft_target_world::pulse_index] = visual->pulse;
+    instance_custom_data[soft_target_world::range_alpha_index] = visual->range_alpha;
     custom_data.Append(instance_custom_data, soft_target_world::custom_data_count);
 }
 
@@ -670,215 +520,38 @@ void FHUDManager::update_radar(FRegisteredHud& registration) {
 
     check(registration.radar_frame_store.IsValid());
     auto& frame{registration.radar_frame_store->next()};
-    auto const* player_ship{player_for_collection()};
+    auto const* player_ship{model_.player_for_collection()};
     if (!player_ship || !player_ship->is_alive()) {
         frame.instances.Reset();
         registration.radar_frame_store->publish();
         return;
     }
 
-    auto const result{
-        collect_radar_instances(display_batches(),
-                                entity_overlay_objective_roles_,
-                                radar_contact_colours_,
-                                to_unreal(player_ship->get_physical_state().transform),
-                                player_ship->unique_entity_id,
-                                to_unreal(player_ship->team),
-                                radar_settings_,
-                                frame)};
+    auto const result{presentation::collect_radar_instances(
+        model_.display_batches(),
+        std::span{entity_overlay_objective_roles_.GetData(),
+                  static_cast<std::size_t>(entity_overlay_objective_roles_.Num())},
+        radar_contact_colours_,
+        player_ship->get_physical_state().transform,
+        player_ship->unique_entity_id,
+        player_ship->team,
+        radar_settings_,
+        registration.radar_frame)};
+    frame.instances.Reset();
+    frame.instances.Append(registration.radar_frame.instances.data(),
+                           static_cast<int32>(registration.radar_frame.instances.size()));
+    frame.combat_display_radius = registration.radar_frame.combat_display_radius;
+    frame.tactical_display_radius = registration.radar_frame.tactical_display_radius;
     registration.radar_frame_store->publish();
 
     TRACE_COUNTER_SET(SandboxRadarCandidateCount, result.candidate_count);
     TRACE_COUNTER_SET(SandboxRadarVisibleCount, result.visible_count);
     TRACE_COUNTER_SET(SandboxRadarUploadBytes,
-                      static_cast<int64>(result.visible_count) * sizeof(FRadarInstance));
+                      static_cast<int64>(result.visible_count) * sizeof(ui::radar::Instance));
 }
-bool FHUDManager::collect_mission_data() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_mission_data);
-    check(mission);
-    if (mission->objectives().size() == 0) {
-        return false;
-    }
-
-    auto& next_data{mission_data_buffers.next()};
-    read_mission_data(next_data);
-    mission_data_buffers.cycle();
-    has_mission_data = true;
-    return mission_data_buffers.current() != mission_data_buffers.previous();
-}
-void FHUDManager::read_mission_data(hud_manager::FMissionDataCache& out) const {
-    check(mission);
-    out = {};
-    out.active = static_cast<int32>(mission->active_objectives().size());
-    out.completed = static_cast<int32>(mission->completed_objectives().size());
-    out.inactive = static_cast<int32>(mission->inactive_objectives().size());
-    auto const& objectives{mission->objectives()};
-    for (auto const id : mission->active_objectives()) {
-        if (!out.active_titles.IsEmpty()) {
-            out.active_titles += TEXT(" / ");
-        }
-        out.active_titles += to_fstring(to_string(objectives.team(id))) + TEXT(": ");
-        out.active_titles += to_fstring(objectives.title(id));
-    }
-}
-bool FHUDManager::collect_entity_count_data() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_entity_count_data);
-    auto const& entity_ledger{read_access().get_entity_ledger()};
-
-    auto& next_data{entity_count_data_buffers.next()};
-    next_data.alive_per_team_and_type = entity_ledger.count_alive_per_team_and_type();
-    entity_count_data_buffers.cycle();
-    return entity_count_data_buffers.current() != entity_count_data_buffers.previous();
-}
-void FHUDManager::collect_kill_data() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_kill_data);
-    auto const& entity_ledger{read_access().get_entity_ledger()};
-
-    auto& next_data{kill_data_};
-    auto const& unique_entities{entity_ledger.get_unique_entities()};
-    auto const n_unique_entities{static_cast<int32>(unique_entities.num())};
-
-    auto const kills{unique_entities.kills()};
-    auto const entity_ids{unique_entities.entity_ids()};
-    auto const entity_types{unique_entities.entity_types()};
-    auto const teams{unique_entities.teams()};
-    auto const killed_by{unique_entities.killed_by()};
-
-    top_killer_ids_buffer.Reset();
-    for (int32 entity_index{0}; entity_index < n_unique_entities; ++entity_index) {
-        if (kills[entity_index] == 0) {
-            continue;
-        }
-        top_killer_ids_buffer.Add(entity_ids[entity_index]);
-    }
-    Algo::Sort(top_killer_ids_buffer,
-               [&entity_ledger, kills](sim::EntityId const lhs, sim::EntityId const rhs) {
-                   auto const lhs_kills{kills[entity_ledger.get_history_index(lhs)]};
-                   auto const rhs_kills{kills[entity_ledger.get_history_index(rhs)]};
-                   return lhs_kills != rhs_kills ? lhs_kills > rhs_kills
-                                                 : entity_ledger.get_history_index(lhs) <
-                                                       entity_ledger.get_history_index(rhs);
-               });
-
-    next_data.top_killers.Reset();
-    auto const n_top_killers{top_killer_ids_buffer.Num()};
-    for (int32 top_killer_index{0}; top_killer_index < n_top_killers; ++top_killer_index) {
-        auto const entity_id{top_killer_ids_buffer[top_killer_index]};
-        auto const history_index{entity_ledger.get_history_index(entity_id)};
-        next_data.top_killers.Add({entity_id,
-                                   entity_types[history_index],
-                                   to_unreal(teams[history_index]),
-                                   static_cast<int32>(kills[history_index])});
-    }
-
-    next_data.team_kill_matrix = {};
-    for (int32 victim_index{0}; victim_index < n_unique_entities; ++victim_index) {
-        if (!killed_by[victim_index].is_valid()) {
-            continue;
-        }
-
-        auto const killer_id{killed_by[victim_index]};
-        check(killer_id.is_valid());
-        auto const killer_history_index{entity_ledger.get_history_index(killer_id)};
-        auto const team_index{std::to_underlying(teams[killer_history_index])};
-        auto const type_index{std::to_underlying(entity_types[victim_index])};
-        if (team_index >= ship_hud::FTeamKillMatrix::team_count ||
-            type_index >= ship_hud::FTeamKillMatrix::entity_type_count) {
-            continue;
-        }
-        next_data.team_kill_matrix.add(to_unreal(teams[killer_history_index]),
-                                       entity_types[victim_index]);
-    }
-}
-bool FHUDManager::collect_player_status_data() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_player_status_data);
-    auto& next_data{player_status_data_buffers.next()};
-    next_data = {};
-
-    if (auto const* player_ship{player_for_collection()}) {
-        next_data.has_player_ship = true;
-        auto const player_health{player_ship->get_health()};
-        next_data.health = {player_health.health.value(), player_health.max_health.value()};
-        next_data.speed = player_ship->get_speed();
-        next_data.target_speed =
-            player_ship->get_controller_state().persistent_forward_target_speed;
-        next_data.energy = player_ship->get_energy();
-        next_data.points = player_ship->get_kills();
-        next_data.fire_rate = player_ship->laser_fire_rate;
-    }
-
-    player_status_data_buffers.cycle();
-    return player_status_data_buffers.current() != player_status_data_buffers.previous();
-}
-bool FHUDManager::collect_player_flight_data() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_player_flight_data);
-    auto& next_data{player_flight_data_buffers.next()};
-    next_data = {};
-    next_data.selected_mapping_context = selected_mapping_context;
-
-    if (auto const* player_ship{player_for_collection()}) {
-        auto const ship_socket{player_ship->get_middle_socket()};
-        auto const& physical_state{player_ship->get_physical_state()};
-        auto const local_velocity{
-            physical_state.transform.inverse_transform_vector_no_scale(physical_state.velocity)};
-        auto const& intent{player_ship->get_flight_intent()};
-        auto const& controller{player_ship->get_controller_state()};
-        auto const& flight_model{player_ship->get_active_flight_model_profile()};
-        auto const forward_limit{
-            std::max(flight_model.config.translation.forward.normal.positive_speed_limit, 1.f)};
-        auto const right_limit{
-            std::max(flight_model.config.translation.right.normal.positive_speed_limit, 1.f)};
-        auto const target_velocity{
-            physical_state.transform.forward() * controller.persistent_forward_target_speed +
-            physical_state.transform.right() * controller.persistent_right_target_speed};
-
-        next_data.has_player_ship = true;
-        next_data.flight_vector_debug = {
-            .turn_input = {intent.rotation.y(), intent.rotation.x()},
-            .move_input = {intent.translation.y(), intent.translation.x()},
-            .target_velocity = to_unreal(player_ship->get_sampled_target_speed_scale()),
-            .local_velocity =
-                {
-                    static_cast<float>(local_velocity.y() / right_limit),
-                    static_cast<float>(local_velocity.x() / forward_limit),
-                },
-        };
-        next_data.ship_velocity = to_unreal(physical_state.velocity);
-        next_data.target_velocity = to_unreal(target_velocity);
-        next_data.flight_model_preset = flight_model.base_preset;
-        next_data.flight_model_customized = flight_model.customized;
-        next_data.throttle = intent.accelerator;
-        next_data.boost_brake_state = player_ship->get_controller_state().effective_action;
-        next_data.crosshair_origin = to_unreal(ship_socket.location);
-        next_data.crosshair_direction = to_unreal(ship_socket.forward());
-    }
-
-    player_flight_data_buffers.cycle();
-    return player_flight_data_buffers.current() != player_flight_data_buffers.previous();
-}
-#if WITH_EDITOR
-bool FHUDManager::collect_sampled_speed_data() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_sampled_speed_data);
-    auto& next_data{sampled_speed_data_buffers.next()};
-    next_data = {};
-    if (auto const* player_ship{read_access().get_player()}) {
-        auto const& samples{player_ship->speed_samples};
-        next_data.samples.Reserve(static_cast<int32>(samples.size()));
-        for (auto const sample : samples) {
-            next_data.samples.Add(to_unreal(sample));
-        }
-        next_data.oldest_index = player_ship->speed_sample_index;
-        has_sampled_speed_data = true;
-    }
-
-    sampled_speed_data_buffers.cycle();
-    return sampled_speed_data_buffers.current() != sampled_speed_data_buffers.previous();
-}
-#endif
-
 template <typename Hud>
-void FHUDManager::update_hud(Hud& hud, hud_manager::FDataChanges const& changes) {
-    if (changes.mission) {
+void FHUDManager::update_hud(Hud& hud, presentation::HudChanges const& changes) {
+    if (changes.mission && model_.has_mission_data()) {
         update_mission_hud(hud);
     }
     if (changes.entity_counts) {
@@ -898,7 +571,7 @@ void FHUDManager::update_hud(Hud& hud, hud_manager::FDataChanges const& changes)
 #endif
     }
 }
-void FHUDManager::update_huds(hud_manager::FDataChanges const& changes) {
+void FHUDManager::update_huds(presentation::HudChanges const& changes) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_huds);
     for (auto const& registration : registered_huds) {
         auto* const hud{registration.hud.Get()};
@@ -914,7 +587,7 @@ void FHUDManager::synchronise_hud(USimulationHudWidget& hud) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::synchronise_hud);
     check(IsValid(&hud));
 
-    if (has_mission_data) {
+    if (model_.has_mission_data()) {
         update_mission_hud(hud);
     }
     update_entity_count_hud(hud);
@@ -925,7 +598,7 @@ void FHUDManager::synchronise_hud(USimulationHudWidget& hud) const {
     update_player_status_hud(*ship_hud);
     update_player_flight_hud(*ship_hud);
 #if WITH_EDITOR
-    if (has_sampled_speed_data) {
+    if (model_.has_sampled_speed_data()) {
         update_sampled_speed_hud(*ship_hud);
     }
 #endif
@@ -933,8 +606,8 @@ void FHUDManager::synchronise_hud(USimulationHudWidget& hud) const {
 
 void FHUDManager::update_mission_hud(USimulationHudWidget& hud) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_mission_hud);
-    check(has_mission_data);
-    auto const& data{mission_data_buffers.current()};
+    check(model_.has_mission_data());
+    auto const& data{model_.mission_data()};
     hud.set_mission_data(data);
     if (auto* const ship_hud{Cast<UShipHudWidget>(&hud)}; IsValid(ship_hud)) {
         ship_hud->set_stopwatch_widget_visibility(ESlateVisibility::Collapsed);
@@ -942,16 +615,16 @@ void FHUDManager::update_mission_hud(USimulationHudWidget& hud) const {
 }
 void FHUDManager::update_entity_count_hud(USimulationHudWidget& hud) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_entity_count_hud);
-    hud.set_entity_counts(entity_count_data_buffers.current().alive_per_team_and_type);
+    hud.set_entity_counts(model_.entity_count_data().alive_per_team_and_type);
 }
 void FHUDManager::update_player_status_hud(UShipHudWidget& hud) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_player_status_hud);
-    auto const& data{player_status_data_buffers.current()};
+    auto const& data{model_.player_status_data()};
     if (!data.has_player_ship) {
         return;
     }
 
-    hud.set_health(data.health);
+    hud.set_health({data.health.health.value(), data.health.max_health.value()});
     hud.set_speed(data.speed);
     hud.set_target_speed(data.target_speed);
     hud.set_energy(data.energy);
@@ -960,17 +633,17 @@ void FHUDManager::update_player_status_hud(UShipHudWidget& hud) const {
 }
 void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_player_flight_hud);
-    auto const& data{player_flight_data_buffers.current()};
+    auto const& data{model_.player_flight_data()};
     if (!data.has_player_ship) {
         hud.set_crosshair_widget_visibility(ESlateVisibility::Collapsed);
         return;
     }
 
     hud.set_crosshair_widget_visibility(ESlateVisibility::Visible);
-    hud.set_selected_imc(FStringView{data.selected_mapping_context});
+    hud.set_selected_imc(to_fstring(data.selected_mapping_context));
     hud.set_flight_vector_debug(data.flight_vector_debug);
-    hud.set_ship_velocity(data.ship_velocity);
-    hud.set_target_velocity(data.target_velocity);
+    hud.set_ship_velocity(to_unreal(data.ship_velocity));
+    hud.set_target_velocity(to_unreal(data.target_velocity));
     FString flight_model;
     switch (data.flight_model_preset) {
         case sim::player::FlightModelPreset::Starfox:
@@ -1003,13 +676,17 @@ void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
     FVector2d near_screen_position{};
     FVector2d far_screen_position{};
     constexpr bool player_viewport_relative{false};
-    if (!UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(
-            controller, near_world_position, near_screen_position, player_viewport_relative)) {
+    if (!UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(controller,
+                                                                    to_unreal(near_world_position),
+                                                                    near_screen_position,
+                                                                    player_viewport_relative)) {
         UE_LOG(
             LogSandboxUI, Warning, TEXT("FHUDManager: Failed to project near crosshair position."));
     }
-    if (!UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(
-            controller, far_world_position, far_screen_position, player_viewport_relative)) {
+    if (!UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(controller,
+                                                                    to_unreal(far_world_position),
+                                                                    far_screen_position,
+                                                                    player_viewport_relative)) {
         UE_LOG(
             LogSandboxUI, Warning, TEXT("FHUDManager: Failed to project far crosshair position."));
     }
@@ -1018,20 +695,15 @@ void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
 #if WITH_EDITOR
 void FHUDManager::update_sampled_speed_hud(UShipHudWidget& hud) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_sampled_speed_hud);
-    check(has_sampled_speed_data);
-    auto const& data{sampled_speed_data_buffers.current()};
-    hud.update_sampled_speed(TConstArrayView<FVector2d>{data.samples}, data.oldest_index);
+    check(model_.has_sampled_speed_data());
+    auto const& data{model_.sampled_speed_data()};
+    TArray<FVector2d> samples;
+    samples.Reserve(static_cast<int32>(data.samples.size()));
+    for (auto const sample : data.samples) {
+        samples.Add(to_unreal(sample));
+    }
+    hud.update_sampled_speed(samples, static_cast<int32>(data.oldest_index));
 }
 #endif
-
-auto FHUDManager::player_for_collection() const -> sim::player::Sim const* {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::player_for_collection);
-    auto const& view{read_access()};
-    auto const* player{view.get_player()};
-    return player && player->unique_entity_id.is_valid() &&
-                   view.get_entity_ledger().is_valid_unique_id(player->unique_entity_id)
-             ? player
-             : nullptr;
-}
 
 }

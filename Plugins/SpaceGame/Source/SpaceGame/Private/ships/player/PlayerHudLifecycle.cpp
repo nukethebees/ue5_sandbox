@@ -15,12 +15,12 @@
 auto FPlayerHudLifecycle::initialise(ASpaceGamePlayerController& owner,
                                      ATestBatchOrchestrator* orchestrator,
                                      UTestBatchGameUiData* ui_data,
-                                     EPlayerControlContext const context,
+                                     ::ioj::levels::ControlContext const context,
                                      float const observer_speed) -> bool {
     if (IsValid(hud_widget_)) {
-        auto const correct_type{context == EPlayerControlContext::Player
+        auto const correct_type{context == ::ioj::levels::ControlContext::Player
                                     ? hud_widget_->IsA<UShipHudWidget>()
-                                    : context == EPlayerControlContext::Observer &&
+                                    : context == ::ioj::levels::ControlContext::Observer &&
                                           hud_widget_->IsA<UBattleViewerHudWidget>()};
         if (correct_type) {
             return true;
@@ -67,10 +67,10 @@ auto FPlayerHudLifecycle::initialise(ASpaceGamePlayerController& owner,
 
     TSubclassOf<USimulationHudWidget> hud_widget_class;
     FName widget_name;
-    if (context == EPlayerControlContext::Player) {
+    if (context == ::ioj::levels::ControlContext::Player) {
         hud_widget_class = ui_data->get_widget_class<UShipHudWidget>();
         widget_name = TEXT("ship_hud");
-    } else if (context == EPlayerControlContext::Observer) {
+    } else if (context == ::ioj::levels::ControlContext::Observer) {
         hud_widget_class = ui_data->get_widget_class<UBattleViewerHudWidget>();
         widget_name = TEXT("battle_viewer_hud");
     } else {

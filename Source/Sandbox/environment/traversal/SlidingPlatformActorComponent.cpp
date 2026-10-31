@@ -1,5 +1,9 @@
 #include "Sandbox/environment/traversal/SlidingPlatformActorComponent.h"
 
+#include <ioj/vector_value_math.h>
+
+#include <SandboxCoreEngine/VectorConversion.h>
+
 #include "GameFramework/Actor.h"
 
 USlidingPlatformActorComponent::USlidingPlatformActorComponent() {
@@ -10,8 +14,10 @@ void USlidingPlatformActorComponent::BeginPlay() {
     Super::BeginPlay();
 
     if (auto* owner{GetOwner()}) {
-        start_location = owner->GetActorLocation();
-        end_location = start_location + owner->GetActorForwardVector() * move_distance;
+        auto const start{ioj::Vector3d{owner->GetActorLocation()}};
+        travel_ = {.start = start,
+                   .end = start + ioj::Vector3d{owner->GetActorForwardVector()} *
+                                      static_cast<double>(move_distance)};
     }
 
     SetComponentTickEnabled(false);
@@ -23,18 +29,11 @@ void USlidingPlatformActorComponent::TickComponent(float DeltaTime,
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
     if (auto* owner{GetOwner()}) {
-        auto const current_location{owner->GetActorLocation()};
-        auto const target_location{moving_forward ? end_location : start_location};
-        auto const direction{(target_location - current_location).GetSafeNormal()};
-        auto const step{move_speed * DeltaTime};
-        auto const distance_to_target{FVector::Dist(current_location, target_location)};
-
-        if (step >= distance_to_target) {
-            owner->SetActorLocation(target_location);
-            moving_forward = !moving_forward;
+        auto const step{ioj::advance_linear_travel(
+            travel_, ioj::Vector3d{owner->GetActorLocation()}, move_speed, DeltaTime)};
+        owner->SetActorLocation(ioj::to_unreal(step.location));
+        if (step.arrived) {
             SetComponentTickEnabled(false);
-        } else {
-            owner->SetActorLocation(current_location + direction * step);
         }
     }
 }

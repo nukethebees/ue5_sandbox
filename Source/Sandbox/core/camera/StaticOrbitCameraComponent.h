@@ -1,13 +1,11 @@
 #pragma once
 
+#include <ioj/math_types.h>
+
 #include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
 
 #include "StaticOrbitCameraComponent.generated.h"
-
-// Make a camera actor rotate around a point
-// The point is either set with an arrow component or via a raycast from the camera
-// to the first object hit
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SANDBOX_API UStaticOrbitCameraComponent : public UActorComponent {
@@ -28,8 +26,8 @@ class SANDBOX_API UStaticOrbitCameraComponent : public UActorComponent {
                                ELevelTick TickType,
                                FActorComponentTickFunction* ThisTickFunction) override;
   private:
-    FVector pivot_point{};
-    float current_angle_deg{0.0f};
+    ioj::Vector3d pivot_point_{};
+    double current_angle_deg_{};
 
     void update_camera_position(float delta_time);
 };

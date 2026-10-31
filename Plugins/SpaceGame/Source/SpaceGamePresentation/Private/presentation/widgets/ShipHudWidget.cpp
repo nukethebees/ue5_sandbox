@@ -13,10 +13,11 @@
 #include "SpaceGamePresentation/presentation/widgets/Vector2DWidget.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
-#include <SpaceGamePresentation/presentation/HUDManager.h>
+#include <ioj/presentation/hud_data.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include "SandboxUI/Radar/SRadarWidget.h"
+#include <SandboxCoreEngine/VectorConversion.h>
 
 #include <Blueprint/WidgetTree.h>
 #include <Components/Border.h>
@@ -319,16 +320,17 @@ void UShipHudWidget::set_selected_imc(FStringView value) {
     selected_imc_widget->update(value);
 }
 
-void UShipHudWidget::set_flight_vector_debug(ioj::ship_hud::FFlightVectorDebugData const& value) {
+void
+    UShipHudWidget::set_flight_vector_debug(ioj::presentation::FlightVectorDebugData const& value) {
     check(IsValid(turn_input_widget));
     check(IsValid(move_input_widget));
     check(IsValid(target_velocity_vector_widget));
     check(IsValid(local_velocity_widget));
 
-    turn_input_widget->update(value.turn_input);
-    move_input_widget->update(value.move_input);
-    target_velocity_vector_widget->update(value.target_velocity);
-    local_velocity_widget->update(value.local_velocity);
+    turn_input_widget->update(ioj::to_unreal(ioj::Vector2d{value.turn_input}));
+    move_input_widget->update(ioj::to_unreal(ioj::Vector2d{value.move_input}));
+    target_velocity_vector_widget->update(ioj::to_unreal(ioj::Vector2d{value.target_velocity}));
+    local_velocity_widget->update(ioj::to_unreal(ioj::Vector2d{value.local_velocity}));
 }
 
 void UShipHudWidget::set_ship_velocity(FVector value) {

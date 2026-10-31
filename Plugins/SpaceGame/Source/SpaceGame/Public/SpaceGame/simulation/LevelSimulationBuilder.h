@@ -1,8 +1,9 @@
 #pragma once
+#include <ioj/levels/launch_options.h>
+#include <ioj/levels/level_definition.h>
 #include <ioj/sim/collision/world_aabbs.h>
 #include <ioj/sim/levels/level_sim.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
-#include <SpaceGame/levels/LevelDefinition.h>
 #include <SpaceGame/missions/LevelMissionDefinition.h>
 #include <SpaceGameSimulation/levels/LevelStartErrors.h>
 
@@ -17,7 +18,6 @@ class ATestTubeSpinnerProxy;
 class ATestSpaceShip;
 
 namespace ioj {
-struct FLevelLaunchOptions;
 
 using FLevelSimBuildResult = std::expected<sim::LevelSimInitData, FLevelStartErrors>;
 
@@ -39,7 +39,7 @@ struct FLevelSimulationRequest {
     USpaceGameLevelConfig const& config;
     settings::TickSettings const& clock_settings;
     ::FLevelMissionDefinition& mission;
-    FLevelLaunchOptions const& launch_options;
+    levels::LaunchOptions const& launch_options;
     FString const& level_source;
     FString const& settings_source;
     levels::LevelDefinition const* definition{};

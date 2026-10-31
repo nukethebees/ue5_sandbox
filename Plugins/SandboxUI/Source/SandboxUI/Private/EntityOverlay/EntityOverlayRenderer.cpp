@@ -15,8 +15,8 @@
 DEFINE_LOG_CATEGORY_STATIC(LogEntityOverlayRenderer, Log, All);
 
 namespace ioj::ui::entity_overlay {
-static_assert(sizeof(FEntityOverlayInstance) == sizeof(float) * 6,
-              "FEntityOverlayInstance must match EntityOverlayInstance in EntityOverlay.usf.");
+static_assert(sizeof(ioj::ui::entity_overlay::Instance) == sizeof(float) * 6,
+              "Native overlay instances must match EntityOverlayInstance in EntityOverlay.usf.");
 
 class FEntityOverlayVS final : public FGlobalShader {
   public:
@@ -37,7 +37,7 @@ class FEntityOverlayVS final : public FGlobalShader {
     SHADER_PARAMETER(float, ObjectiveBarHeightScale)
     SHADER_PARAMETER(float, ObjectiveFramePixels)
     SHADER_PARAMETER(float, ScreenEdgePaddingPixels)
-    SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FEntityOverlayInstance>, Instances)
+    SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<EntityOverlayInstance>, Instances)
     END_SHADER_PARAMETER_STRUCT()
 
     static auto ShouldCompilePermutation(FGlobalShaderPermutationParameters const& parameters)
@@ -101,10 +101,10 @@ void execute_graph(FRHICommandListImmediate& rhi_command_list,
     auto const instance_buffer{
         CreateStructuredBuffer(graph_builder,
                                TEXT("EntityOverlay.Instances"),
-                               sizeof(FEntityOverlayInstance),
+                               sizeof(ioj::ui::entity_overlay::Instance),
                                frame.instances.Num(),
                                frame.instances.GetData(),
-                               frame.instances.Num() * sizeof(FEntityOverlayInstance),
+                               frame.instances.Num() * sizeof(ioj::ui::entity_overlay::Instance),
                                ERDGInitialDataFlags::NoCopy)};
     auto* const parameters{graph_builder.AllocParameters<FEntityOverlayPassParameters>()};
     parameters->VS.ViewProjection = view.view_projection;

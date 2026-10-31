@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SpaceGame/telemetry/LevelTelemetryJson.h"
 #include "SpaceGame/telemetry/TelemetryDashboardModel.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
@@ -43,7 +44,7 @@ class SPACEGAME_API UTelemetryDashboardWidget : public UUserWidget {
     void focus_primary_action();
     void set_external_error(FString error);
 
-    [[nodiscard]] auto get_catalog() const -> FTelemetryRunCatalog const& { return catalog_; }
+    [[nodiscard]] auto get_catalog() const -> sim::telemetry::RunCatalog const& { return catalog_; }
     [[nodiscard]] auto get_view_state() const -> FTelemetryDashboardViewState const& {
         return state_;
     }
@@ -69,7 +70,7 @@ class SPACEGAME_API UTelemetryDashboardWidget : public UUserWidget {
     /* **************************************** */
     // State
     /* **************************************** */
-    FTelemetryRunCatalog catalog_{};
+    sim::telemetry::RunCatalog catalog_{std::filesystem::path{*level_telemetry_runs_directory()}};
     FTelemetryDashboardViewState state_{};
     TSharedPtr<STelemetryDashboardView> view_{};
     FGameUiStyle fallback_style_{};

@@ -1,7 +1,7 @@
 #pragma once
 
+#include <ioj/presentation/hud_data.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
-#include <SpaceGamePresentation/presentation/widgets/ShipHudKillData.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyle.h>
 
 #include <Blueprint/UserWidget.h>
@@ -19,7 +19,7 @@ class SPACEGAMEPRESENTATION_API UTopKillersWidget : public UUserWidget {
   public:
     static constexpr int32 max_entries{5};
 
-    void set_top_killers(TConstArrayView<ioj::ship_hud::FTopKillerEntry> new_entries);
+    void set_top_killers(std::span<ioj::presentation::TopKillerEntry const> new_entries);
     void set_team_colours(UTestTeamVisualData::FColourArray const& new_colours);
     void apply_hud_style(ioj::FGameHudStyle const& style);
     void set_font_size(int32 const new_font_size);
@@ -43,9 +43,7 @@ class SPACEGAMEPRESENTATION_API UTopKillersWidget : public UUserWidget {
     void rebuild_table();
     void set_text_style(UTextBlock& text, ETextJustify::Type alignment) const;
 
-    TArray<ioj::ship_hud::FTopKillerEntry,
-           TInlineAllocator<ioj::ship_hud::top_killer_inline_capacity>>
-        top_killers;
+    std::vector<ioj::presentation::TopKillerEntry> top_killers;
     UTestTeamVisualData::FColourArray team_colours{};
     TOptional<ioj::FGameHudStyle> hud_style_{};
 };

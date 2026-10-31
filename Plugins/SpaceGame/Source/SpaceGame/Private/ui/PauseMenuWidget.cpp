@@ -446,7 +446,7 @@ void UPauseMenuWidget::update_views() {
     combat_top_killers_table->set_top_killers(data_.top_killers);
     combat_team_kills_table->set_show_team_totals(true);
     combat_team_kills_table->set_team_colours(data_.team_colours);
-    combat_team_kills_table->set_team_kill_matrix(data_.team_kill_matrix);
+    combat_team_kills_table->set_entity_counts(data_.team_kill_matrix);
     update_telemetry_graph();
 }
 

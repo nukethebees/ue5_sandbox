@@ -17,7 +17,7 @@ The data flow is:
 Simulation/presentation source -> FRadarFrame triple buffer -> SRadarWidget
                                                               |
                                                               v
-                              RDG StructuredBuffer<FRadarInstance>
+                              RDG StructuredBuffer<RadarInstance>
                                                               |
                                                               v
                               1024x1024 render target -> Slate SImage

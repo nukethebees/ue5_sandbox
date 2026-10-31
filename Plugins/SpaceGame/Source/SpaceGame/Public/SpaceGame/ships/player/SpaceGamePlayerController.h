@@ -37,8 +37,10 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     void SetupInputComponent() override;
     void Tick(float dt) override;
     void show_main_menu();
-    auto activate_playerless_camera(ACameraActor& camera, EPlayerControlContext context) -> bool;
-    [[nodiscard]] auto get_active_control_context() const noexcept -> EPlayerControlContext {
+    auto activate_playerless_camera(ACameraActor& camera, ::ioj::levels::ControlContext context)
+        -> bool;
+    [[nodiscard]] auto get_active_control_context() const noexcept
+        -> ::ioj::levels::ControlContext {
         return control_contexts_.get_active_context();
     }
     [[nodiscard]] auto get_active_hud() const -> USimulationHudWidget const* {
@@ -48,7 +50,7 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
         return hud_.get_benchmark_hud();
     }
     [[nodiscard]] auto is_observer_movement_enabled() const noexcept -> bool {
-        return get_active_control_context() == EPlayerControlContext::Observer &&
+        return get_active_control_context() == ::ioj::levels::ControlContext::Observer &&
                control_contexts_.is_observer_bound();
     }
   protected:

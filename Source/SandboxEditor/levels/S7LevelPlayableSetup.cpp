@@ -2,9 +2,9 @@
 
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
+#include <ioj/levels/launch_options.h>
 #include <ioj/s7/simulation_settings_reader.h>
 #include <Sandbox/environment/effects/ShipPostProcessing.h>
-#include <SpaceGame/levels/native_level_definition_conversion.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -87,9 +87,9 @@ auto prepare_s7_level_for_pie(UWorld& world) -> std::expected<void, FString> {
         return fail(TEXT("The PIE game subsystem is unavailable."));
     }
 
-    FLevelLaunchOptions options;
-    options.control_context =
-        definition->camera() ? EPlayerControlContext::Observer : EPlayerControlContext::Player;
+    ::ioj::levels::LaunchOptions options;
+    options.control_context = definition->camera() ? ::ioj::levels::ControlContext::Observer
+                                                   : ::ioj::levels::ControlContext::Player;
     // Upgrade old authoring maps in the PIE copy without changing their saved actors.
     orchestrator->set_start_mode(EOrchestratorStartMode::AuthoredLevel);
     orchestrator->clear_player_ship();
@@ -139,7 +139,7 @@ auto validate_playable_s7_definition(levels::LevelDefinition const& definition,
     if (!effective_config.IsValid()) {
         return std::unexpected{TEXT("Could not prepare the authored settings.")};
     }
-    auto const simulation{ioj::s7::resolve_simulation_settings(definition.settings())};
+    auto const simulation{ioj::sim::resolve_simulation_settings(definition.settings())};
     if (!simulation) {
         return std::unexpected{to_fstring(levels::format_diagnostics(simulation.error()))};
     }

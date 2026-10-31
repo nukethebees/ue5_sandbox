@@ -200,15 +200,12 @@ auto ATestSpaceShip::get_active_flight_model_slot() const -> ::ioj::sim::player:
 auto ATestSpaceShip::set_flight_model_slot_profile(::ioj::sim::player::FlightModelSlot const slot,
                                                    ::ioj::sim::player::FlightModelProfile profile)
     -> bool {
-    if (!::ioj::sim::player::validate_flight_model_config(profile.config)) {
-        return false;
-    }
     if (bound_commands_ && !commands().set_flight_model_slot_profile(slot, profile)) {
         return false;
     }
 
-    ::ioj::sim::player::flight_model_profile(flight_models_, slot) = std::move(profile);
-    return true;
+    return ::ioj::sim::player::try_set_flight_model_profile(
+        flight_models_, slot, std::move(profile));
 }
 auto ATestSpaceShip::get_active_flight_model_profile() const
     -> ::ioj::sim::player::FlightModelProfile {

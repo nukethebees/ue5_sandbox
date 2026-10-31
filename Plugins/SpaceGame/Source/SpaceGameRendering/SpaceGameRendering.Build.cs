@@ -15,6 +15,7 @@ public class SpaceGameRendering : ModuleRules
             "Core",
             "CoreUObject",
             "Engine",
+            "NativePresentation",
         });
 
         PrivateDependencyModuleNames.AddRange(new string[]

@@ -1,5 +1,7 @@
 #include "Sandbox/environment/traversal/LoopingPlatformComponent.h"
 
+#include <SandboxCoreEngine/VectorConversion.h>
+
 #include "Components/SceneComponent.h"
 #include "GameFramework/Actor.h"
 
@@ -10,15 +12,9 @@ ULoopingPlatformComponent::ULoopingPlatformComponent() {
 void ULoopingPlatformComponent::BeginPlay() {
     Super::BeginPlay();
 
-    location_a = GetOwner()->GetActorLocation();
-
-    if (target_component) {
-        location_b = target_component->GetComponentLocation();
-        ab_direction = get_ab_direction();
-        ba_direction = get_ba_direction();
-        current_direction = ab_direction;
-    } else {
-        current_direction = FVector::ZeroVector;
+    if (IsValid(target_component)) {
+        travel_ = {.start = ioj::Vector3d{GetOwner()->GetActorLocation()},
+                   .end = ioj::Vector3d{target_component->GetComponentLocation()}};
     }
 }
 
@@ -27,27 +23,15 @@ void ULoopingPlatformComponent::TickComponent(float DeltaTime,
                                               FActorComponentTickFunction* ThisTickFunction) {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-    if (!target_component || current_direction.IsZero()) {
+    if (!IsValid(target_component)) {
         return;
     }
 
-    if (pause_timer <= pause_after_completion) {
-        pause_timer += DeltaTime;
-        return;
-    }
-
-    auto const current_location{GetOwner()->GetActorLocation()};
-    auto const cur_going_to_b{going_to_b()};
-    auto const target_location{cur_going_to_b ? location_b : location_a};
-    auto const to_target{target_location - current_location};
-    auto const distance_to_target{to_target.Size()};
-
-    if (distance_to_target > (KINDA_SMALL_NUMBER)) {
-        auto const move_step{FMath::Min(speed * DeltaTime, distance_to_target)};
-        auto const move_vector{to_target.GetSafeNormal() * move_step};
-        GetOwner()->AddActorWorldOffset(move_vector);
-    } else {
-        pause_timer = 0.0f;
-        current_direction = cur_going_to_b ? ba_direction : ab_direction;
-    }
+    auto* const owner{GetOwner()};
+    auto const step{ioj::advance_linear_travel(travel_,
+                                               ioj::Vector3d{owner->GetActorLocation()},
+                                               speed,
+                                               DeltaTime,
+                                               pause_after_completion)};
+    owner->SetActorLocation(ioj::to_unreal(step.location));
 }

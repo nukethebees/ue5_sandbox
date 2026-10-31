@@ -12,31 +12,26 @@ FLevelUnlockEvaluator::FLevelUnlockEvaluator(FCompletionQuery completion_query,
 
 auto FLevelUnlockEvaluator::evaluate(levels::LevelDefinition const& definition) const
     -> FLevelUnlockStatus {
+    auto const eligibility{persistence::evaluate_unlock(
+        definition,
+        [this](levels::LevelId const& id) {
+            return completion_query_(levels::authoring::to_unreal(id));
+        },
+        force_unlocked_)};
     FLevelUnlockStatus status;
-    status.criteria.Reserve(static_cast<int32>(definition.unlock_level_ids().size()));
-    for (auto const& id : definition.unlock_level_ids()) {
-        FLevelUnlockCriterion criterion{
-            TInPlaceType<FLevelCompletedUnlockCriterion>{},
-            FLevelCompletedUnlockCriterion{.level_id = levels::authoring::to_unreal(id)}};
-        auto criterion_status{evaluate(criterion)};
-        status.unlocked = status.unlocked && criterion_status.satisfied;
-        status.criteria.Add(MoveTemp(criterion_status));
+    status.unlocked = eligibility.unlocked;
+    status.criteria.Reserve(static_cast<int32>(eligibility.criteria.size()));
+    for (auto const& criterion : eligibility.criteria) {
+        auto const id{levels::authoring::to_unreal(criterion.level_id)};
+        auto title{title_query_(id)};
+        if (title.IsEmpty()) {
+            title = FText::FromName(id.value);
+        }
+        status.criteria.Add(
+            {.satisfied = criterion.satisfied,
+             .description =
+                 FText::Format(NSLOCTEXT("LevelUnlock", "CompleteLevel", "Complete {0}"), title)});
     }
-    status.unlocked = force_unlocked_ || status.unlocked;
     return status;
-}
-
-auto FLevelUnlockEvaluator::evaluate(FLevelUnlockCriterion const& criterion) const
-    -> FLevelUnlockCriterionStatus {
-    auto const& completed{criterion.Get<FLevelCompletedUnlockCriterion>()};
-    auto title{title_query_(completed.level_id)};
-    if (title.IsEmpty()) {
-        title = FText::FromName(completed.level_id.value);
-    }
-    return {
-        .satisfied = completion_query_(completed.level_id),
-        .description =
-            FText::Format(NSLOCTEXT("LevelUnlock", "CompleteLevel", "Complete {0}"), title),
-    };
 }
 }

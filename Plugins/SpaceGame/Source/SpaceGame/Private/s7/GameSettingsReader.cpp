@@ -76,7 +76,7 @@ auto read_game_settings(FStringView const path,
         }
     }
     auto const& effective{decoded_level ? decoded_level->settings() : settings.settings};
-    auto simulation{ioj::s7::resolve_simulation_settings(effective)};
+    auto simulation{ioj::sim::resolve_simulation_settings(effective)};
     if (!simulation) {
         return report_errors(simulation.error());
     }

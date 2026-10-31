@@ -178,13 +178,13 @@ void FLaserPresentation::queue_hit_sparks() {
         spark_effects_->queue_burst({
             .emission =
                 {
-                    .location = location,
-                    .direction = ioj::to_unreal(::ioj::vector_at(directions, index)),
-                    .colour = FVector3f{colour.R, colour.G, colour.B},
+                    .location = ::ioj::Vector3f{location},
+                    .direction = ::ioj::vector_at(directions, index),
+                    .colour = {colour.R, colour.G, colour.B},
                     .seed = SpaceGame::LaserPresentation::Private::make_seed(
                         hit_ticks[index], location, hit_ordinals[index]),
                 },
-            .style = style,
+            .style = style.to_native(),
         });
     }
 }

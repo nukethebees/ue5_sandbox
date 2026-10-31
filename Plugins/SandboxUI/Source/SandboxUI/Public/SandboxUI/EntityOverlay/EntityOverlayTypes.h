@@ -14,23 +14,6 @@
 #include <cstddef>
 #include <type_traits>
 
-using EEntityOverlayObjectiveRole = ioj::ui::entity_overlay::ObjectiveRole;
-
-struct SANDBOXUI_API FEntityOverlayInstance {
-    FVector3f world_position{FVector3f::ZeroVector};
-    float health{0.0f};
-    float world_radius{0.0f};
-    uint32 display_data{0};
-};
-
-static_assert(sizeof(FEntityOverlayInstance) == sizeof(float) * 6);
-static_assert(std::is_standard_layout_v<FEntityOverlayInstance>);
-static_assert(std::is_trivially_copyable_v<FEntityOverlayInstance>);
-static_assert(offsetof(FEntityOverlayInstance, world_position) == 0);
-static_assert(offsetof(FEntityOverlayInstance, health) == sizeof(float) * 3);
-static_assert(offsetof(FEntityOverlayInstance, world_radius) == sizeof(float) * 4);
-static_assert(offsetof(FEntityOverlayInstance, display_data) == sizeof(float) * 5);
-
 struct SANDBOXUI_API FEntityOverlaySourceView {
     TConstArrayView<FVector3f> positions;
     TConstArrayView<float> health_values;
@@ -73,7 +56,7 @@ struct SANDBOXUI_API FEntityOverlayView {
 };
 
 struct SANDBOXUI_API FEntityOverlayFrame {
-    TArray<FEntityOverlayInstance> instances;
+    TArray<ioj::ui::entity_overlay::Instance> instances;
 };
 
 class FEntityOverlayCollector {
@@ -82,20 +65,21 @@ class FEntityOverlayCollector {
 
     SANDBOXUI_API void begin(FVector3f origin,
                              float maximum_range,
-                             TArray<FEntityOverlayInstance>& output_instances);
+                             TArray<ioj::ui::entity_overlay::Instance>& output_instances);
+    [[nodiscard]] SANDBOXUI_API auto try_add(FVector3f position,
+                                             float normalized_health,
+                                             float world_radius,
+                                             ioj::ui::entity_overlay::ObjectiveRole objective_role =
+                                                 ioj::ui::entity_overlay::ObjectiveRole::None,
+                                             bool bypass_range = false) -> bool;
     [[nodiscard]] SANDBOXUI_API auto
-        try_add(FVector3f position,
-                float normalized_health,
-                float world_radius,
-                EEntityOverlayObjectiveRole objective_role = EEntityOverlayObjectiveRole::None,
-                bool bypass_range = false) -> bool;
-    [[nodiscard]] SANDBOXUI_API auto try_add_colored(
-        FVector3f position,
-        float normalized_health,
-        float world_radius,
-        FLinearColor fill_color,
-        EEntityOverlayObjectiveRole objective_role = EEntityOverlayObjectiveRole::None,
-        bool bypass_range = false) -> bool;
+        try_add_colored(FVector3f position,
+                        float normalized_health,
+                        float world_radius,
+                        FLinearColor fill_color,
+                        ioj::ui::entity_overlay::ObjectiveRole objective_role =
+                            ioj::ui::entity_overlay::ObjectiveRole::None,
+                        bool bypass_range = false) -> bool;
     [[nodiscard]] SANDBOXUI_API auto append(FEntityOverlaySourceView source) -> int32;
 
     [[nodiscard]] auto invalid_health_count() const noexcept -> int32 {
@@ -109,5 +93,5 @@ class FEntityOverlayCollector {
                                     bool bypass_range) -> bool;
 
     ioj::ui::entity_overlay::Collector collector_;
-    TArray<FEntityOverlayInstance>* output_instances_{nullptr};
+    TArray<ioj::ui::entity_overlay::Instance>* output_instances_{nullptr};
 };

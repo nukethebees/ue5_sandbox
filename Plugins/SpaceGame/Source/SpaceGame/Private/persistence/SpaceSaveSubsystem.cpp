@@ -1,49 +1,24 @@
 #include "SpaceGame/persistence/SpaceSaveSubsystem.h"
 
-#include "SampleProfileRecords.h"
-#include "SpaceGame/persistence/SaveProfileFileStorage.h"
-#include "SpaceGame/persistence/SpaceSaveGame.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <ioj/persistence/profile_storage.h>
+#include <ioj/persistence/save_browser.h>
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>
+
+#include <SandboxCoreEngine/strings.h>
 
 #include <CoreGlobals.h>
 #include <Engine/GameInstance.h>
 #include <Engine/World.h>
-#include <HAL/FileManager.h>
 #include <HAL/IConsoleManager.h>
-#include <Kismet/GameplayStatics.h>
+#include <HAL/PlatformProcess.h>
 #include <Misc/App.h>
 #include <Misc/CommandLine.h>
 #include <Misc/Guid.h>
+#include <Misc/Parse.h>
 #include <Misc/Paths.h>
 
 namespace space_save_subsystem {
-template <typename Save, typename Data>
-auto load_slot(FString const& slot, int32 const user_index, Data& data)
-    -> ioj::ESaveProfileLoadResult {
-    if (!UGameplayStatics::DoesSaveGameExist(slot, user_index)) {
-        return ioj::ESaveProfileLoadResult::not_found;
-    }
-    auto* const save{Cast<Save>(UGameplayStatics::LoadGameFromSlot(slot, user_index))};
-    if (!IsValid(save)) {
-        return ioj::ESaveProfileLoadResult::failed;
-    }
-
-    data = save->data;
-    return ioj::ESaveProfileLoadResult::succeeded;
-}
-
-template <typename Save, typename Data>
-auto save_slot(FString const& slot, int32 const user_index, Data const& data) -> bool {
-    auto* const save{Cast<Save>(UGameplayStatics::CreateSaveGameObject(Save::StaticClass()))};
-    if (!IsValid(save)) {
-        return false;
-    }
-
-    save->data = data;
-    return UGameplayStatics::SaveGameToSlot(save, slot, user_index);
-}
-
 void reset_test_profile_command(TArray<FString> const&, UWorld* const world) {
     if (!IsValid(world)) {
         UE_LOG(
@@ -75,308 +50,118 @@ FAutoConsoleCommandWithWorldAndArgs reset_test_profile_console_command{
 #endif
 }
 
-auto USpaceSaveSubsystem::get(UGameInstance const* const game_instance) -> USpaceSaveSubsystem* {
+auto USpaceSaveSubsystem::get(UGameInstance const* game_instance) -> USpaceSaveSubsystem* {
     return IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr;
 }
-
-auto ioj::summarize_level_progress(ioj::FLevelId const level_id,
-                                   TConstArrayView<FScoreRecord> const records)
-    -> FLevelProgressSummary {
-    FLevelProgressSummary summary;
-    for (auto const& record : records) {
-        if (record.level_name != level_id.value) {
-            continue;
-        }
-
-        ++summary.attempt_count;
-        summary.best_kills = FMath::Max(summary.best_kills, record.kills);
-        summary.last_played_at = FMath::Max(summary.last_played_at, record.date);
-        if (record.outcome != ETeamOutcome::Victory) {
-            continue;
-        }
-
-        ++summary.completion_count;
-        if (summary.best_completion_time_seconds < 0.0f ||
-            record.time_seconds < summary.best_completion_time_seconds) {
-            summary.best_completion_time_seconds = record.time_seconds;
-        }
-    }
-
-    summary.state = summary.completion_count > 0 ? ELevelProgressState::Completed
-                  : summary.attempt_count > 0    ? ELevelProgressState::Attempted
-                                                 : ELevelProgressState::NotAttempted;
-    return summary;
-}
-
 void USpaceSaveSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
-    UE_LOG(LogSandboxSubsystem, Display, TEXT("USpaceSaveSubsystem::Initialize."));
-
-    profile_manager_ = ioj::FSaveProfileManager{make_storage()};
+    profile_manager_ = ioj::persistence::ProfileManager{make_storage()};
     if (!profile_manager_.initialise()) {
-        UE_LOG(LogSandboxSubsystem,
-               Error,
-               TEXT("USpaceSaveSubsystem::Initialize: Failed to initialise save profiles."));
-        return;
+        UE_LOG(LogSandboxSubsystem, Error, TEXT("Failed to initialize native save profiles."));
     }
-
     log_save_data();
 }
-
 void USpaceSaveSubsystem::Deinitialize() {
-    UE_LOG(LogSandboxSubsystem, Display, TEXT("USpaceSaveSubsystem::Deinitialize."));
     log_save_data();
     Super::Deinitialize();
 }
-
-auto USpaceSaveSubsystem::get_profiles() const -> TConstArrayView<FSaveProfileMetadata> {
-    return profile_manager_.get_profiles();
-}
-
-auto USpaceSaveSubsystem::get_active_profile_id() const -> FString const& {
+auto USpaceSaveSubsystem::get_active_profile_id() const -> std::string const& {
     return profile_manager_.get_active_profile_id();
 }
-
-auto USpaceSaveSubsystem::get_level_progress(ioj::FLevelId const level_id) const
-    -> ioj::FLevelProgressSummary {
-    return ioj::summarize_level_progress(level_id, profile_manager_.get_active_records());
+auto USpaceSaveSubsystem::get_level_progress(ioj::FLevelId level_id) const
+    -> ioj::persistence::LevelProgressSummary {
+    return ioj::persistence::summarize_level_progress(
+        ioj::levels::LevelId{TCHAR_TO_UTF8(*level_id.value.ToString())},
+        profile_manager_.get_active_records());
 }
-
-auto USpaceSaveSubsystem::is_level_completed(ioj::FLevelId const level_id) const -> bool {
-    return get_level_progress(level_id).state == ioj::ELevelProgressState::Completed;
+auto USpaceSaveSubsystem::is_level_completed(ioj::FLevelId level_id) const -> bool {
+    return get_level_progress(level_id).state == ioj::persistence::LevelProgressState::Completed;
 }
-
 auto USpaceSaveSubsystem::has_active_profile() const -> bool {
     return profile_manager_.has_active_profile();
 }
-
 auto USpaceSaveSubsystem::unlock_all_missions() const -> bool {
     return profile_manager_.unlock_all_missions();
 }
-
 auto USpaceSaveSubsystem::start_levels_paused() const -> bool {
     return profile_manager_.start_levels_paused();
 }
-
-bool USpaceSaveSubsystem::load_profile_records(FString const& profile_id,
-                                               TArray<FScoreRecord>& records) const {
-    return profile_manager_.load_profile_records(profile_id, records);
+auto USpaceSaveSubsystem::create_profile(FString const& name)
+    -> ioj::persistence::CreateProfileResponse {
+    return profile_manager_.create_profile(TCHAR_TO_UTF8(*name));
 }
-
-auto USpaceSaveSubsystem::create_profile(FString display_name) -> ioj::FCreateSaveProfileResponse {
-    return profile_manager_.create_profile(MoveTemp(display_name));
+bool USpaceSaveSubsystem::activate_profile(std::string const& id) {
+    return profile_manager_.activate_profile(id);
 }
-
-bool USpaceSaveSubsystem::activate_profile(FString const& profile_id) {
-    return profile_manager_.activate_profile(profile_id);
-}
-
 bool USpaceSaveSubsystem::reset_test_profile() {
 #if UE_BUILD_SHIPPING
     return false;
 #else
-    return profile_manager_.reset_test_profile(ioj::detail::make_sample_profile_records());
+    return profile_manager_.reset_test_profile(ioj::persistence::sample_profile_records());
 #endif
 }
-
-bool USpaceSaveSubsystem::set_unlock_all_missions(bool const enabled) {
-    if (!profile_manager_.set_unlock_all_missions(enabled)) {
-        UE_LOG(LogSandboxSubsystem,
-               Error,
-               TEXT("USpaceSaveSubsystem::set_unlock_all_missions: Failed to save profile debug "
-                    "settings."));
-        return false;
-    }
-    return true;
+bool USpaceSaveSubsystem::set_unlock_all_missions(bool enabled) {
+    return profile_manager_.set_unlock_all_missions(enabled);
 }
-
-bool USpaceSaveSubsystem::set_start_levels_paused(bool const enabled) {
-    if (!profile_manager_.set_start_levels_paused(enabled)) {
-        UE_LOG(LogSandboxSubsystem,
-               Error,
-               TEXT("USpaceSaveSubsystem::set_start_levels_paused: Failed to save profile debug "
-                    "settings."));
-        return false;
-    }
-    return true;
+bool USpaceSaveSubsystem::set_start_levels_paused(bool enabled) {
+    return profile_manager_.set_start_levels_paused(enabled);
 }
-
-auto USpaceSaveSubsystem::save_score_record(FScoreRecord const& record) -> bool {
-    if (!profile_manager_.append_score_record(record)) {
-        UE_LOG(LogSandboxSubsystem,
-               Error,
-               TEXT("USpaceSaveSubsystem::save_score_record: Failed to save mission result."));
-        return false;
-    }
-    return true;
-}
-
 void USpaceSaveSubsystem::log_save_data() const {
 #if WITH_EDITOR
-    auto const* const settings{GetDefault<USandboxDeveloperSettings>()};
-    if (!settings->print_save_data) {
+    if (!GetDefault<USandboxDeveloperSettings>()->print_save_data) {
         return;
     }
 #endif
-
-    FString message{FString::Printf(TEXT("\nActive save profile: %s"),
-                                    *profile_manager_.get_active_profile_id())};
-    auto const profiles{profile_manager_.get_profiles()};
-    message += FString::Printf(TEXT("\nProfiles: %d"), profiles.Num());
-    for (auto const& profile : profiles) {
-        message += FString::Printf(TEXT("\n    %s (%s): %d outcomes, %d kills, %.2f seconds"),
-                                   *profile.display_name,
-                                   *profile.profile_id,
-                                   profile.outcome_count,
-                                   profile.total_kills,
-                                   profile.total_simulation_duration_seconds);
-    }
-
-    UE_LOG(LogSandboxSubsystem, Display, TEXT("USpaceSaveSubsystem::log_save_data: %s"), *message);
+    UE_LOG(LogSandboxSubsystem,
+           Display,
+           TEXT("Native save profile %s: %llu profiles, %llu outcomes"),
+           *ioj::to_fstring(profile_manager_.get_active_profile_id()),
+           static_cast<unsigned long long>(profile_manager_.get_profiles().size()),
+           static_cast<unsigned long long>(profile_manager_.get_active_records().size()));
 }
-
-auto USpaceSaveSubsystem::profile_index_slot_name() -> FString {
-    return TEXT("SpaceProfileIndex");
-}
-
-auto USpaceSaveSubsystem::profile_results_slot_name(FString const& profile_id) -> FString {
-    return FString::Printf(TEXT("SpaceProfile_%s_Results"), *profile_id);
-}
-
-auto USpaceSaveSubsystem::legacy_slot_name() -> FString {
-    return TEXT("SandboxSave");
-}
-
-auto USpaceSaveSubsystem::make_storage() -> ioj::FSaveProfileStorage {
+auto USpaceSaveSubsystem::make_storage() -> ioj::persistence::ProfileStorage {
+    auto const local_root{FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("SaveGames"))};
     if (GIsAutomationTesting) {
         auto const root{FPaths::Combine(FPaths::ProjectSavedDir(),
                                         TEXT("Automation/SaveProfiles"),
                                         FGuid::NewGuid().ToString(EGuidFormats::Digits))};
-        UE_LOG(LogSandboxSubsystem, Display, TEXT("Automation save storage: %s"), *root);
-        return ioj::make_file_profile_storage(root);
+        return ioj::persistence::make_file_profile_storage(std::filesystem::path{*root});
     }
-
-    ioj::FSaveProfileStorageSelection selection{};
-    FString error{};
-    if (!ioj::resolve_save_profile_storage(FCommandLine::Get(),
+    auto const application_root{FPlatformProcess::GetApplicationSettingsDir(
+        {FPlatformProcess::ApplicationSettingsContext::Context::LocalUser, false})};
+    auto const development_root{
+        FPaths::Combine(application_root, TEXT("IsleOfJebbers/DevelopmentSaves"))};
+    ioj::persistence::StorageOptions options{
 #if WITH_EDITOR
-                                           true,
-#else
-                                           false,
+        .editor = true,
 #endif
-                                           FApp::IsUnattended(),
-                                           selection,
-                                           error)) {
-        UE_LOG(LogSandboxSubsystem, Error, TEXT("Invalid save storage selection: %s"), *error);
-        return {};
+        .unattended = FApp::IsUnattended(),
+        .local = FParse::Param(FCommandLine::Get(), TEXT("SpaceSaveLocal")),
+        .shared = FParse::Param(FCommandLine::Get(), TEXT("SpaceSaveShared")),
+        .clone_shared = FParse::Param(FCommandLine::Get(), TEXT("SpaceSaveCloneShared"))};
+    FString experiment;
+    if (FParse::Value(FCommandLine::Get(), TEXT("SpaceSaveExperiment="), experiment, false)) {
+        options.experiment = TCHAR_TO_UTF8(*experiment);
     }
-
-    if (selection.mode == ioj::ESaveProfileStorageMode::platform ||
-        selection.mode == ioj::ESaveProfileStorageMode::local) {
-        UE_LOG(LogSandboxSubsystem,
-               Display,
-               TEXT("Save storage mode: %s (%s)"),
-               selection.mode == ioj::ESaveProfileStorageMode::platform ? TEXT("Platform")
-                                                                        : TEXT("Local"),
-               *selection.root);
-        return make_slot_storage();
-    }
-
-    auto const shared_root{FPaths::Combine(ioj::development_save_base_root(), TEXT("Shared"))};
-    if (selection.clone_shared &&
-        !ioj::clone_save_profile_files(shared_root, selection.root, error)) {
-        UE_LOG(LogSandboxSubsystem, Error, TEXT("Failed to clone Shared saves: %s"), *error);
-        return {};
-    }
-
-    if (selection.mode == ioj::ESaveProfileStorageMode::shared) {
-        auto const local_saves_exist{
-            UGameplayStatics::DoesSaveGameExist(profile_index_slot_name(), user_index) ||
-            UGameplayStatics::DoesSaveGameExist(legacy_slot_name(), user_index)};
-        auto const shared_exists{IFileManager::Get().FileExists(*FPaths::Combine(
-                                     selection.root, TEXT("SpaceProfileIndex.sav"))) ||
-                                 IFileManager::Get().FileExists(*FPaths::Combine(
-                                     selection.root, TEXT("SpaceProfileIndex.sav.bak")))};
-        if (!shared_exists && local_saves_exist && !selection.import_local &&
-            !selection.start_fresh) {
-            UE_LOG(LogSandboxSubsystem,
-                   Error,
-                   TEXT("Local saves exist but Shared storage has not been initialized. Relaunch "
-                        "with -SpaceSaveImportLocal or -SpaceSaveStartFresh."));
-            return {};
-        }
-        if (selection.import_local) {
-            if (!local_saves_exist) {
-                UE_LOG(LogSandboxSubsystem,
-                       Error,
-                       TEXT("-SpaceSaveImportLocal was requested but no local saves exist."));
-                return {};
-            }
-            if (!ioj::import_local_save_profiles(selection.root, load_legacy_results, error)) {
-                UE_LOG(
-                    LogSandboxSubsystem, Error, TEXT("Failed to import local saves: %s"), *error);
-                return {};
-            }
-        }
-    }
-
-    if (selection.mode == ioj::ESaveProfileStorageMode::experimental) {
-        UE_LOG(LogSandboxSubsystem,
-               Warning,
-               TEXT("Save storage mode: Experimental (%s)"),
-               *selection.root);
-    } else {
-        UE_LOG(
-            LogSandboxSubsystem, Display, TEXT("Save storage mode: Shared (%s)"), *selection.root);
-    }
-
-    return ioj::make_file_profile_storage(selection.root);
-}
-
-auto USpaceSaveSubsystem::make_slot_storage() -> ioj::FSaveProfileStorage {
-    using namespace space_save_subsystem;
-    return {
-        .with_exclusive_access = [](TFunctionRef<bool()> operation) { return operation(); },
-        .load_index =
-            [](FSaveProfileIndexData& data) {
-                return load_slot<USpaceSaveProfileIndexSaveGame>(
-                    profile_index_slot_name(), user_index, data);
-            },
-        .save_index =
-            [](FSaveProfileIndexData const& data) {
-                return save_slot<USpaceSaveProfileIndexSaveGame>(
-                    profile_index_slot_name(), user_index, data);
-            },
-        .load_results =
-            [](FString const& profile_id, FSaveProfileResultsData& data) {
-                return load_slot<USpaceSaveProfileResultsSaveGame>(
-                    profile_results_slot_name(profile_id), user_index, data);
-            },
-        .save_results =
-            [](FString const& profile_id, FSaveProfileResultsData const& data) {
-                return save_slot<USpaceSaveProfileResultsSaveGame>(
-                    profile_results_slot_name(profile_id), user_index, data);
-            },
-        .load_legacy_results = load_legacy_results,
-    };
-}
-
-auto USpaceSaveSubsystem::load_legacy_results(TArray<FScoreRecord>& records)
-    -> ioj::ESaveProfileLoadResult {
-    auto const slot{legacy_slot_name()};
-    if (!UGameplayStatics::DoesSaveGameExist(slot, user_index)) {
-        return ioj::ESaveProfileLoadResult::not_found;
-    }
-    auto* const save{Cast<USpaceSaveGame>(UGameplayStatics::LoadGameFromSlot(slot, user_index))};
-    if (!IsValid(save)) {
-        return ioj::ESaveProfileLoadResult::failed;
-    }
-    if (save->save_version != USpaceSaveGame::current_save_version) {
+    auto const selection{ioj::persistence::resolve_profile_storage(
+        options, std::filesystem::path{*development_root}, std::filesystem::path{*local_root})};
+    if (!selection) {
         UE_LOG(LogSandboxSubsystem,
                Error,
-               TEXT("Legacy mission saves are not supported by the objective system."));
-        return ioj::ESaveProfileLoadResult::failed;
+               TEXT("Invalid native save storage selection: %s"),
+               *ioj::to_fstring(selection.error()));
+        return {};
     }
-    records = save->score_records;
-    return ioj::ESaveProfileLoadResult::succeeded;
+    if (selection->clone_shared) {
+        std::string error;
+        if (!ioj::persistence::clone_profile_files(
+                std::filesystem::path{*development_root} / "Shared", selection->root, error)) {
+            UE_LOG(LogSandboxSubsystem,
+                   Error,
+                   TEXT("Failed to clone native profiles: %s"),
+                   *ioj::to_fstring(error));
+            return {};
+        }
+    }
+    return ioj::persistence::make_file_profile_storage(selection->root);
 }

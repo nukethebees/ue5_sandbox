@@ -2,16 +2,13 @@
 
 #include <ioj/sim/telemetry/analysis.h>
 #include <ioj/sim/telemetry/report.h>
+#include <ioj/sim/telemetry/run_catalog.h>
 #include <ioj/sim/telemetry/run_end_reason.h>
 
 #include <CoreMinimal.h>
 
-#include <expected>
-
-using ETelemetryDashboardMetric = ioj::sim::telemetry::Metric;
-
 struct SPACEGAME_API FTelemetryMetricSeries {
-    ETelemetryDashboardMetric metric{ETelemetryDashboardMetric::ActiveEntities};
+    ioj::sim::telemetry::Metric metric{ioj::sim::telemetry::Metric::ActiveEntities};
     FString title{};
     FString units{};
     TArray<float> simulated_elapsed_seconds{};
@@ -28,79 +25,18 @@ struct SPACEGAME_API FTelemetryRunAnalysis {
     TArray<float> battle_damage_dealt{};
     TArray<float> battle_kills{};
 
-    [[nodiscard]] auto find_metric(ETelemetryDashboardMetric metric) const
+    [[nodiscard]] auto find_metric(ioj::sim::telemetry::Metric metric) const
         -> FTelemetryMetricSeries const*;
 };
 
 SPACEGAME_API auto analyze_level_telemetry_run(ioj::sim::LevelTelemetryReport const& record)
     -> FTelemetryRunAnalysis;
-SPACEGAME_API auto telemetry_metric_title(ETelemetryDashboardMetric metric) -> FString;
-SPACEGAME_API auto telemetry_metric_units(ETelemetryDashboardMetric metric) -> FString;
+SPACEGAME_API auto telemetry_metric_title(ioj::sim::telemetry::Metric metric) -> FString;
+SPACEGAME_API auto telemetry_metric_units(ioj::sim::telemetry::Metric metric) -> FString;
 
-struct SPACEGAME_API FTelemetryRunSummary {
-    FString path{};
+struct FTelemetryRunSummary {
     FString run_id{};
-    FString map_name{};
-    FName level_id{NAME_None};
-    FString level_display_name{};
+    FString level_label{};
     FString launched_utc{};
-    ::ioj::sim::LevelTelemetryRunEndReason completion_reason{
-        ::ioj::sim::LevelTelemetryRunEndReason::WorldEnd};
-
-    [[nodiscard]] auto level_label() const -> FString;
-};
-
-class SPACEGAME_API FTelemetryRunCatalog {
-  public:
-    /* **************************************** */
-    // Loading and selection
-    /* **************************************** */
-    explicit FTelemetryRunCatalog(FString directory = {});
-
-    void refresh();
-    void set_level_filter(FString level_label);
-    bool select_run(FString const& run_id);
-    bool select_baseline(FString const& run_id);
-
-    /* **************************************** */
-    // Catalog queries
-    /* **************************************** */
-    [[nodiscard]] auto get_runs() const -> TConstArrayView<FTelemetryRunSummary> {
-        return filtered_;
-    }
-    [[nodiscard]] auto get_level_filters() const -> TConstArrayView<FString> {
-        return level_filters_;
-    }
-    [[nodiscard]] auto get_selected_run_id() const -> FString const& { return selected_run_id_; }
-    [[nodiscard]] auto get_selected_record() const -> ioj::sim::LevelTelemetryReport const* {
-        return selected_record_.IsSet() ? &selected_record_.GetValue() : nullptr;
-    }
-    [[nodiscard]] auto get_selected_error() const -> FString const& { return selected_error_; }
-    [[nodiscard]] auto get_baseline_run_id() const -> FString const& { return baseline_run_id_; }
-    [[nodiscard]] auto get_baseline_record() const -> ioj::sim::LevelTelemetryReport const* {
-        return baseline_record_.IsSet() ? &baseline_record_.GetValue() : nullptr;
-    }
-    auto get_baseline_candidates() const -> TArray<FTelemetryRunSummary>;
-    [[nodiscard]] auto get_unreadable_file_count() const noexcept -> int32 {
-        return unreadable_file_count_;
-    }
-    [[nodiscard]] auto get_level_filter() const -> FString const& { return level_filter_; }
-  private:
-    /* **************************************** */
-    // Filtering and state
-    /* **************************************** */
-    void rebuild_filter();
-    void load_selection();
-
-    FString directory_{};
-    TArray<FTelemetryRunSummary> all_{};
-    TArray<FTelemetryRunSummary> filtered_{};
-    TArray<FString> level_filters_{};
-    FString level_filter_{TEXT("All levels")};
-    FString selected_run_id_{};
-    TOptional<ioj::sim::LevelTelemetryReport> selected_record_{};
-    FString baseline_run_id_{};
-    TOptional<ioj::sim::LevelTelemetryReport> baseline_record_{};
-    FString selected_error_{};
-    int32 unreadable_file_count_{};
+    ioj::sim::LevelTelemetryRunEndReason completion_reason{};
 };

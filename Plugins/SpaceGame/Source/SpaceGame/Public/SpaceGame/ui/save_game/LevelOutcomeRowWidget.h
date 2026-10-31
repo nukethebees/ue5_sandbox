@@ -1,4 +1,5 @@
 #pragma once
+#include <ioj/persistence/save_browser.h>
 
 #include "Blueprint/UserWidget.h"
 
@@ -8,7 +9,6 @@ class UButton;
 class UTextBlock;
 
 namespace ioj {
-struct FLevelOutcomeSummary;
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FLevelOutcomeRowSelected, FString const&);
 
@@ -16,7 +16,7 @@ UCLASS()
 class SPACEGAME_API ULevelOutcomeRowWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    void set_outcome(FLevelOutcomeSummary const& outcome);
+    void set_outcome(persistence::LevelOutcomeSummary const& outcome);
     void set_selected(bool selected);
 
     FLevelOutcomeRowSelected selected;

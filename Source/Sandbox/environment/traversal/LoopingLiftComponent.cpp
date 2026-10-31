@@ -1,5 +1,9 @@
 #include "Sandbox/environment/traversal/LoopingLiftComponent.h"
 
+#include <ioj/vector_value_math.h>
+
+#include <SandboxCoreEngine/VectorConversion.h>
+
 #include "GameFramework/Actor.h"
 
 ULoopingLiftComponent::ULoopingLiftComponent() {
@@ -8,10 +12,10 @@ ULoopingLiftComponent::ULoopingLiftComponent() {
 
 void ULoopingLiftComponent::BeginPlay() {
     Super::BeginPlay();
-    origin = GetOwner()->GetActorLocation();
-    direction.Normalize();
-    current_direction = direction;
-    original_direction = direction;
+    auto const origin{ioj::Vector3d{GetOwner()->GetActorLocation()}};
+    travel_ = {.start = origin,
+               .end = origin +
+                      ioj::safe_normal(ioj::Vector3d{direction}) * static_cast<double>(distance)};
 }
 
 void ULoopingLiftComponent::TickComponent(float DeltaTime,
@@ -19,24 +23,11 @@ void ULoopingLiftComponent::TickComponent(float DeltaTime,
                                           FActorComponentTickFunction* ThisTickFunction) {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-    if (pause_timer <= pause_after_completion) {
-        pause_timer += DeltaTime;
-        return;
-    }
-
-    auto const current_location{GetOwner()->GetActorLocation()};
-    auto const dist_from_origin{current_location - origin};
-    auto const projected_distance{FVector::DotProduct(dist_from_origin, original_direction)};
-
-    bool const going_up{current_direction == original_direction};
-    bool const destination_not_reached{going_up ? projected_distance < distance
-                                                : projected_distance > 0.0f};
-
-    if (destination_not_reached) {
-        GetOwner()->AddActorWorldOffset(current_direction * speed * DeltaTime);
-    } else {
-        pause_timer = 0.0f;
-        current_direction *= -1.0f;
-        auto x{1};
-    }
+    auto* const owner{GetOwner()};
+    auto const step{ioj::advance_linear_travel(travel_,
+                                               ioj::Vector3d{owner->GetActorLocation()},
+                                               speed,
+                                               DeltaTime,
+                                               pause_after_completion)};
+    owner->SetActorLocation(ioj::to_unreal(step.location));
 }

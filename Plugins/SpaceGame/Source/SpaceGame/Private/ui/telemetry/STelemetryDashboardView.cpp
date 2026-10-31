@@ -24,7 +24,7 @@ auto chart_title(FGameUiStyle const& style, FString value) -> TSharedRef<SWidget
 auto metric_panel(FGameUiStyle const& style,
                   FTelemetryRunAnalysis const& analysis,
                   FTelemetryRunAnalysis const* const baseline_analysis,
-                  ETelemetryDashboardMetric const metric,
+                  ioj::sim::telemetry::Metric const metric,
                   FGraphPlotStyle const& graph_style,
                   FHistogramStyle const& histogram_style) -> TSharedRef<SWidget> {
     auto const* const series{analysis.find_metric(metric)};
@@ -94,7 +94,7 @@ auto metric_section(FGameUiStyle const& style,
                     FTelemetryRunAnalysis const& analysis,
                     FTelemetryRunAnalysis const* const baseline_analysis,
                     FString title,
-                    TConstArrayView<ETelemetryDashboardMetric> const metrics,
+                    TConstArrayView<ioj::sim::telemetry::Metric> const metrics,
                     FString note,
                     FGraphPlotStyle const& graph_style,
                     FHistogramStyle const& histogram_style) -> TSharedRef<SWidget> {
@@ -167,7 +167,7 @@ auto STelemetryDashboardView::build_sidebar() -> TSharedRef<SWidget> {
         auto const selected{run.run_id == state_.selected_run_id};
         auto const label{
             FText::FromString(FString::Printf(TEXT("%s\n%s%s"),
-                                              *run.level_label(),
+                                              *run.level_label,
                                               *run.launched_utc,
                                               selected ? TEXT("  // SELECTED") : TEXT("")))};
         runs->AddSlot().AutoHeight().Padding(0.0f, 2.0f)[SNew(SButton).OnClicked(
@@ -277,23 +277,23 @@ auto STelemetryDashboardView::build_detail() -> TSharedRef<SWidget> {
     combat_series.Add(MoveTemp(kills));
     combat_efficiency->set_series(MoveTemp(combat_series));
 
-    static constexpr ETelemetryDashboardMetric workload_metrics[]{
-        ETelemetryDashboardMetric::ActiveEntities,
-        ETelemetryDashboardMetric::PlayerShips,
-        ETelemetryDashboardMetric::Turrets,
-        ETelemetryDashboardMetric::CapitalShips,
-        ETelemetryDashboardMetric::CapitalShipFighters,
-        ETelemetryDashboardMetric::TubeSpinners,
-        ETelemetryDashboardMetric::ActiveLasers,
+    static constexpr ioj::sim::telemetry::Metric workload_metrics[]{
+        ioj::sim::telemetry::Metric::ActiveEntities,
+        ioj::sim::telemetry::Metric::PlayerShips,
+        ioj::sim::telemetry::Metric::Turrets,
+        ioj::sim::telemetry::Metric::CapitalShips,
+        ioj::sim::telemetry::Metric::CapitalShipFighters,
+        ioj::sim::telemetry::Metric::TubeSpinners,
+        ioj::sim::telemetry::Metric::ActiveLasers,
     };
-    static constexpr ETelemetryDashboardMetric activity_metrics[]{
-        ETelemetryDashboardMetric::SpawnRate,
-        ETelemetryDashboardMetric::DestructionRate,
-        ETelemetryDashboardMetric::KillRate,
-        ETelemetryDashboardMetric::LaserFireRate,
+    static constexpr ioj::sim::telemetry::Metric activity_metrics[]{
+        ioj::sim::telemetry::Metric::SpawnRate,
+        ioj::sim::telemetry::Metric::DestructionRate,
+        ioj::sim::telemetry::Metric::KillRate,
+        ioj::sim::telemetry::Metric::LaserFireRate,
     };
     static_assert(UE_ARRAY_COUNT(workload_metrics) + UE_ARRAY_COUNT(activity_metrics) ==
-                  static_cast<int32>(ETelemetryDashboardMetric::Count));
+                  static_cast<int32>(ioj::sim::telemetry::Metric::Count));
 
     workload_section_ = telemetry_dashboard_view::metric_section(
         *style_,

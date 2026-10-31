@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SandboxGameShared/interaction/Clickable.h"
+#include <ioj/linear_travel.h>
 
 #include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
@@ -24,11 +25,7 @@ class SANDBOX_API USlidingPlatformActorComponent
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     float move_speed{300.0f};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-    float acceleration{100.0f};
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     float move_distance{500.0f};
   private:
-    bool moving_forward{true};
-    FVector start_location;
-    FVector end_location;
+    ioj::LinearTravelState travel_{};
 };

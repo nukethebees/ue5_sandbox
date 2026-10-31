@@ -1,7 +1,7 @@
 #pragma once
 
-#include "SpaceGamePresentation/presentation/widgets/FlightVectorDebugData.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
+#include <ioj/presentation/hud_data.h>
 
 #include <Blueprint/UserWidget.h>
 #include <CoreMinimal.h>
@@ -15,7 +15,7 @@ UCLASS()
 class SPACEGAMEPRESENTATION_API UFlightVectorDebugWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    void update(ioj::ship_hud::FFlightVectorDebugData const& data);
+    void update(ioj::presentation::FlightVectorDebugData const& data);
     void apply_hud_style(ioj::FGameHudStyle const& style);
     void set_font_size(int32 new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }
@@ -43,6 +43,6 @@ class SPACEGAMEPRESENTATION_API UFlightVectorDebugWidget : public UUserWidget {
               meta = (AllowPrivateAccess = "true"))
     int32 font_size{24};
 
-    ioj::ship_hud::FFlightVectorDebugData data_{};
+    ioj::presentation::FlightVectorDebugData data_{};
     TOptional<ioj::FGameHudStyle> hud_style_{};
 };

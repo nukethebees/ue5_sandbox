@@ -30,11 +30,11 @@ class UForceStatusWidget;
 class UMissionStatusWidget;
 class SEntityOverlayWidget;
 class SRadarWidget;
-namespace ioj::hud_manager {
-struct FMissionDataCache;
+namespace ioj::presentation {
+struct MissionHudData;
 }
-namespace ioj::ship_hud {
-struct FFlightVectorDebugData;
+namespace ioj::presentation {
+struct FlightVectorDebugData;
 }
 namespace ioj {
 class FGameUiStyle;
@@ -77,7 +77,7 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
 
     void set_selected_imc(FStringView value);
 
-    void set_flight_vector_debug(ioj::ship_hud::FFlightVectorDebugData const& value);
+    void set_flight_vector_debug(ioj::presentation::FlightVectorDebugData const& value);
     void set_ship_velocity(FVector value);
     void set_target_velocity(FVector value);
     void set_flight_model(FStringView value);

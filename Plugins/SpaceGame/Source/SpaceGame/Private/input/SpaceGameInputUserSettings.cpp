@@ -1,5 +1,6 @@
 #include "SpaceGame/input/SpaceGameInputUserSettings.h"
 
+#include "ioj/input/response.h"
 #include "SpaceGame/input/CanonicalShipControls.h"
 #include "SpaceGame/input/ControlBindingMetadata.h"
 
@@ -30,19 +31,19 @@ void USpaceGameInputUserSettings::finalize_canonical_registration() {
 }
 
 void USpaceGameInputUserSettings::set_mouse_turn_sensitivity(float const value) noexcept {
-    mouse_turn_sensitivity_ = FMath::Max(0.0f, value);
+    mouse_turn_sensitivity_ = input::clamp_sensitivity(value);
 }
 
 void USpaceGameInputUserSettings::set_gamepad_turn_sensitivity(float const value) noexcept {
-    gamepad_turn_sensitivity_ = FMath::Max(0.0f, value);
+    gamepad_turn_sensitivity_ = input::clamp_sensitivity(value);
 }
 
 void USpaceGameInputUserSettings::set_gamepad_turn_dead_zone(float const value) noexcept {
-    gamepad_turn_dead_zone_ = FMath::Clamp(value, 0.0f, 0.95f);
+    gamepad_turn_dead_zone_ = input::clamp_dead_zone(value);
 }
 
 void USpaceGameInputUserSettings::set_gamepad_move_dead_zone(float const value) noexcept {
-    gamepad_move_dead_zone_ = FMath::Clamp(value, 0.0f, 0.95f);
+    gamepad_move_dead_zone_ = input::clamp_dead_zone(value);
 }
 
 void USpaceGameInputUserSettings::set_invert_mouse_pitch(bool const value) noexcept {

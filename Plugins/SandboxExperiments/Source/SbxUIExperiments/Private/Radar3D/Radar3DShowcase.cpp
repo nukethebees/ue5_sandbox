@@ -56,14 +56,15 @@ void URadar3DShowcase::populate_frame(int32 const contact_count) {
     for (int32 priority{0}; priority < 3; ++priority) {
         for (int32 index{0}; index < non_player_count; ++index) {
             auto const flag_variant{index % 9};
-            auto const flags{flag_variant == 0   ? ERadarContactFlags::Selected
-                             : flag_variant == 1 ? ERadarContactFlags::DefendObjective
-                             : flag_variant == 2 ? ERadarContactFlags::DestroyObjective
-                             : flag_variant == 3 ? ERadarContactFlags::Selected |
-                                                       ERadarContactFlags::DestroyObjective
-                                                 : ERadarContactFlags::None};
-            auto const draw_priority{EnumHasAnyFlags(flags, ERadarContactFlags::Selected) ? 2
-                                     : flags != ERadarContactFlags::None                  ? 1
+            auto const flags{flag_variant == 0   ? ioj::ui::radar::ContactFlags::Selected
+                             : flag_variant == 1 ? ioj::ui::radar::ContactFlags::DefendObjective
+                             : flag_variant == 2 ? ioj::ui::radar::ContactFlags::DestroyObjective
+                             : flag_variant == 3 ? ioj::ui::radar::ContactFlags::Selected |
+                                                       ioj::ui::radar::ContactFlags::DestroyObjective
+                                                 : ioj::ui::radar::ContactFlags::None};
+            auto const selected{(std::to_underlying(flags) & std::to_underlying(ioj::ui::radar::ContactFlags::Selected)) != 0};
+            auto const draw_priority{selected ? 2
+                                     : flags != ioj::ui::radar::ContactFlags::None                  ? 1
                                                                                           : 0};
             if (draw_priority != priority) {
                 continue;
@@ -86,21 +87,21 @@ void URadar3DShowcase::populate_frame(int32 const contact_count) {
                                   -0.12f,
                                   -0.35f + 0.35f * static_cast<float>(index - 12)};
             }
-            auto const glyph{static_cast<ERadarGlyph>(1 + index % 6)};
-            auto const heading{glyph == ERadarGlyph::Fighter ? angle + UE_HALF_PI : 0.0f};
+            auto const glyph{static_cast<ioj::ui::radar::Glyph>(1 + index % 6)};
+            auto const heading{glyph == ioj::ui::radar::Glyph::Fighter ? angle + UE_HALF_PI : 0.0f};
             instances.Add({
-                .radar_position = radar_position,
+                .radar_position = ioj::Vector3f{radar_position},
                 .size_scale = 1.0f,
                 .packed_color = pack_radar_color(colors[index % UE_ARRAY_COUNT(colors)]),
-                .packed_glyph_and_flags = pack_radar_display(glyph, flags, heading),
+                .packed_glyph_and_flags = ioj::ui::radar::pack_display(glyph, flags, heading),
             });
         }
     }
     instances.Add({
-        .radar_position = FVector3f::ZeroVector,
+        .radar_position = {},
         .size_scale = 1.0f,
         .packed_color = pack_radar_color({1.0f, 0.72f, 0.18f, 1.0f}),
-        .packed_glyph_and_flags = pack_radar_display(ERadarGlyph::Player, ERadarContactFlags::None),
+        .packed_glyph_and_flags = ioj::ui::radar::pack_display(ioj::ui::radar::Glyph::Player, ioj::ui::radar::ContactFlags::None),
     });
     radar_frame_store_->publish();
 }

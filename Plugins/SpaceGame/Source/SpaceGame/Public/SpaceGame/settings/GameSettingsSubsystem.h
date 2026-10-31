@@ -1,10 +1,10 @@
 #pragma once
 
+#include "ioj/settings/game_settings.h"
+#include "ioj/settings/game_settings_edit_state.h"
 #include "SpaceGame/settings/ControlSettingsTypes.h"
-#include "SpaceGame/settings/GameSettings.generated.h"
 #include "SpaceGame/settings/GameSettingsBackend.h"
-#include "SpaceGame/settings/GameSettingsEditState.h"
-#include <ioj/sim/player/flight_model_config.h>
+#include <ioj/sim/player/game_settings_session.h>
 
 #include "Containers/Ticker.h"
 #include "Subsystems/GameInstanceSubsystem.h"
@@ -18,14 +18,14 @@ namespace ioj {
 class USpaceGameInputUserSettings;
 
 DECLARE_MULTICAST_DELEGATE(FGameSettingsChanged);
-DECLARE_MULTICAST_DELEGATE_OneParam(FGameSettingChanged, EGameSetting);
+DECLARE_MULTICAST_DELEGATE_OneParam(FGameSettingChanged, GameSetting);
 DECLARE_MULTICAST_DELEGATE(FGameFlightModelConfigChanged);
 DECLARE_MULTICAST_DELEGATE_OneParam(FDisplayConfirmationChanged, bool);
 
 UCLASS()
 class SPACEGAME_API UGameSettingsSubsystem final
     : public UGameInstanceSubsystem
-    , public TGameSettingsAccess<UGameSettingsSubsystem> {
+    , public GameSettingsAccess<UGameSettingsSubsystem> {
     GENERATED_BODY()
   public:
     /* **************************************** */
@@ -37,24 +37,24 @@ class SPACEGAME_API UGameSettingsSubsystem final
     void begin_edit(ULocalPlayer* local_player);
     void cancel();
     void apply();
-    void reset_category(EGameSettingCategory category);
+    void reset_category(GameSettingCategory category);
     void confirm_display_changes();
     void revert_display_changes();
 
     /* **************************************** */
     // Settings state
     /* **************************************** */
-    auto settings_state() const -> FGameSettingsState const&;
-    auto applied_state() const -> FGameSettingsState const&;
-    auto default_state() const -> FGameSettingsState const&;
-    auto value(EGameSetting setting) const -> FGameSettingValue;
-    void set_setting(EGameSetting setting, FGameSettingValue const& value);
-    auto descriptors(EGameSettingCategory category) const -> TArray<FGameSettingDescriptor const*>;
-    auto options(EGameSetting setting) const -> TArray<FGameSettingOption>;
-    auto is_available(EGameSetting setting) const -> bool;
+    auto settings_state() const -> GameSettingsState const&;
+    auto applied_state() const -> GameSettingsState const&;
+    auto default_state() const -> GameSettingsState const&;
+    auto value(GameSetting setting) const -> GameSettingValue;
+    void set_setting(GameSetting setting, GameSettingValue const& value);
+    auto descriptors(GameSettingCategory category) const -> TArray<GameSettingDescriptor const*>;
+    auto options(GameSetting setting) const -> TArray<FGameSettingOption>;
+    auto is_available(GameSetting setting) const -> bool;
     auto is_dirty() const -> bool;
-    auto is_dirty(EGameSettingCategory category) const -> bool;
-    auto is_at_defaults(EGameSettingCategory category) const -> bool;
+    auto is_dirty(GameSettingCategory category) const -> bool;
+    auto is_at_defaults(GameSettingCategory category) const -> bool;
     auto flight_model_profile(EShipControlScope scope) const
         -> sim::player::FlightModelProfile const&;
     auto flight_model_loadout() const -> sim::player::FlightModelLoadout const&;
@@ -95,9 +95,9 @@ class SPACEGAME_API UGameSettingsSubsystem final
     // Settings and display helpers
     /* **************************************** */
     auto tick_display_confirmation(float delta_seconds) -> bool;
-    void preview_immediate_settings(FGameSettingsState const& state);
-    auto normalize_value(FGameSettingDescriptor const& descriptor,
-                         FGameSettingValue const& value) const -> TOptional<FGameSettingValue>;
+    void preview_immediate_settings(GameSettingsState const& state);
+    auto normalize_value(GameSettingDescriptor const& descriptor,
+                         GameSettingValue const& value) const -> std::optional<GameSettingValue>;
     auto input_user_settings() const -> USpaceGameInputUserSettings*;
 
     /* **************************************** */
@@ -119,14 +119,9 @@ class SPACEGAME_API UGameSettingsSubsystem final
     /* **************************************** */
     FGameSettingsBackend backend_;
     TWeakObjectPtr<ULocalPlayer> editing_local_player_{};
-    FGameSettingsEditState edit_state_{};
-    sim::player::FlightModelLoadout flight_model_loadout_{};
-    sim::player::FlightModelLoadout applied_flight_model_loadout_{};
-    TArray<FControlBindingView> applied_control_bindings_{};
-    double display_confirmation_deadline_{};
+    GameSettingsSession session_;
+    std::vector<ControlBindingSnapshot> applied_control_bindings_{};
     FTSTicker::FDelegateHandle display_confirmation_ticker_;
-    bool editing_{};
-    bool awaiting_display_confirmation_{};
 };
 
 } // namespace ioj

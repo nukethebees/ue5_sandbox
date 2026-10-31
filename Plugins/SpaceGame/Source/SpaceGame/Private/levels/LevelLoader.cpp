@@ -1,6 +1,6 @@
 #include "SpaceGame/levels/LevelLoader.h"
 
-#include "SpaceGame/levels/ObserverCameraTransform.h"
+#include <ioj/presentation/observer_camera.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
@@ -9,6 +9,8 @@
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
+#include <SandboxCoreEngine/strings.h>
+#include <SandboxCoreEngine/TransformConversion.h>
 #include <SandboxCoreEngine/VectorConversion.h>
 
 #include <Camera/CameraActor.h>
@@ -17,6 +19,8 @@
 #include <EngineUtils.h>
 #include <GameFramework/PlayerController.h>
 #include <Kismet/GameplayStatics.h>
+
+#include <vector>
 
 namespace ioj {
 namespace {
@@ -94,16 +98,16 @@ auto spawn_player(UWorld& world,
 
 auto initial_camera_transform(levels::LevelDefinition const& definition) -> FTransform {
     auto const& camera{*definition.camera()};
-    TArray<FVector> target_positions;
-    target_positions.Reserve(static_cast<int32>(camera.target_entity_ids.size()));
+    std::vector<Vector3d> target_positions;
+    target_positions.reserve(camera.target_entity_ids.size());
     for (auto const& target_id : camera.target_entity_ids) {
         auto const position{definition.entity(target_id).position};
-        target_positions.Add(ioj::to_unreal(position));
+        target_positions.push_back(position);
     }
-    auto const transform{make_observer_camera_transform(
-        target_positions, ioj::to_unreal(camera.offset_direction), camera.distance)};
-    check(transform.IsSet());
-    return transform->transform;
+    auto const transform{presentation::make_observer_camera_transform(
+        target_positions, camera.offset_direction, camera.distance)};
+    check(transform.has_value());
+    return to_unreal(transform->transform);
 }
 
 auto spawn_initial_camera(UWorld& world,
@@ -111,7 +115,7 @@ auto spawn_initial_camera(UWorld& world,
                           levels::LevelDefinition const& definition,
                           FSpawnedActorTransaction& transaction,
                           FLevelLoadErrors& result,
-                          EPlayerControlContext const control_context) -> bool {
+                          levels::ControlContext const control_context) -> bool {
     auto const transform{initial_camera_transform(definition)};
     auto* const camera{
         world.SpawnActorDeferred<ACameraActor>(ACameraActor::StaticClass(), transform)};
@@ -153,38 +157,22 @@ auto FLevelLoadErrors::format(FStringView const source_path) const -> FString {
 }
 
 auto FLevelLoader::take_pending(UGameInstance* const game_instance)
-    -> std::expected<FPendingLevelDefinition, FString> {
+    -> std::expected<levels::authoring::PendingLevel, FString> {
     auto* const subsystem{UGameSubsystem::get(game_instance)};
     if (!IsValid(subsystem)) {
         return std::unexpected{
             FString{TEXT("Cannot load authored level: game subsystem is invalid")}};
     }
     auto pending{subsystem->take_pending_level()};
-    if (!pending.IsSet()) {
+    if (!pending) {
         return std::unexpected{
             FString{TEXT("No pending authored level was provided to GameRuntime.")}};
     }
 
-    auto const& options{pending->options};
-    if (!level_launch::is_valid_time_scale(options.requested_time_scale)) {
-        return std::unexpected{
-            FString::Printf(TEXT("Cannot load authored level: requested time scale %.17g is "
-                                 "outside the supported range (0, %.0f]."),
-                            options.requested_time_scale,
-                            level_launch::maximum_time_scale)};
+    if (auto valid{levels::validate_launch_options(pending->options)}; !valid) {
+        return std::unexpected{to_fstring(valid.error())};
     }
-    if (options.presentation_mode == ELevelPresentationMode::SimulationOnly &&
-        !options.simulated_duration_seconds.IsSet()) {
-        return std::unexpected{
-            FString{TEXT("Cannot load authored level: simulation-only runs require a duration.")}};
-    }
-    if (options.simulated_duration_seconds.IsSet() &&
-        (!FMath::IsFinite(options.simulated_duration_seconds.GetValue()) ||
-         options.simulated_duration_seconds.GetValue() <= 0.0)) {
-        return std::unexpected{FString{
-            TEXT("Cannot load authored level: simulated duration must be finite and positive.")}};
-    }
-    return MoveTemp(pending.GetValue());
+    return std::move(*pending);
 }
 
 void FLevelLoader::report_failure(UWorld* const world, FString message) {
@@ -221,20 +209,14 @@ auto FLevelLoader::load(FLevelActorLoadRequest const& request)
     auto const has_player{!definition.player_entity_id().empty()};
     auto const& visual{request.visual};
     if (!has_player && visual &&
-        visual->playerless_control_context != EPlayerControlContext::Observer &&
-        visual->playerless_control_context != EPlayerControlContext::Benchmark) {
+        visual->playerless_control_context != levels::ControlContext::Observer &&
+        visual->playerless_control_context != levels::ControlContext::Benchmark) {
         add_error(errors,
                   ELevelLoadErrorCode::InvalidDefinition,
                   TEXT("Playerless level requires Observer or Benchmark control context"));
         return result;
     }
-    if (has_player && !visual) {
-        add_error(errors,
-                  ELevelLoadErrorCode::InvalidDefinition,
-                  TEXT("Presentation-disabled simulation requires a playerless level"));
-        return result;
-    }
-    if (has_player && !IsValid(config.classes.player_ship_class)) {
+    if (has_player && visual && !IsValid(config.classes.player_ship_class)) {
         add_error(errors,
                   ELevelLoadErrorCode::InvalidLevelConfig,
                   TEXT("Level configuration or required actor classes are invalid"));
@@ -252,7 +234,7 @@ auto FLevelLoader::load(FLevelActorLoadRequest const& request)
 
     FSpawnedActorTransaction transaction{1 + (definition.camera() ? 1 : 0)};
     ATestSpaceShip* player{nullptr};
-    if (has_player) {
+    if (has_player && visual) {
         player = spawn_player(
             world, config, definition.entity(definition.player_entity_id()), transaction, errors);
         if (!IsValid(player)) {

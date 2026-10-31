@@ -18,7 +18,7 @@
 #include "generated/ioj/s7/SScriptLevelSelectView.slate.generated.h"
 
 namespace ioj::s7 {
-using ioj::levels::authoring::ELevelCatalogCategory;
+using ioj::levels::authoring::LevelCatalogCategory;
 
 void SScriptLevelSelectView::Construct(FArguments const& args) {
     style_ = args._Style;
@@ -56,7 +56,7 @@ void SScriptLevelSelectView::update_state(FLevelSelectViewState const& state) {
                                            ? EVisibility::Collapsed
                                            : EVisibility::HitTestInvisible);
     selected_level_can_launch_ = state.can_launch;
-    auto const playerless{category_ != ELevelCatalogCategory::Mission};
+    auto const playerless{category_ != LevelCatalogCategory::Mission};
     if (playerless) {
         auto const speed_text{
             state.playerless_time_scale.IsSet()
@@ -104,19 +104,19 @@ auto SScriptLevelSelectView::OnKeyDown(FGeometry const& geometry, FKeyEvent cons
                                   benchmark_category_button_->has_focus()};
     if (category_has_focus) {
         if (key == EKeys::Left || key == EKeys::Gamepad_DPad_Left) {
-            if (category_ != ELevelCatalogCategory::Mission) {
-                auto const previous{category_ == ELevelCatalogCategory::Benchmark
-                                        ? ELevelCatalogCategory::BattleViewer
-                                        : ELevelCatalogCategory::Mission};
+            if (category_ != LevelCatalogCategory::Mission) {
+                auto const previous{category_ == LevelCatalogCategory::Benchmark
+                                        ? LevelCatalogCategory::BattleViewer
+                                        : LevelCatalogCategory::Mission};
                 handle_category_selected(previous);
                 focus_active_category();
                 return FReply::Handled();
             }
         } else if (key == EKeys::Right || key == EKeys::Gamepad_DPad_Right) {
-            if (category_ != ELevelCatalogCategory::Benchmark) {
-                auto const next{category_ == ELevelCatalogCategory::Mission
-                                    ? ELevelCatalogCategory::BattleViewer
-                                    : ELevelCatalogCategory::Benchmark};
+            if (category_ != LevelCatalogCategory::Benchmark) {
+                auto const next{category_ == LevelCatalogCategory::Mission
+                                    ? LevelCatalogCategory::BattleViewer
+                                    : LevelCatalogCategory::Benchmark};
                 handle_category_selected(next);
                 focus_active_category();
                 return FReply::Handled();
@@ -166,20 +166,20 @@ auto SScriptLevelSelectView::build_header() -> TSharedRef<SWidget> {
                                   .Selected(true)
                                   .OnClicked(this,
                                              &SScriptLevelSelectView::handle_category_selected,
-                                             ELevelCatalogCategory::Mission)};
+                                             LevelCatalogCategory::Mission)};
     auto const battle_viewer_button{
         SAssignNew(battle_viewer_category_button_, SGameButton)
             .Style(&style_->button(EGameButtonStyle::Secondary))
             .Text(NSLOCTEXT("LevelSelect", "BattleViewer", "BATTLE VIEWER"))
             .OnClicked(this,
                        &SScriptLevelSelectView::handle_category_selected,
-                       ELevelCatalogCategory::BattleViewer)};
+                       LevelCatalogCategory::BattleViewer)};
     auto const benchmark_button{SAssignNew(benchmark_category_button_, SGameButton)
                                     .Style(&style_->button(EGameButtonStyle::Secondary))
                                     .Text(NSLOCTEXT("LevelSelect", "Benchmarks", "BENCHMARKS"))
                                     .OnClicked(this,
                                                &SScriptLevelSelectView::handle_category_selected,
-                                               ELevelCatalogCategory::Benchmark)};
+                                               LevelCatalogCategory::Benchmark)};
 
     return SlateGenerated::ioj::s7::SScriptLevelSelectViewBuilder{*this}.BuildHeader(
         &style_->chrome().frame_border,
@@ -340,41 +340,41 @@ auto SScriptLevelSelectView::build_details() -> TSharedRef<SWidget> {
 
 auto SScriptLevelSelectView::catalog_caption() const -> FText {
     switch (category_) {
-        case ELevelCatalogCategory::Mission:
+        case LevelCatalogCategory::Mission:
             return NSLOCTEXT("LevelSelect", "MissionCatalogCaption", "MISSION ARCHIVE");
-        case ELevelCatalogCategory::BattleViewer:
+        case LevelCatalogCategory::BattleViewer:
             return NSLOCTEXT("LevelSelect", "BattleCatalogCaption", "BATTLE ARCHIVE");
-        case ELevelCatalogCategory::Benchmark:
+        case LevelCatalogCategory::Benchmark:
             return NSLOCTEXT("LevelSelect", "BenchmarkCatalogCaption", "BENCHMARK ARCHIVE");
     }
     return FText::GetEmpty();
 }
 
 auto SScriptLevelSelectView::catalog_title() const -> FText {
-    return category_ == ELevelCatalogCategory::Mission
+    return category_ == LevelCatalogCategory::Mission
              ? NSLOCTEXT("LevelSelect", "MissionCatalogTitle", "OPERATIONS")
              : NSLOCTEXT("LevelSelect", "BattleCatalogTitle", "SCENARIOS");
 }
 
 auto SScriptLevelSelectView::directive_title() const -> FText {
-    return category_ == ELevelCatalogCategory::Mission
+    return category_ == LevelCatalogCategory::Mission
              ? NSLOCTEXT("LevelSelect", "MissionDirective", "MISSION DIRECTIVE")
              : NSLOCTEXT("LevelSelect", "ScenarioDefinition", "SCENARIO DEFINITION");
 }
 
 auto SScriptLevelSelectView::launch_text() const -> FText {
     switch (category_) {
-        case ELevelCatalogCategory::Mission:
+        case LevelCatalogCategory::Mission:
             return NSLOCTEXT("LevelSelect", "Launch", "Launch Mission");
-        case ELevelCatalogCategory::BattleViewer:
+        case LevelCatalogCategory::BattleViewer:
             return NSLOCTEXT("LevelSelect", "ViewBattle", "View Battle");
-        case ELevelCatalogCategory::Benchmark:
+        case LevelCatalogCategory::Benchmark:
             return NSLOCTEXT("LevelSelect", "RunBenchmark", "Run Benchmark");
     }
     return FText::GetEmpty();
 }
 
-auto SScriptLevelSelectView::handle_category_selected(ELevelCatalogCategory const category)
+auto SScriptLevelSelectView::handle_category_selected(LevelCatalogCategory const category)
     -> FReply {
     category_ = category;
     update_category_selection();
@@ -399,7 +399,7 @@ void SScriptLevelSelectView::handle_battle_speed_changed(FText const& text) {
     value_text.TrimStartAndEndInline();
     auto const numeric{value_text.IsNumeric()};
     auto const value{numeric ? FCString::Atod(*value_text) : 0.0};
-    battle_speed_valid_ = numeric && level_launch::is_valid_time_scale(value);
+    battle_speed_valid_ = numeric && levels::launch::is_valid_time_scale(value);
     battle_speed_error_->SetVisibility(battle_speed_valid_ ? EVisibility::Collapsed
                                                            : EVisibility::HitTestInvisible);
     update_launch_availability();
@@ -413,7 +413,7 @@ void SScriptLevelSelectView::handle_battle_duration_changed(FText const& text) {
     auto const blank{value_text.IsEmpty()};
     auto const numeric{value_text.IsNumeric()};
     auto const value{numeric ? FCString::Atod(*value_text) : 0.0};
-    auto const blank_allowed{category_ == ELevelCatalogCategory::BattleViewer &&
+    auto const blank_allowed{category_ == LevelCatalogCategory::BattleViewer &&
                              !battle_simulation_only_};
     battle_duration_valid_ = (blank && blank_allowed) || (numeric && value > 0.0);
     battle_duration_error_->SetVisibility(battle_duration_valid_ ? EVisibility::Collapsed
@@ -431,7 +431,7 @@ void SScriptLevelSelectView::handle_simulation_only_changed(ECheckBoxState const
 }
 
 void SScriptLevelSelectView::update_launch_availability() {
-    auto const speed_is_valid{category_ == ELevelCatalogCategory::Mission ||
+    auto const speed_is_valid{category_ == LevelCatalogCategory::Mission ||
                               (battle_speed_valid_ && battle_duration_valid_)};
     launch_button_->SetEnabled(selected_level_can_launch_ && speed_is_valid);
 }
@@ -448,10 +448,12 @@ void SScriptLevelSelectView::rebuild_catalog(FLevelSelectViewState const& state)
         }
 
         auto const button_index{level_buttons_.Num()};
-        auto const completed{row.indicator_state != ELevelCompletionIndicatorState::Incomplete};
+        auto const completed{row.indicator_state !=
+                             persistence::CompletionIndicatorState::Incomplete};
         auto const* const icon{completed ? &style_->icon(EGameUiIcon::LevelComplete)
                                          : &style_->icon(EGameUiIcon::LevelIncomplete)};
-        auto const icon_tint{row.indicator_state == ELevelCompletionIndicatorState::ParAchieved
+        auto const icon_tint{row.indicator_state ==
+                                     persistence::CompletionIndicatorState::ParAchieved
                                  ? style_->palette().honey
                              : completed ? style_->palette().completion
                                          : style_->palette().text_secondary};
@@ -481,20 +483,20 @@ void SScriptLevelSelectView::update_selection(int32 const button_index) {
 
 void SScriptLevelSelectView::update_category_selection() {
     if (mission_category_button_.IsValid()) {
-        mission_category_button_->set_selected(category_ == ELevelCatalogCategory::Mission);
+        mission_category_button_->set_selected(category_ == LevelCatalogCategory::Mission);
     }
     if (battle_viewer_category_button_.IsValid()) {
         battle_viewer_category_button_->set_selected(category_ ==
-                                                     ELevelCatalogCategory::BattleViewer);
+                                                     LevelCatalogCategory::BattleViewer);
     }
     if (benchmark_category_button_.IsValid()) {
-        benchmark_category_button_->set_selected(category_ == ELevelCatalogCategory::Benchmark);
+        benchmark_category_button_->set_selected(category_ == LevelCatalogCategory::Benchmark);
     }
 }
 
 void SScriptLevelSelectView::focus_active_category() {
-    auto const& button{category_ == ELevelCatalogCategory::Mission ? mission_category_button_
-                       : category_ == ELevelCatalogCategory::BattleViewer
+    auto const& button{category_ == LevelCatalogCategory::Mission ? mission_category_button_
+                       : category_ == LevelCatalogCategory::BattleViewer
                            ? battle_viewer_category_button_
                            : benchmark_category_button_};
     if (button.IsValid()) {

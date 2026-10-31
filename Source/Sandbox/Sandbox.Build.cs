@@ -24,6 +24,7 @@ public class Sandbox : ModuleRules
             "SpaceGame", "SpaceGameSimulation", "SpaceGamePresentation",
             "SandboxGameShared",
             "SandboxCore",
+            "NativePresentation",
             "SandboxCoreEngine",
             "Core",
             "CoreUObject",

@@ -1,9 +1,9 @@
 #pragma once
 
+#include <ioj/linear_travel.h>
+
 #include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
-
-#include <limits>
 
 #include "LoopingLiftComponent.generated.h"
 
@@ -29,10 +29,5 @@ class SANDBOX_API ULoopingLiftComponent : public UActorComponent {
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     FVector direction{FVector::UpVector};
   private:
-    FVector origin;
-    FVector current_direction;
-    FVector original_direction;
-    inline static constexpr float no_active_pause_time{std::numeric_limits<float>::infinity()};
-
-    float pause_timer{no_active_pause_time};
+    ioj::LinearTravelState travel_{};
 };

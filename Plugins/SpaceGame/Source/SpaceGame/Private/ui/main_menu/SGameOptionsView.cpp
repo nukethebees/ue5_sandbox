@@ -31,57 +31,57 @@ struct FSimdFeatureDisplay {
     TCHAR const* name{};
 };
 
-auto category_label(EGameSettingCategory const category) -> FText {
+auto category_label(GameSettingCategory const category) -> FText {
     for (auto const& descriptor : game_setting_category_descriptors()) {
         if (descriptor.id == category) {
-            return descriptor.label;
+            return FText::FromString(UTF8_TO_TCHAR(descriptor.label.data()));
         }
     }
     return FText::GetEmpty();
 }
 
-auto section_label(FGameSettingDescriptor const& descriptor) -> FText {
+auto section_label(GameSettingDescriptor const& descriptor) -> FText {
     switch (descriptor.id) {
-        case EGameSetting::Resolution:
-        case EGameSetting::WindowMode:
-        case EGameSetting::VSync:
-        case EGameSetting::FrameRateLimit:
-        case EGameSetting::ResolutionScale:
+        case GameSetting::Resolution:
+        case GameSetting::WindowMode:
+        case GameSetting::VSync:
+        case GameSetting::FrameRateLimit:
+        case GameSetting::ResolutionScale:
             return NSLOCTEXT("OptionsMenu", "DisplaySection", "Display");
-        case EGameSetting::AAMethod:
-        case EGameSetting::OverallQuality:
-        case EGameSetting::ViewDistanceQuality:
-        case EGameSetting::AAQuality:
-        case EGameSetting::ShadowQuality:
-        case EGameSetting::GlobalIlluminationQuality:
-        case EGameSetting::ReflectionsQuality:
-        case EGameSetting::PostProcessingQuality:
-        case EGameSetting::TextureQuality:
-        case EGameSetting::EffectsQuality:
-        case EGameSetting::ShadingQuality:
+        case GameSetting::AAMethod:
+        case GameSetting::OverallQuality:
+        case GameSetting::ViewDistanceQuality:
+        case GameSetting::AAQuality:
+        case GameSetting::ShadowQuality:
+        case GameSetting::GlobalIlluminationQuality:
+        case GameSetting::ReflectionsQuality:
+        case GameSetting::PostProcessingQuality:
+        case GameSetting::TextureQuality:
+        case GameSetting::EffectsQuality:
+        case GameSetting::ShadingQuality:
             return NSLOCTEXT("OptionsMenu", "QualitySection", "Quality");
-        case EGameSetting::Bloom:
-        case EGameSetting::MotionBlur:
+        case GameSetting::Bloom:
+        case GameSetting::MotionBlur:
             return NSLOCTEXT(
                 "OptionsMenu", "PostProcessingEffectsSection", "Post Processing Effects");
-        case EGameSetting::MasterVolume:
-        case EGameSetting::MusicVolume:
-        case EGameSetting::SfxVolume:
-        case EGameSetting::UIVolume:
+        case GameSetting::MasterVolume:
+        case GameSetting::MusicVolume:
+        case GameSetting::SfxVolume:
+        case GameSetting::UIVolume:
             return NSLOCTEXT("OptionsMenu", "VolumeSection", "Volume");
-        case EGameSetting::Bees:
+        case GameSetting::Bees:
             return NSLOCTEXT("OptionsMenu", "GameplaySection", "Gameplay");
-        case EGameSetting::MouseTurnSensitivity:
-        case EGameSetting::GamepadTurnSensitivity:
-        case EGameSetting::InvertMousePitch:
-        case EGameSetting::InvertMouseYaw:
-        case EGameSetting::InvertGamepadPitch:
-        case EGameSetting::InvertGamepadYaw:
-        case EGameSetting::InvertGamepadRoll:
-        case EGameSetting::InvertGamepadVerticalTranslation:
+        case GameSetting::MouseTurnSensitivity:
+        case GameSetting::GamepadTurnSensitivity:
+        case GameSetting::InvertMousePitch:
+        case GameSetting::InvertMouseYaw:
+        case GameSetting::InvertGamepadPitch:
+        case GameSetting::InvertGamepadYaw:
+        case GameSetting::InvertGamepadRoll:
+        case GameSetting::InvertGamepadVerticalTranslation:
             return NSLOCTEXT("OptionsMenu", "ResponseSection", "Response");
-        case EGameSetting::GamepadTurnDeadZone:
-        case EGameSetting::GamepadMoveDeadZone:
+        case GameSetting::GamepadTurnDeadZone:
+        case GameSetting::GamepadMoveDeadZone:
             return NSLOCTEXT("OptionsMenu", "ResponseSection", "Response");
     }
     return category_label(descriptor.category);
@@ -431,11 +431,11 @@ auto SGameOptionsView::build_header() -> TSharedRef<SWidget> {
 
 auto SGameOptionsView::build_body() -> TSharedRef<SWidget> {
     SAssignNew(page_switcher_, SWidgetSwitcher).WidgetIndex(static_cast<int32>(active_tab_)) +
-        SWidgetSwitcher::Slot()[build_category_page(EGameSettingCategory::Video)] +
-        SWidgetSwitcher::Slot()[build_category_page(EGameSettingCategory::Gameplay)] +
-        SWidgetSwitcher::Slot()[build_category_page(EGameSettingCategory::Audio)] +
+        SWidgetSwitcher::Slot()[build_category_page(GameSettingCategory::Video)] +
+        SWidgetSwitcher::Slot()[build_category_page(GameSettingCategory::Gameplay)] +
+        SWidgetSwitcher::Slot()[build_category_page(GameSettingCategory::Audio)] +
         SWidgetSwitcher::Slot()[build_controls_page()] +
-        SWidgetSwitcher::Slot()[build_category_page(EGameSettingCategory::Accessibility)] +
+        SWidgetSwitcher::Slot()[build_category_page(GameSettingCategory::Accessibility)] +
         SWidgetSwitcher::Slot()[build_system_page()];
     return page_switcher_.ToSharedRef();
 }
@@ -480,12 +480,12 @@ auto SGameOptionsView::build_footer() -> TSharedRef<SWidget> {
                                   })]];
 }
 
-auto SGameOptionsView::build_category_page(EGameSettingCategory const category)
+auto SGameOptionsView::build_category_page(GameSettingCategory const category)
     -> TSharedRef<SWidget> {
     auto content{SNew(SVerticalBox)};
     auto* const settings{settings_.Get()};
     auto const descriptors{settings != nullptr ? settings->descriptors(category)
-                                               : TArray<FGameSettingDescriptor const*>{}};
+                                               : TArray<GameSettingDescriptor const*>{}};
     if (descriptors.IsEmpty()) {
         content->AddSlot().AutoHeight()[SNew(STextBlock)
                                             .Text(NSLOCTEXT("OptionsMenu",
@@ -585,7 +585,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
     };
 
     auto const add_setting_sections = [this, settings, &add_section](
-                                          EGameSettingDevice const device) {
+                                          GameSettingDevice const device) {
         FText current_section;
         TSharedPtr<SVerticalBox> rows;
         auto const flush = [&] {
@@ -594,7 +594,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
             }
         };
 
-        for (auto const* const descriptor : settings->descriptors(EGameSettingCategory::Controls)) {
+        for (auto const* const descriptor : settings->descriptors(GameSettingCategory::Controls)) {
             if (descriptor->device != device) {
                 continue;
             }
@@ -621,13 +621,13 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
              [SAssignNew(keyboard_mouse_button, SGameButton)
                   .Style(&style_->button(EGameButtonStyle::Secondary))
                   .Audio(audio_)
-                  .Selected(controls_device_ == EGameSettingDevice::KeyboardMouse)
+                  .Selected(controls_device_ == GameSettingDevice::KeyboardMouse)
                   .Text(NSLOCTEXT("OptionsMenu", "KeyboardMouseDevice", "Keyboard & Mouse"))
                   .OnClicked_Lambda([this] {
-                      controls_device_ = EGameSettingDevice::KeyboardMouse;
+                      controls_device_ = GameSettingDevice::KeyboardMouse;
                       request_controls_rebuild(FControlsFocusIdentity{
                           .kind = EControlsFocusKind::Device,
-                          .device = EGameSettingDevice::KeyboardMouse,
+                          .device = GameSettingDevice::KeyboardMouse,
                           .scope = controls_scope_,
                       });
                       return FReply::Handled();
@@ -636,13 +636,13 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
              1.0f)[SAssignNew(controller_button, SGameButton)
                        .Style(&style_->button(EGameButtonStyle::Secondary))
                        .Audio(audio_)
-                       .Selected(controls_device_ == EGameSettingDevice::Controller)
+                       .Selected(controls_device_ == GameSettingDevice::Controller)
                        .Text(NSLOCTEXT("OptionsMenu", "ControllerDevice", "Controller"))
                        .OnClicked_Lambda([this] {
-                           controls_device_ = EGameSettingDevice::Controller;
+                           controls_device_ = GameSettingDevice::Controller;
                            request_controls_rebuild(FControlsFocusIdentity{
                                .kind = EControlsFocusKind::Device,
-                               .device = EGameSettingDevice::Controller,
+                               .device = GameSettingDevice::Controller,
                                .scope = controls_scope_,
                            });
                            return FReply::Handled();
@@ -651,14 +651,14 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
     register_controls_focus(
         FControlsFocusIdentity{
             .kind = EControlsFocusKind::Device,
-            .device = EGameSettingDevice::KeyboardMouse,
+            .device = GameSettingDevice::KeyboardMouse,
             .scope = controls_scope_,
         },
         keyboard_mouse_button.ToSharedRef());
     register_controls_focus(
         FControlsFocusIdentity{
             .kind = EControlsFocusKind::Device,
-            .device = EGameSettingDevice::Controller,
+            .device = GameSettingDevice::Controller,
             .scope = controls_scope_,
         },
         controller_button.ToSharedRef());
@@ -727,7 +727,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
     add_section(NSLOCTEXT("OptionsMenu", "ControlScopeSection", "Flight Style"), scope_rows);
 
     if (controls_scope_ == EShipControlScope::General) {
-        add_setting_sections(EGameSettingDevice::Shared);
+        add_setting_sections(GameSettingDevice::Shared);
         add_setting_sections(controls_device_);
     }
 
@@ -1662,7 +1662,7 @@ void SGameOptionsView::complete_binding_change() {
 /* **************************************** */
 // Settings and prompts
 /* **************************************** */
-auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descriptor,
+auto SGameOptionsView::build_setting_row(GameSettingDescriptor const& descriptor,
                                          TFunction<void()>& focus_action) -> TSharedRef<SWidget> {
     auto const weak_settings{settings_};
     auto available{TAttribute<bool>::CreateLambda([weak_settings, setting = descriptor.id] {
@@ -1671,7 +1671,7 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
     })};
 
     switch (descriptor.control_kind) {
-        case ESettingControlKind::Toggle: {
+        case SettingControlKind::Toggle: {
             TSharedPtr<SSettingsToggle> control;
             auto checked{TAttribute<bool>::CreateLambda([weak_settings, setting = descriptor.id] {
                 auto const* const settings{weak_settings.Get()};
@@ -1685,22 +1685,22 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
 
             auto row{SAssignNew(control, SSettingsToggle)
                          .Style(&style_->settings())
-                         .Label(descriptor.label)
-                         .ToolTipText(descriptor.tooltip)
+                         .Label(FText::FromString(UTF8_TO_TCHAR(descriptor.label.data())))
+                         .ToolTipText(FText::FromString(UTF8_TO_TCHAR(descriptor.tooltip.data())))
                          .Checked(checked)
                          .ControlEnabled(available)
                          .OnCheckStateChanged_Lambda([weak_settings, setting = descriptor.id](
                                                          ECheckBoxState const state) {
                              if (auto* const settings{weak_settings.Get()}) {
                                  settings->set_setting(
-                                     setting, FGameSettingValue{state == ECheckBoxState::Checked});
+                                     setting, GameSettingValue{state == ECheckBoxState::Checked});
                              }
                          })};
 
             focus_action = [control] { control->focus(); };
             return row;
         }
-        case ESettingControlKind::Choice: {
+        case SettingControlKind::Choice: {
             TSharedPtr<SSettingsChoice> control;
             auto const options{settings_.IsValid() ? settings_->options(descriptor.id)
                                                    : TArray<FGameSettingOption>{}};
@@ -1725,8 +1725,8 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
             auto row{
                 SAssignNew(control, SSettingsChoice)
                     .Style(&style_->settings())
-                    .Label(descriptor.label)
-                    .ToolTipText(descriptor.tooltip)
+                    .Label(FText::FromString(UTF8_TO_TCHAR(descriptor.label.data())))
+                    .ToolTipText(FText::FromString(UTF8_TO_TCHAR(descriptor.tooltip.data())))
                     .Options(MoveTemp(labels))
                     .SelectedIndex(selected)
                     .ControlEnabled(available)
@@ -1741,7 +1741,7 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
             focus_action = [control] { control->focus(); };
             return row;
         }
-        case ESettingControlKind::FloatRange: {
+        case SettingControlKind::FloatRange: {
             TSharedPtr<SSettingsSlider> control;
             auto value{TAttribute<float>::CreateLambda([weak_settings, setting = descriptor.id] {
                 auto const* const settings{weak_settings.Get()};
@@ -1758,8 +1758,8 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
 
             auto row{SAssignNew(control, SSettingsSlider)
                          .Style(&style_->settings())
-                         .Label(descriptor.label)
-                         .ToolTipText(descriptor.tooltip)
+                         .Label(FText::FromString(UTF8_TO_TCHAR(descriptor.label.data())))
+                         .ToolTipText(FText::FromString(UTF8_TO_TCHAR(descriptor.tooltip.data())))
                          .Value(value)
                          .ValueText(value_text)
                          .Minimum(static_cast<float>(descriptor.minimum))
@@ -1769,14 +1769,14 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
                          .OnValueChanged_Lambda(
                              [weak_settings, setting = descriptor.id](float const next) {
                                  if (auto* const settings{weak_settings.Get()}) {
-                                     settings->set_setting(setting, FGameSettingValue{next});
+                                     settings->set_setting(setting, GameSettingValue{next});
                                  }
                              })};
 
             focus_action = [control] { control->focus(); };
             return row;
         }
-        case ESettingControlKind::IntegerRange: {
+        case SettingControlKind::IntegerRange: {
             TSharedPtr<SSettingsSlider> control;
             auto value{TAttribute<float>::CreateLambda([weak_settings, setting = descriptor.id] {
                 auto const* const settings{weak_settings.Get()};
@@ -1801,31 +1801,31 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
 
             auto row{SAssignNew(control, SSettingsSlider)
                          .Style(&style_->settings())
-                         .Label(descriptor.label)
-                         .ToolTipText(descriptor.tooltip)
+                         .Label(FText::FromString(UTF8_TO_TCHAR(descriptor.label.data())))
+                         .ToolTipText(FText::FromString(UTF8_TO_TCHAR(descriptor.tooltip.data())))
                          .Value(value)
                          .ValueText(value_text)
                          .Minimum(static_cast<float>(descriptor.minimum))
                          .Maximum(static_cast<float>(descriptor.maximum))
                          .Step(static_cast<float>(descriptor.step))
                          .ControlEnabled(available)
-                         .OnValueChanged_Lambda(
-                             [weak_settings, setting = descriptor.id](float const next) {
-                                 if (auto* const settings{weak_settings.Get()}) {
-                                     settings->set_setting(
-                                         setting, FGameSettingValue{FMath::RoundToInt32(next)});
-                                 }
-                             })};
+                         .OnValueChanged_Lambda([weak_settings,
+                                                 setting = descriptor.id](float const next) {
+                             if (auto* const settings{weak_settings.Get()}) {
+                                 settings->set_setting(setting,
+                                                       GameSettingValue{FMath::RoundToInt32(next)});
+                             }
+                         })};
 
             focus_action = [control] { control->focus(); };
             return row;
         }
-        case ESettingControlKind::Custom:
+        case SettingControlKind::Custom:
             return SNew(SSettingsReadOnlyRow)
                 .Style(&style_->settings())
-                .Label(descriptor.label)
+                .Label(FText::FromString(UTF8_TO_TCHAR(descriptor.label.data())))
                 .Value(NSLOCTEXT("OptionsMenu", "UnsupportedCustomSetting", "Unavailable"))
-                .ToolTipText(descriptor.tooltip);
+                .ToolTipText(FText::FromString(UTF8_TO_TCHAR(descriptor.tooltip.data())));
     }
 
     return SNew(STextBlock).Text(NSLOCTEXT("OptionsMenu", "InvalidSetting", "Invalid setting"));
@@ -2161,10 +2161,10 @@ auto SGameOptionsView::build_capture_prompt() -> TSharedRef<SWidget> {
                               chord_capture_.activator_key().GetDisplayName(),
                               chord_capture_.action_key().GetDisplayName());
         } else if (chord_capture_.held_key().IsValid()) {
-            candidate = FText::Format(NSLOCTEXT("OptionsMenu", "PartialChord", "Held: {0} + â€¦"),
+            candidate = FText::Format(NSLOCTEXT("OptionsMenu", "PartialChord", "Held: {0} + …"),
                                       chord_capture_.held_key().GetDisplayName());
         } else {
-            candidate = NSLOCTEXT("OptionsMenu", "WaitingForChord", "Waiting for inputâ€¦");
+            candidate = NSLOCTEXT("OptionsMenu", "WaitingForChord", "Waiting for input…");
         }
         auto const shared_warning{
             captured_chord_dependent_count_ > 1
@@ -2324,7 +2324,7 @@ auto SGameOptionsView::tab_text(EOptionsTab const tab) const -> FText {
     return FText::GetEmpty();
 }
 
-auto SGameOptionsView::setting_float(EGameSetting const setting) const -> float {
+auto SGameOptionsView::setting_float(GameSetting const setting) const -> float {
     auto const* const settings{settings_.Get()};
     if (settings == nullptr) {
         return 0.0f;
@@ -2334,16 +2334,16 @@ auto SGameOptionsView::setting_float(EGameSetting const setting) const -> float 
     return typed != nullptr ? *typed : 0.0f;
 }
 
-auto SGameOptionsView::format_range_value(FGameSettingDescriptor const& descriptor) const -> FText {
+auto SGameOptionsView::format_range_value(GameSettingDescriptor const& descriptor) const -> FText {
     auto const value{setting_float(descriptor.id)};
     switch (descriptor.id) {
-        case EGameSetting::MasterVolume:
-        case EGameSetting::MusicVolume:
-        case EGameSetting::SfxVolume:
-        case EGameSetting::UIVolume:
+        case GameSetting::MasterVolume:
+        case GameSetting::MusicVolume:
+        case GameSetting::SfxVolume:
+        case GameSetting::UIVolume:
             return FText::Format(NSLOCTEXT("OptionsMenu", "NormalizedPercent", "{0}%"),
                                  FText::AsNumber(FMath::RoundToInt32(value * 100.0f)));
-        case EGameSetting::ResolutionScale:
+        case GameSetting::ResolutionScale:
             return FText::Format(NSLOCTEXT("OptionsMenu", "Percent", "{0}%"),
                                  FText::AsNumber(FMath::RoundToInt32(value)));
         default:
@@ -2351,18 +2351,18 @@ auto SGameOptionsView::format_range_value(FGameSettingDescriptor const& descript
     }
 }
 
-auto SGameOptionsView::active_category() const -> TOptional<EGameSettingCategory> {
+auto SGameOptionsView::active_category() const -> TOptional<GameSettingCategory> {
     switch (active_tab_) {
         case EOptionsTab::Video:
-            return EGameSettingCategory::Video;
+            return GameSettingCategory::Video;
         case EOptionsTab::Gameplay:
-            return EGameSettingCategory::Gameplay;
+            return GameSettingCategory::Gameplay;
         case EOptionsTab::Audio:
-            return EGameSettingCategory::Audio;
+            return GameSettingCategory::Audio;
         case EOptionsTab::Controls:
-            return EGameSettingCategory::Controls;
+            return GameSettingCategory::Controls;
         case EOptionsTab::Accessibility:
-            return EGameSettingCategory::Accessibility;
+            return GameSettingCategory::Accessibility;
         case EOptionsTab::System:
             return {};
     }
@@ -2370,7 +2370,7 @@ auto SGameOptionsView::active_category() const -> TOptional<EGameSettingCategory
 }
 
 auto SGameOptionsView::controls_device_type() const -> EHardwareDevicePrimaryType {
-    return controls_device_ == EGameSettingDevice::Controller
+    return controls_device_ == GameSettingDevice::Controller
              ? EHardwareDevicePrimaryType::Gamepad
              : EHardwareDevicePrimaryType::KeyboardAndMouse;
 }
@@ -2389,8 +2389,8 @@ auto SGameOptionsView::binding_focus_identity(FControlBindingView const& binding
     return {
         .kind = EControlsFocusKind::Binding,
         .device = binding.device_type == EHardwareDevicePrimaryType::Gamepad
-                    ? EGameSettingDevice::Controller
-                    : EGameSettingDevice::KeyboardMouse,
+                    ? GameSettingDevice::Controller
+                    : GameSettingDevice::KeyboardMouse,
         .scope = binding.scope,
         .binding = control_binding_identity(binding.address, binding.device_type),
     };

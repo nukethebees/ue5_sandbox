@@ -3,8 +3,8 @@
 #include "ioj/sim/entities/entity_identity_layout.h"
 #include "ioj/sim/entities/entity_type_radii.h"
 #include "ioj/sim/turrets/turret_entity_data.h"
-#include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
 #include <ioj/column_math.h>
+#include <ioj/presentation/entity_overlay.h>
 
 #include "SandboxUI/EntityOverlay/EntityOverlayBenchmark.h"
 #include <SandboxCoreEngine/VectorConversion.h>
@@ -30,14 +30,14 @@ auto make_view(::ioj::sim::TurretEntityData const& entities,
               data.teams()}}};
 }
 
-auto make_team_colours() -> FEntityOverlayTeamColours {
-    FTeamColours colours;
-    colours[ETestTeam::White] = FLinearColor::White;
-    colours[ETestTeam::Red] = FLinearColor::Red;
-    colours[ETestTeam::Green] = FLinearColor::Green;
-    colours[ETestTeam::Blue] = FLinearColor::Blue;
-    colours[ETestTeam::Orange] = FLinearColor{1.0f, 0.35f, 0.0f};
-    colours[ETestTeam::Yellow] = FLinearColor::Yellow;
+auto make_team_colours() -> ioj::presentation::EntityOverlayTeamColours {
+    ioj::EnumArray<ioj::Team, ioj::ui::Color4f> colours;
+    colours[ioj::Team::White] = {1.f, 1.f, 1.f, 1.f};
+    colours[ioj::Team::Red] = {1.f, 0.f, 0.f, 1.f};
+    colours[ioj::Team::Green] = {0.f, 1.f, 0.f, 1.f};
+    colours[ioj::Team::Blue] = {0.f, 0.f, 1.f, 1.f};
+    colours[ioj::Team::Orange] = {1.f, 0.35f, 0.f, 1.f};
+    colours[ioj::Team::Yellow] = {1.f, 1.f, 0.f, 1.f};
     return {.capital_ship = colours, .fighter = colours, .turret = colours};
 }
 
@@ -93,26 +93,27 @@ auto write_debug_frames(FString const& output_directory) -> bool {
                                   .view_rect = FIntRect{0, 0, 1280, 720},
                                   .output_size = {1280, 720}};
 
-    FEntityOverlayCollector collector;
+    std::vector<ioj::ui::entity_overlay::Instance> collected;
     auto frame_store{MakeShared<FEntityOverlayFrameStore, ESPMode::ThreadSafe>()};
-    TArray<EEntityOverlayObjectiveRole> objective_roles;
-    objective_roles.Init(EEntityOverlayObjectiveRole::None, count);
-    objective_roles[1] = EEntityOverlayObjectiveRole::Defend;
-    objective_roles[2] = EEntityOverlayObjectiveRole::Destroy;
-    objective_roles[5] = EEntityOverlayObjectiveRole::Defend;
-    objective_roles[6] = EEntityOverlayObjectiveRole::Destroy;
-    objective_roles[7] = EEntityOverlayObjectiveRole::Defend;
-    objective_roles[8] = EEntityOverlayObjectiveRole::Destroy;
+    TArray<ioj::ui::entity_overlay::ObjectiveRole> objective_roles;
+    objective_roles.Init(ioj::ui::entity_overlay::ObjectiveRole::None, count);
+    objective_roles[1] = ioj::ui::entity_overlay::ObjectiveRole::Defend;
+    objective_roles[2] = ioj::ui::entity_overlay::ObjectiveRole::Destroy;
+    objective_roles[5] = ioj::ui::entity_overlay::ObjectiveRole::Defend;
+    objective_roles[6] = ioj::ui::entity_overlay::ObjectiveRole::Destroy;
+    objective_roles[7] = ioj::ui::entity_overlay::ObjectiveRole::Defend;
+    objective_roles[8] = ioj::ui::entity_overlay::ObjectiveRole::Destroy;
     auto& frame{frame_store->next()};
-    static_cast<void>(collect_entity_overlay_instances(make_view(entities, health_table),
-                                                       entity_type_radii,
-                                                       objective_roles,
-                                                       make_team_colours(),
-                                                       {100, 100, 100},
-                                                       FVector3f::ZeroVector,
-                                                       10000.0f,
-                                                       frame.instances,
-                                                       collector));
+    static_cast<void>(ioj::presentation::collect_entity_overlay_instances(
+        make_view(entities, health_table),
+        entity_type_radii,
+        {objective_roles.GetData(), static_cast<std::size_t>(objective_roles.Num())},
+        make_team_colours(),
+        {100, 100, 100},
+        {},
+        10000.0f,
+        collected));
+    frame.instances.Append(collected.data(), static_cast<int32>(collected.size()));
     frame_store->publish();
     auto const before_path{FPaths::Combine(output_directory, TEXT("camera_plane_before.png"))};
     if (!write_entity_overlay_debug_image(frame_store, view, before_path)) {
@@ -121,15 +122,16 @@ auto write_debug_frames(FString const& output_directory) -> bool {
 
     ::ioj::set_vector(entities.get_view().view_locations(), count - 1, {100.0f, 50.0f, 50.0f});
     auto& moved_frame{frame_store->next()};
-    static_cast<void>(collect_entity_overlay_instances(make_view(entities, health_table),
-                                                       entity_type_radii,
-                                                       objective_roles,
-                                                       make_team_colours(),
-                                                       {100, 100, 100},
-                                                       FVector3f::ZeroVector,
-                                                       10000.0f,
-                                                       moved_frame.instances,
-                                                       collector));
+    static_cast<void>(ioj::presentation::collect_entity_overlay_instances(
+        make_view(entities, health_table),
+        entity_type_radii,
+        {objective_roles.GetData(), static_cast<std::size_t>(objective_roles.Num())},
+        make_team_colours(),
+        {100, 100, 100},
+        {},
+        10000.0f,
+        collected));
+    moved_frame.instances.Append(collected.data(), static_cast<int32>(collected.size()));
     frame_store->publish();
     auto const after_path{FPaths::Combine(output_directory, TEXT("camera_plane_after.png"))};
     if (!write_entity_overlay_debug_image(frame_store, view, after_path)) {

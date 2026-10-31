@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SpaceGame/settings/GameSettingsTypes.h"
+#include "ioj/settings/game_settings_types.h"
 #include <ioj/sim/player/flight_model_config.h>
 
 #include "GameFramework/GameUserSettings.h"
@@ -17,8 +17,8 @@ class SPACEGAME_API USpaceGameUserSettings : public UGameUserSettings {
     virtual void ValidateSettings() override;
     virtual void SetToDefaults() override;
 
-    auto anti_aliasing_method() const -> EGameAntiAliasingMethod;
-    void set_anti_aliasing_method(EGameAntiAliasingMethod value);
+    auto anti_aliasing_method() const -> GameAntiAliasingMethod;
+    void set_anti_aliasing_method(GameAntiAliasingMethod value);
 
     auto bloom_enabled() const -> bool;
     auto motion_blur_enabled() const -> bool;

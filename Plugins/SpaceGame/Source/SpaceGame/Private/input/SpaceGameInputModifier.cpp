@@ -1,5 +1,6 @@
 #include "SpaceGame/input/SpaceGameInputModifier.h"
 
+#include "ioj/input/response.h"
 #include "SpaceGame/input/SpaceGameInputUserSettings.h"
 
 #include "Engine/LocalPlayer.h"
@@ -8,10 +9,6 @@
 #include "GameFramework/PlayerController.h"
 
 namespace ioj {
-namespace input_constants {
-inline constexpr float virtual_stick_units_per_mouse_count{1.0f / 400.0f};
-}
-
 namespace {
 auto input_settings(UEnhancedPlayerInput const* const player_input)
     -> USpaceGameInputUserSettings const* {
@@ -26,93 +23,35 @@ auto input_settings(UEnhancedPlayerInput const* const player_input)
                                 : nullptr;
 }
 
-auto apply_dead_zone(FInputActionValue const& value, float const threshold) -> FInputActionValue {
-    auto const clamped_threshold{FMath::Clamp(threshold, 0.0f, 0.95f)};
-    switch (value.GetValueType()) {
-        case EInputActionValueType::Axis1D: {
-            auto const input{value.Get<float>()};
-            auto const magnitude{FMath::Abs(input)};
-            auto const output{magnitude <= clamped_threshold
-                                  ? 0.0f
-                                  : FMath::Sign(input) * ((magnitude - clamped_threshold) /
-                                                          (1.0f - clamped_threshold))};
-            return FInputActionValue{output};
-        }
-        case EInputActionValueType::Axis2D: {
-            auto const input{value.Get<FVector2D>()};
-            auto const magnitude{input.Size()};
-            if (magnitude <= clamped_threshold) {
-                return FInputActionValue{FVector2D::ZeroVector};
-            }
-            auto const output_magnitude{FMath::Clamp(
-                (magnitude - clamped_threshold) / (1.0f - clamped_threshold), 0.0f, 1.0f)};
-            return FInputActionValue{input.GetSafeNormal() * output_magnitude};
-        }
-        case EInputActionValueType::Axis3D: {
-            auto const input{value.Get<FVector>()};
-            auto const magnitude{input.Size()};
-            if (magnitude <= clamped_threshold) {
-                return FInputActionValue{FVector::ZeroVector};
-            }
-            auto const output_magnitude{FMath::Clamp(
-                (magnitude - clamped_threshold) / (1.0f - clamped_threshold), 0.0f, 1.0f)};
-            return FInputActionValue{input.GetSafeNormal() * output_magnitude};
-        }
-        case EInputActionValueType::Boolean:
-            return value;
+auto native_response(ESpaceGameInputResponse const response) -> input::Response {
+    switch (response) {
+        case ESpaceGameInputResponse::TurnPointerDelta:
+            return input::Response::TurnPointerDelta;
+        case ESpaceGameInputResponse::GamepadTurn:
+            return input::Response::GamepadTurn;
+        case ESpaceGameInputResponse::GamepadMove:
+            return input::Response::GamepadMove;
     }
-    return value;
+    checkNoEntry();
+    return input::Response::GamepadMove;
 }
-
-auto scale_and_invert(FInputActionValue const& value, float const scale, bool const invert)
-    -> FInputActionValue {
-    switch (value.GetValueType()) {
-        case EInputActionValueType::Axis1D:
-            return FInputActionValue{value.Get<float>() * scale * (invert ? -1.f : 1.f)};
-        case EInputActionValueType::Axis2D: {
-            auto output{value.Get<FVector2D>() * scale};
-            output.Y *= invert ? -1.0f : 1.0f;
-            return FInputActionValue{output};
-        }
-        case EInputActionValueType::Axis3D: {
-            auto output{value.Get<FVector>() * scale};
-            output.Y *= invert ? -1.0f : 1.0f;
-            return FInputActionValue{output};
-        }
-        case EInputActionValueType::Boolean:
-            return value;
-    }
-    return value;
-}
-
-auto should_invert(USpaceGameInputUserSettings const& settings,
-                   ESpaceGameInputResponse const response,
-                   ESpaceGameInputAxis const axis) -> bool {
-    if (response == ESpaceGameInputResponse::TurnPointerDelta) {
-        switch (axis) {
-            case ESpaceGameInputAxis::Pitch:
-                return settings.invert_mouse_pitch();
-            case ESpaceGameInputAxis::Yaw:
-                return settings.invert_mouse_yaw();
-            default:
-                return false;
-        }
-    }
+auto native_axis(ESpaceGameInputAxis const axis) -> input::Axis {
     switch (axis) {
-        case ESpaceGameInputAxis::Pitch:
-            return settings.invert_gamepad_pitch();
-        case ESpaceGameInputAxis::Yaw:
-            return settings.invert_gamepad_yaw();
-        case ESpaceGameInputAxis::Roll:
-            return settings.invert_gamepad_roll();
-        case ESpaceGameInputAxis::VerticalTranslation:
-            return settings.invert_gamepad_vertical_translation();
         case ESpaceGameInputAxis::None:
-            return false;
+            return input::Axis::None;
+        case ESpaceGameInputAxis::Pitch:
+            return input::Axis::Pitch;
+        case ESpaceGameInputAxis::Yaw:
+            return input::Axis::Yaw;
+        case ESpaceGameInputAxis::Roll:
+            return input::Axis::Roll;
+        case ESpaceGameInputAxis::VerticalTranslation:
+            return input::Axis::VerticalTranslation;
     }
-    return false;
+    checkNoEntry();
+    return input::Axis::None;
 }
-} // namespace
+}
 
 auto USpaceGameInputModifier::ModifyRaw_Implementation(
     UEnhancedPlayerInput const* const player_input,
@@ -123,24 +62,38 @@ auto USpaceGameInputModifier::ModifyRaw_Implementation(
     if (settings == nullptr) {
         return current_value;
     }
-    auto const invert{should_invert(*settings, response, axis)};
-
-    switch (response) {
-        case ESpaceGameInputResponse::TurnPointerDelta:
-            return scale_and_invert(current_value,
-                                    input_constants::virtual_stick_units_per_mouse_count *
-                                        settings->mouse_turn_sensitivity(),
-                                    invert);
-        case ESpaceGameInputResponse::GamepadTurn:
-            return scale_and_invert(
-                apply_dead_zone(current_value, settings->gamepad_turn_dead_zone()),
-                settings->gamepad_turn_sensitivity(),
-                invert);
-        case ESpaceGameInputResponse::GamepadMove:
-            return scale_and_invert(
-                apply_dead_zone(current_value, settings->gamepad_move_dead_zone()), 1.0f, invert);
+    GameSettingsState const values{.mouse_turn_sensitivity = settings->mouse_turn_sensitivity(),
+                                   .gamepad_turn_sensitivity = settings->gamepad_turn_sensitivity(),
+                                   .gamepad_turn_dead_zone = settings->gamepad_turn_dead_zone(),
+                                   .gamepad_move_dead_zone = settings->gamepad_move_dead_zone(),
+                                   .invert_mouse_pitch = settings->invert_mouse_pitch(),
+                                   .invert_mouse_yaw = settings->invert_mouse_yaw(),
+                                   .invert_gamepad_pitch = settings->invert_gamepad_pitch(),
+                                   .invert_gamepad_yaw = settings->invert_gamepad_yaw(),
+                                   .invert_gamepad_roll = settings->invert_gamepad_roll(),
+                                   .invert_gamepad_vertical_translation =
+                                       settings->invert_gamepad_vertical_translation()};
+    auto const response_type{native_response(response)};
+    auto const response_axis{native_axis(axis)};
+    switch (current_value.GetValueType()) {
+        case EInputActionValueType::Axis1D:
+            return FInputActionValue{input::apply_response(
+                current_value.Get<float>(), response_type, response_axis, values)};
+        case EInputActionValueType::Axis2D: {
+            auto const value{current_value.Get<FVector2D>()};
+            auto const result{input::apply_response(
+                Vector2d{value.X, value.Y}, response_type, response_axis, values)};
+            return FInputActionValue{FVector2D{result.x(), result.y()}};
+        }
+        case EInputActionValueType::Axis3D: {
+            auto const value{current_value.Get<FVector>()};
+            auto const result{input::apply_response(
+                Vector3d{value.X, value.Y, value.Z}, response_type, response_axis, values)};
+            return FInputActionValue{FVector{result.x(), result.y(), result.z()}};
+        }
+        case EInputActionValueType::Boolean:
+            return current_value;
     }
     return current_value;
 }
-
-} // namespace ioj
+}

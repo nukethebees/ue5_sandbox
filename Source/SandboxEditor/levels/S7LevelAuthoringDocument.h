@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SpaceGame/levels/LevelDefinition.h>
+#include <ioj/levels/level_definition.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Info.h>

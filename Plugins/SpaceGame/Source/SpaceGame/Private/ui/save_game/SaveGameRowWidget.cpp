@@ -1,8 +1,10 @@
 #include "SpaceGame/ui/save_game/SaveGameRowWidget.h"
 
-#include "SpaceGame/persistence/SaveGameBrowser.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <ioj/persistence/save_browser.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
+
+#include <SandboxCoreEngine/strings.h>
 
 #include <Components/Button.h>
 #include <Components/TextBlock.h>
@@ -27,7 +29,7 @@ void USaveGameRowWidget::NativeOnInitialized() {
     row_button->OnClicked.AddDynamic(this, &ThisClass::handle_clicked);
 }
 
-void USaveGameRowWidget::set_summary(FSaveProfileSummary const& summary) {
+void USaveGameRowWidget::set_summary(persistence::ProfileSummary const& summary) {
     if (!IsValid(display_name_text)) {
         UE_LOG(LogSandboxUI,
                Warning,
@@ -35,10 +37,10 @@ void USaveGameRowWidget::set_summary(FSaveProfileSummary const& summary) {
         return;
     }
 
-    profile_id_ = summary.profile_id;
+    profile_id_ = to_fstring(summary.profile_id);
     display_name_text->SetText(FText::FromString(
-        summary.active ? FString::Printf(TEXT("%s  [Active]"), *summary.display_name)
-                       : summary.display_name));
+        summary.active ? FString::Printf(TEXT("%s  [Active]"), *to_fstring(summary.display_name))
+                       : to_fstring(summary.display_name)));
 }
 
 void USaveGameRowWidget::set_selected(bool const is_selected) {

@@ -89,9 +89,6 @@ add_subdirectory(build)
 
 set(IOJ_UNIT_AUTOMATION_FILTERS
   Sandbox.enum
-  Sandbox.fighters
-  Sandbox.geometry
-  Sandbox.levels
   Sandbox.UnitTests
   Sandbox.EditorTests
   SandboxEditor.UnitTests
@@ -115,8 +112,6 @@ add_unreal_automation_test(
   FILTERS
     Sandbox.UnitTests.S7LevelAuthoring
     Sandbox.UnitTests.S7LevelSourceSession
-    Sandbox.UnitTests.S7LevelDefinition
-    Sandbox.UnitTests.LevelDefinition
     Sandbox.UnitTests.LevelScriptCatalog
     Sandbox.UnitTests.LevelSimulation
     Sandbox.UnitTests.SpaceGameLevelConfig
@@ -151,7 +146,6 @@ add_unreal_automation_test(
   Sandbox.InputUnitTests
   FILTERS
     Sandbox.UnitTests.CanonicalShipInput
-    Sandbox.UnitTests.GameSettingsEditState
     Sandbox.UnitTests.PlayerController
     Sandbox.UnitTests.ControlContextTransitions
   LABELS input-unit

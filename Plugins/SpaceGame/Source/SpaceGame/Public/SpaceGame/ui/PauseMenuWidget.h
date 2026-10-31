@@ -5,7 +5,7 @@
 #include "SpaceGame/ui/common/MenuActivatableWidget.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 #include "SpaceGamePresentation/entities/TeamColours.h"
-#include "SpaceGamePresentation/presentation/widgets/ShipHudKillData.h"
+#include <ioj/presentation/hud_data.h>
 
 #include <Input/UIActionBindingHandle.h>
 
@@ -27,9 +27,8 @@ class UMenuButtonWidget;
 struct FPauseMenuData {
     sim::LevelTelemetrySnapshot telemetry;
     sim::telemetry::EntityCounts alive_per_team_and_type{};
-    TArray<ship_hud::FTopKillerEntry, TInlineAllocator<ship_hud::top_killer_inline_capacity>>
-        top_killers;
-    ship_hud::FTeamKillMatrix team_kill_matrix;
+    std::vector<presentation::TopKillerEntry> top_killers;
+    sim::telemetry::EntityCounts team_kill_matrix;
     FTeamColours team_colours;
 };
 

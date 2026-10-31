@@ -9,7 +9,7 @@ Synthetic FRadarFrame triple buffer -> SRadarWidget
         |
         | game-thread animation and render-command snapshot
         v
-RDG StructuredBuffer<FRadarInstance>
+RDG StructuredBuffer<RadarInstance>
         |
         | bounded instanced raster passes with a fixed camera
         v

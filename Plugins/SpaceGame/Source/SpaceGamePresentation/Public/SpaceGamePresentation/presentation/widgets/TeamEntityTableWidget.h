@@ -2,7 +2,6 @@
 
 #include <ioj/sim/entities/entity_telemetry.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
-#include <SpaceGamePresentation/presentation/widgets/ShipHudKillData.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyle.h>
 
 #include <Blueprint/UserWidget.h>
@@ -19,7 +18,6 @@ class SPACEGAMEPRESENTATION_API UTeamEntityTableWidget : public UUserWidget {
     GENERATED_BODY()
   public:
     void set_entity_counts(ioj::sim::telemetry::EntityCounts const& new_counts);
-    void set_team_kill_matrix(ioj::ship_hud::FTeamKillMatrix const& new_matrix);
     void set_team_colours(UTestTeamVisualData::FColourArray const& new_colours);
     void apply_hud_style(ioj::FGameHudStyle const& style);
     void set_font_size(int32 new_font_size);

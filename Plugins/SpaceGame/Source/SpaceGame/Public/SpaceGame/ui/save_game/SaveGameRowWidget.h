@@ -1,4 +1,5 @@
 #pragma once
+#include <ioj/persistence/save_browser.h>
 
 #include "Blueprint/UserWidget.h"
 
@@ -8,7 +9,6 @@ class UButton;
 class UTextBlock;
 
 namespace ioj {
-struct FSaveProfileSummary;
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FSaveGameRowSelected, FString const&);
 
@@ -16,7 +16,7 @@ UCLASS()
 class SPACEGAME_API USaveGameRowWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    void set_summary(FSaveProfileSummary const& summary);
+    void set_summary(persistence::ProfileSummary const& summary);
     void set_selected(bool selected);
     void focus_row();
     [[nodiscard]] auto get_focus_target() const -> UWidget*;

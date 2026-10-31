@@ -2,6 +2,7 @@
 
 #include "Components/GridSlot.h"
 #include "SandboxGameShared/core/levels/levels.h"
+#include <ioj/display_name.h>
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
@@ -32,8 +33,9 @@ void ULevelSelect2Widget::populate_level_buttons(TArray<FName> const& level_name
         CONTINUE_IF_FALSE(button);
 
         button->set_level_path(level_name);
-        button->set_level_display_name(
-            FText::FromString(ioj::format_level_display_name(level_name)));
+        auto const name{level_name.IsNone() ? FString{} : level_name.ToString()};
+        auto const display_name{ioj::format_level_display_name(TCHAR_TO_UTF8(*name))};
+        button->set_level_display_name(FText::FromString(UTF8_TO_TCHAR(display_name.c_str())));
 
         auto* slot{level_select_grid->AddChildToGrid(button, row, col)};
         slot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Fill);

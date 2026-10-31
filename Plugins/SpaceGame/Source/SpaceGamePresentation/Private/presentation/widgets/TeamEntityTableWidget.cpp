@@ -48,21 +48,6 @@ void
 }
 
 void
-    UTeamEntityTableWidget::set_team_kill_matrix(ioj::ship_hud::FTeamKillMatrix const& new_matrix) {
-    constexpr auto n_teams{ioj::ship_hud::FTeamKillMatrix::team_count};
-    constexpr auto n_types{ioj::ship_hud::FTeamKillMatrix::entity_type_count};
-    for (int32 team{0}; team < n_teams; ++team) {
-        auto const team_value{static_cast<ETestTeam>(team)};
-        for (int32 type{0}; type < n_types; ++type) {
-            auto const type_value{static_cast<ioj::sim::EntityType>(type)};
-            values[team][type] = new_matrix.get(team_value, type_value);
-        }
-    }
-
-    rebuild_table();
-}
-
-void
     UTeamEntityTableWidget::set_team_colours(UTestTeamVisualData::FColourArray const& new_colours) {
     team_colours = new_colours;
     rebuild_table();

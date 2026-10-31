@@ -15,6 +15,7 @@ public class SpaceGameS7 : ModuleRules
             "CommonUI",
             "Core",
             "CoreUObject",
+            "NativeLevelAuthoring",
             "SpaceGame",
             "SpaceGameSimulation",
             "SpaceGamePresentation",
@@ -25,7 +26,7 @@ public class SpaceGameS7 : ModuleRules
         {
             "Engine",
             "InputCore",
-            "NativeLevelAuthoring",
+            "NativePersistence",
             "SandboxCoreEngine",
             "Slate",
             "SlateCore",

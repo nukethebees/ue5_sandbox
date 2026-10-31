@@ -14,6 +14,7 @@
 #include "ShooterGame/players/TestEnemyBlackboardConstants.h"
 #include "SandboxGameShared/utilities/actor_utils.h"
 #include "SandboxGameShared/utilities/geometry.h"
+#include <ioj/arc.h>
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
@@ -148,7 +149,7 @@ void ATestEnemyController::visualise_vision_cone() {
 
     auto const angles{ioj::subdivide_arc_into_segments(-angle_deg, angle_deg * 2.0f, n_segments)};
     TArray<FRotator> rots;
-    rots.Reserve(angles.Num());
+    rots.Reserve(static_cast<int32>(angles.size()));
     for (auto const angle : angles) {
         rots.Emplace(0.0f, angle, 0.0f);
     }

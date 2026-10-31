@@ -7,7 +7,7 @@ public class NativePresentation : ModuleRules
     public NativePresentation(ReadOnlyTargetRules Target) : base(Target)
     {
         Type = ModuleType.External;
-        PublicDependencyModuleNames.AddRange(new string[] { "NativeSimulation", "NativeUI" });
+        PublicDependencyModuleNames.AddRange(new string[] { "NativeSimulation", "NativeLevels", "NativeOneTBB", "NativeUI" });
         string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
         string nativeToolchain = Environment.GetEnvironmentVariable("IOJ_NATIVE_TOOLCHAIN") ?? "clang-cl";
         PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "presentation", "lib", "include"));

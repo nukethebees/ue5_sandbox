@@ -108,32 +108,19 @@ auto s7_settings_path(ULevel const& level) -> FString {
 
 auto read_s7_document_settings(AS7LevelAuthoringDocument const& document)
     -> std::expected<settings::Settings, FString> {
-    auto const root{FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"))};
-    levels::authoring::DefinitionReader const reader{std::filesystem::path{*root}};
     settings::Settings initial;
     if (IsValid(document.level_config)) {
         initial.presentation = document.level_config->presentation;
     }
-    auto base{document.evaluated_base_settings_source.IsEmpty()
-                  ? std::expected<settings::Settings, levels::Diagnostics>{std::move(initial)}
-                  : reader.read_settings_source(s7_level_authoring_session_detail::text(
-                                                    document.evaluated_base_settings_source),
-                                                std::move(initial))};
-    if (!base) {
-        return std::unexpected{to_fstring(levels::format_diagnostics(base.error()))};
-    }
-    if (document.evaluated_level_source.IsEmpty()) {
-        return std::move(*base);
-    }
-    levels::authoring::DefinitionReader const level_reader{
-        s7_level_authoring_session_detail::library_root(document)};
-    auto definition{level_reader.read_level_source(
-        s7_level_authoring_session_detail::text(document.evaluated_level_source),
-        std::move(*base))};
-    if (!definition) {
-        return std::unexpected{to_fstring(levels::format_diagnostics(definition.error()))};
-    }
-    return definition->settings();
+    auto const root{FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"))};
+    return levels::authoring::resolve_document_settings(
+               s7_level_authoring_session_detail::text(document.evaluated_base_settings_source),
+               s7_level_authoring_session_detail::text(document.evaluated_level_source),
+               std::move(initial),
+               std::filesystem::path{*root},
+               s7_level_authoring_session_detail::library_root(document))
+        .transform_error(
+            [](auto const& errors) { return to_fstring(levels::format_diagnostics(errors)); });
 }
 
 auto emit_s7_scene_source(levels::LevelDefinition const& definition,

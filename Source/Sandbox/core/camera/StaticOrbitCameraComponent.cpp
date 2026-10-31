@@ -1,6 +1,11 @@
 #include "Sandbox/core/camera/StaticOrbitCameraComponent.h"
 
-#include "Camera/CameraActor.h"
+#include <ioj/presentation/observer_camera.h>
+#include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
+
+#include <SandboxCoreEngine/TransformConversion.h>
+
+#include <GameFramework/Actor.h>
 
 UStaticOrbitCameraComponent::UStaticOrbitCameraComponent() {
     PrimaryComponentTick.bCanEverTick = true;
@@ -10,7 +15,7 @@ void UStaticOrbitCameraComponent::BeginPlay() {
 
     auto const* const owner{GetOwner()};
     if (owner) {
-        pivot_point = owner->GetActorLocation();
+        pivot_point_ = ioj::Vector3d{owner->GetActorLocation()};
     }
 }
 void UStaticOrbitCameraComponent::TickComponent(float DeltaTime,
@@ -21,17 +26,22 @@ void UStaticOrbitCameraComponent::TickComponent(float DeltaTime,
 }
 
 void UStaticOrbitCameraComponent::update_camera_position(float delta_time) {
-    current_angle_deg += rotation_speed_deg_per_sec * delta_time;
-
-    auto const radians{FMath::DegreesToRadians(current_angle_deg)};
-    FVector const offset{radius * FMath::Cos(radians), radius * FMath::Sin(radians), height};
+    current_angle_deg_ += rotation_speed_deg_per_sec * delta_time;
+    auto const camera{ioj::presentation::orbit_camera_transform(
+        pivot_point_, current_angle_deg_, radius, height)};
+    if (!camera) {
+        UE_LOG(LogSandbox,
+               Warning,
+               TEXT("Orbit camera requires finite inputs and a positive radius."));
+        SetComponentTickEnabled(false);
+        return;
+    }
 
     auto* const owner{GetOwner()};
-    if (owner) {
-        auto const new_location{pivot_point + offset};
-        auto const look_rotation{(pivot_point - owner->GetActorLocation()).Rotation()};
-
-        owner->SetActorLocation(new_location);
-        owner->SetActorRotation(look_rotation);
+    if (!owner) {
+        UE_LOG(LogSandbox, Warning, TEXT("Orbit camera has no owner."));
+        return;
     }
+    auto const transform{ioj::to_unreal(*camera)};
+    owner->SetActorLocationAndRotation(transform.GetLocation(), transform.GetRotation());
 }

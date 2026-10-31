@@ -52,6 +52,7 @@ public class SandboxEditor : ModuleRules
             "SandboxCore",
             "NativeMemory",
             "NativeLevelAuthoring",
+            "NativePresentation",
             "Core",
             "CoreUObject",
             "Engine",
@@ -84,6 +85,7 @@ public class SandboxEditor : ModuleRules
             "Sandbox", // Reference to runtime module
             "SandboxGameShared",
             "NativeSimulation",
+            "NativePersistence",
             "SandboxUI",
             "SandboxShaders",
             "SbxMeshGenLab",

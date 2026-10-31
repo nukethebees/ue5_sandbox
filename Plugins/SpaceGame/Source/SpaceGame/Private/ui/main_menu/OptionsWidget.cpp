@@ -172,7 +172,7 @@ void UOptionsWidget::handle_reset() {
     auto const category{active_category()};
     if (IsValid(settings_) && category.IsSet()) {
         settings_->reset_category(category.GetValue());
-        if (category.GetValue() == EGameSettingCategory::Controls && options_view_.IsValid()) {
+        if (category.GetValue() == GameSettingCategory::Controls && options_view_.IsValid()) {
             options_view_->refresh_controls();
         }
     }
@@ -243,18 +243,18 @@ void UOptionsWidget::refresh_view() {
     }
 }
 
-auto UOptionsWidget::active_category() const -> TOptional<EGameSettingCategory> {
+auto UOptionsWidget::active_category() const -> TOptional<GameSettingCategory> {
     switch (active_tab_) {
         case EOptionsTab::Video:
-            return EGameSettingCategory::Video;
+            return GameSettingCategory::Video;
         case EOptionsTab::Gameplay:
-            return EGameSettingCategory::Gameplay;
+            return GameSettingCategory::Gameplay;
         case EOptionsTab::Audio:
-            return EGameSettingCategory::Audio;
+            return GameSettingCategory::Audio;
         case EOptionsTab::Controls:
-            return EGameSettingCategory::Controls;
+            return GameSettingCategory::Controls;
         case EOptionsTab::Accessibility:
-            return EGameSettingCategory::Accessibility;
+            return GameSettingCategory::Accessibility;
         case EOptionsTab::System:
             return {};
     }

@@ -1,14 +1,16 @@
 #include "SpaceGame/system/GameSubsystem.h"
 
-#include "persistence/ExistingSaveGameBrowserSource.h"
 #include "SpaceGame/persistence/SpaceSaveSubsystem.h"
 #include "SpaceGame/settings/GameSettingsSubsystem.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiSettings.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/memory/GameMemoryBootstrap.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <ioj/levels/launch_options.h>
 #include <ioj/sim/memory/game_memory.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
+
+#include <SandboxCoreEngine/strings.h>
 
 #include <Engine/GameInstance.h>
 #include <Engine/World.h>
@@ -27,11 +29,6 @@
 #endif
 
 namespace ioj {
-namespace level_launch {
-auto is_valid_time_scale(double const value) noexcept -> bool {
-    return FMath::IsFinite(value) && value > 0.0 && value <= maximum_time_scale;
-}
-}
 
 namespace {
 auto query_platform_capabilities() -> FGameCapabilities {
@@ -119,10 +116,10 @@ void UGameSubsystem::Initialize(FSubsystemCollectionBase& collection) {
         return;
     }
 
-    save_game_browser_ = FSaveGameBrowser{
-        [save_subsystem] { return detail::discover_existing_save_profiles(*save_subsystem); },
-        [save_subsystem](FString const& profile_id) {
-            return detail::load_existing_save_profile(*save_subsystem, profile_id);
+    save_game_browser_ = persistence::SaveGameBrowser{
+        [save_subsystem] { return persistence::discover_profiles(save_subsystem->profiles()); },
+        [save_subsystem](std::string const& profile_id) {
+            return persistence::load_report(save_subsystem->profiles(), profile_id);
         }};
 
     platform_capabilities_ = query_platform_capabilities();
@@ -154,7 +151,7 @@ auto UGameSubsystem::get_platform_capabilities() const -> FGameCapabilities cons
     return platform_capabilities_;
 }
 
-auto UGameSubsystem::get_save_game_browser() -> FSaveGameBrowser& {
+auto UGameSubsystem::get_save_game_browser() -> persistence::SaveGameBrowser& {
     return save_game_browser_;
 }
 
@@ -207,24 +204,15 @@ auto UGameSubsystem::set_ui_theme(USpaceGameUiTheme* const theme) -> bool {
 /* **************************************** */
 void UGameSubsystem::set_pending_level(levels::authoring::LevelSource source,
                                        FString source_path,
-                                       FLevelLaunchOptions options) {
-    pending_level_.Emplace(FPendingLevelDefinition{.source = MoveTemp(source),
-                                                   .source_path = MoveTemp(source_path),
-                                                   .options = MoveTemp(options)});
-    level_launch_error_.Reset();
+                                       ::ioj::levels::LaunchOptions options) {
+    launch_state_.set_pending_level(std::move(source), to_string(source_path), options);
 }
 
-auto UGameSubsystem::take_pending_level() -> TOptional<FPendingLevelDefinition> {
-    auto pending{MoveTemp(pending_level_)};
-    pending_level_.Reset();
-    return pending;
+auto UGameSubsystem::take_pending_level() -> std::optional<levels::authoring::PendingLevel> {
+    return launch_state_.take_pending_level();
 }
 
 auto UGameSubsystem::return_to_level_select(FName const preferred_level_id) -> bool {
-    if (level_transition_in_progress_) {
-        return false;
-    }
-
     auto* const world{GetWorld()};
     if (!IsValid(world)) {
         UE_LOG(LogSandboxSubsystem,
@@ -232,19 +220,18 @@ auto UGameSubsystem::return_to_level_select(FName const preferred_level_id) -> b
                TEXT("UGameSubsystem::return_to_level_select: World is invalid."));
         return false;
     }
-
-    pending_level_.Reset();
-    level_select_request_.Emplace(FLevelSelectRequest{.preferred_level_id = preferred_level_id});
-    level_transition_in_progress_ = true;
+    if (!launch_state_.request_menu(
+            {.preferred_level_id =
+                 preferred_level_id.IsNone()
+                     ? levels::LevelId{}
+                     : levels::LevelId{to_string(preferred_level_id.ToString())}})) {
+        return false;
+    }
     UGameplayStatics::OpenLevel(world, get_main_menu_level_name());
     return true;
 }
 
 auto UGameSubsystem::return_to_telemetry(FString run_id, FString error) -> bool {
-    if (level_transition_in_progress_) {
-        return false;
-    }
-
     auto* const world{GetWorld()};
     if (!IsValid(world)) {
         UE_LOG(LogSandboxSubsystem,
@@ -252,23 +239,17 @@ auto UGameSubsystem::return_to_telemetry(FString run_id, FString error) -> bool 
                TEXT("UGameSubsystem::return_to_telemetry: World is invalid."));
         return false;
     }
-
-    pending_level_.Reset();
-    level_select_request_.Emplace(FLevelSelectRequest{
-        .destination = EMainMenuDestination::Telemetry,
-        .selected_telemetry_run_id = MoveTemp(run_id),
-        .telemetry_error = MoveTemp(error),
-    });
-    level_transition_in_progress_ = true;
+    if (!launch_state_.request_menu({.destination = levels::authoring::MenuDestination::Telemetry,
+                                     .selected_telemetry_run_id = to_string(run_id),
+                                     .telemetry_error = to_string(error)})) {
+        return false;
+    }
     UGameplayStatics::OpenLevel(world, get_main_menu_level_name());
     return true;
 }
 
-auto UGameSubsystem::take_level_select_request() -> TOptional<FLevelSelectRequest> {
-    auto request{MoveTemp(level_select_request_)};
-    level_select_request_.Reset();
-    level_transition_in_progress_ = false;
-    return request;
+auto UGameSubsystem::take_level_select_request() -> std::optional<levels::authoring::MenuRequest> {
+    return launch_state_.take_menu_request();
 }
 
 auto UGameSubsystem::get_main_menu_level_name() -> FName {
@@ -280,17 +261,14 @@ auto UGameSubsystem::get_main_menu_level_name() -> FName {
 // Launch errors
 /* **************************************** */
 void UGameSubsystem::set_level_launch_error(FString error) {
-    pending_level_.Reset();
-    level_launch_error_ = MoveTemp(error);
+    launch_state_.set_launch_error(to_string(error));
 }
 
 auto UGameSubsystem::has_level_launch_error() const noexcept -> bool {
-    return !level_launch_error_.IsEmpty();
+    return launch_state_.has_launch_error();
 }
 
 auto UGameSubsystem::take_level_launch_error() -> FString {
-    auto error{MoveTemp(level_launch_error_)};
-    level_launch_error_.Reset();
-    return error;
+    return to_fstring(launch_state_.take_launch_error());
 }
 }

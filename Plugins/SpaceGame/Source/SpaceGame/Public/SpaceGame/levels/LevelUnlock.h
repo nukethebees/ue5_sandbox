@@ -1,6 +1,7 @@
 #pragma once
 
-#include <SpaceGame/levels/LevelDefinition.h>
+#include <ioj/persistence/progression.h>
+#include <SpaceGameSimulation/levels/LevelTypes.h>
 
 #include <CoreMinimal.h>
 
@@ -26,8 +27,6 @@ class SPACEGAME_API FLevelUnlockEvaluator final {
 
     [[nodiscard]] auto evaluate(levels::LevelDefinition const& definition) const
         -> FLevelUnlockStatus;
-    [[nodiscard]] auto evaluate(FLevelUnlockCriterion const& criterion) const
-        -> FLevelUnlockCriterionStatus;
   private:
     FCompletionQuery completion_query_{};
     FTitleQuery title_query_{};

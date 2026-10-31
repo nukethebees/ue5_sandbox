@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/presentation/sparks.h>
 #include <SpaceGameRendering/SparkScalarRange.h>
 
 #include <CoreMinimal.h>
@@ -9,6 +10,16 @@
 USTRUCT(BlueprintType)
 struct SPACEGAMERENDERING_API FSparkBurstStyle {
     GENERATED_BODY()
+
+    auto to_native() const -> ioj::presentation::SparkBurstStyle {
+        return {count,
+                {speed.min, speed.max},
+                {lifetime.min, lifetime.max},
+                {size.min, size.max},
+                intensity,
+                spread_angle_degrees,
+                streak_time};
+    }
 
     UPROPERTY(EditAnywhere, Category = "Sparks", meta = (ClampMin = "0"))
     int32 count{16};

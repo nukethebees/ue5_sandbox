@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/linear_travel.h>
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
@@ -20,6 +22,5 @@ class SANDBOX_API ALoopingLift : public AActor {
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     float distance{200.0f};
   private:
-    FVector origin;
-    bool going_up;
+    ioj::LinearTravelState travel_{};
 };

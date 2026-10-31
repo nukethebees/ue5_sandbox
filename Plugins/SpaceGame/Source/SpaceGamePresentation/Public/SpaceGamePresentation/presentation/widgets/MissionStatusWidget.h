@@ -9,15 +9,15 @@
 
 class UValueWidget;
 
-namespace ioj::hud_manager {
-struct FMissionDataCache;
+namespace ioj::presentation {
+struct MissionHudData;
 }
 
 UCLASS()
 class SPACEGAMEPRESENTATION_API UMissionStatusWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    void set_mission_data(ioj::hud_manager::FMissionDataCache const& data);
+    void set_mission_data(ioj::presentation::MissionHudData const& data);
     void apply_hud_style(ioj::FGameHudStyle const& style);
     void set_font_size(int32 const new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }

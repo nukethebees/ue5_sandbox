@@ -1,9 +1,9 @@
 #pragma once
 
+#include <ioj/linear_travel.h>
+
 #include "Components/ActorComponent.h"
 #include "CoreMinimal.h"
-
-#include <limits>
 
 #include "LoopingPlatformComponent.generated.h"
 
@@ -27,16 +27,5 @@ class SANDBOX_API ULoopingPlatformComponent : public UActorComponent {
                                ELevelTick TickType,
                                FActorComponentTickFunction* ThisTickFunction) override;
   private:
-    FVector location_a;
-    FVector location_b;
-    FVector current_direction;
-    FVector ab_direction;
-    FVector ba_direction;
-    inline static constexpr float no_active_pause_time{std::numeric_limits<float>::infinity()};
-
-    float pause_timer{no_active_pause_time};
-
-    auto get_ab_direction() const { return (location_b - location_a).GetSafeNormal(); }
-    auto get_ba_direction() const { return (location_a - location_b).GetSafeNormal(); }
-    auto going_to_b() const { return current_direction == ab_direction; }
+    ioj::LinearTravelState travel_{};
 };

@@ -5,7 +5,7 @@
 #include "OptionsWidget.generated.h"
 
 namespace ioj {
-enum class EGameSettingCategory : uint8;
+enum class GameSettingCategory : uint8;
 class SGameOptionsView;
 class UGameSettingsSubsystem;
 class UGameSubsystem;
@@ -55,7 +55,7 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
     void handle_display_confirmation_changed(bool visible);
     void handle_interaction_modal_changed(bool visible);
     void refresh_view();
-    auto active_category() const -> TOptional<EGameSettingCategory>;
+    auto active_category() const -> TOptional<GameSettingCategory>;
     void complete_leave();
     void cancel_leave();
 

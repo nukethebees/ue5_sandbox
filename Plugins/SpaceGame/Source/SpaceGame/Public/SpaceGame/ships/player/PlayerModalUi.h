@@ -1,7 +1,7 @@
 #pragma once
 
+#include <ioj/levels/launch_options.h>
 #include <ioj/sim/telemetry/snapshot.h>
-#include <SpaceGame/ships/player/PlayerControlContext.h>
 
 #include <CoreMinimal.h>
 
@@ -56,11 +56,12 @@ struct SPACEGAME_API FPlayerModalUi {
     /* **************************************** */
     // Gameplay restoration
     /* **************************************** */
-    void begin_suspend(EPlayerControlContext context);
+    void begin_suspend(::ioj::levels::ControlContext context);
     void clear_resume();
     void on_ship_changed(bool has_ship);
-    auto resume_context(EPlayerControlContext fallback) const -> EPlayerControlContext;
-    auto is_resume_pending() const -> bool { return resume_pending_; }
+    auto resume_context(::ioj::levels::ControlContext fallback) const
+        -> ::ioj::levels::ControlContext;
+    auto is_resume_pending() const -> bool { return resume_.pending(); }
   private:
     friend struct FPlayerControllerTestAccess;
     UPROPERTY(Transient)
@@ -69,6 +70,5 @@ struct SPACEGAME_API FPlayerModalUi {
     TObjectPtr<ioj::UPauseMenuWidget> pause_menu_{nullptr};
     UPROPERTY(Transient)
     TObjectPtr<ioj::ULevelCompletionWidget> completion_menu_{nullptr};
-    EPlayerControlContext restore_context_{EPlayerControlContext::None};
-    bool resume_pending_{false};
+    ioj::levels::ModalResumeState resume_;
 };

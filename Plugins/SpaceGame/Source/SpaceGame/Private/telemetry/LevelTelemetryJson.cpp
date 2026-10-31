@@ -1,6 +1,7 @@
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
 
 #include <ioj/sim/telemetry/report_json.h>
+#include <ioj/sim/telemetry/run_catalog.h>
 
 #include <SandboxCoreEngine/strings.h>
 
@@ -14,14 +15,9 @@ auto level_telemetry_runs_directory() -> FString {
 
 auto read_level_telemetry_run(FString const& path)
     -> std::expected<ioj::sim::LevelTelemetryReport, FString> {
-    FString json;
-    if (!FFileHelper::LoadFileToString(json, *path)) {
-        return std::unexpected{FString::Printf(TEXT("Could not read telemetry file '%s'"), *path)};
-    }
-    auto result{ioj::sim::deserialize_level_telemetry_report(ioj::to_string(json))};
+    auto result{ioj::sim::telemetry::read_run_report(std::filesystem::path{*path})};
     if (!result) {
-        return std::unexpected{
-            FString::Printf(TEXT("%s: %s"), *path, *ioj::to_fstring(result.error()))};
+        return std::unexpected{ioj::to_fstring(result.error())};
     }
     return std::move(*result);
 }

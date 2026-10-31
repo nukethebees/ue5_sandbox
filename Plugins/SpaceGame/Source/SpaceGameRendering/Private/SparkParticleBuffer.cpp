@@ -46,10 +46,10 @@ IMPLEMENT_GLOBAL_SHADER(FSparkExpansionCS,
 FSparkParticleBuffer::~FSparkParticleBuffer() = default;
 
 void FSparkParticleBuffer::set_initial_data(
-    TConstArrayView<FSparkParticleRecord> const initial_data) {
+    std::span<ioj::presentation::SparkParticleRecord const> const initial_data) {
     check(IsInGameThread());
-    initial_data_.Reset(initial_data.Num());
-    initial_data_.Append(initial_data.GetData(), initial_data.Num());
+    initial_data_.Reset(static_cast<int32>(initial_data.size()));
+    initial_data_.Append(initial_data.data(), static_cast<int32>(initial_data.size()));
 }
 
 void FSparkParticleBuffer::InitRHI(FRHICommandListBase& rhi_command_list) {
@@ -57,18 +57,20 @@ void FSparkParticleBuffer::InitRHI(FRHICommandListBase& rhi_command_list) {
         return;
     }
 
-    FResourceArrayUploadArrayView upload_view{TConstArrayView<FSparkParticleRecord>{initial_data_}};
-    auto const buffer_size{initial_data_.Num() * sizeof(FSparkParticleRecord)};
+    FResourceArrayUploadArrayView upload_view{
+        TConstArrayView<ioj::presentation::SparkParticleRecord>{initial_data_}};
+    auto const buffer_size{initial_data_.Num() * sizeof(ioj::presentation::SparkParticleRecord)};
     auto const create_description{
-        FRHIBufferCreateDesc::CreateStructured(
-            TEXT("Sparks.ParticleData"), buffer_size, sizeof(FSparkParticleRecord))
+        FRHIBufferCreateDesc::CreateStructured(TEXT("Sparks.ParticleData"),
+                                               buffer_size,
+                                               sizeof(ioj::presentation::SparkParticleRecord))
             .AddUsage(EBufferUsageFlags::ShaderResource | EBufferUsageFlags::UnorderedAccess |
                       EBufferUsageFlags::Static)
             .SetInitialState(ERHIAccess::SRVMask)
             .SetInitActionResourceArray(&upload_view)};
     TRefCountPtr<FRHIBuffer> buffer{rhi_command_list.CreateBuffer(create_description)};
-    auto const rdg_description{
-        FRDGBufferDesc::CreateStructuredDesc(sizeof(FSparkParticleRecord), initial_data_.Num())};
+    auto const rdg_description{FRDGBufferDesc::CreateStructuredDesc(
+        sizeof(ioj::presentation::SparkParticleRecord), initial_data_.Num())};
     pooled_buffer_ = new FRDGPooledBuffer{rhi_command_list,
                                           MoveTemp(buffer),
                                           rdg_description,
@@ -94,13 +96,13 @@ void FSparkParticleBuffer::upload(FRHICommandListBase& rhi_command_list,
     auto const range_count{upload_buffer.counts.Num()};
     for (int32 range_index{0}; range_index < range_count; ++range_index) {
         auto const particle_count{upload_buffer.counts[range_index]};
-        auto const byte_count{particle_count * sizeof(FSparkParticleRecord)};
+        auto const byte_count{particle_count * sizeof(ioj::presentation::SparkParticleRecord)};
         if (byte_count <= 0) {
             continue;
         }
         check(source_index + particle_count <= upload_buffer.particles.Num());
         auto const byte_offset{upload_buffer.destinations[range_index] *
-                               sizeof(FSparkParticleRecord)};
+                               sizeof(ioj::presentation::SparkParticleRecord)};
         auto* const destination{rhi_command_list.LockBuffer(
             pooled_buffer_->GetRHI(), byte_offset, byte_count, RLM_WriteOnly)};
         FMemory::Memcpy(destination, upload_buffer.particles.GetData() + source_index, byte_count);
@@ -116,26 +118,42 @@ void FSparkParticleBuffer::upload(FRHICommandListBase& rhi_command_list,
 }
 
 void FSparkParticleBuffer::expand(FRHICommandListImmediate& rhi_command_list,
-                                  TArray<FGpuSparkBurst>&& bursts,
-                                  TArray<uint32>&& selection_indices) {
-    if (!pooled_buffer_.IsValid() || bursts.IsEmpty()) {
+                                  std::vector<ioj::presentation::GpuSparkBurst>&& bursts,
+                                  std::vector<uint32>&& selection_indices) {
+    if (!pooled_buffer_.IsValid() || bursts.empty()) {
         return;
     }
 
-    auto const burst_count{static_cast<uint32>(bursts.Num())};
+    auto const burst_count{static_cast<uint32>(bursts.size())};
     auto const particle_capacity{pooled_buffer_->Desc.NumElements};
-    auto const upload_bytes{bursts.Num() * sizeof(FGpuSparkBurst) +
-                            selection_indices.Num() * sizeof(uint32)};
-    if (selection_indices.IsEmpty()) {
-        selection_indices.Add(0);
+    auto const upload_bytes{bursts.size() * sizeof(ioj::presentation::GpuSparkBurst) +
+                            selection_indices.size() * sizeof(uint32)};
+    if (selection_indices.empty()) {
+        selection_indices.push_back(0);
     }
 
     FRDGBuilder graph_builder{rhi_command_list};
     auto const particle_buffer{graph_builder.RegisterExternalBuffer(pooled_buffer_)};
+    auto const& upload_bursts{
+        *graph_builder.AllocObject<std::vector<ioj::presentation::GpuSparkBurst>>(
+            std::move(bursts))};
+    auto const& upload_indices{
+        *graph_builder.AllocObject<std::vector<uint32>>(std::move(selection_indices))};
     auto const burst_buffer{
-        CreateStructuredBuffer(graph_builder, TEXT("Sparks.Bursts"), MoveTemp(bursts))};
-    auto const selection_buffer{CreateStructuredBuffer(
-        graph_builder, TEXT("Sparks.SelectionIndices"), MoveTemp(selection_indices))};
+        CreateStructuredBuffer(graph_builder,
+                               TEXT("Sparks.Bursts"),
+                               sizeof(ioj::presentation::GpuSparkBurst),
+                               static_cast<uint32>(upload_bursts.size()),
+                               upload_bursts.data(),
+                               upload_bursts.size() * sizeof(ioj::presentation::GpuSparkBurst),
+                               ERDGInitialDataFlags::NoCopy)};
+    auto const selection_buffer{CreateStructuredBuffer(graph_builder,
+                                                       TEXT("Sparks.SelectionIndices"),
+                                                       sizeof(uint32),
+                                                       static_cast<uint32>(upload_indices.size()),
+                                                       upload_indices.data(),
+                                                       upload_indices.size() * sizeof(uint32),
+                                                       ERDGInitialDataFlags::NoCopy)};
     auto* const parameters{graph_builder.AllocParameters<
         SpaceGame::Sparks::ParticleBufferPrivate::FSparkExpansionCS::FParameters>()};
     auto const groups_x{FMath::Min(

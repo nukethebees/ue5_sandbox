@@ -1,15 +1,10 @@
 #pragma once
 
-#include <SpaceGame/levels/CampaignDefinition.h>
-#include <SpaceGame/levels/LevelDefinition.h>
+#include <ioj/levels/authoring/definition_catalog.h>
+
+#include <CoreMinimal.h>
 
 namespace ioj::levels::authoring {
-enum class ELevelCatalogCategory : uint8 {
-    Mission,
-    BattleViewer,
-    Benchmark,
-};
-
 struct SPACEGAMES7_API FLevelScriptEntry {
     FString filename{};
     FString path{};
@@ -26,7 +21,7 @@ struct SPACEGAMES7_API FCampaignScriptEntry {
     FString filename{};
     FString path{};
     FString error{};
-    TOptional<FCampaignDefinition> definition{NullOpt};
+    TOptional<CampaignDefinition> definition{NullOpt};
 
     explicit operator bool() const noexcept { return definition.IsSet(); }
 };
@@ -38,8 +33,6 @@ struct SPACEGAMES7_API FLevelScriptCatalogResult {
     TArray<FCampaignScriptEntry> campaigns{};
 };
 
-SPACEGAMES7_API auto catalog_category(levels::LevelDefinition const& definition) noexcept
-    -> ELevelCatalogCategory;
 SPACEGAMES7_API auto default_level_script_directory() -> FString;
 SPACEGAMES7_API auto default_campaign_script_directory() -> FString;
 SPACEGAMES7_API auto default_level_script_root() -> FString;

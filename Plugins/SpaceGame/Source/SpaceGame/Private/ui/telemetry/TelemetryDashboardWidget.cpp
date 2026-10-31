@@ -68,20 +68,20 @@ void UTelemetryDashboardWidget::refresh() {
 }
 
 bool UTelemetryDashboardWidget::select_run(FString const& run_id) {
-    auto const selected{catalog_.select_run(run_id)};
+    auto const selected{catalog_.select_run(to_string(run_id))};
     rebuild_state();
     publish();
     return selected;
 }
 
 void UTelemetryDashboardWidget::select_level_filter(FString const& level_label) {
-    catalog_.set_level_filter(level_label);
+    catalog_.set_level_filter(to_string(level_label));
     rebuild_state();
     publish();
 }
 
 void UTelemetryDashboardWidget::select_baseline(FString const& run_id) {
-    (void)catalog_.select_baseline(run_id);
+    (void)catalog_.select_baseline(to_string(run_id));
     rebuild_state();
     publish();
 }
@@ -115,14 +115,24 @@ void UTelemetryDashboardWidget::focus_primary_action() {
 /* **************************************** */
 void UTelemetryDashboardWidget::rebuild_state() {
     state_ = FTelemetryDashboardViewState{};
-    state_.runs = catalog_.get_runs();
-    state_.level_filters = catalog_.get_level_filters();
-    state_.baseline_runs = catalog_.get_baseline_candidates();
-    state_.selected_baseline_run_id = catalog_.get_baseline_run_id();
-    state_.selected_run_id = catalog_.get_selected_run_id();
-    state_.selected_level_filter = catalog_.get_level_filter();
-    state_.unreadable_files = catalog_.get_unreadable_file_count();
-    state_.error = catalog_.get_selected_error();
+    auto const append_summaries{[](auto const& summaries, auto& output) {
+        for (auto const& summary : summaries) {
+            output.Add(FTelemetryRunSummary{to_fstring(summary.run_id),
+                                            to_fstring(summary.level_label()),
+                                            to_fstring(summary.launched_utc),
+                                            summary.completion_reason});
+        }
+    }};
+    append_summaries(catalog_.get_runs(), state_.runs);
+    for (auto const& label : catalog_.get_level_filters()) {
+        state_.level_filters.Add(to_fstring(label));
+    }
+    append_summaries(catalog_.get_baseline_candidates(), state_.baseline_runs);
+    state_.selected_baseline_run_id = to_fstring(catalog_.get_baseline_run_id());
+    state_.selected_run_id = to_fstring(catalog_.get_selected_run_id());
+    state_.selected_level_filter = to_fstring(catalog_.get_level_filter());
+    state_.unreadable_files = static_cast<int32>(catalog_.get_unreadable_file_count());
+    state_.error = to_fstring(catalog_.get_selected_error());
     if (!external_error_.IsEmpty()) {
         state_.error =
             state_.error.IsEmpty() ? external_error_ : external_error_ + TEXT("\n") + state_.error;
@@ -131,11 +141,11 @@ void UTelemetryDashboardWidget::rebuild_state() {
     if (!record) {
         return;
     }
-    auto const level{FTelemetryRunSummary{
-        .map_name = UTF8_TO_TCHAR(record->run.metadata.map_name.c_str()),
-        .level_id = FName{UTF8_TO_TCHAR(record->run.metadata.level_id.c_str())},
-        .level_display_name = UTF8_TO_TCHAR(record->run.metadata.level_display_name.c_str())}
-                         .level_label()};
+    auto const level{to_fstring(
+        sim::telemetry::RunSummary{.map_name = record->run.metadata.map_name,
+                                   .level_id = record->run.metadata.level_id,
+                                   .level_display_name = record->run.metadata.level_display_name}
+            .level_label())};
     auto const completion_reason{
         to_fstring(sim::to_serialized_string(record->run.completion.reason))};
     state_.header = FText::FromString(FString::Printf(
@@ -154,13 +164,14 @@ void UTelemetryDashboardWidget::rebuild_state() {
     if (baseline) {
         state_.baseline_analysis = analyze_level_telemetry_run(*baseline);
         TArray<FString> warnings;
-        if (baseline->run.metadata.level_source != record->run.metadata.level_source) {
+        auto const context{sim::telemetry::compare_run_context(*baseline, *record)};
+        if (context.different_level_source) {
             warnings.Add(TEXT("different level source"));
         }
-        if (baseline->run.metadata.settings_source != record->run.metadata.settings_source) {
+        if (context.different_settings_source) {
             warnings.Add(TEXT("different settings source"));
         }
-        if (baseline->presentation_enabled != record->presentation_enabled) {
+        if (context.different_presentation_mode) {
             warnings.Add(TEXT("different presentation modes"));
         }
         if (!warnings.IsEmpty()) {
@@ -168,49 +179,34 @@ void UTelemetryDashboardWidget::rebuild_state() {
                                                              FString::Join(warnings, TEXT(", ")));
         }
     }
-    auto last_int = [](sim::LevelTelemetryTickSeries::Int32Data const& series) {
-        return series.is_empty() ? 0 : series.last_value();
-    };
+    auto const statistics{sim::telemetry::summarize_run(*record)};
     auto summary{FString::Printf(
         TEXT(
             "COMPLETED TICKS  //  %llu\nSIMULATED TIME  //  %.3fs\nFINAL FORCES  //  "
             "ENTITIES %d  LASERS %d\nFINAL COUNTERS  //  SPAWN %d  DESTROY %d  KILLS %d  FIRED %d"),
         record->run.completion.completed_ticks.value(),
-        static_cast<double>(record->run.completion.completed_ticks.value()) /
-            record->run.tick_rate_hz.get_hz(),
-        last_int(record->run.tick_series.active_entities),
-        last_int(record->run.tick_series.active_lasers),
-        last_int(record->run.tick_series.spawned_entities),
-        last_int(record->run.tick_series.destroyed_entities),
-        last_int(record->run.tick_series.kills),
-        last_int(record->run.tick_series.lasers_fired))};
-    if (record->run.completion.reason != sim::LevelTelemetryRunEndReason::MissionSucceeded &&
-        record->run.completion.reason != sim::LevelTelemetryRunEndReason::MissionFailed) {
+        statistics.simulated_seconds,
+        statistics.active_entities,
+        statistics.active_lasers,
+        statistics.spawned_entities,
+        statistics.destroyed_entities,
+        statistics.kills,
+        statistics.lasers_fired)};
+    if (!statistics.mission_complete) {
         summary += TEXT("\nMISSION  //  INCOMPLETE");
     }
     if (record->run.battle_samples.empty()) {
         summary += TEXT("\nCOMBAT DETAILS  //  UNAVAILABLE");
     } else {
-        auto sum_counts = [](auto const& counts) {
-            using Result = std::remove_cvref_t<decltype(counts[0][0])>;
-            Result total{};
-            for (auto const& row : counts) {
-                for (auto const value : row) {
-                    total += value;
-                }
-            }
-            return total;
-        };
-        auto const& combat{record->run.battle_samples.back().combat};
         summary +=
             FString::Printf(TEXT("\nBATTLE SAMPLES // %d\nCOMBAT  //  SHOTS %llu  HITS %llu  "
                                  "DAMAGE %.0f  KILLS %llu  LOSSES %llu"),
                             static_cast<int32>(record->run.battle_samples.size()),
-                            sum_counts(combat.shots),
-                            sum_counts(combat.hits),
-                            sum_counts(combat.damage_dealt),
-                            sum_counts(combat.kills),
-                            sum_counts(combat.losses));
+                            statistics.shots,
+                            statistics.hits,
+                            statistics.damage_dealt,
+                            statistics.combat_kills,
+                            statistics.losses);
     }
     state_.summary = FText::FromString(MoveTemp(summary));
 }

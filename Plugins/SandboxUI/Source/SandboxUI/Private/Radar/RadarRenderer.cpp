@@ -77,7 +77,7 @@ class FStemVS final : public FGlobalShader {
     BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
     SHADER_PARAMETER(FIntPoint, OutputSize)
     SHADER_PARAMETER(float, StemOpacity)
-    SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FRadarInstance>, Instances)
+    SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<RadarInstance>, Instances)
     END_SHADER_PARAMETER_STRUCT()
     static auto ShouldCompilePermutation(FGlobalShaderPermutationParameters const& parameters)
         -> bool {
@@ -107,7 +107,7 @@ class FGlyphVS final : public FGlobalShader {
     SHADER_PARAMETER(float, ObjectiveSizeMultiplier)
     SHADER_PARAMETER(float, ObjectiveRingPaddingPixels)
     SHADER_PARAMETER(float, ObjectiveRingThicknessPixels)
-    SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FRadarInstance>, Instances)
+    SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<RadarInstance>, Instances)
     END_SHADER_PARAMETER_STRUCT()
     static auto ShouldCompilePermutation(FGlobalShaderPermutationParameters const& parameters)
         -> bool {
@@ -269,13 +269,14 @@ void execute_graph(FRHICommandListImmediate& command_list,
 
     FRDGBufferSRVRef instances{nullptr};
     if (!frame.instances.IsEmpty()) {
-        auto const buffer{CreateStructuredBuffer(graph,
-                                                 TEXT("Radar.Instances"),
-                                                 sizeof(FRadarInstance),
-                                                 frame.instances.Num(),
-                                                 frame.instances.GetData(),
-                                                 frame.instances.Num() * sizeof(FRadarInstance),
-                                                 ERDGInitialDataFlags::NoCopy)};
+        auto const buffer{
+            CreateStructuredBuffer(graph,
+                                   TEXT("Radar.Instances"),
+                                   sizeof(ioj::ui::radar::Instance),
+                                   frame.instances.Num(),
+                                   frame.instances.GetData(),
+                                   frame.instances.Num() * sizeof(ioj::ui::radar::Instance),
+                                   ERDGInitialDataFlags::NoCopy)};
         instances = graph.CreateSRV(buffer);
     }
 

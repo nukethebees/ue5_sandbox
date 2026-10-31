@@ -2,8 +2,6 @@
 
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include <ioj/files.h>
-#include <ioj/levels/authoring/level_definition_writer.h>
-#include <ioj/levels/authoring/level_parser.h>
 #include <SpaceGameS7/level_script_catalog.h>
 
 #include <SandboxCoreEngine/strings.h>
@@ -147,17 +145,10 @@ auto FS7LevelSourceSession::read_replay(settings::Settings base) const
         session_.path().empty()
             ? s7_source_session_detail::path(levels::authoring::default_level_script_directory())
             : session_.path().parent_path()};
-    auto ast{
-        levels::authoring::DefinitionReader{root / "Libraries"}.read_source_ast(session_.buffer())};
-    if (!ast) {
-        return std::unexpected{std::move(ast.error())};
-    }
-    auto definition{levels::authoring::parse_level(*ast, ast->root, std::move(base))};
-    if (!definition) {
-        return std::unexpected{std::move(definition.error())};
-    }
-    return FS7LevelReadResult{
-        std::move(*definition),
-        to_fstring(levels::authoring::emit_evaluated_source(*ast, ast->root))};
+    return session_.read_replay(std::move(base), root / "Libraries")
+        .transform([](levels::authoring::SourceReplay&& replay) {
+            return FS7LevelReadResult{std::move(replay.definition),
+                                      to_fstring(replay.evaluated_source)};
+        });
 }
 }

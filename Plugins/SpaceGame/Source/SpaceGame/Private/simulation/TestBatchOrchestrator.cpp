@@ -1,5 +1,6 @@
 #include "SpaceGame/simulation/TestBatchOrchestrator.h"
 
+#include <ioj/levels/launch_options.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/settings/LevelSettingsFile.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
@@ -12,6 +13,7 @@
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
+#include <SandboxCoreEngine/strings.h>
 #include <SandboxCoreEngine/uobject_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
@@ -247,8 +249,9 @@ auto ATestBatchOrchestrator::prepare_level(ioj::levels::authoring::LevelSource c
     }
     return true;
 }
-auto ATestBatchOrchestrator::load_level(ioj::levels::authoring::LevelSource const& source,
-                                        EPlayerControlContext const playerless_control_context)
+auto ATestBatchOrchestrator::load_level(
+    ioj::levels::authoring::LevelSource const& source,
+    ::ioj::levels::ControlContext const playerless_control_context)
     -> std::expected<void, ioj::FLevelLoadErrors> {
     auto const fail{[](ioj::ELevelLoadErrorCode const code,
                        FString message) -> std::expected<void, ioj::FLevelLoadErrors> {
@@ -392,14 +395,15 @@ void ATestBatchOrchestrator::load_authored_level() {
         return;
     }
     launch_options_ = pending->options;
-    presentation_enabled = launch_options_.presentation_mode == ioj::ELevelPresentationMode::Visual;
+    presentation_enabled =
+        launch_options_.presentation_mode == ioj::levels::PresentationMode::Visual;
 
     auto const loaded{load_level(pending->source, launch_options_.control_context)};
     if (!loaded) {
-        handle_level_start_failure(loaded.error().format(pending->source_path));
+        handle_level_start_failure(loaded.error().format(ioj::to_fstring(pending->source_path)));
         return;
     }
-    if (begin_play() && launch_options_.launch_mode == ioj::ELevelLaunchMode::Paused) {
+    if (begin_play() && launch_options_.launch_mode == ioj::levels::LaunchMode::Paused) {
         pause_simulation();
     }
 }
@@ -471,9 +475,9 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             *level_simulation_, GetGameInstance(), on_mission_completed);
         level_simulation_->stop_run_if_requested({
             .stop_when_battle_resolved = launch_options_.stop_when_battle_resolved,
-            .duration = launch_options_.simulated_duration_seconds.IsSet()
+            .duration = launch_options_.simulated_duration_seconds.has_value()
                           ? std::optional{ioj::Duration::make(
-                                launch_options_.simulated_duration_seconds.GetValue())}
+                                launch_options_.simulated_duration_seconds.value())}
                           : std::nullopt,
         });
     }
