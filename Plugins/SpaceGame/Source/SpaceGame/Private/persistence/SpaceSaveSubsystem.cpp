@@ -1,8 +1,9 @@
 #include "SpaceGame/persistence/SpaceSaveSubsystem.h"
 
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
-#include <ioj/persistence/profile_storage.h>
-#include <ioj/persistence/save_browser.h>
+#include <ioj/profiles/file_profile_storage.h>
+#include <ioj/profiles/sample_profile_records.h>
+#include <ioj/profiles/save_browser.h>
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 
 #include <SandboxCoreEngine/strings.h>
@@ -55,7 +56,7 @@ auto USpaceSaveSubsystem::get(UGameInstance const* game_instance) -> USpaceSaveS
 }
 void USpaceSaveSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
-    profile_manager_ = ioj::persistence::ProfileManager{make_storage()};
+    profile_manager_ = ioj::profiles::ProfileManager{make_storage()};
     if (!profile_manager_.initialise()) {
         UE_LOG(LogSandboxSubsystem, Error, TEXT("Failed to initialize native save profiles."));
     }
@@ -69,13 +70,13 @@ auto USpaceSaveSubsystem::get_active_profile_id() const -> std::string const& {
     return profile_manager_.get_active_profile_id();
 }
 auto USpaceSaveSubsystem::get_level_progress(ioj::FLevelId level_id) const
-    -> ioj::persistence::LevelProgressSummary {
-    return ioj::persistence::summarize_level_progress(
+    -> ioj::profiles::LevelProgressSummary {
+    return ioj::profiles::summarize_level_progress(
         ioj::levels::LevelId{TCHAR_TO_UTF8(*level_id.value.ToString())},
         profile_manager_.get_active_records());
 }
 auto USpaceSaveSubsystem::is_level_completed(ioj::FLevelId level_id) const -> bool {
-    return get_level_progress(level_id).state == ioj::persistence::LevelProgressState::Completed;
+    return get_level_progress(level_id).state() == ioj::profiles::LevelProgressState::Completed;
 }
 auto USpaceSaveSubsystem::has_active_profile() const -> bool {
     return profile_manager_.has_active_profile();
@@ -87,7 +88,7 @@ auto USpaceSaveSubsystem::start_levels_paused() const -> bool {
     return profile_manager_.start_levels_paused();
 }
 auto USpaceSaveSubsystem::create_profile(FString const& name)
-    -> ioj::persistence::CreateProfileResponse {
+    -> ioj::profiles::CreateProfileResponse {
     return profile_manager_.create_profile(TCHAR_TO_UTF8(*name));
 }
 bool USpaceSaveSubsystem::activate_profile(std::string const& id) {
@@ -97,7 +98,7 @@ bool USpaceSaveSubsystem::reset_test_profile() {
 #if UE_BUILD_SHIPPING
     return false;
 #else
-    return profile_manager_.reset_test_profile(ioj::persistence::sample_profile_records());
+    return profile_manager_.reset_test_profile(ioj::profiles::sample_profile_records());
 #endif
 }
 bool USpaceSaveSubsystem::set_unlock_all_missions(bool enabled) {
@@ -119,19 +120,19 @@ void USpaceSaveSubsystem::log_save_data() const {
            static_cast<unsigned long long>(profile_manager_.get_profiles().size()),
            static_cast<unsigned long long>(profile_manager_.get_active_records().size()));
 }
-auto USpaceSaveSubsystem::make_storage() -> ioj::persistence::ProfileStorage {
+auto USpaceSaveSubsystem::make_storage() -> ioj::profiles::ProfileStorage {
     auto const local_root{FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("SaveGames"))};
     if (GIsAutomationTesting) {
         auto const root{FPaths::Combine(FPaths::ProjectSavedDir(),
                                         TEXT("Automation/SaveProfiles"),
                                         FGuid::NewGuid().ToString(EGuidFormats::Digits))};
-        return ioj::persistence::make_file_profile_storage(std::filesystem::path{*root});
+        return ioj::profiles::make_file_profile_storage(std::filesystem::path{*root});
     }
     auto const application_root{FPlatformProcess::GetApplicationSettingsDir(
         {FPlatformProcess::ApplicationSettingsContext::Context::LocalUser, false})};
     auto const development_root{
         FPaths::Combine(application_root, TEXT("IsleOfJebbers/DevelopmentSaves"))};
-    ioj::persistence::StorageOptions options{
+    ioj::profiles::StorageOptions options{
 #if WITH_EDITOR
         .editor = true,
 #endif
@@ -143,7 +144,7 @@ auto USpaceSaveSubsystem::make_storage() -> ioj::persistence::ProfileStorage {
     if (FParse::Value(FCommandLine::Get(), TEXT("SpaceSaveExperiment="), experiment, false)) {
         options.experiment = TCHAR_TO_UTF8(*experiment);
     }
-    auto const selection{ioj::persistence::resolve_profile_storage(
+    auto const selection{ioj::profiles::resolve_profile_storage(
         options, std::filesystem::path{*development_root}, std::filesystem::path{*local_root})};
     if (!selection) {
         UE_LOG(LogSandboxSubsystem,
@@ -154,7 +155,7 @@ auto USpaceSaveSubsystem::make_storage() -> ioj::persistence::ProfileStorage {
     }
     if (selection->clone_shared) {
         std::string error;
-        if (!ioj::persistence::clone_profile_files(
+        if (!ioj::profiles::clone_profile_files(
                 std::filesystem::path{*development_root} / "Shared", selection->root, error)) {
             UE_LOG(LogSandboxSubsystem,
                    Error,
@@ -163,5 +164,5 @@ auto USpaceSaveSubsystem::make_storage() -> ioj::persistence::ProfileStorage {
             return {};
         }
     }
-    return ioj::persistence::make_file_profile_storage(selection->root);
+    return ioj::profiles::make_file_profile_storage(selection->root);
 }

@@ -21,8 +21,7 @@ public class SpaceGame : ModuleRules
             "SandboxISMC",
             "SandboxShaders",
             "NativeSimulation",
-            "NativeLevelAuthoring",
-            "NativePersistence",
+            "NativeProfiles",
             "NativePresentation",
             "NativeMemory",
             "SandboxUI",
@@ -43,6 +42,7 @@ public class SpaceGame : ModuleRules
 
         PrivateDependencyModuleNames.AddRange(new string[]
         {
+            "NativeLevelAuthoring",
             "CpuFeatures",
             "Niagara",
             "Slate",

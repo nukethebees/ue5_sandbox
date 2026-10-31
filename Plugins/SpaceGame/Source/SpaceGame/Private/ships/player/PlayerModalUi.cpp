@@ -72,30 +72,22 @@ auto FPlayerModalUi::show_main_menu(ASpaceGamePlayerController& owner) -> bool {
     }
     auto* const game_instance{owner.GetGameInstance()};
     auto* const subsystem{ioj::UGameSubsystem::get(game_instance)};
-    auto level_select_request{IsValid(subsystem)
-                                  ? subsystem->take_level_select_request()
-                                  : std::optional<ioj::levels::authoring::MenuRequest>{}};
-    auto const show_level_select{IsValid(subsystem) && (level_select_request.has_value() ||
-                                                        subsystem->has_level_launch_error())};
-    auto const preferred_level_id{
-        level_select_request.has_value()
-            ? FName{*ioj::to_fstring(level_select_request->preferred_level_id.value)}
-            : NAME_None};
-    auto const show_telemetry{level_select_request.has_value() &&
-                              level_select_request->destination ==
-                                  ioj::levels::authoring::MenuDestination::Telemetry};
-    auto const telemetry_run_id{
-        level_select_request.has_value()
-            ? ioj::to_fstring(level_select_request->selected_telemetry_run_id)
-            : FString{}};
-    auto const telemetry_error{level_select_request.has_value()
-                                   ? ioj::to_fstring(level_select_request->telemetry_error)
-                                   : FString{}};
-    if (!root_->show_main_menu(show_level_select,
-                               preferred_level_id,
-                               show_telemetry,
-                               telemetry_run_id,
-                               telemetry_error)) {
+    auto request{IsValid(subsystem) ? subsystem->take_menu_request()
+                                    : std::optional<ioj::session::MenuRequest>{}};
+    if (!request && IsValid(subsystem) && subsystem->has_level_launch_error()) {
+        request.emplace(ioj::session::LevelSelectRequest{});
+    }
+    auto const* level_select{request ? std::get_if<ioj::session::LevelSelectRequest>(&*request)
+                                     : nullptr};
+    auto const* telemetry{request ? std::get_if<ioj::session::TelemetryRequest>(&*request)
+                                  : nullptr};
+    if (!root_->show_main_menu(
+            level_select != nullptr,
+            level_select ? FName{*ioj::to_fstring(level_select->preferred_level_id.value)}
+                         : NAME_None,
+            telemetry != nullptr,
+            telemetry && telemetry->run ? ioj::to_fstring(*telemetry->run) : FString{},
+            telemetry && !telemetry->run ? ioj::to_fstring(telemetry->run.error()) : FString{})) {
         return false;
     }
 

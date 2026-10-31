@@ -9,7 +9,7 @@ link the resulting artifacts through thin adapters.
 - `core/`, `memory/`, `image/`, `mesh_gen/`, and `profiling/`: reusable native systems.
 - `simulation/` and `simulation_benchmark/`: worldless combat simulation, tests, and runners.
 - `levels/`: shared declarative definitions, typed IDs, semantic and catalog validation.
-- `persistence/`: profiles, progression, result publication, and atomic filesystem storage.
+- `profiles/`: profiles, progression, result publication, and atomic filesystem storage.
 - `presentation/` and `ui/`: HUD snapshots, radar/overlay collectors, camera math, and CPU effects.
 - `level_authoring/`: AST parsers, Scheme loading, and editor serialization; see its [architecture](level_authoring/ARCHITECTURE.md).
 - `s7/`: sandboxed Scheme evaluation and an owned flat data AST.

@@ -24,25 +24,25 @@ using ioj::levels::authoring::load_level_script_catalog;
 
 namespace {
 auto progress_label(levels::LevelDefinition const& definition,
-                    persistence::LevelProgressSummary const& progress) -> FString {
+                    profiles::LevelProgressSummary const& progress) -> FString {
     if (!definition.mission().has_value()) {
         return TEXT("No objective");
     }
 
-    switch (progress.state) {
-        case persistence::LevelProgressState::Completed:
+    switch (progress.state()) {
+        case profiles::LevelProgressState::Completed:
             return TEXT("Completed");
-        case persistence::LevelProgressState::Attempted:
+        case profiles::LevelProgressState::Attempted:
             return TEXT("Attempted");
-        case persistence::LevelProgressState::NotAttempted:
+        case profiles::LevelProgressState::NotAttempted:
             return TEXT("Not attempted");
     }
     checkNoEntry();
     return {};
 }
 
-auto level_details(FLevelScriptEntry const& entry,
-                   persistence::LevelProgressSummary const& progress) -> FString {
+auto level_details(FLevelScriptEntry const& entry, profiles::LevelProgressSummary const& progress)
+    -> FString {
     check(entry.definition.IsSet());
     auto const& definition{entry.definition.GetValue()};
     auto const teams{levels::participating_teams(definition)};
@@ -60,8 +60,8 @@ auto level_details(FLevelScriptEntry const& entry,
 
     auto const par_time{definition.metadata().par_time_seconds};
     if (par_time.has_value()) {
-        auto const par_achieved{persistence::level_completion_indicator_state(progress, par_time) ==
-                                persistence::CompletionIndicatorState::ParAchieved};
+        auto const par_achieved{profiles::level_completion_indicator_state(progress, par_time) ==
+                                profiles::CompletionIndicatorState::ParAchieved};
         details += FString::Printf(TEXT("\nPAR TIME  //  %.1f S    PAR STATUS  //  %s"),
                                    *par_time,
                                    par_achieved ? TEXT("ACHIEVED") : TEXT("NOT ACHIEVED"));
@@ -268,12 +268,12 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
         [this, save_subsystem, focus_level_id, &preferred_button_index, &visible_entry_count](
             int32 const entry_index) {
             auto const& entry{entries_[entry_index]};
-            auto indicator_state{persistence::CompletionIndicatorState::Incomplete};
+            auto indicator_state{profiles::CompletionIndicatorState::Incomplete};
             if (entry) {
                 auto const id{levels::authoring::to_unreal(entry.definition->metadata().id)};
                 auto const progress{IsValid(save_subsystem) ? save_subsystem->get_level_progress(id)
-                                                            : persistence::LevelProgressSummary{}};
-                indicator_state = persistence::level_completion_indicator_state(
+                                                            : profiles::LevelProgressSummary{}};
+                indicator_state = profiles::level_completion_indicator_state(
                     progress, entry.definition->metadata().par_time_seconds);
                 if (preferred_button_index == INDEX_NONE && !focus_level_id.IsNone() &&
                     id.value == focus_level_id) {
@@ -431,7 +431,7 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
         auto const progress{IsValid(save_subsystem)
                                 ? save_subsystem->get_level_progress(
                                       levels::authoring::to_unreal(entry.definition->metadata().id))
-                                : persistence::LevelProgressSummary{}};
+                                : profiles::LevelProgressSummary{}};
         auto const evaluator{make_unlock_evaluator(entries_, save_subsystem)};
         auto const unlock_status{evaluator.evaluate(entry.definition.GetValue())};
         view_state_.description =

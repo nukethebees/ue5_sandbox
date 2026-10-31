@@ -5,8 +5,8 @@
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 #include "SSaveGameViewerView.h"
-#include <ioj/persistence/profile_manager.h>
-#include <ioj/persistence/save_browser.h>
+#include <ioj/profiles/profile_manager.h>
+#include <ioj/profiles/save_browser.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include <SandboxCoreEngine/strings.h>
@@ -26,7 +26,7 @@ auto format_duration(float const duration_seconds) -> FText {
                          FText::FromString(FString::Printf(TEXT("%02d"), seconds)));
 }
 
-auto format_date(persistence::Timestamp const date) -> FText {
+auto format_date(profiles::Timestamp const date) -> FText {
     return date == 0 ? FText::FromString(TEXT("-"))
                      : FText::FromString(
                            FDateTime::FromUnixTimestamp(date).ToString(TEXT("%Y-%m-%d %H:%M")));
@@ -96,7 +96,7 @@ auto USaveGameViewerWidget::NativeOnFocusReceived(FGeometry const& geometry,
 /* **************************************** */
 // Navigation and profile actions
 /* **************************************** */
-void USaveGameViewerWidget::set_browser(persistence::SaveGameBrowser& browser) {
+void USaveGameViewerWidget::set_browser(profiles::SaveGameBrowser& browser) {
     browser_override_ = &browser;
     rebuild_profiles();
 }
@@ -157,28 +157,28 @@ void USaveGameViewerWidget::handle_create_profile(FString const& display_name) {
 
     auto const response{save_subsystem->create_profile(display_name)};
     switch (response.result) {
-        case persistence::CreateProfileResult::succeeded: {
+        case profiles::CreateProfileResult::succeeded: {
             cancel_create_profile();
             refresh_and_select(to_fstring(response.profile_id));
             return;
         }
-        case persistence::CreateProfileResult::empty_name: {
+        case profiles::CreateProfileResult::empty_name: {
             show_create_profile_error(
                 NSLOCTEXT("SaveGameViewer", "EmptyProfileName", "Enter a profile name."));
             return;
         }
-        case persistence::CreateProfileResult::name_too_long: {
+        case profiles::CreateProfileResult::name_too_long: {
             show_create_profile_error(FText::Format(
                 NSLOCTEXT("SaveGameViewer", "LongProfileName", "Use no more than {0} characters."),
-                FText::AsNumber(persistence::ProfileManager::max_profile_name_length)));
+                FText::AsNumber(profiles::ProfileManager::max_profile_name_length)));
             return;
         }
-        case persistence::CreateProfileResult::duplicate_name: {
+        case profiles::CreateProfileResult::duplicate_name: {
             show_create_profile_error(NSLOCTEXT(
                 "SaveGameViewer", "DuplicateProfileName", "That profile already exists."));
             return;
         }
-        case persistence::CreateProfileResult::persistence_failed: {
+        case profiles::CreateProfileResult::persistence_failed: {
             show_create_profile_error(
                 NSLOCTEXT("SaveGameViewer", "CreateFailed", "The profile could not be saved."));
             return;
@@ -219,7 +219,7 @@ void USaveGameViewerWidget::handle_reset_test_profile() {
 /* **************************************** */
 // Data sources and selection
 /* **************************************** */
-auto USaveGameViewerWidget::resolve_browser() -> persistence::SaveGameBrowser* {
+auto USaveGameViewerWidget::resolve_browser() -> profiles::SaveGameBrowser* {
     if (browser_override_) {
         return browser_override_;
     }
@@ -258,7 +258,7 @@ void USaveGameViewerWidget::rebuild_profiles() {
     view_state_ = FSaveGameViewState{};
     auto* const browser{resolve_browser()};
     auto const profiles{browser ? browser->get_summaries()
-                                : std::span<persistence::ProfileSummary const>{}};
+                                : std::span<profiles::ProfileSummary const>{}};
     if (profiles.empty()) {
         show_empty_profiles();
         publish_all();
@@ -268,11 +268,12 @@ void USaveGameViewerWidget::rebuild_profiles() {
     auto const profile_count{static_cast<int32>(profiles.size())};
     view_state_.profiles.Reserve(profile_count);
     for (auto const& profile : profiles) {
-        auto const marker{profile.active ? TEXT("ACTIVE // ") : TEXT("")};
+        auto const active{profile.profile_id == browser->get_active_profile_id()};
+        auto const marker{active ? TEXT("ACTIVE // ") : TEXT("")};
         view_state_.profiles.Add(FSaveProfileViewRow{
             .profile_id = to_fstring(profile.profile_id),
             .text = FText::FromString(marker + to_fstring(profile.display_name).ToUpper()),
-            .active = profile.active,
+            .active = active,
         });
     }
     view_state_.archive_status =
@@ -315,7 +316,7 @@ void USaveGameViewerWidget::apply_profile_selection(FString const& profile_id) {
         if (profile_changed) {
             selected_outcome_id_.Reset();
         }
-        show_profile(profile);
+        show_profile(profile, browser->get_active_profile_id());
 
         if (browser->load_profile_report(TCHAR_TO_UTF8(*profile_id))) {
             auto const* const report{browser->get_loaded_profile_report()};
@@ -327,13 +328,13 @@ void USaveGameViewerWidget::apply_profile_selection(FString const& profile_id) {
                    Warning,
                    TEXT("USaveGameViewerWidget::select_profile: Failed to load profile '%s'."),
                    *profile_id);
-            rebuild_outcomes(persistence::ProfileReport{.profile_id = TCHAR_TO_UTF8(*profile_id)});
+            rebuild_outcomes(profiles::ProfileReport{.profile_id = TCHAR_TO_UTF8(*profile_id)});
         }
         return;
     }
 }
 
-void USaveGameViewerWidget::rebuild_outcomes(persistence::ProfileReport const& report) {
+void USaveGameViewerWidget::rebuild_outcomes(profiles::ProfileReport const& report) {
     view_state_.outcomes.Reset();
     view_state_.statistics.Reset();
     view_state_.selected_outcome_index = INDEX_NONE;
@@ -391,11 +392,13 @@ void USaveGameViewerWidget::apply_outcome_selection(FString const& outcome_id) {
     }
 }
 
-void USaveGameViewerWidget::show_profile(persistence::ProfileSummary const& profile) {
+void USaveGameViewerWidget::show_profile(profiles::ProfileSummary const& profile,
+                                         std::string_view const active_profile_id) {
+    auto const active{profile.profile_id == active_profile_id};
     view_state_.profile_name = FText::FromString(to_fstring(profile.display_name));
     view_state_.profile_status =
-        profile.active ? NSLOCTEXT("SaveGameViewer", "ActiveProfile", "ACTIVE SERVICE RECORD")
-                       : NSLOCTEXT("SaveGameViewer", "InactiveProfile", "ARCHIVED SERVICE RECORD");
+        active ? NSLOCTEXT("SaveGameViewer", "ActiveProfile", "ACTIVE SERVICE RECORD")
+               : NSLOCTEXT("SaveGameViewer", "InactiveProfile", "ARCHIVED SERVICE RECORD");
     view_state_.profile_id =
         FText::Format(NSLOCTEXT("SaveGameViewer", "ProfileId", "ID  //  {0}"),
                       FText::FromString(to_fstring(profile.profile_id).ToUpper()));
@@ -412,10 +415,10 @@ void USaveGameViewerWidget::show_profile(persistence::ProfileSummary const& prof
         NSLOCTEXT("SaveGameViewer", "ProfileTotals", "REPORTS  //  {0}    KILLS  //  {1}"),
         FText::AsNumber(profile.outcome_count),
         FText::AsNumber(profile.total_kills));
-    view_state_.can_activate = !profile.active;
+    view_state_.can_activate = !active;
 }
 
-void USaveGameViewerWidget::show_outcome(persistence::LevelOutcomeSummary const& outcome) {
+void USaveGameViewerWidget::show_outcome(profiles::LevelOutcomeSummary const& outcome) {
     view_state_.outcome_name = FText::FromString(to_fstring(outcome.display_name));
     view_state_.outcome_status = FText::FromString(to_fstring(outcome.result).ToUpper());
     view_state_.outcome_completed =

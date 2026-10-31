@@ -1,6 +1,7 @@
 #include <ioj/levels/launch_options.h>
 #pragma once
-#include <ioj/persistence/progression.h>
+#include <ioj/levels/authoring/level_catalog_category.h>
+#include <ioj/profiles/completion_indicator_state.h>
 #include <SpaceGame/ui/main_menu/LevelSelectWidget.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyle.h>
 #include <SpaceGameS7/level_script_catalog.h>
@@ -21,8 +22,8 @@ class SScriptLevelSelectView;
 struct FLevelSelectViewRow {
     FText text{};
     bool heading{};
-    persistence::CompletionIndicatorState indicator_state{
-        persistence::CompletionIndicatorState::Incomplete};
+    profiles::CompletionIndicatorState indicator_state{
+        profiles::CompletionIndicatorState::Incomplete};
 };
 
 struct FLevelSelectViewState {

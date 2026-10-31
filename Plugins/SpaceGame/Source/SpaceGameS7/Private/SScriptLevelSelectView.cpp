@@ -448,12 +448,10 @@ void SScriptLevelSelectView::rebuild_catalog(FLevelSelectViewState const& state)
         }
 
         auto const button_index{level_buttons_.Num()};
-        auto const completed{row.indicator_state !=
-                             persistence::CompletionIndicatorState::Incomplete};
+        auto const completed{row.indicator_state != profiles::CompletionIndicatorState::Incomplete};
         auto const* const icon{completed ? &style_->icon(EGameUiIcon::LevelComplete)
                                          : &style_->icon(EGameUiIcon::LevelIncomplete)};
-        auto const icon_tint{row.indicator_state ==
-                                     persistence::CompletionIndicatorState::ParAchieved
+        auto const icon_tint{row.indicator_state == profiles::CompletionIndicatorState::ParAchieved
                                  ? style_->palette().honey
                              : completed ? style_->palette().completion
                                          : style_->palette().text_secondary};

@@ -2,8 +2,8 @@
 #include <ioj/levels/authoring/campaign_parser.h>
 #include <ioj/levels/authoring/definition_catalog.h>
 #include <ioj/levels/authoring/level_parser.h>
-#include <ioj/levels/authoring/level_source.h>
 #include <ioj/levels/authoring/settings_parser.h>
+#include <ioj/levels/level_source.h>
 #include <ioj/s7/ast_result.h>
 
 #include <filesystem>

@@ -116,10 +116,10 @@ void UGameSubsystem::Initialize(FSubsystemCollectionBase& collection) {
         return;
     }
 
-    save_game_browser_ = persistence::SaveGameBrowser{
-        [save_subsystem] { return persistence::discover_profiles(save_subsystem->profiles()); },
+    save_game_browser_ = profiles::SaveGameBrowser{
+        [save_subsystem] { return profiles::discover_profiles(save_subsystem->profiles()); },
         [save_subsystem](std::string const& profile_id) {
-            return persistence::load_report(save_subsystem->profiles(), profile_id);
+            return profiles::load_report(save_subsystem->profiles(), profile_id);
         }};
 
     platform_capabilities_ = query_platform_capabilities();
@@ -151,7 +151,7 @@ auto UGameSubsystem::get_platform_capabilities() const -> FGameCapabilities cons
     return platform_capabilities_;
 }
 
-auto UGameSubsystem::get_save_game_browser() -> persistence::SaveGameBrowser& {
+auto UGameSubsystem::get_save_game_browser() -> profiles::SaveGameBrowser& {
     return save_game_browser_;
 }
 
@@ -202,13 +202,13 @@ auto UGameSubsystem::set_ui_theme(USpaceGameUiTheme* const theme) -> bool {
 /* **************************************** */
 // Level launch and navigation
 /* **************************************** */
-void UGameSubsystem::set_pending_level(levels::authoring::LevelSource source,
+void UGameSubsystem::set_pending_level(levels::LevelSource source,
                                        FString source_path,
                                        ::ioj::levels::LaunchOptions options) {
     launch_state_.set_pending_level(std::move(source), to_string(source_path), options);
 }
 
-auto UGameSubsystem::take_pending_level() -> std::optional<levels::authoring::PendingLevel> {
+auto UGameSubsystem::take_pending_level() -> std::optional<session::PendingLevel> {
     return launch_state_.take_pending_level();
 }
 
@@ -220,18 +220,17 @@ auto UGameSubsystem::return_to_level_select(FName const preferred_level_id) -> b
                TEXT("UGameSubsystem::return_to_level_select: World is invalid."));
         return false;
     }
-    if (!launch_state_.request_menu(
-            {.preferred_level_id =
-                 preferred_level_id.IsNone()
-                     ? levels::LevelId{}
-                     : levels::LevelId{to_string(preferred_level_id.ToString())}})) {
+    if (!launch_state_.request_menu(session::LevelSelectRequest{
+            .preferred_level_id = preferred_level_id.IsNone()
+                                    ? levels::LevelId{}
+                                    : levels::LevelId{to_string(preferred_level_id.ToString())}})) {
         return false;
     }
     UGameplayStatics::OpenLevel(world, get_main_menu_level_name());
     return true;
 }
 
-auto UGameSubsystem::return_to_telemetry(FString run_id, FString error) -> bool {
+auto UGameSubsystem::return_to_telemetry(std::expected<std::string, std::string> result) -> bool {
     auto* const world{GetWorld()};
     if (!IsValid(world)) {
         UE_LOG(LogSandboxSubsystem,
@@ -239,16 +238,14 @@ auto UGameSubsystem::return_to_telemetry(FString run_id, FString error) -> bool 
                TEXT("UGameSubsystem::return_to_telemetry: World is invalid."));
         return false;
     }
-    if (!launch_state_.request_menu({.destination = levels::authoring::MenuDestination::Telemetry,
-                                     .selected_telemetry_run_id = to_string(run_id),
-                                     .telemetry_error = to_string(error)})) {
+    if (!launch_state_.request_menu(session::TelemetryRequest{std::move(result)})) {
         return false;
     }
     UGameplayStatics::OpenLevel(world, get_main_menu_level_name());
     return true;
 }
 
-auto UGameSubsystem::take_level_select_request() -> std::optional<levels::authoring::MenuRequest> {
+auto UGameSubsystem::take_menu_request() -> std::optional<session::MenuRequest> {
     return launch_state_.take_menu_request();
 }
 

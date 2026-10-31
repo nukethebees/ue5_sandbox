@@ -1,7 +1,9 @@
 #pragma once
-#include <ioj/persistence/save_browser.h>
+#include <ioj/profiles/profile_summary.h>
 
 #include "Blueprint/UserWidget.h"
+
+#include <string_view>
 
 #include "SaveGameRowWidget.generated.h"
 
@@ -16,7 +18,7 @@ UCLASS()
 class SPACEGAME_API USaveGameRowWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    void set_summary(persistence::ProfileSummary const& summary);
+    void set_summary(profiles::ProfileSummary const& summary, std::string_view active_profile_id);
     void set_selected(bool selected);
     void focus_row();
     [[nodiscard]] auto get_focus_target() const -> UWidget*;

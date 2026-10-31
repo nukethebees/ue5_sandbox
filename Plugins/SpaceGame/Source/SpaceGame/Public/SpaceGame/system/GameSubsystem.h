@@ -1,9 +1,9 @@
 #pragma once
 #include "SpaceGamePresentation/audio/GameAudio.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
-#include <ioj/levels/authoring/launch_state.h>
-#include <ioj/levels/authoring/level_source.h>
-#include <ioj/persistence/save_browser.h>
+#include <ioj/levels/level_source.h>
+#include <ioj/profiles/save_browser.h>
+#include <ioj/session/launch_state.h>
 
 #include "Subsystems/GameInstanceSubsystem.h"
 
@@ -88,7 +88,7 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     static auto get(UGameInstance const* game_instance) -> UGameSubsystem*;
     auto get_game_memory() noexcept -> sim::GameMemory&;
     auto get_platform_capabilities() const -> FGameCapabilities const&;
-    auto get_save_game_browser() -> persistence::SaveGameBrowser&;
+    auto get_save_game_browser() -> profiles::SaveGameBrowser&;
     auto get_audio() -> FGameAudioFacade;
     void start_menu_ambience();
     void stop_menu_ambience();
@@ -104,14 +104,14 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     /* **************************************** */
     // Level launch and navigation
     /* **************************************** */
-    void set_pending_level(levels::authoring::LevelSource source,
+    void set_pending_level(levels::LevelSource source,
                            FString source_path,
                            levels::LaunchOptions options = {});
-    auto take_pending_level() -> std::optional<levels::authoring::PendingLevel>;
+    auto take_pending_level() -> std::optional<session::PendingLevel>;
 
     [[nodiscard]] auto return_to_level_select(FName preferred_level_id = NAME_None) -> bool;
-    [[nodiscard]] auto return_to_telemetry(FString run_id, FString error = {}) -> bool;
-    auto take_level_select_request() -> std::optional<levels::authoring::MenuRequest>;
+    [[nodiscard]] auto return_to_telemetry(std::expected<std::string, std::string> result) -> bool;
+    auto take_menu_request() -> std::optional<session::MenuRequest>;
     static auto get_main_menu_level_name() -> FName;
 
     /* **************************************** */
@@ -129,7 +129,7 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     FGameAudio audio_;
     FGameCapabilities platform_capabilities_;
     TUniquePtr<sim::GameMemory> game_memory_{};
-    persistence::SaveGameBrowser save_game_browser_;
-    levels::authoring::LaunchState launch_state_;
+    profiles::SaveGameBrowser save_game_browser_;
+    session::LaunchState launch_state_;
 };
 }

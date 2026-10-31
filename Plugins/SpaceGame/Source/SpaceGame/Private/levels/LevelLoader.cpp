@@ -157,7 +157,7 @@ auto FLevelLoadErrors::format(FStringView const source_path) const -> FString {
 }
 
 auto FLevelLoader::take_pending(UGameInstance* const game_instance)
-    -> std::expected<levels::authoring::PendingLevel, FString> {
+    -> std::expected<session::PendingLevel, FString> {
     auto* const subsystem{UGameSubsystem::get(game_instance)};
     if (!IsValid(subsystem)) {
         return std::unexpected{

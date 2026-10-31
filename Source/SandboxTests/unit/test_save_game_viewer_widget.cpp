@@ -1,11 +1,11 @@
-#include <ioj/persistence/save_browser.h>
+#include <ioj/profiles/save_browser.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SpaceGame/ui/save_game/SaveGameViewerWidget.h>
 
 #include <CQTest.h>
 
 namespace save_game_viewer_widget_test {
-auto make_outcome(std::string id, std::string name) -> ioj::persistence::LevelOutcomeSummary {
+auto make_outcome(std::string id, std::string name) -> ioj::profiles::LevelOutcomeSummary {
     return {.outcome_id = std::move(id),
             .display_name = std::move(name),
             .completed_at = FDateTime{2026, 8, 27}.ToUnixTimestamp(),
@@ -37,45 +37,46 @@ TEST_CLASS(SaveGameViewerWidget, "Sandbox.UnitTests")
             return;
         }
 
-        ioj::persistence::SaveGameBrowser browser{
+        ioj::profiles::SaveGameBrowser browser{
             [] {
-                return std::vector<ioj::persistence::ProfileSummary>{
-                    {.profile_id = "battle_at_vega",
-                     .display_name = "Battle at Vega",
-                     .created_at = FDateTime{2026, 8, 20}.ToUnixTimestamp(),
-                     .last_played_at = FDateTime{2026, 8, 27}.ToUnixTimestamp(),
-                     .total_simulation_duration_seconds = 600.f,
-                     .total_kills = 10,
-                     .outcome_count = 2,
-                     .active = true},
-                    {.profile_id = "test_run_12",
-                     .display_name = "Test Run 12",
-                     .created_at = FDateTime{2026, 8, 26}.ToUnixTimestamp(),
-                     .last_played_at = FDateTime{2026, 8, 26}.ToUnixTimestamp(),
-                     .total_kills = 5,
-                     .outcome_count = 1},
-                    {.profile_id = "empty_profile",
-                     .display_name = "Empty Profile",
-                     .created_at = FDateTime{2026, 8, 25}.ToUnixTimestamp(),
-                     .last_played_at = FDateTime{2026, 8, 25}.ToUnixTimestamp()},
-                };
+                return ioj::profiles::ProfileListing{
+                    .active_profile_id = "battle_at_vega",
+                    .summaries = {
+                        {.profile_id = "battle_at_vega",
+                         .display_name = "Battle at Vega",
+                         .created_at = FDateTime{2026, 8, 20}.ToUnixTimestamp(),
+                         .last_played_at = FDateTime{2026, 8, 27}.ToUnixTimestamp(),
+                         .total_simulation_duration_seconds = 600.f,
+                         .total_kills = 10,
+                         .outcome_count = 2},
+                        {.profile_id = "test_run_12",
+                         .display_name = "Test Run 12",
+                         .created_at = FDateTime{2026, 8, 26}.ToUnixTimestamp(),
+                         .last_played_at = FDateTime{2026, 8, 26}.ToUnixTimestamp(),
+                         .total_kills = 5,
+                         .outcome_count = 1},
+                        {.profile_id = "empty_profile",
+                         .display_name = "Empty Profile",
+                         .created_at = FDateTime{2026, 8, 25}.ToUnixTimestamp(),
+                         .last_played_at = FDateTime{2026, 8, 25}.ToUnixTimestamp()},
+                    }};
             },
-            [](std::string const& profile_id) -> std::optional<ioj::persistence::ProfileReport> {
+            [](std::string const& profile_id) -> std::optional<ioj::profiles::ProfileReport> {
                 if (profile_id == "battle_at_vega") {
-                    return ioj::persistence::ProfileReport{
+                    return ioj::profiles::ProfileReport{
                         .profile_id = profile_id,
                         .outcomes = {
                             save_game_viewer_widget_test::make_outcome("patrol", "Vega Patrol"),
                             save_game_viewer_widget_test::make_outcome("defence", "Vega Defence")}};
                 }
                 if (profile_id == "test_run_12") {
-                    return ioj::persistence::ProfileReport{
+                    return ioj::profiles::ProfileReport{
                         .profile_id = profile_id,
                         .outcomes = {save_game_viewer_widget_test::make_outcome(
                             "interception", "Fleet Interception")}};
                 }
                 if (profile_id == "empty_profile") {
-                    return ioj::persistence::ProfileReport{.profile_id = profile_id};
+                    return ioj::profiles::ProfileReport{.profile_id = profile_id};
                 }
                 return {};
             }};

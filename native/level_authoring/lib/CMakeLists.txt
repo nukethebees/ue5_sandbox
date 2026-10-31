@@ -13,7 +13,6 @@ target_sources(native-level-authoring
     src/scene.cpp
     src/source_session.cpp
     src/definition_catalog.cpp
-    src/launch_state.cpp
 )
 target_include_directories(native-level-authoring
   PUBLIC

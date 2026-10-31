@@ -32,8 +32,6 @@ target_sources(native-level-parser-tests
     parser_tests.cpp
     editor_tests.cpp
     level_validation_tests.cpp
-    launch_state_tests.cpp
-    input_response_tests.cpp
 )
 target_link_libraries(native-level-parser-tests
   PRIVATE

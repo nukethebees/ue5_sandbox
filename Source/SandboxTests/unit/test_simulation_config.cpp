@@ -70,7 +70,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
             return;
         }
 
-        ioj::levels::authoring::LevelSource const source{*definition};
+        ioj::levels::LevelSource const source{*definition};
         auto const loaded{read_game_settings(TEXT("LevelScripts/Settings/missing-unused-base.scm"),
                                              &source,
                                              *resources,

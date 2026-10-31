@@ -12,14 +12,11 @@ FLevelUnlockEvaluator::FLevelUnlockEvaluator(FCompletionQuery completion_query,
 
 auto FLevelUnlockEvaluator::evaluate(levels::LevelDefinition const& definition) const
     -> FLevelUnlockStatus {
-    auto const eligibility{persistence::evaluate_unlock(
-        definition,
-        [this](levels::LevelId const& id) {
-            return completion_query_(levels::authoring::to_unreal(id));
-        },
-        force_unlocked_)};
+    auto const eligibility{profiles::evaluate_unlock(definition, [this](levels::LevelId const& id) {
+        return completion_query_(levels::authoring::to_unreal(id));
+    })};
     FLevelUnlockStatus status;
-    status.unlocked = eligibility.unlocked;
+    status.unlocked = eligibility.unlocked(force_unlocked_);
     status.criteria.Reserve(static_cast<int32>(eligibility.criteria.size()));
     for (auto const& criterion : eligibility.criteria) {
         auto const id{levels::authoring::to_unreal(criterion.level_id)};

@@ -26,7 +26,7 @@ public class SpaceGameS7 : ModuleRules
         {
             "Engine",
             "InputCore",
-            "NativePersistence",
+            "NativeProfiles",
             "SandboxCoreEngine",
             "Slate",
             "SlateCore",

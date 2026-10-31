@@ -1,6 +1,6 @@
 #include <SpaceGame/missions/MissionCompletion.h>
 
-#include <ioj/persistence/completion_publication.h>
+#include <ioj/profiles/completion_publication.h>
 #include <SpaceGame/missions/TeamOutcomeConversion.h>
 #include <SpaceGame/persistence/SpaceSaveSubsystem.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
@@ -12,10 +12,8 @@ void publish_mission_completion(sim::LevelSim& simulation,
                                 UGameInstance* game_instance,
                                 FOnMissionCompleted& completed) {
     auto* const saves{USpaceSaveSubsystem::get(game_instance)};
-    auto const publication{
-        persistence::publish_player_completion(simulation,
-                                               IsValid(saves) ? &saves->profiles() : nullptr,
-                                               persistence::current_timestamp())};
+    auto const publication{profiles::publish_player_completion(
+        simulation, IsValid(saves) ? &saves->profiles() : nullptr, profiles::current_timestamp())};
     if (!publication) {
         return;
     }

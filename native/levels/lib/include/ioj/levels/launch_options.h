@@ -1,16 +1,16 @@
 #pragma once
 
+#include <ioj/levels/control_context.h>
+#include <ioj/levels/launch_mode.h>
+#include <ioj/levels/presentation_mode.h>
+#include <ioj/levels/results_navigation.h>
+
 #include <cmath>
-#include <cstdint>
 #include <expected>
 #include <optional>
 #include <string>
 
 namespace ioj::levels {
-enum class ControlContext : std::uint8_t { None, Player, Observer, Benchmark };
-enum class LaunchMode : std::uint8_t { Running, Paused };
-enum class PresentationMode : std::uint8_t { Visual, SimulationOnly };
-enum class ResultsNavigation : std::uint8_t { None, Telemetry };
 
 namespace launch {
 inline constexpr double default_time_scale{1.0};
@@ -49,31 +49,4 @@ struct LaunchOptions {
     return {};
 }
 
-class ModalResumeState {
-  public:
-    void suspend(ControlContext const context) {
-        context_ = context;
-        pending_ = true;
-    }
-    void clear() {
-        context_ = ControlContext::None;
-        pending_ = false;
-    }
-    void on_player_changed(bool const has_player) {
-        if (pending_) {
-            if (has_player) {
-                context_ = ControlContext::Player;
-            } else if (context_ == ControlContext::Player) {
-                context_ = ControlContext::None;
-            }
-        }
-    }
-    [[nodiscard]] auto context(ControlContext const fallback) const -> ControlContext {
-        return pending_ ? context_ : fallback;
-    }
-    [[nodiscard]] auto pending() const -> bool { return pending_; }
-  private:
-    ControlContext context_{ControlContext::None};
-    bool pending_{};
-};
 }

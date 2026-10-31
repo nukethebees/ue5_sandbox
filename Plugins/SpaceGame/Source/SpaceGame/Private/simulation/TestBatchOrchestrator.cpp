@@ -214,8 +214,7 @@ void ATestBatchOrchestrator::clear_player_ship() {
 /* **************************************** */
 // Level preparation and startup
 /* **************************************** */
-auto ATestBatchOrchestrator::prepare_level(ioj::levels::authoring::LevelSource const* const source)
-    -> bool {
+auto ATestBatchOrchestrator::prepare_level(ioj::levels::LevelSource const* const source) -> bool {
     check(get_state() == ioj::sim::OrchestratorState::Uninitialised);
     if (prepared_level_.IsSet() && !source) {
         return true;
@@ -250,7 +249,7 @@ auto ATestBatchOrchestrator::prepare_level(ioj::levels::authoring::LevelSource c
     return true;
 }
 auto ATestBatchOrchestrator::load_level(
-    ioj::levels::authoring::LevelSource const& source,
+    ioj::levels::LevelSource const& source,
     ::ioj::levels::ControlContext const playerless_control_context)
     -> std::expected<void, ioj::FLevelLoadErrors> {
     auto const fail{[](ioj::ELevelLoadErrorCode const code,
@@ -312,17 +311,20 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     }
 
     auto const authored{prepared_level_->level.has_value()};
+    auto options{launch_options_};
+    options.presentation_mode = presentation_enabled
+                                  ? ioj::levels::PresentationMode::Visual
+                                  : ioj::levels::PresentationMode::SimulationOnly;
     auto build{ioj::prepare_level_simulation({
         .world = *world,
         .config = *level_config,
         .clock_settings = simulation_tick_settings,
         .mission = mission_definition,
-        .launch_options = launch_options_,
+        .launch_options = options,
         .level_source = prepared_level_->level_source,
         .settings_source = prepared_level_->source,
         .definition = authored ? &*prepared_level_->level : nullptr,
         .player = player_ship.Get(),
-        .presentation_enabled = presentation_enabled,
     })};
     if (!build) {
         handle_level_start_failure(

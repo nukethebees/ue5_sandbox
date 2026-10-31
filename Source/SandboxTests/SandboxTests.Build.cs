@@ -31,7 +31,7 @@ public class SandboxTests : ModuleRules
             "SandboxShaders",
             "NativeSimulation",
             "NativePresentation",
-            "NativePersistence",
+            "NativeProfiles",
             "NativeLevelAuthoring",
             "NativeMemory",
             "SandboxUI",

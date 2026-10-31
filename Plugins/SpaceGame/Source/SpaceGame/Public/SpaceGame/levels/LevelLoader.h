@@ -50,7 +50,7 @@ struct FLevelActorLoadRequest {
 class SPACEGAME_API FLevelLoader {
   public:
     static auto take_pending(UGameInstance* game_instance)
-        -> std::expected<levels::authoring::PendingLevel, FString>;
+        -> std::expected<session::PendingLevel, FString>;
     static auto load(FLevelActorLoadRequest const& request)
         -> std::expected<void, FLevelLoadErrors>;
     static void report_failure(UWorld* world, FString message);

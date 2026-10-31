@@ -9,7 +9,7 @@ set(sandbox_unreal_native_dependency_targets
   native-ismc
   native-ui
   native-presentation
-  native-persistence
+  native-profiles
   cpu_features
 )
 set(sandbox_unreal_native_dependencies)

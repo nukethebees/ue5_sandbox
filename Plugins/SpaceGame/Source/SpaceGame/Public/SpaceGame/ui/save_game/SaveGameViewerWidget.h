@@ -1,6 +1,6 @@
 #pragma once
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
-#include <ioj/persistence/save_browser.h>
+#include <ioj/profiles/save_browser.h>
 
 #include "Blueprint/UserWidget.h"
 
@@ -61,7 +61,7 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     /* **************************************** */
     USaveGameViewerWidget(FObjectInitializer const& object_initializer);
 
-    void set_browser(persistence::SaveGameBrowser& browser);
+    void set_browser(profiles::SaveGameBrowser& browser);
     void focus_primary_action();
     [[nodiscard]] auto get_focus_target() const -> UWidget*;
 
@@ -120,14 +120,14 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     /* **************************************** */
     // Data sources and selection
     /* **************************************** */
-    auto resolve_browser() -> persistence::SaveGameBrowser*;
+    auto resolve_browser() -> profiles::SaveGameBrowser*;
     auto resolve_save_subsystem() const -> USpaceSaveSubsystem*;
     void rebuild_profiles();
     void apply_profile_selection(FString const& profile_id);
-    void rebuild_outcomes(persistence::ProfileReport const& report);
+    void rebuild_outcomes(profiles::ProfileReport const& report);
     void apply_outcome_selection(FString const& outcome_id);
-    void show_profile(persistence::ProfileSummary const& profile);
-    void show_outcome(persistence::LevelOutcomeSummary const& outcome);
+    void show_profile(profiles::ProfileSummary const& profile, std::string_view active_profile_id);
+    void show_outcome(profiles::LevelOutcomeSummary const& outcome);
     void show_empty_profiles();
 
     /* **************************************** */
@@ -143,7 +143,7 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     FString selected_profile_id_{};
     FString selected_outcome_id_{};
     FSaveGameViewState view_state_{};
-    persistence::SaveGameBrowser* browser_override_{nullptr};
+    profiles::SaveGameBrowser* browser_override_{nullptr};
     TSharedPtr<SSaveGameViewerView> view_{};
     FGameUiStyle fallback_style_{};
     UPROPERTY(Transient)

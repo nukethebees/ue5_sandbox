@@ -380,11 +380,13 @@ auto prepare_level_simulation(FLevelSimulationRequest const& request)
     -> FLevelSimulationBuildResult {
     auto const& config{request.config};
     auto const has_player{IsValid(request.player)};
+    auto const presentation_enabled{request.launch_options.presentation_mode ==
+                                    levels::PresentationMode::Visual};
     TArray<FString> messages;
-    config.get_validation_errors(messages, request.presentation_enabled);
+    config.get_validation_errors(messages, presentation_enabled);
     FLevelStartErrors errors;
     errors.append(MoveTemp(messages));
-    if (request.presentation_enabled && has_player && !config.player_ship.team_visual_data) {
+    if (presentation_enabled && has_player && !config.player_ship.team_visual_data) {
         errors.add(TEXT("player_ship.team_visual_data is null"));
     }
     if (errors.has_errors()) {

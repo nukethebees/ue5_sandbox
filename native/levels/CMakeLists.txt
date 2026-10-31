@@ -13,6 +13,7 @@ target_sources(native-levels
     lib/src/game_settings.cpp
     lib/src/game_settings_edit_state.cpp
     lib/src/input_response.cpp
+    lib/src/launch_state.cpp
 )
 target_include_directories(native-levels
   PUBLIC
@@ -33,3 +34,5 @@ if(IOJ_WITH_UNREAL)
     ARCHIVE_OUTPUT_DIRECTORY "${levels_output_dir}/${UE_CONFIGURATION}"
   )
 endif()
+
+add_subdirectory(tests)

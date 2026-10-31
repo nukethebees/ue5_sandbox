@@ -44,7 +44,7 @@ auto read_game_settings_source(FStringView const path, USpaceGameLevelConfig con
 }
 
 auto read_game_settings(FStringView const path,
-                        ioj::levels::authoring::LevelSource const* const level,
+                        ioj::levels::LevelSource const* const level,
                         USpaceGameLevelConfig const& resources,
                         UObject* const outer) -> std::expected<FLoadedGameSettings, FString> {
     auto const report_errors{[&](ioj::levels::Diagnostics const& errors) {

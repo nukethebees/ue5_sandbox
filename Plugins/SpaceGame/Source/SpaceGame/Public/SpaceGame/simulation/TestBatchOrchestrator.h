@@ -152,8 +152,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     // Testing and level preparation
     /* **************************************** */
 
-    auto prepare_level(ioj::levels::authoring::LevelSource const* source = nullptr) -> bool;
-    auto load_level(ioj::levels::authoring::LevelSource const& source,
+    auto prepare_level(ioj::levels::LevelSource const* source = nullptr) -> bool;
+    auto load_level(ioj::levels::LevelSource const& source,
                     ::ioj::levels::ControlContext playerless_control_context =
                         ::ioj::levels::ControlContext::Observer)
         -> std::expected<void, ioj::FLevelLoadErrors>;

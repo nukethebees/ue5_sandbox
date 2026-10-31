@@ -1,0 +1,30 @@
+add_library(native-profiles STATIC)
+target_sources(native-profiles
+  PRIVATE
+    src/completion_publication.cpp
+    src/profile.cpp
+    src/profile_manager.cpp
+    src/profile_storage.cpp
+    src/progression.cpp
+    src/save_browser.cpp
+)
+target_include_directories(native-profiles
+  PUBLIC
+    include
+)
+target_link_libraries(native-profiles
+  PUBLIC
+    native-levels
+    native-core
+    native-simulation
+  PRIVATE
+    nlohmann_json::nlohmann_json
+)
+ioj_enable_warnings(native-profiles)
+ioj_apply_native_abi(native-profiles)
+if(IOJ_WITH_UNREAL)
+  set_target_properties(native-profiles PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY
+      "${IOJ_NATIVE_OUTPUT_ROOT}/Profiles/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
+  )
+endif()

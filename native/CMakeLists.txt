@@ -73,7 +73,7 @@ add_subdirectory(gfx)
 add_subdirectory(ui)
 add_subdirectory(s7)
 add_subdirectory(levels)
-add_subdirectory(persistence)
+add_subdirectory(profiles)
 add_subdirectory(simulation)
 add_subdirectory(presentation)
 add_subdirectory(level_authoring)
@@ -91,7 +91,8 @@ add_custom_target(native-tests
     native-gfx-tests
     native-ui-tests
     native-presentation-tests
-    native-persistence-tests
+    native-profiles-tests
+    native-levels-tests
     native-soa-tests
     native-level-authoring-tests
     native-level-parser-tests

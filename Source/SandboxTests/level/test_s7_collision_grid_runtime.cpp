@@ -56,7 +56,7 @@ TEST_CLASS(S7CollisionGridRuntime, "Sandbox.LevelTests")
                     expected.grid_size = size_override;
                     expected.cell_size = cell_override;
                 }
-                ioj::levels::authoring::LevelSource const source{std::format(
+                ioj::levels::LevelSource const source{std::format(
                     R"((level :id 'grid-runtime :title "Grid runtime" :player 'player
                         :entities (list (entity :id 'player :archetype 'player-fighter
                                                 :team 'blue :position '(0 0 0)))

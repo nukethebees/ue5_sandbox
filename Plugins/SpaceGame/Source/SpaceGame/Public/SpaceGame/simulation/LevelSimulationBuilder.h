@@ -44,7 +44,6 @@ struct FLevelSimulationRequest {
     FString const& settings_source;
     levels::LevelDefinition const* definition{};
     ATestSpaceShip* player{};
-    bool presentation_enabled{true};
 };
 
 SPACEGAME_API auto prepare_level_simulation(FLevelSimulationRequest const& request)

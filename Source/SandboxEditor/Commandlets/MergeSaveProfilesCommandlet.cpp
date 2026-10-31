@@ -1,6 +1,6 @@
 #include "SandboxEditor/Commandlets/MergeSaveProfilesCommandlet.h"
 
-#include <ioj/persistence/profile_storage.h>
+#include <ioj/profiles/file_profile_storage.h>
 
 #include <SandboxCoreEngine/strings.h>
 
@@ -34,7 +34,7 @@ int32 UMergeSaveProfilesCommandlet::Main(FString const& parameters) {
     for (auto const& id : excluded) {
         native_excluded.emplace_back(TCHAR_TO_UTF8(*id));
     }
-    auto const result{ioj::persistence::merge_profile_files(
+    auto const result{ioj::profiles::merge_profile_files(
         native_roots,
         native_excluded,
         std::filesystem::path{*FPaths::ConvertRelativePathToFull(destination)})};

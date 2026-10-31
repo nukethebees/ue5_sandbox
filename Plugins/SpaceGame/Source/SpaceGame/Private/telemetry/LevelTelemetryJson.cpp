@@ -1,7 +1,7 @@
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
 
 #include <ioj/sim/telemetry/report_json.h>
-#include <ioj/sim/telemetry/run_catalog.h>
+#include <ioj/sim/telemetry/run_report.h>
 
 #include <SandboxCoreEngine/strings.h>
 

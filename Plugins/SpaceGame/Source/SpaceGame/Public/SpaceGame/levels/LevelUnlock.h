@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/persistence/progression.h>
+#include <ioj/profiles/progression.h>
 #include <SpaceGameSimulation/levels/LevelTypes.h>
 
 #include <CoreMinimal.h>

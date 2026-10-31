@@ -85,7 +85,7 @@ public class SandboxEditor : ModuleRules
             "Sandbox", // Reference to runtime module
             "SandboxGameShared",
             "NativeSimulation",
-            "NativePersistence",
+            "NativeProfiles",
             "SandboxUI",
             "SandboxShaders",
             "SbxMeshGenLab",

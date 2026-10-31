@@ -1,6 +1,7 @@
 #pragma once
 
-#include <ioj/levels/launch_options.h>
+#include <ioj/levels/control_context.h>
+#include <ioj/session/modal_resume_state.h>
 #include <ioj/sim/telemetry/snapshot.h>
 
 #include <CoreMinimal.h>
@@ -70,5 +71,5 @@ struct SPACEGAME_API FPlayerModalUi {
     TObjectPtr<ioj::UPauseMenuWidget> pause_menu_{nullptr};
     UPROPERTY(Transient)
     TObjectPtr<ioj::ULevelCompletionWidget> completion_menu_{nullptr};
-    ioj::levels::ModalResumeState resume_;
+    ioj::session::ModalResumeState resume_;
 };
