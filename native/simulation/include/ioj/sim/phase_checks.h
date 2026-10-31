@@ -19,11 +19,14 @@ namespace ioj::sim {
     return is_preparation_mutation_allowed(clock) || is_removal_allowed(clock);
 }
 
-[[nodiscard]] inline auto is_lookup_allowed(SimClock const& clock) noexcept -> bool {
-    auto const state{clock.get_level_state()};
-    auto const phase{clock.phase()};
+[[nodiscard]] inline auto is_lookup_allowed(SimulationPhase const phase,
+                                            LevelState const state) noexcept -> bool {
     return state == LevelState::StableSetup ||
            (state == LevelState::Running && phase >= SimulationPhase::Thinking &&
             phase <= SimulationPhase::Resolution);
+}
+
+[[nodiscard]] inline auto is_lookup_allowed(SimClock const& clock) noexcept -> bool {
+    return is_lookup_allowed(clock.phase(), clock.get_level_state());
 }
 }
