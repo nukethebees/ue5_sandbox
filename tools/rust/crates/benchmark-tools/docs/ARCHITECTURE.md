@@ -152,8 +152,9 @@ owns workload generation, per-frame sampling, and within-run statistics. Both re
 prepared before the complete warmup/measurement sequence.
 
 Each revision first loads the benchmark map in the normal Editor, completes shader/asset
-compilation, and exits without starting PIE. Both share the invoking checkout's persistent
-`.local/benchmarks/ddc` cache. Logs live under `preparation/`. Cache preparation also runs with
+compilation, and exits without starting PIE. Both use Unreal's default persistent local Zen DDC
+(see [DDC setup](../../../../../docs/build-and-test.md#unreal-derived-data-cache)).
+Logs live under `preparation/`. Cache preparation also runs with
 `--skip-build` and has its own timeout. Preparation-only mode builds and retains the baseline
 without launching Unreal. Validation-only mode runs a short pair through the measurement protocol
 and marks its reports as unsuitable for performance conclusions.

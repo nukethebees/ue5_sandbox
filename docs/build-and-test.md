@@ -57,6 +57,55 @@ The cache uses Epic's default `%ProgramData%\Epic\UbaCacheService` directory and
 start. Configure with `-DIOJ_ENABLE_UBA_CACHE=OFF` to stop using this integration;
 this does not stop the shared background process or delete cached data.
 
+### Unreal derived data cache
+
+Editor sessions, automation, cooking and Rust launchers use Unreal's default persistent local
+Zen DDC. Unreal launches and manages its local Zen server; no separate installation is needed.
+All worktrees and build configurations can safely use the same server. Cache keys distinguish
+incompatible engine, platform, shader and asset inputs. Do not clear DDC during ordinary builds,
+tests or worktree cleanup.
+
+Configure the location externally with Unreal's standard settings, such as the user-level
+`UE-LocalDataCachePath` environment variable. Restart terminals/editors after changing the
+environment. Without an override, Unreal chooses its normal default location. The project does
+not create or configure cache directories. Zen cooked-output storage is a separate setting.
+See Epic's [DDC documentation](https://dev.epicgames.com/documentation/unreal-engine/using-derived-data-cache-in-unreal-engine).
+
+Inspect `Saved/Logs/Sandbox.log` for `LogDerivedDataCache` and `LogZenServiceInstance`:
+confirm the selected graph, auto-launch data path, and `ZenLocal` service with `status: OK`.
+Add `-logcmds="LogDerivedDataCache Verbose"` to an editor launch for more detail. The editor's
+Derived Data status widget offers **View Cache Statistics**. Repeat a shader-heavy run and
+compare DDC hits/misses and shader compiler job statistics; repeat from another worktree with
+the same inputs to check reuse. Process duration alone does not prove a cache hit.
+
+To prime project data deliberately, run the engine's fill commandlet under a shared jobs ticket:
+
+```powershell
+& "$env:UE_ROOT/Engine/Binaries/Win64/UnrealEditor-Cmd.exe" "$PWD/Sandbox.uproject" -run=DerivedDataCache -fill -unattended -nop4 -stdout
+```
+
+Normal material and shader integration tests use Zen and check complete shader maps and errors.
+For fresh compiler integration validation, opt into separate `.Cold` registrations:
+
+```powershell
+cmake --preset debug-game -DIOJ_ENABLE_COLD_SHADER_TESTS=ON
+cmake --build --preset debug-game --target editor
+ctest --test-dir out/build/debug-game -L '^cold-compilation$' --output-on-failure
+cmake --preset debug-game -DIOJ_ENABLE_COLD_SHADER_TESTS=OFF
+```
+
+The experiments material test additionally requires `SandboxExperiments` enabled. Cold tests
+reuse the same implementations with shader-job DDC reads disabled (`r.ShaderCompiler.JobCacheDDC=0`)
+and in-process job outputs discarded (`r.ShaderCompiler.DebugDiscardCacheOutputs=1`). Material edits
+regenerate shader-map identities. Tests wait for shaders and assets, check these controls, and assert
+completed compiler jobs increased during the tested operation. Zen remains available for other data.
+A memory-only DDC alone would not bypass in-process shader results or prove compilation.
+`Sandbox.AllEditorTests` uses normal caching; run the cold label separately when validating
+compiler integration. Cold tests are absent by default and excluded from routine labelled batches.
+Use cold validation for changes to compiler integration, include-resolution code or material/HLSL
+generators, and when validating Unreal/compiler upgrades or diagnosing compiler execution failures.
+Ordinary shader-source edits use normal cache invalidation. This is a manual local check.
+
 ### Compiler build profiling
 
 The editor target uses unity builds with a 64 KiB source-size target and an eight-file
@@ -205,7 +254,7 @@ and reuses the existing `debug-game` build directory without configuring or buil
 build command when the editor is already current. Other test presets exclude this entry;
 unfiltered CTest includes it alongside the individual entries.
 
-The run uses a real graphics RHI, offscreen rendering and the persistent worktree DDC. It
+The run uses a real graphics RHI, offscreen rendering and the shared local Zen DDC. It
 includes optional shader experiment tests when their plugin is enabled, and excludes benchmarks
 and native/tool tests. Use `debug-game-msvc-all-unreal-tests` with an existing `debug-game-msvc`
 build for the MSVC native toolchain.

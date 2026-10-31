@@ -186,8 +186,7 @@ $timer = [Diagnostics.Stopwatch]::StartNew()
 & "C:\dev\UE5.8.0\Engine\Binaries\Win64\UnrealEditor-Win64-DebugGame-Cmd.exe" `
   "C:\Users\matthew\source\repos\nukethebees\wt\dev2\Sandbox.uproject" `
   "-ExecCmds=Automation RunTests SandboxShaders.UnitTests.ShaderInfrastructure.InitialisesModulesAndShaderMapping; Quit" `
-  -nullrhi -unattended -nop4 -nosplash -nosound -stdout -ddc=NoZenLocalFallback `
-  "-LocalDataCachePath=C:\Users\matthew\source\repos\nukethebees\wt\dev2\out\build\debug-game\local-derived-data-cache"
+  -nullrhi -unattended -nop4 -nosplash -nosound -stdout
 $timer.Stop()
 $timer.Elapsed.TotalSeconds
 ```
@@ -197,6 +196,8 @@ $timer.Elapsed.TotalSeconds
 | Before, 12 source assertions present | 15.337 s | 15.344 s | 15.327 s | 15.337 s | Pass, 1 test |
 | After, source assertions removed | 15.323 s | 15.333 s | 15.318 s | 15.323 s | Pass, 1 test |
 
+These historical measurements used an isolated filesystem cache. The command above now uses the
+[shared Zen DDC](build-and-test.md#unreal-derived-data-cache); the timings are not Zen measurements.
 The apparent 0.014 s reduction is below useful measurement resolution. Editor startup, module
 loading, asset-registry work, shader worker startup, and test discovery dominate; the actual test
 body took about 0.010 s in both sets. No Unreal speedup is claimed.

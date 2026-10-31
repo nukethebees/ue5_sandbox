@@ -4,6 +4,10 @@ Follow the [benchmark preparation and measurement workflow](../../../../../docs/
 for jobs-board coordination. Set `UE_ROOT` to your Editor installation. SandboxISMC also accepts
 `--editor <Engine/Binaries/Win64/UnrealEditor-Cmd.exe>`.
 
+All workloads use Unreal's [shared local Zen DDC](../../../../../docs/build-and-test.md#unreal-derived-data-cache).
+Keep shader/asset completion and workload warmups outside measured intervals. Revision comparisons
+prepare both sides before measurement; no cache clearing or full DDC fill is needed per invocation.
+
 ## Run SandboxISMC
 
 ```powershell
