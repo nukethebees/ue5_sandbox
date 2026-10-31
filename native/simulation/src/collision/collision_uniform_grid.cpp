@@ -3,13 +3,18 @@
 #include <ioj/column_math.h>
 #include <ioj/diagnostics.h>
 #include <ioj/rotator_math.h>
+#include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/collision/collision_grid.h>
 #include <ioj/sim/collision/grid_traversal.h>
 #include <ioj/sim/collision/line_trace_batch.h>
 #include <ioj/sim/collision/trace_hits.h>
 #include <ioj/sim/entities/health.h>
+#include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/levels/level_read_access.h>
+#include <ioj/sim/player/sim.h>
 #include <ioj/sim/profiling.h>
+#include <ioj/sim/spinners/sim.h>
+#include <ioj/sim/turrets/sim.h>
 
 #include <algorithm>
 #include <cassert>

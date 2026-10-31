@@ -1,7 +1,13 @@
 #include <ioj/presentation/hud_model.h>
 
+#include <ioj/sim/capital_ships/sim.h>
+#include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/missions/mission.h>
+#include <ioj/sim/player/sim.h>
 #include <ioj/sim/sim_clock.h>
+#include <ioj/sim/spinners/sim.h>
+#include <ioj/sim/turrets/sim.h>
 
 #include <algorithm>
 #include <cassert>

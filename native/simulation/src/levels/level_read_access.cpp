@@ -1,6 +1,7 @@
 #include <ioj/sim/levels/level_read_access.h>
 
 #include <ioj/sim/levels/level_sim.h>
+#include <ioj/sim/sim_clock.h>
 
 #include <algorithm>
 

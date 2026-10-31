@@ -1,16 +1,28 @@
 #pragma once
-#include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/fighters/sim.h>
-#include <ioj/sim/lasers/sim.h>
-#include <ioj/sim/player/sim.h>
-#include <ioj/sim/spinners/sim.h>
-#include <ioj/sim/turrets/sim.h>
-
-#include <cstdint>
 
 namespace ioj::sim {
+class EntityLedger;
 struct LevelSim;
 struct SimClock;
+
+namespace capital_ships {
+struct Sim;
+}
+namespace fighters {
+struct Sim;
+}
+namespace lasers {
+struct Sim;
+}
+namespace player {
+struct Sim;
+}
+namespace spinners {
+struct Sim;
+}
+namespace turrets {
+struct Sim;
+}
 
 // Borrow read-only simulations on demand. The level must outlive this facade.
 // Storage views obtained from those simulations expire on advance or state mutation.

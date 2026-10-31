@@ -1,5 +1,6 @@
 #pragma once
 #include <ioj/sim/levels/level_read_access.h>
+#include <ioj/sim/sim_tick.h>
 #include <SpaceGamePresentation/presentation/CapitalPresentation.h>
 #include <SpaceGamePresentation/presentation/DelayedNiagaraSpawns.h>
 #include <SpaceGamePresentation/presentation/FighterPresentation.h>
