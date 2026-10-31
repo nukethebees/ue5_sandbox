@@ -89,11 +89,12 @@ struct Instruction : detail::InstructionBase {
         return result;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return is_valid_type(extract<decltype(type_layout)>()) &&
-               (extract<decltype(type_layout)>() == ioj::sim::tasks::InstructionType::Kill &&
-                (extract<decltype(data_kill_layout)>() != data_kill_invalid_value &&
-                 is_valid_data_kill_entity_type(
-                     extract<decltype(data_kill_entity_type_layout)>())));
+        return Base::is_valid() &&
+               (is_valid_type(extract<decltype(type_layout)>()) &&
+                (extract<decltype(type_layout)>() == ioj::sim::tasks::InstructionType::Kill &&
+                 (extract<decltype(data_kill_layout)>() != data_kill_invalid_value &&
+                  is_valid_data_kill_entity_type(
+                      extract<decltype(data_kill_entity_type_layout)>()))));
     }
     [[nodiscard]] constexpr auto type() const noexcept -> decltype(type_layout)::value_type {
         return extract<decltype(type_layout)>();

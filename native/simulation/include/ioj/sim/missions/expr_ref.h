@@ -47,9 +47,6 @@ struct ExprRef : detail::ExprRefBase {
         is_valid_index(decltype(index_layout)::value_type const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= index_layout.value_mask;
     }
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return value_ != invalid_value;
-    }
     [[nodiscard]] constexpr auto index() const noexcept -> decltype(index_layout)::value_type {
         return extract<decltype(index_layout)>();
     }

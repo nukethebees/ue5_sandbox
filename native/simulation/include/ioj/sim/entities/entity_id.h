@@ -58,8 +58,7 @@ struct EntityId : detail::EntityIdBase {
         return value <= entity_type_layout.range.max;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return value_ != invalid_value &&
-               is_valid_entity_type(extract<decltype(entity_type_layout)>());
+        return Base::is_valid() && is_valid_entity_type(extract<decltype(entity_type_layout)>());
     }
     [[nodiscard]] constexpr auto index() const noexcept -> decltype(index_layout)::value_type {
         return extract<decltype(index_layout)>();

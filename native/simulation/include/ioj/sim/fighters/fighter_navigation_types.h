@@ -131,7 +131,7 @@ struct AvoidanceChoice : detail::AvoidanceChoiceBase {
                value == DirectMovement || value == StopMovement;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return is_valid_value(extract<decltype(value_layout)>());
+        return Base::is_valid() && is_valid_value(extract<decltype(value_layout)>());
     }
     [[nodiscard]] constexpr auto value() const noexcept -> value_type {
         return extract<decltype(value_layout)>();

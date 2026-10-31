@@ -145,7 +145,7 @@ struct EntityInstanceHandle : detail::EntityInstanceHandleBase {
         return static_cast<storage_type>(value) <= health_state_layout.value_mask;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return value_ != invalid_value && is_valid_team(extract<decltype(team_layout)>());
+        return Base::is_valid() && is_valid_team(extract<decltype(team_layout)>());
     }
     [[nodiscard]] constexpr auto index() const noexcept -> decltype(index_layout)::value_type {
         return extract<decltype(index_layout)>();

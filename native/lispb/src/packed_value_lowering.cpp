@@ -936,11 +936,10 @@ class PackedEmitter {
             }
         }
         auto validity{valid_children(std::nullopt, type_, std::nullopt)};
-        if (record_invalid(type_)) {
-            validity = all(
-                {binary(BinaryOperator::not_equal, raw(), ir_.named("invalid_value")), validity});
-        }
         if (validity) {
+            auto const base_validity{ir_.call(
+                ir_.type_reference(ir_.types.decorate(type("Base"), "", "::is_valid")), {})};
+            validity = all({base_validity, validity});
             functions_.push_back(function(
                 "is_valid", "bool", FunctionReceiver::const_, {}, {ir_.return_stmt(*validity)}));
         }

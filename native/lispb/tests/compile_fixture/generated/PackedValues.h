@@ -288,7 +288,7 @@ struct FighterState : detail::FighterStateBase {
                value == codegen_compile_fixture::PackedState::Max;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return is_valid_state(extract<decltype(state_layout)>());
+        return Base::is_valid() && is_valid_state(extract<decltype(state_layout)>());
     }
     [[nodiscard]] constexpr auto entity_index() const noexcept
         -> decltype(entity_index_layout)::value_type {
@@ -576,7 +576,7 @@ struct SignedTemperature : detail::SignedTemperatureBase {
                value == temperature_Unknown;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return is_valid_temperature(extract<decltype(temperature_layout)>());
+        return Base::is_valid() && is_valid_temperature(extract<decltype(temperature_layout)>());
     }
     [[nodiscard]] constexpr auto temperature() const noexcept
         -> decltype(temperature_layout)::value_type {
@@ -633,7 +633,7 @@ struct PackedTinyState : detail::PackedTinyStateBase {
         return static_cast<storage_type>(value) <= payload_layout.value_mask;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return is_valid_state(extract<decltype(state_layout)>());
+        return Base::is_valid() && is_valid_state(extract<decltype(state_layout)>());
     }
     [[nodiscard]] constexpr auto state() const noexcept -> decltype(state_layout)::value_type {
         return extract<decltype(state_layout)>();
@@ -683,7 +683,7 @@ struct PackedOpaqueState : detail::PackedOpaqueStateBase {
         return is_valid_state_domain(value) && std::to_underlying(value) <= state_layout.value_mask;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return is_valid_state_domain(extract<decltype(state_layout)>());
+        return Base::is_valid() && is_valid_state_domain(extract<decltype(state_layout)>());
     }
     [[nodiscard]] constexpr auto state() const noexcept -> decltype(state_layout)::value_type {
         return extract<decltype(state_layout)>();
@@ -748,7 +748,7 @@ struct CheckedValue : detail::CheckedValueBase {
         return value <= state_layout.range.max;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return value_ != invalid_value && is_valid_state(extract<decltype(state_layout)>());
+        return Base::is_valid() && is_valid_state(extract<decltype(state_layout)>());
     }
     [[nodiscard]] constexpr auto serial() const noexcept -> decltype(serial_layout)::value_type {
         return extract<decltype(serial_layout)>();
@@ -805,7 +805,8 @@ struct Vitals : detail::VitalsBase {
         return value <= health_encoded_layout.range.max;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return is_valid_health_encoded(extract<decltype(health_encoded_layout)>());
+        return Base::is_valid() &&
+               is_valid_health_encoded(extract<decltype(health_encoded_layout)>());
     }
     [[nodiscard]] constexpr auto health_encoded() const noexcept
         -> decltype(health_encoded_layout)::value_type {

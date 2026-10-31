@@ -310,9 +310,6 @@ struct PaddedInvalid : detail::PaddedInvalidBase {
 
     [[nodiscard]] constexpr auto operator<=>(PaddedInvalid const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return value_ != invalid_value;
-    }
     [[nodiscard]] constexpr auto data() const noexcept -> decltype(data_layout)::value_type {
         return extract<decltype(data_layout)>();
     }
@@ -553,13 +550,13 @@ struct Instruction : detail::InstructionBase {
         return result;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return is_valid_opcode(extract<decltype(opcode_layout)>()) &&
-               (extract<decltype(opcode_layout)>() ==
-                    codegen_compile_fixture::unified::Opcode::KillEntity ||
-                extract<decltype(opcode_layout)>() ==
-                    codegen_compile_fixture::unified::Opcode::MoveTo ||
-                extract<decltype(opcode_layout)>() ==
-                    codegen_compile_fixture::unified::Opcode::Jump);
+        return Base::is_valid() && (is_valid_opcode(extract<decltype(opcode_layout)>()) &&
+                                    (extract<decltype(opcode_layout)>() ==
+                                         codegen_compile_fixture::unified::Opcode::KillEntity ||
+                                     extract<decltype(opcode_layout)>() ==
+                                         codegen_compile_fixture::unified::Opcode::MoveTo ||
+                                     extract<decltype(opcode_layout)>() ==
+                                         codegen_compile_fixture::unified::Opcode::Jump));
     }
     [[nodiscard]] constexpr auto opcode() const noexcept -> decltype(opcode_layout)::value_type {
         return extract<decltype(opcode_layout)>();
@@ -754,16 +751,16 @@ struct IndependentUnions : detail::IndependentUnionsBase {
         return result;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return is_valid_opcode_a(extract<decltype(opcode_a_layout)>()) &&
-               (extract<decltype(opcode_a_layout)>() ==
-                    codegen_compile_fixture::unified::Opcode::KillEntity ||
-                extract<decltype(opcode_a_layout)>() ==
-                    codegen_compile_fixture::unified::Opcode::MoveTo) &&
-               is_valid_opcode_b(extract<decltype(opcode_b_layout)>()) &&
-               (extract<decltype(opcode_b_layout)>() ==
-                    codegen_compile_fixture::unified::Opcode::KillEntity ||
-                extract<decltype(opcode_b_layout)>() ==
-                    codegen_compile_fixture::unified::Opcode::MoveTo);
+        return Base::is_valid() && (is_valid_opcode_a(extract<decltype(opcode_a_layout)>()) &&
+                                    (extract<decltype(opcode_a_layout)>() ==
+                                         codegen_compile_fixture::unified::Opcode::KillEntity ||
+                                     extract<decltype(opcode_a_layout)>() ==
+                                         codegen_compile_fixture::unified::Opcode::MoveTo) &&
+                                    is_valid_opcode_b(extract<decltype(opcode_b_layout)>()) &&
+                                    (extract<decltype(opcode_b_layout)>() ==
+                                         codegen_compile_fixture::unified::Opcode::KillEntity ||
+                                     extract<decltype(opcode_b_layout)>() ==
+                                         codegen_compile_fixture::unified::Opcode::MoveTo));
     }
     [[nodiscard]] constexpr auto opcode_a() const noexcept
         -> decltype(opcode_a_layout)::value_type {
@@ -960,13 +957,14 @@ struct TaggedProjected : detail::TaggedProjectedBase {
         return result;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return is_valid_opcode(extract<decltype(opcode_layout)>()) &&
-               ((extract<decltype(opcode_layout)>() ==
-                     codegen_compile_fixture::unified::Opcode::KillEntity &&
-                 is_valid_payload_kill_entity(extract<decltype(payload_kill_entity_layout)>())) ||
-                extract<decltype(opcode_layout)>() ==
-                    codegen_compile_fixture::unified::Opcode::MoveTo) &&
-               is_valid_unrelated(extract<decltype(unrelated_layout)>());
+        return Base::is_valid() &&
+               (is_valid_opcode(extract<decltype(opcode_layout)>()) &&
+                ((extract<decltype(opcode_layout)>() ==
+                      codegen_compile_fixture::unified::Opcode::KillEntity &&
+                  is_valid_payload_kill_entity(extract<decltype(payload_kill_entity_layout)>())) ||
+                 extract<decltype(opcode_layout)>() ==
+                     codegen_compile_fixture::unified::Opcode::MoveTo) &&
+                is_valid_unrelated(extract<decltype(unrelated_layout)>()));
     }
     [[nodiscard]] constexpr auto opcode() const noexcept -> decltype(opcode_layout)::value_type {
         return extract<decltype(opcode_layout)>();
@@ -1171,8 +1169,9 @@ struct Optionals : detail::OptionalsBase {
                static_cast<storage_type>(value) <= present_encoded_layout.value_mask;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return is_valid_sentinel_encoded(extract<decltype(sentinel_encoded_layout)>()) &&
-               is_valid_present_encoded_domain(extract<decltype(present_encoded_layout)>());
+        return Base::is_valid() &&
+               (is_valid_sentinel_encoded(extract<decltype(sentinel_encoded_layout)>()) &&
+                is_valid_present_encoded_domain(extract<decltype(present_encoded_layout)>()));
     }
     [[nodiscard]] constexpr auto sentinel_encoded() const noexcept
         -> decltype(sentinel_encoded_layout)::value_type {

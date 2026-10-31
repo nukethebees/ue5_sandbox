@@ -37,9 +37,6 @@ struct ObjectiveId : detail::ObjectiveIdBase {
 
     [[nodiscard]] constexpr auto operator<=>(ObjectiveId const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return value_ != invalid_value;
-    }
     [[nodiscard]] constexpr auto index() const noexcept -> decltype(index_layout)::value_type {
         return extract<decltype(index_layout)>();
     }

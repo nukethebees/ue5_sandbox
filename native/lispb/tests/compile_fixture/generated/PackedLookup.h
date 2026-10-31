@@ -118,7 +118,7 @@ struct CountedValue : detail::CountedValueBase {
         return value <= state_layout.range.max;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return is_valid_state(extract<decltype(state_layout)>());
+        return Base::is_valid() && is_valid_state(extract<decltype(state_layout)>());
     }
     [[nodiscard]] constexpr auto state() const noexcept -> decltype(state_layout)::value_type {
         return extract<decltype(state_layout)>();
