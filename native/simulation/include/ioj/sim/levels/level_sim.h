@@ -20,6 +20,7 @@
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/sim_state.h>
 #include <ioj/sim/spinners/sim.h>
+#include <ioj/sim/tasks/task_manager.h>
 #include <ioj/sim/telemetry/manager.h>
 #include <ioj/sim/turrets/sim.h>
 
@@ -106,6 +107,7 @@ struct LevelSim {
     auto get_entity_ledger() const -> EntityLedger const& { return entity_ledger_; }
     auto get_entity_tables() const -> EntityTables const& { return entity_tables_; }
     auto get_mission() const -> Mission const& { return mission_; }
+    auto get_task_manager() const -> tasks::TaskManager const& { return task_manager_; }
     auto get_result_metadata() const -> LevelResultMetadata const& { return result_metadata_; }
     auto get_level_id() const -> std::string const& { return result_metadata_.level_id; }
     auto get_level_title() const -> std::string const& { return result_metadata_.level_title; }
@@ -153,6 +155,7 @@ struct LevelSim {
     turrets::Sim turrets_simulation_;
     spinners::Sim spinners_simulation_;
 
+    tasks::TaskManager task_manager_;
     Mission mission_;
     LevelResultMetadata result_metadata_;
     LevelEventManager event_manager_;
