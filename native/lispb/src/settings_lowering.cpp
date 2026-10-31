@@ -36,6 +36,7 @@
 
 #include <cctype>
 #include <cstddef>
+#include <filesystem>
 #include <format>
 #include <initializer_list>
 #include <set>
@@ -281,11 +282,10 @@ auto settings_api(LoweringContext& context,
     return result;
 }
 
-auto build_header(LoweringContext& context,
-                  ModuleHandle const module,
-                  std::span<CppTypeId const> const setting_types,
-                  std::span<FunctionId const> const functions,
-                  std::vector<TypeDependencyId>& dependencies) -> Nodes {
+auto build_type_headers(LoweringContext& context,
+                        ModuleHandle const module,
+                        std::span<CppTypeId const> const setting_types,
+                        std::vector<TypeDependencyId>& dependencies) -> std::vector<ModuleId> {
     auto& ir{context.ir};
     auto const& modules{context.declarations.settings_modules};
     auto const& setting_schemas{context.declarations.settings};
@@ -331,14 +331,54 @@ auto build_header(LoweringContext& context,
         category_names.push_back(title_case(context.text(decls.setting_categories.name[category])));
     }
 
-    NodeListBuilder header{ir};
+    auto const& settings_store{decls.module_settings_store};
+    auto const settings_row{settings_store.index(settings)};
+    auto const output_directory{
+        std::filesystem::path{context.text(settings_store.header[settings_row])}.parent_path()};
+    auto const include_directory{
+        std::filesystem::path{source_include(context, settings)}.parent_path()};
+    auto const include_order{decls.items(settings_store.include_order[settings_row])};
+    auto const prelude{settings_store.prelude_lines[settings_row]};
+    std::vector<ModuleId> result;
+    auto emit_header = [&](std::string_view const name,
+                           NodeId const declaration,
+                           std::initializer_list<std::string_view> const standard_headers,
+                           std::initializer_list<std::string_view> const type_headers) {
+        NodeListBuilder header{ir};
+        header.add(ir.include_dependencies(), 1);
+        for (auto const include : standard_headers) {
+            header.add(ir.include(ir.strings.intern(include), IncludeStyle::system), 1);
+        }
+        for (auto const type : type_headers) {
+            auto const include{
+                (include_directory / (snake_case_type_name(type) + ".h")).generic_string()};
+            header.add(ir.include(ir.strings.intern(include), IncludeStyle::quoted), 1);
+        }
+        header.new_lines(2);
+        if (!prelude.empty()) {
+            header.add(ir.raw(join_lines(context, prelude)), 2);
+        }
+        if (auto const scope{settings_store.namespace_name[settings_row]}) {
+            header.add(ir.namespace_node(*scope, {declaration}));
+        } else {
+            header.add(declaration);
+        }
+        auto const path{output_directory / (snake_case_type_name(name) + ".h")};
+        auto const file{ir.files.append(ir.strings.intern(path.generic_string()), header.build())};
+        ir.files.flags[ir.files.index(file)].set_format_generated(true);
+        ir.files.set_include_order(file, include_order);
+        result.push_back(ir.modules.append(ir.strings.intern(name), file));
+    };
     auto add_enum = [&](std::string_view const name, std::vector<std::string> const& names) {
         std::vector<EnumValueId> values;
         for (auto const& value : names) {
             values.push_back(ir.enumerator(ir.strings.intern(value)));
         }
-        header.add(ir.enumeration(ir.strings.intern(name), ir.types.intern("std::uint8_t"), values),
-                   2);
+        emit_header(
+            name,
+            ir.enumeration(ir.strings.intern(name), ir.types.intern("std::uint8_t"), values),
+            {"cstdint"},
+            {});
     };
     add_enum("GameSetting", setting_names);
     add_enum("GameSettingCategory", category_names);
@@ -364,7 +404,8 @@ auto build_header(LoweringContext& context,
 
     auto add_record =
         [&](std::string_view const name,
-            std::initializer_list<std::pair<std::string_view, std::string_view>> fields) {
+            std::initializer_list<std::pair<std::string_view, std::string_view>> fields,
+            std::initializer_list<std::string_view> const includes) {
             NodeListBuilder members{ir};
             for (auto const& [type, member] : fields) {
                 members.add(ir.instance_member(ir.types.intern(type), ir.strings.intern(member)),
@@ -372,11 +413,11 @@ auto build_header(LoweringContext& context,
             }
             auto const record{ir.record(ir.strings.intern(name), members.build())};
             ir.set_record_export_specifier(record, modules.export_specifier[module_row]);
-            ir.set_record_dependencies(record, dependencies);
-            header.add(record, 2);
+            emit_header(name, record, {"string_view"}, includes);
         };
     add_record("GameSettingCategoryDescriptor",
-               {{"GameSettingCategory", "id"}, {"std::string_view", "label"}});
+               {{"GameSettingCategory", "id"}, {"std::string_view", "label"}},
+               {"GameSettingCategory"});
     add_record("GameSettingDescriptor",
                {{"GameSetting", "id"},
                 {"GameSettingCategory", "category"},
@@ -393,7 +434,16 @@ auto build_header(LoweringContext& context,
                 {"double", "minimum"},
                 {"double", "maximum"},
                 {"double", "step"},
-                {"char const*", "custom_row"}});
+                {"char const*", "custom_row"}},
+               {"GameSetting",
+                "GameSettingCategory",
+                "GameSettingValueType",
+                "GameSettingBackend",
+                "SettingApplyMode",
+                "GameSettingDevice",
+                "SettingControlKind",
+                "GameSettingOptionProvider",
+                "GameSettingAvailabilityProvider"});
 
     NodeListBuilder state_members{ir};
     for (std::size_t index{}; index < setting_count; ++index) {
@@ -414,21 +464,18 @@ auto build_header(LoweringContext& context,
     auto const state{ir.record(state_name, state_members.build())};
     ir.set_record_export_specifier(state, modules.export_specifier[module_row]);
     ir.set_record_dependencies(state, dependencies);
-    header.add(state, 2).add(
-        ir.using_declaration(
-            ir.strings.intern("GameSettingValue"),
-            ir.types.intern("std::variant<" + join(value_types, ", ") + ">", dependencies)),
-        2);
-    for (auto const function : functions) {
-        header.add(ir.declaration(function), 1);
-    }
-    header.new_lines(2).add(settings_api(context, module, setting_types));
-
-    auto nodes{header.build()};
-    if (auto const namespace_name{decls.module_settings_store.namespace_name[settings]}) {
-        return {ir.namespace_node(*namespace_name, nodes)};
-    }
-    return nodes;
+    emit_header(context.text(state_name), state, {}, {});
+    emit_header("GameSettingValue",
+                ir.using_declaration(
+                    ir.strings.intern("GameSettingValue"),
+                    ir.types.intern("std::variant<" + join(value_types, ", ") + ">", dependencies)),
+                {"variant"},
+                {});
+    emit_header(context.text(modules.api_name[module_row]),
+                settings_api(context, module, setting_types),
+                {},
+                {"GameSetting", context.text(state_name), "GameSettingValue"});
+    return result;
 }
 
 auto build_source(LoweringContext& context,
@@ -510,7 +557,7 @@ auto build_source(LoweringContext& context,
 
 } // namespace
 
-auto lower_settings_module(LoweringContext& context, ModuleHandle module) -> ModuleId {
+auto lower_settings_module(LoweringContext& context, ModuleHandle module) -> std::vector<ModuleId> {
     auto& ir{context.ir};
     auto const& modules{context.declarations.settings_modules};
     auto const& setting_schemas{context.declarations.settings};
@@ -519,14 +566,7 @@ auto lower_settings_module(LoweringContext& context, ModuleHandle module) -> Mod
     auto const settings{modules.settings[module_row]};
     auto const settings_row{settings_store.index(settings)};
     auto const setting_list{context.declarations.items(modules.settings_list[module_row])};
-    std::vector<TypeDependencyId> dependencies{
-        ir.types.dependency("std::uint8_t", "cstdint"),
-        ir.types.dependency("std::span", "span"),
-        ir.types.dependency("std::string_view", "string_view"),
-        ir.types.dependency("std::array", "array"),
-        ir.types.dependency("assert", "cassert"),
-        ir.types.dependency("std::variant", "variant"),
-    };
+    std::vector<TypeDependencyId> dependencies;
     std::vector<CppTypeId> setting_types;
     setting_types.reserve(setting_list.size());
     for (auto const setting : setting_list) {
@@ -534,18 +574,37 @@ auto lower_settings_module(LoweringContext& context, ModuleHandle module) -> Mod
             context.resolve(setting_schemas.value_type[setting_schemas.index(setting)]));
     }
     auto const functions{build_functions(context, module, setting_types)};
-    auto header_declarations{build_header(context, module, setting_types, functions, dependencies)};
-
+    auto result{build_type_headers(context, module, setting_types, dependencies)};
+    auto const include_order{
+        context.declarations.items(settings_store.include_order[settings_row])};
+    auto const include_directory{
+        std::filesystem::path{source_include(context, settings)}.parent_path()};
     NodeListBuilder header_nodes{ir};
-    header_nodes.add(ir.include_dependencies(), 2);
+    for (auto const type :
+         {"GameSettingCategoryDescriptor", "GameSettingDescriptor", "GameSettingValue"}) {
+        auto const include{
+            (include_directory / (snake_case_type_name(type) + ".h")).generic_string()};
+        header_nodes.add(ir.include(ir.strings.intern(include), IncludeStyle::quoted), 1);
+    }
+    auto const state_include{
+        (include_directory /
+         (snake_case_type_name(context.text(modules.state_name[module_row])) + ".h"))
+            .generic_string()};
+    header_nodes.add(ir.include(ir.strings.intern(state_include), IncludeStyle::quoted), 1)
+        .add(ir.include(ir.strings.intern("span"), IncludeStyle::system), 2);
     auto const prelude{settings_store.prelude_lines[settings_row]};
     if (!prelude.empty()) {
         header_nodes.add(ir.raw(join_lines(context, prelude)), 2);
     }
-    header_nodes.append(std::move(header_declarations));
-
-    auto const include_order{
-        context.declarations.items(settings_store.include_order[settings_row])};
+    NodeListBuilder declarations{ir};
+    for (auto const function : functions) {
+        declarations.add(ir.declaration(function), 1);
+    }
+    if (auto const scope{settings_store.namespace_name[settings_row]}) {
+        header_nodes.add(ir.namespace_node(*scope, declarations.build()));
+    } else {
+        header_nodes.append(declarations.build());
+    }
     auto const header_file{
         ir.files.append(settings_store.header[settings_row], header_nodes.build())};
     ir.files.flags[ir.files.index(header_file)].set_format_generated(true);
@@ -555,7 +614,9 @@ auto lower_settings_module(LoweringContext& context, ModuleHandle module) -> Mod
         NodeListBuilder source_nodes{ir};
         source_nodes
             .add(ir.include(ir.store_text(source_include(context, settings)), IncludeStyle::quoted),
-                 2)
+                 1)
+            .add(ir.include(ir.strings.intern("array"), IncludeStyle::system), 1)
+            .add(ir.include(ir.strings.intern("cassert"), IncludeStyle::system), 2)
             .append(build_source(context, module, functions));
         source_file = ir.files.append(*path, source_nodes.build());
         auto const source_row{ir.files.index(source_file)};
@@ -563,7 +624,9 @@ auto lower_settings_module(LoweringContext& context, ModuleHandle module) -> Mod
         ir.files.flags[source_row].set_format_generated(true);
         ir.files.set_include_order(source_file, include_order);
     }
-    return ir.modules.append(settings_store.name[settings_row], header_file, source_file);
+    result.push_back(
+        ir.modules.append(settings_store.name[settings_row], header_file, source_file));
+    return result;
 }
 
 } // namespace lispb::codegen::detail

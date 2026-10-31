@@ -40,6 +40,6 @@ auto lower_enum(LoweringContext& context,
 auto lower_soa_declaration(LoweringContext& context, DeclarationHandle schema)
     -> DeclarationEmission;
 auto lower_facade(LoweringContext& context, DeclarationHandle facade) -> DeclarationEmission;
-auto lower_settings_module(LoweringContext& context, ModuleHandle module) -> ModuleId;
+auto lower_settings_module(LoweringContext& context, ModuleHandle module) -> std::vector<ModuleId>;
 
 } // namespace lispb::codegen::detail

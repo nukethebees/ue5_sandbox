@@ -3,6 +3,9 @@
 
 #include "ioj/settings/game_settings.h"
 
+#include <array>
+#include <cassert>
+
 namespace ioj {
 namespace {
 static std::array<GameSettingCategoryDescriptor, 5> const category_descriptors{

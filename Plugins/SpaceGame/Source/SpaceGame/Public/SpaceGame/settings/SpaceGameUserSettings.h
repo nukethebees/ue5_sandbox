@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ioj/settings/game_settings_types.h"
+#include <ioj/settings/game_anti_aliasing_method.h>
 #include <ioj/sim/player/flight_model_config.h>
 
 #include "GameFramework/GameUserSettings.h"

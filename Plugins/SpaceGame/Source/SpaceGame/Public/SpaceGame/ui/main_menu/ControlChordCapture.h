@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SpaceGame/settings/ControlSettingsTypes.h"
+#include <SpaceGame/settings/ControlBindings.h>
 
 namespace ioj {
 

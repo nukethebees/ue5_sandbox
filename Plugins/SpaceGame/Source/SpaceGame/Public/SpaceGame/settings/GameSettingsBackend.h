@@ -1,6 +1,9 @@
 #pragma once
 
-#include <ioj/settings/game_settings.h>
+#include <ioj/settings/game_setting.h>
+#include <ioj/settings/game_setting_option_provider.h>
+#include <ioj/settings/game_settings_state.h>
+#include <SpaceGame/settings/GameSettingOption.h>
 
 #include <CoreMinimal.h>
 
@@ -10,11 +13,6 @@ namespace ioj {
 
 class USpaceGameUserSettings;
 class USpaceGameInputUserSettings;
-
-struct SPACEGAME_API FGameSettingOption {
-    GameSettingValue value;
-    FText label;
-};
 
 class SPACEGAME_API FGameSettingsBackend {
   public:

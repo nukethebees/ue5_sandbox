@@ -1,10 +1,11 @@
 #pragma once
 
-#include "ioj/settings/game_settings.h"
 #include "ioj/settings/game_settings_edit_state.h"
-#include "SpaceGame/settings/ControlSettingsTypes.h"
 #include "SpaceGame/settings/GameSettingsBackend.h"
+#include <ioj/settings/game_settings.h>
+#include <ioj/settings/game_settings_access.h>
 #include <ioj/sim/player/game_settings_session.h>
+#include <SpaceGame/settings/ControlBindings.h>
 
 #include "Containers/Ticker.h"
 #include "Subsystems/GameInstanceSubsystem.h"

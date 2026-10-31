@@ -123,7 +123,7 @@ TEST(GameSettings, BindingConflictsRespectHardwareProfileScopeAndChord) {
     }};
     EXPECT_EQ(control_binding_conflicts(bindings, bindings[0].address, "space"),
               std::vector<std::size_t>{1});
-    bindings[0].general_scope = true;
+    bindings[0].scope.reset();
     EXPECT_EQ(control_binding_conflicts(bindings, bindings[0].address, "space"),
               (std::vector<std::size_t>{1, 2}));
     bindings[0].chord = ControlBindingAddress{"one", "modifier", "keyboard", 1};
@@ -145,20 +145,29 @@ TEST(GameSettings, DisplayRevertKeepsAppliedControlsAndFlightModel) {
     auto const loadout{sim::player::make_default_flight_model_loadout()};
     GameSettingsSession session;
     session.initialise(applied, applied, loadout);
+    EXPECT_FALSE(session.is_editing());
+    EXPECT_FALSE(session.is_awaiting_display_confirmation());
     EXPECT_FALSE(session.set_setting(GameSetting::VSync, true));
     ASSERT_TRUE(session.begin_edit(applied, applied));
+    EXPECT_TRUE(session.is_editing());
+    EXPECT_FALSE(session.is_awaiting_display_confirmation());
     ASSERT_TRUE(session.set_setting(GameSetting::Resolution, ScreenResolution{1280, 720}));
     ASSERT_TRUE(session.set_setting(GameSetting::MouseTurnSensitivity, 1.5f));
     auto profile{loadout.profiles[0]};
     profile.config.translation.forward.passive_drag += 1.f;
     ASSERT_TRUE(session.set_flight_model_profile(sim::player::FlightModelSlot::First, profile));
     EXPECT_EQ(session.apply(10.0), GameSettingsApplyResult::ConfirmDisplay);
+    EXPECT_TRUE(session.is_editing());
+    EXPECT_TRUE(session.is_awaiting_display_confirmation());
+    EXPECT_FALSE(session.begin_edit(applied, applied));
     EXPECT_EQ(session.display_confirmation_seconds_remaining(10.25), 15);
     EXPECT_FALSE(session.display_confirmation_expired(24.99));
     EXPECT_TRUE(session.display_confirmation_expired(25.0));
     EXPECT_FALSE(session.cancel());
     EXPECT_FALSE(session.set_setting(GameSetting::VSync, true));
     ASSERT_TRUE(session.revert_display());
+    EXPECT_TRUE(session.is_editing());
+    EXPECT_FALSE(session.is_awaiting_display_confirmation());
     EXPECT_EQ(session.settings_state().resolution, applied.resolution);
     EXPECT_EQ(session.settings_state().mouse_turn_sensitivity, 1.5f);
     EXPECT_TRUE(session.flight_model_loadout().profiles[0].customized);
@@ -168,6 +177,12 @@ TEST(GameSettings, DisplayRevertKeepsAppliedControlsAndFlightModel) {
     ASSERT_TRUE(session.confirm_display());
     EXPECT_EQ(session.applied_state().resolution, (ScreenResolution{1280, 720}));
     EXPECT_FALSE(session.is_awaiting_display_confirmation());
+    ASSERT_TRUE(session.cancel());
+    EXPECT_FALSE(session.is_editing());
+    EXPECT_FALSE(session.confirm_display());
+    EXPECT_FALSE(session.revert_display());
+    EXPECT_EQ(session.apply(40.0), GameSettingsApplyResult::Ignored);
+    EXPECT_EQ(session.settings_state().resolution, (ScreenResolution{1280, 720}));
 }
 
 TEST(GameSettings, FlightModelCodecRejectsCorruptionWithoutChangingOutput) {

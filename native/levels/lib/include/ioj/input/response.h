@@ -1,7 +1,7 @@
 #pragma once
 
-#include "ioj/settings/game_settings.h"
 #include "ioj/vector.h"
+#include <ioj/settings/game_settings_state.h>
 
 namespace ioj::input {
 enum class Response { TurnPointerDelta, GamepadTurn, GamepadMove };

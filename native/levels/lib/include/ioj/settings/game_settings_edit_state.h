@@ -1,9 +1,9 @@
 #pragma once
 
+#include <ioj/settings/game_setting_choice.h>
 #include <ioj/settings/game_settings.h>
 
 #include <optional>
-#include <string>
 #include <vector>
 
 namespace ioj {
@@ -18,11 +18,6 @@ auto normalize_game_setting_value(GameSettingDescriptor const& descriptor,
                                   GameSettingValue const& value,
                                   std::span<GameSettingValue const> choices = {},
                                   bool restrict_choices = false) -> std::optional<GameSettingValue>;
-
-struct GameSettingChoice {
-    GameSettingValue value;
-    std::string label;
-};
 
 auto game_setting_choices(GameSettingOptionProvider provider,
                           std::span<ScreenResolution const> resolutions = {})

@@ -3,7 +3,6 @@
 #include "lowering_context.h"
 #include "lowering_utils.h"
 #include "string_enum_parser.h"
-#include <ioj/ascii.h>
 #include <ioj/format_writer.h>
 
 #include <codegen/ast/binary_operator.h>
@@ -66,24 +65,6 @@ auto qualified_enum_name(LoweringContext& context,
         return context.text(*namespace_name) + "::" + name;
     }
     return name;
-}
-
-auto snake_case_type_name(std::string_view const name) -> std::string {
-    auto const begin{name.size() > 1 && name.front() == 'E' && ioj::isupper(name[1])
-                         ? std::size_t{1}
-                         : std::size_t{0}};
-    std::string result;
-    for (auto index{begin}; index < name.size(); ++index) {
-        auto const character{name[index]};
-        auto const upper{ioj::isupper(character)};
-        auto const previous_lower{index > begin && ioj::islower(name[index - 1])};
-        auto const next_lower{index + 1 < name.size() && ioj::islower(name[index + 1])};
-        if (upper && !result.empty() && (previous_lower || next_lower)) {
-            result += '_';
-        }
-        result += ioj::tolower(character);
-    }
-    return result;
 }
 
 auto internal_name(LoweringContext& context,

@@ -198,27 +198,27 @@
 
 (type int_point
   :spelling "ioj::ScreenResolution"
-  :header "ioj/settings/game_settings_types.h"
+  :header "ioj/settings/screen_resolution.h"
   :pass-by value)
 
 (type game_window_mode
   :spelling "GameWindowMode"
-  :header "ioj/settings/game_settings_types.h"
+  :header "ioj/settings/game_window_mode.h"
   :pass-by value)
 
 (type game_anti_aliasing_method
   :spelling "GameAntiAliasingMethod"
-  :header "ioj/settings/game_settings_types.h"
+  :header "ioj/settings/game_anti_aliasing_method.h"
   :pass-by value)
 
 (type game_quality_level
   :spelling "GameQualityLevel"
-  :header "ioj/settings/game_settings_types.h"
+  :header "ioj/settings/game_quality_level.h"
   :pass-by value)
 
 (type game_graphics_preset
   :spelling "GameGraphicsPreset"
-  :header "ioj/settings/game_settings_types.h"
+  :header "ioj/settings/game_graphics_preset.h"
   :pass-by value)
 
 

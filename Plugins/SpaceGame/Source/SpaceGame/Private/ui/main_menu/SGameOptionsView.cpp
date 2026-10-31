@@ -326,7 +326,7 @@ auto SGameOptionsView::OnKeyDown(FGeometry const& geometry, FKeyEvent const& key
         if (managed_binding_.IsSet() && managed_binding_->current_key.IsValid()) {
             buttons.Add(binding_clear_button_);
         }
-        if (managed_binding_.IsSet() && managed_binding_->modified) {
+        if (managed_binding_.IsSet() && managed_binding_->is_modified()) {
             buttons.Add(binding_reset_button_);
         }
         buttons.Add(binding_cancel_button_);
@@ -2054,8 +2054,9 @@ auto SGameOptionsView::build_binding_management_prompt() -> TSharedRef<SWidget> 
                    .Style(&style_->button(EGameButtonStyle::Secondary))
                    .Audio(audio_)
                    .Text(NSLOCTEXT("OptionsMenu", "ResetBinding", "Reset"))
-                   .Enabled_Lambda(
-                       [this] { return managed_binding_.IsSet() && managed_binding_->modified; })
+                   .Enabled_Lambda([this] {
+                       return managed_binding_.IsSet() && managed_binding_->is_modified();
+                   })
                    .OnClicked_Lambda([this] {
                        if (!managed_binding_.IsSet()) {
                            return FReply::Handled();

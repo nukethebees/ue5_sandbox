@@ -5,7 +5,7 @@
 #include "SpaceGame/ui/common/MenuActivatableWidget.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 #include "SpaceGamePresentation/entities/TeamColours.h"
-#include <ioj/presentation/hud_data.h>
+#include <ioj/presentation/top_killer_entry.h>
 
 #include <Input/UIActionBindingHandle.h>
 

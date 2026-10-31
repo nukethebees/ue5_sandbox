@@ -42,6 +42,7 @@ void append_type_dependencies(std::vector<TypeDependencyId>& result,
                               TypeRegistry const& types);
 auto qualify(CppIR& ir, CppTypeId type, std::string const& suffix) -> CppTypeId;
 auto title_case_identifier(std::string_view const identifier) -> std::string;
+auto snake_case_type_name(std::string_view name) -> std::string;
 auto column_apply_arrays_function(CppIR& ir, std::vector<std::string> const& columns) -> NodeId;
 auto column_apply_array_pairs_function(CppIR& ir, std::vector<std::string> const& columns)
     -> NodeId;

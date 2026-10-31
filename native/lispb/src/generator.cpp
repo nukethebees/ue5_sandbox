@@ -409,7 +409,10 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                 }
                 case lispb::codegen::ModuleKind::settings: {
 
-                    result.push_back(detail::lower_settings_module(context, module));
+                    auto lowered{detail::lower_settings_module(context, module)};
+                    result.insert(result.end(),
+                                  std::make_move_iterator(lowered.begin()),
+                                  std::make_move_iterator(lowered.end()));
                     break;
                 }
                 case lispb::codegen::ModuleKind::umbrella: {

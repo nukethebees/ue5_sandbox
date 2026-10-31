@@ -216,7 +216,8 @@ auto UGameSettingsSubsystem::is_dirty(GameSettingCategory const category) const 
 auto UGameSettingsSubsystem::is_at_defaults(GameSettingCategory const category) const -> bool {
     if (category == GameSettingCategory::Controls) {
         auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
-        if (bindings.ContainsByPredicate([](auto const& binding) { return binding.modified; })) {
+        if (bindings.ContainsByPredicate(
+                [](auto const& binding) { return binding.is_modified(); })) {
             return false;
         }
     }
@@ -359,7 +360,6 @@ auto UGameSettingsSubsystem::all_control_bindings() const -> TArray<FControlBind
                     .current_key = mapping.GetCurrentKey(),
                     .default_key = mapping.GetDefaultKey(),
                     .chord = MoveTemp(chord),
-                    .modified = mapping.IsCustomized(),
                 });
             }
         }

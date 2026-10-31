@@ -12,32 +12,31 @@ void GameSettingsSession::initialise(GameSettingsState applied,
     values_.begin(std::move(applied), std::move(defaults));
     applied_loadout_ = std::move(loadout);
     pending_loadout_ = applied_loadout_;
-    editing_ = false;
-    awaiting_confirmation_ = false;
+    phase_ = GameSettingsSessionPhase::Inactive;
 }
 auto GameSettingsSession::begin_edit(GameSettingsState applied, GameSettingsState defaults)
     -> bool {
-    if (awaiting_confirmation_) {
+    if (is_awaiting_display_confirmation()) {
         return false;
     }
     values_.begin(std::move(applied), std::move(defaults));
     pending_loadout_ = applied_loadout_;
-    editing_ = true;
+    phase_ = GameSettingsSessionPhase::Editing;
     return true;
 }
 auto GameSettingsSession::cancel() -> bool {
-    if (!editing_ || awaiting_confirmation_) {
+    if (phase_ != GameSettingsSessionPhase::Editing) {
         return false;
     }
     values_.cancel();
     pending_loadout_ = applied_loadout_;
-    editing_ = false;
+    phase_ = GameSettingsSessionPhase::Inactive;
     return true;
 }
 auto GameSettingsSession::apply(double const now, bool const external_changes)
     -> GameSettingsApplyResult {
     assert(std::isfinite(now));
-    if (!editing_ || awaiting_confirmation_ || (!is_dirty() && !external_changes)) {
+    if (phase_ != GameSettingsSessionPhase::Editing || (!is_dirty() && !external_changes)) {
         return GameSettingsApplyResult::Ignored;
     }
 
@@ -56,41 +55,42 @@ auto GameSettingsSession::apply(double const now, bool const external_changes)
             values_.commit_setting(descriptor.id);
         }
     }
-    awaiting_confirmation_ = true;
+    phase_ = GameSettingsSessionPhase::ConfirmingDisplay;
     confirmation_deadline_ = now + 15.0;
     return GameSettingsApplyResult::ConfirmDisplay;
 }
 auto GameSettingsSession::confirm_display() -> bool {
-    if (!awaiting_confirmation_) {
+    if (!is_awaiting_display_confirmation()) {
         return false;
     }
     values_.commit_all();
-    awaiting_confirmation_ = false;
+    phase_ = GameSettingsSessionPhase::Editing;
     return true;
 }
 auto GameSettingsSession::revert_display() -> bool {
-    if (!awaiting_confirmation_) {
+    if (!is_awaiting_display_confirmation()) {
         return false;
     }
     values_.cancel();
-    awaiting_confirmation_ = false;
+    phase_ = GameSettingsSessionPhase::Editing;
     return true;
 }
 auto GameSettingsSession::display_confirmation_expired(double const now) const -> bool {
-    return awaiting_confirmation_ && now >= confirmation_deadline_;
+    return is_awaiting_display_confirmation() && now >= confirmation_deadline_;
 }
 auto GameSettingsSession::display_confirmation_seconds_remaining(double const now) const
     -> std::int32_t {
-    return awaiting_confirmation_ ? static_cast<std::int32_t>(std::clamp(
-                                        std::ceil(confirmation_deadline_ - now), 0.0, 15.0))
-                                  : 0;
+    return is_awaiting_display_confirmation()
+             ? static_cast<std::int32_t>(
+                   std::clamp(std::ceil(confirmation_deadline_ - now), 0.0, 15.0))
+             : 0;
 }
 auto GameSettingsSession::set_setting(GameSetting const setting, GameSettingValue const& value)
     -> bool {
-    return editing_ && !awaiting_confirmation_ && values_.set_setting(setting, value);
+    return phase_ == GameSettingsSessionPhase::Editing && values_.set_setting(setting, value);
 }
 auto GameSettingsSession::reset_category(GameSettingCategory const category) -> bool {
-    if (!editing_ || awaiting_confirmation_) {
+    if (phase_ != GameSettingsSessionPhase::Editing) {
         return false;
     }
     values_.reset_category(category);
@@ -118,7 +118,7 @@ auto GameSettingsSession::flight_model_profile(sim::player::FlightModelSlot cons
 auto GameSettingsSession::set_flight_model_profile(sim::player::FlightModelSlot const slot,
                                                    sim::player::FlightModelProfile profile)
     -> bool {
-    if (!editing_ || awaiting_confirmation_) {
+    if (phase_ != GameSettingsSessionPhase::Editing) {
         return false;
     }
     auto& target{sim::player::flight_model_profile(pending_loadout_, slot)};

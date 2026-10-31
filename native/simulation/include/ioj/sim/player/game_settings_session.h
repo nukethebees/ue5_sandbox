@@ -2,10 +2,10 @@
 
 #include <ioj/settings/game_settings_edit_state.h>
 #include <ioj/sim/player/flight_model_config.h>
+#include <ioj/sim/player/game_settings_apply_result.h>
+#include <ioj/sim/player/game_settings_session_phase.h>
 
 namespace ioj {
-enum class GameSettingsApplyResult { Ignored, Applied, ConfirmDisplay };
-
 class GameSettingsSession {
   public:
     void initialise(GameSettingsState applied,
@@ -18,8 +18,10 @@ class GameSettingsSession {
     auto revert_display() -> bool;
     auto display_confirmation_expired(double now) const -> bool;
     auto display_confirmation_seconds_remaining(double now) const -> std::int32_t;
-    auto is_editing() const -> bool { return editing_; }
-    auto is_awaiting_display_confirmation() const -> bool { return awaiting_confirmation_; }
+    auto is_editing() const -> bool { return phase_ != GameSettingsSessionPhase::Inactive; }
+    auto is_awaiting_display_confirmation() const -> bool {
+        return phase_ == GameSettingsSessionPhase::ConfirmingDisplay;
+    }
 
     auto settings_state() const -> GameSettingsState const& { return values_.pending(); }
     auto applied_state() const -> GameSettingsState const& { return values_.applied(); }
@@ -43,7 +45,6 @@ class GameSettingsSession {
     sim::player::FlightModelLoadout applied_loadout_{};
     sim::player::FlightModelLoadout pending_loadout_{};
     double confirmation_deadline_{};
-    bool editing_{};
-    bool awaiting_confirmation_{};
+    GameSettingsSessionPhase phase_{GameSettingsSessionPhase::Inactive};
 };
 }

@@ -1,11 +1,11 @@
 #pragma once
 
 #include "ioj/settings/game_settings.h"
-#include "SpaceGame/settings/ControlSettingsTypes.h"
 #include "SpaceGame/ui/main_menu/ControlChordCapture.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 #include "SpaceGamePresentation/audio/GameAudio.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
+#include <SpaceGame/settings/ControlBindings.h>
 
 #include <Widgets/SCompoundWidget.h>
 

@@ -905,74 +905,82 @@ TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
     auto& settings{store.settings};
     auto& settings_modules{store.settings_modules};
     auto& type_refs{store.type_refs};
-    auto const output{render_module(
-        context, append_test_row(settings_modules, [&](auto const new_settings_modules) {
-            settings_modules.settings[new_settings_modules] =
-                append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
-                    module_settings_store.name[new_module_settings_store] =
-                        strings.intern("settings");
-                    module_settings_store.header[new_module_settings_store] =
-                        strings.intern("Settings.h");
-                    module_settings_store.source[new_module_settings_store] =
-                        strings.intern("Settings.cpp");
-                    module_settings_store.namespace_name[new_module_settings_store] =
-                        strings.intern("game");
-                });
-            settings_modules.api_name[new_settings_modules] = strings.intern("TSettingsAccess");
-            settings_modules.state_name[new_settings_modules] = strings.intern("FSettingsState");
-            settings_modules.categories[new_settings_modules] = store.range<SettingCategoryId>(
-                {append_test_row(setting_categories, [&](auto const new_setting_categories) {
-                    setting_categories.name[new_setting_categories] = strings.intern("video");
-                    setting_categories.label[new_setting_categories] = strings.intern("Video");
-                })});
-            settings_modules.settings_list[new_settings_modules] = store.range<SettingId>(
-                {append_test_row(settings,
-                                 [&](auto const new_settings) {
-                                     settings.name[new_settings] = strings.intern("vsync");
-                                     settings.label[new_settings] = strings.intern("VSync");
-                                     settings.category[new_settings] = strings.intern("video");
-                                     settings.value_type[new_settings] =
-                                         append_test_row(type_refs, [&](auto const new_type_refs) {
-                                             type_refs.name[new_type_refs] = strings.intern("bool");
-                                         });
-                                     settings.backend[new_settings] = strings.intern("engine");
-                                     settings.apply_mode[new_settings] = SettingApplyMode::deferred;
-                                     settings.control[new_settings] = append_test_row(
-                                         setting_controls, [&](auto const new_setting_controls) {
-                                             setting_controls.kind[new_setting_controls] =
-                                                 SettingControlKind::toggle;
-                                         });
-                                 }),
-                 append_test_row(settings, [&](auto const new_settings) {
-                     settings.name[new_settings] = strings.intern("frame_limit");
-                     settings.label[new_settings] = strings.intern("Frame Limit");
-                     settings.category[new_settings] = strings.intern("video");
-                     settings.value_type[new_settings] =
-                         append_test_row(type_refs, [&](auto const new_type_refs) {
-                             type_refs.name[new_type_refs] = strings.intern("float");
-                         });
-                     settings.backend[new_settings] = strings.intern("engine");
-                     settings.apply_mode[new_settings] = SettingApplyMode::immediate;
-                     settings.device[new_settings] = SettingDevice::controller;
-                     settings.control[new_settings] =
-                         append_test_row(setting_controls, [&](auto const new_setting_controls) {
-                             setting_controls.kind[new_setting_controls] =
-                                 SettingControlKind::choice;
-                             setting_controls.options_provider[new_setting_controls] =
-                                 strings.intern("frame_limits");
-                         });
-                 })});
-        }))};
+    auto const module{append_test_row(settings_modules, [&](auto const new_settings_modules) {
+        settings_modules.settings[new_settings_modules] =
+            append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
+                module_settings_store.name[new_module_settings_store] = strings.intern("settings");
+                module_settings_store.header[new_module_settings_store] =
+                    strings.intern("Settings.h");
+                module_settings_store.source[new_module_settings_store] =
+                    strings.intern("Settings.cpp");
+                module_settings_store.namespace_name[new_module_settings_store] =
+                    strings.intern("game");
+            });
+        settings_modules.api_name[new_settings_modules] = strings.intern("TSettingsAccess");
+        settings_modules.state_name[new_settings_modules] = strings.intern("FSettingsState");
+        settings_modules.categories[new_settings_modules] = store.range<SettingCategoryId>(
+            {append_test_row(setting_categories, [&](auto const new_setting_categories) {
+                setting_categories.name[new_setting_categories] = strings.intern("video");
+                setting_categories.label[new_setting_categories] = strings.intern("Video");
+            })});
+        settings_modules.settings_list[new_settings_modules] = store.range<SettingId>(
+            {append_test_row(settings,
+                             [&](auto const new_settings) {
+                                 settings.name[new_settings] = strings.intern("vsync");
+                                 settings.label[new_settings] = strings.intern("VSync");
+                                 settings.category[new_settings] = strings.intern("video");
+                                 settings.value_type[new_settings] =
+                                     append_test_row(type_refs, [&](auto const new_type_refs) {
+                                         type_refs.name[new_type_refs] = strings.intern("bool");
+                                     });
+                                 settings.backend[new_settings] = strings.intern("engine");
+                                 settings.apply_mode[new_settings] = SettingApplyMode::deferred;
+                                 settings.control[new_settings] = append_test_row(
+                                     setting_controls, [&](auto const new_setting_controls) {
+                                         setting_controls.kind[new_setting_controls] =
+                                             SettingControlKind::toggle;
+                                     });
+                             }),
+             append_test_row(settings, [&](auto const new_settings) {
+                 settings.name[new_settings] = strings.intern("frame_limit");
+                 settings.label[new_settings] = strings.intern("Frame Limit");
+                 settings.category[new_settings] = strings.intern("video");
+                 settings.value_type[new_settings] =
+                     append_test_row(type_refs, [&](auto const new_type_refs) {
+                         type_refs.name[new_type_refs] = strings.intern("float");
+                     });
+                 settings.backend[new_settings] = strings.intern("engine");
+                 settings.apply_mode[new_settings] = SettingApplyMode::immediate;
+                 settings.device[new_settings] = SettingDevice::controller;
+                 settings.control[new_settings] =
+                     append_test_row(setting_controls, [&](auto const new_setting_controls) {
+                         setting_controls.kind[new_setting_controls] = SettingControlKind::choice;
+                         setting_controls.options_provider[new_setting_controls] =
+                             strings.intern("frame_limits");
+                     });
+             })});
+    })};
+    auto const files{render_test_manifest(
+        context, Manifest{manifest_schema_version, make_test_registry(context), store, {module}})};
+    std::map<std::string, std::string_view> output;
+    for (auto const& file : files) {
+        output.emplace(file.path.generic_string(), file.content);
+    }
 
-    expect_contains_all(output.header,
-                        {"enum class GameSetting : std::uint8_t",
-                         "using GameSettingValue = std::variant<bool, float>",
-                         "void set_vsync(bool const value)",
-                         "auto operator==(FSettingsState const&) const -> bool = default"});
-    EXPECT_TRUE(output.source.contains("SettingApplyMode::Deferred"));
-    EXPECT_TRUE(output.header.contains("enum class GameSettingDevice"));
-    expect_contains_all(output.source,
-                        {"GameSettingDevice::Controller",
+    expect_contains_all(output.at("game_setting.h"),
+                        {"enum class GameSetting : std::uint8_t", "VSync", "FrameLimit"});
+    EXPECT_TRUE(output.at("game_setting_value.h")
+                    .contains("using GameSettingValue = std::variant<bool, float>"));
+    EXPECT_TRUE(output.at("t_settings_access.h").contains("void set_vsync(bool const value)"));
+    EXPECT_TRUE(output.at("f_settings_state.h")
+                    .contains("auto operator==(FSettingsState const&) const -> bool = default"));
+    EXPECT_TRUE(output.at("game_setting_device.h").contains("enum class GameSettingDevice"));
+    expect_contains_all(output.at("Settings.h"),
+                        {"game_setting_descriptor.h", "f_settings_state.h", "game_setting_value"});
+    expect_contains_none(output.at("Settings.h"), {"enum class", "class TSettingsAccess"});
+    expect_contains_all(output.at("Settings.cpp"),
+                        {"SettingApplyMode::Deferred",
+                         "GameSettingDevice::Controller",
                          "GameSettingOptionProvider::FrameLimits",
                          "std::get_if<float>"});
 }
