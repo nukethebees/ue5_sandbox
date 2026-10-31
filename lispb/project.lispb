@@ -77,6 +77,7 @@
         "lispb/schema/native_entity_type.lispb"
         "lispb/schema/native_simulation_enums.lispb"
         "lispb/schema/native_entity_id.lispb"
+        "lispb/schema/task_instruction.lispb"
         "lispb/schema/entity_instance_handle.lispb"
         "lispb/schema/health.lispb"
         "lispb/schema/sim_tick.lispb"

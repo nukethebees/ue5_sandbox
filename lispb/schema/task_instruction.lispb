@@ -1,0 +1,14 @@
+(module task_instruction
+  :header "native/simulation/include/ioj/sim/tasks/instruction.h"
+  :namespace ioj::sim::tasks
+  (enum InstructionType @native_uint8 :bit-width 8
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value Kill :value "0" :serialized-name "kill")
+    (projections (cpp)))
+  (union InstructionData
+    (case Kill @native_unique_id))
+  (record Instruction :layout packed :bits 64
+    (member type @InstructionType)
+    (member data @InstructionData :bits 56 :tag type)
+    (projections (cpp :storage std::uint64_t))))

@@ -65,6 +65,7 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/sim_clock.h
   ../include/ioj/sim/sim_state.h
   ../include/ioj/sim/sim_tick.h
+  ../include/ioj/sim/tasks/instruction.h
   ../include/ioj/sim/sim_time.h
   ../include/ioj/sim/collision/spatial_query_manager.h
   ../include/ioj/sim/collision/spatial.h
