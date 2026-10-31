@@ -22,11 +22,6 @@ enum class FloatingPointFormat : FloatingPointFormatUnderlying {
     ieee754_binary64,
 };
 
-[[nodiscard]] constexpr auto enum_range(FloatingPointFormat) noexcept
-    -> ioj::MinMax<FloatingPointFormat> {
-    return {FloatingPointFormat::ieee754_binary16, FloatingPointFormat::ieee754_binary64};
-}
-
 [[nodiscard]] constexpr auto
     try_parse_serialized_floating_point_format(std::string_view const value) noexcept
     -> std::optional<FloatingPointFormat> {
@@ -36,3 +31,11 @@ enum class FloatingPointFormat : FloatingPointFormatUnderlying {
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::FloatingPointFormat>{
+    MinMax<lispb::codegen::FloatingPointFormat>{
+        lispb::codegen::FloatingPointFormat::ieee754_binary16,
+        lispb::codegen::FloatingPointFormat::ieee754_binary64}};
+} // namespace ioj

@@ -23,10 +23,6 @@ enum class EmissionField : EmissionFieldUnderlying {
     namespace_,
 };
 
-[[nodiscard]] constexpr auto enum_range(EmissionField) noexcept -> ioj::MinMax<EmissionField> {
-    return {EmissionField::header, EmissionField::namespace_};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_emission_field(std::string_view const value) noexcept
@@ -66,6 +62,15 @@ using ioj::to_serialized_string;
 }
 
 } // namespace kernel_codegen::detail
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<kernel_codegen::detail::EmissionField>{
+    MinMax<kernel_codegen::detail::EmissionField>{
+        kernel_codegen::detail::EmissionField::header,
+        kernel_codegen::detail::EmissionField::namespace_}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::EmissionField, ioj::Serialized>{
     ioj::PackedStrings{"header\000source\000tests\000header-include\000namespace",

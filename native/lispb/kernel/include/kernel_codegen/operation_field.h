@@ -26,10 +26,6 @@ enum class OperationField : OperationFieldUnderlying {
     aliasing,
 };
 
-[[nodiscard]] constexpr auto enum_range(OperationField) noexcept -> ioj::MinMax<OperationField> {
-    return {OperationField::operand, OperationField::aliasing};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_operation_field(std::string_view const value) noexcept
@@ -84,6 +80,15 @@ using ioj::to_serialized_string;
 }
 
 } // namespace kernel_codegen::detail
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<kernel_codegen::detail::OperationField>{
+    MinMax<kernel_codegen::detail::OperationField>{
+        kernel_codegen::detail::OperationField::operand,
+        kernel_codegen::detail::OperationField::aliasing}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::OperationField, ioj::Serialized>{
     ioj::PackedStrings{

@@ -24,10 +24,6 @@ enum class BinaryOperator : BinaryOperatorUnderlying {
     divide,
 };
 
-[[nodiscard]] constexpr auto enum_range(BinaryOperator) noexcept -> ioj::MinMax<BinaryOperator> {
-    return {BinaryOperator::add, BinaryOperator::divide};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_binary_operator(std::string_view const value) noexcept
@@ -37,6 +33,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace kernel_codegen::detail
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<kernel_codegen::detail::BinaryOperator>{
+    MinMax<kernel_codegen::detail::BinaryOperator>{kernel_codegen::detail::BinaryOperator::add,
+                                                   kernel_codegen::detail::BinaryOperator::divide}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::BinaryOperator, ioj::Serialized>{
     ioj::PackedStrings{"+\000-\000*\000/", std::array<std::uint8_t, 5>{0, 2, 4, 6, 8}}};

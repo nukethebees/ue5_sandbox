@@ -31,10 +31,6 @@ enum class StructuralForm : StructuralFormUnderlying {
     params,
 };
 
-[[nodiscard]] constexpr auto enum_range(StructuralForm) noexcept -> ioj::MinMax<StructuralForm> {
-    return {StructuralForm::widget_class, StructuralForm::params};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_structural_form(std::string_view const value) noexcept
@@ -126,6 +122,15 @@ using ioj::to_serialized_string;
 }
 
 } // namespace slate_codegen::detail
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<slate_codegen::detail::StructuralForm>{
+    MinMax<slate_codegen::detail::StructuralForm>{
+        slate_codegen::detail::StructuralForm::widget_class,
+        slate_codegen::detail::StructuralForm::params}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::slate_codegen::detail::StructuralForm, ioj::Serialized>{
     ioj::PackedStrings{

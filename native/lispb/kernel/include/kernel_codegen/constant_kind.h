@@ -23,10 +23,6 @@ enum class ConstantKind : ConstantKindUnderlying {
     negative_infinity,
 };
 
-[[nodiscard]] constexpr auto enum_range(ConstantKind) noexcept -> ioj::MinMax<ConstantKind> {
-    return {ConstantKind::nan, ConstantKind::negative_infinity};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_constant_kind(std::string_view const value) noexcept
@@ -36,6 +32,15 @@ using ioj::to_serialized_string;
 }
 
 } // namespace kernel_codegen::detail
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<kernel_codegen::detail::ConstantKind>{
+    MinMax<kernel_codegen::detail::ConstantKind>{
+        kernel_codegen::detail::ConstantKind::nan,
+        kernel_codegen::detail::ConstantKind::negative_infinity}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::ConstantKind, ioj::Serialized>{
     ioj::PackedStrings{"nan\000infinity\000negative-infinity",

@@ -23,11 +23,6 @@ enum class IntegerVarintEncoding : IntegerVarintEncodingUnderlying {
     zigzag_varint,
 };
 
-[[nodiscard]] constexpr auto enum_range(IntegerVarintEncoding) noexcept
-    -> ioj::MinMax<IntegerVarintEncoding> {
-    return {IntegerVarintEncoding::unsigned_varint, IntegerVarintEncoding::zigzag_varint};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_integer_varint_encoding(std::string_view const value) noexcept
@@ -37,6 +32,15 @@ using ioj::to_serialized_string;
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::IntegerVarintEncoding>{
+    MinMax<lispb::codegen::IntegerVarintEncoding>{
+        lispb::codegen::IntegerVarintEncoding::unsigned_varint,
+        lispb::codegen::IntegerVarintEncoding::zigzag_varint}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::codegen::IntegerVarintEncoding, ioj::Serialized>{
     ioj::PackedStrings{"unsigned\000signed\000zigzag", std::array<std::uint8_t, 4>{0, 9, 16, 23}}};

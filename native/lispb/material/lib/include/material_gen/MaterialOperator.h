@@ -47,11 +47,6 @@ enum class MaterialOperator : MaterialOperatorUnderlying {
     custom,
 };
 
-[[nodiscard]] constexpr auto enum_range(MaterialOperator) noexcept
-    -> ioj::MinMax<MaterialOperator> {
-    return {MaterialOperator::float2, MaterialOperator::custom};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_material_operator(std::string_view const value) noexcept
@@ -203,6 +198,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace material_synth
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<material_synth::MaterialOperator>{
+    MinMax<material_synth::MaterialOperator>{material_synth::MaterialOperator::float2,
+                                             material_synth::MaterialOperator::custom}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::material_synth::MaterialOperator, ioj::Serialized>{
     ioj::PackedStrings{

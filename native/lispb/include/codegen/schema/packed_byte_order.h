@@ -22,10 +22,6 @@ enum class PackedByteOrder : PackedByteOrderUnderlying {
     big_endian,
 };
 
-[[nodiscard]] constexpr auto enum_range(PackedByteOrder) noexcept -> ioj::MinMax<PackedByteOrder> {
-    return {PackedByteOrder::little_endian, PackedByteOrder::big_endian};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_packed_byte_order(std::string_view const value) noexcept
@@ -35,6 +31,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::PackedByteOrder>{
+    MinMax<lispb::codegen::PackedByteOrder>{lispb::codegen::PackedByteOrder::little_endian,
+                                            lispb::codegen::PackedByteOrder::big_endian}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::codegen::PackedByteOrder, ioj::Serialized>{
     ioj::PackedStrings{"little\000big", std::array<std::uint8_t, 3>{0, 7, 11}}};

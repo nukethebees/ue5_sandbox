@@ -102,10 +102,17 @@ enum class Opcode : OpcodeUnderlying {
     Jump,
 };
 
-[[nodiscard]] constexpr auto enum_range(Opcode) noexcept -> ioj::MinMax<Opcode> {
-    return {Opcode::KillEntity, Opcode::Jump};
-}
+} // namespace codegen_compile_fixture::unified
 
+namespace ioj {
+template <>
+inline constexpr auto enum_range<codegen_compile_fixture::unified::Opcode>{
+    MinMax<codegen_compile_fixture::unified::Opcode>{
+        codegen_compile_fixture::unified::Opcode::KillEntity,
+        codegen_compile_fixture::unified::Opcode::Jump}};
+} // namespace ioj
+
+namespace codegen_compile_fixture::unified {
 struct EntityId;
 
 namespace detail {

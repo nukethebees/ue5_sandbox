@@ -23,10 +23,6 @@ enum class RecordKind : RecordKindUnderlying {
     union_,
 };
 
-[[nodiscard]] constexpr auto enum_range(RecordKind) noexcept -> ioj::MinMax<RecordKind> {
-    return {RecordKind::struct_, RecordKind::union_};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_record_kind(std::string_view const value) noexcept
     -> std::optional<RecordKind> {
@@ -35,6 +31,13 @@ using ioj::to_serialized_string;
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::RecordKind>{MinMax<lispb::codegen::RecordKind>{
+    lispb::codegen::RecordKind::struct_, lispb::codegen::RecordKind::union_}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::codegen::RecordKind, ioj::Serialized>{
     ioj::PackedStrings{"struct\000class\000union", std::array<std::uint8_t, 4>{0, 7, 13, 19}}};

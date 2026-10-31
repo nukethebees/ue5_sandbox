@@ -98,10 +98,16 @@ enum class Kind : KindUnderlying {
     Data,
 };
 
-[[nodiscard]] constexpr auto enum_range(Kind) noexcept -> ioj::MinMax<Kind> {
-    return {Kind::Data, Kind::Data};
-}
+} // namespace codegen_compile_fixture::mixed
 
+namespace ioj {
+template <>
+inline constexpr auto enum_range<codegen_compile_fixture::mixed::Kind>{
+    MinMax<codegen_compile_fixture::mixed::Kind>{codegen_compile_fixture::mixed::Kind::Data,
+                                                 codegen_compile_fixture::mixed::Kind::Data}};
+} // namespace ioj
+
+namespace codegen_compile_fixture::mixed {
 struct Position {
     float x;
     float y;

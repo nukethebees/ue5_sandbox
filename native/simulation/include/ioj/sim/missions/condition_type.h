@@ -22,11 +22,14 @@ enum class ConditionType : ConditionTypeUnderlying {
     EntityKillsReached,
 };
 
-[[nodiscard]] constexpr auto enum_range(ConditionType) noexcept -> MinMax<ConditionType> {
-    return {ConditionType::EntityDestroyed, ConditionType::EntityKillsReached};
-}
-
 } // namespace ioj::sim
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<sim::ConditionType>{MinMax<sim::ConditionType>{
+    sim::ConditionType::EntityDestroyed, sim::ConditionType::EntityKillsReached}};
+} // namespace ioj
+
 namespace ioj {
 template <>
 struct EnumTraits<::ioj::sim::ConditionType> {

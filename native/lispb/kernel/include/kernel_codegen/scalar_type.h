@@ -24,10 +24,6 @@ enum class ScalarType : ScalarTypeUnderlying {
     float64,
 };
 
-[[nodiscard]] constexpr auto enum_range(ScalarType) noexcept -> ioj::MinMax<ScalarType> {
-    return {ScalarType::int32, ScalarType::float64};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_scalar_type(std::string_view const value) noexcept
     -> std::optional<ScalarType> {
@@ -36,6 +32,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace kernel_codegen::detail
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<kernel_codegen::detail::ScalarType>{
+    MinMax<kernel_codegen::detail::ScalarType>{kernel_codegen::detail::ScalarType::int32,
+                                               kernel_codegen::detail::ScalarType::float64}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::ScalarType, ioj::Serialized>{
     ioj::PackedStrings{"int32\000uint32\000float\000double",

@@ -24,10 +24,6 @@ enum class EPlainFixture : EPlainFixtureUnderlying {
     ReadableName,
 };
 
-[[nodiscard]] constexpr auto enum_range(EPlainFixture) noexcept -> ioj::MinMax<EPlainFixture> {
-    return {EPlainFixture::First, EPlainFixture::ReadableName};
-}
-
 using ioj::to_display_string;
 using ioj::to_serialized_string;
 using ioj::to_string;
@@ -44,6 +40,17 @@ using ioj::to_string;
     return ioj::try_parse_enum<EPlainFixture>(value, names);
 }
 
+} // namespace codegen_compile_fixture
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<codegen_compile_fixture::EPlainFixture>{
+    MinMax<codegen_compile_fixture::EPlainFixture>{
+        codegen_compile_fixture::EPlainFixture::First,
+        codegen_compile_fixture::EPlainFixture::ReadableName}};
+} // namespace ioj
+
+namespace codegen_compile_fixture {
 using ENameOnlyFixtureUnderlying = std::int32_t;
 
 // Logical bit width: 1.
@@ -51,11 +58,6 @@ enum class ENameOnlyFixture : ENameOnlyFixtureUnderlying {
     First,
     Second,
 };
-
-[[nodiscard]] constexpr auto enum_range(ENameOnlyFixture) noexcept
-    -> ioj::MinMax<ENameOnlyFixture> {
-    return {ENameOnlyFixture::First, ENameOnlyFixture::Second};
-}
 
 using ioj::to_string;
 [[nodiscard]] constexpr auto try_parse_name_only_fixture(std::string_view const value) noexcept
@@ -71,6 +73,17 @@ using ioj::to_string;
     return ioj::try_parse_enum<ENameOnlyFixture>(value, names);
 }
 
+} // namespace codegen_compile_fixture
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<codegen_compile_fixture::ENameOnlyFixture>{
+    MinMax<codegen_compile_fixture::ENameOnlyFixture>{
+        codegen_compile_fixture::ENameOnlyFixture::First,
+        codegen_compile_fixture::ENameOnlyFixture::Second}};
+} // namespace ioj
+
+namespace codegen_compile_fixture {
 using EReorderedFixtureUnderlying = std::uint8_t;
 
 // Logical bit width: 2.
@@ -79,11 +92,6 @@ enum class EReorderedFixture : EReorderedFixtureUnderlying {
     First = 0,
     Second,
 };
-
-[[nodiscard]] constexpr auto enum_range(EReorderedFixture) noexcept
-    -> ioj::MinMax<EReorderedFixture> {
-    return {EReorderedFixture::First, EReorderedFixture::Later};
-}
 
 using ioj::to_serialized_string;
 using ioj::to_string;
@@ -102,6 +110,17 @@ using ioj::to_string;
     return std::nullopt;
 }
 
+} // namespace codegen_compile_fixture
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<codegen_compile_fixture::EReorderedFixture>{
+    MinMax<codegen_compile_fixture::EReorderedFixture>{
+        codegen_compile_fixture::EReorderedFixture::First,
+        codegen_compile_fixture::EReorderedFixture::Later}};
+} // namespace ioj
+
+namespace codegen_compile_fixture {
 using EMissingNamesUnderlying = std::int32_t;
 
 // Logical bit width: 2.
@@ -112,15 +131,20 @@ enum class EMissingNames : EMissingNamesUnderlying {
     Count,
 };
 
-[[nodiscard]] constexpr auto enum_range(EMissingNames) noexcept -> ioj::MinMax<EMissingNames> {
-    return {EMissingNames::Unnamed, EMissingNames::Escaped};
-}
-
 using ioj::to_display_string;
 using ioj::to_serialized_string;
 using ioj::to_string;
 
 } // namespace codegen_compile_fixture
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<codegen_compile_fixture::EMissingNames>{
+    MinMax<codegen_compile_fixture::EMissingNames>{
+        codegen_compile_fixture::EMissingNames::Unnamed,
+        codegen_compile_fixture::EMissingNames::Escaped}};
+} // namespace ioj
+
 namespace ioj {
 template <>
 struct EnumTraits<::codegen_compile_fixture::EPlainFixture> {

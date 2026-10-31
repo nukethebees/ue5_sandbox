@@ -26,10 +26,6 @@ enum class EnumConversion : EnumConversionUnderlying {
     try_parse_serialized,
 };
 
-[[nodiscard]] constexpr auto enum_range(EnumConversion) noexcept -> ioj::MinMax<EnumConversion> {
-    return {EnumConversion::lex_to_string, EnumConversion::try_parse_serialized};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_enum_conversion(std::string_view const value) noexcept
@@ -90,6 +86,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::EnumConversion>{
+    MinMax<lispb::codegen::EnumConversion>{lispb::codegen::EnumConversion::lex_to_string,
+                                           lispb::codegen::EnumConversion::try_parse_serialized}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::codegen::EnumConversion, ioj::Serialized>{
     ioj::PackedStrings{

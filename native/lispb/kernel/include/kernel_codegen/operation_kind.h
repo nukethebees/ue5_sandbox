@@ -22,10 +22,6 @@ enum class OperationKind : OperationKindUnderlying {
     component_map,
 };
 
-[[nodiscard]] constexpr auto enum_range(OperationKind) noexcept -> ioj::MinMax<OperationKind> {
-    return {OperationKind::map, OperationKind::component_map};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_operation_kind(std::string_view const value) noexcept
@@ -35,6 +31,15 @@ using ioj::to_serialized_string;
 }
 
 } // namespace kernel_codegen::detail
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<kernel_codegen::detail::OperationKind>{
+    MinMax<kernel_codegen::detail::OperationKind>{
+        kernel_codegen::detail::OperationKind::map,
+        kernel_codegen::detail::OperationKind::component_map}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::OperationKind, ioj::Serialized>{
     ioj::PackedStrings{"map\000component-map", std::array<std::uint8_t, 3>{0, 4, 18}}};

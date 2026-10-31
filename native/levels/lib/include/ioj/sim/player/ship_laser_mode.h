@@ -23,10 +23,6 @@ enum class ShipLaserMode : ShipLaserModeUnderlying {
     Hyper = 2,
 };
 
-[[nodiscard]] constexpr auto enum_range(ShipLaserMode) noexcept -> MinMax<ShipLaserMode> {
-    return {ShipLaserMode::Single, ShipLaserMode::Hyper};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_ship_laser_mode(std::string_view const value) noexcept
@@ -36,6 +32,13 @@ using ioj::to_serialized_string;
 }
 
 } // namespace ioj::sim
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<sim::ShipLaserMode>{
+    MinMax<sim::ShipLaserMode>{sim::ShipLaserMode::Single, sim::ShipLaserMode::Hyper}};
+} // namespace ioj
+
 namespace ioj {
 template <>
 struct EnumTraits<::ioj::sim::ShipLaserMode> {

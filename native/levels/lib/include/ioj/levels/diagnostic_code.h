@@ -66,8 +66,10 @@ enum class DiagnosticCode : DiagnosticCodeUnderlying {
     UnlockCycle,
 };
 
-[[nodiscard]] constexpr auto enum_range(DiagnosticCode) noexcept -> MinMax<DiagnosticCode> {
-    return {DiagnosticCode::MissingLevelId, DiagnosticCode::UnlockCycle};
-}
-
 } // namespace ioj::levels
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<levels::DiagnosticCode>{MinMax<levels::DiagnosticCode>{
+    levels::DiagnosticCode::MissingLevelId, levels::DiagnosticCode::UnlockCycle}};
+} // namespace ioj

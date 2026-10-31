@@ -17,6 +17,8 @@ enum class ETeamOutcome : uint8 {
 
 using ETeamOutcomeUnderlying = uint8;
 
-[[nodiscard]] constexpr auto enum_range(ETeamOutcome) noexcept -> ioj::MinMax<ETeamOutcome> {
-    return {ETeamOutcome::Victory, ETeamOutcome::Defeat};
-}
+namespace ioj {
+template <>
+inline constexpr auto enum_range<::ETeamOutcome>{
+    MinMax<::ETeamOutcome>{::ETeamOutcome::Victory, ::ETeamOutcome::Defeat}};
+} // namespace ioj

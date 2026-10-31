@@ -22,11 +22,6 @@ enum class QuantizationClipping : QuantizationClippingUnderlying {
     clamp,
 };
 
-[[nodiscard]] constexpr auto enum_range(QuantizationClipping) noexcept
-    -> ioj::MinMax<QuantizationClipping> {
-    return {QuantizationClipping::reject, QuantizationClipping::clamp};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_quantization_clipping(std::string_view const value) noexcept
@@ -36,6 +31,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::QuantizationClipping>{
+    MinMax<lispb::codegen::QuantizationClipping>{lispb::codegen::QuantizationClipping::reject,
+                                                 lispb::codegen::QuantizationClipping::clamp}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::codegen::QuantizationClipping, ioj::Serialized>{
     ioj::PackedStrings{"reject\000clamp", std::array<std::uint8_t, 3>{0, 7, 13}}};

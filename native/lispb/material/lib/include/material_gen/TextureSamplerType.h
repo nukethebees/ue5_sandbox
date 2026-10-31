@@ -22,11 +22,6 @@ enum class TextureSamplerType : TextureSamplerTypeUnderlying {
     linear_grayscale,
 };
 
-[[nodiscard]] constexpr auto enum_range(TextureSamplerType) noexcept
-    -> ioj::MinMax<TextureSamplerType> {
-    return {TextureSamplerType::linear_color, TextureSamplerType::linear_grayscale};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_texture_sampler_type(std::string_view const value) noexcept
@@ -36,6 +31,15 @@ using ioj::to_serialized_string;
 }
 
 } // namespace material_synth
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<material_synth::TextureSamplerType>{
+    MinMax<material_synth::TextureSamplerType>{
+        material_synth::TextureSamplerType::linear_color,
+        material_synth::TextureSamplerType::linear_grayscale}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::material_synth::TextureSamplerType, ioj::Serialized>{
     ioj::PackedStrings{"linear-color\000linear-grayscale", std::array<std::uint8_t, 3>{0, 13, 30}}};

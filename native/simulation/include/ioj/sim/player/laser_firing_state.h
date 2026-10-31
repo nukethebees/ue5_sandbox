@@ -17,8 +17,10 @@ enum class LaserFiringState : LaserFiringStateUnderlying {
     burst = 1,
 };
 
-[[nodiscard]] constexpr auto enum_range(LaserFiringState) noexcept -> MinMax<LaserFiringState> {
-    return {LaserFiringState::idle, LaserFiringState::burst};
-}
-
 } // namespace ioj::sim
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<sim::LaserFiringState>{
+    MinMax<sim::LaserFiringState>{sim::LaserFiringState::idle, sim::LaserFiringState::burst}};
+} // namespace ioj

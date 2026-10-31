@@ -449,20 +449,18 @@ auto enum_range_declaration(LoweringContext& context,
         ir.types.named("ioj::MinMax", {ir.types.dependency("ioj::MinMax", "ioj/min_max.h")}),
         {enum_type})};
     auto enumerator = [&](EnumeratorId const value) {
-        return ir.named(std::string{ir.types.spelling(enum_type)} +
-                        "::" + context.text(context.declarations.enumerators.name[value]));
+        return ir.type_reference(
+            ir.types.named(std::string{ir.types.spelling(enum_type)} +
+                           "::" + context.text(context.declarations.enumerators.name[value])));
     };
-    auto const function{ir.function("enum_range", "auto")};
-    ir.set_function_parameters(function, {ir.parameter(enum_type, "")});
-    ir.set_function_return_type(function, range_type, ReturnSyntax::trailing);
-    ir.set_function_noexcept(function);
-    auto& flags{ir.function_flags(function)};
-    flags.set_is_nodiscard(true);
-    flags.set_is_constexpr(true);
-    flags.set_define_in_header(true);
-    ir.set_function_body(function,
-                         {ir.return_stmt(ir.init_list({enumerator(first), enumerator(last)}))});
-    return {ir.header_function(function)};
+    auto const variable{
+        ir.variable(ir.types.intern("auto"),
+                    ir.template_id(ir.named("enum_range"), {ir.type_reference(enum_type)}),
+                    ir.init_list({enumerator(first), enumerator(last)}, range_type),
+                    {.template_declaration = ir.template_specialization(),
+                     .is_inline = true,
+                     .is_constexpr = true})};
+    return {ir.namespace_node(ir.strings.intern("ioj"), {variable})};
 }
 
 auto native_enum_declaration(LoweringContext& context, DeclarationHandle const schema) -> Nodes {
@@ -476,10 +474,6 @@ auto native_enum_declaration(LoweringContext& context, DeclarationHandle const s
     decls.add(ir.enumeration(
                   enums.name[schema], ir.types.intern(alias), enum_values(context, schema, false)),
               2);
-    decls.append(
-        enum_range_declaration(context, schema, ir.types.intern(context.text(enums.name[schema]))));
-    decls.new_lines(2);
-
     auto const helpers{context.declarations.items(enums.helpers[schema])};
     for (auto const helper : {NativeEnumHelper::to_string,
                               NativeEnumHelper::to_display_string,
@@ -624,7 +618,7 @@ auto unreal_projection_header(LoweringContext& context,
                   projections.name[projection], underlying, enum_values(context, schema, true)),
               2);
     decls.add(ir.using_declaration(ir.strings.intern(name + "Underlying"), underlying), 2);
-    decls.append(enum_range_declaration(context, schema, ir.types.intern(name)));
+    decls.append(enum_range_declaration(context, schema, ir.types.intern("::" + name)));
     decls.new_lines(2);
     if (projections.enum_array[projection]) {
         decls.add(
@@ -710,6 +704,8 @@ auto lower_enum(LoweringContext& context,
     if (!enums.cpp_projection[schema]) {
         return emission;
     }
+    auto const qualified{qualified_enum_name(context, settings, schema)};
+    auto const enum_type{ir.types.named(qualified.contains("::") ? qualified : "::" + qualified)};
     emission.source_dependencies = false;
     if (enums.native_api[schema]) {
         NodeListBuilder prefix{ir};
@@ -723,6 +719,7 @@ auto lower_enum(LoweringContext& context,
         decls.append(
             {native_enum_declaration(context, schema), native_enum_parsers(context, schema)});
         emission.header = decls.build();
+        emission.header_immediate_global = enum_range_declaration(context, schema, enum_type);
         if (needs_traits) {
             emission.header_global = {ir.namespace_node(
                 ir.strings.intern("ioj"), native_enum_traits(context, settings, schema))};
@@ -807,9 +804,7 @@ auto lower_enum(LoweringContext& context,
         // Preserve the built-in spelling required by UnrealHeaderTool for reflected enums.
         decls.add(ir.using_declaration(ir.strings.intern(underlying_alias), underlying), 2);
     }
-    decls.append(
-        enum_range_declaration(context, schema, ir.types.intern(context.text(enums.name[schema]))));
-    decls.new_lines(2);
+    emission.header_immediate_global = enum_range_declaration(context, schema, enum_type);
     emission.header_prefix.push_back(
         ir.include(ir.store_text("ioj/enum_traits.h"), IncludeStyle::quoted));
     if (enums.enum_array[schema]) {

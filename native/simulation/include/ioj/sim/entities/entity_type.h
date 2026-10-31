@@ -23,14 +23,17 @@ enum class EntityType : EntityTypeUnderlying {
     TubeSpinner = 4,
 };
 
-[[nodiscard]] constexpr auto enum_range(EntityType) noexcept -> MinMax<EntityType> {
-    return {EntityType::PlayerShip, EntityType::TubeSpinner};
-}
-
 using ioj::to_serialized_string;
 using ioj::to_string;
 
 } // namespace ioj::sim
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<sim::EntityType>{
+    MinMax<sim::EntityType>{sim::EntityType::PlayerShip, sim::EntityType::TubeSpinner}};
+} // namespace ioj
+
 namespace ioj {
 template <>
 struct EnumTraits<::ioj::sim::EntityType> {

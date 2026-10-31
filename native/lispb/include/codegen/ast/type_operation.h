@@ -24,10 +24,6 @@ enum class TypeOperation : TypeOperationUnderlying {
     set_element,
 };
 
-[[nodiscard]] constexpr auto enum_range(TypeOperation) noexcept -> ioj::MinMax<TypeOperation> {
-    return {TypeOperation::add_element, TypeOperation::set_element};
-}
-
 using ioj::to_serialized_string;
 using ioj::to_string;
 [[nodiscard]] constexpr auto
@@ -38,6 +34,14 @@ using ioj::to_string;
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::TypeOperation>{
+    MinMax<lispb::codegen::TypeOperation>{lispb::codegen::TypeOperation::add_element,
+                                          lispb::codegen::TypeOperation::set_element}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::codegen::TypeOperation, ioj::Name>{
     ioj::PackedStrings{"add_element\000remove_at_swap\000set_element",

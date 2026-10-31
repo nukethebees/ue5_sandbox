@@ -22,10 +22,6 @@ enum class SceneTexture : SceneTextureUnderlying {
     scene_depth,
 };
 
-[[nodiscard]] constexpr auto enum_range(SceneTexture) noexcept -> ioj::MinMax<SceneTexture> {
-    return {SceneTexture::post_process_input0, SceneTexture::scene_depth};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_scene_texture(std::string_view const value) noexcept
@@ -35,6 +31,13 @@ using ioj::to_serialized_string;
 }
 
 } // namespace material_synth
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<material_synth::SceneTexture>{MinMax<material_synth::SceneTexture>{
+    material_synth::SceneTexture::post_process_input0, material_synth::SceneTexture::scene_depth}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::material_synth::SceneTexture, ioj::Serialized>{
     ioj::PackedStrings{"post-process-input0\000scene-depth",

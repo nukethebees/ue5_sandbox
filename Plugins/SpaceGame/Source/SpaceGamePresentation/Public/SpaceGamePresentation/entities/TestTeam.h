@@ -21,9 +21,11 @@ enum class ETestTeam : uint8 {
 
 using ETestTeamUnderlying = uint8;
 
-[[nodiscard]] constexpr auto enum_range(ETestTeam) noexcept -> ioj::MinMax<ETestTeam> {
-    return {ETestTeam::White, ETestTeam::Yellow};
-}
+namespace ioj {
+template <>
+inline constexpr auto enum_range<::ETestTeam>{
+    MinMax<::ETestTeam>{::ETestTeam::White, ::ETestTeam::Yellow}};
+} // namespace ioj
 
 namespace ioj {
 template <>

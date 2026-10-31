@@ -24,10 +24,6 @@ enum class PackedFieldKind : PackedFieldKindUnderlying {
     mini_float,
 };
 
-[[nodiscard]] constexpr auto enum_range(PackedFieldKind) noexcept -> ioj::MinMax<PackedFieldKind> {
-    return {PackedFieldKind::unsigned_integer, PackedFieldKind::mini_float};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_packed_field_kind(std::string_view const value) noexcept
@@ -76,6 +72,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::PackedFieldKind>{
+    MinMax<lispb::codegen::PackedFieldKind>{lispb::codegen::PackedFieldKind::unsigned_integer,
+                                            lispb::codegen::PackedFieldKind::mini_float}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::codegen::PackedFieldKind, ioj::Serialized>{
     ioj::PackedStrings{

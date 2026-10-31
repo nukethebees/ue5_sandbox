@@ -34,10 +34,6 @@ enum class MaterialClause : MaterialClauseUnderlying {
     world_position_offset,
 };
 
-[[nodiscard]] constexpr auto enum_range(MaterialClause) noexcept -> ioj::MinMax<MaterialClause> {
-    return {MaterialClause::asset, MaterialClause::world_position_offset};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_material_clause(std::string_view const value) noexcept
@@ -134,6 +130,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace material_synth
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<material_synth::MaterialClause>{
+    MinMax<material_synth::MaterialClause>{material_synth::MaterialClause::asset,
+                                           material_synth::MaterialClause::world_position_offset}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::material_synth::MaterialClause, ioj::Serialized>{
     ioj::PackedStrings{

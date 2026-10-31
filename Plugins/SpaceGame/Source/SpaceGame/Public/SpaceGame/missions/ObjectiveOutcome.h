@@ -18,7 +18,8 @@ enum class EObjectiveOutcome : uint8 {
 
 using EObjectiveOutcomeUnderlying = uint8;
 
-[[nodiscard]] constexpr auto enum_range(EObjectiveOutcome) noexcept
-    -> ioj::MinMax<EObjectiveOutcome> {
-    return {EObjectiveOutcome::Passed, EObjectiveOutcome::Expired};
-}
+namespace ioj {
+template <>
+inline constexpr auto enum_range<::EObjectiveOutcome>{
+    MinMax<::EObjectiveOutcome>{::EObjectiveOutcome::Passed, ::EObjectiveOutcome::Expired}};
+} // namespace ioj

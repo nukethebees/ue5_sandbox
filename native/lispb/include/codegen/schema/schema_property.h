@@ -135,13 +135,17 @@ enum class SchemaProperty : SchemaPropertyUnderlying {
     value_type,
 };
 
-[[nodiscard]] constexpr auto enum_range(SchemaProperty) noexcept -> ioj::MinMax<SchemaProperty> {
-    return {SchemaProperty::api_name, SchemaProperty::value_type};
-}
-
 using ioj::to_serialized_string;
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::SchemaProperty>{
+    MinMax<lispb::codegen::SchemaProperty>{lispb::codegen::SchemaProperty::api_name,
+                                           lispb::codegen::SchemaProperty::value_type}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::codegen::SchemaProperty,
                                         ioj::Serialized>{ioj::PackedStrings{

@@ -25,13 +25,16 @@ enum class ProjectProperty : ProjectPropertyUnderlying {
     targets,
 };
 
-[[nodiscard]] constexpr auto enum_range(ProjectProperty) noexcept -> ioj::MinMax<ProjectProperty> {
-    return {ProjectProperty::language_version, ProjectProperty::targets};
-}
-
 using ioj::to_serialized_string;
 
 } // namespace lispb
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::ProjectProperty>{MinMax<lispb::ProjectProperty>{
+    lispb::ProjectProperty::language_version, lispb::ProjectProperty::targets}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::ProjectProperty, ioj::Serialized>{
     ioj::PackedStrings{"language-version\000project-root\000types\000sources\000output-"

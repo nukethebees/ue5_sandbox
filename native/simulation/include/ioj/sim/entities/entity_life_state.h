@@ -17,10 +17,15 @@ enum class LifeState : LifeStateUnderlying {
     Combat,
 };
 
-[[nodiscard]] constexpr auto enum_range(LifeState) noexcept -> MinMax<LifeState> {
-    return {LifeState::Alive, LifeState::Combat};
-}
+} // namespace ioj::sim
 
+namespace ioj {
+template <>
+inline constexpr auto enum_range<sim::LifeState>{
+    MinMax<sim::LifeState>{sim::LifeState::Alive, sim::LifeState::Combat}};
+} // namespace ioj
+
+namespace ioj::sim {
 using DeathReasonUnderlying = std::uint8_t;
 
 // Logical bit width: 2.

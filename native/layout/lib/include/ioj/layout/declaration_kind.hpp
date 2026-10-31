@@ -29,13 +29,16 @@ enum class DeclarationKind : DeclarationKindUnderlying {
     facade,
 };
 
-[[nodiscard]] constexpr auto enum_range(DeclarationKind) noexcept -> MinMax<DeclarationKind> {
-    return {DeclarationKind::external, DeclarationKind::facade};
-}
-
 using ioj::to_display_string;
 
 } // namespace ioj::layout
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<layout::DeclarationKind>{MinMax<layout::DeclarationKind>{
+    layout::DeclarationKind::external, layout::DeclarationKind::facade}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::ioj::layout::DeclarationKind, ioj::Display>{
     ioj::PackedStrings{"external\000enum\000integer scalar\000linear quantized\000integer "

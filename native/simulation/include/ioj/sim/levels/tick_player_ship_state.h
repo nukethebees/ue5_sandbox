@@ -17,9 +17,10 @@ enum class TickPlayerShipState : TickPlayerShipStateUnderlying {
     PresentDead,
 };
 
-[[nodiscard]] constexpr auto enum_range(TickPlayerShipState) noexcept
-    -> MinMax<TickPlayerShipState> {
-    return {TickPlayerShipState::NotPresent, TickPlayerShipState::PresentDead};
-}
-
 } // namespace ioj::sim
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<sim::TickPlayerShipState>{MinMax<sim::TickPlayerShipState>{
+    sim::TickPlayerShipState::NotPresent, sim::TickPlayerShipState::PresentDead}};
+} // namespace ioj

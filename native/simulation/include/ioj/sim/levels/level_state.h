@@ -19,8 +19,10 @@ enum class LevelState : LevelStateUnderlying {
     Stopped,
 };
 
-[[nodiscard]] constexpr auto enum_range(LevelState) noexcept -> MinMax<LevelState> {
-    return {LevelState::Uninitialised, LevelState::Stopped};
-}
-
 } // namespace ioj::sim
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<sim::LevelState>{
+    MinMax<sim::LevelState>{sim::LevelState::Uninitialised, sim::LevelState::Stopped}};
+} // namespace ioj

@@ -23,10 +23,6 @@ enum class EnumReflection : EnumReflectionUnderlying {
     blueprint,
 };
 
-[[nodiscard]] constexpr auto enum_range(EnumReflection) noexcept -> ioj::MinMax<EnumReflection> {
-    return {EnumReflection::none, EnumReflection::blueprint};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_enum_reflection(std::string_view const value) noexcept
@@ -36,6 +32,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::EnumReflection>{
+    MinMax<lispb::codegen::EnumReflection>{lispb::codegen::EnumReflection::none,
+                                           lispb::codegen::EnumReflection::blueprint}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::codegen::EnumReflection, ioj::Serialized>{
     ioj::PackedStrings{"none\000uenum\000blueprint", std::array<std::uint8_t, 4>{0, 5, 11, 21}}};

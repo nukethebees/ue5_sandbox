@@ -22,11 +22,6 @@ enum class ChildOccurrenceKind : ChildOccurrenceKindUnderlying {
     reserved,
 };
 
-[[nodiscard]] constexpr auto enum_range(ChildOccurrenceKind) noexcept
-    -> ioj::MinMax<ChildOccurrenceKind> {
-    return {ChildOccurrenceKind::value, ChildOccurrenceKind::reserved};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_child_occurrence_kind(std::string_view const value) noexcept
@@ -36,6 +31,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::ChildOccurrenceKind>{
+    MinMax<lispb::codegen::ChildOccurrenceKind>{lispb::codegen::ChildOccurrenceKind::value,
+                                                lispb::codegen::ChildOccurrenceKind::reserved}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::codegen::ChildOccurrenceKind, ioj::Serialized>{
     ioj::PackedStrings{"value\000reserved", std::array<std::uint8_t, 3>{0, 6, 15}}};

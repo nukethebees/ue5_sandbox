@@ -25,11 +25,6 @@ enum class NativeEnumHelper : NativeEnumHelperUnderlying {
     formatter,
 };
 
-[[nodiscard]] constexpr auto enum_range(NativeEnumHelper) noexcept
-    -> ioj::MinMax<NativeEnumHelper> {
-    return {NativeEnumHelper::to_string, NativeEnumHelper::formatter};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_native_enum_helper(std::string_view const value) noexcept
@@ -75,6 +70,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::NativeEnumHelper>{
+    MinMax<lispb::codegen::NativeEnumHelper>{lispb::codegen::NativeEnumHelper::to_string,
+                                             lispb::codegen::NativeEnumHelper::formatter}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::codegen::NativeEnumHelper, ioj::Serialized>{
     ioj::PackedStrings{"to-string\000try-parse\000to-display-string\000to-serialized-string\000try-"

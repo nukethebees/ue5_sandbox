@@ -59,10 +59,6 @@ enum class Property : PropertyUnderlying {
     SpawnCooldown,
 };
 
-[[nodiscard]] constexpr auto enum_range(Property) noexcept -> MinMax<Property> {
-    return {Property::Id, Property::SpawnCooldown};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_property(std::string_view const value) noexcept
     -> std::optional<Property> {
@@ -289,6 +285,15 @@ using ioj::to_serialized_string;
     }
 }
 
+} // namespace ioj::levels::authoring
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<levels::authoring::Property>{MinMax<levels::authoring::Property>{
+    levels::authoring::Property::Id, levels::authoring::Property::SpawnCooldown}};
+} // namespace ioj
+
+namespace ioj::levels::authoring {
 using ExpressionSyntaxUnderlying = std::uint8_t;
 
 // Logical bit width: 1.
@@ -296,10 +301,6 @@ enum class ExpressionSyntax : ExpressionSyntaxUnderlying {
     Definition,
     Reference,
 };
-
-[[nodiscard]] constexpr auto enum_range(ExpressionSyntax) noexcept -> MinMax<ExpressionSyntax> {
-    return {ExpressionSyntax::Definition, ExpressionSyntax::Reference};
-}
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
@@ -309,6 +310,16 @@ using ioj::to_serialized_string;
     return ioj::try_parse_enum<ExpressionSyntax>(value, names);
 }
 
+} // namespace ioj::levels::authoring
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<levels::authoring::ExpressionSyntax>{
+    MinMax<levels::authoring::ExpressionSyntax>{levels::authoring::ExpressionSyntax::Definition,
+                                                levels::authoring::ExpressionSyntax::Reference}};
+} // namespace ioj
+
+namespace ioj::levels::authoring {
 using RecordKindUnderlying = std::uint8_t;
 
 // Logical bit width: 4.
@@ -326,13 +337,17 @@ enum class RecordKind : RecordKindUnderlying {
     LevelCompleted,
 };
 
-[[nodiscard]] constexpr auto enum_range(RecordKind) noexcept -> MinMax<RecordKind> {
-    return {RecordKind::Level, RecordKind::LevelCompleted};
-}
-
 using ioj::to_serialized_string;
 
 } // namespace ioj::levels::authoring
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<levels::authoring::RecordKind>{
+    MinMax<levels::authoring::RecordKind>{levels::authoring::RecordKind::Level,
+                                          levels::authoring::RecordKind::LevelCompleted}};
+} // namespace ioj
+
 namespace ioj {
 template <>
 struct EnumTraits<::ioj::levels::authoring::Property> {

@@ -18,10 +18,16 @@ enum class PackedState : PackedStateUnderlying {
     Max = 0xFF,
 };
 
-[[nodiscard]] constexpr auto enum_range(PackedState) noexcept -> ioj::MinMax<PackedState> {
-    return {PackedState::Zero, PackedState::Max};
-}
+} // namespace codegen_compile_fixture
 
+namespace ioj {
+template <>
+inline constexpr auto enum_range<codegen_compile_fixture::PackedState>{
+    MinMax<codegen_compile_fixture::PackedState>{codegen_compile_fixture::PackedState::Zero,
+                                                 codegen_compile_fixture::PackedState::Max}};
+} // namespace ioj
+
+namespace codegen_compile_fixture {
 using OpaqueStateUnderlying = std::uint32_t;
 
 // Logical bit width: 8.
@@ -39,10 +45,16 @@ enum class TinyState : TinyStateUnderlying {
     Max = 3,
 };
 
-[[nodiscard]] constexpr auto enum_range(TinyState) noexcept -> ioj::MinMax<TinyState> {
-    return {TinyState::Zero, TinyState::Max};
-}
+} // namespace codegen_compile_fixture
 
+namespace ioj {
+template <>
+inline constexpr auto enum_range<codegen_compile_fixture::TinyState>{
+    MinMax<codegen_compile_fixture::TinyState>{codegen_compile_fixture::TinyState::Zero,
+                                               codegen_compile_fixture::TinyState::Max}};
+} // namespace ioj
+
+namespace codegen_compile_fixture {
 using DomainStateUnderlying = std::uint8_t;
 
 // Logical bit width: 8.
@@ -51,11 +63,15 @@ enum class DomainState : DomainStateUnderlying {
     One,
 };
 
-[[nodiscard]] constexpr auto enum_range(DomainState) noexcept -> ioj::MinMax<DomainState> {
-    return {DomainState::Zero, DomainState::One};
-}
-
 } // namespace codegen_compile_fixture
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<codegen_compile_fixture::DomainState>{
+    MinMax<codegen_compile_fixture::DomainState>{codegen_compile_fixture::DomainState::Zero,
+                                                 codegen_compile_fixture::DomainState::One}};
+} // namespace ioj
+
 namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::DomainState>() noexcept

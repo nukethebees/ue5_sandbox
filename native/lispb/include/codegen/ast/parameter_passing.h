@@ -21,11 +21,6 @@ enum class ParameterPassing : ParameterPassingUnderlying {
     value,
 };
 
-[[nodiscard]] constexpr auto enum_range(ParameterPassing) noexcept
-    -> ioj::MinMax<ParameterPassing> {
-    return {ParameterPassing::const_reference, ParameterPassing::value};
-}
-
 [[nodiscard]] constexpr auto
     try_parse_serialized_parameter_passing(std::string_view const value) noexcept
     -> std::optional<ParameterPassing> {
@@ -34,3 +29,10 @@ enum class ParameterPassing : ParameterPassingUnderlying {
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::ParameterPassing>{
+    MinMax<lispb::codegen::ParameterPassing>{lispb::codegen::ParameterPassing::const_reference,
+                                             lispb::codegen::ParameterPassing::value}};
+} // namespace ioj

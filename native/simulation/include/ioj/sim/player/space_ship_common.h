@@ -20,13 +20,16 @@ enum class BoostBrakeState : BoostBrakeStateUnderlying {
     EmergencyBrake = 3,
 };
 
-[[nodiscard]] constexpr auto enum_range(BoostBrakeState) noexcept -> MinMax<BoostBrakeState> {
-    return {BoostBrakeState::None, BoostBrakeState::EmergencyBrake};
-}
-
 using ioj::to_string;
 
 } // namespace ioj::sim::player
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<sim::player::BoostBrakeState>{MinMax<sim::player::BoostBrakeState>{
+    sim::player::BoostBrakeState::None, sim::player::BoostBrakeState::EmergencyBrake}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::ioj::sim::player::BoostBrakeState, ioj::Name>{
     ioj::PackedStrings{"None\000Boost\000Brake\000EmergencyBrake",

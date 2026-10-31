@@ -30,10 +30,6 @@ enum class DeclarationKind : DeclarationKindUnderlying {
     facade,
 };
 
-[[nodiscard]] constexpr auto enum_range(DeclarationKind) noexcept -> ioj::MinMax<DeclarationKind> {
-    return {DeclarationKind::enumeration, DeclarationKind::facade};
-}
-
 [[nodiscard]] constexpr auto
     try_parse_serialized_declaration_kind(std::string_view const value) noexcept
     -> std::optional<DeclarationKind> {
@@ -111,3 +107,10 @@ enum class DeclarationKind : DeclarationKindUnderlying {
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::DeclarationKind>{
+    MinMax<lispb::codegen::DeclarationKind>{lispb::codegen::DeclarationKind::enumeration,
+                                            lispb::codegen::DeclarationKind::facade}};
+} // namespace ioj

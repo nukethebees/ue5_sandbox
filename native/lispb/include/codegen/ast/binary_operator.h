@@ -32,13 +32,17 @@ enum class BinaryOperator : BinaryOperatorUnderlying {
     three_way,
 };
 
-[[nodiscard]] constexpr auto enum_range(BinaryOperator) noexcept -> ioj::MinMax<BinaryOperator> {
-    return {BinaryOperator::equal, BinaryOperator::three_way};
-}
-
 using ioj::to_serialized_string;
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::BinaryOperator>{
+    MinMax<lispb::codegen::BinaryOperator>{lispb::codegen::BinaryOperator::equal,
+                                           lispb::codegen::BinaryOperator::three_way}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::codegen::BinaryOperator, ioj::Serialized>{
     ioj::PackedStrings{

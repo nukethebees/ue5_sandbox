@@ -16,8 +16,11 @@ enum class TraceEntityFilter : TraceEntityFilterUnderlying {
     ExcludeFighters,
 };
 
-[[nodiscard]] constexpr auto enum_range(TraceEntityFilter) noexcept -> MinMax<TraceEntityFilter> {
-    return {TraceEntityFilter::None, TraceEntityFilter::ExcludeFighters};
-}
-
 } // namespace ioj::sim::collision
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<sim::collision::TraceEntityFilter>{
+    MinMax<sim::collision::TraceEntityFilter>{sim::collision::TraceEntityFilter::None,
+                                              sim::collision::TraceEntityFilter::ExcludeFighters}};
+} // namespace ioj

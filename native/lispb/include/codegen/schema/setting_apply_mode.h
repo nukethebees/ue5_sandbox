@@ -22,11 +22,6 @@ enum class SettingApplyMode : SettingApplyModeUnderlying {
     confirm,
 };
 
-[[nodiscard]] constexpr auto enum_range(SettingApplyMode) noexcept
-    -> ioj::MinMax<SettingApplyMode> {
-    return {SettingApplyMode::immediate, SettingApplyMode::confirm};
-}
-
 [[nodiscard]] constexpr auto
     try_parse_serialized_setting_apply_mode(std::string_view const value) noexcept
     -> std::optional<SettingApplyMode> {
@@ -35,3 +30,10 @@ enum class SettingApplyMode : SettingApplyModeUnderlying {
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::SettingApplyMode>{
+    MinMax<lispb::codegen::SettingApplyMode>{lispb::codegen::SettingApplyMode::immediate,
+                                             lispb::codegen::SettingApplyMode::confirm}};
+} // namespace ioj

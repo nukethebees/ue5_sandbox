@@ -25,10 +25,6 @@ enum class ParameterKind : ParameterKindUnderlying {
     existing,
 };
 
-[[nodiscard]] constexpr auto enum_range(ParameterKind) noexcept -> ioj::MinMax<ParameterKind> {
-    return {ParameterKind::value, ParameterKind::existing};
-}
-
 using ioj::to_serialized_string;
 using ioj::to_string;
 [[nodiscard]] constexpr auto
@@ -39,6 +35,14 @@ using ioj::to_string;
 }
 
 } // namespace slate_codegen::detail
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<slate_codegen::detail::ParameterKind>{
+    MinMax<slate_codegen::detail::ParameterKind>{slate_codegen::detail::ParameterKind::value,
+                                                 slate_codegen::detail::ParameterKind::existing}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::slate_codegen::detail::ParameterKind, ioj::Name>{
     ioj::PackedStrings{"value\000callback\000factory\000existing",

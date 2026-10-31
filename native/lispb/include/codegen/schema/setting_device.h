@@ -23,10 +23,6 @@ enum class SettingDevice : SettingDeviceUnderlying {
     controller,
 };
 
-[[nodiscard]] constexpr auto enum_range(SettingDevice) noexcept -> ioj::MinMax<SettingDevice> {
-    return {SettingDevice::shared, SettingDevice::controller};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_setting_device(std::string_view const value) noexcept
@@ -36,6 +32,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::SettingDevice>{
+    MinMax<lispb::codegen::SettingDevice>{lispb::codegen::SettingDevice::shared,
+                                          lispb::codegen::SettingDevice::controller}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::codegen::SettingDevice, ioj::Serialized>{
     ioj::PackedStrings{"shared\000keyboard-mouse\000controller",

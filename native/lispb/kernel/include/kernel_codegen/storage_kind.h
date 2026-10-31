@@ -22,10 +22,6 @@ enum class StorageKind : StorageKindUnderlying {
     scalar,
 };
 
-[[nodiscard]] constexpr auto enum_range(StorageKind) noexcept -> ioj::MinMax<StorageKind> {
-    return {StorageKind::array, StorageKind::scalar};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_storage_kind(std::string_view const value) noexcept
@@ -35,6 +31,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace kernel_codegen::detail
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<kernel_codegen::detail::StorageKind>{
+    MinMax<kernel_codegen::detail::StorageKind>{kernel_codegen::detail::StorageKind::array,
+                                                kernel_codegen::detail::StorageKind::scalar}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::StorageKind, ioj::Serialized>{
     ioj::PackedStrings{"array\000scalar", std::array<std::uint8_t, 3>{0, 6, 13}}};

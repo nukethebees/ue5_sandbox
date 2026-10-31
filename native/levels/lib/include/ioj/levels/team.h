@@ -26,10 +26,6 @@ enum class Team : TeamUnderlying {
     Orange = 4,
     Yellow = 5,
 };
-
-[[nodiscard]] constexpr auto enum_range(Team) noexcept -> MinMax<Team> {
-    return {Team::White, Team::Yellow};
-}
 [[nodiscard]] constexpr auto try_parse_serialized_team(std::string_view const value) noexcept
     -> std::optional<Team> {
     switch (value.size()) {
@@ -70,6 +66,12 @@ enum class Team : TeamUnderlying {
 }
 
 } // namespace ioj
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<Team>{MinMax<Team>{Team::White, Team::Yellow}};
+} // namespace ioj
+
 namespace ioj {
 template <>
 struct EnumTraits<::ioj::Team> {

@@ -24,10 +24,6 @@ enum class ShipFireRate : ShipFireRateUnderlying {
     FullAuto = 2,
 };
 
-[[nodiscard]] constexpr auto enum_range(ShipFireRate) noexcept -> MinMax<ShipFireRate> {
-    return {ShipFireRate::Single, ShipFireRate::FullAuto};
-}
-
 using ioj::to_serialized_string;
 using ioj::to_string;
 [[nodiscard]] constexpr auto
@@ -38,6 +34,13 @@ using ioj::to_string;
 }
 
 } // namespace ioj::sim
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<sim::ShipFireRate>{
+    MinMax<sim::ShipFireRate>{sim::ShipFireRate::Single, sim::ShipFireRate::FullAuto}};
+} // namespace ioj
+
 namespace ioj {
 template <>
 struct EnumTraits<::ioj::sim::ShipFireRate> {

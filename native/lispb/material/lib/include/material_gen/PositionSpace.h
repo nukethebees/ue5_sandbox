@@ -22,10 +22,6 @@ enum class PositionSpace : PositionSpaceUnderlying {
     local,
 };
 
-[[nodiscard]] constexpr auto enum_range(PositionSpace) noexcept -> ioj::MinMax<PositionSpace> {
-    return {PositionSpace::world, PositionSpace::local};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_position_space(std::string_view const value) noexcept
@@ -35,6 +31,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace material_synth
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<material_synth::PositionSpace>{
+    MinMax<material_synth::PositionSpace>{material_synth::PositionSpace::world,
+                                          material_synth::PositionSpace::local}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::material_synth::PositionSpace, ioj::Serialized>{
     ioj::PackedStrings{"world\000local", std::array<std::uint8_t, 3>{0, 6, 12}}};

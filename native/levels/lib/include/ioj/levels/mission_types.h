@@ -23,10 +23,6 @@ enum class ObjectiveOutcome : ObjectiveOutcomeUnderlying {
     Failed,
     Expired,
 };
-
-[[nodiscard]] constexpr auto enum_range(ObjectiveOutcome) noexcept -> MinMax<ObjectiveOutcome> {
-    return {ObjectiveOutcome::Passed, ObjectiveOutcome::Expired};
-}
 [[nodiscard]] constexpr auto
     try_parse_serialized_objective_outcome(std::string_view const value) noexcept
     -> std::optional<ObjectiveOutcome> {
@@ -34,6 +30,15 @@ enum class ObjectiveOutcome : ObjectiveOutcomeUnderlying {
     return ioj::try_parse_enum<ObjectiveOutcome>(value, names);
 }
 
+} // namespace ioj
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<ObjectiveOutcome>{
+    MinMax<ObjectiveOutcome>{ObjectiveOutcome::Passed, ObjectiveOutcome::Expired}};
+} // namespace ioj
+
+namespace ioj {
 using TeamOutcomeUnderlying = std::uint8_t;
 
 // Logical bit width: 1.
@@ -41,10 +46,6 @@ enum class TeamOutcome : TeamOutcomeUnderlying {
     Victory,
     Defeat,
 };
-
-[[nodiscard]] constexpr auto enum_range(TeamOutcome) noexcept -> MinMax<TeamOutcome> {
-    return {TeamOutcome::Victory, TeamOutcome::Defeat};
-}
 [[nodiscard]] constexpr auto
     try_parse_serialized_team_outcome(std::string_view const value) noexcept
     -> std::optional<TeamOutcome> {
@@ -52,6 +53,15 @@ enum class TeamOutcome : TeamOutcomeUnderlying {
     return ioj::try_parse_enum<TeamOutcome>(value, names);
 }
 
+} // namespace ioj
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<TeamOutcome>{
+    MinMax<TeamOutcome>{TeamOutcome::Victory, TeamOutcome::Defeat}};
+} // namespace ioj
+
+namespace ioj {
 using ExprResultUnderlying = std::uint8_t;
 
 // Logical bit width: 2.
@@ -61,10 +71,15 @@ enum class ExprResult : ExprResultUnderlying {
     False,
 };
 
-[[nodiscard]] constexpr auto enum_range(ExprResult) noexcept -> MinMax<ExprResult> {
-    return {ExprResult::Pending, ExprResult::False};
-}
+} // namespace ioj
 
+namespace ioj {
+template <>
+inline constexpr auto enum_range<ExprResult>{
+    MinMax<ExprResult>{ExprResult::Pending, ExprResult::False}};
+} // namespace ioj
+
+namespace ioj {
 using ExprTypeUnderlying = std::uint8_t;
 
 // Logical bit width: 3.
@@ -77,10 +92,6 @@ enum class ExprType : ExprTypeUnderlying {
     ObjectiveResolved,
     EntityKillsReached,
 };
-
-[[nodiscard]] constexpr auto enum_range(ExprType) noexcept -> MinMax<ExprType> {
-    return {ExprType::All, ExprType::EntityKillsReached};
-}
 [[nodiscard]] constexpr auto try_parse_serialized_expr_type(std::string_view const value) noexcept
     -> std::optional<ExprType> {
     switch (value.size()) {
@@ -130,6 +141,13 @@ enum class ExprType : ExprTypeUnderlying {
 }
 
 } // namespace ioj
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<ExprType>{
+    MinMax<ExprType>{ExprType::All, ExprType::EntityKillsReached}};
+} // namespace ioj
+
 namespace ioj {
 template <>
 struct EnumTraits<::ioj::ObjectiveOutcome> {

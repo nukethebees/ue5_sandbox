@@ -23,10 +23,6 @@ enum class MaterialDomain : MaterialDomainUnderlying {
     post_process,
 };
 
-[[nodiscard]] constexpr auto enum_range(MaterialDomain) noexcept -> ioj::MinMax<MaterialDomain> {
-    return {MaterialDomain::ui, MaterialDomain::post_process};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_material_domain(std::string_view const value) noexcept
@@ -36,6 +32,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace material_synth
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<material_synth::MaterialDomain>{
+    MinMax<material_synth::MaterialDomain>{material_synth::MaterialDomain::ui,
+                                           material_synth::MaterialDomain::post_process}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::material_synth::MaterialDomain, ioj::Serialized>{
     ioj::PackedStrings{"ui\000surface\000post-process", std::array<std::uint8_t, 4>{0, 3, 11, 24}}};

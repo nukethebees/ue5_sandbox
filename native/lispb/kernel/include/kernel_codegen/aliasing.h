@@ -22,10 +22,6 @@ enum class Aliasing : AliasingUnderlying {
     pairwise_disjoint,
 };
 
-[[nodiscard]] constexpr auto enum_range(Aliasing) noexcept -> ioj::MinMax<Aliasing> {
-    return {Aliasing::output_disjoint, Aliasing::pairwise_disjoint};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_aliasing(std::string_view const value) noexcept
     -> std::optional<Aliasing> {
@@ -34,6 +30,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace kernel_codegen::detail
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<kernel_codegen::detail::Aliasing>{
+    MinMax<kernel_codegen::detail::Aliasing>{kernel_codegen::detail::Aliasing::output_disjoint,
+                                             kernel_codegen::detail::Aliasing::pairwise_disjoint}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::Aliasing, ioj::Serialized>{
     ioj::PackedStrings{"output-disjoint\000pairwise-disjoint",

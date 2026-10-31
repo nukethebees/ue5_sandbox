@@ -20,8 +20,10 @@ enum class SimulationPhase : SimulationPhaseUnderlying {
     BetweenTicks,
 };
 
-[[nodiscard]] constexpr auto enum_range(SimulationPhase) noexcept -> MinMax<SimulationPhase> {
-    return {SimulationPhase::Preparation, SimulationPhase::BetweenTicks};
-}
-
 } // namespace ioj::sim
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<sim::SimulationPhase>{MinMax<sim::SimulationPhase>{
+    sim::SimulationPhase::Preparation, sim::SimulationPhase::BetweenTicks}};
+} // namespace ioj

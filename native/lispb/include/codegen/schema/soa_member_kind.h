@@ -22,10 +22,6 @@ enum class SoaMemberKind : SoaMemberKindUnderlying {
     nested,
 };
 
-[[nodiscard]] constexpr auto enum_range(SoaMemberKind) noexcept -> ioj::MinMax<SoaMemberKind> {
-    return {SoaMemberKind::array, SoaMemberKind::nested};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_soa_member_kind(std::string_view const value) noexcept
@@ -35,6 +31,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::SoaMemberKind>{
+    MinMax<lispb::codegen::SoaMemberKind>{lispb::codegen::SoaMemberKind::array,
+                                          lispb::codegen::SoaMemberKind::nested}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::codegen::SoaMemberKind, ioj::Serialized>{
     ioj::PackedStrings{"array\000nested", std::array<std::uint8_t, 3>{0, 6, 13}}};

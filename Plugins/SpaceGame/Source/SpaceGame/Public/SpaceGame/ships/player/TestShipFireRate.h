@@ -18,7 +18,8 @@ enum class ETestShipFireRate : uint8 {
 
 using ETestShipFireRateUnderlying = uint8;
 
-[[nodiscard]] constexpr auto enum_range(ETestShipFireRate) noexcept
-    -> ioj::MinMax<ETestShipFireRate> {
-    return {ETestShipFireRate::Single, ETestShipFireRate::FullAuto};
-}
+namespace ioj {
+template <>
+inline constexpr auto enum_range<::ETestShipFireRate>{
+    MinMax<::ETestShipFireRate>{::ETestShipFireRate::Single, ::ETestShipFireRate::FullAuto}};
+} // namespace ioj

@@ -22,10 +22,6 @@ enum class PackedBitOrder : PackedBitOrderUnderlying {
     most_significant_first,
 };
 
-[[nodiscard]] constexpr auto enum_range(PackedBitOrder) noexcept -> ioj::MinMax<PackedBitOrder> {
-    return {PackedBitOrder::least_significant_first, PackedBitOrder::most_significant_first};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_packed_bit_order(std::string_view const value) noexcept
@@ -35,6 +31,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::PackedBitOrder>{
+    MinMax<lispb::codegen::PackedBitOrder>{lispb::codegen::PackedBitOrder::least_significant_first,
+                                           lispb::codegen::PackedBitOrder::most_significant_first}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::codegen::PackedBitOrder, ioj::Serialized>{
     ioj::PackedStrings{"lsb-first\000msb-first", std::array<std::uint8_t, 3>{0, 10, 20}}};

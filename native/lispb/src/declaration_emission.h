@@ -14,6 +14,7 @@ struct DeclarationEmission {
     Nodes header_prefix;
     Nodes header_generated_include;
     Nodes header;
+    Nodes header_immediate_global;
     Nodes header_after;
     Nodes source;
     Nodes header_global;

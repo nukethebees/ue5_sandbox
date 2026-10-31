@@ -22,13 +22,17 @@ enum class UnaryOperator : UnaryOperatorUnderlying {
     negate,
 };
 
-[[nodiscard]] constexpr auto enum_range(UnaryOperator) noexcept -> ioj::MinMax<UnaryOperator> {
-    return {UnaryOperator::logical_not, UnaryOperator::negate};
-}
-
 using ioj::to_serialized_string;
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::UnaryOperator>{
+    MinMax<lispb::codegen::UnaryOperator>{lispb::codegen::UnaryOperator::logical_not,
+                                          lispb::codegen::UnaryOperator::negate}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::codegen::UnaryOperator, ioj::Serialized>{
     ioj::PackedStrings{"!\000*\000&\000++\000~\000-",

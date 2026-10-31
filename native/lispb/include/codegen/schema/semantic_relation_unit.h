@@ -22,11 +22,6 @@ enum class SemanticRelationUnit : SemanticRelationUnitUnderlying {
     bytes,
 };
 
-[[nodiscard]] constexpr auto enum_range(SemanticRelationUnit) noexcept
-    -> ioj::MinMax<SemanticRelationUnit> {
-    return {SemanticRelationUnit::elements, SemanticRelationUnit::bytes};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_semantic_relation_unit(std::string_view const value) noexcept
@@ -36,6 +31,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::SemanticRelationUnit>{
+    MinMax<lispb::codegen::SemanticRelationUnit>{lispb::codegen::SemanticRelationUnit::elements,
+                                                 lispb::codegen::SemanticRelationUnit::bytes}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::codegen::SemanticRelationUnit, ioj::Serialized>{
     ioj::PackedStrings{"elements\000bytes", std::array<std::uint8_t, 3>{0, 9, 15}}};

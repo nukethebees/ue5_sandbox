@@ -22,11 +22,6 @@ enum class SettingControlKind : SettingControlKindUnderlying {
     custom,
 };
 
-[[nodiscard]] constexpr auto enum_range(SettingControlKind) noexcept
-    -> ioj::MinMax<SettingControlKind> {
-    return {SettingControlKind::toggle, SettingControlKind::custom};
-}
-
 [[nodiscard]] constexpr auto
     try_parse_serialized_setting_control_kind(std::string_view const value) noexcept
     -> std::optional<SettingControlKind> {
@@ -62,3 +57,10 @@ enum class SettingControlKind : SettingControlKindUnderlying {
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::SettingControlKind>{
+    MinMax<lispb::codegen::SettingControlKind>{lispb::codegen::SettingControlKind::toggle,
+                                               lispb::codegen::SettingControlKind::custom}};
+} // namespace ioj

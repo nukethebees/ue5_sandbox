@@ -22,10 +22,16 @@ enum class NavigationRiskTier : NavigationRiskTierUnderlying {
     Immediate = 3,
 };
 
-[[nodiscard]] constexpr auto enum_range(NavigationRiskTier) noexcept -> MinMax<NavigationRiskTier> {
-    return {NavigationRiskTier::Clear, NavigationRiskTier::Immediate};
-}
+} // namespace ioj::sim::fighters
 
+namespace ioj {
+template <>
+inline constexpr auto enum_range<sim::fighters::NavigationRiskTier>{
+    MinMax<sim::fighters::NavigationRiskTier>{sim::fighters::NavigationRiskTier::Clear,
+                                              sim::fighters::NavigationRiskTier::Immediate}};
+} // namespace ioj
+
+namespace ioj::sim::fighters {
 struct NavigationRiskCode;
 
 namespace detail {

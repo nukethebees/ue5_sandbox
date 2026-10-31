@@ -22,11 +22,6 @@ enum class RecordComparison : RecordComparisonUnderlying {
     three_way,
 };
 
-[[nodiscard]] constexpr auto enum_range(RecordComparison) noexcept
-    -> ioj::MinMax<RecordComparison> {
-    return {RecordComparison::none, RecordComparison::three_way};
-}
-
 [[nodiscard]] constexpr auto
     try_parse_serialized_record_comparison(std::string_view const value) noexcept
     -> std::optional<RecordComparison> {
@@ -35,3 +30,10 @@ enum class RecordComparison : RecordComparisonUnderlying {
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::RecordComparison>{
+    MinMax<lispb::codegen::RecordComparison>{lispb::codegen::RecordComparison::none,
+                                             lispb::codegen::RecordComparison::three_way}};
+} // namespace ioj

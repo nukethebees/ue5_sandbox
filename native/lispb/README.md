@@ -96,7 +96,7 @@ Unknown or duplicate helpers are errors. Existing native schemas must explicitly
 helpers they need; `:native-api true` no longer selects them automatically. Unreal enums use
 the existing `:conversions` list instead.
 
-Generated enums with known numeric values also expose `enum_range(Enum)`, found through ADL,
+Generated enums with known numeric values also expose `ioj::enum_range<Enum>`,
 and `ioj::enum_min<Enum>` / `ioj::enum_max<Enum>`. Bounds exclude the count enumerator and include
 sentinels. Sparse enums expose bounds too; these do not imply that every intervening value is
 valid. Packed enum fields use these bounds by default, so their layout declarations need no

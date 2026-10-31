@@ -23,10 +23,6 @@ enum class BlendMode : BlendModeUnderlying {
     alpha_composite,
 };
 
-[[nodiscard]] constexpr auto enum_range(BlendMode) noexcept -> ioj::MinMax<BlendMode> {
-    return {BlendMode::additive, BlendMode::alpha_composite};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_blend_mode(std::string_view const value) noexcept
     -> std::optional<BlendMode> {
@@ -65,6 +61,13 @@ using ioj::to_serialized_string;
 }
 
 } // namespace material_synth
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<material_synth::BlendMode>{MinMax<material_synth::BlendMode>{
+    material_synth::BlendMode::additive, material_synth::BlendMode::alpha_composite}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::material_synth::BlendMode, ioj::Serialized>{
     ioj::PackedStrings{"additive\000translucent\000opaque\000masked\000alpha-composite",

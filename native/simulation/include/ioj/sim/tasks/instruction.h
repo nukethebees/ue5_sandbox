@@ -27,10 +27,6 @@ enum class InstructionType : InstructionTypeUnderlying {
     Idle = 1,
 };
 
-[[nodiscard]] constexpr auto enum_range(InstructionType) noexcept -> MinMax<InstructionType> {
-    return {InstructionType::Kill, InstructionType::Idle};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_instruction_type(std::string_view const value) noexcept
@@ -39,6 +35,15 @@ using ioj::to_serialized_string;
     return ioj::try_parse_enum<InstructionType>(value, names);
 }
 
+} // namespace ioj::sim::tasks
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<sim::tasks::InstructionType>{MinMax<sim::tasks::InstructionType>{
+    sim::tasks::InstructionType::Kill, sim::tasks::InstructionType::Idle}};
+} // namespace ioj
+
+namespace ioj::sim::tasks {
 struct Instruction;
 
 namespace detail {

@@ -22,10 +22,11 @@ enum class ECharacterCameraMode : uint8 {
 
 using ECharacterCameraModeUnderlying = std::uint8_t;
 
-[[nodiscard]] constexpr auto enum_range(ECharacterCameraMode) noexcept
-    -> ioj::MinMax<ECharacterCameraMode> {
-    return {ECharacterCameraMode::FirstPerson, ECharacterCameraMode::ThirdPerson};
-}
+namespace ioj {
+template <>
+inline constexpr auto enum_range<::ECharacterCameraMode>{MinMax<::ECharacterCameraMode>{
+    ::ECharacterCameraMode::FirstPerson, ::ECharacterCameraMode::ThirdPerson}};
+} // namespace ioj
 
 namespace ioj {
 template <>

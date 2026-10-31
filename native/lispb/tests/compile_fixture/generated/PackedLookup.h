@@ -90,10 +90,16 @@ enum class CountedState : CountedStateUnderlying {
     Count,
 };
 
-[[nodiscard]] constexpr auto enum_range(CountedState) noexcept -> MinMax<CountedState> {
-    return {CountedState::First, CountedState::Last};
-}
+} // namespace ioj::packed_lookup_fixture
 
+namespace ioj {
+template <>
+inline constexpr auto enum_range<packed_lookup_fixture::CountedState>{
+    MinMax<packed_lookup_fixture::CountedState>{packed_lookup_fixture::CountedState::First,
+                                                packed_lookup_fixture::CountedState::Last}};
+} // namespace ioj
+
+namespace ioj::packed_lookup_fixture {
 struct CountedValue;
 
 namespace detail {

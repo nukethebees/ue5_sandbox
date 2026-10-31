@@ -24,10 +24,6 @@ enum class EntityArchetype : EntityArchetypeUnderlying {
     StaticTurret,
 };
 
-[[nodiscard]] constexpr auto enum_range(EntityArchetype) noexcept -> MinMax<EntityArchetype> {
-    return {EntityArchetype::PlayerFighter, EntityArchetype::StaticTurret};
-}
-
 using ioj::to_serialized_string;
 using ioj::to_string;
 [[nodiscard]] constexpr auto
@@ -39,6 +35,13 @@ using ioj::to_string;
 }
 
 } // namespace ioj::levels
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<levels::EntityArchetype>{MinMax<levels::EntityArchetype>{
+    levels::EntityArchetype::PlayerFighter, levels::EntityArchetype::StaticTurret}};
+} // namespace ioj
+
 namespace ioj {
 template <>
 struct EnumTraits<::ioj::levels::EntityArchetype> {

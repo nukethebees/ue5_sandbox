@@ -44,8 +44,10 @@ enum class NodeKind : NodeKindUnderlying {
     for_stmt,
 };
 
-[[nodiscard]] constexpr auto enum_range(NodeKind) noexcept -> ioj::MinMax<NodeKind> {
-    return {NodeKind::invalid, NodeKind::for_stmt};
-}
-
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::NodeKind>{MinMax<lispb::codegen::NodeKind>{
+    lispb::codegen::NodeKind::invalid, lispb::codegen::NodeKind::for_stmt}};
+} // namespace ioj

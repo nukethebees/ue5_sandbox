@@ -22,11 +22,6 @@ enum class FixedPointRounding : FixedPointRoundingUnderlying {
     toward_zero,
 };
 
-[[nodiscard]] constexpr auto enum_range(FixedPointRounding) noexcept
-    -> ioj::MinMax<FixedPointRounding> {
-    return {FixedPointRounding::nearest_even, FixedPointRounding::toward_zero};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_fixed_point_rounding(std::string_view const value) noexcept
@@ -36,6 +31,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::FixedPointRounding>{
+    MinMax<lispb::codegen::FixedPointRounding>{lispb::codegen::FixedPointRounding::nearest_even,
+                                               lispb::codegen::FixedPointRounding::toward_zero}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::codegen::FixedPointRounding, ioj::Serialized>{
     ioj::PackedStrings{"nearest-even\000toward-zero", std::array<std::uint8_t, 3>{0, 13, 25}}};

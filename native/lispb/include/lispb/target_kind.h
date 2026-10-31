@@ -24,10 +24,6 @@ enum class TargetKind : TargetKindUnderlying {
     group,
 };
 
-[[nodiscard]] constexpr auto enum_range(TargetKind) noexcept -> ioj::MinMax<TargetKind> {
-    return {TargetKind::none, TargetKind::group};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_target_kind(std::string_view const value) noexcept
     -> std::optional<TargetKind> {
@@ -72,6 +68,13 @@ using ioj::to_serialized_string;
 }
 
 } // namespace lispb
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::TargetKind>{
+    MinMax<lispb::TargetKind>{lispb::TargetKind::none, lispb::TargetKind::group}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::TargetKind, ioj::Serialized>{
     ioj::PackedStrings{"none\000cpp-schema\000slate\000kernel\000material\000group",

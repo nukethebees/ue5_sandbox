@@ -22,10 +22,6 @@ enum class VariantKind : VariantKindUnderlying {
     in_place,
 };
 
-[[nodiscard]] constexpr auto enum_range(VariantKind) noexcept -> ioj::MinMax<VariantKind> {
-    return {VariantKind::out_of_place, VariantKind::in_place};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_variant_kind(std::string_view const value) noexcept
@@ -35,6 +31,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace kernel_codegen::detail
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<kernel_codegen::detail::VariantKind>{
+    MinMax<kernel_codegen::detail::VariantKind>{kernel_codegen::detail::VariantKind::out_of_place,
+                                                kernel_codegen::detail::VariantKind::in_place}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::VariantKind, ioj::Serialized>{
     ioj::PackedStrings{"out-of-place\000in-place", std::array<std::uint8_t, 3>{0, 13, 22}}};

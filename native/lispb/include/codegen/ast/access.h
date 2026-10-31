@@ -23,10 +23,6 @@ enum class Access : AccessUnderlying {
     private_,
 };
 
-[[nodiscard]] constexpr auto enum_range(Access) noexcept -> ioj::MinMax<Access> {
-    return {Access::public_, Access::private_};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_access(std::string_view const value) noexcept
     -> std::optional<Access> {
@@ -35,6 +31,13 @@ using ioj::to_serialized_string;
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::Access>{MinMax<lispb::codegen::Access>{
+    lispb::codegen::Access::public_, lispb::codegen::Access::private_}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::codegen::Access, ioj::Serialized>{
     ioj::PackedStrings{"public\000protected\000private",

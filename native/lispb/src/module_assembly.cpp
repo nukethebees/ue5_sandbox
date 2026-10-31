@@ -32,6 +32,7 @@ auto assemble_module(LoweringContext& context,
     auto const& settings_store{context.declarations.module_settings_store};
     auto const has_output{std::ranges::any_of(emissions, [](DeclarationEmission const& emission) {
         return !emission.header.empty() || !emission.header_prefix.empty() ||
+               !emission.header_immediate_global.empty() ||
                !emission.header_generated_include.empty() || !emission.header_after.empty() ||
                !emission.header_global.empty() || !emission.header_tail.empty() ||
                !emission.source.empty() || !emission.source_global.empty() ||
@@ -67,6 +68,7 @@ auto assemble_module(LoweringContext& context,
     std::vector<ModuleId> additional;
     bool format_generated{};
     NodeListBuilder header_declarations{ir};
+    NodeListBuilder header_sections{ir};
     NodeListBuilder header_generated_include{ir};
     NodeListBuilder header_after{ir};
     NodeListBuilder source_definitions{ir};
@@ -77,6 +79,18 @@ auto assemble_module(LoweringContext& context,
     NodeListBuilder reader_declarations{ir};
     std::vector<StringId> reader_includes;
     bool has_header{};
+    auto flush_header_declarations = [&] {
+        if (!has_header) {
+            return;
+        }
+        auto nodes{header_declarations.build()};
+        if (auto const namespace_name{settings_store.namespace_name[settings]}) {
+            header_sections.add(ir.namespace_node(*namespace_name, nodes));
+        } else {
+            header_sections.append(nodes);
+        }
+        has_header = false;
+    };
     bool has_source{};
     bool has_header_global{};
     bool has_header_after{};
@@ -101,6 +115,10 @@ auto assemble_module(LoweringContext& context,
             }
             header_declarations.append(std::move(emission.header));
             has_header = true;
+        }
+        if (!emission.header_immediate_global.empty()) {
+            flush_header_declarations();
+            header_sections.new_lines(2).append(emission.header_immediate_global).new_lines(2);
         }
         auto append_section = [](NodeListBuilder& builder, Nodes& nodes, bool& started) {
             if (nodes.empty()) {
@@ -139,17 +157,10 @@ auto assemble_module(LoweringContext& context,
     if (!generated_include.empty()) {
         header.new_lines(2).append(std::move(generated_include)).new_lines(2);
     }
-    auto header_nodes{header_declarations.build()};
+    flush_header_declarations();
     auto after_nodes{header_after.build()};
     auto source_nodes{source_definitions.build()};
-    if (settings_store.namespace_name[settings].has_value()) {
-        if (!header_nodes.empty()) {
-            header.add(ir.namespace_node(*settings_store.namespace_name[settings],
-                                         std::move(header_nodes)));
-        }
-    } else {
-        header.append(std::move(header_nodes));
-    }
+    header.append(header_sections.build());
     header.append(header_global.build());
     if (has_header_global && !after_nodes.empty()) {
         header.new_lines(2);

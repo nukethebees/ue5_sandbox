@@ -22,10 +22,6 @@ enum class LayoutKind : LayoutKindUnderlying {
     packed,
 };
 
-[[nodiscard]] constexpr auto enum_range(LayoutKind) noexcept -> ioj::MinMax<LayoutKind> {
-    return {LayoutKind::native, LayoutKind::packed};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_layout_kind(std::string_view const value) noexcept
     -> std::optional<LayoutKind> {
@@ -34,6 +30,13 @@ using ioj::to_serialized_string;
 }
 
 } // namespace lispb::codegen
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::codegen::LayoutKind>{MinMax<lispb::codegen::LayoutKind>{
+    lispb::codegen::LayoutKind::native, lispb::codegen::LayoutKind::packed}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::codegen::LayoutKind, ioj::Serialized>{
     ioj::PackedStrings{"native\000packed", std::array<std::uint8_t, 3>{0, 7, 14}}};

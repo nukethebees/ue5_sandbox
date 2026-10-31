@@ -22,10 +22,6 @@ enum class PathBase : PathBaseUnderlying {
     build,
 };
 
-[[nodiscard]] constexpr auto enum_range(PathBase) noexcept -> ioj::MinMax<PathBase> {
-    return {PathBase::project, PathBase::build};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_path_base(std::string_view const value) noexcept
     -> std::optional<PathBase> {
@@ -34,6 +30,13 @@ using ioj::to_serialized_string;
 }
 
 } // namespace lispb
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<lispb::PathBase>{
+    MinMax<lispb::PathBase>{lispb::PathBase::project, lispb::PathBase::build}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::lispb::PathBase, ioj::Serialized>{
     ioj::PackedStrings{"project-path\000build-path", std::array<std::uint8_t, 3>{0, 13, 24}}};

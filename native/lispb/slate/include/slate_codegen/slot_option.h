@@ -24,10 +24,6 @@ enum class SlotOption : SlotOptionUnderlying {
     valign,
 };
 
-[[nodiscard]] constexpr auto enum_range(SlotOption) noexcept -> ioj::MinMax<SlotOption> {
-    return {SlotOption::weight, SlotOption::valign};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_slot_option(std::string_view const value) noexcept
     -> std::optional<SlotOption> {
@@ -36,6 +32,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace slate_codegen::detail
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<slate_codegen::detail::SlotOption>{
+    MinMax<slate_codegen::detail::SlotOption>{slate_codegen::detail::SlotOption::weight,
+                                              slate_codegen::detail::SlotOption::valign}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::slate_codegen::detail::SlotOption, ioj::Serialized>{
     ioj::PackedStrings{"weight\000padding\000halign\000valign",

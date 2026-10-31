@@ -24,11 +24,6 @@ enum class LevelTelemetryRunEndReason : LevelTelemetryRunEndReasonUnderlying {
     WorldEnd = 5,
 };
 
-[[nodiscard]] constexpr auto enum_range(LevelTelemetryRunEndReason) noexcept
-    -> MinMax<LevelTelemetryRunEndReason> {
-    return {LevelTelemetryRunEndReason::MissionSucceeded, LevelTelemetryRunEndReason::WorldEnd};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_level_telemetry_run_end_reason(std::string_view const value) noexcept
@@ -77,6 +72,14 @@ using ioj::to_serialized_string;
 }
 
 } // namespace ioj::sim
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<sim::LevelTelemetryRunEndReason>{
+    MinMax<sim::LevelTelemetryRunEndReason>{sim::LevelTelemetryRunEndReason::MissionSucceeded,
+                                            sim::LevelTelemetryRunEndReason::WorldEnd}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::ioj::sim::LevelTelemetryRunEndReason, ioj::Serialized>{
     ioj::PackedStrings{"mission_succeeded\000mission_failed\000battle_resolved\000duration_"

@@ -22,10 +22,6 @@ enum class ShadingModel : ShadingModelUnderlying {
     unlit,
 };
 
-[[nodiscard]] constexpr auto enum_range(ShadingModel) noexcept -> ioj::MinMax<ShadingModel> {
-    return {ShadingModel::default_lit, ShadingModel::unlit};
-}
-
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
     try_parse_serialized_shading_model(std::string_view const value) noexcept
@@ -35,6 +31,13 @@ using ioj::to_serialized_string;
 }
 
 } // namespace material_synth
+
+namespace ioj {
+template <>
+inline constexpr auto enum_range<material_synth::ShadingModel>{MinMax<material_synth::ShadingModel>{
+    material_synth::ShadingModel::default_lit, material_synth::ShadingModel::unlit}};
+} // namespace ioj
+
 template <>
 inline constexpr auto ioj::enum_strings<::material_synth::ShadingModel, ioj::Serialized>{
     ioj::PackedStrings{"default-lit\000unlit", std::array<std::uint8_t, 3>{0, 12, 18}}};
