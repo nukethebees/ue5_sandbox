@@ -77,9 +77,9 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     auto duration_to_tick_period(ioj::Duration duration) const noexcept -> tick_type;
 
-    auto get_state() const noexcept -> ioj::sim::OrchestratorState {
+    auto get_state() const noexcept -> ioj::sim::LevelState {
         return level_simulation_.IsSet() ? level_simulation_->get_state()
-                                         : ioj::sim::OrchestratorState::Uninitialised;
+                                         : ioj::sim::LevelState::Uninitialised;
     }
     auto get_completed_ticks() const noexcept -> tick_type {
         return level_simulation_.IsSet()

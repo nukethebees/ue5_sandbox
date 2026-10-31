@@ -14,12 +14,12 @@
 #include <ioj/sim/levels/level_memory_manager.h>
 #include <ioj/sim/levels/level_read_access.h>
 #include <ioj/sim/levels/level_sim_init_data.h>
+#include <ioj/sim/levels/level_state.h>
 #include <ioj/sim/levels/run_stop_conditions.h>
 #include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/missions/mission.h>
 #include <ioj/sim/player/command_interface.h>
 #include <ioj/sim/player/sim.h>
-#include <ioj/sim/sim_state.h>
 #include <ioj/sim/spinners/sim.h>
 #include <ioj/sim/tasks/task_manager.h>
 #include <ioj/sim/telemetry/manager.h>
@@ -86,7 +86,7 @@ struct LevelSim {
     /* **************************************** */
     // Accessors
     /* **************************************** */
-    auto get_state() const noexcept -> OrchestratorState { return state_; }
+    auto get_state() const noexcept -> LevelState { return state_; }
     auto get_clock() const noexcept -> SimClock const& { return clock_; }
     auto get_player_ship_simulation() const -> player::Sim const* {
         return player_ship_simulation_.has_value() ? &player_ship_simulation_.value() : nullptr;
@@ -133,8 +133,8 @@ struct LevelSim {
     void act_tick(float tick_period, bool player_active);
     void resolve_tick(bool player_active);
 
-    SimClock clock_;
-    OrchestratorState state_{OrchestratorState::Uninitialised};
+    LevelState state_{LevelState::Uninitialised};
+    SimClock clock_{state_};
 
     LevelMemoryManager memory_manager_;
     EntityLedger entity_ledger_;

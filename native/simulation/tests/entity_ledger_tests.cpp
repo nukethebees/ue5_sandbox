@@ -21,7 +21,8 @@ auto make_id(EntityType const type, std::uint32_t const ordinal) -> EntityId {
 }
 
 TEST(DamageQueue, GroupsMixedOwnerEventsAndFiltersRetiredRecipients) {
-    SimClock clock;
+    LevelState level_state{LevelState::Uninitialised};
+    SimClock clock{level_state};
     EntityLookupTables indexes{clock};
     auto const turret{make_id(EntityType::Turret, 0)};
     auto const capital{make_id(EntityType::CapitalShip, 0)};
@@ -81,7 +82,8 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
     EntityId retired;
     ledger.record_spawns(EntityType::CapitalShip, Team::Blue, Health{1}, {&retired, 1});
 
-    SimClock clock;
+    LevelState level_state{LevelState::Uninitialised};
+    SimClock clock{level_state};
     EntityLookupTables indexes{clock};
     std::array const fighters{victim};
     indexes.for_type(EntityType::Fighter).publish_rows(fighters, {});

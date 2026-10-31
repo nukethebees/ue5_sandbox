@@ -216,11 +216,11 @@ void FLevelLoaderCameraScenario::sample_modal_transitions() {
     sample.pause_open = FPlayerControllerTestAccess::has_modal(*controller);
     sample.pause_rejects_activation = rejects_activation();
     sample.pause_suspended =
-        orchestrator.get_state() == sim::OrchestratorState::Paused &&
+        orchestrator.get_state() == sim::LevelState::Paused &&
         controller->get_active_control_context() == ::ioj::levels::ControlContext::None;
     sample.hud_hidden = hud->GetVisibility() == ESlateVisibility::Collapsed;
     FPlayerControllerTestAccess::toggle_pause(*controller);
-    sample.pause_resumed = orchestrator.get_state() == sim::OrchestratorState::Running &&
+    sample.pause_resumed = orchestrator.get_state() == sim::LevelState::Running &&
                            !FPlayerControllerTestAccess::has_modal(*controller) &&
                            controller->is_observer_movement_enabled();
 
@@ -232,10 +232,10 @@ void FLevelLoaderCameraScenario::sample_modal_transitions() {
     sample.completion_open = FPlayerControllerTestAccess::has_modal(*controller);
     sample.completion_rejects_activation = rejects_activation();
     sample.completion_suspended =
-        orchestrator.get_state() == sim::OrchestratorState::Paused &&
+        orchestrator.get_state() == sim::LevelState::Paused &&
         controller->get_active_control_context() == ::ioj::levels::ControlContext::None;
     FPlayerControllerTestAccess::close_completion(*controller);
-    sample.completion_resumed = orchestrator.get_state() == sim::OrchestratorState::Running &&
+    sample.completion_resumed = orchestrator.get_state() == sim::LevelState::Running &&
                                 !FPlayerControllerTestAccess::has_modal(*controller) &&
                                 controller->is_observer_movement_enabled();
     sample.hud_restored = hud->GetVisibility() == visibility;
@@ -457,12 +457,11 @@ void FLevelLoaderScenario::sample_controller_lifecycle() {
     FPlayerControllerTestAccess::toggle_pause(*controller);
     controller->UnPossess();
     sample.unpossessed_while_paused =
-        orchestrator.get_state() == sim::OrchestratorState::Paused &&
-        !IsValid(controller->GetPawn()) &&
+        orchestrator.get_state() == sim::LevelState::Paused && !IsValid(controller->GetPawn()) &&
         controller->get_active_control_context() == ::ioj::levels::ControlContext::None;
     FPlayerControllerTestAccess::toggle_pause(*controller);
     sample.resumed_without_ship =
-        orchestrator.get_state() == sim::OrchestratorState::Running &&
+        orchestrator.get_state() == sim::LevelState::Running &&
         controller->get_active_control_context() == ::ioj::levels::ControlContext::None;
     controller->Possess(ship);
     sample.possession_enabled_ship =
@@ -472,11 +471,11 @@ void FLevelLoaderScenario::sample_controller_lifecycle() {
     controller->UnPossess();
     controller->Possess(ship);
     sample.possession_stayed_suspended =
-        orchestrator.get_state() == sim::OrchestratorState::Paused &&
+        orchestrator.get_state() == sim::LevelState::Paused &&
         controller->get_active_control_context() == ::ioj::levels::ControlContext::None;
     FPlayerControllerTestAccess::toggle_pause(*controller);
     sample.resumed_with_ship =
-        orchestrator.get_state() == sim::OrchestratorState::Running &&
+        orchestrator.get_state() == sim::LevelState::Running &&
         controller->get_active_control_context() == ::ioj::levels::ControlContext::Player;
     sample.bindings_restored = component->GetActionEventBindings().Num() == binding_count;
     control_sample_ = sample;

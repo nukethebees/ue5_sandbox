@@ -88,7 +88,8 @@ auto make_scheduled_battle() -> LevelSimInitData {
             (entity :id 'enemy :archetype 'capital-ship :team 'red :position '(1000 0 0)
               :spawn-at 0.21))))")};
     assert(definition);
-    SimClock clock;
+    LevelState level_state{LevelState::Uninitialised};
+    SimClock clock{level_state};
     clock.initialise(data.clock_settings);
     auto compiled{levels::compile_level(*definition, clock, data.capital_ships, data.turrets)};
     assert(compiled);
@@ -381,7 +382,8 @@ TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimu
     auto data{make_battle()};
     data.clock_settings.tick_rate = Frequency::make(10.0);
     data.capital_ships.max_health = ::ioj::settings::PositiveHealth::make(Health{100});
-    SimClock clock;
+    LevelState level_state{LevelState::Uninitialised};
+    SimClock clock{level_state};
     clock.initialise(data.clock_settings);
     auto compiled{levels::compile_level(*authored, clock, data.capital_ships, data.turrets)};
     ASSERT_TRUE(compiled);
@@ -430,7 +432,8 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
             {Team::Green,
              {ObjectiveName{"player"}, ObjectiveOutcome::Passed},
              TeamOutcome::Defeat}}};
-    SimClock clock;
+    LevelState level_state{LevelState::Uninitialised};
+    SimClock clock{level_state};
     clock.initialise(data.clock_settings);
     auto compiled{CompiledMission::compile(definition, {}, clock)};
     ASSERT_TRUE(compiled);
@@ -468,10 +471,10 @@ TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
     simulation.advance(dt * 1.25);
     simulation.stop_run_if_requested(
         {.stop_when_battle_resolved = true, .duration = Duration::make(dt * 2.0)});
-    EXPECT_EQ(simulation.get_state(), OrchestratorState::Running)
+    EXPECT_EQ(simulation.get_state(), LevelState::Running)
         << "Two living teams and time remaining keep the run active";
     simulation.stop_run_if_requested({.duration = Duration::make(dt)});
-    EXPECT_EQ(simulation.get_state(), OrchestratorState::Paused) << "Completed run is paused";
+    EXPECT_EQ(simulation.get_state(), LevelState::Paused) << "Completed run is paused";
     EXPECT_EQ(clock.get_completed_ticks().value(), std::uint64_t{1})
         << "Only one simulation tick completes";
     auto const record{simulation.take_finalized_telemetry_run()};
@@ -518,7 +521,7 @@ TEST(NativeSimulation, LevelTelemetryMissionCompletionTest) {
     simulation.advance(dt);
 
     auto const mission_result{simulation.take_player_team_completion()};
-    EXPECT_EQ(simulation.get_state(), OrchestratorState::Running)
+    EXPECT_EQ(simulation.get_state(), LevelState::Running)
         << "Taking the mission result does not pause simulation";
     ASSERT_TRUE(mission_result.has_value()) << "Simulation yields the completed mission";
 
@@ -855,14 +858,14 @@ TEST(NativeSimulation, WorldlessLevelSimulationTest) {
     LevelSim first{first_memory, std::move(first_data)};
     GameMemory second_memory;
     LevelSim second{second_memory, std::move(second_data)};
-    EXPECT_EQ(first.get_state(), OrchestratorState::Uninitialised)
+    EXPECT_EQ(first.get_state(), LevelState::Uninitialised)
         << "Construction leaves external setup open";
     first.advance(1.0);
     EXPECT_EQ(first.get_clock().get_completed_ticks().value(), std::uint64_t{0})
         << "Uninitialised simulation ignores elapsed time";
     first.finish_initialisation();
     second.finish_initialisation();
-    EXPECT_EQ(first.get_state(), OrchestratorState::Paused)
+    EXPECT_EQ(first.get_state(), LevelState::Paused)
         << "Finishing initialization pauses the simulation";
     EXPECT_EQ(first.get_level_telemetry_manager().get_state(),
               LevelTelemetryManager::State::Recording)
@@ -921,7 +924,7 @@ TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
     EXPECT_EQ(simulation.get_level_telemetry_manager().get_state(),
               LevelTelemetryManager::State::Recording)
         << "Finishing starts telemetry";
-    EXPECT_EQ(simulation.get_state(), OrchestratorState::Paused)
+    EXPECT_EQ(simulation.get_state(), LevelState::Paused)
         << "Finishing leaves the simulation paused";
     simulation.start();
 
@@ -933,7 +936,7 @@ TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
     auto const& clock{simulation.get_clock()};
     simulation.advance(4.0 * clock.get_tick_period());
     simulation.finalize_telemetry_run(LevelTelemetryRunEndReason::WorldEnd);
-    EXPECT_EQ(simulation.get_state(), OrchestratorState::Running)
+    EXPECT_EQ(simulation.get_state(), LevelState::Running)
         << "Interrupted telemetry finalization does not pause simulation";
 
     auto record{simulation.take_finalized_telemetry_run()};

@@ -24,11 +24,12 @@ preparation can reorder storage. Movement adds player and fighter candidates; th
 deduplicates them and refreshes the spatial index before overlap detection. Queries and temporary
 overlap results remain subject to the phase and scratch-lifetime contracts.
 
-Construction executes tick-zero events but leaves the level in `Initialisation`. The host may
-install static geometry before calling `finish_initialisation()`, which publishes entity lookups
-and the spatial index, begins telemetry and the mission in `StableSetup`, then leaves a paused
-level in `BetweenTicks`. Mission evaluation during a tick follows published deaths and precedes
-`ResolutionCommit`, while entity row mappings are still valid.
+Construction executes tick-zero events but leaves the level in `LevelState::Uninitialised`. The
+host may install static geometry before calling `finish_initialisation()`, which publishes entity lookups
+and the spatial index, begins telemetry and the mission in `LevelState::StableSetup`, then enters
+`LevelState::Paused`. The clock borrows that lifecycle state and remains in `BetweenTicks` during
+setup; its phase enum contains only the repeating tick cycle. Mission evaluation during a tick
+follows published deaths and precedes `ResolutionCommit`, while entity row mappings are still valid.
 
 Completion consumption and run stopping are explicit host operations after frame publication.
 `Mission::take_team_completion` consumes the pending batch and returns the first completion for

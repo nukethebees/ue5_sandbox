@@ -295,7 +295,8 @@ struct CollisionAgentStorage {
         CollisionGridTestAccess::finish(grid);
     }
 
-    SimClock clock;
+    LevelState level_state{LevelState::Running};
+    SimClock clock{level_state};
     EntityLedger ledger;
     CombatEvents combat_events{ledger};
     EntityTables entity_tables{clock};

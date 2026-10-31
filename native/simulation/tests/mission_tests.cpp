@@ -39,7 +39,8 @@ TEST(MissionAuthoring, RejectsInvalidConstrainedInputsBeforeRuntimeCompilation) 
 
 namespace {
 struct MissionTest : ::testing::Test {
-    SimClock clock;
+    LevelState level_state{LevelState::Uninitialised};
+    SimClock clock{level_state};
     EntityLedger ledger;
     Mission mission;
     std::vector<levels::EntityId> names;
@@ -255,7 +256,8 @@ using RunStopping = ::testing::TestWithParam<RunStopCase>;
 
 TEST_P(RunStopping, PreservesBattlePrecedenceFutureSpawnsAndDurationBoundaries) {
     auto const& test_case{GetParam()};
-    SimClock clock;
+    LevelState level_state{LevelState::Uninitialised};
+    SimClock clock{level_state};
     clock.initialise({.tick_rate = Frequency::make(4.0)});
     clock.completed_ticks = test_case.completed_ticks;
     EntityLedger ledger;

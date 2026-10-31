@@ -28,9 +28,10 @@ are still live. Destroy the proxies before harvesting static geometry so their c
 not become a second, static representation of simulated entities.
 
 Install the harvested bounds before `LevelSim::finish_initialisation()`. That boundary publishes
-lookup rows and the spatial index, enters `StableSetup`, initializes telemetry and the mission,
-then enters `BetweenTicks` in the paused state. Initialize presentation and HUD afterward, then
-activate controls and apply the requested start mode. Proxy turret transforms retain authored
+lookup rows and the spatial index, enters `LevelState::StableSetup`, initializes telemetry and the
+mission, then enters `LevelState::Paused`. Its clock stays in `BetweenTicks` throughout setup.
+Initialize presentation and HUD afterward, then activate controls and apply the requested start
+mode. Proxy turret transforms retain authored
 scale; authored levels derive initial turret transforms from the initialized native state.
 
 A running Unreal frame advances the native fixed ticks before presenting the completed frame.

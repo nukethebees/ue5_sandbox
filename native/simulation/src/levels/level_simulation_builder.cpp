@@ -185,7 +185,8 @@ auto make_level_simulation_init_data(levels::LevelDefinition const& definition,
             inputs.player->health = {health, health};
         }
     }
-    SimClock clock;
+    LevelState level_state{LevelState::Uninitialised};
+    SimClock clock{level_state};
     clock.initialise(inputs.clock_settings);
     auto compiled{levels::compile_level(definition, clock, inputs.capital_ships, inputs.turrets)};
     if (!compiled) {

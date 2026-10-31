@@ -98,7 +98,7 @@ void ATestBatchOrchestrator::start_simulation() {
     if (!level_simulation_.IsSet() && !begin_play()) {
         return;
     }
-    if (get_state() != ioj::sim::OrchestratorState::Paused) {
+    if (get_state() != ioj::sim::LevelState::Paused) {
         UE_LOG(LogSandbox, Error, TEXT("Cannot start a simulation that is not paused"));
         return;
     }
@@ -168,14 +168,14 @@ auto ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) -> 
     return true;
 }
 void ATestBatchOrchestrator::set_start_mode(EOrchestratorStartMode const mode) {
-    if (get_state() != ioj::sim::OrchestratorState::Uninitialised) {
+    if (get_state() != ioj::sim::LevelState::Uninitialised) {
         UE_LOG(LogSandbox, Error, TEXT("Cannot change start mode after simulation initialisation"));
         return;
     }
     start_mode = mode;
 }
 void ATestBatchOrchestrator::set_presentation_enabled(bool const enabled) {
-    if (get_state() != ioj::sim::OrchestratorState::Uninitialised) {
+    if (get_state() != ioj::sim::LevelState::Uninitialised) {
         UE_LOG(
             LogSandbox, Error, TEXT("Cannot change presentation after simulation initialisation"));
         return;
@@ -215,7 +215,7 @@ void ATestBatchOrchestrator::clear_player_ship() {
 // Level preparation and startup
 /* **************************************** */
 auto ATestBatchOrchestrator::prepare_level(ioj::levels::LevelSource const* const source) -> bool {
-    check(get_state() == ioj::sim::OrchestratorState::Uninitialised);
+    check(get_state() == ioj::sim::LevelState::Uninitialised);
     if (prepared_level_.IsSet() && !source) {
         return true;
     }
@@ -258,8 +258,8 @@ auto ATestBatchOrchestrator::load_level(
         errors.errors.Add({.code = code, .message = MoveTemp(message)});
         return std::unexpected{MoveTemp(errors)};
     }};
-    if (get_state() != ioj::sim::OrchestratorState::Uninitialised) {
-        return fail(ioj::ELevelLoadErrorCode::InvalidOrchestratorState,
+    if (get_state() != ioj::sim::LevelState::Uninitialised) {
+        return fail(ioj::ELevelLoadErrorCode::InvalidLevelState,
                     TEXT("Level loader requires an uninitialised orchestrator"));
     }
     auto* const world{GetWorld()};
@@ -457,7 +457,7 @@ void ATestBatchOrchestrator::Tick(float dt) {
     tick(static_cast<time_type>(dt));
 }
 void ATestBatchOrchestrator::tick(time_type const dt) {
-    if (get_state() != ioj::sim::OrchestratorState::Running) {
+    if (get_state() != ioj::sim::LevelState::Running) {
         return;
     }
 

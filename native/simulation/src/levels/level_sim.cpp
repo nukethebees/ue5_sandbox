@@ -46,7 +46,7 @@ LevelSim::LevelSim(GameMemory& game_memory, LevelSimInitData data)
     event_manager_.execute_tick(SimTick{});
 }
 void LevelSim::finish_initialisation() {
-    assert(state_ == OrchestratorState::Uninitialised);
+    assert(state_ == LevelState::Uninitialised);
 
     if (player_ship_simulation_) {
         player_ship_simulation_->update_entity_lookup_table();
@@ -57,7 +57,7 @@ void LevelSim::finish_initialisation() {
     spinners_simulation_.update_entity_lookup_table();
     refresh_spatial_index();
 
-    clock_.transition_to(SimulationPhase::StableSetup);
+    state_ = LevelState::StableSetup;
 
     level_telemetry_manager_.initialise();
     {
@@ -70,16 +70,15 @@ void LevelSim::finish_initialisation() {
                         &frame_memory});
     }
 
-    state_ = OrchestratorState::Paused;
-    clock_.transition_to(SimulationPhase::BetweenTicks);
+    state_ = LevelState::Paused;
 }
 void LevelSim::start() {
-    assert(state_ == OrchestratorState::Paused);
-    state_ = OrchestratorState::Running;
+    assert(state_ == LevelState::Paused);
+    state_ = LevelState::Running;
 }
 void LevelSim::pause() {
-    assert(state_ != OrchestratorState::Uninitialised);
-    state_ = OrchestratorState::Paused;
+    assert(state_ == LevelState::Paused || state_ == LevelState::Running);
+    state_ = LevelState::Paused;
 }
 
 /* **************************************** */
@@ -115,7 +114,7 @@ void LevelSim::set_telemetry_metadata(LevelTelemetryRunMetadata metadata) {
     level_telemetry_manager_.set_run_metadata(std::move(metadata));
 }
 void LevelSim::set_static_collision(std::span<collision::WorldAABB const> bounds) {
-    assert(state_ == OrchestratorState::Uninitialised);
+    assert(state_ == LevelState::Uninitialised);
     collision_pipeline_.set_static_collision(bounds);
 }
 
@@ -127,10 +126,10 @@ void LevelSim::finalize_telemetry_run(LevelTelemetryRunEndReason const reason) {
 }
 void LevelSim::stop_run(LevelTelemetryRunEndReason const reason) {
     level_telemetry_manager_.finalize(reason);
-    state_ = OrchestratorState::Paused;
+    state_ = LevelState::Paused;
 }
 void LevelSim::stop_run_if_requested(RunStopConditions const& conditions) {
-    if (state_ != OrchestratorState::Running) {
+    if (state_ != LevelState::Running) {
         return;
     }
 
@@ -159,7 +158,7 @@ auto LevelSim::take_finalized_telemetry_run() -> std::optional<LevelTelemetryRun
 /* **************************************** */
 void LevelSim::advance(time_type const dt) {
     SANDBOX_PROFILE_SCOPE("LevelSim::advance");
-    if (state_ != OrchestratorState::Running) {
+    if (state_ != LevelState::Running) {
         return;
     }
 
@@ -182,7 +181,7 @@ void LevelSim::advance(time_type const dt) {
 
         profiling::mark_frame("Simulation");
         clock_.transition_to(SimulationPhase::BetweenTicks);
-        if (state_ != OrchestratorState::Running) {
+        if (state_ != LevelState::Running) {
             break;
         }
     }

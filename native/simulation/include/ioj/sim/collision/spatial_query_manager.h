@@ -28,8 +28,8 @@ class FrameMemoryResource;
 }
 
 namespace ioj::sim {
-// Entity queries require published lookup rows and a current grid: StableSetup, Thinking,
-// Action, or pre-compaction Resolution. Neither is valid between ticks.
+// Entity queries require published lookup rows and a current grid: LevelState::StableSetup,
+// Thinking, Action, or pre-compaction Resolution. Neither is valid between ticks.
 struct SpatialQueryManager {
   public:
     /* **************************************** */

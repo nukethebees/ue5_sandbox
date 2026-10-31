@@ -37,18 +37,23 @@ TEST(SimulationPhases, RejectsBackwardsTransitionsAndSkippedStages) {
         SimClock::permits_transition(SimulationPhase::Thinking, SimulationPhase::Preparation));
     EXPECT_FALSE(
         SimClock::permits_transition(SimulationPhase::Thinking, SimulationPhase::Resolution));
-    EXPECT_FALSE(SimClock::permits_transition(SimulationPhase::Initialisation,
-                                              SimulationPhase::BetweenTicks));
+    EXPECT_FALSE(
+        SimClock::permits_transition(SimulationPhase::BetweenTicks, SimulationPhase::Thinking));
 }
 
 TEST(SimulationPhases, AllowsStableSetupAndSuccessiveTicks) {
-    SimClock clock;
+    LevelState level_state{LevelState::Uninitialised};
+    SimClock clock{level_state};
     EXPECT_FALSE(is_lookup_allowed(clock));
-    clock.transition_to(SimulationPhase::StableSetup);
+    EXPECT_TRUE(is_preparation_mutation_allowed(clock));
+    EXPECT_EQ(clock.phase(), SimulationPhase::BetweenTicks);
+    level_state = LevelState::StableSetup;
     EXPECT_TRUE(is_lookup_allowed(clock));
     EXPECT_FALSE(is_structural_mutation_allowed(clock));
-    clock.transition_to(SimulationPhase::BetweenTicks);
+    level_state = LevelState::Paused;
     EXPECT_FALSE(is_lookup_allowed(clock));
+    EXPECT_FALSE(is_structural_mutation_allowed(clock));
+    level_state = LevelState::Running;
     for (int tick{}; tick < 2; ++tick) {
         clock.transition_to(SimulationPhase::Preparation);
         EXPECT_FALSE(is_lookup_allowed(clock));
@@ -69,6 +74,17 @@ TEST(SimulationPhases, AllowsStableSetupAndSuccessiveTicks) {
         EXPECT_FALSE(is_lookup_allowed(clock));
         EXPECT_FALSE(is_structural_mutation_allowed(clock));
     }
+
+    clock.advance_to(SimulationPhase::Thinking);
+    clock.advance_to(SimulationPhase::Thinking);
+    EXPECT_EQ(clock.phase(), SimulationPhase::Thinking);
+    EXPECT_EQ(clock.get_completed_ticks(), SimTick{});
+    level_state = LevelState::Paused;
+    EXPECT_FALSE(is_lookup_allowed(clock));
+    EXPECT_FALSE(is_structural_mutation_allowed(clock));
+    level_state = LevelState::Stopped;
+    EXPECT_FALSE(is_lookup_allowed(clock));
+    EXPECT_FALSE(is_structural_mutation_allowed(clock));
 }
 
 }

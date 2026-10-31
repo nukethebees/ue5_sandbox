@@ -20,7 +20,8 @@ auto defence_mission(LevelSimInitData const& data) -> CompiledMission {
                              {levels::EntityDestroyedExpr{levels::EntityId{"defended"}}}},
              .roots = levels::ObjectiveRoots{
                  std::array<levels::ExprIndex, 3>{0, 1, levels::absent_expression}}}}};
-    SimClock clock;
+    LevelState level_state{LevelState::Uninitialised};
+    SimClock clock{level_state};
     clock.initialise(data.clock_settings);
     auto compiled{CompiledMission::compile(
         definition, std::array{levels::EntityId{"defended"}, levels::EntityId{"enemy"}}, clock)};

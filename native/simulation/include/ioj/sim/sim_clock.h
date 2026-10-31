@@ -2,6 +2,7 @@
 
 #include <ioj/settings/tick_settings.h>
 #include <ioj/sim/fixed_tick_loop.h>
+#include <ioj/sim/levels/level_state.h>
 #include <ioj/sim/sim_time.h>
 #include <ioj/sim/simulation_phase.h>
 
@@ -13,6 +14,10 @@ namespace ioj::sim {
 struct SimClock {
     using tick_type = SimTick;
     using time_type = SimTime;
+
+    // The lifecycle state must outlive the clock.
+    explicit SimClock(LevelState const& level_state) noexcept
+        : level_state_{level_state} {}
 
     void initialise(settings::TickSettings const& settings) {
         tick_loop = {.tick_rate = settings.tick_rate, .time_scale = settings.time_scale};
@@ -36,9 +41,8 @@ struct SimClock {
     auto get_time_scale() const noexcept -> PositiveFinite<time_type> {
         return tick_loop.time_scale;
     }
+    auto get_level_state() const noexcept -> LevelState { return level_state_; }
 
-    FixedTickLoop tick_loop{};
-    tick_type completed_ticks{};
     [[nodiscard]] auto phase() const noexcept -> SimulationPhase { return phase_; }
 
     [[nodiscard]] static constexpr auto permits_transition(SimulationPhase const from,
@@ -53,10 +57,8 @@ struct SimClock {
     }
 
     // Advances phase state only; revisiting the current phase traverses a full cycle.
-    // Initialisation cannot be revisited, and StableSetup is only reachable from Initialisation.
     void advance_to(SimulationPhase const next) noexcept {
-        assert(next != SimulationPhase::Initialisation);
-        assert(next != SimulationPhase::StableSetup || phase_ == SimulationPhase::Initialisation);
+        assert(std::to_underlying(next) <= std::to_underlying(SimulationPhase::BetweenTicks));
 
         do {
             phase_ = next_phase(phase_);
@@ -66,27 +68,18 @@ struct SimClock {
   private:
     [[nodiscard]] static constexpr auto next_phase(SimulationPhase const phase) noexcept
         -> SimulationPhase {
-        switch (phase) {
-            case SimulationPhase::Initialisation:
-                return SimulationPhase::StableSetup;
-            case SimulationPhase::StableSetup:
-                return SimulationPhase::BetweenTicks;
-            case SimulationPhase::BetweenTicks:
-                return SimulationPhase::Preparation;
-            case SimulationPhase::Preparation:
-                return SimulationPhase::Thinking;
-            case SimulationPhase::Thinking:
-                return SimulationPhase::Action;
-            case SimulationPhase::Action:
-                return SimulationPhase::Resolution;
-            case SimulationPhase::Resolution:
-                return SimulationPhase::ResolutionCommit;
-            case SimulationPhase::ResolutionCommit:
-                return SimulationPhase::BetweenTicks;
-        }
-        std::unreachable();
+        auto const value{std::to_underlying(phase)};
+        assert(value <= std::to_underlying(SimulationPhase::BetweenTicks));
+        return phase == SimulationPhase::BetweenTicks ? SimulationPhase::Preparation
+                                                      : static_cast<SimulationPhase>(value + 1);
     }
 
-    SimulationPhase phase_{SimulationPhase::Initialisation};
+  public:
+    FixedTickLoop tick_loop{};
+    tick_type completed_ticks{};
+
+  private:
+    LevelState const& level_state_;
+    SimulationPhase phase_{SimulationPhase::BetweenTicks};
 };
 } // namespace ioj::sim

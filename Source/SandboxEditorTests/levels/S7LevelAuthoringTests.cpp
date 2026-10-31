@@ -1710,7 +1710,7 @@ TEST_CLASS(S7PlayableLevel, "Sandbox.UnitTests")
                 auto& orchestrator{**it};
                 if (!TestRunner->TestTrue(TEXT("Authored simulation starts"),
                                           orchestrator.get_state() ==
-                                              ::ioj::sim::OrchestratorState::Running)) {
+                                              ::ioj::sim::LevelState::Running)) {
                     return;
                 }
                 orchestrator.SetActorTickEnabled(false);

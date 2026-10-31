@@ -45,7 +45,7 @@ void WorldlessSimulationTest::queue_kills(std::span<EntityId const> const target
 
 auto WorldlessSimulationTest::run_until_timeline_finished(time_type const maximum_time) -> bool {
     assert(maximum_time > 0.0);
-    assert(simulation_.get_state() == OrchestratorState::Paused);
+    assert(simulation_.get_state() == LevelState::Paused);
     simulation_.start();
     auto const tick_period{simulation_.get_clock().get_tick_period()};
     auto const maximum_ticks{

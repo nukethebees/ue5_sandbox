@@ -196,7 +196,8 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         data.player = player;
     }
 
-    sim::SimClock compilation_clock;
+    sim::LevelState compilation_level_state{sim::LevelState::Uninitialised};
+    sim::SimClock compilation_clock{compilation_level_state};
     compilation_clock.initialise(data.clock_settings);
     auto compiled{
         levels::compile_level(level, compilation_clock, data.capital_ships, data.turrets)};

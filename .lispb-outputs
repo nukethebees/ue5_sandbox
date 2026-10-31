@@ -129,6 +129,7 @@ native/simulation/include/ioj/sim/levels/level_capital_spawn_events.h
 native/simulation/include/ioj/sim/levels/level_event_count.h
 native/simulation/include/ioj/sim/levels/level_spawn_groups.h
 native/simulation/include/ioj/sim/levels/level_spinner_spawn_events.h
+native/simulation/include/ioj/sim/levels/level_state.h
 native/simulation/include/ioj/sim/levels/level_turret_spawn_events.h
 native/simulation/include/ioj/sim/missions/condition_type.h
 native/simulation/include/ioj/sim/missions/expr_ref.h
@@ -146,7 +147,6 @@ native/simulation/include/ioj/sim/player/player_presentation_state.h
 native/simulation/include/ioj/sim/player/player_resource_state.h
 native/simulation/include/ioj/sim/player/player_simulation_state.h
 native/simulation/include/ioj/sim/player/space_ship_common.h
-native/simulation/include/ioj/sim/sim_state.h
 native/simulation/include/ioj/sim/sim_tick.h
 native/simulation/include/ioj/sim/simulation_phase.h
 native/simulation/include/ioj/sim/spinners/phase_interface.h

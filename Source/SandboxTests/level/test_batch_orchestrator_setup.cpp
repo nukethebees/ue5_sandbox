@@ -35,7 +35,7 @@ void FTestBatchOrchestratorSetupScenario::prepare_level() {
         auto& world{context_.world};
 
         TestRunner->TestTrue(TEXT("Paused test start mode defers orchestrator initialisation"),
-                             orchestrator->get_state() == sim::OrchestratorState::Uninitialised);
+                             orchestrator->get_state() == sim::LevelState::Uninitialised);
         TestRunner->TestFalse(TEXT("Uninitialised orchestrator does not tick"),
                               orchestrator->IsActorTickEnabled());
 
@@ -57,7 +57,7 @@ void FTestBatchOrchestratorSetupScenario::prepare_level() {
         orchestrator->start_simulation();
 
         TestRunner->TestTrue(TEXT("Starting transitions the orchestrator to running"),
-                             orchestrator->get_state() == sim::OrchestratorState::Running);
+                             orchestrator->get_state() == sim::LevelState::Running);
         TestRunner->TestTrue(TEXT("Running orchestrator ticks"),
                              orchestrator->IsActorTickEnabled());
         TestRunner->TestEqual(TEXT("Starting does not immediately advance simulation"),

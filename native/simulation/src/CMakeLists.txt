@@ -11,7 +11,6 @@ set(simulation_headers
   overlap_handler.h
   profiling.h
   sim_clock.h
-  sim_state.h
   sim_tick.h
   sim_time.h
   step_response.h
@@ -92,6 +91,7 @@ set(levels_headers
   level_memory_manager.h
   level_read_access.h
   level_sim.h
+  level_state.h
   reference_level_simulation_data.h
 )
 

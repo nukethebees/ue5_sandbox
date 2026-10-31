@@ -40,7 +40,8 @@ namespace ioj::sim::tests {
 TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
 
     using Access = spinners::SpinnerSpawnTestAccess;
-    SimClock clock;
+    LevelState level_state{LevelState::Uninitialised};
+    SimClock clock{level_state};
     EntityLedger ledger;
     CombatEvents combat_events{ledger};
     EntityTables tables{clock};

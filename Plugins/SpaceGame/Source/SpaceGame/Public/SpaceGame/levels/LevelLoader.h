@@ -16,7 +16,7 @@ namespace ioj {
 enum class ELevelLoadErrorCode : uint8 {
     InvalidDefinition,
     InvalidWorld,
-    InvalidOrchestratorState,
+    InvalidLevelState,
     InvalidLevelConfig,
     MissingInfrastructure,
     ExistingLevelActors,

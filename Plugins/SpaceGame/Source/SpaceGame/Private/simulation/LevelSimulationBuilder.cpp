@@ -353,7 +353,8 @@ static auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& c
     if (mission_definition.level_display_name.IsEmpty()) {
         mission_definition.level_display_name = mission_definition.level_id.ToString();
     }
-    sim::SimClock clock;
+    sim::LevelState level_state{sim::LevelState::Uninitialised};
+    sim::SimClock clock{level_state};
     clock.initialise(build.data.clock_settings);
     auto mission{compile_proxy_mission(mission_definition, entity_indices, clock)};
     if (!mission) {

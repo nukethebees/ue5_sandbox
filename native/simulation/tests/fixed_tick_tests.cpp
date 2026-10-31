@@ -64,7 +64,8 @@ TEST(SimulationClock, ConvertsDurationsAndFrequencies) {
 }
 
 TEST(SimulationClock, InitialisesRuntimeStateFromStaticSettings) {
-    SimClock clock;
+    LevelState level_state{LevelState::Uninitialised};
+    SimClock clock{level_state};
     clock.tick_loop.accumulator = 1.0;
     clock.completed_ticks = SimTick{17};
     clock.initialise(

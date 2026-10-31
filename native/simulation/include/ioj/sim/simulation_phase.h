@@ -10,12 +10,10 @@ using SimulationPhaseUnderlying = std::uint8_t;
 
 // Logical bit width: 3.
 enum class SimulationPhase : SimulationPhaseUnderlying {
-    StableSetup,
+    Preparation,
     Thinking,
     Action,
     Resolution,
-    Initialisation,
-    Preparation,
     ResolutionCommit,
     BetweenTicks,
 };
