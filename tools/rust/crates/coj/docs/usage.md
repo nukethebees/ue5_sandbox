@@ -133,7 +133,7 @@ without building or packaging. Its working directory is the staged directory.
 
 `coj unreal --help` lists explicit asset commands. They build `editor` and any additional
 material compilation target before invoking existing commandlets. Mesh shapes use
-`coj unreal generate-lab-mesh <shape>`. See the [asset commands](../../../../../docs/build-and-test.md#packaging-and-asset-maintenance).
+`coj unreal generate-lab-mesh <shape>`. See the [asset commands](../../../../../docs/build-and-test.md#packaging-and-assets).
 
 `coj benchmark <operation> [options]` builds `benchmark-tools-host` in the native tree
 and delegates all arguments to that revision-local tool. Workloads and reports remain in
