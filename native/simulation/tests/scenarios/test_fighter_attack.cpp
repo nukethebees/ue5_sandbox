@@ -186,7 +186,6 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationClearPath) {
     Vector3f first_location{};
     Vector3f last_location{};
     bool recorded_first{};
-    bool recorded_first_movement{};
     bool scanned_before_first_movement{};
     bool saw_separation{};
     bool saw_avoidance{};
@@ -199,18 +198,10 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationClearPath) {
         if (!recorded_first) {
             first_location = last_location;
             recorded_first = true;
-            recorded_first_movement = true;
             scanned_before_first_movement =
                 fighters.get_navigation_telemetry().hard_trace_count > 0;
         }
         auto const& telemetry{fighters.get_navigation_telemetry()};
-        if (!recorded_first_movement &&
-            !(std::abs(last_location.x() - first_location.x()) <= 1.e-4f &&
-              std::abs(last_location.y() - first_location.y()) <= 1.e-4f &&
-              std::abs(last_location.z() - first_location.z()) <= 1.e-4f)) {
-            recorded_first_movement = true;
-            scanned_before_first_movement = telemetry.hard_trace_count > 0;
-        }
         saw_separation = saw_separation || telemetry.separating_fighter_count > 0;
         saw_avoidance = saw_avoidance || telemetry.avoiding_fighter_count > 0;
     };

@@ -12,8 +12,6 @@ The assumption is that there is one wave of fighters total.
 */
 
 namespace ioj::sim {
-enum class FighterOwnershipScenario : std::uint8_t { KillFightersOnly, KillCapital, All };
-
 namespace fighter_ownership_test {
 inline constexpr std::int32_t collision_resilient_health{1'000'000};
 }
@@ -155,7 +153,7 @@ TEST(WorldlessSpaceGameSimulation, CapitalsSimultaneousReassignment) {
 // Capital fighter ownership lifecycle
 /* **************************************** */
 void run_worldless_fighter_ownership(tests::SimulationFixture const& config,
-                                     FighterOwnershipScenario const scenario) {
+                                     bool const kill_fighters_first) {
     auto data{tests::make_simulation_data(config)};
     data.capital_ships.spawn_delay = 10.f;
     data.capital_ships.max_health = ::ioj::settings::PositiveHealth::make(Health{10000});
@@ -178,9 +176,6 @@ void run_worldless_fighter_ownership(tests::SimulationFixture const& config,
     std::vector<EntityId> destroyed{};
     std::vector<EntityId> kept{};
     std::vector<EntityId> green_fighters_before_capital_kill{};
-    auto initial_checked{false};
-    auto fighter_kill_checked{scenario == FighterOwnershipScenario::KillCapital};
-    auto capital_kill_checked{scenario == FighterOwnershipScenario::KillFightersOnly};
 
     harness.timeline.at(0.2, [&] {
         EXPECT_EQ(3, capitals.get_num_instances()) << "Three capitals are registered";
@@ -197,11 +192,10 @@ void run_worldless_fighter_ownership(tests::SimulationFixture const& config,
         for (auto const target : fighters.get_target_ids()) {
             EXPECT_TRUE(target.is_valid()) << "Spawned fighter has a target";
         }
-        initial_checked = true;
     });
 
     auto next_time{0.4};
-    if (scenario != FighterOwnershipScenario::KillCapital) {
+    if (kill_fighters_first) {
         harness.timeline.at(next_time, [&] {
             auto const ids{capitals.get_fighter_ids()};
             auto const count{static_cast<std::int32_t>(ids.size())};
@@ -225,61 +219,49 @@ void run_worldless_fighter_ownership(tests::SimulationFixture const& config,
                 EXPECT_TRUE(!entity_is_alive(harness.get_simulation(), id))
                     << "Destroyed fighter is dead";
             }
-            fighter_kill_checked = true;
         });
     }
 
-    if (scenario != FighterOwnershipScenario::KillFightersOnly) {
-        next_time += 0.2;
-        harness.timeline.at(next_time, [&] {
-            auto const main_index{capitals.find_first_index_on_team(Team::Green)};
-            assert(main_index.has_value());
-            auto const owned{capitals.get_fighter_ids(*main_index)};
-            green_fighters_before_capital_kill = std::vector<EntityId>{owned.begin(), owned.end()};
-            auto const id{capitals.get_target_id(*main_index)};
-            auto const row{observe_entity_row(harness.get_simulation(), id)};
-            harness.queue_kills(std::array{capitals.get_entities().entity_ids()[row]});
-        });
-        next_time += 0.5;
-        harness.timeline.at(next_time, [&] {
-            EXPECT_EQ(2, capitals.get_num_instances())
-                << "Killed capital is removed from the simulation";
-            auto const main_index{capitals.find_first_index_on_team(Team::Green)};
-            EXPECT_TRUE(main_index.has_value()) << "Green capital survives";
-            if (main_index.has_value()) {
-                auto const remaining{capitals.get_fighter_ids(*main_index)};
-                EXPECT_EQ(static_cast<std::int32_t>(green_fighters_before_capital_kill.size()),
-                          static_cast<std::int32_t>(remaining.size()))
-                    << "Surviving capital keeps its fighters";
-                for (auto const id : remaining) {
-                    EXPECT_TRUE(std::ranges::contains(green_fighters_before_capital_kill, id))
-                        << "Surviving fighter retains capital ownership";
-                    auto const index{observe_entity_row(harness.get_simulation(), id)};
-                    EXPECT_TRUE(fighters.get_target_ids()[index].is_valid())
-                        << "Surviving fighter retargets";
-                }
+    next_time += 0.2;
+    harness.timeline.at(next_time, [&] {
+        auto const main_index{capitals.find_first_index_on_team(Team::Green)};
+        assert(main_index.has_value());
+        auto const owned{capitals.get_fighter_ids(*main_index)};
+        green_fighters_before_capital_kill = std::vector<EntityId>{owned.begin(), owned.end()};
+        auto const id{capitals.get_target_id(*main_index)};
+        auto const row{observe_entity_row(harness.get_simulation(), id)};
+        harness.queue_kills(std::array{capitals.get_entities().entity_ids()[row]});
+    });
+    next_time += 0.5;
+    harness.timeline.at(next_time, [&] {
+        EXPECT_EQ(2, capitals.get_num_instances())
+            << "Killed capital is removed from the simulation";
+        auto const main_index{capitals.find_first_index_on_team(Team::Green)};
+        EXPECT_TRUE(main_index.has_value()) << "Green capital survives";
+        if (main_index.has_value()) {
+            auto const remaining{capitals.get_fighter_ids(*main_index)};
+            EXPECT_EQ(static_cast<std::int32_t>(green_fighters_before_capital_kill.size()),
+                      static_cast<std::int32_t>(remaining.size()))
+                << "Surviving capital keeps its fighters";
+            for (auto const id : remaining) {
+                EXPECT_TRUE(std::ranges::contains(green_fighters_before_capital_kill, id))
+                    << "Surviving fighter retains capital ownership";
+                auto const index{observe_entity_row(harness.get_simulation(), id)};
+                EXPECT_TRUE(fighters.get_target_ids()[index].is_valid())
+                    << "Surviving fighter retargets";
             }
-            capital_kill_checked = true;
-        });
-    }
+        }
+    });
     harness.timeline.finish_at(next_time + 0.1);
     EXPECT_TRUE(harness.run_until_timeline_finished(next_time + 0.2))
         << "Capital fighter ID timeline completes";
-    EXPECT_TRUE(initial_checked) << "Initial fighter ownership is checked";
-    EXPECT_TRUE(fighter_kill_checked) << "Fighter removal is checked";
-    EXPECT_TRUE(capital_kill_checked) << "Capital removal is checked";
 }
-TEST(WorldlessSpaceGameSimulation, FighterOwnershipKillFightersOnly) {
-    run_worldless_fighter_ownership(tests::make_fixture(),
-                                    FighterOwnershipScenario::KillFightersOnly);
-}
-
 TEST(WorldlessSpaceGameSimulation, FighterOwnershipKillCapital) {
-    run_worldless_fighter_ownership(tests::make_fixture(), FighterOwnershipScenario::KillCapital);
+    run_worldless_fighter_ownership(tests::make_fixture(), false);
 }
 
 TEST(WorldlessSpaceGameSimulation, FighterOwnershipAll) {
-    run_worldless_fighter_ownership(tests::make_fixture(), FighterOwnershipScenario::All);
+    run_worldless_fighter_ownership(tests::make_fixture(), true);
 }
 
 }

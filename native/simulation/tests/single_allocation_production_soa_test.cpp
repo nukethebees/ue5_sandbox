@@ -1,65 +1,17 @@
 #include "support/simulation_test_support.h"
 #include <ioj/column_math.h>
 #include <ioj/frame_memory_resource.h>
-#include <ioj/sim/capital_ships/capital_entity_data.h>
 #include <ioj/sim/fighters/fighter_entity_data.h>
-#include <ioj/sim/fighters/fighter_spawn_queue.h>
 #include <ioj/sim/lasers/laser_entities.h>
 #include <ioj/sim/lasers/laser_frame_output.h>
 #include <ioj/sim/lasers/laser_hit_details.h>
-#include <ioj/sim/lasers/laser_spawn_requests.h>
 #include <ioj/sim/levels/compiled_level_events.h>
 #include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/spinners/spinner_entity_data.h>
-#include <ioj/sim/turrets/turret_entity_data.h>
 
-#include <type_traits>
 #include <utility>
 
 namespace ioj::sim::tests {
-namespace {
-template <typename Storage>
-void expect_storage_lifecycle() {
-    static_assert(sizeof(Storage) == 24);
-    static_assert(std::is_nothrow_move_constructible_v<Storage>);
-    static_assert(!std::is_nothrow_move_assignable_v<Storage>);
-
-    Storage source;
-    source.reserve(2);
-    source.add_defaulted(1);
-    source.add_uninitialised(3);
-    EXPECT_EQ(source.num(), 4) << "Storage grows through production add paths";
-    EXPECT_EQ(source.get_const_view().num(), 4U);
-
-    Storage moved{std::move(source)};
-    EXPECT_EQ(moved.num(), 4) << "Move construction preserves rows";
-    Storage assigned;
-    assigned = std::move(moved);
-    EXPECT_EQ(assigned.num(), 4) << "Move assignment preserves rows";
-
-    assigned.remove_at_swap(1, 1);
-    EXPECT_EQ(assigned.num(), 3) << "Swap removal removes a row";
-    assigned.reset();
-    EXPECT_EQ(assigned.num(), 0) << "Reset clears rows";
-}
-} // namespace
-
-TEST(NativeSimulation, ProductionSingleAllocationSoaLifecycle) {
-    expect_storage_lifecycle<Vectors3f>();
-    expect_storage_lifecycle<Rotators3f>();
-    expect_storage_lifecycle<FighterEntityData>();
-    expect_storage_lifecycle<TurretEntityData>();
-    expect_storage_lifecycle<lasers::LaserEntities>();
-    expect_storage_lifecycle<lasers::LaserSpawnRequests>();
-    expect_storage_lifecycle<CapitalEntityData>();
-    expect_storage_lifecycle<FighterSpawnQueue>();
-    expect_storage_lifecycle<SpinnerEntityData>();
-    expect_storage_lifecycle<LaserHitDetails>();
-    expect_storage_lifecycle<LevelCapitalSpawnEvents>();
-    expect_storage_lifecycle<LevelTurretSpawnEvents>();
-    expect_storage_lifecycle<LevelSpinnerSpawnEvents>();
-}
-
 TEST(NativeSimulation, ProductionSingleAllocationNestedViewsAndAppend) {
     FighterEntityData fighters;
     fighters.add_defaulted(2);

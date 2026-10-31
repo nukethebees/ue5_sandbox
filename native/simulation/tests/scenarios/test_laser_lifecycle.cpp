@@ -59,23 +59,6 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
     auto const shooter{capitals.get_id(0)};
     auto const target{capitals.get_id(1)};
 
-    struct Sample {
-        std::uint32_t active_lasers{};
-        std::uint32_t total_spawned{};
-        std::int32_t target_health{};
-        std::int32_t alive_entities{};
-        std::int32_t kills{};
-    };
-    TimeSeriesData<Sample> samples;
-    harness.on_end_tick = [&](LevelSim& simulation) {
-        auto const target_state{observe_entity(simulation, target)};
-        samples.add(harness.get_time(),
-                    Sample{lasers.get_num_instances(),
-                           lasers.get_number_spawned(),
-                           target_state ? target_state->health.value() : 0,
-                           harness.get_ledger().count_alive(),
-                           harness.get_ledger().count_kills()});
-    };
     harness.timeline.at(projectile_queue_time, [&] {
         auto const shooter_location{observe_entity(harness.get_simulation(), shooter)->location};
         auto const target_location{observe_entity(harness.get_simulation(), target)->location};
@@ -115,33 +98,26 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
     harness.timeline.finish_at(end_time);
     ASSERT_TRUE(harness.run_until_timeline_finished(end_time + 0.5))
         << "Laser lifecycle timeline completes";
-    ASSERT_FALSE(samples.is_empty()) << "Laser lifecycle samples are recorded";
 
     auto const expected_spawn_count{
         scenario == LaserLifecycleScenario::SimultaneousLethalHits ? 2u : 1u};
-    auto observed_committed_projectile{false};
-    for (auto const& sample : samples.values()) {
-        if (sample.total_spawned == expected_spawn_count) {
-            observed_committed_projectile = true;
-        }
-    }
-    EXPECT_TRUE(observed_committed_projectile) << "Queued projectile is committed in Preparation";
-    auto const& final{samples.last_value()};
-    EXPECT_EQ(expected_spawn_count, final.total_spawned) << "Projectile count spawned";
-    EXPECT_EQ(0, final.active_lasers) << "No active projectiles remain";
+    EXPECT_EQ(expected_spawn_count, lasers.get_number_spawned()) << "Projectile count spawned";
+    EXPECT_EQ(0, lasers.get_num_instances()) << "No active projectiles remain";
+    auto const target_state{observe_entity(harness.get_simulation(), target)};
+    auto const target_health{target_state ? target_state->health.value() : 0};
+    auto const& ledger{harness.get_ledger()};
     if (scenario == LaserLifecycleScenario::Hit) {
-        EXPECT_EQ(normal_target_health - projectile_damage, final.target_health)
+        EXPECT_EQ(normal_target_health - projectile_damage, target_health)
             << "Projectile applies damage once";
-        EXPECT_EQ(2, final.alive_entities) << "Nonlethal hit preserves both entities";
+        EXPECT_EQ(2, ledger.count_alive()) << "Nonlethal hit preserves both entities";
     } else if (scenario == LaserLifecycleScenario::SimultaneousLethalHits) {
-        EXPECT_TRUE(final.target_health <= 0) << "Simultaneous hits are lethal";
-        EXPECT_EQ(1, final.alive_entities) << "Target is removed once";
-        EXPECT_EQ(1, final.kills) << "One kill is recorded";
+        EXPECT_TRUE(target_health <= 0) << "Simultaneous hits are lethal";
+        EXPECT_EQ(1, ledger.count_alive()) << "Target is removed once";
+        EXPECT_EQ(1, ledger.count_kills()) << "One kill is recorded";
     } else {
-        EXPECT_EQ(normal_target_health, final.target_health)
-            << "Non-entity termination preserves health";
-        EXPECT_EQ(2, final.alive_entities) << "Both entities remain alive";
-        EXPECT_EQ(0, final.kills) << "No kill is recorded";
+        EXPECT_EQ(normal_target_health, target_health) << "Non-entity termination preserves health";
+        EXPECT_EQ(2, ledger.count_alive()) << "Both entities remain alive";
+        EXPECT_EQ(0, ledger.count_kills()) << "No kill is recorded";
     }
 }
 

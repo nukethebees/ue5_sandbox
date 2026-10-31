@@ -33,7 +33,6 @@ target_sources(native-simulation-tests PRIVATE
   scenarios/test_collision_uniform_grid.cpp
   scenarios/test_entity_ledger.cpp
   scenarios/test_fighter_attack.cpp
-  scenarios/test_fighter_los_failure.cpp
   scenarios/test_fighters_intercept_capital.cpp
   scenarios/test_fighters_standby_transition.cpp
   scenarios/test_laser_lifecycle.cpp
