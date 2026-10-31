@@ -59,6 +59,8 @@ class HealthConstView {
 class HealthView {
   public:
     HealthView() = default;
+    explicit HealthView(std::span<Health> const values) noexcept
+        : values_{values} {}
     [[nodiscard]] auto num() const noexcept -> std::uint32_t {
         return static_cast<std::uint32_t>(values_.size());
     }
@@ -77,9 +79,6 @@ class HealthView {
     }
     void copy_to(std::span<Health> const output) const { HealthConstView{values_}.copy_to(output); }
   private:
-    friend class HealthTable;
-    explicit HealthView(std::span<Health> values)
-        : values_{values} {}
     std::span<Health> values_;
 };
 
