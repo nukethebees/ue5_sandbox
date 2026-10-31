@@ -184,6 +184,11 @@ struct PackedValueBase {
 
     constexpr PackedValueBase() noexcept = default;
 
+  protected:
+    constexpr explicit PackedValueBase(storage_type const value) noexcept
+        : value_{canonical_raw(value)} {}
+
+  public:
     constexpr auto operator<=>(PackedValueBase const&) const noexcept = default;
 
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
