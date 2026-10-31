@@ -180,13 +180,12 @@ TEST(SimulationBenchmarkJson, EmitsStableSchemaAndEscapesStrings) {
     result.steady_state_fighters = 2000;
     result.minimum_measured_fighters = 2000;
     result.maximum_measured_fighters = 2000;
-    result.attacking_fighters = 2000;
     result.frame_memory_peak_payload_bytes = 123;
     result.frame_memory_total_root_claims = 456;
 
     auto const json{to_json(result)};
 
-    EXPECT_NE(json.find("\"schema_version\":2"), std::string::npos);
+    EXPECT_NE(json.find("\"schema_version\":3"), std::string::npos);
     EXPECT_NE(json.find("quote\\\"test.scm"), std::string::npos);
     EXPECT_NE(json.find("line\\nbreak"), std::string::npos);
     EXPECT_NE(json.find("\"ticks_per_second\":30"), std::string::npos);

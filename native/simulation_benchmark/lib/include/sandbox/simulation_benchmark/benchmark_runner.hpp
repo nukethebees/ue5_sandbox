@@ -42,9 +42,6 @@ struct BenchmarkResult {
     std::uint32_t maximum_measured_fighters{};
     std::uint32_t fighter_spawns_during_measurement{};
     std::uint32_t lasers_spawned_during_measurement{};
-    std::uint32_t standby_fighters{};
-    std::uint32_t moving_fighters{};
-    std::uint32_t attacking_fighters{};
     std::uint32_t initial_capital_ships{};
     std::uint32_t initial_turrets{};
     std::int32_t alive_entities{};

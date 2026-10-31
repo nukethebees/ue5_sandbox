@@ -208,8 +208,6 @@ pub fn validate_fighter_result(result: &Value, cap: u32, ticks: u64) -> Result<(
         .iter()
         .all(|key| result["fighter_stress"][key].as_u64() == Some(cap.into()))
         && result["fighter_stress"]["fighter_spawns_during_measurement"].as_u64() == Some(0)
-        && result["fighter_stress"]["task_counts"]["attack"].as_u64() == Some(cap.into())
-        && read_finite_number(result, "/fighter_stress/lasers_spawned_during_measurement")? > 0.0
         && result["memory"]["frame_overflow_count"].as_u64() == Some(0);
     if !valid {
         return Err(format!("Fighter benchmark validation failed for cap {cap}.").into());

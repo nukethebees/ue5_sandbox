@@ -162,7 +162,7 @@ impl NativeBenchmarkConfig {
     fn validate_native_result(&self, value: &Value, index: usize) -> Result<()> {
         let ticks = (self.seconds * 60.0).ceil() as u64;
 
-        if value["schema_version"] != 2
+        if value["schema_version"] != 3
             || value["workload"]["requested_ticks"].as_u64() != Some(ticks)
             || value["workload"]["completed_ticks"].as_u64() != Some(ticks)
             || value["workload"]["measured_ticks"].as_u64() != Some(ticks)

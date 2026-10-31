@@ -5,7 +5,6 @@
 #include <ioj/levels/authoring/level_parser.h>
 #include <ioj/rotator3d.h>
 #include <ioj/s7/simulation_settings_reader.h>
-#include <ioj/sim/fighters/fighter_task_format.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/reference_level_simulation_data.h>
 #include <ioj/sim/levels/simulation_settings.h>
@@ -274,7 +273,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
                             saturated_count)};
         }
 
-        auto const spawned_at_saturation{simulation.get_capital_ships().get_fighters_spawned()};
+        auto const spawned_at_saturation{simulation.get_fighters_spawned()};
         for (sim::SimTick tick{}; tick < warmup_ticks; tick.set_value(tick.value() + 1)) {
             auto const advanced{advance_one_tick()};
             if (!advanced) {
@@ -284,7 +283,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
                 return std::unexpected{"fighter population changed during post-saturation warm-up"};
             }
         }
-        if (simulation.get_capital_ships().get_fighters_spawned() != spawned_at_saturation) {
+        if (simulation.get_fighters_spawned() != spawned_at_saturation) {
             return std::unexpected{"replacement fighters spawned during post-saturation warm-up"};
         }
     }
@@ -292,8 +291,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     auto const steady_state_fighters{simulation.get_fighters().get_num_instances()};
     auto minimum_measured_fighters{steady_state_fighters};
     auto maximum_measured_fighters{steady_state_fighters};
-    auto const fighters_spawned_before_measurement{
-        simulation.get_capital_ships().get_fighters_spawned()};
+    auto const fighters_spawned_before_measurement{simulation.get_fighters_spawned()};
     auto const lasers_spawned_before_measurement{simulation.get_lasers().get_number_spawned()};
     FrameMemorySummary frame_summary;
     std::vector<double> tick_microseconds;
@@ -324,9 +322,8 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         }
     }
     auto const finished_at{std::chrono::steady_clock::now()};
-    auto const fighter_spawns_during_measurement{
-        simulation.get_capital_ships().get_fighters_spawned() -
-        fighters_spawned_before_measurement};
+    auto const fighter_spawns_during_measurement{simulation.get_fighters_spawned() -
+                                                 fighters_spawned_before_measurement};
     if (options.fighter_stress_cap.has_value() && fighter_spawns_during_measurement != 0) {
         return std::unexpected{"replacement fighters spawned during measured ticks"};
     }
@@ -344,10 +341,6 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     auto const elapsed{std::chrono::duration<double>{finished_at - started_at}.count()};
     auto const total_elapsed{std::chrono::duration<double>{finished_at - total_started_at}.count()};
     auto const timing_summary{summarize_tick_timings(std::move(tick_microseconds))};
-    auto const fighter_tasks{simulation.get_fighters().get_tasks()};
-    auto const count_task = [fighter_tasks](sim::FighterTask const task) {
-        return static_cast<std::uint32_t>(std::ranges::count(fighter_tasks, task));
-    };
     return BenchmarkResult{
         .level_path = options.level_path.generic_string(),
         .level_id = level_components.metadata().id.value,
@@ -376,9 +369,6 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         .fighter_spawns_during_measurement = fighter_spawns_during_measurement,
         .lasers_spawned_during_measurement =
             simulation.get_lasers().get_number_spawned() - lasers_spawned_before_measurement,
-        .standby_fighters = count_task(sim::FighterTask::Standby),
-        .moving_fighters = count_task(sim::FighterTask::MoveToDestination),
-        .attacking_fighters = count_task(sim::FighterTask::Attack),
         .initial_capital_ships = initial_capital_ships,
         .initial_turrets = initial_turrets,
         .alive_entities = simulation.get_entity_ledger().count_alive(),
@@ -428,7 +418,7 @@ auto to_json(BenchmarkResult const& result) -> std::string {
 
     std::string output;
     auto write{ioj::FormatWriter{std::back_inserter(output)}};
-    write(R"({{"schema_version":2,"level":{{"path":{},"id":{},"title":{}}})",
+    write(R"({{"schema_version":3,"level":{{"path":{},"id":{},"title":{}}})",
           nlohmann::json(result.level_path).dump(),
           nlohmann::json(result.level_id).dump(),
           nlohmann::json(result.level_title).dump());
@@ -461,18 +451,14 @@ auto to_json(BenchmarkResult const& result) -> std::string {
           result.p99_tick_microseconds);
     write(R"(,"fighter_stress":{{"enabled":{},"configured_cap":{},"steady_state_fighters":{},)"
           R"("minimum_measured_fighters":{},"maximum_measured_fighters":{},)"
-          R"("fighter_spawns_during_measurement":{},"lasers_spawned_during_measurement":{},)"
-          R"("task_counts":{{"standby":{},"move_to_destination":{},"attack":{}}}}})",
+          R"("fighter_spawns_during_measurement":{},"lasers_spawned_during_measurement":{}}})",
           result.fighter_stress_enabled,
           result.configured_fighter_cap,
           result.steady_state_fighters,
           result.minimum_measured_fighters,
           result.maximum_measured_fighters,
           result.fighter_spawns_during_measurement,
-          result.lasers_spawned_during_measurement,
-          result.standby_fighters,
-          result.moving_fighters,
-          result.attacking_fighters);
+          result.lasers_spawned_during_measurement);
     write(
         R"(,"final_state":{{"active_objectives":{},"inactive_objectives":{},"completed_objectives":{},"initial_capital_ships":{},"initial_turrets":{},)"
         R"("alive_entities":{},"capital_ships":{},"fighters":{},"turrets":{},"spinners":{},)"
