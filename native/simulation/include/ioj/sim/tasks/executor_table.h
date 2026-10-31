@@ -5,10 +5,12 @@
 #include <ioj/sim/entities/entity_table_operations.h>
 #include <ioj/sim/tasks/instruction_handle.h>
 #include <ioj/sim/tasks/task_id.h>
+#include <ioj/subspan.h>
 
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <utility>
 #include <vector>
 
 namespace ioj::sim::tasks {
@@ -25,22 +27,10 @@ struct ExecutorView {
 };
 
 struct ExecutorTable : EntityTableOperations {
+    using view_type = ExecutorView;
+    using const_view_type = ExecutorConstView;
+
     ExecutorTable();
-
-    // Views use EntityInstanceHandle::index() within the selected entity type.
-    [[nodiscard]] auto get_const_view(EntityType type, std::size_t count) const
-        -> ExecutorConstView;
-    [[nodiscard]] auto get_view(EntityType type, std::size_t count) -> ExecutorView;
-
-    template <EntityType Type>
-    [[nodiscard]] auto get_const_view(std::size_t const count) const -> ExecutorConstView {
-        return get_const_view(Type, count);
-    }
-
-    template <EntityType Type>
-    [[nodiscard]] auto get_view(std::size_t const count) -> ExecutorView {
-        return get_view(Type, count);
-    }
 
     void initialise_rows(EntityType type,
                          EntityFrameIndex::value_type first,
@@ -71,11 +61,20 @@ struct ExecutorTable : EntityTableOperations {
   private:
     friend struct ioj::sim::EntityTableOperations;
 
-    template <typename Func>
-    void with_columns(EntityType const type, std::size_t const count, Func&& func) {
-        auto const view{get_view(type, count)};
-        func(view.current_tasks, view.pending_tasks, view.current_instructions);
+    template <typename Self, typename Func>
+    decltype(auto)
+        with_columns(this Self& self, EntityType const type, std::size_t const count, Func&& func) {
+        auto const subspan{subspan_for(type, count)};
+        return std::forward<Func>(func)(subspan(self.current_tasks),
+                                        subspan(self.pending_tasks),
+                                        subspan(self.current_instructions));
     }
+
+    [[nodiscard]] static constexpr auto is_supported_type(EntityType const type) noexcept -> bool {
+        return static_cast<std::size_t>(type) < EntityTypeSizes::size();
+    }
+
+    [[nodiscard]] static auto subspan_for(EntityType type, std::size_t count) -> Subspan;
 
   public:
     // Keep columns at their preallocated size; use views for active rows.

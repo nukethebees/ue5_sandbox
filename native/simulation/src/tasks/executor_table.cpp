@@ -29,17 +29,9 @@ ExecutorTable::ExecutorTable()
     , pending_tasks(entity_identity_capacity)
     , current_instructions(entity_identity_capacity) {}
 
-auto ExecutorTable::get_const_view(EntityType const type, std::size_t const count) const
-    -> ExecutorConstView {
+auto ExecutorTable::subspan_for(EntityType const type, std::size_t const count) -> Subspan {
     assert(executor_storage::fits_capacity(type, count));
-    auto const subspan{Subspan{executor_storage::offsets[type], count}};
-    return subspan.make_view<ExecutorConstView>(current_tasks, pending_tasks, current_instructions);
-}
-
-auto ExecutorTable::get_view(EntityType const type, std::size_t const count) -> ExecutorView {
-    assert(executor_storage::fits_capacity(type, count));
-    auto const subspan{Subspan{executor_storage::offsets[type], count}};
-    return subspan.make_view<ExecutorView>(current_tasks, pending_tasks, current_instructions);
+    return Subspan{executor_storage::offsets[type], count};
 }
 
 void ExecutorTable::initialise_rows(EntityType const type,

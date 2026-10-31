@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cassert>
 #include <span>
+#include <utility>
 #include <vector>
 
 namespace ioj::sim {
@@ -84,31 +85,11 @@ class HealthView {
 
 class HealthTable : public EntityTableOperations {
   public:
+    using view_type = HealthView;
+    using const_view_type = HealthConstView;
+
     HealthTable()
         : values_(health_storage::layout.capacity) {}
-
-    [[nodiscard]] auto get_const_view(EntityType const type, std::size_t const count) const
-        -> HealthConstView {
-        assert(has_health(type) && fits_capacity(type, count));
-        auto const subspan{Subspan{health_storage::layout.offsets[type], count}};
-        return HealthConstView{subspan(values_)};
-    }
-
-    template <EntityType Type>
-    [[nodiscard]] auto get_const_view(std::size_t const count) const -> HealthConstView {
-        static_assert(has_health(Type));
-        assert(fits_capacity(Type, count));
-        auto const subspan{Subspan{health_storage::layout.offsets[Type], count}};
-        return HealthConstView{subspan(values_)};
-    }
-
-    template <EntityType Type>
-    [[nodiscard]] auto get_view(std::size_t const count) -> HealthView {
-        static_assert(has_health(Type));
-        assert(fits_capacity(Type, count));
-        auto const subspan{Subspan{health_storage::layout.offsets[Type], count}};
-        return HealthView{subspan(values_)};
-    }
 
     template <EntityType Type>
     void initialise_rows(EntityFrameIndex::value_type const first,
@@ -144,11 +125,16 @@ class HealthTable : public EntityTableOperations {
   private:
     friend struct EntityTableOperations;
 
-    template <typename Func>
-    void with_columns(EntityType const type, std::size_t const count, Func&& func) {
-        assert(fits_capacity(type, count));
-        auto const subspan{Subspan{health_storage::layout.offsets[type], count}};
-        func(subspan(values_));
+    template <typename Self, typename Func>
+    decltype(auto)
+        with_columns(this Self& self, EntityType const type, std::size_t const count, Func&& func) {
+        assert(Self::fits_capacity(type, count));
+        return std::forward<Func>(func)(
+            Subspan{health_storage::layout.offsets[type], count}(self.values_));
+    }
+
+    [[nodiscard]] static constexpr auto is_supported_type(EntityType const type) noexcept -> bool {
+        return has_health(type);
     }
 
     [[nodiscard]] static constexpr auto fits_capacity(EntityType const type,
