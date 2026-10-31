@@ -83,6 +83,44 @@ class NativeWorkflowTests(unittest.TestCase):
             self.assertRegex(commands, r'--build-script "[^"\n]*Engine Root[/\\]Build.bat"')
             self.assertRegex(commands, r'--project "[^"\n]*Game Root[/\\]Game.uproject"')
 
+    def test_unreal_launches_inherit_engine_cache_configuration(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="sandbox unreal cache ") as directory:
+            fixture = Path(directory)
+            (fixture / "CMakeLists.txt").write_text(
+                'cmake_minimum_required(VERSION 4.4.2)\n'
+                'project(UnrealCache NONE)\nenable_testing()\n'
+                f'include("{self.source_dir.as_posix()}/cmake/unreal.cmake")\n'
+                f'include("{self.source_dir.as_posix()}/cmake/unreal_packaging.cmake")\n'
+                'set(UE_EDITOR_CMD_EXE "UnrealEditor-Cmd.exe")\n'
+                'set(IOJ_UPROJECT "Game Root/Game.uproject")\n'
+                'set(UE_RUN_UAT_SCRIPT "RunUAT.bat")\n'
+                'set(IOJ_NATIVE_TOOLCHAIN clang-cl)\n'
+                'set(UE_PLATFORM Win64)\nset(UE_CONFIGURATION Development)\n'
+                'add_unreal_automation_test(Ordinary FILTERS Sandbox.UnitTests LABELS unit)\n'
+                'add_unreal_editor_target(material COMMENT "Material generation" ARGUMENTS -run=MaterialSynth)\n'
+                'sandbox_make_unreal_cook_arguments(cook_arguments "UnrealEditor-Cmd.exe" "cook output")\n'
+                'add_unreal_build_cook_run_target(cook COMMENT "Cooking" ARGUMENTS ${cook_arguments})\n'
+                f'configure_file("{self.source_dir.as_posix()}/cmake/unreal-paths.json.in" '
+                '"${CMAKE_BINARY_DIR}/unreal-paths.json" @ONLY)\n', encoding="utf-8",
+            )
+            build = fixture / "build"
+            self.run_cmake("-S", str(fixture), "-B", str(build), "-G", "Ninja")
+            tests = (build / "CTestTestfile.cmake").read_text()
+            commands = self.run_cmake("--build", str(build), "--target", "material", "cook",
+                                      "--", "-t", "commands")
+            paths = json.loads((build / "unreal-paths.json").read_text())
+            self.assertEqual(set(paths), {"engine_root", "native_toolchain", "editor", "editor_cmd",
+                                          "project", "staged_executable", "staged_directory"})
+            for text in (tests, commands):
+                self.assertNotRegex(text, r"(?i)-ddc|LocalDataCachePath|ZenDataPath")
+            self.assertIn("-nullrhi", tests)
+            self.assertIn("-unattended", tests)
+            self.assertIn("StartsWith:Sandbox.UnitTests", tests)
+            self.assertIn("TEST COMPLETE", tests)
+            self.assertIn("IOJ_NATIVE_TOOLCHAIN=clang-cl", commands)
+            self.assertIn("BuildCookRun", commands)
+            self.assertIn("-run=MaterialSynth", commands)
+
     def test_compile_options_do_not_require_an_executable_link(self) -> None:
         with tempfile.TemporaryDirectory(prefix="sandbox option probes ") as directory:
             fixture = Path(directory)

@@ -81,7 +81,7 @@ function(add_unreal_editor_target target_name)
 endfunction()
 
 function(add_unreal_editor_test test_name)
-  cmake_parse_arguments(PARSE_ARGV 1 editor_test "NO_LOCAL_DDC" "TIMEOUT" "ARGUMENTS;LABELS")
+  cmake_parse_arguments(PARSE_ARGV 1 editor_test "" "TIMEOUT" "ARGUMENTS;LABELS")
 
   ioj_validate_arguments(editor_test "add_unreal_editor_test(${test_name})" ARGUMENTS LABELS TIMEOUT)
 
@@ -92,13 +92,6 @@ function(add_unreal_editor_test test_name)
     -nosound
     -stdout
   )
-  if(NOT editor_test_NO_LOCAL_DDC)
-    list(APPEND editor_test_common_arguments
-      -ddc=NoZenLocalFallback
-      "-LocalDataCachePath=${IOJ_LOCAL_DDC_DIR}"
-    )
-  endif()
-
   add_test(
     NAME "${test_name}"
     COMMAND "${UE_EDITOR_CMD_EXE}" "${IOJ_UPROJECT}"

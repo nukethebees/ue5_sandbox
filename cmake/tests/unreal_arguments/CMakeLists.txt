@@ -27,7 +27,7 @@ sandbox_make_unreal_cook_arguments(cook_arguments
   [=[C:\Engine Root\UnrealEditor-Cmd.exe]=]
   [=[C:\Artifacts Root\cook\Windows]=])
 sandbox_assert_list_equal("cook arguments preserve Windows paths" "${cook_arguments}"
-  [=[-cook;-skipstage;-unrealexe=C:\Engine Root\UnrealEditor-Cmd.exe;-ddc=NoZenLocalFallback;-cookoutputdir=C:\Artifacts Root\cook\Windows]=])
+  [=[-cook;-skipstage;-unrealexe=C:\Engine Root\UnrealEditor-Cmd.exe;-cookoutputdir=C:\Artifacts Root\cook\Windows]=])
 sandbox_make_unreal_container_arguments(container_arguments
   [=[C:\Artifacts Root\cook]=] [=[C:\Artifacts Root\stage]=])
 sandbox_assert_list_equal("container arguments preserve Windows paths" "${container_arguments}"

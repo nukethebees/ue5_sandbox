@@ -2,11 +2,15 @@
 
 #include "AssetCompilingManager.h"
 #include "CQTest.h"
+#include "HAL/IConsoleManager.h"
 #include "MaterialEditingLibrary.h"
 #include "Materials/Material.h"
 #include "Materials/MaterialExpressionCustom.h"
 #include "MaterialShared.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "Serialization/ArchiveUObject.h"
+#include "ShaderCompiler.h"
 #include "UObject/Package.h"
 
 TEST_CLASS(IncludedFunctionCompilation, "USFLoader.IncludedFunctionCompilation")
@@ -60,8 +64,36 @@ TEST_CLASS(IncludedFunctionCompilation, "USFLoader.IncludedFunctionCompilation")
             return;
         }
 
-        material->PostEditChange();
         FAssetCompilingManager::Get().FinishAllCompilation();
+        GShaderCompilingManager->FinishAllCompilation();
+        auto const cold_compilation{
+            FParse::Param(FCommandLine::Get(), TEXT("SandboxFreshShaderCompilation"))};
+        if (cold_compilation &&
+            !TestRunner->TestTrue(
+                TEXT("Fresh compilation bypasses cached shader jobs"),
+                !IsShaderJobCacheDDCEnabled() &&
+                    IConsoleManager::Get()
+                        .FindConsoleVariable(TEXT("r.ShaderCompiler.DebugDiscardCacheOutputs"))
+                        ->GetBool())) {
+            return;
+        }
+        auto const compiled_before{GShaderCompilerStats->GetTotalShadersCompiled()};
+
+        material->PostEditChange();
+        // UE 5.8 material edits invalidate shader maps without requesting their permutations.
+        material->CacheShaders(EMaterialShaderPrecompileMode::Synchronous);
+        FAssetCompilingManager::Get().FinishAllCompilation();
+        GShaderCompilingManager->FinishAllCompilation();
+
+        auto const compiled_jobs{GShaderCompilerStats->GetTotalShadersCompiled() - compiled_before};
+        TestRunner->AddInfo(
+            FString::Printf(TEXT("Material shader compiler jobs executed: %u (fresh=%d)"),
+                            compiled_jobs,
+                            cold_compilation));
+        if (cold_compilation) {
+            TestRunner->TestTrue(TEXT("Fresh compilation executes shader compiler jobs"),
+                                 compiled_jobs > 0);
+        }
 
         auto const* const resource{material->GetMaterialResource(GMaxRHIShaderPlatform)};
         if (!TestRunner->TestNotNull(TEXT("Transient material resource is created"), resource)) {
@@ -72,5 +104,7 @@ TEST_CLASS(IncludedFunctionCompilation, "USFLoader.IncludedFunctionCompilation")
             FString::Printf(TEXT("Transient material compiles without shader errors: %s"),
                             *FString::Join(compile_errors, TEXT("; ")))};
         TestRunner->TestTrue(*result_description, compile_errors.IsEmpty());
+        TestRunner->TestTrue(TEXT("Transient material has a complete shader map"),
+                             resource->IsGameThreadShaderMapComplete());
     }
 };

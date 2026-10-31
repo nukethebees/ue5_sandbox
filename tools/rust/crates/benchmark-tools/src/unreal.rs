@@ -185,7 +185,6 @@ fn measurement_arguments(benchmark: &Benchmark) -> (Vec<String>, bool) {
                 "-run=EntityOverlayBenchmark",
                 "-RenderOffscreen",
                 "-AllowCommandletRendering",
-                "-DDC-ForceMemoryCache",
             ]
             .map(str::to_owned)
             .to_vec(),
@@ -254,15 +253,6 @@ pub fn run_unreal_benchmark(root: &Path, benchmark: Benchmark) -> Result<()> {
         .args(arguments)
         .args(["-unattended", "-nop4", "-nosplash", "-nosound", "-stdout"])
         .current_dir(root);
-    if automation {
-        command.args([
-            "-ddc=NoZenLocalFallback".into(),
-            format!(
-                "-LocalDataCachePath={}",
-                read_build_path(&settings, "local_ddc")?.display()
-            ),
-        ]);
-    }
     let log = match &benchmark {
         Benchmark::Telemetry(options) => {
             resolve_absolute_path(root, &options.output_dir)?.join("telemetry-benchmark.log")

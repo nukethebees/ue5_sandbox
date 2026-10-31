@@ -11,7 +11,6 @@ function(add_unreal_build_cook_run_target target_name)
     COMMAND
       "${CMAKE_COMMAND}" -E env
       "IOJ_NATIVE_TOOLCHAIN=${IOJ_NATIVE_TOOLCHAIN}"
-      "UE-LocalDataCachePath=${IOJ_LOCAL_DDC_DIR}"
       "${UE_RUN_UAT_SCRIPT}" BuildCookRun
       "-project=${IOJ_UPROJECT}"
       -target=Sandbox

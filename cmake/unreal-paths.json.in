@@ -4,7 +4,6 @@
   "editor": "@UE_EDITOR_EXE@",
   "editor_cmd": "@UE_EDITOR_CMD_EXE@",
   "project": "@IOJ_UPROJECT@",
-  "local_ddc": "@IOJ_LOCAL_DDC_DIR@",
   "staged_executable": "@IOJ_GAME_STAGE_EXECUTABLE@",
   "staged_directory": "@IOJ_GAME_STAGE_DIRECTORY@"
 }

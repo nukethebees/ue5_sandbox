@@ -58,7 +58,6 @@ if(NOT EXISTS "${UE_UNREAL_PAK_EXE}")
 endif()
 
 set(IOJ_UPROJECT "${PROJECT_SOURCE_DIR}/Sandbox.uproject")
-set(IOJ_LOCAL_DDC_DIR "${PROJECT_BINARY_DIR}/local-derived-data-cache")
 if(DEFINED ENV{IOJ_GAME_ARTIFACT_ROOT} AND
     NOT "$ENV{IOJ_GAME_ARTIFACT_ROOT}" STREQUAL "")
   set(sandbox_game_artifact_root_default "$ENV{IOJ_GAME_ARTIFACT_ROOT}")
@@ -78,7 +77,6 @@ sandbox_add_rust_host_tool(
   game-package-tools
   IOJ_GAME_PACKAGE_TOOLS
 )
-file(MAKE_DIRECTORY "${IOJ_LOCAL_DDC_DIR}")
 configure_file("${PROJECT_SOURCE_DIR}/cmake/unreal-paths.json.in"
   "${PROJECT_BINARY_DIR}/unreal-paths.json" @ONLY)
 
@@ -204,33 +202,54 @@ add_unreal_editor_target(validate-ui-glow-material-unreal
 )
 
 sandbox_project_enables_plugin(experiments_enabled "${IOJ_UPROJECT}" SandboxExperiments)
+option(IOJ_ENABLE_COLD_SHADER_TESTS "Register explicit fresh shader compilation tests" OFF)
 if(experiments_enabled)
   sandbox_make_automation_exec_commands(material_compilation_test_commands
     "StartsWith:SandboxShaders.MaterialCompilation")
   add_unreal_editor_test(SandboxShaders.MaterialCompilation
-    NO_LOCAL_DDC
     ARGUMENTS
       "${material_compilation_test_commands}"
       -AllowCommandletRendering
-      -DDC-ForceMemoryCache
     LABELS focused-material all
     TIMEOUT 900
   )
   sandbox_set_automation_test_properties(SandboxShaders.MaterialCompilation)
+  if(IOJ_ENABLE_COLD_SHADER_TESTS)
+    add_unreal_editor_test(SandboxShaders.MaterialCompilation.Cold
+      ARGUMENTS
+        "${material_compilation_test_commands}"
+        -AllowCommandletRendering
+        -SandboxFreshShaderCompilation
+        "-ini:Engine:[SystemSettings]:r.ShaderCompiler.JobCacheDDC=0,[SystemSettings]:r.ShaderCompiler.DebugDiscardCacheOutputs=1"
+      LABELS cold-compilation
+      TIMEOUT 900
+    )
+    sandbox_set_automation_test_properties(SandboxShaders.MaterialCompilation.Cold)
+  endif()
 endif()
 
 sandbox_make_automation_exec_commands(included_function_compilation_test_commands
   "StartsWith:USFLoader.IncludedFunctionCompilation")
 add_unreal_editor_test(USFLoader.IncludedFunctionCompilation
-  NO_LOCAL_DDC
   ARGUMENTS
     "${included_function_compilation_test_commands}"
     -AllowCommandletRendering
-    -DDC-ForceMemoryCache
   LABELS usfloader
   TIMEOUT 900
 )
 sandbox_set_automation_test_properties(USFLoader.IncludedFunctionCompilation)
+if(IOJ_ENABLE_COLD_SHADER_TESTS)
+  add_unreal_editor_test(USFLoader.IncludedFunctionCompilation.Cold
+    ARGUMENTS
+      "${included_function_compilation_test_commands}"
+      -AllowCommandletRendering
+      -SandboxFreshShaderCompilation
+      "-ini:Engine:[SystemSettings]:r.ShaderCompiler.JobCacheDDC=0,[SystemSettings]:r.ShaderCompiler.DebugDiscardCacheOutputs=1"
+    LABELS cold-compilation
+    TIMEOUT 900
+  )
+  sandbox_set_automation_test_properties(USFLoader.IncludedFunctionCompilation.Cold)
+endif()
 
 sandbox_make_automation_exec_commands(material_synth_test_commands
   "SandboxEditor.MaterialSynth")

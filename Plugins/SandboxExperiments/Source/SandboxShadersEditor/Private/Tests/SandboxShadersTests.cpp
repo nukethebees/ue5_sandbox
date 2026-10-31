@@ -12,6 +12,7 @@
 #include "SbxShadersExperiments/VertexRipple/VertexRippleExperimentActor.h"
 #include "SbxShadersExperiments/WarpField/WarpFieldExperimentActor.h"
 
+#include "AssetCompilingManager.h"
 #include "Camera/CameraActor.h"
 #include "Components/PostProcessComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -21,14 +22,19 @@
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "HAL/IConsoleManager.h"
 #include "Interfaces/IPluginManager.h"
 #include "LevelEditorSubsystem.h"
 #include "MaterialEditingLibrary.h"
 #include "Materials/Material.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "MaterialShared.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "Misc/Paths.h"
 #include "Modules/ModuleManager.h"
 #include "RenderingThread.h"
+#include "ShaderCompiler.h"
 
 namespace {
 constexpr TCHAR shield_material_path[]{
@@ -279,9 +285,48 @@ TEST_CLASS(MaterialCompilation, "SandboxShaders.MaterialCompilation")
                 return;
             }
         }
+        auto const cold_compilation{
+            FParse::Param(FCommandLine::Get(), TEXT("SandboxFreshShaderCompilation"))};
+        if (cold_compilation &&
+            !TestRunner->TestTrue(
+                TEXT("Fresh compilation bypasses cached shader jobs"),
+                !IsShaderJobCacheDDCEnabled() &&
+                    IConsoleManager::Get()
+                        .FindConsoleVariable(TEXT("r.ShaderCompiler.DebugDiscardCacheOutputs"))
+                        ->GetBool())) {
+            return;
+        }
+
         for (auto const& material : materials) {
+            FAssetCompilingManager::Get().FinishAllCompilation();
+            GShaderCompilingManager->FinishAllCompilation();
+            auto const compiled_before{GShaderCompilerStats->GetTotalShadersCompiled()};
+
             TestRunner->TestTrue(material.compile_description,
                                  UMaterialEditingLibrary::RecompileMaterial(material.material).IsEmpty());
+            // Replace the empty on-demand map and request the complete material permutations.
+            material.material->UpdateMaterialShaderCacheAndTextureReferences();
+            FAssetCompilingManager::Get().FinishAllCompilation();
+            GShaderCompilingManager->FinishAllCompilation();
+
+            auto const* const resource{material.material->GetMaterialResource(GMaxRHIShaderPlatform)};
+            if (!TestRunner->TestNotNull(TEXT("Material resource is created"), resource)) {
+                return;
+            }
+            TestRunner->TestTrue(material.compile_description, resource->GetCompileErrors().IsEmpty());
+            auto const complete_description{
+                FString::Printf(TEXT("Complete shader map: %s"), *material.material->GetPathName())};
+            TestRunner->TestTrue(*complete_description,
+                                 resource->IsGameThreadShaderMapComplete());
+            auto const compiled_jobs{GShaderCompilerStats->GetTotalShadersCompiled() - compiled_before};
+            TestRunner->AddInfo(FString::Printf(TEXT("Material shader compiler jobs executed: %u (fresh=%d): %s"),
+                                                compiled_jobs,
+                                                cold_compilation,
+                                                *material.material->GetPathName()));
+            if (cold_compilation) {
+                TestRunner->TestTrue(TEXT("Fresh compilation executes shader compiler jobs"),
+                                     compiled_jobs > 0);
+            }
         }
 
         auto* const level_editor{

@@ -33,7 +33,6 @@ pub struct Request {
     pub warmup_seconds: f64,
     pub seconds: f64,
     pub trace: bool,
-    pub cache_directory: PathBuf,
 }
 
 impl Request {
@@ -72,7 +71,6 @@ impl Request {
             warmup_seconds: args.warmup_seconds,
             seconds: args.seconds,
             trace: args.trace,
-            cache_directory: root.join(".local/benchmarks/ddc"),
         })
     }
     pub fn build_comparison_conditions(&self) -> Conditions {
@@ -134,14 +132,10 @@ impl Request {
                 "-stdout",
                 "-FullStdOutLogOutput",
                 "-RenderOffscreen",
-                "-ddc=NoZenLocalFallback",
             ]
             .map(str::to_owned),
         );
-        args.extend([
-            format!("-LocalDataCachePath={}", self.cache_directory.display()),
-            format!("-abslog={}", log.display()),
-        ]);
+        args.push(format!("-abslog={}", log.display()));
         args
     }
     fn build_measurement_editor_arguments(&self, root: &Path, run: &Run) -> Vec<String> {

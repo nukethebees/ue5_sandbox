@@ -157,7 +157,7 @@ fn unreal_routes_builds_arguments_order_and_failure_without_engine() {
         build.join("unreal-paths.json"),
         serde_json::to_vec(&serde_json::json!({
             "editor":editor,"editor_cmd":editor,"project":root.join("Sandbox.uproject"),
-            "local_ddc":build.join("ddc"),"staged_executable":editor,"staged_directory":root,
+            "staged_executable":editor,"staged_directory":root,
         }))
         .unwrap(),
     )
@@ -185,7 +185,9 @@ fn unreal_routes_builds_arguments_order_and_failure_without_engine() {
             < text.find("-run=GenerateWorldSoftTargetAssets").unwrap()
     );
     assert!(text.contains("-run=GenerateSandboxMeshHexFrame"));
-    assert!(text.contains("-ddc=NoZenLocalFallback"));
+    assert!(text.contains("-nullrhi"));
+    assert!(!text.to_ascii_lowercase().contains("-ddc"));
+    assert!(!text.contains("LocalDataCachePath"));
     assert!(build.join("compile-space-dust-material.stamp").is_file());
     fs::write(&editor, "@exit /b 29\n").unwrap();
     let result = repo

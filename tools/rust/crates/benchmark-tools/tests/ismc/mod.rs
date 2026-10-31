@@ -16,6 +16,12 @@ fn workload_validation_and_editor_arguments() {
     assert_eq!(request.min_instances, 10);
     let run = Run::new(temp.path(), "test", temp.path(), json!({}), "", false).unwrap();
     let args = request.build_measurement_editor_arguments(temp.path(), &run);
+    assert!(
+        !args
+            .iter()
+            .any(|arg| arg.to_ascii_lowercase().starts_with("-ddc"))
+    );
+    assert!(!args.iter().any(|arg| arg.contains("LocalDataCachePath")));
     assert!(args.contains(&format!("-SandboxISMCBenchmarkRunId={}", run.id())));
     assert!(args.contains(&"-SandboxISMCBenchmarkWidth=1280".into()));
     assert!(args.contains(&"-SandboxISMCBenchmarkTrace=1".into()));

@@ -7,6 +7,11 @@ fn moved_automation_keeps_defaults_and_failure_detection() {
     let (spark, automation) = measurement_arguments(&benchmark);
     assert_eq!(benchmark.editor().timeout_seconds, 1200);
     assert!(automation);
+    assert!(
+        !spark
+            .iter()
+            .any(|arg| arg.to_ascii_lowercase().starts_with("-ddc"))
+    );
     for argument in [
         "-SandboxSparkBenchmarkSeconds=10",
         "-SandboxSparkBenchmarkCapacity=50000",
@@ -31,6 +36,17 @@ fn moved_automation_keeps_defaults_and_failure_detection() {
         assert!(validate_automation_log(log).is_err(), "{log}");
     }
     validate_automation_log("TEST COMPLETE. EXIT CODE: 0").unwrap();
+
+    let benchmark =
+        Benchmark::EntityOverlay(SparkOptions::try_parse_from(["spark"]).unwrap().editor);
+    let (arguments, automation) = measurement_arguments(&benchmark);
+    assert!(!automation);
+    assert!(
+        !arguments
+            .iter()
+            .any(|arg| arg.to_ascii_lowercase().starts_with("-ddc"))
+    );
+    assert!(arguments.contains(&"-AllowCommandletRendering".into()));
 }
 
 #[test]

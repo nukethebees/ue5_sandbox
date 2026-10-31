@@ -19,7 +19,6 @@ function(sandbox_make_unreal_cook_arguments output_variable editor cook_director
     -cook
     -skipstage
     "-unrealexe=${editor}"
-    -ddc=NoZenLocalFallback
     "-cookoutputdir=${cook_directory}"
   )
   set(${output_variable} "${arguments}" PARENT_SCOPE)

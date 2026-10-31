@@ -337,12 +337,7 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
         if commandlet == "GenerateWorldSoftTargetAssets" {
             command.args(["-RenderOffscreen", "-AllowCommandletRendering"]);
         } else {
-            command
-                .arg(format!(
-                    "-LocalDataCachePath={}",
-                    value(&settings, "local_ddc")?
-                ))
-                .args(["-ddc=NoZenLocalFallback", "-nullrhi"]);
+            command.arg("-nullrhi");
         }
     }
     status(&mut command)
