@@ -34,6 +34,7 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/fixed_tick.h
   ../include/ioj/sim/collision/range_query_results.h
   ../include/ioj/sim/entities/entity_tables.h
+  ../include/ioj/sim/entities/entity_table_operations.h
   ../include/ioj/sim/entities/health_table.h
   ../include/ioj/sim/index_span.h
   ../include/ioj/sim/lasers/laser_frame_output.h
