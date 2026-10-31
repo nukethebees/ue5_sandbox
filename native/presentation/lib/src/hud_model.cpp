@@ -48,11 +48,8 @@ void HudModel::deactivate() {
     kill_data_ = {};
     player_status_data_ = {};
     player_flight_data_ = {};
-    sampled_speed_data_ = {};
     top_killer_ids_.clear();
     selected_mapping_context_.clear();
-    has_mission_data_ = false;
-    has_sampled_speed_data_ = false;
 }
 auto HudModel::advance(double const delta_seconds) -> HudChanges {
     HudChanges changes;
@@ -77,7 +74,7 @@ auto HudModel::tick(PeriodicTickCountdown8::counter_type const num_ticks) -> Hud
         return changes;
     }
     changes.player_flight = collect_player_flight_data();
-    changes.sampled_speed = collect_sampled_speed_data();
+    changes.sampled_speed = num_ticks > 0 && player_for_collection() != nullptr;
     update_timers_.tick(num_ticks);
     if (update_timers_.try_consume(0)) {
         changes.player_status = collect_player_status_data();
@@ -102,13 +99,17 @@ auto HudModel::force_sample() -> HudChanges {
             .entity_counts = entity_counts,
             .player_status = collect_player_status_data(),
             .player_flight = collect_player_flight_data(),
-            .sampled_speed = collect_sampled_speed_data()};
+            .sampled_speed = player_for_collection() != nullptr};
 }
 void HudModel::set_selected_mapping_context(std::string context) {
     selected_mapping_context_ = std::move(context);
 }
 auto HudModel::seconds_per_tick() const -> float {
     return static_cast<float>(tick_loop_.get_tick_period());
+}
+
+auto HudModel::has_mission_data() const -> bool {
+    return mission_ && mission_->objectives().size() != 0;
 }
 auto HudModel::display_batches() const -> std::array<AgentDisplayBatch, 4> {
     assert(simulation_);
@@ -145,7 +146,6 @@ auto HudModel::display_batches() const -> std::array<AgentDisplayBatch, 4> {
 auto HudModel::collect_mission_data() -> bool {
     assert(mission_);
     MissionHudData next;
-    has_mission_data_ = mission_->objectives().size() != 0;
     next.active = static_cast<std::int32_t>(mission_->active_objectives().size());
     next.completed = static_cast<std::int32_t>(mission_->completed_objectives().size());
     next.inactive = static_cast<std::int32_t>(mission_->inactive_objectives().size());
@@ -202,22 +202,23 @@ void HudModel::collect_kill_data() {
     }
 }
 auto HudModel::collect_player_status_data() -> bool {
-    PlayerStatusHudData next;
+    std::optional<PlayerStatusHudData> next;
     if (auto const* player{player_for_collection()}) {
-        next.has_player_ship = true;
-        next.health = player->get_health();
-        next.speed = player->get_speed();
-        next.target_speed = player->get_controller_state().persistent_forward_target_speed;
-        next.energy = player->get_energy();
-        next.points = player->get_kills();
-        next.fire_rate = player->laser_fire_rate;
+        next.emplace(PlayerStatusHudData{
+            .health = player->get_health(),
+            .speed = player->get_speed(),
+            .target_speed = player->get_controller_state().persistent_forward_target_speed,
+            .energy = player->get_energy(),
+            .points = player->get_kills(),
+            .fire_rate = player->laser_fire_rate});
     }
     return hud_detail::replace(player_status_data_, std::move(next));
 }
 auto HudModel::collect_player_flight_data() -> bool {
-    PlayerFlightHudData next;
-    next.selected_mapping_context = selected_mapping_context_;
+    std::optional<PlayerFlightHudData> next;
     if (auto const* player{player_for_collection()}) {
+        auto& data{next.emplace()};
+        data.selected_mapping_context = selected_mapping_context_;
         auto const socket{player->get_middle_socket()};
         auto const& physical{player->get_physical_state()};
         auto const local{physical.transform.inverse_transform_vector_no_scale(physical.velocity)};
@@ -228,35 +229,34 @@ auto HudModel::collect_player_flight_data() -> bool {
             std::max(profile.config.translation.forward.normal.positive_speed_limit, 1.f)};
         auto const right_limit{
             std::max(profile.config.translation.right.normal.positive_speed_limit, 1.f)};
-        next.has_player_ship = true;
-        next.flight_vector_debug = {
+        data.flight_vector_debug = {
             .turn_input = {intent.rotation.y(), intent.rotation.x()},
             .move_input = {intent.translation.y(), intent.translation.x()},
             .target_velocity = Vector2f{player->get_sampled_target_speed_scale()},
             .local_velocity = {static_cast<float>(local.y() / right_limit),
                                static_cast<float>(local.x() / forward_limit)}};
-        next.ship_velocity = physical.velocity;
-        next.target_velocity =
+        data.ship_velocity = physical.velocity;
+        data.target_velocity =
             physical.transform.forward() * controller.persistent_forward_target_speed +
             physical.transform.right() * controller.persistent_right_target_speed;
-        next.flight_model_preset = profile.base_preset;
-        next.flight_model_customized = profile.customized;
-        next.throttle = intent.accelerator;
-        next.boost_brake_state = controller.effective_action;
-        next.crosshair_origin = socket.location;
-        next.crosshair_direction = socket.forward();
+        data.flight_model_preset = profile.base_preset;
+        data.flight_model_customized = profile.customized;
+        data.throttle = intent.accelerator;
+        data.boost_brake_state = controller.effective_action;
+        data.crosshair_origin = socket.location;
+        data.crosshair_direction = socket.forward();
     }
     return hud_detail::replace(player_flight_data_, std::move(next));
 }
-auto HudModel::collect_sampled_speed_data() -> bool {
-    SampledSpeedHudData next;
-    auto const* player{player_for_collection()};
-    has_sampled_speed_data_ = player != nullptr;
-    if (player) {
-        next.samples = player->speed_samples;
-        next.oldest_index = player->speed_sample_index;
+auto HudModel::sampled_speed_view() const -> std::optional<SampledSpeedHudView> {
+    if (!active()) {
+        return std::nullopt;
     }
-    return hud_detail::replace(sampled_speed_data_, std::move(next));
+    auto const* player{player_for_collection()};
+    if (!player) {
+        return std::nullopt;
+    }
+    return SampledSpeedHudView{player->speed_samples, player->speed_sample_index};
 }
 auto HudModel::player_for_collection() const -> sim::player::Sim const* {
     auto const* player{simulation_->get_player()};

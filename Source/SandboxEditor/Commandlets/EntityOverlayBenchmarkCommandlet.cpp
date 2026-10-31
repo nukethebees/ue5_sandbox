@@ -5,6 +5,8 @@
 #include "ioj/sim/turrets/turret_entity_data.h"
 #include <ioj/column_math.h>
 #include <ioj/presentation/entity_overlay.h>
+#include <ioj/presentation/entity_overlay_health_maximums.h>
+#include <ioj/presentation/entity_overlay_team_colours.h>
 
 #include "SandboxUI/EntityOverlay/EntityOverlayBenchmark.h"
 #include <SandboxCoreEngine/VectorConversion.h>

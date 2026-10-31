@@ -2,6 +2,8 @@
 
 #include <ioj/periodic_tick_countdown.h>
 #include <ioj/presentation/entity_overlay.h>
+#include <ioj/presentation/entity_overlay_health_maximums.h>
+#include <ioj/presentation/entity_overlay_team_colours.h>
 #include <ioj/presentation/hud_model.h>
 #include <ioj/presentation/radar.h>
 #include <ioj/presentation/soft_target.h>
@@ -71,19 +73,10 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
         return model_.active() ? EHUDManagerState::Active : EHUDManagerState::Disabled;
     }
     auto get_registered_hud_count() const noexcept -> int32 { return registered_huds.Num(); }
-    auto get_mission_data() const -> presentation::MissionHudData const& {
-        return model_.mission_data();
-    }
     auto get_entity_count_data() const -> presentation::EntityCountHudData const& {
         return model_.entity_count_data();
     }
     auto get_kill_data() const -> presentation::KillHudData const& { return model_.kill_data(); }
-    auto get_player_status_data() const -> presentation::PlayerStatusHudData const& {
-        return model_.player_status_data();
-    }
-    auto get_player_flight_data() const -> presentation::PlayerFlightHudData const& {
-        return model_.player_flight_data();
-    }
   private:
     using FWorldSoftTargetCustomDataBuffer =
         TArray<float, TInlineAllocator<soft_target_world::custom_data_count * 2>>;

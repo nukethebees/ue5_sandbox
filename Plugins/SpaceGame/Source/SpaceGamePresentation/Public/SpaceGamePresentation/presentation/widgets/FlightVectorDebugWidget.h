@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
-#include <ioj/presentation/hud_data.h>
+#include <ioj/presentation/flight_vector_debug_data.h>
 
 #include <Blueprint/UserWidget.h>
 #include <CoreMinimal.h>

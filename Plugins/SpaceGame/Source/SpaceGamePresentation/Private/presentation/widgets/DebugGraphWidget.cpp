@@ -6,25 +6,35 @@
 
 #include "Widgets/DeclarativeSyntaxSupport.h"
 
-void UDebugGraphWidget::set_samples(TConstArrayView<FVector2d> const in_samples,
-                                    int32 const new_oldest_index) {
-    auto const sample_count{in_samples.Num()};
-    x_.Reset(sample_count);
-    y_.Reset(sample_count);
+#include <utility>
+
+void UDebugGraphWidget::set_samples(std::span<ioj::Vector2d const> const samples,
+                                    std::uint32_t const oldest_index) {
+    auto const sample_count{samples.size()};
+    check(std::in_range<int32>(sample_count));
+    auto const count{static_cast<int32>(sample_count)};
+    auto changed{x_.Num() != count || y_.Num() != count};
+    x_.SetNum(count);
+    y_.SetNum(count);
 
     if (sample_count > 0) {
-        check(new_oldest_index >= 0 && new_oldest_index < sample_count);
-        auto const oldest_index{new_oldest_index};
-        auto const first_x{in_samples[oldest_index].X};
-        for (int32 i = 0; i < sample_count; ++i) {
+        check(oldest_index < sample_count);
+        auto const first_x{samples[oldest_index].x()};
+        for (std::size_t i{}; i < sample_count; ++i) {
             auto const index{(oldest_index + i) % sample_count};
-            auto const& sample{in_samples[index]};
-            x_.Add(static_cast<float>(sample.X - first_x));
-            y_.Add(static_cast<float>(sample.Y));
+            auto const sample{samples[index]};
+            auto const x{static_cast<float>(sample.x() - first_x)};
+            auto const y{static_cast<float>(sample.y())};
+            auto const destination{static_cast<int32>(i)};
+            changed = changed || x_[destination] != x || y_[destination] != y;
+            x_[destination] = x;
+            y_[destination] = y;
         }
     }
 
-    update_slate_series();
+    if (changed) {
+        update_slate_series();
+    }
 }
 
 void UDebugGraphWidget::apply_hud_style(ioj::FGameHudStyle const& style) {

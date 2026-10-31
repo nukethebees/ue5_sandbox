@@ -1,9 +1,12 @@
 #pragma once
-
-#include <ioj/presentation/sparks.h>
+#include <ioj/presentation/gpu_spark_burst.h>
+#include <ioj/presentation/spark_particle_record.h>
 
 #include "RenderGraphResources.h"
 #include "RenderResource.h"
+
+#include <span>
+#include <vector>
 
 struct FSparkUploadBuffer;
 

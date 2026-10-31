@@ -4,6 +4,7 @@
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 #include "STelemetryDashboardView.h"
+#include <ioj/sim/telemetry/run_report.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include <SandboxCoreEngine/strings.h>

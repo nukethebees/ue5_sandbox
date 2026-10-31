@@ -1,9 +1,14 @@
 #pragma once
 
+#include <ioj/vector.h>
+
 #include "SandboxUI/widgets/SGraphPlot.h"
 
 #include "Blueprint/UserWidget.h"
 #include "CoreMinimal.h"
+
+#include <cstdint>
+#include <span>
 
 #include "DebugGraphWidget.generated.h"
 
@@ -16,7 +21,7 @@ UCLASS()
 class SPACEGAMEPRESENTATION_API UDebugGraphWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    void set_samples(TConstArrayView<FVector2d> in_samples, int32 oldest_index);
+    void set_samples(std::span<ioj::Vector2d const> samples, std::uint32_t oldest_index);
     void apply_hud_style(ioj::FGameHudStyle const& style);
   protected:
     TSharedRef<SWidget> RebuildWidget() override;

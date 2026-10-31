@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/presentation/sparks.h>
+#include <ioj/presentation/spark_particle_record.h>
 
 #include "Containers/Array.h"
 #include "Templates/Atomic.h"

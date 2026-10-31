@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/presentation/sparks.h>
+#include <ioj/presentation/spark_renderer_settings.h>
 
 #include <CoreMinimal.h>
 

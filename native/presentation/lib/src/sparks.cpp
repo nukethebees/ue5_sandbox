@@ -1,5 +1,9 @@
 #include <ioj/presentation/sparks.h>
 
+#include <ioj/presentation/spark_queue.h>
+#include <ioj/presentation/spark_renderer_settings.h>
+#include <ioj/presentation/spark_storage.h>
+
 #include <algorithm>
 #include <cassert>
 #include <cmath>

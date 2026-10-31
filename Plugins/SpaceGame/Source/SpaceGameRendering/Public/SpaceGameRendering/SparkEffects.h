@@ -1,6 +1,7 @@
 #pragma once
 
-#include <ioj/presentation/sparks.h>
+#include <ioj/presentation/spark_particle_record.h>
+#include <ioj/presentation/spark_queue.h>
 
 class USparkRendererComponent;
 

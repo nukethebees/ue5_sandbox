@@ -1,12 +1,14 @@
 #pragma once
 
-#include <ioj/presentation/hud_data.h>
+#include <ioj/presentation/top_killer_entry.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyle.h>
 
 #include <Blueprint/UserWidget.h>
 #include <CoreMinimal.h>
 #include <Framework/Text/TextLayout.h>
+
+#include <span>
 
 #include "TopKillersWidget.generated.h"
 

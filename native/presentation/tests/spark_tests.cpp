@@ -1,3 +1,6 @@
+#include <ioj/presentation/spark_queue.h>
+#include <ioj/presentation/spark_renderer_settings.h>
+#include <ioj/presentation/spark_storage.h>
 #include <ioj/presentation/sparks.h>
 
 #include <gtest/gtest.h>

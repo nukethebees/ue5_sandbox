@@ -1,6 +1,8 @@
 #pragma once
 
-#include <ioj/levels/level_definition.h>
+#include <ioj/levels/authoring/source_overwrite_policy.h>
+#include <ioj/levels/authoring/source_replay.h>
+#include <ioj/levels/authoring/source_session_state.h>
 
 #include <cstdint>
 #include <expected>
@@ -9,43 +11,6 @@
 #include <string_view>
 
 namespace ioj::levels::authoring {
-struct SourceDiskState {
-    auto operator==(SourceDiskState const&) const -> bool = default;
-
-    bool exists{};
-    std::string source{};
-};
-
-enum class PreviewState { None, Valid, Stale };
-
-// Shared synchronization state; document lifetimes remain with the host.
-struct SourceSessionState {
-    [[nodiscard]] auto dirty() const -> bool { return buffer_text != saved_buffer_text; }
-    [[nodiscard]] auto unapplied(std::string_view synchronized_source) const -> bool;
-    void document_changed();
-    void loaded(SourceDiskState disk, std::string source, bool source_changed);
-    void edited(std::string source);
-    void saved(bool source_changed);
-    void observe(SourceDiskState const& disk);
-    void invalidate_preview();
-
-    SourceDiskState disk_baseline{};
-    std::string buffer_text{};
-    std::string saved_buffer_text{};
-    std::uint64_t revision{};
-    bool disk_conflict{};
-    bool scene_dirty{};
-    bool recovery_required{};
-    PreviewState preview{PreviewState::None};
-};
-
-enum class SourceOverwritePolicy { RefuseExisting, ReplaceExisting };
-
-struct SourceReplay {
-    LevelDefinition definition;
-    std::string evaluated_source;
-};
-
 // Own UTF-8 source independently of the editor document. Detach before attaching
 // another document, even when both documents use the same path.
 class SourceSession {

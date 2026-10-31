@@ -13,7 +13,7 @@
 #include "SpaceGamePresentation/presentation/widgets/Vector2DWidget.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
-#include <ioj/presentation/hud_data.h>
+#include <ioj/presentation/flight_vector_debug_data.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include "SandboxUI/Radar/SRadarWidget.h"
@@ -354,8 +354,8 @@ void UShipHudWidget::set_flight_action(float const throttle, FStringView const a
 }
 
 #if WITH_EDITOR
-void UShipHudWidget::update_sampled_speed(TConstArrayView<FVector2d> const samples,
-                                          int32 const oldest_index) {
+void UShipHudWidget::update_sampled_speed(std::span<ioj::Vector2d const> const samples,
+                                          std::uint32_t const oldest_index) {
     RETURN_IF_NULLPTR(speed_graph);
     speed_graph->set_samples(samples, oldest_index);
 }

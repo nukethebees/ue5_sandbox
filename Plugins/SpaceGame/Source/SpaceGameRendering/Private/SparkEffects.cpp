@@ -1,6 +1,7 @@
 #include "SpaceGameRendering/SparkEffects.h"
 
 #include "SpaceGameRendering/SparkRendererComponent.h"
+#include <ioj/presentation/sparks.h>
 
 #include "Camera/PlayerCameraManager.h"
 #include "Engine/World.h"

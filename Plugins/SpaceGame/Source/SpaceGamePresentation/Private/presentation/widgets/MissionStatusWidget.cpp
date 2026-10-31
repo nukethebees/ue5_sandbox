@@ -1,6 +1,6 @@
 #include "SpaceGamePresentation/presentation/widgets/MissionStatusWidget.h"
 
-#include <ioj/presentation/hud_data.h>
+#include <ioj/presentation/mission_hud_data.h>
 #include <SandboxGameShared/ui/widgets/ValueWidget.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>

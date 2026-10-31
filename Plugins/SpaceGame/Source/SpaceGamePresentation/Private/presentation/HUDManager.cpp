@@ -598,9 +598,7 @@ void FHUDManager::synchronise_hud(USimulationHudWidget& hud) const {
     update_player_status_hud(*ship_hud);
     update_player_flight_hud(*ship_hud);
 #if WITH_EDITOR
-    if (model_.has_sampled_speed_data()) {
-        update_sampled_speed_hud(*ship_hud);
-    }
+    update_sampled_speed_hud(*ship_hud);
 #endif
 }
 
@@ -620,32 +618,32 @@ void FHUDManager::update_entity_count_hud(USimulationHudWidget& hud) const {
 void FHUDManager::update_player_status_hud(UShipHudWidget& hud) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_player_status_hud);
     auto const& data{model_.player_status_data()};
-    if (!data.has_player_ship) {
+    if (!data) {
         return;
     }
 
-    hud.set_health({data.health.health.value(), data.health.max_health.value()});
-    hud.set_speed(data.speed);
-    hud.set_target_speed(data.target_speed);
-    hud.set_energy(data.energy);
-    hud.set_points(data.points);
-    hud.set_fire_rate(to_fstring(sim::to_string(data.fire_rate)));
+    hud.set_health({data->health.health.value(), data->health.max_health.value()});
+    hud.set_speed(data->speed);
+    hud.set_target_speed(data->target_speed);
+    hud.set_energy(data->energy);
+    hud.set_points(data->points);
+    hud.set_fire_rate(to_fstring(sim::to_string(data->fire_rate)));
 }
 void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_player_flight_hud);
     auto const& data{model_.player_flight_data()};
-    if (!data.has_player_ship) {
+    if (!data) {
         hud.set_crosshair_widget_visibility(ESlateVisibility::Collapsed);
         return;
     }
 
     hud.set_crosshair_widget_visibility(ESlateVisibility::Visible);
-    hud.set_selected_imc(to_fstring(data.selected_mapping_context));
-    hud.set_flight_vector_debug(data.flight_vector_debug);
-    hud.set_ship_velocity(to_unreal(data.ship_velocity));
-    hud.set_target_velocity(to_unreal(data.target_velocity));
+    hud.set_selected_imc(to_fstring(data->selected_mapping_context));
+    hud.set_flight_vector_debug(data->flight_vector_debug);
+    hud.set_ship_velocity(to_unreal(data->ship_velocity));
+    hud.set_target_velocity(to_unreal(data->target_velocity));
     FString flight_model;
-    switch (data.flight_model_preset) {
+    switch (data->flight_model_preset) {
         case sim::player::FlightModelPreset::Starfox:
             flight_model = TEXT("Starfox");
             break;
@@ -659,20 +657,21 @@ void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
             flight_model = TEXT("Gunship");
             break;
     }
-    if (data.flight_model_customized) {
+    if (data->flight_model_customized) {
         flight_model = FString::Printf(TEXT("Custom (based on %s)"), *flight_model);
     }
     hud.set_flight_model(flight_model);
-    hud.set_flight_action(data.throttle,
-                          to_fstring(sim::player::to_string(data.boost_brake_state)));
+    hud.set_flight_action(data->throttle,
+                          to_fstring(sim::player::to_string(data->boost_brake_state)));
 
     auto* const controller{hud.GetOwningPlayer()};
     check(IsValid(controller));
 
     auto const& distances{hud.get_crosshair_distances()};
-    auto const near_world_position{data.crosshair_origin +
-                                   data.crosshair_direction * distances.near};
-    auto const far_world_position{data.crosshair_origin + data.crosshair_direction * distances.far};
+    auto const near_world_position{data->crosshair_origin +
+                                   data->crosshair_direction * distances.near};
+    auto const far_world_position{data->crosshair_origin +
+                                  data->crosshair_direction * distances.far};
     FVector2d near_screen_position{};
     FVector2d far_screen_position{};
     constexpr bool player_viewport_relative{false};
@@ -695,14 +694,9 @@ void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
 #if WITH_EDITOR
 void FHUDManager::update_sampled_speed_hud(UShipHudWidget& hud) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_sampled_speed_hud);
-    check(model_.has_sampled_speed_data());
-    auto const& data{model_.sampled_speed_data()};
-    TArray<FVector2d> samples;
-    samples.Reserve(static_cast<int32>(data.samples.size()));
-    for (auto const sample : data.samples) {
-        samples.Add(to_unreal(sample));
+    if (auto const data{model_.sampled_speed_view()}) {
+        hud.update_sampled_speed(data->samples, data->oldest_index);
     }
-    hud.update_sampled_speed(samples, static_cast<int32>(data.oldest_index));
 }
 #endif
 

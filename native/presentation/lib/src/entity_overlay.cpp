@@ -1,5 +1,8 @@
 #include <ioj/presentation/entity_overlay.h>
 
+#include <ioj/presentation/entity_overlay_health_maximums.h>
+#include <ioj/presentation/entity_overlay_team_colours.h>
+
 #include <algorithm>
 #include <cassert>
 

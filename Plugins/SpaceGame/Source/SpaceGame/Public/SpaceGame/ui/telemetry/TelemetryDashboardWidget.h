@@ -3,6 +3,7 @@
 #include "SpaceGame/telemetry/LevelTelemetryJson.h"
 #include "SpaceGame/telemetry/TelemetryDashboardModel.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
+#include <ioj/sim/telemetry/run_catalog.h>
 
 #include <Blueprint/UserWidget.h>
 

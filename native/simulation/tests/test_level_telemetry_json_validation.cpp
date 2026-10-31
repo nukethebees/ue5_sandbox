@@ -1,6 +1,6 @@
 #include <ioj/sim/telemetry/json_validation.h>
 #include <ioj/sim/telemetry/report_json.h>
-#include <ioj/sim/telemetry/run_catalog.h>
+#include <ioj/sim/telemetry/run_report.h>
 
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>

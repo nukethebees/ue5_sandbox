@@ -1,7 +1,7 @@
 #pragma once
 
-#include <ioj/enum_array.h>
 #include <ioj/presentation/agent_display_batch.h>
+#include <ioj/presentation/entity_overlay_collection_result.h>
 #include <ioj/settings/entity_overlay.h>
 #include <ioj/sim/entities/entity_type_radii.h>
 #include <ioj/ui/entity_overlay.h>
@@ -9,24 +9,10 @@
 #include <vector>
 
 namespace ioj::presentation {
+struct EntityOverlayHealthMaximums;
+struct EntityOverlayTeamColours;
+
 auto sanitize_entity_overlay_settings(settings::EntityOverlay settings) -> settings::EntityOverlay;
-
-struct EntityOverlayHealthMaximums {
-    std::int32_t capital_ship{1};
-    std::int32_t fighter{1};
-    std::int32_t turret{1};
-};
-
-struct EntityOverlayTeamColours {
-    EnumArray<Team, ui::Color4f> capital_ship{ui::Color4f{1.f, 0.f, 1.f, 1.f}};
-    EnumArray<Team, ui::Color4f> fighter{ui::Color4f{1.f, 0.f, 1.f, 1.f}};
-    EnumArray<Team, ui::Color4f> turret{ui::Color4f{1.f, 0.f, 1.f, 1.f}};
-};
-
-struct EntityOverlayCollectionResult {
-    std::int32_t candidate_count{};
-    std::int32_t invalid_health_count{};
-};
 
 // Objective roles follow the concatenated batch rows. Objective contacts bypass the range limit.
 auto collect_entity_overlay_instances(

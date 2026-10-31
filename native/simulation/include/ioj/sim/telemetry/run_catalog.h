@@ -1,9 +1,8 @@
 #pragma once
 
-#include <ioj/levels/launch_options.h>
 #include <ioj/sim/telemetry/report.h>
+#include <ioj/sim/telemetry/run_summary.h>
 
-#include <expected>
 #include <filesystem>
 #include <optional>
 #include <span>
@@ -12,50 +11,6 @@
 #include <vector>
 
 namespace ioj::sim::telemetry {
-struct RunStatistics {
-    double simulated_seconds{};
-    std::int32_t active_entities{};
-    std::int32_t active_lasers{};
-    std::int32_t spawned_entities{};
-    std::int32_t destroyed_entities{};
-    std::int32_t kills{};
-    std::int32_t lasers_fired{};
-    bool mission_complete{};
-    std::uint64_t shots{};
-    std::uint64_t hits{};
-    double damage_dealt{};
-    std::uint64_t combat_kills{};
-    std::uint64_t losses{};
-};
-
-struct RunComparison {
-    bool different_level_source{};
-    bool different_settings_source{};
-    bool different_presentation_mode{};
-};
-
-[[nodiscard]] auto summarize_run(LevelTelemetryReport const& report) -> RunStatistics;
-[[nodiscard]] auto make_run_report(LevelTelemetryRunRecord record,
-                                   levels::LaunchOptions const& options,
-                                   bool presentation_enabled) -> LevelTelemetryReport;
-[[nodiscard]] auto compare_run_context(LevelTelemetryReport const& baseline,
-                                       LevelTelemetryReport const& candidate) -> RunComparison;
-
-struct RunSummary {
-    std::filesystem::path path{};
-    std::string run_id{};
-    std::string map_name{};
-    std::string level_id{};
-    std::string level_display_name{};
-    std::string launched_utc{};
-    LevelTelemetryRunEndReason completion_reason{LevelTelemetryRunEndReason::WorldEnd};
-
-    [[nodiscard]] auto level_label() const -> std::string_view;
-};
-
-auto read_run_report(std::filesystem::path const& path)
-    -> std::expected<LevelTelemetryReport, std::string>;
-
 class RunCatalog {
   public:
     explicit RunCatalog(std::filesystem::path directory);

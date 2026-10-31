@@ -3,12 +3,16 @@
 #include "SpaceGamePresentation/entities/ShipHealth.h"
 #include "SpaceGamePresentation/presentation/HudCrosshairDistances.h"
 #include "SpaceGamePresentation/presentation/widgets/SimulationHudWidget.h"
+#include <ioj/vector.h>
 
 #include "SandboxUI/Radar/RadarFrameStore.h"
 #include "SandboxUI/Radar/RadarTypes.h"
 
 #include "Blueprint/UserWidget.h"
 #include "CoreMinimal.h"
+
+#include <cstdint>
+#include <span>
 
 #include "ShipHudWidget.generated.h"
 
@@ -89,7 +93,7 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     void set_radar_style(FRadarStyle const& style);
 
 #if WITH_EDITOR
-    void update_sampled_speed(TConstArrayView<FVector2d> samples, int32 oldest_index);
+    void update_sampled_speed(std::span<ioj::Vector2d const> samples, std::uint32_t oldest_index);
 #endif
   protected:
     void NativePreConstruct() override;

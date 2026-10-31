@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/presentation/sparks.h>
+#include <ioj/presentation/spark_burst_style.h>
 #include <SpaceGameRendering/SparkScalarRange.h>
 
 #include <CoreMinimal.h>

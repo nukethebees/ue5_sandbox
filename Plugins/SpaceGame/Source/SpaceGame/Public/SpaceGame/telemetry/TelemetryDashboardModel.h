@@ -2,7 +2,6 @@
 
 #include <ioj/sim/telemetry/analysis.h>
 #include <ioj/sim/telemetry/report.h>
-#include <ioj/sim/telemetry/run_catalog.h>
 #include <ioj/sim/telemetry/run_end_reason.h>
 
 #include <CoreMinimal.h>

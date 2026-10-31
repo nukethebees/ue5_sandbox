@@ -2,7 +2,13 @@
 
 #include <ioj/periodic_tick_countdown.h>
 #include <ioj/presentation/agent_display_batch.h>
-#include <ioj/presentation/hud_data.h>
+#include <ioj/presentation/entity_count_hud_data.h>
+#include <ioj/presentation/hud_changes.h>
+#include <ioj/presentation/kill_hud_data.h>
+#include <ioj/presentation/mission_hud_data.h>
+#include <ioj/presentation/player_flight_hud_data.h>
+#include <ioj/presentation/player_status_hud_data.h>
+#include <ioj/presentation/sampled_speed_hud_view.h>
 #include <ioj/sim/fixed_tick_loop.h>
 #include <ioj/sim/levels/hud_settings.h>
 #include <ioj/sim/levels/level_read_access.h>
@@ -31,14 +37,18 @@ class HudModel {
     void set_selected_mapping_context(std::string context);
 
     auto active() const -> bool { return simulation_.has_value(); }
-    auto has_mission_data() const -> bool { return has_mission_data_; }
-    auto has_sampled_speed_data() const -> bool { return has_sampled_speed_data_; }
+    auto has_mission_data() const -> bool;
     auto mission_data() const -> MissionHudData const& { return mission_data_; }
     auto entity_count_data() const -> EntityCountHudData const& { return entity_count_data_; }
     auto kill_data() const -> KillHudData const& { return kill_data_; }
-    auto player_status_data() const -> PlayerStatusHudData const& { return player_status_data_; }
-    auto player_flight_data() const -> PlayerFlightHudData const& { return player_flight_data_; }
-    auto sampled_speed_data() const -> SampledSpeedHudData const& { return sampled_speed_data_; }
+    auto player_status_data() const -> std::optional<PlayerStatusHudData> const& {
+        return player_status_data_;
+    }
+    auto player_flight_data() const -> std::optional<PlayerFlightHudData> const& {
+        return player_flight_data_;
+    }
+    // Borrowed until the player simulation is advanced, reconfigured, or destroyed.
+    auto sampled_speed_view() const -> std::optional<SampledSpeedHudView>;
     auto seconds_per_tick() const -> float;
     auto player_for_collection() const -> sim::player::Sim const*;
     auto display_batches() const -> std::array<AgentDisplayBatch, 4>;
@@ -48,7 +58,6 @@ class HudModel {
     void collect_kill_data();
     auto collect_player_status_data() -> bool;
     auto collect_player_flight_data() -> bool;
-    auto collect_sampled_speed_data() -> bool;
 
     sim::HudSettings settings_;
     std::optional<sim::LevelReadAccess> simulation_;
@@ -58,12 +67,9 @@ class HudModel {
     MissionHudData mission_data_;
     EntityCountHudData entity_count_data_;
     KillHudData kill_data_;
-    PlayerStatusHudData player_status_data_;
-    PlayerFlightHudData player_flight_data_;
-    SampledSpeedHudData sampled_speed_data_;
+    std::optional<PlayerStatusHudData> player_status_data_;
+    std::optional<PlayerFlightHudData> player_flight_data_;
     std::vector<sim::EntityId> top_killer_ids_;
     std::string selected_mapping_context_;
-    bool has_mission_data_{};
-    bool has_sampled_speed_data_{};
 };
 }

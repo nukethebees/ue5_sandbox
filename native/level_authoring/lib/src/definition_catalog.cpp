@@ -1,6 +1,7 @@
 #include <ioj/levels/authoring/definition_catalog.h>
 
 #include <ioj/ascii.h>
+#include <ioj/levels/authoring/level_catalog_category.h>
 #include <ioj/levels/catalog_validation.h>
 
 #include <algorithm>

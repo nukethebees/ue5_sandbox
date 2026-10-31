@@ -41,6 +41,9 @@ TEST(HudModel, InitialCachesAndChangeDetectionNeedNoWidget) {
 
     EXPECT_TRUE(hud.active());
     EXPECT_FALSE(hud.has_mission_data());
+    EXPECT_FALSE(hud.player_status_data());
+    EXPECT_FALSE(hud.player_flight_data());
+    EXPECT_FALSE(hud.sampled_speed_view());
     auto const& counts{hud.entity_count_data().alive_per_team_and_type};
     EXPECT_EQ(counts[std::to_underlying(Team::Blue)][std::to_underlying(EntityType::CapitalShip)],
               1);
@@ -54,6 +57,7 @@ TEST(HudModel, InitialCachesAndChangeDetectionNeedNoWidget) {
 
     hud.deactivate();
     EXPECT_FALSE(hud.active());
+    EXPECT_FALSE(hud.sampled_speed_view());
     EXPECT_FALSE(hud.tick(1).entity_counts);
 }
 
@@ -124,9 +128,21 @@ TEST(HudModel, PlayerStatusKillRankingAndMatrixRetainPayloads) {
     auto const rival{capitals.get_id(2)};
     presentation::HudModel hud;
     hud.initialise(simulation.get_mission(), simulation.get_read_access());
-    EXPECT_TRUE(hud.player_status_data().has_player_ship);
-    EXPECT_EQ(hud.player_status_data().health.health.value(), 37);
-    EXPECT_EQ(hud.player_status_data().health.max_health.value(), 100);
+    ASSERT_TRUE(hud.player_status_data());
+    EXPECT_EQ(hud.player_status_data()->health.health.value(), 37);
+    EXPECT_EQ(hud.player_status_data()->health.max_health.value(), 100);
+    {
+        auto const samples{hud.sampled_speed_view()};
+        ASSERT_TRUE(samples);
+        auto const* player_simulation{simulation.get_player_ship_simulation()};
+        EXPECT_EQ(samples->samples.data(), player_simulation->speed_samples.data());
+        EXPECT_EQ(samples->samples.size(), player_simulation->speed_samples.size());
+        EXPECT_EQ(samples->oldest_index, 0);
+    }
+    auto commands{simulation.get_player_ship_commands()};
+    ASSERT_TRUE(commands);
+    commands->set_speed_sampling_enabled(true);
+    commands->set_forward_input(1.f);
     harness.queue_kills(std::array{capitals.get_id(0)}, player_id);
     harness.queue_kills(std::array{capitals.get_id(1)}, rival);
     simulation.start();
@@ -134,8 +150,20 @@ TEST(HudModel, PlayerStatusKillRankingAndMatrixRetainPayloads) {
     hud.set_selected_mapping_context("Flight");
     hud.force_sample();
 
-    EXPECT_EQ(hud.player_status_data().points, 1);
-    EXPECT_EQ(hud.player_flight_data().selected_mapping_context, "Flight");
+    ASSERT_TRUE(hud.player_status_data());
+    EXPECT_EQ(hud.player_status_data()->points, 1);
+    ASSERT_TRUE(hud.player_flight_data());
+    EXPECT_EQ(hud.player_flight_data()->selected_mapping_context, "Flight");
+    {
+        auto const samples{hud.sampled_speed_view()};
+        ASSERT_TRUE(samples);
+        auto const* player_simulation{simulation.get_player_ship_simulation()};
+        EXPECT_EQ(samples->samples.data(), player_simulation->speed_samples.data());
+        EXPECT_EQ(samples->oldest_index, player_simulation->speed_sample_index);
+        ASSERT_GT(samples->oldest_index, 0);
+        EXPECT_GT(samples->samples[samples->oldest_index - 1].x(), 0.0);
+        EXPECT_GT(samples->samples[samples->oldest_index - 1].y(), 0.0);
+    }
     auto const& kills{hud.kill_data()};
     ASSERT_EQ(kills.top_killers.size(), 2);
     EXPECT_EQ(kills.top_killers[0].entity_id, player_id);
@@ -149,6 +177,25 @@ TEST(HudModel, PlayerStatusKillRankingAndMatrixRetainPayloads) {
     EXPECT_EQ(kills.team_kill_matrix[std::to_underlying(Team::Red)]
                                     [std::to_underlying(EntityType::CapitalShip)],
               1);
+    harness.queue_kills(std::array{player_id});
+    harness.advance(0.05);
+    hud.force_sample();
+    auto const* const dead_player{simulation.get_player_ship_simulation()};
+    ASSERT_NE(dead_player, nullptr);
+    EXPECT_EQ(dead_player->get_health().health.value(), 0);
+    EXPECT_EQ(simulation.get_entity_ledger().count_alive(EntityType::PlayerShip), 0);
+    ASSERT_TRUE(hud.player_status_data());
+    EXPECT_EQ(hud.player_status_data()->health.health.value(), 0);
+    EXPECT_TRUE(hud.player_flight_data());
+    {
+        auto const samples{hud.sampled_speed_view()};
+        ASSERT_TRUE(samples);
+        EXPECT_EQ(samples->samples.data(), dead_player->speed_samples.data());
+    }
+    hud.deactivate();
+    EXPECT_FALSE(hud.player_status_data());
+    EXPECT_FALSE(hud.player_flight_data());
+    EXPECT_FALSE(hud.sampled_speed_view());
 }
 
 TEST(HudModel, MissionDisplayTimeUsesSimulationClock) {

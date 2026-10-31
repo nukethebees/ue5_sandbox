@@ -1,41 +1,11 @@
 #pragma once
 
-#include <ioj/sim/telemetry/run_record.h>
+#include <ioj/sim/telemetry/analysis_input.h>
+#include <ioj/sim/telemetry/metric_series.h>
 
-#include <cstdint>
-#include <optional>
-#include <span>
-#include <string_view>
 #include <vector>
 
 namespace ioj::sim::telemetry {
-enum class Metric : std::uint8_t {
-    ActiveEntities,
-    PlayerShips,
-    Turrets,
-    CapitalShips,
-    CapitalShipFighters,
-    TubeSpinners,
-    ActiveLasers,
-    SpawnRate,
-    DestructionRate,
-    KillRate,
-    LaserFireRate,
-    Count,
-};
-
-struct AnalysisInput {
-    Frequency tick_rate_hz{Frequency::make(60.0)};
-    std::span<LevelTelemetryBattleSample const> battle_samples;
-};
-
-struct MetricSeries {
-    Metric metric{Metric::ActiveEntities};
-    std::vector<float> simulated_elapsed_seconds;
-    std::vector<float> values;
-    std::optional<double> weighted_mean;
-};
-
 struct Analysis {
     std::vector<MetricSeries> metrics;
     std::vector<float> battle_simulated_seconds;
@@ -47,6 +17,4 @@ struct Analysis {
 };
 
 [[nodiscard]] auto analyze(AnalysisInput input) -> Analysis;
-[[nodiscard]] auto metric_title(Metric metric) noexcept -> std::string_view;
-[[nodiscard]] auto metric_units(Metric metric) noexcept -> std::string_view;
-} // namespace ioj::sim::telemetry
+}
