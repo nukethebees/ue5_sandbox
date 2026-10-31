@@ -33,7 +33,6 @@
     (member laser_damage @input_optional_int :initializer "")
     (member initial_spawn_delay @input_optional_float :initializer "" :finite true)
     (member spawn_cooldown @input_optional_float :initializer "" :finite true)
-    (member target @input_entity_id :initializer "")
     (projections (cpp)))
   (record ObjectiveInput :generate-s7-reader true :s7-tag "objective"
     (member id @input_objective_name :initializer "" :required true)

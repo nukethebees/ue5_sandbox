@@ -302,17 +302,13 @@ auto count_memberships(collision::CollisionUniformGrid const& grid,
 TEST(WorldlessSpaceGameSimulation, CollisionUniformGridContainsAllEntityTypes) {
     auto const config{tests::make_fixture()};
     auto data{tests::make_simulation_data(config)};
-    auto const player_index{tests::add_player_spawn(
+    tests::add_player_spawn(
         data,
         tests::make_player_spawn(
             config,
-            Transform3d{.rotation = Quaternion4d{}, .location = Vector3d{-1500.f, -1500.f, 0.f}}))};
-    tests::add_capital_spawn(data,
-                             Vector3f{{-500.f, -500.f, 0.f}},
-                             Team::Blue,
-                             player_index,
-                             0.f,
-                             data.capital_ships.spawn_delay);
+            Transform3d{.rotation = Quaternion4d{}, .location = Vector3d{-1500.f, -1500.f, 0.f}}));
+    tests::add_capital_spawn(
+        data, Vector3f{{-500.f, -500.f, 0.f}}, Team::Blue, 0.f, data.capital_ships.spawn_delay);
     tests::add_turret_spawn(data, Vector3f{500.f, 500.f, 0.f}, {}, Team::Blue);
     tests::add_spinner_spawn(data, Vector3f{1500.f, 1500.f, 0.f}, 0.f, 0);
 

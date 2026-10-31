@@ -6,7 +6,6 @@
 #include "ioj/constrained_numbers.h"
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
-#include "ioj/settings/attack_distance_band.h"
 #include "ioj/settings/simulation_constraints.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 
@@ -40,14 +39,7 @@ struct FighterSimConfig {
         laser,
         health,
         attack_retry_cooldown,
-        attack_engagement_threshold,
-        attack_reposition_frequency,
-        attack_distance_band,
-        arrival_distance,
         los_check_buffer,
-        awareness_radius,
-        awareness_scan_frequency,
-        minimum_opportunistic_intercept_deviation_dot_product,
     };
 
     template <Field Selected, typename Self>
@@ -109,29 +101,8 @@ struct FighterSimConfig {
         if constexpr (Selected == Field::attack_retry_cooldown) {
             return (self.attack_retry_cooldown);
         }
-        if constexpr (Selected == Field::attack_engagement_threshold) {
-            return (self.attack_engagement_threshold);
-        }
-        if constexpr (Selected == Field::attack_reposition_frequency) {
-            return (self.attack_reposition_frequency);
-        }
-        if constexpr (Selected == Field::attack_distance_band) {
-            return (self.attack_distance_band);
-        }
-        if constexpr (Selected == Field::arrival_distance) {
-            return (self.arrival_distance);
-        }
         if constexpr (Selected == Field::los_check_buffer) {
             return (self.los_check_buffer);
-        }
-        if constexpr (Selected == Field::awareness_radius) {
-            return (self.awareness_radius);
-        }
-        if constexpr (Selected == Field::awareness_scan_frequency) {
-            return (self.awareness_scan_frequency);
-        }
-        if constexpr (Selected == Field::minimum_opportunistic_intercept_deviation_dot_product) {
-            return (self.minimum_opportunistic_intercept_deviation_dot_product);
         }
     }
 
@@ -194,27 +165,8 @@ struct FighterSimConfig {
             case Field::attack_retry_cooldown:
                 return invoke_field<Field::attack_retry_cooldown>(self,
                                                                   std::forward<Visitor>(visitor));
-            case Field::attack_engagement_threshold:
-                return invoke_field<Field::attack_engagement_threshold>(
-                    self, std::forward<Visitor>(visitor));
-            case Field::attack_reposition_frequency:
-                return invoke_field<Field::attack_reposition_frequency>(
-                    self, std::forward<Visitor>(visitor));
-            case Field::attack_distance_band:
-                return invoke_field<Field::attack_distance_band>(self,
-                                                                 std::forward<Visitor>(visitor));
-            case Field::arrival_distance:
-                return invoke_field<Field::arrival_distance>(self, std::forward<Visitor>(visitor));
             case Field::los_check_buffer:
                 return invoke_field<Field::los_check_buffer>(self, std::forward<Visitor>(visitor));
-            case Field::awareness_radius:
-                return invoke_field<Field::awareness_radius>(self, std::forward<Visitor>(visitor));
-            case Field::awareness_scan_frequency:
-                return invoke_field<Field::awareness_scan_frequency>(
-                    self, std::forward<Visitor>(visitor));
-            case Field::minimum_opportunistic_intercept_deviation_dot_product:
-                return invoke_field<Field::minimum_opportunistic_intercept_deviation_dot_product>(
-                    self, std::forward<Visitor>(visitor));
         }
         assert(false && "Invalid record field");
         std::unreachable();
@@ -238,34 +190,24 @@ struct FighterSimConfig {
     LaserWeaponSimConfig laser{};
     settings::PositiveHealth health{Health{50}};
     ioj::NonNegativeFinite<float> attack_retry_cooldown{0.15f};
-    float attack_engagement_threshold{5000.f};
-    ioj::PositiveFinite<float> attack_reposition_frequency{10.f};
-    settings::AttackDistanceBand attack_distance_band{};
-    float arrival_distance{500.f};
     float los_check_buffer{100.f};
-    float awareness_radius{10000.f};
-    ioj::PositiveFinite<float> awareness_scan_frequency{6.f};
-    float minimum_opportunistic_intercept_deviation_dot_product{0.5f};
 };
 } // namespace ioj::sim
 namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<::ioj::sim::FighterSimConfig::Field>() noexcept
     -> std::size_t {
-    return 26;
+    return 19;
 }
 } // namespace ioj
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::sim::FighterSimConfig::Field,
-                                        ioj::Name>{ioj::PackedStrings{
-    "max_live_fighters\000fire_point_distance\000fire_dot_product_threshold\000speed\000turn_speed_"
-    "unitless\000avoidance_clear_update_frequency\000avoidance_update_frequency\000avoidance_"
-    "active_update_frequency\000avoidance_immediate_update_frequency\000avoidance_lookahead_"
-    "time\000avoidance_clearance_buffer\000separation_radius\000separation_strength\000steering_"
-    "memory_duration\000dense_traffic_neighbour_threshold\000laser\000health\000attack_retry_"
-    "cooldown\000attack_engagement_threshold\000attack_reposition_frequency\000attack_distance_"
-    "band\000arrival_distance\000los_check_buffer\000awareness_radius\000awareness_scan_"
-    "frequency\000minimum_opportunistic_intercept_deviation_dot_product",
-    std::array<std::uint16_t, 27>{0,   18,  38,  65,  71,  91,  124, 151, 185,
-                                  222, 247, 274, 292, 312, 337, 371, 377, 384,
-                                  406, 434, 462, 483, 500, 517, 534, 559, 613}}};
+inline constexpr auto ioj::enum_strings<::ioj::sim::FighterSimConfig::Field, ioj::Name>{
+    ioj::PackedStrings{
+        "max_live_fighters\000fire_point_distance\000fire_dot_product_threshold\000speed\000turn_"
+        "speed_unitless\000avoidance_clear_update_frequency\000avoidance_update_"
+        "frequency\000avoidance_active_update_frequency\000avoidance_immediate_update_"
+        "frequency\000avoidance_lookahead_time\000avoidance_clearance_buffer\000separation_"
+        "radius\000separation_strength\000steering_memory_duration\000dense_traffic_neighbour_"
+        "threshold\000laser\000health\000attack_retry_cooldown\000los_check_buffer",
+        std::array<std::uint16_t, 20>{0,   18,  38,  65,  71,  91,  124, 151, 185, 222,
+                                      247, 274, 292, 312, 337, 371, 377, 384, 406, 423}}};

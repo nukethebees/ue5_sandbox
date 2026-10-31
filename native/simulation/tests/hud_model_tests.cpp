@@ -31,8 +31,8 @@ auto defence_mission(LevelSimInitData const& data) -> CompiledMission {
 
 TEST(HudModel, InitialCachesAndChangeDetectionNeedNoWidget) {
     auto data{hud_test::data()};
-    add_capital_spawn(data, {0.f, 0.f, 0.f}, Team::Blue, invalid_level_entity_index, 60.f);
-    add_capital_spawn(data, {20000.f, 0.f, 0.f}, Team::Red, invalid_level_entity_index, 60.f);
+    add_capital_spawn(data, {0.f, 0.f, 0.f}, Team::Blue, 60.f);
+    add_capital_spawn(data, {20000.f, 0.f, 0.f}, Team::Red, 60.f);
     WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     auto const& simulation{harness.get_simulation()};
@@ -63,7 +63,7 @@ TEST(HudModel, InitialCachesAndChangeDetectionNeedNoWidget) {
 
 TEST(HudModel, EntityCountsPollAtConfiguredPeriodWithoutWidgets) {
     auto data{hud_test::data()};
-    add_capital_spawn(data, {20000.f, 0.f, 0.f}, Team::Red, invalid_level_entity_index, 60.f);
+    add_capital_spawn(data, {20000.f, 0.f, 0.f}, Team::Red, 60.f);
     WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     auto& simulation{harness.get_simulation()};
@@ -84,8 +84,8 @@ TEST(HudModel, EntityCountsPollAtConfiguredPeriodWithoutWidgets) {
 
 TEST(HudModel, CachesDefenceFailureAndObjectiveMembership) {
     auto data{hud_test::data()};
-    add_capital_spawn(data, {}, Team::Blue, invalid_level_entity_index, 60.f);
-    add_capital_spawn(data, {20000.f, 0.f, 0.f}, Team::Red, invalid_level_entity_index, 60.f);
+    add_capital_spawn(data, {}, Team::Blue, 60.f);
+    add_capital_spawn(data, {20000.f, 0.f, 0.f}, Team::Red, 60.f);
     data.mission = hud_test::defence_mission(data);
     WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
@@ -114,11 +114,8 @@ TEST(HudModel, PlayerStatusKillRankingAndMatrixRetainPayloads) {
     player.health = {Health{37}, Health{100}};
     add_player_spawn(data, player);
     for (std::int32_t index{}; index < 3; ++index) {
-        add_capital_spawn(data,
-                          {20000.f + 10000.f * static_cast<float>(index), 0.f, 0.f},
-                          Team::Red,
-                          invalid_level_entity_index,
-                          60.f);
+        add_capital_spawn(
+            data, {20000.f + 10000.f * static_cast<float>(index), 0.f, 0.f}, Team::Red, 60.f);
     }
     WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
@@ -202,8 +199,8 @@ TEST(HudModel, MissionDisplayTimeUsesSimulationClock) {
     auto data{hud_test::data()};
     data.clock_settings.tick_rate = Frequency{10.0};
     data.clock_settings.time_scale = PositiveFinite<double>{2.0};
-    add_capital_spawn(data, {}, Team::Blue, invalid_level_entity_index, 60.f);
-    add_capital_spawn(data, {20000.f, 0.f, 0.f}, Team::Red, invalid_level_entity_index, 60.f);
+    add_capital_spawn(data, {}, Team::Blue, 60.f);
+    add_capital_spawn(data, {20000.f, 0.f, 0.f}, Team::Red, 60.f);
     data.mission = hud_test::defence_mission(data);
     WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();

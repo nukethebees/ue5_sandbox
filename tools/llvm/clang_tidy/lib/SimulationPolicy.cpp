@@ -46,8 +46,6 @@ static bool is_view_record(CXXRecordDecl const* record) {
             .Cases(
                 {"ioj::sim::EntityStaticOverlapsView", "ioj::sim::EntityStaticOverlapsConstView"},
                 true)
-            .Cases({"ioj::sim::FighterOrderQueueView", "ioj::sim::FighterOrderQueueConstView"},
-                   true)
             .Cases({"ioj::sim::LineTracesView", "ioj::sim::LineTracesConstView"}, true)
             .Cases({"ioj::Rotators3fView", "ioj::Rotators3fConstView"}, true)
             .Cases({"ioj::sim::TraceHitsView", "ioj::sim::TraceHitsConstView"}, true)

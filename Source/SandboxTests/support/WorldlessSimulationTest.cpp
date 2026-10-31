@@ -50,29 +50,6 @@ auto add_worldless_player_spawn(sim::LevelSimInitData& data, sim::player::Player
     return entity_index;
 }
 
-auto add_worldless_capital_spawn(sim::LevelSimInitData& data,
-                                 FVector3f const location,
-                                 ETestTeam const team,
-                                 uint32 const target_entity_index,
-                                 float const initial_spawn_delay,
-                                 float const spawn_cooldown,
-                                 int32 const health) -> uint32 {
-    auto& storage{data.level_events.schedule.capital_spawns};
-    auto const index{storage.num()};
-    data.level_events.schedule.add_initial_spawn_group(sim::EntityType::CapitalShip, index, 1);
-    storage.add_defaulted(1);
-    auto const events{storage.get_view()};
-    events.entity_indices()[index] = data.level_events.initialisation.entity_count++;
-    events.target_entity_indices()[index] = target_entity_index;
-    set_vector(events.view_locations(), index, Vector3f{location});
-    events.teams()[index] = static_cast<Team>(team);
-    events.healths()[index] =
-        health == INDEX_NONE ? data.capital_ships.max_health : ::ioj::sim::Health{health};
-    events.initial_fighter_spawn_delays()[index] = initial_spawn_delay;
-    events.fighter_spawn_cooldowns()[index] = spawn_cooldown;
-    return index;
-}
-
 FWorldlessSimulationTest::FWorldlessSimulationTest(sim::LevelSimInitData data)
     : simulation_{game_memory_, MoveTemp(data)} {}
 

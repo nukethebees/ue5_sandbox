@@ -79,8 +79,8 @@ Defaults must satisfy the policy for the constrained type to be default-construc
 A constrained record is replaced as one complete value. Mark all required components with
 `:required true`; an override must supply those components too. This preserves cross-field
 invariants without exposing writable component references.
-`AttackDistanceBand` uses this for its ordered minimum/desired/maximum triple. A later layer
-cannot repair an invalid earlier triple.
+For example, an ordered minimum/desired/maximum triple must be valid in every layer;
+a later layer cannot repair an invalid earlier triple.
 
 The common reader supports integers (including exact ratios/reals), floating-point
 numbers, booleans, strings, native vectors, serialized enums, constrained values,

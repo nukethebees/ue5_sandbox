@@ -14,7 +14,6 @@ struct LevelSimInitData;
 
 struct InitialCapital {
     LevelEntityIndex entity;
-    LevelEntityIndex target{invalid_level_entity_index};
     Vector3f location;
     Rotator3f rotation;
     Team team;

@@ -30,7 +30,6 @@ void initialise_spawns(LevelSimInitData& data,
 
     auto const capital_events{schedule.capital_spawns.get_view()};
     auto const capital_entity_indices{capital_events.entity_indices()};
-    auto const capital_target_entity_indices{capital_events.target_entity_indices()};
     auto const capital_view_locations{capital_events.view_locations()};
     auto const capital_view_rotations{capital_events.view_rotations()};
     auto const capital_teams{capital_events.teams()};
@@ -40,10 +39,7 @@ void initialise_spawns(LevelSimInitData& data,
     for (std::int32_t i{}; i < capital_count; ++i) {
         auto const& spawn{capitals[i]};
         assert(spawn.entity < data.level_events.initialisation.entity_count);
-        assert(spawn.target == invalid_level_entity_index ||
-               spawn.target < data.level_events.initialisation.entity_count);
         capital_entity_indices[i] = spawn.entity;
-        capital_target_entity_indices[i] = spawn.target;
         set_vector(capital_view_locations, i, spawn.location);
         set_rotation(capital_view_rotations, i, spawn.rotation);
         capital_teams[i] = spawn.team;

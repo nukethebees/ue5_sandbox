@@ -19,11 +19,6 @@
 
 
 
-(type fighter_order_queue
-  :spelling "FighterOrderQueue"
-  :header "ioj/sim/fighters/fighter_order_queue.h"
-  (operation remove-at-swap remove_at_swap))
-
 
 (type fighter_spawn_queue_const_view
   :spelling "FighterSpawnQueue::ConstView"
@@ -130,16 +125,6 @@
 (type native_unique_id
   :spelling "EntityId"
   :header "ioj/sim/entities/entity_id.h"
-  :pass-by value)
-
-(type native_fighter_order
-  :spelling "FighterOrder"
-  :header "ioj/sim/fighters/fighter_task_format.h"
-  :pass-by value)
-
-(type native_fighter_task
-  :spelling "FighterTask"
-  :header "ioj/sim/fighters/fighter_task_format.h"
   :pass-by value)
 
 (type native_vector_3f
@@ -324,10 +309,6 @@
 (type fighters_resolution_inputs
   :spelling "ResolutionInputs"
   :header "ioj/sim/fighters/phase_inputs.h")
-
-(type capital_ships_thinking_inputs
-  :spelling "ThinkingInputs"
-  :header "ioj/sim/capital_ships/phase_inputs.h")
 
 (type capital_ships_resolution_inputs
   :spelling "ResolutionInputs"

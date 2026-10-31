@@ -33,21 +33,18 @@ auto make_long_running_battle() -> LevelSimInitData {
             {.location = {1000.0, y, 0.0}});
     }
 
-    auto const first{add_capital_spawn(data,
-                                       {{-10000.f, 0.f, 0.f}},
-                                       Team::Green,
-                                       invalid_level_entity_index,
-                                       0.f,
-                                       10000.f,
-                                       std::numeric_limits<std::int32_t>::max())};
-    auto const second{add_capital_spawn(data,
-                                        {{10000.f, 0.f, 0.f}},
-                                        Team::White,
-                                        first,
-                                        0.f,
-                                        10000.f,
-                                        std::numeric_limits<std::int32_t>::max())};
-    data.level_events.schedule.capital_spawns.get_view().target_entity_indices()[0] = second;
+    add_capital_spawn(data,
+                      {{-10000.f, 0.f, 0.f}},
+                      Team::Green,
+                      0.f,
+                      10000.f,
+                      std::numeric_limits<std::int32_t>::max());
+    add_capital_spawn(data,
+                      {{10000.f, 0.f, 0.f}},
+                      Team::White,
+                      0.f,
+                      10000.f,
+                      std::numeric_limits<std::int32_t>::max());
 
     for (auto const type : EnumTraits<EntityType>::values) {
         data.collision.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
@@ -130,8 +127,7 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
     EXPECT_EQ(observed_ticks, tick_count) << "Every requested battle tick was observed";
     EXPECT_TRUE(observed_empty_tick) << "Battle includes an initially quiet movement tick";
     EXPECT_TRUE(observed_moved_fighters > 100) << "Battle exercises fighter movement";
-    EXPECT_EQ(simulation.get_capital_ships().get_fighters_spawned(), 16)
-        << "Battle spawns exactly one fighter wave";
+    EXPECT_EQ(simulation.get_fighters_spawned(), 16) << "Battle spawns exactly one fighter wave";
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 16)
         << "Zero-damage battle preserves every fighter";
 }

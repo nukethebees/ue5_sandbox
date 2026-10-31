@@ -11,7 +11,6 @@ auto add_player_spawn(LevelSimInitData& data, player::PlayerSpawnData spawn) -> 
 auto add_capital_spawn(LevelSimInitData& data,
                        Vector3f location,
                        Team team,
-                       std::uint32_t target_entity_index = invalid_level_entity_index,
                        float initial_spawn_delay = 0.f,
                        float spawn_cooldown = 60.f,
                        std::int32_t health = -1) -> std::uint32_t;

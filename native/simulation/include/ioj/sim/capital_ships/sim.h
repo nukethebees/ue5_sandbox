@@ -1,21 +1,14 @@
 #pragma once
-#include <ioj/frame_memory_resource.h>
 #include <ioj/levels/team.h>
+#include <ioj/settings/simulation_constraints.h>
 #include <ioj/sim/capital_ships/capital_entity_data.h>
-#include <ioj/sim/capital_ships/capital_ship_sim_config.h>
 #include <ioj/sim/capital_ships/phase_inputs.h>
 #include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_frame_change.h>
 #include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/entities/entity_type.h>
-#include <ioj/sim/fighters/command_interface.h>
-#include <ioj/sim/fighters/fighter_order_queue.h>
-#include <ioj/sim/index_span.h>
 #include <ioj/sim/levels/level_capital_spawn_events.h>
-#include <ioj/sim/levels/level_spawn_groups.h>
-#include <ioj/sim/levels/level_spinner_spawn_events.h>
-#include <ioj/sim/levels/level_turret_spawn_events.h>
 
 #include <cstdint>
 #include <optional>
@@ -29,17 +22,13 @@ class EntityLedger;
 class LevelSpawnManager;
 }
 
-namespace ioj::sim::fighters {
-struct Sim;
-}
-
 namespace ioj::sim::capital_ships {
 class PhaseInterface;
 
 struct Sim {
     using EntityStorage = CapitalEntityData;
 
-    Sim(EntityLedger& ledger, EntityTables& entity_tables, fighters::Sim& fighters);
+    Sim(EntityLedger& ledger, EntityTables& entity_tables);
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
@@ -63,25 +52,6 @@ struct Sim {
     auto get_id(std::uint32_t index) const -> EntityId {
         return entities.get_const_view().entity_ids()[index];
     }
-    auto get_fighter_spawn_slots() const noexcept -> std::uint32_t;
-    auto get_fighters_spawned() const noexcept -> std::uint32_t { return fighters_spawned; }
-    auto get_fighter_ids() const noexcept -> std::span<EntityId const> {
-        return {fighter_ids.data(), fighter_ids.size()};
-    }
-    auto get_fighter_id_spans() const noexcept -> std::span<IndexSpan const> {
-        return entities.get_const_view().fighter_id_spans();
-    }
-    auto get_fighter_id_span(std::uint32_t index) const noexcept -> IndexSpan {
-        return entities.get_const_view().fighter_id_spans()[index];
-    }
-    auto get_fighter_ids(std::uint32_t index) const noexcept -> std::span<EntityId const>;
-    auto get_fighter_ids(IndexSpan span) const noexcept -> std::span<EntityId const>;
-    auto get_target_id(std::uint32_t index) const noexcept -> EntityId {
-        return entities.get_const_view().target_ids()[index];
-    }
-    auto get_target_ids() const noexcept -> std::span<EntityId const> {
-        return entities.get_const_view().target_ids();
-    }
     auto get_team(std::uint32_t index) const noexcept -> Team {
         return entities.get_const_view().teams()[index];
     }
@@ -90,20 +60,14 @@ struct Sim {
     auto find_first_index_on_team(Team team) const noexcept -> std::optional<std::uint32_t>;
     auto find_first_id_on_team(Team team) const noexcept -> std::optional<EntityId>;
 
-    /* **************************************** */
-    // Checks
-    /* **************************************** */
-    void set_target_id(EntityId ship_id, EntityId target_id);
   private:
     /* **************************************** */
     // Sim phases
     /* **************************************** */
-    void initialise(CapitalShipSimConfig const& new_config);
+    void initialise(settings::PositiveHealth max_health);
     void update_entity_lookup_table();
-    void prepare_tick(float dt);
-    void think(ThinkingInputs const inputs);
+    void prepare_tick();
     void resolve_damage_events(ResolutionInputs const inputs);
-    void resolve_fighters_of_dying_capitals();
     void publish_deaths(ResolutionInputs const inputs);
     void remove_components();
     void remove_entities();
@@ -116,29 +80,9 @@ struct Sim {
     void spawn_ships(LevelCapitalSpawnEvents::ConstView spawn_data);
 
     /* **************************************** */
-    // Entity data
-    /* **************************************** */
-
-    /* **************************************** */
-    // Fighter spawning
-    /* **************************************** */
-    void queue_fighter_spawns(FrameMemoryResource* const scratch_resource);
-    void refresh_fighter_ids(FrameMemoryResource* const scratch_resource);
-
-    /* **************************************** */
-    // Orders
-    /* **************************************** */
-    void queue_fighter_orders(FrameMemoryResource* const scratch_resource);
-
-    /* **************************************** */
-    // Targets
-    /* **************************************** */
-
-    /* **************************************** */
     // Death handling
     /* **************************************** */
     void handle_dead_entities();
-    void reassign_fighters_of_dying_capital();
 
     /* **************************************** */
     // Misc
@@ -151,7 +95,7 @@ struct Sim {
 
     friend class sim::LevelSpawnManager;
 
-    CapitalShipSimConfig config{};
+    settings::PositiveHealth max_health_{Health{5000}};
     EntityLedger& ledger_;
     EntityTables& entity_tables_;
 
@@ -159,14 +103,5 @@ struct Sim {
     std::vector<std::uint32_t> local_indices_to_remove;
     EntityDeathInfo entity_death_info;
     std::vector<EntityFrameChange> frame_changes_;
-
-    fighters::CommandInterface fighters_interface;
-    std::vector<EntityId> fighter_ids;
-    std::uint64_t fighter_membership_revision_{};
-    std::uint64_t fighter_layout_revision_{};
-    bool fighter_ids_current_{};
-    std::uint32_t fighters_spawned{0};
-
-    FighterOrderQueue fighter_order_queue{};
 };
 } // namespace ioj::sim::capital_ships

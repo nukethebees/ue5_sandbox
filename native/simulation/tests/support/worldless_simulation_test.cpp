@@ -90,7 +90,6 @@ auto add_player_spawn(LevelSimInitData& data, player::PlayerSpawnData spawn) -> 
 auto add_capital_spawn(LevelSimInitData& data,
                        Vector3f location,
                        Team team,
-                       std::uint32_t target_entity_index,
                        float initial_spawn_delay,
                        float spawn_cooldown,
                        std::int32_t health) -> std::uint32_t {
@@ -101,7 +100,6 @@ auto add_capital_spawn(LevelSimInitData& data,
     storage.add_defaulted(1);
     auto const events{storage.get_view()};
     events.entity_indices()[row] = entity_index;
-    events.target_entity_indices()[row] = target_entity_index;
     set_vector(events.view_locations(), row, location);
     events.teams()[row] = team;
     events.healths()[row] = health == -1 ? data.capital_ships.max_health : Health{health};

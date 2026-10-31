@@ -43,7 +43,6 @@
     (value LaserDamage :serialized-name "laser-damage")
     (value InitialSpawnDelay :serialized-name "initial-spawn-delay")
     (value SpawnCooldown :serialized-name "spawn-cooldown")
-    (value Target :serialized-name "target")
     (projections (cpp)))
   (enum ExpressionSyntax @native_uint8
     :native-api true

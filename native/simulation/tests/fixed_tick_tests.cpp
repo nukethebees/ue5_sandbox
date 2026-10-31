@@ -78,9 +78,7 @@ TEST(SimulationClock, InitialisesRuntimeStateFromStaticSettings) {
 
 TEST(SimulationSettings, AcceptsFrequenciesAboveTickRate) {
     SimulationSettings fast;
-    for (auto const member : {&FighterSimConfig::awareness_scan_frequency,
-                              &FighterSimConfig::attack_reposition_frequency,
-                              &FighterSimConfig::avoidance_clear_update_frequency,
+    for (auto const member : {&FighterSimConfig::avoidance_clear_update_frequency,
                               &FighterSimConfig::avoidance_update_frequency,
                               &FighterSimConfig::avoidance_active_update_frequency,
                               &FighterSimConfig::avoidance_immediate_update_frequency}) {
@@ -95,8 +93,6 @@ TEST(SimulationSettings, ChecksCountdownFrequencyBoundsBeforeNarrowing) {
     auto check_boundary = [](auto assign, double const maximum, std::string_view const path) {
         SimulationSettings settings;
         settings.clock.tick_rate = Frequency::make(maximum);
-        settings.fighters.awareness_scan_frequency =
-            ::ioj::PositiveFinite<float>::make(static_cast<float>(maximum));
         assign(settings, 1.f);
         EXPECT_TRUE(validate_settings(settings));
 
@@ -106,18 +102,6 @@ TEST(SimulationSettings, ChecksCountdownFrequencyBoundsBeforeNarrowing) {
         EXPECT_TRUE(std::ranges::any_of(
             result.error(), [&](auto const& error) { return error.node_path == path; }));
     };
-    check_boundary(
-        [](auto& s, float value) {
-            s.fighters.awareness_scan_frequency = ::ioj::PositiveFinite<float>::make(value);
-        },
-        std::numeric_limits<std::int8_t>::max(),
-        "fighters.awareness-scan-frequency");
-    check_boundary(
-        [](auto& s, float value) {
-            s.fighters.attack_reposition_frequency = ::ioj::PositiveFinite<float>::make(value);
-        },
-        std::numeric_limits<std::int16_t>::max(),
-        "fighters.attack-reposition-frequency");
     check_boundary(
         [](auto& s, float value) {
             s.fighters.avoidance_clear_update_frequency = ::ioj::PositiveFinite<float>::make(value);

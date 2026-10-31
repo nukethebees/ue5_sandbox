@@ -7,10 +7,9 @@
 
 namespace ioj::levels::authoring {
 constexpr auto s7_record_constructors() -> std::string_view {
-    return "(define (attack-distance-band . arguments) (cons :attack-distance-band "
-           "arguments))\n(define (bright-star . arguments) (cons :bright-star arguments))\n(define "
-           "(camera . arguments) (cons :camera arguments))\n(define (campaign . arguments) (cons "
-           ":campaign arguments))\n(define (capital-ships . arguments) (cons :capital-ships "
+    return "(define (bright-star . arguments) (cons :bright-star arguments))\n(define (camera . "
+           "arguments) (cons :camera arguments))\n(define (campaign . arguments) (cons :campaign "
+           "arguments))\n(define (capital-ships . arguments) (cons :capital-ships "
            "arguments))\n(define (collision-grid . arguments) (cons :collision-grid "
            "arguments))\n(define (dust-lane . arguments) (cons :dust-lane arguments))\n(define "
            "(entity . arguments) (cons :entity arguments))\n(define (entity-overlay . arguments) "

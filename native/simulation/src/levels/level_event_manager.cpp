@@ -11,11 +11,13 @@
 
 namespace ioj::sim {
 LevelEventManager::LevelEventManager(capital_ships::Sim& capital_ships,
+                                     fighters::Sim& fighters,
                                      turrets::Sim& turrets,
                                      spinners::Sim& spinners,
+                                     std::span<Transform3d const> const fighter_spawn_transforms,
                                      CompiledLevelEvents data)
     : schedule_{std::move(data.schedule)}
-    , spawn_manager_{capital_ships, turrets, spinners}
+    , spawn_manager_{capital_ships, fighters, turrets, spinners, fighter_spawn_transforms}
     , player_entity_index_{data.initialisation.player_entity_index}
     , spawn_group_offset_{schedule_.initial_spawn_group_count} {
     assert(schedule_.execution_ticks.size() == schedule_.event_group_counts.size());

@@ -29,9 +29,7 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/fighters/fighter_entity_data.h
   ../include/ioj/sim/fighters/fighter_navigation_scratch.h
   ../include/ioj/sim/fighters/fighter_navigation.h
-  ../include/ioj/sim/fighters/fighter_order_queue.h
   ../include/ioj/sim/fighters/fighter_spawn_queue.h
-  ../include/ioj/sim/fighters/fighter_task_format.h
   ../include/ioj/sim/fixed_tick_loop.h
   ../include/ioj/sim/fixed_tick.h
   ../include/ioj/sim/collision/range_query_results.h

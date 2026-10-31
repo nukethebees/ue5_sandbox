@@ -124,7 +124,7 @@ TEST(TickPhases, AutomaticFireContinuesUntilReleased) {
 
 TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
     auto data{make_world()};
-    add_capital_spawn(data, {}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100);
+    add_capital_spawn(data, {}, Team::White, 60.f, 60.f, 100);
     schedule_turret(data, {});
 
     GameMemory simulation_memory;
@@ -165,14 +165,8 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
 TEST(TickPhases, CarrierSpawnIsDeferredAndParticipatesInLaunchOverlaps) {
     auto data{make_world()};
 
-    auto const first{
-        add_capital_spawn(data, {}, Team::Green, invalid_level_entity_index, 0.f, 60.f, 100)};
-    auto const second{add_capital_spawn(
-        data, {{2000.f, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100)};
-    auto const target_indices{
-        data.level_events.schedule.capital_spawns.get_view().target_entity_indices()};
-    target_indices[0] = second;
-    target_indices[1] = first;
+    add_capital_spawn(data, {}, Team::Green, 0.f, 60.f, 100);
+    add_capital_spawn(data, {{2000.f, 0.f, 0.f}}, Team::White, 60.f, 60.f, 100);
     data.capital_ships.fighter_spawn_slots = 1;
     data.capital_ships.fighter_spawn_slots_relative_transforms = {{}};
     data.fighters.health = ::ioj::settings::PositiveHealth::make(Health{100});
@@ -239,8 +233,7 @@ TEST(TickPhases, ThinkingFireIsDeferredWithActionMovementSnapshot) {
 TEST(TickPhases, ActionMovementIsVisibleToSameTickOverlapDetection) {
     auto data{make_world()};
     add_moving_player(data);
-    add_capital_spawn(
-        data, {{0.f, 100.f, 0.f}}, Team::White, invalid_level_entity_index, 0.f, 60.f, 100);
+    add_capital_spawn(data, {{0.f, 100.f, 0.f}}, Team::White, 0.f, 60.f, 100);
 
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
@@ -262,8 +255,7 @@ TEST(TickPhases, ActionMovementIsVisibleToSameTickOverlapDetection) {
 
 TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {
     auto data{make_world()};
-    add_capital_spawn(
-        data, {{-2000.f, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100);
+    add_capital_spawn(data, {{-2000.f, 0.f, 0.f}}, Team::White, 60.f, 60.f, 100);
     schedule_turret(data, {{500.f, 100.f, 0.f}}, SimTick{2});
 
     GameMemory simulation_memory;
@@ -290,8 +282,7 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {
 TEST(TickPhases, DelayedObjectiveSeesSameTickResolvedDeathWithoutDuplicateOverlaps) {
     auto data{make_world()};
     data.collision.overlap_response.damage_per_overlap_detection = 100;
-    auto const capital_index{
-        add_capital_spawn(data, {}, Team::White, invalid_level_entity_index, 60.f, 60.f, 1000)};
+    auto const capital_index{add_capital_spawn(data, {}, Team::White, 60.f, 60.f, 1000)};
     schedule_turret(data, {});
     auto const turret_index{
         data.level_events.schedule.turret_spawns.get_const_view().entity_indices()[0]};
@@ -341,8 +332,7 @@ TEST(TickPhases, DelayedObjectiveSeesSameTickResolvedDeathWithoutDuplicateOverla
 TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndBoundsAdvanceAfterward) {
     auto data{make_world()};
     add_moving_player(data, {500.0, 0.0, 0.0});
-    add_capital_spawn(
-        data, {{-2000.f, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100);
+    add_capital_spawn(data, {{-2000.f, 0.f, 0.f}}, Team::White, 60.f, 60.f, 100);
 
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
@@ -408,8 +398,7 @@ TEST(TickPhases, AcceptedFireSurvivesShooterDeathAndDeathCannotBeHealed) {
 
 TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {
     auto data{make_world()};
-    add_capital_spawn(
-        data, {{40.f, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100);
+    add_capital_spawn(data, {{40.f, 0.f, 0.f}}, Team::White, 60.f, 60.f, 100);
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
@@ -427,20 +416,16 @@ TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {
     EXPECT_EQ(simulation.get_read_access().get_lasers().get_entities().num(), 0);
 }
 
-TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
+TEST(TickPhases, CapitalDeathIsPublishedBeforeMissionEvaluation) {
     // Independent scenario worlds mutate storage and publish new views during each run.
     // NOLINTBEGIN(ioj-loop-view-accessor-call)
     for (auto const kill_tick : {1, 2}) {
         auto data{make_world()};
 
-        auto const first{add_capital_spawn(
-            data, {{-2000.f, 0.f, 0.f}}, Team::Green, invalid_level_entity_index, 0.f, 60.f, 100)};
-        auto const second{add_capital_spawn(
-            data, {{2000.f, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 0.f, 60.f, 100)};
-        auto const target_indices{
-            data.level_events.schedule.capital_spawns.get_view().target_entity_indices()};
-        target_indices[0] = second;
-        target_indices[1] = first;
+        auto const first{
+            add_capital_spawn(data, {{-2000.f, 0.f, 0.f}}, Team::Green, 0.f, 60.f, 100)};
+        auto const second{
+            add_capital_spawn(data, {{2000.f, 0.f, 0.f}}, Team::White, 0.f, 60.f, 100)};
         data.capital_ships.fighter_spawn_slots = 1;
         data.capital_ships.fighter_spawn_slots_relative_transforms = {
             {.location = {0.0, 500.0, 0.0}}};
@@ -497,22 +482,12 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
         EXPECT_EQ(ledger.count_alive(), kill_tick == 1 ? 1 : 3);
         EXPECT_EQ(simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}),
                   ObjectiveOutcome::Passed);
-        if (kill_tick == 2) {
-            auto const fighter_ids{fighter_sim.get_entity_ids()};
-            auto const fighter_parents{fighter_sim.get_parent_ids()};
-            auto const orphaned{std::ranges::find(fighter_parents, EntityId{})};
-            ASSERT_NE(orphaned, fighter_parents.end());
-            auto const orphaned_index{static_cast<std::size_t>(orphaned - fighter_parents.begin())};
-            EXPECT_NE(observe_entity_row(simulation, fighter_ids[orphaned_index]),
-                      EntityInstanceHandle::invalid_value);
-        }
     }
 
     // NOLINTEND(ioj-loop-view-accessor-call)
     auto data{make_world()};
     for (auto const x : {-2000.f, 0.f, 2000.f}) {
-        add_capital_spawn(
-            data, {{x, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100);
+        add_capital_spawn(data, {{x, 0.f, 0.f}}, Team::White, 60.f, 60.f, 100);
     }
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};

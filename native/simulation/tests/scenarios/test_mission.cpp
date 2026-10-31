@@ -28,8 +28,7 @@ TEST_P(WorldlessMission, ResolvesObjectiveLifecycle) {
     data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     auto const spawn{[&](float x, Team team) {
-        return tests::add_capital_spawn(
-            data, {{x, 0, 0}}, team, invalid_level_entity_index, 60.f, 60.f);
+        return tests::add_capital_spawn(data, {{x, 0, 0}}, team, 60.f, 60.f);
     }};
     auto const hero{spawn(-2000.f, Team::Green)};
     std::optional<std::uint32_t> ordinary;

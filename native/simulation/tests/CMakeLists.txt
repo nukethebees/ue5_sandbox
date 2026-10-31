@@ -19,13 +19,10 @@ target_sources(native-simulation-tests PRIVATE
   test_level_simulation.cpp
   test_player_flight_models.cpp
   test_overlap_handler.cpp
-  test_attack_distance_band.cpp
   test_entity_aabb_overlaps.cpp
   test_unique_cell_membership.cpp
   test_bulk_range_queries.cpp
   test_fighter_live_cap.cpp
-  test_fighter_target_refresh.cpp
-  test_fighter_membership_refresh.cpp
   test_level_telemetry_block_history.cpp
   test_level_telemetry_manager.cpp
   telemetry_analysis_tests.cpp
@@ -35,13 +32,9 @@ target_sources(native-simulation-tests PRIVATE
   test_spinner_spawning.cpp
   fighter_entity_data_test.cpp
   single_allocation_production_soa_test.cpp
-  scenarios/test_capital_command_fighters.cpp
-  scenarios/test_fighter_ownership.cpp
   scenarios/test_collision_uniform_grid.cpp
   scenarios/test_entity_ledger.cpp
   scenarios/test_fighter_attack.cpp
-  scenarios/test_fighters_intercept_capital.cpp
-  scenarios/test_fighters_standby_transition.cpp
   scenarios/test_laser_lifecycle.cpp
   scenarios/test_mission.cpp
   scenarios/test_player_ship_vs_capital.cpp

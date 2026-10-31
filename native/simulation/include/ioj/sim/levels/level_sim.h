@@ -100,6 +100,7 @@ struct LevelSim {
         return capital_ships_simulation_;
     }
     auto get_fighters() const -> fighters::Sim const& { return fighters_simulation_; }
+    auto get_fighters_spawned() const noexcept -> std::uint32_t { return fighters_spawned_; }
     auto get_turrets() const -> turrets::Sim const& { return turrets_simulation_; }
     auto get_spinners() const -> spinners::Sim const& { return spinners_simulation_; }
     auto get_entity_ledger() const -> EntityLedger const& { return entity_ledger_; }
@@ -156,5 +157,6 @@ struct LevelSim {
     LevelResultMetadata result_metadata_;
     LevelEventManager event_manager_;
     LevelTelemetryManager level_telemetry_manager_;
+    std::uint32_t fighters_spawned_{};
 };
 } // namespace ioj::sim

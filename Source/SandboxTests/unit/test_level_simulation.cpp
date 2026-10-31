@@ -71,14 +71,7 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
     data.level_events.schedule.add_initial_spawn_group(::ioj::sim::EntityType::CapitalShip, 0, 2);
     auto const add_capital{
         [&](ioj::sim::LevelEntityIndex const entity, ioj::Team const team, float const x) {
-            spawn_storage.add(entity,
-                              ioj::sim::invalid_level_entity_index,
-                              {x, 0.f, 0.f},
-                              {},
-                              team,
-                              ioj::sim::Health{100},
-                              60.f,
-                              60.f);
+            spawn_storage.add(entity, {x, 0.f, 0.f}, {}, team, ioj::sim::Health{100}, 60.f, 60.f);
         }};
     add_capital(0, ioj::Team::Green, -1000.f);
     add_capital(1, ioj::Team::White, 1000.f);

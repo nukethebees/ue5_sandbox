@@ -12,7 +12,6 @@
   :namespace ioj::sim
   (struct LevelCapitalSpawnEvents
     (member entity_indices array @native_level_entity_index)
-    (member target_entity_indices array @native_level_entity_index)
     (member locations nested @native_vectors_3f)
     (member rotations nested @native_rotators_3f)
     (member teams array @native_team)

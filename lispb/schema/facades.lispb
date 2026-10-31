@@ -1,31 +1,3 @@
-(module fighters_command_interface
-  :header "native/simulation/include/ioj/sim/fighters/command_interface.h"
-  :namespace ioj::sim::fighters
-  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  (facade CommandInterface @fighters_sim fighters
-    :target-storage reference
-    (method queue_spawns "std::int32_t"
-      (parameter queue @fighter_spawn_queue_const_view))
-    (method queue_orders void
-      (parameter queue (type-ref @fighter_order_queue :suffix " const&")))
-    (method get_num_instances "std::int32_t"
-      :const true
-      :noexcept true)
-    (method get_parent_ids "std::span<EntityId const>" :const true)
-    (method get_entity_ids "std::span<EntityId const>" :const true)
-    (method get_membership_revision "std::uint64_t" :const true :noexcept true)
-    (method get_layout_revision "std::uint64_t" :const true :noexcept true)
-      (method get_healths @native_health_const_view :const true)
-    (method set_parent_id void
-      (parameter fighter @native_unique_id)
-      (parameter parent @native_unique_id))
-    (method reassign_pending_spawns void
-      (parameter parent @native_unique_id)
-      (parameter replacement @native_unique_id))
-    (method get_target_ids "std::span<EntityId const>"
-      :const true
-      :noexcept true)))
-
 (module player_command_interface
   :header "native/simulation/include/ioj/sim/player/command_interface.h"
   :namespace ioj::sim::player
@@ -119,14 +91,10 @@
     :friend-kind struct
     :target-storage reference
     (method initialise void
-      (parameter config (type-ref ioj::sim::CapitalShipSimConfig :suffix " const&")))
-    (method prepare_tick void
-      (parameter dt "float const"))
-    (method think void
-      (parameter inputs (type-ref @capital_ships_thinking_inputs :suffix " const")))
+      (parameter max_health @settings_positive_health))
+    (method prepare_tick void)
     (method resolve_damage_events void
       (parameter inputs (type-ref @capital_ships_resolution_inputs :suffix " const")))
-    (method resolve_fighters_of_dying_capitals void)
     (method publish_deaths void
       (parameter inputs (type-ref @capital_ships_resolution_inputs :suffix " const")))
     (method remove_components void)
@@ -146,7 +114,6 @@
     (method initialise void
       (parameter config (type-ref ioj::sim::FighterSimConfig :suffix " const&"))
       (parameter level_data @fighter_level_data))
-    (method commit_orders void)
     (method prepare_tick void
       (parameter dt "float const"))
     (method think void

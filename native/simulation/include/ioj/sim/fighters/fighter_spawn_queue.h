@@ -8,7 +8,6 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/rotator_types.h"
 #include "ioj/rotators3f.h"
-#include "ioj/sim/entities/entity_id.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f.h"
@@ -29,7 +28,7 @@ struct ResolvedConstView;
 /* **************************************** */
 struct Layout
     : ioj::single_allocation_layout::
-          ColumnLayouts<float, float, float, float, float, float, ::ioj::Team, EntityId, EntityId> {
+          ColumnLayouts<float, float, float, float, float, float, ::ioj::Team> {
     static constexpr std::size_t locations_xs_column{0};
     static constexpr std::size_t locations_ys_column{1};
     static constexpr std::size_t locations_zs_column{2};
@@ -37,8 +36,6 @@ struct Layout
     static constexpr std::size_t rotations_yaws_column{4};
     static constexpr std::size_t rotations_rolls_column{5};
     static constexpr std::size_t teams_column{6};
-    static constexpr std::size_t parents_column{7};
-    static constexpr std::size_t targets_column{8};
 };
 
 /* **************************************** */
@@ -55,8 +52,6 @@ struct DataPointers {
     Element<float>* rotations_yaws{};
     Element<float>* rotations_rolls{};
     Element<::ioj::Team>* teams{};
-    Element<EntityId>* parents{};
-    Element<EntityId>* targets{};
     template <typename Self, typename Func>
     static decltype(auto) with_columns(Self& self, Func&& func) {
         return func(self.locations_xs,
@@ -65,9 +60,7 @@ struct DataPointers {
                     self.rotations_pitches,
                     self.rotations_yaws,
                     self.rotations_rolls,
-                    self.teams,
-                    self.parents,
-                    self.targets);
+                    self.teams);
     }
 };
 
@@ -82,9 +75,7 @@ struct Schema {
                     rotations_view.pitches(),
                     rotations_view.yaws(),
                     rotations_view.rolls(),
-                    source.teams(),
-                    source.parents(),
-                    source.targets());
+                    source.teams());
     }
 };
 
@@ -121,8 +112,6 @@ struct ResolvedViewImpl
                 this->num()};
     }
     auto teams() const { return this->column(this->columns_.teams); }
-    auto parents() const { return this->column(this->columns_.parents); }
-    auto targets() const { return this->column(this->columns_.targets); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -141,15 +130,11 @@ struct ResolvedView
     void set(size_type index,
              Vector3f const new_locations,
              Rotator3f const new_rotations,
-             ::ioj::Team const new_teams,
-             EntityId const new_parents,
-             EntityId const new_targets) const {
+             ::ioj::Team const new_teams) const {
         assert(index < num());
         this->view_locations().set(index, new_locations);
         this->view_rotations().set(index, new_rotations);
         this->teams()[index] = new_teams;
-        this->parents()[index] = new_parents;
-        this->targets()[index] = new_targets;
     }
 };
 
@@ -193,8 +178,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                     Layout::rotations_yaws_column);
     }
     auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
-    auto parents() const { return this->template column<EntityId>(Layout::parents_column); }
-    auto targets() const { return this->template column<EntityId>(Layout::targets_column); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -214,15 +197,11 @@ struct View
     void set(size_type index,
              Vector3f const new_locations,
              Rotator3f const new_rotations,
-             ::ioj::Team const new_teams,
-             EntityId const new_parents,
-             EntityId const new_targets) const {
+             ::ioj::Team const new_teams) const {
         assert(index < num());
         this->view_locations().set(index, new_locations);
         this->view_rotations().set(index, new_rotations);
         this->teams()[index] = new_teams;
-        this->parents()[index] = new_parents;
-        this->targets()[index] = new_targets;
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
@@ -240,8 +219,6 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // rotations_yaws: float
 // rotations_rolls: float
 // teams: ::ioj::Team
-// parents: EntityId
-// targets: EntityId
 struct FighterSpawnQueue
     : protected ioj::native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<FighterSpawnQueue,
@@ -290,8 +267,6 @@ struct FighterSpawnQueue
     auto view_locations(this auto& self) { return self.get_view().view_locations(); }
     auto view_rotations(this auto& self) { return self.get_view().view_rotations(); }
     auto teams(this auto& self) { return self.get_view().teams(); }
-    auto parents(this auto& self) { return self.get_view().parents(); }
-    auto targets(this auto& self) { return self.get_view().targets(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         FighterSpawnQueue,
         ::ioj::sim::fighter_spawn_queue::Layout::column_types,
@@ -301,24 +276,18 @@ struct FighterSpawnQueue
     void set(size_type index,
              Vector3f const new_locations,
              Rotator3f const new_rotations,
-             ::ioj::Team const new_teams,
-             EntityId const new_parents,
-             EntityId const new_targets) {
+             ::ioj::Team const new_teams) {
         assert(index < num());
         get_view().view_locations().set(index, new_locations);
         get_view().view_rotations().set(index, new_rotations);
         get_view().teams()[index] = new_teams;
-        get_view().parents()[index] = new_parents;
-        get_view().targets()[index] = new_targets;
     }
     size_type add(Vector3f const new_locations,
                   Rotator3f const new_rotations,
-                  ::ioj::Team const new_teams,
-                  EntityId const new_parents,
-                  EntityId const new_targets) {
+                  ::ioj::Team const new_teams) {
         auto const index{num()};
         add_uninitialised(1);
-        set(index, new_locations, new_rotations, new_teams, new_parents, new_targets);
+        set(index, new_locations, new_rotations, new_teams);
         return index;
     }
   private:

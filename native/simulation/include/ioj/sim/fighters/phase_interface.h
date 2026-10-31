@@ -17,8 +17,6 @@ class PhaseInterface {
         simulation.initialise(config, level_data);
     }
 
-    void commit_orders() { simulation.commit_orders(); }
-
     void prepare_tick(float const dt) { simulation.prepare_tick(dt); }
 
     void think(ThinkingInputs const inputs) { simulation.think(inputs); }

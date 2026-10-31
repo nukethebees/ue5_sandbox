@@ -1,7 +1,6 @@
 #include "test_batch_orchestrator_reset_scenario.h"
 #include "test_batch_orchestrator_setup_scenario.h"
 #include "test_capital_ship_proxy_scenario.h"
-#include "test_entity_interface_scenario.h"
 #include "test_hud_manager_scenario.h"
 #include "test_level_loader_scenario.h"
 #include "test_player_ship_death_scenario.h"
@@ -80,8 +79,6 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
 
     SHARED_SIMULATION_TEST(CapitalShipProxy_HealthOverridesConfig,
                            ioj::FTestCapitalShipProxyScenario)
-    SHARED_SIMULATION_TEST(EntityInterface_ConvertsProxiesAndResolvesTargets,
-                           ioj::FEntityInterfaceScenario)
     SHARED_SIMULATION_TEST(HUD_LateRegistrationSynchronisesAndUnregisters,
                            ioj::FTestHUDManagerScenario)
     SHARED_SIMULATION_TEST(PlayerShip_LethalDamageDestroysPlayerShip,

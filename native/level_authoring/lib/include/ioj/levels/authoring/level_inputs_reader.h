@@ -29,8 +29,7 @@ struct TypeReader<levels::authoring::EntityInput> : RecordReader<levels::authori
                     if constexpr (field == Field::id || field == Field::archetype ||
                                   field == Field::team || field == Field::position ||
                                   field == Field::rotation || field == Field::spawn_at ||
-                                  field == Field::health || field == Field::laser_damage ||
-                                  field == Field::target) {
+                                  field == Field::health || field == Field::laser_damage) {
                         read(member);
                     } else if constexpr (field == Field::initial_spawn_delay ||
                                          field == Field::spawn_cooldown) {
@@ -44,7 +43,7 @@ struct TypeReader<levels::authoring::EntityInput> : RecordReader<levels::authori
   private:
     using Field = value_type::Field;
 
-    static constexpr std::array<std::string_view, 11> field_names{"id",
+    static constexpr std::array<std::string_view, 10> field_names{"id",
                                                                   "archetype",
                                                                   "team",
                                                                   "position",
@@ -53,8 +52,7 @@ struct TypeReader<levels::authoring::EntityInput> : RecordReader<levels::authori
                                                                   "health",
                                                                   "laser-damage",
                                                                   "initial-spawn-delay",
-                                                                  "spawn-cooldown",
-                                                                  "target"};
+                                                                  "spawn-cooldown"};
     static constexpr auto required{required_fields<Field, field_names.size()>(
         {Field::archetype, Field::team, Field::position})};
 };

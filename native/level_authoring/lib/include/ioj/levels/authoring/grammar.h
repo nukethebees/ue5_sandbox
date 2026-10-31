@@ -56,7 +56,6 @@ enum class Property : PropertyUnderlying {
     LaserDamage,
     InitialSpawnDelay,
     SpawnCooldown,
-    Target,
 };
 
 using ioj::to_serialized_string;
@@ -153,12 +152,6 @@ using ioj::to_serialized_string;
                 case 'r': {
                     if (value == "result") {
                         return Property::Result;
-                    }
-                    return std::nullopt;
-                }
-                case 't': {
-                    if (value == "target") {
-                        return Property::Target;
                     }
                     return std::nullopt;
                 }
@@ -368,8 +361,7 @@ struct EnumTraits<::ioj::levels::authoring::Property> {
                                               ::ioj::levels::authoring::Property::Health,
                                               ::ioj::levels::authoring::Property::LaserDamage,
                                               ::ioj::levels::authoring::Property::InitialSpawnDelay,
-                                              ::ioj::levels::authoring::Property::SpawnCooldown,
-                                              ::ioj::levels::authoring::Property::Target};
+                                              ::ioj::levels::authoring::Property::SpawnCooldown};
 };
 
 } // namespace ioj
@@ -382,11 +374,11 @@ inline constexpr auto ioj::enum_strings<::ioj::levels::authoring::Property, ioj:
         "results\000when\000result\000entities\000settings\000levels\000campaigns\000path\000value"
         "\000error\000level-size\000cell-size\000look-at\000distance\000offset-"
         "direction\000archetype\000team\000position\000rotation\000spawn-at\000health\000laser-"
-        "damage\000initial-spawn-delay\000spawn-cooldown\000target",
-        std::array<std::uint16_t, 41>{0,   3,   9,   21,  30,  45,  52,  59,  66,  74,  85,
-                                      91,  96,  101, 108, 119, 132, 137, 144, 153, 162, 169,
-                                      179, 184, 190, 196, 207, 217, 225, 234, 251, 261, 266,
-                                      275, 284, 293, 300, 313, 333, 348, 355}}};
+        "damage\000initial-spawn-delay\000spawn-cooldown",
+        std::array<std::uint16_t, 40>{0,   3,   9,   21,  30,  45,  52,  59,  66,  74,
+                                      85,  91,  96,  101, 108, 119, 132, 137, 144, 153,
+                                      162, 169, 179, 184, 190, 196, 207, 217, 225, 234,
+                                      251, 261, 266, 275, 284, 293, 300, 313, 333, 348}}};
 
 namespace ioj {
 template <>

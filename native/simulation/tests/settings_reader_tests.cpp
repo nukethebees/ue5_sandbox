@@ -11,7 +11,6 @@
 namespace ioj::sim::tests {
 using ioj::testing::structurally_equal;
 using levels::authoring::DefinitionReader;
-using settings::AttackDistanceBand;
 
 TEST(SimulationSettingsReader, AppliesSparseNestedLayersIncludingExplicitDefaults) {
     SimulationSettings const defaults;
@@ -86,36 +85,6 @@ TEST(SimulationSettingsReader, PreservesBaseFileCompatibilityAndLevelMission) {
     EXPECT_PRED_FORMAT2(structurally_equal, original, *base_values);
 }
 
-TEST(SimulationSettingsReader, ReplacesWholeAttackBandsAcrossLayersAndLevelOverrides) {
-    auto const source{DefinitionReader{}.read_settings_source(R"(
-      (settings-layers
-        (settings :fighters (fighters :attack-distance-band
-          (attack-distance-band :minimum-ratio 0.8 :desired-ratio 0.9 :maximum-ratio 1)))
-        (settings :fighters (fighters :attack-distance-band
-          (attack-distance-band :minimum-ratio 0.8 :desired-ratio 0.85 :maximum-ratio 1)))
-        (settings :fighters (fighters :speed 5000))))")};
-    ASSERT_TRUE(source);
-    auto const resolved{sim::resolve_simulation_settings(*source)};
-    ASSERT_TRUE(resolved) << resolved.error().front().message;
-    FighterSimConfig expected{
-        .speed = 5000, .attack_distance_band = *AttackDistanceBand::try_make({0.8f, 0.85f, 1.f})};
-    EXPECT_PRED_FORMAT2(structurally_equal, expected, resolved->fighters);
-
-    auto const level{DefinitionReader{}.read_level_source(R"(
-      (level :id 'band :title "Band" :player 'player
-        :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue
-                               :position '(0 0 0)))
-        :settings
-        (settings :fighters (fighters :attack-distance-band
-          (attack-distance-band :minimum-ratio 0 :desired-ratio 0 :maximum-ratio 0)))))",
-                                                          *source)};
-    ASSERT_TRUE(level) << level.error().front().message;
-    auto const overridden{sim::resolve_simulation_settings(level->settings())};
-    ASSERT_TRUE(overridden) << overridden.error().front().message;
-    expected.attack_distance_band = *AttackDistanceBand::try_make({0.f, 0.f, 0.f});
-    EXPECT_PRED_FORMAT2(structurally_equal, expected, overridden->fighters);
-}
-
 TEST(SimulationSettingsReader, ResolvesCollisionGridThroughOrdinaryLevelSettings) {
     settings::Settings base;
     base.fighters.speed = 7300.f;
@@ -145,34 +114,6 @@ TEST(SimulationSettingsReader, ResolvesCollisionGridThroughOrdinaryLevelSettings
                                                            base)};
     ASSERT_FALSE(legacy);
     EXPECT_EQ(legacy.error().front().code, levels::DiagnosticCode::UnknownProperty);
-}
-
-TEST(SimulationSettingsReader, RejectsInvalidAttackBandsDuringDecoding) {
-    for (auto const fields : {":minimum-ratio 0.9 :desired-ratio 0.5 :maximum-ratio 1",
-                              ":minimum-ratio -0.1 :desired-ratio 0.5 :maximum-ratio 1",
-                              ":minimum-ratio 0 :desired-ratio 0.5 :maximum-ratio 1.1",
-                              ":minimum-ratio 0 :desired-ratio +nan.0 :maximum-ratio 1"}) {
-        SCOPED_TRACE(fields);
-        auto const source{DefinitionReader{}.read_settings_source(std::format(R"(
-          (settings-layers
-            (settings :fighters (fighters :attack-distance-band (attack-distance-band {})))
-            (settings :fighters (fighters :attack-distance-band
-              (attack-distance-band :minimum-ratio 0 :desired-ratio 0 :maximum-ratio 0)))))",
-                                                                              fields))};
-        ASSERT_FALSE(source);
-        ASSERT_FALSE(source.error().empty());
-        EXPECT_EQ(source.error().front().node_path, "fighters.attack-distance-band");
-        EXPECT_EQ(source.error().front().message,
-                  "Expected 0 <= minimum <= desired <= maximum <= 1");
-    }
-
-    auto const incomplete{DefinitionReader{}.read_settings_source(R"(
-      (settings :fighters (fighters :attack-distance-band
-        (attack-distance-band :minimum-ratio 0.9))))")};
-    ASSERT_FALSE(incomplete);
-    ASSERT_EQ(incomplete.error().size(), 2u);
-    EXPECT_EQ(incomplete.error().front().code, levels::DiagnosticCode::MissingProperty);
-    EXPECT_EQ(incomplete.error().front().node_path, "fighters.attack-distance-band.desired-ratio");
 }
 
 TEST(SimulationSettingsReader, RetainsUnknownFieldConversionAndFinalValidationErrors) {

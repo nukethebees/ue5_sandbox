@@ -34,8 +34,6 @@ native/levels/lib/include/ioj/levels/objective_dependency_reader.h
 native/levels/lib/include/ioj/levels/team.h
 native/levels/lib/include/ioj/levels/team_result_definition.h
 native/levels/lib/include/ioj/levels/team_result_definition_reader.h
-native/levels/lib/include/ioj/settings/attack_distance_band.h
-native/levels/lib/include/ioj/settings/attack_distance_band_reader.h
 native/levels/lib/include/ioj/settings/capital_presentation.h
 native/levels/lib/include/ioj/settings/capital_presentation_reader.h
 native/levels/lib/include/ioj/settings/entity_overlay.h
@@ -116,11 +114,8 @@ native/simulation/include/ioj/sim/entities/entity_id.h
 native/simulation/include/ioj/sim/entities/entity_instance_handle.h
 native/simulation/include/ioj/sim/entities/entity_life_state.h
 native/simulation/include/ioj/sim/entities/entity_type.h
-native/simulation/include/ioj/sim/fighters/command_interface.h
 native/simulation/include/ioj/sim/fighters/fighter_entity_data.h
 native/simulation/include/ioj/sim/fighters/fighter_navigation_types.h
-native/simulation/include/ioj/sim/fighters/fighter_order_queue.h
-native/simulation/include/ioj/sim/fighters/fighter_orders.h
 native/simulation/include/ioj/sim/fighters/fighter_spawn_queue.h
 native/simulation/include/ioj/sim/fighters/navigation_records.h
 native/simulation/include/ioj/sim/fighters/phase_interface.h

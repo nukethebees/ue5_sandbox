@@ -128,10 +128,6 @@ auto compile_level(LevelDefinition const& level,
             if (entity.archetype == EntityArchetype::CapitalShip) {
                 auto const row{capital_end++};
                 capital_events.entity_indices()[row] = entity_index_value;
-                capital_events.target_entity_indices()[row] =
-                    entity.overrides.target_entity_id.empty()
-                        ? sim::invalid_level_entity_index
-                        : entity_index(definition, entity.overrides.target_entity_id);
                 set_vector(capital_events.view_locations(), row, Vector3f{entity.position});
                 set_rotation(capital_events.view_rotations(), row, Rotator3f{entity.rotation});
                 capital_events.teams()[row] = entity.team;

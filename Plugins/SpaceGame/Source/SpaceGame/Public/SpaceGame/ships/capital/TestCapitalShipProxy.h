@@ -29,13 +29,11 @@ class ATestCapitalShipProxy
     SPACEGAME_API void set_level_config_asset(USpaceGameLevelConfig* new_config) noexcept;
 
     auto get_team() const noexcept { return team; }
-    auto get_target_ship() const noexcept { return target_ship; }
     auto get_health() const noexcept { return health; }
     auto get_initial_spawn_delay() const noexcept { return initial_spawn_delay; }
     auto get_spawn_cooldown() const noexcept { return spawn_cooldown; }
 
     void set_team(ETestTeam const new_team) noexcept { team = new_team; }
-    void set_target_ship(AActor* const new_target_ship) noexcept { target_ship = new_target_ship; }
     void set_health(TOptional<int32> const new_health) noexcept { health = new_health; }
     void set_initial_spawn_delay(TOptional<float> const new_delay) noexcept {
         initial_spawn_delay = new_delay;
@@ -78,9 +76,6 @@ class ATestCapitalShipProxy
 
     UPROPERTY(EditAnywhere, Category = "Ship")
     TArray<TObjectPtr<UArrowComponent>> fighter_spawn_slots;
-
-    UPROPERTY(EditAnywhere, Category = "Ship")
-    TObjectPtr<AActor> target_ship{nullptr};
 
     UPROPERTY(Transient)
     ETestTeam team{ETestTeam::White};

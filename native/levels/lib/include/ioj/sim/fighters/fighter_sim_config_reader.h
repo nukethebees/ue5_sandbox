@@ -5,7 +5,6 @@
 
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
-#include "ioj/settings/attack_distance_band_reader.h"
 #include "ioj/sim/fighters/fighter_sim_config.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config_reader.h"
 #include <ioj/s7/field_reader.h>
@@ -33,17 +32,11 @@ struct TypeReader<sim::FighterSimConfig> : RecordReader<sim::FighterSimConfig> {
                                   field == Field::steering_memory_duration ||
                                   field == Field::dense_traffic_neighbour_threshold ||
                                   field == Field::laser || field == Field::health ||
-                                  field == Field::attack_retry_cooldown ||
-                                  field == Field::attack_reposition_frequency ||
-                                  field == Field::attack_distance_band ||
-                                  field == Field::awareness_scan_frequency) {
+                                  field == Field::attack_retry_cooldown) {
                         read(member);
-                    } else if constexpr (
-                        field == Field::speed || field == Field::turn_speed_unitless ||
-                        field == Field::attack_engagement_threshold ||
-                        field == Field::arrival_distance || field == Field::los_check_buffer ||
-                        field == Field::awareness_radius ||
-                        field == Field::minimum_opportunistic_intercept_deviation_dot_product) {
+                    } else if constexpr (field == Field::speed ||
+                                         field == Field::turn_speed_unitless ||
+                                         field == Field::los_check_buffer) {
                         read(member, constraints::finite);
                     } else if constexpr (field == Field::fire_point_distance) {
                         std::unreachable();
@@ -55,7 +48,7 @@ struct TypeReader<sim::FighterSimConfig> : RecordReader<sim::FighterSimConfig> {
   private:
     using Field = value_type::Field;
 
-    static constexpr std::array<std::string_view, 26> field_names{
+    static constexpr std::array<std::string_view, 19> field_names{
         "max-live-fighters",
         "",
         "fire-dot-product-threshold",
@@ -74,14 +67,7 @@ struct TypeReader<sim::FighterSimConfig> : RecordReader<sim::FighterSimConfig> {
         "laser",
         "health",
         "attack-retry-cooldown",
-        "attack-engagement-threshold",
-        "attack-reposition-frequency",
-        "attack-distance-band",
-        "arrival-distance",
-        "los-check-buffer",
-        "awareness-radius",
-        "awareness-scan-frequency",
-        "minimum-opportunistic-intercept-deviation-dot-product"};
+        "los-check-buffer"};
 };
 
 } // namespace ioj::s7

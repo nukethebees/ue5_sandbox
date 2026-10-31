@@ -310,11 +310,8 @@ static auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& c
     capitals.reserve(build.capital_proxies.Num());
     for (auto const* proxy : build.capital_proxies) {
         auto const& transform{proxy->GetActorTransform()};
-        auto const* target{proxy->get_target_ship().Get()};
         capitals.push_back({
             .entity = resolve_entity_index(entity_indices, *proxy),
-            .target = IsValid(target) ? resolve_entity_index(entity_indices, *target)
-                                      : sim::invalid_level_entity_index,
             .location = Vector3f{transform.GetLocation()},
             .rotation = Rotator3f{transform.Rotator()},
             .team = to_native(proxy->get_team()),

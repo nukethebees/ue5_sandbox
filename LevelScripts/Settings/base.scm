@@ -42,17 +42,7 @@
     :dense-traffic-neighbour-threshold 4
     :health 50
     :attack-retry-cooldown 0.15
-    :attack-engagement-threshold 5000
-    :attack-reposition-frequency 10
-    :attack-distance-band (attack-distance-band
-      :minimum-ratio 0.4
-      :desired-ratio 0.5
-      :maximum-ratio 0.6)
-    :arrival-distance 500
     :los-check-buffer 100
-    :awareness-radius 10000
-    :awareness-scan-frequency 6
-    :minimum-opportunistic-intercept-deviation-dot-product 0.5
     :laser (laser
       :damage 10
       :projectile-speed 10000

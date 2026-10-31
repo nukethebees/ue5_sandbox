@@ -30,7 +30,6 @@ struct ResolvedConstView;
 /* **************************************** */
 struct Layout
     : ioj::single_allocation_layout::ColumnLayouts<LevelEntityIndex,
-                                                   LevelEntityIndex,
                                                    float,
                                                    float,
                                                    float,
@@ -42,17 +41,16 @@ struct Layout
                                                    float,
                                                    float> {
     static constexpr std::size_t entity_indices_column{0};
-    static constexpr std::size_t target_entity_indices_column{1};
-    static constexpr std::size_t locations_xs_column{2};
-    static constexpr std::size_t locations_ys_column{3};
-    static constexpr std::size_t locations_zs_column{4};
-    static constexpr std::size_t rotations_pitches_column{5};
-    static constexpr std::size_t rotations_yaws_column{6};
-    static constexpr std::size_t rotations_rolls_column{7};
-    static constexpr std::size_t teams_column{8};
-    static constexpr std::size_t healths_column{9};
-    static constexpr std::size_t initial_fighter_spawn_delays_column{10};
-    static constexpr std::size_t fighter_spawn_cooldowns_column{11};
+    static constexpr std::size_t locations_xs_column{1};
+    static constexpr std::size_t locations_ys_column{2};
+    static constexpr std::size_t locations_zs_column{3};
+    static constexpr std::size_t rotations_pitches_column{4};
+    static constexpr std::size_t rotations_yaws_column{5};
+    static constexpr std::size_t rotations_rolls_column{6};
+    static constexpr std::size_t teams_column{7};
+    static constexpr std::size_t healths_column{8};
+    static constexpr std::size_t initial_fighter_spawn_delays_column{9};
+    static constexpr std::size_t fighter_spawn_cooldowns_column{10};
 };
 
 /* **************************************** */
@@ -63,7 +61,6 @@ struct DataPointers {
     template <typename T>
     using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
     Element<LevelEntityIndex>* entity_indices{};
-    Element<LevelEntityIndex>* target_entity_indices{};
     Element<float>* locations_xs{};
     Element<float>* locations_ys{};
     Element<float>* locations_zs{};
@@ -77,7 +74,6 @@ struct DataPointers {
     template <typename Self, typename Func>
     static decltype(auto) with_columns(Self& self, Func&& func) {
         return func(self.entity_indices,
-                    self.target_entity_indices,
                     self.locations_xs,
                     self.locations_ys,
                     self.locations_zs,
@@ -97,7 +93,6 @@ struct Schema {
         auto const& locations_view{source.view_locations()};
         auto const& rotations_view{source.view_rotations()};
         return func(source.entity_indices(),
-                    source.target_entity_indices(),
                     locations_view.xs(),
                     locations_view.ys(),
                     locations_view.zs(),
@@ -129,9 +124,6 @@ struct ResolvedViewImpl
         requires Enabled
         : Base{other} {}
     auto entity_indices() const { return this->column(this->columns_.entity_indices); }
-    auto target_entity_indices() const {
-        return this->column(this->columns_.target_entity_indices);
-    }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {this->columns_.locations_xs,
@@ -173,7 +165,6 @@ struct ResolvedView
     using Base::set;
     void set(size_type index,
              ioj::sim::LevelEntityIndex const new_entity_indices,
-             ioj::sim::LevelEntityIndex const new_target_entity_indices,
              Vector3f const new_locations,
              Rotator3f const new_rotations,
              ::ioj::Team const new_teams,
@@ -182,7 +173,6 @@ struct ResolvedView
              float const new_fighter_spawn_cooldowns) const {
         assert(index < num());
         this->entity_indices()[index] = new_entity_indices;
-        this->target_entity_indices()[index] = new_target_entity_indices;
         this->view_locations().set(index, new_locations);
         this->view_rotations().set(index, new_rotations);
         this->teams()[index] = new_teams;
@@ -213,9 +203,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         : Base{other} {}
     auto entity_indices() const {
         return this->template column<LevelEntityIndex>(Layout::entity_indices_column);
-    }
-    auto target_entity_indices() const {
-        return this->template column<LevelEntityIndex>(Layout::target_entity_indices_column);
     }
     auto view_locations() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
@@ -264,7 +251,6 @@ struct View
     using Base::set;
     void set(size_type index,
              ioj::sim::LevelEntityIndex const new_entity_indices,
-             ioj::sim::LevelEntityIndex const new_target_entity_indices,
              Vector3f const new_locations,
              Rotator3f const new_rotations,
              ::ioj::Team const new_teams,
@@ -273,7 +259,6 @@ struct View
              float const new_fighter_spawn_cooldowns) const {
         assert(index < num());
         this->entity_indices()[index] = new_entity_indices;
-        this->target_entity_indices()[index] = new_target_entity_indices;
         this->view_locations().set(index, new_locations);
         this->view_rotations().set(index, new_rotations);
         this->teams()[index] = new_teams;
@@ -291,7 +276,6 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 /* **************************************** */
 // Columns:
 // entity_indices: ioj::sim::LevelEntityIndex
-// target_entity_indices: ioj::sim::LevelEntityIndex
 // locations_xs: float
 // locations_ys: float
 // locations_zs: float
@@ -349,7 +333,6 @@ struct LevelCapitalSpawnEvents
     using DataPointers = ::ioj::sim::level_capital_spawn_events::DataPointers<Byte>;
   public:
     auto entity_indices(this auto& self) { return self.get_view().entity_indices(); }
-    auto target_entity_indices(this auto& self) { return self.get_view().target_entity_indices(); }
     auto view_locations(this auto& self) { return self.get_view().view_locations(); }
     auto view_rotations(this auto& self) { return self.get_view().view_rotations(); }
     auto teams(this auto& self) { return self.get_view().teams(); }
@@ -368,7 +351,6 @@ struct LevelCapitalSpawnEvents
     using RowOperations::set;
     void set(size_type index,
              LevelEntityIndex const new_entity_indices,
-             LevelEntityIndex const new_target_entity_indices,
              Vector3f const new_locations,
              Rotator3f const new_rotations,
              ::ioj::Team const new_teams,
@@ -377,7 +359,6 @@ struct LevelCapitalSpawnEvents
              float const new_fighter_spawn_cooldowns) {
         assert(index < num());
         get_view().entity_indices()[index] = new_entity_indices;
-        get_view().target_entity_indices()[index] = new_target_entity_indices;
         get_view().view_locations().set(index, new_locations);
         get_view().view_rotations().set(index, new_rotations);
         get_view().teams()[index] = new_teams;
@@ -386,7 +367,6 @@ struct LevelCapitalSpawnEvents
         get_view().fighter_spawn_cooldowns()[index] = new_fighter_spawn_cooldowns;
     }
     size_type add(LevelEntityIndex const new_entity_indices,
-                  LevelEntityIndex const new_target_entity_indices,
                   Vector3f const new_locations,
                   Rotator3f const new_rotations,
                   ::ioj::Team const new_teams,
@@ -397,7 +377,6 @@ struct LevelCapitalSpawnEvents
         add_uninitialised(1);
         set(index,
             new_entity_indices,
-            new_target_entity_indices,
             new_locations,
             new_rotations,
             new_teams,

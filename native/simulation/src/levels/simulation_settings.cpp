@@ -57,10 +57,6 @@ auto validate_settings(SimulationSettings const& settings)
     };
 
     auto const& fighters{settings.fighters};
-    frequency(fighters.awareness_scan_frequency,
-              "fighters.awareness-scan-frequency",
-              std::numeric_limits<std::int8_t>::max());
-    frequency(fighters.attack_reposition_frequency, "fighters.attack-reposition-frequency");
     frequency(settings.turrets.target_refresh_frequency, "turrets.target-refresh-frequency");
     frequency(fighters.avoidance_clear_update_frequency,
               "fighters.avoidance-clear-update-frequency");

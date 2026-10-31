@@ -9,7 +9,6 @@
 #include "ioj/rotator_types.h"
 #include "ioj/rotators3f.h"
 #include "ioj/sim/entities/entity_id.h"
-#include "ioj/sim/index_span.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f.h"
@@ -29,18 +28,8 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout
-    : ioj::single_allocation_layout::ColumnLayouts<EntityId,
-                                                   float,
-                                                   float,
-                                                   float,
-                                                   float,
-                                                   float,
-                                                   float,
-                                                   float,
-                                                   float,
-                                                   ::ioj::Team,
-                                                   IndexSpan,
-                                                   EntityId> {
+    : ioj::single_allocation_layout::
+          ColumnLayouts<EntityId, float, float, float, float, float, float, ::ioj::Team> {
     static constexpr std::size_t entity_ids_column{0};
     static constexpr std::size_t locations_xs_column{1};
     static constexpr std::size_t locations_ys_column{2};
@@ -48,11 +37,7 @@ struct Layout
     static constexpr std::size_t rotations_pitches_column{4};
     static constexpr std::size_t rotations_yaws_column{5};
     static constexpr std::size_t rotations_rolls_column{6};
-    static constexpr std::size_t fighter_spawn_timers_column{7};
-    static constexpr std::size_t fighter_spawn_cooldowns_column{8};
-    static constexpr std::size_t teams_column{9};
-    static constexpr std::size_t fighter_id_spans_column{10};
-    static constexpr std::size_t target_ids_column{11};
+    static constexpr std::size_t teams_column{7};
 };
 
 /* **************************************** */
@@ -69,11 +54,7 @@ struct DataPointers {
     Element<float>* rotations_pitches{};
     Element<float>* rotations_yaws{};
     Element<float>* rotations_rolls{};
-    Element<float>* fighter_spawn_timers{};
-    Element<float>* fighter_spawn_cooldowns{};
     Element<::ioj::Team>* teams{};
-    Element<IndexSpan>* fighter_id_spans{};
-    Element<EntityId>* target_ids{};
     template <typename Self, typename Func>
     static decltype(auto) with_columns(Self& self, Func&& func) {
         return func(self.entity_ids,
@@ -83,11 +64,7 @@ struct DataPointers {
                     self.rotations_pitches,
                     self.rotations_yaws,
                     self.rotations_rolls,
-                    self.fighter_spawn_timers,
-                    self.fighter_spawn_cooldowns,
-                    self.teams,
-                    self.fighter_id_spans,
-                    self.target_ids);
+                    self.teams);
     }
 };
 
@@ -103,11 +80,7 @@ struct Schema {
                     rotations_view.pitches(),
                     rotations_view.yaws(),
                     rotations_view.rolls(),
-                    source.fighter_spawn_timers(),
-                    source.fighter_spawn_cooldowns(),
-                    source.teams(),
-                    source.fighter_id_spans(),
-                    source.target_ids());
+                    source.teams());
     }
 };
 
@@ -144,13 +117,7 @@ struct ResolvedViewImpl
                 this->columns_.rotations_rolls,
                 this->num()};
     }
-    auto fighter_spawn_timers() const { return this->column(this->columns_.fighter_spawn_timers); }
-    auto fighter_spawn_cooldowns() const {
-        return this->column(this->columns_.fighter_spawn_cooldowns);
-    }
     auto teams() const { return this->column(this->columns_.teams); }
-    auto fighter_id_spans() const { return this->column(this->columns_.fighter_id_spans); }
-    auto target_ids() const { return this->column(this->columns_.target_ids); }
 };
 struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base = ResolvedViewImpl<true>;
@@ -170,20 +137,12 @@ struct ResolvedView
              EntityId const new_entity_ids,
              Vector3f const new_locations,
              Rotator3f const new_rotations,
-             float const new_fighter_spawn_timers,
-             float const new_fighter_spawn_cooldowns,
-             ::ioj::Team const new_teams,
-             ioj::sim::IndexSpan const new_fighter_id_spans,
-             EntityId const new_target_ids) const {
+             ::ioj::Team const new_teams) const {
         assert(index < num());
         this->entity_ids()[index] = new_entity_ids;
         this->view_locations().set(index, new_locations);
         this->view_rotations().set(index, new_rotations);
-        this->fighter_spawn_timers()[index] = new_fighter_spawn_timers;
-        this->fighter_spawn_cooldowns()[index] = new_fighter_spawn_cooldowns;
         this->teams()[index] = new_teams;
-        this->fighter_id_spans()[index] = new_fighter_id_spans;
-        this->target_ids()[index] = new_target_ids;
     }
 };
 
@@ -227,17 +186,7 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                     Layout::rotations_pitches_column,
                     Layout::rotations_yaws_column);
     }
-    auto fighter_spawn_timers() const {
-        return this->template column<float>(Layout::fighter_spawn_timers_column);
-    }
-    auto fighter_spawn_cooldowns() const {
-        return this->template column<float>(Layout::fighter_spawn_cooldowns_column);
-    }
     auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
-    auto fighter_id_spans() const {
-        return this->template column<IndexSpan>(Layout::fighter_id_spans_column);
-    }
-    auto target_ids() const { return this->template column<EntityId>(Layout::target_ids_column); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -258,20 +207,12 @@ struct View
              EntityId const new_entity_ids,
              Vector3f const new_locations,
              Rotator3f const new_rotations,
-             float const new_fighter_spawn_timers,
-             float const new_fighter_spawn_cooldowns,
-             ::ioj::Team const new_teams,
-             ioj::sim::IndexSpan const new_fighter_id_spans,
-             EntityId const new_target_ids) const {
+             ::ioj::Team const new_teams) const {
         assert(index < num());
         this->entity_ids()[index] = new_entity_ids;
         this->view_locations().set(index, new_locations);
         this->view_rotations().set(index, new_rotations);
-        this->fighter_spawn_timers()[index] = new_fighter_spawn_timers;
-        this->fighter_spawn_cooldowns()[index] = new_fighter_spawn_cooldowns;
         this->teams()[index] = new_teams;
-        this->fighter_id_spans()[index] = new_fighter_id_spans;
-        this->target_ids()[index] = new_target_ids;
     }
 };
 static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
@@ -289,11 +230,7 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // rotations_pitches: float
 // rotations_yaws: float
 // rotations_rolls: float
-// fighter_spawn_timers: float
-// fighter_spawn_cooldowns: float
 // teams: ::ioj::Team
-// fighter_id_spans: ioj::sim::IndexSpan
-// target_ids: EntityId
 struct CapitalEntityData
     : protected ioj::native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<CapitalEntityData,
@@ -342,13 +279,7 @@ struct CapitalEntityData
     auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }
     auto view_locations(this auto& self) { return self.get_view().view_locations(); }
     auto view_rotations(this auto& self) { return self.get_view().view_rotations(); }
-    auto fighter_spawn_timers(this auto& self) { return self.get_view().fighter_spawn_timers(); }
-    auto fighter_spawn_cooldowns(this auto& self) {
-        return self.get_view().fighter_spawn_cooldowns();
-    }
     auto teams(this auto& self) { return self.get_view().teams(); }
-    auto fighter_id_spans(this auto& self) { return self.get_view().fighter_id_spans(); }
-    auto target_ids(this auto& self) { return self.get_view().target_ids(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         CapitalEntityData,
         ::ioj::sim::capital_entity_data::Layout::column_types,
@@ -359,40 +290,20 @@ struct CapitalEntityData
              EntityId const new_entity_ids,
              Vector3f const new_locations,
              Rotator3f const new_rotations,
-             float const new_fighter_spawn_timers,
-             float const new_fighter_spawn_cooldowns,
-             ::ioj::Team const new_teams,
-             IndexSpan const new_fighter_id_spans,
-             EntityId const new_target_ids) {
+             ::ioj::Team const new_teams) {
         assert(index < num());
         get_view().entity_ids()[index] = new_entity_ids;
         get_view().view_locations().set(index, new_locations);
         get_view().view_rotations().set(index, new_rotations);
-        get_view().fighter_spawn_timers()[index] = new_fighter_spawn_timers;
-        get_view().fighter_spawn_cooldowns()[index] = new_fighter_spawn_cooldowns;
         get_view().teams()[index] = new_teams;
-        get_view().fighter_id_spans()[index] = new_fighter_id_spans;
-        get_view().target_ids()[index] = new_target_ids;
     }
     size_type add(EntityId const new_entity_ids,
                   Vector3f const new_locations,
                   Rotator3f const new_rotations,
-                  float const new_fighter_spawn_timers,
-                  float const new_fighter_spawn_cooldowns,
-                  ::ioj::Team const new_teams,
-                  IndexSpan const new_fighter_id_spans,
-                  EntityId const new_target_ids) {
+                  ::ioj::Team const new_teams) {
         auto const index{num()};
         add_uninitialised(1);
-        set(index,
-            new_entity_ids,
-            new_locations,
-            new_rotations,
-            new_fighter_spawn_timers,
-            new_fighter_spawn_cooldowns,
-            new_teams,
-            new_fighter_id_spans,
-            new_target_ids);
+        set(index, new_entity_ids, new_locations, new_rotations, new_teams);
         return index;
     }
   private:

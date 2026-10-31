@@ -600,21 +600,13 @@ TEST(NativeSimulation, LevelSimCollisionBoundsTest) {
 
 TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     auto data{make_battle()};
-    auto const player_index{add_player_spawn(data, {})};
-    auto const capitals_events{data.level_events.schedule.capital_spawns.get_view()};
-    capitals_events.target_entity_indices()[0] = capitals_events.entity_indices()[1];
-    capitals_events.target_entity_indices()[1] = player_index;
+    add_player_spawn(data, {});
     add_turret_spawn(data, {{0.f, -1000.f, 0.f}}, {0.f, 90.f, 0.f}, Team::Green, 20, 5);
     add_turret_spawn(data, {{0.f, 1000.f, 0.f}}, {}, Team::White, 30, 7);
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
-    auto const& capitals{simulation.get_capital_ships()};
-    EXPECT_TRUE(capitals.get_target_id(0) == capitals.get_id(1))
-        << "Compiled capital target index maps to its registered handle";
     auto const* player{simulation.get_player_ship_simulation()};
-    EXPECT_TRUE(capitals.get_target_id(1) == player->unique_entity_id)
-        << "Compiled player entity index maps to the player handle";
     EXPECT_EQ(simulation.get_entity_ledger().count_alive(), 5)
         << "Every compiled initial entity is registered";
     auto const& health_table{simulation.get_entity_tables().health};
@@ -670,8 +662,6 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     data.fighters.health = ::ioj::settings::PositiveHealth::make(Health{100});
     data.fighters.speed = 0.f;
     auto const capital_events{data.level_events.schedule.capital_spawns.get_view()};
-    capital_events.target_entity_indices()[0] = capital_events.entity_indices()[1];
-    capital_events.target_entity_indices()[1] = capital_events.entity_indices()[0];
     std::ranges::fill(capital_events.initial_fighter_spawn_delays(), 0.f);
 
     auto& schedule{data.level_events.schedule};

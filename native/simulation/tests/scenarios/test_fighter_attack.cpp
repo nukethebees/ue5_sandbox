@@ -39,9 +39,8 @@ TEST(WorldlessSpaceGameSimulation, FightersObstacleAvoidance) {
     data.collision.static_bounds.add_defaulted(1);
     data.collision.static_bounds.set(0, obstacle_min, obstacle_max);
     tests::add_capital_spawn(
-        data, Vector3f{{source_x, -7000.f, 0.f}}, Team::Green, 1, 0.f, 60.f, 100000);
-    tests::add_capital_spawn(
-        data, Vector3f{{target_x, 0.f, 0.f}}, Team::Red, 0, 60.f, 60.f, 100000);
+        data, Vector3f{{source_x, -7000.f, 0.f}}, Team::Green, 0.f, 60.f, 100000);
+    tests::add_capital_spawn(data, Vector3f{{target_x, 0.f, 0.f}}, Team::Red, 60.f, 60.f, 100000);
     auto const fighter_radius{
         collision::get_entity_radius(data.collision.entity_bounds, EntityType::Fighter)};
 
@@ -92,15 +91,12 @@ auto make_fighter_navigation_test_data(tests::SimulationFixture const& config,
     data.fighters.speed = 4000.f;
     data.fighters.avoidance_lookahead_time = NonNegativeFinite<float>::make(1.f);
     data.fighters.laser.max_distance = PositiveFinite<float>::make(2000.f);
-    data.fighters.attack_engagement_threshold = 1000000.f;
-    data.fighters.attack_distance_band = *settings::AttackDistanceBand::try_make({0.f, 0.f, 0.f});
     data.fighters.separation_radius = PositiveFinite<float>::make(1500.f);
     data.fighters.separation_strength = NonNegativeFinite<float>::make(1.5f);
     data.capital_ships.fighter_spawn_slots = static_cast<std::int32_t>(spawn_slots.size());
     data.capital_ships.fighter_spawn_slots_relative_transforms = spawn_slots;
-    tests::add_capital_spawn(data, source_location, Team::Green, 1, 0.f, 60.f, 100000);
-    tests::add_capital_spawn(
-        data, target_location, Team::Red, invalid_level_entity_index, 60.f, 60.f, 100000);
+    tests::add_capital_spawn(data, source_location, Team::Green, 0.f, 60.f, 100000);
+    tests::add_capital_spawn(data, target_location, Team::Red, 60.f, 60.f, 100000);
     return data;
 }
 
@@ -115,16 +111,12 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationCapitalObstruction) {
     data.fighters.speed = 4000.f;
     data.fighters.avoidance_lookahead_time = NonNegativeFinite<float>::make(1.f);
     data.fighters.laser.max_distance = PositiveFinite<float>::make(2000.f);
-    data.fighters.attack_engagement_threshold = 1000000.f;
-    data.fighters.attack_distance_band = *settings::AttackDistanceBand::try_make({0.f, 0.f, 0.f});
     data.capital_ships.fighter_spawn_slots = 1;
     data.capital_ships.fighter_spawn_slots_relative_transforms = {
         {.location = {3000.0, 7000.0, 0.0}}};
-    tests::add_capital_spawn(data, source, Team::Green, 2, 0.f, 60.f, 100000);
-    tests::add_capital_spawn(
-        data, obstacle, Team::Green, invalid_level_entity_index, 60.f, 60.f, 100000);
-    tests::add_capital_spawn(
-        data, target, Team::Red, invalid_level_entity_index, 60.f, 60.f, 100000);
+    tests::add_capital_spawn(data, source, Team::Green, 0.f, 60.f, 100000);
+    tests::add_capital_spawn(data, obstacle, Team::Green, 60.f, 60.f, 100000);
+    tests::add_capital_spawn(data, target, Team::Red, 60.f, 60.f, 100000);
     Rotator3f const obstacle_rotation{0.f, 35.f, 0.f};
     set_rotation(data.level_events.schedule.capital_spawns.get_view().view_rotations(),
                  1,
@@ -485,8 +477,8 @@ TEST(WorldlessSpaceGameSimulation, FightersAttackCapital) {
     auto data{tests::make_simulation_data(config)};
     data.fighters.laser.projectile_speed = PositiveFinite<float>::make(20000.f);
     data.fighters.laser.max_distance = PositiveFinite<float>::make(25000.f);
-    tests::add_capital_spawn(data, Vector3f{{-22020.f, 2170.f, 4360.f}}, Team::Green, 1, 0.f, 60.f);
-    tests::add_capital_spawn(data, Vector3f{{17030.f, 2170.f, 4360.f}}, Team::Red, 0, 60.f, 60.f);
+    tests::add_capital_spawn(data, Vector3f{{-22020.f, 2170.f, 4360.f}}, Team::Green, 0.f, 60.f);
+    tests::add_capital_spawn(data, Vector3f{{17030.f, 2170.f, 4360.f}}, Team::Red, 60.f, 60.f);
 
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();

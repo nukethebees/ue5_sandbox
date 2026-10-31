@@ -8,7 +8,6 @@
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/entity_id.h"
 #include "ioj/sim/fighters/fighter_navigation_types.h"
-#include "ioj/sim/fighters/fighter_task_format.h"
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 #include "ioj/vectors3f.h"
@@ -32,7 +31,6 @@ struct Layout
     : ioj::single_allocation_layout::ColumnLayouts<EntityId,
                                                    std::uint32_t,
                                                    float,
-                                                   FighterTask,
                                                    float,
                                                    float,
                                                    float,
@@ -57,8 +55,6 @@ struct Layout
                                                    float,
                                                    float,
                                                    ::ioj::Team,
-                                                   EntityId,
-                                                   std::int8_t,
                                                    std::int16_t,
                                                    std::int16_t,
                                                    float,
@@ -69,11 +65,7 @@ struct Layout
                                                    fighters::AvoidanceChoice,
                                                    fighters::NavigationScanCount,
                                                    std::int16_t,
-                                                   std::int16_t,
                                                    EntityId,
-                                                   float,
-                                                   float,
-                                                   float,
                                                    float,
                                                    float,
                                                    float,
@@ -87,58 +79,51 @@ struct Layout
     static constexpr std::size_t entity_ids_column{0};
     static constexpr std::size_t integral_biases_column{1};
     static constexpr std::size_t float_biases_column{2};
-    static constexpr std::size_t tasks_column{3};
-    static constexpr std::size_t locations_xs_column{4};
-    static constexpr std::size_t locations_ys_column{5};
-    static constexpr std::size_t locations_zs_column{6};
-    static constexpr std::size_t desired_move_locations_xs_column{7};
-    static constexpr std::size_t desired_move_locations_ys_column{8};
-    static constexpr std::size_t desired_move_locations_zs_column{9};
-    static constexpr std::size_t aim_directions_xs_column{10};
-    static constexpr std::size_t aim_directions_ys_column{11};
-    static constexpr std::size_t aim_directions_zs_column{12};
-    static constexpr std::size_t planned_aim_directions_xs_column{13};
-    static constexpr std::size_t planned_aim_directions_ys_column{14};
-    static constexpr std::size_t planned_aim_directions_zs_column{15};
-    static constexpr std::size_t desired_aiming_directions_xs_column{16};
-    static constexpr std::size_t desired_aiming_directions_ys_column{17};
-    static constexpr std::size_t desired_aiming_directions_zs_column{18};
-    static constexpr std::size_t movement_directions_xs_column{19};
-    static constexpr std::size_t movement_directions_ys_column{20};
-    static constexpr std::size_t movement_directions_zs_column{21};
-    static constexpr std::size_t velocities_xs_column{22};
-    static constexpr std::size_t velocities_ys_column{23};
-    static constexpr std::size_t velocities_zs_column{24};
-    static constexpr std::size_t move_distances_column{25};
-    static constexpr std::size_t speeds_column{26};
-    static constexpr std::size_t teams_column{27};
-    static constexpr std::size_t parent_ids_column{28};
-    static constexpr std::size_t awareness_scan_countdowns_column{29};
-    static constexpr std::size_t navigation_update_countdowns_remaining_ticks_column{30};
-    static constexpr std::size_t navigation_update_countdowns_periods_column{31};
-    static constexpr std::size_t separation_steering_xs_column{32};
-    static constexpr std::size_t separation_steering_ys_column{33};
-    static constexpr std::size_t separation_steering_zs_column{34};
-    static constexpr std::size_t navigation_risk_tiers_column{35};
-    static constexpr std::size_t navigation_lower_risk_scan_counts_column{36};
-    static constexpr std::size_t avoidance_choice_indices_column{37};
-    static constexpr std::size_t avoidance_clear_scan_counts_column{38};
-    static constexpr std::size_t attack_reposition_countdowns_column{39};
-    static constexpr std::size_t attack_cooldowns_column{40};
-    static constexpr std::size_t target_ids_column{41};
-    static constexpr std::size_t target_locations_xs_column{42};
-    static constexpr std::size_t target_locations_ys_column{43};
-    static constexpr std::size_t target_locations_zs_column{44};
-    static constexpr std::size_t target_velocities_xs_column{45};
-    static constexpr std::size_t target_velocities_ys_column{46};
-    static constexpr std::size_t target_velocities_zs_column{47};
-    static constexpr std::size_t target_directions_xs_column{48};
-    static constexpr std::size_t target_directions_ys_column{49};
-    static constexpr std::size_t target_directions_zs_column{50};
-    static constexpr std::size_t intercept_times_column{51};
-    static constexpr std::size_t target_distance_sq_column{52};
-    static constexpr std::size_t target_distances_column{53};
-    static constexpr std::size_t target_radii_column{54};
+    static constexpr std::size_t locations_xs_column{3};
+    static constexpr std::size_t locations_ys_column{4};
+    static constexpr std::size_t locations_zs_column{5};
+    static constexpr std::size_t desired_move_locations_xs_column{6};
+    static constexpr std::size_t desired_move_locations_ys_column{7};
+    static constexpr std::size_t desired_move_locations_zs_column{8};
+    static constexpr std::size_t aim_directions_xs_column{9};
+    static constexpr std::size_t aim_directions_ys_column{10};
+    static constexpr std::size_t aim_directions_zs_column{11};
+    static constexpr std::size_t planned_aim_directions_xs_column{12};
+    static constexpr std::size_t planned_aim_directions_ys_column{13};
+    static constexpr std::size_t planned_aim_directions_zs_column{14};
+    static constexpr std::size_t desired_aiming_directions_xs_column{15};
+    static constexpr std::size_t desired_aiming_directions_ys_column{16};
+    static constexpr std::size_t desired_aiming_directions_zs_column{17};
+    static constexpr std::size_t movement_directions_xs_column{18};
+    static constexpr std::size_t movement_directions_ys_column{19};
+    static constexpr std::size_t movement_directions_zs_column{20};
+    static constexpr std::size_t velocities_xs_column{21};
+    static constexpr std::size_t velocities_ys_column{22};
+    static constexpr std::size_t velocities_zs_column{23};
+    static constexpr std::size_t move_distances_column{24};
+    static constexpr std::size_t speeds_column{25};
+    static constexpr std::size_t teams_column{26};
+    static constexpr std::size_t navigation_update_countdowns_remaining_ticks_column{27};
+    static constexpr std::size_t navigation_update_countdowns_periods_column{28};
+    static constexpr std::size_t separation_steering_xs_column{29};
+    static constexpr std::size_t separation_steering_ys_column{30};
+    static constexpr std::size_t separation_steering_zs_column{31};
+    static constexpr std::size_t navigation_risk_tiers_column{32};
+    static constexpr std::size_t navigation_lower_risk_scan_counts_column{33};
+    static constexpr std::size_t avoidance_choice_indices_column{34};
+    static constexpr std::size_t avoidance_clear_scan_counts_column{35};
+    static constexpr std::size_t attack_cooldowns_column{36};
+    static constexpr std::size_t target_ids_column{37};
+    static constexpr std::size_t target_locations_xs_column{38};
+    static constexpr std::size_t target_locations_ys_column{39};
+    static constexpr std::size_t target_locations_zs_column{40};
+    static constexpr std::size_t target_velocities_xs_column{41};
+    static constexpr std::size_t target_velocities_ys_column{42};
+    static constexpr std::size_t target_velocities_zs_column{43};
+    static constexpr std::size_t intercept_times_column{44};
+    static constexpr std::size_t target_distance_sq_column{45};
+    static constexpr std::size_t target_distances_column{46};
+    static constexpr std::size_t target_radii_column{47};
 };
 
 /* **************************************** */
@@ -151,7 +136,6 @@ struct DataPointers {
     Element<EntityId>* entity_ids{};
     Element<std::uint32_t>* integral_biases{};
     Element<float>* float_biases{};
-    Element<FighterTask>* tasks{};
     Element<float>* locations_xs{};
     Element<float>* locations_ys{};
     Element<float>* locations_zs{};
@@ -176,8 +160,6 @@ struct DataPointers {
     Element<float>* move_distances{};
     Element<float>* speeds{};
     Element<::ioj::Team>* teams{};
-    Element<EntityId>* parent_ids{};
-    Element<std::int8_t>* awareness_scan_countdowns{};
     Element<std::int16_t>* navigation_update_countdowns_remaining_ticks{};
     Element<std::int16_t>* navigation_update_countdowns_periods{};
     Element<float>* separation_steering_xs{};
@@ -187,7 +169,6 @@ struct DataPointers {
     Element<fighters::NavigationScanCount>* navigation_lower_risk_scan_counts{};
     Element<fighters::AvoidanceChoice>* avoidance_choice_indices{};
     Element<fighters::NavigationScanCount>* avoidance_clear_scan_counts{};
-    Element<std::int16_t>* attack_reposition_countdowns{};
     Element<std::int16_t>* attack_cooldowns{};
     Element<EntityId>* target_ids{};
     Element<float>* target_locations_xs{};
@@ -196,9 +177,6 @@ struct DataPointers {
     Element<float>* target_velocities_xs{};
     Element<float>* target_velocities_ys{};
     Element<float>* target_velocities_zs{};
-    Element<float>* target_directions_xs{};
-    Element<float>* target_directions_ys{};
-    Element<float>* target_directions_zs{};
     Element<float>* intercept_times{};
     Element<float>* target_distance_sq{};
     Element<float>* target_distances{};
@@ -208,7 +186,6 @@ struct DataPointers {
         return func(self.entity_ids,
                     self.integral_biases,
                     self.float_biases,
-                    self.tasks,
                     self.locations_xs,
                     self.locations_ys,
                     self.locations_zs,
@@ -233,8 +210,6 @@ struct DataPointers {
                     self.move_distances,
                     self.speeds,
                     self.teams,
-                    self.parent_ids,
-                    self.awareness_scan_countdowns,
                     self.navigation_update_countdowns_remaining_ticks,
                     self.navigation_update_countdowns_periods,
                     self.separation_steering_xs,
@@ -244,7 +219,6 @@ struct DataPointers {
                     self.navigation_lower_risk_scan_counts,
                     self.avoidance_choice_indices,
                     self.avoidance_clear_scan_counts,
-                    self.attack_reposition_countdowns,
                     self.attack_cooldowns,
                     self.target_ids,
                     self.target_locations_xs,
@@ -253,9 +227,6 @@ struct DataPointers {
                     self.target_velocities_xs,
                     self.target_velocities_ys,
                     self.target_velocities_zs,
-                    self.target_directions_xs,
-                    self.target_directions_ys,
-                    self.target_directions_zs,
                     self.intercept_times,
                     self.target_distance_sq,
                     self.target_distances,
@@ -276,11 +247,9 @@ struct Schema {
         auto const& separation_steering_view{source.view_separation_steering()};
         auto const& target_locations_view{source.view_target_locations()};
         auto const& target_velocities_view{source.view_target_velocities()};
-        auto const& target_directions_view{source.view_target_directions()};
         return func(source.entity_ids(),
                     source.integral_biases(),
                     source.float_biases(),
-                    source.tasks(),
                     locations_view.xs(),
                     locations_view.ys(),
                     locations_view.zs(),
@@ -305,8 +274,6 @@ struct Schema {
                     source.move_distances(),
                     source.speeds(),
                     source.teams(),
-                    source.parent_ids(),
-                    source.awareness_scan_countdowns(),
                     source.navigation_update_countdowns_remaining_ticks(),
                     source.navigation_update_countdowns_periods(),
                     separation_steering_view.xs(),
@@ -316,7 +283,6 @@ struct Schema {
                     source.navigation_lower_risk_scan_counts(),
                     source.avoidance_choice_indices(),
                     source.avoidance_clear_scan_counts(),
-                    source.attack_reposition_countdowns(),
                     source.attack_cooldowns(),
                     source.target_ids(),
                     target_locations_view.xs(),
@@ -325,9 +291,6 @@ struct Schema {
                     target_velocities_view.xs(),
                     target_velocities_view.ys(),
                     target_velocities_view.zs(),
-                    target_directions_view.xs(),
-                    target_directions_view.ys(),
-                    target_directions_view.zs(),
                     source.intercept_times(),
                     source.target_distance_sq(),
                     source.target_distances(),
@@ -355,7 +318,6 @@ struct ResolvedViewImpl
     auto entity_ids() const { return this->column(this->columns_.entity_ids); }
     auto integral_biases() const { return this->column(this->columns_.integral_biases); }
     auto float_biases() const { return this->column(this->columns_.float_biases); }
-    auto tasks() const { return this->column(this->columns_.tasks); }
     auto view_locations() const -> std::
         conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
         return {this->columns_.locations_xs,
@@ -408,10 +370,6 @@ struct ResolvedViewImpl
     auto move_distances() const { return this->column(this->columns_.move_distances); }
     auto speeds() const { return this->column(this->columns_.speeds); }
     auto teams() const { return this->column(this->columns_.teams); }
-    auto parent_ids() const { return this->column(this->columns_.parent_ids); }
-    auto awareness_scan_countdowns() const {
-        return this->column(this->columns_.awareness_scan_countdowns);
-    }
     auto navigation_update_countdowns_remaining_ticks() const {
         return this->column(this->columns_.navigation_update_countdowns_remaining_ticks);
     }
@@ -437,9 +395,6 @@ struct ResolvedViewImpl
     auto avoidance_clear_scan_counts() const {
         return this->column(this->columns_.avoidance_clear_scan_counts);
     }
-    auto attack_reposition_countdowns() const {
-        return this->column(this->columns_.attack_reposition_countdowns);
-    }
     auto attack_cooldowns() const { return this->column(this->columns_.attack_cooldowns); }
     auto target_ids() const { return this->column(this->columns_.target_ids); }
     auto view_target_locations() const -> std::
@@ -454,13 +409,6 @@ struct ResolvedViewImpl
         return {this->columns_.target_velocities_xs,
                 this->columns_.target_velocities_ys,
                 this->columns_.target_velocities_zs,
-                this->num()};
-    }
-    auto view_target_directions() const -> std::
-        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
-        return {this->columns_.target_directions_xs,
-                this->columns_.target_directions_ys,
-                this->columns_.target_directions_zs,
                 this->num()};
     }
     auto intercept_times() const { return this->column(this->columns_.intercept_times); }
@@ -486,7 +434,6 @@ struct ResolvedView
              EntityId const new_entity_ids,
              std::uint32_t const new_integral_biases,
              float const new_float_biases,
-             FighterTask const new_tasks,
              Vector3f const new_locations,
              Vector3f const new_desired_move_locations,
              Vector3f const new_aim_directions,
@@ -497,8 +444,6 @@ struct ResolvedView
              float const new_move_distances,
              float const new_speeds,
              ::ioj::Team const new_teams,
-             EntityId const new_parent_ids,
-             std::int8_t const new_awareness_scan_countdowns,
              std::int16_t const new_navigation_update_countdowns_remaining_ticks,
              std::int16_t const new_navigation_update_countdowns_periods,
              Vector3f const new_separation_steering,
@@ -506,12 +451,10 @@ struct ResolvedView
              ioj::sim::fighters::NavigationScanCount const new_navigation_lower_risk_scan_counts,
              ioj::sim::fighters::AvoidanceChoice const new_avoidance_choice_indices,
              ioj::sim::fighters::NavigationScanCount const new_avoidance_clear_scan_counts,
-             std::int16_t const new_attack_reposition_countdowns,
              std::int16_t const new_attack_cooldowns,
              EntityId const new_target_ids,
              Vector3f const new_target_locations,
              Vector3f const new_target_velocities,
-             Vector3f const new_target_directions,
              float const new_intercept_times,
              float const new_target_distance_sq,
              float const new_target_distances,
@@ -520,7 +463,6 @@ struct ResolvedView
         this->entity_ids()[index] = new_entity_ids;
         this->integral_biases()[index] = new_integral_biases;
         this->float_biases()[index] = new_float_biases;
-        this->tasks()[index] = new_tasks;
         this->view_locations().set(index, new_locations);
         this->view_desired_move_locations().set(index, new_desired_move_locations);
         this->view_aim_directions().set(index, new_aim_directions);
@@ -531,8 +473,6 @@ struct ResolvedView
         this->move_distances()[index] = new_move_distances;
         this->speeds()[index] = new_speeds;
         this->teams()[index] = new_teams;
-        this->parent_ids()[index] = new_parent_ids;
-        this->awareness_scan_countdowns()[index] = new_awareness_scan_countdowns;
         this->navigation_update_countdowns_remaining_ticks()[index] =
             new_navigation_update_countdowns_remaining_ticks;
         this->navigation_update_countdowns_periods()[index] =
@@ -542,12 +482,10 @@ struct ResolvedView
         this->navigation_lower_risk_scan_counts()[index] = new_navigation_lower_risk_scan_counts;
         this->avoidance_choice_indices()[index] = new_avoidance_choice_indices;
         this->avoidance_clear_scan_counts()[index] = new_avoidance_clear_scan_counts;
-        this->attack_reposition_countdowns()[index] = new_attack_reposition_countdowns;
         this->attack_cooldowns()[index] = new_attack_cooldowns;
         this->target_ids()[index] = new_target_ids;
         this->view_target_locations().set(index, new_target_locations);
         this->view_target_velocities().set(index, new_target_velocities);
-        this->view_target_directions().set(index, new_target_directions);
         this->intercept_times()[index] = new_intercept_times;
         this->target_distance_sq()[index] = new_target_distance_sq;
         this->target_distances()[index] = new_target_distances;
@@ -579,7 +517,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         return this->template column<std::uint32_t>(Layout::integral_biases_column);
     }
     auto float_biases() const { return this->template column<float>(Layout::float_biases_column); }
-    auto tasks() const { return this->template column<FighterTask>(Layout::tasks_column); }
     auto view_locations() const
         -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
         return ioj::soa_storage_detail::make_strided_view<
@@ -655,10 +592,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto speeds() const { return this->template column<float>(Layout::speeds_column); }
     auto teams() const { return this->template column<::ioj::Team>(Layout::teams_column); }
-    auto parent_ids() const { return this->template column<EntityId>(Layout::parent_ids_column); }
-    auto awareness_scan_countdowns() const {
-        return this->template column<std::int8_t>(Layout::awareness_scan_countdowns_column);
-    }
     auto navigation_update_countdowns_remaining_ticks() const {
         return this->template column<std::int16_t>(
             Layout::navigation_update_countdowns_remaining_ticks_column);
@@ -693,9 +626,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         return this->template column<fighters::NavigationScanCount>(
             Layout::avoidance_clear_scan_counts_column);
     }
-    auto attack_reposition_countdowns() const {
-        return this->template column<std::int16_t>(Layout::attack_reposition_countdowns_column);
-    }
     auto attack_cooldowns() const {
         return this->template column<std::int16_t>(Layout::attack_cooldowns_column);
     }
@@ -719,16 +649,6 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                     this->num(),
                     Layout::target_velocities_xs_column,
                     Layout::target_velocities_ys_column);
-    }
-    auto view_target_directions() const
-        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
-        return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::target_directions_xs_column,
-                    Layout::target_directions_ys_column);
     }
     auto intercept_times() const {
         return this->template column<float>(Layout::intercept_times_column);
@@ -760,7 +680,6 @@ struct View
              EntityId const new_entity_ids,
              std::uint32_t const new_integral_biases,
              float const new_float_biases,
-             FighterTask const new_tasks,
              Vector3f const new_locations,
              Vector3f const new_desired_move_locations,
              Vector3f const new_aim_directions,
@@ -771,8 +690,6 @@ struct View
              float const new_move_distances,
              float const new_speeds,
              ::ioj::Team const new_teams,
-             EntityId const new_parent_ids,
-             std::int8_t const new_awareness_scan_countdowns,
              std::int16_t const new_navigation_update_countdowns_remaining_ticks,
              std::int16_t const new_navigation_update_countdowns_periods,
              Vector3f const new_separation_steering,
@@ -780,12 +697,10 @@ struct View
              ioj::sim::fighters::NavigationScanCount const new_navigation_lower_risk_scan_counts,
              ioj::sim::fighters::AvoidanceChoice const new_avoidance_choice_indices,
              ioj::sim::fighters::NavigationScanCount const new_avoidance_clear_scan_counts,
-             std::int16_t const new_attack_reposition_countdowns,
              std::int16_t const new_attack_cooldowns,
              EntityId const new_target_ids,
              Vector3f const new_target_locations,
              Vector3f const new_target_velocities,
-             Vector3f const new_target_directions,
              float const new_intercept_times,
              float const new_target_distance_sq,
              float const new_target_distances,
@@ -794,7 +709,6 @@ struct View
         this->entity_ids()[index] = new_entity_ids;
         this->integral_biases()[index] = new_integral_biases;
         this->float_biases()[index] = new_float_biases;
-        this->tasks()[index] = new_tasks;
         this->view_locations().set(index, new_locations);
         this->view_desired_move_locations().set(index, new_desired_move_locations);
         this->view_aim_directions().set(index, new_aim_directions);
@@ -805,8 +719,6 @@ struct View
         this->move_distances()[index] = new_move_distances;
         this->speeds()[index] = new_speeds;
         this->teams()[index] = new_teams;
-        this->parent_ids()[index] = new_parent_ids;
-        this->awareness_scan_countdowns()[index] = new_awareness_scan_countdowns;
         this->navigation_update_countdowns_remaining_ticks()[index] =
             new_navigation_update_countdowns_remaining_ticks;
         this->navigation_update_countdowns_periods()[index] =
@@ -816,12 +728,10 @@ struct View
         this->navigation_lower_risk_scan_counts()[index] = new_navigation_lower_risk_scan_counts;
         this->avoidance_choice_indices()[index] = new_avoidance_choice_indices;
         this->avoidance_clear_scan_counts()[index] = new_avoidance_clear_scan_counts;
-        this->attack_reposition_countdowns()[index] = new_attack_reposition_countdowns;
         this->attack_cooldowns()[index] = new_attack_cooldowns;
         this->target_ids()[index] = new_target_ids;
         this->view_target_locations().set(index, new_target_locations);
         this->view_target_velocities().set(index, new_target_velocities);
-        this->view_target_directions().set(index, new_target_directions);
         this->intercept_times()[index] = new_intercept_times;
         this->target_distance_sq()[index] = new_target_distance_sq;
         this->target_distances()[index] = new_target_distances;
@@ -839,7 +749,6 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // entity_ids: EntityId
 // integral_biases: std::uint32_t
 // float_biases: float
-// tasks: FighterTask
 // locations_xs: float
 // locations_ys: float
 // locations_zs: float
@@ -864,8 +773,6 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // move_distances: float
 // speeds: float
 // teams: ::ioj::Team
-// parent_ids: EntityId
-// awareness_scan_countdowns: std::int8_t
 // navigation_update_countdowns_remaining_ticks: std::int16_t
 // navigation_update_countdowns_periods: std::int16_t
 // separation_steering_xs: float
@@ -875,7 +782,6 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // navigation_lower_risk_scan_counts: ioj::sim::fighters::NavigationScanCount
 // avoidance_choice_indices: ioj::sim::fighters::AvoidanceChoice
 // avoidance_clear_scan_counts: ioj::sim::fighters::NavigationScanCount
-// attack_reposition_countdowns: std::int16_t
 // attack_cooldowns: std::int16_t
 // target_ids: EntityId
 // target_locations_xs: float
@@ -884,9 +790,6 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // target_velocities_xs: float
 // target_velocities_ys: float
 // target_velocities_zs: float
-// target_directions_xs: float
-// target_directions_ys: float
-// target_directions_zs: float
 // intercept_times: float
 // target_distance_sq: float
 // target_distances: float
@@ -939,7 +842,6 @@ struct FighterEntityData
     auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }
     auto integral_biases(this auto& self) { return self.get_view().integral_biases(); }
     auto float_biases(this auto& self) { return self.get_view().float_biases(); }
-    auto tasks(this auto& self) { return self.get_view().tasks(); }
     auto view_locations(this auto& self) { return self.get_view().view_locations(); }
     auto view_desired_move_locations(this auto& self) {
         return self.get_view().view_desired_move_locations();
@@ -958,10 +860,6 @@ struct FighterEntityData
     auto move_distances(this auto& self) { return self.get_view().move_distances(); }
     auto speeds(this auto& self) { return self.get_view().speeds(); }
     auto teams(this auto& self) { return self.get_view().teams(); }
-    auto parent_ids(this auto& self) { return self.get_view().parent_ids(); }
-    auto awareness_scan_countdowns(this auto& self) {
-        return self.get_view().awareness_scan_countdowns();
-    }
     auto navigation_update_countdowns_remaining_ticks(this auto& self) {
         return self.get_view().navigation_update_countdowns_remaining_ticks();
     }
@@ -981,17 +879,11 @@ struct FighterEntityData
     auto avoidance_clear_scan_counts(this auto& self) {
         return self.get_view().avoidance_clear_scan_counts();
     }
-    auto attack_reposition_countdowns(this auto& self) {
-        return self.get_view().attack_reposition_countdowns();
-    }
     auto attack_cooldowns(this auto& self) { return self.get_view().attack_cooldowns(); }
     auto target_ids(this auto& self) { return self.get_view().target_ids(); }
     auto view_target_locations(this auto& self) { return self.get_view().view_target_locations(); }
     auto view_target_velocities(this auto& self) {
         return self.get_view().view_target_velocities();
-    }
-    auto view_target_directions(this auto& self) {
-        return self.get_view().view_target_directions();
     }
     auto intercept_times(this auto& self) { return self.get_view().intercept_times(); }
     auto target_distance_sq(this auto& self) { return self.get_view().target_distance_sq(); }
@@ -1007,7 +899,6 @@ struct FighterEntityData
              EntityId const new_entity_ids,
              std::uint32_t const new_integral_biases,
              float const new_float_biases,
-             FighterTask const new_tasks,
              Vector3f const new_locations,
              Vector3f const new_desired_move_locations,
              Vector3f const new_aim_directions,
@@ -1018,8 +909,6 @@ struct FighterEntityData
              float const new_move_distances,
              float const new_speeds,
              ::ioj::Team const new_teams,
-             EntityId const new_parent_ids,
-             std::int8_t const new_awareness_scan_countdowns,
              std::int16_t const new_navigation_update_countdowns_remaining_ticks,
              std::int16_t const new_navigation_update_countdowns_periods,
              Vector3f const new_separation_steering,
@@ -1027,12 +916,10 @@ struct FighterEntityData
              fighters::NavigationScanCount const new_navigation_lower_risk_scan_counts,
              fighters::AvoidanceChoice const new_avoidance_choice_indices,
              fighters::NavigationScanCount const new_avoidance_clear_scan_counts,
-             std::int16_t const new_attack_reposition_countdowns,
              std::int16_t const new_attack_cooldowns,
              EntityId const new_target_ids,
              Vector3f const new_target_locations,
              Vector3f const new_target_velocities,
-             Vector3f const new_target_directions,
              float const new_intercept_times,
              float const new_target_distance_sq,
              float const new_target_distances,
@@ -1041,7 +928,6 @@ struct FighterEntityData
         get_view().entity_ids()[index] = new_entity_ids;
         get_view().integral_biases()[index] = new_integral_biases;
         get_view().float_biases()[index] = new_float_biases;
-        get_view().tasks()[index] = new_tasks;
         get_view().view_locations().set(index, new_locations);
         get_view().view_desired_move_locations().set(index, new_desired_move_locations);
         get_view().view_aim_directions().set(index, new_aim_directions);
@@ -1052,8 +938,6 @@ struct FighterEntityData
         get_view().move_distances()[index] = new_move_distances;
         get_view().speeds()[index] = new_speeds;
         get_view().teams()[index] = new_teams;
-        get_view().parent_ids()[index] = new_parent_ids;
-        get_view().awareness_scan_countdowns()[index] = new_awareness_scan_countdowns;
         get_view().navigation_update_countdowns_remaining_ticks()[index] =
             new_navigation_update_countdowns_remaining_ticks;
         get_view().navigation_update_countdowns_periods()[index] =
@@ -1064,12 +948,10 @@ struct FighterEntityData
             new_navigation_lower_risk_scan_counts;
         get_view().avoidance_choice_indices()[index] = new_avoidance_choice_indices;
         get_view().avoidance_clear_scan_counts()[index] = new_avoidance_clear_scan_counts;
-        get_view().attack_reposition_countdowns()[index] = new_attack_reposition_countdowns;
         get_view().attack_cooldowns()[index] = new_attack_cooldowns;
         get_view().target_ids()[index] = new_target_ids;
         get_view().view_target_locations().set(index, new_target_locations);
         get_view().view_target_velocities().set(index, new_target_velocities);
-        get_view().view_target_directions().set(index, new_target_directions);
         get_view().intercept_times()[index] = new_intercept_times;
         get_view().target_distance_sq()[index] = new_target_distance_sq;
         get_view().target_distances()[index] = new_target_distances;
@@ -1078,7 +960,6 @@ struct FighterEntityData
     size_type add(EntityId const new_entity_ids,
                   std::uint32_t const new_integral_biases,
                   float const new_float_biases,
-                  FighterTask const new_tasks,
                   Vector3f const new_locations,
                   Vector3f const new_desired_move_locations,
                   Vector3f const new_aim_directions,
@@ -1089,8 +970,6 @@ struct FighterEntityData
                   float const new_move_distances,
                   float const new_speeds,
                   ::ioj::Team const new_teams,
-                  EntityId const new_parent_ids,
-                  std::int8_t const new_awareness_scan_countdowns,
                   std::int16_t const new_navigation_update_countdowns_remaining_ticks,
                   std::int16_t const new_navigation_update_countdowns_periods,
                   Vector3f const new_separation_steering,
@@ -1098,12 +977,10 @@ struct FighterEntityData
                   fighters::NavigationScanCount const new_navigation_lower_risk_scan_counts,
                   fighters::AvoidanceChoice const new_avoidance_choice_indices,
                   fighters::NavigationScanCount const new_avoidance_clear_scan_counts,
-                  std::int16_t const new_attack_reposition_countdowns,
                   std::int16_t const new_attack_cooldowns,
                   EntityId const new_target_ids,
                   Vector3f const new_target_locations,
                   Vector3f const new_target_velocities,
-                  Vector3f const new_target_directions,
                   float const new_intercept_times,
                   float const new_target_distance_sq,
                   float const new_target_distances,
@@ -1114,7 +991,6 @@ struct FighterEntityData
             new_entity_ids,
             new_integral_biases,
             new_float_biases,
-            new_tasks,
             new_locations,
             new_desired_move_locations,
             new_aim_directions,
@@ -1125,8 +1001,6 @@ struct FighterEntityData
             new_move_distances,
             new_speeds,
             new_teams,
-            new_parent_ids,
-            new_awareness_scan_countdowns,
             new_navigation_update_countdowns_remaining_ticks,
             new_navigation_update_countdowns_periods,
             new_separation_steering,
@@ -1134,12 +1008,10 @@ struct FighterEntityData
             new_navigation_lower_risk_scan_counts,
             new_avoidance_choice_indices,
             new_avoidance_clear_scan_counts,
-            new_attack_reposition_countdowns,
             new_attack_cooldowns,
             new_target_ids,
             new_target_locations,
             new_target_velocities,
-            new_target_directions,
             new_intercept_times,
             new_target_distance_sq,
             new_target_distances,

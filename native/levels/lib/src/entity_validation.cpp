@@ -102,23 +102,10 @@ auto validate_entities(LevelDefinitionComponents const& definition, Diagnostics&
                        "spawn-cooldown",
                        "Spawn cooldown must be finite and nonnegative");
         if (entity.archetype != EntityArchetype::CapitalShip &&
-            (overrides.initial_spawn_delay || overrides.spawn_cooldown ||
-             !overrides.target_entity_id.empty())) {
+            (overrides.initial_spawn_delay || overrides.spawn_cooldown)) {
             result.emplace_back(DiagnosticCode::UnknownProperty,
                                 "level.entities",
-                                "Fighter spawn and target overrides require a capital ship");
-        }
-        if (!overrides.target_entity_id.empty()) {
-            auto const target{std::ranges::find(
-                definition.entities, overrides.target_entity_id, &EntitySpawnDefinition::id)};
-            if (target == definition.entities.end() ||
-                target->archetype != EntityArchetype::CapitalShip || target->team == entity.team ||
-                target->spawn_time_seconds > entity.spawn_time_seconds) {
-                result.emplace_back(
-                    DiagnosticCode::InvalidSymbol,
-                    "level.entities.target",
-                    "Target must name an enemy capital spawning at or before this ship");
-            }
+                                "Fighter spawn overrides require a capital ship");
         }
 
         auto const error_end{result.size()};

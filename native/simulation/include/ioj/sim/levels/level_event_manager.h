@@ -14,8 +14,10 @@ namespace ioj::sim {
 class LevelEventManager {
   public:
     LevelEventManager(capital_ships::Sim& capital_ships,
+                      fighters::Sim& fighters,
                       turrets::Sim& turrets,
                       spinners::Sim& spinners,
+                      std::span<Transform3d const> fighter_spawn_transforms,
                       CompiledLevelEvents data);
     LevelEventManager(LevelEventManager const&) = delete;
     LevelEventManager(LevelEventManager&&) = delete;
@@ -24,6 +26,9 @@ class LevelEventManager {
 
     void begin(EntityId player_id = {});
     void execute_tick(SimTick tick);
+    void queue_fighter_spawns(float dt, FrameMemoryResource& scratch_resource) {
+        spawn_manager_.queue_fighter_spawns(dt, scratch_resource);
+    }
     auto get_spawned_ids() const -> std::span<EntityId const>;
     auto get_entity_ids() const -> std::span<EntityId const> {
         return spawn_manager_.get_entity_ids();

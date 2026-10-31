@@ -1,7 +1,10 @@
 #include "ioj/sim/levels/level_spawn_manager.h"
 
+#include <ioj/column_math.h>
 #include <ioj/diagnostics.h>
+#include <ioj/rotator_math.h>
 #include <ioj/sim/capital_ships/sim.h>
+#include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/levels/level_entity_index.h>
 #include <ioj/sim/spinners/sim.h>
 #include <ioj/sim/turrets/sim.h>
@@ -16,11 +19,15 @@
 
 namespace ioj::sim {
 LevelSpawnManager::LevelSpawnManager(capital_ships::Sim& capital_ships,
+                                     fighters::Sim& fighters,
                                      turrets::Sim& turrets,
-                                     spinners::Sim& spinners) noexcept
+                                     spinners::Sim& spinners,
+                                     std::span<Transform3d const> const fighter_spawn_transforms)
     : capital_ships_{capital_ships}
+    , fighters_{fighters}
     , turrets_{turrets}
-    , spinners_{spinners} {}
+    , spinners_{spinners}
+    , fighter_spawn_transforms_{fighter_spawn_transforms.begin(), fighter_spawn_transforms.end()} {}
 
 void LevelSpawnManager::initialise(std::uint32_t const entity_count,
                                    LevelCapitalSpawnEvents::ConstView const capital_payloads,
@@ -70,13 +77,6 @@ void LevelSpawnManager::spawn(LevelSpawnGroups::ConstView const groups) {
             }
         }
     }
-    for (std::uint32_t index{}; index < group_count; ++index) {
-        if (types[index] == EntityType::CapitalShip) {
-            resolve_capital_targets(
-                // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- per-group payload.
-                capital_payloads_.get_const_view(offsets[index], counts[index].value()));
-        }
-    }
 }
 
 void LevelSpawnManager::spawn_capitals(LevelCapitalSpawnEvents::ConstView const events) {
@@ -84,23 +84,60 @@ void LevelSpawnManager::spawn_capitals(LevelCapitalSpawnEvents::ConstView const 
     auto const ids{capital_ships_.register_ships(events)};
     spawned_ids_this_tick_.insert(spawned_ids_this_tick_.end(), ids.begin(), ids.end());
     auto const entity_indices{events.entity_indices()};
+    auto const initial_delays{events.initial_fighter_spawn_delays()};
+    auto const cooldowns{events.fighter_spawn_cooldowns()};
 
     for (std::uint32_t i{}; i < count; ++i) {
         set_entity_id(entity_indices[i], ids[i]);
+        fighter_spawn_sources_.push_back({ids[i], initial_delays[i], cooldowns[i]});
     }
 }
 
-void LevelSpawnManager::resolve_capital_targets(LevelCapitalSpawnEvents::ConstView const events) {
-    auto const count{events.num()};
-    auto const entity_indices{events.entity_indices()};
-    auto const target_entity_indices{events.target_entity_indices()};
+void LevelSpawnManager::queue_fighter_spawns(float const dt,
+                                             FrameMemoryResource& scratch_resource) {
+    auto const capitals{capital_ships_.get_entities()};
+    auto const ids{capitals.entity_ids()};
+    std::erase_if(fighter_spawn_sources_, [ids](FighterSpawnSource const& source) {
+        return !std::ranges::contains(ids, source.capital_id);
+    });
 
-    for (std::uint32_t i{}; i < count; ++i) {
-        auto const target_index{target_entity_indices[i]};
-        if (target_index != invalid_level_entity_index) {
-            auto const source_id{get_id(entity_indices[i])};
-            capital_ships_.set_target_id(source_id, get_id(target_index));
+    auto const locations{capitals.view_locations().resolve()};
+    auto const rotations{capitals.view_rotations().resolve()};
+    auto const teams{capitals.teams()};
+    FighterSpawnQueue wave{scratch_resource};
+    assert(std::in_range<std::uint32_t>(fighter_spawn_transforms_.size()));
+    wave.reserve(static_cast<std::uint32_t>(fighter_spawn_transforms_.size()));
+    for (auto& source : fighter_spawn_sources_) {
+        source.remaining_delay -= dt;
+        if (source.remaining_delay > 0.f) {
+            continue;
         }
+
+        auto const found{std::ranges::find(ids, source.capital_id)};
+        assert(found != ids.end());
+        auto const index{static_cast<std::uint32_t>(found - ids.begin())};
+        auto const location{vector_at(locations, index)};
+        auto const rotation{rotation_at(rotations, index)};
+        Transform3d const transform{
+            to_quaternion(Rotator3d{rotation.pitch, rotation.yaw, rotation.roll}),
+            {location.x(), location.y(), location.z()},
+            {1.0, 1.0, 1.0}};
+
+        wave.reset();
+        for (auto const& relative_transform : fighter_spawn_transforms_) {
+            auto const spawn_transform{relative_transform * transform};
+            auto const spawn_location{Vector3f{spawn_transform.location}};
+            auto const spawn_rotation{Rotator3f{spawn_transform.rotator()}};
+            wave.add(spawn_location.x(),
+                     spawn_location.y(),
+                     spawn_location.z(),
+                     spawn_rotation.pitch,
+                     spawn_rotation.yaw,
+                     spawn_rotation.roll,
+                     teams[index]);
+        }
+        fighters_.queue_spawns(wave.get_const_view());
+        source.remaining_delay = source.cooldown;
     }
 }
 

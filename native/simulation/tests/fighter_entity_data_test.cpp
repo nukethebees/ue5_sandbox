@@ -19,9 +19,9 @@ TEST(NativeSimulation, FighterEntityBiasPackedDataTest) {
     source_columns.float_biases()[0] = 0.1f;
     source_columns.float_biases()[1] = 0.2f;
     source_columns.float_biases()[2] = 0.3f;
-    source_columns.parent_ids()[0] = EntityId::from_raw(10);
-    source_columns.parent_ids()[1] = EntityId::from_raw(20);
-    source_columns.parent_ids()[2] = EntityId::from_raw(30);
+    source_columns.target_ids()[0] = EntityId::from_raw(10);
+    source_columns.target_ids()[1] = EntityId::from_raw(20);
+    source_columns.target_ids()[2] = EntityId::from_raw(30);
     source_columns.validate();
 
     auto view{source.get_view(1, 2)};
@@ -51,7 +51,7 @@ TEST(NativeSimulation, FighterEntityBiasPackedDataTest) {
         << "Buffered copy keeps ID paired with integral bias";
     EXPECT_EQ(reordered_columns.integral_biases()[0], 300u) << "Buffered copy integral bias";
     EXPECT_EQ(reordered_columns.float_biases()[0], 0.3f) << "Buffered copy float bias";
-    EXPECT_TRUE(reordered_columns.parent_ids()[0] == EntityId::from_raw(30))
+    EXPECT_TRUE(reordered_columns.target_ids()[0] == EntityId::from_raw(30))
         << "Buffered copy keeps parent ID paired with ID";
 
     reordered.remove_at_swap(0, 1);
@@ -61,7 +61,7 @@ TEST(NativeSimulation, FighterEntityBiasPackedDataTest) {
         << "Swap removal keeps ID paired with integral bias";
     EXPECT_EQ(reordered_columns.integral_biases()[0], 200u) << "Swap removal integral bias";
     EXPECT_EQ(reordered_columns.float_biases()[0], 0.2f) << "Swap removal float bias";
-    EXPECT_TRUE(reordered_columns.parent_ids()[0] == EntityId::from_raw(20))
+    EXPECT_TRUE(reordered_columns.target_ids()[0] == EntityId::from_raw(20))
         << "Swap removal keeps parent ID paired with ID";
 }
 

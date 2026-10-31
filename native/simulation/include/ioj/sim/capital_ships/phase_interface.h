@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "ioj/sim/capital_ships/capital_ship_sim_config.h"
+#include "ioj/settings/simulation_constraints.h"
 #include "ioj/sim/capital_ships/phase_inputs.h"
 #include "ioj/sim/capital_ships/sim.h"
 
@@ -13,17 +13,13 @@ class PhaseInterface {
     PhaseInterface(Sim& new_target)
         : simulation{new_target} {}
 
-    void initialise(CapitalShipSimConfig const& config) { simulation.initialise(config); }
+    void initialise(settings::PositiveHealth max_health) { simulation.initialise(max_health); }
 
-    void prepare_tick(float const dt) { simulation.prepare_tick(dt); }
-
-    void think(ThinkingInputs const inputs) { simulation.think(inputs); }
+    void prepare_tick() { simulation.prepare_tick(); }
 
     void resolve_damage_events(ResolutionInputs const inputs) {
         simulation.resolve_damage_events(inputs);
     }
-
-    void resolve_fighters_of_dying_capitals() { simulation.resolve_fighters_of_dying_capitals(); }
 
     void publish_deaths(ResolutionInputs const inputs) { simulation.publish_deaths(inputs); }
 

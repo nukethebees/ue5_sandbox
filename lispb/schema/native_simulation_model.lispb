@@ -153,20 +153,6 @@
     (member max @native_vector_3f)
     (projections (cpp))))
 
-(module attack_distance_band
-  :header "native/levels/lib/include/ioj/settings/attack_distance_band.h"
-  :header-include "ioj/settings/attack_distance_band.h"
-  :namespace ioj::settings
-  :prelude ("#include <ioj/settings/attack_distance_band_policy.h>")
-  (record AttackDistanceBand :generate-visitor true
-    :constraint-policy ioj::settings::attack_distance_band_policy
-    :comparison equality
-    :generate-s7-reader true :s7-tag "attack-distance-band"
-    (member minimum float :initializer 0.4f :s7-name "minimum-ratio" :required true)
-    (member desired float :initializer 0.5f :s7-name "desired-ratio" :required true)
-    (member maximum float :initializer 0.6f :s7-name "maximum-ratio" :required true)
-    (projections (cpp))))
-
 (module native_base_sim_config_laser_weapon_sim_config
   :header "native/levels/lib/include/ioj/sim/lasers/laser_weapon_sim_config.h"
   :header-include "ioj/sim/lasers/laser_weapon_sim_config.h"
@@ -227,14 +213,7 @@
     (member laser ioj::sim::LaserWeaponSimConfig :initializer "")
     (member health @settings_positive_health :initializer "Health{50}")
     (member attack_retry_cooldown @settings_nonnegative_float :initializer "0.15f")
-    (member attack_engagement_threshold float :initializer "5000.f" :finite true)
-    (member attack_reposition_frequency @settings_positive_float :initializer "10.f")
-    (member attack_distance_band ioj::settings::AttackDistanceBand :initializer "")
-    (member arrival_distance float :initializer "500.f" :finite true)
     (member los_check_buffer float :initializer "100.f" :finite true)
-    (member awareness_radius float :initializer "10000.f" :finite true)
-    (member awareness_scan_frequency @settings_positive_float :initializer "6.f")
-    (member minimum_opportunistic_intercept_deviation_dot_product float :initializer "0.5f" :finite true)
     (projections (cpp))))
 
 (module native_player_flight_model_data

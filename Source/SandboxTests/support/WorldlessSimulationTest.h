@@ -22,14 +22,6 @@ auto make_worldless_player_spawn(USpaceGameLevelConfig const& config,
     -> ::ioj::sim::player::PlayerSpawnData;
 auto add_worldless_player_spawn(sim::LevelSimInitData& data, sim::player::PlayerSpawnData spawn)
     -> uint32;
-auto add_worldless_capital_spawn(sim::LevelSimInitData& data,
-                                 FVector3f location,
-                                 ETestTeam team,
-                                 uint32 target_entity_index = sim::invalid_level_entity_index,
-                                 float initial_spawn_delay = 0.f,
-                                 float spawn_cooldown = 60.f,
-                                 int32 health = INDEX_NONE) -> uint32;
-
 class FWorldlessSimulationTest {
   public:
     using time_type = sim::LevelSim::time_type;

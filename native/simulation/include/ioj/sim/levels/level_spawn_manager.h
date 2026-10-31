@@ -5,6 +5,7 @@
 #include <ioj/sim/levels/level_spawn_groups.h>
 #include <ioj/sim/levels/level_spinner_spawn_events.h>
 #include <ioj/sim/levels/level_turret_spawn_events.h>
+#include <ioj/transform3d.h>
 
 #include <cstdint>
 #include <optional>
@@ -23,12 +24,28 @@ namespace ioj::sim::spinners {
 struct Sim;
 }
 
+namespace ioj::sim::fighters {
+struct Sim;
+}
+
+namespace ioj {
+class FrameMemoryResource;
+}
+
 namespace ioj::sim {
 class LevelSpawnManager {
+    struct FighterSpawnSource {
+        EntityId capital_id{};
+        float remaining_delay{};
+        float cooldown{};
+    };
+
   public:
     LevelSpawnManager(capital_ships::Sim& capital_ships,
+                      fighters::Sim& fighters,
                       turrets::Sim& turrets,
-                      spinners::Sim& spinners) noexcept;
+                      spinners::Sim& spinners,
+                      std::span<Transform3d const> fighter_spawn_transforms);
     LevelSpawnManager(LevelSpawnManager const&) = delete;
     LevelSpawnManager(LevelSpawnManager&&) = delete;
     auto operator=(LevelSpawnManager const&) -> LevelSpawnManager& = delete;
@@ -40,13 +57,13 @@ class LevelSpawnManager {
                     LevelSpinnerSpawnEvents::ConstView spinner_payloads);
     void set_entity_id(LevelEntityIndex entity_index, EntityId id);
     void spawn(LevelSpawnGroups::ConstView groups);
+    void queue_fighter_spawns(float dt, FrameMemoryResource& scratch_resource);
     void reset_tick_output() { spawned_ids_this_tick_.clear(); }
     auto get_spawned_ids() const -> std::span<EntityId const> { return spawned_ids_this_tick_; }
     auto get_id(LevelEntityIndex entity_index) const -> EntityId;
     auto get_entity_ids() const noexcept -> std::span<EntityId const> { return entity_ids_; }
   private:
     void spawn_capitals(LevelCapitalSpawnEvents::ConstView events);
-    void resolve_capital_targets(LevelCapitalSpawnEvents::ConstView events);
     void spawn_turrets(LevelTurretSpawnEvents::ConstView events);
     void spawn_spinners(LevelSpinnerSpawnEvents::ConstView events);
 
@@ -54,10 +71,12 @@ class LevelSpawnManager {
     LevelTurretSpawnEvents::ConstView turret_payloads_{};
     LevelSpinnerSpawnEvents::ConstView spinner_payloads_{};
     capital_ships::Sim& capital_ships_;
+    fighters::Sim& fighters_;
     turrets::Sim& turrets_;
     spinners::Sim& spinners_;
     std::vector<EntityId> entity_ids_{};
-    std::vector<EntityId> target_ids_scratch_{};
     std::vector<EntityId> spawned_ids_this_tick_{};
+    std::vector<Transform3d> fighter_spawn_transforms_{};
+    std::vector<FighterSpawnSource> fighter_spawn_sources_{};
 };
 }
