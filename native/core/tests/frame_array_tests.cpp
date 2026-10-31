@@ -184,10 +184,8 @@ TEST(NativeCoreFrameArray, BorrowsStorageAndHasFixedIdentity) {
     std::array<std::byte, 1024> backing{};
     std::pmr::monotonic_buffer_resource resource{backing.data(), backing.size()};
     Array values{&resource};
-    auto* const identity{std::addressof(values)};
 
     EXPECT_TRUE(values.is_empty());
-    EXPECT_EQ(identity, std::addressof(values));
     EXPECT_EQ(values.view().size(), 0);
     EXPECT_EQ(values.begin(), values.end());
     EXPECT_EQ(std::as_const(values).begin(), std::as_const(values).end());

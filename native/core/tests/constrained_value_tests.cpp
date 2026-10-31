@@ -5,8 +5,11 @@
 #include <gtest/gtest.h>
 
 #include <limits>
+#include <type_traits>
 
 namespace ioj::tests {
+static_assert(
+    std::is_same_v<decltype(std::declval<FiniteVector<double, 3> const&>().get()), Vector3d>);
 static_assert(sizeof(FiniteVector<double, 3>) == sizeof(Vector3d));
 static_assert(FiniteVector<double, 3>{Vector3d{1, 2, 3}}.get() == Vector3d{1, 2, 3});
 static_assert(NonNegativeFinite<double>{0}.get() == 0);
@@ -23,14 +26,6 @@ TEST(ConstrainedValue, OwnsNonEmptyStringsAndSupportsIndependentCopies) {
     copy.clear();
     EXPECT_EQ(value.get_ref(), std::string(100, 'x'));
     EXPECT_EQ(std::format("{}", value), value.get_ref());
-}
-
-TEST(ConstrainedValue, VectorGetReturnsAnIndependentValue) {
-    auto const constrained{FiniteVector<double, 3>::make({1, 2, 3})};
-    auto copy{constrained.get()};
-    copy.x() = 9;
-    EXPECT_EQ(constrained.get(), (Vector3d{1, 2, 3}));
-    EXPECT_EQ(copy.x(), 9);
 }
 
 TEST(ConstrainedValue, RejectsNonFiniteVectorComponents) {

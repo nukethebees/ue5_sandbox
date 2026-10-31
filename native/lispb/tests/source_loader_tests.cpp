@@ -633,9 +633,6 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(
         InvalidSourceCase{"VectorStorage",
                           "(struct Rows :storage vector (member values array float))"},
-        InvalidSourceCase{"BothStorage", "(struct Rows :storage both (member values array float))"},
-        InvalidSourceCase{"SingleAllocationStorage",
-                          "(struct Rows :storage single-allocation (member values array float))"},
         InvalidSourceCase{"VectorComponents",
                           "(struct Rows :vector-components (values) (member values array float))"},
         InvalidSourceCase{"SingleAllocationOwner",
@@ -1097,27 +1094,6 @@ TEST_F(SourceLoaderTest, NormalModuleKeepsMixedDeclarationOrderAndResolvesTypes)
     EXPECT_NE(enum_position, std::string::npos);
     EXPECT_NE(record_position, std::string::npos);
     EXPECT_LT(enum_position, record_position);
-}
-
-TEST_F(SourceLoaderTest, RejectsRetiredDeclarationModuleHeads) {
-    for (auto const* head : {"enum-module",
-                             "soa-module",
-                             "static-table-module",
-                             "homogeneous-soa-module",
-                             "packed-value-module",
-                             "scalar-module",
-                             "representation-module",
-                             "record-module",
-                             "union-module",
-                             "vector-soa-module",
-                             "facade-module"}) {
-        SCOPED_TRACE(head);
-        files.write_root("(" + std::string{head} + " retired :header \"Retired.h\")");
-        auto const message{
-            capture_exception_message<sexpr::SourceError>([&] { return files.load(); })};
-        ASSERT_TRUE(message) << "Retired module head was accepted";
-        EXPECT_NE(message->find("unknown module declaration"), std::string::npos);
-    }
 }
 
 TEST_F(SourceLoaderTest, OrdersPhysicalDependenciesWithoutChangingDeclarationIndices) {

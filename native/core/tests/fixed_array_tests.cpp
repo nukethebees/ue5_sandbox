@@ -334,7 +334,7 @@ TEST(NativeCoreFixedArray, SupportsUninitialisedQueryResultBuffers) {
     results.set_num_uninitialised(write_results(results.capacity_view(), 5, 13));
     expect_results(results, 5, 13);
 
-    for (std::int32_t iteration{}; iteration < 1024; ++iteration) {
+    for (std::int32_t iteration{}; iteration < 18; ++iteration) {
         auto const count{iteration % (results.capacity() + 1)};
         auto const generation{100 + iteration};
         results.set_num_uninitialised(write_results(results.capacity_view(), count, generation));

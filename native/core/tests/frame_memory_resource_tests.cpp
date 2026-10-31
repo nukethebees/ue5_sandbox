@@ -90,6 +90,18 @@ TEST(NativeCoreFrameMemoryResource, AlignsAllocationsIncludingZeroSizedRequests)
     resource.deallocate(byte, 1, 1);
 }
 
+TEST(NativeCoreFrameMemoryResource, RecordsOverflowWithoutClaimingMemory) {
+    alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 64> backing{};
+    ioj::FrameMemoryResource resource{backing};
+
+    EXPECT_EQ(resource.try_allocate(128, 16), nullptr);
+
+    auto const stats{resource.get_stats()};
+    EXPECT_EQ(stats.overflow_count, 1);
+    EXPECT_EQ(stats.last_failure.requested_bytes, 128);
+    EXPECT_EQ(stats.current_claimed_bytes, 0);
+}
+
 TEST(NativeCoreFrameMemoryResource, RecordsExactBoundaryOverflowAndFrameStatistics) {
     FrameBacking backing{256};
     ioj::FrameMemoryResource resource{backing};

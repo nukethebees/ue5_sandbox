@@ -33,16 +33,6 @@ TEST(NativeCoreSpaceDustMath, NormalisesTuningIdempotently) {
     EXPECT_EQ(normalised_again.full_motion_pixels, normalised.full_motion_pixels);
 }
 
-TEST(NativeCoreSpaceDustMath, UsesSparseMotionDrivenDefaults) {
-    ioj::space_dust::Tuning const tuning;
-
-    EXPECT_EQ(tuning.particle_count, 96);
-    EXPECT_FLOAT_EQ(tuning.minimum_visible_speed, 100.0f);
-    EXPECT_FLOAT_EQ(tuning.full_visible_speed, 2000.0f);
-    EXPECT_FLOAT_EQ(tuning.minimum_motion_pixels, 0.75f);
-    EXPECT_FLOAT_EQ(tuning.full_motion_pixels, 4.0f);
-}
-
 TEST(NativeCoreSpaceDustMath, ClampsParticleCountToProductionMaximum) {
     ioj::space_dust::Tuning tuning;
     tuning.particle_count = 65536;

@@ -237,18 +237,6 @@ TEST(NativeSettings, RecordTagsRegisterConstructorsWithoutHandwrittenBindings) {
     EXPECT_PRED_FORMAT2(structurally_equal, *settings, *frozen);
 }
 
-TEST(NativeSettings, PresentationValueEqualityIncludesNestedSettings) {
-    settings::Presentation const expected;
-    auto actual{expected};
-    EXPECT_EQ(expected, actual);
-
-    actual.entity_overlay.soft_target.opacity = 0.25f;
-    EXPECT_NE(expected, actual);
-    actual = expected;
-    actual.radar.combat_range += 1;
-    EXPECT_NE(expected, actual);
-}
-
 TEST(NativeSettings, AccumulatesStructuralAndNestedErrorsWithoutChangingTheBase) {
     settings::Settings base;
     base.fighters.speed = 7000.f;

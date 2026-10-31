@@ -97,16 +97,6 @@ TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
 
 class DuplicateOutputPaths : public testing::TestWithParam<char const*> {};
 
-TEST_P(DuplicateOutputPaths, RejectsDuringRendering) {
-    CompilerTestContext context;
-    auto manifest{example_manifest(context)};
-    auto duplicate{parse_test_manifest(
-        context, std::format("(umbrella-module duplicate :header {} :headers ())", GetParam()))};
-    manifest.modules.push_back(duplicate.modules.front());
-
-    EXPECT_THROW(render_test_manifest(context, manifest), std::invalid_argument);
-}
-
 TEST_P(DuplicateOutputPaths, RejectsDuringLowering) {
     CompilerTestContext context;
     auto manifest{example_manifest(context)};

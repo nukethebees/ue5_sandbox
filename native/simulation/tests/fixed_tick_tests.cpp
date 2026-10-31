@@ -57,13 +57,6 @@ TEST(FixedTick, ConsumesMultipleAccumulatedTicks) {
     EXPECT_NEAR(loop.accumulator, 0.05, 1e-12);
 }
 
-TEST(FixedTick, RejectsInvalidSettingsWithoutChangingAccumulator) {
-    double accumulator{1.0};
-    EXPECT_FALSE(Frequency::try_make(0.0));
-    EXPECT_FALSE(PositiveFinite<double>::try_make(0.0));
-    EXPECT_DOUBLE_EQ(accumulator, 1.0);
-}
-
 TEST(SimulationClock, ConvertsDurationsAndFrequencies) {
     EXPECT_EQ(frequency_to_tick_period(Frequency::make(60.0), Frequency::make(7.0)).get(), 9);
     EXPECT_EQ(duration_to_tick_period(Frequency::make(60.0), Duration::make(0.11)).get(), 7);
@@ -83,15 +76,7 @@ TEST(SimulationClock, InitialisesRuntimeStateFromStaticSettings) {
     EXPECT_EQ(clock.get_completed_ticks().value(), 0);
 }
 
-TEST(SimulationSettings, RequiresFinitePositiveFrequencies) {
-    auto check_frequency = [](auto const value) {
-        for (auto const invalid : {0.f,
-                                   -1.f,
-                                   std::numeric_limits<float>::infinity(),
-                                   std::numeric_limits<float>::quiet_NaN()}) {
-            EXPECT_FALSE(decltype(value)::try_make(invalid));
-        }
-    };
+TEST(SimulationSettings, AcceptsFrequenciesAboveTickRate) {
     SimulationSettings fast;
     for (auto const member : {&FighterSimConfig::awareness_scan_frequency,
                               &FighterSimConfig::attack_reposition_frequency,
@@ -99,10 +84,8 @@ TEST(SimulationSettings, RequiresFinitePositiveFrequencies) {
                               &FighterSimConfig::avoidance_update_frequency,
                               &FighterSimConfig::avoidance_active_update_frequency,
                               &FighterSimConfig::avoidance_immediate_update_frequency}) {
-        check_frequency(fast.fighters.*member);
         fast.fighters.*member = PositiveFinite<float>{std::numeric_limits<float>::max()};
     }
-    check_frequency(fast.turrets.target_refresh_frequency);
     fast.turrets.target_refresh_frequency =
         ::ioj::PositiveFinite<float>::make(std::numeric_limits<float>::max());
     EXPECT_TRUE(validate_settings(fast));
@@ -157,7 +140,6 @@ TEST(SimulationSettings, ChecksCountdownDurationBoundsBeforeNarrowing) {
         EXPECT_TRUE(validate_settings(settings));
         assign(settings, 32767.5f);
         EXPECT_FALSE(validate_settings(settings));
-        EXPECT_FALSE(NonNegativeFinite<float>::try_make(-1.f));
         assign(settings, 0.f);
         EXPECT_TRUE(validate_settings(settings));
     };

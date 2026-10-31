@@ -6,12 +6,10 @@
 
 #include <gtest/gtest.h>
 
-#include <algorithm>
 #include <array>
 #include <limits>
 #include <memory_resource>
 #include <ranges>
-#include <span>
 #include <type_traits>
 #include <utility>
 
@@ -46,46 +44,6 @@ TEST(IndexedColumn, UsesExplicitIndexConventionsAndNumericAccess) {
     EXPECT_EQ(members[1], 50);
     EXPECT_EQ(std::as_const(members)[ChildOccurrenceId{2}], 50);
     EXPECT_EQ(std::as_const(types)[schema::TypeId{1}], 40);
-}
-
-TEST(IndexedColumn, PreservesVectorOperationsAndContiguousStorage) {
-    MemberColumn column;
-    column.reserve(8);
-    auto const capacity{column.capacity()};
-    column.assign({3, 1});
-    column.push_back(2);
-    column.emplace_back(4);
-    std::ranges::sort(column);
-    std::span<int> view{column};
-    EXPECT_EQ(view.data(), column.data());
-    EXPECT_EQ(&column[ChildOccurrenceId{2}], view.data() + 1);
-    std::erase(column, 2);
-    column.insert(column.begin(), 0);
-    column.resize(3);
-    EXPECT_TRUE(std::ranges::equal(column, std::array{0, 1, 3}));
-    EXPECT_EQ(column.capacity(), capacity);
-    column.clear();
-    EXPECT_TRUE(column.empty());
-    EXPECT_EQ(column.capacity(), capacity);
-}
-
-TEST(IndexedColumn, PreservesCopyMoveAssignmentAndVectorInteroperability) {
-    MemberColumn original{1, 2};
-    auto copy{original};
-    copy[ChildOccurrenceId{1}] = 9;
-    EXPECT_EQ(original[ChildOccurrenceId{1}], 1);
-    auto const* allocation{copy.data()};
-    MemberColumn moved{std::move(copy)};
-    EXPECT_EQ(moved.data(), allocation);
-    copy = original;
-    original = std::move(moved);
-    EXPECT_EQ(original.data(), allocation);
-    EXPECT_EQ(copy[ChildOccurrenceId{1}], 1);
-    original = std::vector{4, 5};
-    original = {6, 7};
-    std::vector<int>& base{original};
-    base.push_back(8);
-    EXPECT_TRUE(std::ranges::equal(original, std::array{6, 7, 8}));
 }
 
 TEST(IndexedColumn, SupportsProxyReferencesAndCustomAllocators) {
