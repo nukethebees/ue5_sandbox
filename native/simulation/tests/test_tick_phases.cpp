@@ -66,7 +66,7 @@ void queue_capital_laser(LevelSim& simulation) {
                            25,
                            1000.f,
                            10000.f,
-                           simulation.capital_ships().id(0),
+                           simulation.capital_ships().get_entities().entity_ids()[0],
                            {Team::White, EntityType::CapitalShip});
     LevelSimTestAccess::queue_laser_spawns(simulation, shot.const_view());
 }
@@ -143,7 +143,11 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
     ASSERT_EQ(turrets.num(), 1);
     auto const turret{turrets.entity_ids()[0]};
     EXPECT_EQ(observe_entity(simulation, turret)->health.value(), 75);
-    EXPECT_EQ(simulation.capital_ships().health(simulation.capital_ships().id(0)).value(), 75);
+    EXPECT_EQ(simulation.capital_ships()
+                  .healths()
+                  .health(simulation.capital_ships().get_entities().entity_ids()[0])
+                  .value(),
+              75);
     EXPECT_EQ(simulation.lasers().get_number_spawned(), 0);
 
     auto const events{queries.aabb_overlap_events()};
@@ -183,7 +187,7 @@ TEST(TickPhases, CarrierSpawnIsDeferredAndParticipatesInLaunchOverlaps) {
     EXPECT_TRUE(entity_is_alive(simulation, fighter));
     EXPECT_EQ(observe_entity(simulation, fighter)->health.value(), 75);
 
-    auto const parent{simulation.capital_ships().id(0)};
+    auto const parent{simulation.capital_ships().get_entities().entity_ids()[0]};
     EXPECT_EQ(observe_entity(simulation, parent)->health.value(), 75);
 
     auto const& queries{simulation.spatial_query_manager()};
@@ -305,7 +309,7 @@ TEST(TickPhases, DelayedObjectiveSeesResolvedDeathWithoutDuplicateOverlaps) {
     auto const dead_id{changes[1].id};
     expect_entity_unregistered(simulation, dead_id);
     EXPECT_EQ(ledger.count_alive(), 1);
-    EXPECT_EQ(capitals.health(capitals.id(0)).value(), 900);
+    EXPECT_EQ(capitals.healths().health(capitals.get_entities().entity_ids()[0]).value(), 900);
     EXPECT_FALSE(simulation.mission().outcome(ioj::sim::ObjectiveId{0}));
 
     auto const& queries{simulation.spatial_query_manager()};
@@ -397,7 +401,7 @@ TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {
     EXPECT_EQ(simulation.read_access()
                   .capitals()
                   .healths()
-                  .health(simulation.read_access().capitals().id(0))
+                  .health(simulation.read_access().capitals().get_entities().entity_ids()[0])
                   .value(),
               75);
     EXPECT_EQ(simulation.lasers().num_instances(), 0);
@@ -444,8 +448,8 @@ TEST(TickPhases, CapitalDeathIsPublishedBeforeMissionEvaluation) {
             ASSERT_EQ(fighter_sim.num_instances(), 0);
         }
 
-        auto const victim{capitals.id(0)};
-        auto const killer{capitals.id(1)};
+        auto const victim{capitals.get_entities().entity_ids()[0]};
+        auto const killer{capitals.get_entities().entity_ids()[1]};
 
         DirectDamageEvents damage{};
         damage.add(victim, 100, killer);

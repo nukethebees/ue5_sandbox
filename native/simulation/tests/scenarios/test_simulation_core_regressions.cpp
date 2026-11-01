@@ -63,7 +63,7 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
         return;
     }
 
-    auto const damaged_handle{simulation.capital_ships().id(0)};
+    auto const damaged_handle{simulation.capital_ships().get_entities().entity_ids()[0]};
     struct DamageSample {
         std::uint32_t capital_count{};
         std::int32_t ledger_alive_count{};
@@ -134,7 +134,7 @@ TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
     ASSERT_NE(player, nullptr) << "Collision test player simulation is available";
 
     auto const player_id{player->unique_entity_id};
-    auto const capital_id{simulation.capital_ships().id(0)};
+    auto const capital_id{simulation.capital_ships().get_entities().entity_ids()[0]};
     simulation.player_ship_commands()->set_right_input(1.f);
     TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim& level) {

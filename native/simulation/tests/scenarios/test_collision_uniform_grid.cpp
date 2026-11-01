@@ -326,7 +326,8 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridContainsAllEntityTypes) {
     EnumArray<EntityType, EntityId> expected_ids{};
     expected_ids[EntityType::PlayerShip] = player->unique_entity_id;
     expected_ids[EntityType::Turret] = simulation.turrets().get_entities().entity_ids()[0];
-    expected_ids[EntityType::CapitalShip] = simulation.capital_ships().id(0);
+    expected_ids[EntityType::CapitalShip] =
+        simulation.capital_ships().get_entities().entity_ids()[0];
     expected_ids[EntityType::Fighter] = fighter_ids[0];
     expected_ids[EntityType::TubeSpinner] = simulation.spinners().get_entities().entity_ids()[0];
     auto const& spatial_queries{simulation.spatial_query_manager()};

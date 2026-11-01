@@ -28,10 +28,11 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryResolvesLineOfSightBatches) {
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     auto const& capitals{harness.simulation().capital_ships()};
+    auto const capital_ids{capitals.get_entities().entity_ids()};
     std::vector<EntityId> expected{};
     auto const location_count{static_cast<std::int32_t>(locations.size())};
     for (std::int32_t i{}; i < location_count; ++i) {
-        expected.push_back(capitals.id(i));
+        expected.push_back(capital_ids[i]);
     }
 
     Vectors3f starts;

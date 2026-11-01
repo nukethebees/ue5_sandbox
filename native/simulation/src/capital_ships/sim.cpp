@@ -11,12 +11,8 @@
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/sim_clock.h>
 
-#include <algorithm>
 #include <cassert>
 #include <cstdint>
-#include <numeric>
-#include <optional>
-#include <span>
 #include <vector>
 
 namespace ioj::sim::capital_ships {
@@ -91,33 +87,6 @@ void Sim::finish_action() {
 /* **************************************** */
 auto Sim::num_instances() const noexcept -> std::uint32_t {
     return entities.num();
-}
-auto Sim::is_valid(EntityId const id) const noexcept -> bool {
-    return std::ranges::find(entities.const_view().entity_ids(), id) !=
-           entities.const_view().entity_ids().end();
-}
-auto Sim::team(EntityId const id) const noexcept -> Team {
-    auto const ids{entities.const_view().entity_ids()};
-    auto const found{std::ranges::find(ids, id)};
-    assert(found != ids.end());
-    auto const index{static_cast<EntityFrameIndex::value_type>(found - ids.begin())};
-    return entities.const_view().teams()[index];
-}
-auto Sim::health(EntityId const id) const noexcept -> Health {
-    return healths().health(id);
-}
-auto Sim::find_first_index_on_team(Team const team) const noexcept -> std::optional<std::uint32_t> {
-    auto const entities{this->entities.const_view()};
-    auto const found{std::ranges::find(entities.teams(), team)};
-    if (found == entities.teams().end()) {
-        return std::nullopt;
-    }
-    return static_cast<std::uint32_t>(found - entities.teams().begin());
-}
-auto Sim::find_first_id_on_team(Team const team) const noexcept -> std::optional<EntityId> {
-    auto const result{find_first_index_on_team(team)};
-    return result ? std::optional<EntityId>{entities.const_view().entity_ids()[*result]}
-                  : std::nullopt;
 }
 
 /* **************************************** */

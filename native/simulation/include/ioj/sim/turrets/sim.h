@@ -50,7 +50,6 @@ struct Sim {
     // Accessors
     /* **************************************** */
     auto num_instances() const noexcept -> std::uint32_t;
-    auto target_ids() const -> std::span<EntityId const>;
 
     /* **************************************** */
     // Checks

@@ -121,7 +121,9 @@ void add_mission(LevelSimInitData& data) {
 
 void kill_enemy(LevelSim& simulation) {
     DirectDamageEvents events;
-    events.add(simulation.capital_ships().id(1), 100, simulation.capital_ships().id(0));
+    events.add(simulation.capital_ships().get_entities().entity_ids()[1],
+               100,
+               simulation.capital_ships().get_entities().entity_ids()[0]);
     LevelSimTestAccess::queue_direct_damage_events(simulation, events.const_view());
 }
 
@@ -289,13 +291,15 @@ TEST(NativeSimulation, ScheduledSpawnQueryableInThinkingSameTick) {
     EXPECT_EQ(first_tick_frame_memory.outstanding_allocation_count, std::uint64_t{0})
         << "No turret scratch allocation survives the reset";
     simulation.advance(dt);
-    EXPECT_TRUE(!simulation.turrets().target_ids()[0].is_valid())
+    EXPECT_TRUE(!simulation.turrets().get_entities().target_ids()[0].is_valid())
         << "Turret has no enemy before the scheduled spawn";
     simulation.advance(dt);
-    EXPECT_EQ(simulation.turrets().target_ids()[0], simulation.capital_ships().id(1))
+    EXPECT_EQ(simulation.turrets().get_entities().target_ids()[0],
+              simulation.capital_ships().get_entities().entity_ids()[1])
         << "Thinking acquires the entity created in Preparation";
     simulation.advance(dt);
-    EXPECT_TRUE(simulation.turrets().target_ids()[0] == simulation.capital_ships().id(1))
+    EXPECT_TRUE(simulation.turrets().get_entities().target_ids()[0] ==
+                simulation.capital_ships().get_entities().entity_ids()[1])
         << "Thinking retains the spawned enemy on the following tick";
 }
 
@@ -345,8 +349,8 @@ TEST(NativeSimulation, PositionConditionsUseLiveSpatialDataAndRemainTerminal) {
     simulation.advance(2 * simulation.clock().tick_period());
 
     DirectDamageEvents damage;
-    damage.add(simulation.capital_ships().id(0), 100, {});
-    damage.add(simulation.capital_ships().id(1), 100, {});
+    damage.add(simulation.capital_ships().get_entities().entity_ids()[0], 100, {});
+    damage.add(simulation.capital_ships().get_entities().entity_ids()[1], 100, {});
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.const_view());
     simulation.advance(0.2);
     EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{0}), ObjectiveOutcome::Passed);
@@ -527,7 +531,7 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
                                1,
                                2000.f,
                                10000.f,
-                               level.capital_ships().id(0),
+                               level.capital_ships().get_entities().entity_ids()[0],
                                {Team::Green, EntityType::Fighter});
         LevelSimTestAccess::queue_laser_spawns(level, requests.const_view());
     };
@@ -566,7 +570,9 @@ TEST(NativeSimulation, LevelSimCollisionBoundsTest) {
     auto const& queries{simulation.spatial_query_manager()};
     auto const initial_bounds{queries.entity_collision_bounds()};
     auto const initial_ids{initial_bounds.entity_ids()};
-    EXPECT_NE(std::ranges::find(initial_ids, simulation.capital_ships().id(0)), initial_ids.end());
+    EXPECT_NE(
+        std::ranges::find(initial_ids, simulation.capital_ships().get_entities().entity_ids()[0]),
+        initial_ids.end());
     EXPECT_EQ(queries.static_collision_bounds().num(), 1);
 
     simulation.start();
@@ -662,7 +668,7 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
 
     auto const* const player{simulation.player_ship_simulation()};
     ASSERT_NE(player, nullptr);
-    auto const surviving_capital{simulation.capital_ships().id(1)};
+    auto const surviving_capital{simulation.capital_ships().get_entities().entity_ids()[1]};
     std::int32_t fighter_count_before{};
     std::array<EntityId, 6> victims{};
     {
@@ -673,7 +679,7 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
         ASSERT_EQ(turrets.num(), 3);
         fighter_count_before = fighters.num();
         victims = {
-            simulation.capital_ships().id(0),
+            simulation.capital_ships().get_entities().entity_ids()[0],
             fighters.entity_ids()[0],
             fighters.entity_ids()[fighters.num() - 1],
             turrets.entity_ids()[0],
@@ -787,7 +793,7 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
 
     simulation.player_ship_commands()->set_right_input(1.f);
     auto const player_id{player->unique_entity_id};
-    auto const capital{simulation.capital_ships().id(0)};
+    auto const capital{simulation.capital_ships().get_entities().entity_ids()[0]};
     auto const& ledger{simulation.entity_ledger()};
 
     for (std::int32_t overlap_detection{}; overlap_detection < 3; ++overlap_detection) {

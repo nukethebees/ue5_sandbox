@@ -69,7 +69,7 @@ TEST(HudModel, EntityCountsPollAtConfiguredPeriodWithoutWidgets) {
     auto& simulation{harness.simulation()};
     presentation::HudModel hud;
     hud.initialise(simulation.mission(), simulation.read_access());
-    auto const victim{simulation.capital_ships().id(0)};
+    auto const victim{simulation.capital_ships().get_entities().entity_ids()[0]};
     harness.queue_kills(std::array{victim});
     simulation.start();
     harness.advance(0.05);
@@ -102,7 +102,7 @@ TEST(HudModel, CachesDefenceFailureAndObjectiveMembership) {
     EXPECT_EQ(hud.mission_data().active, 1);
     EXPECT_EQ(hud.mission_data().active_titles, "Blue: Hold position");
 
-    harness.queue_kills(std::array{simulation.capital_ships().id(0)});
+    harness.queue_kills(std::array{simulation.capital_ships().get_entities().entity_ids()[0]});
     harness.advance(0.05);
     EXPECT_TRUE(hud.force_sample().mission);
     EXPECT_EQ(hud.mission_data().completed, 1);
@@ -127,7 +127,7 @@ TEST(HudModel, PlayerStatusKillRankingAndMatrixRetainPayloads) {
     auto& simulation{harness.simulation()};
     auto const player_id{simulation.player_ship_simulation()->unique_entity_id};
     auto const& capitals{simulation.capital_ships()};
-    auto const rival{capitals.id(2)};
+    auto const rival{capitals.get_entities().entity_ids()[2]};
     presentation::HudModel hud;
     hud.initialise(simulation.mission(), simulation.read_access());
     ASSERT_TRUE(hud.player_status_data());
@@ -145,8 +145,8 @@ TEST(HudModel, PlayerStatusKillRankingAndMatrixRetainPayloads) {
     ASSERT_TRUE(commands);
     commands->set_speed_sampling_enabled(true);
     commands->set_forward_input(1.f);
-    harness.queue_kills(std::array{capitals.id(0)}, player_id);
-    harness.queue_kills(std::array{capitals.id(1)}, rival);
+    harness.queue_kills(std::array{capitals.get_entities().entity_ids()[0]}, player_id);
+    harness.queue_kills(std::array{capitals.get_entities().entity_ids()[1]}, rival);
     simulation.start();
     harness.advance(0.05);
     hud.set_selected_mapping_context("Flight");

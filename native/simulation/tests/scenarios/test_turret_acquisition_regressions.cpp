@@ -37,7 +37,7 @@ void run_worldless_turret_acquisition_regression(
         << "Turret acquisition timeline completes";
     auto const& turrets{harness.simulation().turrets()};
     EXPECT_EQ(count, turrets.num_instances()) << "All turrets are registered";
-    for (auto const target : turrets.target_ids()) {
+    for (auto const target : turrets.get_entities().target_ids()) {
         EXPECT_TRUE(!target.is_valid()) << "Invalid candidate does not become a target";
     }
     EXPECT_EQ(0, harness.simulation().lasers().get_number_spawned())

@@ -49,8 +49,8 @@ void run_worldless_laser_lifecycle(LaserLifecycleScenario const scenario) {
     harness.finish_initialisation();
     auto const& lasers{harness.simulation().lasers()};
     auto const& capitals{harness.simulation().capital_ships()};
-    auto const shooter{capitals.id(0)};
-    auto const target{capitals.id(1)};
+    auto const shooter{capitals.get_entities().entity_ids()[0]};
+    auto const target{capitals.get_entities().entity_ids()[1]};
 
     harness.timeline.at(projectile_queue_time, [&] {
         auto const shooter_location{observe_entity(harness.simulation(), shooter)->location};

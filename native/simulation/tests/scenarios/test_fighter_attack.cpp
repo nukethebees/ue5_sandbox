@@ -483,13 +483,13 @@ TEST(WorldlessSpaceGameSimulation, FightersAttackCapital) {
     harness.finish_initialisation();
     auto const& capitals{harness.simulation().capital_ships()};
     auto const& fighters{harness.simulation().fighters()};
-    auto const enemy{capitals.id(1)};
+    auto const enemy{capitals.get_entities().entity_ids()[1]};
     std::int32_t initial_health{};
     bool observed_spawn{};
     harness.on_end_tick = [&](LevelSim&) {
         if (!observed_spawn && harness.time() >= 1.0) {
             observed_spawn = true;
-            initial_health = capitals.health(enemy).value();
+            initial_health = capitals.healths().health(enemy).value();
             auto const teams{fighters.entities().teams()};
             EXPECT_FALSE(teams.empty()) << "Hero fighters spawned";
             for (auto const team : teams) {
@@ -500,7 +500,7 @@ TEST(WorldlessSpaceGameSimulation, FightersAttackCapital) {
     harness.timeline.finish_at(11.0);
     EXPECT_TRUE(harness.run_until_timeline_finished(12.0)) << "Fighter-attack timeline completes";
     ASSERT_TRUE(observed_spawn);
-    EXPECT_LT(capitals.health(enemy).value(), initial_health) << "Enemy lost health";
+    EXPECT_LT(capitals.healths().health(enemy).value(), initial_health) << "Enemy lost health";
 }
 
 }

@@ -253,9 +253,6 @@ void Sim::finish_action() {
 auto Sim::num_instances() const noexcept -> std::uint32_t {
     return entities.num();
 }
-auto Sim::target_ids() const -> std::span<EntityId const> {
-    return entities.const_view().target_ids();
-}
 
 /* **************************************** */
 // Searching

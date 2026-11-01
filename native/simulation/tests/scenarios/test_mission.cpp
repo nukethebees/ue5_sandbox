@@ -85,10 +85,11 @@ TEST_P(WorldlessMission, ResolvesObjectiveLifecycle) {
     tests::WorldlessSimulationTest harness{std::move(data)};
     auto& simulation{harness.simulation()};
     auto const& capitals{simulation.capital_ships()};
-    auto const hero_id{capitals.id(0)};
-    auto const ordinary_id{ordinary ? capitals.id(1) : EntityId{}};
-    auto const required_id{required ? capitals.id(ordinary ? 2 : 1) : EntityId{}};
-    auto const second_id{second ? capitals.id(2) : EntityId{}};
+    auto const hero_id{capitals.get_entities().entity_ids()[0]};
+    auto const ordinary_id{ordinary ? capitals.get_entities().entity_ids()[1] : EntityId{}};
+    auto const required_id{required ? capitals.get_entities().entity_ids()[ordinary ? 2 : 1]
+                                    : EntityId{}};
+    auto const second_id{second ? capitals.get_entities().entity_ids()[2] : EntityId{}};
     harness.finish_initialisation();
     auto const& clk{simulation.clock()};
 

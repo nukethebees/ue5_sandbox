@@ -10,7 +10,6 @@
 #include <ioj/sim/levels/level_capital_spawn_events.h>
 
 #include <cstdint>
-#include <optional>
 #include <span>
 #include <vector>
 
@@ -45,17 +44,6 @@ struct Sim {
     // Accessors
     /* **************************************** */
     auto num_instances() const noexcept -> std::uint32_t;
-    auto is_valid(EntityId id) const noexcept -> bool;
-    auto id(std::uint32_t index) const -> EntityId {
-        return entities.const_view().entity_ids()[index];
-    }
-    auto team(std::uint32_t index) const noexcept -> Team {
-        return entities.const_view().teams()[index];
-    }
-    auto team(EntityId id) const noexcept -> Team;
-    auto health(EntityId id) const noexcept -> Health;
-    auto find_first_index_on_team(Team team) const noexcept -> std::optional<std::uint32_t>;
-    auto find_first_id_on_team(Team team) const noexcept -> std::optional<EntityId>;
 
   private:
     /* **************************************** */

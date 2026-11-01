@@ -63,7 +63,7 @@ void run_worldless_turret_combat(tests::SimulationFixture const& config,
     if (scenario == TurretCombatScenario::KillEnemy) {
         EXPECT_EQ(1, harness.ledger().count_kills()) << "One turret is killed";
         EXPECT_EQ(6, harness.ledger().count_alive()) << "Hero turrets remain alive";
-        for (auto const target : harness.simulation().turrets().target_ids()) {
+        for (auto const target : harness.simulation().turrets().get_entities().target_ids()) {
             EXPECT_TRUE(!target.is_valid()) << "Targets clear after the enemy dies";
         }
         return;
@@ -120,7 +120,7 @@ TEST(WorldlessSpaceGameSimulation, TurretsSearchRequiresLineOfSight) {
     harness.finish_initialisation();
     harness.timeline.finish_at(1.0);
     EXPECT_TRUE(harness.run_until_timeline_finished(1.5)) << "Turret search timeline completes";
-    auto const targets{harness.simulation().turrets().target_ids()};
+    auto const targets{harness.simulation().turrets().get_entities().target_ids()};
     EXPECT_EQ(3, static_cast<std::int32_t>(targets.size())) << "All turret targets are available";
     if (static_cast<std::int32_t>(targets.size()) != 3) {
         return;

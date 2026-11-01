@@ -49,7 +49,7 @@ TEST(CompletionPublication, PublishesRetainedPlayerResultAndPayloadWithoutUnreal
 
     auto const player{simulation.player_ship_simulation()->unique_entity_id};
     sim::DirectDamageEvents damage;
-    damage.add(simulation.capital_ships().id(0), 100000, player);
+    damage.add(simulation.capital_ships().get_entities().entity_ids()[0], 100000, player);
     damage.add(simulation.turrets().get_entities().entity_ids()[0], 100000, player);
     sim::LevelSimTestAccess::queue_direct_damage_events(simulation, damage.const_view());
     simulation.start();
