@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <format>
+#include <limits>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -48,7 +49,7 @@ auto validate_mission(MissionDefinition const& mission, std::span<EntityId const
     std::unordered_map<ObjectiveName, std::uint32_t> objectives;
     std::unordered_set<EntityId> declared{entities.begin(), entities.end()};
     auto const count{mission.objectives.size()};
-    if (count >= mission_index_limit) {
+    if (count > std::numeric_limits<std::uint16_t>::max()) {
         errors.emplace_back("Too many objectives");
         return errors;
     }

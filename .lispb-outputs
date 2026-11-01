@@ -140,6 +140,7 @@ native/simulation/include/ioj/sim/missions/expr_kind.h
 native/simulation/include/ioj/sim/missions/leaf_data_handle.h
 native/simulation/include/ioj/sim/missions/leaf_kind.h
 native/simulation/include/ioj/sim/missions/objective_id.h
+native/simulation/include/ioj/sim/missions/objective_prerequisite.h
 native/simulation/include/ioj/sim/player/command_interface.h
 native/simulation/include/ioj/sim/player/flight_model_controller_state.h
 native/simulation/include/ioj/sim/player/flight_model_data.h

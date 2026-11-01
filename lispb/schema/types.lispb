@@ -329,6 +329,14 @@
 (type player_resolution_inputs
   :spelling "ResolutionInputs"
   :header "ioj/sim/player/phase_inputs.h")
+(type mission_objective_id
+  :spelling "ioj::sim::ObjectiveId"
+  :header "ioj/sim/missions/objective_id.h"
+  :pass-by value)
+(type objective_outcome
+  :spelling "ioj::ObjectiveOutcome"
+  :header "ioj/levels/objective_outcome.h"
+  :pass-by value)
 (type mission_leaf_kind
   :spelling "ioj::sim::LeafKind"
   :header "ioj/sim/missions/leaf_kind.h"

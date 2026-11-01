@@ -13,8 +13,9 @@
 
 namespace ioj::sim::tests {
 using namespace ioj::levels;
-static_assert(sizeof(ObjectiveId) == sizeof(std::uint32_t));
-static_assert(!std::convertible_to<std::uint32_t, ObjectiveId>);
+static_assert(sizeof(ObjectiveId) == sizeof(std::uint16_t));
+static_assert(sizeof(ObjectivePrerequisite) == sizeof(std::uint32_t));
+static_assert(!std::convertible_to<std::uint16_t, ObjectiveId>);
 static_assert(!std::convertible_to<EntityId, ObjectiveId>);
 static_assert(sizeof(ExprHandle) == sizeof(std::uint32_t));
 static_assert(sizeof(LeafDataHandle) == sizeof(std::uint32_t));

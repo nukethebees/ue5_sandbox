@@ -29,8 +29,16 @@
 (module mission_objective_id
   :header "native/simulation/include/ioj/sim/missions/objective_id.h"
   :namespace ioj::sim
-  (record ObjectiveId :layout packed :bits 32 :invalid-value 0xffffffff
-    (member index std::uint32_t :bits 32)
+  (record ObjectiveId :layout packed :bits 16 :invalid-value 0xffff
+    (member index std::uint16_t :bits 16)
+    (projections (cpp :storage std::uint16_t))))
+
+(module mission_objective_prerequisite
+  :header "native/simulation/include/ioj/sim/missions/objective_prerequisite.h"
+  :namespace ioj::sim
+  (record ObjectivePrerequisite :layout packed :bits 32
+    (member objective @mission_objective_id)
+    (member outcome @objective_outcome)
     (projections (cpp :storage std::uint32_t))))
 
 (module mission_expr_handle

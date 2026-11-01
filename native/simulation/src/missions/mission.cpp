@@ -89,7 +89,7 @@ auto Mission::compile(levels::MissionDefinition const& definition,
         entity_indices.emplace(entities[index], index);
     }
 
-    for (std::uint32_t index{}; index < count; ++index) {
+    for (std::uint16_t index{}; index < count; ++index) {
         objectives.emplace(definition.objectives[index].id, ObjectiveId{index});
     }
 
@@ -97,7 +97,7 @@ auto Mission::compile(levels::MissionDefinition const& definition,
     auto& leaves{result.leaves_};
     auto size = [](auto const& values) { return static_cast<std::uint32_t>(values.size()); };
 
-    for (std::uint32_t row{}; row < count; ++row) {
+    for (std::uint16_t row{}; row < count; ++row) {
         ObjectiveId const owner{row};
         auto const& source{definition.objectives[row]};
 
@@ -306,12 +306,8 @@ void Mission::activate_ready_objectives(SimTick const tick) {
     }
 }
 auto Mission::prerequisites_met(ObjectiveId const id) const -> bool {
-    auto const prerequisites{objectives_.prerequisite_objectives(id)};
-    auto const outcomes{objectives_.prerequisite_outcomes(id)};
-    auto const count{prerequisites.size()};
-
-    for (std::size_t index{}; index < count; ++index) {
-        if (outcome(prerequisites[index]) != outcomes[index]) {
+    for (auto const prerequisite : objectives_.prerequisites(id)) {
+        if (outcome(prerequisite.objective()) != prerequisite.outcome()) {
             return false;
         }
     }

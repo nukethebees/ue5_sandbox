@@ -13,10 +13,10 @@ namespace ioj::sim {
 struct ObjectiveId;
 
 namespace detail {
-inline constexpr std::uint32_t objective_id_default_raw_value{4294967295};
+inline constexpr std::uint16_t objective_id_default_raw_value{65535};
 
 using ObjectiveIdBase =
-    PackedValueBase<ObjectiveId, PackedStorage<std::uint32_t, 32>{objective_id_default_raw_value}>;
+    PackedValueBase<ObjectiveId, PackedStorage<std::uint16_t, 16>{objective_id_default_raw_value}>;
 } // namespace detail
 
 struct ObjectiveId : detail::ObjectiveIdBase {
@@ -27,7 +27,7 @@ struct ObjectiveId : detail::ObjectiveIdBase {
     static constexpr storage_type invalid_value{storage.default_raw_value};
 
     // index
-    static constexpr PackedField<storage_type, std::uint32_t, 0, 32> index_layout{};
+    static constexpr PackedField<storage_type, std::uint16_t, 0, 16> index_layout{};
 
     constexpr ObjectiveId() noexcept = default;
     constexpr explicit ObjectiveId(decltype(index_layout)::value_type const index_value) noexcept

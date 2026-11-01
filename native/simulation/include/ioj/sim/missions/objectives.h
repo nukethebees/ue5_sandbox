@@ -7,6 +7,7 @@
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/missions/objective_id.h>
 #include <ioj/sim/missions/objective_membership_index.h>
+#include <ioj/sim/missions/objective_prerequisite.h>
 #include <ioj/sim/missions/objective_roots.h>
 
 #include <cassert>
@@ -38,8 +39,7 @@ class Objectives {
     auto roots(ObjectiveId id) const -> ObjectiveRoots const& { return at(roots_, id); }
     auto leaves(ObjectiveId id) -> IndexSpan& { return at(leaf_ranges_, id); }
     auto composites(ObjectiveId id) -> IndexSpan& { return at(composite_ranges_, id); }
-    auto prerequisite_objectives(ObjectiveId id) const -> std::span<ObjectiveId const>;
-    auto prerequisite_outcomes(ObjectiveId id) const -> std::span<ObjectiveOutcome const>;
+    auto prerequisites(ObjectiveId id) const -> std::span<ObjectivePrerequisite const>;
     // Append each objective's prerequisites consecutively during compilation.
     void add_prerequisite(ObjectiveId id, ObjectiveId prerequisite, ObjectiveOutcome outcome);
     auto wins_level(ObjectiveId id) -> ObjectiveWinsLevel& { return at(wins_level_, id); }
@@ -61,8 +61,7 @@ class Objectives {
     std::vector<IndexSpan> leaf_ranges_;
     std::vector<IndexSpan> composite_ranges_;
     std::vector<IndexSpan> prerequisite_ranges_;
-    std::vector<ObjectiveId> prerequisite_objectives_;
-    std::vector<ObjectiveOutcome> prerequisite_outcomes_;
+    std::vector<ObjectivePrerequisite> prerequisites_;
 
     // Mutable
     std::vector<ObjectiveMembershipIndex> membership_positions_;
