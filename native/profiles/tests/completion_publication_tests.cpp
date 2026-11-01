@@ -42,7 +42,7 @@ TEST(CompletionPublication, PublishesRetainedPlayerResultAndPayloadWithoutUnreal
     geometry.data.clock_settings.tick_rate = Frequency::make(10.);
     auto built{sim::make_level_simulation_init_data(*definition, std::move(geometry.data))};
     ASSERT_TRUE(built) << built.error().front();
-    sim::LevelSim simulation{*std::pmr::new_delete_resource(), std::move(*built)};
+    sim::LevelSim simulation{std::move(*built)};
     simulation.finish_initialisation();
     EXPECT_FALSE(publish_player_completion(simulation, nullptr, 17));
 

@@ -159,8 +159,7 @@ TEST(EntityMotion, CopiesMixedTypesAndReportsMissingEntitiesWithoutChangingIds) 
     SpatialQueryManager queries{owners.entity_tables};
     queries.initialise({{10, 10, 10}, {{100, 100, 100}}}, {});
     owners.refresh(queries);
-    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
-    FrameMemoryResource scratch{backing};
+    FrameMemoryResource scratch{4096};
     queries.copy_entity_locations(ids, locations.get_view().resolve(), &scratch);
     EXPECT_EQ(ids, original);
     std::array<EntityInstanceHandle, ids.size()> handles;
@@ -197,8 +196,7 @@ TEST(EntityMotion, CopiesMixedTypesAndReportsMissingEntitiesWithoutChangingIds) 
 }
 
 TEST(EntityLookupTables, ResolutionHealthChangesBeforeHandlesRetire) {
-    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
-    FrameMemoryResource scratch{backing};
+    FrameMemoryResource scratch{4096};
     FrameScratchScope scratch_scope{scratch};
     CollisionAgentStorage owners;
     auto const id{owners.spawn(EntityType::Fighter, {{10, 0, 0}})};

@@ -24,6 +24,7 @@ target_sources(native-core
     src/transform3d.cpp
     include/ioj/container_ops.h
     include/ioj/monotonic_clock.h
+    include/ioj/memory/allocation.h
     include/ioj/speed_response.h
     include/ioj/diagnostics.h
     include/ioj/require.h

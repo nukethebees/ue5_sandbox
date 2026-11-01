@@ -614,8 +614,7 @@ TEST(NativeCoreFrameArray, ForwardsExplicitElementResourcesWithoutAllocatorInjec
 }
 
 TEST(NativeCoreFrameArray, BalancesFrameResourceAllocationsAfterGrowthAndFailure) {
-    alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing{};
-    ioj::FrameMemoryResource resource{backing};
+    ioj::FrameMemoryResource resource{4096};
     ThrowingValue::constructions_before_throw = -1;
     {
         ioj::FrameArray<ThrowingValue> values{&resource};

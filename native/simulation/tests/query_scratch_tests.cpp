@@ -37,8 +37,7 @@ void CountingResource::do_deallocate(void* pointer,
 }
 
 struct FrameBacking {
-    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 256 * 1024> bytes{};
-    FrameMemoryResource resource{bytes};
+    FrameMemoryResource resource{256 * 1024};
 };
 
 void initialise_queries(SpatialQueryManager& manager, CollisionAgentStorage const& owners) {
@@ -58,8 +57,7 @@ TEST(QueryScratch, ExhaustionDoesNotFallBackToHeap) {
     owners.publish();
     SpatialQueryManager manager{owners.entity_tables};
     query_scratch_detail::initialise_queries(manager, owners);
-    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 64> backing{};
-    FrameMemoryResource frame{backing};
+    FrameMemoryResource frame{64};
     {
         FrameScratchScope scope{frame};
         EXPECT_THROW(manager.trace_closest({}, {}, &frame), std::bad_alloc);

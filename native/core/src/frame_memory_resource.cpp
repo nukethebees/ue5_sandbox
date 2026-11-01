@@ -15,21 +15,21 @@
 #endif
 
 namespace ioj {
-FrameMemoryResource::FrameMemoryResource(std::span<std::byte> const backing)
-    : backing_{backing.data()}
-    , capacity_bytes_{backing.size_bytes()} {
-    if (capacity_bytes_ == 0) {
+FrameMemoryResource::FrameMemoryResource(std::size_t const capacity_bytes,
+                                         std::pmr::memory_resource& upstream)
+    : upstream_{upstream}
+    , backing_{nullptr, capacity_bytes, backing_alignment} {
+    if (capacity_bytes == 0) {
         throw std::invalid_argument{"Frame memory capacity must be positive"};
     }
-    if (reinterpret_cast<std::uintptr_t>(backing_) % backing_alignment != 0) {
-        throw std::invalid_argument{"Frame memory backing must be 64-byte aligned"};
-    }
+    backing_.data = static_cast<std::byte*>(upstream_.allocate(capacity_bytes, backing_alignment));
 }
 
 FrameMemoryResource::~FrameMemoryResource() {
     if (epoch_active_ || outstanding_allocation_count_.load(std::memory_order_relaxed) != 0) {
         std::terminate();
     }
+    upstream_.deallocate(backing_.data, backing_.size_bytes, backing_.alignment);
 }
 
 auto FrameMemoryResource::try_allocate(std::size_t const bytes,
@@ -42,15 +42,15 @@ auto FrameMemoryResource::try_allocate(std::size_t const bytes,
     auto const allocation_bytes{std::max<std::size_t>(bytes, 1)};
     auto current{claimed_bytes_.load(std::memory_order_relaxed)};
     for (;;) {
-        auto* aligned_pointer{static_cast<void*>(backing_ + current)};
-        auto remaining{capacity_bytes_ - current};
+        auto* aligned_pointer{static_cast<void*>(backing_.data + current)};
+        auto remaining{backing_.size_bytes - current};
         if (std::align(alignment, allocation_bytes, aligned_pointer, remaining) == nullptr) {
             record_overflow(bytes, alignment, current);
             return nullptr;
         }
 
         auto* const aligned_bytes{static_cast<std::byte*>(aligned_pointer)};
-        auto const aligned_offset{static_cast<std::size_t>(aligned_bytes - backing_)};
+        auto const aligned_offset{static_cast<std::size_t>(aligned_bytes - backing_.data)};
         auto const next{aligned_offset + allocation_bytes};
         if (claimed_bytes_.compare_exchange_weak(
                 current, next, std::memory_order_relaxed, std::memory_order_relaxed)) {
@@ -104,7 +104,7 @@ void FrameMemoryResource::reset() {
 
 auto FrameMemoryResource::get_stats() const noexcept -> FrameMemoryStats {
     return {
-        .capacity_bytes = capacity_bytes_,
+        .capacity_bytes = backing_.size_bytes,
         .current_claimed_bytes = claimed_bytes_.load(std::memory_order_relaxed),
         .current_frame_peak_claimed_bytes =
             frame_peak_claimed_bytes_.load(std::memory_order_relaxed),
@@ -130,8 +130,8 @@ auto FrameMemoryResource::get_stats() const noexcept -> FrameMemoryStats {
 
 auto FrameMemoryResource::owns(void const* const pointer) const noexcept -> bool {
     auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
-    auto const begin{reinterpret_cast<std::uintptr_t>(backing_)};
-    return address >= begin && address < begin + capacity_bytes_;
+    auto const begin{reinterpret_cast<std::uintptr_t>(backing_.data)};
+    return address >= begin && address < begin + backing_.size_bytes;
 }
 
 auto FrameMemoryResource::do_allocate(std::size_t const bytes, std::size_t const alignment)

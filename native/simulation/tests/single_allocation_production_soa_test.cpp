@@ -5,7 +5,6 @@
 #include <ioj/sim/lasers/laser_hit_details.h>
 #include <ioj/sim/levels/compiled_level_events.h>
 #include <ioj/sim/spinners/spinner_entity_data.h>
-#include <native/memory/block.h>
 
 #include <gtest/gtest.h>
 
@@ -76,11 +75,7 @@ TEST(NativeSimulation, SpinnerAndLaserHitSingleAllocationRowsStaySynchronized) {
 }
 
 TEST(NativeSimulation, LaserFrameOutputAccumulatesBatchesAndReusesStorage) {
-    auto& game_memory{*std::pmr::new_delete_resource()};
-    auto frame_block{
-        memory::Block{game_memory, 1024 * 1024, FrameMemoryResource::backing_alignment}};
-    FrameMemoryResource frame_memory{
-        std::span<std::byte>{frame_block.data(), frame_block.size_bytes()}};
+    FrameMemoryResource frame_memory{1024 * 1024};
     FrameScratchScope scratch_scope{frame_memory};
     auto* const scratch_resource{&frame_memory};
     LaserHitDetails first_batch{*scratch_resource};

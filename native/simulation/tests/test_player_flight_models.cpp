@@ -65,8 +65,7 @@ class SkaterFlightModelTest : public ::testing::Test {
         ASSERT_NE(simulation.get_player_ship_simulation(), nullptr);
     }
 
-    LevelSim simulation{*std::pmr::new_delete_resource(),
-                        make_data(player::FlightModelPreset::Skater)};
+    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
     player::Sim& sim_player{LevelSimTestAccess::player_simulation(simulation)};
     player::FlightModelControllerState const& controller{sim_player.get_controller_state()};
     std::optional<player::CommandInterface> commands{simulation.get_player_ship_commands()};
@@ -118,8 +117,7 @@ using ioj::testing::expect_approximately_equal;
 using ioj::testing::structurally_equal;
 
 TEST(NativeSimulationFlightModels, StarfoxConvergesToCruiseAndSupportsBoostAndBrake) {
-    LevelSim simulation{*std::pmr::new_delete_resource(),
-                        make_data(player::FlightModelPreset::Starfox)};
+    LevelSim simulation{make_data(player::FlightModelPreset::Starfox)};
     start(simulation);
     auto const& controller{player_sim(simulation).get_controller_state()};
     simulation.get_player_ship_commands()->set_right_input(1.f);
@@ -148,10 +146,8 @@ TEST(NativeSimulationFlightModels, StarfoxConvergesToCruiseAndSupportsBoostAndBr
 }
 
 TEST(NativeSimulationFlightModels, StarfoxEmergencyBrakeIsStrongerThanNormalBrake) {
-    LevelSim normal{*std::pmr::new_delete_resource(),
-                    make_data(player::FlightModelPreset::Starfox)};
-    LevelSim emergency{*std::pmr::new_delete_resource(),
-                       make_data(player::FlightModelPreset::Starfox)};
+    LevelSim normal{make_data(player::FlightModelPreset::Starfox)};
+    LevelSim emergency{make_data(player::FlightModelPreset::Starfox)};
     start(normal);
     start(emergency);
     advance_ticks(normal, 600);
@@ -166,8 +162,7 @@ TEST(NativeSimulationFlightModels, StarfoxEmergencyBrakeIsStrongerThanNormalBrak
 }
 
 TEST(NativeSimulationFlightModels, FighterAcceleratesOnlyWithInputAndThenDrags) {
-    LevelSim simulation{*std::pmr::new_delete_resource(),
-                        make_data(player::FlightModelPreset::Fighter)};
+    LevelSim simulation{make_data(player::FlightModelPreset::Fighter)};
     start(simulation);
     advance_ticks(simulation, 60);
     EXPECT_NEAR(size(velocity(simulation)), 0.0, 1.e-6);
@@ -183,10 +178,8 @@ TEST(NativeSimulationFlightModels, FighterAcceleratesOnlyWithInputAndThenDrags) 
 }
 
 TEST(NativeSimulationFlightModels, FighterBoostAndBrakeRemainOrthogonal) {
-    LevelSim normal{*std::pmr::new_delete_resource(),
-                    make_data(player::FlightModelPreset::Fighter)};
-    LevelSim boosted{*std::pmr::new_delete_resource(),
-                     make_data(player::FlightModelPreset::Fighter)};
+    LevelSim normal{make_data(player::FlightModelPreset::Fighter)};
+    LevelSim boosted{make_data(player::FlightModelPreset::Fighter)};
     start(normal);
     start(boosted);
     normal.get_player_ship_commands()->set_accelerator(1.f);
@@ -263,9 +256,8 @@ TEST_F(SkaterFlightModelTest, SkaterCanFaceBackwardWhilePreservingForwardTravel)
 }
 
 TEST(NativeSimulationFlightModels, SkaterBrakeAndEmergencyBrakeReduceWithoutReversing) {
-    LevelSim brake{*std::pmr::new_delete_resource(), make_data(player::FlightModelPreset::Skater)};
-    LevelSim emergency{*std::pmr::new_delete_resource(),
-                       make_data(player::FlightModelPreset::Skater)};
+    LevelSim brake{make_data(player::FlightModelPreset::Skater)};
+    LevelSim emergency{make_data(player::FlightModelPreset::Skater)};
     start(brake);
     start(emergency);
     for (auto* simulation : {&brake, &emergency}) {
@@ -286,8 +278,7 @@ TEST(NativeSimulationFlightModels, SkaterBrakeAndEmergencyBrakeReduceWithoutReve
 }
 
 TEST(NativeSimulationFlightModels, GunshipControlsThreeAxesAndStabilizesNeutralInput) {
-    LevelSim simulation{*std::pmr::new_delete_resource(),
-                        make_data(player::FlightModelPreset::Gunship)};
+    LevelSim simulation{make_data(player::FlightModelPreset::Gunship)};
     start(simulation);
     auto commands{simulation.get_player_ship_commands()};
     commands->set_forward_input(1.f);
@@ -307,8 +298,7 @@ TEST(NativeSimulationFlightModels, GunshipControlsThreeAxesAndStabilizesNeutralI
 }
 
 TEST(NativeSimulationFlightModels, GunshipRotationRemainsIndependentOfTranslationControl) {
-    LevelSim simulation{*std::pmr::new_delete_resource(),
-                        make_data(player::FlightModelPreset::Gunship)};
+    LevelSim simulation{make_data(player::FlightModelPreset::Gunship)};
     start(simulation);
     auto commands{simulation.get_player_ship_commands()};
     commands->set_right_input(1.f);
@@ -421,10 +411,8 @@ TEST_F(SkaterFlightModelTest, ResponseSeedingUsesTheNewChannelsReferenceFrame) {
 }
 
 TEST(NativeSimulationFlightModels, PassiveDragAndNeutralStabilizationRemainDistinct) {
-    LevelSim passive{*std::pmr::new_delete_resource(),
-                     make_data(player::FlightModelPreset::Skater)};
-    LevelSim stabilized{*std::pmr::new_delete_resource(),
-                        make_data(player::FlightModelPreset::Skater)};
+    LevelSim passive{make_data(player::FlightModelPreset::Skater)};
+    LevelSim stabilized{make_data(player::FlightModelPreset::Skater)};
     start(passive);
     start(stabilized);
 

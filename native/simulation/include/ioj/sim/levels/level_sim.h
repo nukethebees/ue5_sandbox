@@ -17,7 +17,6 @@
 #include <ioj/sim/levels/level_state.h>
 #include <ioj/sim/levels/run_stop_conditions.h>
 #include <ioj/sim/levels/tick_player_ship_state.h>
-#include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/missions/mission.h>
 #include <ioj/sim/player/command_interface.h>
 #include <ioj/sim/player/sim.h>
@@ -29,6 +28,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <memory_resource>
 #include <optional>
 #include <span>
 #include <vector>
@@ -44,7 +44,8 @@ struct LevelSim {
     /* **************************************** */
     // Construction and lifecycle
     /* **************************************** */
-    LevelSim(std::pmr::memory_resource& memory, LevelSimInitData data);
+    explicit LevelSim(LevelSimInitData data,
+                      std::pmr::memory_resource& memory = *std::pmr::get_default_resource());
 
     LevelSim(LevelSim const&) = delete;
     LevelSim(LevelSim&&) = delete;
@@ -111,7 +112,7 @@ struct LevelSim {
         return level_telemetry_manager_;
     }
     auto get_memory_stats() const noexcept -> memory::Statistics {
-        return game_memory_.get_stats();
+        return memory_manager_.get_game_memory().get_stats();
     }
     auto get_frame_memory_stats() const noexcept -> FrameMemoryStats {
         return memory_manager_.get_frame_memory().get_stats();
@@ -144,7 +145,6 @@ struct LevelSim {
     SimClock clock_;
     TeamList participating_teams_;
 
-    GameMemory game_memory_;
     LevelMemoryManager memory_manager_;
     EntityLedger entity_ledger_;
     CombatEvents combat_events_{entity_ledger_};

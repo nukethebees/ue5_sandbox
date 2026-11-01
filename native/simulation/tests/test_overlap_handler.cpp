@@ -75,8 +75,7 @@ TEST(OverlapHandler, FiltersUnsupportedRecipientsAndDefersRetirementChecksToDama
     add_overlap(first_pairs, fighter, spinner);
     add_overlap(first_pairs, fighter, doomed);
     add_overlap(first_pairs, fighter, {});
-    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
-    FrameMemoryResource memory{backing};
+    FrameMemoryResource memory{4096};
     FrameScratchScope scope{memory};
     OverlapHandler handler{
         Positive<Health::value_type>::make(OverlapResponseConfig{}.damage_per_overlap_detection)};

@@ -2,12 +2,12 @@ add_library(native-memory STATIC)
 target_sources(native-memory
   PRIVATE
     src/bump_resource.cpp
-    src/block.cpp
 )
 target_include_directories(native-memory PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(native-memory
   PUBLIC
     sandbox::native_defaults
+    native-core-headers
   PRIVATE
     sandbox::mimalloc
     "$<$<BOOL:${IOJ_WITH_UNREAL}>:ioj::unreal_avx2>"

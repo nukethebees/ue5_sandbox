@@ -15,8 +15,7 @@ class UniqueCellMembership
   protected:
     UniqueCellMembership() { initialise_queries(); }
 
-    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024> backing{};
-    FrameMemoryResource memory{backing};
+    FrameMemoryResource memory{64 * 1024};
     FrameScratchScope scope{memory};
     FrameArray<EntityId> output{&memory};
 };

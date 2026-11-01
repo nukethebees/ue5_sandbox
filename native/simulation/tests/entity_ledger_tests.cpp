@@ -43,8 +43,7 @@ TEST(DamageQueue, GroupsMixedOwnerEventsAndFiltersRetiredRecipients) {
     queue.append(second.get_const_view());
     first.get_view().damage_amounts()[0] = 999;
 
-    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
-    FrameMemoryResource frame_memory{backing};
+    FrameMemoryResource frame_memory{4096};
     {
         FrameScratchScope scratch_scope{frame_memory};
         queue.prepare(indexes, &frame_memory);
@@ -101,8 +100,7 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
     auto const fighter_type{std::to_underlying(EntityType::Fighter)};
     EXPECT_EQ(ledger.get_combat_telemetry().hits[red][turret_type], 0u);
 
-    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
-    FrameMemoryResource frame_memory{backing};
+    FrameMemoryResource frame_memory{4096};
     {
         FrameScratchScope scratch_scope{frame_memory};
         events.prepare(indexes, &frame_memory);

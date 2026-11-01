@@ -11,9 +11,7 @@ namespace ioj::sim {
 using ioj::testing::structurally_equal;
 TEST(WorldlessSpaceGameSimulation, SpatialQueryResolvesLineOfSightBatches) {
     auto const config{tests::make_fixture()};
-    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
-        query_backing{};
-    FrameMemoryResource query_memory{query_backing};
+    FrameMemoryResource query_memory{64 * 1024};
     FrameScratchScope query_scope{query_memory};
 
     constexpr float distance{30000.f};

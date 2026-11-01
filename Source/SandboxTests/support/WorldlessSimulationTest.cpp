@@ -51,7 +51,7 @@ auto add_worldless_player_spawn(sim::LevelSimInitData& data, sim::player::Player
 }
 
 FWorldlessSimulationTest::FWorldlessSimulationTest(sim::LevelSimInitData data)
-    : simulation_{*std::pmr::new_delete_resource(), MoveTemp(data)} {}
+    : simulation_{MoveTemp(data)} {}
 
 void FWorldlessSimulationTest::finish_initialisation() {
     simulation_.finish_initialisation();

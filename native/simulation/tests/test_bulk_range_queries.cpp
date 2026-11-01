@@ -38,9 +38,7 @@ class BulkRangeQueries
         auto const distances{matches.distances()};
         auto const directions{matches.view_directions()};
         std::array<EntityId, 512> reference;
-        alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
-            reference_backing{};
-        FrameMemoryResource reference_memory{reference_backing};
+        FrameMemoryResource reference_memory{64 * 1024};
         auto const reference_view{std::span{reference}};
         std::uint32_t offset{};
         auto const request_count{origins.num()};
@@ -75,8 +73,7 @@ class BulkRangeQueries
         EXPECT_EQ(offset, output.matches.num());
     }
 
-    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 1024 * 1024> backing{};
-    FrameMemoryResource memory{backing};
+    FrameMemoryResource memory{1024 * 1024};
     FrameScratchScope scope{memory};
     Vectors3f origins{memory};
     FrameArray<Team> teams{&memory};

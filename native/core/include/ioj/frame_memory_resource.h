@@ -1,10 +1,11 @@
 #pragma once
 
+#include <ioj/memory/allocation.h>
+
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <memory_resource>
-#include <span>
 
 namespace ioj {
 struct FrameMemoryFailure {
@@ -37,7 +38,9 @@ class FrameMemoryResource final : public std::pmr::memory_resource {
   public:
     static constexpr std::size_t backing_alignment{64};
 
-    explicit FrameMemoryResource(std::span<std::byte> backing);
+    explicit FrameMemoryResource(
+        std::size_t capacity_bytes,
+        std::pmr::memory_resource& upstream = *std::pmr::get_default_resource());
     ~FrameMemoryResource() override;
 
     FrameMemoryResource(FrameMemoryResource const&) = delete;
@@ -65,8 +68,8 @@ class FrameMemoryResource final : public std::pmr::memory_resource {
 
     friend class FrameScratchScope;
 
-    std::byte* backing_{};
-    std::size_t capacity_bytes_{};
+    std::pmr::memory_resource& upstream_;
+    memory::Allocation backing_;
 
     std::atomic<std::size_t> claimed_bytes_{};
     std::atomic<std::size_t> payload_bytes_{};

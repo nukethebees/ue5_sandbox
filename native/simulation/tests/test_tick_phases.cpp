@@ -78,7 +78,7 @@ TEST(TickPhases, CompletedBurstsStopUntilTheNextFirePress) {
         data.player->laser_fire_rate = rate;
         data.player->config.laser.fire_cooldown = ::ioj::NonNegativeFinite<float>::make(0.05f);
 
-        LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+        LevelSim simulation{std::move(data)};
         simulation.finish_initialisation();
         simulation.start();
         auto commands{simulation.get_player_ship_commands()};
@@ -104,7 +104,7 @@ TEST(TickPhases, AutomaticFireContinuesUntilReleased) {
     data.player->laser_fire_rate = ShipFireRate::FullAuto;
     data.player->config.laser.fire_cooldown = ::ioj::NonNegativeFinite<float>::make(0.05f);
 
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
     auto commands{simulation.get_player_ship_commands()};
@@ -125,7 +125,7 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
     add_capital_spawn(data, {}, Team::White, 60.f, 60.f, 100);
     schedule_turret(data, {});
 
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     auto const clk_period{simulation.get_clock().get_tick_period()};
 
@@ -169,7 +169,7 @@ TEST(TickPhases, CarrierSpawnIsDeferredAndParticipatesInLaunchOverlaps) {
     data.fighters.health = ::ioj::settings::PositiveHealth::make(Health{100});
     data.fighters.speed = 0.f;
 
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     auto const clk_period{simulation.get_clock().get_tick_period()};
 
@@ -198,7 +198,7 @@ TEST(TickPhases, ThinkingFireIsDeferredWithActionMovementSnapshot) {
     auto data{make_world()};
     add_moving_player(data);
 
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     auto const clk_period{simulation.get_clock().get_tick_period()};
 
@@ -230,7 +230,7 @@ TEST(TickPhases, ActionMovementIsVisibleToSameTickOverlapDetection) {
     add_moving_player(data);
     add_capital_spawn(data, {{0.f, 100.f, 0.f}}, Team::White, 0.f, 60.f, 100);
 
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     auto const clk_period{simulation.get_clock().get_tick_period()};
     simulation.get_player_ship_commands()->set_right_input(1.f);
@@ -252,7 +252,7 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {
     add_capital_spawn(data, {{-2000.f, 0.f, 0.f}}, Team::White, 60.f, 60.f, 100);
     schedule_turret(data, {{500.f, 100.f, 0.f}}, SimTick{2});
 
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
 
     queue_capital_laser(simulation);
@@ -289,7 +289,7 @@ TEST(TickPhases, DelayedObjectiveSeesResolvedDeathWithoutDuplicateOverlaps) {
     objective.roots[ioj::ObjectiveOutcome::Failed] = 3;
     install_mission(data, std::move(objective));
 
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     auto const clk_period{simulation.get_clock().get_tick_period()};
 
@@ -327,7 +327,7 @@ TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndBoundsAdvanceAfterwa
     add_moving_player(data, {500.0, 0.0, 0.0});
     add_capital_spawn(data, {{-2000.f, 0.f, 0.f}}, Team::White, 60.f, 60.f, 100);
 
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
 
     auto const& laser_sim{simulation.get_lasers()};
@@ -364,7 +364,7 @@ TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndBoundsAdvanceAfterwa
 TEST(TickPhases, AcceptedFireSurvivesShooterDeathAndDeathCannotBeHealed) {
     auto data{make_world()};
     add_moving_player(data);
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     auto const clk_period{simulation.get_clock().get_tick_period()};
     auto const* player{simulation.get_player_ship_simulation()};
@@ -390,7 +390,7 @@ TEST(TickPhases, AcceptedFireSurvivesShooterDeathAndDeathCannotBeHealed) {
 TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {
     auto data{make_world()};
     add_capital_spawn(data, {{40.f, 0.f, 0.f}}, Team::White, 60.f, 60.f, 100);
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     auto const clk_period{simulation.get_clock().get_tick_period()};
     lasers::LaserSpawnRequests shot;
@@ -433,7 +433,7 @@ TEST(TickPhases, CapitalDeathIsPublishedBeforeMissionEvaluation) {
         objective.roots[ioj::ObjectiveOutcome::Passed] = 2;
         install_mission(data, std::move(objective));
 
-        LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+        LevelSim simulation{std::move(data)};
         simulation.finish_initialisation();
 
         auto const& ledger{simulation.get_entity_ledger()};
@@ -487,7 +487,7 @@ TEST(TickPhases, CapitalDeathIsPublishedBeforeMissionEvaluation) {
     for (auto const x : {-2000.f, 0.f, 2000.f}) {
         add_capital_spawn(data, {{x, 0.f, 0.f}}, Team::White, 60.f, 60.f, 100);
     }
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     auto const initial{simulation.get_read_access().get_capitals().get_entities()};
     std::vector<EntityId> visual_ids{initial.entity_ids().begin(), initial.entity_ids().end()};

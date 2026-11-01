@@ -8,9 +8,7 @@
 namespace ioj::sim {
 TEST(WorldlessSpaceGameSimulation, SpatialQueryEmptyBatchesAndWorld) {
     auto const config{tests::make_fixture()};
-    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
-        query_backing{};
-    FrameMemoryResource query_memory{query_backing};
+    FrameMemoryResource query_memory{64 * 1024};
     FrameScratchScope query_scope{query_memory};
 
     auto data{tests::make_simulation_data(config)};
@@ -37,9 +35,7 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryEmptyBatchesAndWorld) {
 
 TEST(WorldlessSpaceGameSimulation, SpatialQueryTeamAndInclusiveRadiusFiltering) {
     auto const config{tests::make_fixture()};
-    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
-        query_backing{};
-    FrameMemoryResource query_memory{query_backing};
+    FrameMemoryResource query_memory{64 * 1024};
     FrameScratchScope query_scope{query_memory};
 
     auto data{tests::make_simulation_data(config)};

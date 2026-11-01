@@ -45,8 +45,7 @@ struct MissionTest : ::testing::Test {
     std::vector<levels::EntityId> names;
     std::vector<EntityId> entities;
     std::array<Team, 2> teams{Team::Blue, Team::Red};
-    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
-    FrameMemoryResource scratch{backing};
+    FrameMemoryResource scratch{4096};
 
     MissionTest() { clock.initialise({.tick_rate = Frequency::make(10.0)}); }
     void start(MissionDefinition const& definition) {

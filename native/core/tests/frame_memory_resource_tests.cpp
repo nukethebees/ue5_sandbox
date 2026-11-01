@@ -31,26 +31,6 @@ struct TrackedValue {
     inline static std::int32_t live_count{};
 };
 
-class FrameBacking {
-  public:
-    explicit FrameBacking(std::size_t const capacity)
-        : data_{static_cast<std::byte*>(::operator new(
-              capacity, std::align_val_t{ioj::FrameMemoryResource::backing_alignment}))}
-        , capacity_{capacity} {}
-
-    ~FrameBacking() {
-        ::operator delete(data_, std::align_val_t{ioj::FrameMemoryResource::backing_alignment});
-    }
-
-    FrameBacking(FrameBacking const&) = delete;
-    FrameBacking(FrameBacking&&) = delete;
-
-    operator std::span<std::byte>() const noexcept { return {data_, capacity_}; }
-  private:
-    std::byte* data_{};
-    std::size_t capacity_{};
-};
-
 class CountingResource final : public std::pmr::memory_resource {
   public:
     std::uint64_t allocation_count{};
@@ -71,8 +51,7 @@ class CountingResource final : public std::pmr::memory_resource {
     }
 };
 TEST(NativeCoreFrameMemoryResource, AlignsAllocationsIncludingZeroSizedRequests) {
-    FrameBacking backing{4096};
-    ioj::FrameMemoryResource resource{backing};
+    ioj::FrameMemoryResource resource{4096};
 
     auto* const byte{resource.allocate(1, 1)};
     auto* const aligned{resource.allocate(sizeof(OverAlignedValue), alignof(OverAlignedValue))};
@@ -91,8 +70,7 @@ TEST(NativeCoreFrameMemoryResource, AlignsAllocationsIncludingZeroSizedRequests)
 }
 
 TEST(NativeCoreFrameMemoryResource, RecordsOverflowWithoutClaimingMemory) {
-    alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 64> backing{};
-    ioj::FrameMemoryResource resource{backing};
+    ioj::FrameMemoryResource resource{64};
 
     EXPECT_EQ(resource.try_allocate(128, 16), nullptr);
 
@@ -103,8 +81,7 @@ TEST(NativeCoreFrameMemoryResource, RecordsOverflowWithoutClaimingMemory) {
 }
 
 TEST(NativeCoreFrameMemoryResource, RecordsExactBoundaryOverflowAndFrameStatistics) {
-    FrameBacking backing{256};
-    ioj::FrameMemoryResource resource{backing};
+    ioj::FrameMemoryResource resource{256};
     auto* const exact{resource.allocate(256, 1)};
 
     EXPECT_EQ(resource.try_allocate(1, 1), nullptr);
@@ -123,8 +100,7 @@ TEST(NativeCoreFrameMemoryResource, RecordsExactBoundaryOverflowAndFrameStatisti
 }
 
 TEST(NativeCoreFrameMemoryResource, ReclaimsPhasesWhilePreservingFrameTotals) {
-    FrameBacking backing{512};
-    ioj::FrameMemoryResource resource{backing};
+    ioj::FrameMemoryResource resource{512};
 
     auto* const first{resource.allocate(128, 16)};
     resource.deallocate(first, 128, 16);
@@ -155,8 +131,7 @@ TEST(NativeCoreFrameMemoryResource, MakesConcurrentNonOverlappingClaims) {
         std::size_t bytes{};
     };
 
-    FrameBacking backing{thread_count * allocations_per_thread * 64};
-    ioj::FrameMemoryResource resource{backing};
+    ioj::FrameMemoryResource resource{thread_count * allocations_per_thread * 64};
     std::array<std::vector<Allocation>, thread_count> thread_allocations;
     std::vector<std::thread> threads;
     threads.reserve(thread_count);
@@ -207,8 +182,7 @@ TEST(NativeCoreFrameMemoryResource, TracksFrameArraysWithoutDefaultResourceFallb
     CountingResource fallback;
     auto* const previous_default{std::pmr::set_default_resource(&fallback)};
     {
-        FrameBacking backing{4096};
-        ioj::FrameMemoryResource resource{backing};
+        ioj::FrameMemoryResource resource{4096, *std::pmr::new_delete_resource()};
         {
             ioj::FrameArray<TrackedValue> values{&resource};
             values.reserve(4);
@@ -226,8 +200,7 @@ TEST(NativeCoreFrameMemoryResource, TracksFrameArraysWithoutDefaultResourceFallb
 }
 
 TEST(NativeCoreFrameMemoryResource, ScratchScopesReclaimAndCleanUpDuringExceptions) {
-    FrameBacking backing{4096};
-    ioj::FrameMemoryResource resource{backing};
+    ioj::FrameMemoryResource resource{4096};
     void* first{};
     {
         ioj::FrameScratchScope scope{resource};
@@ -258,18 +231,14 @@ TEST(NativeCoreFrameMemoryResource, ScratchScopesReclaimAndCleanUpDuringExceptio
     EXPECT_GT(stats.current_frame_peak_claimed_bytes, 0);
 }
 
-TEST(NativeCoreFrameMemoryResource, RefusesReclaimWithOutstandingAllocationsAndValidatesBacking) {
-    FrameBacking backing{4096};
-    ioj::FrameMemoryResource resource{backing};
+TEST(NativeCoreFrameMemoryResource, RefusesReclaimWithOutstandingAllocationsAndValidatesCapacity) {
+    ioj::FrameMemoryResource resource{4096};
     auto* const allocation{resource.allocate(64, 16)};
 
     EXPECT_FALSE(resource.try_reclaim());
     resource.deallocate(allocation, 64, 16);
     EXPECT_TRUE(resource.try_reclaim());
 
-    EXPECT_THROW((ioj::FrameMemoryResource{std::span<std::byte>{}}), std::invalid_argument);
-    alignas(ioj::FrameMemoryResource::backing_alignment) std::array<std::byte, 128> aligned{};
-    EXPECT_THROW((ioj::FrameMemoryResource{std::span<std::byte>{aligned}.subspan(1)}),
-                 std::invalid_argument);
+    EXPECT_THROW((ioj::FrameMemoryResource{0}), std::invalid_argument);
 }
 }

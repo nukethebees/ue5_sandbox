@@ -8,13 +8,15 @@ TEST(NativeSimulation, GameMemoryTest) {
     memory::BumpResource backing{512};
     GameMemory memory{backing};
     {
-        memory::Block local{memory, 128, 64};
-        memory::Block overflow{memory, 1024, 256};
+        auto* const local{memory.allocate(128, 64)};
+        auto* const overflow{memory.allocate(1024, 256)};
         auto const stats{memory.get_stats()};
         EXPECT_EQ(stats.live_bytes, 1152u);
         EXPECT_EQ(stats.live_allocation_count, 2u);
         EXPECT_EQ(stats.peak_live_bytes, 1152u);
         EXPECT_EQ(stats.peak_live_allocation_count, 2u);
+        memory.deallocate(overflow, 1024, 256);
+        memory.deallocate(local, 128, 64);
     }
     EXPECT_EQ(memory.get_stats().live_bytes, 0u);
     EXPECT_EQ(memory.get_stats().live_allocation_count, 0u);

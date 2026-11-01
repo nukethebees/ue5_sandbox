@@ -344,7 +344,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     }
 
     auto const grid_geometry{build->data.collision.grid_geometry};
-    level_simulation_.Emplace(game_subsystem->get_memory_resource(), MoveTemp(build->data));
+    level_simulation_.Emplace(MoveTemp(build->data), game_subsystem->get_memory_resource());
     auto const* const player_simulation{level_simulation_->get_player_ship_simulation()};
     if (IsValid(player_ship) && player_simulation) {
         player_ship->bind_simulation(*level_simulation_->get_player_ship_commands(),

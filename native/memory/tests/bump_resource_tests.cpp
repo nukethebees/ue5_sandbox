@@ -3,7 +3,6 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
-#include <utility>
 
 namespace ioj::memory::tests {
 class CountingResource final : public std::pmr::memory_resource {
@@ -48,29 +47,26 @@ TEST_F(BumpResourceTest, ReusesBufferAfterReset) {
 }
 
 TEST_F(BumpResourceTest, ForwardsOverflowAndItsDeallocation) {
-    Block local{resource_, 512, 64};
+    auto* const local{resource_.allocate(512, 64)};
     {
-        Block overflow{resource_, 1024, 256};
+        auto* const overflow{resource_.allocate(1024, 256)};
         EXPECT_EQ(upstream_.live_bytes, 1536u);
         EXPECT_EQ(upstream_.last_alignment, 256u);
-        EXPECT_EQ(reinterpret_cast<std::uintptr_t>(overflow.data()) % 256, 0u);
+        EXPECT_EQ(reinterpret_cast<std::uintptr_t>(overflow) % 256, 0u);
+        resource_.deallocate(overflow, 1024, 256);
     }
     EXPECT_EQ(upstream_.live_bytes, 512u);
     EXPECT_EQ(upstream_.last_alignment, 256u);
     EXPECT_EQ(resource_.used_bytes(), 512u);
+    resource_.deallocate(local, 512, 64);
 }
 
-TEST_F(BumpResourceTest, MovingABlockTransfersOwnership) {
+TEST_F(BumpResourceTest, ReleasesBackingAndForwardsWithoutBacking) {
     {
         BumpResource forwarding{0, upstream_};
-        Block source{forwarding, 128, 64};
-        auto* const address{source.data()};
-        Block destination{std::move(source)};
-        // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
-        EXPECT_FALSE(source);
-        EXPECT_EQ(destination.data(), address);
+        auto* const allocation{forwarding.allocate(128, 64)};
         EXPECT_EQ(upstream_.live_bytes, 640u);
-        destination = {};
+        forwarding.deallocate(allocation, 128, 64);
         EXPECT_EQ(upstream_.live_bytes, 512u);
     }
     {

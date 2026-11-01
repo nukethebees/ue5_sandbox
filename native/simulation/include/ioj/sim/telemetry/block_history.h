@@ -1,8 +1,8 @@
 #pragma once
 
 #include "ioj/sim/telemetry/history.h"
+#include <ioj/memory/allocation.h>
 #include <ioj/sim/telemetry/block_history_types.h>
-#include <native/memory/block.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -13,6 +13,7 @@ namespace ioj::sim::telemetry {
 class BlockHistory {
   public:
     BlockHistory(std::pmr::memory_resource& memory, HistoryConfig config = {});
+    ~BlockHistory();
     BlockHistory(BlockHistory const&) = delete;
     BlockHistory(BlockHistory&&) = delete;
     auto operator=(BlockHistory const&) -> BlockHistory& = delete;
@@ -44,9 +45,7 @@ class BlockHistory {
     auto get_stats() const noexcept -> BlockHistoryStats;
   private:
     struct Block {
-        Block(memory::Block memory_block, std::uint32_t capacity);
-
-        memory::Block memory_block{};
+        memory::Allocation allocation{};
         native_soa::StorageState storage{};
     };
 

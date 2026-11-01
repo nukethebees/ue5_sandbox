@@ -152,7 +152,7 @@ void expect_health_mappings(LevelSim const& simulation) {
 }
 
 TEST(NativeSimulation, ScheduledSpawnsAndObjectivesUseSimulationTicks) {
-    LevelSim simulation{*std::pmr::new_delete_resource(), make_scheduled_battle()};
+    LevelSim simulation{make_scheduled_battle()};
     EXPECT_EQ(simulation.get_capital_ships().get_num_instances(), 1)
         << "Tick-zero entities are available before finishing initialization";
     simulation.finish_initialisation();
@@ -211,7 +211,7 @@ TEST(NativeSimulation, BuildsAndControlsAHeadlessPlayerFromNativeDefinitionAndGe
     EXPECT_EQ(built->clock_settings.tick_rate.get_hz(), 30.0);
     EXPECT_EQ(built->level_metadata.id.value, "headless-player");
 
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(*built)};
+    LevelSim simulation{std::move(*built)};
     simulation.finish_initialisation();
     auto const* player{simulation.get_player_ship_simulation()};
     ASSERT_NE(player, nullptr);
@@ -276,7 +276,7 @@ TEST(NativeSimulation, ScheduledSpawnQueryableInThinkingSameTick) {
     initial.teams()[0] = Team::Blue;
     initial.healths()[0] = Health{100};
     initial.laser_damages()[0] = 0;
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
     auto const dt{simulation.get_clock().get_tick_period()};
@@ -310,7 +310,7 @@ TEST(NativeSimulation, LevelSimReturnsAllocationsToItsUpstream) {
     data.frame_memory_capacity_bytes = frame_capacity;
 
     {
-        LevelSim simulation{upstream, std::move(data)};
+        LevelSim simulation{std::move(data), upstream};
         auto const stats{simulation.get_memory_stats()};
         EXPECT_GE(stats.live_allocation_count, 1u);
         EXPECT_GE(stats.live_bytes, frame_capacity);
@@ -340,7 +340,7 @@ TEST(NativeSimulation, PositionConditionsUseLiveSpatialDataAndRemainTerminal) {
     objective.roots = ioj::levels::ObjectiveRoots{
         std::array<ioj::levels::ExprIndex, 3>{3, 1, levels::absent_expression}};
     install_mission(data, std::move(objective));
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     EXPECT_FALSE(simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}));
     simulation.start();
@@ -378,7 +378,7 @@ TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimu
     data.level_events = std::move(compiled->events);
     data.mission = std::move(compiled->mission);
     data.level_metadata = std::move(compiled->level_metadata);
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     auto const& metadata{simulation.get_level_metadata()};
     EXPECT_EQ(metadata.id.value, "future-objective");
     EXPECT_EQ(metadata.title, "Future objective");
@@ -422,7 +422,7 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
     auto compiled{Mission::compile(definition, {}, clock)};
     ASSERT_TRUE(compiled);
     data.mission = std::move(*compiled);
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     EXPECT_FALSE(simulation.get_player_team_completion());
     simulation.start();
@@ -444,7 +444,7 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
 
 TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
     auto data{make_battle()};
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
     auto const& clock{simulation.get_clock()};
@@ -491,7 +491,7 @@ TEST(NativeSimulation, LevelTelemetryFinalizationPreservesMissionCompletion) {
         .launched_utc = "2026-09-06T12:00:00Z",
     };
     add_mission(data);
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
 
@@ -519,7 +519,7 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
     auto data{make_battle()};
     data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
     add_mission(data);
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     auto queue_shot = [](LevelSim& level, float const location) {
         lasers::LaserSpawnRequests requests;
@@ -562,7 +562,7 @@ TEST(NativeSimulation, LevelSimCollisionBoundsTest) {
     auto data{make_battle()};
     std::array<collision::WorldAABB, 1> static_bounds{
         collision::WorldAABB{{{-10.f, 490.f, -10.f}}, {{10.f, 510.f, 10.f}}}};
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.set_static_collision(static_bounds);
     simulation.finish_initialisation();
     auto const clk_period{simulation.get_clock().get_tick_period()};
@@ -587,7 +587,7 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     add_player_spawn(data, {});
     add_turret_spawn(data, {{0.f, -1000.f, 0.f}}, {0.f, 90.f, 0.f}, Team::Green, 20, 5);
     add_turret_spawn(data, {{0.f, 1000.f, 0.f}}, {}, Team::White, 30, 7);
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     auto const* player{simulation.get_player_ship_simulation()};
     EXPECT_EQ(simulation.get_entity_ledger().count_alive(), 5)
@@ -619,7 +619,7 @@ TEST(NativeSimulation, PlayerPreservesPartialSpawnHealth) {
     add_player_spawn(data, {});
     data.player->health = {Health{50}, Health{100}};
 
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
 
     auto const* const player{simulation.get_player_ship_simulation()};
@@ -659,7 +659,7 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     scheduled_turret.healths()[0] = Health{75};
     ASSERT_TRUE(schedule.add_spawn_group(EntityType::Turret, payload_offset, 1));
 
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
     auto const tick_period{simulation.get_clock().get_tick_period()};
@@ -707,12 +707,11 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
 }
 
 TEST(NativeSimulation, LevelSimReconstructionTest) {
-    auto& simulation_memory{*std::pmr::new_delete_resource()};
     std::optional<LevelSim> simulation;
     EXPECT_FALSE(simulation.has_value()) << "Construction can be delayed";
     auto first_data{make_battle()};
     add_mission(first_data);
-    simulation.emplace(simulation_memory, std::move(first_data));
+    simulation.emplace(std::move(first_data));
     simulation->finish_initialisation();
     simulation->start();
     auto const tick_period{simulation->get_clock().get_tick_period()};
@@ -722,7 +721,7 @@ TEST(NativeSimulation, LevelSimReconstructionTest) {
     simulation.reset();
     auto second_data{make_battle()};
     add_mission(second_data);
-    simulation.emplace(simulation_memory, std::move(second_data));
+    simulation.emplace(std::move(second_data));
     simulation->finish_initialisation();
     EXPECT_EQ(simulation->get_clock().get_completed_ticks().value(), std::uint64_t{0})
         << "Fresh clock starts at zero";
@@ -743,7 +742,7 @@ TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
     gunship.config.translation.right.manual.response.mode = player::ResponseMode::Direct;
     gunship.config.translation.up.manual.response.mode = player::ResponseMode::Direct;
 
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
 
@@ -785,7 +784,7 @@ TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
 }
 
 TEST(NativeSimulation, LevelSimOverlapResponseTest) {
-    LevelSim simulation{*std::pmr::new_delete_resource(), make_overlap_response_battle()};
+    LevelSim simulation{make_overlap_response_battle()};
     simulation.finish_initialisation();
     simulation.start();
     auto const dt{simulation.get_clock().get_tick_period()};
@@ -831,8 +830,8 @@ TEST(NativeSimulation, WorldlessLevelSimulationTest) {
     auto second_data{make_battle()};
     add_mission(first_data);
     add_mission(second_data);
-    LevelSim first{*std::pmr::new_delete_resource(), std::move(first_data)};
-    LevelSim second{*std::pmr::new_delete_resource(), std::move(second_data)};
+    LevelSim first{std::move(first_data)};
+    LevelSim second{std::move(second_data)};
     EXPECT_EQ(first.get_state(), LevelState::Uninitialised)
         << "Construction leaves external setup open";
     first.advance(1.0);
@@ -884,7 +883,7 @@ TEST(NativeSimulation, WorldlessLevelSimulationTest) {
 TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
 
     auto data{make_battle()};
-    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
+    LevelSim simulation{std::move(data)};
     simulation.set_telemetry_metadata(telemetry::RunMetadata{
         .run_id = "12345678-1234-1234-1234-123456789abc",
         .map_name = "TelemetryTest",

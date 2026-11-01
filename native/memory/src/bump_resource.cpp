@@ -12,15 +12,25 @@ BumpResource::BumpResource(std::size_t const capacity_bytes)
     : BumpResource{capacity_bytes, *sbx::memory::mimalloc_resource()} {}
 BumpResource::BumpResource(std::size_t const capacity_bytes, std::pmr::memory_resource& upstream)
     : upstream_{upstream}
-    , buffer_{capacity_bytes != 0 ? Block{upstream, capacity_bytes, backing_alignment} : Block{}} {}
+    , buffer_{nullptr, capacity_bytes, backing_alignment} {
+    if (capacity_bytes != 0) {
+        buffer_.data =
+            static_cast<std::byte*>(upstream_.allocate(capacity_bytes, backing_alignment));
+    }
+}
+BumpResource::~BumpResource() {
+    if (buffer_.data != nullptr) {
+        upstream_.deallocate(buffer_.data, buffer_.size_bytes, buffer_.alignment);
+    }
+}
 
 auto BumpResource::do_allocate(std::size_t const bytes, std::size_t const alignment) -> void* {
-    if (buffer_) {
-        auto* cursor{static_cast<void*>(buffer_.data() + offset_)};
-        auto available{buffer_.size_bytes() - offset_};
+    if (buffer_.data != nullptr) {
+        auto* cursor{static_cast<void*>(buffer_.data + offset_)};
+        auto available{buffer_.size_bytes - offset_};
         auto const size{std::max(bytes, std::size_t{1})};
         if (std::align(alignment, size, cursor, available)) {
-            offset_ = static_cast<std::byte*>(cursor) - buffer_.data() + size;
+            offset_ = static_cast<std::byte*>(cursor) - buffer_.data + size;
             return cursor;
         }
     }
@@ -30,8 +40,8 @@ void BumpResource::do_deallocate(void* const allocation,
                                  std::size_t const bytes,
                                  std::size_t const alignment) {
     auto const address{reinterpret_cast<std::uintptr_t>(allocation)};
-    auto const begin{reinterpret_cast<std::uintptr_t>(buffer_.data())};
-    if (address - begin >= buffer_.size_bytes()) {
+    auto const begin{reinterpret_cast<std::uintptr_t>(buffer_.data)};
+    if (address - begin >= buffer_.size_bytes) {
         upstream_.deallocate(allocation, bytes, alignment);
     }
 }

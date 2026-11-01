@@ -6,7 +6,6 @@
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/spatial_query_manager_test_access.h>
-#include <native/memory/block.h>
 
 #include <array>
 #include <cstddef>
@@ -116,11 +115,7 @@ struct OverlapFixture {
 
     CollisionAgentStorage owners;
     // Include raw duplicate overlap pairs as well as sorting scratch in the frame budget.
-    memory::Block frame_memory_backing{*std::pmr::new_delete_resource(),
-                                       overlap_frame_memory_capacity,
-                                       FrameMemoryResource::backing_alignment};
-    FrameMemoryResource frame_memory{
-        std::span<std::byte>{frame_memory_backing.data(), frame_memory_backing.size_bytes()}};
+    FrameMemoryResource frame_memory{overlap_frame_memory_capacity};
     SpatialQueryManager query_manager;
     collision::EntityAABBs entity_bounds;
 };
@@ -171,9 +166,7 @@ void check_single_static_overlap(collision::EntityStaticOverlaps::ConstView cons
 }
 
 TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
-    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
-        query_backing{};
-    FrameMemoryResource query_memory{query_backing};
+    FrameMemoryResource query_memory{64 * 1024};
     FrameScratchScope query_scope{query_memory};
 
     OverlapFixture fixture;
@@ -279,9 +272,7 @@ TEST(EntityAABBOverlaps, SelfAndQuietTicksProduceNoPairs) {
 }
 
 TEST(EntityAABBOverlaps, RefreshSpatialIndexDoesNotDetectOrAppendEvents) {
-    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
-        query_backing{};
-    FrameMemoryResource query_memory{query_backing};
+    FrameMemoryResource query_memory{64 * 1024};
     FrameScratchScope query_scope{query_memory};
 
     OverlapFixture fixture;

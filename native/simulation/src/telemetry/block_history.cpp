@@ -30,12 +30,6 @@ constexpr auto logical_payload_bytes_per_row() -> std::size_t {
 }
 }
 
-BlockHistory::Block::Block(memory::Block memory_block, std::uint32_t const capacity)
-    : memory_block{std::move(memory_block)}
-    , storage{} {
-    storage = {.data_ = this->memory_block.data(), .num_ = 0, .capacity_ = capacity};
-}
-
 BlockHistory::BlockHistory(std::pmr::memory_resource& memory, HistoryConfig const config)
     : memory_{memory}
     , config_{config}
@@ -53,6 +47,12 @@ BlockHistory::BlockHistory(std::pmr::memory_resource& memory, HistoryConfig cons
     layout_bytes_per_block_ = Layout::layout_bytes(
         static_cast<std::size_t>(rows_per_block_ / Layout::capacity_granularity));
     blocks_.reserve(64);
+}
+BlockHistory::~BlockHistory() {
+    for (auto const& block : blocks_) {
+        auto const allocation{block.allocation};
+        memory_.deallocate(allocation.data, allocation.size_bytes, allocation.alignment);
+    }
 }
 
 void BlockHistory::reset() {
@@ -84,7 +84,7 @@ auto BlockHistory::last_const_view() const -> history_rows::ConstView {
 
 auto BlockHistory::block_data(std::uint32_t const index) const -> std::byte const* {
     assert(static_cast<std::size_t>(index) < blocks_.size());
-    return blocks_[index].memory_block.data();
+    return blocks_[index].allocation.data;
 }
 
 auto BlockHistory::block_view(std::uint32_t const index) const -> history_rows::ConstView {
@@ -125,9 +125,13 @@ auto BlockHistory::acquire_or_reuse_next_block() -> Block& {
 
     if (used_block_count_ == static_cast<std::uint32_t>(blocks_.size())) {
         using Layout = history_rows::Layout;
-        blocks_.emplace_back(
-            memory::Block{memory_, layout_bytes_per_block_, Layout::allocation_alignment},
-            rows_per_block_);
+        if (blocks_.size() == blocks_.capacity()) {
+            blocks_.reserve(blocks_.capacity() * 2);
+        }
+        auto* const data{static_cast<std::byte*>(
+            memory_.allocate(layout_bytes_per_block_, Layout::allocation_alignment))};
+        blocks_.push_back({{data, layout_bytes_per_block_, Layout::allocation_alignment},
+                           {.data_ = data, .num_ = 0, .capacity_ = rows_per_block_}});
         peak_block_count_ = std::max(peak_block_count_, static_cast<std::uint32_t>(blocks_.size()));
     }
 
