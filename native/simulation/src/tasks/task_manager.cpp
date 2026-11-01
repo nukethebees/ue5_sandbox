@@ -1,13 +1,20 @@
 #include <ioj/sim/tasks/task_manager.h>
 
+#include <array>
 #include <cassert>
+#include <utility>
 
 namespace ioj::sim::tasks {
 TaskManager::TaskManager(std::pmr::memory_resource& resource)
     : instructions_{&resource}
     , instruction_data_{resource}
     , programs_{resource}
-    , tasks_{resource} {
+    , task_programs_{&resource}
+    , task_entity_allocations_{
+          [&resource]<std::size_t... Indices>(std::index_sequence<Indices...>) {
+              return std::array<Counts, sizeof...(Indices)>{
+                  (static_cast<void>(Indices), Counts{&resource})...};
+          }(std::make_index_sequence<enum_count<EntityType>()>{})} {
     reset();
 }
 
@@ -16,9 +23,9 @@ void TaskManager::reset() {
     instruction_data_.locations.clear();
     programs_.starts.clear();
     programs_.counts.clear();
-    tasks_.programs.clear();
+    task_programs_.clear();
     for (auto const type : EnumTraits<EntityType>::values) {
-        tasks_.entity_allocations[type].clear();
+        task_entity_allocations_[type].clear();
     }
 
     static_cast<void>(add_program({Instruction::make_data_idle()}));
@@ -47,6 +54,19 @@ auto TaskManager::add_program(std::span<Instruction const> const program) -> Pro
 
 auto TaskManager::add_program(std::initializer_list<Instruction> const program) -> ProgramHandle {
     return add_program(std::span<Instruction const>{program.begin(), program.size()});
+}
+
+auto TaskManager::add_task(ProgramHandle const program) -> TaskId {
+    assert(program.is_valid());
+
+    auto const index{task_programs_.size()};
+    assert(index < TaskId::invalid_value);
+
+    task_programs_.push_back(program);
+    for (auto const type : EnumTraits<EntityType>::values) {
+        task_entity_allocations_[type].push_back(0);
+    }
+    return TaskId{static_cast<TaskId::storage_type>(index)};
 }
 
 void TaskManager::plan_tasks(TaskPlanningContext const ctx) {

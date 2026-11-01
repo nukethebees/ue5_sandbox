@@ -124,7 +124,6 @@ set(tasks_headers
   task_id.h
   task_manager.h
   task_planning_context.h
-  tasks.h
 )
 
 list(TRANSFORM tasks_headers PREPEND "../include/ioj/sim/tasks/")
@@ -185,7 +184,6 @@ target_sources(native-simulation
     collision/spatial.cpp
     step_response.cpp
     tasks/task_manager.cpp
-    tasks/tasks.cpp
     tasks/executor_table.cpp
 
     ${simulation_headers}
