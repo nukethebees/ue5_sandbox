@@ -9,7 +9,7 @@
 #include <gtest/gtest.h>
 
 namespace ioj::profiles {
-TEST(CompletionPublication, PublishesPlayerResultAndPayloadOnceWithoutUnreal) {
+TEST(CompletionPublication, PublishesRetainedPlayerResultAndPayloadWithoutUnreal) {
     levels::ObjectiveDefinition objective{.id = levels::ObjectiveName{"primary"},
                                           .team = Team::Blue,
                                           .wins_level = ObjectiveWinsLevel::Yes};
@@ -75,7 +75,8 @@ TEST(CompletionPublication, PublishesPlayerResultAndPayloadOnceWithoutUnreal) {
     EXPECT_TRUE(publication->save_result.new_best_time);
     ASSERT_EQ(profiles.get_active_records().size(), 1u);
     EXPECT_EQ(profiles.get_active_records()[0], expected);
-    EXPECT_FALSE(publish_player_completion(simulation, &profiles, 18));
+    EXPECT_TRUE(simulation.get_player_team_completion());
+    EXPECT_FALSE(simulation.get_mission().completions().empty());
     EXPECT_EQ(profiles.get_active_records().size(), 1u);
     std::filesystem::remove_all(root);
     auto lock_path{root};

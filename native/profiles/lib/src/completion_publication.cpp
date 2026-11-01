@@ -6,10 +6,14 @@
 namespace ioj::profiles {
 auto publish_player_completion(sim::LevelSim& simulation, ProfileManager* profiles, Timestamp date)
     -> std::optional<CompletionPublication> {
-    auto const completion{simulation.take_player_team_completion()};
+    auto const completion{simulation.get_player_team_completion()};
     if (!completion) {
         return std::nullopt;
     }
+
+    simulation.finalize_telemetry_run(completion->outcome == MissionOutcome::Victory
+                                          ? sim::LevelTelemetryRunEndReason::MissionSucceeded
+                                          : sim::LevelTelemetryRunEndReason::MissionFailed);
 
     auto const& metadata{simulation.get_level_metadata()};
     auto const& objectives{simulation.get_mission().objectives()};

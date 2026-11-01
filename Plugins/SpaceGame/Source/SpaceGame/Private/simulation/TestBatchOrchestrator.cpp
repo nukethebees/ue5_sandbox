@@ -458,7 +458,8 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         return;
     }
 
-    auto const previous_tick{level_simulation_->get_clock().get_completed_ticks()};
+    auto const& clk{level_simulation_->get_clock()};
+    auto const previous_tick{clk.get_completed_ticks()};
     level_simulation_->advance(dt);
     presentation_host_.tick(
         dt, level_simulation_->get_read_access(), level_simulation_->get_spatial_query_manager());
@@ -470,9 +471,17 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         }
     }
 
-    if (level_simulation_->get_clock().get_completed_ticks() != previous_tick) {
-        ioj::publish_mission_completion(
-            *level_simulation_, GetGameInstance(), on_mission_completed);
+    if (clk.get_completed_ticks() != previous_tick) {
+        auto const& mission{level_simulation_->get_mission()};
+        for (auto const& completion : mission.completions()) {
+            if (completion.outcome == ioj::MissionOutcome::Victory &&
+                completion.tick > previous_tick) {
+                ioj::publish_mission_completion(
+                    *level_simulation_, GetGameInstance(), on_mission_completed);
+                break;
+            }
+        }
+
         level_simulation_->stop_run_if_requested({
             .stop_when_battle_resolved = launch_options_.stop_when_battle_resolved,
             .duration = launch_options_.simulated_duration_seconds.has_value()

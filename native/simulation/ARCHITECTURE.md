@@ -26,15 +26,16 @@ overlap results remain subject to the phase and scratch-lifetime contracts.
 
 Construction executes tick-zero events but leaves the level in `LevelState::Uninitialised`. The
 host may install static geometry before calling `finish_initialisation()`, which publishes entity lookups
-and the spatial index, begins telemetry and the mission in `LevelState::StableSetup`, then enters
+and the spatial index, begins telemetry and resets mission progress in `LevelState::StableSetup`, then enters
 `LevelState::Paused`. Setup uses Preparation for population and Thinking for stable queries, then
 resets the independent clock to tick zero and `BetweenTicks` before returning. Its phase enum
 contains only the repeating tick cycle. Mission evaluation during a tick
 follows published deaths and precedes `ResolutionCommit`, while entity row mappings are still valid.
 
-Completion consumption and run stopping are explicit host operations after frame publication.
-`Mission::take_team_completion` consumes the pending batch and returns the first completion for
-the requested team; `LevelSim` uses it to finalize player-team telemetry. `RunStopConditions`
+Mission completions remain available until `reset_progress()`; queries do not consume results.
+After advancing the simulation, the orchestrator publishes a completion only when the winning
+record's tick is newer than the previous completed tick. Player-result publication explicitly
+finalizes telemetry at publication time. `RunStopConditions`
 selects battle resolution before duration when both apply. These policies do not advance time
 or reschedule tick phases. Unreal lifecycle and presentation ownership are described in the
 [SpaceGame architecture](../../Plugins/SpaceGame/ARCHITECTURE.md).

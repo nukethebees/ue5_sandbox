@@ -19,7 +19,7 @@ struct CompletionPublication {
     RecordSaveResult save_result{};
 };
 
-// Consumes the pending player-team completion even when profiles are unavailable.
+// Publish a retained result; the caller must invoke this only for a newly observed completion.
 auto publish_player_completion(sim::LevelSim& simulation, ProfileManager* profiles, Timestamp date)
     -> std::optional<CompletionPublication>;
 }

@@ -483,8 +483,4 @@ void LevelTelemetryManager::finalize(LevelTelemetryRunEndReason const reason) {
 
     state_ = State::Finalized;
 }
-void LevelTelemetryManager::finalize_mission(MissionOutcome const outcome) {
-    finalize(outcome == MissionOutcome::Victory ? LevelTelemetryRunEndReason::MissionSucceeded
-                                                : LevelTelemetryRunEndReason::MissionFailed);
-}
 } // namespace ioj::sim

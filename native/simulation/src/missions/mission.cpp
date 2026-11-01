@@ -240,7 +240,6 @@ void Mission::reset_progress() {
     leaves_.reset_progress();
     composites_.reset_progress();
 
-    winning_team_.reset();
     completions_.clear();
 }
 void Mission::tick(MissionEvaluationContext const& inputs) {
@@ -255,7 +254,7 @@ void Mission::tick(MissionEvaluationContext const& inputs) {
 /* **************************************** */
 // Inspection
 /* **************************************** */
-auto Mission::take_team_completion(std::optional<Team> const team)
+auto Mission::get_team_completion(std::optional<Team> const team) const
     -> std::optional<TeamMissionCompletion> {
     std::optional<TeamMissionCompletion> result;
     if (team) {
@@ -265,7 +264,6 @@ auto Mission::take_team_completion(std::optional<Team> const team)
         }
     }
 
-    completions_.clear();
     return result;
 }
 auto Mission::outcome(ObjectiveId const id) const -> std::optional<ObjectiveOutcome> {
@@ -346,13 +344,16 @@ void Mission::deactivate_expressions(std::span<ObjectiveId const> const complete
 void Mission::evaluate_objectives(MissionEvaluationContext const& inputs) {
     FrameArray<ObjectiveMembershipIndex> completed{inputs.scratch};
     ObjectiveId winning_objective{};
+    auto const has_winner{std::ranges::any_of(completions_, [](auto const& completion) {
+        return completion.outcome == MissionOutcome::Victory;
+    })};
     auto const count{objectives_.active().size()};
 
     for (ObjectiveMembershipIndex position{}; position < count; ++position) {
         auto const id{objectives_.active()[position]};
         if (auto const outcome{root_outcome(id)}) {
             completed.add(position);
-            if (!winning_team_ && !winning_objective.is_valid() &&
+            if (!has_winner && !winning_objective.is_valid() &&
                 *outcome == ObjectiveOutcome::Passed &&
                 objectives_.wins_level(id) == ObjectiveWinsLevel::Yes) {
                 winning_objective = id;
@@ -575,7 +576,6 @@ void Mission::evaluate_reached_position(std::span<LeafDataHandle const> const ru
 /* **************************************** */
 void Mission::finish(ObjectiveId const winning_objective, MissionEvaluationContext const& inputs) {
     auto const winner{objectives_.team(winning_objective)};
-    winning_team_ = winner;
     completions_.push_back({winner,
                             MissionOutcome::Victory,
                             winning_objective,

@@ -405,7 +405,7 @@ TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimu
     EXPECT_FALSE(simulation.get_mission().outcome(ioj::sim::ObjectiveId{1}));
     simulation.advance(0.1);
     EXPECT_EQ(simulation.get_mission().outcome(ioj::sim::ObjectiveId{1}), ObjectiveOutcome::Passed);
-    EXPECT_FALSE(simulation.take_player_team_completion());
+    EXPECT_FALSE(simulation.get_player_team_completion());
 }
 
 TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObjectives) {
@@ -436,10 +436,10 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
     GameMemory memory;
     LevelSim simulation{memory, std::move(data)};
     simulation.finish_initialisation();
-    EXPECT_FALSE(simulation.take_player_team_completion());
+    EXPECT_FALSE(simulation.get_player_team_completion());
     simulation.start();
     simulation.advance(0.4);
-    auto const result{simulation.take_player_team_completion()};
+    auto const result{simulation.get_player_team_completion()};
     ASSERT_TRUE(result);
     EXPECT_EQ(result->team, Team::Green);
     EXPECT_EQ(result->outcome, MissionOutcome::Defeat);
@@ -448,12 +448,10 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
               "enemy");
     EXPECT_EQ(result->tick.value(), 3);
     EXPECT_EQ(simulation.get_mission().active_objectives().size(), 1);
-    EXPECT_FALSE(simulation.take_player_team_completion());
-
-    auto const record{simulation.take_finalized_telemetry_run()};
-    ASSERT_TRUE(record);
-    EXPECT_EQ(record->completion.reason, LevelTelemetryRunEndReason::MissionFailed);
-    EXPECT_EQ(record->completion.completed_ticks.value(), 4);
+    EXPECT_TRUE(simulation.get_player_team_completion());
+    EXPECT_EQ(simulation.get_level_telemetry_manager().get_state(),
+              LevelTelemetryManager::State::Recording);
+    EXPECT_FALSE(simulation.take_finalized_telemetry_run());
 }
 
 TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
@@ -494,7 +492,7 @@ TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
         << "Completion and restart preserve the accumulated fractional tick";
 }
 
-TEST(NativeSimulation, LevelTelemetryMissionCompletionTest) {
+TEST(NativeSimulation, LevelTelemetryFinalizationPreservesMissionCompletion) {
     auto data{make_battle()};
     player::PlayerSpawnData player;
     player.team = Team::Green;
@@ -516,16 +514,19 @@ TEST(NativeSimulation, LevelTelemetryMissionCompletionTest) {
     kill_enemy(simulation);
     simulation.advance(dt);
 
-    auto const mission_result{simulation.take_player_team_completion()};
+    auto const mission_result{simulation.get_player_team_completion()};
     EXPECT_EQ(simulation.get_state(), LevelState::Running)
-        << "Taking the mission result does not pause simulation";
+        << "Reading the mission result does not pause simulation";
     ASSERT_TRUE(mission_result.has_value()) << "Simulation yields the completed mission";
 
+    EXPECT_FALSE(simulation.take_finalized_telemetry_run());
+    simulation.finalize_telemetry_run(LevelTelemetryRunEndReason::MissionSucceeded);
     auto record{simulation.take_finalized_telemetry_run()};
-    ASSERT_TRUE(record.has_value()) << "Taking the mission result finalizes telemetry";
+    ASSERT_TRUE(record.has_value());
     EXPECT_EQ(record->completion.reason, LevelTelemetryRunEndReason::MissionSucceeded)
         << "Mission success selects the telemetry completion reason";
     EXPECT_EQ(mission_result->outcome, MissionOutcome::Victory);
+    EXPECT_TRUE(simulation.get_player_team_completion());
 }
 
 TEST(NativeSimulation, LaserFrameOutputsTest) {
@@ -748,7 +749,7 @@ TEST(NativeSimulation, LevelSimReconstructionTest) {
         << "Fresh ledger contains both entities";
     EXPECT_EQ(simulation->get_entity_ledger().get_num_unique_ids_issued(), 2)
         << "Fresh ledger has no prior history";
-    EXPECT_FALSE(simulation->take_player_team_completion().has_value())
+    EXPECT_FALSE(simulation->get_player_team_completion().has_value())
         << "No pending result survives reconstruction";
 }
 
@@ -886,11 +887,12 @@ TEST(NativeSimulation, WorldlessLevelSimulationTest) {
     EXPECT_EQ(first.get_capital_ships().get_num_instances(), 1)
         << "Damage removes only the first battle's enemy";
     EXPECT_EQ(second.get_capital_ships().get_num_instances(), 2) << "Other battle is unaffected";
-    auto result{first.take_player_team_completion()};
+    auto result{first.get_player_team_completion()};
     EXPECT_FALSE(result.has_value()) << "Playerless simulation does not choose a player's outcome";
     EXPECT_EQ(first.get_mission().outcome(ioj::sim::ObjectiveId{0}), ObjectiveOutcome::Passed);
-    EXPECT_FALSE(first.take_player_team_completion().has_value())
-        << "Mission result is delivered once";
+    EXPECT_FALSE(first.get_player_team_completion().has_value())
+        << "Playerless queries leave team results available on the mission";
+    EXPECT_FALSE(first.get_mission().completions().empty());
     first.pause();
     auto const paused_ticks{first.get_clock().get_completed_ticks()};
     first.advance(dt);

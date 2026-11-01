@@ -31,8 +31,9 @@ class Mission {
     /* **************************************** */
     // Inspection
     /* **************************************** */
-    // Consume every pending completion; return the first for team, or empty without a match.
-    auto take_team_completion(std::optional<Team> team) -> std::optional<TeamMissionCompletion>;
+    auto completions() const -> std::span<TeamMissionCompletion const> { return completions_; }
+    auto get_team_completion(std::optional<Team> team) const
+        -> std::optional<TeamMissionCompletion>;
     auto objectives() const -> Objectives const& { return objectives_; }
     auto active_objectives() const -> std::span<ObjectiveId const> { return objectives_.active(); }
     auto inactive_objectives() const -> std::span<ObjectiveId const> {
@@ -89,7 +90,6 @@ class Mission {
     ExprOperators composites_;
     ExprLeaves leaves_;
 
-    std::optional<Team> winning_team_;
     std::vector<TeamMissionCompletion> completions_;
 };
 }

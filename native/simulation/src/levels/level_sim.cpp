@@ -133,14 +133,10 @@ void LevelSim::stop_run_if_requested(RunStopConditions const& conditions) {
         stop_run(*reason);
     }
 }
-auto LevelSim::take_player_team_completion() -> std::optional<TeamMissionCompletion> {
+auto LevelSim::get_player_team_completion() const -> std::optional<TeamMissionCompletion> {
     auto const team{player_ship_simulation_ ? std::optional{player_ship_simulation_->team}
                                             : std::nullopt};
-    auto completion{mission_.take_team_completion(team)};
-    if (completion) {
-        level_telemetry_manager_.finalize_mission(completion->outcome);
-    }
-    return completion;
+    return mission_.get_team_completion(team);
 }
 
 auto LevelSim::take_finalized_telemetry_run() -> std::optional<LevelTelemetryRunRecord> {
