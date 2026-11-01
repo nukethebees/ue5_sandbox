@@ -13,7 +13,6 @@ Objectives::Objectives(std::size_t const count)
     , composite_ranges_(count)
     , dependent_ranges_(count)
     , prerequisites_(count)
-    , outcomes_(count)
     , activated_at_(count, SimTick{std::numeric_limits<SimTick::value_type>::max()})
     , membership_positions_(count) {
     inactive_.reserve(count);
@@ -23,20 +22,23 @@ Objectives::Objectives(std::size_t const count)
     }
 }
 auto Objectives::is_active(ObjectiveId const id) const -> bool {
-    return activation_tick(id) != SimTick{std::numeric_limits<SimTick::value_type>::max()} &&
-           !outcome(id);
+    auto const position{at(membership_positions_, id)};
+    return position < active_.size() && active_[position] == id;
+}
+auto Objectives::is_completed(ObjectiveId const id) const -> bool {
+    auto const position{at(membership_positions_, id)};
+    return !is_active(id) && position < completed_.size() && completed_[position] == id;
 }
 void Objectives::activate(ObjectiveId const id, SimTick const tick) {
-    assert(!outcome(id) &&
-           activation_tick(id) == SimTick{std::numeric_limits<SimTick::value_type>::max()});
+    assert(activation_tick(id) == SimTick{std::numeric_limits<SimTick::value_type>::max()});
 
     remove_member(inactive_, id);
     at(membership_positions_, id) = static_cast<ObjectiveMembershipIndex>(active_.size());
     active_.push_back(id);
     at(activated_at_, id) = tick;
 }
-void Objectives::resolve(ObjectiveId const id, ObjectiveOutcome const outcome) {
-    at(outcomes_, id) = outcome;
+void Objectives::resolve(ObjectiveId const id) {
+    assert(is_active(id));
     completed_.push_back(id);
 }
 void Objectives::commit_completion(ObjectiveMembershipIndex const position) {

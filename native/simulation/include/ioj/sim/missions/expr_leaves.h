@@ -19,7 +19,6 @@ namespace ioj::sim {
 struct ExprLeaves {
     // Shared
     std::vector<ExprResult> results;
-    std::vector<ObjectiveId> owners;
     std::vector<LeafDataHandle> data_handles;
     EnumArray<LeafKind, std::vector<ExprLeafHandle>> leaf_handles;
     std::vector<LeafDataHandle> active;
@@ -34,6 +33,7 @@ struct ExprLeaves {
 
     // TimeElapsed
     std::vector<SimTick> durations;
+    std::vector<SimTick> activated_at;
 
     // ObjectiveResolved
     std::vector<ObjectiveId> observed_objectives;

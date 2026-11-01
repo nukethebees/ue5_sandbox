@@ -10,6 +10,7 @@
 #include <ioj/sim/missions/team_mission_completion.h>
 
 #include <expected>
+#include <optional>
 
 namespace ioj::sim {
 struct SimClock;
@@ -53,19 +54,25 @@ class Mission {
     // Objective progression
     /* **************************************** */
     void activate(ObjectiveId id, SimTick tick);
+    void deactivate_expressions(ObjectiveId id);
     void handle_completion(ObjectiveId id, SimTick tick);
 
     /* **************************************** */
     // Objective evaluation
     /* **************************************** */
     void evaluate_objectives();
+    auto root_outcome(ObjectiveId id) const -> std::optional<ObjectiveOutcome>;
+
+    /* **************************************** */
+    // Composite evaluation
+    /* **************************************** */
+    void evaluate_composites();
     auto evaluate_composite(ExprCompositeIndex index) const -> ExprResult;
 
     /* **************************************** */
     // Leaf evaluation
     /* **************************************** */
     auto expression_leaf(LeafDataHandle data_handle) const -> ExprLeafHandle;
-    auto pending_leaf(LeafDataHandle data_handle) const -> bool;
     void resolve_leaf(LeafDataHandle data_handle, ExprResult value);
     void evaluate_leaves(MissionEvaluationContext const& inputs);
 
