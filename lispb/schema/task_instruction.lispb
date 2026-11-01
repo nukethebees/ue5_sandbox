@@ -6,11 +6,15 @@
     :helpers (to-serialized-string try-parse-serialized)
     (value Kill :value "0" :serialized-name "kill")
     (value Idle :value "1" :serialized-name "idle")
+    (value MoveTo :value "2" :serialized-name "move-to")
     (projections (cpp)))
   (record Idle)
+  (record MoveTo
+    (member location_index std::uint32_t :bits 32))
   (union InstructionData
     (case Kill @native_unique_id)
-    (case Idle @Idle))
+    (case Idle @Idle)
+    (case MoveTo @MoveTo))
   (record Instruction :layout packed :bits 64
     (member type @InstructionType)
     (member data @InstructionData :bits 56 :tag type)
