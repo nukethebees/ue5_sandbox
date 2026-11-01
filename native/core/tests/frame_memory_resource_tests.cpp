@@ -34,8 +34,13 @@ struct TrackedValue {
 class CountingResource final : public std::pmr::memory_resource {
   public:
     std::uint64_t allocation_count{};
+    std::uint64_t deallocation_count{};
+    bool fail_allocations{};
   private:
     auto do_allocate(std::size_t const bytes, std::size_t const alignment) -> void* override {
+        if (fail_allocations) {
+            throw std::bad_alloc{};
+        }
         ++allocation_count;
         return std::pmr::new_delete_resource()->allocate(bytes, alignment);
     }
@@ -43,6 +48,7 @@ class CountingResource final : public std::pmr::memory_resource {
     void do_deallocate(void* const pointer,
                        std::size_t const bytes,
                        std::size_t const alignment) override {
+        ++deallocation_count;
         std::pmr::new_delete_resource()->deallocate(pointer, bytes, alignment);
     }
 
@@ -69,34 +75,54 @@ TEST(NativeCoreFrameMemoryResource, AlignsAllocationsIncludingZeroSizedRequests)
     resource.deallocate(byte, 1, 1);
 }
 
-TEST(NativeCoreFrameMemoryResource, RecordsOverflowWithoutClaimingMemory) {
-    ioj::FrameMemoryResource resource{64};
+TEST(NativeCoreFrameMemoryResource, ForwardsOverflowWithoutClaimingLocalMemory) {
+    CountingResource upstream;
+    {
+        ioj::FrameMemoryResource resource{64, upstream};
+        auto* const allocation{resource.allocate(128, 256)};
+        EXPECT_FALSE(resource.owns(allocation));
+        EXPECT_EQ(reinterpret_cast<std::uintptr_t>(allocation) % 256, 0);
+        EXPECT_EQ(upstream.allocation_count, 2);
 
-    EXPECT_EQ(resource.try_allocate(128, 16), nullptr);
+        auto const stats{resource.stats()};
+        EXPECT_EQ(stats.overflow_count, 1);
+        EXPECT_EQ(stats.last_failure.requested_bytes, 0);
+        EXPECT_EQ(stats.current_claimed_bytes, 0);
+        EXPECT_EQ(stats.current_payload_bytes, 128);
+        EXPECT_FALSE(resource.try_reclaim());
 
-    auto const stats{resource.stats()};
-    EXPECT_EQ(stats.overflow_count, 1);
-    EXPECT_EQ(stats.last_failure.requested_bytes, 128);
-    EXPECT_EQ(stats.current_claimed_bytes, 0);
+        resource.deallocate(allocation, 128, 256);
+        EXPECT_EQ(upstream.deallocation_count, 1);
+        EXPECT_TRUE(resource.try_reclaim());
+    }
+    EXPECT_EQ(upstream.deallocation_count, 2);
 }
 
 TEST(NativeCoreFrameMemoryResource, RecordsExactBoundaryOverflowAndFrameStatistics) {
-    ioj::FrameMemoryResource resource{256};
+    CountingResource upstream;
+    ioj::FrameMemoryResource resource{256, upstream};
     auto* const exact{resource.allocate(256, 1)};
 
+    upstream.fail_allocations = true;
     EXPECT_EQ(resource.try_allocate(1, 1), nullptr);
     auto const overflow{resource.stats()};
     EXPECT_EQ(overflow.overflow_count, 1);
     EXPECT_EQ(overflow.last_failure.requested_bytes, 1);
     EXPECT_EQ(overflow.last_failure.claimed_bytes, 256);
+    EXPECT_EQ(overflow.outstanding_allocation_count, 1);
+
+    upstream.fail_allocations = false;
+    auto* const forwarded{resource.allocate(1, 1)};
+    EXPECT_FALSE(resource.owns(forwarded));
+    resource.deallocate(forwarded, 1, 1);
 
     resource.deallocate(exact, 256, 1);
     resource.reset();
     auto const reset{resource.stats()};
     EXPECT_EQ(reset.current_claimed_bytes, 0);
     EXPECT_EQ(reset.last_frame_claimed_bytes, 256);
-    EXPECT_EQ(reset.last_frame_payload_bytes, 256);
-    EXPECT_EQ(reset.last_frame_root_claim_count, 1);
+    EXPECT_EQ(reset.last_frame_payload_bytes, 257);
+    EXPECT_EQ(reset.last_frame_root_claim_count, 2);
 }
 
 TEST(NativeCoreFrameMemoryResource, ReclaimsPhasesWhilePreservingFrameTotals) {
@@ -131,7 +157,7 @@ TEST(NativeCoreFrameMemoryResource, MakesConcurrentNonOverlappingClaims) {
         std::size_t bytes{};
     };
 
-    ioj::FrameMemoryResource resource{thread_count * allocations_per_thread * 64};
+    ioj::FrameMemoryResource resource{1024};
     std::array<std::vector<Allocation>, thread_count> thread_allocations;
     std::vector<std::thread> threads;
     threads.reserve(thread_count);
@@ -163,13 +189,14 @@ TEST(NativeCoreFrameMemoryResource, MakesConcurrentNonOverlappingClaims) {
     });
 
     for (std::size_t index{}; index < allocations.size(); ++index) {
-        EXPECT_TRUE(resource.owns(allocations[index].pointer));
         if (index > 0) {
-            EXPECT_LE(allocations[index - 1].pointer + allocations[index - 1].bytes,
-                      allocations[index].pointer);
+            EXPECT_LE(reinterpret_cast<std::uintptr_t>(allocations[index - 1].pointer) +
+                          allocations[index - 1].bytes,
+                      reinterpret_cast<std::uintptr_t>(allocations[index].pointer));
         }
     }
 
+    EXPECT_GT(resource.stats().overflow_count, 0);
     EXPECT_EQ(resource.stats().outstanding_allocation_count, allocations.size());
     for (Allocation const allocation : allocations) {
         resource.deallocate(allocation.pointer, allocation.bytes, alignof(std::uint64_t));

@@ -19,7 +19,7 @@ namespace ioj::sim {
 // Construction and lifecycle
 /* **************************************** */
 LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
-    : memory_manager_{memory, data.frame_memory_capacity_bytes}
+    : memory_manager_{memory, data.tick_memory_capacity_bytes, data.phase_memory_capacity_bytes}
     , collision_pipeline_{entity_tables_, std::move(data.collision), &memory_manager_.game_memory()}
     , lasers_simulation_{clock_, combat_events_}
     , fighters_simulation_{entity_tables_}
@@ -186,6 +186,8 @@ void LevelSim::advance_tick(float const tick_period) {
     think_tick<PlayerState>(tick_period);
     act_tick<PlayerState>(tick_period);
     resolve_tick<PlayerState>();
+    memory_manager_.tick_memory().reset();
+    memory_manager_.phase_memory().reset();
 }
 template <TickPlayerShipState PlayerState>
 void LevelSim::prepare_tick(float const tick_period) {
@@ -230,23 +232,23 @@ void LevelSim::think_tick(float const tick_period) {
     turrets::PhaseInterface turrets_phase{turrets_simulation_};
     spinners::PhaseInterface spinners_phase{spinners_simulation_};
 
-    auto& frame_memory{memory_manager_.frame_memory()};
-    FrameScratchScope scratch_scope{frame_memory};
+    auto& phase_memory{memory_manager_.phase_memory()};
+    FrameScratchScope scratch_scope{phase_memory};
 
     SANDBOX_PROFILE_SCOPE("Thinking");
     clock_.transition_to(SimulationPhase::Thinking);
 
     task_manager_.plan_tasks({.active_teams = participating_teams_, .mission = mission_});
 
-    event_manager_.queue_fighter_spawns(tick_period, frame_memory);
+    event_manager_.queue_fighter_spawns(tick_period, phase_memory);
 
     turrets::ThinkingInputs const turret_inputs{
-        collision_pipeline_.queries(), lasers_simulation_, frame_memory};
+        collision_pipeline_.queries(), lasers_simulation_, phase_memory};
     fighters::ThinkingInputs const fighter_inputs{
         .clock = clock_,
         .collision_radius = collision_pipeline_.queries().entity_type_radius(EntityType::Fighter),
         .spatial_query_manager = collision_pipeline_.queries(),
-        .scratch_resource = frame_memory};
+        .scratch_resource = phase_memory};
 
     turrets_phase.think(turret_inputs);
     fighters_phase.think(fighter_inputs);
@@ -267,14 +269,14 @@ void LevelSim::act_tick(float const tick_period) {
     fighters::PhaseInterface fighters_phase{fighters_simulation_};
     spinners::PhaseInterface spinners_phase{spinners_simulation_};
     lasers::PhaseInterface lasers_phase{lasers_simulation_};
-    auto& frame_memory{memory_manager_.frame_memory()};
+    auto& phase_memory{memory_manager_.phase_memory()};
+    FrameScratchScope scratch_scope{phase_memory};
 
     SANDBOX_PROFILE_SCOPE("Action");
     clock_.transition_to(SimulationPhase::Action);
 
     {
-        FrameScratchScope scratch_scope{frame_memory};
-        lasers::ActionInputs const inputs{tick_period, collision_pipeline_.queries(), frame_memory};
+        lasers::ActionInputs const inputs{tick_period, collision_pipeline_.queries(), phase_memory};
         lasers_phase.simulate(inputs);
     }
 
@@ -289,15 +291,14 @@ void LevelSim::act_tick(float const tick_period) {
     }
 
     {
-        FrameScratchScope scratch_scope{frame_memory};
-        fighters::ActionInputs const fighter_inputs{tick_period, lasers_simulation_, frame_memory};
+        fighters::ActionInputs const fighter_inputs{tick_period, lasers_simulation_, phase_memory};
         spinners::ActionInputs const spinner_inputs{lasers_simulation_};
         fighters_phase.apply_movement(fighter_inputs);
         spinners_phase.apply_movement(spinner_inputs);
     }
 
     collision_pipeline_.detect_and_handle_overlaps(
-        read_access(), fighters_simulation_.overlap_candidates(), combat_events_, frame_memory);
+        read_access(), fighters_simulation_.overlap_candidates(), combat_events_, phase_memory);
 }
 template <TickPlayerShipState PlayerState>
 void LevelSim::resolve_tick() {
@@ -306,25 +307,25 @@ void LevelSim::resolve_tick() {
     turrets::PhaseInterface turrets_phase{turrets_simulation_};
     spinners::PhaseInterface spinners_phase{spinners_simulation_};
     lasers::PhaseInterface lasers_phase{lasers_simulation_};
-    auto& frame_memory{memory_manager_.frame_memory()};
+    auto& phase_memory{memory_manager_.phase_memory()};
 
     SANDBOX_PROFILE_SCOPE("Resolution");
     clock_.transition_to(SimulationPhase::Resolution);
 
     {
-        FrameScratchScope scratch_scope{frame_memory};
+        FrameScratchScope scratch_scope{phase_memory};
 
-        combat_events_.prepare(entity_tables_.lookups, &frame_memory);
+        combat_events_.prepare(entity_tables_.lookups, &phase_memory);
 
-        capital_ships::ResolutionInputs const capital_inputs{combat_events_, clock_, frame_memory};
+        capital_ships::ResolutionInputs const capital_inputs{combat_events_, clock_, phase_memory};
         fighters::ResolutionInputs const fighter_inputs{.combat_events = combat_events_,
                                                         .ledger = entity_ledger_,
                                                         .tick = clock_.get_completed_ticks(),
-                                                        .scratch_resource = frame_memory};
-        turrets::ResolutionInputs const turret_inputs{combat_events_, frame_memory};
+                                                        .scratch_resource = phase_memory};
+        turrets::ResolutionInputs const turret_inputs{combat_events_, phase_memory};
 
         if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
-            player::ResolutionInputs const inputs{combat_events_, frame_memory};
+            player::ResolutionInputs const inputs{combat_events_, phase_memory};
             player::PhaseInterface{*player_ship_simulation_}.resolve_damage_events(inputs);
         }
         capital_ships_phase.resolve_damage_events(capital_inputs);
@@ -337,21 +338,18 @@ void LevelSim::resolve_tick() {
             fighters_phase.publish_deaths(fighter_inputs);
             turrets_phase.publish_deaths();
         }
-    }
 
-    // Evaluate final health and deaths before invalidating row mappings.
-    {
-        FrameScratchScope scratch_scope{frame_memory};
+        // Evaluate final health and deaths before invalidating row mappings.
         mission_.evaluate({SimTick{clock_.completed_ticks.value() + 1},
                            entity_ledger_,
                            event_manager_.entity_ids(),
                            &collision_pipeline_.queries(),
-                           &frame_memory,
+                           &phase_memory,
                            participating_teams_});
     }
 
     {
-        FrameScratchScope scratch_scope{frame_memory};
+        FrameScratchScope scratch_scope{phase_memory};
 
         SANDBOX_PROFILE_SCOPE("ResolutionCommit");
         clock_.transition_to(SimulationPhase::ResolutionCommit);
@@ -375,7 +373,6 @@ void LevelSim::resolve_tick() {
     clock_.completed_ticks.set_value(clock_.completed_ticks.value() + 1);
     level_telemetry_manager_.tick();
     combat_events_.reset();
-    frame_memory.reset();
 }
 
 /* **************************************** */

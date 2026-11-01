@@ -52,18 +52,22 @@ void initialise_queries(SpatialQueryManager& manager, CollisionAgentStorage cons
 }
 
 namespace ioj::sim::tests {
-TEST(QueryScratch, ExhaustionDoesNotFallBackToHeap) {
+TEST(QueryScratch, ExhaustionForwardsToUpstream) {
     CollisionAgentStorage owners;
     owners.publish();
     SpatialQueryManager manager{owners.entity_tables};
     query_scratch_detail::initialise_queries(manager, owners);
-    FrameMemoryResource frame{64};
+    query_scratch_detail::CountingResource upstream;
     {
+        FrameMemoryResource frame{64, upstream};
         FrameScratchScope scope{frame};
-        EXPECT_THROW(manager.trace_closest({}, {}, &frame), std::bad_alloc);
-        EXPECT_EQ(frame.stats().overflow_count, 1u);
+        EXPECT_NO_THROW(manager.trace_closest({}, {}, &frame));
+        EXPECT_GT(frame.stats().overflow_count, 0u);
         EXPECT_EQ(frame.stats().outstanding_allocation_count, 0u);
+        EXPECT_GT(upstream.allocations.load(), 1u);
+        EXPECT_EQ(upstream.outstanding.load(), 1u);
     }
+    EXPECT_EQ(upstream.outstanding.load(), 0u);
 }
 
 TEST(QueryScratch, ConcurrentQueriesAllocateFromSharedFrameAndReleaseBeforeReclaim) {

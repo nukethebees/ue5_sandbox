@@ -38,7 +38,8 @@ TEST(CompletionPublication, PublishesRetainedPlayerResultAndPayloadWithoutUnreal
     geometry.data.player = geometry.player;
     geometry.data.collision.grid_geometry.dimensions = {16, 16, 4};
     geometry.data.collision.grid_geometry.cell_dimensions = {10000.f, 10000.f, 10000.f};
-    geometry.data.frame_memory_capacity_bytes = 4 * 1024 * 1024;
+    geometry.data.tick_memory_capacity_bytes = 4 * 1024 * 1024;
+    geometry.data.phase_memory_capacity_bytes = 4 * 1024 * 1024;
     geometry.data.clock_settings.tick_rate = Frequency::make(10.);
     auto built{sim::make_level_simulation_init_data(*definition, std::move(geometry.data))};
     ASSERT_TRUE(built) << built.error().front();

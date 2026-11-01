@@ -78,7 +78,6 @@ void CollisionPipeline::detect_and_handle_overlaps(LevelReadAccess const& level,
 
     refresh_spatial_index(level);
 
-    FrameScratchScope scratch_scope{scratch};
     auto const overlaps{queries_.detect_overlaps(overlap_candidates_, &scratch)};
     overlap_handler_.handle(overlaps, combat_events);
 }

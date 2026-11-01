@@ -37,7 +37,8 @@ struct LevelSimInitData {
 
     CollisionInitData collision;
 
-    std::size_t frame_memory_capacity_bytes{256 * 1024 * 1024};
+    std::size_t tick_memory_capacity_bytes{256 * 1024 * 1024};
+    std::size_t phase_memory_capacity_bytes{256 * 1024 * 1024};
 
     telemetry::RunMetadata telemetry_metadata{};
     telemetry::HistoryConfig telemetry_history{};

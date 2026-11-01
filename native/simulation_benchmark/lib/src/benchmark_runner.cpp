@@ -15,6 +15,7 @@
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <chrono>
 #include <cmath>
@@ -27,11 +28,18 @@ namespace ioj::simulation_benchmark {
 namespace {
 struct FrameMemorySummary {
     void record_tick(sim::LevelSim const& simulation) {
-        auto const stats{simulation.frame_memory_stats()};
-        peak_claimed_bytes = std::max(peak_claimed_bytes, stats.last_frame_claimed_bytes);
-        peak_payload_bytes = std::max(peak_payload_bytes, stats.last_frame_payload_bytes);
-        total_padding_bytes += stats.last_frame_padding_bytes;
-        total_root_claims += stats.last_frame_root_claim_count;
+        std::size_t claimed_bytes{};
+        std::size_t payload_bytes{};
+        for (auto const& stats :
+             std::array{simulation.tick_memory_stats(), simulation.phase_memory_stats()}) {
+            claimed_bytes += stats.last_frame_claimed_bytes;
+            payload_bytes += stats.last_frame_payload_bytes;
+            total_padding_bytes += stats.last_frame_padding_bytes;
+            total_root_claims += stats.last_frame_root_claim_count;
+        }
+        // Sum the two pool peaks; they need not occur at the same instant within a tick.
+        peak_claimed_bytes = std::max(peak_claimed_bytes, claimed_bytes);
+        peak_payload_bytes = std::max(peak_payload_bytes, payload_bytes);
         peak_fighters = std::max(peak_fighters, simulation.fighters().num_instances());
     }
 
@@ -337,7 +345,8 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         simulation.pause();
     }
 
-    auto const frame_memory{simulation.frame_memory_stats()};
+    auto const tick_memory{simulation.tick_memory_stats()};
+    auto const phase_memory{simulation.phase_memory_stats()};
     auto const telemetry_history{simulation.level_telemetry_manager().history_stats()};
     [[maybe_unused]] auto telemetry_run{simulation.take_finalized_telemetry_run()};
     auto const total_simulation_ticks{simulation.clock().get_completed_ticks()};
@@ -385,12 +394,12 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         .active_objectives = simulation.mission().active_objectives().size(),
         .inactive_objectives = simulation.mission().inactive_objectives().size(),
         .completed_objectives = simulation.mission().completed_objectives().size(),
-        .frame_memory_capacity_bytes = frame_memory.capacity_bytes,
+        .frame_memory_capacity_bytes = tick_memory.capacity_bytes + phase_memory.capacity_bytes,
         .frame_memory_peak_claimed_bytes = frame_summary.peak_claimed_bytes,
         .frame_memory_peak_payload_bytes = frame_summary.peak_payload_bytes,
         .frame_memory_total_padding_bytes = frame_summary.total_padding_bytes,
         .frame_memory_total_root_claims = frame_summary.total_root_claims,
-        .frame_memory_overflow_count = frame_memory.overflow_count,
+        .frame_memory_overflow_count = tick_memory.overflow_count + phase_memory.overflow_count,
         .telemetry_enabled = options.telemetry_enabled,
         .telemetry_rows = telemetry_history.used_sample_count,
         .telemetry_acquired_blocks = telemetry_history.acquired_block_count,

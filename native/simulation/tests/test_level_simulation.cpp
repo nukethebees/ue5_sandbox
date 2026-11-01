@@ -259,7 +259,8 @@ TEST(NativeSimulation, NativeStartupRejectsFutureSpawnsOutsideGrid) {
 
 TEST(NativeSimulation, ScheduledSpawnQueryableInThinkingSameTick) {
     auto data{make_scheduled_battle()};
-    data.frame_memory_capacity_bytes = 16 * 1024 * 1024;
+    data.tick_memory_capacity_bytes = 16 * 1024 * 1024;
+    data.phase_memory_capacity_bytes = 16 * 1024 * 1024;
     data.turrets.target_refresh_frequency = ::ioj::PositiveFinite<float>::make(10.f);
     // Keep the muzzle outside the turret's collision bounds so it cannot block its own query.
     data.turrets.fire_point_offset = Vector3f{20.f, 0.f, 0.f};
@@ -278,7 +279,7 @@ TEST(NativeSimulation, ScheduledSpawnQueryableInThinkingSameTick) {
     simulation.start();
     auto const dt{simulation.clock().tick_period()};
     simulation.advance(dt);
-    auto const first_tick_frame_memory{simulation.frame_memory_stats()};
+    auto const first_tick_frame_memory{simulation.phase_memory_stats()};
     EXPECT_EQ(first_tick_frame_memory.capacity_bytes, std::size_t{16 * 1024 * 1024})
         << "Frame memory uses the configured per-simulation capacity";
     EXPECT_EQ(first_tick_frame_memory.current_claimed_bytes, std::size_t{0})
@@ -302,15 +303,17 @@ TEST(NativeSimulation, LevelSimReturnsAllocationsToItsUpstream) {
     constexpr std::size_t frame_capacity{1024 * 1024};
     GameMemory upstream{*std::pmr::new_delete_resource()};
     auto data{make_battle()};
-    data.frame_memory_capacity_bytes = frame_capacity;
+    data.tick_memory_capacity_bytes = frame_capacity;
+    data.phase_memory_capacity_bytes = frame_capacity;
 
     {
         LevelSim simulation{std::move(data), upstream};
         auto const stats{simulation.memory_stats()};
-        EXPECT_GE(stats.live_allocation_count, 1u);
-        EXPECT_GE(stats.live_bytes, frame_capacity);
+        EXPECT_GE(stats.live_allocation_count, 2u);
+        EXPECT_GE(stats.live_bytes, 2 * frame_capacity);
         EXPECT_EQ(stats.live_bytes, upstream.stats().live_bytes);
-        EXPECT_EQ(simulation.frame_memory_stats().capacity_bytes, frame_capacity);
+        EXPECT_EQ(simulation.phase_memory_stats().capacity_bytes, frame_capacity);
+        EXPECT_EQ(simulation.tick_memory_stats().capacity_bytes, frame_capacity);
     }
 
     EXPECT_EQ(upstream.stats().live_allocation_count, 0u);

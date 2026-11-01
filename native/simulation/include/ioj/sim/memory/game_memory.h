@@ -3,6 +3,7 @@
 #include <ioj/memory/statistics.h>
 
 #include <memory_resource>
+#include <mutex>
 
 namespace ioj::sim {
 
@@ -16,7 +17,7 @@ class GameMemory final : public std::pmr::memory_resource {
     auto operator=(GameMemory const&) -> GameMemory& = delete;
     auto operator=(GameMemory&&) -> GameMemory& = delete;
 
-    auto stats() const noexcept -> memory::Statistics { return stats_; }
+    auto stats() const noexcept -> memory::Statistics;
 
   private:
     auto do_allocate(std::size_t bytes, std::size_t alignment) -> void* override;
@@ -25,5 +26,6 @@ class GameMemory final : public std::pmr::memory_resource {
 
     std::pmr::memory_resource& upstream_;
     memory::Statistics stats_;
+    mutable std::mutex mutex_;
 };
 }

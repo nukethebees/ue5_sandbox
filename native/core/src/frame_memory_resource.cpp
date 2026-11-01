@@ -35,7 +35,7 @@ FrameMemoryResource::~FrameMemoryResource() {
 auto FrameMemoryResource::try_allocate(std::size_t const bytes,
                                        std::size_t const alignment) noexcept -> void* {
     if (!std::has_single_bit(alignment)) {
-        record_overflow(bytes, alignment, claimed_bytes_.load(std::memory_order_relaxed));
+        record_failure(bytes, alignment, claimed_bytes_.load(std::memory_order_relaxed));
         return nullptr;
     }
 
@@ -45,8 +45,15 @@ auto FrameMemoryResource::try_allocate(std::size_t const bytes,
         auto* aligned_pointer{static_cast<void*>(backing_.data + current)};
         auto remaining{backing_.size_bytes - current};
         if (std::align(alignment, allocation_bytes, aligned_pointer, remaining) == nullptr) {
-            record_overflow(bytes, alignment, current);
-            return nullptr;
+            overflow_count_.fetch_add(1, std::memory_order_relaxed);
+            try {
+                auto* const allocation{upstream_.allocate(bytes, alignment)};
+                record_allocation(allocation, bytes);
+                return allocation;
+            } catch (std::bad_alloc const&) {
+                record_failure(bytes, alignment, current);
+                return nullptr;
+            }
         }
 
         auto* const aligned_bytes{static_cast<std::byte*>(aligned_pointer)};
@@ -54,19 +61,13 @@ auto FrameMemoryResource::try_allocate(std::size_t const bytes,
         auto const next{aligned_offset + allocation_bytes};
         if (claimed_bytes_.compare_exchange_weak(
                 current, next, std::memory_order_relaxed, std::memory_order_relaxed)) {
-            payload_bytes_.fetch_add(bytes, std::memory_order_relaxed);
             padding_bytes_.fetch_add(aligned_offset - current, std::memory_order_relaxed);
-            root_claim_count_.fetch_add(1, std::memory_order_relaxed);
-            outstanding_allocation_count_.fetch_add(1, std::memory_order_relaxed);
             auto frame_peak{frame_peak_claimed_bytes_.load(std::memory_order_relaxed)};
             while (frame_peak < next &&
                    !frame_peak_claimed_bytes_.compare_exchange_weak(
                        frame_peak, next, std::memory_order_relaxed, std::memory_order_relaxed)) {}
             update_peak(next);
-#if defined(IOJ_WITH_TRACY)
-            profiling::record_memory_allocation(
-                profiling::MemoryDomain::FrameScratch, aligned_pointer, bytes);
-#endif
+            record_allocation(aligned_pointer, bytes);
             return aligned_pointer;
         }
     }
@@ -142,9 +143,11 @@ auto FrameMemoryResource::do_allocate(std::size_t const bytes, std::size_t const
     throw std::bad_alloc{};
 }
 
-void FrameMemoryResource::do_deallocate(void* const pointer, std::size_t const, std::size_t const) {
+void FrameMemoryResource::do_deallocate(void* const pointer,
+                                        std::size_t const bytes,
+                                        std::size_t const alignment) {
     if (!owns(pointer)) {
-        std::terminate();
+        upstream_.deallocate(pointer, bytes, alignment);
     }
     auto const previous{outstanding_allocation_count_.fetch_sub(1, std::memory_order_relaxed)};
     if (previous == 0) {
@@ -167,10 +170,20 @@ void FrameMemoryResource::update_peak(std::size_t const claimed_bytes) noexcept 
                peak, claimed_bytes, std::memory_order_relaxed, std::memory_order_relaxed)) {}
 }
 
-void FrameMemoryResource::record_overflow(std::size_t const bytes,
-                                          std::size_t const alignment,
-                                          std::size_t const claimed_bytes) noexcept {
-    overflow_count_.fetch_add(1, std::memory_order_relaxed);
+void FrameMemoryResource::record_allocation(void* const pointer, std::size_t const bytes) noexcept {
+    payload_bytes_.fetch_add(bytes, std::memory_order_relaxed);
+    root_claim_count_.fetch_add(1, std::memory_order_relaxed);
+    outstanding_allocation_count_.fetch_add(1, std::memory_order_relaxed);
+#if defined(IOJ_WITH_TRACY)
+    profiling::record_memory_allocation(profiling::MemoryDomain::FrameScratch, pointer, bytes);
+#else
+    static_cast<void>(pointer);
+#endif
+}
+
+void FrameMemoryResource::record_failure(std::size_t const bytes,
+                                         std::size_t const alignment,
+                                         std::size_t const claimed_bytes) noexcept {
     last_failure_requested_bytes_.store(bytes, std::memory_order_relaxed);
     last_failure_alignment_.store(alignment, std::memory_order_relaxed);
     last_failure_claimed_bytes_.store(claimed_bytes, std::memory_order_relaxed);

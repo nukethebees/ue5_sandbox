@@ -71,7 +71,8 @@ auto make_simulation_data(SimulationFixture const& fixture) -> LevelSimInitData 
     data.spinners = fixture.data.spinners;
     data.collision.entity_bounds = fixture.data.collision.entity_bounds;
     data.collision.grid_geometry = fixture.data.collision.grid_geometry;
-    data.frame_memory_capacity_bytes = fixture.data.frame_memory_capacity_bytes;
+    data.tick_memory_capacity_bytes = fixture.data.tick_memory_capacity_bytes;
+    data.phase_memory_capacity_bytes = fixture.data.phase_memory_capacity_bytes;
     return data;
 }
 auto make_player_spawn(SimulationFixture const& fixture, Transform3d transform)

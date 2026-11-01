@@ -48,11 +48,14 @@ class FrameMemoryResource final : public std::pmr::memory_resource {
     auto operator=(FrameMemoryResource const&) -> FrameMemoryResource& = delete;
     auto operator=(FrameMemoryResource&&) -> FrameMemoryResource& = delete;
 
+    // Forward exhausted-buffer requests upstream. Concurrent callers require a thread-safe
+    // upstream.
     auto try_allocate(std::size_t bytes, std::size_t alignment) noexcept -> void*;
 
     auto try_reclaim() noexcept -> bool;
     void reset();
     auto stats() const noexcept -> FrameMemoryStats;
+    // Test local backing only; forwarded allocations belong to the upstream resource.
     auto owns(void const* pointer) const noexcept -> bool;
   private:
     auto do_allocate(std::size_t bytes, std::size_t alignment) -> void* override;
@@ -60,9 +63,10 @@ class FrameMemoryResource final : public std::pmr::memory_resource {
     auto do_is_equal(std::pmr::memory_resource const& other) const noexcept -> bool override;
 
     void update_peak(std::size_t claimed_bytes) noexcept;
-    void record_overflow(std::size_t bytes,
-                         std::size_t alignment,
-                         std::size_t claimed_bytes) noexcept;
+    void record_allocation(void* pointer, std::size_t bytes) noexcept;
+    void record_failure(std::size_t bytes,
+                        std::size_t alignment,
+                        std::size_t claimed_bytes) noexcept;
     void begin_epoch();
     void end_epoch() noexcept;
 

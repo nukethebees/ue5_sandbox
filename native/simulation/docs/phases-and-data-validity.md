@@ -49,12 +49,22 @@ Each update rebuilds complete handles for all active rows. Health changes are no
   expires when its owning scratch scope ends or its frame resource resets. Caller ownership does
   not permit it to outlive that resource.
 
-Simulation operations receive a borrowed `ioj::FrameMemoryResource*`; temporary containers accept
-`std::pmr::memory_resource*` and retain their allocator for cleanup. `ioj::FrameScratchScope` guards
-an allocation epoch and reclaims the underlying resource on exit. Declare the scope before its
-temporary containers, destroy those containers and release query buffers before scope exit, and
-complete all parallel work before reclamation. Keep no borrowed views past that boundary. Reclaim
-at the existing intra-tick boundaries so later phases can reuse the same backing storage.
+`LevelMemoryManager` owns separate tick and phase `ioj::FrameMemoryResource` instances, each with
+a configurable 256 MiB default backing allocation obtained through `GameMemory`. Persistent level
+allocations also use `GameMemory`. Both scratch resources forward requests that do not fit their
+backing upstream and return forwarded allocations upstream when their containers deallocate them.
+`GameMemory` serializes upstream access and allocation accounting across both resources.
+
+Simulation operations currently receive phase memory. `ioj::FrameScratchScope` covers each phase
+that uses scratch and reclaims its backing on exit. Destroy its containers and complete parallel
+work before leaving the phase. Tick memory supports data passed between phases and shorter-lived
+temporaries; destroy those containers before the tick ends. Both resources finalize their per-tick
+statistics at the end of each tick, including every catch-up tick within `advance()`.
+
+Reclamation requires all local and forwarded allocations from that resource to have been released.
+No allocation or borrowed view may cross its resource's reclamation boundary. Local claimed-byte
+statistics describe backing usage; payload and allocation counts also include forwarded requests.
+The benchmark's frame metrics aggregate both resources, summing their separate backing peaks.
 
 Health bands are `(0,25%]`, `(25,50%]`, `(50,75%]`, and `(75,100%]` of the existing maximum health.
 Overheal uses the highest band. Death is not a fifth band: no dead entity is published as active
