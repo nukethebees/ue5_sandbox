@@ -40,9 +40,7 @@ namespace ioj {
 template <>
 inline constexpr MinMax<levels::EntityArchetype> enum_range<levels::EntityArchetype>{
     levels::EntityArchetype::PlayerFighter, levels::EntityArchetype::StaticTurret};
-} // namespace ioj
 
-namespace ioj {
 template <>
 struct EnumTraits<levels::EntityArchetype> {
     static constexpr std::array values{levels::EntityArchetype::PlayerFighter,

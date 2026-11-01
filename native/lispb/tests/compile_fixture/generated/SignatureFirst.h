@@ -5,8 +5,7 @@
 
 namespace codegen_compile_fixture::second {
 struct B;
-} // namespace codegen_compile_fixture::second
-namespace codegen_compile_fixture::second {
+
 union Payload;
 } // namespace codegen_compile_fixture::second
 namespace codegen_compile_fixture::first {

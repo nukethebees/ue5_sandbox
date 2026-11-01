@@ -32,9 +32,7 @@ namespace ioj {
 template <>
 inline constexpr MinMax<sim::EntityType> enum_range<sim::EntityType>{sim::EntityType::PlayerShip,
                                                                      sim::EntityType::TubeSpinner};
-} // namespace ioj
 
-namespace ioj {
 template <>
 struct EnumTraits<sim::EntityType> {
     static constexpr std::array values{sim::EntityType::PlayerShip,

@@ -446,6 +446,7 @@ auto render_modules(CppIR& ir, std::span<ModuleId const> modules) -> std::vector
             }
             ir.files.flags[file_row].set_clang_format_off(false);
             ir.files.flags[file_row].set_format_generated(true);
+            ir.merge_adjacent_namespaces(file);
             result.push_back(GeneratedFile{normalized, CppRenderer{ir}.render(file), true});
         }
     }

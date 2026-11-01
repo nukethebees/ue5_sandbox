@@ -143,9 +143,7 @@ inline constexpr MinMax<codegen_compile_fixture::EMissingNames>
     enum_range<codegen_compile_fixture::EMissingNames>{
         codegen_compile_fixture::EMissingNames::Unnamed,
         codegen_compile_fixture::EMissingNames::Escaped};
-} // namespace ioj
 
-namespace ioj {
 template <>
 struct EnumTraits<codegen_compile_fixture::EPlainFixture> {
     static constexpr std::array values{codegen_compile_fixture::EPlainFixture::First,

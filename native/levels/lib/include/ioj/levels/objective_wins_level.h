@@ -28,15 +28,10 @@ enum class ObjectiveWinsLevel : ObjectiveWinsLevelUnderlying {
     return ioj::try_parse_enum<ObjectiveWinsLevel>(value, names);
 }
 
-} // namespace ioj
-
-namespace ioj {
 template <>
 inline constexpr MinMax<ObjectiveWinsLevel> enum_range<ObjectiveWinsLevel>{ObjectiveWinsLevel::No,
                                                                            ObjectiveWinsLevel::Yes};
-} // namespace ioj
 
-namespace ioj {
 template <>
 struct EnumTraits<ObjectiveWinsLevel> {
     static constexpr std::array values{ObjectiveWinsLevel::No, ObjectiveWinsLevel::Yes};

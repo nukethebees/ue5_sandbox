@@ -70,9 +70,7 @@ template <>
 inline constexpr MinMax<codegen_compile_fixture::DomainState>
     enum_range<codegen_compile_fixture::DomainState>{codegen_compile_fixture::DomainState::Zero,
                                                      codegen_compile_fixture::DomainState::One};
-} // namespace ioj
 
-namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::DomainState>() noexcept
     -> std::size_t {

@@ -72,23 +72,17 @@ namespace ioj {
 template <>
 inline constexpr MinMax<::EGameUiIcon> enum_range<::EGameUiIcon>{::EGameUiIcon::Hive,
                                                                  ::EGameUiIcon::LevelComplete};
-} // namespace ioj
 
-namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<::EGameTextStyle>() noexcept -> std::size_t {
     return 10;
 }
-} // namespace ioj
 
-namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<::EGameButtonStyle>() noexcept -> std::size_t {
     return 2;
 }
-} // namespace ioj
 
-namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<::EGameUiIcon>() noexcept -> std::size_t {
     return 9;

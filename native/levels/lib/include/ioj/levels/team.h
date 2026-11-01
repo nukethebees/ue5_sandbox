@@ -65,14 +65,9 @@ enum class Team : TeamUnderlying {
     }
 }
 
-} // namespace ioj
-
-namespace ioj {
 template <>
 inline constexpr MinMax<Team> enum_range<Team>{Team::White, Team::Yellow};
-} // namespace ioj
 
-namespace ioj {
 template <>
 struct EnumTraits<Team> {
     static constexpr std::array values{

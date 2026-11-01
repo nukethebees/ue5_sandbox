@@ -18,9 +18,6 @@ enum class ExprResult : ExprResultUnderlying {
     False,
 };
 
-} // namespace ioj
-
-namespace ioj {
 template <>
 inline constexpr MinMax<ExprResult> enum_range<ExprResult>{ExprResult::Pending, ExprResult::False};
 } // namespace ioj

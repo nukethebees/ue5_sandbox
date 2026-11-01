@@ -69,6 +69,7 @@ void compile_sources(lispb::codegen::sexpr::Syntax& syntax,
                                           detail::DeclarationId{static_cast<std::uint32_t>(index)},
                                           ir)};
             auto const file_index{ir.files.index(file)};
+            ir.merge_adjacent_namespaces(file);
             result.add_text(std::filesystem::path{ir.strings.view(ir.files.path[file_index])},
                             lispb::codegen::CppRenderer{ir}.render(file),
                             ir.files.flags[file_index].format_generated());

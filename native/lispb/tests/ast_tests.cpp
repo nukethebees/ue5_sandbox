@@ -740,15 +740,49 @@ TEST_F(AstTest, AccountsForReopenedAndAnonymousNamespaceBindings) {
     auto const token{ir.types.named("a::Token")};
     auto const declaration{ir.record(ir.strings.intern("Token"))};
     auto const member{ir.variable(token, "value")};
-    for (auto const anonymous : {false, true}) {
-        auto const binding{anonymous ? ir.namespace_node(ir.strings.intern(""), {declaration})
-                                     : static_cast<NodeId>(declaration)};
-        auto const output{
-            CppRenderer{ir}.render_nodes(std::vector<NodeId>{in_namespace(ir, "a::b", binding),
-                                                             in_namespace(ir, "a::b", member)},
-                                         {},
-                                         1)};
-        EXPECT_TRUE(output.contains("a::Token value{};")) << output;
+    for (auto const nested : {false, true}) {
+        for (auto const anonymous : {false, true}) {
+            auto const binding{anonymous ? ir.namespace_node(ir.strings.intern(""), {declaration})
+                                         : static_cast<NodeId>(declaration)};
+            std::vector<NodeId> const original{in_namespace(ir, "a::b", binding, nested),
+                                               ir.lines(2),
+                                               in_namespace(ir, "a::b", member, nested)};
+            auto const original_text{renderer.render_nodes(original, {}, 1)};
+            auto const file{ir.files.append(ir.strings.intern("Reopened.h"), original)};
+            ir.merge_adjacent_namespaces(file);
+
+            auto const output{renderer.render(file)};
+            EXPECT_TRUE(output.contains("a::Token value{};")) << output;
+            ASSERT_EQ(ir.files.nodes(file).size(), 1);
+            auto const merged{ir.files.nodes(file).front()};
+            EXPECT_NE(merged, original.front());
+            if (nested) {
+                std::vector<NodeId> children;
+                ir.for_each_child(merged, [&](NodeId child) { children.push_back(child); });
+                ASSERT_EQ(children.size(), 1);
+            }
+            EXPECT_EQ(renderer.render_nodes(original, {}, 1), original_text);
+
+            ir.merge_adjacent_namespaces(file);
+            ASSERT_EQ(ir.files.nodes(file).size(), 1);
+            EXPECT_EQ(ir.files.nodes(file).front(), merged);
+            EXPECT_EQ(renderer.render(file), output);
+        }
+    }
+
+    for (auto const separator : {ir.line_comment("boundary"),
+                                 ir.raw("#pragma once"),
+                                 static_cast<NodeId>(declaration),
+                                 in_namespace(ir, "other", member)}) {
+        std::vector<NodeId> const original{in_namespace(ir, "a", declaration),
+                                           ir.lines(2),
+                                           separator,
+                                           ir.lines(2),
+                                           in_namespace(ir, "a", member)};
+        auto const file{ir.files.append(ir.strings.intern("Separated.h"), original)};
+        ir.merge_adjacent_namespaces(file);
+        auto const roots{ir.files.nodes(file)};
+        EXPECT_EQ((std::vector<NodeId>{roots.begin(), roots.end()}), original);
     }
 }
 

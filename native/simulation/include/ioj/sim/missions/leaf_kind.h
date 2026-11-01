@@ -28,9 +28,7 @@ namespace ioj {
 template <>
 inline constexpr MinMax<sim::LeafKind> enum_range<sim::LeafKind>{sim::LeafKind::EntityDestroyed,
                                                                  sim::LeafKind::EntityKillsReached};
-} // namespace ioj
 
-namespace ioj {
 template <>
 struct EnumTraits<sim::LeafKind> {
     static constexpr std::array values{sim::LeafKind::EntityDestroyed,

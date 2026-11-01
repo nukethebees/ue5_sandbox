@@ -25,9 +25,7 @@ namespace ioj {
 template <>
 inline constexpr MinMax<::ETestTeam> enum_range<::ETestTeam>{::ETestTeam::White,
                                                              ::ETestTeam::Yellow};
-} // namespace ioj
 
-namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<::ETestTeam>() noexcept -> std::size_t {
     return 6;

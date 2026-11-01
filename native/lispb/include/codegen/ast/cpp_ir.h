@@ -386,8 +386,11 @@ class CppIR {
     // Describe all bindings introduced by raw content or inherited bases in this scope.
     // Structured declarations are collected automatically in addition to these names.
     void set_scope_bindings(NodeId node, std::span<StringId const> names);
+    // Replace file roots with normalized nodes; existing nodes and handles remain valid.
+    void merge_adjacent_namespaces(CppFileId file);
   private:
     friend class CppRenderer;
+    auto merge_adjacent_namespaces(std::vector<NodeId>& values) -> bool;
     auto append_function(Expr name, CppTypeId return_type, FunctionKind kind) -> FunctionId;
     void collect_dependencies(TemplateId declaration, std::vector<TypeDependencyId>& result) const;
     ir::TypeTemplateParameters type_template_parameters_;

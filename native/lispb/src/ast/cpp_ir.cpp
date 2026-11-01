@@ -937,6 +937,73 @@ void CppIR::set_scope_bindings(NodeId node, std::span<StringId const> names) {
 }
 
 /* **************************************** */
+// Normalization
+/* **************************************** */
+void CppIR::merge_adjacent_namespaces(CppFileId const file) {
+    auto const roots{files.nodes(file)};
+    std::vector<NodeId> values{roots.begin(), roots.end()};
+    if (merge_adjacent_namespaces(values)) {
+        files.set_nodes(file, values);
+    }
+}
+auto CppIR::merge_adjacent_namespaces(std::vector<NodeId>& values) -> bool {
+    bool changed{};
+    std::size_t output{};
+    auto const count{values.size()};
+    for (std::size_t first{}; first < count;) {
+        auto const node{values[first]};
+        if (node.kind() != NodeKind::namespace_) {
+            values[output++] = node;
+            ++first;
+            continue;
+        }
+
+        auto const name{namespace_nodes_.name[node.index()]};
+        auto const initial_children{nodes(namespace_nodes_.children[node.index()])};
+        std::vector<NodeId> children{initial_children.begin(), initial_children.end()};
+        auto end{first + 1};
+        while (end < count) {
+            auto next{end};
+            while (next < count && values[next].kind() == NodeKind::new_lines) {
+                ++next;
+            }
+            if (next == count || values[next].kind() != NodeKind::namespace_ ||
+                namespace_nodes_.name[values[next].index()] != name) {
+                break;
+            }
+
+            for (auto spacing{end}; spacing < next; ++spacing) {
+                children.push_back(values[spacing]);
+            }
+            auto const next_children{nodes(namespace_nodes_.children[values[next].index()])};
+            children.insert(children.end(), next_children.begin(), next_children.end());
+            end = next + 1;
+        }
+
+        auto const children_changed{merge_adjacent_namespaces(children)};
+        auto replacement{node};
+        if (end != first + 1 || children_changed) {
+            replacement = namespace_node(name, children);
+            std::vector<StringId> bindings;
+            for (auto index{first}; index < end; ++index) {
+                if (auto const found{scope_bindings_.find(values[index].value)};
+                    found != scope_bindings_.end()) {
+                    bindings.insert(bindings.end(), found->second.begin(), found->second.end());
+                }
+            }
+            if (!bindings.empty()) {
+                set_scope_bindings(replacement, bindings);
+            }
+            changed = true;
+        }
+        values[output++] = replacement;
+        first = end;
+    }
+    values.resize(output);
+    return changed;
+}
+
+/* **************************************** */
 // Traversal and dependencies
 /* **************************************** */
 void CppIR::for_each_child(NodeId node, std::function<void(NodeId)> const& visit) const {

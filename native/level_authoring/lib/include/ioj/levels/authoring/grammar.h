@@ -317,9 +317,7 @@ namespace ioj {
 template <>
 inline constexpr MinMax<levels::authoring::RecordKind> enum_range<levels::authoring::RecordKind>{
     levels::authoring::RecordKind::Level, levels::authoring::RecordKind::LevelCompleted};
-} // namespace ioj
 
-namespace ioj {
 template <>
 struct EnumTraits<levels::authoring::Property> {
     static constexpr std::array values{levels::authoring::Property::Id,

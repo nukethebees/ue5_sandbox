@@ -26,9 +26,7 @@ namespace ioj {
 template <>
 inline constexpr MinMax<::ECharacterCameraMode> enum_range<::ECharacterCameraMode>{
     ::ECharacterCameraMode::FirstPerson, ::ECharacterCameraMode::ThirdPerson};
-} // namespace ioj
 
-namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<::ECharacterCameraMode>() noexcept -> std::size_t {
     return 2;

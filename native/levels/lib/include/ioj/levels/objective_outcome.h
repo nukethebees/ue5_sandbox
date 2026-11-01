@@ -30,15 +30,10 @@ enum class ObjectiveOutcome : ObjectiveOutcomeUnderlying {
     return ioj::try_parse_enum<ObjectiveOutcome>(value, names);
 }
 
-} // namespace ioj
-
-namespace ioj {
 template <>
 inline constexpr MinMax<ObjectiveOutcome> enum_range<ObjectiveOutcome>{ObjectiveOutcome::Passed,
                                                                        ObjectiveOutcome::Expired};
-} // namespace ioj
 
-namespace ioj {
 template <>
 struct EnumTraits<ObjectiveOutcome> {
     static constexpr std::array values{

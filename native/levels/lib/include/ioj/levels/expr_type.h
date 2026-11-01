@@ -81,9 +81,7 @@ namespace ioj {
 template <>
 inline constexpr MinMax<levels::ExprType> enum_range<levels::ExprType>{
     levels::ExprType::All, levels::ExprType::EntityKillsReached};
-} // namespace ioj
 
-namespace ioj {
 template <>
 struct EnumTraits<levels::ExprType> {
     static constexpr std::array values{levels::ExprType::All,

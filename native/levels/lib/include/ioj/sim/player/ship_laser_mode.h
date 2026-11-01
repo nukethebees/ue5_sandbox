@@ -37,9 +37,7 @@ namespace ioj {
 template <>
 inline constexpr MinMax<sim::ShipLaserMode> enum_range<sim::ShipLaserMode>{
     sim::ShipLaserMode::Single, sim::ShipLaserMode::Hyper};
-} // namespace ioj
 
-namespace ioj {
 template <>
 struct EnumTraits<sim::ShipLaserMode> {
     static constexpr std::array values{

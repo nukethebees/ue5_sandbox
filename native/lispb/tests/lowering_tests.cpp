@@ -170,6 +170,9 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
                          "try_parse_serialized_native_state",
                          "EnumTraits<fixture::NativeState>",
                          "std::array values{fixture::NativeState::Idle"});
+    auto const namespace_start{header.find("namespace ioj {")};
+    ASSERT_NE(namespace_start, std::string::npos);
+    EXPECT_EQ(namespace_start, header.rfind("namespace ioj {"));
     EXPECT_FALSE(header.contains("CoreMinimal.h"));
 
     std::vector<std::pair<NativeEnumHelper, std::string>> const selections{

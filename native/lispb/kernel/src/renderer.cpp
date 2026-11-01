@@ -32,6 +32,7 @@ auto render(lispb::codegen::CppIR& cpp, Document const& document, ModuleAnalysis
     result.reserve(files.size());
     for (auto const file : files) {
         auto const index{cpp.files.index(file)};
+        cpp.merge_adjacent_namespaces(file);
         result.push_back(
             lispb::TextArtifact{std::filesystem::path{cpp.strings.view(cpp.files.path[index])},
                                 lispb::codegen::CppRenderer{cpp}.render(file),

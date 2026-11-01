@@ -28,15 +28,10 @@ enum class MissionOutcome : MissionOutcomeUnderlying {
     return ioj::try_parse_enum<MissionOutcome>(value, names);
 }
 
-} // namespace ioj
-
-namespace ioj {
 template <>
 inline constexpr MinMax<MissionOutcome> enum_range<MissionOutcome>{MissionOutcome::Victory,
                                                                    MissionOutcome::Defeat};
-} // namespace ioj
 
-namespace ioj {
 template <>
 struct EnumTraits<MissionOutcome> {
     static constexpr std::array values{MissionOutcome::Victory, MissionOutcome::Defeat};
