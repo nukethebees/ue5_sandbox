@@ -33,8 +33,9 @@ auto make_profile_id() -> std::string {
 auto sample_profile_records() -> std::vector<ScoreRecord> {
     using namespace std::chrono;
     auto const date = [](int y, unsigned m, unsigned d, int hour, int minute) {
-        return duration_cast<seconds>(sys_days{year{y} / m / d}.time_since_epoch()).count() +
-               hour * 3600 + minute * 60;
+        return duration_cast<seconds>(sys_days{year{y} / m / d}.time_since_epoch() + hours{hour} +
+                                      minutes{minute})
+            .count();
     };
     return {{.date = date(2026, 8, 20, 19, 5),
              .level_name = "VegaPatrol",

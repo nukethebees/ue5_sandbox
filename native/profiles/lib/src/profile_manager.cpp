@@ -131,7 +131,7 @@ auto ProfileManager::create_profile(std::string display_name) -> CreateProfileRe
 
         auto const profile_id{make_profile_id()};
         auto metadata{make_metadata(profile_id, display_name, current_timestamp(), {})};
-        if (!save_new_profile(std::move(metadata), {}, false)) {
+        if (!save_new_profile(metadata, {}, false)) {
             return false;
         }
 
@@ -312,7 +312,7 @@ bool ProfileManager::reset_test_profile(std::span<ScoreRecord const> const recor
                                     records)};
         ProfileResultsData results{};
         results.score_records.assign(records.begin(), records.end());
-        return save_new_profile(std::move(metadata), std::move(results), true);
+        return save_new_profile(metadata, std::move(results), true);
     });
 }
 
@@ -385,10 +385,10 @@ bool ProfileManager::create_initial_profile() {
                                 save_profile_manager::default_profile_name,
                                 current_timestamp(),
                                 {})};
-    return save_new_profile(std::move(metadata), {}, false);
+    return save_new_profile(metadata, {}, false);
 }
 
-bool ProfileManager::save_new_profile(ProfileMetadata metadata,
+bool ProfileManager::save_new_profile(ProfileMetadata const& metadata,
                                       ProfileResultsData results,
                                       bool const replace_existing) {
     if (!storage_.save_results(metadata.profile_id, results)) {

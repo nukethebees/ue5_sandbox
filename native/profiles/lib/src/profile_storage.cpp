@@ -252,7 +252,10 @@ auto load_data(std::filesystem::path const& path, Data& value) -> LoadResult {
                 value = std::move(result);
                 return LoadResult::succeeded;
             }
-        } catch (Json::exception const&) {}
+        } catch (Json::exception const&) {
+            // Try the backup when the primary file contains malformed data.
+            continue;
+        }
     }
     return found ? LoadResult::failed : LoadResult::not_found;
 }
@@ -268,7 +271,10 @@ auto save_data(std::filesystem::path const& path, Data const& value) -> bool {
             try {
                 Data previous;
                 valid_primary = read_envelope(path, old, generation) && decode(old, previous);
-            } catch (Json::exception const&) {}
+            } catch (Json::exception const&) {
+                // Preserve the backup when the primary file contains malformed data.
+                valid_primary = false;
+            }
         }
         auto const encoded = encode(value);
         Data validated;
@@ -293,6 +299,7 @@ auto save_data(std::filesystem::path const& path, Data const& value) -> bool {
         if (replace_file(path, temporary)) {
             return true;
         }
+        // NOLINTNEXTLINE(bugprone-empty-catch) -- share cleanup and failure reporting below.
     } catch (std::exception const&) {}
     std::error_code ignored;
     std::filesystem::remove(temporary, ignored);
@@ -424,7 +431,7 @@ auto resolve_profile_storage(StorageOptions options,
                        : local_root;
     return selection;
 }
-auto make_file_profile_storage(std::filesystem::path root) -> ProfileStorage {
+auto make_file_profile_storage(std::filesystem::path const& root) -> ProfileStorage {
     using namespace profile_files;
     auto state{std::make_shared<StorageState>()};
     state->root = std::filesystem::absolute(root).lexically_normal();

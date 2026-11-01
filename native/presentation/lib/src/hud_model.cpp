@@ -218,7 +218,7 @@ auto HudModel::collect_player_status_data() -> bool {
             .points = player->get_kills(),
             .fire_rate = player->laser_fire_rate});
     }
-    return hud_detail::replace(player_status_data_, std::move(next));
+    return hud_detail::replace(player_status_data_, next);
 }
 auto HudModel::collect_player_flight_data() -> bool {
     std::optional<PlayerFlightHudData> next;

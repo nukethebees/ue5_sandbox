@@ -46,7 +46,7 @@ class ProfileManager {
     bool initialise_locked();
     bool reload_latest(std::string const& active_profile_id);
     bool create_initial_profile();
-    bool save_new_profile(ProfileMetadata metadata,
+    bool save_new_profile(ProfileMetadata const& metadata,
                           ProfileResultsData results,
                           bool replace_existing);
     auto find_profile(std::string const& profile_id) -> ProfileMetadata*;

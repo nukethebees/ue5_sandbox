@@ -15,7 +15,7 @@ auto resolve_profile_storage(StorageOptions options,
                              std::filesystem::path const& development_root,
                              std::filesystem::path const& local_root)
     -> std::expected<StorageSelection, std::string>;
-auto make_file_profile_storage(std::filesystem::path root) -> ProfileStorage;
+auto make_file_profile_storage(std::filesystem::path const& root) -> ProfileStorage;
 auto clone_profile_files(std::filesystem::path const& source_root,
                          std::filesystem::path const& destination_root,
                          std::string& error) -> bool;
