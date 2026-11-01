@@ -61,6 +61,11 @@ work before leaving the phase. Tick memory supports data passed between phases a
 temporaries; destroy those containers before the tick ends. Both resources finalize their per-tick
 statistics at the end of each tick, including every catch-up tick within `advance()`.
 
+Keep fighter fire indices in tick memory between Thinking and Action, and removal indices between
+Resolution and ResolutionCommit. Keep overlap candidates within Action and death information within
+Resolution using phase memory. `LevelSim` owns these temporary containers locally and passes them
+through phase inputs; fighter storage retains no views into them.
+
 Reclamation requires all local and forwarded allocations from that resource to have been released.
 No allocation or borrowed view may cross its resource's reclamation boundary. Local claimed-byte
 statistics describe backing usage; payload and allocation counts also include forwarded requests.

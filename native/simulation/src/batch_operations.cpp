@@ -13,7 +13,8 @@
 #include <functional>
 
 namespace ioj::sim {
-void sort_and_deduplicate_removal_indices(std::vector<std::uint32_t>& local_indices_to_remove) {
+void
+    sort_and_deduplicate_removal_indices(std::pmr::vector<std::uint32_t>& local_indices_to_remove) {
     std::ranges::sort(local_indices_to_remove, std::greater{});
     auto const unique_end{std::ranges::unique(local_indices_to_remove).begin()};
     local_indices_to_remove.erase(unique_end, local_indices_to_remove.end());
@@ -24,7 +25,7 @@ void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
                            [[maybe_unused]] std::span<EntityId const> entity_ids,
                            vectors3f::ResolvedConstView const locations,
                            HealthView const healths,
-                           std::vector<std::uint32_t>& local_indices_to_remove,
+                           std::pmr::vector<std::uint32_t>& local_indices_to_remove,
                            EntityDeathInfo& entity_death_info,
                            EntityLedger& ledger,
                            FrameMemoryResource* const scratch_resource) {

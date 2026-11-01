@@ -11,6 +11,7 @@
 #include <ioj/sim/levels/level_capital_spawn_events.h>
 
 #include <cstdint>
+#include <memory_resource>
 #include <optional>
 #include <span>
 #include <vector>
@@ -100,7 +101,7 @@ struct Sim {
     EntityTables& entity_tables_;
 
     EntityStorage entities{};
-    std::vector<std::uint32_t> local_indices_to_remove;
+    std::pmr::vector<std::uint32_t> local_indices_to_remove;
     EntityDeathInfo entity_death_info;
     std::vector<EntityFrameChange> frame_changes_;
 };

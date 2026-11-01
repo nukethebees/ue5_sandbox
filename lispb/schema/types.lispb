@@ -314,6 +314,10 @@
   :spelling "ResolutionInputs"
   :header "ioj/sim/fighters/phase_inputs.h")
 
+(type fighters_resolution_commit_inputs
+  :spelling "ResolutionCommitInputs"
+  :header "ioj/sim/fighters/phase_inputs.h")
+
 (type capital_ships_resolution_inputs
   :spelling "ResolutionInputs"
   :header "ioj/sim/capital_ships/phase_inputs.h")

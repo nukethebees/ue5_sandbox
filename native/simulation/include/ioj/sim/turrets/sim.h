@@ -126,6 +126,6 @@ struct Sim {
     NonNegative<std::int16_t> cooldown_restart_ticks_{};
     std::int16_t cooldown_cleaner_{};
 
-    std::vector<std::uint32_t> local_indices_to_remove;
+    std::pmr::vector<std::uint32_t> local_indices_to_remove;
 };
 } // namespace ioj::sim::turrets

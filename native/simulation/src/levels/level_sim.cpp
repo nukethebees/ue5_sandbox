@@ -1,6 +1,7 @@
 #include <ioj/sim/levels/level_sim.h>
 
 #include <ioj/sim/capital_ships/phase_interface.h>
+#include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/fighters/phase_interface.h>
 #include <ioj/sim/lasers/phase_interface.h>
 #include <ioj/sim/player/phase_interface.h>
@@ -319,12 +320,14 @@ void LevelSim::resolve_tick() {
     spinners::PhaseInterface spinners_phase{spinners_simulation_};
     lasers::PhaseInterface lasers_phase{lasers_simulation_};
     auto& phase_memory{memory_manager_.phase_memory()};
+    std::pmr::vector<std::uint32_t> fighter_removal_indices{&memory_manager_.tick_memory()};
 
     SANDBOX_PROFILE_SCOPE("Resolution");
     clock_.transition_to(SimulationPhase::Resolution);
 
     {
         FrameScratchScope scratch_scope{phase_memory};
+        EntityDeathInfo fighter_deaths{phase_memory};
 
         combat_events_.prepare(entity_tables_.lookups, &phase_memory);
 
@@ -332,7 +335,10 @@ void LevelSim::resolve_tick() {
         fighters::ResolutionInputs const fighter_inputs{.combat_events = combat_events_,
                                                         .ledger = entity_ledger_,
                                                         .tick = clock_.get_completed_ticks(),
-                                                        .scratch_resource = phase_memory};
+                                                        .scratch_resource = phase_memory,
+                                                        .local_indices_to_remove =
+                                                            fighter_removal_indices,
+                                                        .entity_death_info = fighter_deaths};
         turrets::ResolutionInputs const turret_inputs{combat_events_, phase_memory};
 
         if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
@@ -364,14 +370,15 @@ void LevelSim::resolve_tick() {
 
         SANDBOX_PROFILE_SCOPE("ResolutionCommit");
         clock_.transition_to(SimulationPhase::ResolutionCommit);
+        fighters::ResolutionCommitInputs const fighter_inputs{fighter_removal_indices};
 
         // Apply the same removals to fixed health ranges and their owning rows.
         capital_ships_phase.remove_components();
-        fighters_phase.remove_components();
+        fighters_phase.remove_components(fighter_inputs);
         turrets_phase.remove_components();
 
         capital_ships_phase.remove_entities();
-        fighters_phase.remove_entities();
+        fighters_phase.remove_entities(fighter_inputs);
         turrets_phase.remove_entities();
         lasers_phase.cleanup_entities();
     }

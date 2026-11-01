@@ -13,6 +13,7 @@
 #include <ioj/sim/collision/trace_hits.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/deterministic_bias.h>
+#include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/lasers/sim.h>
@@ -33,7 +34,6 @@
 #include <limits>
 #include <span>
 #include <utility>
-#include <vector>
 
 namespace ioj::sim::fighters {
 
@@ -171,7 +171,7 @@ void Sim::prepare_tick() {
 
     auto const data{entities_.view()};
     tick_periodic_countdowns<std::int16_t>(data.navigation_update_countdowns_remaining_ticks());
-    clear_tick_buffers();
+    spawn_queue.reset();
 
     for (auto& capacity : remaining_team_capacity) {
         capacity = per_team_limit;
@@ -345,29 +345,27 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
                                data.entity_ids(),
                                data.view_locations().const_view().resolve(),
                                healths,
-                               local_indices_to_remove,
-                               entity_death_info,
+                               inputs.local_indices_to_remove,
+                               inputs.entity_death_info,
                                inputs.ledger,
                                scratch_resource);
 }
 void Sim::publish_deaths(ResolutionInputs const inputs) {
-    inputs.ledger.record_deaths(entity_death_info.const_view(), inputs.tick);
+    inputs.ledger.record_deaths(inputs.entity_death_info.const_view(), inputs.tick);
 }
 
 // ResolutionCommit
-void Sim::remove_components() {
+void Sim::remove_components(ResolutionCommitInputs const inputs) {
     assert(is_removal_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("fighters::Sim::remove_components");
 
-    sort_and_deduplicate_removal_indices(local_indices_to_remove);
+    sort_and_deduplicate_removal_indices(inputs.local_indices_to_remove);
 }
-void Sim::remove_entities() {
+void Sim::remove_entities(ResolutionCommitInputs const inputs) {
     assert(is_removal_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("fighters::Sim::remove_entities");
 
-    remove_dead_entities();
-    local_indices_to_remove.clear();
-    entity_death_info.reset();
+    remove_dead_entities(inputs.local_indices_to_remove);
 }
 void Sim::finish_action() {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::finish_action");
@@ -956,7 +954,7 @@ auto Sim::queue_spawns(FighterSpawnQueue::ConstView const new_spawns) -> std::ui
 /* **************************************** */
 // Destruction
 /* **************************************** */
-void Sim::remove_dead_entities() {
+void Sim::remove_dead_entities(std::span<std::uint32_t const> const local_indices_to_remove) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::remove_dead_entities");
     auto& data{entities_};
     auto const columns{data.const_view()};
@@ -1082,15 +1080,6 @@ void Sim::handle_firing(EntityStorage::View data, ThinkingInputs const inputs) {
         pending_fire_indices.add(ship_index);
         attack_cooldowns[ship_index] = attack_restart_ticks_;
     }
-}
-
-/* **************************************** */
-// Misc
-/* **************************************** */
-void Sim::clear_tick_buffers() {
-    local_indices_to_remove.clear();
-    entity_death_info.reset();
-    spawn_queue.reset();
 }
 
 } // namespace fighters

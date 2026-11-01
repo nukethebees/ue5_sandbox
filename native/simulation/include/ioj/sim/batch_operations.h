@@ -6,6 +6,7 @@
 #include <ioj/vectors3f.h>
 
 #include <cstdint>
+#include <memory_resource>
 #include <span>
 #include <vector>
 
@@ -14,7 +15,7 @@ struct EntityDeathInfo;
 class EntityLedger;
 }
 namespace ioj::sim {
-void sort_and_deduplicate_removal_indices(std::vector<std::uint32_t>& local_indices_to_remove);
+void sort_and_deduplicate_removal_indices(std::pmr::vector<std::uint32_t>& local_indices_to_remove);
 
 // Consume recipients validated by DamageQueue::prepare while the published rows remain stable.
 // Earlier events in this batch may already have killed a recipient.
@@ -23,7 +24,7 @@ void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
                            [[maybe_unused]] std::span<EntityId const> entity_ids,
                            vectors3f::ResolvedConstView locations,
                            HealthView healths,
-                           std::vector<std::uint32_t>& local_indices_to_remove,
+                           std::pmr::vector<std::uint32_t>& local_indices_to_remove,
                            EntityDeathInfo& entity_death_info,
                            EntityLedger& ledger,
                            FrameMemoryResource* scratch_resource);

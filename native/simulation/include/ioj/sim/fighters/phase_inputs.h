@@ -4,6 +4,11 @@
 #include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/sim_tick.h>
 
+#include <cstdint>
+#include <memory_resource>
+#include <span>
+#include <vector>
+
 namespace ioj {
 class FrameMemoryResource;
 }
@@ -11,6 +16,7 @@ class FrameMemoryResource;
 namespace ioj::sim {
 class CombatEvents;
 class EntityLedger;
+struct EntityDeathInfo;
 struct SimClock;
 struct SpatialQueryManager;
 }
@@ -45,5 +51,11 @@ struct ResolutionInputs {
     EntityLedger& ledger;
     SimTick tick;
     FrameMemoryResource& scratch_resource;
+    std::pmr::vector<std::uint32_t>& local_indices_to_remove;
+    EntityDeathInfo& entity_death_info;
+};
+
+struct ResolutionCommitInputs {
+    std::pmr::vector<std::uint32_t>& local_indices_to_remove;
 };
 } // namespace ioj::sim::fighters

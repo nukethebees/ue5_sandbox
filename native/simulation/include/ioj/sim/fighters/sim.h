@@ -1,7 +1,6 @@
 #pragma once
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/collision/trace_hits.h>
-#include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/fighters/fighter_entity_data.h>
 #include <ioj/sim/fighters/fighter_navigation.h>
@@ -16,7 +15,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
-#include <vector>
 
 namespace ioj::sim {
 struct LevelSim;
@@ -83,8 +81,8 @@ struct Sim {
     void generate_fire_commands(ThinkingInputs const inputs);
     void resolve_damage_events(ResolutionInputs const inputs);
     void publish_deaths(ResolutionInputs inputs);
-    void remove_components();
-    void remove_entities();
+    void remove_components(ResolutionCommitInputs inputs);
+    void remove_entities(ResolutionCommitInputs inputs);
     void finish_action();
 
     /* **************************************** */
@@ -126,17 +124,12 @@ struct Sim {
     /* **************************************** */
     // Destruction
     /* **************************************** */
-    void remove_dead_entities();
+    void remove_dead_entities(std::span<std::uint32_t const> local_indices_to_remove);
 
     /* **************************************** */
     // Targets
     /* **************************************** */
     void refresh_target_data(ThinkingInputs const inputs);
-
-    /* **************************************** */
-    // Misc
-    /* **************************************** */
-    void clear_tick_buffers();
 
     friend class PhaseInterface;
 
@@ -155,9 +148,6 @@ struct Sim {
     EntityTables& entity_tables_;
 
     FighterSpawnQueue spawn_queue;
-
-    std::vector<std::uint32_t> local_indices_to_remove;
-    EntityDeathInfo entity_death_info;
 
     telemetry::FighterNavigationSnapshot navigation_telemetry;
 };

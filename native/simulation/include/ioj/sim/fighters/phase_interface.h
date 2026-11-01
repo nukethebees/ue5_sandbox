@@ -37,9 +37,13 @@ class PhaseInterface {
 
     void publish_deaths(ResolutionInputs const inputs) { simulation.publish_deaths(inputs); }
 
-    void remove_components() { simulation.remove_components(); }
+    void remove_components(ResolutionCommitInputs const inputs) {
+        simulation.remove_components(inputs);
+    }
 
-    void remove_entities() { simulation.remove_entities(); }
+    void remove_entities(ResolutionCommitInputs const inputs) {
+        simulation.remove_entities(inputs);
+    }
 
     void finish_action() { simulation.finish_action(); }
 

@@ -128,8 +128,10 @@
       (parameter inputs (type-ref @fighters_resolution_inputs :suffix " const")))
     (method publish_deaths void
       (parameter inputs (type-ref @fighters_resolution_inputs :suffix " const")))
-    (method remove_components void)
-    (method remove_entities void)
+    (method remove_components void
+      (parameter inputs (type-ref @fighters_resolution_commit_inputs :suffix " const")))
+    (method remove_entities void
+      (parameter inputs (type-ref @fighters_resolution_commit_inputs :suffix " const")))
     (method finish_action void)))
 
 (module turrets_phase_interface
