@@ -99,9 +99,11 @@ auto Mission::result(ExprHandle const expression) const -> ExprResult {
         return ExprResult::False;
     }
 
-    auto const& results{expression.leaf() ? leaves_.results : composites_.results};
-    assert(expression.index() < results.size());
-    return results[expression.index()];
+    auto const leaf{expression.kind() == ExprKind::Leaf};
+    auto const& results{leaf ? leaves_.results : composites_.results};
+    auto const index{leaf ? expression.data_leaf_index() : expression.data_composite_index()};
+    assert(index < results.size());
+    return results[index];
 }
 
 /* **************************************** */
@@ -160,7 +162,7 @@ void Mission::evaluate_objectives() {
     }
 }
 auto Mission::evaluate_composite(ExprCompositeIndex const index) const -> ExprResult {
-    auto const all{composites_.types[index] == ExprType::All};
+    auto const all{composites_.kinds[index] == CompositeKind::All};
     auto const decisive{all ? ExprResult::False : ExprResult::True};
     auto value{all ? ExprResult::True : ExprResult::False};
     auto const children{composites_.child_ranges[index]};

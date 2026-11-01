@@ -333,6 +333,14 @@
   :spelling "ioj::sim::LeafKind"
   :header "ioj/sim/missions/leaf_kind.h"
   :pass-by value)
+(type mission_expr_kind
+  :spelling "ioj::sim::ExprKind"
+  :header "ioj/sim/missions/expr_kind.h"
+  :pass-by value)
+(type mission_composite_kind
+  :spelling "ioj::sim::CompositeKind"
+  :header "ioj/sim/missions/composite_kind.h"
+  :pass-by value)
 
 
 (type input_entity_id :spelling "ioj::levels::EntityId" :header "ioj/levels/identifiers.h")

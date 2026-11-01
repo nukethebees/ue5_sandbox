@@ -85,11 +85,14 @@ auto Mission::compile(levels::MissionDefinition const& definition,
         auto const order{mission_compilation_detail::expression_order(source.expressions)};
         for (auto const index : order) {
             auto const& expression{source.expressions[index]};
-            if (expression.type() == ExprType::All || expression.type() == ExprType::Any) {
+            if (expression.type() == levels::ExprType::All ||
+                expression.type() == levels::ExprType::Any) {
                 ExprCompositeIndex const composite{size(composites.results)};
-                references[index] = ExprHandle{composite, false};
+                auto const kind{expression.type() == levels::ExprType::All ? CompositeKind::All
+                                                                           : CompositeKind::Any};
+                references[index] = ExprHandle::make_data_composite(kind, composite);
                 composites.results.push_back(ExprResult::Pending);
-                composites.types.push_back(expression.type());
+                composites.kinds.push_back(kind);
                 auto const children{expression.children()};
                 composites.child_ranges.push_back({size(composites.children), size(children)});
                 for (auto const child : children) {
@@ -98,19 +101,18 @@ auto Mission::compile(levels::MissionDefinition const& definition,
                 continue;
             }
             ExprLeafHandle const leaf{size(leaves.results)};
-            references[index] = ExprHandle{leaf, true};
             leaves.results.push_back(ExprResult::Pending);
             leaves.owners.push_back(owner);
             LeafKind kind{};
             switch (expression.type()) {
-                case ExprType::EntityDestroyed: {
+                case levels::ExprType::EntityDestroyed: {
                     auto const& condition{
                         std::get<levels::EntityDestroyedExpr>(expression.payload)};
                     kind = LeafKind::EntityDestroyed;
                     leaves.destroyed_entities.push_back(entity_indices.at(condition.entity));
                     break;
                 }
-                case ExprType::EntityReachedPosition: {
+                case levels::ExprType::EntityReachedPosition: {
                     auto const& condition{
                         std::get<levels::EntityReachedPositionExpr>(expression.payload)};
                     kind = LeafKind::EntityReachedPosition;
@@ -120,7 +122,7 @@ auto Mission::compile(levels::MissionDefinition const& definition,
                                                     condition.radius.get());
                     break;
                 }
-                case ExprType::TimeElapsed: {
+                case levels::ExprType::TimeElapsed: {
                     auto const& condition{std::get<levels::TimeElapsedExpr>(expression.payload)};
                     kind = LeafKind::TimeElapsed;
                     auto const ticks{condition.seconds.get() * clock.get_tick_rate().get_hz()};
@@ -134,7 +136,7 @@ auto Mission::compile(levels::MissionDefinition const& definition,
                             .get());
                     break;
                 }
-                case ExprType::ObjectiveResolved: {
+                case levels::ExprType::ObjectiveResolved: {
                     auto const& condition{
                         std::get<levels::ObjectiveResolvedExpr>(expression.payload)};
                     kind = LeafKind::ObjectiveResolved;
@@ -143,7 +145,7 @@ auto Mission::compile(levels::MissionDefinition const& definition,
                     leaves.observed_outcomes.push_back(condition.objective.outcome);
                     break;
                 }
-                case ExprType::EntityKillsReached: {
+                case levels::ExprType::EntityKillsReached: {
                     auto const& condition{
                         std::get<levels::EntityKillsReachedExpr>(expression.payload)};
                     kind = LeafKind::EntityKillsReached;
@@ -158,6 +160,7 @@ auto Mission::compile(levels::MissionDefinition const& definition,
                 default:
                     std::unreachable();
             }
+            references[index] = ExprHandle::make_data_leaf(kind, leaf);
             auto& leaf_handles{leaves.leaf_handles[kind]};
             leaves.data_handles.push_back(LeafDataHandle{size(leaf_handles), kind});
             leaf_handles.push_back(leaf);

@@ -27,7 +27,7 @@ struct LeafDataHandle : detail::LeafDataHandleBase {
     static constexpr PackedField<storage_type, std::uint32_t, 0, 24> index_layout{};
 
     // kind
-    static constexpr PackedField<storage_type, LeafKind, 24, 8> kind_layout{};
+    static constexpr PackedField<storage_type, LeafKind, 24, 3> kind_layout{};
 
     constexpr LeafDataHandle() noexcept = default;
     constexpr explicit LeafDataHandle(decltype(index_layout)::value_type const index_value,

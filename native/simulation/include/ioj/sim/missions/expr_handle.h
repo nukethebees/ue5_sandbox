@@ -4,10 +4,14 @@
 #pragma once
 
 #include "ioj/packed_value.h"
+#include "ioj/sim/missions/composite_kind.h"
+#include "ioj/sim/missions/expr_kind.h"
+#include "ioj/sim/missions/leaf_kind.h"
 
 #include <cassert>
 #include <compare>
 #include <cstdint>
+#include <utility>
 
 namespace ioj::sim {
 struct ExprHandle;
@@ -26,39 +30,134 @@ struct ExprHandle : detail::ExprHandleBase {
     using packed_integer_tag = packed::integer_tag;
     static constexpr storage_type invalid_value{storage.default_raw_value};
 
-    // index
-    static constexpr PackedField<storage_type, std::uint32_t, 0, 31> index_layout{};
+    // kind
+    static constexpr PackedField<storage_type, ExprKind, 0, 1> kind_layout{};
 
-    // leaf
-    static constexpr PackedField<storage_type, bool, 31, 1> leaf_layout{};
+    // data
+    static constexpr PackedField<storage_type, storage_type, 1, 31> data_layout{};
+
+    // data_composite
+    static constexpr PackedField<storage_type, storage_type, 1, 29> data_composite_layout{};
+
+    // data_leaf
+    static constexpr PackedField<storage_type, storage_type, 1, 31> data_leaf_layout{};
+
+    // data_composite_kind
+    static constexpr PackedField<storage_type, CompositeKind, 1, 1> data_composite_kind_layout{};
+
+    // data_composite_index
+    static constexpr PackedField<storage_type, std::uint32_t, 2, 28> data_composite_index_layout{};
+
+    // data_leaf_kind
+    static constexpr PackedField<storage_type, LeafKind, 1, 3> data_leaf_kind_layout{};
+
+    // data_leaf_index
+    static constexpr PackedField<storage_type, std::uint32_t, 4, 28> data_leaf_index_layout{};
 
     constexpr ExprHandle() noexcept = default;
-    constexpr explicit ExprHandle(decltype(index_layout)::value_type const index_value,
-                                  decltype(leaf_layout)::value_type const leaf_value) noexcept
-        : Base{static_cast<storage_type>(packed_pack<decltype(index_layout)>(index_value) |
-                                         packed_pack<decltype(leaf_layout)>(leaf_value))} {
-        assert((is_valid_index(index_value)));
-        assert((value_ != invalid_value));
-    }
 
     [[nodiscard]] constexpr auto operator<=>(ExprHandle const&) const noexcept = default;
 
     [[nodiscard]] static constexpr auto
-        is_valid_index(decltype(index_layout)::value_type const value) noexcept -> bool {
-        return static_cast<storage_type>(value) <= index_layout.value_mask;
+        is_valid_kind(decltype(kind_layout)::value_type const value) noexcept -> bool {
+        return std::to_underlying(value) <= kind_layout.value_mask;
     }
-    [[nodiscard]] constexpr auto index() const noexcept -> decltype(index_layout)::value_type {
-        return extract<decltype(index_layout)>();
+    [[nodiscard]] static constexpr auto is_valid_data_composite_kind(
+        decltype(data_composite_kind_layout)::value_type const value) noexcept -> bool {
+        return std::to_underlying(value) <= data_composite_kind_layout.value_mask;
     }
-    constexpr void set_index(decltype(index_layout)::value_type const value) noexcept {
-        assert((is_valid_index(value)));
-        insert<decltype(index_layout)>(value);
+    [[nodiscard]] static constexpr auto is_valid_data_composite_index(
+        decltype(data_composite_index_layout)::value_type const value) noexcept -> bool {
+        return static_cast<storage_type>(value) <= data_composite_index_layout.value_mask;
     }
-    [[nodiscard]] constexpr auto leaf() const noexcept -> decltype(leaf_layout)::value_type {
-        return extract<decltype(leaf_layout)>();
+    [[nodiscard]] static constexpr auto
+        is_valid_data_leaf_kind(decltype(data_leaf_kind_layout)::value_type const value) noexcept
+        -> bool {
+        return value <= data_leaf_kind_layout.range.max;
     }
-    constexpr void set_leaf(decltype(leaf_layout)::value_type const value) noexcept {
-        insert<decltype(leaf_layout)>(value);
+    [[nodiscard]] static constexpr auto
+        is_valid_data_leaf_index(decltype(data_leaf_index_layout)::value_type const value) noexcept
+        -> bool {
+        return static_cast<storage_type>(value) <= data_leaf_index_layout.value_mask;
+    }
+    [[nodiscard]] static constexpr auto make_data_composite(
+        decltype(data_composite_kind_layout)::value_type const data_composite_kind_value,
+        decltype(data_composite_index_layout)::value_type const data_composite_index_value) noexcept
+        -> ExprHandle {
+        assert((is_valid_data_composite_kind(data_composite_kind_value)));
+        assert((is_valid_data_composite_index(data_composite_index_value)));
+        auto result{from_raw(static_cast<storage_type>(
+            packed_pack<decltype(kind_layout)>(ioj::sim::ExprKind::Composite) |
+            packed_pack<decltype(data_composite_kind_layout)>(data_composite_kind_value) |
+            packed_pack<decltype(data_composite_index_layout)>(data_composite_index_value)))};
+        assert((result.value_ != invalid_value));
+        return result;
+    }
+    [[nodiscard]] static constexpr auto make_data_leaf(
+        decltype(data_leaf_kind_layout)::value_type const data_leaf_kind_value,
+        decltype(data_leaf_index_layout)::value_type const data_leaf_index_value) noexcept
+        -> ExprHandle {
+        assert((is_valid_data_leaf_kind(data_leaf_kind_value)));
+        assert((is_valid_data_leaf_index(data_leaf_index_value)));
+        auto result{from_raw(static_cast<storage_type>(
+            packed_pack<decltype(kind_layout)>(ioj::sim::ExprKind::Leaf) |
+            packed_pack<decltype(data_leaf_kind_layout)>(data_leaf_kind_value) |
+            packed_pack<decltype(data_leaf_index_layout)>(data_leaf_index_value)))};
+        assert((result.value_ != invalid_value));
+        return result;
+    }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return Base::is_valid() &&
+               (extract<decltype(kind_layout)>() == ioj::sim::ExprKind::Composite ||
+                (extract<decltype(kind_layout)>() == ioj::sim::ExprKind::Leaf &&
+                 is_valid_data_leaf_kind(extract<decltype(data_leaf_kind_layout)>())));
+    }
+    [[nodiscard]] constexpr auto kind() const noexcept -> decltype(kind_layout)::value_type {
+        return extract<decltype(kind_layout)>();
+    }
+    [[nodiscard]] constexpr auto data_composite_kind() const noexcept
+        -> decltype(data_composite_kind_layout)::value_type {
+        assert((extract<decltype(kind_layout)>() == ioj::sim::ExprKind::Composite));
+        return extract<decltype(data_composite_kind_layout)>();
+    }
+    constexpr void set_data_composite_kind(
+        decltype(data_composite_kind_layout)::value_type const value) noexcept {
+        assert((extract<decltype(kind_layout)>() == ioj::sim::ExprKind::Composite));
+        assert((is_valid_data_composite_kind(value)));
+        insert<decltype(data_composite_kind_layout)>(value);
+    }
+    [[nodiscard]] constexpr auto data_composite_index() const noexcept
+        -> decltype(data_composite_index_layout)::value_type {
+        assert((extract<decltype(kind_layout)>() == ioj::sim::ExprKind::Composite));
+        return extract<decltype(data_composite_index_layout)>();
+    }
+    constexpr void set_data_composite_index(
+        decltype(data_composite_index_layout)::value_type const value) noexcept {
+        assert((extract<decltype(kind_layout)>() == ioj::sim::ExprKind::Composite));
+        assert((is_valid_data_composite_index(value)));
+        insert<decltype(data_composite_index_layout)>(value);
+    }
+    [[nodiscard]] constexpr auto data_leaf_kind() const noexcept
+        -> decltype(data_leaf_kind_layout)::value_type {
+        assert((extract<decltype(kind_layout)>() == ioj::sim::ExprKind::Leaf));
+        return extract<decltype(data_leaf_kind_layout)>();
+    }
+    constexpr void
+        set_data_leaf_kind(decltype(data_leaf_kind_layout)::value_type const value) noexcept {
+        assert((extract<decltype(kind_layout)>() == ioj::sim::ExprKind::Leaf));
+        assert((is_valid_data_leaf_kind(value)));
+        insert<decltype(data_leaf_kind_layout)>(value);
+    }
+    [[nodiscard]] constexpr auto data_leaf_index() const noexcept
+        -> decltype(data_leaf_index_layout)::value_type {
+        assert((extract<decltype(kind_layout)>() == ioj::sim::ExprKind::Leaf));
+        return extract<decltype(data_leaf_index_layout)>();
+    }
+    constexpr void
+        set_data_leaf_index(decltype(data_leaf_index_layout)::value_type const value) noexcept {
+        assert((extract<decltype(kind_layout)>() == ioj::sim::ExprKind::Leaf));
+        assert((is_valid_data_leaf_index(value)));
+        insert<decltype(data_leaf_index_layout)>(value);
     }
 };
 

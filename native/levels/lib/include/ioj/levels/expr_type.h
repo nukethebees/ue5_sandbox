@@ -12,7 +12,7 @@
 #include <optional>
 #include <string_view>
 
-namespace ioj {
+namespace ioj::levels {
 using ExprTypeUnderlying = std::uint8_t;
 
 // Logical bit width: 3.
@@ -25,6 +25,8 @@ enum class ExprType : ExprTypeUnderlying {
     ObjectiveResolved,
     EntityKillsReached,
 };
+
+using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_expr_type(std::string_view const value) noexcept
     -> std::optional<ExprType> {
     switch (value.size()) {
@@ -73,28 +75,29 @@ enum class ExprType : ExprTypeUnderlying {
     }
 }
 
+} // namespace ioj::levels
+
+namespace ioj {
+template <>
+inline constexpr MinMax<levels::ExprType> enum_range<levels::ExprType>{
+    levels::ExprType::All, levels::ExprType::EntityKillsReached};
 } // namespace ioj
 
 namespace ioj {
 template <>
-inline constexpr MinMax<ExprType> enum_range<ExprType>{ExprType::All, ExprType::EntityKillsReached};
-} // namespace ioj
-
-namespace ioj {
-template <>
-struct EnumTraits<::ioj::ExprType> {
-    static constexpr std::array values{::ioj::ExprType::All,
-                                       ::ioj::ExprType::Any,
-                                       ::ioj::ExprType::EntityDestroyed,
-                                       ::ioj::ExprType::EntityReachedPosition,
-                                       ::ioj::ExprType::TimeElapsed,
-                                       ::ioj::ExprType::ObjectiveResolved,
-                                       ::ioj::ExprType::EntityKillsReached};
+struct EnumTraits<::ioj::levels::ExprType> {
+    static constexpr std::array values{::ioj::levels::ExprType::All,
+                                       ::ioj::levels::ExprType::Any,
+                                       ::ioj::levels::ExprType::EntityDestroyed,
+                                       ::ioj::levels::ExprType::EntityReachedPosition,
+                                       ::ioj::levels::ExprType::TimeElapsed,
+                                       ::ioj::levels::ExprType::ObjectiveResolved,
+                                       ::ioj::levels::ExprType::EntityKillsReached};
 };
 
 } // namespace ioj
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::ExprType, ioj::Serialized>{
+inline constexpr auto ioj::enum_strings<::ioj::levels::ExprType, ioj::Serialized>{
     ioj::PackedStrings{"all-of\000any-of\000entity-destroyed\000entity-reached-position\000time-"
                        "elapsed\000objective-resolved\000entity-kills-reached",
                        std::array<std::uint8_t, 8>{0, 7, 14, 31, 55, 68, 87, 108}}};

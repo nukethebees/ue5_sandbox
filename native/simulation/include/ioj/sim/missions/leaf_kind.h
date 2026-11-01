@@ -13,7 +13,7 @@
 namespace ioj::sim {
 using LeafKindUnderlying = std::uint8_t;
 
-// Logical bit width: 8.
+// Logical bit width: 3.
 enum class LeafKind : LeafKindUnderlying {
     EntityDestroyed,
     EntityReachedPosition,

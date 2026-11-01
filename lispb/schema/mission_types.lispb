@@ -59,7 +59,7 @@
 (module expr_type
   :header "native/levels/lib/include/ioj/levels/expr_type.h"
   :header-include "ioj/levels/expr_type.h"
-  :namespace ioj
+  :namespace ioj::levels
   (enum ExprType std::uint8_t
     :native-api true :helpers (traits to-serialized-string try-parse-serialized)
     (value All :serialized-name "all-of")

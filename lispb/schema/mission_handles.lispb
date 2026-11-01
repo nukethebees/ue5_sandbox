@@ -2,10 +2,28 @@
   :header "native/simulation/include/ioj/sim/missions/leaf_kind.h"
   :namespace ioj::sim
   (enum LeafKind std::uint8_t
-    :bit-width 8
+    :bit-width 3
     :native-api true :enum-array true :helpers (traits)
     (value EntityDestroyed) (value EntityReachedPosition) (value TimeElapsed)
     (value ObjectiveResolved) (value EntityKillsReached)
+    (projections (cpp))))
+
+(module mission_expr_kind
+  :header "native/simulation/include/ioj/sim/missions/expr_kind.h"
+  :namespace ioj::sim
+  (enum ExprKind std::uint8_t
+    :bit-width 1
+    :native-api true :helpers ()
+    (value Composite) (value Leaf)
+    (projections (cpp))))
+
+(module mission_composite_kind
+  :header "native/simulation/include/ioj/sim/missions/composite_kind.h"
+  :namespace ioj::sim
+  (enum CompositeKind std::uint8_t
+    :bit-width 1
+    :native-api true :helpers ()
+    (value Any) (value All)
     (projections (cpp))))
 
 (module mission_objective_id
@@ -18,10 +36,19 @@
 (module mission_expr_handle
   :header "native/simulation/include/ioj/sim/missions/expr_handle.h"
   :namespace ioj::sim
-  (integer-scalar ExpressionIndex :bit-width 31)
+  (integer-scalar ExpressionIndex :bit-width 28)
+  (record Composite
+    (member kind @mission_composite_kind)
+    (member index @ExpressionIndex))
+  (record Leaf
+    (member kind @mission_leaf_kind)
+    (member index @ExpressionIndex))
+  (union ExprData
+    (case Composite @Composite)
+    (case Leaf @Leaf))
   (record ExprHandle :layout packed :bits 32 :invalid-value 0xffffffff
-    (member index @ExpressionIndex)
-    (member leaf bool :bits 1)
+    (member kind @mission_expr_kind)
+    (member data @ExprData :bits 31 :tag kind)
     (projections (cpp :storage std::uint32_t))))
 
 (module mission_leaf_data_handle
