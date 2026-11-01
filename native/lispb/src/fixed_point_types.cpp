@@ -11,8 +11,7 @@ auto FixedPointTypes::append() -> TypeDefinitionId {
     total_bits.push_back({});
     fractional_bits.push_back({});
     rounding.push_back(codegen::FixedPointRounding::nearest_even);
-    minimum_value.push_back({});
-    maximum_value.push_back({});
+    value_range.push_back({0.0, 0.0});
     return TypeDefinitionId{(static_cast<std::uint32_t>(TypeDefinitionKind::fixed_point) << 24) |
                             row};
 }

@@ -336,8 +336,9 @@ auto compute_fixed_encoding(AnalysisContext& context, lispb::schema::TypeId type
 
     auto const range_form{fixed_points.form[fixed_row] == lispb::codegen::FixedPointForm::range};
     if (range_form) {
-        minimum_value = fixed_points.minimum_value[fixed_row];
-        maximum_value = fixed_points.maximum_value[fixed_row];
+        auto const range{fixed_points.value_range[fixed_row]};
+        minimum_value = range.min;
+        maximum_value = range.max;
         auto const codes{static_cast<long double>(maximum_raw.magnitude)};
         resolution = maximum_value / codes - minimum_value / codes;
         scale = 1.0L / resolution;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/min_max.h>
+
 #include <codegen/schema/fixed_point_form.h>
 #include <codegen/schema/fixed_point_rounding.h>
 #include <lispb/indexed_column.h>
@@ -20,8 +22,7 @@ struct FixedPointTypes {
     IndexedColumn<std::uint32_t, Index> total_bits;
     IndexedColumn<std::uint32_t, Index> fractional_bits;
     IndexedColumn<codegen::FixedPointRounding, Index> rounding;
-    IndexedColumn<double, Index> minimum_value;
-    IndexedColumn<double, Index> maximum_value;
+    IndexedColumn<ioj::MinMax<double>, Index> value_range;
 };
 
 } // namespace lispb::schema

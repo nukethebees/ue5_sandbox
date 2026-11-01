@@ -32,6 +32,7 @@ target_sources(native-core
     include/ioj/structural_diff.h
     include/ioj/subspan.h
     include/ioj/enum_formatter.h
+    include/ioj/min_max_formatter.h
     include/ioj/enum_strings.h
     include/ioj/try_numeric_cast.h
     include/ioj/constrained_vectors.h

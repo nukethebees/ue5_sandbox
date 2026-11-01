@@ -912,10 +912,11 @@ class TypeGraphBuilder {
                 points.fractional_bits[row] = schemas.fractional_bits[source];
                 points.rounding[row] = schemas.rounding[source];
                 if (schemas.form[source] == codegen::FixedPointForm::range) {
-                    points.minimum_value[row] = *codegen::parse_fixed_point_endpoint(
-                        store_.strings().view(*schemas.minimum_value[source]));
-                    points.maximum_value[row] = *codegen::parse_fixed_point_endpoint(
-                        store_.strings().view(*schemas.maximum_value[source]));
+                    points.value_range[row] = {
+                        *codegen::parse_fixed_point_endpoint(
+                            store_.strings().view(*schemas.minimum_value[source])),
+                        *codegen::parse_fixed_point_endpoint(
+                            store_.strings().view(*schemas.maximum_value[source]))};
                 }
                 return result;
             }

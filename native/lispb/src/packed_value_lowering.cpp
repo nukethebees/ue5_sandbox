@@ -2,6 +2,7 @@
 #include "lowering.h"
 #include "lowering_context.h"
 #include "packed_value_internal.h"
+#include <ioj/min_max_formatter.h>
 
 #include <codegen/ast/cpp_ir.h>
 #include <codegen/ast/cpp_types.h>
@@ -1245,14 +1246,12 @@ class PackedEmitter {
         Expr scale;
         auto const range_form{fixed.form[row] == FixedPointForm::range};
         if (range_form) {
-            auto const min_value{fixed.minimum_value[row]};
-            auto const max_value{fixed.maximum_value[row]};
-            auto const span{max_value - min_value};
+            auto const range{fixed.value_range[row]};
+            auto const span{range.max - range.min};
             auto const intervals{static_cast<double>(mask(placement.bits))};
             auto const step{std::isfinite(span) ? span / intervals
-                                                : max_value / intervals - min_value / intervals};
-            metadata.push_back(ir_.line_comment(
-                std::format("Range: [{}, {}]; step: {}.", min_value, max_value, step)));
+                                                : range.max / intervals - range.min / intervals};
+            metadata.push_back(ir_.line_comment(std::format("Range: {}; step: {}.", range, step)));
             auto const real = [&](double value) {
                 auto spelling{std::format("{}", value)};
                 if (spelling.find_first_of(".eE") == std::string::npos) {
@@ -1260,8 +1259,8 @@ class PackedEmitter {
                 }
                 return ir_.literal(spelling);
             };
-            minimum = constant(metadata, path + "_minimum", "double", real(min_value));
-            maximum = constant(metadata, path + "_maximum", "double", real(max_value));
+            minimum = constant(metadata, path + "_minimum", "double", real(range.min));
+            maximum = constant(metadata, path + "_maximum", "double", real(range.max));
             auto const codes{cast("double", upper)};
             decode = library_call(
                 "std::lerp",
@@ -1299,15 +1298,14 @@ class PackedEmitter {
             auto const divisor{fractional_bits == 64
                                    ? "18446744073709551616"
                                    : std::to_string(std::uint64_t{1} << fractional_bits)};
-            metadata.push_back(ir_.line_comment(
-                fractional_bits == 0
-                    ? std::format("Range: [{}, {}]; step: 1.", min_raw, max_raw)
-                    : std::format("Range: [{} / {}, {} / {}]; step: {}.",
-                                  min_raw,
-                                  divisor,
-                                  max_raw,
-                                  divisor,
-                                  std::ldexp(1.0, -static_cast<int>(fractional_bits)))));
+            auto const range{fractional_bits == 0
+                                 ? ioj::MinMax{min_raw, max_raw}
+                                 : ioj::MinMax{std::format("{} / {}", min_raw, divisor),
+                                               std::format("{} / {}", max_raw, divisor)}};
+            metadata.push_back(
+                ir_.line_comment(std::format("Range: {}; step: {}.",
+                                             range,
+                                             std::ldexp(1.0, -static_cast<int>(fractional_bits)))));
         }
         functions_.push_back(function(decoded_name,
                                       "double",
