@@ -12,6 +12,7 @@ class EntityLedger;
 struct SpatialQueryManager;
 
 // Borrow simulation state and scratch storage for one mission evaluation.
+// Scratch storage is required; spatial queries are needed only for position leaves.
 struct MissionEvaluationContext {
     SimTick tick{};
     EntityLedger const& ledger;

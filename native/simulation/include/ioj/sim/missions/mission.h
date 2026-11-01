@@ -55,12 +55,12 @@ class Mission {
     /* **************************************** */
     void activate(ObjectiveId id, SimTick tick);
     void deactivate_expressions(ObjectiveId id);
-    void handle_completion(ObjectiveId id, SimTick tick);
+    void handle_completion(ObjectiveId id, ObjectiveOutcome outcome, SimTick tick);
 
     /* **************************************** */
     // Objective evaluation
     /* **************************************** */
-    void evaluate_objectives();
+    void evaluate_objectives(MissionEvaluationContext const& inputs);
     auto root_outcome(ObjectiveId id) const -> std::optional<ObjectiveOutcome>;
 
     /* **************************************** */

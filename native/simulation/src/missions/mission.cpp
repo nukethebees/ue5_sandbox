@@ -264,24 +264,7 @@ void Mission::tick(MissionEvaluationContext const& inputs) {
 
     evaluate_leaves(inputs);
     evaluate_composites();
-
-    auto const first_completed{
-        static_cast<ObjectiveMembershipIndex>(objectives_.completed().size())};
-    evaluate_objectives();
-
-    auto const completed{objectives_.completed()};
-    auto const completed_count{completed.size()};
-    for (auto position{first_completed}; position < completed_count; ++position) {
-        auto const id{completed[position]};
-        objectives_.commit_completion(position);
-        deactivate_expressions(id);
-        handle_completion(id, inputs.tick);
-
-        if (!winning_team_ && outcome(id) == ObjectiveOutcome::Passed &&
-            objectives_.wins_level(id) == ObjectiveWinsLevel::Yes) {
-            finish(id, inputs);
-        }
-    }
+    evaluate_objectives(inputs);
 
     std::ranges::sort(leaves_.active);
 }
@@ -328,7 +311,7 @@ auto Mission::result(ExprHandle const expression) const -> ExprResult {
 // Objective progression
 /* **************************************** */
 void Mission::activate(ObjectiveId const id, SimTick const tick) {
-    objectives_.activate(id, tick);
+    objectives_.activate(id);
 
     auto const leaves{objectives_.leaves(id)};
     auto const leaves_end{leaves.end()};
@@ -360,15 +343,15 @@ void Mission::deactivate_expressions(ObjectiveId const id) {
         return index >= composites.start() && index < composites.end();
     });
 }
-void Mission::handle_completion(ObjectiveId const id, SimTick const tick) {
-    auto const resolved_outcome{*outcome(id)};
-
+void Mission::handle_completion(ObjectiveId const id,
+                                ObjectiveOutcome const outcome,
+                                SimTick const tick) {
     auto const dependents{objectives_.dependents(id)};
     auto const dependents_end{dependents.end()};
 
     for (auto index{dependents.start()}; index < dependents_end; ++index) {
         auto const dependency{dependents_[index]};
-        if (dependency.outcome == resolved_outcome) {
+        if (dependency.outcome == outcome) {
             auto& remaining{objectives_.prerequisites(dependency.dependent)};
             assert(remaining > 0);
 
@@ -382,10 +365,27 @@ void Mission::handle_completion(ObjectiveId const id, SimTick const tick) {
 /* **************************************** */
 // Objective evaluation
 /* **************************************** */
-void Mission::evaluate_objectives() {
+void Mission::evaluate_objectives(MissionEvaluationContext const& inputs) {
+    struct Completion {
+        ObjectiveId id;
+        ObjectiveOutcome outcome;
+    };
+
+    FrameArray<Completion> completed{inputs.scratch};
     for (auto const id : objectives_.active()) {
-        if (root_outcome(id)) {
-            objectives_.resolve(id);
+        if (auto const outcome{root_outcome(id)}) {
+            completed.add({id, *outcome});
+        }
+    }
+
+    for (auto const [id, outcome] : completed) {
+        objectives_.complete(id);
+        deactivate_expressions(id);
+        handle_completion(id, outcome, inputs.tick);
+
+        if (!winning_team_ && outcome == ObjectiveOutcome::Passed &&
+            objectives_.wins_level(id) == ObjectiveWinsLevel::Yes) {
+            finish(id, inputs);
         }
     }
 }

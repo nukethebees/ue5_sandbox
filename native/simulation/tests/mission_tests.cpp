@@ -44,16 +44,20 @@ struct MissionTest : ::testing::Test {
     std::vector<levels::EntityId> names;
     std::vector<EntityId> entities;
     std::array<Team, 2> teams{Team::Blue, Team::Red};
+    alignas(FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
+    FrameMemoryResource scratch{backing};
 
     MissionTest() { clock.initialise({.tick_rate = Frequency::make(10.0)}); }
     void start(MissionDefinition const& definition) {
         auto compiled{Mission::compile(definition, names, clock)};
         ASSERT_TRUE(compiled.has_value()) << (compiled ? "" : compiled.error().front());
         mission = std::move(*compiled);
-        mission.begin({SimTick{0}, ledger, entities, nullptr, nullptr, teams});
+        FrameScratchScope scratch_scope{scratch};
+        mission.begin({SimTick{0}, ledger, entities, nullptr, &scratch, teams});
     }
     void tick(SimTick::value_type const tick) {
-        mission.tick({SimTick{tick}, ledger, entities, nullptr, nullptr, teams});
+        FrameScratchScope scratch_scope{scratch};
+        mission.tick({SimTick{tick}, ledger, entities, nullptr, &scratch, teams});
     }
 };
 auto timer(double const seconds) -> MissionExpr {
@@ -108,7 +112,10 @@ TEST_F(MissionTest, FalseOutcomeLeavesShortCircuitAndAndResolveOrOnlyAfterAllFal
         compiled->objectives().roots(ObjectiveId{2})[ioj::ObjectiveOutcome::Passed]};
     auto const or_root{compiled->objectives().roots(ObjectiveId{3})[ioj::ObjectiveOutcome::Passed]};
     mission = std::move(*compiled);
-    mission.begin({SimTick{0}, ledger, {}, nullptr, nullptr, teams});
+    {
+        FrameScratchScope scratch_scope{scratch};
+        mission.begin({SimTick{0}, ledger, {}, nullptr, &scratch, teams});
+    }
     tick(10);
     EXPECT_EQ(mission.result(and_root), ExprResult::Pending);
     tick(11);
