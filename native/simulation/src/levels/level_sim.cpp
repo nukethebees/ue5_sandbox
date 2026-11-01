@@ -213,9 +213,7 @@ void LevelSim::prepare_tick(float const tick_period) {
     auto const previous_issued_counts{entity_ledger_.get_issued_counts()};
     event_manager_.execute_tick(SimTick{clock_.completed_ticks.value() + 1});
 
-    auto const previous_fighter_count{fighters_simulation_.get_num_instances()};
     fighters_phase.commit_spawns();
-    fighters_spawned_ += fighters_simulation_.get_num_instances() - previous_fighter_count;
 
     lasers_phase.commit_spawns();
 

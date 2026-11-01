@@ -273,7 +273,8 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
                             saturated_count)};
         }
 
-        auto const spawned_at_saturation{simulation.get_fighters_spawned()};
+        auto const spawned_at_saturation{
+            simulation.get_entity_ledger().get_issued_counts()[sim::EntityType::Fighter]};
         for (sim::SimTick tick{}; tick < warmup_ticks; tick.set_value(tick.value() + 1)) {
             auto const advanced{advance_one_tick()};
             if (!advanced) {
@@ -283,7 +284,8 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
                 return std::unexpected{"fighter population changed during post-saturation warm-up"};
             }
         }
-        if (simulation.get_fighters_spawned() != spawned_at_saturation) {
+        if (simulation.get_entity_ledger().get_issued_counts()[sim::EntityType::Fighter] !=
+            spawned_at_saturation) {
             return std::unexpected{"replacement fighters spawned during post-saturation warm-up"};
         }
     }
@@ -291,7 +293,8 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     auto const steady_state_fighters{simulation.get_fighters().get_num_instances()};
     auto minimum_measured_fighters{steady_state_fighters};
     auto maximum_measured_fighters{steady_state_fighters};
-    auto const fighters_spawned_before_measurement{simulation.get_fighters_spawned()};
+    auto const fighters_spawned_before_measurement{
+        simulation.get_entity_ledger().get_issued_counts()[sim::EntityType::Fighter]};
     auto const lasers_spawned_before_measurement{simulation.get_lasers().get_number_spawned()};
     FrameMemorySummary frame_summary;
     std::vector<double> tick_microseconds;
@@ -322,8 +325,9 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         }
     }
     auto const finished_at{std::chrono::steady_clock::now()};
-    auto const fighter_spawns_during_measurement{simulation.get_fighters_spawned() -
-                                                 fighters_spawned_before_measurement};
+    auto const fighter_spawns_during_measurement{
+        simulation.get_entity_ledger().get_issued_counts()[sim::EntityType::Fighter] -
+        fighters_spawned_before_measurement};
     if (options.fighter_stress_cap.has_value() && fighter_spawns_during_measurement != 0) {
         return std::unexpected{"replacement fighters spawned during measured ticks"};
     }

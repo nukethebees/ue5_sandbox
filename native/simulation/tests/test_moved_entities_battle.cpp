@@ -127,7 +127,8 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
     EXPECT_EQ(observed_ticks, tick_count) << "Every requested battle tick was observed";
     EXPECT_TRUE(observed_empty_tick) << "Battle includes an initially quiet movement tick";
     EXPECT_TRUE(observed_moved_fighters > 100) << "Battle exercises fighter movement";
-    EXPECT_EQ(simulation.get_fighters_spawned(), 16) << "Battle spawns exactly one fighter wave";
+    EXPECT_EQ(simulation.get_entity_ledger().get_issued_counts()[EntityType::Fighter], 16)
+        << "Battle spawns exactly one fighter wave";
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 16)
         << "Zero-damage battle preserves every fighter";
 }
