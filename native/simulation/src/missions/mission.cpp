@@ -10,7 +10,7 @@
 
 namespace ioj::sim {
 namespace mission_evaluation_detail {
-auto entity(MissionEvaluationContext const& inputs, std::uint32_t const slot) -> EntityId {
+auto entity(MissionEvaluationContext const& inputs, LevelEntityIndex const slot) -> EntityId {
     assert(slot < inputs.entities.size());
     return inputs.entities[slot];
 }

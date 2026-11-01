@@ -53,9 +53,9 @@ auto Mission::compile(levels::MissionDefinition const& definition,
     Mission result;
     result.objectives_ = Objectives{count};
     std::unordered_map<levels::ObjectiveName, ObjectiveId> objectives;
-    std::unordered_map<levels::EntityId, std::uint32_t> entity_indices;
+    std::unordered_map<levels::EntityId, LevelEntityIndex> entity_indices;
     auto const entity_count{entities.size()};
-    for (std::uint32_t index{}; index < entity_count; ++index) {
+    for (LevelEntityIndex index{}; index < entity_count; ++index) {
         entity_indices.emplace(entities[index], index);
     }
     for (std::uint32_t index{}; index < count; ++index) {
