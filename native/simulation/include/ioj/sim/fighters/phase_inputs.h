@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/frame_array.h>
+#include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/sim_tick.h>
 
 namespace ioj {
@@ -27,12 +29,15 @@ struct ThinkingInputs {
     float collision_radius;
     SpatialQueryManager const& spatial_query_manager;
     FrameMemoryResource& scratch_resource;
+    FrameArray<std::uint32_t>& pending_fire_indices;
 };
 
 struct ActionInputs {
     float dt;
     lasers::Sim& laser_simulation;
     FrameMemoryResource& scratch_resource;
+    std::span<std::uint32_t const> pending_fire_indices;
+    FrameArray<EntityId>& overlap_candidates;
 };
 
 struct ResolutionInputs {

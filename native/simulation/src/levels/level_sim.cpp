@@ -183,8 +183,11 @@ void LevelSim::advance(time_type const dt) {
 template <TickPlayerShipState PlayerState>
 void LevelSim::advance_tick(float const tick_period) {
     prepare_tick<PlayerState>(tick_period);
-    think_tick<PlayerState>(tick_period);
-    act_tick<PlayerState>(tick_period);
+    {
+        FrameArray<std::uint32_t> fighter_fire_indices{&memory_manager_.tick_memory()};
+        think_tick<PlayerState>(tick_period, fighter_fire_indices);
+        act_tick<PlayerState>(tick_period, fighter_fire_indices);
+    }
     resolve_tick<PlayerState>();
     memory_manager_.tick_memory().reset();
     memory_manager_.phase_memory().reset();
@@ -227,7 +230,8 @@ void LevelSim::prepare_tick(float const tick_period) {
     refresh_spatial_index();
 }
 template <TickPlayerShipState PlayerState>
-void LevelSim::think_tick(float const tick_period) {
+void LevelSim::think_tick(float const tick_period,
+                          FrameArray<std::uint32_t>& fighter_fire_indices) {
     fighters::PhaseInterface fighters_phase{fighters_simulation_};
     turrets::PhaseInterface turrets_phase{turrets_simulation_};
     spinners::PhaseInterface spinners_phase{spinners_simulation_};
@@ -248,7 +252,8 @@ void LevelSim::think_tick(float const tick_period) {
         .clock = clock_,
         .collision_radius = collision_pipeline_.queries().entity_type_radius(EntityType::Fighter),
         .spatial_query_manager = collision_pipeline_.queries(),
-        .scratch_resource = phase_memory};
+        .scratch_resource = phase_memory,
+        .pending_fire_indices = fighter_fire_indices};
 
     turrets_phase.think(turret_inputs);
     fighters_phase.think(fighter_inputs);
@@ -265,12 +270,14 @@ void LevelSim::think_tick(float const tick_period) {
     spinners_phase.generate_fire_commands();
 }
 template <TickPlayerShipState PlayerState>
-void LevelSim::act_tick(float const tick_period) {
+void LevelSim::act_tick(float const tick_period,
+                        std::span<std::uint32_t const> const fighter_fire_indices) {
     fighters::PhaseInterface fighters_phase{fighters_simulation_};
     spinners::PhaseInterface spinners_phase{spinners_simulation_};
     lasers::PhaseInterface lasers_phase{lasers_simulation_};
     auto& phase_memory{memory_manager_.phase_memory()};
     FrameScratchScope scratch_scope{phase_memory};
+    FrameArray<EntityId> fighter_overlap_candidates{&phase_memory};
 
     SANDBOX_PROFILE_SCOPE("Action");
     clock_.transition_to(SimulationPhase::Action);
@@ -291,14 +298,18 @@ void LevelSim::act_tick(float const tick_period) {
     }
 
     {
-        fighters::ActionInputs const fighter_inputs{tick_period, lasers_simulation_, phase_memory};
+        fighters::ActionInputs const fighter_inputs{tick_period,
+                                                    lasers_simulation_,
+                                                    phase_memory,
+                                                    fighter_fire_indices,
+                                                    fighter_overlap_candidates};
         spinners::ActionInputs const spinner_inputs{lasers_simulation_};
         fighters_phase.apply_movement(fighter_inputs);
         spinners_phase.apply_movement(spinner_inputs);
     }
 
     collision_pipeline_.detect_and_handle_overlaps(
-        read_access(), fighters_simulation_.overlap_candidates(), combat_events_, phase_memory);
+        read_access(), fighter_overlap_candidates, combat_events_, phase_memory);
 }
 template <TickPlayerShipState PlayerState>
 void LevelSim::resolve_tick() {

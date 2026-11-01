@@ -44,9 +44,6 @@ struct Sim {
     /* **************************************** */
     auto entities() const -> EntityStorage::ConstView { return entities_.const_view(); }
     auto num_instances() const noexcept -> std::uint32_t;
-    auto overlap_candidates() const noexcept -> std::span<EntityId const> {
-        return overlap_candidates_;
-    }
     auto healths() const -> HealthConstView {
         return entity_tables_.health.const_view<EntityType::Fighter>();
     }
@@ -93,7 +90,7 @@ struct Sim {
     /* **************************************** */
     // Movement
     /* **************************************** */
-    void move(float dt, EntityStorage::View fighters, FrameMemoryResource* const scratch_resource);
+    void move(EntityStorage::View fighters, ActionInputs inputs);
     void update_navigation_steering(ThinkingInputs const inputs);
     void collect_navigation_updates(NavigationScratch& scratch);
     void update_separation_observations(NavigationScratch& scratch, ThinkingInputs const inputs);
@@ -161,9 +158,6 @@ struct Sim {
 
     std::vector<std::uint32_t> local_indices_to_remove;
     EntityDeathInfo entity_death_info;
-
-    std::vector<std::uint32_t> pending_fire_indices_;
-    std::vector<EntityId> overlap_candidates_;
 
     telemetry::FighterNavigationSnapshot navigation_telemetry;
 };

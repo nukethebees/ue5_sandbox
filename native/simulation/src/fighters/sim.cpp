@@ -272,11 +272,9 @@ void Sim::generate_fire_commands(ThinkingInputs const inputs) {
 
 // Action
 void Sim::apply_movement(ActionInputs const inputs) {
-    auto* const scratch_resource{&inputs.scratch_resource};
-
     SANDBOX_PROFILE_SCOPE("fighters::Sim::apply_movement");
     auto const data{entities_.view()};
-    overlap_candidates_.clear();
+    auto& overlap_candidates{inputs.overlap_candidates};
     auto const count{data.num()};
     auto const aim_directions{data.view_aim_directions().resolve()};
     auto const planned_directions{data.view_planned_aim_directions().resolve()};
@@ -292,18 +290,20 @@ void Sim::apply_movement(ActionInputs const inputs) {
         auto const before{direction_to_rotation(direction)};
         auto const after{direction_to_rotation(planned_direction)};
         if (before.pitch != after.pitch || before.yaw != after.yaw || before.roll != after.roll) {
-            overlap_candidates_.push_back(entity_ids[index]);
+            overlap_candidates.add(entity_ids[index]);
         }
     }
     data.view_velocities().resolve().each_column(
         [](auto column) { std::ranges::fill(column, 0.f); });
     copy_vectors(aim_directions, planned_directions.const_view());
-    move(inputs.dt, data, scratch_resource);
-    std::ranges::sort(overlap_candidates_);
-    auto const duplicates{std::ranges::unique(overlap_candidates_)};
-    overlap_candidates_.erase(duplicates.begin(), duplicates.end());
+    move(data, inputs);
+    std::ranges::sort(overlap_candidates);
+    auto const duplicates{std::ranges::unique(overlap_candidates)};
+    overlap_candidates.set_num(static_cast<std::uint32_t>(
+        std::ranges::distance(overlap_candidates.begin(), duplicates.begin())));
 
-    auto const fire_count{static_cast<std::uint32_t>(pending_fire_indices_.size())};
+    auto const pending_fire_indices{inputs.pending_fire_indices};
+    auto const fire_count{static_cast<std::uint32_t>(pending_fire_indices.size())};
     auto const requests{inputs.laser_simulation.append_spawn_requests(fire_count)};
     auto const laser_locations{requests.view_locations().resolve()};
     auto const laser_rotations{requests.view_rotations().resolve()};
@@ -319,7 +319,7 @@ void Sim::apply_movement(ActionInputs const inputs) {
     auto const teams{data.teams()};
 
     for (std::uint32_t row{}; row < fire_count; ++row) {
-        auto const index{pending_fire_indices_[row]};
+        auto const index{pending_fire_indices[row]};
         auto const direction{vector_at(aim_directions, index)};
         set_vector(laser_locations,
                    row,
@@ -329,7 +329,6 @@ void Sim::apply_movement(ActionInputs const inputs) {
         laser_ids[row] = entity_ids[index];
         laser_sources[row] = {teams[index], EntityType::Fighter};
     }
-    pending_fire_indices_.clear();
 }
 
 // Resolution
@@ -378,13 +377,12 @@ void Sim::finish_action() {
 /* **************************************** */
 // Movement
 /* **************************************** */
-void Sim::move(float const dt,
-               EntityStorage::View fighters,
-               FrameMemoryResource* const scratch_resource) {
+void Sim::move(EntityStorage::View fighters, ActionInputs const inputs) {
+    auto const dt{inputs.dt};
     assert(dt > 0.f);
     auto const count{fighters.num()};
     auto const directions{fighters.view_movement_directions().const_view().resolve()};
-    Vectors3f previous_locations{*scratch_resource};
+    Vectors3f previous_locations{inputs.scratch_resource};
     previous_locations.set_num(count);
     copy_vectors(previous_locations.view().resolve(),
                  fighters.view_locations().const_view().resolve());
@@ -420,7 +418,7 @@ void Sim::move(float const dt,
         auto const before{before_locations[index]};
         auto const after{vector_at(locations, index)};
         if (before.x() != after.x() || before.y() != after.y() || before.z() != after.z()) {
-            overlap_candidates_.push_back(entity_ids[index]);
+            inputs.overlap_candidates.add(entity_ids[index]);
         }
     }
 }
@@ -1077,9 +1075,11 @@ void Sim::handle_firing(EntityStorage::View data, ThinkingInputs const inputs) {
     auto const attack_cooldowns{data.attack_cooldowns()};
 
     auto const n_can_fire{can_fire.num()};
+    auto& pending_fire_indices{inputs.pending_fire_indices};
+    pending_fire_indices.reserve(n_can_fire);
     for (std::uint32_t i{0}; i < n_can_fire; ++i) {
         auto const ship_index{can_fire[i]};
-        pending_fire_indices_.push_back(ship_index);
+        pending_fire_indices.add(ship_index);
         attack_cooldowns[ship_index] = attack_restart_ticks_;
     }
 }
