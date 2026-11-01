@@ -25,14 +25,14 @@ class Objectives {
     auto name(ObjectiveId id) const -> levels::ObjectiveName const& { return at(identifiers_, id); }
     auto title(ObjectiveId id) -> std::string& { return at(display_names_, id); }
     auto title(ObjectiveId id) const -> std::string const& { return at(display_names_, id); }
-    auto team(ObjectiveId id) -> Team& { return at(teams_, id); }
-    auto team(ObjectiveId id) const -> Team { return at(teams_, id); }
+    auto team(ObjectiveId id) -> Team& { return at(assigned_teams_, id); }
+    auto team(ObjectiveId id) const -> Team { return at(assigned_teams_, id); }
     auto roots(ObjectiveId id) -> ObjectiveRoots& { return at(roots_, id); }
     auto roots(ObjectiveId id) const -> ObjectiveRoots const& { return at(roots_, id); }
-    auto leaves(ObjectiveId id) -> IndexSpan& { return at(leaves_, id); }
-    auto leaves(ObjectiveId id) const -> IndexSpan { return at(leaves_, id); }
-    auto composites(ObjectiveId id) -> IndexSpan& { return at(composites_, id); }
-    auto composites(ObjectiveId id) const -> IndexSpan { return at(composites_, id); }
+    auto leaves(ObjectiveId id) -> IndexSpan& { return at(leaf_ranges_, id); }
+    auto leaves(ObjectiveId id) const -> IndexSpan { return at(leaf_ranges_, id); }
+    auto composites(ObjectiveId id) -> IndexSpan& { return at(composite_ranges_, id); }
+    auto composites(ObjectiveId id) const -> IndexSpan { return at(composite_ranges_, id); }
     auto prerequisites(ObjectiveId id) -> ObjectivePrerequisiteCount& {
         return at(prerequisites_, id);
     }
@@ -67,10 +67,10 @@ class Objectives {
     // Immutable
     std::vector<levels::ObjectiveName> identifiers_;
     std::vector<std::string> display_names_;
-    std::vector<Team> teams_;
+    std::vector<Team> assigned_teams_;
     std::vector<ObjectiveRoots> roots_;
-    std::vector<IndexSpan> leaves_;
-    std::vector<IndexSpan> composites_;
+    std::vector<IndexSpan> leaf_ranges_;
+    std::vector<IndexSpan> composite_ranges_;
     std::vector<IndexSpan> dependent_ranges_;
     std::vector<IndexSpan> observer_ranges_;
     std::vector<IndexSpan> team_results_;
