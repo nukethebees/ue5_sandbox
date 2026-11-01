@@ -17,7 +17,7 @@ using namespace ioj::levels;
 static_assert(sizeof(ObjectiveId) == sizeof(std::uint32_t));
 static_assert(!std::convertible_to<std::uint32_t, ObjectiveId>);
 static_assert(!std::convertible_to<EntityId, ObjectiveId>);
-static_assert(sizeof(ExprRef) == sizeof(std::uint32_t));
+static_assert(sizeof(ExprHandle) == sizeof(std::uint32_t));
 static_assert(sizeof(RuleId) == sizeof(std::uint32_t));
 
 TEST(MissionAuthoring, RejectsInvalidConstrainedInputsBeforeRuntimeCompilation) {

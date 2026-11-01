@@ -29,7 +29,7 @@ class Mission {
 
     auto outcome(ObjectiveId id) const -> std::optional<ObjectiveOutcome>;
     auto team_outcome(Team team) const -> std::optional<MissionOutcome>;
-    auto result(ExprRef expression) const -> ExprResult;
+    auto result(ExprHandle expression) const -> ExprResult;
 
     auto active_rules() const -> std::span<RuleId const> { return active_rules_; }
   private:
@@ -44,14 +44,14 @@ class Mission {
     /* **************************************** */
     // Expression propagation
     /* **************************************** */
-    void resolve(ExprRef expression, ExprResult value);
+    void resolve(ExprHandle expression, ExprResult value);
     void resolve_rule(RuleId rule, ExprResult value);
     void propagate();
 
     /* **************************************** */
     // Rule evaluation
     /* **************************************** */
-    auto rule_leaf(RuleId rule) const -> ExprLeafIndex;
+    auto rule_leaf(RuleId rule) const -> ExprLeafHandle;
     auto pending_rule(RuleId rule) const -> bool;
     void evaluate(std::span<RuleId const> scheduled,
                   MissionEvaluationContext const& inputs,
@@ -84,7 +84,7 @@ class Mission {
     std::vector<RuleId> active_rules_;
     std::vector<RuleId> newly_active_;
 
-    std::vector<ExprRef> propagation_;
+    std::vector<ExprHandle> propagation_;
     std::vector<ObjectiveId> pending_objectives_;
     std::optional<Team> winning_team_;
     EnumArray<Team, std::optional<MissionOutcome>> team_outcomes_;

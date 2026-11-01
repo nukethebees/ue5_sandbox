@@ -33,7 +33,7 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
     std::vector<std::vector<ExprCompositeIndex>> composite_parents;
     std::vector<std::vector<ExprCompositeIndex>> leaf_parents;
     std::vector<std::vector<ActivationNotification>> dependents(count);
-    std::vector<std::vector<ExprLeafIndex>> observers(count);
+    std::vector<std::vector<ExprLeafHandle>> observers(count);
     auto size = [](auto const& values) { return static_cast<std::uint32_t>(values.size()); };
 
     for (std::uint32_t row{}; row < count; ++row) {
@@ -51,7 +51,7 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
             dependents[objectives.at(dependency.objective).index()].push_back(
                 {owner, dependency.outcome});
         }
-        std::vector<ExprRef> references;
+        std::vector<ExprHandle> references;
         references.reserve(source.expressions.size());
         for (auto const& expression : source.expressions) {
             if (expression.type() == ExprType::All || expression.type() == ExprType::Any) {
@@ -65,7 +65,7 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
                 composite_parents.emplace_back();
                 continue;
             }
-            ExprLeafIndex const leaf{size(leaves.results)};
+            ExprLeafHandle const leaf{size(leaves.results)};
             references.emplace_back(leaf, true);
             leaves.results.push_back(ExprResult::Pending);
             leaves.owners.push_back(owner);

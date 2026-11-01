@@ -15,11 +15,11 @@
     (member index std::uint32_t :bits 32)
     (projections (cpp :storage std::uint32_t))))
 
-(module mission_expr_ref
-  :header "native/simulation/include/ioj/sim/missions/expr_ref.h"
+(module mission_expr_handle
+  :header "native/simulation/include/ioj/sim/missions/expr_handle.h"
   :namespace ioj::sim
   (integer-scalar ExpressionIndex :bit-width 31)
-  (record ExprRef :layout packed :bits 32 :invalid-value 0xffffffff
+  (record ExprHandle :layout packed :bits 32 :invalid-value 0xffffffff
     (member index @ExpressionIndex)
     (member leaf bool :bits 1)
     (projections (cpp :storage std::uint32_t))))

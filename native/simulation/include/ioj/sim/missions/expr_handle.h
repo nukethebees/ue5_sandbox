@@ -10,19 +10,19 @@
 #include <cstdint>
 
 namespace ioj::sim {
-struct ExprRef;
+struct ExprHandle;
 
 namespace detail {
-inline constexpr std::uint32_t expr_ref_default_raw_value{4294967295};
+inline constexpr std::uint32_t expr_handle_default_raw_value{4294967295};
 
-using ExprRefBase =
-    PackedValueBase<ExprRef, PackedStorage<std::uint32_t, 32>{expr_ref_default_raw_value}>;
+using ExprHandleBase =
+    PackedValueBase<ExprHandle, PackedStorage<std::uint32_t, 32>{expr_handle_default_raw_value}>;
 } // namespace detail
 
-struct ExprRef : detail::ExprRefBase {
+struct ExprHandle : detail::ExprHandleBase {
   public:
     // Storage
-    using Base = detail::ExprRefBase;
+    using Base = detail::ExprHandleBase;
     using packed_integer_tag = packed::integer_tag;
     static constexpr storage_type invalid_value{storage.default_raw_value};
 
@@ -32,16 +32,16 @@ struct ExprRef : detail::ExprRefBase {
     // leaf
     static constexpr PackedField<storage_type, bool, 31, 1> leaf_layout{};
 
-    constexpr ExprRef() noexcept = default;
-    constexpr explicit ExprRef(decltype(index_layout)::value_type const index_value,
-                               decltype(leaf_layout)::value_type const leaf_value) noexcept
+    constexpr ExprHandle() noexcept = default;
+    constexpr explicit ExprHandle(decltype(index_layout)::value_type const index_value,
+                                  decltype(leaf_layout)::value_type const leaf_value) noexcept
         : Base{static_cast<storage_type>(packed_pack<decltype(index_layout)>(index_value) |
                                          packed_pack<decltype(leaf_layout)>(leaf_value))} {
         assert((is_valid_index(index_value)));
         assert((value_ != invalid_value));
     }
 
-    [[nodiscard]] constexpr auto operator<=>(ExprRef const&) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(ExprHandle const&) const noexcept = default;
 
     [[nodiscard]] static constexpr auto
         is_valid_index(decltype(index_layout)::value_type const value) noexcept -> bool {
@@ -62,5 +62,5 @@ struct ExprRef : detail::ExprRefBase {
     }
 };
 
-static_assert(valid_packed_value_layout<ExprRef>());
+static_assert(valid_packed_value_layout<ExprHandle>());
 } // namespace ioj::sim

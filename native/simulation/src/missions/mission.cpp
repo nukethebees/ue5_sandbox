@@ -87,7 +87,7 @@ auto Mission::team_outcome(Team const team) const -> std::optional<MissionOutcom
     assert(static_cast<std::size_t>(team) < team_outcomes_.size());
     return team_outcomes_[team];
 }
-auto Mission::result(ExprRef const expression) const -> ExprResult {
+auto Mission::result(ExprHandle const expression) const -> ExprResult {
     if (!expression.is_valid()) {
         return ExprResult::False;
     }
@@ -126,7 +126,7 @@ void Mission::activate(ObjectiveId const id, SimTick const tick) {
     auto const leaves{data_.objectives.leaves(id)};
     auto const leaves_end{leaves.end()};
 
-    for (ExprLeafIndex leaf{leaves.start()}; leaf < leaves_end; ++leaf) {
+    for (ExprLeafHandle leaf{leaves.start()}; leaf < leaves_end; ++leaf) {
         auto const rule{data_.leaves.rules[leaf]};
         active_rules_.push_back(rule);
         newly_active_.push_back(rule);
@@ -137,7 +137,7 @@ void Mission::activate(ObjectiveId const id, SimTick const tick) {
 
     for (ExprCompositeIndex node{composites.start()}; node < composites_end; ++node) {
         if (data_.composites.remaining[node] == 0) {
-            resolve(ExprRef{node, false},
+            resolve(ExprHandle{node, false},
                     data_.composites.types[node] == ExprType::All ? ExprResult::True
                                                                   : ExprResult::False);
         }
@@ -175,7 +175,7 @@ void Mission::complete(ObjectiveId const id, ObjectiveOutcome const outcome, Sim
         auto const leaf{data_.observers[index]};
         if (active(data_.leaves.owners[leaf])) {
             auto const rule{data_.leaves.rules[leaf]};
-            resolve(ExprRef{leaf, true},
+            resolve(ExprHandle{leaf, true},
                     data_.rules.observed_outcomes[rule.index()] == outcome ? ExprResult::True
                                                                            : ExprResult::False);
         }
@@ -185,7 +185,7 @@ void Mission::complete(ObjectiveId const id, ObjectiveOutcome const outcome, Sim
 /* **************************************** */
 // Expression propagation
 /* **************************************** */
-void Mission::resolve(ExprRef const expression, ExprResult const value) {
+void Mission::resolve(ExprHandle const expression, ExprResult const value) {
     assert(value != ExprResult::Pending);
 
     auto& values{expression.leaf() ? data_.leaves.results : data_.composites.results};
@@ -199,7 +199,7 @@ void Mission::resolve(ExprRef const expression, ExprResult const value) {
                                                     : data_.composites.owners[index]);
 }
 void Mission::resolve_rule(RuleId const rule, ExprResult const value) {
-    resolve(ExprRef{rule_leaf(rule), true}, value);
+    resolve(ExprHandle{rule_leaf(rule), true}, value);
 }
 void Mission::propagate() {
     // NOLINTNEXTLINE(ioj-loop-condition-call) -- propagation appends newly resolved parents.
@@ -216,12 +216,12 @@ void Mission::propagate() {
             }
             auto const all{data_.composites.types[parent] == ExprType::All};
             if ((all && value == ExprResult::False) || (!all && value == ExprResult::True)) {
-                resolve(ExprRef{parent, false}, value);
+                resolve(ExprHandle{parent, false}, value);
             } else {
                 auto& remaining{data_.composites.remaining[parent]};
                 assert(remaining > 0);
                 if (--remaining == 0) {
-                    resolve(ExprRef{parent, false}, all ? ExprResult::True : ExprResult::False);
+                    resolve(ExprHandle{parent, false}, all ? ExprResult::True : ExprResult::False);
                 }
             }
         }
@@ -233,7 +233,7 @@ void Mission::propagate() {
 /* **************************************** */
 // Rule evaluation
 /* **************************************** */
-auto Mission::rule_leaf(RuleId const rule) const -> ExprLeafIndex {
+auto Mission::rule_leaf(RuleId const rule) const -> ExprLeafHandle {
     return data_.rules.leaves[rule.type()][rule.index()];
 }
 auto Mission::pending_rule(RuleId const rule) const -> bool {
