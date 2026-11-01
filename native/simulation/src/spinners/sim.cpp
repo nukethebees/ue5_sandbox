@@ -60,10 +60,10 @@ void Sim::think(float const dt) {
 
     planned_yaw_delta_ = dt * config.yaw_rotation_speed_degrees;
 }
-void Sim::generate_fire_commands() {
+void Sim::generate_fire_commands(ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::generate_fire_commands");
 
-    fire_lasers();
+    fire_lasers(inputs);
 }
 
 // Action
@@ -73,11 +73,6 @@ void Sim::apply_movement(ActionInputs const inputs) {
         yaw += planned_yaw_delta_;
     }
     materialize_fire_commands(inputs);
-}
-
-// ResolutionCommit
-void Sim::finish_action() {
-    SANDBOX_PROFILE_SCOPE("spinners::Sim::finish_action");
 }
 
 /* **************************************** */
@@ -135,7 +130,7 @@ auto Sim::spawn_instances(vectors3f::ResolvedConstView const new_locations,
 /* **************************************** */
 // Firing
 /* **************************************** */
-void Sim::fire_lasers() {
+void Sim::fire_lasers(ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::fire_lasers");
 
     if (config.fire_point_offsets.empty()) {
@@ -144,19 +139,18 @@ void Sim::fire_lasers() {
 
     auto const count{num_instances()};
     auto const entity_columns{entities.view()};
-    pending_fire_indices_.clear();
-    pending_fire_indices_.reserve(count);
+    inputs.pending_fire_indices.reserve(count);
     auto cooldowns{
         TickCountdownView<std::int16_t>{entity_columns.laser_cooldowns(), cooldown_restart_ticks_}};
     for (std::uint32_t index{}; index < count; ++index) {
         if (cooldowns.try_consume(static_cast<std::size_t>(index))) {
-            pending_fire_indices_.push_back(index);
+            inputs.pending_fire_indices.add(index);
         }
     }
 }
 void Sim::materialize_fire_commands(ActionInputs const inputs) {
     auto const entity_columns{entities.view()};
-    auto const ready_count{static_cast<std::uint32_t>(pending_fire_indices_.size())};
+    auto const ready_count{static_cast<std::uint32_t>(inputs.pending_fire_indices.size())};
     auto const fire_point_count{static_cast<std::uint32_t>(config.fire_point_offsets.size())};
     auto const new_lasers{inputs.laser_simulation.append_spawn_requests(ready_count)};
     auto const next_fire_points{entity_columns.next_fire_point_indices()};
@@ -174,7 +168,7 @@ void Sim::materialize_fire_commands(ActionInputs const inputs) {
     auto const laser_sources{new_lasers.sources()};
 
     for (std::uint32_t request_index{}; request_index < ready_count; ++request_index) {
-        auto const index{pending_fire_indices_[request_index]};
+        auto const index{inputs.pending_fire_indices[request_index]};
         auto const element{static_cast<std::size_t>(index)};
         auto& next_fire_point{next_fire_points[element]};
         assert(next_fire_point >= 0 &&
@@ -201,8 +195,6 @@ void Sim::materialize_fire_commands(ActionInputs const inputs) {
         laser_sources[request_index] = {Team::White, EntityType::TubeSpinner};
         next_fire_point = (next_fire_point + 1) % fire_point_count;
     }
-
-    pending_fire_indices_.clear();
 }
 
 /* **************************************** */

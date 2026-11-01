@@ -77,7 +77,8 @@
     (method simulate void
       (parameter inputs (type-ref @lasers_action_inputs :suffix " const")))
     (method commit_spawns void)
-    (method cleanup_entities void)
+    (method cleanup_entities void
+      (parameter inputs (type-ref @lasers_resolution_commit_inputs :suffix " const")))
     (method finish_action void)))
 
 (module capital_ships_phase_interface
@@ -92,13 +93,16 @@
     :target-storage reference
     (method initialise void
       (parameter max_health @settings_positive_health))
+    (method update_entity_lookup_table void)
     (method prepare_tick void)
     (method resolve_damage_events void
       (parameter inputs (type-ref @capital_ships_resolution_inputs :suffix " const")))
     (method publish_deaths void
       (parameter inputs (type-ref @capital_ships_resolution_inputs :suffix " const")))
-    (method remove_components void)
-    (method remove_entities void)
+    (method remove_components void
+      (parameter inputs (type-ref @capital_ships_resolution_commit_inputs :suffix " const")))
+    (method remove_entities void
+      (parameter inputs (type-ref @capital_ships_resolution_commit_inputs :suffix " const")))
     (method finish_action void)))
 
 (module fighters_phase_interface
@@ -146,17 +150,20 @@
     :target-storage reference
     (method initialise void
       (parameter config (type-ref ioj::sim::TurretSimConfig :suffix " const&")))
-    (method prepare_tick void
-      (parameter dt "float const"))
+    (method update_entity_lookup_table void)
+    (method prepare_tick void)
     (method think void
       (parameter inputs (type-ref @turrets_thinking_inputs :suffix " const")))
     (method generate_fire_commands void
       (parameter inputs (type-ref @turrets_thinking_inputs :suffix " const")))
     (method resolve_damage_events void
       (parameter inputs (type-ref @turrets_resolution_inputs :suffix " const")))
-    (method publish_deaths void)
-    (method remove_components void)
-    (method remove_entities void)
+    (method publish_deaths void
+      (parameter inputs (type-ref @turrets_resolution_inputs :suffix " const")))
+    (method remove_components void
+      (parameter inputs (type-ref @turrets_resolution_commit_inputs :suffix " const")))
+    (method remove_entities void
+      (parameter inputs (type-ref @turrets_resolution_commit_inputs :suffix " const")))
     (method finish_action void)))
 
 (module spinners_phase_interface
@@ -171,11 +178,12 @@
     :target-storage reference
     (method initialise void
       (parameter config (type-ref ioj::sim::SpinnerSimConfig :suffix " const&")))
+    (method update_entity_lookup_table void)
     (method prepare_tick void
       (parameter dt "float const"))
     (method think void
       (parameter dt "float const"))
     (method apply_movement void
       (parameter inputs (type-ref @spinners_action_inputs :suffix " const")))
-    (method generate_fire_commands void)
-    (method finish_action void)))
+    (method generate_fire_commands void
+      (parameter inputs (type-ref @spinners_thinking_inputs :suffix " const")))))

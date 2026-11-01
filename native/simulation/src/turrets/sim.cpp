@@ -13,6 +13,7 @@
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/deterministic_bias.h>
+#include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/phase_checks.h>
@@ -133,22 +134,22 @@ auto Sim::register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data)
 /* **************************************** */
 // Death handling
 /* **************************************** */
-void Sim::handle_dead_entities() {
+void Sim::handle_dead_entities(ResolutionCommitInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::handle_dead_entities");
-    if (local_indices_to_remove.empty()) {
+    if (inputs.local_indices_to_remove.empty()) {
         return;
     }
 
     auto const entities{this->entities.const_view()};
     auto const entity_ids{entities.entity_ids()};
 
-    for (auto const index : local_indices_to_remove) {
+    for (auto const index : inputs.local_indices_to_remove) {
         frame_changes_.push_back(
             {.kind = EntityFrameChangeKind::RemoveSwap, .index = index, .id = entity_ids[index]});
     }
     entity_tables_.lookups.for_type(EntityType::Turret)
-        .retire_rows(entity_ids, local_indices_to_remove);
-    this->entities.remove_at_swap(local_indices_to_remove);
+        .retire_rows(entity_ids, inputs.local_indices_to_remove);
+    this->entities.remove_at_swap(inputs.local_indices_to_remove);
 }
 
 /* **************************************** */
@@ -159,9 +160,8 @@ void Sim::update_entity_lookup_table() {
     auto const rows{entities.const_view()};
     entity_tables_.publish<EntityType::Turret>(rows.entity_ids(), rows.teams(), config.max_health);
 }
-void Sim::prepare_tick(float const) {
+void Sim::prepare_tick() {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::prepare_tick");
-    clear_tick_buffers();
 
     auto const entities{this->entities.view()};
     tick_countdowns<std::int16_t>(entities.laser_cooldowns(), cooldown_cleaner_, 16384);
@@ -214,34 +214,33 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
                                entities.entity_ids(),
                                entities.view_locations().const_view().resolve(),
                                healths,
-                               local_indices_to_remove,
-                               entity_death_info,
+                               inputs.local_indices_to_remove,
+                               inputs.entity_death_info,
                                ledger_,
                                scratch_resource);
     auto const locations{entities.view_locations().resolve()};
 
-    for (auto const index : local_indices_to_remove) {
+    for (auto const index : inputs.local_indices_to_remove) {
         death_locations_.push_back(vector_at(locations, index));
     }
 }
-void Sim::publish_deaths() {
-    ledger_.record_deaths(entity_death_info.const_view(), simulation_clock.get_completed_ticks());
+void Sim::publish_deaths(ResolutionInputs const inputs) {
+    ledger_.record_deaths(inputs.entity_death_info.const_view(),
+                          simulation_clock.get_completed_ticks());
 }
 
 // ResolutionCommit
-void Sim::remove_components() {
+void Sim::remove_components(ResolutionCommitInputs const inputs) {
     assert(is_removal_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("turrets::Sim::remove_components");
 
-    sort_and_deduplicate_removal_indices(local_indices_to_remove);
+    sort_and_deduplicate_removal_indices(inputs.local_indices_to_remove);
 }
-void Sim::remove_entities() {
+void Sim::remove_entities(ResolutionCommitInputs const inputs) {
     assert(is_removal_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("turrets::Sim::remove_entities");
 
-    handle_dead_entities();
-    local_indices_to_remove.clear();
-    entity_death_info.reset();
+    handle_dead_entities(inputs);
 }
 void Sim::finish_action() {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::finish_action");
@@ -471,14 +470,6 @@ void Sim::fire_at_enemies(ThinkingInputs const inputs) {
 }
 auto Sim::disengage_radius() const -> float {
     return config.detection_radius * 1.2f;
-}
-
-/* **************************************** */
-// Misc
-/* **************************************** */
-void Sim::clear_tick_buffers() {
-    entity_death_info.reset();
-    local_indices_to_remove.clear();
 }
 
 /* **************************************** */

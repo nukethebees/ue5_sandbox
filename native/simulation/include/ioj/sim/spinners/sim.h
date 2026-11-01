@@ -16,7 +16,6 @@
 #include <vector>
 
 namespace ioj::sim {
-struct LevelSim;
 class LevelSpawnManager;
 class EntityLedger;
 }
@@ -55,10 +54,8 @@ struct Sim {
     void prepare_tick(float dt);
     void think(float dt);
     void apply_movement(ActionInputs const inputs);
-    void generate_fire_commands();
+    void generate_fire_commands(ThinkingInputs const inputs);
     void materialize_fire_commands(ActionInputs const inputs);
-    std::vector<std::uint32_t> pending_fire_indices_;
-    void finish_action();
 
     /* **************************************** */
     // Spawning
@@ -75,10 +72,9 @@ struct Sim {
     /* **************************************** */
     // Firing
     /* **************************************** */
-    void fire_lasers();
+    void fire_lasers(ThinkingInputs const inputs);
 
     friend class PhaseInterface;
-    friend struct sim::LevelSim;
     friend class sim::LevelSpawnManager;
 
     friend struct SpinnerSpawnTestAccess;

@@ -394,3 +394,19 @@
   :header "ioj/transform3d.h")
 (type settings_fire_points :spelling "std::vector<ioj::sim::FirePoint>"
   :header "ioj/sim/lasers/fire_point.h")
+
+(type capital_ships_resolution_commit_inputs
+  :spelling "ResolutionCommitInputs"
+  :header "ioj/sim/capital_ships/phase_inputs.h")
+
+(type turrets_resolution_commit_inputs
+  :spelling "ResolutionCommitInputs"
+  :header "ioj/sim/turrets/phase_inputs.h")
+
+(type lasers_resolution_commit_inputs
+  :spelling "ResolutionCommitInputs"
+  :header "ioj/sim/lasers/phase_inputs.h")
+
+(type spinners_thinking_inputs
+  :spelling "ThinkingInputs"
+  :header "ioj/sim/spinners/phase_inputs.h")

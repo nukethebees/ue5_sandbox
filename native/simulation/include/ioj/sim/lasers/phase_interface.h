@@ -19,7 +19,9 @@ class PhaseInterface {
 
     void commit_spawns() { simulation.commit_spawns(); }
 
-    void cleanup_entities() { simulation.cleanup_entities(); }
+    void cleanup_entities(ResolutionCommitInputs const inputs) {
+        simulation.cleanup_entities(inputs);
+    }
 
     void finish_action() { simulation.finish_action(); }
 

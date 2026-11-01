@@ -1,6 +1,5 @@
 #pragma once
 #include <ioj/frame_memory_resource.h>
-#include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_frame_change.h>
 #include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/levels/level_capital_spawn_events.h>
@@ -13,12 +12,10 @@
 #include <ioj/sim/turrets/turret_sim_config.h>
 
 #include <cstdint>
-#include <memory_resource>
 #include <span>
 #include <vector>
 
 namespace ioj::sim {
-struct LevelSim;
 class EntityLedger;
 class LevelSpawnManager;
 }
@@ -64,13 +61,13 @@ struct Sim {
     /* **************************************** */
     void initialise(TurretSimConfig const& new_config);
     void update_entity_lookup_table();
-    void prepare_tick(float dt);
+    void prepare_tick();
     void think(ThinkingInputs const inputs);
     void generate_fire_commands(ThinkingInputs const inputs);
     void resolve_damage_events(ResolutionInputs const inputs);
-    void publish_deaths();
-    void remove_components();
-    void remove_entities();
+    void publish_deaths(ResolutionInputs const inputs);
+    void remove_components(ResolutionCommitInputs const inputs);
+    void remove_entities(ResolutionCommitInputs const inputs);
     void finish_action();
 
     /* **************************************** */
@@ -102,15 +99,9 @@ struct Sim {
     /* **************************************** */
     // Death handling
     /* **************************************** */
-    void handle_dead_entities();
-
-    /* **************************************** */
-    // Misc
-    /* **************************************** */
-    void clear_tick_buffers();
+    void handle_dead_entities(ResolutionCommitInputs const inputs);
 
     friend class PhaseInterface;
-    friend struct sim::LevelSim;
 
     friend class sim::LevelSpawnManager;
 
@@ -119,13 +110,10 @@ struct Sim {
     EntityLedger& ledger_;
     EntityTables& entity_tables_;
     EntityStorage entities{};
-    EntityDeathInfo entity_death_info;
     std::vector<EntityFrameChange> frame_changes_;
     std::vector<Vector3f> death_locations_;
     std::int32_t target_refresh_next_offset{0};
     NonNegative<std::int16_t> cooldown_restart_ticks_{};
     std::int16_t cooldown_cleaner_{};
-
-    std::pmr::vector<std::uint32_t> local_indices_to_remove;
 };
 } // namespace ioj::sim::turrets

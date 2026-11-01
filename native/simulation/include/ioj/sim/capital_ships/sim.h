@@ -3,7 +3,6 @@
 #include <ioj/settings/simulation_constraints.h>
 #include <ioj/sim/capital_ships/capital_entity_data.h>
 #include <ioj/sim/capital_ships/phase_inputs.h>
-#include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_frame_change.h>
 #include <ioj/sim/entities/entity_id.h>
 #include <ioj/sim/entities/entity_tables.h>
@@ -11,14 +10,11 @@
 #include <ioj/sim/levels/level_capital_spawn_events.h>
 
 #include <cstdint>
-#include <memory_resource>
 #include <optional>
 #include <span>
 #include <vector>
 
 namespace ioj::sim {
-struct LevelSim;
-struct LevelSimTestAccess;
 class EntityLedger;
 class LevelSpawnManager;
 }
@@ -70,8 +66,8 @@ struct Sim {
     void prepare_tick();
     void resolve_damage_events(ResolutionInputs const inputs);
     void publish_deaths(ResolutionInputs const inputs);
-    void remove_components();
-    void remove_entities();
+    void remove_components(ResolutionCommitInputs const inputs);
+    void remove_entities(ResolutionCommitInputs const inputs);
     void finish_action();
 
     /* **************************************** */
@@ -83,16 +79,9 @@ struct Sim {
     /* **************************************** */
     // Death handling
     /* **************************************** */
-    void handle_dead_entities();
-
-    /* **************************************** */
-    // Misc
-    /* **************************************** */
-    void clear_tick_buffers();
+    void handle_dead_entities(ResolutionCommitInputs const inputs);
 
     friend class PhaseInterface;
-    friend struct sim::LevelSim;
-    friend struct sim::LevelSimTestAccess;
 
     friend class sim::LevelSpawnManager;
 
@@ -101,8 +90,6 @@ struct Sim {
     EntityTables& entity_tables_;
 
     EntityStorage entities{};
-    std::pmr::vector<std::uint32_t> local_indices_to_remove;
-    EntityDeathInfo entity_death_info;
     std::vector<EntityFrameChange> frame_changes_;
 };
 } // namespace ioj::sim::capital_ships

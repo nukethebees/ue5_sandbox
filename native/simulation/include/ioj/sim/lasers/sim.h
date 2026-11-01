@@ -17,8 +17,6 @@ struct LevelSim;
 }
 
 namespace ioj::sim::lasers {
-using LaserIndex = std::uint32_t;
-
 class PhaseInterface;
 
 struct Sim {
@@ -58,7 +56,7 @@ struct Sim {
     /* **************************************** */
     void initialise(LaserSimConfig const& new_config);
     void commit_spawns();
-    void cleanup_entities();
+    void cleanup_entities(ResolutionCommitInputs const inputs);
     void simulate(ActionInputs const inputs);
     void finish_action();
 
@@ -71,7 +69,7 @@ struct Sim {
     /* **************************************** */
     // Movement and collision
     /* **************************************** */
-    void expire_instances(float dt, FrameMemoryResource* const scratch_resource);
+    void expire_instances(float dt, std::pmr::vector<LaserIndex>& pending_removals);
     void update_locations(float dt);
     void handle_collisions(ActionInputs const inputs);
     void remove_instances(std::span<LaserIndex const> indices);
@@ -94,6 +92,5 @@ struct Sim {
     FrameOutput frame_output_;
 
     std::uint32_t number_spawned{0};
-    std::vector<LaserIndex> pending_removals_;
 };
 } // namespace ioj::sim::lasers

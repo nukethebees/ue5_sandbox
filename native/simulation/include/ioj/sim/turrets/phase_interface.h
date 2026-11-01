@@ -15,7 +15,9 @@ class PhaseInterface {
 
     void initialise(TurretSimConfig const& config) { simulation.initialise(config); }
 
-    void prepare_tick(float const dt) { simulation.prepare_tick(dt); }
+    void update_entity_lookup_table() { simulation.update_entity_lookup_table(); }
+
+    void prepare_tick() { simulation.prepare_tick(); }
 
     void think(ThinkingInputs const inputs) { simulation.think(inputs); }
 
@@ -27,11 +29,15 @@ class PhaseInterface {
         simulation.resolve_damage_events(inputs);
     }
 
-    void publish_deaths() { simulation.publish_deaths(); }
+    void publish_deaths(ResolutionInputs const inputs) { simulation.publish_deaths(inputs); }
 
-    void remove_components() { simulation.remove_components(); }
+    void remove_components(ResolutionCommitInputs const inputs) {
+        simulation.remove_components(inputs);
+    }
 
-    void remove_entities() { simulation.remove_entities(); }
+    void remove_entities(ResolutionCommitInputs const inputs) {
+        simulation.remove_entities(inputs);
+    }
 
     void finish_action() { simulation.finish_action(); }
 

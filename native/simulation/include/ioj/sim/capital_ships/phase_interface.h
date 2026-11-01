@@ -15,6 +15,8 @@ class PhaseInterface {
 
     void initialise(settings::PositiveHealth max_health) { simulation.initialise(max_health); }
 
+    void update_entity_lookup_table() { simulation.update_entity_lookup_table(); }
+
     void prepare_tick() { simulation.prepare_tick(); }
 
     void resolve_damage_events(ResolutionInputs const inputs) {
@@ -23,9 +25,13 @@ class PhaseInterface {
 
     void publish_deaths(ResolutionInputs const inputs) { simulation.publish_deaths(inputs); }
 
-    void remove_components() { simulation.remove_components(); }
+    void remove_components(ResolutionCommitInputs const inputs) {
+        simulation.remove_components(inputs);
+    }
 
-    void remove_entities() { simulation.remove_entities(); }
+    void remove_entities(ResolutionCommitInputs const inputs) {
+        simulation.remove_entities(inputs);
+    }
 
     void finish_action() { simulation.finish_action(); }
 

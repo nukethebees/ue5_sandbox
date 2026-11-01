@@ -136,11 +136,16 @@ struct LevelSim {
     template <TickPlayerShipState PlayerState>
     void prepare_tick(float tick_period);
     template <TickPlayerShipState PlayerState>
-    void think_tick(float tick_period, FrameArray<std::uint32_t>& fighter_fire_indices);
+    void think_tick(float tick_period,
+                    FrameArray<std::uint32_t>& fighter_fire_indices,
+                    FrameArray<std::uint32_t>& spinner_fire_indices);
     template <TickPlayerShipState PlayerState>
-    void act_tick(float tick_period, std::span<std::uint32_t const> fighter_fire_indices);
+    void act_tick(float tick_period,
+                  std::span<std::uint32_t const> fighter_fire_indices,
+                  std::span<std::uint32_t const> spinner_fire_indices,
+                  std::pmr::vector<lasers::LaserIndex>& laser_removal_indices);
     template <TickPlayerShipState PlayerState>
-    void resolve_tick();
+    void resolve_tick(std::pmr::vector<lasers::LaserIndex>& laser_removal_indices);
 
     LevelState state_{LevelState::Uninitialised};
     SimClock clock_;

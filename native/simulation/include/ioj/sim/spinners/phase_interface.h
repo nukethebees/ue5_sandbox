@@ -15,15 +15,17 @@ class PhaseInterface {
 
     void initialise(SpinnerSimConfig const& config) { simulation.initialise(config); }
 
+    void update_entity_lookup_table() { simulation.update_entity_lookup_table(); }
+
     void prepare_tick(float const dt) { simulation.prepare_tick(dt); }
 
     void think(float const dt) { simulation.think(dt); }
 
     void apply_movement(ActionInputs const inputs) { simulation.apply_movement(inputs); }
 
-    void generate_fire_commands() { simulation.generate_fire_commands(); }
-
-    void finish_action() { simulation.finish_action(); }
+    void generate_fire_commands(ThinkingInputs const inputs) {
+        simulation.generate_fire_commands(inputs);
+    }
 
     friend struct sim::LevelSim;
     Sim& simulation;

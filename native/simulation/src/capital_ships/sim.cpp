@@ -4,6 +4,7 @@
 #include <ioj/rotator_math.h>
 #include <ioj/sim/batch_operations.h>
 #include <ioj/sim/combat_events.h>
+#include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/health.h>
 #include <ioj/sim/phase_checks.h>
@@ -42,7 +43,6 @@ void Sim::update_entity_lookup_table() {
 }
 void Sim::prepare_tick() {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::prepare_tick");
-    clear_tick_buffers();
     update_entity_lookup_table();
 }
 
@@ -58,29 +58,28 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
                                entities.entity_ids(),
                                entities.view_locations().const_view().resolve(),
                                healths,
-                               local_indices_to_remove,
-                               entity_death_info,
+                               inputs.local_indices_to_remove,
+                               inputs.entity_death_info,
                                ledger_,
                                scratch_resource);
 }
 void Sim::publish_deaths(ResolutionInputs const inputs) {
-    ledger_.record_deaths(entity_death_info.const_view(), inputs.clock.get_completed_ticks());
+    ledger_.record_deaths(inputs.entity_death_info.const_view(),
+                          inputs.clock.get_completed_ticks());
 }
 
 // ResolutionCommit
-void Sim::remove_components() {
+void Sim::remove_components(ResolutionCommitInputs const inputs) {
     assert(is_removal_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::remove_components");
 
-    sort_and_deduplicate_removal_indices(local_indices_to_remove);
+    sort_and_deduplicate_removal_indices(inputs.local_indices_to_remove);
 }
-void Sim::remove_entities() {
+void Sim::remove_entities(ResolutionCommitInputs const inputs) {
     assert(is_removal_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::remove_entities");
 
-    handle_dead_entities();
-    local_indices_to_remove.clear();
-    entity_death_info.reset();
+    handle_dead_entities(inputs);
 }
 void Sim::finish_action() {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::finish_action");
@@ -184,31 +183,23 @@ void Sim::spawn_ships(LevelCapitalSpawnEvents::ConstView const spawn_data) {
 /* **************************************** */
 // Death handling
 /* **************************************** */
-void Sim::handle_dead_entities() {
+void Sim::handle_dead_entities(ResolutionCommitInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::handle_dead_entities");
-    if (local_indices_to_remove.empty()) {
+    if (inputs.local_indices_to_remove.empty()) {
         return;
     }
 
     auto const entities{this->entities.const_view()};
     auto const entity_ids{entities.entity_ids()};
 
-    for (auto const index : local_indices_to_remove) {
+    for (auto const index : inputs.local_indices_to_remove) {
         frame_changes_.push_back(
             {.kind = EntityFrameChangeKind::RemoveSwap, .index = index, .id = entity_ids[index]});
     }
 
     entity_tables_.lookups.for_type(EntityType::CapitalShip)
-        .retire_rows(entity_ids, local_indices_to_remove);
-    this->entities.remove_at_swap(local_indices_to_remove);
-}
-
-/* **************************************** */
-// Misc
-/* **************************************** */
-void Sim::clear_tick_buffers() {
-    local_indices_to_remove.clear();
-    entity_death_info.reset();
+        .retire_rows(entity_ids, inputs.local_indices_to_remove);
+    this->entities.remove_at_swap(inputs.local_indices_to_remove);
 }
 
 } // namespace capital_ships
