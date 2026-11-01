@@ -250,7 +250,14 @@ void LevelSim::think_tick(float const tick_period) {
     SANDBOX_PROFILE_SCOPE("Thinking");
     clock_.transition_to(SimulationPhase::Thinking);
 
-    task_manager_.plan_tasks();
+    TeamList active_teams;
+    auto const alive_counts{entity_ledger_.count_alive_per_team()};
+    for (auto const team : EnumTraits<Team>::values) {
+        if (alive_counts[std::to_underlying(team)] > 0) {
+            active_teams.add(team);
+        }
+    }
+    task_manager_.plan_tasks({.active_teams = active_teams});
 
     event_manager_.queue_fighter_spawns(tick_period, frame_memory);
 

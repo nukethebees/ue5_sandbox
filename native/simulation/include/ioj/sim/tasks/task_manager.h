@@ -7,6 +7,7 @@
 #include <ioj/sim/tasks/program_handle.h>
 #include <ioj/sim/tasks/programs.h>
 #include <ioj/sim/tasks/task_allocation_context.h>
+#include <ioj/sim/tasks/task_planning_context.h>
 #include <ioj/sim/tasks/tasks.h>
 
 #include <cstddef>
@@ -31,7 +32,7 @@ class TaskManager {
     [[nodiscard]] auto add_program(std::span<Instruction const> program) -> ProgramHandle;
     [[nodiscard]] auto add_program(std::initializer_list<Instruction> program) -> ProgramHandle;
 
-    void plan_tasks();
+    void plan_tasks(TaskPlanningContext ctx);
     void allocate(TaskAllocationContext ctx);
 
   private:

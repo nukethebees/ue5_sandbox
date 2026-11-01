@@ -49,7 +49,12 @@ auto TaskManager::add_program(std::initializer_list<Instruction> const program) 
     return add_program(std::span<Instruction const>{program.begin(), program.size()});
 }
 
-void TaskManager::plan_tasks() {}
+void TaskManager::plan_tasks(TaskPlanningContext const ctx) {
+    auto const team_count{ctx.active_teams.size()};
+    for (std::size_t index{}; index < team_count; ++index) {
+        [[maybe_unused]] auto const team{ctx.active_teams[index]};
+    }
+}
 
 void TaskManager::allocate(TaskAllocationContext) {}
 }

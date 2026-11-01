@@ -123,6 +123,7 @@ set(tasks_headers
   task_entity_count.h
   task_id.h
   task_manager.h
+  task_planning_context.h
   tasks.h
 )
 
