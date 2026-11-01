@@ -125,6 +125,9 @@ Retract earlier completion estimates if new issues invalidate validation or requ
 
 # Coding Style
 
+* For classes with trailing-underscore data members, name getters without a `get_` prefix.
+  Preserve names required by external interfaces and getters whose unprefixed names conflict
+  with existing members.
 * Use Unreal Engine C++, `snake_case` functions/variables, `TitleCase` types, east const, and braces.
   Do not prefix booleans with `b_`. Prefer `auto` when the type is obvious and simple C++ over template metaprogramming.
 * Declare one variable/data member per declaration and line; never combine declarators.

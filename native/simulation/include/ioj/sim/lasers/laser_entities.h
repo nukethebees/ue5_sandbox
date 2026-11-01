@@ -377,7 +377,7 @@ struct LaserEntities
         : LaserEntities{*std::pmr::get_default_resource()} {}
     explicit LaserEntities(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LaserEntities() { Operations::release_storage(*this); }
     LaserEntities(LaserEntities const&) = delete;
     auto operator=(LaserEntities const&) -> LaserEntities& = delete;
@@ -392,16 +392,16 @@ struct LaserEntities
     template <typename Byte>
     using DataPointers = ::ioj::sim::lasers::laser_entities::DataPointers<Byte>;
   public:
-    auto active(this auto& self) { return self.get_view().active(); }
-    auto sources(this auto& self) { return self.get_view().sources(); }
-    auto view_locations(this auto& self) { return self.get_view().view_locations(); }
-    auto view_rotations(this auto& self) { return self.get_view().view_rotations(); }
-    auto view_velocities(this auto& self) { return self.get_view().view_velocities(); }
-    auto damages(this auto& self) { return self.get_view().damages(); }
-    auto lifetimes_remaining(this auto& self) { return self.get_view().lifetimes_remaining(); }
-    auto instigator_ids(this auto& self) { return self.get_view().instigator_ids(); }
-    auto initial_lifetimes(this auto& self) { return self.get_view().initial_lifetimes(); }
-    auto spawn_times(this auto& self) { return self.get_view().spawn_times(); }
+    auto active(this auto& self) { return self.view().active(); }
+    auto sources(this auto& self) { return self.view().sources(); }
+    auto view_locations(this auto& self) { return self.view().view_locations(); }
+    auto view_rotations(this auto& self) { return self.view().view_rotations(); }
+    auto view_velocities(this auto& self) { return self.view().view_velocities(); }
+    auto damages(this auto& self) { return self.view().damages(); }
+    auto lifetimes_remaining(this auto& self) { return self.view().lifetimes_remaining(); }
+    auto instigator_ids(this auto& self) { return self.view().instigator_ids(); }
+    auto initial_lifetimes(this auto& self) { return self.view().initial_lifetimes(); }
+    auto spawn_times(this auto& self) { return self.view().spawn_times(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         LaserEntities,
         ::ioj::sim::lasers::laser_entities::Layout::column_types,
@@ -420,16 +420,16 @@ struct LaserEntities
              float const new_initial_lifetimes,
              float const new_spawn_times) {
         assert(index < num());
-        get_view().active()[index] = new_active;
-        get_view().sources()[index] = new_sources;
-        get_view().view_locations().set(index, new_locations);
-        get_view().view_rotations().set(index, new_rotations);
-        get_view().view_velocities().set(index, new_velocities);
-        get_view().damages()[index] = new_damages;
-        get_view().lifetimes_remaining()[index] = new_lifetimes_remaining;
-        get_view().instigator_ids()[index] = new_instigator_ids;
-        get_view().initial_lifetimes()[index] = new_initial_lifetimes;
-        get_view().spawn_times()[index] = new_spawn_times;
+        view().active()[index] = new_active;
+        view().sources()[index] = new_sources;
+        view().view_locations().set(index, new_locations);
+        view().view_rotations().set(index, new_rotations);
+        view().view_velocities().set(index, new_velocities);
+        view().damages()[index] = new_damages;
+        view().lifetimes_remaining()[index] = new_lifetimes_remaining;
+        view().instigator_ids()[index] = new_instigator_ids;
+        view().initial_lifetimes()[index] = new_initial_lifetimes;
+        view().spawn_times()[index] = new_spawn_times;
     }
     size_type add(std::uint8_t const new_active,
                   LaserSource const new_sources,

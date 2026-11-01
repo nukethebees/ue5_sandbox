@@ -194,7 +194,7 @@ struct Rotators3f
         : Rotators3f{*std::pmr::get_default_resource()} {}
     explicit Rotators3f(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~Rotators3f() { Operations::release_storage(*this); }
     Rotators3f(Rotators3f const&) = delete;
     auto operator=(Rotators3f const&) -> Rotators3f& = delete;
@@ -209,9 +209,9 @@ struct Rotators3f
     template <typename Byte>
     using DataPointers = ::ioj::rotators3f::DataPointers<Byte>;
   public:
-    auto pitches(this auto& self) { return self.get_view().pitches(); }
-    auto yaws(this auto& self) { return self.get_view().yaws(); }
-    auto rolls(this auto& self) { return self.get_view().rolls(); }
+    auto pitches(this auto& self) { return self.view().pitches(); }
+    auto yaws(this auto& self) { return self.view().yaws(); }
+    auto rolls(this auto& self) { return self.view().rolls(); }
     using RowOperations =
         soa_storage_detail::OwnerRowOperations<Rotators3f,
                                                ::ioj::rotators3f::Layout::column_types,
@@ -225,7 +225,7 @@ struct Rotators3f
     using equivalent_type = Rotator3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
         assert(index < num());
-        return get_const_view()[index];
+        return const_view()[index];
     }
   private:
     friend Operations;

@@ -260,7 +260,7 @@ struct ScalarTable
         : ScalarTable{*std::pmr::get_default_resource()} {}
     explicit ScalarTable(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~ScalarTable() { Operations::release_storage(*this); }
     ScalarTable(ScalarTable const&) = delete;
     auto operator=(ScalarTable const&) -> ScalarTable& = delete;
@@ -275,19 +275,19 @@ struct ScalarTable
     template <typename Byte>
     using DataPointers = ::ioj::layout::scalar_table::DataPointers<Byte>;
   public:
-    auto type(this auto& self) { return self.get_view().type(); }
-    auto integer_domain(this auto& self) { return self.get_view().integer_domain(); }
-    auto enum_domain(this auto& self) { return self.get_view().enum_domain(); }
+    auto type(this auto& self) { return self.view().type(); }
+    auto integer_domain(this auto& self) { return self.view().integer_domain(); }
+    auto enum_domain(this auto& self) { return self.view().enum_domain(); }
     auto optional_sentinel_encoding(this auto& self) {
-        return self.get_view().optional_sentinel_encoding();
+        return self.view().optional_sentinel_encoding();
     }
     auto optional_presence_encoding(this auto& self) {
-        return self.get_view().optional_presence_encoding();
+        return self.view().optional_presence_encoding();
     }
-    auto quantized_encoding(this auto& self) { return self.get_view().quantized_encoding(); }
-    auto fixed_encoding(this auto& self) { return self.get_view().fixed_encoding(); }
-    auto float_encoding(this auto& self) { return self.get_view().float_encoding(); }
-    auto varint_encoding(this auto& self) { return self.get_view().varint_encoding(); }
+    auto quantized_encoding(this auto& self) { return self.view().quantized_encoding(); }
+    auto fixed_encoding(this auto& self) { return self.view().fixed_encoding(); }
+    auto float_encoding(this auto& self) { return self.view().float_encoding(); }
+    auto varint_encoding(this auto& self) { return self.view().varint_encoding(); }
     using RowOperations =
         soa_storage_detail::OwnerRowOperations<ScalarTable,
                                                ::ioj::layout::scalar_table::Layout::column_types,

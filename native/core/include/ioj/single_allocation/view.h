@@ -62,7 +62,7 @@ void validate_source(Source const& source) {
 template <typename Self, typename... Ts>
 void assign_row(Self& self, std::uint32_t index, Ts const&... values) {
     assert(index < self.num());
-    auto const view{self.get_view()};
+    auto const view{self.view()};
     Self::soa_schema::with_columns(view,
                                    [&](auto... columns) { ((columns[index] = values), ...); });
 }
@@ -103,21 +103,21 @@ struct ViewOperations {
             self, [&](auto const&... columns) { (func(std::span{columns}), ...); });
     }
     auto is_empty(this auto const& self) noexcept -> bool { return self.num() == 0; }
-    auto get_view(this auto const& self) { return self; }
+    auto view(this auto const& self) { return self; }
     template <typename Self>
-    auto get_const_view(this Self const& self) -> typename Self::const_view_type {
+    auto const_view(this Self const& self) -> typename Self::const_view_type {
         return self;
     }
     template <typename Self>
-    auto get_view(this Self const& self,
-                  typename Self::size_type offset,
-                  typename Self::size_type count) -> Self {
+    auto view(this Self const& self,
+              typename Self::size_type offset,
+              typename Self::size_type count) -> Self {
         return self.slice(offset, count);
     }
     template <typename Self>
-    auto get_const_view(this Self const& self,
-                        typename Self::size_type offset,
-                        typename Self::size_type count) -> typename Self::const_view_type {
+    auto const_view(this Self const& self,
+                    typename Self::size_type offset,
+                    typename Self::size_type count) -> typename Self::const_view_type {
         return self.slice(offset, count);
     }
     template <typename Self>

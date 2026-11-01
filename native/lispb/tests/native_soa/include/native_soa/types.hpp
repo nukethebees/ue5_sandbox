@@ -184,7 +184,7 @@ struct Counts
         : Counts{*std::pmr::get_default_resource()} {}
     explicit Counts(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~Counts() { Operations::release_storage(*this); }
     Counts(Counts const&) = delete;
     auto operator=(Counts const&) -> Counts& = delete;
@@ -197,7 +197,7 @@ struct Counts
     template <typename Byte>
     using DataPointers = ::ioj::native_soa_fixture::counts::DataPointers<Byte>;
   public:
-    auto count(this auto& self) { return self.get_view().count(); }
+    auto count(this auto& self) { return self.view().count(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         Counts,
         ::ioj::native_soa_fixture::counts::Layout::column_types,
@@ -377,7 +377,7 @@ struct PointerA
         : PointerA{*std::pmr::get_default_resource()} {}
     explicit PointerA(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~PointerA() { Operations::release_storage(*this); }
     PointerA(PointerA const&) = delete;
     auto operator=(PointerA const&) -> PointerA& = delete;
@@ -390,7 +390,7 @@ struct PointerA
     template <typename Byte>
     using DataPointers = ::ioj::native_soa_fixture::pointer_a::DataPointers<Byte>;
   public:
-    auto others(this auto& self) { return self.get_view().others(); }
+    auto others(this auto& self) { return self.view().others(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         PointerA,
         ::ioj::native_soa_fixture::pointer_a::Layout::column_types,
@@ -552,7 +552,7 @@ struct PointerB
         : PointerB{*std::pmr::get_default_resource()} {}
     explicit PointerB(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~PointerB() { Operations::release_storage(*this); }
     PointerB(PointerB const&) = delete;
     auto operator=(PointerB const&) -> PointerB& = delete;
@@ -565,7 +565,7 @@ struct PointerB
     template <typename Byte>
     using DataPointers = ::ioj::native_soa_fixture::pointer_b::DataPointers<Byte>;
   public:
-    auto others(this auto& self) { return self.get_view().others(); }
+    auto others(this auto& self) { return self.view().others(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         PointerB,
         ::ioj::native_soa_fixture::pointer_b::Layout::column_types,
@@ -727,7 +727,7 @@ struct MixedRows
         : MixedRows{*std::pmr::get_default_resource()} {}
     explicit MixedRows(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~MixedRows() { Operations::release_storage(*this); }
     MixedRows(MixedRows const&) = delete;
     auto operator=(MixedRows const&) -> MixedRows& = delete;
@@ -742,7 +742,7 @@ struct MixedRows
     template <typename Byte>
     using DataPointers = ::ioj::native_soa_fixture::mixed_rows::DataPointers<Byte>;
   public:
-    auto records(this auto& self) { return self.get_view().records(); }
+    auto records(this auto& self) { return self.view().records(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         MixedRows,
         ::ioj::native_soa_fixture::mixed_rows::Layout::column_types,
@@ -919,7 +919,7 @@ struct PairRows
         : PairRows{*std::pmr::get_default_resource()} {}
     explicit PairRows(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~PairRows() { Operations::release_storage(*this); }
     PairRows(PairRows const&) = delete;
     auto operator=(PairRows const&) -> PairRows& = delete;
@@ -932,8 +932,8 @@ struct PairRows
     template <typename Byte>
     using DataPointers = ::ioj::native_soa_fixture::pair_rows::DataPointers<Byte>;
   public:
-    auto pairs(this auto& self) { return self.get_view().pairs(); }
-    auto pointers(this auto& self) { return self.get_view().pointers(); }
+    auto pairs(this auto& self) { return self.view().pairs(); }
+    auto pointers(this auto& self) { return self.view().pointers(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         PairRows,
         ::ioj::native_soa_fixture::pair_rows::Layout::column_types,
@@ -1111,7 +1111,7 @@ struct Vectors
         : Vectors{*std::pmr::get_default_resource()} {}
     explicit Vectors(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~Vectors() { Operations::release_storage(*this); }
     Vectors(Vectors const&) = delete;
     auto operator=(Vectors const&) -> Vectors& = delete;
@@ -1124,9 +1124,9 @@ struct Vectors
     template <typename Byte>
     using DataPointers = ::ioj::native_soa_fixture::vectors::DataPointers<Byte>;
   public:
-    auto xs(this auto& self) { return self.get_view().xs(); }
-    auto ys(this auto& self) { return self.get_view().ys(); }
-    auto zs(this auto& self) { return self.get_view().zs(); }
+    auto xs(this auto& self) { return self.view().xs(); }
+    auto ys(this auto& self) { return self.view().ys(); }
+    auto zs(this auto& self) { return self.view().zs(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         Vectors,
         ::ioj::native_soa_fixture::vectors::Layout::column_types,
@@ -1644,7 +1644,7 @@ struct SingleRows
         : SingleRows{*std::pmr::get_default_resource()} {}
     explicit SingleRows(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~SingleRows() { Operations::release_storage(*this); }
     SingleRows(SingleRows const&) = delete;
     auto operator=(SingleRows const&) -> SingleRows& = delete;
@@ -1659,9 +1659,9 @@ struct SingleRows
     template <typename Byte>
     using DataPointers = ::ioj::native_soa_fixture::single_rows::DataPointers<Byte>;
   public:
-    auto values(this auto& self) { return self.get_view().values(); }
-    auto view_positions(this auto& self) { return self.get_view().view_positions(); }
-    auto view_velocities(this auto& self) { return self.get_view().view_velocities(); }
+    auto values(this auto& self) { return self.view().values(); }
+    auto view_positions(this auto& self) { return self.view().view_positions(); }
+    auto view_velocities(this auto& self) { return self.view().view_velocities(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         SingleRows,
         ::ioj::native_soa_fixture::single_rows::Layout::column_types,
@@ -1945,7 +1945,7 @@ struct SingleAlignmentRows
         : SingleAlignmentRows{*std::pmr::get_default_resource()} {}
     explicit SingleAlignmentRows(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~SingleAlignmentRows() { Operations::release_storage(*this); }
     SingleAlignmentRows(SingleAlignmentRows const&) = delete;
     auto operator=(SingleAlignmentRows const&) -> SingleAlignmentRows& = delete;
@@ -1960,12 +1960,12 @@ struct SingleAlignmentRows
     template <typename Byte>
     using DataPointers = ::ioj::native_soa_fixture::single_alignment_rows::DataPointers<Byte>;
   public:
-    auto bytes(this auto& self) { return self.get_view().bytes(); }
-    auto view_odd(this auto& self) { return self.get_view().view_odd(); }
-    auto aligned32(this auto& self) { return self.get_view().aligned32(); }
-    auto view_nested(this auto& self) { return self.get_view().view_nested(); }
-    auto aligned64(this auto& self) { return self.get_view().aligned64(); }
-    auto aligned256(this auto& self) { return self.get_view().aligned256(); }
+    auto bytes(this auto& self) { return self.view().bytes(); }
+    auto view_odd(this auto& self) { return self.view().view_odd(); }
+    auto aligned32(this auto& self) { return self.view().aligned32(); }
+    auto view_nested(this auto& self) { return self.view().view_nested(); }
+    auto aligned64(this auto& self) { return self.view().aligned64(); }
+    auto aligned256(this auto& self) { return self.view().aligned256(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         SingleAlignmentRows,
         ::ioj::native_soa_fixture::single_alignment_rows::Layout::column_types,
@@ -2375,7 +2375,7 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
         : ApiOwner{*std::pmr::get_default_resource()} {}
     explicit ApiOwner(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~ApiOwner() { Operations::release_storage(*this); }
     ApiOwner(ApiOwner const&) = delete;
     auto operator=(ApiOwner const&) -> ApiOwner& = delete;
@@ -2388,9 +2388,9 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
     template <typename Byte>
     using DataPointers = ::ioj::native_soa_fixture::api_owner::DataPointers<Byte>;
   public:
-    auto values(this auto& self) { return self.get_view().values(); }
-    auto masks(this auto& self) { return self.get_view().masks(); }
-    auto view_positions(this auto& self) { return self.get_view().view_positions(); }
+    auto values(this auto& self) { return self.view().values(); }
+    auto masks(this auto& self) { return self.view().masks(); }
+    auto view_positions(this auto& self) { return self.view().view_positions(); }
     using RowOperations = ioj::soa_storage_detail::OwnerRowOperations<
         ApiOwner,
         ::ioj::native_soa_fixture::api_owner::Layout::column_types,
@@ -2402,9 +2402,9 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
              ApiMask const new_masks,
              ioj::native_soa_fixture::ApiPair const new_positions) {
         assert(index < num());
-        get_view().values()[index] = new_values;
-        get_view().masks()[index] = new_masks;
-        get_view().view_positions().set(index, new_positions);
+        view().values()[index] = new_values;
+        view().masks()[index] = new_masks;
+        view().view_positions().set(index, new_positions);
     }
     size_type add(float const new_values,
                   ApiMask const new_masks,
@@ -2418,7 +2418,7 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
     auto append_value(float row) {
         auto const row_{this->num()};
         this->add_defaulted(1);
-        this->get_view().values()[row_] = row;
+        this->view().values()[row_] = row;
         return row_;
     }
     std::uint32_t append_empty();
@@ -2429,7 +2429,7 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
     {
         return value;
     }
-    float first_value() const { return get_view().values()[0]; }
+    float first_value() const { return view().values()[0]; }
     Value total() const;
   private:
     friend Operations;
@@ -2623,7 +2623,7 @@ struct EquivalentOwner
         : EquivalentOwner{*std::pmr::get_default_resource()} {}
     explicit EquivalentOwner(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~EquivalentOwner() { Operations::release_storage(*this); }
     EquivalentOwner(EquivalentOwner const&) = delete;
     auto operator=(EquivalentOwner const&) -> EquivalentOwner& = delete;
@@ -2638,8 +2638,8 @@ struct EquivalentOwner
     template <typename Byte>
     using DataPointers = ::ioj::native_soa_fixture::equivalent_owner::DataPointers<Byte>;
   public:
-    auto xs(this auto& self) { return self.get_view().xs(); }
-    auto ys(this auto& self) { return self.get_view().ys(); }
+    auto xs(this auto& self) { return self.view().xs(); }
+    auto ys(this auto& self) { return self.view().ys(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         EquivalentOwner,
         ::ioj::native_soa_fixture::equivalent_owner::Layout::column_types,
@@ -2651,7 +2651,7 @@ struct EquivalentOwner
     using equivalent_type = ApiPair;
     auto operator[](std::uint32_t index) const -> equivalent_type {
         assert(index < num());
-        return get_const_view()[index];
+        return const_view()[index];
     }
   private:
     friend Operations;
@@ -2854,7 +2854,7 @@ struct AccessorOwner
         : AccessorOwner{*std::pmr::get_default_resource()} {}
     explicit AccessorOwner(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~AccessorOwner() { Operations::release_storage(*this); }
     AccessorOwner(AccessorOwner const&) = delete;
     auto operator=(AccessorOwner const&) -> AccessorOwner& = delete;
@@ -2869,9 +2869,9 @@ struct AccessorOwner
     template <typename Byte>
     using DataPointers = ::ioj::native_soa_fixture::accessor_owner::DataPointers<Byte>;
   public:
-    auto horizontal(this auto& self) { return self.get_view().horizontal(); }
-    auto vertical(this auto& self) { return self.get_view().vertical(); }
-    auto depth(this auto& self) { return self.get_view().depth(); }
+    auto horizontal(this auto& self) { return self.view().horizontal(); }
+    auto vertical(this auto& self) { return self.view().vertical(); }
+    auto depth(this auto& self) { return self.view().depth(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         AccessorOwner,
         ::ioj::native_soa_fixture::accessor_owner::Layout::column_types,
@@ -2885,7 +2885,7 @@ struct AccessorOwner
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
         assert(index < num());
-        return get_const_view()[index];
+        return const_view()[index];
     }
   private:
     friend Operations;

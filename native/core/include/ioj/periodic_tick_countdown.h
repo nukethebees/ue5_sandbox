@@ -87,7 +87,7 @@ class PeriodicTickCountdown {
     }
 
     [[nodiscard]] auto try_consume(size_type const index) noexcept -> bool {
-        return get_view().try_consume(to_index(index));
+        return view().try_consume(to_index(index));
     }
 
     void reset() {
@@ -191,11 +191,9 @@ class PeriodicTickCountdown {
         return {periods_.data(), periods_.size()};
     }
 
-    [[nodiscard]] auto get_view() noexcept -> View { return {remaining_ticks(), periods()}; }
+    [[nodiscard]] auto view() noexcept -> View { return {remaining_ticks(), periods()}; }
 
-    [[nodiscard]] auto get_view() const noexcept -> ConstView {
-        return {remaining_ticks(), periods()};
-    }
+    [[nodiscard]] auto view() const noexcept -> ConstView { return {remaining_ticks(), periods()}; }
   private:
     [[nodiscard]] auto to_index(size_type const index) const noexcept -> std::size_t {
         assert(static_cast<std::size_t>(index) < remaining_ticks_.size());

@@ -47,17 +47,16 @@ void run_worldless_laser_lifecycle(LaserLifecycleScenario const scenario) {
 
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    auto const& lasers{harness.get_simulation().get_lasers()};
-    auto const& capitals{harness.get_simulation().get_capital_ships()};
-    auto const shooter{capitals.get_id(0)};
-    auto const target{capitals.get_id(1)};
+    auto const& lasers{harness.simulation().lasers()};
+    auto const& capitals{harness.simulation().capital_ships()};
+    auto const shooter{capitals.id(0)};
+    auto const target{capitals.id(1)};
 
     harness.timeline.at(projectile_queue_time, [&] {
-        auto const shooter_location{observe_entity(harness.get_simulation(), shooter)->location};
-        auto const target_location{observe_entity(harness.get_simulation(), target)->location};
+        auto const shooter_location{observe_entity(harness.simulation(), shooter)->location};
+        auto const target_location{observe_entity(harness.simulation(), target)->location};
         auto const shooter_radius{
-            harness.get_simulation().get_spatial_query_manager().get_entity_type_radius(
-                shooter.entity_type())};
+            harness.simulation().spatial_query_manager().entity_type_radius(shooter.entity_type())};
         auto const target_direction{normalized(target_location - shooter_location)};
         auto start{shooter_location + target_direction * (shooter_radius + 100.f)};
         auto fire_direction{target_direction};
@@ -84,7 +83,7 @@ void run_worldless_laser_lifecycle(LaserLifecycleScenario const scenario) {
                                    shooter,
                                    LaserSource{Team::White, EntityType::TubeSpinner});
         }
-        LevelSimTestAccess::queue_laser_spawns(harness.get_simulation(), requests.get_const_view());
+        LevelSimTestAccess::queue_laser_spawns(harness.simulation(), requests.const_view());
     });
     auto const end_time{scenario == LaserLifecycleScenario::Miss ? expiry_test_end_time
                                                                  : collision_test_end_time};
@@ -95,10 +94,10 @@ void run_worldless_laser_lifecycle(LaserLifecycleScenario const scenario) {
     auto const expected_spawn_count{
         scenario == LaserLifecycleScenario::SimultaneousLethalHits ? 2u : 1u};
     EXPECT_EQ(expected_spawn_count, lasers.get_number_spawned()) << "Projectile count spawned";
-    EXPECT_EQ(0, lasers.get_num_instances()) << "No active projectiles remain";
-    auto const target_state{observe_entity(harness.get_simulation(), target)};
+    EXPECT_EQ(0, lasers.num_instances()) << "No active projectiles remain";
+    auto const target_state{observe_entity(harness.simulation(), target)};
     auto const target_health{target_state ? target_state->health.value() : 0};
-    auto const& ledger{harness.get_ledger()};
+    auto const& ledger{harness.ledger()};
     if (scenario == LaserLifecycleScenario::Hit) {
         EXPECT_EQ(normal_target_health - projectile_damage, target_health)
             << "Projectile applies damage once";

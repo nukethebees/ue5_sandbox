@@ -69,8 +69,8 @@ TEST(ProfileStorage, FailedReplacementPreservesPublishedRecordsAndRollsBackManag
     std::filesystem::remove(backup);
     std::filesystem::create_directory(backup);
     EXPECT_FALSE(manager.append_score_record({.date = 2, .level_name = "mission", .kills = 8}));
-    ASSERT_EQ(manager.get_active_records().size(), 1u);
-    EXPECT_EQ(manager.get_active_records()[0], original);
+    ASSERT_EQ(manager.active_records().size(), 1u);
+    EXPECT_EQ(manager.active_records()[0], original);
     auto storage{make_file_profile_storage(root)};
     ProfileResultsData published;
     ASSERT_EQ(storage.load_results("default_profile", published), LoadResult::succeeded);
@@ -101,11 +101,11 @@ TEST(ProfileStorage, MergeDeduplicatesPayloadsAndRebuildsMetadataBeforePublicati
     EXPECT_EQ(merged->unique_record_count, 2u);
     ProfileManager result{make_file_profile_storage(destination)};
     ASSERT_TRUE(result.initialise());
-    ASSERT_EQ(result.get_active_records().size(), 2u);
-    EXPECT_EQ(result.get_active_records()[0], first);
-    EXPECT_EQ(result.get_active_records()[1], second);
-    EXPECT_EQ(result.get_profiles()[0].total_kills, 11);
-    EXPECT_EQ(result.get_profiles()[0].total_simulation_duration_seconds, 8.f);
+    ASSERT_EQ(result.active_records().size(), 2u);
+    EXPECT_EQ(result.active_records()[0], first);
+    EXPECT_EQ(result.active_records()[1], second);
+    EXPECT_EQ(result.profiles()[0].total_kills, 11);
+    EXPECT_EQ(result.profiles()[0].total_simulation_duration_seconds, 8.f);
     EXPECT_TRUE(result.unlock_all_missions());
     EXPECT_FALSE(merge_profile_files(sources, {}, destination));
 }
@@ -126,10 +126,10 @@ TEST(ProfileStorage, CloneIsPublishedOnceAndRemainsIsolated) {
     ProfileManager reloaded_experiment{make_file_profile_storage(experiment_root)};
     ASSERT_TRUE(reloaded_shared.initialise());
     ASSERT_TRUE(reloaded_experiment.initialise());
-    ASSERT_EQ(reloaded_shared.get_active_records().size(), 1u);
-    ASSERT_EQ(reloaded_experiment.get_active_records().size(), 2u);
-    EXPECT_EQ(reloaded_shared.get_active_records()[0].kills, 7);
-    EXPECT_EQ(reloaded_experiment.get_active_records()[1].kills, 3);
+    ASSERT_EQ(reloaded_shared.active_records().size(), 1u);
+    ASSERT_EQ(reloaded_experiment.active_records().size(), 2u);
+    EXPECT_EQ(reloaded_shared.active_records()[0].kills, 7);
+    EXPECT_EQ(reloaded_experiment.active_records()[1].kills, 3);
 }
 TEST(ProfileStorage, ConcurrentIndependentManagersKeepEveryResult) {
     storage_tests::Directory directory;
@@ -160,7 +160,7 @@ TEST(ProfileStorage, ConcurrentIndependentManagersKeepEveryResult) {
     ASSERT_TRUE(succeeded);
     ProfileManager reloaded{make_file_profile_storage(root)};
     ASSERT_TRUE(reloaded.initialise());
-    auto const records{reloaded.get_active_records()};
+    auto const records{reloaded.active_records()};
     ASSERT_EQ(records.size(), 16u);
     std::array<bool, 16> seen{};
     for (auto const& record : records) {

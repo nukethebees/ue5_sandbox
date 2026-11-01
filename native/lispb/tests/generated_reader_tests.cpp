@@ -75,9 +75,9 @@ TEST(RecordSettings, AppliesCrossNamespaceNestedOverridesAndEmptyPatches) {
 
 TEST(GeneratedS7Reader, ConstrainedRecordsValidateAndOverrideAsWholeValues) {
     RangeSettings target;
-    EXPECT_PRED_FORMAT2(structurally_equal, (RangeValue{0, 10}), target.range.get_ref());
+    EXPECT_PRED_FORMAT2(structurally_equal, (RangeValue{0, 10}), target.range.ref());
     EXPECT_FALSE(Range::try_make({10, 0}));
-    static_assert(std::same_as<decltype(target.range.get_ref()), RangeValue const&>);
+    static_assert(std::same_as<decltype(target.range.ref()), RangeValue const&>);
 
     auto patch{
         override_source<RangeSettings>("'(:ranges :range (:range :minimum 20 :maximum 30))")};

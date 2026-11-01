@@ -623,13 +623,13 @@ TEST(NativeCoreFrameArray, BalancesFrameResourceAllocationsAfterGrowthAndFailure
         values.emplace(17);
         ThrowingValue::constructions_before_throw = 1;
         EXPECT_THROW(values.set_num(5), std::runtime_error);
-        EXPECT_EQ(resource.get_stats().outstanding_allocation_count, 1);
+        EXPECT_EQ(resource.stats().outstanding_allocation_count, 1);
         ThrowingValue::constructions_before_throw = -1;
         values.emplace(99);
         EXPECT_EQ(values[0].value, 42);
     }
     EXPECT_EQ(ThrowingValue::live_count, 0);
-    EXPECT_EQ(resource.get_stats().outstanding_allocation_count, 0);
+    EXPECT_EQ(resource.stats().outstanding_allocation_count, 0);
     EXPECT_TRUE(resource.try_reclaim());
 }
 }

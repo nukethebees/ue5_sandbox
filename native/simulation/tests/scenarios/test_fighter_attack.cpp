@@ -46,7 +46,7 @@ TEST(WorldlessSpaceGameSimulation, FightersObstacleAvoidance) {
 
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    auto const& fighters{harness.get_simulation().get_fighters()};
+    auto const& fighters{harness.simulation().fighters()};
     auto const clearance{fighter_radius + 100.f};
     auto const expanded_min{obstacle_min - Vector3f{{clearance, clearance, clearance}}};
     auto const expanded_max{obstacle_max + Vector3f{{clearance, clearance, clearance}}};
@@ -56,7 +56,7 @@ TEST(WorldlessSpaceGameSimulation, FightersObstacleAvoidance) {
     float maximum_x{-std::numeric_limits<float>::infinity()};
 
     harness.on_end_tick = [&](LevelSim&) {
-        auto const locations{fighters.get_entities().view_locations()};
+        auto const locations{fighters.entities().view_locations()};
         if (locations.num() == 0) {
             return;
         }
@@ -118,9 +118,8 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationCapitalObstruction) {
     tests::add_capital_spawn(data, obstacle, Team::Green, 60.f, 60.f, 100000);
     tests::add_capital_spawn(data, target, Team::Red, 60.f, 60.f, 100000);
     Rotator3f const obstacle_rotation{0.f, 35.f, 0.f};
-    set_rotation(data.level_events.schedule.capital_spawns.get_view().view_rotations(),
-                 1,
-                 obstacle_rotation);
+    set_rotation(
+        data.level_events.schedule.capital_spawns.view().view_rotations(), 1, obstacle_rotation);
 
     auto const obstacle_bounds{
         collision::make_entity_world_bounds(data.collision.entity_bounds,
@@ -134,7 +133,7 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationCapitalObstruction) {
     Vector3f const clearance_extent{{clearance, clearance, clearance}};
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    auto const& fighters{harness.get_simulation().get_fighters()};
+    auto const& fighters{harness.simulation().fighters()};
     auto const expanded_min{obstacle_bounds.min - clearance_extent};
     auto const expanded_max{obstacle_bounds.max + clearance_extent};
     bool entered_obstacle{};
@@ -142,7 +141,7 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationCapitalObstruction) {
     float maximum_lateral_distance{};
     float maximum_x{-std::numeric_limits<float>::max()};
     harness.on_end_tick = [&](LevelSim&) {
-        auto const locations{fighters.get_entities().view_locations()};
+        auto const locations{fighters.entities().view_locations()};
         if (locations.num() == 0) {
             return;
         }
@@ -174,7 +173,7 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationClearPath) {
                                           Vector3f{{20000.f, 0.f, 0.f}})};
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    auto const& fighters{harness.get_simulation().get_fighters()};
+    auto const& fighters{harness.simulation().fighters()};
     Vector3f first_location{};
     Vector3f last_location{};
     bool recorded_first{};
@@ -182,7 +181,7 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationClearPath) {
     bool saw_separation{};
     bool saw_avoidance{};
     harness.on_end_tick = [&](LevelSim&) {
-        auto const locations{fighters.get_entities().view_locations()};
+        auto const locations{fighters.entities().view_locations()};
         if (locations.num() == 0) {
             return;
         }
@@ -221,12 +220,12 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationSeparation) {
                                           Vector3f{{20000.f, 0.f, 0.f}})};
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    auto const& fighters{harness.get_simulation().get_fighters()};
+    auto const& fighters{harness.simulation().fighters()};
     float initial_distance{};
     float final_distance{};
     bool saw_separation{};
     harness.on_end_tick = [&](LevelSim&) {
-        auto const locations{fighters.get_entities().view_locations()};
+        auto const locations{fighters.entities().view_locations()};
         if (locations.num() != 2) {
             return;
         }
@@ -314,14 +313,14 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
     spawn_slots.assign(fighter_count, Transform3d{.location = Vector3d{3000.f, 7000.f, 0.f}});
     auto data{make_fighter_navigation_test_data(
         config, spawn_slots, Vector3f{{-20000.f, -7000.f, 0.f}}, Vector3f{{20000.f, 0.f, 0.f}})};
-    std::ranges::fill(
-        data.level_events.schedule.capital_spawns.get_view().fighter_spawn_cooldowns(), 3600.f);
+    std::ranges::fill(data.level_events.schedule.capital_spawns.view().fighter_spawn_cooldowns(),
+                      3600.f);
     DenseNavigationResult result;
     result.collision_distance =
         collision::get_entity_radius(data.collision.entity_bounds, EntityType::Fighter) * 2.f;
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    auto const& fighters{harness.get_simulation().get_fighters()};
+    auto const& fighters{harness.simulation().fighters()};
     harness.on_end_tick = [&](LevelSim&) {
         auto const& telemetry{fighters.get_navigation_telemetry()};
         result.query_count += telemetry.separation_query_count;
@@ -329,10 +328,10 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
     };
     harness.timeline.finish_at(duration);
     result.timeline_completed = harness.run_until_timeline_finished(duration + 0.5);
-    EXPECT_EQ(harness.get_ledger().get_issued_counts()[EntityType::Fighter],
+    EXPECT_EQ(harness.ledger().issued_counts()[EntityType::Fighter],
               static_cast<std::uint32_t>(fighter_count))
         << "Dense fixture spawns exactly one fighter wave";
-    result.locations = tests::copy_vectors(fighters.get_entities().view_locations());
+    result.locations = tests::copy_vectors(fighters.entities().view_locations());
     return result;
 }
 
@@ -411,7 +410,7 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationHardAvoidanceAuthority) {
 
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    auto const& fighters{harness.get_simulation().get_fighters()};
+    auto const& fighters{harness.simulation().fighters()};
     bool entered_obstacle{};
     bool saw_separation{};
     bool saw_avoidance{};
@@ -419,7 +418,7 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationHardAvoidanceAuthority) {
     bool previously_avoiding{};
     float maximum_x{-std::numeric_limits<float>::max()};
     harness.on_end_tick = [&](LevelSim&) {
-        auto const locations{fighters.get_entities().view_locations()};
+        auto const locations{fighters.entities().view_locations()};
         auto const location_count{locations.num()};
         for (std::uint32_t i{}; i < location_count; ++i) {
             auto const location{vector_at(locations, i)};
@@ -454,7 +453,7 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationFrequency) {
                                           Vector3f{{20000.f, 0.f, 0.f}})};
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    auto const& fighters{harness.get_simulation().get_fighters()};
+    auto const& fighters{harness.simulation().fighters()};
     std::int32_t clear_queries{};
     bool saw_clear{};
     harness.on_end_tick = [&](LevelSim&) {
@@ -482,16 +481,16 @@ TEST(WorldlessSpaceGameSimulation, FightersAttackCapital) {
 
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    auto const& capitals{harness.get_simulation().get_capital_ships()};
-    auto const& fighters{harness.get_simulation().get_fighters()};
-    auto const enemy{capitals.get_id(1)};
+    auto const& capitals{harness.simulation().capital_ships()};
+    auto const& fighters{harness.simulation().fighters()};
+    auto const enemy{capitals.id(1)};
     std::int32_t initial_health{};
     bool observed_spawn{};
     harness.on_end_tick = [&](LevelSim&) {
-        if (!observed_spawn && harness.get_time() >= 1.0) {
+        if (!observed_spawn && harness.time() >= 1.0) {
             observed_spawn = true;
-            initial_health = capitals.get_health(enemy).value();
-            auto const teams{fighters.get_entities().teams()};
+            initial_health = capitals.health(enemy).value();
+            auto const teams{fighters.entities().teams()};
             EXPECT_FALSE(teams.empty()) << "Hero fighters spawned";
             for (auto const team : teams) {
                 EXPECT_EQ(team, Team::Green) << "Fighter is on the hero team";
@@ -501,7 +500,7 @@ TEST(WorldlessSpaceGameSimulation, FightersAttackCapital) {
     harness.timeline.finish_at(11.0);
     EXPECT_TRUE(harness.run_until_timeline_finished(12.0)) << "Fighter-attack timeline completes";
     ASSERT_TRUE(observed_spawn);
-    EXPECT_LT(capitals.get_health(enemy).value(), initial_health) << "Enemy lost health";
+    EXPECT_LT(capitals.health(enemy).value(), initial_health) << "Enemy lost health";
 }
 
 }

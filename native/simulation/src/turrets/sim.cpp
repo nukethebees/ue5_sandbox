@@ -70,7 +70,7 @@ auto Sim::register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data)
 
     auto const first_new_index{entities.num()};
     entities.add_defaulted(n_to_add);
-    auto const entities{this->entities.get_view()};
+    auto const entities{this->entities.view()};
     auto const spawn_count{static_cast<std::size_t>(n_to_add)};
     auto const entities_locations{entities.view_locations().resolve()};
     auto const entities_fire_point_locations{entities.view_fire_point_locations().resolve()};
@@ -139,7 +139,7 @@ void Sim::handle_dead_entities() {
         return;
     }
 
-    auto const entities{this->entities.get_const_view()};
+    auto const entities{this->entities.const_view()};
     auto const entity_ids{entities.entity_ids()};
 
     for (auto const index : local_indices_to_remove) {
@@ -156,14 +156,14 @@ void Sim::handle_dead_entities() {
 /* **************************************** */
 // Preparation
 void Sim::update_entity_lookup_table() {
-    auto const rows{entities.get_const_view()};
+    auto const rows{entities.const_view()};
     entity_tables_.publish<EntityType::Turret>(rows.entity_ids(), rows.teams(), config.max_health);
 }
 void Sim::prepare_tick(float const) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::prepare_tick");
     clear_tick_buffers();
 
-    auto const entities{this->entities.get_view()};
+    auto const entities{this->entities.view()};
     tick_countdowns<std::int16_t>(entities.laser_cooldowns(), cooldown_cleaner_, 16384);
     tick_periodic_countdowns<std::int16_t>(entities.target_refresh_countdowns_remaining_ticks());
     update_entity_lookup_table();
@@ -179,7 +179,7 @@ void Sim::think(ThinkingInputs const inputs) {
 void Sim::refresh_target_data(ThinkingInputs const inputs) {
     auto* const scratch_resource{&inputs.scratch_resource};
 
-    auto const entities{this->entities.get_view()};
+    auto const entities{this->entities.view()};
     auto const count{entities.num()};
     auto const target_ids{entities.target_ids()};
     FrameArray<EntityInstanceHandle> targets{scratch_resource};
@@ -207,12 +207,12 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
 
     SANDBOX_PROFILE_SCOPE("turrets::Sim::resolve_damage_events");
 
-    auto const entities{this->entities.get_view()};
-    auto const healths{entity_tables_.health.get_view<EntityType::Turret>()};
+    auto const entities{this->entities.view()};
+    auto const healths{entity_tables_.health.view<EntityType::Turret>()};
     sim::resolve_damage_events(inputs.combat_events.events_for(EntityType::Turret),
                                entity_tables_.lookups.for_type(EntityType::Turret),
                                entities.entity_ids(),
-                               entities.view_locations().get_const_view().resolve(),
+                               entities.view_locations().const_view().resolve(),
                                healths,
                                local_indices_to_remove,
                                entity_death_info,
@@ -225,8 +225,7 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
     }
 }
 void Sim::publish_deaths() {
-    ledger_.record_deaths(entity_death_info.get_const_view(),
-                          simulation_clock.get_completed_ticks());
+    ledger_.record_deaths(entity_death_info.const_view(), simulation_clock.get_completed_ticks());
 }
 
 // ResolutionCommit
@@ -246,17 +245,17 @@ void Sim::remove_entities() {
 }
 void Sim::finish_action() {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::finish_action");
-    profiling::plot("Sandbox/TurretCount", get_num_instances());
+    profiling::plot("Sandbox/TurretCount", num_instances());
 }
 
 /* **************************************** */
 // Accessors
 /* **************************************** */
-auto Sim::get_num_instances() const noexcept -> std::uint32_t {
+auto Sim::num_instances() const noexcept -> std::uint32_t {
     return entities.num();
 }
-auto Sim::get_target_ids() const -> std::span<EntityId const> {
-    return entities.get_const_view().target_ids();
+auto Sim::target_ids() const -> std::span<EntityId const> {
+    return entities.const_view().target_ids();
 }
 
 /* **************************************** */
@@ -265,7 +264,7 @@ auto Sim::get_target_ids() const -> std::span<EntityId const> {
 void Sim::perform_search(ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::perform_search");
 
-    auto const n_turrets{get_num_instances()};
+    auto const n_turrets{num_instances()};
     if (n_turrets == 0) {
         return;
     }
@@ -287,7 +286,7 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
     std::array<float, 128> candidate_ys;
     std::array<float, 128> candidate_zs;
     FixedArray<LineQueryResult, 128> has_line_of_sight;
-    auto const entities{this->entities.get_view()};
+    auto const entities{this->entities.view()};
 
     PeriodicTickCountdownView<std::int16_t> const refresh_countdowns{
         entities.target_refresh_countdowns_remaining_ticks(),
@@ -329,7 +328,7 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
 
             inputs.spatial_query_manager.has_line_of_sight_to_targets(
                 vector_at(fire_point_locations, i),
-                candidate_locations_view.get_const_view(),
+                candidate_locations_view.const_view(),
                 target_ids,
                 has_line_of_sight,
                 scratch_resource);
@@ -368,7 +367,7 @@ void Sim::fire_at_enemies(ThinkingInputs const inputs) {
 
     SANDBOX_PROFILE_SCOPE("turrets::Sim::fire_at_enemies");
 
-    auto const count{get_num_instances()};
+    auto const count{num_instances()};
     FrameArray<std::uint32_t> candidate_indices{scratch_resource};
     FrameArray<EntityId> hit_ids{scratch_resource};
     Vectors3f starts{*scratch_resource};
@@ -377,8 +376,8 @@ void Sim::fire_at_enemies(ThinkingInputs const inputs) {
     starts.reserve(count);
     ends.reserve(count);
 
-    auto const entities{this->entities.get_view()};
-    auto const disengage_radius{get_disengage_radius()};
+    auto const entities{this->entities.view()};
+    auto const disengage_radius{this->disengage_radius()};
     auto const disengage_radius_squared{disengage_radius * disengage_radius};
     auto cooldowns{
         TickCountdownView<std::int16_t>{entities.laser_cooldowns(), cooldown_restart_ticks_}};
@@ -415,8 +414,8 @@ void Sim::fire_at_enemies(ThinkingInputs const inputs) {
     hit_ids.set_num(candidate_count);
 
     inputs.spatial_query_manager.trace_line_of_sight(
-        starts.get_const_view().resolve(),
-        ends.get_const_view().resolve(),
+        starts.const_view().resolve(),
+        ends.const_view().resolve(),
         {hit_ids.data(), static_cast<std::size_t>(candidate_count)},
         scratch_resource);
 
@@ -470,7 +469,7 @@ void Sim::fire_at_enemies(ThinkingInputs const inputs) {
         laser_sources[candidate] = {teams[element], EntityType::Turret};
     }
 }
-auto Sim::get_disengage_radius() const -> float {
+auto Sim::disengage_radius() const -> float {
     return config.detection_radius * 1.2f;
 }
 

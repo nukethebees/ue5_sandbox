@@ -93,7 +93,7 @@ auto BlockHistory::block_view(std::uint32_t const index) const -> history_rows::
     return {&storage, 0, storage.num_};
 }
 
-auto BlockHistory::get_stats() const noexcept -> BlockHistoryStats {
+auto BlockHistory::stats() const noexcept -> BlockHistoryStats {
     auto const unused_samples{
         used_block_count_ > 0 ? rows_per_block_ - blocks_[used_block_count_ - 1].storage.num_ : 0};
     auto const overhead_per_block{layout_bytes_per_block_ -

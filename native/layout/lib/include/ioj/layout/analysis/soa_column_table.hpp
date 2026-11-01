@@ -319,7 +319,7 @@ struct SoaColumnTable
         : SoaColumnTable{*std::pmr::get_default_resource()} {}
     explicit SoaColumnTable(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~SoaColumnTable() { Operations::release_storage(*this); }
     SoaColumnTable(SoaColumnTable const&) = delete;
     auto operator=(SoaColumnTable const&) -> SoaColumnTable& = delete;
@@ -334,27 +334,23 @@ struct SoaColumnTable
     template <typename Byte>
     using DataPointers = ::ioj::layout::soa_column_table::DataPointers<Byte>;
   public:
-    auto parent(this auto& self) { return self.get_view().parent(); }
-    auto name(this auto& self) { return self.get_view().name(); }
-    auto semantic_type(this auto& self) { return self.get_view().semantic_type(); }
-    auto schema_type(this auto& self) { return self.get_view().schema_type(); }
-    auto physical_type(this auto& self) { return self.get_view().physical_type(); }
-    auto overridden(this auto& self) { return self.get_view().overridden(); }
-    auto type_facts(this auto& self) { return self.get_view().type_facts(); }
-    auto total_bytes(this auto& self) { return self.get_view().total_bytes(); }
-    auto allocation_offset_bytes(this auto& self) {
-        return self.get_view().allocation_offset_bytes();
-    }
-    auto padding_before_bytes(this auto& self) { return self.get_view().padding_before_bytes(); }
-    auto minimum_cache_lines(this auto& self) { return self.get_view().minimum_cache_lines(); }
-    auto elements_per_cache_line(this auto& self) {
-        return self.get_view().elements_per_cache_line();
-    }
-    auto minimum_pages(this auto& self) { return self.get_view().minimum_pages(); }
+    auto parent(this auto& self) { return self.view().parent(); }
+    auto name(this auto& self) { return self.view().name(); }
+    auto semantic_type(this auto& self) { return self.view().semantic_type(); }
+    auto schema_type(this auto& self) { return self.view().schema_type(); }
+    auto physical_type(this auto& self) { return self.view().physical_type(); }
+    auto overridden(this auto& self) { return self.view().overridden(); }
+    auto type_facts(this auto& self) { return self.view().type_facts(); }
+    auto total_bytes(this auto& self) { return self.view().total_bytes(); }
+    auto allocation_offset_bytes(this auto& self) { return self.view().allocation_offset_bytes(); }
+    auto padding_before_bytes(this auto& self) { return self.view().padding_before_bytes(); }
+    auto minimum_cache_lines(this auto& self) { return self.view().minimum_cache_lines(); }
+    auto elements_per_cache_line(this auto& self) { return self.view().elements_per_cache_line(); }
+    auto minimum_pages(this auto& self) { return self.view().minimum_pages(); }
     auto complete_elements_per_page(this auto& self) {
-        return self.get_view().complete_elements_per_page();
+        return self.view().complete_elements_per_page();
     }
-    auto cache_line_tiling(this auto& self) { return self.get_view().cache_line_tiling(); }
+    auto cache_line_tiling(this auto& self) { return self.view().cache_line_tiling(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         SoaColumnTable,
         ::ioj::layout::soa_column_table::Layout::column_types,

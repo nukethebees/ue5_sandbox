@@ -232,7 +232,7 @@ struct DistributionEntryTable
         : DistributionEntryTable{*std::pmr::get_default_resource()} {}
     explicit DistributionEntryTable(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~DistributionEntryTable() { Operations::release_storage(*this); }
     DistributionEntryTable(DistributionEntryTable const&) = delete;
     auto operator=(DistributionEntryTable const&) -> DistributionEntryTable& = delete;
@@ -247,13 +247,13 @@ struct DistributionEntryTable
     template <typename Byte>
     using DataPointers = ::ioj::layout::distribution_entry_table::DataPointers<Byte>;
   public:
-    auto component(this auto& self) { return self.get_view().component(); }
-    auto value(this auto& self) { return self.get_view().value(); }
-    auto weight(this auto& self) { return self.get_view().weight(); }
-    auto extent_bytes(this auto& self) { return self.get_view().extent_bytes(); }
-    auto slack_bytes(this auto& self) { return self.get_view().slack_bytes(); }
-    auto weighted_extent_bytes(this auto& self) { return self.get_view().weighted_extent_bytes(); }
-    auto weighted_slack_bytes(this auto& self) { return self.get_view().weighted_slack_bytes(); }
+    auto component(this auto& self) { return self.view().component(); }
+    auto value(this auto& self) { return self.view().value(); }
+    auto weight(this auto& self) { return self.view().weight(); }
+    auto extent_bytes(this auto& self) { return self.view().extent_bytes(); }
+    auto slack_bytes(this auto& self) { return self.view().slack_bytes(); }
+    auto weighted_extent_bytes(this auto& self) { return self.view().weighted_extent_bytes(); }
+    auto weighted_slack_bytes(this auto& self) { return self.view().weighted_slack_bytes(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         DistributionEntryTable,
         ::ioj::layout::distribution_entry_table::Layout::column_types,

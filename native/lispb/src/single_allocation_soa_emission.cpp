@@ -86,8 +86,8 @@ void describe_compact_scope(LoweringContext& context, RecordId record, Declarati
                             "copy_elements",
                             "append_from",
                             "validate",
-                            "get_view",
-                            "get_const_view",
+                            "view",
+                            "const_view",
                             "slice",
                             "left",
                             "right"}) {
@@ -198,7 +198,7 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
         resource_constructor,
         {},
         {ir.member_initializer(ir.strings.intern("resource_"), ir.store_text("&resource"))});
-    auto const resource_accessor{ir.function("get_memory_resource", "auto")};
+    auto const resource_accessor{ir.function("memory_resource", "auto")};
     ir.set_function_body(resource_accessor, {ir.return_stmt(ir.named("resource_"))});
     ir.set_function_return_type(
         resource_accessor, ir.types.intern("std::pmr::memory_resource*"), ReturnSyntax::trailing);

@@ -69,7 +69,7 @@ struct StorageOperations {
                                                                                             blocks);
     }
     template <StorageOwner Self>
-    auto get_data(this Self& self) noexcept {
+    auto data(this Self& self) noexcept {
         using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
         if (self.data_ == nullptr) {
             return typename Self::template DataPointers<Byte>{};
@@ -77,8 +77,8 @@ struct StorageOperations {
         return self.make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
     }
     template <StorageOwner Self>
-    auto get_data(this Self& self, StorageSize<Self> const offset) noexcept {
-        return offset_columns(self.get_data(), offset);
+    auto data(this Self& self, StorageSize<Self> const offset) noexcept {
+        return offset_columns(self.data(), offset);
     }
     template <StorageOwner Self>
     auto capacity_blocks(this Self const& self) noexcept -> std::size_t {
@@ -101,7 +101,7 @@ struct StorageOperations {
     void default_construct_columns(this Self& self,
                                    StorageSize<Self> first,
                                    StorageSize<Self> count) {
-        auto columns{self.get_data(first)};
+        auto columns{self.data(first)};
         decltype(columns)::with_columns(columns, [&](auto*... column) {
             (std::uninitialized_value_construct_n(column, count), ...);
         });
@@ -139,7 +139,7 @@ struct StorageOperations {
                 destination.reallocate(source.capacity_);
             }
             if (source.num_ > 0) {
-                destination.append_columns(source.get_const_view(), 0, 0, source.num_);
+                destination.append_columns(source.const_view(), 0, 0, source.num_);
             }
             destination.num_ = std::exchange(source.num_, 0);
         }
@@ -169,9 +169,8 @@ struct StorageOperations {
                         StorageSize<Self> source_first,
                         StorageSize<Self> first,
                         StorageSize<Self> count) {
-        transfer_columns<false>(self.get_data(first),
-                                offset_columns(self.source_pointers(source), source_first),
-                                count);
+        transfer_columns<false>(
+            self.data(first), offset_columns(self.source_pointers(source), source_first), count);
     }
     template <StorageOwner Self, typename Source>
         requires (!std::is_const_v<Self> && SoaSourceFor<Source, Self, StorageSize<Self>>)
@@ -180,9 +179,8 @@ struct StorageOperations {
                            StorageSize<Self> source_first,
                            StorageSize<Self> first,
                            StorageSize<Self> count) {
-        transfer_columns<true>(self.get_data(first),
-                               offset_columns(self.source_pointers(source), source_first),
-                               count);
+        transfer_columns<true>(
+            self.data(first), offset_columns(self.source_pointers(source), source_first), count);
     }
     template <StorageOwner Self>
         requires (!std::is_const_v<Self>)
@@ -190,14 +188,14 @@ struct StorageOperations {
                              StorageSize<Self> index,
                              StorageSize<Self> source,
                              StorageSize<Self> count) {
-        auto const columns{self.get_data()};
+        auto const columns{self.data()};
         transfer_columns<false>(
             offset_columns(columns, index), offset_columns(columns, source), count);
     }
     template <StorageOwner Self>
         requires (!std::is_const_v<Self>)
     void swap_remove_indices(this Self& self, std::span<StorageSize<Self> const> indices) {
-        auto const columns{self.get_data()};
+        auto const columns{self.data()};
         for_each_removal_run(self.num_, indices, [&](auto index, auto source, auto count) {
             transfer_columns<false>(
                 offset_columns(columns, index), offset_columns(columns, source), count);
@@ -322,7 +320,7 @@ struct StorageOperations {
             self.data_ = new_data;
             self.capacity_ = new_capacity;
         } else {
-            transfer_columns<false>(self.get_data(first), source_columns, count);
+            transfer_columns<false>(self.data(first), source_columns, count);
         }
         self.num_ = new_num;
         return first;
@@ -364,7 +362,7 @@ struct StorageOperations {
             self.data_ = new_data;
             self.capacity_ = new_capacity;
         } else {
-            auto const destination{self.get_data(first)};
+            auto const destination{self.data(first)};
             for (std::uint32_t row{}; row < count; ++row) {
                 transfer_columns<false>(offset_columns(destination, row),
                                         offset_columns(source_columns, indices[row]),
@@ -378,7 +376,7 @@ struct StorageOperations {
         requires (!std::is_const_v<Self>)
     void apply_permutation(this Self& self, std::span<StorageSize<Self>> indices) {
         assert(indices.size() == self.num_);
-        auto columns{self.get_data()};
+        auto columns{self.data()};
         decltype(columns)::with_columns(
             columns, [&](auto*... column) { ColumnPermutation{self.num_, indices}(column...); });
     }
@@ -448,34 +446,34 @@ struct StorageOperations {
     // Borrowing
     /* **************************************** */
     template <SliceableStorage Self>
-    auto get_view(this Self&& self) {
-        return self.get_view(0, self.num_);
+    auto view(this Self&& self) {
+        return self.view(0, self.num_);
     }
     template <BorrowableStorage Self>
-    auto get_view(this Self&& self, StorageSize<Self> offset, StorageSize<Self> count) {
+    auto view(this Self&& self, StorageSize<Self> offset, StorageSize<Self> count) {
         validate_view(&self, offset, count);
         return StorageView<Self>{&self, offset, count};
     }
     template <ConstSliceableStorage Self>
-    auto get_const_view(this Self&& self) {
-        return self.get_const_view(0, self.num_);
+    auto const_view(this Self&& self) {
+        return self.const_view(0, self.num_);
     }
     template <ConstBorrowableStorage Self>
-    auto get_const_view(this Self&& self, StorageSize<Self> offset, StorageSize<Self> count) {
+    auto const_view(this Self&& self, StorageSize<Self> offset, StorageSize<Self> count) {
         validate_view(&self, offset, count);
         return StorageConstView<Self>{&self, offset, count};
     }
     template <SliceableStorage Self>
     auto slice(this Self&& self, StorageSize<Self> offset, StorageSize<Self> count) {
-        return self.get_view(offset, count);
+        return self.view(offset, count);
     }
     template <LeftBorrowableStorage Self>
     auto left(this Self&& self, StorageSize<Self> count) {
-        return self.get_view().left(count);
+        return self.view().left(count);
     }
     template <RightBorrowableStorage Self>
     auto right(this Self&& self, StorageSize<Self> count) {
-        return self.get_view().right(count);
+        return self.view().right(count);
     }
 };
 

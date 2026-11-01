@@ -36,14 +36,14 @@ bool SaveGameBrowser::load_profile_report(std::string const& profile_id) {
     loaded_report_ = std::move(report);
     return true;
 }
-auto SaveGameBrowser::get_summaries() const -> std::span<ProfileSummary const> {
+auto SaveGameBrowser::summaries() const -> std::span<ProfileSummary const> {
     return listing_.summaries;
 }
 
-auto SaveGameBrowser::get_active_profile_id() const -> std::string_view {
+auto SaveGameBrowser::active_profile_id() const -> std::string_view {
     return listing_.active_profile_id;
 }
-auto SaveGameBrowser::get_loaded_profile_report() const -> ProfileReport const* {
+auto SaveGameBrowser::loaded_profile_report() const -> ProfileReport const* {
     return loaded_report_ ? &*loaded_report_ : nullptr;
 }
 auto make_summary(std::string profile_id,
@@ -85,8 +85,8 @@ auto make_report(std::string profile_id, std::span<ScoreRecord const> records) -
     return report;
 }
 auto discover_profiles(ProfileManager const& manager) -> ProfileListing {
-    ProfileListing listing{.active_profile_id = manager.get_active_profile_id()};
-    for (auto const& profile : manager.get_profiles()) {
+    ProfileListing listing{.active_profile_id = manager.active_profile_id()};
+    for (auto const& profile : manager.profiles()) {
         listing.summaries.push_back(
             {.profile_id = profile.profile_id,
              .display_name = profile.display_name,

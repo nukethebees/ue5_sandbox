@@ -53,13 +53,13 @@ auto CollisionUniformGrid::is_configured() const noexcept -> bool {
 void CollisionUniformGrid::set_geometry(GridGeometry const geometry) noexcept {
     geometry_ = geometry;
 }
-auto CollisionUniformGrid::get_grid_dims() const noexcept -> collision::CellCoord {
+auto CollisionUniformGrid::grid_dims() const noexcept -> collision::CellCoord {
     return geometry_.dimensions;
 }
-auto CollisionUniformGrid::get_max_grid_coord() const noexcept -> collision::CellCoord {
+auto CollisionUniformGrid::max_grid_coord() const noexcept -> collision::CellCoord {
     return geometry_.dimensions - 1;
 }
-auto CollisionUniformGrid::get_cell_dims() const noexcept -> Vector3f {
+auto CollisionUniformGrid::cell_dims() const noexcept -> Vector3f {
     return geometry_.cell_dimensions;
 }
 auto CollisionUniformGrid::num_cells() const -> GridCellCount {
@@ -152,16 +152,16 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::rebuild_entity_grid");
     begin_entity_grid();
     auto& storage{entity_storage_};
-    auto const capitals{level.get_capitals().get_entities()};
-    auto const fighters{level.get_fighters().get_entities()};
-    auto const turrets{level.get_turrets().get_entities()};
-    auto const spinners{level.get_spinners().get_entities()};
-    auto const* player{level.get_player()};
+    auto const capitals{level.capitals().get_entities()};
+    auto const fighters{level.fighters().entities()};
+    auto const turrets{level.turrets().get_entities()};
+    auto const spinners{level.spinners().get_entities()};
+    auto const* player{level.player()};
     auto const max_entity_count{static_cast<std::uint64_t>(capitals.num()) + fighters.num() +
                                 turrets.num() + spinners.num() + (player ? 1u : 0u)};
     assert(max_entity_count <= EntityCellData::max_capacity);
     storage.rebuild_entity_data.add_uninitialised(static_cast<std::uint32_t>(max_entity_count));
-    auto const output{storage.rebuild_entity_data.get_view().resolve()};
+    auto const output{storage.rebuild_entity_data.view().resolve()};
     std::uint32_t output_row{};
 
     auto const append_batch{[&](EntityType const type,
@@ -204,14 +204,14 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
             make_entity_world_bounds(
                 entity_aabbs,
                 EntityType::PlayerShip,
-                Vector3f{player->get_physical_state().transform.location},
-                to_quaternion(Rotator3f{player->get_physical_state().transform.rotator()})));
+                Vector3f{player->physical_state().transform.location},
+                to_quaternion(Rotator3f{player->physical_state().transform.rotator()})));
     }
     auto const capital_rotations{capitals.view_rotations().resolve()};
     append_batch(EntityType::CapitalShip,
                  capitals.entity_ids(),
                  capitals.view_locations().resolve(),
-                 level.get_capitals().get_healths(),
+                 level.capitals().healths(),
                  [capital_rotations](std::uint32_t row) {
                      return to_quaternion(rotation_at(capital_rotations, row));
                  });
@@ -219,7 +219,7 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
     append_batch(EntityType::Turret,
                  turrets.entity_ids(),
                  turrets.view_locations().resolve(),
-                 level.get_turrets().get_healths(),
+                 level.turrets().healths(),
                  [turret_rotations](std::uint32_t row) {
                      return to_quaternion(rotation_at(turret_rotations, row));
                  });
@@ -227,7 +227,7 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
     append_batch(EntityType::Fighter,
                  fighters.entity_ids(),
                  fighters.view_locations().resolve(),
-                 level.get_fighters().get_healths(),
+                 level.fighters().healths(),
                  [fighter_directions](std::uint32_t row) {
                      return to_quaternion(direction_to_rotation(fighter_directions[row]));
                  });
@@ -347,10 +347,10 @@ void CollisionUniformGrid::finish_entity_grid() {
     {
         SANDBOX_PROFILE_SCOPE("scatter entities");
 
-        auto const rebuild_entity_data{storage.rebuild_entity_data.get_const_view()};
+        auto const rebuild_entity_data{storage.rebuild_entity_data.const_view()};
         auto const entity_count{rebuild_entity_data.num()};
 
-        auto const output{storage.aabbs.get_view()};
+        auto const output{storage.aabbs.view()};
         auto const min_points{rebuild_entity_data.view_min_points().resolve()};
         auto const max_points{rebuild_entity_data.view_max_points().resolve()};
         auto const min_cells{rebuild_entity_data.view_min_cells().resolve()};
@@ -390,8 +390,8 @@ void CollisionUniformGrid::finish_entity_grid() {
         }
     }
 }
-auto CollisionUniformGrid::get_entity_world_bounds() const -> EntityCellData::ConstView {
-    return entity_storage_.rebuild_entity_data.get_const_view();
+auto CollisionUniformGrid::entity_world_bounds() const -> EntityCellData::ConstView {
+    return entity_storage_.rebuild_entity_data.const_view();
 }
 
 /* **************************************** */
@@ -405,7 +405,7 @@ void CollisionUniformGrid::collect_unique_entities_in_cells(
     std::uint32_t membership_count{};
     for (auto const cell : cells) {
         // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- each cell has a different membership span.
-        auto const count{get_cell_entities(cell).size()};
+        auto const count{cell_entities(cell).size()};
         assert(count <= std::numeric_limits<std::uint32_t>::max() - membership_count);
         membership_count += static_cast<std::uint32_t>(count);
     }
@@ -417,7 +417,7 @@ void CollisionUniformGrid::collect_unique_entities_in_cells(
     out_entities.reserve(membership_count);
     for (auto const cell : cells) {
         // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- each cell has a different membership span.
-        for (auto const id : get_cell_entities(cell)) {
+        for (auto const id : cell_entities(cell)) {
             out_entities.add(id);
         }
     }
@@ -461,8 +461,8 @@ auto CollisionUniformGrid::overlaps_impl(
                    query_bounds.min.z() <= candidate_max.z() &&
                    query_bounds.max.z() >= candidate_min.z();
         }};
-    auto const static_aabbs{static_storage_.aabbs().get_const_view()};
-    auto const entity_aabbs{entity_storage_.aabbs.get_const_view()};
+    auto const static_aabbs{static_storage_.aabbs().const_view()};
+    auto const entity_aabbs{entity_storage_.aabbs.const_view()};
     auto const static_min_points{static_aabbs.view_min_points().resolve()};
     auto const static_max_points{static_aabbs.view_max_points().resolve()};
     auto const entity_min_points{entity_aabbs.view_min_points().resolve()};
@@ -602,9 +602,9 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
     }
 
     auto const geometry{geometry_};
-    auto const max_cell_coord{get_max_grid_coord()};
-    auto const static_aabbs{static_storage_.aabbs().get_const_view()};
-    auto const entity_aabbs{entity_storage_.aabbs.get_const_view()};
+    auto const max_cell_coord{max_grid_coord()};
+    auto const static_aabbs{static_storage_.aabbs().const_view()};
+    auto const entity_aabbs{entity_storage_.aabbs.const_view()};
     auto const static_min_points{static_aabbs.view_min_points().resolve()};
     auto const static_max_points{static_aabbs.view_max_points().resolve()};
     auto const entity_min_points{entity_aabbs.view_min_points().resolve()};

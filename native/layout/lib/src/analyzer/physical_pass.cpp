@@ -88,7 +88,7 @@ auto physical_use(AnalysisContext& context,
         }
         if (abi.object_pointer_representation()) {
             auto const facts{lookup_physical(context, abi, *abi.object_pointer_representation())};
-            auto const rows{context.storage.physical_facts.get_view().resolve()};
+            auto const rows{context.storage.physical_facts.view().resolve()};
             if (facts &&
                 rows.signedness()[facts->value] == lispb::schema::EnumSignedness::unspecified) {
                 if (rows.origin()[facts->value] != FactOrigin::manual_assumption) {
@@ -203,7 +203,7 @@ void aggregate_layout(AnalysisContext& context,
     }
     result.members.count = components.num() - result.members.begin;
 
-    auto const facts{context.storage.physical_facts.get_const_view().resolve()};
+    auto const facts{context.storage.physical_facts.const_view().resolve()};
     auto const alignments{facts.alignment_bytes()};
     std::optional<std::uint64_t> offset{0};
     std::uint64_t payload{};

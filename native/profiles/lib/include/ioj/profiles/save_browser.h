@@ -23,9 +23,9 @@ class SaveGameBrowser {
 
     void refresh();
     bool load_profile_report(std::string const& profile_id);
-    auto get_summaries() const -> std::span<ProfileSummary const>;
-    auto get_active_profile_id() const -> std::string_view;
-    auto get_loaded_profile_report() const -> ProfileReport const*;
+    auto summaries() const -> std::span<ProfileSummary const>;
+    auto active_profile_id() const -> std::string_view;
+    auto loaded_profile_report() const -> ProfileReport const*;
   private:
     SummarySource summary_source_{};
     ReportSource report_source_{};

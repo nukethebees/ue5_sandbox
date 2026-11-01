@@ -67,7 +67,7 @@ TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
     EXPECT_TRUE(parsed->presentation_enabled);
     EXPECT_TRUE(parsed->started_paused);
     EXPECT_TRUE(parsed->opens_telemetry);
-    EXPECT_EQ(parsed->run.tick_rate_hz.get_hz(), 120.0);
+    EXPECT_EQ(parsed->run.tick_rate_hz.hz(), 120.0);
     EXPECT_EQ(parsed->run.completion.reason, telemetry::RunEndReason::MissionSucceeded);
     EXPECT_EQ(parsed->run.completion.completed_ticks.value(), 240);
     EXPECT_EQ(serialized->find("environment"), std::string::npos);

@@ -10,25 +10,25 @@ struct EntityTableOperations {
     // Views cover lifetime slots indexed by EntityId::index() for the selected type.
     template <EntityType Type, typename Self>
         requires (!std::is_const_v<Self>)
-    [[nodiscard]] auto get_view(this Self& self) {
+    [[nodiscard]] auto view(this Self& self) {
         static_assert(Self::is_supported_type(Type));
-        return self.get_view(Type);
+        return self.view(Type);
     }
 
     template <typename Self>
         requires (!std::is_const_v<Self>)
-    [[nodiscard]] auto get_view(this Self& self, EntityType const type) {
+    [[nodiscard]] auto view(this Self& self, EntityType const type) {
         return make_view_impl<typename Self::view_type>(self, type);
     }
 
     template <EntityType Type, typename Self>
-    [[nodiscard]] auto get_const_view(this Self const& self) {
+    [[nodiscard]] auto const_view(this Self const& self) {
         static_assert(Self::is_supported_type(Type));
-        return self.get_const_view(Type);
+        return self.const_view(Type);
     }
 
     template <typename Self>
-    [[nodiscard]] auto get_const_view(this Self const& self, EntityType const type) {
+    [[nodiscard]] auto const_view(this Self const& self, EntityType const type) {
         return make_view_impl<typename Self::const_view_type>(self, type);
     }
 

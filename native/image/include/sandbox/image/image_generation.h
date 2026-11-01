@@ -342,19 +342,19 @@ auto generate_image(GenerationRequest const&) -> GeneratedImage;
 }
 inline auto generate_normal_map(Validated<GeneratedImage> const& input,
                                 Validated<NormalMapInput> const& settings) -> GeneratedImage {
-    auto const& p{settings.get_ref()};
-    return detail::generate_normal_map(input.get_ref(), p.strength, p.wrap);
+    auto const& p{settings.ref()};
+    return detail::generate_normal_map(input.ref(), p.strength, p.wrap);
 }
 inline auto generate_signed_distance_field(Validated<GeneratedImage> const& input,
                                            Validated<DistanceFieldInput> const& settings)
     -> GeneratedImage {
-    auto const& p{settings.get_ref()};
+    auto const& p{settings.ref()};
     return detail::generate_signed_distance_field(
-        input.get_ref(), p.threshold, p.distance_range, p.wrap);
+        input.ref(), p.threshold, p.distance_range, p.wrap);
 }
 template <typename T>
 inline auto generate_image(Validated<T> const& input) -> GeneratedImage {
-    return detail::generate_image(input.get_ref());
+    return detail::generate_image(input.ref());
 }
 
 [[nodiscard]] auto make_energy_filaments_request() -> GenerationRequest;

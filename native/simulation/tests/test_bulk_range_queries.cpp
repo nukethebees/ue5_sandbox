@@ -26,14 +26,14 @@ class BulkRangeQueries
 
     void query(float const radius, RangeQueryResults& output) {
         queries.collect_non_team_entities_in_range(
-            origins.get_const_view().resolve(), teams.view(), radius, output, &memory);
+            origins.const_view().resolve(), teams.view(), radius, output, &memory);
     }
 
     void expect_scalar_matches(float const radius, RangeQueryResults& output) {
         query(radius, output);
         ASSERT_EQ(output.ranges.num(), origins.num());
-        auto const locations{origins.get_const_view().resolve()};
-        auto const matches{output.matches.get_const_view().resolve()};
+        auto const locations{origins.const_view().resolve()};
+        auto const matches{output.matches.const_view().resolve()};
         auto const entities{matches.entities()};
         auto const distances{matches.distances()};
         auto const directions{matches.view_directions()};

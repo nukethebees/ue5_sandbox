@@ -31,10 +31,10 @@ auto LevelEventSchedule::get_participating_teams(std::optional<Team> const playe
     if (player_team.has_value()) {
         include(*player_team);
     }
-    for (auto const team : capital_spawns.get_const_view().teams()) {
+    for (auto const team : capital_spawns.const_view().teams()) {
         include(team);
     }
-    for (auto const team : turret_spawns.get_const_view().teams()) {
+    for (auto const team : turret_spawns.const_view().teams()) {
         include(team);
     }
 
@@ -60,7 +60,7 @@ void LevelEventSchedule::add_initial_spawn_group(EntityType const type,
     // NOLINTBEGIN(ioj-loop-view-accessor-call)
     while (count > 0) {
         if (initial_spawn_group_count > 0) {
-            auto const groups{spawn_groups.get_view()};
+            auto const groups{spawn_groups.view()};
             auto const last{initial_spawn_group_count - 1};
             auto const previous_count{groups.counts()[last].value()};
             if (groups.types()[last] == type && groups.offsets()[last] + previous_count == offset &&
@@ -78,7 +78,7 @@ void LevelEventSchedule::add_initial_spawn_group(EntityType const type,
         auto const added{std::min(count, static_cast<std::int32_t>(max_level_event_count))};
         auto const old_count{spawn_groups.num()};
         spawn_groups.add_uninitialised(1);
-        auto const groups{spawn_groups.get_view()};
+        auto const groups{spawn_groups.view()};
         auto const types{groups.types()};
         auto const offsets{groups.offsets()};
         auto const counts{groups.counts()};
@@ -121,7 +121,7 @@ auto LevelEventSchedule::add_spawn_group(EntityType const type,
     tick_counts.spawn_groups = group_count;
     auto const index{spawn_groups.num()};
     spawn_groups.add_uninitialised(1);
-    auto const groups{spawn_groups.get_view()};
+    auto const groups{spawn_groups.view()};
     groups.types()[index] = type;
     groups.offsets()[index] = offset;
     groups.counts()[index] = payload_count;

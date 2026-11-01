@@ -222,7 +222,7 @@ struct EntityHistory
         : EntityHistory{*std::pmr::get_default_resource()} {}
     explicit EntityHistory(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~EntityHistory() { Operations::release_storage(*this); }
     EntityHistory(EntityHistory const&) = delete;
     auto operator=(EntityHistory const&) -> EntityHistory& = delete;
@@ -237,14 +237,14 @@ struct EntityHistory
     template <typename Byte>
     using DataPointers = ::ioj::sim::entity_history::DataPointers<Byte>;
   public:
-    auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }
-    auto entity_types(this auto& self) { return self.get_view().entity_types(); }
-    auto teams(this auto& self) { return self.get_view().teams(); }
-    auto kills(this auto& self) { return self.get_view().kills(); }
-    auto killed_by(this auto& self) { return self.get_view().killed_by(); }
-    auto life_state(this auto& self) { return self.get_view().life_state(); }
-    auto death_ticks(this auto& self) { return self.get_view().death_ticks(); }
-    auto death_locations(this auto& self) { return self.get_view().death_locations(); }
+    auto entity_ids(this auto& self) { return self.view().entity_ids(); }
+    auto entity_types(this auto& self) { return self.view().entity_types(); }
+    auto teams(this auto& self) { return self.view().teams(); }
+    auto kills(this auto& self) { return self.view().kills(); }
+    auto killed_by(this auto& self) { return self.view().killed_by(); }
+    auto life_state(this auto& self) { return self.view().life_state(); }
+    auto death_ticks(this auto& self) { return self.view().death_ticks(); }
+    auto death_locations(this auto& self) { return self.view().death_locations(); }
     using RowOperations =
         soa_storage_detail::OwnerRowOperations<EntityHistory,
                                                ::ioj::sim::entity_history::Layout::column_types,

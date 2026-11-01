@@ -151,7 +151,7 @@ auto read_duration(Json const& object, std::string_view const field, std::string
 }
 
 auto write_duration(std::optional<Duration> const value) -> Json {
-    return value ? Json(value->get_seconds()) : Json(nullptr);
+    return value ? Json(value->seconds()) : Json(nullptr);
 }
 
 template <typename Counts>
@@ -419,7 +419,7 @@ auto serialize_report(Report const& report) -> std::expected<std::string, std::s
             {"timestamps",
              {{"launched_utc", metadata.launched_utc}, {"completed_utc", result.completed_utc}}},
             {"simulation",
-             {{"tick_rate_hz", report.run.tick_rate_hz.get_hz()},
+             {{"tick_rate_hz", report.run.tick_rate_hz.hz()},
               {"level_source", metadata.level_source},
               {"settings_source", metadata.settings_source},
               {"launch_state", report.started_paused ? "paused" : "running"},

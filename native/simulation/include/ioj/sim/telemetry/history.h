@@ -298,7 +298,7 @@ struct HistoryRows
         : HistoryRows{*std::pmr::get_default_resource()} {}
     explicit HistoryRows(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~HistoryRows() { Operations::release_storage(*this); }
     HistoryRows(HistoryRows const&) = delete;
     auto operator=(HistoryRows const&) -> HistoryRows& = delete;
@@ -313,20 +313,18 @@ struct HistoryRows
     template <typename Byte>
     using DataPointers = ::ioj::sim::telemetry::history_rows::DataPointers<Byte>;
   public:
-    auto completed_ticks(this auto& self) { return self.get_view().completed_ticks(); }
-    auto validity_masks(this auto& self) { return self.get_view().validity_masks(); }
-    auto active_entities(this auto& self) { return self.get_view().active_entities(); }
-    auto active_entities_by_type(this auto& self) {
-        return self.get_view().active_entities_by_type();
-    }
+    auto completed_ticks(this auto& self) { return self.view().completed_ticks(); }
+    auto validity_masks(this auto& self) { return self.view().validity_masks(); }
+    auto active_entities(this auto& self) { return self.view().active_entities(); }
+    auto active_entities_by_type(this auto& self) { return self.view().active_entities_by_type(); }
     auto active_entities_by_team_and_type(this auto& self) {
-        return self.get_view().active_entities_by_team_and_type();
+        return self.view().active_entities_by_team_and_type();
     }
-    auto spawned_entities(this auto& self) { return self.get_view().spawned_entities(); }
-    auto destroyed_entities(this auto& self) { return self.get_view().destroyed_entities(); }
-    auto kills(this auto& self) { return self.get_view().kills(); }
-    auto active_lasers(this auto& self) { return self.get_view().active_lasers(); }
-    auto lasers_fired(this auto& self) { return self.get_view().lasers_fired(); }
+    auto spawned_entities(this auto& self) { return self.view().spawned_entities(); }
+    auto destroyed_entities(this auto& self) { return self.view().destroyed_entities(); }
+    auto kills(this auto& self) { return self.view().kills(); }
+    auto active_lasers(this auto& self) { return self.view().active_lasers(); }
+    auto lasers_fired(this auto& self) { return self.view().lasers_fired(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         HistoryRows,
         ::ioj::sim::telemetry::history_rows::Layout::column_types,

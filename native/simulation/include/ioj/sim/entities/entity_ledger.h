@@ -38,24 +38,22 @@ class EntityLedger {
     void record_shots(std::span<EntityId const> instigators);
 
     // Read death metadata after record_deaths; it describes the latest death of that identity.
-    auto get_unique_entities() const noexcept -> EntityHistory::ConstView {
-        return history_.get_const_view();
+    auto unique_entities() const noexcept -> EntityHistory::ConstView {
+        return history_.const_view();
     }
     // Borrow history rows in publication order until the next frame or ledger mutation.
-    auto get_frame_deaths(EntityType type) const -> std::span<HistoryIndex const> {
+    auto frame_deaths(EntityType type) const -> std::span<HistoryIndex const> {
         return frame_deaths_[std::to_underlying(type)];
     }
-    auto get_history_index(EntityId id) const noexcept -> std::uint32_t {
+    auto history_index(EntityId id) const noexcept -> std::uint32_t {
         return ids_.history_index(id);
     }
     auto is_valid_unique_id(EntityId id) const noexcept -> bool {
-        return get_history_index(id) != EntityIdAllocator::invalid_index;
+        return history_index(id) != EntityIdAllocator::invalid_index;
     }
-    auto get_issued_counts() const noexcept -> EntityTypeSizes const& {
-        return ids_.issued_counts();
-    }
-    auto get_num_unique_ids_issued() const noexcept -> std::uint32_t { return history_.num(); }
-    auto get_kills(EntityId id) const -> std::uint32_t;
+    auto issued_counts() const noexcept -> EntityTypeSizes const& { return ids_.issued_counts(); }
+    auto num_unique_ids_issued() const noexcept -> std::uint32_t { return history_.num(); }
+    auto kills(EntityId id) const -> std::uint32_t;
     auto count_alive() const noexcept -> std::int32_t { return statistics_.alive_count(); }
     auto count_alive(EntityType type) const noexcept -> std::int32_t {
         return statistics_.count_alive(type);
@@ -72,7 +70,7 @@ class EntityLedger {
     auto count_alive_not_on_team(Team team) const noexcept -> std::int32_t {
         return statistics_.count_alive_not_on_team(team);
     }
-    auto get_combat_telemetry() const noexcept -> telemetry::CombatTelemetryCounters const& {
+    auto combat_telemetry() const noexcept -> telemetry::CombatTelemetryCounters const& {
         return statistics_.combat_telemetry();
     }
   private:

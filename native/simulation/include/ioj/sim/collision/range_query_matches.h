@@ -218,7 +218,7 @@ struct RangeQueryMatches
         : RangeQueryMatches{*std::pmr::get_default_resource()} {}
     explicit RangeQueryMatches(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~RangeQueryMatches() { Operations::release_storage(*this); }
     RangeQueryMatches(RangeQueryMatches const&) = delete;
     auto operator=(RangeQueryMatches const&) -> RangeQueryMatches& = delete;
@@ -233,9 +233,9 @@ struct RangeQueryMatches
     template <typename Byte>
     using DataPointers = ::ioj::sim::range_query_matches::DataPointers<Byte>;
   public:
-    auto entities(this auto& self) { return self.get_view().entities(); }
-    auto distances(this auto& self) { return self.get_view().distances(); }
-    auto view_directions(this auto& self) { return self.get_view().view_directions(); }
+    auto entities(this auto& self) { return self.view().entities(); }
+    auto distances(this auto& self) { return self.view().distances(); }
+    auto view_directions(this auto& self) { return self.view().view_directions(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         RangeQueryMatches,
         ::ioj::sim::range_query_matches::Layout::column_types,
@@ -247,9 +247,9 @@ struct RangeQueryMatches
              float const new_distances,
              Vector3f const new_directions) {
         assert(index < num());
-        get_view().entities()[index] = new_entities;
-        get_view().distances()[index] = new_distances;
-        get_view().view_directions().set(index, new_directions);
+        view().entities()[index] = new_entities;
+        view().distances()[index] = new_distances;
+        view().view_directions().set(index, new_directions);
     }
     size_type
         add(EntityId const new_entities, float const new_distances, Vector3f const new_directions) {

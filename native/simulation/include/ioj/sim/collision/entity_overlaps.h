@@ -177,7 +177,7 @@ struct EntityEntityOverlaps
         : EntityEntityOverlaps{*std::pmr::get_default_resource()} {}
     explicit EntityEntityOverlaps(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~EntityEntityOverlaps() { Operations::release_storage(*this); }
     EntityEntityOverlaps(EntityEntityOverlaps const&) = delete;
     auto operator=(EntityEntityOverlaps const&) -> EntityEntityOverlaps& = delete;
@@ -192,8 +192,8 @@ struct EntityEntityOverlaps
     template <typename Byte>
     using DataPointers = ::ioj::sim::collision::entity_entity_overlaps::DataPointers<Byte>;
   public:
-    auto first_entities(this auto& self) { return self.get_view().first_entities(); }
-    auto second_entities(this auto& self) { return self.get_view().second_entities(); }
+    auto first_entities(this auto& self) { return self.view().first_entities(); }
+    auto second_entities(this auto& self) { return self.view().second_entities(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         EntityEntityOverlaps,
         ::ioj::sim::collision::entity_entity_overlaps::Layout::column_types,
@@ -364,7 +364,7 @@ struct EntityStaticOverlaps
         : EntityStaticOverlaps{*std::pmr::get_default_resource()} {}
     explicit EntityStaticOverlaps(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~EntityStaticOverlaps() { Operations::release_storage(*this); }
     EntityStaticOverlaps(EntityStaticOverlaps const&) = delete;
     auto operator=(EntityStaticOverlaps const&) -> EntityStaticOverlaps& = delete;
@@ -379,10 +379,8 @@ struct EntityStaticOverlaps
     template <typename Byte>
     using DataPointers = ::ioj::sim::collision::entity_static_overlaps::DataPointers<Byte>;
   public:
-    auto entities(this auto& self) { return self.get_view().entities(); }
-    auto static_geometry_indices(this auto& self) {
-        return self.get_view().static_geometry_indices();
-    }
+    auto entities(this auto& self) { return self.view().entities(); }
+    auto static_geometry_indices(this auto& self) { return self.view().static_geometry_indices(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         EntityStaticOverlaps,
         ::ioj::sim::collision::entity_static_overlaps::Layout::column_types,

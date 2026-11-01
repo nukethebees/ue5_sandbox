@@ -46,11 +46,11 @@ TEST(CompletionPublication, PublishesRetainedPlayerResultAndPayloadWithoutUnreal
     simulation.finish_initialisation();
     EXPECT_FALSE(publish_player_completion(simulation, nullptr, 17));
 
-    auto const player{simulation.get_player_ship_simulation()->unique_entity_id};
+    auto const player{simulation.player_ship_simulation()->unique_entity_id};
     sim::DirectDamageEvents damage;
-    damage.add(simulation.get_capital_ships().get_id(0), 100000, player);
-    damage.add(simulation.get_turrets().get_entities().entity_ids()[0], 100000, player);
-    sim::LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
+    damage.add(simulation.capital_ships().id(0), 100000, player);
+    damage.add(simulation.turrets().get_entities().entity_ids()[0], 100000, player);
+    sim::LevelSimTestAccess::queue_direct_damage_events(simulation, damage.const_view());
     simulation.start();
     simulation.advance(0.4);
     auto const root{std::filesystem::temp_directory_path() / ("publication-" + make_profile_id())};
@@ -60,23 +60,23 @@ TEST(CompletionPublication, PublishesRetainedPlayerResultAndPayloadWithoutUnreal
     ASSERT_TRUE(publication);
     EXPECT_EQ(publication->level_title, "Publication");
     EXPECT_EQ(publication->par_time_seconds, 1.f);
-    ScoreRecord const expected{
-        .date = 17,
-        .level_name = "publication",
-        .team = Team::Blue,
-        .outcome = MissionOutcome::Victory,
-        .objective_id = "primary",
-        .objective_outcome = ObjectiveOutcome::Passed,
-        .kills = 2,
-        .time_seconds = static_cast<float>(0.2 + simulation.get_clock().get_tick_period())};
+    ScoreRecord const expected{.date = 17,
+                               .level_name = "publication",
+                               .team = Team::Blue,
+                               .outcome = MissionOutcome::Victory,
+                               .objective_id = "primary",
+                               .objective_outcome = ObjectiveOutcome::Passed,
+                               .kills = 2,
+                               .time_seconds =
+                                   static_cast<float>(0.2 + simulation.clock().tick_period())};
     EXPECT_EQ(publication->record, expected);
     EXPECT_TRUE(publication->save_result.persisted);
     EXPECT_TRUE(publication->save_result.new_best_time);
-    ASSERT_EQ(profiles.get_active_records().size(), 1u);
-    EXPECT_EQ(profiles.get_active_records()[0], expected);
-    EXPECT_TRUE(simulation.get_player_team_completion());
-    EXPECT_FALSE(simulation.get_mission().completions().empty());
-    EXPECT_EQ(profiles.get_active_records().size(), 1u);
+    ASSERT_EQ(profiles.active_records().size(), 1u);
+    EXPECT_EQ(profiles.active_records()[0], expected);
+    EXPECT_TRUE(simulation.player_team_completion());
+    EXPECT_FALSE(simulation.mission().completions().empty());
+    EXPECT_EQ(profiles.active_records().size(), 1u);
     std::filesystem::remove_all(root);
     auto lock_path{root};
     lock_path += ".lock";

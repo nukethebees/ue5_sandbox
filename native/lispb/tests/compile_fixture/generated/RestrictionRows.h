@@ -163,7 +163,7 @@ struct SingleRestrictionRows
         : SingleRestrictionRows{*std::pmr::get_default_resource()} {}
     explicit SingleRestrictionRows(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~SingleRestrictionRows() { Operations::release_storage(*this); }
     SingleRestrictionRows(SingleRestrictionRows const&) = delete;
     auto operator=(SingleRestrictionRows const&) -> SingleRestrictionRows& = delete;
@@ -178,7 +178,7 @@ struct SingleRestrictionRows
     template <typename Byte>
     using DataPointers = ::codegen_compile_fixture::single_restriction_rows::DataPointers<Byte>;
   public:
-    auto restricted(this auto& self) { return self.get_view().restricted(); }
+    auto restricted(this auto& self) { return self.view().restricted(); }
     using RowOperations = ioj::soa_storage_detail::OwnerRowOperations<
         SingleRestrictionRows,
         ::codegen_compile_fixture::single_restriction_rows::Layout::column_types,

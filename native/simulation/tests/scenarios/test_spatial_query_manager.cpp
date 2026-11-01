@@ -27,11 +27,11 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryResolvesLineOfSightBatches) {
     }
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    auto const& capitals{harness.get_simulation().get_capital_ships()};
+    auto const& capitals{harness.simulation().capital_ships()};
     std::vector<EntityId> expected{};
     auto const location_count{static_cast<std::int32_t>(locations.size())};
     for (std::int32_t i{}; i < location_count; ++i) {
-        expected.push_back(capitals.get_id(i));
+        expected.push_back(capitals.id(i));
     }
 
     Vectors3f starts;
@@ -47,8 +47,8 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryResolvesLineOfSightBatches) {
     }
     std::vector<EntityId> results{};
     results.resize(static_cast<std::size_t>(ends.num()));
-    harness.get_simulation().get_spatial_query_manager().trace_line_of_sight(
-        starts.get_const_view().resolve(), ends.get_const_view().resolve(), results, &query_memory);
+    harness.simulation().spatial_query_manager().trace_line_of_sight(
+        starts.const_view().resolve(), ends.const_view().resolve(), results, &query_memory);
     auto const count{static_cast<std::int32_t>(locations.size())};
     for (std::int32_t i{}; i < count; ++i) {
         SCOPED_TRACE(::testing::Message() << "index " << i);
@@ -59,8 +59,8 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryResolvesLineOfSightBatches) {
 
     std::vector<LineQueryResult> has_los{};
     has_los.resize(static_cast<std::size_t>(ends.num()));
-    harness.get_simulation().get_spatial_query_manager().has_line_of_sight_to_targets(
-        Vector3f{0.f, 0.f, 0.f}, ends.get_const_view().resolve(), targets, has_los, &query_memory);
+    harness.simulation().spatial_query_manager().has_line_of_sight_to_targets(
+        Vector3f{0.f, 0.f, 0.f}, ends.const_view().resolve(), targets, has_los, &query_memory);
     auto expected_visibility{std::vector<LineQueryResult>(targets.size(), LineQueryResult{1})};
     EXPECT_PRED_FORMAT2(structurally_equal, expected_visibility, has_los)
         << "Clear or target hit has line of sight";
@@ -69,8 +69,8 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryResolvesLineOfSightBatches) {
         targets[i + count] = other;
         targets[i + 2 * count] = other;
     }
-    harness.get_simulation().get_spatial_query_manager().has_line_of_sight_to_targets(
-        Vector3f{0.f, 0.f, 0.f}, ends.get_const_view().resolve(), targets, has_los, &query_memory);
+    harness.simulation().spatial_query_manager().has_line_of_sight_to_targets(
+        Vector3f{0.f, 0.f, 0.f}, ends.const_view().resolve(), targets, has_los, &query_memory);
     std::fill(expected_visibility.begin() + count, expected_visibility.end(), LineQueryResult{0});
     EXPECT_PRED_FORMAT2(structurally_equal, expected_visibility, has_los)
         << "Clear lines remain visible; other targets at or beyond a hit are blocked";

@@ -204,22 +204,22 @@ TEST_F(MissionTest, ReciprocalTeamCompletionsPersistUntilProgressResets) {
     start({.objectives = {attack, defend}});
     tick(0);
     tick(10);
-    auto const completion{mission.get_team_completion(Team::Blue)};
+    auto const completion{mission.team_completion(Team::Blue)};
     ASSERT_TRUE(completion);
     EXPECT_EQ(completion->outcome, MissionOutcome::Victory);
-    auto const defeat{mission.get_team_completion(Team::Red)};
+    auto const defeat{mission.team_completion(Team::Red)};
     ASSERT_TRUE(defeat);
     EXPECT_EQ(defeat->outcome, MissionOutcome::Defeat);
     tick(20);
-    EXPECT_TRUE(mission.get_team_completion(Team::Blue));
+    EXPECT_TRUE(mission.team_completion(Team::Blue));
     EXPECT_EQ(mission.completions().size(), 2);
 
     mission.reset_progress();
     EXPECT_TRUE(mission.completions().empty());
-    EXPECT_FALSE(mission.get_team_completion(Team::Blue));
+    EXPECT_FALSE(mission.team_completion(Team::Blue));
     tick(30);
     tick(40);
-    auto const restarted{mission.get_team_completion(Team::Blue)};
+    auto const restarted{mission.team_completion(Team::Blue)};
     ASSERT_TRUE(restarted);
     EXPECT_EQ(restarted->tick, SimTick{40});
 }
@@ -243,22 +243,21 @@ TEST_P(SelectedTeamMissionCompletion, ReadsTheRequestedTeamWithoutConsumingResul
     start({.objectives = {attack, defend}});
     tick(0);
     auto const& test_case{GetParam()};
-    EXPECT_FALSE(mission.get_team_completion(test_case.team));
+    EXPECT_FALSE(mission.team_completion(test_case.team));
     tick(10);
 
-    auto const completion{mission.get_team_completion(test_case.team)};
+    auto const completion{mission.team_completion(test_case.team)};
     ASSERT_EQ(completion.has_value(), test_case.outcome.has_value());
     if (completion) {
         EXPECT_EQ(completion->team, *test_case.team);
         EXPECT_EQ(completion->outcome, *test_case.outcome);
         EXPECT_EQ(completion->tick, SimTick{10});
     }
-    EXPECT_TRUE(mission.get_team_completion(Team::Blue));
-    EXPECT_TRUE(mission.get_team_completion(Team::Red));
+    EXPECT_TRUE(mission.team_completion(Team::Blue));
+    EXPECT_TRUE(mission.team_completion(Team::Red));
     EXPECT_EQ(mission.completions().size(), 2);
     tick(20);
-    EXPECT_EQ(mission.get_team_completion(test_case.team).has_value(),
-              test_case.outcome.has_value());
+    EXPECT_EQ(mission.team_completion(test_case.team).has_value(), test_case.outcome.has_value());
     EXPECT_EQ(mission.completions().size(), 2);
 }
 
@@ -359,19 +358,19 @@ TEST_F(MissionTest, RootAndTeamConflictPrecedenceIsDeterministic) {
     start({.objectives = {source, rival}});
     EXPECT_TRUE(mission.active_objectives().empty());
     EXPECT_TRUE(mission.completed_objectives().empty());
-    EXPECT_FALSE(mission.get_team_completion(Team::Blue));
+    EXPECT_FALSE(mission.team_completion(Team::Blue));
     tick(0);
     EXPECT_EQ(mission.active_objectives().size(), 2);
     EXPECT_TRUE(mission.completed_objectives().empty());
     tick(1);
     EXPECT_EQ(mission.outcome(ObjectiveId{0}), ObjectiveOutcome::Passed);
     EXPECT_EQ(mission.outcome(ObjectiveId{1}), ObjectiveOutcome::Passed);
-    auto const completion{mission.get_team_completion(Team::Blue)};
+    auto const completion{mission.team_completion(Team::Blue)};
     ASSERT_TRUE(completion);
     EXPECT_EQ(completion->outcome, MissionOutcome::Victory);
     EXPECT_EQ(completion->triggering_objective, ObjectiveId{0});
     tick(10);
-    EXPECT_TRUE(mission.get_team_completion(Team::Blue));
+    EXPECT_TRUE(mission.team_completion(Team::Blue));
     EXPECT_EQ(mission.completions().size(), 2);
 }
 
@@ -400,10 +399,10 @@ TEST_F(MissionTest, MixedLeafKindsProgressUntilTheLastConditionResolves) {
 
     EntityDeathInfo deaths;
     deaths.add_defaulted(1);
-    auto const death{deaths.get_view()};
+    auto const death{deaths.view()};
     death.victims()[0] = entities[0];
     death.reasons()[0] = DeathReason::Combat;
-    ledger.record_deaths(deaths.get_const_view(), SimTick{22});
+    ledger.record_deaths(deaths.const_view(), SimTick{22});
     tick(22);
     EXPECT_EQ(mission.result(root), ExprResult::True);
     EXPECT_EQ(mission.outcome(ObjectiveId{0}), ObjectiveOutcome::Passed);
@@ -443,11 +442,11 @@ TEST_F(MissionTest, SchemeNamedDagAndOutcomeDependenciesExecuteThroughRuntimeCom
     tick(0);
     tick(10);
     EXPECT_EQ(mission.outcome(ObjectiveId{0}), ObjectiveOutcome::Passed);
-    EXPECT_FALSE(mission.get_team_completion(Team::Blue));
+    EXPECT_FALSE(mission.team_completion(Team::Blue));
     tick(29);
     EXPECT_FALSE(mission.outcome(ObjectiveId{1}));
     tick(30);
-    auto const completion{mission.get_team_completion(Team::Blue)};
+    auto const completion{mission.team_completion(Team::Blue)};
     ASSERT_TRUE(completion);
     EXPECT_EQ(completion->outcome, MissionOutcome::Victory);
 }
@@ -482,7 +481,7 @@ TEST_F(MissionTest, SchemeReciprocalHelperResolvesBothTeams) {
     EXPECT_FALSE(mission.outcome(ObjectiveId{1}));
     tick(11);
     EXPECT_EQ(mission.outcome(ObjectiveId{1}), ObjectiveOutcome::Failed);
-    auto const completion{mission.get_team_completion(Team::Red)};
+    auto const completion{mission.team_completion(Team::Red)};
     ASSERT_TRUE(completion);
     EXPECT_EQ(completion->outcome, MissionOutcome::Defeat);
 }

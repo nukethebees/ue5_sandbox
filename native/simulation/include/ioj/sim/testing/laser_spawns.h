@@ -16,7 +16,7 @@ inline void add_laser_spawn(lasers::LaserSpawnRequests& requests,
                             LaserSource const source) {
     auto const row{requests.num()};
     requests.add_uninitialised(1);
-    auto const view{requests.get_view()};
+    auto const view{requests.view()};
     set_vector(view.view_locations(), row, location);
     set_rotation(view.view_rotations(), row, rotation);
     set_vector(view.view_base_velocities(), row, velocity);

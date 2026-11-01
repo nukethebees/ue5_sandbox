@@ -49,11 +49,11 @@ class LockFreeMPSCQueue {
         }
 
         if constexpr (!std::is_trivially_destructible_v<value_type>) {
-            auto* read_buffer_start{get_address(1 - write_buffer_index_.load(), 0)};
+            auto* read_buffer_start{address(1 - write_buffer_index_.load(), 0)};
             destroy_buffer(read_buffer_start, read_size_);
 
             auto write_count{write_index_.load()};
-            auto* write_buffer_start{get_address(write_buffer_index_.load(), 0)};
+            auto* write_buffer_start{address(write_buffer_index_.load(), 0)};
             destroy_buffer(write_buffer_start, write_count);
         }
 
@@ -131,8 +131,8 @@ class LockFreeMPSCQueue {
         auto const old_write_buffer{write_buffer_index_.load(std::memory_order_acquire)};
         write_buffer_index_.store(1 - old_write_buffer, std::memory_order_release);
 
-        auto* const new_write_buffer{get_address(1 - old_write_buffer, 0)};
-        auto* const new_read_buffer{get_address(old_write_buffer, 0)};
+        auto* const new_write_buffer{address(1 - old_write_buffer, 0)};
+        auto* const new_read_buffer{address(old_write_buffer, 0)};
 
         destroy_buffer(new_write_buffer, old_read_size);
 
@@ -146,7 +146,7 @@ class LockFreeMPSCQueue {
         return std::forward<Callable>(callable)(swap_and_consume());
     }
   private:
-    [[nodiscard]] auto get_address(std::size_t buffer_index, std::size_t item_index) const noexcept
+    [[nodiscard]] auto address(std::size_t buffer_index, std::size_t item_index) const noexcept
         -> pointer {
         auto const buffer_start_offset{buffer_index * buffer_capacity()};
         auto* const buffer_start{data_ + buffer_start_offset};
@@ -177,7 +177,7 @@ class LockFreeMPSCQueue {
             }
         }
 
-        auto* const address{get_address(write_buffer_index_.load(std::memory_order_relaxed), i)};
+        auto* const address{this->address(write_buffer_index_.load(std::memory_order_relaxed), i)};
         return address;
     }
 

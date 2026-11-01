@@ -16,9 +16,9 @@ class ProfileManager {
     explicit ProfileManager(ProfileStorage storage);
 
     bool initialise();
-    auto get_profiles() const -> std::span<ProfileMetadata const>;
-    auto get_active_profile_id() const -> std::string const&;
-    auto get_active_records() const -> std::span<ScoreRecord const>;
+    auto profiles() const -> std::span<ProfileMetadata const>;
+    auto active_profile_id() const -> std::string const&;
+    auto active_records() const -> std::span<ScoreRecord const>;
     auto has_active_profile() const -> bool;
     auto unlock_all_missions() const -> bool;
     auto start_levels_paused() const -> bool;

@@ -197,18 +197,18 @@ concept ConstBorrowableStorage =
 template <typename Owner>
 concept SliceableStorage =
     StorageOwner<Owner> && std::is_lvalue_reference_v<Owner> &&
-    requires(Owner&& owner, StorageSize<Owner> count) { owner.get_view(count, count); };
+    requires(Owner&& owner, StorageSize<Owner> count) { owner.view(count, count); };
 template <typename Owner>
 concept ConstSliceableStorage =
     StorageOwner<Owner> && std::is_lvalue_reference_v<Owner> &&
-    requires(Owner&& owner, StorageSize<Owner> count) { owner.get_const_view(count, count); };
+    requires(Owner&& owner, StorageSize<Owner> count) { owner.const_view(count, count); };
 template <typename Owner>
 concept LeftBorrowableStorage =
     StorageOwner<Owner> && std::is_lvalue_reference_v<Owner> &&
-    requires(Owner&& owner, StorageSize<Owner> count) { owner.get_view().left(count); };
+    requires(Owner&& owner, StorageSize<Owner> count) { owner.view().left(count); };
 template <typename Owner>
 concept RightBorrowableStorage =
     StorageOwner<Owner> && std::is_lvalue_reference_v<Owner> &&
-    requires(Owner&& owner, StorageSize<Owner> count) { owner.get_view().right(count); };
+    requires(Owner&& owner, StorageSize<Owner> count) { owner.view().right(count); };
 
 } // namespace ioj::soa_storage_detail

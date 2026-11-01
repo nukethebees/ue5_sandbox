@@ -132,7 +132,7 @@ class LockFreeMPSCQueueSoA {
 
         // Return a view to the new read buffer
         return map_index<view_type>([&]<std::size_t I>() {
-            return std::span<value_type<I>>(get_buffer_ptr<I>(old_write_buf_idx), new_read_size);
+            return std::span<value_type<I>>(buffer_ptr<I>(old_write_buf_idx), new_read_size);
         });
     }
 
@@ -170,7 +170,7 @@ class LockFreeMPSCQueueSoA {
     };
 
     template <size_type I>
-    [[nodiscard]] auto get_buffer_ptr(size_type buffer_idx) noexcept -> auto* {
+    [[nodiscard]] auto buffer_ptr(size_type buffer_idx) noexcept -> auto* {
         using T = value_type<I>;
         auto const buffer_start{layout_.offsets[I] + buffer_idx * capacity_per_buffer_ * sizeof(T)};
         return std::launder(reinterpret_cast<T*>(buffer_ + buffer_start));
@@ -180,14 +180,14 @@ class LockFreeMPSCQueueSoA {
     void construct_element(size_type active_write_buffer_idx,
                            size_type element_index,
                            auto&& value) noexcept {
-        auto* ptr{get_buffer_ptr<I>(active_write_buffer_idx) + element_index};
+        auto* ptr{buffer_ptr<I>(active_write_buffer_idx) + element_index};
         new (ptr) value_type<I>{std::forward<decltype(value)>(value)};
     }
 
     template <size_type I>
     void destroy_buffer(size_type buffer_idx, size_type count) noexcept {
         if constexpr (!std::is_trivially_destructible_v<value_type<I>>) {
-            auto* ptr{get_buffer_ptr<I>(buffer_idx)};
+            auto* ptr{buffer_ptr<I>(buffer_idx)};
             std::destroy_n(ptr, count);
         }
     }

@@ -48,7 +48,7 @@ auto ApiOwner::append_empty() -> std::uint32_t {
 }
 
 auto ApiOwner::total() const -> Value {
-    auto values = get_view().values();
+    auto values = view().values();
     float result{};
     auto const count = num();
     for (std::uint32_t i{}; i < count; ++i) {

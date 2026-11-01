@@ -16,12 +16,12 @@ TEST(HealthTable, SeparatesFixedTypeRangesAndCopiesBulkValues) {
     health.initialise_entities<EntityType::Fighter>(fighters,
                                                     std::array<Health, 2>{Health{10}, Health{20}});
     health.initialise_entities<EntityType::CapitalShip>(capitals, Health{900});
-    auto const fighter_health{health.get_view<EntityType::Fighter>()};
+    auto const fighter_health{health.view<EntityType::Fighter>()};
     fighter_health.copy_from(fighters, std::array<Health, 2>{Health{30}, Health{40}});
     std::array<Health, 2> copied;
-    health.get_const_view<EntityType::Fighter>().copy_to(fighters, copied);
+    health.const_view<EntityType::Fighter>().copy_to(fighters, copied);
     EXPECT_EQ(copied, (std::array<Health, 2>{Health{30}, Health{40}}));
-    EXPECT_EQ(health.get_const_view<EntityType::CapitalShip>().health(capitals[0]).value(), 900);
+    EXPECT_EQ(health.const_view<EntityType::CapitalShip>().health(capitals[0]).value(), 900);
 }
 
 TEST(EntityTables, PreservesLifetimeSlotsWhenOwnerRowsMove) {
@@ -37,7 +37,7 @@ TEST(EntityTables, PreservesLifetimeSlotsWhenOwnerRowsMove) {
         }
         health.initialise_entities<EntityType::Fighter>(owners, values);
         executors.initialise_entities<EntityType::Fighter>(owners);
-        auto const executor_view{executors.get_view<EntityType::Fighter>()};
+        auto const executor_view{executors.view<EntityType::Fighter>()};
         for (auto const id : owners) {
             executor_view.current_tasks[id.index()] = tasks::TaskId{id.index()};
             executor_view.current_instructions[id.index()] =
@@ -47,7 +47,7 @@ TEST(EntityTables, PreservesLifetimeSlotsWhenOwnerRowsMove) {
             owners[row] = owners.back();
             owners.pop_back();
         }
-        auto const view{health.get_const_view<EntityType::Fighter>()};
+        auto const view{health.const_view<EntityType::Fighter>()};
         auto const count{owners.size()};
         for (std::uint32_t row{}; row < count; ++row) {
             EXPECT_EQ(view.health(owners[row]), values[owners[row].index()]);
@@ -75,8 +75,8 @@ TEST(HealthTable, WritesHealthDirectlyThroughBorrowedViews) {
     HealthTable health;
     std::array const ids{EntityId{7, EntityType::Fighter}, EntityId{19, EntityType::Fighter}};
     health.initialise_entities<EntityType::Fighter>(ids, Health{100});
-    auto const view{health.get_view<EntityType::Fighter>()};
-    auto const read{health.get_const_view<EntityType::Fighter>()};
+    auto const view{health.view<EntityType::Fighter>()};
+    auto const read{health.const_view<EntityType::Fighter>()};
 
     view.set_health(ids[0], Health{100});
     view.set_health(ids[1], Health{80});
@@ -101,7 +101,7 @@ TEST(EntityTables, RebuildsHandlesAfterOwnerReorderingAndMaximumHealthChanges) {
     EXPECT_EQ(handles[0].health_state(), 1u);
     EXPECT_EQ(handles[1].health_state(), 3u);
 
-    tables.health.get_view<EntityType::Fighter>().set_health(ids[1], Health{25});
+    tables.health.view<EntityType::Fighter>().set_health(ids[1], Health{25});
     lookup.lookup_handles(ids, handles);
     EXPECT_EQ(handles[1].health_state(), 3u);
 
@@ -130,12 +130,12 @@ TEST(EntityTables, KeepsRetiredIdsInvalidAndOtherTypeHealthUnchanged) {
     tables.health.initialise_entities<EntityType::Fighter>(ids, Health{100});
     tables.health.initialise_entities<EntityType::PlayerShip>(player, Health{75});
     tables.publish<EntityType::Fighter>(ids, {}, Health{100});
-    tables.health.get_view<EntityType::Fighter>().set_health(ids[0], Health{0});
+    tables.health.view<EntityType::Fighter>().set_health(ids[0], Health{0});
     tables.publish<EntityType::Fighter>(ids, {}, Health{100});
     EXPECT_FALSE(tables.lookups.for_type(EntityType::Fighter).entries()[ids[0].index()].is_valid());
     tables.lookups.for_type(EntityType::Fighter).retire(std::span{ids}.first(1));
     tables.publish<EntityType::Fighter>(std::span{ids}.last(1), {}, Health{100});
-    EXPECT_EQ(tables.health.get_const_view<EntityType::PlayerShip>().health(player[0]).value(), 75);
+    EXPECT_EQ(tables.health.const_view<EntityType::PlayerShip>().health(player[0]).value(), 75);
     EXPECT_FALSE(tables.lookups.for_type(EntityType::Fighter).entries()[ids[0].index()].is_valid());
     EXPECT_EQ(tables.lookups.for_type(EntityType::Fighter).entries()[ids[1].index()].index(), 0u);
     EXPECT_EQ(tables.health.health(ids[0]), Health{0});

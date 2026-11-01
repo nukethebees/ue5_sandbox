@@ -245,7 +245,7 @@ struct LaserHitDetails
         : LaserHitDetails{*std::pmr::get_default_resource()} {}
     explicit LaserHitDetails(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LaserHitDetails() { Operations::release_storage(*this); }
     LaserHitDetails(LaserHitDetails const&) = delete;
     auto operator=(LaserHitDetails const&) -> LaserHitDetails& = delete;
@@ -260,11 +260,11 @@ struct LaserHitDetails
     template <typename Byte>
     using DataPointers = ::ioj::sim::laser_hit_details::DataPointers<Byte>;
   public:
-    auto view_locations(this auto& self) { return self.get_view().view_locations(); }
+    auto view_locations(this auto& self) { return self.view().view_locations(); }
     auto view_emission_directions(this auto& self) {
-        return self.get_view().view_emission_directions();
+        return self.view().view_emission_directions();
     }
-    auto sources(this auto& self) { return self.get_view().sources(); }
+    auto sources(this auto& self) { return self.view().sources(); }
     using RowOperations =
         soa_storage_detail::OwnerRowOperations<LaserHitDetails,
                                                ::ioj::sim::laser_hit_details::Layout::column_types,
@@ -276,9 +276,9 @@ struct LaserHitDetails
              Vector3f const new_emission_directions,
              LaserSource const new_sources) {
         assert(index < num());
-        get_view().view_locations().set(index, new_locations);
-        get_view().view_emission_directions().set(index, new_emission_directions);
-        get_view().sources()[index] = new_sources;
+        view().view_locations().set(index, new_locations);
+        view().view_emission_directions().set(index, new_emission_directions);
+        view().sources()[index] = new_sources;
     }
     size_type add(Vector3f const new_locations,
                   Vector3f const new_emission_directions,

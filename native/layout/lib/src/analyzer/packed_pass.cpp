@@ -71,7 +71,7 @@ void
         result.invalid_raw_value = records.invalid_raw_value[row];
     }
     if (result.storage_facts) {
-        auto const facts{context.storage.physical_facts.get_const_view().resolve()};
+        auto const facts{context.storage.physical_facts.const_view().resolve()};
         result.storage_bits = checked_multiply(facts.size_bytes()[result.storage_facts->value], 8);
     }
 
@@ -119,7 +119,7 @@ void
     for (auto const& placement : layout.placements) {
         auto const child{children.index(placement.child)};
         auto const row{fields.append()};
-        auto const columns{fields.get_view().resolve()};
+        auto const columns{fields.view().resolve()};
         columns.parent()[row] = id;
         columns.segment()[row] = placement.child;
         columns.reserved()[row] = placement.reserved;

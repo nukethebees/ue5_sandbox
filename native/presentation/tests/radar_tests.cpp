@@ -29,8 +29,8 @@ struct RadarScene {
         for (std::uint32_t index{}; index < count; ++index) {
             batches.push_back({types[index],
                                std::span{ids}.subspan(index, 1),
-                               locations.get_const_view(index, 1),
-                               velocities.get_const_view(index, 1),
+                               locations.const_view(index, 1),
+                               velocities.const_view(index, 1),
                                sim::HealthConstView{types[index], healths},
                                std::span{teams}.subspan(index, 1)});
         }
@@ -136,9 +136,8 @@ TEST(RadarSource, UsesYawAndPitchButRemovesRollFromContactsAndHeadings) {
         Vector3f{transform.location + transform.transform_vector_no_scale(Vector3d{local_contact})},
         Team::Red,
         EntityType::Fighter);
-    set_vector(scene.velocities.get_view(),
-               1,
-               Vector3f{transform.transform_vector_no_scale({0., 100., 0.})});
+    set_vector(
+        scene.velocities.view(), 1, Vector3f{transform.transform_vector_no_scale({0., 100., 0.})});
     static_cast<void>(scene.collect(linear_settings(), transform));
     ASSERT_EQ(scene.frame.instances.size(), 2);
     auto const contact{scene.frame.instances[0]};

@@ -66,7 +66,7 @@ TEST(EntityLookupTables, PublishedCountIncludesDeadRowsUntilRepublished) {
     HealthTable health;
     health.initialise_entities<EntityType::Fighter>(ids,
                                                     std::array<Health, 2>{Health{0}, Health{100}});
-    lookup.publish_rows(ids, {}, health.get_const_view<EntityType::Fighter>(), Health{100});
+    lookup.publish_rows(ids, {}, health.const_view<EntityType::Fighter>(), Health{100});
     EXPECT_EQ(lookup.row_count(), 2u);
     EXPECT_FALSE(lookup.entries()[0].is_valid());
     lookup.retire(std::span{ids}.last(1));
@@ -146,7 +146,7 @@ TEST(EntityMotion, CopiesMixedTypesAndReportsMissingEntitiesWithoutChangingIds) 
     auto const capital{owners.spawn(EntityType::CapitalShip, {{40, 50, 60}}, {}, 95, Team::Red)};
     auto const player{owners.spawn(EntityType::PlayerShip, {{70, 80, 90}})};
     auto const dead{owners.spawn(EntityType::Fighter, {}, {}, 0)};
-    owners.fighters.get_view().view_velocities().set(0, {{1, 2, 3}});
+    owners.fighters.view().view_velocities().set(0, {{1, 2, 3}});
     owners.player_velocity = {4, 5, 6};
     owners.publish();
     std::array ids{
@@ -160,11 +160,11 @@ TEST(EntityMotion, CopiesMixedTypesAndReportsMissingEntitiesWithoutChangingIds) 
     queries.initialise({{10, 10, 10}, {{100, 100, 100}}}, {});
     owners.refresh(queries);
     FrameMemoryResource scratch{4096};
-    queries.copy_entity_locations(ids, locations.get_view().resolve(), &scratch);
+    queries.copy_entity_locations(ids, locations.view().resolve(), &scratch);
     EXPECT_EQ(ids, original);
     std::array<EntityInstanceHandle, ids.size()> handles;
     queries.copy_entity_motion(
-        ids, locations.get_view().resolve(), velocities.get_view().resolve(), handles, &scratch);
+        ids, locations.view().resolve(), velocities.view().resolve(), handles, &scratch);
     std::array expected_validity{true, false, true, true, false, true, false};
     std::vector<Vector3f> expected_locations{
         {10, 20, 30}, {}, {40, 50, 60}, {10, 20, 30}, {}, {70, 80, 90}, {}};
@@ -175,9 +175,9 @@ TEST(EntityMotion, CopiesMixedTypesAndReportsMissingEntitiesWithoutChangingIds) 
         EXPECT_PRED_FORMAT2(structurally_equal, original, ids);
         EXPECT_PRED_FORMAT2(structurally_equal, expected_validity, validity);
         EXPECT_PRED_FORMAT2(
-            structurally_equal, expected_locations, copy_vectors(locations.get_const_view()));
+            structurally_equal, expected_locations, copy_vectors(locations.const_view()));
         EXPECT_PRED_FORMAT2(
-            structurally_equal, expected_velocities, copy_vectors(velocities.get_const_view()));
+            structurally_equal, expected_velocities, copy_vectors(velocities.const_view()));
     }};
     expect_motion();
 
@@ -185,7 +185,7 @@ TEST(EntityMotion, CopiesMixedTypesAndReportsMissingEntitiesWithoutChangingIds) 
     owners.publish();
     owners.refresh(queries);
     queries.copy_entity_motion(
-        ids, locations.get_view().resolve(), velocities.get_view().resolve(), handles, &scratch);
+        ids, locations.view().resolve(), velocities.view().resolve(), handles, &scratch);
     expected_validity[0] = false;
     expected_validity[3] = false;
     expected_locations[0] = {};
@@ -204,7 +204,7 @@ TEST(EntityLookupTables, ResolutionHealthChangesBeforeHandlesRetire) {
     owners.clock.advance_to(SimulationPhase::Resolution);
     owners.set(id, {{20, 0, 0}}, {}, 0);
     std::array const ids{id};
-    EXPECT_EQ(owners.health_table.get_const_view<EntityType::Fighter>().health(id).value(), 0);
+    EXPECT_EQ(owners.health_table.const_view<EntityType::Fighter>().health(id).value(), 0);
     EXPECT_TRUE(owners.entity_tables.lookups.for_type(EntityType::Fighter)
                     .entries()[id.index()]
                     .is_valid());

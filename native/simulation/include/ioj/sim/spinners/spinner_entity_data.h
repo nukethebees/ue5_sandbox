@@ -249,7 +249,7 @@ struct SpinnerEntityData
         : SpinnerEntityData{*std::pmr::get_default_resource()} {}
     explicit SpinnerEntityData(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~SpinnerEntityData() { Operations::release_storage(*this); }
     SpinnerEntityData(SpinnerEntityData const&) = delete;
     auto operator=(SpinnerEntityData const&) -> SpinnerEntityData& = delete;
@@ -264,13 +264,11 @@ struct SpinnerEntityData
     template <typename Byte>
     using DataPointers = ::ioj::sim::spinner_entity_data::DataPointers<Byte>;
   public:
-    auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }
-    auto view_locations(this auto& self) { return self.get_view().view_locations(); }
-    auto yaws(this auto& self) { return self.get_view().yaws(); }
-    auto laser_cooldowns(this auto& self) { return self.get_view().laser_cooldowns(); }
-    auto next_fire_point_indices(this auto& self) {
-        return self.get_view().next_fire_point_indices();
-    }
+    auto entity_ids(this auto& self) { return self.view().entity_ids(); }
+    auto view_locations(this auto& self) { return self.view().view_locations(); }
+    auto yaws(this auto& self) { return self.view().yaws(); }
+    auto laser_cooldowns(this auto& self) { return self.view().laser_cooldowns(); }
+    auto next_fire_point_indices(this auto& self) { return self.view().next_fire_point_indices(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         SpinnerEntityData,
         ::ioj::sim::spinner_entity_data::Layout::column_types,
@@ -284,11 +282,11 @@ struct SpinnerEntityData
              std::int16_t const new_laser_cooldowns,
              std::int32_t const new_next_fire_point_indices) {
         assert(index < num());
-        get_view().entity_ids()[index] = new_entity_ids;
-        get_view().view_locations().set(index, new_locations);
-        get_view().yaws()[index] = new_yaws;
-        get_view().laser_cooldowns()[index] = new_laser_cooldowns;
-        get_view().next_fire_point_indices()[index] = new_next_fire_point_indices;
+        view().entity_ids()[index] = new_entity_ids;
+        view().view_locations().set(index, new_locations);
+        view().yaws()[index] = new_yaws;
+        view().laser_cooldowns()[index] = new_laser_cooldowns;
+        view().next_fire_point_indices()[index] = new_next_fire_point_indices;
     }
     size_type add(EntityId const new_entity_ids,
                   Vector3f const new_locations,

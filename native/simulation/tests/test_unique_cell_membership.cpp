@@ -47,7 +47,7 @@ TEST_F(UniqueCellMembership, OverlappingMembershipAndRepeatedCellsReturnEachEnti
     EXPECT_EQ(output[0], capital);
     EXPECT_EQ(output[1], fighter);
     EXPECT_TRUE(memory.owns(output.data()));
-    EXPECT_EQ(memory.get_stats().current_root_claim_count, 1u);
+    EXPECT_EQ(memory.stats().current_root_claim_count, 1u);
 }
 
 TEST_F(UniqueCellMembership, OrderIsIndependentOfCellOrderAndOutputIsReused) {
@@ -60,14 +60,14 @@ TEST_F(UniqueCellMembership, OrderIsIndependentOfCellOrderAndOutputIsReused) {
     ASSERT_EQ(output.num(), 2u);
     EXPECT_EQ(output[0], first);
     EXPECT_EQ(output[1], second);
-    auto const claims{memory.get_stats().current_root_claim_count};
+    auto const claims{memory.stats().current_root_claim_count};
 
     std::ranges::reverse(cells);
     queries.collect_unique_entities_in_cells(cells, output);
     ASSERT_EQ(output.num(), 2u);
     EXPECT_EQ(output[0], first);
     EXPECT_EQ(output[1], second);
-    EXPECT_EQ(memory.get_stats().current_root_claim_count, claims);
+    EXPECT_EQ(memory.stats().current_root_claim_count, claims);
 
     queries.collect_unique_entities_in_cells(std::span{cells}.first(1), output);
     ASSERT_EQ(output.num(), 1u);
@@ -88,7 +88,7 @@ TEST_F(UniqueCellMembership, IncludesAllTeamsAndMoreThan128Entities) {
     std::array<collision::CellCoord, 1> const cells{{{4, 4, 4}}};
     queries.collect_unique_entities_in_cells(cells, output);
     EXPECT_EQ(output.num(), count);
-    EXPECT_TRUE(std::ranges::equal(output.view(), owners.fighters.get_const_view().entity_ids()));
+    EXPECT_TRUE(std::ranges::equal(output.view(), owners.fighters.const_view().entity_ids()));
 }
 
 TEST_F(UniqueCellMembership, MembershipChangesOnlyWhenGridIsRebuilt) {

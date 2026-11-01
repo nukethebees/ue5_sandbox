@@ -136,7 +136,7 @@ TEST(SchemeReader, ReadsConstrainedValuesWithoutInvalidDefaults) {
     EXPECT_FALSE(read_source<PositiveFinite<float>>(literals::positive_infinity));
     EXPECT_EQ(read_source<NonNegative<int>>("0")->get(), 0);
     EXPECT_FALSE(read_source<NonNegative<int>>("-1"));
-    EXPECT_EQ(read_source<NonEmptyString>("\"name\"")->get_ref(), "name");
+    EXPECT_EQ(read_source<NonEmptyString>("\"name\"")->ref(), "name");
     EXPECT_FALSE(read_source<NonEmptyString>("\"\""));
     EXPECT_FALSE(read_source<std::string>("'name"));
     EXPECT_FALSE(read_source<bool>("0"));

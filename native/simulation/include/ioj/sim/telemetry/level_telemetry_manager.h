@@ -68,19 +68,17 @@ class LevelTelemetryManager {
     /* **************************************** */
     // Snapshots and queries
     /* **************************************** */
-    auto get_state() const noexcept -> State { return state_; }
+    auto state() const noexcept -> State { return state_; }
     auto make_snapshot() const -> telemetry::Snapshot;
 
-    auto get_active_entity_count_data() const noexcept -> ActiveEntityCountData const& {
+    auto active_entity_count_data() const noexcept -> ActiveEntityCountData const& {
         return active_entity_count_data_;
     }
-    auto get_cumulative_kill_count_data() const noexcept -> CumulativeKillCountData const& {
+    auto cumulative_kill_count_data() const noexcept -> CumulativeKillCountData const& {
         return cumulative_kill_count_data_;
     }
-    auto get_current_state() const noexcept -> telemetry::CurrentState const& {
-        return current_state_;
-    }
-    auto get_history_stats() const noexcept -> telemetry::HistoryStats;
+    auto current_state() const noexcept -> telemetry::CurrentState const& { return current_state_; }
+    auto history_stats() const noexcept -> telemetry::HistoryStats;
     auto materialize_tick_series() const -> telemetry::TickSeries;
   private:
     friend struct LevelTelemetryManagerTestAccess;

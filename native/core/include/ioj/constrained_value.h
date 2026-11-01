@@ -67,8 +67,8 @@ class ConstrainedValue {
         noexcept(std::is_nothrow_copy_constructible_v<value_type>) -> value_type {
         return value_;
     }
-    [[nodiscard]] constexpr auto get_ref() const& noexcept -> value_type const& { return value_; }
-    auto get_ref() const&& -> value_type const& = delete;
+    [[nodiscard]] constexpr auto ref() const& noexcept -> value_type const& { return value_; }
+    auto ref() const&& -> value_type const& = delete;
     [[nodiscard]] constexpr operator value_type() const
         noexcept(std::is_nothrow_copy_constructible_v<value_type>) {
         return get();
@@ -90,6 +90,6 @@ struct std::formatter<ioj::ConstrainedValue<T, policy>, Char> : std::formatter<T
     template <typename FormatContext>
     auto format(ioj::ConstrainedValue<T, policy> const& value, FormatContext& context) const ->
         typename FormatContext::iterator {
-        return std::formatter<T, Char>::format(value.get_ref(), context);
+        return std::formatter<T, Char>::format(value.ref(), context);
     }
 };

@@ -77,12 +77,12 @@ void Sim::cleanup_entities() {
 }
 void Sim::finish_action() {
     SANDBOX_PROFILE_SCOPE("lasers::Sim::finish_action");
-    profiling::plot("Sandbox/LaserCount", get_num_instances());
+    profiling::plot("Sandbox/LaserCount", num_instances());
 }
 
-auto Sim::get_num_instances() const noexcept -> std::uint32_t {
+auto Sim::num_instances() const noexcept -> std::uint32_t {
     return static_cast<std::uint32_t>(
-        std::ranges::count(entities.get_const_view().active(), std::uint8_t{1}));
+        std::ranges::count(entities.const_view().active(), std::uint8_t{1}));
 }
 
 /* **************************************** */
@@ -96,19 +96,19 @@ void Sim::preallocate_instances() {
 void Sim::process_pending_spawns() {
     SANDBOX_PROFILE_SCOPE("lasers::Sim::process_pending_spawns");
 
-    pending_spawns.get_const_view().validate();
+    pending_spawns.const_view().validate();
     auto const n_to_add{pending_spawns.num()};
-    combat_events.record_shots(pending_spawns.get_const_view().instigator_ids());
+    combat_events.record_shots(pending_spawns.const_view().instigator_ids());
 
     if (n_to_add <= 0) {
         return;
     }
 
-    auto const requests{pending_spawns.get_const_view()};
-    auto const simulation_time{static_cast<float>(simulation_clock.get_simulation_time())};
+    auto const requests{pending_spawns.const_view()};
+    auto const simulation_time{static_cast<float>(simulation_clock.simulation_time())};
     constexpr float fixed_spawn_offset{10.f};
     entities.add_uninitialised(n_to_add);
-    auto const output{entities.get_view().right(n_to_add)};
+    auto const output{entities.view().right(n_to_add)};
     auto const output_active{output.active()};
     auto const output_locations{output.view_locations().resolve()};
     auto const output_rotations{output.view_rotations().resolve()};
@@ -163,7 +163,7 @@ void Sim::process_pending_spawns() {
 // Movement and collision
 /* **************************************** */
 void Sim::expire_instances(float const dt, FrameMemoryResource* const scratch_resource) {
-    auto const entities{this->entities.get_view()};
+    auto const entities{this->entities.view()};
     auto const lifetimes{entities.lifetimes_remaining()};
     auto const active{entities.active()};
 
@@ -183,7 +183,7 @@ void Sim::expire_instances(float const dt, FrameMemoryResource* const scratch_re
         pending_removals_.end(), expired_indices.begin(), expired_indices.end());
 }
 void Sim::update_locations(float const dt) {
-    auto const entities{this->entities.get_view()};
+    auto const entities{this->entities.view()};
     auto const count{entities.num()};
     auto const active{entities.active()};
     auto const lifetimes{entities.lifetimes_remaining()};
@@ -214,11 +214,11 @@ void Sim::handle_collisions(ActionInputs const inputs) {
     TraceHits hit_storage{*scratch_resource};
     end_storage.set_num(n);
     hit_storage.set_num(n);
-    auto const trace_ends{end_storage.get_view().resolve()};
-    auto const trace_results{hit_storage.get_view()};
-    auto const entities{this->entities.get_const_view()};
-    auto const locations{entities.view_locations().get_const_view().resolve()};
-    auto const velocities{entities.view_velocities().get_const_view().resolve()};
+    auto const trace_ends{end_storage.view().resolve()};
+    auto const trace_results{hit_storage.view()};
+    auto const entities{this->entities.const_view()};
+    auto const locations{entities.view_locations().const_view().resolve()};
+    auto const velocities{entities.view_velocities().const_view().resolve()};
     auto const active_rows{entities.active()};
     auto const lifetimes{entities.lifetimes_remaining()};
     auto const instigator_ids{entities.instigator_ids()};
@@ -242,13 +242,13 @@ void Sim::handle_collisions(ActionInputs const inputs) {
         auto const ignored_entities{
             std::span<EntityId const>{instigator_ids}.subspan(begin, trace_count)};
         inputs.spatial_query_manager.trace_closest_lines(
-            trace_locations, ends.get_const_view(), hits, ignored_entities);
+            trace_locations, ends.const_view(), hits, ignored_entities);
     });
 
     FrameArray<std::uint32_t> to_remove{scratch_resource};
     LaserHitDetails hit_details{*scratch_resource};
     DirectDamageEvents collision_damage_events{*scratch_resource};
-    auto const trace_hits{hit_storage.get_const_view()};
+    auto const trace_hits{hit_storage.const_view()};
     auto const hit_flags{trace_hits.hits()};
     auto const hit_entities{trace_hits.entities()};
     auto const hit_locations{trace_hits.view_locations().resolve()};
@@ -289,15 +289,15 @@ void Sim::handle_collisions(ActionInputs const inputs) {
                         sources[element]);
     }
     std::ranges::sort(to_remove.view(), std::greater{});
-    combat_events.queue_damage(collision_damage_events.get_const_view());
+    combat_events.queue_damage(collision_damage_events.const_view());
 
-    auto const active{this->entities.get_view().active()};
+    auto const active{this->entities.view().active()};
     for (auto const index : to_remove) {
         active[index] = 0;
         pending_removals_.push_back(index);
     }
 
-    frame_output_.append_hits(hit_details.get_const_view(), simulation_clock.get_completed_ticks());
+    frame_output_.append_hits(hit_details.const_view(), simulation_clock.get_completed_ticks());
 }
 void Sim::remove_instances(std::span<LaserIndex const> const indices) {
     assert(std::ranges::is_sorted(indices, std::greater{}));

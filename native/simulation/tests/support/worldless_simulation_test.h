@@ -7,10 +7,10 @@ class WorldlessSimulationTest {
   public:
     using time_type = LevelSim::time_type;
     explicit WorldlessSimulationTest(LevelSimInitData data);
-    auto get_simulation() -> LevelSim& { return simulation_; }
-    auto get_simulation() const -> LevelSim const& { return simulation_; }
-    auto get_ledger() const -> EntityLedger const& { return simulation_.get_entity_ledger(); }
-    auto get_time() const -> time_type { return simulation_.get_clock().get_simulation_time(); }
+    auto simulation() -> LevelSim& { return simulation_; }
+    auto simulation() const -> LevelSim const& { return simulation_; }
+    auto ledger() const -> EntityLedger const& { return simulation_.entity_ledger(); }
+    auto time() const -> time_type { return simulation_.clock().simulation_time(); }
     void finish_initialisation() { simulation_.finish_initialisation(); }
     void queue_damage(std::span<EntityId const> targets,
                       std::int32_t damage,

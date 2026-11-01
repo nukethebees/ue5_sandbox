@@ -12,8 +12,8 @@ auto SelectionTable::append(std::size_t selected_source,
                             ioj::layout::AccessOperation selected_operation) -> std::size_t {
     auto const row{this->num()};
     this->add_defaulted(1);
-    this->get_view().source()[row] = selected_source;
-    this->get_view().operation()[row] = selected_operation;
+    this->view().source()[row] = selected_source;
+    this->view().operation()[row] = selected_operation;
     return std::size_t{row};
 }
 

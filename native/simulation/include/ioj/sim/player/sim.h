@@ -62,27 +62,23 @@ struct Sim {
     auto operator=(Sim const&) -> Sim& = delete;
     auto operator=(Sim&&) -> Sim& = delete;
 
-    auto get_physical_state() const noexcept -> PhysicalMovementState const& {
-        return state_.physical;
-    }
-    auto get_controller_state() const noexcept -> FlightModelControllerState const& {
+    auto physical_state() const noexcept -> PhysicalMovementState const& { return state_.physical; }
+    auto controller_state() const noexcept -> FlightModelControllerState const& {
         return state_.controller;
     }
-    auto get_resource_state() const noexcept -> PlayerResourceState const& {
-        return state_.resources;
-    }
-    auto get_presentation_state() const noexcept -> PlayerPresentationState const& {
+    auto resource_state() const noexcept -> PlayerResourceState const& { return state_.resources; }
+    auto presentation_state() const noexcept -> PlayerPresentationState const& {
         return state_.presentation;
     }
-    auto get_flight_intent() const noexcept -> PlayerFlightIntent const& { return flight_intent_; }
-    auto get_active_flight_model_slot() const noexcept -> FlightModelSlot {
+    auto flight_intent() const noexcept -> PlayerFlightIntent const& { return flight_intent_; }
+    auto active_flight_model_slot() const noexcept -> FlightModelSlot {
         return active_flight_model_slot_;
     }
-    auto get_active_flight_model_profile() const noexcept -> FlightModelProfile const& {
+    auto active_flight_model_profile() const noexcept -> FlightModelProfile const& {
         return flight_model_profile(flight_models_, active_flight_model_slot_);
     }
-    auto get_active_flight_model_config() const noexcept -> FlightModelConfig const& {
-        return get_active_flight_model_profile().config;
+    auto active_flight_model_config() const noexcept -> FlightModelConfig const& {
+        return active_flight_model_profile().config;
     }
     void set_config(PlayerSimConfig const& new_config) noexcept;
     void set_team(Team new_team) noexcept;
@@ -126,20 +122,20 @@ struct Sim {
     // Health and status
     /* **************************************** */
     void add_health(Health added_health);
-    [[nodiscard]] auto get_health() const -> ShipHealth;
+    [[nodiscard]] auto health() const -> ShipHealth;
     [[nodiscard]] auto is_alive() const -> bool;
     auto consume_death_notification() noexcept -> bool;
 
-    auto get_kills() const -> std::int32_t;
-    auto get_speed() const noexcept -> float;
+    auto kills() const -> std::int32_t;
+    auto speed() const noexcept -> float;
     auto is_sampling_target_speed() const noexcept -> bool { return sampling_target_speed_; }
-    auto get_sampled_target_speed_scale() const noexcept -> Vector2d {
+    auto sampled_target_speed_scale() const noexcept -> Vector2d {
         return sampled_target_speed_scale_;
     }
-    auto get_energy() const -> float;
+    auto energy() const -> float;
     auto energy_is_full() const -> bool;
     auto get_middle_socket() const -> Transform3d;
-    auto get_laser_effective_range() const noexcept -> float;
+    auto laser_effective_range() const noexcept -> float;
 
     /* **************************************** */
     // Sim state

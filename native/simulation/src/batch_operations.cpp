@@ -46,7 +46,7 @@ void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
     auto const damaged_entities{damage_events.damaged_entities()};
     auto const damage_amounts{damage_events.damage_amounts()};
     auto const instigators{damage_events.instigators()};
-    auto const deaths{entity_death_info.get_view()};
+    auto const deaths{entity_death_info.view()};
     auto const death_reasons{deaths.reasons()};
     auto const victims{deaths.victims()};
     auto const killers{deaths.killers()};

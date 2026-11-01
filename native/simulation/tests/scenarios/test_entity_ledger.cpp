@@ -40,8 +40,8 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
         telemetry::TeamCounts counts{};
         telemetry::EntityCounts type_counts{};
         harness.on_end_tick = [&](LevelSim&) {
-            counts = harness.get_ledger().count_alive_per_team();
-            type_counts = harness.get_ledger().count_alive_per_team_and_type();
+            counts = harness.ledger().count_alive_per_team();
+            type_counts = harness.ledger().count_alive_per_team_and_type();
         };
         harness.timeline.finish_at(0.1);
         EXPECT_TRUE(harness.run_until_timeline_finished(1.0)) << "Team-count timeline completes";
@@ -56,12 +56,12 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
     }
 
     auto const expected_kills{scenario == EntityLedgerScenario::OnePlayerKill ? 1 : 2};
-    auto const* player{harness.get_simulation().get_player_ship_simulation()};
+    auto const* player{harness.simulation().player_ship_simulation()};
     assert(player);
     auto const player_id{player->unique_entity_id};
-    auto const initial_alive_count{harness.get_ledger().count_alive()};
+    auto const initial_alive_count{harness.ledger().count_alive()};
     std::vector<EntityId> available_targets;
-    auto const capitals{harness.get_simulation().get_capital_ships().get_entities()};
+    auto const capitals{harness.simulation().capital_ships().get_entities()};
     auto const capital_count{capitals.num()};
     auto const teams{capitals.teams()};
     auto const entity_ids{capitals.entity_ids()};
@@ -81,9 +81,9 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
     };
     TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim&) {
-        auto const& ledger{harness.get_ledger()};
-        samples.add(harness.get_time(),
-                    Sample{static_cast<std::int32_t>(ledger.get_kills(player_id)),
+        auto const& ledger{harness.ledger()};
+        samples.add(harness.time(),
+                    Sample{static_cast<std::int32_t>(ledger.kills(player_id)),
                            ledger.count_kills(),
                            ledger.count_alive()});
     };

@@ -68,14 +68,14 @@ auto trace_impl(ioj::sim::collision::CollisionUniformGrid const& uniform_grid,
     ioj::sim::LineTraces traces{*scratch_resource};
     ioj::sim::TraceHits trace_hits{*scratch_resource};
     trace_hits.set_num(count);
-    auto const hits{trace_hits.get_view()};
+    auto const hits{trace_hits.view()};
     auto const hit_flags{hits.hits()};
     auto const hit_entities{hits.entities()};
 
     auto const trace_view{[&] {
         if constexpr (Mode == QueryMode::TargetLineOfSight || Mode == QueryMode::ClosestHit) {
             traces.set_num(count);
-            auto const trace_columns{traces.get_view()};
+            auto const trace_columns{traces.view()};
             auto const starts{trace_columns.view_starts().resolve()};
             auto const ends{trace_columns.view_ends().resolve()};
             for (std::uint32_t i{}; i < count; ++i) {
@@ -84,7 +84,7 @@ auto trace_impl(ioj::sim::collision::CollisionUniformGrid const& uniform_grid,
                                                                     : request.scalar_end};
                 ioj::set_vector(ends, i, end);
             }
-            return ioj::sim::LineTraceBatch{traces.get_const_view()};
+            return ioj::sim::LineTraceBatch{traces.const_view()};
         } else {
             return ioj::sim::LineTraceBatch{request.start_locations, request.end_locations};
         }
@@ -140,7 +140,7 @@ void validate_grid_for_range_query(ioj::sim::collision::CollisionUniformGrid con
             origin.y(),
             origin.z(),
             radius,
-            ioj::sim::collision::CollisionUniformGrid::to_string(grid.get_grid_dims())));
+            ioj::sim::collision::CollisionUniformGrid::to_string(grid.grid_dims())));
     }
 }
 }
@@ -164,7 +164,7 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
     auto const radius_extent{Vector3f{absolute_radius, absolute_radius, absolute_radius}};
     auto [min_coord,
           max_coord]{grid.to_cell_coord_bounds(origin - radius_extent, origin + radius_extent)};
-    auto const max_grid_coord{grid.get_max_grid_coord()};
+    auto const max_grid_coord{grid.max_grid_coord()};
     if (max_coord.x() < 0 || max_coord.y() < 0 || max_coord.z() < 0 ||
         min_coord.x() > max_grid_coord.x() || min_coord.y() > max_grid_coord.y() ||
         min_coord.z() > max_grid_coord.z()) {
@@ -201,7 +201,7 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
             for (auto z{min_coord.z()}; z <= max_z; ++z) {
                 // Each grid coordinate selects a different cell.
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
-                for (auto const id : grid.get_cell_entities({x, y, z})) {
+                for (auto const id : grid.cell_entities({x, y, z})) {
                     // Select the candidate type's already-bound lookup span.
                     // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                     auto const handle{handles[std::to_underlying(id.entity_type())][id.index()]};
@@ -411,8 +411,8 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
                                      });
 }
 
-auto SpatialQueryManager::get_any_non_team_entity(Team const team,
-                                                  EntityType const entity_type) const -> EntityId {
+auto SpatialQueryManager::any_non_team_entity(Team const team, EntityType const entity_type) const
+    -> EntityId {
     assert(is_lookup_allowed(entity_tables_.lookups.clock()));
     auto const handles{entity_tables_.lookups.for_type(entity_type).entries()};
     auto const count{static_cast<std::uint32_t>(handles.size())};
@@ -431,12 +431,11 @@ void SpatialQueryManager::are_spheres_in_bounds(
     collision_system_.uniform_grid_.are_spheres_in_bounds(centres, radius, out_results);
 }
 
-auto SpatialQueryManager::get_entity_type_radius(EntityType const entity_type) const noexcept
-    -> float {
+auto SpatialQueryManager::entity_type_radius(EntityType const entity_type) const noexcept -> float {
     return entity_radii_[entity_type];
 }
 
-auto SpatialQueryManager::get_entity_type_radii() const noexcept -> EntityTypeRadii const& {
+auto SpatialQueryManager::entity_type_radii() const noexcept -> EntityTypeRadii const& {
     return entity_radii_;
 }
 
@@ -516,16 +515,14 @@ void SpatialQueryManager::refresh_spatial_index(LevelReadAccess const& level) {
     locations_ = {};
     velocities_ = {};
     locations_[EntityType::CapitalShip] =
-        level.get_capitals().get_entities().view_locations().resolve();
-    locations_[EntityType::Fighter] =
-        level.get_fighters().get_entities().view_locations().resolve();
-    locations_[EntityType::Turret] = level.get_turrets().get_entities().view_locations().resolve();
+        level.capitals().get_entities().view_locations().resolve();
+    locations_[EntityType::Fighter] = level.fighters().entities().view_locations().resolve();
+    locations_[EntityType::Turret] = level.turrets().get_entities().view_locations().resolve();
     locations_[EntityType::TubeSpinner] =
-        level.get_spinners().get_entities().view_locations().resolve();
-    velocities_[EntityType::Fighter] =
-        level.get_fighters().get_entities().view_velocities().resolve();
-    if (auto const* player{level.get_player()}) {
-        auto const& physical{player->get_physical_state()};
+        level.spinners().get_entities().view_locations().resolve();
+    velocities_[EntityType::Fighter] = level.fighters().entities().view_velocities().resolve();
+    if (auto const* player{level.player()}) {
+        auto const& physical{player->physical_state()};
         player_spatial_.location = Vector3f{physical.transform.location};
         player_spatial_.velocity = Vector3f{physical.velocity};
         auto const& location{player_spatial_.location};
@@ -547,15 +544,14 @@ auto SpatialQueryManager::detect_overlaps(std::span<EntityId const> const overla
 void SpatialQueryManager::reset_frame_collision_events() {
     collision_system_.reset_frame_collision_events();
 }
-auto SpatialQueryManager::get_aabb_overlap_events() const -> collision::AABBOverlapEventsView {
-    return collision_system_.get_aabb_overlap_events();
+auto SpatialQueryManager::aabb_overlap_events() const -> collision::AABBOverlapEventsView {
+    return collision_system_.aabb_overlap_events();
 }
-auto SpatialQueryManager::get_entity_collision_bounds() const
-    -> collision::EntityCellData::ConstView {
-    return collision_system_.get_entity_collision_bounds();
+auto SpatialQueryManager::entity_collision_bounds() const -> collision::EntityCellData::ConstView {
+    return collision_system_.entity_collision_bounds();
 }
-auto SpatialQueryManager::get_static_collision_bounds() const -> collision::WorldAABBs::ConstView {
-    return collision_system_.get_static_collision_bounds();
+auto SpatialQueryManager::static_collision_bounds() const -> collision::WorldAABBs::ConstView {
+    return collision_system_.static_collision_bounds();
 }
 
 }

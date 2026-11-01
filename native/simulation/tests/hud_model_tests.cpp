@@ -35,9 +35,9 @@ TEST(HudModel, InitialCachesAndChangeDetectionNeedNoWidget) {
     add_capital_spawn(data, {20000.f, 0.f, 0.f}, Team::Red, 60.f);
     WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    auto const& simulation{harness.get_simulation()};
+    auto const& simulation{harness.simulation()};
     presentation::HudModel hud;
-    hud.initialise(simulation.get_mission(), simulation.get_read_access());
+    hud.initialise(simulation.mission(), simulation.read_access());
 
     EXPECT_TRUE(hud.active());
     EXPECT_FALSE(hud.has_mission_data());
@@ -66,10 +66,10 @@ TEST(HudModel, EntityCountsPollAtConfiguredPeriodWithoutWidgets) {
     add_capital_spawn(data, {20000.f, 0.f, 0.f}, Team::Red, 60.f);
     WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    auto& simulation{harness.get_simulation()};
+    auto& simulation{harness.simulation()};
     presentation::HudModel hud;
-    hud.initialise(simulation.get_mission(), simulation.get_read_access());
-    auto const victim{simulation.get_capital_ships().get_id(0)};
+    hud.initialise(simulation.mission(), simulation.read_access());
+    auto const victim{simulation.capital_ships().id(0)};
     harness.queue_kills(std::array{victim});
     simulation.start();
     harness.advance(0.05);
@@ -89,26 +89,26 @@ TEST(HudModel, CachesDefenceFailureAndObjectiveMembership) {
     data.mission = hud_test::defence_mission(data);
     WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    auto& simulation{harness.get_simulation()};
+    auto& simulation{harness.simulation()};
     presentation::HudModel hud;
-    hud.initialise(simulation.get_mission(), simulation.get_read_access());
+    hud.initialise(simulation.mission(), simulation.read_access());
     EXPECT_TRUE(hud.has_mission_data());
     EXPECT_EQ(hud.mission_data().active, 0);
     EXPECT_TRUE(hud.mission_data().active_titles.empty());
 
     simulation.start();
-    harness.advance(simulation.get_clock().get_tick_period());
+    harness.advance(simulation.clock().tick_period());
     EXPECT_TRUE(hud.force_sample().mission);
     EXPECT_EQ(hud.mission_data().active, 1);
     EXPECT_EQ(hud.mission_data().active_titles, "Blue: Hold position");
 
-    harness.queue_kills(std::array{simulation.get_capital_ships().get_id(0)});
+    harness.queue_kills(std::array{simulation.capital_ships().id(0)});
     harness.advance(0.05);
     EXPECT_TRUE(hud.force_sample().mission);
     EXPECT_EQ(hud.mission_data().completed, 1);
     EXPECT_EQ(hud.mission_data().active, 0);
     EXPECT_TRUE(hud.mission_data().active_titles.empty());
-    EXPECT_EQ(simulation.get_mission().outcome(ObjectiveId{0}), ObjectiveOutcome::Failed);
+    EXPECT_EQ(simulation.mission().outcome(ObjectiveId{0}), ObjectiveOutcome::Failed);
 }
 
 TEST(HudModel, PlayerStatusKillRankingAndMatrixRetainPayloads) {
@@ -124,29 +124,29 @@ TEST(HudModel, PlayerStatusKillRankingAndMatrixRetainPayloads) {
     }
     WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    auto& simulation{harness.get_simulation()};
-    auto const player_id{simulation.get_player_ship_simulation()->unique_entity_id};
-    auto const& capitals{simulation.get_capital_ships()};
-    auto const rival{capitals.get_id(2)};
+    auto& simulation{harness.simulation()};
+    auto const player_id{simulation.player_ship_simulation()->unique_entity_id};
+    auto const& capitals{simulation.capital_ships()};
+    auto const rival{capitals.id(2)};
     presentation::HudModel hud;
-    hud.initialise(simulation.get_mission(), simulation.get_read_access());
+    hud.initialise(simulation.mission(), simulation.read_access());
     ASSERT_TRUE(hud.player_status_data());
     EXPECT_EQ(hud.player_status_data()->health.health.value(), 37);
     EXPECT_EQ(hud.player_status_data()->health.max_health.value(), 100);
     {
         auto const samples{hud.sampled_speed_view()};
         ASSERT_TRUE(samples);
-        auto const* player_simulation{simulation.get_player_ship_simulation()};
+        auto const* player_simulation{simulation.player_ship_simulation()};
         EXPECT_EQ(samples->samples.data(), player_simulation->speed_samples.data());
         EXPECT_EQ(samples->samples.size(), player_simulation->speed_samples.size());
         EXPECT_EQ(samples->oldest_index, 0);
     }
-    auto commands{simulation.get_player_ship_commands()};
+    auto commands{simulation.player_ship_commands()};
     ASSERT_TRUE(commands);
     commands->set_speed_sampling_enabled(true);
     commands->set_forward_input(1.f);
-    harness.queue_kills(std::array{capitals.get_id(0)}, player_id);
-    harness.queue_kills(std::array{capitals.get_id(1)}, rival);
+    harness.queue_kills(std::array{capitals.id(0)}, player_id);
+    harness.queue_kills(std::array{capitals.id(1)}, rival);
     simulation.start();
     harness.advance(0.05);
     hud.set_selected_mapping_context("Flight");
@@ -159,7 +159,7 @@ TEST(HudModel, PlayerStatusKillRankingAndMatrixRetainPayloads) {
     {
         auto const samples{hud.sampled_speed_view()};
         ASSERT_TRUE(samples);
-        auto const* player_simulation{simulation.get_player_ship_simulation()};
+        auto const* player_simulation{simulation.player_ship_simulation()};
         EXPECT_EQ(samples->samples.data(), player_simulation->speed_samples.data());
         EXPECT_EQ(samples->oldest_index, player_simulation->speed_sample_index);
         ASSERT_GT(samples->oldest_index, 0);
@@ -182,10 +182,10 @@ TEST(HudModel, PlayerStatusKillRankingAndMatrixRetainPayloads) {
     harness.queue_kills(std::array{player_id});
     harness.advance(0.05);
     hud.force_sample();
-    auto const* const dead_player{simulation.get_player_ship_simulation()};
+    auto const* const dead_player{simulation.player_ship_simulation()};
     ASSERT_NE(dead_player, nullptr);
-    EXPECT_EQ(dead_player->get_health().health.value(), 0);
-    EXPECT_EQ(simulation.get_entity_ledger().count_alive(EntityType::PlayerShip), 0);
+    EXPECT_EQ(dead_player->health().health.value(), 0);
+    EXPECT_EQ(simulation.entity_ledger().count_alive(EntityType::PlayerShip), 0);
     ASSERT_TRUE(hud.player_status_data());
     EXPECT_EQ(hud.player_status_data()->health.health.value(), 0);
     EXPECT_TRUE(hud.player_flight_data());
@@ -209,9 +209,9 @@ TEST(HudModel, MissionDisplayTimeUsesSimulationClock) {
     data.mission = hud_test::defence_mission(data);
     WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    auto& simulation{harness.get_simulation()};
+    auto& simulation{harness.simulation()};
     presentation::HudModel hud;
-    hud.initialise(simulation.get_mission(), simulation.get_read_access());
+    hud.initialise(simulation.mission(), simulation.read_access());
     hud.advance(1.0);
     EXPECT_EQ(hud.mission_data().completed, 0);
     EXPECT_DOUBLE_EQ(hud.mission_data().elapsed_seconds, 0.0);
@@ -229,6 +229,6 @@ TEST(HudModel, MissionDisplayTimeUsesSimulationClock) {
     hud.force_sample();
     EXPECT_DOUBLE_EQ(hud.mission_data().elapsed_seconds, 0.3);
     EXPECT_EQ(hud.mission_data().completed, 1);
-    EXPECT_EQ(simulation.get_mission().outcome(ObjectiveId{0}), ObjectiveOutcome::Passed);
+    EXPECT_EQ(simulation.mission().outcome(ObjectiveId{0}), ObjectiveOutcome::Passed);
 }
 }

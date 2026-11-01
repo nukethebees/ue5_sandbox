@@ -51,10 +51,10 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     };
 
     telemetry_manager.initialise();
-    auto const& active_count_data{telemetry_manager.get_active_entity_count_data()};
-    auto const& kill_count_data{telemetry_manager.get_cumulative_kill_count_data()};
+    auto const& active_count_data{telemetry_manager.active_entity_count_data()};
+    auto const& kill_count_data{telemetry_manager.cumulative_kill_count_data()};
     auto tick_series{telemetry_manager.materialize_tick_series()};
-    auto const& initial_state{telemetry_manager.get_current_state()};
+    auto const& initial_state{telemetry_manager.current_state()};
     EXPECT_EQ(active_count_data.num(), 1);
     EXPECT_EQ(active_count_data.last_time(), 0);
     EXPECT_EQ(active_count_data.last_value(), 0);
@@ -84,18 +84,18 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     EXPECT_EQ(active_count_data.num(), 1);
     EXPECT_EQ(kill_count_data.num(), 1);
     EXPECT_EQ(tick_series.active_lasers.num(), 1);
-    EXPECT_EQ(telemetry_manager.get_history_stats().used_sample_count, 1);
+    EXPECT_EQ(telemetry_manager.history_stats().used_sample_count, 1);
 
     clock.completed_ticks = SimTick{2};
     clock.tick_loop.time_scale = PositiveFinite<double>::make(4.0);
     telemetry_manager.tick();
     tick_series = telemetry_manager.materialize_tick_series();
-    EXPECT_EQ(telemetry_manager.get_history_stats().used_sample_count, 1);
+    EXPECT_EQ(telemetry_manager.history_stats().used_sample_count, 1);
 
     clock.completed_ticks = SimTick{5};
     clock.tick_loop.tick_rate = ioj::Frequency::make(4.0);
     auto const laser_snapshot{telemetry_manager.make_snapshot()};
-    EXPECT_DOUBLE_EQ(laser_snapshot.elapsed_seconds.get_seconds(), 1.25);
+    EXPECT_DOUBLE_EQ(laser_snapshot.elapsed_seconds.seconds(), 1.25);
     EXPECT_EQ(laser_snapshot.active_lasers, 0);
     EXPECT_EQ(laser_snapshot.lasers_fired, 0);
     EXPECT_EQ(laser_snapshot.active_entity_count_data.last_time(), 5);
@@ -106,7 +106,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     telemetry_manager.reset();
     EXPECT_TRUE(active_count_data.is_empty());
     EXPECT_TRUE(kill_count_data.is_empty());
-    EXPECT_EQ(telemetry_manager.get_current_state().active_lasers, 0);
+    EXPECT_EQ(telemetry_manager.current_state().active_lasers, 0);
 
     clock.initialise({});
     telemetry_manager.initialise();
@@ -123,7 +123,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     tick_series = telemetry_manager.materialize_tick_series();
     EXPECT_EQ(active_count_data.last_value(), 3);
     EXPECT_EQ(active_count_data.last_time(), 2);
-    auto const& entity_state{telemetry_manager.get_current_state()};
+    auto const& entity_state{telemetry_manager.current_state()};
     EXPECT_EQ(entity_state.active_entities_by_team_and_type[std::to_underlying(
                   Team::Green)][std::to_underlying(EntityType::PlayerShip)],
               1);
@@ -153,7 +153,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
 
     clock.tick_loop.tick_rate = ioj::Frequency::make(2.0);
     auto const entity_snapshot{telemetry_manager.make_snapshot()};
-    EXPECT_DOUBLE_EQ(entity_snapshot.elapsed_seconds.get_seconds(), 1.5);
+    EXPECT_DOUBLE_EQ(entity_snapshot.elapsed_seconds.seconds(), 1.5);
     EXPECT_EQ(entity_snapshot.spawned_entities, 3);
     EXPECT_EQ(entity_snapshot.active_entities, 3);
     EXPECT_EQ(entity_snapshot.destroyed_entities, 0);
@@ -170,7 +170,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     telemetry_manager.tick();
     entity_ledger.record_spawns(EntityType::Fighter, Team::Red, Health{1}, ids);
     telemetry_manager.finalize(telemetry::RunEndReason::WorldEnd);
-    auto const record{telemetry_manager.take_finalized_run(clock.get_tick_rate())};
+    auto const record{telemetry_manager.take_finalized_run(clock.tick_rate())};
     ASSERT_TRUE(record);
     auto const& samples{record->battle_samples};
     ASSERT_EQ(samples.size(), 3);
@@ -178,7 +178,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     EXPECT_EQ(samples.back()
                   .alive[std::to_underlying(Team::Red)][std::to_underlying(EntityType::Fighter)],
               2);
-    EXPECT_FALSE(telemetry_manager.take_finalized_run(clock.get_tick_rate()));
+    EXPECT_FALSE(telemetry_manager.take_finalized_run(clock.tick_rate()));
 
     LevelTelemetryManager boundary_manager{
         clock,
@@ -189,19 +189,19 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     };
     clock.initialise({});
     boundary_manager.initialise();
-    EXPECT_EQ(boundary_manager.get_history_stats().total_sample_capacity, 64);
+    EXPECT_EQ(boundary_manager.history_stats().total_sample_capacity, 64);
     for (std::uint64_t tick{1}; tick <= 64; ++tick) {
         clock.completed_ticks = SimTick{tick};
         entity_ledger.record_spawns(EntityType::CapitalShip, Team::Red, Health{1}, ids);
         boundary_manager.tick();
     }
-    EXPECT_EQ(boundary_manager.get_history_stats().used_sample_count, 65);
-    EXPECT_EQ(boundary_manager.get_history_stats().acquired_block_count, 2);
+    EXPECT_EQ(boundary_manager.history_stats().used_sample_count, 65);
+    EXPECT_EQ(boundary_manager.history_stats().acquired_block_count, 2);
     EXPECT_EQ(boundary_manager.materialize_tick_series().active_entities.num(), 65);
-    auto const grown_capacity{boundary_manager.get_history_stats().total_sample_capacity};
+    auto const grown_capacity{boundary_manager.history_stats().total_sample_capacity};
     boundary_manager.reset();
-    EXPECT_EQ(boundary_manager.get_history_stats().used_sample_count, 0);
-    EXPECT_EQ(boundary_manager.get_history_stats().total_sample_capacity, grown_capacity);
+    EXPECT_EQ(boundary_manager.history_stats().used_sample_count, 0);
+    EXPECT_EQ(boundary_manager.history_stats().total_sample_capacity, grown_capacity);
 }
 
 } // namespace ioj::sim::tests

@@ -28,7 +28,7 @@ void laser_hit_accumulation(benchmark::State& state) {
     auto const batch{static_cast<std::uint32_t>(state.range(1))};
     sim::LaserHitDetails source;
     source.set_num(batch);
-    auto const hits{source.get_const_view()};
+    auto const hits{source.const_view()};
     sim::lasers::FrameOutput output;
     for (auto _ : state) {
         output.reset();
@@ -75,7 +75,7 @@ void fighter_narrow_iteration(benchmark::State& state) {
     auto const count{static_cast<std::uint32_t>(state.range(0))};
     sim::FighterEntityData owner;
     owner.set_num(count);
-    auto const view{owner.get_view()};
+    auto const view{owner.view()};
     for (auto _ : state) {
         fighter_narrow_kernel(view);
         benchmark::ClobberMemory();
@@ -87,7 +87,7 @@ void laser_narrow_iteration(benchmark::State& state) {
     auto const count{static_cast<std::uint32_t>(state.range(0))};
     sim::lasers::LaserEntities owner;
     owner.set_num(count);
-    auto const view{owner.get_view()};
+    auto const view{owner.view()};
     for (auto _ : state) {
         laser_narrow_kernel(view);
         benchmark::ClobberMemory();
@@ -100,7 +100,7 @@ void broad_iteration(benchmark::State& state) {
     auto const count{static_cast<std::uint32_t>(state.range(0))};
     Owner owner;
     owner.set_num(count);
-    auto const view{owner.get_view()};
+    auto const view{owner.view()};
     for (auto _ : state) {
         broad_kernel(view);
     }

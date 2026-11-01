@@ -170,7 +170,7 @@ struct LevelSpawnGroups
         : LevelSpawnGroups{*std::pmr::get_default_resource()} {}
     explicit LevelSpawnGroups(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LevelSpawnGroups() { Operations::release_storage(*this); }
     LevelSpawnGroups(LevelSpawnGroups const&) = delete;
     auto operator=(LevelSpawnGroups const&) -> LevelSpawnGroups& = delete;
@@ -185,9 +185,9 @@ struct LevelSpawnGroups
     template <typename Byte>
     using DataPointers = ::ioj::sim::level_spawn_groups::DataPointers<Byte>;
   public:
-    auto types(this auto& self) { return self.get_view().types(); }
-    auto offsets(this auto& self) { return self.get_view().offsets(); }
-    auto counts(this auto& self) { return self.get_view().counts(); }
+    auto types(this auto& self) { return self.view().types(); }
+    auto offsets(this auto& self) { return self.view().offsets(); }
+    auto counts(this auto& self) { return self.view().counts(); }
     using RowOperations =
         soa_storage_detail::OwnerRowOperations<LevelSpawnGroups,
                                                ::ioj::sim::level_spawn_groups::Layout::column_types,

@@ -110,12 +110,12 @@ class HealthTable : public EntityTableOperations {
     template <EntityType Type>
     void initialise_entities(std::span<EntityId const> const ids,
                              std::span<Health const> const initial_values) {
-        get_view<Type>().copy_from(ids, initial_values);
+        view<Type>().copy_from(ids, initial_values);
     }
 
     template <EntityType Type>
     void initialise_entities(std::span<EntityId const> const ids, Health const initial_value) {
-        auto const view{get_view<Type>()};
+        auto const view{this->view<Type>()};
         for (auto const id : ids) {
             view.set_health(id, initial_value);
         }

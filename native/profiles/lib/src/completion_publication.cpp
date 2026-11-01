@@ -6,7 +6,7 @@
 namespace ioj::profiles {
 auto publish_player_completion(sim::LevelSim& simulation, ProfileManager* profiles, Timestamp date)
     -> std::optional<CompletionPublication> {
-    auto const completion{simulation.get_player_team_completion()};
+    auto const completion{simulation.player_team_completion()};
     if (!completion) {
         return std::nullopt;
     }
@@ -15,11 +15,11 @@ auto publish_player_completion(sim::LevelSim& simulation, ProfileManager* profil
                                           ? sim::telemetry::RunEndReason::MissionSucceeded
                                           : sim::telemetry::RunEndReason::MissionFailed);
 
-    auto const& metadata{simulation.get_level_metadata()};
-    auto const& objectives{simulation.get_mission().objectives()};
+    auto const& metadata{simulation.level_metadata()};
+    auto const& objectives{simulation.mission().objectives()};
     std::int32_t kills{};
-    for (auto const count : simulation.get_entity_ledger()
-                                .get_combat_telemetry()
+    for (auto const count : simulation.entity_ledger()
+                                .combat_telemetry()
                                 .kills[static_cast<std::size_t>(completion->team)]) {
         kills += static_cast<std::int32_t>(count);
     }
@@ -31,8 +31,8 @@ auto publish_player_completion(sim::LevelSim& simulation, ProfileManager* profil
                    .objective_id = objectives.name(completion->triggering_objective).value,
                    .objective_outcome = completion->triggering_objective_outcome,
                    .kills = kills,
-                   .time_seconds = static_cast<float>(sim::simulation_time(
-                       completion->tick, simulation.get_clock().get_tick_period()))},
+                   .time_seconds = static_cast<float>(
+                       sim::simulation_time(completion->tick, simulation.clock().tick_period()))},
         .level_title = metadata.title,
         .par_time_seconds = metadata.par_time_seconds};
     if (profiles) {

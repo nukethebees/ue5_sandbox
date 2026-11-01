@@ -37,7 +37,7 @@ struct Layout {
 
 [[nodiscard]] inline auto make_layout(Vector2f const widget_size,
                                       Settings const validated_settings) noexcept -> Layout {
-    auto const& settings{validated_settings.get_ref()};
+    auto const& settings{validated_settings.ref()};
     auto const available_width{
         std::max(widget_size.x() - settings.padding.left - settings.padding.right, 0.0f)};
     auto const available_height{

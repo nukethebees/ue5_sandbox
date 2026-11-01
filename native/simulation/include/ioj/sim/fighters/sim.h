@@ -42,13 +42,13 @@ struct Sim {
     /* **************************************** */
     // Accessors
     /* **************************************** */
-    auto get_entities() const -> EntityStorage::ConstView { return entities_.get_const_view(); }
-    auto get_num_instances() const noexcept -> std::uint32_t;
-    auto get_overlap_candidates() const noexcept -> std::span<EntityId const> {
+    auto entities() const -> EntityStorage::ConstView { return entities_.const_view(); }
+    auto num_instances() const noexcept -> std::uint32_t;
+    auto overlap_candidates() const noexcept -> std::span<EntityId const> {
         return overlap_candidates_;
     }
-    auto get_healths() const -> HealthConstView {
-        return entity_tables_.health.get_const_view<EntityType::Fighter>();
+    auto healths() const -> HealthConstView {
+        return entity_tables_.health.const_view<EntityType::Fighter>();
     }
     auto get_navigation_telemetry() const noexcept -> telemetry::FighterNavigationSnapshot const& {
         return navigation_telemetry;
@@ -72,7 +72,7 @@ struct Sim {
     /* **************************************** */
     // Navigation
     /* **************************************** */
-    auto get_navigation_tick_period(NavigationRiskTier tier) const -> std::int16_t;
+    auto navigation_tick_period(NavigationRiskTier tier) const -> std::int16_t;
 
     /* **************************************** */
     // Sim phases

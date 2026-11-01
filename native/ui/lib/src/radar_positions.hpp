@@ -167,7 +167,7 @@ struct Positions
         : Positions{*std::pmr::get_default_resource()} {}
     explicit Positions(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~Positions() { Operations::release_storage(*this); }
     Positions(Positions const&) = delete;
     auto operator=(Positions const&) -> Positions& = delete;
@@ -182,8 +182,8 @@ struct Positions
     template <typename Byte>
     using DataPointers = ::ioj::ui::radar_2d::positions::DataPointers<Byte>;
   public:
-    auto xs(this auto& self) { return self.get_view().xs(); }
-    auto ys(this auto& self) { return self.get_view().ys(); }
+    auto xs(this auto& self) { return self.view().xs(); }
+    auto ys(this auto& self) { return self.view().ys(); }
     using RowOperations =
         soa_storage_detail::OwnerRowOperations<Positions,
                                                ::ioj::ui::radar_2d::positions::Layout::column_types,

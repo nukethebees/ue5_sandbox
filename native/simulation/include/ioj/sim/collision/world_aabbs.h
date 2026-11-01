@@ -226,7 +226,7 @@ struct WorldAABBs
         : WorldAABBs{*std::pmr::get_default_resource()} {}
     explicit WorldAABBs(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~WorldAABBs() { Operations::release_storage(*this); }
     WorldAABBs(WorldAABBs const&) = delete;
     auto operator=(WorldAABBs const&) -> WorldAABBs& = delete;
@@ -241,8 +241,8 @@ struct WorldAABBs
     template <typename Byte>
     using DataPointers = ::ioj::sim::collision::world_aab_bs::DataPointers<Byte>;
   public:
-    auto view_min_points(this auto& self) { return self.get_view().view_min_points(); }
-    auto view_max_points(this auto& self) { return self.get_view().view_max_points(); }
+    auto view_min_points(this auto& self) { return self.view().view_min_points(); }
+    auto view_max_points(this auto& self) { return self.view().view_max_points(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         WorldAABBs,
         ::ioj::sim::collision::world_aab_bs::Layout::column_types,
@@ -251,8 +251,8 @@ struct WorldAABBs
     using RowOperations::set;
     void set(size_type index, Vector3f const new_min_points, Vector3f const new_max_points) {
         assert(index < num());
-        get_view().view_min_points().set(index, new_min_points);
-        get_view().view_max_points().set(index, new_max_points);
+        view().view_min_points().set(index, new_min_points);
+        view().view_max_points().set(index, new_max_points);
     }
     size_type add(Vector3f const new_min_points, Vector3f const new_max_points) {
         auto const index{num()};

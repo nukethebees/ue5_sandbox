@@ -74,13 +74,13 @@ class MonitoredLockFreeMPSCQueue : public QueueType {
         return std::forward<Callable>(callable)(result);
     }
 
-    [[nodiscard]] auto get_success_count() const noexcept -> size_type {
+    [[nodiscard]] auto success_count() const noexcept -> size_type {
         return success_count_.load(std::memory_order_relaxed);
     }
-    [[nodiscard]] auto get_full_count() const noexcept -> size_type {
+    [[nodiscard]] auto full_count() const noexcept -> size_type {
         return full_count_.load(std::memory_order_relaxed);
     }
-    [[nodiscard]] auto get_uninitialised_count() const noexcept -> size_type {
+    [[nodiscard]] auto uninitialised_count() const noexcept -> size_type {
         return uninitialised_count_.load(std::memory_order_relaxed);
     }
 

@@ -115,8 +115,8 @@ auto compile_level(LevelDefinition const& level,
     }
     schedule.capital_spawns.add_uninitialised(capital_count);
     schedule.turret_spawns.add_uninitialised(turret_count);
-    auto const capital_events{schedule.capital_spawns.get_view()};
-    auto const turret_events{schedule.turret_spawns.get_view()};
+    auto const capital_events{schedule.capital_spawns.view()};
+    auto const turret_events{schedule.turret_spawns.view()};
     std::int32_t capital_end{};
     std::int32_t turret_end{};
 

@@ -28,7 +28,7 @@ auto ExecutorTable::subspan_for(EntityType const type) -> Subspan {
 
 void ExecutorTable::initialise_entities(EntityType const type,
                                         std::span<EntityId const> const ids) {
-    auto const view{get_view(type)};
+    auto const view{this->view(type)};
     for (auto const id : ids) {
         assert(id.is_valid() && id.entity_type() == type && id.index() < view.current_tasks.size());
         auto const index{id.index()};

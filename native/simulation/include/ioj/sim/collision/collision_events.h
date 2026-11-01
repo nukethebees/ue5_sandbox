@@ -45,7 +45,7 @@ class AABBOverlapEventStorage {
     void reset() noexcept;
     void append_batch(EntityEntityOverlaps::ConstView entity_entity_overlaps,
                       EntityStaticOverlaps::ConstView entity_static_overlaps);
-    [[nodiscard]] auto get_view() const noexcept -> AABBOverlapEventsView;
+    [[nodiscard]] auto view() const noexcept -> AABBOverlapEventsView;
   private:
     EntityEntityOverlaps entity_entity_overlaps_;
     EntityStaticOverlaps entity_static_overlaps_;

@@ -173,7 +173,7 @@ struct DirectDamageEvents
         : DirectDamageEvents{*std::pmr::get_default_resource()} {}
     explicit DirectDamageEvents(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~DirectDamageEvents() { Operations::release_storage(*this); }
     DirectDamageEvents(DirectDamageEvents const&) = delete;
     auto operator=(DirectDamageEvents const&) -> DirectDamageEvents& = delete;
@@ -188,9 +188,9 @@ struct DirectDamageEvents
     template <typename Byte>
     using DataPointers = ::ioj::sim::direct_damage_events::DataPointers<Byte>;
   public:
-    auto damaged_entities(this auto& self) { return self.get_view().damaged_entities(); }
-    auto damage_amounts(this auto& self) { return self.get_view().damage_amounts(); }
-    auto instigators(this auto& self) { return self.get_view().instigators(); }
+    auto damaged_entities(this auto& self) { return self.view().damaged_entities(); }
+    auto damage_amounts(this auto& self) { return self.view().damage_amounts(); }
+    auto instigators(this auto& self) { return self.view().instigators(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         DirectDamageEvents,
         ::ioj::sim::direct_damage_events::Layout::column_types,
@@ -201,7 +201,7 @@ struct DirectDamageEvents
              EntityId const instigator) {
         auto const index{num()};
         add_uninitialised(1);
-        auto const events{get_view()};
+        auto const events{view()};
         events.damaged_entities()[index] = damaged_entity;
         events.damage_amounts()[index] = damage_amount;
         events.instigators()[index] = instigator;

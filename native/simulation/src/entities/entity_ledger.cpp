@@ -77,7 +77,7 @@ void EntityLedger::record_status(std::span<EntityId const> const ids,
                                  std::span<Health const> const healths) {
     auto const count{ids.size()};
     assert(teams.size() == count && healths.size() == count);
-    auto const history{history_.get_view()};
+    auto const history{history_.view()};
     auto const history_teams{history.teams()};
     auto const life_states{history.life_state()};
 
@@ -102,7 +102,7 @@ void EntityLedger::record_deaths(EntityDeathInfo::ConstView const deaths, SimTic
     auto const killers{deaths.killers()};
     auto const reasons{deaths.reasons()};
     auto const locations{deaths.locations()};
-    auto const history{history_.get_view()};
+    auto const history{history_.view()};
     auto const teams{history.teams()};
     auto const life_states{history.life_state()};
     auto const death_ticks{history.death_ticks()};
@@ -137,7 +137,7 @@ void EntityLedger::record_damage(DirectDamageEvents::ConstView const events,
     assert(applied_damage.size() == count);
     auto const victims{events.damaged_entities()};
     auto const attackers{events.instigators()};
-    auto const history{get_unique_entities()};
+    auto const history{unique_entities()};
     auto const teams{history.teams()};
     [[maybe_unused]] auto const life_states{history.life_state()};
 
@@ -162,14 +162,14 @@ void EntityLedger::record_damage(DirectDamageEvents::ConstView const events,
     }
 }
 void EntityLedger::record_shots(std::span<EntityId const> const instigators) {
-    auto const teams{get_unique_entities().teams()};
+    auto const teams{unique_entities().teams()};
     for (auto const id : instigators) {
         if (id.is_valid()) {
             statistics_.record_shot(teams[require_history_index(id)], id.entity_type());
         }
     }
 }
-auto EntityLedger::get_kills(EntityId const id) const -> std::uint32_t {
-    return get_unique_entities().kills()[require_history_index(id)];
+auto EntityLedger::kills(EntityId const id) const -> std::uint32_t {
+    return unique_entities().kills()[require_history_index(id)];
 }
 }

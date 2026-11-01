@@ -32,7 +32,7 @@ void analyze_enum_backing(AnalysisContext& context, AnalysisId id) {
                   .value_or(std::string{
                       types.cpp_types().spelling(occurrences.cpp_type[underlying_type])})
             : derived_enum_backing_type(types, enumeration).value_or("Unknown")};
-    auto const facts{context.storage.physical_facts.get_const_view().resolve()};
+    auto const facts{context.storage.physical_facts.const_view().resolve()};
     EnumBacking result;
     result.backing_type = context.storage.strings.intern(backing_type);
     result.backing_facts = context.storage.types.physical()[id.value];

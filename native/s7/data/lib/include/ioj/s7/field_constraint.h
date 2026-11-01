@@ -20,7 +20,7 @@ auto check(T const& value, Predicate predicate) -> bool {
 }
 template <typename T, ConstrainedValuePolicy Policy, typename Predicate>
 auto check(ConstrainedValue<T, Policy> const& value, Predicate predicate) -> bool {
-    return predicate(value.get_ref());
+    return predicate(value.ref());
 }
 template <typename T, typename Predicate>
 auto check(std::optional<T> const& value, Predicate predicate) -> bool {

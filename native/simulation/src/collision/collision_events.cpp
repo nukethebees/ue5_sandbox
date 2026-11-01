@@ -45,9 +45,7 @@ void AABBOverlapEventStorage::append_batch(
             },
     });
 }
-auto AABBOverlapEventStorage::get_view() const noexcept -> AABBOverlapEventsView {
-    return {entity_entity_overlaps_.get_const_view(),
-            entity_static_overlaps_.get_const_view(),
-            batches_};
+auto AABBOverlapEventStorage::view() const noexcept -> AABBOverlapEventsView {
+    return {entity_entity_overlaps_.const_view(), entity_static_overlaps_.const_view(), batches_};
 }
 } // namespace collision

@@ -249,7 +249,7 @@ struct FighterSpawnQueue
         : FighterSpawnQueue{*std::pmr::get_default_resource()} {}
     explicit FighterSpawnQueue(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~FighterSpawnQueue() { Operations::release_storage(*this); }
     FighterSpawnQueue(FighterSpawnQueue const&) = delete;
     auto operator=(FighterSpawnQueue const&) -> FighterSpawnQueue& = delete;
@@ -264,9 +264,9 @@ struct FighterSpawnQueue
     template <typename Byte>
     using DataPointers = ::ioj::sim::fighter_spawn_queue::DataPointers<Byte>;
   public:
-    auto view_locations(this auto& self) { return self.get_view().view_locations(); }
-    auto view_rotations(this auto& self) { return self.get_view().view_rotations(); }
-    auto teams(this auto& self) { return self.get_view().teams(); }
+    auto view_locations(this auto& self) { return self.view().view_locations(); }
+    auto view_rotations(this auto& self) { return self.view().view_rotations(); }
+    auto teams(this auto& self) { return self.view().teams(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         FighterSpawnQueue,
         ::ioj::sim::fighter_spawn_queue::Layout::column_types,
@@ -278,9 +278,9 @@ struct FighterSpawnQueue
              Rotator3f const new_rotations,
              ::ioj::Team const new_teams) {
         assert(index < num());
-        get_view().view_locations().set(index, new_locations);
-        get_view().view_rotations().set(index, new_rotations);
-        get_view().teams()[index] = new_teams;
+        view().view_locations().set(index, new_locations);
+        view().view_rotations().set(index, new_rotations);
+        view().teams()[index] = new_teams;
     }
     size_type add(Vector3f const new_locations,
                   Rotator3f const new_rotations,

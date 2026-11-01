@@ -300,7 +300,7 @@ struct LevelTurretSpawnEvents
         : LevelTurretSpawnEvents{*std::pmr::get_default_resource()} {}
     explicit LevelTurretSpawnEvents(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LevelTurretSpawnEvents() { Operations::release_storage(*this); }
     LevelTurretSpawnEvents(LevelTurretSpawnEvents const&) = delete;
     auto operator=(LevelTurretSpawnEvents const&) -> LevelTurretSpawnEvents& = delete;
@@ -315,12 +315,12 @@ struct LevelTurretSpawnEvents
     template <typename Byte>
     using DataPointers = ::ioj::sim::level_turret_spawn_events::DataPointers<Byte>;
   public:
-    auto entity_indices(this auto& self) { return self.get_view().entity_indices(); }
-    auto view_locations(this auto& self) { return self.get_view().view_locations(); }
-    auto view_rotations(this auto& self) { return self.get_view().view_rotations(); }
-    auto teams(this auto& self) { return self.get_view().teams(); }
-    auto healths(this auto& self) { return self.get_view().healths(); }
-    auto laser_damages(this auto& self) { return self.get_view().laser_damages(); }
+    auto entity_indices(this auto& self) { return self.view().entity_indices(); }
+    auto view_locations(this auto& self) { return self.view().view_locations(); }
+    auto view_rotations(this auto& self) { return self.view().view_rotations(); }
+    auto teams(this auto& self) { return self.view().teams(); }
+    auto healths(this auto& self) { return self.view().healths(); }
+    auto laser_damages(this auto& self) { return self.view().laser_damages(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         LevelTurretSpawnEvents,
         ::ioj::sim::level_turret_spawn_events::Layout::column_types,
@@ -335,12 +335,12 @@ struct LevelTurretSpawnEvents
              Health const new_healths,
              std::int32_t const new_laser_damages) {
         assert(index < num());
-        get_view().entity_indices()[index] = new_entity_indices;
-        get_view().view_locations().set(index, new_locations);
-        get_view().view_rotations().set(index, new_rotations);
-        get_view().teams()[index] = new_teams;
-        get_view().healths()[index] = new_healths;
-        get_view().laser_damages()[index] = new_laser_damages;
+        view().entity_indices()[index] = new_entity_indices;
+        view().view_locations().set(index, new_locations);
+        view().view_rotations().set(index, new_rotations);
+        view().teams()[index] = new_teams;
+        view().healths()[index] = new_healths;
+        view().laser_damages()[index] = new_laser_damages;
     }
     size_type add(LevelEntityIndex const new_entity_indices,
                   Vector3f const new_locations,

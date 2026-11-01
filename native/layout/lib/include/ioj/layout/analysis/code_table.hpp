@@ -199,7 +199,7 @@ struct CodeTable
         : CodeTable{*std::pmr::get_default_resource()} {}
     explicit CodeTable(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~CodeTable() { Operations::release_storage(*this); }
     CodeTable(CodeTable const&) = delete;
     auto operator=(CodeTable const&) -> CodeTable& = delete;
@@ -214,11 +214,11 @@ struct CodeTable
     template <typename Byte>
     using DataPointers = ::ioj::layout::code_table::DataPointers<Byte>;
   public:
-    auto name(this auto& self) { return self.get_view().name(); }
-    auto sentinel(this auto& self) { return self.get_view().sentinel(); }
-    auto count_sentinel(this auto& self) { return self.get_view().count_sentinel(); }
-    auto code(this auto& self) { return self.get_view().code(); }
-    auto integer_value(this auto& self) { return self.get_view().integer_value(); }
+    auto name(this auto& self) { return self.view().name(); }
+    auto sentinel(this auto& self) { return self.view().sentinel(); }
+    auto count_sentinel(this auto& self) { return self.view().count_sentinel(); }
+    auto code(this auto& self) { return self.view().code(); }
+    auto integer_value(this auto& self) { return self.view().integer_value(); }
     using RowOperations =
         soa_storage_detail::OwnerRowOperations<CodeTable,
                                                ::ioj::layout::code_table::Layout::column_types,

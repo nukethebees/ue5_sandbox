@@ -102,7 +102,7 @@ auto Data::bucket_count() const noexcept -> std::size_t {
 }
 auto Data::positions(std::size_t index) const noexcept -> PositionView {
     assert(index < bucket_count());
-    auto const view{storage_->buckets[index].get_const_view()};
+    auto const view{storage_->buckets[index].const_view()};
     return {view.xs(), view.ys()};
 }
 auto Data::copy_positions(std::size_t index) const -> PositionList {

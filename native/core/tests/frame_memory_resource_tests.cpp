@@ -62,7 +62,7 @@ TEST(NativeCoreFrameMemoryResource, AlignsAllocationsIncludingZeroSizedRequests)
     EXPECT_TRUE(resource.owns(zero_size));
     EXPECT_EQ(reinterpret_cast<std::uintptr_t>(aligned) % alignof(OverAlignedValue), 0);
     EXPECT_EQ(reinterpret_cast<std::uintptr_t>(zero_size) % 64, 0);
-    EXPECT_GT(resource.get_stats().current_padding_bytes, 0);
+    EXPECT_GT(resource.stats().current_padding_bytes, 0);
 
     resource.deallocate(zero_size, 0, 64);
     resource.deallocate(aligned, sizeof(OverAlignedValue), alignof(OverAlignedValue));
@@ -74,7 +74,7 @@ TEST(NativeCoreFrameMemoryResource, RecordsOverflowWithoutClaimingMemory) {
 
     EXPECT_EQ(resource.try_allocate(128, 16), nullptr);
 
-    auto const stats{resource.get_stats()};
+    auto const stats{resource.stats()};
     EXPECT_EQ(stats.overflow_count, 1);
     EXPECT_EQ(stats.last_failure.requested_bytes, 128);
     EXPECT_EQ(stats.current_claimed_bytes, 0);
@@ -85,14 +85,14 @@ TEST(NativeCoreFrameMemoryResource, RecordsExactBoundaryOverflowAndFrameStatisti
     auto* const exact{resource.allocate(256, 1)};
 
     EXPECT_EQ(resource.try_allocate(1, 1), nullptr);
-    auto const overflow{resource.get_stats()};
+    auto const overflow{resource.stats()};
     EXPECT_EQ(overflow.overflow_count, 1);
     EXPECT_EQ(overflow.last_failure.requested_bytes, 1);
     EXPECT_EQ(overflow.last_failure.claimed_bytes, 256);
 
     resource.deallocate(exact, 256, 1);
     resource.reset();
-    auto const reset{resource.get_stats()};
+    auto const reset{resource.stats()};
     EXPECT_EQ(reset.current_claimed_bytes, 0);
     EXPECT_EQ(reset.last_frame_claimed_bytes, 256);
     EXPECT_EQ(reset.last_frame_payload_bytes, 256);
@@ -108,14 +108,14 @@ TEST(NativeCoreFrameMemoryResource, ReclaimsPhasesWhilePreservingFrameTotals) {
 
     auto* const second{resource.allocate(64, 16)};
     resource.deallocate(second, 64, 16);
-    auto const current{resource.get_stats()};
+    auto const current{resource.stats()};
     EXPECT_EQ(current.current_claimed_bytes, 64);
     EXPECT_EQ(current.current_frame_peak_claimed_bytes, 128);
     EXPECT_EQ(current.current_payload_bytes, 192);
     EXPECT_EQ(current.current_root_claim_count, 2);
 
     resource.reset();
-    auto const reset{resource.get_stats()};
+    auto const reset{resource.stats()};
     EXPECT_EQ(reset.last_frame_claimed_bytes, 128);
     EXPECT_EQ(reset.last_frame_payload_bytes, 192);
     EXPECT_EQ(reset.last_frame_root_claim_count, 2);
@@ -170,11 +170,11 @@ TEST(NativeCoreFrameMemoryResource, MakesConcurrentNonOverlappingClaims) {
         }
     }
 
-    EXPECT_EQ(resource.get_stats().outstanding_allocation_count, allocations.size());
+    EXPECT_EQ(resource.stats().outstanding_allocation_count, allocations.size());
     for (Allocation const allocation : allocations) {
         resource.deallocate(allocation.pointer, allocation.bytes, alignof(std::uint64_t));
     }
-    EXPECT_EQ(resource.get_stats().outstanding_allocation_count, 0);
+    EXPECT_EQ(resource.stats().outstanding_allocation_count, 0);
 }
 
 TEST(NativeCoreFrameMemoryResource, TracksFrameArraysWithoutDefaultResourceFallback) {
@@ -191,7 +191,7 @@ TEST(NativeCoreFrameMemoryResource, TracksFrameArraysWithoutDefaultResourceFallb
             EXPECT_EQ(TrackedValue::live_count, 2);
         }
         EXPECT_EQ(TrackedValue::live_count, 0);
-        EXPECT_EQ(resource.get_stats().outstanding_allocation_count, 0);
+        EXPECT_EQ(resource.stats().outstanding_allocation_count, 0);
         resource.reset();
     }
     std::pmr::set_default_resource(previous_default);
@@ -207,7 +207,7 @@ TEST(NativeCoreFrameMemoryResource, ScratchScopesReclaimAndCleanUpDuringExceptio
         first = resource.allocate(128, 16);
         resource.deallocate(first, 128, 16);
     }
-    EXPECT_EQ(resource.get_stats().current_claimed_bytes, 0);
+    EXPECT_EQ(resource.stats().current_claimed_bytes, 0);
 
     {
         ioj::FrameScratchScope scope{resource};
@@ -225,7 +225,7 @@ TEST(NativeCoreFrameMemoryResource, ScratchScopesReclaimAndCleanUpDuringExceptio
         EXPECT_EQ(value, 7);
     }
 
-    auto const stats{resource.get_stats()};
+    auto const stats{resource.stats()};
     EXPECT_EQ(stats.current_claimed_bytes, 0);
     EXPECT_EQ(stats.outstanding_allocation_count, 0);
     EXPECT_GT(stats.current_frame_peak_claimed_bytes, 0);

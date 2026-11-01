@@ -6,7 +6,7 @@
 
 namespace ioj {
 inline void diff_members(Frequency const expected, Frequency const actual, DiffContext& context) {
-    context.diff("hz", expected.get_hz(), actual.get_hz());
+    context.diff("hz", expected.hz(), actual.hz());
 }
 }
 

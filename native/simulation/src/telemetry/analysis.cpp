@@ -104,7 +104,7 @@ auto analyze(AnalysisInput const input) -> Analysis {
     auto const builder{[&builders](Metric const metric) -> MetricBuilder& {
         return builders[static_cast<std::size_t>(metric)];
     }};
-    auto const tick_rate_hz{input.tick_rate_hz.get_hz()};
+    auto const tick_rate_hz{input.tick_rate_hz.hz()};
 
     result.battle_simulated_seconds.reserve(input.battle_samples.size());
     result.battle_alive_entities.reserve(input.battle_samples.size());

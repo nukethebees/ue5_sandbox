@@ -316,7 +316,7 @@ struct WorkloadTable
         : WorkloadTable{*std::pmr::get_default_resource()} {}
     explicit WorkloadTable(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~WorkloadTable() { Operations::release_storage(*this); }
     WorkloadTable(WorkloadTable const&) = delete;
     auto operator=(WorkloadTable const&) -> WorkloadTable& = delete;
@@ -331,28 +331,26 @@ struct WorkloadTable
     template <typename Byte>
     using DataPointers = ::ioj::layout::workload_table::DataPointers<Byte>;
   public:
-    auto analysis(this auto& self) { return self.get_view().analysis(); }
-    auto selections(this auto& self) { return self.get_view().selections(); }
-    auto element_count(this auto& self) { return self.get_view().element_count(); }
-    auto multiplicity(this auto& self) { return self.get_view().multiplicity(); }
-    auto bytes(this auto& self) { return self.get_view().bytes(); }
-    auto bits(this auto& self) { return self.get_view().bits(); }
-    auto cache(this auto& self) { return self.get_view().cache(); }
-    auto pages(this auto& self) { return self.get_view().pages(); }
-    auto cache_capacity(this auto& self) { return self.get_view().cache_capacity(); }
-    auto packed_waste(this auto& self) { return self.get_view().packed_waste(); }
-    auto footprint_exact(this auto& self) { return self.get_view().footprint_exact(); }
-    auto storage_bytes(this auto& self) { return self.get_view().storage_bytes(); }
+    auto analysis(this auto& self) { return self.view().analysis(); }
+    auto selections(this auto& self) { return self.view().selections(); }
+    auto element_count(this auto& self) { return self.view().element_count(); }
+    auto multiplicity(this auto& self) { return self.view().multiplicity(); }
+    auto bytes(this auto& self) { return self.view().bytes(); }
+    auto bits(this auto& self) { return self.view().bits(); }
+    auto cache(this auto& self) { return self.view().cache(); }
+    auto pages(this auto& self) { return self.view().pages(); }
+    auto cache_capacity(this auto& self) { return self.view().cache_capacity(); }
+    auto packed_waste(this auto& self) { return self.view().packed_waste(); }
+    auto footprint_exact(this auto& self) { return self.view().footprint_exact(); }
+    auto storage_bytes(this auto& self) { return self.view().storage_bytes(); }
     auto full_logical_payload_bytes(this auto& self) {
-        return self.get_view().full_logical_payload_bytes();
+        return self.view().full_logical_payload_bytes();
     }
     auto unselected_payload_bytes(this auto& self) {
-        return self.get_view().unselected_payload_bytes();
+        return self.view().unselected_payload_bytes();
     }
-    auto allocated_payload_bytes(this auto& self) {
-        return self.get_view().allocated_payload_bytes();
-    }
-    auto capacity_slack_bytes(this auto& self) { return self.get_view().capacity_slack_bytes(); }
+    auto allocated_payload_bytes(this auto& self) { return self.view().allocated_payload_bytes(); }
+    auto capacity_slack_bytes(this auto& self) { return self.view().capacity_slack_bytes(); }
     using RowOperations =
         soa_storage_detail::OwnerRowOperations<WorkloadTable,
                                                ::ioj::layout::workload_table::Layout::column_types,

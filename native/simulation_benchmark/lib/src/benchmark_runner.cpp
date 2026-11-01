@@ -27,12 +27,12 @@ namespace ioj::simulation_benchmark {
 namespace {
 struct FrameMemorySummary {
     void record_tick(sim::LevelSim const& simulation) {
-        auto const stats{simulation.get_frame_memory_stats()};
+        auto const stats{simulation.frame_memory_stats()};
         peak_claimed_bytes = std::max(peak_claimed_bytes, stats.last_frame_claimed_bytes);
         peak_payload_bytes = std::max(peak_payload_bytes, stats.last_frame_payload_bytes);
         total_padding_bytes += stats.last_frame_padding_bytes;
         total_root_claims += stats.last_frame_root_claim_count;
-        peak_fighters = std::max(peak_fighters, simulation.get_fighters().get_num_instances());
+        peak_fighters = std::max(peak_fighters, simulation.fighters().num_instances());
     }
 
     std::size_t peak_claimed_bytes{};
@@ -78,7 +78,7 @@ auto calculate_tick_count(double const seconds, Frequency const tick_rate_hz)
         return std::unexpected{"seconds must be positive and finite"};
     }
 
-    auto const ticks{std::ceil(seconds * tick_rate_hz.get_hz())};
+    auto const ticks{std::ceil(seconds * tick_rate_hz.hz())};
     auto const maximum{static_cast<double>(std::numeric_limits<sim::SimTick::value_type>::max())};
     if (!std::isfinite(ticks) || ticks >= maximum) {
         return std::unexpected{"seconds produces a tick count that is too large"};
@@ -234,17 +234,17 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     sim::LevelSim simulation{std::move(data)};
 
     simulation.finish_initialisation();
-    auto const initial_capital_ships{simulation.get_capital_ships().get_num_instances()};
-    auto const initial_turrets{simulation.get_turrets().get_num_instances()};
+    auto const initial_capital_ships{simulation.capital_ships().num_instances()};
+    auto const initial_turrets{simulation.turrets().num_instances()};
     simulation.start();
 
-    auto const tick_period{simulation.get_clock().get_tick_period()};
+    auto const tick_period{simulation.clock().tick_period()};
     std::uint64_t advance_calls{};
     auto const advance_one_tick = [&]() -> std::expected<void, std::string> {
-        auto const previous_ticks{simulation.get_clock().get_completed_ticks()};
+        auto const previous_ticks{simulation.clock().get_completed_ticks()};
         simulation.advance(tick_period);
         ++advance_calls;
-        if (simulation.get_clock().get_completed_ticks() == previous_ticks) {
+        if (simulation.clock().get_completed_ticks() == previous_ticks) {
             return std::unexpected{"simulation advance did not complete a deterministic tick"};
         }
         return {};
@@ -254,7 +254,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     sim::SimTick saturation_ticks{};
     if (options.fighter_stress_cap.has_value()) {
         auto const cap{static_cast<std::uint32_t>(*options.fighter_stress_cap)};
-        while (simulation.get_fighters().get_num_instances() < cap &&
+        while (simulation.fighters().num_instances() < cap &&
                saturation_ticks < saturation_timeout_ticks) {
             auto const advanced{advance_one_tick()};
             if (!advanced) {
@@ -262,7 +262,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
             }
             saturation_ticks.set_value(saturation_ticks.value() + 1);
         }
-        auto const saturated_count{simulation.get_fighters().get_num_instances()};
+        auto const saturated_count{simulation.fighters().num_instances()};
         if (saturated_count != cap) {
             return std::unexpected{
                 std::format("fighter population did not reach configured cap {} within {} "
@@ -273,28 +273,28 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         }
 
         auto const spawned_at_saturation{
-            simulation.get_entity_ledger().get_issued_counts()[sim::EntityType::Fighter]};
+            simulation.entity_ledger().issued_counts()[sim::EntityType::Fighter]};
         for (sim::SimTick tick{}; tick < warmup_ticks; tick.set_value(tick.value() + 1)) {
             auto const advanced{advance_one_tick()};
             if (!advanced) {
                 return std::unexpected{advanced.error()};
             }
-            if (simulation.get_fighters().get_num_instances() != cap) {
+            if (simulation.fighters().num_instances() != cap) {
                 return std::unexpected{"fighter population changed during post-saturation warm-up"};
             }
         }
-        if (simulation.get_entity_ledger().get_issued_counts()[sim::EntityType::Fighter] !=
+        if (simulation.entity_ledger().issued_counts()[sim::EntityType::Fighter] !=
             spawned_at_saturation) {
             return std::unexpected{"replacement fighters spawned during post-saturation warm-up"};
         }
     }
 
-    auto const steady_state_fighters{simulation.get_fighters().get_num_instances()};
+    auto const steady_state_fighters{simulation.fighters().num_instances()};
     auto minimum_measured_fighters{steady_state_fighters};
     auto maximum_measured_fighters{steady_state_fighters};
     auto const fighters_spawned_before_measurement{
-        simulation.get_entity_ledger().get_issued_counts()[sim::EntityType::Fighter]};
-    auto const lasers_spawned_before_measurement{simulation.get_lasers().get_number_spawned()};
+        simulation.entity_ledger().issued_counts()[sim::EntityType::Fighter]};
+    auto const lasers_spawned_before_measurement{simulation.lasers().get_number_spawned()};
     FrameMemorySummary frame_summary;
     std::vector<double> tick_microseconds;
     tick_microseconds.reserve(static_cast<std::size_t>(requested_ticks->value()));
@@ -314,7 +314,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
                     .count());
             frame_summary.record_tick(simulation);
 
-            auto const fighter_count{simulation.get_fighters().get_num_instances()};
+            auto const fighter_count{simulation.fighters().num_instances()};
             minimum_measured_fighters = std::min(minimum_measured_fighters, fighter_count);
             maximum_measured_fighters = std::max(maximum_measured_fighters, fighter_count);
             if (options.fighter_stress_cap.has_value() &&
@@ -325,7 +325,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     }
     auto const finished_at{std::chrono::steady_clock::now()};
     auto const fighter_spawns_during_measurement{
-        simulation.get_entity_ledger().get_issued_counts()[sim::EntityType::Fighter] -
+        simulation.entity_ledger().issued_counts()[sim::EntityType::Fighter] -
         fighters_spawned_before_measurement};
     if (options.fighter_stress_cap.has_value() && fighter_spawns_during_measurement != 0) {
         return std::unexpected{"replacement fighters spawned during measured ticks"};
@@ -337,10 +337,10 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         simulation.pause();
     }
 
-    auto const frame_memory{simulation.get_frame_memory_stats()};
-    auto const telemetry_history{simulation.get_level_telemetry_manager().get_history_stats()};
+    auto const frame_memory{simulation.frame_memory_stats()};
+    auto const telemetry_history{simulation.level_telemetry_manager().history_stats()};
     [[maybe_unused]] auto telemetry_run{simulation.take_finalized_telemetry_run()};
-    auto const total_simulation_ticks{simulation.get_clock().get_completed_ticks()};
+    auto const total_simulation_ticks{simulation.clock().get_completed_ticks()};
     auto const elapsed{std::chrono::duration<double>{finished_at - started_at}.count()};
     auto const total_elapsed{std::chrono::duration<double>{finished_at - total_started_at}.count()};
     auto const timing_summary{summarize_tick_timings(std::move(tick_microseconds))};
@@ -349,12 +349,12 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         .level_id = level_components.metadata().id.value,
         .level_title = level_components.metadata().title,
         .requested_seconds = options.simulated_seconds,
-        .tick_rate_hz = simulation.get_clock().get_tick_rate().get_hz(),
+        .tick_rate_hz = simulation.clock().tick_rate().hz(),
         .game_speed = options.game_speed,
         .requested_ticks = *requested_ticks,
         .completed_ticks = *requested_ticks,
         .advance_calls = advance_calls,
-        .completed_seconds = static_cast<double>(requested_ticks->value()) / tick_rate_hz.get_hz(),
+        .completed_seconds = static_cast<double>(requested_ticks->value()) / tick_rate_hz.hz(),
         .elapsed_seconds = elapsed,
         .total_elapsed_seconds = total_elapsed,
         .saturation_ticks = saturation_ticks,
@@ -371,20 +371,20 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         .maximum_measured_fighters = maximum_measured_fighters,
         .fighter_spawns_during_measurement = fighter_spawns_during_measurement,
         .lasers_spawned_during_measurement =
-            simulation.get_lasers().get_number_spawned() - lasers_spawned_before_measurement,
+            simulation.lasers().get_number_spawned() - lasers_spawned_before_measurement,
         .initial_capital_ships = initial_capital_ships,
         .initial_turrets = initial_turrets,
-        .alive_entities = simulation.get_entity_ledger().count_alive(),
-        .capital_ships = simulation.get_capital_ships().get_num_instances(),
-        .fighters = simulation.get_fighters().get_num_instances(),
-        .turrets = simulation.get_turrets().get_num_instances(),
-        .spinners = simulation.get_spinners().get_num_instances(),
-        .active_lasers = simulation.get_lasers().get_num_instances(),
-        .lasers_spawned = simulation.get_lasers().get_number_spawned(),
+        .alive_entities = simulation.entity_ledger().count_alive(),
+        .capital_ships = simulation.capital_ships().num_instances(),
+        .fighters = simulation.fighters().num_instances(),
+        .turrets = simulation.turrets().num_instances(),
+        .spinners = simulation.spinners().num_instances(),
+        .active_lasers = simulation.lasers().num_instances(),
+        .lasers_spawned = simulation.lasers().get_number_spawned(),
         .peak_fighters = frame_summary.peak_fighters,
-        .active_objectives = simulation.get_mission().active_objectives().size(),
-        .inactive_objectives = simulation.get_mission().inactive_objectives().size(),
-        .completed_objectives = simulation.get_mission().completed_objectives().size(),
+        .active_objectives = simulation.mission().active_objectives().size(),
+        .inactive_objectives = simulation.mission().inactive_objectives().size(),
+        .completed_objectives = simulation.mission().completed_objectives().size(),
         .frame_memory_capacity_bytes = frame_memory.capacity_bytes,
         .frame_memory_peak_claimed_bytes = frame_summary.peak_claimed_bytes,
         .frame_memory_peak_payload_bytes = frame_summary.peak_payload_bytes,

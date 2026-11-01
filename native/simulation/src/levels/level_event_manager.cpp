@@ -23,16 +23,16 @@ LevelEventManager::LevelEventManager(capital_ships::Sim& capital_ships,
     assert(schedule_.execution_ticks.size() == schedule_.event_group_counts.size());
 
     spawn_manager_.initialise(data.initialisation.entity_count,
-                              schedule_.capital_spawns.get_const_view(),
-                              schedule_.turret_spawns.get_const_view(),
-                              schedule_.spinner_spawns.get_const_view());
+                              schedule_.capital_spawns.const_view(),
+                              schedule_.turret_spawns.const_view(),
+                              schedule_.spinner_spawns.const_view());
 }
 
 void LevelEventManager::begin(EntityId const player_id) {
     if (player_entity_index_ != invalid_level_entity_index) {
         spawn_manager_.set_entity_id(player_entity_index_, player_id);
     }
-    spawn_manager_.spawn(schedule_.spawn_groups.get_const_view(0, spawn_group_offset_));
+    spawn_manager_.spawn(schedule_.spawn_groups.const_view(0, spawn_group_offset_));
 }
 
 void LevelEventManager::execute_tick(SimTick const tick) {
@@ -51,19 +51,19 @@ void LevelEventManager::execute_tick(SimTick const tick) {
 
     auto const counts{schedule_.event_group_counts[next_event_index_]};
     if (counts.spawn_groups.value() != 0) {
-        spawn_manager_.spawn(schedule_.spawn_groups.get_const_view(spawn_group_offset_,
-                                                                   counts.spawn_groups.value()));
+        spawn_manager_.spawn(
+            schedule_.spawn_groups.const_view(spawn_group_offset_, counts.spawn_groups.value()));
         spawn_group_offset_ += counts.spawn_groups.value();
     }
     ++next_event_index_;
 }
 
-auto LevelEventManager::get_spawned_ids() const -> std::span<EntityId const> {
-    return spawn_manager_.get_spawned_ids();
+auto LevelEventManager::spawned_ids() const -> std::span<EntityId const> {
+    return spawn_manager_.spawned_ids();
 }
 
-auto LevelEventManager::get_entity_id(LevelEntityIndex const entity_index) const -> EntityId {
-    return spawn_manager_.get_id(entity_index);
+auto LevelEventManager::entity_id(LevelEntityIndex const entity_index) const -> EntityId {
+    return spawn_manager_.id(entity_index);
 }
 
 auto LevelEventManager::has_future_spawns() const noexcept -> bool {

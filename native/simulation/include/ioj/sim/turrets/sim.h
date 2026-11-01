@@ -38,12 +38,12 @@ struct Sim {
     /* **************************************** */
     // Configuration
     /* **************************************** */
-    auto get_entities() const -> EntityStorage::ConstView { return entities.get_const_view(); }
-    auto get_healths() const -> HealthConstView {
-        return entity_tables_.health.get_const_view<EntityType::Turret>();
+    auto get_entities() const -> EntityStorage::ConstView { return entities.const_view(); }
+    auto healths() const -> HealthConstView {
+        return entity_tables_.health.const_view<EntityType::Turret>();
     }
-    auto get_frame_changes() const -> std::span<EntityFrameChange const> { return frame_changes_; }
-    auto get_death_locations() const -> std::span<Vector3f const> { return death_locations_; }
+    auto frame_changes() const -> std::span<EntityFrameChange const> { return frame_changes_; }
+    auto death_locations() const -> std::span<Vector3f const> { return death_locations_; }
     void reset_frame_output() {
         frame_changes_.clear();
         death_locations_.clear();
@@ -52,8 +52,8 @@ struct Sim {
     /* **************************************** */
     // Accessors
     /* **************************************** */
-    auto get_num_instances() const noexcept -> std::uint32_t;
-    auto get_target_ids() const -> std::span<EntityId const>;
+    auto num_instances() const noexcept -> std::uint32_t;
+    auto target_ids() const -> std::span<EntityId const>;
 
     /* **************************************** */
     // Checks
@@ -97,7 +97,7 @@ struct Sim {
     // Attacking
     /* **************************************** */
     void fire_at_enemies(ThinkingInputs const inputs);
-    auto get_disengage_radius() const -> float;
+    auto disengage_radius() const -> float;
 
     /* **************************************** */
     // Death handling

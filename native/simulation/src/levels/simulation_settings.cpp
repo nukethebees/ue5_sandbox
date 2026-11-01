@@ -48,12 +48,11 @@ auto validate_settings(SimulationSettings const& settings)
     auto frequency = [&](PositiveFinite<float> const value,
                          std::string_view const path,
                          double const maximum = std::numeric_limits<std::int16_t>::max()) {
-        tick_period(settings.clock.tick_rate.get_hz() / value, maximum, path, 1);
+        tick_period(settings.clock.tick_rate.hz() / value, maximum, path, 1);
     };
     auto cooldown = [&](NonNegativeFinite<float> const value, std::string_view const path) {
-        tick_period(value * settings.clock.tick_rate.get_hz(),
-                    std::numeric_limits<std::int16_t>::max(),
-                    path);
+        tick_period(
+            value * settings.clock.tick_rate.hz(), std::numeric_limits<std::int16_t>::max(), path);
     };
 
     auto const& fighters{settings.fighters};

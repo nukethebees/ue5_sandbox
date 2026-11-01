@@ -45,9 +45,9 @@ struct SpatialQueryManager {
 
     void initialise(collision::GridGeometry grid_geometry,
                     collision::EntityAABBs const& entity_bounds);
-    auto get_grid_geometry() const noexcept -> collision::GridGeometry {
+    auto grid_geometry() const noexcept -> collision::GridGeometry {
         auto const& grid{collision_system_.uniform_grid_};
-        return {grid.get_grid_dims(), grid.get_cell_dims()};
+        return {grid.grid_dims(), grid.cell_dims()};
     }
 
     /* **************************************** */
@@ -121,12 +121,12 @@ struct SpatialQueryManager {
                                            std::span<EntityId> out_entities,
                                            FrameMemoryResource* scratch_resource) const
         -> std::uint32_t;
-    auto get_any_non_team_entity(Team const team, EntityType const entity_type) const -> EntityId;
+    auto any_non_team_entity(Team const team, EntityType const entity_type) const -> EntityId;
     void are_spheres_in_bounds(vectors3f::ResolvedConstView centres,
                                float radius,
                                std::span<collision::SphereInBoundsResult> out_results) const;
-    auto get_entity_type_radius(EntityType entity_type) const noexcept -> float;
-    auto get_entity_type_radii() const noexcept -> EntityTypeRadii const&;
+    auto entity_type_radius(EntityType entity_type) const noexcept -> float;
+    auto entity_type_radii() const noexcept -> EntityTypeRadii const&;
     void copy_entity_locations(std::span<EntityId const> ids,
                                vectors3f::ResolvedView output,
                                FrameMemoryResource* scratch_resource) const;
@@ -147,10 +147,10 @@ struct SpatialQueryManager {
                          FrameMemoryResource* const scratch_resource)
         -> collision::DetectedOverlapsView;
     void reset_frame_collision_events();
-    auto get_aabb_overlap_events() const -> collision::AABBOverlapEventsView;
+    auto aabb_overlap_events() const -> collision::AABBOverlapEventsView;
     // Debug snapshot of the last rebuild; may include entities removed later in Resolution.
-    auto get_entity_collision_bounds() const -> collision::EntityCellData::ConstView;
-    auto get_static_collision_bounds() const -> collision::WorldAABBs::ConstView;
+    auto entity_collision_bounds() const -> collision::EntityCellData::ConstView;
+    auto static_collision_bounds() const -> collision::WorldAABBs::ConstView;
   private:
     friend struct SpatialQueryManagerTestAccess;
 

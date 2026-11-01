@@ -253,7 +253,7 @@ struct ComponentTable
         : ComponentTable{*std::pmr::get_default_resource()} {}
     explicit ComponentTable(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~ComponentTable() { Operations::release_storage(*this); }
     ComponentTable(ComponentTable const&) = delete;
     auto operator=(ComponentTable const&) -> ComponentTable& = delete;
@@ -268,16 +268,16 @@ struct ComponentTable
     template <typename Byte>
     using DataPointers = ::ioj::layout::component_table::DataPointers<Byte>;
   public:
-    auto parent(this auto& self) { return self.get_view().parent(); }
-    auto name(this auto& self) { return self.get_view().name(); }
-    auto tag(this auto& self) { return self.get_view().tag(); }
-    auto semantic_type(this auto& self) { return self.get_view().semantic_type(); }
-    auto element_count(this auto& self) { return self.get_view().element_count(); }
-    auto element_facts(this auto& self) { return self.get_view().element_facts(); }
-    auto offset_bytes(this auto& self) { return self.get_view().offset_bytes(); }
-    auto extent_bytes(this auto& self) { return self.get_view().extent_bytes(); }
-    auto padding_before_bytes(this auto& self) { return self.get_view().padding_before_bytes(); }
-    auto slack_bytes(this auto& self) { return self.get_view().slack_bytes(); }
+    auto parent(this auto& self) { return self.view().parent(); }
+    auto name(this auto& self) { return self.view().name(); }
+    auto tag(this auto& self) { return self.view().tag(); }
+    auto semantic_type(this auto& self) { return self.view().semantic_type(); }
+    auto element_count(this auto& self) { return self.view().element_count(); }
+    auto element_facts(this auto& self) { return self.view().element_facts(); }
+    auto offset_bytes(this auto& self) { return self.view().offset_bytes(); }
+    auto extent_bytes(this auto& self) { return self.view().extent_bytes(); }
+    auto padding_before_bytes(this auto& self) { return self.view().padding_before_bytes(); }
+    auto slack_bytes(this auto& self) { return self.view().slack_bytes(); }
     using RowOperations =
         soa_storage_detail::OwnerRowOperations<ComponentTable,
                                                ::ioj::layout::component_table::Layout::column_types,

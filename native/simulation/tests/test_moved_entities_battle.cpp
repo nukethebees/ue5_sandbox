@@ -57,12 +57,12 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
 
     WorldlessSimulationTest harness{make_long_running_battle()};
     harness.finish_initialisation();
-    auto& simulation{harness.get_simulation()};
+    auto& simulation{harness.simulation()};
 
     std::map<EntityId, FighterTransformSnapshot> previous_transforms;
     auto capture_current_transforms = [&](fighters::Sim const& fighters) {
         previous_transforms.clear();
-        auto const entities{fighters.get_entities()};
+        auto const entities{fighters.entities()};
         auto const entity_count{entities.num()};
         auto const entity_ids{entities.entity_ids()};
         auto const locations{entities.view_locations().resolve()};
@@ -75,13 +75,13 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
                     .rotation = direction_to_rotation(vector_at(aim_directions, index))});
         }
     };
-    capture_current_transforms(simulation.get_fighters());
+    capture_current_transforms(simulation.fighters());
 
     std::int32_t observed_ticks{};
     std::int32_t observed_moved_fighters{};
     bool observed_empty_tick{};
     harness.on_end_tick = [&](LevelSim& level) {
-        auto const entities{level.get_fighters().get_entities()};
+        auto const entities{level.fighters().entities()};
         std::set<EntityId> expected_moved;
         auto const entity_count{entities.num()};
         auto const entity_ids{entities.entity_ids()};
@@ -98,7 +98,7 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
             }
         }
 
-        auto const moved{level.get_fighters().get_overlap_candidates()};
+        auto const moved{level.fighters().overlap_candidates()};
         std::set<EntityId> const unique_moved{moved.begin(), moved.end()};
         for (auto const id : unique_moved) {
             if (!previous_transforms.contains(id)) {
@@ -113,11 +113,11 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
         observed_empty_tick = observed_empty_tick || moved.empty();
         observed_moved_fighters += static_cast<std::int32_t>(moved.size());
         ++observed_ticks;
-        capture_current_transforms(level.get_fighters());
+        capture_current_transforms(level.fighters());
     };
 
     simulation.start();
-    auto const tick_period{simulation.get_clock().get_tick_period()};
+    auto const tick_period{simulation.clock().tick_period()};
     constexpr std::int32_t tick_count{3000};
     for (std::int32_t tick{}; tick < tick_count; ++tick) {
         harness.advance(tick_period);
@@ -127,9 +127,9 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
     EXPECT_EQ(observed_ticks, tick_count) << "Every requested battle tick was observed";
     EXPECT_TRUE(observed_empty_tick) << "Battle includes an initially quiet movement tick";
     EXPECT_TRUE(observed_moved_fighters > 100) << "Battle exercises fighter movement";
-    EXPECT_EQ(simulation.get_entity_ledger().get_issued_counts()[EntityType::Fighter], 16)
+    EXPECT_EQ(simulation.entity_ledger().issued_counts()[EntityType::Fighter], 16)
         << "Battle spawns exactly one fighter wave";
-    EXPECT_EQ(simulation.get_fighters().get_num_instances(), 16)
+    EXPECT_EQ(simulation.fighters().num_instances(), 16)
         << "Zero-damage battle preserves every fighter";
 }
 

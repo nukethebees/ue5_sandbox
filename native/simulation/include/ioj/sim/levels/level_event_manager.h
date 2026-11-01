@@ -29,13 +29,11 @@ class LevelEventManager {
     void queue_fighter_spawns(float dt, FrameMemoryResource& scratch_resource) {
         spawn_manager_.queue_fighter_spawns(dt, scratch_resource);
     }
-    auto get_spawned_ids() const -> std::span<EntityId const>;
-    auto get_entity_ids() const -> std::span<EntityId const> {
-        return spawn_manager_.get_entity_ids();
-    }
-    auto get_entity_id(LevelEntityIndex entity_index) const -> EntityId;
+    auto spawned_ids() const -> std::span<EntityId const>;
+    auto entity_ids() const -> std::span<EntityId const> { return spawn_manager_.entity_ids(); }
+    auto entity_id(LevelEntityIndex entity_index) const -> EntityId;
     auto has_future_spawns() const noexcept -> bool;
-    auto get_participating_teams(std::optional<Team> player_team) const -> TeamList {
+    auto participating_teams(std::optional<Team> player_team) const -> TeamList {
         return schedule_.get_participating_teams(player_team);
     }
   private:

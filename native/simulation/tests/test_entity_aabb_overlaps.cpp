@@ -45,7 +45,7 @@ struct OverlapFixture {
             try {
                 query_manager.detect_overlaps(overlap_candidates, &frame_memory);
             } catch (std::bad_alloc const&) {
-                auto const stats{frame_memory.get_stats()};
+                auto const stats{frame_memory.stats()};
                 ADD_FAILURE() << "Frame overflow count: " << stats.overflow_count
                               << ", requested: " << stats.last_failure.requested_bytes
                               << ", claimed: " << stats.last_failure.claimed_bytes;
@@ -53,7 +53,7 @@ struct OverlapFixture {
             }
         }
 
-        auto const stats{frame_memory.get_stats()};
+        auto const stats{frame_memory.stats()};
         expect_frame_reclaimed(stats);
     }
 
@@ -101,11 +101,11 @@ struct OverlapFixture {
     }
 
     auto get_entity_overlaps() const -> collision::EntityEntityOverlaps::ConstView {
-        return query_manager.get_aabb_overlap_events().entity_entity_overlaps;
+        return query_manager.aabb_overlap_events().entity_entity_overlaps;
     }
 
     auto get_static_overlaps() const -> collision::EntityStaticOverlaps::ConstView {
-        return query_manager.get_aabb_overlap_events().entity_static_overlaps;
+        return query_manager.aabb_overlap_events().entity_static_overlaps;
     }
 
     void set_bounds(EntityType const type, Vector3f const centre, Vector3f const half_extents) {
@@ -182,7 +182,7 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
     EXPECT_EQ(fixture.get_static_overlaps().num(), 0)
         << "A dynamic-only overlap produces no static record";
 
-    auto owner{fixture.owners.capitals.get_view()};
+    auto owner{fixture.owners.capitals.view()};
     set_vector(owner.view_locations(), 0, {{300.f, 0.f, 0.f}});
     set_vector(owner.view_locations(), 1, {{315.f, 0.f, 0.f}});
     fixture.query_manager.reset_frame_collision_events();
@@ -194,8 +194,8 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
                   {{300.f, 0.f, 0.f}}, Team::Blue, 10.f, nearby, &query_memory),
               1);
     EXPECT_EQ(nearby[0], stationary);
-    EXPECT_EQ(queries.get_any_non_team_entity(Team::Blue, EntityType::CapitalShip), stationary);
-    EXPECT_TRUE(!queries.get_any_non_team_entity(Team::Blue, EntityType::Turret).is_valid());
+    EXPECT_EQ(queries.any_non_team_entity(Team::Blue, EntityType::CapitalShip), stationary);
+    EXPECT_TRUE(!queries.any_non_team_entity(Team::Blue, EntityType::Turret).is_valid());
     std::array<EntityId, 2> nearby_ids{};
     EXPECT_EQ(queries.collect_entities_of_type_in_range({{300.f, 0.f, 0.f}},
                                                         EntityType::CapitalShip,
@@ -205,14 +205,14 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
                                                         &query_memory),
               1);
     EXPECT_EQ(nearby_ids[0], moved);
-    fixture.owners.health_table.get_view<EntityType::CapitalShip>().set_health(
-        owner.entity_ids()[0], Health{0});
+    fixture.owners.health_table.view<EntityType::CapitalShip>().set_health(owner.entity_ids()[0],
+                                                                           Health{0});
     fixture.owners.publish();
     fixture.owners.refresh(fixture.query_manager);
     EXPECT_EQ(queries.collect_non_team_entities_in_range(
                   {{300.f, 0.f, 0.f}}, Team::Blue, 20.f, nearby, &query_memory),
               0);
-    EXPECT_TRUE(!queries.get_any_non_team_entity(Team::Blue, EntityType::CapitalShip).is_valid());
+    EXPECT_TRUE(!queries.any_non_team_entity(Team::Blue, EntityType::CapitalShip).is_valid());
     fixture.query_manager.reset_frame_collision_events();
     fixture.refresh_and_detect_overlaps(handles);
     EXPECT_EQ(fixture.get_entity_overlaps().num(), 0)
@@ -241,7 +241,7 @@ TEST(EntityAABBOverlaps, SharedCellWithoutExactOverlapProducesNoPair) {
     EXPECT_EQ(fixture.get_entity_overlaps().num(), 0)
         << "Broad-phase cell sharing is rejected by exact AABB testing";
     auto const cell_entities{SpatialQueryManagerTestAccess::uniform_grid(fixture.query_manager)
-                                 .get_cell_entities({20, 20, 20})};
+                                 .cell_entities({20, 20, 20})};
     EXPECT_TRUE(std::ranges::find(cell_entities, stationary) != cell_entities.end() &&
                 std::ranges::find(cell_entities, moved) != cell_entities.end())
         << "Both entities remain in the same grid cell";
@@ -288,7 +288,7 @@ TEST(EntityAABBOverlaps, RefreshSpatialIndexDoesNotDetectOrAppendEvents) {
     EXPECT_TRUE(hit.hit && hit.entity == entity)
         << "Refresh-only updates make entities available to queries";
 
-    auto const events{fixture.query_manager.get_aabb_overlap_events()};
+    auto const events{fixture.query_manager.aabb_overlap_events()};
     SCOPED_TRACE("Refresh-only updates append no event batches");
     expect_empty_collision_events(events);
 }
@@ -317,7 +317,7 @@ TEST(EntityAABBOverlaps, DetectOverlapsUsesExistingSpatialIndex) {
         check_single_pair(overlaps.entity_entity_overlaps, candidate, stationary);
     }
 
-    auto const events{fixture.query_manager.get_aabb_overlap_events()};
+    auto const events{fixture.query_manager.aabb_overlap_events()};
     EXPECT_EQ(events.batches.size(), 2u);
     check_single_pair(events.entity_entity_overlaps, candidate, stationary);
 }
@@ -514,7 +514,7 @@ TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
     EXPECT_TRUE(static_overlaps.num() >= entity_count)
         << "Every moved entity overlaps the large static AABB";
     auto const static_overlap_count{static_overlaps.num()};
-    auto const static_geometry_count{fixture.query_manager.get_static_collision_bounds().num()};
+    auto const static_geometry_count{fixture.query_manager.static_collision_bounds().num()};
     auto const static_entities{static_overlaps.entities()};
     auto const static_indices{static_overlaps.static_geometry_indices()};
     for (std::uint32_t index{}; index < static_overlap_count; ++index) {
@@ -571,7 +571,7 @@ TEST(EntityAABBOverlaps, EventsMirrorAuthoritativeResults) {
     check_single_pair(fixture.get_entity_overlaps(), fixture.moved, fixture.stationary);
     check_single_static_overlap(fixture.get_static_overlaps(), fixture.moved, fixture.static_index);
 
-    auto const events{fixture.query_manager.get_aabb_overlap_events()};
+    auto const events{fixture.query_manager.aabb_overlap_events()};
     EXPECT_EQ(static_cast<std::int32_t>(events.batches.size()), 1)
         << "The collision pass records one event batch";
     if (events.batches.size() == 1) {
@@ -587,7 +587,7 @@ TEST(EntityAABBOverlaps, ReinitialiseClearsResultsAndAllowsSubsequentUpdate) {
 
     fixture.query_manager.initialise({{40, 40, 40}, {{50.f, 50.f, 50.f}}}, fixture.entity_bounds);
 
-    auto const cleared_events{fixture.query_manager.get_aabb_overlap_events()};
+    auto const cleared_events{fixture.query_manager.aabb_overlap_events()};
     EXPECT_EQ(cleared_events.entity_entity_overlaps.num(), 0)
         << "Reinitialisation clears dynamic overlap events";
     EXPECT_EQ(cleared_events.entity_static_overlaps.num(), 0)
@@ -603,7 +603,7 @@ TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
     OverlapEventFixture fixture;
     std::array const handles{fixture.moved};
 
-    auto const first_events{fixture.query_manager.get_aabb_overlap_events()};
+    auto const first_events{fixture.query_manager.aabb_overlap_events()};
     check_single_pair(first_events.entity_entity_overlaps, fixture.moved, fixture.stationary);
     check_single_static_overlap(
         first_events.entity_static_overlaps, fixture.moved, fixture.static_index);
@@ -612,7 +612,7 @@ TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
 
     fixture.query_manager.reset_frame_collision_events();
 
-    auto const reset_events{fixture.query_manager.get_aabb_overlap_events()};
+    auto const reset_events{fixture.query_manager.aabb_overlap_events()};
     SCOPED_TRACE("Frame reset clears event batches");
     expect_empty_collision_events(reset_events);
     EXPECT_TRUE(reset_events.entity_entity_overlaps.first_entities().data() == entity_storage)
@@ -621,7 +621,7 @@ TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
         << "Static event storage is retained across reset";
 
     fixture.refresh_and_detect_overlaps(handles);
-    auto const recaptured_events{fixture.query_manager.get_aabb_overlap_events()};
+    auto const recaptured_events{fixture.query_manager.aabb_overlap_events()};
     check_single_pair(recaptured_events.entity_entity_overlaps, fixture.moved, fixture.stationary);
     check_single_static_overlap(
         recaptured_events.entity_static_overlaps, fixture.moved, fixture.static_index);
@@ -631,7 +631,7 @@ TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
         << "Static event storage is reused after recapture";
 
     fixture.refresh_and_detect_overlaps(handles);
-    auto const appended_events{fixture.query_manager.get_aabb_overlap_events()};
+    auto const appended_events{fixture.query_manager.aabb_overlap_events()};
     EXPECT_EQ(appended_events.entity_entity_overlaps.num(), 2)
         << "Collision passes append dynamic events within a frame";
     EXPECT_EQ(appended_events.entity_static_overlaps.num(), 2)
@@ -639,7 +639,7 @@ TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
     EXPECT_EQ(static_cast<std::int32_t>(appended_events.batches.size()), 2)
         << "Collision passes retain separate batch metadata";
     fixture.query_manager.reset_frame_collision_events();
-    auto const next_frame_events{fixture.query_manager.get_aabb_overlap_events()};
+    auto const next_frame_events{fixture.query_manager.aabb_overlap_events()};
     SCOPED_TRACE("The next frame starts without event batches");
     expect_empty_collision_events(next_frame_events);
 }

@@ -58,7 +58,7 @@ TEST(NativeSoa, SwapRemovalKeepsTraceHitColumnsAligned) {
     // NOLINTBEGIN(ioj-loop-view-accessor-call) -- Refresh columns after each owner resize.
     for (std::int32_t index{}; index < 6; ++index) {
         hits.add_defaulted(1);
-        auto const columns{hits.get_view()};
+        auto const columns{hits.view()};
         columns.view_locations().xs()[index] = static_cast<float>(index);
         columns.view_locations().ys()[index] = static_cast<float>(index + 10);
         columns.view_locations().zs()[index] = static_cast<float>(index + 20);
@@ -72,7 +72,7 @@ TEST(NativeSoa, SwapRemovalKeepsTraceHitColumnsAligned) {
     hits.remove_at_swap(2, 3);
 
     ASSERT_EQ(hits.num(), 3);
-    auto const columns{hits.get_const_view()};
+    auto const columns{hits.const_view()};
     EXPECT_EQ(columns.view_locations().xs()[0], 0.0f);
     EXPECT_EQ(columns.view_locations().xs()[1], 1.0f);
     EXPECT_EQ(columns.view_locations().xs()[2], 5.0f);

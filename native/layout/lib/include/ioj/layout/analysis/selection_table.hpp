@@ -216,7 +216,7 @@ struct SelectionTable
         : SelectionTable{*std::pmr::get_default_resource()} {}
     explicit SelectionTable(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~SelectionTable() { Operations::release_storage(*this); }
     SelectionTable(SelectionTable const&) = delete;
     auto operator=(SelectionTable const&) -> SelectionTable& = delete;
@@ -231,13 +231,13 @@ struct SelectionTable
     template <typename Byte>
     using DataPointers = ::ioj::layout::selection_table::DataPointers<Byte>;
   public:
-    auto source(this auto& self) { return self.get_view().source(); }
-    auto operation(this auto& self) { return self.get_view().operation(); }
-    auto bytes(this auto& self) { return self.get_view().bytes(); }
-    auto bits(this auto& self) { return self.get_view().bits(); }
-    auto cache(this auto& self) { return self.get_view().cache(); }
-    auto pages(this auto& self) { return self.get_view().pages(); }
-    auto capacity_slack_bytes(this auto& self) { return self.get_view().capacity_slack_bytes(); }
+    auto source(this auto& self) { return self.view().source(); }
+    auto operation(this auto& self) { return self.view().operation(); }
+    auto bytes(this auto& self) { return self.view().bytes(); }
+    auto bits(this auto& self) { return self.view().bits(); }
+    auto cache(this auto& self) { return self.view().cache(); }
+    auto pages(this auto& self) { return self.view().pages(); }
+    auto capacity_slack_bytes(this auto& self) { return self.view().capacity_slack_bytes(); }
     using RowOperations =
         soa_storage_detail::OwnerRowOperations<SelectionTable,
                                                ::ioj::layout::selection_table::Layout::column_types,

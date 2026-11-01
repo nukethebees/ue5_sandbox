@@ -28,7 +28,7 @@ TEST(NativeSimulation, LevelTelemetryBlockHistoryTest) {
     }
     EXPECT_EQ(history.retained_block_count(), std::int32_t{1})
         << "An exact-capacity fill retains one block";
-    EXPECT_EQ(history.get_stats().unused_samples_in_final_block, std::int32_t{0})
+    EXPECT_EQ(history.stats().unused_samples_in_final_block, std::int32_t{0})
         << "An exact-capacity fill has no final unused rows";
     auto const* const first_address{history.block_data(0)};
     auto const first_value{history.block_view(0).completed_ticks()[0]};

@@ -51,19 +51,19 @@ TEST(SaveGameBrowser, RefreshReplacesCachedSummaries) {
         save_game_browser_test::no_report};
 
     browser.refresh();
-    ASSERT_EQ(browser.get_summaries().size(), 1) << "First refresh has one summary";
-    EXPECT_EQ(browser.get_active_profile_id(), "first");
-    EXPECT_EQ(browser.get_summaries()[0].profile_id, std::string{"first"})
+    ASSERT_EQ(browser.summaries().size(), 1) << "First refresh has one summary";
+    EXPECT_EQ(browser.active_profile_id(), "first");
+    EXPECT_EQ(browser.summaries()[0].profile_id, std::string{"first"})
         << "First refresh uses first result";
 
     browser.refresh();
-    ASSERT_EQ(browser.get_summaries().size(), 1) << "Second refresh still has one summary";
-    EXPECT_EQ(browser.get_active_profile_id(), "second");
-    EXPECT_EQ(browser.get_summaries()[0].profile_id, std::string{"second"})
+    ASSERT_EQ(browser.summaries().size(), 1) << "Second refresh still has one summary";
+    EXPECT_EQ(browser.active_profile_id(), "second");
+    EXPECT_EQ(browser.summaries()[0].profile_id, std::string{"second"})
         << "Second refresh replaces first result";
     browser.refresh();
-    EXPECT_TRUE(browser.get_summaries().empty()) << "Empty discovery clears stale summaries";
-    EXPECT_TRUE(browser.get_active_profile_id().empty());
+    EXPECT_TRUE(browser.summaries().empty()) << "Empty discovery clears stale summaries";
+    EXPECT_TRUE(browser.active_profile_id().empty());
 }
 
 TEST(SaveGameBrowser, OrderIsNewestFirstAndDeterministic) {
@@ -82,7 +82,7 @@ TEST(SaveGameBrowser, OrderIsNewestFirstAndDeterministic) {
 
     browser.refresh();
 
-    auto const summaries{browser.get_summaries()};
+    auto const summaries{browser.summaries()};
     ASSERT_EQ(summaries.size(), 3);
     EXPECT_EQ(summaries[0].profile_id, std::string{"alpha"})
         << "Alphabetical tie-breaker comes first";
@@ -111,23 +111,23 @@ TEST(SaveGameBrowser, ReportsAreLoadedLazilyAndRefreshInvalidatesTheCache) {
 
     browser.refresh();
     EXPECT_TRUE(report_load_count == 0) << "Refresh does not load a report";
-    EXPECT_TRUE(browser.get_loaded_profile_report() == nullptr) << "No report is initially cached";
+    EXPECT_TRUE(browser.loaded_profile_report() == nullptr) << "No report is initially cached";
 
     ASSERT_TRUE(browser.load_profile_report("profile")) << "Known profile report loads";
     EXPECT_TRUE(report_load_count == 1) << "Report source is called once";
-    EXPECT_EQ(browser.get_loaded_profile_report()->outcomes.size(), 1)
+    EXPECT_EQ(browser.loaded_profile_report()->outcomes.size(), 1)
         << "Loaded report retains its outcome";
 
     EXPECT_TRUE(browser.load_profile_report("profile")) << "Reloading selected profile succeeds";
     EXPECT_TRUE(report_load_count == 1) << "Selected report is served from cache";
 
     browser.refresh();
-    EXPECT_TRUE(browser.get_loaded_profile_report() == nullptr)
+    EXPECT_TRUE(browser.loaded_profile_report() == nullptr)
         << "Refresh invalidates the selected report";
     ASSERT_TRUE(browser.load_profile_report("profile"));
     EXPECT_EQ(report_load_count, 2);
     EXPECT_FALSE(browser.load_profile_report("missing"));
-    EXPECT_EQ(browser.get_loaded_profile_report(), nullptr);
+    EXPECT_EQ(browser.loaded_profile_report(), nullptr);
 }
 
 TEST(ProfileAdapter, BuildsLightweightProfileSummary) {

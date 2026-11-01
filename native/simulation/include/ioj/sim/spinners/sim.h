@@ -36,12 +36,12 @@ struct Sim {
     /* **************************************** */
     // Configuration
     /* **************************************** */
-    auto get_entities() const -> EntityStorage::ConstView { return entities.get_const_view(); }
+    auto get_entities() const -> EntityStorage::ConstView { return entities.const_view(); }
 
     /* **************************************** */
     // Accessors
     /* **************************************** */
-    auto get_num_instances() const noexcept -> std::uint32_t;
+    auto num_instances() const noexcept -> std::uint32_t;
 
     /* **************************************** */
     // Checks

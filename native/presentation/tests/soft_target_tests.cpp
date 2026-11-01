@@ -27,7 +27,7 @@ auto make_view(Entities const& entities) -> std::vector<::ioj::presentation::Age
         batches.push_back(
             {entities.entity_types[static_cast<std::size_t>(i)],
              std::span{entities.entity_ids}.subspan(i, 1),
-             entities.positions.get_const_view(i, 1),
+             entities.positions.const_view(i, 1),
              {},
              ::ioj::sim::HealthConstView{entities.entity_types[static_cast<std::size_t>(i)],
                                          entities.healths},
@@ -162,9 +162,9 @@ TEST_F(EntityOverlaySource, RetainsAndSwitchesWithHysteresis) {
     SoftTargetState state;
     auto markers{state.advance(make_view(entities_), retained, {{}, duration, duration})};
     EXPECT_EQ(state.current_target(), retained.id);
-    EXPECT_EQ(markers[0].location, entities_.positions.get_const_view()[1]);
+    EXPECT_EQ(markers[0].location, entities_.positions.const_view()[1]);
 
-    entities_.positions.get_view().ys()[0] = 50.0f;
+    entities_.positions.view().ys()[0] = 50.0f;
     auto const switched{select_target(entity_id(1))};
     EXPECT_EQ(switched.id.raw_value(), entity_id(0).raw_value())
         << "Materially better candidate switches";
@@ -177,8 +177,8 @@ TEST_F(EntityOverlaySource, RetainsAndSwitchesWithHysteresis) {
         make_view(entities_), switched, {NonNegativeFinite<float>{1.f}, duration, duration});
     EXPECT_FALSE(markers[1].visual.entity.is_valid());
 
-    entities_.positions.get_view().ys()[0] = 250.0f;
-    entities_.positions.get_view().ys()[1] = 250.0f;
+    entities_.positions.view().ys()[0] = 250.0f;
+    entities_.positions.view().ys()[1] = 250.0f;
     auto const cleared{select_target(entity_id(1))};
     EXPECT_FALSE(cleared.id.is_valid()) << "Target outside retention is cleared";
     EXPECT_TRUE(cleared.previous_target_can_fade) << "Valid on-screen lost target may fade";
@@ -221,12 +221,12 @@ TEST_F(EntityOverlaySource, NormalizesRangeAlphaUsingTargetSurfaceDistance) {
     EXPECT_EQ(comfortably_out_of_range.range_alpha, 0.0f)
         << "Beyond transition start clamps to zero";
 
-    entities_.positions.get_view().xs()[0] = 2500.0f;
+    entities_.positions.view().xs()[0] = 2500.0f;
     auto const approaching{select_target()};
     EXPECT_EQ(approaching.range_alpha, 0.5f);
     static_cast<void>(state.advance(make_view(entities_), approaching, {{}, duration, {}}));
 
-    entities_.positions.get_view().xs()[0] = 1100.0f;
+    entities_.positions.view().xs()[0] = 1100.0f;
     radii_[sim::EntityType::Turret] = 100.0f;
     auto const at_range_boundary{select_target()};
     EXPECT_EQ(at_range_boundary.range_alpha, 1.0f)
@@ -241,7 +241,7 @@ TEST_F(EntityOverlaySource, NormalizesRangeAlphaUsingTargetSurfaceDistance) {
     markers = state.advance(make_view(entities_), {.previous_target_can_fade = true}, {{}, {}, {}});
     EXPECT_FALSE(markers[1].visual.entity.is_valid());
 
-    entities_.positions.get_view().xs()[0] = 500.0f;
+    entities_.positions.view().xs()[0] = 500.0f;
     auto const inside_range{select_target()};
     EXPECT_EQ(inside_range.range_alpha, 1.0f);
 
@@ -264,7 +264,7 @@ TEST_F(EntityOverlaySource, ReportsWorldScaleSeparatelyFromClampedIndicatorRadiu
     EXPECT_TRUE(zero_radius.world_units_per_pixel > 0.0f)
         << "Zero-radius targets still have a usable projection scale";
 
-    entities_.positions.get_view().xs()[0] = 500.0f;
+    entities_.positions.view().xs()[0] = 500.0f;
     auto const nearer{select_target()};
     EXPECT_TRUE(nearer.world_units_per_pixel < distant.world_units_per_pixel)
         << "World units per pixel shrink as the target approaches";
@@ -330,9 +330,9 @@ TEST_F(EntityOverlaySource, ObjectivesBypassRangeButNotProjectionOrHealth) {
     EXPECT_FALSE(select().id.is_valid());
     roles[0] = ui::entity_overlay::ObjectiveRole::Destroy;
     EXPECT_EQ(select().id, entity_id(0));
-    entities_.positions.get_view().ys()[0] = 2000.f;
+    entities_.positions.view().ys()[0] = 2000.f;
     EXPECT_FALSE(select().id.is_valid());
-    entities_.positions.get_view().ys()[0] = 0.f;
+    entities_.positions.view().ys()[0] = 0.f;
     context.view.view_projection[0][3] = 0.f;
     EXPECT_FALSE(select().id.is_valid());
     context.view = make_forward_x_view();

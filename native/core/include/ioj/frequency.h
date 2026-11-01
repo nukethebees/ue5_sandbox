@@ -44,7 +44,7 @@ class Frequency {
         return Frequency{hz, Validated{}};
     }
 
-    [[nodiscard]] constexpr auto get_hz() const noexcept -> double { return hz_; }
+    [[nodiscard]] constexpr auto hz() const noexcept -> double { return hz_; }
     [[nodiscard]] auto period() const noexcept -> Duration { return Duration::make(1.0 / hz_); }
   private:
     struct Validated {};

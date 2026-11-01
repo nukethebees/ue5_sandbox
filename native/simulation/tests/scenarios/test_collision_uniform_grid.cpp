@@ -123,7 +123,7 @@ auto make_line_traces(std::span<Vector3f const> const starts, std::span<Vector3f
     LineTraces traces;
     auto const count{static_cast<std::int32_t>(starts.size())};
     traces.set_num(count);
-    auto const columns{traces.get_view()};
+    auto const columns{traces.view()};
     auto const trace_starts{columns.view_starts().resolve()};
     auto const trace_ends{columns.view_ends().resolve()};
     for (std::int32_t i{}; i < count; ++i) {
@@ -142,11 +142,11 @@ auto run_traces(TraceFixture const& fixture,
     TraceHits hits;
     hits.add_defaulted(traces.num());
     if (ignored_entities.empty()) {
-        fixture.grid.trace_aabbs(traces.get_const_view(), hits.get_view());
+        fixture.grid.trace_aabbs(traces.const_view(), hits.view());
     } else {
         fixture.grid.trace_aabbs(
-            traces.get_const_view(),
-            hits.get_view(),
+            traces.const_view(),
+            hits.view(),
             {ignored_entities.data(),
              static_cast<std::size_t>(static_cast<std::int32_t>(ignored_entities.size()))});
     }
@@ -165,9 +165,9 @@ auto run_sweeps(TraceFixture const& fixture,
     TraceHits hits;
     hits.add_defaulted(traces.num());
     fixture.grid.sweep_aabbs(
-        traces.get_const_view(),
+        traces.const_view(),
         moving_half_extent,
-        hits.get_view(),
+        hits.view(),
         {ignored_entities.data(),
          static_cast<std::size_t>(static_cast<std::int32_t>(ignored_entities.size()))},
         entity_filter);
@@ -223,7 +223,7 @@ void check_traces(TraceFixture const& fixture, std::span<ExpectedTrace const> co
 
     auto const hits{run_traces(fixture, starts, ends)};
     auto const count{static_cast<std::int32_t>(cases.size())};
-    auto const view{hits.get_const_view().resolve()};
+    auto const view{hits.const_view().resolve()};
     auto const hit_flags{view.hits()};
     auto const entities{view.entities()};
     auto const locations{view.view_locations()};
@@ -249,8 +249,8 @@ void expect_same_trace_results(TraceHits const& baseline,
     SCOPED_TRACE(description);
     ASSERT_EQ(candidate.num(), baseline.num());
     auto const count{baseline.num()};
-    auto const expected{baseline.get_const_view().resolve()};
-    auto const actual{candidate.get_const_view().resolve()};
+    auto const expected{baseline.const_view().resolve()};
+    auto const actual{candidate.const_view().resolve()};
     auto const expected_hits{expected.hits()};
     auto const actual_hits{actual.hits()};
     for (std::uint32_t i{}; i < count; ++i) {
@@ -291,7 +291,7 @@ auto count_memberships(collision::CollisionUniformGrid const& grid,
         for (std::int32_t y{min_coord.y()}; y <= max_y; ++y) {
             for (std::int32_t z{min_coord.z()}; z <= max_z; ++z) {
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- per-cell membership.
-                count += count_id(grid.get_cell_entities({x, y, z}), id);
+                count += count_id(grid.cell_entities({x, y, z}), id);
             }
         }
     }
@@ -317,20 +317,19 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridContainsAllEntityTypes) {
     harness.timeline.finish_at(0.1);
     ASSERT_TRUE(harness.run_until_timeline_finished(1.0)) << "Collision-grid timeline completes";
 
-    auto& simulation{harness.get_simulation()};
-    auto const* const player{simulation.get_player_ship_simulation()};
-    auto const fighter_ids{simulation.get_fighters().get_entities().entity_ids()};
+    auto& simulation{harness.simulation()};
+    auto const* const player{simulation.player_ship_simulation()};
+    auto const fighter_ids{simulation.fighters().entities().entity_ids()};
     ASSERT_NE(player, nullptr) << "Collision-grid player ship is available";
     ASSERT_FALSE(fighter_ids.empty()) << "Collision-grid fighter is placed";
 
     EnumArray<EntityType, EntityId> expected_ids{};
     expected_ids[EntityType::PlayerShip] = player->unique_entity_id;
-    expected_ids[EntityType::Turret] = simulation.get_turrets().get_entities().entity_ids()[0];
-    expected_ids[EntityType::CapitalShip] = simulation.get_capital_ships().get_id(0);
+    expected_ids[EntityType::Turret] = simulation.turrets().get_entities().entity_ids()[0];
+    expected_ids[EntityType::CapitalShip] = simulation.capital_ships().id(0);
     expected_ids[EntityType::Fighter] = fighter_ids[0];
-    expected_ids[EntityType::TubeSpinner] =
-        simulation.get_spinners().get_entities().entity_ids()[0];
-    auto const& spatial_queries{simulation.get_spatial_query_manager()};
+    expected_ids[EntityType::TubeSpinner] = simulation.spinners().get_entities().entity_ids()[0];
+    auto const& spatial_queries{simulation.spatial_query_manager()};
     auto const& grid{SpatialQueryManagerTestAccess::uniform_grid(spatial_queries)};
     auto const& entity_aabbs{SpatialQueryManagerTestAccess::entity_aabbs(spatial_queries)};
 
@@ -343,8 +342,8 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridContainsAllEntityTypes) {
         }
 
         auto const entity_location{observe_entity(simulation, id)->location};
-        auto const local_aabb_centre{entity_aabbs.get_centre(id.entity_type())};
-        auto const half_extents{entity_aabbs.get_half_extents(id.entity_type())};
+        auto const local_aabb_centre{entity_aabbs.centre(id.entity_type())};
+        auto const half_extents{entity_aabbs.half_extents(id.entity_type())};
         auto const world_aabb_centre{entity_location + local_aabb_centre};
         auto const [min_coord, max_coord]{grid.to_cell_coord_bounds(
             world_aabb_centre - half_extents, world_aabb_centre + half_extents)};
@@ -377,35 +376,32 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceAppliesAABBCentre) {
     std::array<Vector3f, 2> const rotated_starts{{{{-50.f, 150.f, 0.f}}, {{100.f, 0.f, 0.f}}}};
     std::array<Vector3f, 2> const rotated_ends{{{{50.f, 150.f, 0.f}}, {{200.f, 0.f, 0.f}}}};
     auto const rotated_hits{run_traces(rotated, rotated_starts, rotated_ends)};
-    EXPECT_EQ(TraceHit{1}, rotated_hits.get_const_view().hits()[0])
+    EXPECT_EQ(TraceHit{1}, rotated_hits.const_view().hits()[0])
         << "Trace finds rotated box in its new grid cell";
-    EXPECT_EQ(TraceHit{0}, rotated_hits.get_const_view().hits()[1])
-        << "Trace misses old unrotated box";
-    EXPECT_LE(
-        size(Vector3f{{-5.f, 150.f, 0.f}} - rotated_hits.get_const_view().view_locations()[0]),
-        0.001f)
+    EXPECT_EQ(TraceHit{0}, rotated_hits.const_view().hits()[1]) << "Trace misses old unrotated box";
+    EXPECT_LE(size(Vector3f{{-5.f, 150.f, 0.f}} - rotated_hits.const_view().view_locations()[0]),
+              0.001f)
         << "Rotated box has swapped extents";
     auto const swept{run_sweeps(rotated, rotated_starts, rotated_ends, Vector3f{{2.f, 2.f, 2.f}})};
-    EXPECT_EQ(TraceHit{1}, swept.get_const_view().hits()[0]) << "Sweep uses rotated cached box";
-    EXPECT_LE(size(Vector3f{{-7.f, 150.f, 0.f}} - swept.get_const_view().view_locations()[0]),
-              0.001f)
+    EXPECT_EQ(TraceHit{1}, swept.const_view().hits()[0]) << "Sweep uses rotated cached box";
+    EXPECT_LE(size(Vector3f{{-7.f, 150.f, 0.f}} - swept.const_view().view_locations()[0]), 0.001f)
         << "Sweep expands rotated world bounds";
-    auto const cached{rotated.grid.get_entity_world_bounds()};
+    auto const cached{rotated.grid.entity_world_bounds()};
     EXPECT_LE(size(Vector3f{{-5.f, 130.f, -10.f}} - cached.view_min_points()[0]), 0.001f)
         << "Visualisation reads the same rotated cached bounds";
 
     rotated.update_entities(std::array{Vector3f{}}, std::array{std::uint8_t{1}});
     auto const updated_hits{run_traces(rotated, rotated_starts, rotated_ends)};
-    EXPECT_EQ(TraceHit{0}, updated_hits.get_const_view().hits()[0])
+    EXPECT_EQ(TraceHit{0}, updated_hits.const_view().hits()[0])
         << "Owner rotation update removes old rotated bounds";
-    EXPECT_EQ(TraceHit{1}, updated_hits.get_const_view().hits()[1])
+    EXPECT_EQ(TraceHit{1}, updated_hits.const_view().hits()[1])
         << "Owner rotation update reaches grid queries";
     rotated.update_entities(std::array{Vector3f{}}, std::array{std::uint8_t{0}});
     auto const reused_handle{rotated.add_entity(Vector3f{})};
     EXPECT_TRUE(rotated.handles[0] != reused_handle)
         << "Replacement receives a distinct monotonic ID";
     auto const reused_hits{run_traces(rotated, rotated_starts, rotated_ends)};
-    EXPECT_EQ(reused_handle, reused_hits.get_const_view().entities()[1])
+    EXPECT_EQ(reused_handle, reused_hits.const_view().entities()[1])
         << "Reused slot has current bounds and generation";
 
     Vector3f const entity_location{};
@@ -422,14 +418,14 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceAppliesAABBCentre) {
 
     auto const hits{run_traces(fixture, starts, ends)};
 
-    EXPECT_EQ(TraceHit{1}, hits.get_const_view().hits()[0]) << "Trace hits locally centred AABB";
-    if (hits.get_const_view().hits()[0].value() == 0) {
+    EXPECT_EQ(TraceHit{1}, hits.const_view().hits()[0]) << "Trace hits locally centred AABB";
+    if (hits.const_view().hits()[0].value() == 0) {
         return;
     }
 
-    EXPECT_EQ(fixture.handles[0], hits.get_const_view().entities()[0])
+    EXPECT_EQ(fixture.handles[0], hits.const_view().entities()[0])
         << "Trace resolves locally centred entity";
-    EXPECT_LE(size(expected_contact - hits.get_const_view().view_locations()[0]),
+    EXPECT_LE(size(expected_contact - hits.const_view().view_locations()[0]),
               hit_location_tolerance)
         << "Trace applies local AABB centre to hit location";
 
@@ -480,7 +476,7 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceAppliesAABBCentre) {
     }
 
     auto const mixed_hits{run_traces(mixed_fixture, mixed_starts, mixed_ends)};
-    auto const mixed_hit_flags{mixed_hits.get_const_view().hits()};
+    auto const mixed_hit_flags{mixed_hits.const_view().hits()};
     for (std::int32_t i{}; i < entity_type_count; ++i) {
         SCOPED_TRACE(::testing::Message() << "index " << i);
         EXPECT_EQ(TraceHit{1}, mixed_hit_flags[i]) << "Mixed entity-type trace records a hit";
@@ -488,11 +484,11 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceAppliesAABBCentre) {
             continue;
         }
 
-        EXPECT_EQ(mixed_fixture.handles[i], mixed_hits.get_const_view().entities()[i])
+        EXPECT_EQ(mixed_fixture.handles[i], mixed_hits.const_view().entities()[i])
             << "Mixed entity-type trace resolves its entity";
         auto const world_centre{mixed_locations[i] + local_centres[i]};
         auto const expected_type_contact{world_centre - Vector3f{{0.f, half_extents[i].y(), 0.f}}};
-        EXPECT_LE(size(expected_type_contact - mixed_hits.get_const_view().view_locations()[i]),
+        EXPECT_LE(size(expected_type_contact - mixed_hits.const_view().view_locations()[i]),
                   hit_location_tolerance)
             << "Mixed entity-type trace applies its AABB row";
     }
@@ -507,7 +503,7 @@ TEST_P(UniformGridTraceGeometry, ReturnsExpectedContacts) {
                                scenario.cell_dimensions};
     if (scenario.grid_dimensions == collision::CellCoord{1, 1, 1}) {
         EXPECT_EQ(fixture.grid.num_cells().value(), 1);
-        EXPECT_EQ(fixture.grid.get_cell_entities({}).size(), 1);
+        EXPECT_EQ(fixture.grid.cell_entities({}).size(), 1);
     }
     check_traces(fixture, scenario.traces);
 }
@@ -898,7 +894,7 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridRebuildLifecycle) {
 
     {
         TraceFixture authoritative{initial_locations, aabb_half_extents};
-        auto owner{authoritative.owners.capitals.get_view()};
+        auto owner{authoritative.owners.capitals.view()};
         set_vector(owner.view_locations(), 0, moved_location);
         check_traces(authoritative, initial_cases);
         authoritative.owners.rebuild(authoritative.grid, authoritative.aabbs);
@@ -910,7 +906,7 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridRebuildLifecycle) {
              {{moved_location.x() - aabb_half_extents.x(), 0.f, 0.f}}},
         }};
         check_traces(authoritative, owner_cases);
-        authoritative.owners.health_table.get_view<EntityType::CapitalShip>().set_health(
+        authoritative.owners.health_table.view<EntityType::CapitalShip>().set_health(
             owner.entity_ids()[0], Health{0});
         authoritative.owners.rebuild(authoritative.grid, authoritative.aabbs);
         std::array<ExpectedTrace, 1> const dead_owner_cases{{
@@ -964,10 +960,10 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridRebuildLifecycle) {
         {{replacement_location.x() + trace_offset, 0.f, 0.f}},
     }};
     auto const replacement_hits{run_traces(fixture, replacement_starts, replacement_ends)};
-    EXPECT_EQ(TraceHit{1}, replacement_hits.get_const_view().hits()[0])
+    EXPECT_EQ(TraceHit{1}, replacement_hits.const_view().hits()[0])
         << "Replacement entity is added on rebuild";
-    if (replacement_hits.get_const_view().hits()[0].value() != 0) {
-        EXPECT_EQ(replacement_handle, replacement_hits.get_const_view().entities()[0])
+    if (replacement_hits.const_view().hits()[0].value() != 0) {
+        EXPECT_EQ(replacement_handle, replacement_hits.const_view().entities()[0])
             << "Trace resolves replacement generation";
     }
 
@@ -1014,10 +1010,10 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridRebuildLifecycle) {
     }};
     auto const sparse_replacement_hits{
         run_traces(sparse_fixture, sparse_replacement_starts, sparse_replacement_ends)};
-    EXPECT_EQ(TraceHit{1}, sparse_replacement_hits.get_const_view().hits()[0])
+    EXPECT_EQ(TraceHit{1}, sparse_replacement_hits.const_view().hits()[0])
         << "Sparse replacement remains traceable beside surviving entities";
-    if (sparse_replacement_hits.get_const_view().hits()[0].value() != 0) {
-        EXPECT_EQ(sparse_replacement_handle, sparse_replacement_hits.get_const_view().entities()[0])
+    if (sparse_replacement_hits.const_view().hits()[0].value() != 0) {
+        EXPECT_EQ(sparse_replacement_handle, sparse_replacement_hits.const_view().entities()[0])
             << "Sparse replacement trace resolves new generation";
     }
 }
@@ -1073,7 +1069,7 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceDeterministicReferen
         auto const hits{run_traces(fixture, starts, ends)};
         // Resolve the newly generated batch for this seed.
         // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
-        auto const hit_flags{hits.get_const_view().hits()};
+        auto const hit_flags{hits.const_view().hits()};
         std::int32_t expected_hit_count{};
         for (std::int32_t i_trace{}; i_trace < trace_count; ++i_trace) {
             auto nearest_t{std::numeric_limits<float>::infinity()};
@@ -1100,11 +1096,11 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceDeterministicReferen
                 continue;
             }
 
-            EXPECT_EQ(fixture.handles[nearest_entity], hits.get_const_view().entities()[i_trace])
+            EXPECT_EQ(fixture.handles[nearest_entity], hits.const_view().entities()[i_trace])
                 << "Reference sweep trace resolves nearest entity";
             auto const expected_location{
                 (starts[i_trace] + (ends[i_trace] - starts[i_trace]) * nearest_t)};
-            EXPECT_LE(size(expected_location - hits.get_const_view().view_locations()[i_trace]),
+            EXPECT_LE(size(expected_location - hits.const_view().view_locations()[i_trace]),
                       hit_location_tolerance)
                 << "Reference sweep trace resolves nearest location";
         }
@@ -1125,15 +1121,14 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceInvarianceProperties
     std::array<Vector3f, 1> const tied_ends{{{{20.f, 0.f, 0.f}}}};
     auto const expected_id{tied.handles[0]};
     auto const first_tied_hits{run_traces(tied, tied_starts, tied_ends)};
-    EXPECT_EQ(first_tied_hits.get_const_view().entities()[0], expected_id);
-    tied.owners.capitals.get_view().each_column([](auto column) { std::ranges::reverse(column); });
+    EXPECT_EQ(first_tied_hits.const_view().entities()[0], expected_id);
+    tied.owners.capitals.view().each_column([](auto column) { std::ranges::reverse(column); });
     tied.owners.publish();
     tied.owners.rebuild(tied.grid, tied.aabbs);
     auto const reordered_tied_hits{run_traces(tied, tied_starts, tied_ends)};
-    EXPECT_EQ(reordered_tied_hits.get_const_view().entities()[0], expected_id);
+    EXPECT_EQ(reordered_tied_hits.const_view().entities()[0], expected_id);
     SpatialQueryManager const tied_queries{tied.owners.entity_tables};
-    EXPECT_EQ(tied_queries.get_any_non_team_entity(Team::Green, EntityType::CapitalShip),
-              expected_id);
+    EXPECT_EQ(tied_queries.any_non_team_entity(Team::Green, EntityType::CapitalShip), expected_id);
 
     Vector3f const aabb_half_extents{{18.f, 22.f, 15.f}};
     Vector3f const local_aabb_centre{{4.f, -3.f, 5.f}};
@@ -1223,9 +1218,9 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceEmptyBatchesAndOutpu
     std::array<Vector3f, 2> const miss_starts{{{{-20.f, 0.f, 0.f}}, {{0.f, -20.f, 0.f}}}};
     std::array<Vector3f, 2> const miss_ends{{{{20.f, 0.f, 0.f}}, {{0.f, 20.f, 0.f}}}};
     auto const empty_grid_hits{run_traces(empty_fixture, miss_starts, miss_ends)};
-    EXPECT_EQ(TraceHit{0}, empty_grid_hits.get_const_view().hits()[0])
+    EXPECT_EQ(TraceHit{0}, empty_grid_hits.const_view().hits()[0])
         << "Empty grid misses first trace";
-    EXPECT_EQ(TraceHit{0}, empty_grid_hits.get_const_view().hits()[1])
+    EXPECT_EQ(TraceHit{0}, empty_grid_hits.const_view().hits()[1])
         << "Empty grid misses second trace";
 
     std::array<Vector3f, 1> const entity_locations{{Vector3f{}}};
@@ -1237,24 +1232,23 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridTraceEmptyBatchesAndOutpu
     reused_hits.add_defaulted(1);
     LineTraces hit_trace;
     hit_trace.set_num(1);
-    set_vector(hit_trace.get_view().view_starts(), 0, Vector3f{{-20.f, 0.f, 0.f}});
-    set_vector(hit_trace.get_view().view_ends(), 0, Vector3f{{20.f, 0.f, 0.f}});
-    populated_fixture.grid.trace_aabbs(hit_trace.get_const_view(), reused_hits.get_view());
-    EXPECT_EQ(TraceHit{1}, reused_hits.get_const_view().hits()[0])
+    set_vector(hit_trace.view().view_starts(), 0, Vector3f{{-20.f, 0.f, 0.f}});
+    set_vector(hit_trace.view().view_ends(), 0, Vector3f{{20.f, 0.f, 0.f}});
+    populated_fixture.grid.trace_aabbs(hit_trace.const_view(), reused_hits.view());
+    EXPECT_EQ(TraceHit{1}, reused_hits.const_view().hits()[0])
         << "Reused output initially records hit";
 
     LineTraces miss_trace;
     miss_trace.set_num(1);
-    set_vector(miss_trace.get_view().view_starts(), 0, Vector3f{{-20.f, 20.f, 0.f}});
-    set_vector(miss_trace.get_view().view_ends(), 0, Vector3f{{20.f, 20.f, 0.f}});
-    populated_fixture.grid.trace_aabbs(miss_trace.get_const_view(), reused_hits.get_view());
-    EXPECT_EQ(TraceHit{0}, reused_hits.get_const_view().hits()[0])
+    set_vector(miss_trace.view().view_starts(), 0, Vector3f{{-20.f, 20.f, 0.f}});
+    set_vector(miss_trace.view().view_ends(), 0, Vector3f{{20.f, 20.f, 0.f}});
+    populated_fixture.grid.trace_aabbs(miss_trace.const_view(), reused_hits.view());
+    EXPECT_EQ(TraceHit{0}, reused_hits.const_view().hits()[0])
         << "Reused output clears stale hit flag";
 
-    populated_fixture.grid.trace_aabbs(hit_trace.get_const_view(), reused_hits.get_view());
-    EXPECT_EQ(TraceHit{1}, reused_hits.get_const_view().hits()[0])
-        << "Reused output records later hit";
-    EXPECT_EQ(populated_fixture.handles[0], reused_hits.get_const_view().entities()[0])
+    populated_fixture.grid.trace_aabbs(hit_trace.const_view(), reused_hits.view());
+    EXPECT_EQ(TraceHit{1}, reused_hits.const_view().hits()[0]) << "Reused output records later hit";
+    EXPECT_EQ(populated_fixture.handles[0], reused_hits.const_view().entities()[0])
         << "Reused output records later entity";
 }
 
@@ -1267,7 +1261,7 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridDenseAndWideAABBs) {
     TraceFixture const dense_fixture{dense_locations, dense_half_extents};
     auto const dense_cell{dense_fixture.grid.to_cell_coord(dense_location)};
     EXPECT_EQ(dense_entity_count,
-              static_cast<std::int32_t>(dense_fixture.grid.get_cell_entities(dense_cell).size()))
+              static_cast<std::int32_t>(dense_fixture.grid.cell_entities(dense_cell).size()))
         << "Dense cell retains every entity";
 
     std::array<ExpectedTrace, 1> const dense_cases{{
@@ -1314,12 +1308,12 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridStaticGeometry) {
 
     set_static_aabb({{-60.f, -10.f, -10.f}}, {{-40.f, 10.f, 10.f}});
     auto static_hits{run_traces(fixture, starts, ends)};
-    EXPECT_EQ(TraceHit{1}, static_hits.get_const_view().hits()[0]) << "Static AABB is traceable";
-    EXPECT_TRUE(!static_hits.get_const_view().entities()[0].is_valid())
+    EXPECT_EQ(TraceHit{1}, static_hits.const_view().hits()[0]) << "Static AABB is traceable";
+    EXPECT_TRUE(!static_hits.const_view().entities()[0].is_valid())
         << "Static hit has no dynamic entity";
-    EXPECT_EQ(0, static_hits.get_const_view().static_geometry_indices()[0].value())
+    EXPECT_EQ(0, static_hits.const_view().static_geometry_indices()[0].value())
         << "Static hit identifies canonical static geometry";
-    EXPECT_LE(size(Vector3f{{-60.f, 0.f, 0.f}} - static_hits.get_const_view().view_locations()[0]),
+    EXPECT_LE(size(Vector3f{{-60.f, 0.f, 0.f}} - static_hits.const_view().view_locations()[0]),
               hit_location_tolerance)
         << "Static hit reports nearest entry point";
 
@@ -1327,13 +1321,13 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridStaticGeometry) {
     std::array<Vector3f, 1> const offset_starts{{{{-200.f, 80.f, 0.f}}}};
     std::array<Vector3f, 1> const offset_ends{{{{200.f, 80.f, 0.f}}}};
     auto const offset_hits{run_traces(fixture, offset_starts, offset_ends)};
-    EXPECT_EQ(TraceHit{0}, offset_hits.get_const_view().hits()[0])
+    EXPECT_EQ(TraceHit{0}, offset_hits.const_view().hits()[0])
         << "Offset line misses static geometry";
     auto const sweep_hits{
         run_sweeps(fixture, offset_starts, offset_ends, Vector3f{{20.f, 20.f, 20.f}})};
-    EXPECT_EQ(TraceHit{1}, sweep_hits.get_const_view().hits()[0])
+    EXPECT_EQ(TraceHit{1}, sweep_hits.const_view().hits()[0])
         << "AABB sweep detects static geometry";
-    EXPECT_LE(size(Vector3f{{-80.f, 80.f, 0.f}} - sweep_hits.get_const_view().view_locations()[0]),
+    EXPECT_LE(size(Vector3f{{-80.f, 80.f, 0.f}} - sweep_hits.const_view().view_locations()[0]),
               hit_location_tolerance)
         << "AABB sweep reports expanded entry point";
 
@@ -1352,7 +1346,7 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridStaticGeometry) {
 
     auto const fighter_masked_hits{
         run_sweeps(fighter_fixture, starts, ends, Vector3f{{20.f, 20.f, 20.f}})};
-    EXPECT_EQ(fighter_fixture.handles[0], fighter_masked_hits.get_const_view().entities()[0])
+    EXPECT_EQ(fighter_fixture.handles[0], fighter_masked_hits.const_view().entities()[0])
         << "Fighter is the closest sweep hit before static geometry";
     auto const static_geometry_hits{run_sweeps(fighter_fixture,
                                                starts,
@@ -1360,37 +1354,37 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridStaticGeometry) {
                                                Vector3f{{20.f, 20.f, 20.f}},
                                                {},
                                                collision::TraceEntityFilter::ExcludeFighters)};
-    EXPECT_EQ(TraceHit{1}, static_geometry_hits.get_const_view().hits()[0])
+    EXPECT_EQ(TraceHit{1}, static_geometry_hits.const_view().hits()[0])
         << "Static geometry remains after fighter exclusion";
-    EXPECT_TRUE(!static_geometry_hits.get_const_view().entities()[0].is_valid())
+    EXPECT_TRUE(!static_geometry_hits.const_view().entities()[0].is_valid())
         << "Fighter exclusion returns the static obstacle";
-    EXPECT_EQ(0, static_geometry_hits.get_const_view().static_geometry_indices()[0].value())
+    EXPECT_EQ(0, static_geometry_hits.const_view().static_geometry_indices()[0].value())
         << "Fighter exclusion keeps the static obstacle identity";
 
     set_static_aabb({{-60.f, -10.f, -10.f}}, {{-40.f, 10.f, 10.f}});
     fixture.owners.rebuild(fixture.grid, fixture.aabbs);
     auto const rebuilt_static_hits{run_traces(fixture, starts, ends)};
-    EXPECT_EQ(0, rebuilt_static_hits.get_const_view().static_geometry_indices()[0].value())
+    EXPECT_EQ(0, rebuilt_static_hits.const_view().static_geometry_indices()[0].value())
         << "Static geometry survives dynamic rebuild";
 
     set_static_aabb({{140.f, -10.f, -10.f}}, {{160.f, 10.f, 10.f}});
     auto const dynamic_hits{run_traces(fixture, starts, ends)};
-    EXPECT_EQ(fixture.handles[0], dynamic_hits.get_const_view().entities()[0])
+    EXPECT_EQ(fixture.handles[0], dynamic_hits.const_view().entities()[0])
         << "Closer dynamic geometry wins over static geometry";
     EXPECT_EQ(collision::invalid_static_geometry_index,
-              dynamic_hits.get_const_view().static_geometry_indices()[0])
+              dynamic_hits.const_view().static_geometry_indices()[0])
         << "Dynamic hit clears static identity";
 
     std::array<EntityId, 1> const ignored_entities{{fixture.handles[0]}};
     auto const ignored_dynamic_hits{run_traces(fixture, starts, ends, ignored_entities)};
-    EXPECT_TRUE(!ignored_dynamic_hits.get_const_view().entities()[0].is_valid())
+    EXPECT_TRUE(!ignored_dynamic_hits.const_view().entities()[0].is_valid())
         << "Ignored dynamic entity is not returned";
-    EXPECT_EQ(0, ignored_dynamic_hits.get_const_view().static_geometry_indices()[0].value())
+    EXPECT_EQ(0, ignored_dynamic_hits.const_view().static_geometry_indices()[0].value())
         << "Static geometry behind ignored entity remains traceable";
 
     set_static_aabb({{90.f, -10.f, -10.f}}, {{110.f, 10.f, 10.f}});
     auto const tied_hits{run_traces(fixture, starts, ends)};
-    EXPECT_EQ(fixture.handles[0], tied_hits.get_const_view().entities()[0])
+    EXPECT_EQ(fixture.handles[0], tied_hits.const_view().entities()[0])
         << "Dynamic geometry wins exact-distance static tie";
 
     set_static_aabb({{140.f, -10.f, -10.f}}, {{160.f, 10.f, 10.f}});
@@ -1398,14 +1392,13 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridStaticGeometry) {
         fixture.grid.add_static_aabb({{-60.f, -10.f, -10.f}}, {{-40.f, 10.f, 10.f}})};
     EXPECT_EQ(1, runtime_static_index.value()) << "Runtime static AABB receives stable identity";
     auto const runtime_static_hits{run_traces(fixture, starts, ends)};
-    EXPECT_EQ(runtime_static_index,
-              runtime_static_hits.get_const_view().static_geometry_indices()[0])
+    EXPECT_EQ(runtime_static_index, runtime_static_hits.const_view().static_geometry_indices()[0])
         << "Runtime static AABB is immediately traceable";
 
     fixture.owners.rebuild(fixture.grid, fixture.aabbs);
     auto const rebuilt_runtime_static_hits{run_traces(fixture, starts, ends)};
     EXPECT_EQ(runtime_static_index,
-              rebuilt_runtime_static_hits.get_const_view().static_geometry_indices()[0])
+              rebuilt_runtime_static_hits.const_view().static_geometry_indices()[0])
         << "Runtime static AABB survives dynamic rebuild";
 }
 

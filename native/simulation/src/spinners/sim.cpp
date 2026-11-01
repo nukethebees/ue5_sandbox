@@ -45,12 +45,12 @@ Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_table
 // Preparation
 void Sim::update_entity_lookup_table() {
     entity_tables_.publish<EntityType::TubeSpinner>(
-        entities.get_const_view().entity_ids(), {}, Health{1});
+        entities.const_view().entity_ids(), {}, Health{1});
 }
 void Sim::prepare_tick(float const) {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::prepare_tick");
 
-    tick_countdowns<std::int16_t>(entities.get_view().laser_cooldowns(), cooldown_cleaner_, 16384);
+    tick_countdowns<std::int16_t>(entities.view().laser_cooldowns(), cooldown_cleaner_, 16384);
     update_entity_lookup_table();
 }
 
@@ -69,7 +69,7 @@ void Sim::generate_fire_commands() {
 // Action
 void Sim::apply_movement(ActionInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::apply_movement");
-    for (auto& yaw : entities.get_view().yaws()) {
+    for (auto& yaw : entities.view().yaws()) {
         yaw += planned_yaw_delta_;
     }
     materialize_fire_commands(inputs);
@@ -83,7 +83,7 @@ void Sim::finish_action() {
 /* **************************************** */
 // Accessors
 /* **************************************** */
-auto Sim::get_num_instances() const noexcept -> std::uint32_t {
+auto Sim::num_instances() const noexcept -> std::uint32_t {
     return entities.num();
 }
 
@@ -125,7 +125,7 @@ auto Sim::spawn_instances(vectors3f::ResolvedConstView const new_locations,
         next_fire_point_indices[i] = new_fire_point_indices[i];
     }
 
-    entities.get_const_view().validate();
+    entities.const_view().validate();
 
     ledger_.record_spawns(EntityType::TubeSpinner, Team::White, Health{1}, entity_ids);
 
@@ -142,8 +142,8 @@ void Sim::fire_lasers() {
         return;
     }
 
-    auto const count{get_num_instances()};
-    auto const entity_columns{entities.get_view()};
+    auto const count{num_instances()};
+    auto const entity_columns{entities.view()};
     pending_fire_indices_.clear();
     pending_fire_indices_.reserve(count);
     auto cooldowns{
@@ -155,7 +155,7 @@ void Sim::fire_lasers() {
     }
 }
 void Sim::materialize_fire_commands(ActionInputs const inputs) {
-    auto const entity_columns{entities.get_view()};
+    auto const entity_columns{entities.view()};
     auto const ready_count{static_cast<std::uint32_t>(pending_fire_indices_.size())};
     auto const fire_point_count{static_cast<std::uint32_t>(config.fire_point_offsets.size())};
     auto const new_lasers{inputs.laser_simulation.append_spawn_requests(ready_count)};

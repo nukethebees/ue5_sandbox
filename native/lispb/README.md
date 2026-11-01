@@ -56,7 +56,7 @@ count, and one capacity. Nested members reference another declared SoA through t
 ```
 
 Owners use the default PMR resource, or accept a `std::pmr::memory_resource&` at construction.
-The resource must outlive the owner. Use `get_view()` or `get_const_view()` for compact borrows,
+The resource must outlive the owner. Use `view()` or `const_view()` for compact borrows,
 and call `.resolve()` on a view to materialize its column pointers once before a hot loop.
 Both view representations expose typed spans; neither owns or resizes columns. `:layout-only true`
 declares a reusable nested column group without a standalone owner.

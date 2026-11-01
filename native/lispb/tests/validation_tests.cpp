@@ -2460,7 +2460,7 @@ TEST_P(SoaFunctionNameCollision, RejectsGeneratedApiAndTypeNames) {
 INSTANTIATE_TEST_SUITE_P(Validation,
                          SoaFunctionNameCollision,
                          testing::Values(InvalidSchemaTextCase{"Sort", "sort"},
-                                         InvalidSchemaTextCase{"GetView", "get_view"},
+                                         InvalidSchemaTextCase{"GetView", "view"},
                                          InvalidSchemaTextCase{"TypeName", "FData"}),
                          [](testing::TestParamInfo<InvalidSchemaTextCase> const& info) {
                              return info.param.name;

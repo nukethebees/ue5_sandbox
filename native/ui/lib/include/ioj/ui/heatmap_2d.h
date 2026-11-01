@@ -99,7 +99,7 @@ class Data {
     void set_value_range(ValidRange range) { value_range_ = range; }
     void set_domain(ValidDomain domain) { domain_ = domain; }
 
-    [[nodiscard]] auto grid() const noexcept -> GridData const& { return grid_.get_ref(); }
+    [[nodiscard]] auto grid() const noexcept -> GridData const& { return grid_.ref(); }
     [[nodiscard]] auto value_range() const noexcept -> MinMax<float> { return value_range_.get(); }
     [[nodiscard]] auto domain() const noexcept -> Domain { return domain_.get(); }
   private:

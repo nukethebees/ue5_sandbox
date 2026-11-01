@@ -824,7 +824,7 @@ struct FighterEntityData
         : FighterEntityData{*std::pmr::get_default_resource()} {}
     explicit FighterEntityData(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~FighterEntityData() { Operations::release_storage(*this); }
     FighterEntityData(FighterEntityData const&) = delete;
     auto operator=(FighterEntityData const&) -> FighterEntityData& = delete;
@@ -839,56 +839,54 @@ struct FighterEntityData
     template <typename Byte>
     using DataPointers = ::ioj::sim::fighter_entity_data::DataPointers<Byte>;
   public:
-    auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }
-    auto integral_biases(this auto& self) { return self.get_view().integral_biases(); }
-    auto float_biases(this auto& self) { return self.get_view().float_biases(); }
-    auto view_locations(this auto& self) { return self.get_view().view_locations(); }
+    auto entity_ids(this auto& self) { return self.view().entity_ids(); }
+    auto integral_biases(this auto& self) { return self.view().integral_biases(); }
+    auto float_biases(this auto& self) { return self.view().float_biases(); }
+    auto view_locations(this auto& self) { return self.view().view_locations(); }
     auto view_desired_move_locations(this auto& self) {
-        return self.get_view().view_desired_move_locations();
+        return self.view().view_desired_move_locations();
     }
-    auto view_aim_directions(this auto& self) { return self.get_view().view_aim_directions(); }
+    auto view_aim_directions(this auto& self) { return self.view().view_aim_directions(); }
     auto view_planned_aim_directions(this auto& self) {
-        return self.get_view().view_planned_aim_directions();
+        return self.view().view_planned_aim_directions();
     }
     auto view_desired_aiming_directions(this auto& self) {
-        return self.get_view().view_desired_aiming_directions();
+        return self.view().view_desired_aiming_directions();
     }
     auto view_movement_directions(this auto& self) {
-        return self.get_view().view_movement_directions();
+        return self.view().view_movement_directions();
     }
-    auto view_velocities(this auto& self) { return self.get_view().view_velocities(); }
-    auto move_distances(this auto& self) { return self.get_view().move_distances(); }
-    auto speeds(this auto& self) { return self.get_view().speeds(); }
-    auto teams(this auto& self) { return self.get_view().teams(); }
+    auto view_velocities(this auto& self) { return self.view().view_velocities(); }
+    auto move_distances(this auto& self) { return self.view().move_distances(); }
+    auto speeds(this auto& self) { return self.view().speeds(); }
+    auto teams(this auto& self) { return self.view().teams(); }
     auto navigation_update_countdowns_remaining_ticks(this auto& self) {
-        return self.get_view().navigation_update_countdowns_remaining_ticks();
+        return self.view().navigation_update_countdowns_remaining_ticks();
     }
     auto navigation_update_countdowns_periods(this auto& self) {
-        return self.get_view().navigation_update_countdowns_periods();
+        return self.view().navigation_update_countdowns_periods();
     }
     auto view_separation_steering(this auto& self) {
-        return self.get_view().view_separation_steering();
+        return self.view().view_separation_steering();
     }
-    auto navigation_risk_tiers(this auto& self) { return self.get_view().navigation_risk_tiers(); }
+    auto navigation_risk_tiers(this auto& self) { return self.view().navigation_risk_tiers(); }
     auto navigation_lower_risk_scan_counts(this auto& self) {
-        return self.get_view().navigation_lower_risk_scan_counts();
+        return self.view().navigation_lower_risk_scan_counts();
     }
     auto avoidance_choice_indices(this auto& self) {
-        return self.get_view().avoidance_choice_indices();
+        return self.view().avoidance_choice_indices();
     }
     auto avoidance_clear_scan_counts(this auto& self) {
-        return self.get_view().avoidance_clear_scan_counts();
+        return self.view().avoidance_clear_scan_counts();
     }
-    auto attack_cooldowns(this auto& self) { return self.get_view().attack_cooldowns(); }
-    auto target_ids(this auto& self) { return self.get_view().target_ids(); }
-    auto view_target_locations(this auto& self) { return self.get_view().view_target_locations(); }
-    auto view_target_velocities(this auto& self) {
-        return self.get_view().view_target_velocities();
-    }
-    auto intercept_times(this auto& self) { return self.get_view().intercept_times(); }
-    auto target_distance_sq(this auto& self) { return self.get_view().target_distance_sq(); }
-    auto target_distances(this auto& self) { return self.get_view().target_distances(); }
-    auto target_radii(this auto& self) { return self.get_view().target_radii(); }
+    auto attack_cooldowns(this auto& self) { return self.view().attack_cooldowns(); }
+    auto target_ids(this auto& self) { return self.view().target_ids(); }
+    auto view_target_locations(this auto& self) { return self.view().view_target_locations(); }
+    auto view_target_velocities(this auto& self) { return self.view().view_target_velocities(); }
+    auto intercept_times(this auto& self) { return self.view().intercept_times(); }
+    auto target_distance_sq(this auto& self) { return self.view().target_distance_sq(); }
+    auto target_distances(this auto& self) { return self.view().target_distances(); }
+    auto target_radii(this auto& self) { return self.view().target_radii(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         FighterEntityData,
         ::ioj::sim::fighter_entity_data::Layout::column_types,
@@ -925,37 +923,36 @@ struct FighterEntityData
              float const new_target_distances,
              float const new_target_radii) {
         assert(index < num());
-        get_view().entity_ids()[index] = new_entity_ids;
-        get_view().integral_biases()[index] = new_integral_biases;
-        get_view().float_biases()[index] = new_float_biases;
-        get_view().view_locations().set(index, new_locations);
-        get_view().view_desired_move_locations().set(index, new_desired_move_locations);
-        get_view().view_aim_directions().set(index, new_aim_directions);
-        get_view().view_planned_aim_directions().set(index, new_planned_aim_directions);
-        get_view().view_desired_aiming_directions().set(index, new_desired_aiming_directions);
-        get_view().view_movement_directions().set(index, new_movement_directions);
-        get_view().view_velocities().set(index, new_velocities);
-        get_view().move_distances()[index] = new_move_distances;
-        get_view().speeds()[index] = new_speeds;
-        get_view().teams()[index] = new_teams;
-        get_view().navigation_update_countdowns_remaining_ticks()[index] =
+        view().entity_ids()[index] = new_entity_ids;
+        view().integral_biases()[index] = new_integral_biases;
+        view().float_biases()[index] = new_float_biases;
+        view().view_locations().set(index, new_locations);
+        view().view_desired_move_locations().set(index, new_desired_move_locations);
+        view().view_aim_directions().set(index, new_aim_directions);
+        view().view_planned_aim_directions().set(index, new_planned_aim_directions);
+        view().view_desired_aiming_directions().set(index, new_desired_aiming_directions);
+        view().view_movement_directions().set(index, new_movement_directions);
+        view().view_velocities().set(index, new_velocities);
+        view().move_distances()[index] = new_move_distances;
+        view().speeds()[index] = new_speeds;
+        view().teams()[index] = new_teams;
+        view().navigation_update_countdowns_remaining_ticks()[index] =
             new_navigation_update_countdowns_remaining_ticks;
-        get_view().navigation_update_countdowns_periods()[index] =
+        view().navigation_update_countdowns_periods()[index] =
             new_navigation_update_countdowns_periods;
-        get_view().view_separation_steering().set(index, new_separation_steering);
-        get_view().navigation_risk_tiers()[index] = new_navigation_risk_tiers;
-        get_view().navigation_lower_risk_scan_counts()[index] =
-            new_navigation_lower_risk_scan_counts;
-        get_view().avoidance_choice_indices()[index] = new_avoidance_choice_indices;
-        get_view().avoidance_clear_scan_counts()[index] = new_avoidance_clear_scan_counts;
-        get_view().attack_cooldowns()[index] = new_attack_cooldowns;
-        get_view().target_ids()[index] = new_target_ids;
-        get_view().view_target_locations().set(index, new_target_locations);
-        get_view().view_target_velocities().set(index, new_target_velocities);
-        get_view().intercept_times()[index] = new_intercept_times;
-        get_view().target_distance_sq()[index] = new_target_distance_sq;
-        get_view().target_distances()[index] = new_target_distances;
-        get_view().target_radii()[index] = new_target_radii;
+        view().view_separation_steering().set(index, new_separation_steering);
+        view().navigation_risk_tiers()[index] = new_navigation_risk_tiers;
+        view().navigation_lower_risk_scan_counts()[index] = new_navigation_lower_risk_scan_counts;
+        view().avoidance_choice_indices()[index] = new_avoidance_choice_indices;
+        view().avoidance_clear_scan_counts()[index] = new_avoidance_clear_scan_counts;
+        view().attack_cooldowns()[index] = new_attack_cooldowns;
+        view().target_ids()[index] = new_target_ids;
+        view().view_target_locations().set(index, new_target_locations);
+        view().view_target_velocities().set(index, new_target_velocities);
+        view().intercept_times()[index] = new_intercept_times;
+        view().target_distance_sq()[index] = new_target_distance_sq;
+        view().target_distances()[index] = new_target_distances;
+        view().target_radii()[index] = new_target_radii;
     }
     size_type add(EntityId const new_entity_ids,
                   std::uint32_t const new_integral_biases,

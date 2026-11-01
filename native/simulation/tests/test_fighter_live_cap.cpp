@@ -46,7 +46,7 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
 
 void start_and_tick(LevelSim& simulation) {
     simulation.finish_initialisation();
-    auto const clk_period{simulation.get_clock().get_tick_period()};
+    auto const clk_period{simulation.clock().tick_period()};
     simulation.start();
     simulation.advance(clk_period);
     simulation.advance(clk_period);
@@ -54,7 +54,7 @@ void start_and_tick(LevelSim& simulation) {
 
 auto count_team(LevelSim const& simulation, Team const team) -> std::int32_t {
     std::int32_t count{};
-    for (auto const fighter_team : simulation.get_fighters().get_entities().teams()) {
+    for (auto const fighter_team : simulation.fighters().entities().teams()) {
         count += fighter_team == team ? 1 : 0;
     }
     return count;
@@ -75,7 +75,7 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
         auto data{make_cap_battle(participants, team_count * 3 + remainder, 4)};
         LevelSim simulation{std::move(data)};
         start_and_tick(simulation);
-        EXPECT_EQ(simulation.get_fighters().get_num_instances(), team_count * 3)
+        EXPECT_EQ(simulation.fighters().num_instances(), team_count * 3)
             << "Floor partition leaves the global remainder unused";
         for (auto const team : participants) {
             EXPECT_EQ(count_team(simulation, team), 3)
@@ -87,22 +87,22 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
     auto data{make_cap_battle(one_capital, 7, 8)};
     LevelSim simulation{std::move(data)};
     start_and_tick(simulation);
-    EXPECT_EQ(simulation.get_fighters().get_num_instances(), 7)
+    EXPECT_EQ(simulation.fighters().num_instances(), 7)
         << "An absent team does not reserve fighter capacity";
 
     std::vector<Team> const repeated_capital_teams{Team::White, Team::White, Team::Red};
     auto inferred_data{make_cap_battle(repeated_capital_teams, 14, 8)};
     LevelSim inferred_simulation{std::move(inferred_data)};
     start_and_tick(inferred_simulation);
-    EXPECT_EQ(inferred_simulation.get_fighters().get_num_instances(), 14)
+    EXPECT_EQ(inferred_simulation.fighters().num_instances(), 14)
         << "Compiled team inference deduplicates team sources";
 
     LevelSim empty_simulation{make_cap_battle(std::span<Team const>{}, 10, 0)};
     empty_simulation.finish_initialisation();
-    auto const empty_clk_period{empty_simulation.get_clock().get_tick_period()};
+    auto const empty_clk_period{empty_simulation.clock().tick_period()};
     empty_simulation.start();
     empty_simulation.advance(empty_clk_period);
-    EXPECT_EQ(empty_simulation.get_fighters().get_num_instances(), 0)
+    EXPECT_EQ(empty_simulation.fighters().num_instances(), 0)
         << "A zero-team simulation remains empty";
 }
 
@@ -119,7 +119,7 @@ TEST(FighterLiveCap, DerivedParticipantsIncludeFutureSpawns) {
     schedule.event_group_counts = {{}};
     auto const payload_offset{schedule.turret_spawns.num()};
     schedule.turret_spawns.add_defaulted(1);
-    auto const turret{schedule.turret_spawns.get_view(payload_offset, 1)};
+    auto const turret{schedule.turret_spawns.view(payload_offset, 1)};
     turret.entity_indices()[0] = with_reinforcements.level_events.initialisation.entity_count++;
     turret.teams()[0] = Team::Red;
     turret.healths()[0] = Health{100};
@@ -130,7 +130,7 @@ TEST(FighterLiveCap, DerivedParticipantsIncludeFutureSpawns) {
     start_and_tick(scheduled_simulation);
     EXPECT_EQ(count_team(scheduled_simulation, Team::White), 3)
         << "Reserve the future team's share before its first entity spawns";
-    EXPECT_EQ(scheduled_simulation.get_read_access().get_turrets().get_entities().num(), 0);
+    EXPECT_EQ(scheduled_simulation.read_access().turrets().get_entities().num(), 0);
 }
 
 TEST(FighterLiveCap, UnknownTeamRejected) {
@@ -139,16 +139,15 @@ TEST(FighterLiveCap, UnknownTeamRejected) {
     auto data{make_cap_battle(capitals, 10, 0)};
     LevelSim simulation{std::move(data)};
     start_and_tick(simulation);
-    auto const clk_period{simulation.get_clock().get_tick_period()};
+    auto const clk_period{simulation.clock().tick_period()};
 
     FighterSpawnQueue spawns;
     spawns.add_defaulted(1);
-    spawns.get_view().teams()[0] = Team::White;
-    LevelSimTestAccess::queue_fighter_spawns(simulation, spawns.get_const_view());
+    spawns.view().teams()[0] = Team::White;
+    LevelSimTestAccess::queue_fighter_spawns(simulation, spawns.const_view());
     simulation.advance(clk_period);
 
-    EXPECT_EQ(simulation.get_fighters().get_num_instances(), 0)
-        << "Unknown team creates no fighter";
+    EXPECT_EQ(simulation.fighters().num_instances(), 0) << "Unknown team creates no fighter";
 }
 
 } // namespace tests

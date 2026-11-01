@@ -417,7 +417,7 @@ struct PackedFieldTable
         : PackedFieldTable{*std::pmr::get_default_resource()} {}
     explicit PackedFieldTable(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~PackedFieldTable() { Operations::release_storage(*this); }
     PackedFieldTable(PackedFieldTable const&) = delete;
     auto operator=(PackedFieldTable const&) -> PackedFieldTable& = delete;
@@ -432,36 +432,30 @@ struct PackedFieldTable
     template <typename Byte>
     using DataPointers = ::ioj::layout::packed_field_table::DataPointers<Byte>;
   public:
-    auto parent(this auto& self) { return self.get_view().parent(); }
-    auto segment(this auto& self) { return self.get_view().segment(); }
-    auto name(this auto& self) { return self.get_view().name(); }
-    auto semantic_type(this auto& self) { return self.get_view().semantic_type(); }
-    auto logical_type(this auto& self) { return self.get_view().logical_type(); }
-    auto kind(this auto& self) { return self.get_view().kind(); }
-    auto reserved(this auto& self) { return self.get_view().reserved(); }
-    auto schema_bit_width(this auto& self) { return self.get_view().schema_bit_width(); }
-    auto schema_bit_width_auto(this auto& self) { return self.get_view().schema_bit_width_auto(); }
-    auto bit_width(this auto& self) { return self.get_view().bit_width(); }
-    auto overridden(this auto& self) { return self.get_view().overridden(); }
-    auto least_significant_bit(this auto& self) { return self.get_view().least_significant_bit(); }
-    auto most_significant_bit(this auto& self) { return self.get_view().most_significant_bit(); }
-    auto maximum_unsigned_value(this auto& self) {
-        return self.get_view().maximum_unsigned_value();
-    }
-    auto minimum_signed_value(this auto& self) { return self.get_view().minimum_signed_value(); }
-    auto maximum_signed_value(this auto& self) { return self.get_view().maximum_signed_value(); }
-    auto minimum_semantic_value(this auto& self) {
-        return self.get_view().minimum_semantic_value();
-    }
-    auto maximum_semantic_value(this auto& self) {
-        return self.get_view().maximum_semantic_value();
-    }
-    auto semantic_value_count(this auto& self) { return self.get_view().semantic_value_count(); }
-    auto sentinel_code_count(this auto& self) { return self.get_view().sentinel_code_count(); }
-    auto required_code_count(this auto& self) { return self.get_view().required_code_count(); }
-    auto minimum_required_bits(this auto& self) { return self.get_view().minimum_required_bits(); }
-    auto unused_codes(this auto& self) { return self.get_view().unused_codes(); }
-    auto codes(this auto& self) { return self.get_view().codes(); }
+    auto parent(this auto& self) { return self.view().parent(); }
+    auto segment(this auto& self) { return self.view().segment(); }
+    auto name(this auto& self) { return self.view().name(); }
+    auto semantic_type(this auto& self) { return self.view().semantic_type(); }
+    auto logical_type(this auto& self) { return self.view().logical_type(); }
+    auto kind(this auto& self) { return self.view().kind(); }
+    auto reserved(this auto& self) { return self.view().reserved(); }
+    auto schema_bit_width(this auto& self) { return self.view().schema_bit_width(); }
+    auto schema_bit_width_auto(this auto& self) { return self.view().schema_bit_width_auto(); }
+    auto bit_width(this auto& self) { return self.view().bit_width(); }
+    auto overridden(this auto& self) { return self.view().overridden(); }
+    auto least_significant_bit(this auto& self) { return self.view().least_significant_bit(); }
+    auto most_significant_bit(this auto& self) { return self.view().most_significant_bit(); }
+    auto maximum_unsigned_value(this auto& self) { return self.view().maximum_unsigned_value(); }
+    auto minimum_signed_value(this auto& self) { return self.view().minimum_signed_value(); }
+    auto maximum_signed_value(this auto& self) { return self.view().maximum_signed_value(); }
+    auto minimum_semantic_value(this auto& self) { return self.view().minimum_semantic_value(); }
+    auto maximum_semantic_value(this auto& self) { return self.view().maximum_semantic_value(); }
+    auto semantic_value_count(this auto& self) { return self.view().semantic_value_count(); }
+    auto sentinel_code_count(this auto& self) { return self.view().sentinel_code_count(); }
+    auto required_code_count(this auto& self) { return self.view().required_code_count(); }
+    auto minimum_required_bits(this auto& self) { return self.view().minimum_required_bits(); }
+    auto unused_codes(this auto& self) { return self.view().unused_codes(); }
+    auto codes(this auto& self) { return self.view().codes(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         PackedFieldTable,
         ::ioj::layout::packed_field_table::Layout::column_types,

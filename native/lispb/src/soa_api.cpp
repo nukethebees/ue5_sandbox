@@ -123,7 +123,7 @@ auto compact_row_api(LoweringContext& context,
             auto const name{(members.kind[row] == SoaMemberKind::nested ? "view_" : "") +
                             context.text(members.name[row])};
             result
-                .add(ir.raw("auto " + name + "(this auto& self) { return self.get_view()." + name +
+                .add(ir.raw("auto " + name + "(this auto& self) { return self.view()." + name +
                             "(); }"))
                 .new_lines(1);
         }
@@ -207,7 +207,7 @@ auto compact_row_api(LoweringContext& context,
             logical_parameters.push_back(ir.parameter(ir.types.decorate(type, "", " const"), name));
             logical_arguments.push_back(ir.named(name));
             auto const access{
-                logical_column_access(context, schema, column, owner ? "get_view()" : "this->")};
+                logical_column_access(context, schema, column, owner ? "view()" : "this->")};
             logical_assignments.add(ir.raw(nested ? access + ".set(index, " + name + ");"
                                                   : access + "[index] = " + name + ";"));
         }
@@ -255,8 +255,7 @@ auto expand_columns(LoweringContext& context,
                          std::size_t const end,
                          std::span<std::string const> const path) {
                          result.append(body.substr(copied, begin - copied));
-                         auto const prefix{receiver == SoaReceiver::owner ? "get_view()"
-                                                                          : "this->"};
+                         auto const prefix{receiver == SoaReceiver::owner ? "view()" : "this->"};
                          result += logical_column_access(context, schema, path, prefix);
                          copied = end;
                      });
@@ -327,7 +326,7 @@ auto lower_soa_api(LoweringContext& parent_context,
                 auto const count{columns.size()};
                 for (std::size_t column{}; column < count; ++column) {
                     append_body.add(ir.assignment(
-                        ir.subscript(ir.call(ir.member_access(ir.call(ir.named("this->get_view")),
+                        ir.subscript(ir.call(ir.member_access(ir.call(ir.named("this->view")),
                                                               context.text(columns[column]))),
                                      index),
                         ir.named(parameter_schemas.name[parameters[column]])));
@@ -377,7 +376,7 @@ auto lower_soa_api(LoweringContext& parent_context,
             .new_lines(1);
         std::string expression;
         if (receiver == SoaReceiver::owner) {
-            expression = "get_const_view()[index]";
+            expression = "const_view()[index]";
         } else {
             auto const constructor{soas.equivalent_constructor[schema]};
             expression = constructor ? context.text(*constructor) + "(" : "equivalent_type{";

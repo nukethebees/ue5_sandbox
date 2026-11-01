@@ -347,7 +347,7 @@ struct EntityCellData
         : EntityCellData{*std::pmr::get_default_resource()} {}
     explicit EntityCellData(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~EntityCellData() { Operations::release_storage(*this); }
     EntityCellData(EntityCellData const&) = delete;
     auto operator=(EntityCellData const&) -> EntityCellData& = delete;
@@ -362,11 +362,11 @@ struct EntityCellData
     template <typename Byte>
     using DataPointers = ::ioj::sim::collision::entity_cell_data::DataPointers<Byte>;
   public:
-    auto view_min_points(this auto& self) { return self.get_view().view_min_points(); }
-    auto view_max_points(this auto& self) { return self.get_view().view_max_points(); }
-    auto view_min_cells(this auto& self) { return self.get_view().view_min_cells(); }
-    auto view_max_cells(this auto& self) { return self.get_view().view_max_cells(); }
-    auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }
+    auto view_min_points(this auto& self) { return self.view().view_min_points(); }
+    auto view_max_points(this auto& self) { return self.view().view_max_points(); }
+    auto view_min_cells(this auto& self) { return self.view().view_min_cells(); }
+    auto view_max_cells(this auto& self) { return self.view().view_max_cells(); }
+    auto entity_ids(this auto& self) { return self.view().entity_ids(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         EntityCellData,
         ::ioj::sim::collision::entity_cell_data::Layout::column_types,
@@ -380,11 +380,11 @@ struct EntityCellData
              CellCoord const new_max_cells,
              EntityId const new_entity_ids) {
         assert(index < num());
-        get_view().view_min_points().set(index, new_min_points);
-        get_view().view_max_points().set(index, new_max_points);
-        get_view().view_min_cells().set(index, new_min_cells);
-        get_view().view_max_cells().set(index, new_max_cells);
-        get_view().entity_ids()[index] = new_entity_ids;
+        view().view_min_points().set(index, new_min_points);
+        view().view_max_points().set(index, new_max_points);
+        view().view_min_cells().set(index, new_min_cells);
+        view().view_max_cells().set(index, new_max_cells);
+        view().entity_ids()[index] = new_entity_ids;
     }
     size_type add(Vector3f const new_min_points,
                   Vector3f const new_max_points,

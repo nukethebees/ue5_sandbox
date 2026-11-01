@@ -66,7 +66,7 @@ auto destroyed(EntityId const id,
                EntityLedger const& ledger,
                std::span<LifeState const> const life_states) -> bool {
     assert(id.is_valid());
-    auto const row{ledger.get_history_index(id)};
+    auto const row{ledger.history_index(id)};
     assert(row < life_states.size());
     return life_states[row] != LifeState::Alive;
 }
@@ -178,7 +178,7 @@ auto Mission::compile(levels::MissionDefinition const& definition,
                     auto const& condition{std::get<levels::TimeElapsedExpr>(expression.payload)};
                     kind = LeafKind::TimeElapsed;
 
-                    auto const ticks{condition.seconds.get() * clock.get_tick_rate().get_hz()};
+                    auto const ticks{condition.seconds.get() * clock.tick_rate().hz()};
                     if (ticks >=
                         static_cast<double>(std::numeric_limits<SimTick::value_type>::max())) {
                         return std::unexpected{
@@ -261,7 +261,7 @@ void Mission::evaluate(MissionEvaluationContext const& inputs) {
 /* **************************************** */
 // Inspection
 /* **************************************** */
-auto Mission::get_team_completion(std::optional<Team> const team) const
+auto Mission::team_completion(std::optional<Team> const team) const
     -> std::optional<TeamMissionCompletion> {
     std::optional<TeamMissionCompletion> result;
     if (team) {
@@ -476,7 +476,7 @@ void Mission::evaluate_leaves(MissionEvaluationContext const& inputs) {
 void Mission::evaluate_destroyed(std::span<LeafDataHandle const> const run,
                                  MissionEvaluationContext const& inputs) {
     auto const& leaves{leaves_};
-    auto const life_states{inputs.ledger.get_unique_entities().life_state()};
+    auto const life_states{inputs.ledger.unique_entities().life_state()};
 
     for (auto const data_handle : run) {
         auto const id{mission_evaluation_detail::entity(
@@ -525,7 +525,7 @@ void Mission::evaluate_kills(std::span<LeafDataHandle const> const run,
         for (auto index{sources.start()}; index < sources_end; ++index) {
             auto const id{mission_evaluation_detail::entity(inputs, leaves.kill_entities[index])};
             if (id.is_valid()) {
-                kills += inputs.ledger.get_kills(id);
+                kills += inputs.ledger.kills(id);
             }
         }
 
@@ -537,7 +537,7 @@ void Mission::evaluate_kills(std::span<LeafDataHandle const> const run,
 void Mission::evaluate_reached_position(std::span<LeafDataHandle const> const run,
                                         MissionEvaluationContext const& inputs) {
     auto const& leaves{leaves_};
-    auto const life_states{inputs.ledger.get_unique_entities().life_state()};
+    auto const life_states{inputs.ledger.unique_entities().life_state()};
 
     assert(inputs.spatial && inputs.scratch);
 
@@ -565,7 +565,7 @@ void Mission::evaluate_reached_position(std::span<LeafDataHandle const> const ru
 
     Vectors3f positions{*inputs.scratch};
     positions.add_uninitialised(live_count);
-    auto const output{positions.get_view().resolve()};
+    auto const output{positions.view().resolve()};
 
     inputs.spatial->copy_entity_locations(
         std::span<EntityId const>{ids.data(), live_count}, output, inputs.scratch);

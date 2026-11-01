@@ -40,9 +40,9 @@ struct CollisionUniformGrid {
     auto is_configured() const noexcept -> bool;
     // Rebuild entity and static grids after changing geometry, before querying them.
     void set_geometry(GridGeometry geometry) noexcept;
-    auto get_grid_dims() const noexcept -> CellCoord;
-    auto get_max_grid_coord() const noexcept -> CellCoord;
-    auto get_cell_dims() const noexcept -> Vector3f;
+    auto grid_dims() const noexcept -> CellCoord;
+    auto max_grid_coord() const noexcept -> CellCoord;
+    auto cell_dims() const noexcept -> Vector3f;
     auto num_cells() const -> GridCellCount;
     auto to_cell_coord(Vector3f pos) const -> CellCoord;
     auto to_cell_coord_bounds(Vector3f min_point, Vector3f max_point) const -> CellCoordBounds;
@@ -58,17 +58,17 @@ struct CollisionUniformGrid {
     /* **************************************** */
     void set_static_aabbs(WorldAABBs static_aabbs);
     auto add_static_aabb(Vector3f min_point, Vector3f max_point) -> StaticGeometryIndex;
-    auto get_static_aabbs() const noexcept -> WorldAABBs const& { return static_storage_.aabbs(); }
+    auto static_aabbs() const noexcept -> WorldAABBs const& { return static_storage_.aabbs(); }
 
     /* **************************************** */
     // Entity collision
     /* **************************************** */
     void rebuild_entity_grid(EntityAABBs const& entity_aabbs, LevelReadAccess const& level);
-    auto get_entity_world_bounds() const -> EntityCellData::ConstView;
+    auto entity_world_bounds() const -> EntityCellData::ConstView;
     auto entity_row_to_aabb_row(EntityType const type) const -> std::span<std::uint32_t const> {
         return entity_storage_.entity_row_to_aabb_row[type];
     }
-    auto get_cell_entities(CellCoord const cell_coord) const -> std::span<EntityId const> {
+    auto cell_entities(CellCoord const cell_coord) const -> std::span<EntityId const> {
         auto const dimensions{geometry_.dimensions};
         assert(cell_coord.x() >= 0 && cell_coord.x() < dimensions.x() && cell_coord.y() >= 0 &&
                cell_coord.y() < dimensions.y() && cell_coord.z() >= 0 &&

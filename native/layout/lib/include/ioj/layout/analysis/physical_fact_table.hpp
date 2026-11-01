@@ -218,7 +218,7 @@ struct PhysicalFactTable
         : PhysicalFactTable{*std::pmr::get_default_resource()} {}
     explicit PhysicalFactTable(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~PhysicalFactTable() { Operations::release_storage(*this); }
     PhysicalFactTable(PhysicalFactTable const&) = delete;
     auto operator=(PhysicalFactTable const&) -> PhysicalFactTable& = delete;
@@ -233,12 +233,12 @@ struct PhysicalFactTable
     template <typename Byte>
     using DataPointers = ::ioj::layout::physical_fact_table::DataPointers<Byte>;
   public:
-    auto size_bytes(this auto& self) { return self.get_view().size_bytes(); }
-    auto alignment_bytes(this auto& self) { return self.get_view().alignment_bytes(); }
-    auto signedness(this auto& self) { return self.get_view().signedness(); }
-    auto unsigned_value_bits(this auto& self) { return self.get_view().unsigned_value_bits(); }
-    auto provenance(this auto& self) { return self.get_view().provenance(); }
-    auto origin(this auto& self) { return self.get_view().origin(); }
+    auto size_bytes(this auto& self) { return self.view().size_bytes(); }
+    auto alignment_bytes(this auto& self) { return self.view().alignment_bytes(); }
+    auto signedness(this auto& self) { return self.view().signedness(); }
+    auto unsigned_value_bits(this auto& self) { return self.view().unsigned_value_bits(); }
+    auto provenance(this auto& self) { return self.view().provenance(); }
+    auto origin(this auto& self) { return self.view().origin(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         PhysicalFactTable,
         ::ioj::layout::physical_fact_table::Layout::column_types,

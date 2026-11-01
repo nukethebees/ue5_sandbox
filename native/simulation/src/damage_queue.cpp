@@ -14,7 +14,7 @@ void DamageQueue::prepare(EntityLookupTables const& indexes,
         return;
     }
 
-    auto const damaged_entities{events_.get_const_view().damaged_entities()};
+    auto const damaged_entities{events_.const_view().damaged_entities()};
     for (std::uint32_t i{}; i < count; ++i) {
         auto const id{damaged_entities[i]};
         assert(id.is_valid());
@@ -42,7 +42,7 @@ void DamageQueue::prepare(EntityLookupTables const& indexes,
             auto const destination{static_cast<std::uint32_t>(write_offsets[type]++)};
             order[destination] = static_cast<std::int32_t>(i);
         }
-        auto const events{events_.get_view()};
+        auto const events{events_.view()};
         auto const recipients{events.damaged_entities()};
         auto const amounts{events.damage_amounts()};
         auto const instigators{events.instigators()};
@@ -54,7 +54,7 @@ void DamageQueue::prepare(EntityLookupTables const& indexes,
 
     // Filter retired recipients with one bound lookup table per type run.
     std::uint32_t destination{};
-    auto const sorted_events{events_.get_const_view()};
+    auto const sorted_events{events_.const_view()};
     auto const sorted_entities{sorted_events.damaged_entities()};
     for (auto const type : EnumTraits<EntityType>::values) {
         auto const source{spans_[type]};

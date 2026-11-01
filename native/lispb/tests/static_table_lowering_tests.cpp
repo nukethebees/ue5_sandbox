@@ -68,7 +68,7 @@ TEST(StaticTableLowering, GeneratesFixedRowsColumnsAndCoreFunctions) {
                          "TStaticArray<FValue, num_rows> values{};",
                          "namespace project::generated",
                          "class FForward;"});
-    expect_contains_none(output, {"get_view", "set_num"});
+    expect_contains_none(output, {"view", "set_num"});
 }
 
 TEST(StaticTableLowering, GeneratesMultipleTablesInOneHeader) {

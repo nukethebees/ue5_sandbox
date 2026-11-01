@@ -55,11 +55,11 @@ auto CollisionSystem::detect_overlaps(std::span<EntityId const> const overlap_ca
     collect_overlaps_for_candidates(
         overlap_candidates, entity_overlaps, static_overlaps, scratch_resource);
 
-    auto const entity_entity_overlaps{entity_overlaps.get_const_view()};
-    auto const entity_static_overlaps{static_overlaps.get_const_view()};
+    auto const entity_entity_overlaps{entity_overlaps.const_view()};
+    auto const entity_static_overlaps{static_overlaps.const_view()};
     overlap_event_storage_.append_batch(entity_entity_overlaps, entity_static_overlaps);
 
-    auto const events{overlap_event_storage_.get_view()};
+    auto const events{overlap_event_storage_.view()};
     return events.get_batch(static_cast<AABBOverlapEventBatchIndex>(events.batches.size() - 1));
 }
 void CollisionSystem::collect_overlaps_for_candidates(
@@ -89,7 +89,7 @@ void CollisionSystem::collect_overlaps_for_candidates(
     handles.set_num(candidate_count);
     present.set_num(candidate_count);
     auto const runs{entity_tables_.lookups.lookup_handles(overlap_candidates, order, handles)};
-    auto const built{uniform_grid_.get_entity_world_bounds()};
+    auto const built{uniform_grid_.entity_world_bounds()};
     auto const built_ids{built.entity_ids()};
     auto const min_points{built.view_min_points().resolve()};
     auto const max_points{built.view_max_points().resolve()};
@@ -148,8 +148,8 @@ void CollisionSystem::collect_overlaps_for_candidates(
         static_overlaps.set_num(static_cast<std::uint32_t>(static_total));
     }
 
-    auto const entity_output{entity_overlaps.get_view()};
-    auto const static_output{static_overlaps.get_view()};
+    auto const entity_output{entity_overlaps.view()};
+    auto const static_output{static_overlaps.view()};
     auto const first_entity_output{entity_output.first_entities()};
     auto const second_entity_output{entity_output.second_entities()};
     auto const static_entity_output{static_output.entities()};
@@ -198,8 +198,8 @@ void CollisionSystem::finalize_overlaps(EntityEntityOverlaps& entity_overlaps,
     FrameArray<std::int32_t> sort_indices{scratch_resource};
     sort_indices.reserve(sort_index_count);
 
-    auto const entity_columns{entity_overlaps.get_view()};
-    auto const static_columns{static_overlaps.get_view()};
+    auto const entity_columns{entity_overlaps.view()};
+    auto const static_columns{static_overlaps.view()};
     auto const first_entities{entity_columns.first_entities()};
     auto const second_entities{entity_columns.second_entities()};
     auto const static_entities{static_columns.entities()};
@@ -262,10 +262,10 @@ void CollisionSystem::finalize_overlaps(EntityEntityOverlaps& entity_overlaps,
 void CollisionSystem::reset_frame_collision_events() {
     overlap_event_storage_.reset();
 }
-auto CollisionSystem::get_entity_collision_bounds() const -> EntityCellData::ConstView {
-    return uniform_grid_.get_entity_world_bounds();
+auto CollisionSystem::entity_collision_bounds() const -> EntityCellData::ConstView {
+    return uniform_grid_.entity_world_bounds();
 }
-auto CollisionSystem::get_static_collision_bounds() const -> WorldAABBs::ConstView {
-    return uniform_grid_.get_static_aabbs().get_const_view();
+auto CollisionSystem::static_collision_bounds() const -> WorldAABBs::ConstView {
+    return uniform_grid_.static_aabbs().const_view();
 }
 }

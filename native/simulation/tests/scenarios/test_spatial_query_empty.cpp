@@ -21,15 +21,15 @@ TEST(WorldlessSpaceGameSimulation, SpatialQueryEmptyBatchesAndWorld) {
     Vectors3f starts;
     Vectors3f ends;
     queries.trace_line_of_sight(
-        starts.get_const_view().resolve(), ends.get_const_view().resolve(), ids, &query_memory);
+        starts.const_view().resolve(), ends.const_view().resolve(), ids, &query_memory);
     std::vector<LineQueryResult> line_of_sight{};
     queries.has_line_of_sight_to_targets(
-        Vector3f{0.f, 0.f, 0.f}, ends.get_const_view().resolve(), {}, line_of_sight, &query_memory);
+        Vector3f{0.f, 0.f, 0.f}, ends.const_view().resolve(), {}, line_of_sight, &query_memory);
     std::vector<EntityId> results{};
     auto const count{queries.collect_non_team_entities_in_range(
         Vector3f{0.f, 0.f, 0.f}, Team::Blue, 1000.f, results, &query_memory)};
     EXPECT_EQ(count, 0) << "Empty range query has no results";
-    EXPECT_TRUE(!queries.get_any_non_team_entity(Team::Blue, EntityType::CapitalShip).is_valid())
+    EXPECT_TRUE(!queries.any_non_team_entity(Team::Blue, EntityType::CapitalShip).is_valid())
         << "Empty world has no arbitrary enemy";
 }
 

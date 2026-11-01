@@ -25,10 +25,10 @@ TEST(WorldlessSpaceGameSimulation, PlayerShipVersusCapital) {
 
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    auto* const player{harness.get_simulation().get_player_ship_simulation()};
-    auto const& fighters{harness.get_simulation().get_fighters()};
+    auto* const player{harness.simulation().player_ship_simulation()};
+    auto const& fighters{harness.simulation().fighters()};
     assert(player);
-    harness.get_simulation().get_player_ship_commands()->start_boost();
+    harness.simulation().player_ship_commands()->start_boost();
     auto const player_id{player->unique_entity_id};
     struct Sample {
         Vector3d player_location;
@@ -38,13 +38,13 @@ TEST(WorldlessSpaceGameSimulation, PlayerShipVersusCapital) {
     };
     TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim&) {
-        Sample sample{.player_location = player->get_physical_state().transform.location,
+        Sample sample{.player_location = player->physical_state().transform.location,
                       .accessor_location =
-                          Vector3d{observe_entity(harness.get_simulation(), player_id)->location}};
+                          Vector3d{observe_entity(harness.simulation(), player_id)->location}};
         sample.fighter_target_locations =
-            tests::copy_vectors(fighters.get_entities().view_target_locations());
-        sample.fighter_locations = tests::copy_vectors(fighters.get_entities().view_locations());
-        samples.add(harness.get_time(), std::move(sample));
+            tests::copy_vectors(fighters.entities().view_target_locations());
+        sample.fighter_locations = tests::copy_vectors(fighters.entities().view_locations());
+        samples.add(harness.time(), std::move(sample));
     };
     harness.timeline.finish_at(5.6);
     ASSERT_TRUE(harness.run_until_timeline_finished(6.0))

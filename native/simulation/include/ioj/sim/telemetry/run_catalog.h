@@ -20,28 +20,24 @@ class RunCatalog {
     auto select_run(std::string_view run_id) -> bool;
     auto select_baseline(std::string_view run_id) -> bool;
 
-    [[nodiscard]] auto get_runs() const -> std::span<RunSummary const> { return filtered_; }
-    [[nodiscard]] auto get_level_filters() const -> std::span<std::string const> {
+    [[nodiscard]] auto runs() const -> std::span<RunSummary const> { return filtered_; }
+    [[nodiscard]] auto level_filters() const -> std::span<std::string const> {
         return level_filters_;
     }
-    [[nodiscard]] auto get_selected_run_id() const -> std::string const& {
-        return selected_run_id_;
-    }
-    [[nodiscard]] auto get_selected_record() const -> Report const* {
+    [[nodiscard]] auto selected_run_id() const -> std::string const& { return selected_run_id_; }
+    [[nodiscard]] auto selected_record() const -> Report const* {
         return selected_record_ ? &*selected_record_ : nullptr;
     }
-    [[nodiscard]] auto get_selected_error() const -> std::string const& { return selected_error_; }
-    [[nodiscard]] auto get_baseline_run_id() const -> std::string const& {
-        return baseline_run_id_;
-    }
-    [[nodiscard]] auto get_baseline_record() const -> Report const* {
+    [[nodiscard]] auto selected_error() const -> std::string const& { return selected_error_; }
+    [[nodiscard]] auto baseline_run_id() const -> std::string const& { return baseline_run_id_; }
+    [[nodiscard]] auto baseline_record() const -> Report const* {
         return baseline_record_ ? &*baseline_record_ : nullptr;
     }
-    [[nodiscard]] auto get_baseline_candidates() const -> std::vector<RunSummary>;
-    [[nodiscard]] auto get_unreadable_file_count() const noexcept -> std::size_t {
+    [[nodiscard]] auto baseline_candidates() const -> std::vector<RunSummary>;
+    [[nodiscard]] auto unreadable_file_count() const noexcept -> std::size_t {
         return unreadable_file_count_;
     }
-    [[nodiscard]] auto get_level_filter() const -> std::string const& { return level_filter_; }
+    [[nodiscard]] auto level_filter() const -> std::string const& { return level_filter_; }
   private:
     void rebuild_filter();
     void load_selection();

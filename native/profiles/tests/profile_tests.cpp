@@ -82,9 +82,9 @@ TEST(ProfileManager, CreatesEmptyDefaultProfile) {
     FakeProfileStorage storage;
     ProfileManager manager{storage.make()};
     ASSERT_TRUE(manager.initialise());
-    ASSERT_EQ(manager.get_profiles().size(), 1u);
-    EXPECT_EQ(manager.get_profiles().front().profile_id, manager.get_active_profile_id());
-    EXPECT_TRUE(manager.get_active_records().empty());
+    ASSERT_EQ(manager.profiles().size(), 1u);
+    EXPECT_EQ(manager.profiles().front().profile_id, manager.active_profile_id());
+    EXPECT_TRUE(manager.active_records().empty());
 }
 TEST(ProfileManager, CreatesAndActivatesUniquelyNamedProfiles) {
 
@@ -97,7 +97,7 @@ TEST(ProfileManager, CreatesAndActivatesUniquelyNamedProfiles) {
 
     auto const created{manager.create_profile("  Commander  ")};
     EXPECT_EQ(created.result, CreateProfileResult::succeeded) << "Profile is created";
-    EXPECT_EQ(manager.get_active_profile_id(), created.profile_id) << "New profile is activated";
+    EXPECT_EQ(manager.active_profile_id(), created.profile_id) << "New profile is activated";
 
     auto const duplicate{manager.create_profile("commander")};
     EXPECT_EQ(duplicate.result, CreateProfileResult::duplicate_name)
@@ -109,7 +109,7 @@ TEST(ProfileManager, RoutesResultsAndResetsOnlyTheTestProfile) {
     FakeProfileStorage storage{};
     ProfileManager manager{storage.make()};
     EXPECT_TRUE(manager.initialise()) << "Profile manager initialises";
-    auto const default_profile_id{manager.get_active_profile_id()};
+    auto const default_profile_id{manager.active_profile_id()};
     auto const default_record{
         save_profile_manager_test::make_record(test_date(2026, 8, 20), "DefaultBattle", 3)};
     EXPECT_TRUE(manager.append_score_record(default_record)) << "Default result is appended";
@@ -119,7 +119,7 @@ TEST(ProfileManager, RoutesResultsAndResetsOnlyTheTestProfile) {
         save_profile_manager_test::make_record(test_date(2026, 8, 22), "TestBattleTwo", 7),
     };
     EXPECT_TRUE(manager.reset_test_profile(fixture)) << "Test profile is reset";
-    auto const test_profile_id{manager.get_active_profile_id()};
+    auto const test_profile_id{manager.active_profile_id()};
     EXPECT_TRUE(test_profile_id != default_profile_id) << "Test profile differs from default";
 
     std::vector<ScoreRecord> default_records{};
@@ -132,22 +132,21 @@ TEST(ProfileManager, RoutesResultsAndResetsOnlyTheTestProfile) {
     EXPECT_EQ(test_records.size(), 2) << "Fixture outcomes replace test results";
 
     EXPECT_TRUE(manager.reset_test_profile(fixture)) << "Repeated reset succeeds";
-    EXPECT_TRUE(manager.get_active_profile_id() == test_profile_id)
+    EXPECT_TRUE(manager.active_profile_id() == test_profile_id)
         << "Reset test profile remains active";
-    EXPECT_EQ(manager.get_active_records().size(), 2)
-        << "Reset does not duplicate fixture outcomes";
+    EXPECT_EQ(manager.active_records().size(), 2) << "Reset does not duplicate fixture outcomes";
 
     storage.results.erase(default_profile_id);
     EXPECT_FALSE(manager.activate_profile(default_profile_id))
         << "Activation fails when profile results are unavailable";
-    EXPECT_EQ(manager.get_active_profile_id(), test_profile_id)
+    EXPECT_EQ(manager.active_profile_id(), test_profile_id)
         << "Failed activation preserves the active profile";
 
     storage.results.insert_or_assign(default_profile_id,
                                      ProfileResultsData{.score_records = {default_record}});
     EXPECT_TRUE(manager.activate_profile(default_profile_id))
         << "Available profile can be activated";
-    EXPECT_EQ(manager.get_active_profile_id(), default_profile_id)
+    EXPECT_EQ(manager.active_profile_id(), default_profile_id)
         << "Activation switches the active profile";
 }
 
@@ -163,8 +162,7 @@ TEST(ProfileManager, FailedCompletionSaveDoesNotClaimPersistence) {
     auto const failed{manager.append_score_record(record)};
     EXPECT_FALSE(failed.persisted) << "Failed storage reports that completion was not persisted";
     EXPECT_FALSE(failed.new_best_time) << "Unsaved results cannot claim a new best";
-    EXPECT_EQ(manager.get_active_records().size(), 0)
-        << "Failed completion is rolled back in memory";
+    EXPECT_EQ(manager.active_records().size(), 0) << "Failed completion is rolled back in memory";
 }
 
 TEST(ProfileManager, LevelCompletionPersistsAcrossManagerReload) {
@@ -174,7 +172,7 @@ TEST(ProfileManager, LevelCompletionPersistsAcrossManagerReload) {
     {
         ProfileManager manager{storage.make()};
         EXPECT_TRUE(manager.initialise()) << "Profile manager initialises";
-        profile_id = manager.get_active_profile_id();
+        profile_id = manager.active_profile_id();
         auto const record{
             save_profile_manager_test::make_record(test_date(2026, 9, 5), "asteroid-field", 4)};
         EXPECT_TRUE(manager.append_score_record(record)) << "Completion is saved";
@@ -182,9 +180,9 @@ TEST(ProfileManager, LevelCompletionPersistsAcrossManagerReload) {
 
     ProfileManager reloaded{storage.make()};
     EXPECT_TRUE(reloaded.initialise()) << "Profile manager reloads";
-    EXPECT_EQ(reloaded.get_active_profile_id(), profile_id) << "Active profile is restored";
+    EXPECT_EQ(reloaded.active_profile_id(), profile_id) << "Active profile is restored";
     auto const progress{summarize_level_progress(levels::LevelId{std::string{"asteroid-field"}},
-                                                 reloaded.get_active_records())};
+                                                 reloaded.active_records())};
     EXPECT_TRUE(progress.state() == LevelProgressState::Completed)
         << "Reloaded level remains completed";
 }
@@ -222,7 +220,7 @@ TEST(ProfileManager, ConcurrentManagersRebaseBeforeAppending) {
 
     ProfileManager reloaded{storage.make()};
     EXPECT_TRUE(reloaded.initialise()) << "Combined state reloads";
-    auto const records{reloaded.get_active_records()};
+    auto const records{reloaded.active_records()};
     ASSERT_EQ(records.size(), 4u);
     EXPECT_EQ(records[0], first_record);
     EXPECT_EQ(records[1], second_record);
@@ -245,7 +243,7 @@ TEST(ProfileManager, ConcurrentManagersPreserveNewProfiles) {
 
     ProfileManager reloaded{storage.make()};
     EXPECT_TRUE(reloaded.initialise()) << "Combined profiles reload";
-    EXPECT_EQ(reloaded.get_profiles().size(), 3) << "Default and both new profiles remain";
+    EXPECT_EQ(reloaded.profiles().size(), 3) << "Default and both new profiles remain";
 }
 
 TEST(ProfileManager, DebugSettingsPersistPerProfileAndSurviveReload) {
@@ -256,7 +254,7 @@ TEST(ProfileManager, DebugSettingsPersistPerProfileAndSurviveReload) {
     {
         ProfileManager manager{storage.make()};
         EXPECT_TRUE(manager.initialise()) << "Profile manager initialises";
-        first_profile_id = manager.get_active_profile_id();
+        first_profile_id = manager.active_profile_id();
         check_debug_settings(manager, {}, "New profile defaults");
         EXPECT_TRUE(manager.set_unlock_all_missions(true)) << "Debug setting saves";
         EXPECT_TRUE(manager.set_start_levels_paused(true)) << "Paused launch setting saves";
@@ -334,7 +332,7 @@ TEST(ProfileManager, RejectsUnsupportedProfileVersions) {
     EXPECT_FALSE(results_manager.initialise()) << "Future results version is rejected";
     EXPECT_EQ(future_results.index_save_count, 0) << "Rejected results do not rewrite the index";
     EXPECT_FALSE(results_manager.has_active_profile());
-    EXPECT_TRUE(results_manager.get_profiles().empty());
+    EXPECT_TRUE(results_manager.profiles().empty());
 }
 
 TEST(ProfileManager, RejectsMissingResultsReferencedByAnExistingIndex) {
@@ -348,8 +346,8 @@ TEST(ProfileManager, RejectsMissingResultsReferencedByAnExistingIndex) {
 
     EXPECT_FALSE(manager.initialise()) << "Missing results fail closed";
     EXPECT_FALSE(manager.has_active_profile());
-    EXPECT_TRUE(manager.get_active_profile_id().empty());
-    EXPECT_TRUE(manager.get_profiles().empty());
+    EXPECT_TRUE(manager.active_profile_id().empty());
+    EXPECT_TRUE(manager.profiles().empty());
     EXPECT_FALSE(manager.set_unlock_all_missions(true));
     EXPECT_FALSE(storage.results.contains("missing"))
         << "Missing results are not replaced with an empty file";

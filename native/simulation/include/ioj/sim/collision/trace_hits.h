@@ -235,7 +235,7 @@ struct TraceHits
         : TraceHits{*std::pmr::get_default_resource()} {}
     explicit TraceHits(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~TraceHits() { Operations::release_storage(*this); }
     TraceHits(TraceHits const&) = delete;
     auto operator=(TraceHits const&) -> TraceHits& = delete;
@@ -250,12 +250,10 @@ struct TraceHits
     template <typename Byte>
     using DataPointers = ::ioj::sim::trace_hits::DataPointers<Byte>;
   public:
-    auto view_locations(this auto& self) { return self.get_view().view_locations(); }
-    auto entities(this auto& self) { return self.get_view().entities(); }
-    auto static_geometry_indices(this auto& self) {
-        return self.get_view().static_geometry_indices();
-    }
-    auto hits(this auto& self) { return self.get_view().hits(); }
+    auto view_locations(this auto& self) { return self.view().view_locations(); }
+    auto entities(this auto& self) { return self.view().entities(); }
+    auto static_geometry_indices(this auto& self) { return self.view().static_geometry_indices(); }
+    auto hits(this auto& self) { return self.view().hits(); }
     using RowOperations =
         soa_storage_detail::OwnerRowOperations<TraceHits,
                                                ::ioj::sim::trace_hits::Layout::column_types,
@@ -268,10 +266,10 @@ struct TraceHits
              collision::StaticGeometryIndex const new_static_geometry_indices,
              TraceHit const new_hits) {
         assert(index < num());
-        get_view().view_locations().set(index, new_locations);
-        get_view().entities()[index] = new_entities;
-        get_view().static_geometry_indices()[index] = new_static_geometry_indices;
-        get_view().hits()[index] = new_hits;
+        view().view_locations().set(index, new_locations);
+        view().entities()[index] = new_entities;
+        view().static_geometry_indices()[index] = new_static_geometry_indices;
+        view().hits()[index] = new_hits;
     }
     size_type add(Vector3f const new_locations,
                   EntityId const new_entities,

@@ -11,7 +11,7 @@ namespace ioj::layout {
 auto ScalarTable::append(lispb::schema::TypeId value) -> std::size_t {
     auto const row{this->num()};
     this->add_defaulted(1);
-    this->get_view().type()[row] = value;
+    this->view().type()[row] = value;
     return std::size_t{row};
 }
 

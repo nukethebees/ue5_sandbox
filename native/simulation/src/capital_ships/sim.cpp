@@ -37,7 +37,7 @@ Sim::Sim(EntityLedger& ledger, EntityTables& entity_tables)
 /* **************************************** */
 // Preparation
 void Sim::update_entity_lookup_table() {
-    auto const rows{entities.get_const_view()};
+    auto const rows{entities.const_view()};
     entity_tables_.publish<EntityType::CapitalShip>(rows.entity_ids(), rows.teams(), max_health_);
 }
 void Sim::prepare_tick() {
@@ -51,12 +51,12 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
     auto* const scratch_resource{&inputs.scratch_resource};
 
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::resolve_damage_events");
-    auto const entities{this->entities.get_view()};
-    auto const healths{entity_tables_.health.get_view<EntityType::CapitalShip>()};
+    auto const entities{this->entities.view()};
+    auto const healths{entity_tables_.health.view<EntityType::CapitalShip>()};
     sim::resolve_damage_events(inputs.combat_events.events_for(EntityType::CapitalShip),
                                entity_tables_.lookups.for_type(EntityType::CapitalShip),
                                entities.entity_ids(),
-                               entities.view_locations().get_const_view().resolve(),
+                               entities.view_locations().const_view().resolve(),
                                healths,
                                local_indices_to_remove,
                                entity_death_info,
@@ -64,7 +64,7 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
                                scratch_resource);
 }
 void Sim::publish_deaths(ResolutionInputs const inputs) {
-    ledger_.record_deaths(entity_death_info.get_const_view(), inputs.clock.get_completed_ticks());
+    ledger_.record_deaths(entity_death_info.const_view(), inputs.clock.get_completed_ticks());
 }
 
 // ResolutionCommit
@@ -84,31 +84,31 @@ void Sim::remove_entities() {
 }
 void Sim::finish_action() {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::finish_action");
-    profiling::plot("Sandbox/CapitalShipCount", get_num_instances());
+    profiling::plot("Sandbox/CapitalShipCount", num_instances());
 }
 
 /* **************************************** */
 // Accessors
 /* **************************************** */
-auto Sim::get_num_instances() const noexcept -> std::uint32_t {
+auto Sim::num_instances() const noexcept -> std::uint32_t {
     return entities.num();
 }
 auto Sim::is_valid(EntityId const id) const noexcept -> bool {
-    return std::ranges::find(entities.get_const_view().entity_ids(), id) !=
-           entities.get_const_view().entity_ids().end();
+    return std::ranges::find(entities.const_view().entity_ids(), id) !=
+           entities.const_view().entity_ids().end();
 }
-auto Sim::get_team(EntityId const id) const noexcept -> Team {
-    auto const ids{entities.get_const_view().entity_ids()};
+auto Sim::team(EntityId const id) const noexcept -> Team {
+    auto const ids{entities.const_view().entity_ids()};
     auto const found{std::ranges::find(ids, id)};
     assert(found != ids.end());
     auto const index{static_cast<EntityFrameIndex::value_type>(found - ids.begin())};
-    return entities.get_const_view().teams()[index];
+    return entities.const_view().teams()[index];
 }
-auto Sim::get_health(EntityId const id) const noexcept -> Health {
-    return get_healths().health(id);
+auto Sim::health(EntityId const id) const noexcept -> Health {
+    return healths().health(id);
 }
 auto Sim::find_first_index_on_team(Team const team) const noexcept -> std::optional<std::uint32_t> {
-    auto const entities{this->entities.get_const_view()};
+    auto const entities{this->entities.const_view()};
     auto const found{std::ranges::find(entities.teams(), team)};
     if (found == entities.teams().end()) {
         return std::nullopt;
@@ -117,7 +117,7 @@ auto Sim::find_first_index_on_team(Team const team) const noexcept -> std::optio
 }
 auto Sim::find_first_id_on_team(Team const team) const noexcept -> std::optional<EntityId> {
     auto const result{find_first_index_on_team(team)};
-    return result ? std::optional<EntityId>{entities.get_const_view().entity_ids()[*result]}
+    return result ? std::optional<EntityId>{entities.const_view().entity_ids()[*result]}
                   : std::nullopt;
 }
 
@@ -142,7 +142,7 @@ auto Sim::register_ships(LevelCapitalSpawnEvents::ConstView const spawn_data)
     std::vector<EntityId> new_ids{new_entity_ids.begin(), new_entity_ids.end()};
     entity_tables_.health.initialise_entities<EntityType::CapitalShip>(new_entity_ids,
                                                                        spawn_healths);
-    auto const entities{this->entities.get_const_view()};
+    auto const entities{this->entities.const_view()};
     auto const locations{entities.view_locations().resolve()};
     auto const rotations{entities.view_rotations().resolve()};
     auto const teams{entities.teams()};
@@ -190,7 +190,7 @@ void Sim::handle_dead_entities() {
         return;
     }
 
-    auto const entities{this->entities.get_const_view()};
+    auto const entities{this->entities.const_view()};
     auto const entity_ids{entities.entity_ids()};
 
     for (auto const index : local_indices_to_remove) {

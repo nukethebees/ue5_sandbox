@@ -31,13 +31,13 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
 
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    auto& simulation{harness.get_simulation()};
-    auto const& clk{simulation.get_clock()};
+    auto& simulation{harness.simulation()};
+    auto const& clk{simulation.clock()};
     if (scenario == SimulationCoreRegressionScenario::FixedTickLifecycle) {
         std::int32_t end_tick_calls{};
         harness.on_end_tick = [&](LevelSim&) { ++end_tick_calls; };
         simulation.start();
-        auto const period{clk.get_tick_period()};
+        auto const period{clk.tick_period()};
         harness.advance(period * 0.5);
         EXPECT_EQ(std::uint64_t{0}, clk.get_completed_ticks().value())
             << "Half tick is accumulated";
@@ -49,7 +49,7 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
         EXPECT_EQ(std::uint64_t{4}, clk.get_completed_ticks().value())
             << "Large delta catches up deterministically";
         EXPECT_EQ(2, end_tick_calls) << "Catch-up is observed once after the completed advance";
-        EXPECT_NEAR(period * 4.0, clk.get_simulation_time(), 1.e-9)
+        EXPECT_NEAR(period * 4.0, clk.simulation_time(), 1.e-9)
             << "Simulation time derives from completed ticks";
         simulation.pause();
         harness.advance(period * 10.0);
@@ -63,7 +63,7 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
         return;
     }
 
-    auto const damaged_handle{simulation.get_capital_ships().get_id(0)};
+    auto const damaged_handle{simulation.capital_ships().id(0)};
     struct DamageSample {
         std::uint32_t capital_count{};
         std::int32_t ledger_alive_count{};
@@ -72,12 +72,12 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
     };
     TimeSeriesData<DamageSample> samples;
     harness.on_end_tick = [&](LevelSim& level) {
-        auto const& telemetry{level.get_level_telemetry_manager().get_active_entity_count_data()};
+        auto const& telemetry{level.level_telemetry_manager().active_entity_count_data()};
         auto const state{observe_entity(level, damaged_handle)};
-        samples.add(harness.get_time(),
+        samples.add(harness.time(),
                     DamageSample{
-                        .capital_count = level.get_capital_ships().get_num_instances(),
-                        .ledger_alive_count = harness.get_ledger().count_alive(),
+                        .capital_count = level.capital_ships().num_instances(),
+                        .ledger_alive_count = harness.ledger().count_alive(),
                         .health = state ? state->health.value() : 0,
                         .telemetry_active_count = telemetry.last_value(),
                     });
@@ -101,8 +101,8 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
     EXPECT_EQ(0, lethal.ledger_alive_count) << "Ledger death commits in the same tick";
     EXPECT_EQ(0, lethal.telemetry_active_count) << "Telemetry observes committed death before hook";
     EXPECT_EQ(0, lethal.health) << "Owner retains terminal health for the dead handle";
-    EXPECT_TRUE(!entity_is_alive(harness.get_simulation(), damaged_handle)) << "Killed ID is dead";
-    EXPECT_EQ(0, harness.get_ledger().count_kills()) << "Unattributed death does not create a kill";
+    EXPECT_TRUE(!entity_is_alive(harness.simulation(), damaged_handle)) << "Killed ID is dead";
+    EXPECT_EQ(0, harness.ledger().count_kills()) << "Unattributed death does not create a kill";
 }
 
 TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
@@ -129,23 +129,23 @@ TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
 
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    auto& simulation{harness.get_simulation()};
-    auto* const player{simulation.get_player_ship_simulation()};
+    auto& simulation{harness.simulation()};
+    auto* const player{simulation.player_ship_simulation()};
     ASSERT_NE(player, nullptr) << "Collision test player simulation is available";
 
     auto const player_id{player->unique_entity_id};
-    auto const capital_id{simulation.get_capital_ships().get_id(0)};
-    simulation.get_player_ship_commands()->set_right_input(1.f);
+    auto const capital_id{simulation.capital_ships().id(0)};
+    simulation.player_ship_commands()->set_right_input(1.f);
     TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim& level) {
-        auto const events{level.get_spatial_query_manager().get_aabb_overlap_events()};
+        auto const events{level.spatial_query_manager().aabb_overlap_events()};
         auto const capital{observe_entity(level, capital_id)};
-        samples.add(harness.get_time(),
+        samples.add(harness.time(),
                     Sample{
-                        .player_health = player->get_health().health.value(),
+                        .player_health = player->health().health.value(),
                         .capital_health = capital ? capital->health.value() : 0,
                         .dynamic_overlap_count = events.entity_entity_overlaps.num(),
-                        .kill_count = harness.get_ledger().count_kills(),
+                        .kill_count = harness.ledger().count_kills(),
                         .player_alive = entity_is_alive(level, player_id),
                     });
     };
@@ -164,13 +164,12 @@ TEST(WorldlessSpaceGameSimulation, EntitiesCollisionOverlapDamagesAndKills) {
     }
     auto const& third{samples.value_at(2)};
     EXPECT_TRUE(third.player_alive) << "Player survives the third overlap tick";
-    EXPECT_TRUE(!entity_is_alive(harness.get_simulation(), capital_id))
+    EXPECT_TRUE(!entity_is_alive(harness.simulation(), capital_id))
         << "Capital death commits in the third overlap tick";
     EXPECT_EQ(0, third.kill_count) << "Collision death grants no combat kill";
-    EXPECT_TRUE(harness.get_ledger()
-                    .get_unique_entities()
-                    .life_state()[harness.get_ledger().get_history_index(capital_id)] ==
-                LifeState::Unknown)
+    EXPECT_TRUE(harness.ledger()
+                    .unique_entities()
+                    .life_state()[harness.ledger().history_index(capital_id)] == LifeState::Unknown)
         << "Collision death is environmental";
 }
 TEST(WorldlessSpaceGameSimulation, OrchestratorFixedStepPauseResumeAndCatchUp) {

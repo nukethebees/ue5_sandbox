@@ -31,14 +31,14 @@ class LevelReadAccess {
     explicit LevelReadAccess(LevelSim const& level)
         : level_{level} {}
 
-    auto get_capitals() const -> capital_ships::Sim const&;
-    auto get_fighters() const -> fighters::Sim const&;
-    auto get_turrets() const -> turrets::Sim const&;
-    auto get_spinners() const -> spinners::Sim const&;
-    auto get_lasers() const -> lasers::Sim const&;
-    auto get_player() const -> player::Sim const*;
-    auto get_clock() const -> SimClock const&;
-    auto get_entity_ledger() const -> EntityLedger const&;
+    auto capitals() const -> capital_ships::Sim const&;
+    auto fighters() const -> fighters::Sim const&;
+    auto turrets() const -> turrets::Sim const&;
+    auto spinners() const -> spinners::Sim const&;
+    auto lasers() const -> lasers::Sim const&;
+    auto player() const -> player::Sim const*;
+    auto clock() const -> SimClock const&;
+    auto entity_ledger() const -> EntityLedger const&;
     auto interpolation_alpha() const -> double;
   private:
     LevelSim const& level_;

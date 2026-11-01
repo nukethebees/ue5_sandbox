@@ -26,7 +26,7 @@ auto summarize_run(Report const& report) -> RunStatistics {
     auto const& run{report.run};
     RunStatistics result{
         .simulated_seconds =
-            static_cast<double>(run.completion.completed_ticks.value()) / run.tick_rate_hz.get_hz(),
+            static_cast<double>(run.completion.completed_ticks.value()) / run.tick_rate_hz.hz(),
         .active_entities = last(run.tick_series.active_entities),
         .active_lasers = last(run.tick_series.active_lasers),
         .spawned_entities = last(run.tick_series.spawned_entities),
@@ -189,7 +189,7 @@ auto RunCatalog::select_baseline(std::string_view const run_id) -> bool {
     if (run_id.empty()) {
         return true;
     }
-    for (auto const& run : get_baseline_candidates()) {
+    for (auto const& run : baseline_candidates()) {
         if (run.run_id != run_id) {
             continue;
         }
@@ -204,7 +204,7 @@ auto RunCatalog::select_baseline(std::string_view const run_id) -> bool {
     return false;
 }
 
-auto RunCatalog::get_baseline_candidates() const -> std::vector<RunSummary> {
+auto RunCatalog::baseline_candidates() const -> std::vector<RunSummary> {
     std::vector<RunSummary> result;
     if (selected_record_) {
         for (auto const& run : all_) {

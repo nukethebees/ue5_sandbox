@@ -261,7 +261,7 @@ struct CapitalEntityData
         : CapitalEntityData{*std::pmr::get_default_resource()} {}
     explicit CapitalEntityData(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~CapitalEntityData() { Operations::release_storage(*this); }
     CapitalEntityData(CapitalEntityData const&) = delete;
     auto operator=(CapitalEntityData const&) -> CapitalEntityData& = delete;
@@ -276,10 +276,10 @@ struct CapitalEntityData
     template <typename Byte>
     using DataPointers = ::ioj::sim::capital_entity_data::DataPointers<Byte>;
   public:
-    auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }
-    auto view_locations(this auto& self) { return self.get_view().view_locations(); }
-    auto view_rotations(this auto& self) { return self.get_view().view_rotations(); }
-    auto teams(this auto& self) { return self.get_view().teams(); }
+    auto entity_ids(this auto& self) { return self.view().entity_ids(); }
+    auto view_locations(this auto& self) { return self.view().view_locations(); }
+    auto view_rotations(this auto& self) { return self.view().view_rotations(); }
+    auto teams(this auto& self) { return self.view().teams(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         CapitalEntityData,
         ::ioj::sim::capital_entity_data::Layout::column_types,
@@ -292,10 +292,10 @@ struct CapitalEntityData
              Rotator3f const new_rotations,
              ::ioj::Team const new_teams) {
         assert(index < num());
-        get_view().entity_ids()[index] = new_entity_ids;
-        get_view().view_locations().set(index, new_locations);
-        get_view().view_rotations().set(index, new_rotations);
-        get_view().teams()[index] = new_teams;
+        view().entity_ids()[index] = new_entity_ids;
+        view().view_locations().set(index, new_locations);
+        view().view_rotations().set(index, new_rotations);
+        view().teams()[index] = new_teams;
     }
     size_type add(EntityId const new_entity_ids,
                   Vector3f const new_locations,

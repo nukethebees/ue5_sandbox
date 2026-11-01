@@ -20,9 +20,7 @@ namespace ioj::sim {
 /* **************************************** */
 LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
     : memory_manager_{memory, data.frame_memory_capacity_bytes}
-    , collision_pipeline_{entity_tables_,
-                          std::move(data.collision),
-                          &memory_manager_.get_game_memory()}
+    , collision_pipeline_{entity_tables_, std::move(data.collision), &memory_manager_.game_memory()}
     , lasers_simulation_{clock_, combat_events_}
     , fighters_simulation_{entity_tables_}
     , capital_ships_simulation_{entity_ledger_, entity_tables_}
@@ -39,7 +37,7 @@ LevelSim::LevelSim(LevelSimInitData data, std::pmr::memory_resource& memory)
     , level_telemetry_manager_{clock_,
                                entity_ledger_,
                                lasers_simulation_,
-                               memory_manager_.get_game_memory(),
+                               memory_manager_.game_memory(),
                                data.telemetry_history} {
     clock_.initialise(data.clock_settings);
     set_telemetry_metadata(std::move(data.telemetry_metadata));
@@ -95,7 +93,7 @@ void LevelSim::initialise_subsystems(LevelSimInitData const& data) {
         data.capital_ships.max_health);
     auto const player_team{player_ship_simulation_ ? std::optional{player_ship_simulation_->team}
                                                    : std::nullopt};
-    participating_teams_ = event_manager_.get_participating_teams(player_team);
+    participating_teams_ = event_manager_.participating_teams(player_team);
     fighters::PhaseInterface{fighters_simulation_}.initialise(
         data.fighters, {.participating_teams = participating_teams_, .clock = clock_});
     turrets::PhaseInterface{turrets_simulation_}.initialise(data.turrets);
@@ -135,14 +133,14 @@ void LevelSim::stop_run_if_requested(RunStopConditions const& conditions) {
         stop_run(*reason);
     }
 }
-auto LevelSim::get_player_team_completion() const -> std::optional<TeamMissionCompletion> {
+auto LevelSim::player_team_completion() const -> std::optional<TeamMissionCompletion> {
     auto const team{player_ship_simulation_ ? std::optional{player_ship_simulation_->team}
                                             : std::nullopt};
-    return mission_.get_team_completion(team);
+    return mission_.team_completion(team);
 }
 
 auto LevelSim::take_finalized_telemetry_run() -> std::optional<telemetry::RunRecord> {
-    return level_telemetry_manager_.take_finalized_run(clock_.get_tick_rate());
+    return level_telemetry_manager_.take_finalized_run(clock_.tick_rate());
 }
 
 /* **************************************** */
@@ -200,7 +198,7 @@ void LevelSim::prepare_tick(float const tick_period) {
     SANDBOX_PROFILE_SCOPE("Preparation");
     clock_.transition_to(SimulationPhase::Preparation);
 
-    auto const previous_issued_counts{entity_ledger_.get_issued_counts()};
+    auto const previous_issued_counts{entity_ledger_.issued_counts()};
     event_manager_.execute_tick(SimTick{clock_.completed_ticks.value() + 1});
 
     fighters_phase.commit_spawns({.ledger = entity_ledger_});
@@ -211,7 +209,7 @@ void LevelSim::prepare_tick(float const tick_period) {
     collision_pipeline_.collect_spawn_candidates(
         previous_issued_counts,
         capital_ships_simulation_.get_entities().entity_ids(),
-        fighters_simulation_.get_entities().entity_ids(),
+        fighters_simulation_.entities().entity_ids(),
         turrets_simulation_.get_entities().entity_ids());
 
     if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
@@ -232,7 +230,7 @@ void LevelSim::think_tick(float const tick_period) {
     turrets::PhaseInterface turrets_phase{turrets_simulation_};
     spinners::PhaseInterface spinners_phase{spinners_simulation_};
 
-    auto& frame_memory{memory_manager_.get_frame_memory()};
+    auto& frame_memory{memory_manager_.frame_memory()};
     FrameScratchScope scratch_scope{frame_memory};
 
     SANDBOX_PROFILE_SCOPE("Thinking");
@@ -246,8 +244,7 @@ void LevelSim::think_tick(float const tick_period) {
         collision_pipeline_.queries(), lasers_simulation_, frame_memory};
     fighters::ThinkingInputs const fighter_inputs{
         .clock = clock_,
-        .collision_radius =
-            collision_pipeline_.queries().get_entity_type_radius(EntityType::Fighter),
+        .collision_radius = collision_pipeline_.queries().entity_type_radius(EntityType::Fighter),
         .spatial_query_manager = collision_pipeline_.queries(),
         .scratch_resource = frame_memory};
 
@@ -270,7 +267,7 @@ void LevelSim::act_tick(float const tick_period) {
     fighters::PhaseInterface fighters_phase{fighters_simulation_};
     spinners::PhaseInterface spinners_phase{spinners_simulation_};
     lasers::PhaseInterface lasers_phase{lasers_simulation_};
-    auto& frame_memory{memory_manager_.get_frame_memory()};
+    auto& frame_memory{memory_manager_.frame_memory()};
 
     SANDBOX_PROFILE_SCOPE("Action");
     clock_.transition_to(SimulationPhase::Action);
@@ -282,13 +279,13 @@ void LevelSim::act_tick(float const tick_period) {
     }
 
     if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
-        auto const before{player_ship_simulation_->get_physical_state().transform};
+        auto const before{player_ship_simulation_->physical_state().transform};
         player::ActionInputs const inputs{lasers_simulation_};
         player::PhaseInterface{*player_ship_simulation_}.apply_movement(inputs);
         collision_pipeline_.track_player_movement(
             player_ship_simulation_->unique_entity_id,
             before,
-            player_ship_simulation_->get_physical_state().transform);
+            player_ship_simulation_->physical_state().transform);
     }
 
     {
@@ -299,10 +296,8 @@ void LevelSim::act_tick(float const tick_period) {
         spinners_phase.apply_movement(spinner_inputs);
     }
 
-    collision_pipeline_.detect_and_handle_overlaps(get_read_access(),
-                                                   fighters_simulation_.get_overlap_candidates(),
-                                                   combat_events_,
-                                                   frame_memory);
+    collision_pipeline_.detect_and_handle_overlaps(
+        read_access(), fighters_simulation_.overlap_candidates(), combat_events_, frame_memory);
 }
 template <TickPlayerShipState PlayerState>
 void LevelSim::resolve_tick() {
@@ -311,7 +306,7 @@ void LevelSim::resolve_tick() {
     turrets::PhaseInterface turrets_phase{turrets_simulation_};
     spinners::PhaseInterface spinners_phase{spinners_simulation_};
     lasers::PhaseInterface lasers_phase{lasers_simulation_};
-    auto& frame_memory{memory_manager_.get_frame_memory()};
+    auto& frame_memory{memory_manager_.frame_memory()};
 
     SANDBOX_PROFILE_SCOPE("Resolution");
     clock_.transition_to(SimulationPhase::Resolution);
@@ -349,7 +344,7 @@ void LevelSim::resolve_tick() {
         FrameScratchScope scratch_scope{frame_memory};
         mission_.evaluate({SimTick{clock_.completed_ticks.value() + 1},
                            entity_ledger_,
-                           event_manager_.get_entity_ids(),
+                           event_manager_.entity_ids(),
                            &collision_pipeline_.queries(),
                            &frame_memory,
                            participating_teams_});
@@ -388,6 +383,6 @@ void LevelSim::resolve_tick() {
 /* **************************************** */
 
 void LevelSim::refresh_spatial_index() {
-    collision_pipeline_.refresh_spatial_index(get_read_access());
+    collision_pipeline_.refresh_spatial_index(read_access());
 }
 } // namespace ioj::sim

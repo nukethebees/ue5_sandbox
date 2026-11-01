@@ -102,7 +102,7 @@ void FrameMemoryResource::reset() {
     frame_peak_claimed_bytes_.store(0, std::memory_order_relaxed);
 }
 
-auto FrameMemoryResource::get_stats() const noexcept -> FrameMemoryStats {
+auto FrameMemoryResource::stats() const noexcept -> FrameMemoryStats {
     return {
         .capacity_bytes = backing_.size_bytes,
         .current_claimed_bytes = claimed_bytes_.load(std::memory_order_relaxed),
@@ -191,7 +191,7 @@ void FrameMemoryResource::end_epoch() noexcept {
         fatal_error("Frame scratch epoch ended without an active epoch");
     }
     if (!try_reclaim()) {
-        auto const stats{get_stats()};
+        auto const stats{this->stats()};
         fatal_error(std::format(
             "Frame scratch allocation escaped its epoch: {} allocations, {} claimed bytes",
             stats.outstanding_allocation_count,

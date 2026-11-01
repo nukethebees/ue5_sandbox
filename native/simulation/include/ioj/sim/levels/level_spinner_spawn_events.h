@@ -241,7 +241,7 @@ struct LevelSpinnerSpawnEvents
         : LevelSpinnerSpawnEvents{*std::pmr::get_default_resource()} {}
     explicit LevelSpinnerSpawnEvents(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LevelSpinnerSpawnEvents() { Operations::release_storage(*this); }
     LevelSpinnerSpawnEvents(LevelSpinnerSpawnEvents const&) = delete;
     auto operator=(LevelSpinnerSpawnEvents const&) -> LevelSpinnerSpawnEvents& = delete;
@@ -256,11 +256,11 @@ struct LevelSpinnerSpawnEvents
     template <typename Byte>
     using DataPointers = ::ioj::sim::level_spinner_spawn_events::DataPointers<Byte>;
   public:
-    auto entity_indices(this auto& self) { return self.get_view().entity_indices(); }
-    auto view_locations(this auto& self) { return self.get_view().view_locations(); }
-    auto yaws(this auto& self) { return self.get_view().yaws(); }
+    auto entity_indices(this auto& self) { return self.view().entity_indices(); }
+    auto view_locations(this auto& self) { return self.view().view_locations(); }
+    auto yaws(this auto& self) { return self.view().yaws(); }
     auto initial_fire_point_indices(this auto& self) {
-        return self.get_view().initial_fire_point_indices();
+        return self.view().initial_fire_point_indices();
     }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         LevelSpinnerSpawnEvents,
@@ -274,10 +274,10 @@ struct LevelSpinnerSpawnEvents
              float const new_yaws,
              std::int32_t const new_initial_fire_point_indices) {
         assert(index < num());
-        get_view().entity_indices()[index] = new_entity_indices;
-        get_view().view_locations().set(index, new_locations);
-        get_view().yaws()[index] = new_yaws;
-        get_view().initial_fire_point_indices()[index] = new_initial_fire_point_indices;
+        view().entity_indices()[index] = new_entity_indices;
+        view().view_locations().set(index, new_locations);
+        view().yaws()[index] = new_yaws;
+        view().initial_fire_point_indices()[index] = new_initial_fire_point_indices;
     }
     size_type add(LevelEntityIndex const new_entity_indices,
                   Vector3f const new_locations,

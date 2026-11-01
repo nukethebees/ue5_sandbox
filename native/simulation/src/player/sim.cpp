@@ -77,7 +77,7 @@ void Sim::initialise(PlayerSpawnData const& spawn) {
 
     state_.physical.velocity = Vector3d{};
     state_.resources.thrust_energy = config.thrust_energy_max;
-    reset_flight_model_controller(state_, get_active_flight_model_config());
+    reset_flight_model_controller(state_, active_flight_model_config());
 
     set_laser_mode(LaserFiringState::idle);
     set_laser_fire_rate(laser_fire_rate);
@@ -129,7 +129,7 @@ void Sim::think(float const dt) {
 
     update_boost_brake(dt, state);
     update_body_orientation(dt, state);
-    integrate_flight_model(dt, get_active_flight_model_config(), flight_intent_, state);
+    integrate_flight_model(dt, active_flight_model_config(), flight_intent_, state);
 }
 void Sim::generate_fire_commands() {
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::generate_fire_commands");
@@ -228,7 +228,7 @@ void Sim::update_body_orientation(float const dt, PlayerSimulationState& state) 
 void Sim::update_boost_brake(float const dt, PlayerSimulationState& state) {
     auto& controller{state.controller};
     auto& resources{state.resources};
-    auto const& model{get_active_flight_model_config()};
+    auto const& model{active_flight_model_config()};
     refresh_effective_action(state);
 
     auto energy_change{model.energy_recharge_per_second};
@@ -255,7 +255,7 @@ void Sim::update_boost_brake(float const dt, PlayerSimulationState& state) {
 }
 
 void Sim::refresh_effective_action(PlayerSimulationState& state) noexcept {
-    auto const& model{get_active_flight_model_config()};
+    auto const& model{active_flight_model_config()};
     auto const has_energy = [&state](float const drain) {
         return drain == 0.f || state.resources.thrust_energy > 0.f;
     };
@@ -325,7 +325,7 @@ void Sim::stop_sampling() {
         return;
     }
     sampling_target_speed_ = false;
-    auto const& config{get_active_flight_model_config()};
+    auto const& config{active_flight_model_config()};
     auto const boosting{state_.controller.effective_action == BoostBrakeState::Boost};
     auto const& forward{boosting ? config.translation.forward.boosted
                                  : config.translation.forward.normal};
@@ -342,7 +342,7 @@ void Sim::adjust_desired_forward_velocity(float const direction) {
     if (sampling_target_speed_ || std::abs(direction) <= 1.e-8f) {
         return;
     }
-    auto const& axis{get_active_flight_model_config().translation.forward};
+    auto const& axis{active_flight_model_config().translation.forward};
     auto const& drive{state_.controller.effective_action == BoostBrakeState::Boost ? axis.boosted
                                                                                    : axis.normal};
     auto const adjustment{
@@ -410,7 +410,7 @@ void Sim::select_flight_model_slot(FlightModelSlot const slot) noexcept {
     active_flight_model_slot_ = slot;
     sampling_target_speed_ = false;
     sampled_target_speed_scale_ = {};
-    reset_flight_model_controller(state_, get_active_flight_model_config());
+    reset_flight_model_controller(state_, active_flight_model_config());
     refresh_effective_action(state_);
     planned_state_ = state_;
 }
@@ -422,7 +422,7 @@ auto Sim::set_flight_model_slot_profile(FlightModelSlot const slot,
     }
 
     if (active_flight_model_slot_ == slot) {
-        reset_flight_model_controller(state_, get_active_flight_model_config(), false);
+        reset_flight_model_controller(state_, active_flight_model_config(), false);
         refresh_effective_action(state_);
         planned_state_ = state_;
     }
@@ -581,7 +581,7 @@ void Sim::set_health(Health const new_health, EntityId const killer) {
     }
 }
 
-auto Sim::get_health() const -> ShipHealth {
+auto Sim::health() const -> ShipHealth {
     return {health_table_.health(unique_entity_id), max_health_};
 }
 
@@ -593,12 +593,12 @@ void Sim::die(EntityId const killer) {
     auto const reason{killer.is_valid() ? DeathReason::Combat : DeathReason::Unknown};
     EntityDeathInfo deaths;
     deaths.add_uninitialised(1);
-    auto const row{deaths.get_view()};
+    auto const row{deaths.view()};
     row.victims()[0] = unique_entity_id;
     row.killers()[0] = killer;
     row.reasons()[0] = reason;
     row.locations()[0] = Vector3f{state_.physical.transform.location};
-    ledger_.record_deaths(deaths.get_const_view(), simulation_clock.get_completed_ticks());
+    ledger_.record_deaths(deaths.const_view(), simulation_clock.get_completed_ticks());
     death_notification_pending = true;
 }
 
@@ -606,11 +606,11 @@ auto Sim::consume_death_notification() noexcept -> bool {
     return std::exchange(death_notification_pending, false);
 }
 
-auto Sim::get_kills() const -> std::int32_t {
-    return static_cast<std::int32_t>(ledger_.get_kills(unique_entity_id));
+auto Sim::kills() const -> std::int32_t {
+    return static_cast<std::int32_t>(ledger_.kills(unique_entity_id));
 }
 
-auto Sim::get_speed() const noexcept -> float {
+auto Sim::speed() const noexcept -> float {
     return static_cast<float>(size(state_.physical.velocity));
 }
 
@@ -618,7 +618,7 @@ auto Sim::energy_is_full() const -> bool {
     return state_.resources.thrust_energy == config.thrust_energy_max;
 }
 
-auto Sim::get_energy() const -> float {
+auto Sim::energy() const -> float {
     return state_.resources.thrust_energy / config.thrust_energy_max;
 }
 
@@ -626,7 +626,7 @@ auto Sim::get_middle_socket() const -> Transform3d {
     return middle_socket * state_.presentation.body_transform * state_.physical.transform;
 }
 
-auto Sim::get_laser_effective_range() const noexcept -> float {
+auto Sim::laser_effective_range() const noexcept -> float {
     return config.laser.max_distance;
 }
 
@@ -634,9 +634,8 @@ auto Sim::get_laser_effective_range() const noexcept -> float {
 // Diagnostics
 /* **************************************** */
 void Sim::sample_speed() {
-    speed_samples[speed_sample_index] = {
-        std::clamp(simulation_clock.get_simulation_time(), 0.0, 1e9),
-        std::clamp(size(state_.physical.velocity), 0.0, 100e3)};
+    speed_samples[speed_sample_index] = {std::clamp(simulation_clock.simulation_time(), 0.0, 1e9),
+                                         std::clamp(size(state_.physical.velocity), 0.0, 100e3)};
     ++speed_sample_index;
     if (speed_sample_index >= speed_sample_max) {
         speed_sample_index = 0;

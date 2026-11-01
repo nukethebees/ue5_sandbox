@@ -9,7 +9,7 @@ struct FixedTickLoop {
     void initialise() { accumulator = 0.0; }
 
     [[nodiscard]] auto get_tick_period() const noexcept -> double {
-        return tick_loop_period(tick_rate.get_hz());
+        return tick_loop_period(tick_rate.hz());
     }
 
     void add_time(double const dt) { add_tick_loop_time(dt, time_scale, accumulator); }

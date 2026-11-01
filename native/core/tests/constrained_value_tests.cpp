@@ -22,8 +22,8 @@ TEST(ConstrainedValue, OwnsNonEmptyStringsAndSupportsFormatting) {
     std::string source(100, 'x');
     auto const value{NonEmptyString::make(source)};
     source.clear();
-    EXPECT_EQ(value.get_ref(), std::string(100, 'x'));
-    EXPECT_EQ(std::format("{}", value), value.get_ref());
+    EXPECT_EQ(value.ref(), std::string(100, 'x'));
+    EXPECT_EQ(std::format("{}", value), value.ref());
 }
 
 TEST(ConstrainedValue, RejectsNonFiniteVectorComponents) {

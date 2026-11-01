@@ -13,8 +13,8 @@ auto TypeAnalysisTable::append(lispb::schema::TypeId type, ioj::layout::Scenario
     -> ioj::layout::AnalysisId {
     auto const row{this->num()};
     this->add_defaulted(1);
-    this->get_view().schema_type()[row] = type;
-    this->get_view().scenario()[row] = scenario_id;
+    this->view().schema_type()[row] = type;
+    this->view().scenario()[row] = scenario_id;
     return ioj::layout::AnalysisId{row};
 }
 

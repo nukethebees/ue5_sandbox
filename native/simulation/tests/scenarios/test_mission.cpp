@@ -83,14 +83,14 @@ TEST_P(WorldlessMission, ResolvesObjectiveLifecycle) {
     tests::install_mission(data, std::move(objective));
 
     tests::WorldlessSimulationTest harness{std::move(data)};
-    auto& simulation{harness.get_simulation()};
-    auto const& capitals{simulation.get_capital_ships()};
-    auto const hero_id{capitals.get_id(0)};
-    auto const ordinary_id{ordinary ? capitals.get_id(1) : EntityId{}};
-    auto const required_id{required ? capitals.get_id(ordinary ? 2 : 1) : EntityId{}};
-    auto const second_id{second ? capitals.get_id(2) : EntityId{}};
+    auto& simulation{harness.simulation()};
+    auto const& capitals{simulation.capital_ships()};
+    auto const hero_id{capitals.id(0)};
+    auto const ordinary_id{ordinary ? capitals.id(1) : EntityId{}};
+    auto const required_id{required ? capitals.id(ordinary ? 2 : 1) : EntityId{}};
+    auto const second_id{second ? capitals.id(2) : EntityId{}};
     harness.finish_initialisation();
-    auto const& clk{simulation.get_clock()};
+    auto const& clk{simulation.clock()};
 
     if (scenario == Scenario::KillEnemies) {
         harness.timeline.then_after(0.01,
@@ -111,27 +111,26 @@ TEST_P(WorldlessMission, ResolvesObjectiveLifecycle) {
     }
     auto gated{false};
     harness.on_end_tick = [&](LevelSim&) {
-        if (clk.get_simulation_time() >= 0.1 &&
-            !simulation.get_mission().outcome(ioj::sim::ObjectiveId{0})) {
+        if (clk.simulation_time() >= 0.1 &&
+            !simulation.mission().outcome(ioj::sim::ObjectiveId{0})) {
             gated = true;
         }
     };
     harness.timeline.finish_at(0.3);
-    EXPECT_FALSE(simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}));
+    EXPECT_FALSE(simulation.mission().outcome(ioj::sim::ObjectiveId{0}));
     ASSERT_TRUE(harness.run_until_timeline_finished(1.0));
     auto const failed{scenario == Scenario::DefenceObjective ||
                       scenario == Scenario::KillEnemiesWithinTime ||
                       scenario == Scenario::RequiredKillsTimeElapsed};
-    EXPECT_EQ(simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}),
+    EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{0}),
               failed ? ObjectiveOutcome::Failed : ObjectiveOutcome::Passed);
     if (failed) {
-        EXPECT_EQ(simulation.get_mission().outcome(ioj::sim::ObjectiveId{1}),
-                  ObjectiveOutcome::Passed);
+        EXPECT_EQ(simulation.mission().outcome(ioj::sim::ObjectiveId{1}), ObjectiveOutcome::Passed);
     }
-    EXPECT_EQ(simulation.get_mission().completed_objectives().size(), failed ? 2 : 1);
+    EXPECT_EQ(simulation.mission().completed_objectives().size(), failed ? 2 : 1);
     if (scenario == Scenario::RequiredKillsObjective || scenario == Scenario::AuthoredKillTarget) {
         EXPECT_TRUE(gated);
-        EXPECT_EQ(simulation.get_entity_ledger().get_kills(hero_id),
+        EXPECT_EQ(simulation.entity_ledger().kills(hero_id),
                   scenario == Scenario::AuthoredKillTarget ? 2u : 1u);
     }
 }

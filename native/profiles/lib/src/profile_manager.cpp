@@ -81,15 +81,15 @@ bool ProfileManager::initialise_locked() {
     return true;
 }
 
-auto ProfileManager::get_profiles() const -> std::span<ProfileMetadata const> {
+auto ProfileManager::profiles() const -> std::span<ProfileMetadata const> {
     return index_.profiles;
 }
 
-auto ProfileManager::get_active_profile_id() const -> std::string const& {
+auto ProfileManager::active_profile_id() const -> std::string const& {
     return index_.active_profile_id;
 }
 
-auto ProfileManager::get_active_records() const -> std::span<ScoreRecord const> {
+auto ProfileManager::active_records() const -> std::span<ScoreRecord const> {
     return active_results_ ? std::span<ScoreRecord const>{active_results_->score_records}
                            : std::span<ScoreRecord const>{};
 }

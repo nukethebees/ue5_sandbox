@@ -24,12 +24,12 @@ void verify_pmr_owner(FirstValue first_value) {
     {
         DefaultResourceScope use_first{&first};
         Owner empty;
-        EXPECT_EQ(empty.get_memory_resource(), &first);
+        EXPECT_EQ(empty.memory_resource(), &first);
         EXPECT_EQ(first_state.allocations, 0);
         {
             DefaultResourceScope use_second{&second};
             Owner current_default;
-            EXPECT_EQ(current_default.get_memory_resource(), &second);
+            EXPECT_EQ(current_default.memory_resource(), &second);
             empty.set_num(1);
             EXPECT_EQ(first_state.allocations, 1);
             EXPECT_EQ(second_state.allocations, 0);
@@ -51,30 +51,30 @@ void verify_pmr_owner(FirstValue first_value) {
         auto* const original{&first_value(source)};
         auto const allocations{first_state.allocations};
         Owner moved{std::move(source)};
-        EXPECT_EQ(moved.get_memory_resource(), &first);
+        EXPECT_EQ(moved.memory_resource(), &first);
         EXPECT_EQ(&first_value(moved), original);
         EXPECT_EQ(source.num(), 0);
         EXPECT_EQ(source.capacity(), 0);
-        EXPECT_EQ(source.get_memory_resource(), &first);
+        EXPECT_EQ(source.memory_resource(), &first);
         EXPECT_EQ(first_state.allocations, allocations);
 
         Owner destination{equivalent};
         destination.set_num(1);
         auto const before_move{first_state.allocations};
         destination = std::move(moved);
-        EXPECT_EQ(destination.get_memory_resource(), &equivalent);
+        EXPECT_EQ(destination.memory_resource(), &equivalent);
         EXPECT_EQ(&first_value(destination), original);
         EXPECT_EQ(first_value(destination), 73);
         EXPECT_EQ(first_state.allocations, before_move);
         EXPECT_EQ(moved.capacity(), 0);
-        EXPECT_EQ(moved.get_memory_resource(), &first);
+        EXPECT_EQ(moved.memory_resource(), &first);
 
         auto& alias{destination};
         destination = std::move(alias);
         EXPECT_EQ(&first_value(destination), original);
         EXPECT_EQ(destination.num(), 2);
         source.set_num(1);
-        EXPECT_EQ(source.get_memory_resource(), &first);
+        EXPECT_EQ(source.memory_resource(), &first);
     }
     EXPECT_TRUE(first_state.live.empty());
     EXPECT_EQ(first_state.allocations, first_state.frees);
@@ -108,8 +108,8 @@ void verify_pmr_owner(FirstValue first_value) {
         }
 
         destination = std::move(source);
-        EXPECT_EQ(destination.get_memory_resource(), &second);
-        EXPECT_EQ(source.get_memory_resource(), &first);
+        EXPECT_EQ(destination.memory_resource(), &second);
+        EXPECT_EQ(source.memory_resource(), &first);
         EXPECT_EQ(destination.num(), 128);
         EXPECT_EQ(first_value(destination), 91);
         EXPECT_NE(&first_value(destination), source_data);
@@ -126,7 +126,7 @@ void verify_pmr_owner(FirstValue first_value) {
         destination = std::move(empty);
         EXPECT_EQ(destination.num(), 0);
         EXPECT_EQ(destination.capacity(), destination_capacity);
-        EXPECT_EQ(destination.get_memory_resource(), &second);
+        EXPECT_EQ(destination.memory_resource(), &second);
     }
     EXPECT_TRUE(first_state.live.empty());
     EXPECT_TRUE(second_state.live.empty());

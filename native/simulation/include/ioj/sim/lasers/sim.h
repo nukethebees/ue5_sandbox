@@ -36,16 +36,14 @@ struct Sim {
     auto operator=(Sim const&) -> Sim& = delete;
     auto operator=(Sim&&) -> Sim& = delete;
 
-    auto get_entities() const -> EntityStorage::ConstView { return entities.get_const_view(); }
-    auto get_hits() const -> LaserHitDetails::ConstView {
-        return frame_output_.hits.get_const_view();
-    }
-    auto get_hit_ticks() const -> std::span<SimTick const> { return frame_output_.hit_ticks; }
-    auto get_hit_ordinals() const -> std::span<std::int32_t const> {
+    auto get_entities() const -> EntityStorage::ConstView { return entities.const_view(); }
+    auto hits() const -> LaserHitDetails::ConstView { return frame_output_.hits.const_view(); }
+    auto hit_ticks() const -> std::span<SimTick const> { return frame_output_.hit_ticks; }
+    auto hit_ordinals() const -> std::span<std::int32_t const> {
         return frame_output_.hit_ordinals;
     }
     void reset_frame_output() { frame_output_.reset(); }
-    auto get_num_instances() const noexcept -> std::uint32_t;
+    auto num_instances() const noexcept -> std::uint32_t;
     auto get_number_spawned() const noexcept -> std::uint32_t { return number_spawned; }
 
     /* **************************************** */

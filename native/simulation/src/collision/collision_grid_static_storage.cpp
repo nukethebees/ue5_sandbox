@@ -41,7 +41,7 @@ auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
     cell_range_indices_.assign(static_cast<std::size_t>(cell_count), invalid_cell_range_index);
     std::vector<CellMembershipCount> cell_counts(static_cast<std::size_t>(cell_count));
 
-    auto const aabbs{aabbs_.get_const_view()};
+    auto const aabbs{aabbs_.const_view()};
     assert(aabbs.num() <= invalid_aabb_index);
     auto const aabb_count{static_cast<StaticGeometryIndex::value_type>(aabbs.num())};
     auto const min_points{aabbs.view_min_points().resolve()};

@@ -100,7 +100,7 @@ void collect_request_matches(collision::CollisionUniformGrid const& grid,
             for (auto z{min_coord.z()}; z <= max_z; ++z) {
                 // Select the members for this cell.
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
-                for (auto const id : grid.get_cell_entities({x, y, z})) {
+                for (auto const id : grid.cell_entities({x, y, z})) {
                     // Select the already-bound span for this entity's type.
                     // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                     auto const handle{sources.handles[id.entity_type()][id.index()]};
@@ -210,7 +210,7 @@ void SpatialQueryManager::collect_non_team_entities_in_range(
         SANDBOX_PROFILE_SCOPE("scan_requests");
         auto const& grid{collision_system_.uniform_grid_};
         assert(grid.is_configured());
-        auto const max_grid_coord{grid.get_max_grid_coord()};
+        auto const max_grid_coord{grid.max_grid_coord()};
         auto const absolute_radius{std::abs(radius)};
         auto const radius_extent{Vector3f{absolute_radius, absolute_radius, absolute_radius}};
         auto const radius_squared{radius * radius};
@@ -260,7 +260,7 @@ void SpatialQueryManager::collect_non_team_entities_in_range(
         }
 
         out_results.matches.set_num(match_count);
-        auto const result_columns{out_results.matches.get_view().resolve()};
+        auto const result_columns{out_results.matches.view().resolve()};
         auto const entities{result_columns.entities()};
         auto const distances{result_columns.distances()};
         auto const directions{result_columns.view_directions()};

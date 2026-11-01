@@ -191,7 +191,7 @@ struct RelationshipTable
         : RelationshipTable{*std::pmr::get_default_resource()} {}
     explicit RelationshipTable(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~RelationshipTable() { Operations::release_storage(*this); }
     RelationshipTable(RelationshipTable const&) = delete;
     auto operator=(RelationshipTable const&) -> RelationshipTable& = delete;
@@ -206,10 +206,10 @@ struct RelationshipTable
     template <typename Byte>
     using DataPointers = ::ioj::layout::relationship_table::DataPointers<Byte>;
   public:
-    auto owner(this auto& self) { return self.get_view().owner(); }
-    auto field(this auto& self) { return self.get_view().field(); }
-    auto relationship(this auto& self) { return self.get_view().relationship(); }
-    auto metrics(this auto& self) { return self.get_view().metrics(); }
+    auto owner(this auto& self) { return self.view().owner(); }
+    auto field(this auto& self) { return self.view().field(); }
+    auto relationship(this auto& self) { return self.view().relationship(); }
+    auto metrics(this auto& self) { return self.view().metrics(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         RelationshipTable,
         ::ioj::layout::relationship_table::Layout::column_types,

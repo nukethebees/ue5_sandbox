@@ -52,7 +52,7 @@ class FrameMemoryResource final : public std::pmr::memory_resource {
 
     auto try_reclaim() noexcept -> bool;
     void reset();
-    auto get_stats() const noexcept -> FrameMemoryStats;
+    auto stats() const noexcept -> FrameMemoryStats;
     auto owns(void const* pointer) const noexcept -> bool;
   private:
     auto do_allocate(std::size_t bytes, std::size_t alignment) -> void* override;

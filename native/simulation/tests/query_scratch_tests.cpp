@@ -61,8 +61,8 @@ TEST(QueryScratch, ExhaustionDoesNotFallBackToHeap) {
     {
         FrameScratchScope scope{frame};
         EXPECT_THROW(manager.trace_closest({}, {}, &frame), std::bad_alloc);
-        EXPECT_EQ(frame.get_stats().overflow_count, 1u);
-        EXPECT_EQ(frame.get_stats().outstanding_allocation_count, 0u);
+        EXPECT_EQ(frame.stats().overflow_count, 1u);
+        EXPECT_EQ(frame.stats().outstanding_allocation_count, 0u);
     }
 }
 
@@ -93,11 +93,11 @@ TEST(QueryScratch, ConcurrentQueriesAllocateFromSharedFrameAndReleaseBeforeRecla
         for (auto& worker : workers) {
             worker.join();
         }
-        EXPECT_GT(frame.resource.get_stats().current_claimed_bytes, 0u);
-        EXPECT_EQ(frame.resource.get_stats().outstanding_allocation_count, 0u);
+        EXPECT_GT(frame.resource.stats().current_claimed_bytes, 0u);
+        EXPECT_EQ(frame.resource.stats().outstanding_allocation_count, 0u);
     }
-    EXPECT_EQ(frame.resource.get_stats().current_claimed_bytes, 0u);
-    EXPECT_EQ(frame.resource.get_stats().overflow_count, 0u);
+    EXPECT_EQ(frame.resource.stats().current_claimed_bytes, 0u);
+    EXPECT_EQ(frame.resource.stats().overflow_count, 0u);
 }
 
 TEST(QueryScratch, ManagerUsesExplicitScratchAndReleasesQueriesWithinEachEpoch) {
@@ -120,11 +120,11 @@ TEST(QueryScratch, ManagerUsesExplicitScratchAndReleasesQueriesWithinEachEpoch) 
                           {}, Team::Green, 20.f, nearby, &frame.resource),
                       1u);
             EXPECT_EQ(nearby[0], id);
-            EXPECT_GT(frame.resource.get_stats().current_claimed_bytes, 0u);
-            EXPECT_EQ(frame.resource.get_stats().outstanding_allocation_count, 0u);
+            EXPECT_GT(frame.resource.stats().current_claimed_bytes, 0u);
+            EXPECT_EQ(frame.resource.stats().outstanding_allocation_count, 0u);
             EXPECT_EQ(persistent.allocations.load(), persistent_allocations);
         }
-        expect_frame_reclaimed(frame.resource.get_stats());
+        expect_frame_reclaimed(frame.resource.stats());
     }
 }
 
@@ -146,8 +146,8 @@ TEST(QueryScratch, PublishedOverlapBatchesSurviveScratchEpochs) {
             EXPECT_FALSE(
                 frame.resource.owns(overlaps.entity_entity_overlaps.first_entities().data()));
         }
-        expect_frame_reclaimed(frame.resource.get_stats());
-        auto const events{manager.get_aabb_overlap_events()};
+        expect_frame_reclaimed(frame.resource.stats());
+        auto const events{manager.aabb_overlap_events()};
         ASSERT_EQ(events.batches.size(), static_cast<std::size_t>(epoch + 1));
         for (int batch{}; batch <= epoch; ++batch) {
             auto const overlaps{events.get_batch(batch).entity_entity_overlaps};
@@ -158,7 +158,7 @@ TEST(QueryScratch, PublishedOverlapBatchesSurviveScratchEpochs) {
     }
     // NOLINTEND(ioj-loop-view-accessor-call)
     manager.reset_frame_collision_events();
-    EXPECT_TRUE(manager.get_aabb_overlap_events().batches.empty());
+    EXPECT_TRUE(manager.aabb_overlap_events().batches.empty());
     EXPECT_GT(persistent.allocations.load(), 0u);
 }
 }

@@ -21,7 +21,7 @@ auto RunStopConditions::stop_reason(SimClock const& clock,
         }
     }
 
-    if (duration && clock.get_simulation_time() >= duration->get_seconds()) {
+    if (duration && clock.simulation_time() >= duration->seconds()) {
         return telemetry::RunEndReason::DurationReached;
     }
     return std::nullopt;

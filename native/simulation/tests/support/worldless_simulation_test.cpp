@@ -11,13 +11,13 @@ WorldlessSimulationTest::WorldlessSimulationTest(LevelSimInitData data)
     : simulation_{std::move(data)} {}
 
 void WorldlessSimulationTest::advance(time_type const dt) {
-    auto const previous_tick{simulation_.get_clock().get_completed_ticks()};
+    auto const previous_tick{simulation_.clock().get_completed_ticks()};
     simulation_.advance(dt);
-    if (simulation_.get_clock().get_completed_ticks() != previous_tick) {
+    if (simulation_.clock().get_completed_ticks() != previous_tick) {
         if (on_end_tick) {
             on_end_tick(simulation_);
         }
-        timeline.tick(simulation_.get_clock().get_simulation_time());
+        timeline.tick(simulation_.clock().simulation_time());
     }
 }
 
@@ -29,7 +29,7 @@ void WorldlessSimulationTest::queue_damage(std::span<EntityId const> const targe
     for (auto const target : targets) {
         events.add(target, damage, instigator);
     }
-    LevelSimTestAccess::queue_direct_damage_events(simulation_, events.get_const_view());
+    LevelSimTestAccess::queue_direct_damage_events(simulation_, events.const_view());
 }
 void WorldlessSimulationTest::queue_kills(std::span<EntityId const> const targets,
                                           EntityId const instigator) {
@@ -40,14 +40,14 @@ void WorldlessSimulationTest::queue_kills(std::span<EntityId const> const target
         assert(state);
         events.add(target, std::max(1, state->health.value()), instigator);
     }
-    LevelSimTestAccess::queue_direct_damage_events(simulation_, events.get_const_view());
+    LevelSimTestAccess::queue_direct_damage_events(simulation_, events.const_view());
 }
 
 auto WorldlessSimulationTest::run_until_timeline_finished(time_type const maximum_time) -> bool {
     assert(maximum_time > 0.0);
-    assert(simulation_.get_state() == LevelState::Paused);
+    assert(simulation_.state() == LevelState::Paused);
     simulation_.start();
-    auto const tick_period{simulation_.get_clock().get_tick_period()};
+    auto const tick_period{simulation_.clock().tick_period()};
     auto const maximum_ticks{
         static_cast<SimTick::value_type>(std::ceil(maximum_time / tick_period))};
     // NOLINTNEXTLINE(ioj-loop-condition-call) -- advancing the simulation can finish the timeline.
@@ -98,7 +98,7 @@ auto add_capital_spawn(LevelSimInitData& data,
     data.level_events.schedule.add_initial_spawn_group(EntityType::CapitalShip, row, 1);
     auto const entity_index{data.level_events.initialisation.entity_count++};
     storage.add_defaulted(1);
-    auto const events{storage.get_view()};
+    auto const events{storage.view()};
     events.entity_indices()[row] = entity_index;
     set_vector(events.view_locations(), row, location);
     events.teams()[row] = team;
@@ -118,7 +118,7 @@ auto add_turret_spawn(LevelSimInitData& data,
     data.level_events.schedule.add_initial_spawn_group(EntityType::Turret, row, 1);
     auto const entity_index{data.level_events.initialisation.entity_count++};
     storage.add_defaulted(1);
-    auto const events{storage.get_view()};
+    auto const events{storage.view()};
     events.entity_indices()[row] = entity_index;
     set_vector(events.view_locations(), row, location);
     set_rotation(events.view_rotations(), row, rotation);
@@ -136,7 +136,7 @@ auto add_spinner_spawn(LevelSimInitData& data,
     data.level_events.schedule.add_initial_spawn_group(EntityType::TubeSpinner, row, 1);
     auto const entity_index{data.level_events.initialisation.entity_count++};
     storage.add_defaulted(1);
-    auto const events{storage.get_view()};
+    auto const events{storage.view()};
     events.entity_indices()[row] = entity_index;
     set_vector(events.view_locations(), row, location);
     events.yaws()[row] = yaw;

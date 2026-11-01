@@ -477,7 +477,7 @@ struct TurretEntityData
         : TurretEntityData{*std::pmr::get_default_resource()} {}
     explicit TurretEntityData(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~TurretEntityData() { Operations::release_storage(*this); }
     TurretEntityData(TurretEntityData const&) = delete;
     auto operator=(TurretEntityData const&) -> TurretEntityData& = delete;
@@ -492,27 +492,25 @@ struct TurretEntityData
     template <typename Byte>
     using DataPointers = ::ioj::sim::turret_entity_data::DataPointers<Byte>;
   public:
-    auto entity_ids(this auto& self) { return self.get_view().entity_ids(); }
-    auto integral_biases(this auto& self) { return self.get_view().integral_biases(); }
-    auto view_locations(this auto& self) { return self.get_view().view_locations(); }
+    auto entity_ids(this auto& self) { return self.view().entity_ids(); }
+    auto integral_biases(this auto& self) { return self.view().integral_biases(); }
+    auto view_locations(this auto& self) { return self.view().view_locations(); }
     auto view_fire_point_locations(this auto& self) {
-        return self.get_view().view_fire_point_locations();
+        return self.view().view_fire_point_locations();
     }
-    auto view_rotations(this auto& self) { return self.get_view().view_rotations(); }
-    auto teams(this auto& self) { return self.get_view().teams(); }
-    auto laser_cooldowns(this auto& self) { return self.get_view().laser_cooldowns(); }
-    auto laser_damages(this auto& self) { return self.get_view().laser_damages(); }
+    auto view_rotations(this auto& self) { return self.view().view_rotations(); }
+    auto teams(this auto& self) { return self.view().teams(); }
+    auto laser_cooldowns(this auto& self) { return self.view().laser_cooldowns(); }
+    auto laser_damages(this auto& self) { return self.view().laser_damages(); }
     auto target_refresh_countdowns_periods(this auto& self) {
-        return self.get_view().target_refresh_countdowns_periods();
+        return self.view().target_refresh_countdowns_periods();
     }
     auto target_refresh_countdowns_remaining_ticks(this auto& self) {
-        return self.get_view().target_refresh_countdowns_remaining_ticks();
+        return self.view().target_refresh_countdowns_remaining_ticks();
     }
-    auto target_ids(this auto& self) { return self.get_view().target_ids(); }
-    auto view_target_locations(this auto& self) { return self.get_view().view_target_locations(); }
-    auto view_target_velocities(this auto& self) {
-        return self.get_view().view_target_velocities();
-    }
+    auto target_ids(this auto& self) { return self.view().target_ids(); }
+    auto view_target_locations(this auto& self) { return self.view().view_target_locations(); }
+    auto view_target_velocities(this auto& self) { return self.view().view_target_velocities(); }
     using RowOperations =
         soa_storage_detail::OwnerRowOperations<TurretEntityData,
                                                ::ioj::sim::turret_entity_data::Layout::column_types,
@@ -534,21 +532,20 @@ struct TurretEntityData
              Vector3f const new_target_locations,
              Vector3f const new_target_velocities) {
         assert(index < num());
-        get_view().entity_ids()[index] = new_entity_ids;
-        get_view().integral_biases()[index] = new_integral_biases;
-        get_view().view_locations().set(index, new_locations);
-        get_view().view_fire_point_locations().set(index, new_fire_point_locations);
-        get_view().view_rotations().set(index, new_rotations);
-        get_view().teams()[index] = new_teams;
-        get_view().laser_cooldowns()[index] = new_laser_cooldowns;
-        get_view().laser_damages()[index] = new_laser_damages;
-        get_view().target_refresh_countdowns_periods()[index] =
-            new_target_refresh_countdowns_periods;
-        get_view().target_refresh_countdowns_remaining_ticks()[index] =
+        view().entity_ids()[index] = new_entity_ids;
+        view().integral_biases()[index] = new_integral_biases;
+        view().view_locations().set(index, new_locations);
+        view().view_fire_point_locations().set(index, new_fire_point_locations);
+        view().view_rotations().set(index, new_rotations);
+        view().teams()[index] = new_teams;
+        view().laser_cooldowns()[index] = new_laser_cooldowns;
+        view().laser_damages()[index] = new_laser_damages;
+        view().target_refresh_countdowns_periods()[index] = new_target_refresh_countdowns_periods;
+        view().target_refresh_countdowns_remaining_ticks()[index] =
             new_target_refresh_countdowns_remaining_ticks;
-        get_view().target_ids()[index] = new_target_ids;
-        get_view().view_target_locations().set(index, new_target_locations);
-        get_view().view_target_velocities().set(index, new_target_velocities);
+        view().target_ids()[index] = new_target_ids;
+        view().view_target_locations().set(index, new_target_locations);
+        view().view_target_velocities().set(index, new_target_velocities);
     }
     size_type add(EntityId const new_entity_ids,
                   std::uint32_t const new_integral_biases,

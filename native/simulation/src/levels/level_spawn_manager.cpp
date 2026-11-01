@@ -58,17 +58,17 @@ void LevelSpawnManager::spawn(LevelSpawnGroups::ConstView const groups) {
             case EntityType::CapitalShip: {
                 // Spawn groups select distinct payload ranges.
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
-                spawn_capitals(capital_payloads_.get_const_view(offset, count));
+                spawn_capitals(capital_payloads_.const_view(offset, count));
                 break;
             }
             case EntityType::Turret: {
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- per-group payload.
-                spawn_turrets(turret_payloads_.get_const_view(offset, count));
+                spawn_turrets(turret_payloads_.const_view(offset, count));
                 break;
             }
             case EntityType::TubeSpinner: {
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- per-group payload.
-                spawn_spinners(spinner_payloads_.get_const_view(offset, count));
+                spawn_spinners(spinner_payloads_.const_view(offset, count));
                 break;
             }
             default: {
@@ -136,7 +136,7 @@ void LevelSpawnManager::queue_fighter_spawns(float const dt,
                      spawn_rotation.roll,
                      teams[index]);
         }
-        fighters_.queue_spawns(wave.get_const_view());
+        fighters_.queue_spawns(wave.const_view());
         source.remaining_delay = source.cooldown;
     }
 }
@@ -165,7 +165,7 @@ void LevelSpawnManager::spawn_spinners(LevelSpinnerSpawnEvents::ConstView const 
     }
 }
 
-auto LevelSpawnManager::get_id(LevelEntityIndex const entity_index) const -> EntityId {
+auto LevelSpawnManager::id(LevelEntityIndex const entity_index) const -> EntityId {
     assert(static_cast<std::size_t>(entity_index) < entity_ids_.size());
     auto const id{entity_ids_[entity_index]};
     assert(id.is_valid());

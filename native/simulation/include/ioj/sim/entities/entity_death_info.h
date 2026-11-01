@@ -175,7 +175,7 @@ struct EntityDeathInfo
         : EntityDeathInfo{*std::pmr::get_default_resource()} {}
     explicit EntityDeathInfo(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~EntityDeathInfo() { Operations::release_storage(*this); }
     EntityDeathInfo(EntityDeathInfo const&) = delete;
     auto operator=(EntityDeathInfo const&) -> EntityDeathInfo& = delete;
@@ -190,10 +190,10 @@ struct EntityDeathInfo
     template <typename Byte>
     using DataPointers = ::ioj::sim::entity_death_info::DataPointers<Byte>;
   public:
-    auto reasons(this auto& self) { return self.get_view().reasons(); }
-    auto victims(this auto& self) { return self.get_view().victims(); }
-    auto killers(this auto& self) { return self.get_view().killers(); }
-    auto locations(this auto& self) { return self.get_view().locations(); }
+    auto reasons(this auto& self) { return self.view().reasons(); }
+    auto victims(this auto& self) { return self.view().victims(); }
+    auto killers(this auto& self) { return self.view().killers(); }
+    auto locations(this auto& self) { return self.view().locations(); }
     using RowOperations =
         soa_storage_detail::OwnerRowOperations<EntityDeathInfo,
                                                ::ioj::sim::entity_death_info::Layout::column_types,

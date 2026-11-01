@@ -118,7 +118,7 @@ concept Optional =
 
 template <typename T>
 concept Constrained = requires(T const& value, typename T::value_type const& inner) {
-    { value.get_ref() } -> std::same_as<typename T::value_type const&>;
+    { value.ref() } -> std::same_as<typename T::value_type const&>;
     { T::valid(inner) } -> std::same_as<bool>;
     { T::try_make(inner) } -> std::same_as<std::optional<T>>;
 };
@@ -149,7 +149,7 @@ void diff_value(T const& expected, T const& actual, DiffContext& context) {
                 });
         }
     } else if constexpr (diff_detail::Constrained<T>) {
-        diff_value(expected.get_ref(), actual.get_ref(), context);
+        diff_value(expected.ref(), actual.ref(), context);
     } else if constexpr (diff_detail::Optional<T>) {
         if (expected.has_value() != actual.has_value()) {
             context.mismatch(std::string_view{expected ? "present" : "absent"},

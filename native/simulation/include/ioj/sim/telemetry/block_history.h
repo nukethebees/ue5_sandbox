@@ -42,7 +42,7 @@ class BlockHistory {
     }
     auto block_view(std::uint32_t index) const -> history_rows::ConstView;
     auto block_data(std::uint32_t index) const -> std::byte const*;
-    auto get_stats() const noexcept -> BlockHistoryStats;
+    auto stats() const noexcept -> BlockHistoryStats;
   private:
     struct Block {
         memory::Allocation allocation{};

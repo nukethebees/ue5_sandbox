@@ -217,7 +217,7 @@ struct LineTraces
         : LineTraces{*std::pmr::get_default_resource()} {}
     explicit LineTraces(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LineTraces() { Operations::release_storage(*this); }
     LineTraces(LineTraces const&) = delete;
     auto operator=(LineTraces const&) -> LineTraces& = delete;
@@ -232,8 +232,8 @@ struct LineTraces
     template <typename Byte>
     using DataPointers = ::ioj::sim::line_traces::DataPointers<Byte>;
   public:
-    auto view_starts(this auto& self) { return self.get_view().view_starts(); }
-    auto view_ends(this auto& self) { return self.get_view().view_ends(); }
+    auto view_starts(this auto& self) { return self.view().view_starts(); }
+    auto view_ends(this auto& self) { return self.view().view_ends(); }
     using RowOperations =
         soa_storage_detail::OwnerRowOperations<LineTraces,
                                                ::ioj::sim::line_traces::Layout::column_types,
@@ -242,8 +242,8 @@ struct LineTraces
     using RowOperations::set;
     void set(size_type index, Vector3f const new_starts, Vector3f const new_ends) {
         assert(index < num());
-        get_view().view_starts().set(index, new_starts);
-        get_view().view_ends().set(index, new_ends);
+        view().view_starts().set(index, new_starts);
+        view().view_ends().set(index, new_ends);
     }
     size_type add(Vector3f const new_starts, Vector3f const new_ends) {
         auto const index{num()};

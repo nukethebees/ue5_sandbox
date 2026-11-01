@@ -8,7 +8,7 @@ namespace ioj::sim::tests {
 void add_overlap(collision::EntityEntityOverlaps& overlaps, EntityId first, EntityId second) {
     auto const index{overlaps.num()};
     overlaps.add_defaulted(1);
-    auto const columns{overlaps.get_view()};
+    auto const columns{overlaps.view()};
     columns.first_entities()[index] = first;
     columns.second_entities()[index] = second;
 }
@@ -28,16 +28,16 @@ TEST(OverlapHandler, QueuesEnvironmentalDamageForEachSupportedOverlapParticipant
     {
         auto const index{static_overlaps.num()};
         static_overlaps.add_defaulted(1);
-        auto const columns{static_overlaps.get_view()};
+        auto const columns{static_overlaps.view()};
         columns.entities()[index] = fighter;
         columns.static_geometry_indices()[index] = collision::StaticGeometryIndex{7};
     }
 
     OverlapHandler handler{Positive<Health::value_type>::make(37)};
-    handler.handle({entity_overlaps.get_const_view(), static_overlaps.get_const_view()},
+    handler.handle({entity_overlaps.const_view(), static_overlaps.const_view()},
                    owners.combat_events);
 
-    auto const damage{owners.combat_events.all_events().get_const_view()};
+    auto const damage{owners.combat_events.all_events().const_view()};
     EXPECT_EQ(damage.num(), 5) << "Every supported overlap endpoint queues damage";
     std::int32_t capital_count{};
     std::int32_t fighter_count{};
@@ -56,10 +56,9 @@ TEST(OverlapHandler, QueuesEnvironmentalDamageForEachSupportedOverlapParticipant
     EXPECT_EQ(capital_count, 1) << "Capital receives its pair contribution";
     EXPECT_EQ(fighter_count, 3) << "Fighter receives all three contributions";
     EXPECT_EQ(turret_count, 1) << "Turret receives its pair contribution";
-    EXPECT_EQ(
-        owners.ledger.get_combat_telemetry()
-            .hits[std::to_underlying(Team::Blue)][std::to_underlying(EntityType::CapitalShip)],
-        std::uint64_t{0})
+    EXPECT_EQ(owners.ledger.combat_telemetry().hits[std::to_underlying(Team::Blue)]
+                                                   [std::to_underlying(EntityType::CapitalShip)],
+              std::uint64_t{0})
         << "Environmental damage gives no combat hits";
 }
 
@@ -79,10 +78,10 @@ TEST(OverlapHandler, FiltersUnsupportedRecipientsAndDefersRetirementChecksToDama
     FrameScratchScope scope{memory};
     OverlapHandler handler{
         Positive<Health::value_type>::make(OverlapResponseConfig{}.damage_per_overlap_detection)};
-    handler.handle({first_pairs.get_const_view(), {}}, owners.combat_events);
+    handler.handle({first_pairs.const_view(), {}}, owners.combat_events);
     owners.combat_events.prepare(owners.entity_tables.lookups, &memory);
 
-    auto const first_damage{owners.combat_events.all_events().get_const_view()};
+    auto const first_damage{owners.combat_events.all_events().const_view()};
     EXPECT_EQ(first_damage.num(), 3) << "Only the live supported endpoint is damaged per pair";
     for (auto const recipient : first_damage.damaged_entities()) {
         EXPECT_TRUE(recipient == fighter) << "Skipped endpoints never enter the damage queue";
@@ -94,18 +93,18 @@ TEST(OverlapHandler, FiltersUnsupportedRecipientsAndDefersRetirementChecksToDama
     owners.publish();
     collision::EntityEntityOverlaps retired_pair;
     add_overlap(retired_pair, fighter, doomed);
-    handler.handle({retired_pair.get_const_view(), {}}, owners.combat_events);
+    handler.handle({retired_pair.const_view(), {}}, owners.combat_events);
     owners.combat_events.prepare(owners.entity_tables.lookups, &memory);
-    auto const second_damage{owners.combat_events.all_events().get_const_view()};
+    auto const second_damage{owners.combat_events.all_events().const_view()};
     EXPECT_EQ(second_damage.num(), 1) << "Retired endpoint is skipped independently";
     EXPECT_TRUE(second_damage.damaged_entities()[0] != replacement)
         << "Replacement is not accidentally damaged";
 
     owners.combat_events.reset();
-    auto const fighter_data{owners.fighters.get_const_view()};
+    auto const fighter_data{owners.fighters.const_view()};
     owners.health_table.set_health(fighter_data.entity_ids()[0], Health{0});
     owners.publish();
-    handler.handle({retired_pair.get_const_view(), {}}, owners.combat_events);
+    handler.handle({retired_pair.const_view(), {}}, owners.combat_events);
     owners.combat_events.prepare(owners.entity_tables.lookups, &memory);
     EXPECT_EQ(owners.combat_events.all_events().num(), 0);
 }

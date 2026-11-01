@@ -16,10 +16,10 @@ auto WorkloadTable::append(ioj::layout::AnalysisId owner,
                            std::uint64_t repeat) -> ioj::layout::WorkloadId {
     auto const row{this->num()};
     this->add_defaulted(1);
-    this->get_view().analysis()[row] = owner;
-    this->get_view().selections()[row] = selected;
-    this->get_view().element_count()[row] = count;
-    this->get_view().multiplicity()[row] = repeat;
+    this->view().analysis()[row] = owner;
+    this->view().selections()[row] = selected;
+    this->view().element_count()[row] = count;
+    this->view().multiplicity()[row] = repeat;
     return ioj::layout::WorkloadId{row};
 }
 

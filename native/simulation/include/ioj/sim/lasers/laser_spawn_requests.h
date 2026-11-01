@@ -351,7 +351,7 @@ struct LaserSpawnRequests
         : LaserSpawnRequests{*std::pmr::get_default_resource()} {}
     explicit LaserSpawnRequests(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LaserSpawnRequests() { Operations::release_storage(*this); }
     LaserSpawnRequests(LaserSpawnRequests const&) = delete;
     auto operator=(LaserSpawnRequests const&) -> LaserSpawnRequests& = delete;
@@ -366,14 +366,14 @@ struct LaserSpawnRequests
     template <typename Byte>
     using DataPointers = ::ioj::sim::lasers::laser_spawn_requests::DataPointers<Byte>;
   public:
-    auto view_locations(this auto& self) { return self.get_view().view_locations(); }
-    auto view_rotations(this auto& self) { return self.get_view().view_rotations(); }
-    auto view_base_velocities(this auto& self) { return self.get_view().view_base_velocities(); }
-    auto damages(this auto& self) { return self.get_view().damages(); }
-    auto speeds(this auto& self) { return self.get_view().speeds(); }
-    auto max_distances(this auto& self) { return self.get_view().max_distances(); }
-    auto instigator_ids(this auto& self) { return self.get_view().instigator_ids(); }
-    auto sources(this auto& self) { return self.get_view().sources(); }
+    auto view_locations(this auto& self) { return self.view().view_locations(); }
+    auto view_rotations(this auto& self) { return self.view().view_rotations(); }
+    auto view_base_velocities(this auto& self) { return self.view().view_base_velocities(); }
+    auto damages(this auto& self) { return self.view().damages(); }
+    auto speeds(this auto& self) { return self.view().speeds(); }
+    auto max_distances(this auto& self) { return self.view().max_distances(); }
+    auto instigator_ids(this auto& self) { return self.view().instigator_ids(); }
+    auto sources(this auto& self) { return self.view().sources(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         LaserSpawnRequests,
         ::ioj::sim::lasers::laser_spawn_requests::Layout::column_types,
@@ -390,14 +390,14 @@ struct LaserSpawnRequests
              EntityId const new_instigator_ids,
              LaserSource const new_sources) {
         assert(index < num());
-        get_view().view_locations().set(index, new_locations);
-        get_view().view_rotations().set(index, new_rotations);
-        get_view().view_base_velocities().set(index, new_base_velocities);
-        get_view().damages()[index] = new_damages;
-        get_view().speeds()[index] = new_speeds;
-        get_view().max_distances()[index] = new_max_distances;
-        get_view().instigator_ids()[index] = new_instigator_ids;
-        get_view().sources()[index] = new_sources;
+        view().view_locations().set(index, new_locations);
+        view().view_rotations().set(index, new_rotations);
+        view().view_base_velocities().set(index, new_base_velocities);
+        view().damages()[index] = new_damages;
+        view().speeds()[index] = new_speeds;
+        view().max_distances()[index] = new_max_distances;
+        view().instigator_ids()[index] = new_instigator_ids;
+        view().sources()[index] = new_sources;
     }
     size_type add(Vector3f const new_locations,
                   Rotator3f const new_rotations,

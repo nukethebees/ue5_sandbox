@@ -28,7 +28,7 @@ void initialise_spawns(LevelSimInitData& data,
     schedule.turret_spawns.add_uninitialised(turret_count);
     schedule.spinner_spawns.add_uninitialised(spinner_count);
 
-    auto const capital_events{schedule.capital_spawns.get_view()};
+    auto const capital_events{schedule.capital_spawns.view()};
     auto const capital_entity_indices{capital_events.entity_indices()};
     auto const capital_view_locations{capital_events.view_locations()};
     auto const capital_view_rotations{capital_events.view_rotations()};
@@ -50,7 +50,7 @@ void initialise_spawns(LevelSimInitData& data,
             spawn.spawn_cooldown.value_or(data.capital_ships.spawn_delay);
     }
 
-    auto const turret_events{schedule.turret_spawns.get_view()};
+    auto const turret_events{schedule.turret_spawns.view()};
     auto const turret_entity_indices{turret_events.entity_indices()};
     auto const turret_view_locations{turret_events.view_locations()};
     auto const turret_view_rotations{turret_events.view_rotations()};
@@ -68,7 +68,7 @@ void initialise_spawns(LevelSimInitData& data,
         turret_laser_damages[i] = spawn.laser_damage.value_or(data.turrets.laser.damage);
     }
 
-    auto const spinner_events{schedule.spinner_spawns.get_view()};
+    auto const spinner_events{schedule.spinner_spawns.view()};
     auto const spinner_entity_indices{spinner_events.entity_indices()};
     auto const spinner_view_locations{spinner_events.view_locations()};
     auto const spinner_yaws{spinner_events.yaws()};

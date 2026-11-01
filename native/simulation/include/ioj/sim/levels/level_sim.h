@@ -61,14 +61,14 @@ struct LevelSim {
     // Simulation
     /* **************************************** */
     void advance(time_type dt);
-    auto get_read_access() const -> LevelReadAccess { return LevelReadAccess{*this}; }
+    auto read_access() const -> LevelReadAccess { return LevelReadAccess{*this}; }
 
     /* **************************************** */
     // Configuration and commands
     /* **************************************** */
     void set_telemetry_metadata(telemetry::RunMetadata metadata);
     void set_static_collision(std::span<collision::WorldAABB const> bounds);
-    auto get_player_ship_commands() noexcept -> std::optional<player::CommandInterface> {
+    auto player_ship_commands() noexcept -> std::optional<player::CommandInterface> {
         if (!player_ship_simulation_) {
             return std::nullopt;
         }
@@ -82,40 +82,38 @@ struct LevelSim {
     void finalize_telemetry_run(telemetry::RunEndReason reason);
     void stop_run(telemetry::RunEndReason reason);
     void stop_run_if_requested(RunStopConditions const& conditions);
-    auto get_player_team_completion() const -> std::optional<TeamMissionCompletion>;
+    auto player_team_completion() const -> std::optional<TeamMissionCompletion>;
     auto take_finalized_telemetry_run() -> std::optional<telemetry::RunRecord>;
 
     /* **************************************** */
     // Accessors
     /* **************************************** */
-    auto get_state() const noexcept -> LevelState { return state_; }
-    auto get_clock() const noexcept -> SimClock const& { return clock_; }
-    auto get_player_ship_simulation() const -> player::Sim const* {
+    auto state() const noexcept -> LevelState { return state_; }
+    auto clock() const noexcept -> SimClock const& { return clock_; }
+    auto player_ship_simulation() const -> player::Sim const* {
         return player_ship_simulation_.has_value() ? &player_ship_simulation_.value() : nullptr;
     }
-    auto get_lasers() const -> lasers::Sim const& { return lasers_simulation_; }
-    auto get_capital_ships() const -> capital_ships::Sim const& {
-        return capital_ships_simulation_;
-    }
-    auto get_fighters() const -> fighters::Sim const& { return fighters_simulation_; }
-    auto get_turrets() const -> turrets::Sim const& { return turrets_simulation_; }
-    auto get_spinners() const -> spinners::Sim const& { return spinners_simulation_; }
-    auto get_entity_ledger() const -> EntityLedger const& { return entity_ledger_; }
-    auto get_entity_tables() const -> EntityTables const& { return entity_tables_; }
-    auto get_mission() const -> Mission const& { return mission_; }
-    auto get_task_manager() const -> tasks::TaskManager const& { return task_manager_; }
-    auto get_level_metadata() const -> levels::LevelMetadata const& { return level_metadata_; }
-    auto get_spatial_query_manager() const -> SpatialQueryManager const& {
+    auto lasers() const -> lasers::Sim const& { return lasers_simulation_; }
+    auto capital_ships() const -> capital_ships::Sim const& { return capital_ships_simulation_; }
+    auto fighters() const -> fighters::Sim const& { return fighters_simulation_; }
+    auto turrets() const -> turrets::Sim const& { return turrets_simulation_; }
+    auto spinners() const -> spinners::Sim const& { return spinners_simulation_; }
+    auto entity_ledger() const -> EntityLedger const& { return entity_ledger_; }
+    auto entity_tables() const -> EntityTables const& { return entity_tables_; }
+    auto mission() const -> Mission const& { return mission_; }
+    auto task_manager() const -> tasks::TaskManager const& { return task_manager_; }
+    auto level_metadata() const -> levels::LevelMetadata const& { return level_metadata_; }
+    auto spatial_query_manager() const -> SpatialQueryManager const& {
         return collision_pipeline_.queries();
     }
-    auto get_level_telemetry_manager() const -> LevelTelemetryManager const& {
+    auto level_telemetry_manager() const -> LevelTelemetryManager const& {
         return level_telemetry_manager_;
     }
-    auto get_memory_stats() const noexcept -> memory::Statistics {
-        return memory_manager_.get_game_memory().get_stats();
+    auto memory_stats() const noexcept -> memory::Statistics {
+        return memory_manager_.game_memory().stats();
     }
-    auto get_frame_memory_stats() const noexcept -> FrameMemoryStats {
-        return memory_manager_.get_frame_memory().get_stats();
+    auto frame_memory_stats() const noexcept -> FrameMemoryStats {
+        return memory_manager_.frame_memory().stats();
     }
   private:
     void refresh_spatial_index();

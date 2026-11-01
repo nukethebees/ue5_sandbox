@@ -33,7 +33,7 @@ void HudModel::initialise(sim::Mission const& mission, sim::LevelReadAccess cons
                              settings_.entity_count_update_period,
                              settings_.mission_status_update_period};
     for (auto const period : periods) {
-        auto const ticks{std::ceil(period.get() * tick_loop_.tick_rate.get_hz())};
+        auto const ticks{std::ceil(period.get() * tick_loop_.tick_rate.hz())};
         if (ticks < 1 || ticks > std::numeric_limits<PeriodicTickCountdown8::counter_type>::max()) {
             throw std::invalid_argument{"HUD update period is outside the countdown range"};
         }
@@ -42,7 +42,7 @@ void HudModel::initialise(sim::Mission const& mission, sim::LevelReadAccess cons
     }
     simulation_.emplace(view);
     mission_ = &mission;
-    top_killer_ids_.reserve(view.get_entity_ledger().get_num_unique_ids_issued());
+    top_killer_ids_.reserve(view.entity_ledger().num_unique_ids_issued());
     force_sample();
 }
 void HudModel::deactivate() {
@@ -120,32 +120,32 @@ auto HudModel::has_mission_data() const -> bool {
 auto HudModel::display_batches() const -> std::array<AgentDisplayBatch, 4> {
     assert(simulation_);
     auto const& view{*simulation_};
-    auto const& capitals_sim{view.get_capitals()};
-    auto const& fighters_sim{view.get_fighters()};
-    auto const& turrets_sim{view.get_turrets()};
+    auto const& capitals_sim{view.capitals()};
+    auto const& fighters_sim{view.fighters()};
+    auto const& turrets_sim{view.turrets()};
     auto const capitals{capitals_sim.get_entities()};
-    auto const fighters{fighters_sim.get_entities()};
+    auto const fighters{fighters_sim.entities()};
     auto const turrets{turrets_sim.get_entities()};
-    auto const spinners{view.get_spinners().get_entities()};
+    auto const spinners{view.spinners().get_entities()};
     using sim::EntityType;
     return {
         {{EntityType::CapitalShip,
           capitals.entity_ids(),
           capitals.view_locations(),
           {},
-          capitals_sim.get_healths(),
+          capitals_sim.healths(),
           capitals.teams()},
          {EntityType::Fighter,
           fighters.entity_ids(),
           fighters.view_locations(),
           fighters.view_velocities(),
-          fighters_sim.get_healths(),
+          fighters_sim.healths(),
           fighters.teams()},
          {EntityType::Turret,
           turrets.entity_ids(),
           turrets.view_locations(),
           {},
-          turrets_sim.get_healths(),
+          turrets_sim.healths(),
           turrets.teams()},
          {EntityType::TubeSpinner, spinners.entity_ids(), spinners.view_locations(), {}, {}, {}}}};
 }
@@ -155,7 +155,7 @@ auto HudModel::collect_mission_data() -> bool {
     next.active = static_cast<std::int32_t>(mission_->active_objectives().size());
     next.completed = static_cast<std::int32_t>(mission_->completed_objectives().size());
     next.inactive = static_cast<std::int32_t>(mission_->inactive_objectives().size());
-    next.elapsed_seconds = simulation_->get_clock().get_simulation_time();
+    next.elapsed_seconds = simulation_->clock().simulation_time();
     auto const& objectives{mission_->objectives()};
     for (auto const id : mission_->active_objectives()) {
         if (!next.active_titles.empty()) {
@@ -170,11 +170,11 @@ auto HudModel::collect_mission_data() -> bool {
 auto HudModel::collect_entity_count_data() -> bool {
     return hud_detail::replace(
         entity_count_data_,
-        EntityCountHudData{simulation_->get_entity_ledger().count_alive_per_team_and_type()});
+        EntityCountHudData{simulation_->entity_ledger().count_alive_per_team_and_type()});
 }
 void HudModel::collect_kill_data() {
-    auto const& ledger{simulation_->get_entity_ledger()};
-    auto const& entities{ledger.get_unique_entities()};
+    auto const& ledger{simulation_->entity_ledger()};
+    auto const& entities{ledger.unique_entities()};
     auto const count{entities.num()};
     auto const kills{entities.kills()};
     auto const ids{entities.entity_ids()};
@@ -188,20 +188,20 @@ void HudModel::collect_kill_data() {
         }
     }
     std::ranges::sort(top_killer_ids_, [&](sim::EntityId const lhs, sim::EntityId const rhs) {
-        auto const left{ledger.get_history_index(lhs)};
-        auto const right{ledger.get_history_index(rhs)};
+        auto const left{ledger.history_index(lhs)};
+        auto const right{ledger.history_index(rhs)};
         return kills[left] != kills[right] ? kills[left] > kills[right] : left < right;
     });
     kill_data_.top_killers.clear();
     for (auto const id : top_killer_ids_) {
-        auto const index{ledger.get_history_index(id)};
+        auto const index{ledger.history_index(id)};
         kill_data_.top_killers.push_back(
             {id, types[index], teams[index], static_cast<std::int32_t>(kills[index])});
     }
     kill_data_.team_kill_matrix = {};
     for (std::uint32_t index{}; index < count; ++index) {
         if (killed_by[index].is_valid()) {
-            auto const killer{ledger.get_history_index(killed_by[index])};
+            auto const killer{ledger.history_index(killed_by[index])};
             ++kill_data_.team_kill_matrix[std::to_underlying(teams[killer])]
                                          [std::to_underlying(types[index])];
         }
@@ -211,11 +211,11 @@ auto HudModel::collect_player_status_data() -> bool {
     std::optional<PlayerStatusHudData> next;
     if (auto const* player{player_for_collection()}) {
         next.emplace(PlayerStatusHudData{
-            .health = player->get_health(),
-            .speed = player->get_speed(),
-            .target_speed = player->get_controller_state().persistent_forward_target_speed,
-            .energy = player->get_energy(),
-            .points = player->get_kills(),
+            .health = player->health(),
+            .speed = player->speed(),
+            .target_speed = player->controller_state().persistent_forward_target_speed,
+            .energy = player->energy(),
+            .points = player->kills(),
             .fire_rate = player->laser_fire_rate});
     }
     return hud_detail::replace(player_status_data_, next);
@@ -226,11 +226,11 @@ auto HudModel::collect_player_flight_data() -> bool {
         auto& data{next.emplace()};
         data.selected_mapping_context = selected_mapping_context_;
         auto const socket{player->get_middle_socket()};
-        auto const& physical{player->get_physical_state()};
+        auto const& physical{player->physical_state()};
         auto const local{physical.transform.inverse_transform_vector_no_scale(physical.velocity)};
-        auto const& intent{player->get_flight_intent()};
-        auto const& controller{player->get_controller_state()};
-        auto const& profile{player->get_active_flight_model_profile()};
+        auto const& intent{player->flight_intent()};
+        auto const& controller{player->controller_state()};
+        auto const& profile{player->active_flight_model_profile()};
         auto const forward_limit{
             std::max(profile.config.translation.forward.normal.positive_speed_limit, 1.f)};
         auto const right_limit{
@@ -238,7 +238,7 @@ auto HudModel::collect_player_flight_data() -> bool {
         data.flight_vector_debug = {
             .turn_input = {intent.rotation.y(), intent.rotation.x()},
             .move_input = {intent.translation.y(), intent.translation.x()},
-            .target_velocity = Vector2f{player->get_sampled_target_speed_scale()},
+            .target_velocity = Vector2f{player->sampled_target_speed_scale()},
             .local_velocity = {static_cast<float>(local.y() / right_limit),
                                static_cast<float>(local.x() / forward_limit)}};
         data.ship_velocity = physical.velocity;
@@ -265,9 +265,9 @@ auto HudModel::sampled_speed_view() const -> std::optional<SampledSpeedHudView> 
     return SampledSpeedHudView{player->speed_samples, player->speed_sample_index};
 }
 auto HudModel::player_for_collection() const -> sim::player::Sim const* {
-    auto const* player{simulation_->get_player()};
+    auto const* player{simulation_->player()};
     return player && player->unique_entity_id.is_valid() &&
-                   simulation_->get_entity_ledger().is_valid_unique_id(player->unique_entity_id)
+                   simulation_->entity_ledger().is_valid_unique_id(player->unique_entity_id)
              ? player
              : nullptr;
 }

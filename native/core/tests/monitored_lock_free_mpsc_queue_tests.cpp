@@ -23,7 +23,7 @@ TEST(MonitoredLockFreeMPSCQueue, CountsAndConsumesEnqueueResults) {
     EXPECT_EQ(result.full_count, 1);
     EXPECT_EQ(result.uninitialised_count, 1);
     EXPECT_FALSE(result.is_empty());
-    EXPECT_EQ(queue.get_success_count(), 0);
+    EXPECT_EQ(queue.success_count(), 0);
 }
 
 TEST(MonitoredLockFreeMPSCQueue, ResetsCounters) {

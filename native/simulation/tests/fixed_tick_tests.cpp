@@ -70,8 +70,8 @@ TEST(SimulationClock, InitialisesRuntimeStateFromStaticSettings) {
     clock.initialise(
         {.tick_rate = Frequency::make(10.0), .time_scale = PositiveFinite<double>::make(2.0)});
 
-    EXPECT_DOUBLE_EQ(clock.get_tick_period(), 0.1);
-    EXPECT_DOUBLE_EQ(clock.get_time_scale().get(), 2.0);
+    EXPECT_DOUBLE_EQ(clock.tick_period(), 0.1);
+    EXPECT_DOUBLE_EQ(clock.time_scale().get(), 2.0);
     EXPECT_DOUBLE_EQ(clock.tick_loop.accumulator, 0.0);
     EXPECT_EQ(clock.get_completed_ticks().value(), 0);
 
@@ -82,8 +82,8 @@ TEST(SimulationClock, InitialisesRuntimeStateFromStaticSettings) {
     EXPECT_EQ(clock.phase(), SimulationPhase::BetweenTicks);
     EXPECT_EQ(clock.get_completed_ticks(), SimTick{});
     EXPECT_DOUBLE_EQ(clock.tick_loop.accumulator, 0.0);
-    EXPECT_DOUBLE_EQ(clock.get_tick_period(), 0.1);
-    EXPECT_DOUBLE_EQ(clock.get_time_scale().get(), 2.0);
+    EXPECT_DOUBLE_EQ(clock.tick_period(), 0.1);
+    EXPECT_DOUBLE_EQ(clock.time_scale().get(), 2.0);
 }
 
 TEST(SimulationSettings, AcceptsFrequenciesAboveTickRate) {
@@ -106,7 +106,7 @@ TEST(SimulationSettings, ChecksCountdownFrequencyBoundsBeforeNarrowing) {
         assign(settings, 1.f);
         EXPECT_TRUE(validate_settings(settings));
 
-        settings.clock.tick_rate = Frequency::make(settings.clock.tick_rate.get_hz() + 0.25);
+        settings.clock.tick_rate = Frequency::make(settings.clock.tick_rate.hz() + 0.25);
         auto const result{validate_settings(settings)};
         ASSERT_FALSE(result);
         EXPECT_TRUE(std::ranges::any_of(

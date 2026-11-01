@@ -47,20 +47,20 @@ TEST_F(CatalogFiles, RefreshesFiltersPreservesSelectionAndReportsCorruption) {
 
     RunCatalog catalog{directory};
     catalog.refresh();
-    EXPECT_EQ(catalog.get_unreadable_file_count(), 2);
-    ASSERT_EQ(catalog.get_runs().size(), 2);
-    EXPECT_EQ(catalog.get_runs()[0].run_id, "newer");
-    ASSERT_NE(catalog.get_selected_record(), nullptr);
-    EXPECT_EQ(catalog.get_selected_record()->run.metadata.level_id, "Beta");
+    EXPECT_EQ(catalog.unreadable_file_count(), 2);
+    ASSERT_EQ(catalog.runs().size(), 2);
+    EXPECT_EQ(catalog.runs()[0].run_id, "newer");
+    ASSERT_NE(catalog.selected_record(), nullptr);
+    EXPECT_EQ(catalog.selected_record()->run.metadata.level_id, "Beta");
     EXPECT_TRUE(catalog.select_run("older"));
     catalog.refresh();
-    EXPECT_EQ(catalog.get_selected_run_id(), "older");
+    EXPECT_EQ(catalog.selected_run_id(), "older");
     catalog.set_level_filter("Beta");
-    ASSERT_EQ(catalog.get_runs().size(), 1);
-    EXPECT_EQ(catalog.get_selected_run_id(), "newer");
+    ASSERT_EQ(catalog.runs().size(), 1);
+    EXPECT_EQ(catalog.selected_run_id(), "newer");
     EXPECT_FALSE(catalog.select_run("older"));
     catalog.set_level_filter("unknown");
-    EXPECT_EQ(catalog.get_level_filter(), "All levels");
+    EXPECT_EQ(catalog.level_filter(), "All levels");
 }
 
 TEST_F(CatalogFiles, RefreshInvalidatesMissingOrCorruptBaselinesAndSelections) {
@@ -72,20 +72,20 @@ TEST_F(CatalogFiles, RefreshInvalidatesMissingOrCorruptBaselinesAndSelections) {
     ASSERT_TRUE(catalog.select_run("first"));
     ASSERT_TRUE(catalog.select_baseline("baseline"));
     EXPECT_FALSE(catalog.select_baseline("other"));
-    EXPECT_TRUE(catalog.get_baseline_run_id().empty());
+    EXPECT_TRUE(catalog.baseline_run_id().empty());
     ASSERT_TRUE(catalog.select_baseline("baseline"));
     std::ofstream{directory / "baseline.json"} << "corrupt";
     catalog.refresh();
-    EXPECT_EQ(catalog.get_baseline_record(), nullptr);
-    EXPECT_TRUE(catalog.get_baseline_run_id().empty());
-    EXPECT_EQ(catalog.get_selected_run_id(), "first");
+    EXPECT_EQ(catalog.baseline_record(), nullptr);
+    EXPECT_TRUE(catalog.baseline_run_id().empty());
+    EXPECT_EQ(catalog.selected_run_id(), "first");
 
     std::filesystem::remove(directory / "first.json");
     EXPECT_FALSE(catalog.select_run("first"));
-    EXPECT_NE(catalog.get_selected_error().find("Could not read"), std::string::npos);
-    EXPECT_EQ(catalog.get_selected_record(), nullptr);
+    EXPECT_NE(catalog.selected_error().find("Could not read"), std::string::npos);
+    EXPECT_EQ(catalog.selected_record(), nullptr);
     catalog.refresh();
-    EXPECT_EQ(catalog.get_selected_run_id(), "other");
-    EXPECT_TRUE(catalog.get_selected_error().empty());
+    EXPECT_EQ(catalog.selected_run_id(), "other");
+    EXPECT_TRUE(catalog.selected_error().empty());
 }
 }

@@ -235,7 +235,7 @@ struct TypeAnalysisTable
         : TypeAnalysisTable{*std::pmr::get_default_resource()} {}
     explicit TypeAnalysisTable(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~TypeAnalysisTable() { Operations::release_storage(*this); }
     TypeAnalysisTable(TypeAnalysisTable const&) = delete;
     auto operator=(TypeAnalysisTable const&) -> TypeAnalysisTable& = delete;
@@ -250,13 +250,13 @@ struct TypeAnalysisTable
     template <typename Byte>
     using DataPointers = ::ioj::layout::type_analysis_table::DataPointers<Byte>;
   public:
-    auto schema_type(this auto& self) { return self.get_view().schema_type(); }
-    auto scenario(this auto& self) { return self.get_view().scenario(); }
-    auto physical(this auto& self) { return self.get_view().physical(); }
-    auto enum_backing(this auto& self) { return self.get_view().enum_backing(); }
-    auto aggregate(this auto& self) { return self.get_view().aggregate(); }
-    auto packed(this auto& self) { return self.get_view().packed(); }
-    auto soa(this auto& self) { return self.get_view().soa(); }
+    auto schema_type(this auto& self) { return self.view().schema_type(); }
+    auto scenario(this auto& self) { return self.view().scenario(); }
+    auto physical(this auto& self) { return self.view().physical(); }
+    auto enum_backing(this auto& self) { return self.view().enum_backing(); }
+    auto aggregate(this auto& self) { return self.view().aggregate(); }
+    auto packed(this auto& self) { return self.view().packed(); }
+    auto soa(this auto& self) { return self.view().soa(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         TypeAnalysisTable,
         ::ioj::layout::type_analysis_table::Layout::column_types,

@@ -264,7 +264,7 @@ struct DistributionTable
         : DistributionTable{*std::pmr::get_default_resource()} {}
     explicit DistributionTable(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~DistributionTable() { Operations::release_storage(*this); }
     DistributionTable(DistributionTable const&) = delete;
     auto operator=(DistributionTable const&) -> DistributionTable& = delete;
@@ -279,19 +279,19 @@ struct DistributionTable
     template <typename Byte>
     using DataPointers = ::ioj::layout::distribution_table::DataPointers<Byte>;
   public:
-    auto analysis(this auto& self) { return self.get_view().analysis(); }
-    auto entries(this auto& self) { return self.get_view().entries(); }
-    auto element_count(this auto& self) { return self.get_view().element_count(); }
-    auto total_weight(this auto& self) { return self.get_view().total_weight(); }
-    auto total_extent_bytes(this auto& self) { return self.get_view().total_extent_bytes(); }
-    auto total_slack_bytes(this auto& self) { return self.get_view().total_slack_bytes(); }
-    auto expected_extent_bytes(this auto& self) { return self.get_view().expected_extent_bytes(); }
-    auto expected_slack_bytes(this auto& self) { return self.get_view().expected_slack_bytes(); }
+    auto analysis(this auto& self) { return self.view().analysis(); }
+    auto entries(this auto& self) { return self.view().entries(); }
+    auto element_count(this auto& self) { return self.view().element_count(); }
+    auto total_weight(this auto& self) { return self.view().total_weight(); }
+    auto total_extent_bytes(this auto& self) { return self.view().total_extent_bytes(); }
+    auto total_slack_bytes(this auto& self) { return self.view().total_slack_bytes(); }
+    auto expected_extent_bytes(this auto& self) { return self.view().expected_extent_bytes(); }
+    auto expected_slack_bytes(this auto& self) { return self.view().expected_slack_bytes(); }
     auto expected_selected_extent_bytes(this auto& self) {
-        return self.get_view().expected_selected_extent_bytes();
+        return self.view().expected_selected_extent_bytes();
     }
     auto expected_selected_slack_bytes(this auto& self) {
-        return self.get_view().expected_selected_slack_bytes();
+        return self.view().expected_selected_slack_bytes();
     }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         DistributionTable,

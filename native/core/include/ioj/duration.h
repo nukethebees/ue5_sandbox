@@ -32,7 +32,7 @@ class Duration {
         return Duration{seconds};
     }
 
-    [[nodiscard]] auto get_seconds() const noexcept -> double { return seconds_; }
+    [[nodiscard]] auto seconds() const noexcept -> double { return seconds_; }
   private:
     explicit Duration(double const seconds) noexcept
         : seconds_{seconds} {}

@@ -205,7 +205,7 @@ struct CellCoords
         : CellCoords{*std::pmr::get_default_resource()} {}
     explicit CellCoords(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~CellCoords() { Operations::release_storage(*this); }
     CellCoords(CellCoords const&) = delete;
     auto operator=(CellCoords const&) -> CellCoords& = delete;
@@ -220,9 +220,9 @@ struct CellCoords
     template <typename Byte>
     using DataPointers = ::ioj::sim::collision::cell_coords::DataPointers<Byte>;
   public:
-    auto xs(this auto& self) { return self.get_view().xs(); }
-    auto ys(this auto& self) { return self.get_view().ys(); }
-    auto zs(this auto& self) { return self.get_view().zs(); }
+    auto xs(this auto& self) { return self.view().xs(); }
+    auto ys(this auto& self) { return self.view().ys(); }
+    auto zs(this auto& self) { return self.view().zs(); }
     using RowOperations = soa_storage_detail::OwnerRowOperations<
         CellCoords,
         ::ioj::sim::collision::cell_coords::Layout::column_types,
@@ -236,7 +236,7 @@ struct CellCoords
     using equivalent_type = CellCoord;
     auto operator[](std::uint32_t index) const -> equivalent_type {
         assert(index < num());
-        return get_const_view()[index];
+        return const_view()[index];
     }
   private:
     friend Operations;

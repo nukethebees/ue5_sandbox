@@ -93,11 +93,11 @@ class TickCountdown {
     }
 
     [[nodiscard]] auto is_ready(size_type const index) const noexcept -> bool {
-        return get_view().is_ready(to_index(index));
+        return view().is_ready(to_index(index));
     }
 
     [[nodiscard]] auto try_consume(size_type const index) noexcept -> bool {
-        return get_view().try_consume(to_index(index));
+        return view().try_consume(to_index(index));
     }
 
     void consume(size_type const index) noexcept { (void)try_consume(index); }
@@ -146,14 +146,14 @@ class TickCountdown {
     void set_tick_value(NonNegative<counter_type> const value) noexcept { tick_value_ = value; }
 
     void restart_counter(size_type const index) noexcept {
-        get_view().restart_counter(to_index(index));
+        view().restart_counter(to_index(index));
     }
 
     void set_counter(size_type const index, NonNegative<counter_type> const value) noexcept {
-        get_view().set_counter(to_index(index), value);
+        view().set_counter(to_index(index), value);
     }
 
-    void zero_counter(size_type const index) noexcept { get_view().zero_counter(to_index(index)); }
+    void zero_counter(size_type const index) noexcept { view().zero_counter(to_index(index)); }
 
     void zero_last(size_type const count) noexcept {
         assert(static_cast<std::size_t>(count) <= counters_.size());
@@ -172,9 +172,9 @@ class TickCountdown {
         return {counters_.data(), counters_.size()};
     }
 
-    [[nodiscard]] auto get_view() noexcept -> View { return {counters(), tick_value_}; }
+    [[nodiscard]] auto view() noexcept -> View { return {counters(), tick_value_}; }
 
-    [[nodiscard]] auto get_view() const noexcept -> ConstView { return {counters(), tick_value_}; }
+    [[nodiscard]] auto view() const noexcept -> ConstView { return {counters(), tick_value_}; }
   private:
     [[nodiscard]] auto to_index(size_type const index) const noexcept -> std::size_t {
         assert(static_cast<std::size_t>(index) < counters_.size());

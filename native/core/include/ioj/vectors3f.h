@@ -194,7 +194,7 @@ struct Vectors3f
         : Vectors3f{*std::pmr::get_default_resource()} {}
     explicit Vectors3f(std::pmr::memory_resource& resource) noexcept
         : resource_{&resource} {}
-    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    auto memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~Vectors3f() { Operations::release_storage(*this); }
     Vectors3f(Vectors3f const&) = delete;
     auto operator=(Vectors3f const&) -> Vectors3f& = delete;
@@ -209,9 +209,9 @@ struct Vectors3f
     template <typename Byte>
     using DataPointers = ::ioj::vectors3f::DataPointers<Byte>;
   public:
-    auto xs(this auto& self) { return self.get_view().xs(); }
-    auto ys(this auto& self) { return self.get_view().ys(); }
-    auto zs(this auto& self) { return self.get_view().zs(); }
+    auto xs(this auto& self) { return self.view().xs(); }
+    auto ys(this auto& self) { return self.view().ys(); }
+    auto zs(this auto& self) { return self.view().zs(); }
     using RowOperations =
         soa_storage_detail::OwnerRowOperations<Vectors3f,
                                                ::ioj::vectors3f::Layout::column_types,
@@ -225,7 +225,7 @@ struct Vectors3f
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
         assert(index < num());
-        return get_const_view()[index];
+        return const_view()[index];
     }
   private:
     friend Operations;

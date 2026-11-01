@@ -37,26 +37,26 @@ struct Sim {
     /* **************************************** */
     // Configuration
     /* **************************************** */
-    auto get_entities() const -> EntityStorage::ConstView { return entities.get_const_view(); }
-    auto get_healths() const -> HealthConstView {
-        return entity_tables_.health.get_const_view<EntityType::CapitalShip>();
+    auto get_entities() const -> EntityStorage::ConstView { return entities.const_view(); }
+    auto healths() const -> HealthConstView {
+        return entity_tables_.health.const_view<EntityType::CapitalShip>();
     }
-    auto get_frame_changes() const -> std::span<EntityFrameChange const> { return frame_changes_; }
+    auto frame_changes() const -> std::span<EntityFrameChange const> { return frame_changes_; }
     void reset_frame_output() { frame_changes_.clear(); }
 
     /* **************************************** */
     // Accessors
     /* **************************************** */
-    auto get_num_instances() const noexcept -> std::uint32_t;
+    auto num_instances() const noexcept -> std::uint32_t;
     auto is_valid(EntityId id) const noexcept -> bool;
-    auto get_id(std::uint32_t index) const -> EntityId {
-        return entities.get_const_view().entity_ids()[index];
+    auto id(std::uint32_t index) const -> EntityId {
+        return entities.const_view().entity_ids()[index];
     }
-    auto get_team(std::uint32_t index) const noexcept -> Team {
-        return entities.get_const_view().teams()[index];
+    auto team(std::uint32_t index) const noexcept -> Team {
+        return entities.const_view().teams()[index];
     }
-    auto get_team(EntityId id) const noexcept -> Team;
-    auto get_health(EntityId id) const noexcept -> Health;
+    auto team(EntityId id) const noexcept -> Team;
+    auto health(EntityId id) const noexcept -> Health;
     auto find_first_index_on_team(Team team) const noexcept -> std::optional<std::uint32_t>;
     auto find_first_id_on_team(Team team) const noexcept -> std::optional<EntityId>;
 
