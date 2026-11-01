@@ -26,12 +26,15 @@ native/levels/lib/include/ioj/levels/campaign_definition.h
 native/levels/lib/include/ioj/levels/campaign_definition_reader.h
 native/levels/lib/include/ioj/levels/diagnostic_code.h
 native/levels/lib/include/ioj/levels/entity_archetype.h
+native/levels/lib/include/ioj/levels/expr_result.h
+native/levels/lib/include/ioj/levels/expr_type.h
 native/levels/lib/include/ioj/levels/level_camera_definition.h
 native/levels/lib/include/ioj/levels/level_camera_definition_reader.h
-native/levels/lib/include/ioj/levels/mission_types.h
 native/levels/lib/include/ioj/levels/objective_dependency.h
 native/levels/lib/include/ioj/levels/objective_dependency_reader.h
+native/levels/lib/include/ioj/levels/objective_outcome.h
 native/levels/lib/include/ioj/levels/team.h
+native/levels/lib/include/ioj/levels/team_outcome.h
 native/levels/lib/include/ioj/levels/team_result_definition.h
 native/levels/lib/include/ioj/levels/team_result_definition_reader.h
 native/levels/lib/include/ioj/settings/capital_presentation.h

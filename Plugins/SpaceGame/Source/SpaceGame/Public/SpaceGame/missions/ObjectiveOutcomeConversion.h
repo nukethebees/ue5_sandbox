@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "ioj/levels/mission_types.h"
+#include "ioj/levels/objective_outcome.h"
 #include "SpaceGame/missions/ObjectiveOutcome.h"
 namespace ioj {
 [[nodiscard]] constexpr auto to_native(EObjectiveOutcome const value) noexcept

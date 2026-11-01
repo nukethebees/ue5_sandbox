@@ -1,5 +1,6 @@
-#include <ioj/levels/mission_types.h>
+#include <ioj/levels/objective_outcome.h>
 #include <ioj/levels/team.h>
+#include <ioj/levels/team_outcome.h>
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/player/fire_rate.h>
 #include <ioj/sim/player/space_ship_common.h>

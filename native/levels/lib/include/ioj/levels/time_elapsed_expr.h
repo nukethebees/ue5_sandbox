@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ioj/constrained_numbers.h>
-#include <ioj/levels/mission_types.h>
+#include <ioj/levels/expr_type.h>
 
 namespace ioj::levels {
 struct TimeElapsedExpr {

@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include "ioj/levels/mission_types.h"
 #include "ioj/levels/objective_dependency.h"
 #include "ioj/levels/team.h"
+#include "ioj/levels/team_outcome.h"
 
 namespace ioj::levels {
 struct TeamResultDefinition {

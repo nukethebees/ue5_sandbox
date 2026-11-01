@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "ioj/levels/mission_types.h"
 #include "ioj/levels/objective_name.h"
+#include "ioj/levels/objective_outcome.h"
 
 namespace ioj::levels {
 struct ObjectiveDependency {

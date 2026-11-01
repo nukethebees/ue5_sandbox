@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ioj/levels/expr_index.h>
-#include <ioj/levels/mission_types.h>
+#include <ioj/levels/expr_type.h>
 
 #include <vector>
 

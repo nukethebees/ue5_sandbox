@@ -1,6 +1,6 @@
 #pragma once
 #include "ioj/sim/telemetry/snapshot.h"
-#include <ioj/levels/mission_types.h>
+#include <ioj/levels/team_outcome.h>
 #include <ioj/periodic_timer.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/sim_tick.h>

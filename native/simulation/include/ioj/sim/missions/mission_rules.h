@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ioj/enum_array.h>
-#include <ioj/levels/mission_types.h>
+#include <ioj/levels/objective_outcome.h>
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/missions/condition_type.h>
 #include <ioj/sim/missions/expr_leaf_index.h>

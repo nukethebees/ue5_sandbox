@@ -2,8 +2,8 @@
 
 #include <ioj/constrained_numbers.h>
 #include <ioj/constrained_vectors.h>
+#include <ioj/levels/expr_type.h>
 #include <ioj/levels/identifiers.h>
-#include <ioj/levels/mission_types.h>
 
 namespace ioj::levels {
 struct EntityReachedPositionExpr {

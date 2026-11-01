@@ -5,7 +5,7 @@
 #include <ioj/levels/authoring/grammar.h>
 #include <ioj/levels/authoring/record_constructors.h>
 #include <ioj/levels/campaign_validation.h>
-#include <ioj/levels/mission_types.h>
+#include <ioj/levels/expr_type.h>
 #include <ioj/s7/interpreter.h>
 
 #include <codegen/sexpr/form_builder.h>

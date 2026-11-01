@@ -6,77 +6,11 @@
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
-#include "ioj/parse_enum.h"
 
 #include <array>
-#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string_view>
-
-namespace ioj {
-using ObjectiveOutcomeUnderlying = std::uint8_t;
-
-// Logical bit width: 2.
-enum class ObjectiveOutcome : ObjectiveOutcomeUnderlying {
-    Passed,
-    Failed,
-    Expired,
-};
-[[nodiscard]] constexpr auto
-    try_parse_serialized_objective_outcome(std::string_view const value) noexcept
-    -> std::optional<ObjectiveOutcome> {
-    std::array<std::string_view, 3> constexpr names{"passed", "failed", "expired"};
-    return ioj::try_parse_enum<ObjectiveOutcome>(value, names);
-}
-
-} // namespace ioj
-
-namespace ioj {
-template <>
-inline constexpr MinMax<ObjectiveOutcome> enum_range<ObjectiveOutcome>{ObjectiveOutcome::Passed,
-                                                                       ObjectiveOutcome::Expired};
-} // namespace ioj
-
-namespace ioj {
-using TeamOutcomeUnderlying = std::uint8_t;
-
-// Logical bit width: 1.
-enum class TeamOutcome : TeamOutcomeUnderlying {
-    Victory,
-    Defeat,
-};
-[[nodiscard]] constexpr auto
-    try_parse_serialized_team_outcome(std::string_view const value) noexcept
-    -> std::optional<TeamOutcome> {
-    std::array<std::string_view, 2> constexpr names{"victory", "defeat"};
-    return ioj::try_parse_enum<TeamOutcome>(value, names);
-}
-
-} // namespace ioj
-
-namespace ioj {
-template <>
-inline constexpr MinMax<TeamOutcome> enum_range<TeamOutcome>{TeamOutcome::Victory,
-                                                             TeamOutcome::Defeat};
-} // namespace ioj
-
-namespace ioj {
-using ExprResultUnderlying = std::uint8_t;
-
-// Logical bit width: 2.
-enum class ExprResult : ExprResultUnderlying {
-    Pending,
-    True,
-    False,
-};
-
-} // namespace ioj
-
-namespace ioj {
-template <>
-inline constexpr MinMax<ExprResult> enum_range<ExprResult>{ExprResult::Pending, ExprResult::False};
-} // namespace ioj
 
 namespace ioj {
 using ExprTypeUnderlying = std::uint8_t;
@@ -145,34 +79,6 @@ namespace ioj {
 template <>
 inline constexpr MinMax<ExprType> enum_range<ExprType>{ExprType::All, ExprType::EntityKillsReached};
 } // namespace ioj
-
-namespace ioj {
-template <>
-struct EnumTraits<::ioj::ObjectiveOutcome> {
-    static constexpr std::array values{::ioj::ObjectiveOutcome::Passed,
-                                       ::ioj::ObjectiveOutcome::Failed,
-                                       ::ioj::ObjectiveOutcome::Expired};
-};
-
-template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::ObjectiveOutcome>() noexcept -> std::size_t {
-    return 3;
-}
-} // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::ioj::ObjectiveOutcome, ioj::Serialized>{
-    ioj::PackedStrings{"passed\000failed\000expired", std::array<std::uint8_t, 4>{0, 7, 14, 22}}};
-
-namespace ioj {
-template <>
-struct EnumTraits<::ioj::TeamOutcome> {
-    static constexpr std::array values{::ioj::TeamOutcome::Victory, ::ioj::TeamOutcome::Defeat};
-};
-
-} // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::ioj::TeamOutcome, ioj::Serialized>{
-    ioj::PackedStrings{"victory\000defeat", std::array<std::uint8_t, 3>{0, 8, 15}}};
 
 namespace ioj {
 template <>

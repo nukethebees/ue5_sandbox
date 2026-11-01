@@ -1,7 +1,8 @@
 #pragma once
 
-#include <ioj/levels/mission_types.h>
+#include <ioj/levels/objective_outcome.h>
 #include <ioj/levels/team.h>
+#include <ioj/levels/team_outcome.h>
 #include <ioj/sim/missions/objective_id.h>
 #include <ioj/sim/sim_tick.h>
 

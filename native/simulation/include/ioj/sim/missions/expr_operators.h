@@ -1,6 +1,7 @@
 #pragma once
 
-#include <ioj/levels/mission_types.h>
+#include <ioj/levels/expr_result.h>
+#include <ioj/levels/expr_type.h>
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/missions/objective_id.h>
 

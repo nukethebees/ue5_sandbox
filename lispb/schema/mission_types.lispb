@@ -1,6 +1,6 @@
-(module mission_types
-  :header "native/levels/lib/include/ioj/levels/mission_types.h"
-  :header-include "ioj/levels/mission_types.h"
+(module objective_outcome
+  :header "native/levels/lib/include/ioj/levels/objective_outcome.h"
+  :header-include "ioj/levels/objective_outcome.h"
   :namespace ioj
   (enum ObjectiveOutcome std::uint8_t
     :native-api true
@@ -15,8 +15,13 @@
         :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/ObjectiveOutcome.h"
         :header-include "SpaceGame/missions/ObjectiveOutcome.h"
         :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/ObjectiveOutcomeConversion.h"
-        :native-header-include "ioj/levels/mission_types.h"
-        :reflection uenum)))
+        :native-header-include "ioj/levels/objective_outcome.h"
+        :reflection uenum))))
+
+(module team_outcome
+  :header "native/levels/lib/include/ioj/levels/team_outcome.h"
+  :header-include "ioj/levels/team_outcome.h"
+  :namespace ioj
   (enum TeamOutcome std::uint8_t
     :native-api true
     :helpers (traits to-serialized-string try-parse-serialized)
@@ -28,12 +33,22 @@
         :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TeamOutcome.h"
         :header-include "SpaceGame/missions/TeamOutcome.h"
         :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TeamOutcomeConversion.h"
-        :native-header-include "ioj/levels/mission_types.h"
-        :reflection uenum)))
+        :native-header-include "ioj/levels/team_outcome.h"
+        :reflection uenum))))
+
+(module expr_result
+  :header "native/levels/lib/include/ioj/levels/expr_result.h"
+  :header-include "ioj/levels/expr_result.h"
+  :namespace ioj
   (enum ExprResult std::uint8_t
     :native-api true :helpers ()
     (value Pending) (value True) (value False)
-    (projections (cpp)))
+    (projections (cpp))))
+
+(module expr_type
+  :header "native/levels/lib/include/ioj/levels/expr_type.h"
+  :header-include "ioj/levels/expr_type.h"
+  :namespace ioj
   (enum ExprType std::uint8_t
     :native-api true :helpers (traits to-serialized-string try-parse-serialized)
     (value All :serialized-name "all-of")

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/levels/mission_types.h>
+#include <ioj/levels/expr_type.h>
 #include <ioj/levels/objective_dependency.h>
 
 namespace ioj::levels {
