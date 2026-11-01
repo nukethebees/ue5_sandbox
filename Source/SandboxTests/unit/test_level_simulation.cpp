@@ -253,11 +253,12 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
         TestTrue(TEXT("Presentation preserves entity teams and types"),
                  a.teams == b.teams && a.types == b.types);
     }
-    TestTrue(TEXT("Both team outcomes match"),
-             headless.get_mission().team_outcome(ioj::Team::Green) ==
-                 visible.get_mission().team_outcome(ioj::Team::Green));
-    TestTrue(TEXT("Team wins"),
-             headless.get_mission().team_outcome(ioj::Team::Green) == ioj::MissionOutcome::Victory);
+    TestTrue(TEXT("Both objective outcomes match"),
+             headless.get_mission().outcome(ioj::sim::ObjectiveId{0}) ==
+                 visible.get_mission().outcome(ioj::sim::ObjectiveId{0}));
+    TestTrue(TEXT("Objective passes"),
+             headless.get_mission().outcome(ioj::sim::ObjectiveId{0}) ==
+                 ioj::ObjectiveOutcome::Passed);
     return true;
 }
 

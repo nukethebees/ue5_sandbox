@@ -360,7 +360,7 @@ TEST(NativeSimulation, PositionConditionsUseLiveSpatialDataAndRemainTerminal) {
     simulation.start();
     simulation.advance(0.2);
     EXPECT_EQ(simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}), ObjectiveOutcome::Passed);
-    EXPECT_TRUE(simulation.get_mission().active_leaves().empty());
+    EXPECT_EQ(simulation.get_mission().completed_objectives().size(), 1);
 }
 
 TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimulation) {
@@ -403,7 +403,6 @@ TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimu
     EXPECT_FALSE(simulation.get_mission().outcome(ioj::sim::ObjectiveId{1}));
     simulation.advance(0.1);
     EXPECT_EQ(simulation.get_mission().outcome(ioj::sim::ObjectiveId{1}), ObjectiveOutcome::Passed);
-    EXPECT_EQ(simulation.get_mission().team_outcome(Team::Green), MissionOutcome::Victory);
     EXPECT_FALSE(simulation.take_player_team_completion());
 }
 
@@ -887,7 +886,7 @@ TEST(NativeSimulation, WorldlessLevelSimulationTest) {
     EXPECT_EQ(second.get_capital_ships().get_num_instances(), 2) << "Other battle is unaffected";
     auto result{first.take_player_team_completion()};
     EXPECT_FALSE(result.has_value()) << "Playerless simulation does not choose a player's outcome";
-    EXPECT_EQ(first.get_mission().team_outcome(Team::Green), MissionOutcome::Victory);
+    EXPECT_EQ(first.get_mission().outcome(ioj::sim::ObjectiveId{0}), ObjectiveOutcome::Passed);
     EXPECT_FALSE(first.take_player_team_completion().has_value())
         << "Mission result is delivered once";
     first.pause();

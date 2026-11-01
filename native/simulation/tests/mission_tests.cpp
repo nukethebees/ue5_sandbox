@@ -87,12 +87,12 @@ TEST_F(MissionTest, SharedDagEvaluatesChildrenFirstAndCompletedObjectivesAreTerm
     start({.objectives = {source}});
     tick(10);
     EXPECT_FALSE(mission.outcome(ObjectiveId{0}));
-    EXPECT_EQ(mission.active_leaves().size(), 1);
+    EXPECT_EQ(mission.active_objectives().size(), 1);
     tick(10);
     EXPECT_FALSE(mission.outcome(ObjectiveId{0}));
     tick(20);
     EXPECT_EQ(mission.outcome(ObjectiveId{0}), ObjectiveOutcome::Passed);
-    EXPECT_TRUE(mission.active_leaves().empty());
+    EXPECT_TRUE(mission.active_objectives().empty());
     tick(100);
     EXPECT_EQ(mission.completed_objectives().size(), 1);
 }
@@ -174,7 +174,7 @@ TEST_F(MissionTest, AllPrerequisitesActivateBeforeNextTickEvaluation) {
     EXPECT_TRUE(mission.inactive_objectives().empty());
     tick(21);
     EXPECT_EQ(mission.outcome(ObjectiveId{2}), ObjectiveOutcome::Passed);
-    EXPECT_TRUE(mission.active_leaves().empty());
+    EXPECT_TRUE(mission.active_objectives().empty());
 }
 
 TEST_F(MissionTest, BypassExpiresOnlyExplicitObservers) {
@@ -202,12 +202,12 @@ TEST_F(MissionTest, ReciprocalTeamsAndConsumeOnceCompletion) {
     attack.wins_level = ObjectiveWinsLevel::Yes;
     start({.objectives = {attack, defend}});
     tick(10);
-    EXPECT_EQ(mission.team_outcome(Team::Blue), MissionOutcome::Victory);
-    EXPECT_EQ(mission.team_outcome(Team::Red), MissionOutcome::Defeat);
-    EXPECT_EQ(mission.take_completions().size(), 2);
-    EXPECT_TRUE(mission.take_completions().empty());
+    auto const completion{mission.take_team_completion(Team::Blue)};
+    ASSERT_TRUE(completion);
+    EXPECT_EQ(completion->outcome, MissionOutcome::Victory);
+    EXPECT_FALSE(mission.take_team_completion(Team::Red));
     tick(20);
-    EXPECT_TRUE(mission.take_completions().empty());
+    EXPECT_FALSE(mission.take_team_completion(Team::Blue));
 }
 
 struct TeamMissionCompletionCase {
@@ -238,7 +238,8 @@ TEST_P(SelectedTeamMissionCompletion, ConsumesAllPendingResultsWhileSelectingThe
         EXPECT_EQ(completion->outcome, *test_case.outcome);
         EXPECT_EQ(completion->tick, SimTick{10});
     }
-    EXPECT_TRUE(mission.take_completions().empty());
+    EXPECT_FALSE(mission.take_team_completion(Team::Blue));
+    EXPECT_FALSE(mission.take_team_completion(Team::Red));
     tick(20);
     EXPECT_FALSE(mission.take_team_completion(test_case.team));
 }
@@ -340,14 +341,15 @@ TEST_F(MissionTest, RootAndTeamConflictPrecedenceIsDeterministic) {
     start({.objectives = {source, rival}});
     EXPECT_EQ(mission.outcome(ObjectiveId{0}), ObjectiveOutcome::Passed);
     EXPECT_EQ(mission.outcome(ObjectiveId{1}), ObjectiveOutcome::Passed);
-    EXPECT_EQ(mission.team_outcome(Team::Blue), MissionOutcome::Victory);
-    EXPECT_EQ(mission.team_outcome(Team::Red), MissionOutcome::Defeat);
-    EXPECT_EQ(mission.take_completions().size(), 2);
+    auto const completion{mission.take_team_completion(Team::Blue)};
+    ASSERT_TRUE(completion);
+    EXPECT_EQ(completion->outcome, MissionOutcome::Victory);
+    EXPECT_EQ(completion->triggering_objective, ObjectiveId{0});
     tick(10);
-    EXPECT_TRUE(mission.take_completions().empty());
+    EXPECT_FALSE(mission.take_team_completion(Team::Blue));
 }
 
-TEST_F(MissionTest, LeafRunsSortAndRebuildAfterMembershipChanges) {
+TEST_F(MissionTest, MixedLeafKindsProgressUntilTheLastConditionResolves) {
     names.emplace_back("future");
     entities.emplace_back();
     auto source{objective("leaves", timer(1))};
@@ -356,21 +358,28 @@ TEST_F(MissionTest, LeafRunsSortAndRebuildAfterMembershipChanges) {
     source.expressions.push_back({AllExpr{.children = {0, 1, 2}}});
     source.roots[ioj::ObjectiveOutcome::Passed] = 3;
     start({.objectives = {source}});
-    auto const initial{mission.active_leaves()};
-    ASSERT_EQ(initial.size(), 3);
-    EXPECT_TRUE(std::ranges::is_sorted(initial));
-    EXPECT_EQ(initial[0].kind(), LeafKind::EntityDestroyed);
-    EXPECT_EQ(initial[1].kind(), LeafKind::TimeElapsed);
-    EXPECT_EQ(initial[2].kind(), LeafKind::TimeElapsed);
+    auto const root{mission.objectives().roots(ObjectiveId{0})[ObjectiveOutcome::Passed]};
+    EXPECT_EQ(mission.result(root), ExprResult::Pending);
     tick(10);
-    ASSERT_EQ(mission.active_leaves().size(), 2);
-    EXPECT_TRUE(std::ranges::is_sorted(mission.active_leaves()));
+    EXPECT_EQ(mission.result(root), ExprResult::Pending);
     EXPECT_FALSE(mission.outcome(ObjectiveId{0}));
     tick(20);
-    auto const remaining{mission.active_leaves()};
-    ASSERT_EQ(remaining.size(), 1);
-    EXPECT_EQ(remaining[0].kind(), LeafKind::EntityDestroyed);
+    EXPECT_EQ(mission.result(root), ExprResult::Pending);
     EXPECT_FALSE(mission.outcome(ObjectiveId{0}));
+
+    ledger.record_spawns(EntityType::Fighter, Team::Red, Health{1}, entities);
+    tick(21);
+    EXPECT_FALSE(mission.outcome(ObjectiveId{0}));
+
+    EntityDeathInfo deaths;
+    deaths.add_defaulted(1);
+    auto const death{deaths.get_view()};
+    death.victims()[0] = entities[0];
+    death.reasons()[0] = DeathReason::Combat;
+    ledger.record_deaths(deaths.get_const_view(), SimTick{22});
+    tick(22);
+    EXPECT_EQ(mission.result(root), ExprResult::True);
+    EXPECT_EQ(mission.outcome(ObjectiveId{0}), ObjectiveOutcome::Passed);
 }
 
 TEST_F(MissionTest, RejectsStructuralAndActivationCyclesButAllowsObservationCycles) {
@@ -406,11 +415,13 @@ TEST_F(MissionTest, SchemeNamedDagAndOutcomeDependenciesExecuteThroughRuntimeCom
     start(*parsed->mission());
     tick(10);
     EXPECT_EQ(mission.outcome(ObjectiveId{0}), ObjectiveOutcome::Passed);
-    EXPECT_FALSE(mission.team_outcome(Team::Blue));
+    EXPECT_FALSE(mission.take_team_completion(Team::Blue));
     tick(29);
     EXPECT_FALSE(mission.outcome(ObjectiveId{1}));
     tick(30);
-    EXPECT_EQ(mission.team_outcome(Team::Blue), MissionOutcome::Victory);
+    auto const completion{mission.take_team_completion(Team::Blue)};
+    ASSERT_TRUE(completion);
+    EXPECT_EQ(completion->outcome, MissionOutcome::Victory);
 }
 
 TEST(MissionAuthoring, RejectsNamedDagCyclesAndCrossObjectiveExpressionReferences) {
@@ -442,8 +453,9 @@ TEST_F(MissionTest, SchemeReciprocalHelperResolvesBothTeams) {
     EXPECT_FALSE(mission.outcome(ObjectiveId{1}));
     tick(11);
     EXPECT_EQ(mission.outcome(ObjectiveId{1}), ObjectiveOutcome::Failed);
-    EXPECT_EQ(mission.team_outcome(Team::Blue), MissionOutcome::Victory);
-    EXPECT_EQ(mission.team_outcome(Team::Red), MissionOutcome::Defeat);
+    auto const completion{mission.take_team_completion(Team::Red)};
+    ASSERT_TRUE(completion);
+    EXPECT_EQ(completion->outcome, MissionOutcome::Defeat);
 }
 
 TEST_F(MissionTest, RejectsInvalidReferencesParametersAndDuplicatePrerequisites) {

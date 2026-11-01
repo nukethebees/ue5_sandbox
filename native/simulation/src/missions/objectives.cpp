@@ -1,6 +1,7 @@
 #include <ioj/sim/missions/objectives.h>
 
 #include <algorithm>
+#include <functional>
 
 namespace ioj::sim {
 Objectives::Objectives(std::size_t const count)
@@ -22,15 +23,22 @@ auto Objectives::is_completed(ObjectiveId const id) const -> bool {
     assert(is_valid(id));
     return std::ranges::contains(completed_, id);
 }
-auto Objectives::activate(ObjectiveMembershipIndex const position) -> ObjectiveId {
-    auto const id{remove_member(inactive_, position)};
-    active_.push_back(id);
-    return id;
+auto Objectives::activate(std::span<ObjectiveMembershipIndex const> const positions)
+    -> std::span<ObjectiveId const> {
+    return move_members(inactive_, active_, positions);
 }
-auto Objectives::complete(ObjectiveMembershipIndex const position) -> ObjectiveId {
-    auto const id{remove_member(active_, position)};
-    completed_.push_back(id);
-    return id;
+auto Objectives::complete(std::span<ObjectiveMembershipIndex const> const positions)
+    -> std::span<ObjectiveId const> {
+    return move_members(active_, completed_, positions);
+}
+auto Objectives::compilation_view() -> CompilationView {
+    return {identifiers_,
+            display_names_,
+            assigned_teams_,
+            wins_level_,
+            roots_,
+            leaf_ranges_,
+            composite_ranges_};
 }
 auto Objectives::prerequisites(ObjectiveId const id) const
     -> std::span<ObjectivePrerequisite const> {
@@ -38,23 +46,29 @@ auto Objectives::prerequisites(ObjectiveId const id) const
     return std::span<ObjectivePrerequisite const>{prerequisites_}.subspan(range.offset,
                                                                           range.count);
 }
-void Objectives::add_prerequisite(ObjectiveId const id,
-                                  ObjectiveId const prerequisite,
-                                  ObjectiveOutcome const outcome) {
-    auto& range{at(prerequisite_ranges_, id)};
-    if (range.is_empty()) {
-        range.offset = static_cast<std::uint32_t>(prerequisites_.size());
+void Objectives::add_prerequisites(ObjectiveId const id,
+                                   std::span<ObjectivePrerequisite const> const prerequisites) {
+    at(prerequisite_ranges_, id) = {static_cast<std::uint32_t>(prerequisites_.size()),
+                                    static_cast<std::uint32_t>(prerequisites.size())};
+    prerequisites_.append_range(prerequisites);
+}
+auto Objectives::move_members(std::vector<ObjectiveId>& source,
+                              std::vector<ObjectiveId>& destination,
+                              std::span<ObjectiveMembershipIndex const> const positions)
+    -> std::span<ObjectiveId const> {
+    assert(std::ranges::adjacent_find(positions, std::greater_equal{}) == positions.end());
+    auto const first{destination.size()};
+    for (auto const position : positions) {
+        assert(position < source.size());
+        destination.push_back(source[position]);
     }
 
-    prerequisites_.emplace_back(prerequisite, outcome);
-    ++range.count;
-}
-auto Objectives::remove_member(std::vector<ObjectiveId>& collection,
-                               ObjectiveMembershipIndex const position) -> ObjectiveId {
-    assert(position < collection.size());
-    auto const id{collection[position]};
-    collection[position] = collection.back();
-    collection.pop_back();
-    return id;
+    // Reverse removal keeps the remaining positions tied to their original rows.
+    for (auto index{positions.size()}; index > 0; --index) {
+        source[positions[index - 1]] = source.back();
+        source.pop_back();
+    }
+
+    return std::span<ObjectiveId const>{destination}.subspan(first);
 }
 }
