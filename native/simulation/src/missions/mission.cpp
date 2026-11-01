@@ -201,7 +201,7 @@ auto Mission::evaluate_composite(ExprCompositeIndex const index) const -> ExprRe
     auto const children_end{children.end()};
 
     for (auto child{children.start()}; child < children_end; ++child) {
-        auto const child_result{result(data_.children[child])};
+        auto const child_result{result(data_.composites.children[child])};
         if (child_result == decisive) {
             return decisive;
         }

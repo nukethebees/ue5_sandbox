@@ -92,9 +92,9 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
                 composites.results.push_back(ExprResult::Pending);
                 composites.types.push_back(expression.type());
                 auto const children{expression.children()};
-                composites.child_ranges.push_back({size(result.children), size(children)});
+                composites.child_ranges.push_back({size(composites.children), size(children)});
                 for (auto const child : children) {
-                    result.children.push_back(references[child]);
+                    composites.children.push_back(references[child]);
                 }
                 continue;
             }
