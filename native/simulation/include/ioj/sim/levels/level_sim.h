@@ -104,8 +104,6 @@ struct LevelSim {
     auto get_mission() const -> Mission const& { return mission_; }
     auto get_task_manager() const -> tasks::TaskManager const& { return task_manager_; }
     auto get_level_metadata() const -> levels::LevelMetadata const& { return level_metadata_; }
-    auto get_level_id() const -> std::string const& { return level_metadata_.id.value; }
-    auto get_level_title() const -> std::string const& { return level_metadata_.title; }
     auto get_spatial_query_manager() const -> SpatialQueryManager const& {
         return collision_pipeline_.queries();
     }

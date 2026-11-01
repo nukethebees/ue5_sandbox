@@ -790,7 +790,7 @@ void ASpaceGamePlayerController::return_to_level_select() {
     return_to_level_select_pending_ = true;
     auto const* const level{orchestrator->get_level_simulation()};
     check(level);
-    auto const preferred_level_id{level->get_level_id()};
+    auto const preferred_level_id{level->get_level_metadata().id.value};
     if (!subsystem->return_to_level_select(FName{UTF8_TO_TCHAR(preferred_level_id.c_str())})) {
         return_to_level_select_pending_ = false;
         return;

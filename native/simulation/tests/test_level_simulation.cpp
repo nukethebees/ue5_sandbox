@@ -390,8 +390,9 @@ TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimu
     data.level_metadata = std::move(compiled->level_metadata);
     GameMemory memory;
     LevelSim simulation{memory, std::move(data)};
-    EXPECT_EQ(simulation.get_level_id(), "future-objective");
-    EXPECT_EQ(simulation.get_level_title(), "Future objective");
+    auto const& metadata{simulation.get_level_metadata()};
+    EXPECT_EQ(metadata.id.value, "future-objective");
+    EXPECT_EQ(metadata.title, "Future objective");
     simulation.finish_initialisation();
     simulation.start();
     simulation.advance(0.1);
