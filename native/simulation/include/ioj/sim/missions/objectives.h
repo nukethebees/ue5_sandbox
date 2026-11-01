@@ -4,6 +4,8 @@
 #include <ioj/levels/team.h>
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/missions/objective_id.h>
+#include <ioj/sim/missions/objective_membership_index.h>
+#include <ioj/sim/missions/objective_prerequisite_count.h>
 #include <ioj/sim/missions/objective_roots.h>
 #include <ioj/sim/sim_tick.h>
 
@@ -31,12 +33,16 @@ class Objectives {
     auto leaves(ObjectiveId id) const -> IndexSpan { return at(leaves_, id); }
     auto composites(ObjectiveId id) -> IndexSpan& { return at(composites_, id); }
     auto composites(ObjectiveId id) const -> IndexSpan { return at(composites_, id); }
-    auto prerequisites(ObjectiveId id) -> std::uint32_t& { return at(prerequisites_, id); }
-    auto prerequisites(ObjectiveId id) const -> std::uint32_t { return at(prerequisites_, id); }
-    auto dependents(ObjectiveId id) -> IndexSpan& { return at(dependents_, id); }
-    auto dependents(ObjectiveId id) const -> IndexSpan { return at(dependents_, id); }
-    auto observers(ObjectiveId id) -> IndexSpan& { return at(observers_, id); }
-    auto observers(ObjectiveId id) const -> IndexSpan { return at(observers_, id); }
+    auto prerequisites(ObjectiveId id) -> ObjectivePrerequisiteCount& {
+        return at(prerequisites_, id);
+    }
+    auto prerequisites(ObjectiveId id) const -> ObjectivePrerequisiteCount {
+        return at(prerequisites_, id);
+    }
+    auto dependents(ObjectiveId id) -> IndexSpan& { return at(dependent_ranges_, id); }
+    auto dependents(ObjectiveId id) const -> IndexSpan { return at(dependent_ranges_, id); }
+    auto observers(ObjectiveId id) -> IndexSpan& { return at(observer_ranges_, id); }
+    auto observers(ObjectiveId id) const -> IndexSpan { return at(observer_ranges_, id); }
     auto team_results(ObjectiveId id) -> IndexSpan& { return at(team_results_, id); }
     auto team_results(ObjectiveId id) const -> IndexSpan { return at(team_results_, id); }
     auto outcome(ObjectiveId id) -> std::optional<ObjectiveOutcome>& { return at(outcomes_, id); }
@@ -45,10 +51,10 @@ class Objectives {
     }
     auto activation_tick(ObjectiveId id) -> SimTick& { return at(activation_ticks_, id); }
     auto activation_tick(ObjectiveId id) const -> SimTick { return at(activation_ticks_, id); }
-    auto membership_position(ObjectiveId id) -> std::uint32_t& {
+    auto membership_position(ObjectiveId id) -> ObjectiveMembershipIndex& {
         return at(membership_positions_, id);
     }
-    auto membership_position(ObjectiveId id) const -> std::uint32_t {
+    auto membership_position(ObjectiveId id) const -> ObjectiveMembershipIndex {
         return at(membership_positions_, id);
     }
   private:
@@ -64,12 +70,12 @@ class Objectives {
     std::vector<ObjectiveRoots> roots_;
     std::vector<IndexSpan> leaves_;
     std::vector<IndexSpan> composites_;
-    std::vector<std::uint32_t> prerequisites_;
-    std::vector<IndexSpan> dependents_;
-    std::vector<IndexSpan> observers_;
+    std::vector<ObjectivePrerequisiteCount> prerequisites_;
+    std::vector<IndexSpan> dependent_ranges_;
+    std::vector<IndexSpan> observer_ranges_;
     std::vector<IndexSpan> team_results_;
     std::vector<std::optional<ObjectiveOutcome>> outcomes_;
     std::vector<SimTick> activation_ticks_;
-    std::vector<std::uint32_t> membership_positions_;
+    std::vector<ObjectiveMembershipIndex> membership_positions_;
 };
 }

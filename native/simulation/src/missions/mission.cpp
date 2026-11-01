@@ -118,7 +118,8 @@ void Mission::activate(ObjectiveId const id, SimTick const tick) {
                SimTick{std::numeric_limits<SimTick::value_type>::max()});
 
     remove_member(inactive_, id);
-    data_.objectives.membership_position(id) = static_cast<std::uint32_t>(active_.size());
+    data_.objectives.membership_position(id) =
+        static_cast<ObjectiveMembershipIndex>(active_.size());
     active_.push_back(id);
     data_.objectives.activation_tick(id) = tick;
 
@@ -148,7 +149,8 @@ void Mission::complete(ObjectiveId const id, ObjectiveOutcome const outcome, Sim
     assert(active(id));
 
     remove_member(active_, id);
-    data_.objectives.membership_position(id) = static_cast<std::uint32_t>(completed_.size());
+    data_.objectives.membership_position(id) =
+        static_cast<ObjectiveMembershipIndex>(completed_.size());
     completed_.push_back(id);
     data_.objectives.outcome(id) = outcome;
 

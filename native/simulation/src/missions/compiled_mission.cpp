@@ -43,7 +43,8 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
         result.objectives.name(owner) = source.id;
         result.objectives.title(owner) = source.title.empty() ? source.id.value : source.title;
         result.objectives.team(owner) = source.team;
-        result.objectives.prerequisites(owner) = size(source.dependencies);
+        result.objectives.prerequisites(owner) =
+            static_cast<ObjectivePrerequisiteCount>(source.dependencies.size());
         result.objectives.leaves(owner).offset = size(leaves.results);
         result.objectives.composites(owner).offset = size(composites.results);
         for (auto const& dependency : source.dependencies) {
