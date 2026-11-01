@@ -322,15 +322,20 @@ auto CanonicalRenderer::build_integer_varint(codegen::DeclarationHandle const sc
     return result.build();
 }
 auto CanonicalRenderer::build_fixed_point(codegen::DeclarationHandle const schema) -> Expr {
-    auto const atom{[this](auto value) { return ir_.atom(value); }};
     auto const& values{store_.fixed_points};
     auto result{ir_.form("fixed-point", {ir_.atom(values.name[schema])})};
-    result.field("signed", values.signedness[schema] ? ir_.atoms.true_value : ir_.atoms.false_value)
-        .field("total-bits", values.total_bits[schema])
-        .field("fractional-bits", values.fractional_bits[schema])
+    auto form{ir_.form(to_serialized_string(values.form[schema]), {})};
+    if (values.form[schema] == codegen::FixedPointForm::binary_point) {
+        form.field("signed",
+                   values.signedness[schema] ? ir_.atoms.true_value : ir_.atoms.false_value)
+            .field("fractional-bits", values.fractional_bits[schema]);
+    } else {
+        form.field("minimum", ir_.atom(*values.minimum_value[schema]))
+            .field("maximum", ir_.atom(*values.maximum_value[schema]));
+    }
+    result.field("total-bits", values.total_bits[schema])
+        .field("form", form.build())
         .field("rounding", ir_.atom(to_serialized_string(values.rounding[schema])));
-    result.optional_field("minimum", values.minimum_value[schema], atom);
-    result.optional_field("maximum", values.maximum_value[schema], atom);
     add_projections(result, values.cpp_projection[schema]);
     return result.build();
 }

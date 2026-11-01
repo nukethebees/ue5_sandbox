@@ -1309,14 +1309,16 @@ auto SchemaParser::parse_integer_varint(Declarations& declarations, sexpr::FormI
 auto SchemaParser::parse_fixed_point(Declarations& declarations, sexpr::FormId const form)
     -> DeclarationHandle {
     Fields const fields{parser_, form, "fixed-point", 1};
-    fields.validate(
-        {P::signed_, P::total_bits, P::fractional_bits, P::rounding, P::minimum, P::maximum},
-        {"projections"});
+    fields.validate({P::total_bits, P::form, P::rounding}, {"projections"});
 
     auto const total_bits{
         bounded_integer(parser_, fields.required(P::total_bits), "fixed-point total width", 1, 64)};
-    auto const fractional_bits{bounded_integer(
-        parser_, fields.required(P::fractional_bits), "fixed-point fractional width", 0, 64)};
+    auto const representation{fields.required(P::form)};
+    auto const kind{try_parse_serialized_fixed_point_form(syntax_.head(representation))};
+    if (!kind) {
+        parser_.fail(representation, "fixed-point form must be binary-point or range");
+    }
+    Fields const form_fields{parser_, representation, to_serialized_string(*kind), 0};
 
     auto rounding{FixedPointRounding::nearest_even};
     if (auto const value{fields.optional(P::rounding)}) {
@@ -1328,23 +1330,30 @@ auto SchemaParser::parse_fixed_point(Declarations& declarations, sexpr::FormId c
         rounding = *parsed;
     }
 
-    auto const minimum{fields.optional(P::minimum)};
-    auto const maximum{fields.optional(P::maximum)};
     auto& records{declarations.fixed_points};
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
     records.name[record_index] = parser_.identifier(fields.positional(0), "fixed-point name");
-    records.signedness[record_index] =
-        parser_.boolean(fields.required(P::signed_), "fixed-point signedness");
+    records.form[record_index] = *kind;
     records.total_bits[record_index] = static_cast<std::uint32_t>(total_bits);
-    records.fractional_bits[record_index] = static_cast<std::uint32_t>(fractional_bits);
     records.rounding[record_index] = rounding;
-    records.minimum_value[record_index] =
-        !minimum.has_value() ? std::nullopt
-                             : std::optional{parser_.text_id(*minimum, "fixed-point minimum")};
-    records.maximum_value[record_index] =
-        !maximum.has_value() ? std::nullopt
-                             : std::optional{parser_.text_id(*maximum, "fixed-point maximum")};
+    if (*kind == FixedPointForm::binary_point) {
+        form_fields.validate({P::signed_, P::fractional_bits}, {});
+        records.signedness[record_index] =
+            parser_.boolean(form_fields.required(P::signed_), "fixed-point signedness");
+        records.fractional_bits[record_index] =
+            static_cast<std::uint32_t>(bounded_integer(parser_,
+                                                       form_fields.required(P::fractional_bits),
+                                                       "fixed-point fractional width",
+                                                       0,
+                                                       64));
+    } else {
+        form_fields.validate({P::minimum, P::maximum}, {});
+        records.minimum_value[record_index] =
+            parser_.text_id(form_fields.required(P::minimum), "fixed-point minimum");
+        records.maximum_value[record_index] =
+            parser_.text_id(form_fields.required(P::maximum), "fixed-point maximum");
+    }
     records.cpp_projection[record_index] = parse_projections(declarations, fields);
     return record_id;
 }

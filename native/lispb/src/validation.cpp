@@ -1197,20 +1197,23 @@ class Validator {
         if (total_bits == 0 || total_bits > 64) {
             throw std::invalid_argument{context + " total width must be in the range 1..64"};
         }
-        auto const maximum_fractional_bits{signedness ? total_bits - 1 : total_bits};
-        if (fractional_bits > maximum_fractional_bits) {
-            throw std::invalid_argument{std::format("{} fractional width must be at most {}{}",
-                                                    context,
-                                                    maximum_fractional_bits,
-                                                    signedness ? " so one sign bit remains" : "")};
+        if (representations.form[representation] == FixedPointForm::binary_point) {
+            auto const maximum_fractional_bits{signedness ? total_bits - 1 : total_bits};
+            if (fractional_bits > maximum_fractional_bits) {
+                throw std::invalid_argument{
+                    std::format("{} fractional width must be at most {}{}",
+                                context,
+                                maximum_fractional_bits,
+                                signedness ? " so one sign bit remains" : "")};
+            }
+            return;
         }
 
-        auto const parse_bound = [&](std::optional<StringId> value,
-                                     std::string_view name) -> std::optional<PackedIntegerValue> {
+        auto const parse_bound = [&](std::optional<StringId> value, std::string_view name) {
             if (!value) {
-                return std::nullopt;
+                throw std::invalid_argument{context + " range requires " + std::string{name}};
             }
-            auto parsed{parse_fixed_point_value(view(*value), fractional_bits)};
+            auto parsed{parse_fixed_point_endpoint(view(*value))};
             if (!parsed) {
                 throw std::invalid_argument{context + " " + std::string{name} + ": " +
                                             parsed.error()};
@@ -1219,15 +1222,8 @@ class Validator {
         };
         auto const minimum{parse_bound(representations.minimum_value[representation], "minimum")};
         auto const maximum{parse_bound(representations.maximum_value[representation], "maximum")};
-        auto const fits = [&](PackedIntegerValue const value) {
-            return signedness ? packed_integer_fits_signed(value, total_bits)
-                              : packed_integer_fits_unsigned(value, total_bits);
-        };
-        if ((minimum.has_value() && !fits(*minimum)) || (maximum.has_value() && !fits(*maximum))) {
-            throw std::invalid_argument{context + " bounds must fit the representation width"};
-        }
-        if (minimum.has_value() && maximum.has_value() && packed_integer_less(*maximum, *minimum)) {
-            throw std::invalid_argument{context + " maximum must be at least minimum"};
+        if (maximum <= minimum) {
+            throw std::invalid_argument{context + " maximum must be greater than minimum"};
         }
     }
 

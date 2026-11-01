@@ -219,21 +219,30 @@ TEST(PackedRecord, TaggedAlternativesResolveGuardsAndDirectNestedAccessors) {
 
 TEST(PackedRecord, FixedEncodingsComposeWithoutStandaloneProjection) {
     CompilerTestContext context;
-    auto const graph{schema::resolve_type_graph(parse_test_manifest(context, R"(
+    auto const manifest{parse_test_manifest(context, R"(
       (module values :header "Values.h"
         (integer-scalar Health :bit-width 8 :minimum 0 :maximum 100)
-        (fixed-point Velocity :signed true :total-bits 12 :fractional-bits 4)
+        (fixed-point Velocity :total-bits 12 :form (binary-point :signed true :fractional-bits 4))
+        (fixed-point Factor :total-bits 8 :form (range :minimum 0.0625 :maximum 16))
         (linear-quantized Quantized :source @Health :bits 6 :reserved-codes 1 :clipping clamp)
         (mini-float Position :sign-bits 1 :exponent-bits 5 :significand-bits 6 :bias 15)
         (record State :layout packed
           (member velocity @Velocity) (member health @Quantized) (member position @Position)
+          (member factor @Factor)
           (projections (cpp))))
-    )"))};
+    )")};
+    auto const graph{schema::resolve_type_graph(manifest)};
     auto const& layout{graph.bit_layout(*find_test_type(graph, "values", "State"))};
-    EXPECT_EQ(layout.encoded_bits, 30U);
+    EXPECT_EQ(layout.encoded_bits, 38U);
     EXPECT_EQ(placement(layout, "velocity").bits, 12U);
     EXPECT_EQ(placement(layout, "health").offset, 12U);
     EXPECT_EQ(placement(layout, "position").offset, 18U);
+    auto const files{render_test_manifest(context, manifest)};
+    ASSERT_EQ(files.size(), 1U);
+    EXPECT_NE(files.front().content.find("Range: [-2048 / 16, 2047 / 16]; step: 1 / 16."),
+              std::string::npos);
+    EXPECT_NE(files.front().content.find("Range: [0.0625, 16]; step: (16 - (0.0625)) / 255."),
+              std::string::npos);
 }
 
 TEST(PackedRecord, DefaultsIncludeSignedValuesAndReservedBits) {
@@ -278,6 +287,10 @@ INSTANTIATE_TEST_SUITE_P(
     UnifiedValidation,
     InvalidPackedRecord,
     testing::Values(
+        R"((module m :header "M.h" (fixed-point F :signed false :total-bits 8 :fractional-bits 4)))",
+        R"((module m :header "M.h" (fixed-point F :total-bits 8 :form (range :minimum 0))))",
+        R"((module m :header "M.h" (fixed-point F :total-bits 8 :form (binary-point :signed false :fractional-bits 4 :minimum 0))))",
+        R"((module m :header "M.h" (fixed-point F :total-bits 8 :form (range :minimum 0 :maximum 1 :signed true))))",
         R"((module m :header "M.h" (integer-scalar Byte :bit-width 8)
       (record R :layout packed (member value @Byte :kind unsigned) (projections (cpp)))))",
         R"((module m :header "M.h" (packed-value R :storage std::uint32_t

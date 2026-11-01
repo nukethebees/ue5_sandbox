@@ -3,6 +3,7 @@
 #include <codegen/schema/cpp_projection.h>
 #include <codegen/schema/declaration_handle.h>
 #include <codegen/schema/declaration_kind.h>
+#include <codegen/schema/fixed_point_form.h>
 #include <codegen/schema/fixed_point_rounding.h>
 #include <lispb/indexed_column.h>
 #include <lispb/indices.h>
@@ -24,6 +25,7 @@ struct FixedPointSchemas {
 
     Column<StringId> name;
     Column<std::optional<CppProjection>> cpp_projection;
+    Column<FixedPointForm> form;
     Column<std::uint8_t> signedness;
     Column<std::uint32_t> total_bits;
     Column<std::uint32_t> fractional_bits;

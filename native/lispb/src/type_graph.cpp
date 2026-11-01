@@ -906,20 +906,17 @@ class TypeGraphBuilder {
 
                 auto const result{points.append()};
                 auto const row{points.index(result)};
+                points.form[row] = schemas.form[source];
                 points.signedness[row] = schemas.signedness[source];
                 points.total_bits[row] = schemas.total_bits[source];
                 points.fractional_bits[row] = schemas.fractional_bits[source];
                 points.rounding[row] = schemas.rounding[source];
-                points.minimum_raw_value[row] =
-                    schemas.minimum_value[source].transform([&](auto id) {
-                        return *codegen::parse_fixed_point_value(store_.strings().view(id),
-                                                                 schemas.fractional_bits[source]);
-                    });
-                points.maximum_raw_value[row] =
-                    schemas.maximum_value[source].transform([&](auto id) {
-                        return *codegen::parse_fixed_point_value(store_.strings().view(id),
-                                                                 schemas.fractional_bits[source]);
-                    });
+                if (schemas.form[source] == codegen::FixedPointForm::range) {
+                    points.minimum_value[row] = *codegen::parse_fixed_point_endpoint(
+                        store_.strings().view(*schemas.minimum_value[source]));
+                    points.maximum_value[row] = *codegen::parse_fixed_point_endpoint(
+                        store_.strings().view(*schemas.maximum_value[source]));
+                }
                 return result;
             }
             case lispb::codegen::DeclarationKind::mini_float: {

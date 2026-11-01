@@ -410,7 +410,8 @@ INSTANTIATE_TEST_SUITE_P(
             "(linear-quantized Created :source Value :bits 8 :reserved-codes 1 :clipping clamp)"},
         DeclarationCase{"Varint", "(integer-varint Created :source Value :encoding unsigned)"},
         DeclarationCase{"FixedPoint",
-                        "(fixed-point Created :signed true :total-bits 16 :fractional-bits 8 "
+                        "(fixed-point Created :total-bits 16 :form (binary-point :signed true "
+                        ":fractional-bits 8) "
                         ":rounding nearest-even)"},
         DeclarationCase{
             "MiniFloat",

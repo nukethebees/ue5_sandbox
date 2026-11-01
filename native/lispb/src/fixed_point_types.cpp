@@ -6,12 +6,13 @@ namespace lispb::schema {
 
 auto FixedPointTypes::append() -> TypeDefinitionId {
     auto const row{static_cast<std::uint32_t>(signedness.size())};
+    form.push_back(codegen::FixedPointForm::binary_point);
     signedness.push_back({});
     total_bits.push_back({});
     fractional_bits.push_back({});
     rounding.push_back(codegen::FixedPointRounding::nearest_even);
-    minimum_raw_value.push_back({});
-    maximum_raw_value.push_back({});
+    minimum_value.push_back({});
+    maximum_value.push_back({});
     return TypeDefinitionId{(static_cast<std::uint32_t>(TypeDefinitionKind::fixed_point) << 24) |
                             row};
 }

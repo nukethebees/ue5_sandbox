@@ -372,8 +372,7 @@ auto valid_fixed_point_manifest(CompilerTestContext& context, bool const signedn
     -> Manifest {
     auto manifest{parse_test_manifest(context, R"(
       (module representations :header "Representations.h"
-        (fixed-point VelocityQ12_4 :signed true :total-bits 16 :fractional-bits 4
-          :rounding nearest-even))
+        (fixed-point VelocityQ12_4 :total-bits 16 :form (binary-point :signed true :fractional-bits 4) :rounding nearest-even))
     )")};
     auto& declarations{context.storage.declarations};
     auto const value{first_item(
@@ -940,6 +939,30 @@ TEST(Validation, ValidatesLogicalFixedPointWidthsWithoutCppOutput) {
         declarations, normal_modules.declarations[manifest.modules.front()])] = 16;
 
     EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
+
+    for (auto const form : {"(range :minimum 0.0625 :maximum 16)",
+                            "(range :minimum -1 :maximum 1)",
+                            "(range :minimum 0 :maximum 1)"}) {
+        EXPECT_NO_THROW(lower_test_manifest(
+            context,
+            parse_test_manifest(context,
+                                std::format("(module values :header \"Values.h\" (fixed-point "
+                                            "Value :total-bits 8 :form {}))",
+                                            form))));
+    }
+    for (auto const form : {"(range :minimum 1 :maximum 1)",
+                            "(range :minimum 2 :maximum 1)",
+                            "(range :minimum nan :maximum 1)",
+                            "(range :minimum 0 :maximum inf)"}) {
+        EXPECT_THROW(
+            lower_test_manifest(
+                context,
+                parse_test_manifest(context,
+                                    std::format("(module values :header \"Values.h\" (fixed-point "
+                                                "Value :total-bits 8 :form {}))",
+                                                form))),
+            std::invalid_argument);
+    }
 
     manifest = valid_fixed_point_manifest(context);
     fixed_points.total_bits[first_item(declarations,

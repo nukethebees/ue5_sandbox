@@ -1414,11 +1414,7 @@ TEST_F(SourceLoaderTest, ReadsFixedPointPackedField) {
 (module representations
   :header "Representations.h"
   :namespace project
-  (fixed-point VelocityQ12_4
-    :signed true
-    :total-bits 16
-    :fractional-bits 4
-    :rounding toward-zero))
+  (fixed-point VelocityQ12_4 :total-bits 16 :form (binary-point :signed true :fractional-bits 4) :rounding toward-zero))
 (module packed
   :header "Packed.h"
   :namespace project
@@ -1583,13 +1579,7 @@ TEST_F(SourceLoaderTest, ReadsPhysicalRepresentations) {
   (integer-varint HealthVarint
     :source project::Health
     :encoding unsigned)
-  (fixed-point VelocityQ12_4
-    :signed true
-    :total-bits 16
-    :fractional-bits 4
-    :rounding toward-zero
-    :minimum -2.5
-    :maximum 3.75)
+  (fixed-point VelocityQ12_4 :total-bits 16 :form (range :minimum -2.5 :maximum 3.75) :rounding toward-zero)
   (mini-float CompactFloat
     :sign-bits 1
     :exponent-bits 5
@@ -1622,9 +1612,10 @@ TEST_F(SourceLoaderTest, ReadsPhysicalRepresentations) {
     auto const& fixed_point{schema_at(manifest, 1, 2)};
     auto const fixed_point_row{fixed_points.index(fixed_point)};
     EXPECT_EQ(files.text(fixed_points.name[fixed_point_row]), "VelocityQ12_4");
-    EXPECT_TRUE(fixed_points.signedness[fixed_point_row]);
+    EXPECT_EQ(fixed_points.form[fixed_point_row], FixedPointForm::range);
+    EXPECT_FALSE(fixed_points.signedness[fixed_point_row]);
     EXPECT_EQ(fixed_points.total_bits[fixed_point_row], 16U);
-    EXPECT_EQ(fixed_points.fractional_bits[fixed_point_row], 4U);
+    EXPECT_EQ(fixed_points.fractional_bits[fixed_point_row], 0U);
     EXPECT_EQ(fixed_points.rounding[fixed_point_row], FixedPointRounding::toward_zero);
     EXPECT_EQ(files.text(fixed_points.minimum_value[fixed_point_row]), "-2.5");
     EXPECT_EQ(files.text(fixed_points.maximum_value[fixed_point_row]), "3.75");

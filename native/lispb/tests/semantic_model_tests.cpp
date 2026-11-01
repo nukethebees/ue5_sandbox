@@ -1319,8 +1319,7 @@ TEST(SemanticTypeGraph, RejectsPackedFixedPointHelperNameCollisions) {
         lispb::codegen::CompilerTestContext context;
         auto const source{std::string{R"(
           (module values :header "Values.h"
-            (fixed-point Distance :signed true :total-bits 16 :fractional-bits 4
-              :rounding toward-zero)
+            (fixed-point Distance :total-bits 16 :form (binary-point :signed true :fractional-bits 4) :rounding toward-zero)
             (record Position :layout packed
               (member distance @Distance)
               (member )"} +
@@ -1436,10 +1435,16 @@ TEST(SemanticTypeGraph, RejectsPackedValidationAndEncodingMetadataCollisions) {
                (record invalid_value :layout packed :invalid-value 255
                  (member data std::uint8_t) (projections (cpp)))))",
              R"((module values :header "Values.h"
-               (fixed-point value_layout :signed false :total-bits 8 :fractional-bits 0 :minimum 0
+               (fixed-point value_layout :total-bits 8 :form (range :minimum 0 :maximum 100)
                  (projections (cpp)))))",
              R"((module values :header "Values.h"
-               (fixed-point packed_integer_tag :signed false :total-bits 8 :fractional-bits 0 :maximum 100
+               (fixed-point packed_integer_tag :total-bits 8 :form (range :minimum 0 :maximum 100)
+                 (projections (cpp)))))",
+             R"((module values :header "Values.h"
+               (fixed-point decoded_value :total-bits 8 :form (range :minimum 0 :maximum 1)
+                 (projections (cpp)))))",
+             R"((module values :header "Values.h"
+               (fixed-point value_minimum :total-bits 8 :form (range :minimum 0 :maximum 1)
                  (projections (cpp)))))",
              R"((module values :header "Values.h"
                (integer-scalar Source :bit-width 8)
@@ -1466,7 +1471,7 @@ TEST(SemanticTypeGraph, RejectsPackedValidationAndEncodingMetadataCollisions) {
              R"((module values :header "Values.h"
                (integer-scalar Source :bit-width 8)
                (optional-presence-bit presence_mask :source @Source (projections (cpp)))
-               (fixed-point Distance :signed true :total-bits 16 :fractional-bits 4)
+               (fixed-point Distance :total-bits 16 :form (binary-point :signed true :fractional-bits 4))
                (record Position :layout packed
                  (member distance @Distance)
                  (member distance_magnitude_bits std::uint8_t)
@@ -1488,8 +1493,8 @@ TEST(SemanticTypeGraph, RejectsPackedValidationAndEncodingMetadataCollisions) {
                  (member maybe_encoded_payload_field std::uint8_t)
                  (projections (cpp)))))",
              R"((module values :header "Values.h"
-               (fixed-point minimum_value :signed false :total-bits 8 :fractional-bits 0 :minimum 0 (projections (cpp)))
-               (fixed-point maximum_value :signed false :total-bits 8 :fractional-bits 0 :maximum 100 (projections (cpp)))))",
+               (fixed-point minimum_value :total-bits 8 :form (range :minimum 0 :maximum 100) (projections (cpp)))
+               (fixed-point maximum_value :total-bits 8 :form (range :minimum 0 :maximum 100) (projections (cpp)))))",
              R"((module values :header "Values.h"
                (enum Mode :bit-width 8 (value first) (projections (cpp)))
                (record Value :layout packed (member mode @Mode)
@@ -1533,8 +1538,8 @@ TEST(SemanticTypeGraph, RejectsInvalidPackedDefaultsAcrossEncodings) {
         auto const source{std::string{R"((module values :header "Values.h"
           (integer-scalar Health :bit-width 8 :minimum 0 :maximum 100
             (code Absent :value 255 :sentinel true))
-          (fixed-point Signed :signed true :total-bits 8 :fractional-bits 0)
-          (fixed-point Unsigned :signed false :total-bits 8 :fractional-bits 0)
+          (fixed-point Signed :total-bits 8 :form (binary-point :signed true :fractional-bits 0))
+          (fixed-point Unsigned :total-bits 8 :form (binary-point :signed false :fractional-bits 0))
           (optional-presence-bit Present :source @Health)
           (optional-sentinel Sentinel :source @Health :sentinel Absent)
           (integer-scalar SignedHealth :signed true :bit-width 8 :minimum -100 :maximum 100
@@ -1559,7 +1564,7 @@ TEST(SemanticTypeGraph, AcceptsValidPackedOptionalAndSignedDefaults) {
           (code Absent :value 255 :sentinel true))
         (integer-scalar SignedHealth :signed true :bit-width 8 :minimum -100 :maximum 100
           (code Absent :value -128 :sentinel true))
-        (fixed-point Signed :signed true :total-bits 8 :fractional-bits 0)
+        (fixed-point Signed :total-bits 8 :form (binary-point :signed true :fractional-bits 0))
         (optional-presence-bit Present :source @Health)
         (optional-sentinel Sentinel :source @Health :sentinel Absent)
         (optional-presence-bit SignedPresent :source @SignedHealth)

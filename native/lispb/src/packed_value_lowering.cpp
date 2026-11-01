@@ -16,6 +16,7 @@
 #include <lispb/schema/type_graph.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <format>
 #include <limits>
@@ -402,10 +403,6 @@ class PackedEmitter {
                     maximum = PackedIntegerValue{range->max};
                 }
             }
-        } else if (definition.kind() == schema::TypeDefinitionKind::fixed_point) {
-            auto const row{definitions.fixed_points.index(definition)};
-            minimum = definitions.fixed_points.minimum_raw_value[row];
-            maximum = definitions.fixed_points.maximum_raw_value[row];
         } else if (definition.kind() == schema::TypeDefinitionKind::linear_quantized) {
             maximum = PackedIntegerValue{mask(bits) -
                                          definitions.linear_quantized.reserved_codes[definition]};
@@ -643,20 +640,6 @@ class PackedEmitter {
                 }
                 return any(checks);
             }
-            case schema::TypeDefinitionKind::fixed_point: {
-                auto const& fixed{definitions.fixed_points};
-                auto const row{fixed.index(definition)};
-                std::vector<Predicate> checks;
-                if (fixed.minimum_raw_value[row]) {
-                    auto const minimum{range_bound(layout, "min")};
-                    checks.push_back(binary(BinaryOperator::greater_equal, expression, minimum));
-                }
-                if (fixed.maximum_raw_value[row]) {
-                    auto const maximum{range_bound(layout, "max")};
-                    checks.push_back(binary(BinaryOperator::less_equal, expression, maximum));
-                }
-                return all(checks);
-            }
             case schema::TypeDefinitionKind::linear_quantized: {
                 auto const& quantized{definitions.linear_quantized};
                 auto const reserved{quantized.reserved_codes[definition]};
@@ -742,12 +725,6 @@ class PackedEmitter {
                 }
             }
             return true;
-        }
-        if (definition.kind() == schema::TypeDefinitionKind::fixed_point) {
-            auto const& fixed{definitions.fixed_points};
-            auto const row{fixed.index(definition)};
-            return fixed.maximum_raw_value[row].has_value() &&
-                   (fixed.signedness[row] == 0 || fixed.minimum_raw_value[row].has_value());
         }
         return definition.kind() == schema::TypeDefinitionKind::linear_quantized;
     }
@@ -1232,8 +1209,7 @@ class PackedEmitter {
                                       FunctionReceiver::unqualified,
                                       {parameter(decoded_type, "value")},
                                       body));
-        if (!scalar_ &&
-            graph_.definition(placement.type).kind() == schema::TypeDefinitionKind::fixed_point) {
+        if (graph_.definition(placement.type).kind() == schema::TypeDefinitionKind::fixed_point) {
             fixed_conversion(index);
         }
     }
@@ -1245,13 +1221,14 @@ class PackedEmitter {
         auto const row{fixed.index(definition)};
         auto const signedness{fixed.signedness[row] != 0};
         auto const& path{placement.path};
+        auto const raw_name{field_name(placement)};
+        auto const layout_name{raw_name + "_layout"};
+        auto const decoded_name{scalar_ ? "decoded_value" : path + "_value"};
+        auto const encode_name{scalar_ ? "try_encode_value" : "try_encode_" + path + "_value"};
         auto& metadata{field_metadata_[index]};
-        auto const fractional{constant(
-            metadata, path + "_fractional_bits", "int", number(fixed.fractional_bits[row]))};
-        auto const magnitude{ir_.member_access(ir_.named(path + "_raw_layout"), "magnitude_bits")};
-        auto const lower{range_bound(path + "_raw_layout", "min")};
-        auto const upper{range_bound(path + "_raw_layout", "max")};
-        auto const negative_fractional{ir_.unary(UnaryOperator::negate, fractional)};
+        auto const magnitude{ir_.member_access(ir_.named(layout_name), "magnitude_bits")};
+        auto const lower{range_bound(layout_name, "min")};
+        auto const upper{range_bound(layout_name, "max")};
         auto const ldexp = [&](Expr mantissa, Expr exponent) {
             return library_call("std::ldexp", "cmath", {mantissa, exponent});
         };
@@ -1262,22 +1239,87 @@ class PackedEmitter {
         auto const fail_if = [&](Expr condition) {
             return ir_.if_stmt(condition, ir_.block({ir_.return_stmt(ir_.literal("false"))}));
         };
-        functions_.push_back(function(
-            path + "_value",
-            "double",
-            FunctionReceiver::const_,
-            {},
-            {ir_.return_stmt(ldexp(cast("double", invoke(path + "_raw")), negative_fractional))},
-            false));
-        std::vector<Predicate> invalid_inputs{
-            not_finite(value()),
-            binary(
-                BinaryOperator::less, value(), ldexp(cast("double", lower), negative_fractional)),
-            binary(BinaryOperator::greater,
-                   value(),
-                   ldexp(cast("double", upper), negative_fractional))};
+        Expr minimum;
+        Expr maximum;
+        Expr decode;
+        Expr scale;
+        auto const range_form{fixed.form[row] == FixedPointForm::range};
+        if (range_form) {
+            auto const min_value{fixed.minimum_value[row]};
+            auto const max_value{fixed.maximum_value[row]};
+            metadata.push_back(
+                ir_.line_comment(std::format("Range: [{}, {}]; step: ({} - ({})) / {}.",
+                                             min_value,
+                                             max_value,
+                                             max_value,
+                                             min_value,
+                                             mask(placement.bits))));
+            auto const real = [&](double value) {
+                auto spelling{std::format("{}", value)};
+                if (spelling.find_first_of(".eE") == std::string::npos) {
+                    spelling += ".0";
+                }
+                return ir_.literal(spelling);
+            };
+            minimum = constant(metadata, path + "_minimum", "double", real(min_value));
+            maximum = constant(metadata, path + "_maximum", "double", real(max_value));
+            auto const codes{cast("double", upper)};
+            decode = library_call(
+                "std::lerp",
+                "cmath",
+                {minimum,
+                 maximum,
+                 binary(BinaryOperator::divide, cast("double", invoke(raw_name)), codes)});
+
+            // Halve opposite extreme endpoints before subtracting to avoid an overflowing span.
+            auto const half_span{!std::isfinite(max_value - min_value)};
+            auto const adjusted = [&](Expr input) {
+                return half_span ? binary(BinaryOperator::multiply, input, ir_.literal("0.5"))
+                                 : input;
+            };
+            scale = binary(
+                BinaryOperator::multiply,
+                binary(BinaryOperator::divide,
+                       binary(BinaryOperator::subtract, adjusted(value()), adjusted(minimum)),
+                       binary(BinaryOperator::subtract, adjusted(maximum), adjusted(minimum))),
+                codes);
+        } else {
+            auto const fractional_bits{fixed.fractional_bits[row]};
+            auto const fractional{
+                constant(metadata, path + "_fractional_bits", "int", number(fractional_bits))};
+            auto const negative_fractional{ir_.unary(UnaryOperator::negate, fractional)};
+            minimum = ldexp(cast("double", lower), negative_fractional);
+            maximum = ldexp(cast("double", upper), negative_fractional);
+            decode = ldexp(cast("double", invoke(raw_name)), negative_fractional);
+            scale = ldexp(value(), fractional);
+
+            auto const magnitude_bits{placement.bits - (signedness ? 1U : 0U)};
+            auto const min_raw{signedness ? "-" + std::to_string(std::uint64_t{1} << magnitude_bits)
+                                          : "0"};
+            auto const max_raw{std::to_string(mask(magnitude_bits))};
+            auto const divisor{fractional_bits == 64
+                                   ? "18446744073709551616"
+                                   : std::to_string(std::uint64_t{1} << fractional_bits)};
+            metadata.push_back(ir_.line_comment(
+                fractional_bits == 0 ? std::format("Range: [{}, {}]; step: 1.", min_raw, max_raw)
+                                     : std::format("Range: [{} / {}, {} / {}]; step: 1 / {}.",
+                                                   min_raw,
+                                                   divisor,
+                                                   max_raw,
+                                                   divisor,
+                                                   divisor)));
+        }
+        functions_.push_back(function(decoded_name,
+                                      "double",
+                                      FunctionReceiver::const_,
+                                      {},
+                                      {ir_.return_stmt(decode)},
+                                      false));
+        std::vector<Predicate> invalid_inputs{not_finite(value()),
+                                              binary(BinaryOperator::less, value(), minimum),
+                                              binary(BinaryOperator::greater, value(), maximum)};
         Nodes body{fail_if(boolean(any(invalid_inputs))),
-                   ir_.variable("auto const", "scaled", ldexp(value(), fractional)),
+                   ir_.variable("auto const", "scaled", scale),
                    fail_if(not_finite(ir_.named("scaled")))};
         auto const scaled{ir_.named("scaled")};
         auto const rounded{ir_.named("rounded")};
@@ -1306,13 +1348,20 @@ class PackedEmitter {
                     rounded, binary(BinaryOperator::add, rounded, ir_.literal("1.0")))})));
         }
         auto const range{ldexp(ir_.literal("1.0"), magnitude)};
+        if (range_form) {
+            // The largest 64-bit code rounds to 2^64 as a double; handle it before casting.
+            body.push_back(
+                ir_.if_stmt(binary(BinaryOperator::greater_equal, rounded, cast("double", upper)),
+                            ir_.block({ir_.assignment(ir_.named("out_raw"), upper),
+                                       ir_.return_stmt(ir_.literal("true"))})));
+        }
         body.push_back(fail_if(binary(
             BinaryOperator::logical_or,
             binary(BinaryOperator::greater_equal, rounded, range),
             binary(BinaryOperator::less,
                    rounded,
                    signedness ? ir_.unary(UnaryOperator::negate, range) : ir_.literal("0.0")))));
-        auto const raw_type{descriptor_value(path + "_raw_layout")};
+        auto const raw_type{descriptor_value(layout_name)};
         body.push_back(ir_.variable(
             ir_.types.decorate(raw_type, "", " const"), "raw", cast(raw_type, rounded)));
         if (auto const valid{value_check(placement, ir_.named("raw"))}) {
@@ -1321,26 +1370,26 @@ class PackedEmitter {
         body.push_back(ir_.assignment(ir_.named("out_raw"), ir_.named("raw")));
         body.push_back(ir_.return_stmt(ir_.literal("true")));
         functions_.push_back(
-            function("try_encode_" + path + "_value",
+            function(encode_name,
                      "bool",
                      FunctionReceiver::static_,
                      {parameter("double", "value"),
                       ir_.parameter(ir_.types.decorate(raw_type, "", "&"), "out_raw")},
                      body,
                      false));
-        functions_.push_back(function(
-            "set_" + path + "_value",
-            "void",
-            FunctionReceiver::unqualified,
-            {parameter("double", "value")},
-            {ir_.variable(raw_type, "raw", ir_.init_list({})),
-             ir_.variable(
-                 ir_.types.decorate(ir_.types.intern("auto"), "[[maybe_unused]] ", " const"),
-                 "success",
-                 invoke("try_encode_" + path + "_value", {value(), ir_.named("raw")})),
-             assertion(ir_.named("success")),
-             ir_.expr_stmt(invoke("set_" + path + "_raw", {ir_.named("raw")}))},
-            false));
+        functions_.push_back(
+            function("set_" + decoded_name,
+                     "void",
+                     FunctionReceiver::unqualified,
+                     {parameter("double", "value")},
+                     {ir_.variable(raw_type, "raw", ir_.init_list({})),
+                      ir_.variable(ir_.types.decorate(
+                                       ir_.types.intern("auto"), "[[maybe_unused]] ", " const"),
+                                   "success",
+                                   invoke(encode_name, {value(), ir_.named("raw")})),
+                      assertion(ir_.named("success")),
+                      ir_.expr_stmt(invoke("set_" + raw_name, {ir_.named("raw")}))},
+                     false));
     }
 
     LoweringContext& context_;

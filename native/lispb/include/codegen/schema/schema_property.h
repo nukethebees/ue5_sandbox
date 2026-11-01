@@ -57,6 +57,7 @@ enum class SchemaProperty : SchemaPropertyUnderlying {
     field_mask_name,
     finite,
     fixed_schema,
+    form,
     format,
     fractional_bits,
     friend_kind,
@@ -156,7 +157,7 @@ inline constexpr auto ioj::enum_strings<::lispb::codegen::SchemaProperty,
     "source\000definitions-in-source\000dependencies\000device\000display-name\000encoding\000enum-"
     "array\000equivalent-accessor\000equivalent-constructor\000equivalent-member\000equivalent-"
     "type\000exponent-bits\000export-specifier\000field-enum-name\000field-mask-"
-    "name\000finite\000fixed-schema\000format\000fractional-bits\000friend-"
+    "name\000finite\000fixed-schema\000form\000format\000fractional-bits\000friend-"
     "kind\000friends\000generate-s7-reader\000generate-visitor\000header\000header-"
     "include\000headers\000helper-namespace\000helpers\000hidden\000include-"
     "order\000initializer\000inline\000invalid-value\000kind\000layout\000layout-only\000mask-"
@@ -171,12 +172,13 @@ inline constexpr auto ioj::enum_strings<::lispb::codegen::SchemaProperty,
     "storage\000template-parameters\000tooltip\000total-bits\000trailing-return-"
     "type\000unit\000using-declarations\000validation\000validation-dependencies\000value\000value-"
     "type",
-    std::array<std::uint16_t, 120>{
-        0,    9,    24,   30,   52,   60,   65,   77,   87,   97,   102,  107,  118,  127,  132,
-        141,  149,  160,  180,  186,  196,  214,  232,  244,  250,  261,  269,  290,  312,  325,
-        332,  345,  354,  365,  385,  408,  426,  442,  456,  473,  489,  505,  512,  525,  532,
-        548,  560,  568,  587,  604,  611,  626,  634,  651,  659,  666,  680,  692,  699,  713,
-        718,  725,  737,  753,  764,  768,  776,  790,  794,  802,  812,  823,  845,  852,  862,
-        871,  880,  892,  900,  917,  925,  934,  942,  953,  962,  971,  986,  995,  1010, 1026,
-        1037, 1045, 1059, 1078, 1085, 1094, 1110, 1120, 1127, 1144, 1151, 1160, 1171, 1178, 1183,
-        1191, 1198, 1202, 1214, 1229, 1249, 1257, 1268, 1289, 1294, 1313, 1324, 1348, 1354, 1365}}};
+    std::array<std::uint16_t, 121>{
+        0,    9,    24,   30,   52,   60,   65,   77,   87,   97,   102,  107,  118,  127,
+        132,  141,  149,  160,  180,  186,  196,  214,  232,  244,  250,  261,  269,  290,
+        312,  325,  332,  345,  354,  365,  385,  408,  426,  442,  456,  473,  489,  505,
+        512,  525,  530,  537,  553,  565,  573,  592,  609,  616,  631,  639,  656,  664,
+        671,  685,  697,  704,  718,  723,  730,  742,  758,  769,  773,  781,  795,  799,
+        807,  817,  828,  850,  857,  867,  876,  885,  897,  905,  922,  930,  939,  947,
+        958,  967,  976,  991,  1000, 1015, 1031, 1042, 1050, 1064, 1083, 1090, 1099, 1115,
+        1125, 1132, 1149, 1156, 1165, 1176, 1183, 1188, 1196, 1203, 1207, 1219, 1234, 1254,
+        1262, 1273, 1294, 1299, 1318, 1329, 1353, 1359, 1370}}};

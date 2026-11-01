@@ -257,16 +257,8 @@
     :bits 8
     :reserved-codes 2
     :clipping clamp)
-  (fixed-point VelocityQ8_4
-    :signed true
-    :total-bits 12
-    :fractional-bits 4
-    :rounding nearest-even)
-  (fixed-point FractionQ0_7
-    :signed false
-    :total-bits 7
-    :fractional-bits 7
-    :rounding toward-zero)
+  (fixed-point VelocityQ8_4 :total-bits 12 :form (binary-point :signed true :fractional-bits 4) :rounding nearest-even)
+  (fixed-point FractionQ0_7 :total-bits 7 :form (binary-point :signed false :fractional-bits 7) :rounding toward-zero)
   (mini-float PositionF12
     :sign-bits 1
     :exponent-bits 5
@@ -276,6 +268,26 @@
 (module packed_value_fixture
   :header "PackedValues.h"
   :namespace codegen_compile_fixture
+  (fixed-point GrowthFactor :total-bits 8
+    :form (range :minimum 0.0625 :maximum 16.0)
+    (projections (cpp)))
+  (fixed-point UnitFraction :total-bits 8
+    :form (range :minimum 0 :maximum 1)
+    (projections (cpp)))
+  (fixed-point SignedRange :total-bits 8
+    :form (range :minimum -1 :maximum 1)
+    :rounding toward-zero)
+  (fixed-point WideRange :total-bits 64
+    :form (range :minimum 0 :maximum 1)
+    (projections (cpp)))
+  (fixed-point BinaryVelocity :total-bits 16
+    :form (binary-point :signed true :fractional-bits 4)
+    (projections (cpp)))
+  (record RangeFields :layout packed
+    (member prefix std::uint8_t)
+    (member growth @GrowthFactor)
+    (member signed_range @SignedRange)
+    (projections (cpp)))
   (integer-scalar Defaults_lowEncoding :signed false :bit-width 3)
         (integer-scalar Defaults_deltaEncoding :signed true :bit-width 5)
         (record Defaults :layout packed :bits 16

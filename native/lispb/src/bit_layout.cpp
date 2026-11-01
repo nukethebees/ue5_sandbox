@@ -515,6 +515,15 @@ class BitLayoutResolver {
                           "is_valid_value",
                           "is_valid_value_domain"});
             switch (root_kind) {
+                case TypeDefinitionKind::fixed_point:
+                    names.insert({"decoded_value", "set_decoded_value", "try_encode_value"});
+                    if (defs_.fixed_points.form[root_definition] ==
+                        codegen::FixedPointForm::range) {
+                        names.insert({"value_minimum", "value_maximum"});
+                    } else {
+                        names.insert("value_fractional_bits");
+                    }
+                    break;
                 case TypeDefinitionKind::optional_sentinel:
                 case TypeDefinitionKind::optional_presence_bit: {
                     names.insert("payload_layout");
@@ -589,9 +598,15 @@ class BitLayoutResolver {
             if (kind == TypeDefinitionKind::fixed_point) {
                 for (auto const& name : {value.path + "_value",
                                          "set_" + value.path + "_value",
-                                         "try_encode_" + value.path + "_value",
-                                         value.path + "_fractional_bits"}) {
+                                         "try_encode_" + value.path + "_value"}) {
                     add_name(name);
+                }
+                if (defs_.fixed_points.form[graph_.definition(value.type)] ==
+                    codegen::FixedPointForm::range) {
+                    add_name(value.path + "_minimum");
+                    add_name(value.path + "_maximum");
+                } else {
+                    add_name(value.path + "_fractional_bits");
                 }
             }
             if (kind == TypeDefinitionKind::optional_sentinel ||
@@ -789,16 +804,6 @@ class BitLayoutResolver {
             }
             if (!live) {
                 throw std::invalid_argument{"Packed default is not a live enum code: " +
-                                            placement.path};
-            }
-        }
-        if (definition.kind() == TypeDefinitionKind::fixed_point) {
-            auto const row{defs_.fixed_points.index(definition)};
-            auto const minimum{defs_.fixed_points.minimum_raw_value[row]};
-            auto const maximum{defs_.fixed_points.maximum_raw_value[row]};
-            if ((minimum && codegen::packed_integer_less(value, *minimum)) ||
-                (maximum && codegen::packed_integer_less(*maximum, value))) {
-                throw std::invalid_argument{"Packed default is outside its fixed-point domain: " +
                                             placement.path};
             }
         }

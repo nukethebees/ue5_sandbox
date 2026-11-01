@@ -574,6 +574,59 @@ TEST(GeneratedPackedValue, RoundTripsFixedPointRawCodes) {
     EXPECT_EQ(made.velocity_raw(), 42);
     EXPECT_EQ(made.fraction_raw(), 64);
     EXPECT_EQ(made.state(), 7);
+
+    static_assert(sizeof(GrowthFactor) == 1);
+    GrowthFactor growth;
+    UnitFraction fraction;
+    for (std::uint16_t code{}; code < 256; ++code) {
+        auto const raw{static_cast<std::uint8_t>(code)};
+        growth.set_value(raw);
+        EXPECT_DOUBLE_EQ(growth.decoded_value(), (code + 1) / 16.0);
+        std::uint8_t encoded{};
+        ASSERT_TRUE(GrowthFactor::try_encode_value(growth.decoded_value(), encoded));
+        EXPECT_EQ(encoded, raw);
+
+        fraction.set_value(raw);
+        EXPECT_DOUBLE_EQ(fraction.decoded_value(), code / 255.0);
+        ASSERT_TRUE(UnitFraction::try_encode_value(fraction.decoded_value(), encoded));
+        EXPECT_EQ(encoded, raw);
+    }
+
+    std::uint8_t encoded{42};
+    EXPECT_FALSE(GrowthFactor::try_encode_value(0, encoded));
+    EXPECT_FALSE(GrowthFactor::try_encode_value(16.0625, encoded));
+    EXPECT_FALSE(
+        GrowthFactor::try_encode_value((std::numeric_limits<double>::quiet_NaN)(), encoded));
+    EXPECT_EQ(encoded, 42);
+    EXPECT_TRUE(GrowthFactor::try_encode_value(0.09375, encoded));
+    EXPECT_EQ(encoded, 0);
+    EXPECT_TRUE(GrowthFactor::try_encode_value(0.15625, encoded));
+    EXPECT_EQ(encoded, 2);
+
+    RangeFields fields;
+    fields.set_prefix(173);
+    fields.set_growth_value(2.0);
+    fields.set_signed_range_value(0.0);
+    EXPECT_EQ(fields.prefix(), 173);
+    EXPECT_EQ(fields.growth_raw(), 31);
+    EXPECT_DOUBLE_EQ(fields.growth_value(), 2.0);
+    EXPECT_EQ(fields.signed_range_raw(), 127);
+    fields.set_signed_range_value(-1.0);
+    EXPECT_EQ(fields.signed_range_raw(), 0);
+    fields.set_signed_range_value(1.0);
+    EXPECT_EQ(fields.signed_range_raw(), 255);
+
+    WideRange wide;
+    wide.set_decoded_value(1.0);
+    EXPECT_EQ(wide.value(), (std::numeric_limits<std::uint64_t>::max)());
+    EXPECT_EQ(wide.decoded_value(), 1.0);
+    wide.set_decoded_value(0.0);
+    EXPECT_EQ(wide.value(), 0);
+
+    BinaryVelocity velocity;
+    velocity.set_decoded_value(-1.5);
+    EXPECT_EQ(velocity.value(), -24);
+    EXPECT_EQ(velocity.decoded_value(), -1.5);
 }
 
 TEST(GeneratedPackedValue, RoundTripsMiniFloatEncodedCodes) {

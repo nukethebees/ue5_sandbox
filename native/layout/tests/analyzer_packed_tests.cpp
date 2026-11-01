@@ -198,7 +198,7 @@ AnalysisCase const cases[]{
      R"((module game :header "Game.h"
         (integer-scalar Health :signed false :minimum 0 :maximum 1000)
         (linear-quantized Quantized :source Health :bits 8 :reserved-codes 2 :clipping clamp)
-        (fixed-point Velocity :signed true :total-bits 12 :fractional-bits 4 :rounding toward-zero)
+        (fixed-point Velocity :total-bits 12 :form (binary-point :signed true :fractional-bits 4) :rounding toward-zero)
         (record Value :layout packed :bits 32
           (member health @Quantized)
           (member speed @Velocity)

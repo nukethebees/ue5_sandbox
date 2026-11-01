@@ -16,6 +16,7 @@ auto FixedPointSchemas::append() -> DeclarationHandle {
     assert(index < 0x00fffffe);
     cpp_projection.push_back({});
     name.push_back({});
+    form.push_back(FixedPointForm::binary_point);
     signedness.push_back({});
     total_bits.push_back({});
     fractional_bits.push_back({});
@@ -30,6 +31,7 @@ auto FixedPointSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
                                     id,
                                     cpp_projection,
                                     name,
+                                    form,
                                     signedness,
                                     total_bits,
                                     fractional_bits,
@@ -40,6 +42,7 @@ auto FixedPointSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
 void FixedPointSchemas::clear() {
     detail::clear_schema_columns(cpp_projection,
                                  name,
+                                 form,
                                  signedness,
                                  total_bits,
                                  fractional_bits,

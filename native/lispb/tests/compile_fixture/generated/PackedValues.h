@@ -13,6 +13,463 @@
 #include <utility>
 
 namespace codegen_compile_fixture {
+struct GrowthFactor;
+
+namespace detail {
+using GrowthFactorBase = ioj::PackedValueBase<GrowthFactor, ioj::PackedStorage<std::uint8_t, 8>{0}>;
+} // namespace detail
+
+struct GrowthFactor : detail::GrowthFactorBase {
+  public:
+    // Storage
+    using Base = detail::GrowthFactorBase;
+    using packed_integer_tag = ioj::packed::scalar_tag;
+
+    // value
+    using value_type = std::uint8_t;
+    static constexpr ioj::PackedField<storage_type, value_type, 0, storage.encoded_bits>
+        value_layout{};
+    // Range: [0.0625, 16]; step: (16 - (0.0625)) / 255.
+    static constexpr double value_minimum{0.0625};
+    static constexpr double value_maximum{16.0};
+
+    constexpr GrowthFactor() noexcept = default;
+    constexpr explicit GrowthFactor(value_type const value) noexcept
+        : Base{value} {}
+
+    [[nodiscard]] constexpr auto operator<=>(GrowthFactor const&) const noexcept = default;
+
+    [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
+        return true;
+    }
+    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
+        return extract<decltype(value_layout)>();
+    }
+    constexpr void set_value(value_type const value) noexcept {
+        insert<decltype(value_layout)>(value);
+    }
+    [[nodiscard]] auto decoded_value() const noexcept -> double {
+        return std::lerp(value_minimum,
+                         value_maximum,
+                         static_cast<double>(value()) /
+                             static_cast<double>(value_layout.range.max));
+    }
+    [[nodiscard]] static auto try_encode_value(double const value,
+                                               decltype(value_layout)::value_type& out_raw) noexcept
+        -> bool {
+        if (!std::isfinite(value) || value < value_minimum || value > value_maximum) {
+            return false;
+        }
+        auto const scaled{(value - value_minimum) / (value_maximum - value_minimum) *
+                          static_cast<double>(value_layout.range.max)};
+        if (!std::isfinite(scaled)) {
+            return false;
+        }
+        auto rounded{std::floor(scaled)};
+        auto const fraction{scaled - rounded};
+        if (fraction > 0.5 || (fraction == 0.5 && std::fmod(rounded, 2.0) != 0.0)) {
+            rounded = rounded + 1.0;
+        }
+        if (rounded >= static_cast<double>(value_layout.range.max)) {
+            out_raw = value_layout.range.max;
+            return true;
+        }
+        if (rounded >= std::ldexp(1.0, value_layout.magnitude_bits) || rounded < 0.0) {
+            return false;
+        }
+        decltype(value_layout)::value_type const raw{
+            static_cast<decltype(value_layout)::value_type>(rounded)};
+        out_raw = raw;
+        return true;
+    }
+    void set_decoded_value(double const value) noexcept {
+        decltype(value_layout)::value_type raw{};
+        [[maybe_unused]] auto const success{try_encode_value(value, raw)};
+        assert((success));
+        set_value(raw);
+    }
+};
+
+static_assert(ioj::valid_packed_value_layout<GrowthFactor>());
+
+struct UnitFraction;
+
+namespace detail {
+using UnitFractionBase = ioj::PackedValueBase<UnitFraction, ioj::PackedStorage<std::uint8_t, 8>{0}>;
+} // namespace detail
+
+struct UnitFraction : detail::UnitFractionBase {
+  public:
+    // Storage
+    using Base = detail::UnitFractionBase;
+    using packed_integer_tag = ioj::packed::scalar_tag;
+
+    // value
+    using value_type = std::uint8_t;
+    static constexpr ioj::PackedField<storage_type, value_type, 0, storage.encoded_bits>
+        value_layout{};
+    // Range: [0, 1]; step: (1 - (0)) / 255.
+    static constexpr double value_minimum{0.0};
+    static constexpr double value_maximum{1.0};
+
+    constexpr UnitFraction() noexcept = default;
+    constexpr explicit UnitFraction(value_type const value) noexcept
+        : Base{value} {}
+
+    [[nodiscard]] constexpr auto operator<=>(UnitFraction const&) const noexcept = default;
+
+    [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
+        return true;
+    }
+    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
+        return extract<decltype(value_layout)>();
+    }
+    constexpr void set_value(value_type const value) noexcept {
+        insert<decltype(value_layout)>(value);
+    }
+    [[nodiscard]] auto decoded_value() const noexcept -> double {
+        return std::lerp(value_minimum,
+                         value_maximum,
+                         static_cast<double>(value()) /
+                             static_cast<double>(value_layout.range.max));
+    }
+    [[nodiscard]] static auto try_encode_value(double const value,
+                                               decltype(value_layout)::value_type& out_raw) noexcept
+        -> bool {
+        if (!std::isfinite(value) || value < value_minimum || value > value_maximum) {
+            return false;
+        }
+        auto const scaled{(value - value_minimum) / (value_maximum - value_minimum) *
+                          static_cast<double>(value_layout.range.max)};
+        if (!std::isfinite(scaled)) {
+            return false;
+        }
+        auto rounded{std::floor(scaled)};
+        auto const fraction{scaled - rounded};
+        if (fraction > 0.5 || (fraction == 0.5 && std::fmod(rounded, 2.0) != 0.0)) {
+            rounded = rounded + 1.0;
+        }
+        if (rounded >= static_cast<double>(value_layout.range.max)) {
+            out_raw = value_layout.range.max;
+            return true;
+        }
+        if (rounded >= std::ldexp(1.0, value_layout.magnitude_bits) || rounded < 0.0) {
+            return false;
+        }
+        decltype(value_layout)::value_type const raw{
+            static_cast<decltype(value_layout)::value_type>(rounded)};
+        out_raw = raw;
+        return true;
+    }
+    void set_decoded_value(double const value) noexcept {
+        decltype(value_layout)::value_type raw{};
+        [[maybe_unused]] auto const success{try_encode_value(value, raw)};
+        assert((success));
+        set_value(raw);
+    }
+};
+
+static_assert(ioj::valid_packed_value_layout<UnitFraction>());
+
+struct WideRange;
+
+namespace detail {
+using WideRangeBase = ioj::PackedValueBase<WideRange, ioj::PackedStorage<std::uint64_t, 64>{0}>;
+} // namespace detail
+
+struct WideRange : detail::WideRangeBase {
+  public:
+    // Storage
+    using Base = detail::WideRangeBase;
+    using packed_integer_tag = ioj::packed::scalar_tag;
+
+    // value
+    using value_type = std::uint64_t;
+    static constexpr ioj::PackedField<storage_type, value_type, 0, storage.encoded_bits>
+        value_layout{};
+    // Range: [0, 1]; step: (1 - (0)) / 18446744073709551615.
+    static constexpr double value_minimum{0.0};
+    static constexpr double value_maximum{1.0};
+
+    constexpr WideRange() noexcept = default;
+    constexpr explicit WideRange(value_type const value) noexcept
+        : Base{value} {}
+
+    [[nodiscard]] constexpr auto operator<=>(WideRange const&) const noexcept = default;
+
+    [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
+        return true;
+    }
+    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
+        return extract<decltype(value_layout)>();
+    }
+    constexpr void set_value(value_type const value) noexcept {
+        insert<decltype(value_layout)>(value);
+    }
+    [[nodiscard]] auto decoded_value() const noexcept -> double {
+        return std::lerp(value_minimum,
+                         value_maximum,
+                         static_cast<double>(value()) /
+                             static_cast<double>(value_layout.range.max));
+    }
+    [[nodiscard]] static auto try_encode_value(double const value,
+                                               decltype(value_layout)::value_type& out_raw) noexcept
+        -> bool {
+        if (!std::isfinite(value) || value < value_minimum || value > value_maximum) {
+            return false;
+        }
+        auto const scaled{(value - value_minimum) / (value_maximum - value_minimum) *
+                          static_cast<double>(value_layout.range.max)};
+        if (!std::isfinite(scaled)) {
+            return false;
+        }
+        auto rounded{std::floor(scaled)};
+        auto const fraction{scaled - rounded};
+        if (fraction > 0.5 || (fraction == 0.5 && std::fmod(rounded, 2.0) != 0.0)) {
+            rounded = rounded + 1.0;
+        }
+        if (rounded >= static_cast<double>(value_layout.range.max)) {
+            out_raw = value_layout.range.max;
+            return true;
+        }
+        if (rounded >= std::ldexp(1.0, value_layout.magnitude_bits) || rounded < 0.0) {
+            return false;
+        }
+        decltype(value_layout)::value_type const raw{
+            static_cast<decltype(value_layout)::value_type>(rounded)};
+        out_raw = raw;
+        return true;
+    }
+    void set_decoded_value(double const value) noexcept {
+        decltype(value_layout)::value_type raw{};
+        [[maybe_unused]] auto const success{try_encode_value(value, raw)};
+        assert((success));
+        set_value(raw);
+    }
+};
+
+static_assert(ioj::valid_packed_value_layout<WideRange>());
+
+struct BinaryVelocity;
+
+namespace detail {
+using BinaryVelocityBase =
+    ioj::PackedValueBase<BinaryVelocity, ioj::PackedStorage<std::uint16_t, 16>{0}>;
+} // namespace detail
+
+struct BinaryVelocity : detail::BinaryVelocityBase {
+  public:
+    // Storage
+    using Base = detail::BinaryVelocityBase;
+    using packed_integer_tag = ioj::packed::scalar_tag;
+
+    // value
+    using value_type = std::int16_t;
+    static constexpr ioj::PackedField<storage_type, value_type, 0, storage.encoded_bits>
+        value_layout{};
+    static constexpr int value_fractional_bits{4};
+    // Range: [-32768 / 16, 32767 / 16]; step: 1 / 16.
+
+    constexpr BinaryVelocity() noexcept = default;
+    constexpr explicit BinaryVelocity(value_type const value) noexcept
+        : Base{static_cast<storage_type>(value)} {}
+
+    [[nodiscard]] constexpr auto operator<=>(BinaryVelocity const& other) const noexcept {
+        return value() <=> other.value();
+    }
+    [[nodiscard]] constexpr bool operator==(BinaryVelocity const&) const noexcept = default;
+
+    [[nodiscard]] static constexpr auto is_valid_value(value_type const) noexcept -> bool {
+        return true;
+    }
+    [[nodiscard]] constexpr auto value() const noexcept -> value_type {
+        return extract<decltype(value_layout)>();
+    }
+    constexpr void set_value(value_type const value) noexcept {
+        insert<decltype(value_layout)>(value);
+    }
+    [[nodiscard]] auto decoded_value() const noexcept -> double {
+        return std::ldexp(static_cast<double>(value()), -value_fractional_bits);
+    }
+    [[nodiscard]] static auto try_encode_value(double const value,
+                                               decltype(value_layout)::value_type& out_raw) noexcept
+        -> bool {
+        if (!std::isfinite(value) ||
+            value <
+                std::ldexp(static_cast<double>(value_layout.range.min), -value_fractional_bits) ||
+            value >
+                std::ldexp(static_cast<double>(value_layout.range.max), -value_fractional_bits)) {
+            return false;
+        }
+        auto const scaled{std::ldexp(value, value_fractional_bits)};
+        if (!std::isfinite(scaled)) {
+            return false;
+        }
+        auto rounded{std::floor(scaled)};
+        auto const fraction{scaled - rounded};
+        if (fraction > 0.5 || (fraction == 0.5 && std::fmod(rounded, 2.0) != 0.0)) {
+            rounded = rounded + 1.0;
+        }
+        if (rounded >= std::ldexp(1.0, value_layout.magnitude_bits) ||
+            rounded < -std::ldexp(1.0, value_layout.magnitude_bits)) {
+            return false;
+        }
+        decltype(value_layout)::value_type const raw{
+            static_cast<decltype(value_layout)::value_type>(rounded)};
+        out_raw = raw;
+        return true;
+    }
+    void set_decoded_value(double const value) noexcept {
+        decltype(value_layout)::value_type raw{};
+        [[maybe_unused]] auto const success{try_encode_value(value, raw)};
+        assert((success));
+        set_value(raw);
+    }
+};
+
+static_assert(ioj::valid_packed_value_layout<BinaryVelocity>());
+
+struct RangeFields;
+
+namespace detail {
+using RangeFieldsBase = ioj::PackedValueBase<RangeFields, ioj::PackedStorage<std::uint32_t, 24>{0}>;
+} // namespace detail
+
+struct RangeFields : detail::RangeFieldsBase {
+  public:
+    // Storage
+    using Base = detail::RangeFieldsBase;
+    using packed_integer_tag = ioj::packed::integer_tag;
+
+    // prefix
+    static constexpr ioj::PackedField<storage_type, std::uint8_t, 0, 8> prefix_layout{};
+
+    // growth
+    static constexpr ioj::PackedField<storage_type, std::uint8_t, 8, 8> growth_raw_layout{};
+    // Range: [0.0625, 16]; step: (16 - (0.0625)) / 255.
+    static constexpr double growth_minimum{0.0625};
+    static constexpr double growth_maximum{16.0};
+
+    // signed_range
+    static constexpr ioj::PackedField<storage_type, std::uint8_t, 16, 8> signed_range_raw_layout{};
+    // Range: [-1, 1]; step: (1 - (-1)) / 255.
+    static constexpr double signed_range_minimum{-1.0};
+    static constexpr double signed_range_maximum{1.0};
+
+    constexpr RangeFields() noexcept = default;
+    constexpr explicit RangeFields(
+        decltype(prefix_layout)::value_type const prefix_value,
+        decltype(growth_raw_layout)::value_type const growth_raw_value,
+        decltype(signed_range_raw_layout)::value_type const signed_range_raw_value) noexcept
+        : Base{static_cast<storage_type>(
+              ioj::packed_pack<decltype(prefix_layout)>(prefix_value) |
+              ioj::packed_pack<decltype(growth_raw_layout)>(growth_raw_value) |
+              ioj::packed_pack<decltype(signed_range_raw_layout)>(signed_range_raw_value))} {}
+
+    [[nodiscard]] constexpr auto operator<=>(RangeFields const&) const noexcept = default;
+
+    [[nodiscard]] constexpr auto prefix() const noexcept -> decltype(prefix_layout)::value_type {
+        return extract<decltype(prefix_layout)>();
+    }
+    constexpr void set_prefix(decltype(prefix_layout)::value_type const value) noexcept {
+        insert<decltype(prefix_layout)>(value);
+    }
+    [[nodiscard]] constexpr auto growth_raw() const noexcept
+        -> decltype(growth_raw_layout)::value_type {
+        return extract<decltype(growth_raw_layout)>();
+    }
+    constexpr void set_growth_raw(decltype(growth_raw_layout)::value_type const value) noexcept {
+        insert<decltype(growth_raw_layout)>(value);
+    }
+    [[nodiscard]] auto growth_value() const noexcept -> double {
+        return std::lerp(growth_minimum,
+                         growth_maximum,
+                         static_cast<double>(growth_raw()) /
+                             static_cast<double>(growth_raw_layout.range.max));
+    }
+    [[nodiscard]] static auto
+        try_encode_growth_value(double const value,
+                                decltype(growth_raw_layout)::value_type& out_raw) noexcept -> bool {
+        if (!std::isfinite(value) || value < growth_minimum || value > growth_maximum) {
+            return false;
+        }
+        auto const scaled{(value - growth_minimum) / (growth_maximum - growth_minimum) *
+                          static_cast<double>(growth_raw_layout.range.max)};
+        if (!std::isfinite(scaled)) {
+            return false;
+        }
+        auto rounded{std::floor(scaled)};
+        auto const fraction{scaled - rounded};
+        if (fraction > 0.5 || (fraction == 0.5 && std::fmod(rounded, 2.0) != 0.0)) {
+            rounded = rounded + 1.0;
+        }
+        if (rounded >= static_cast<double>(growth_raw_layout.range.max)) {
+            out_raw = growth_raw_layout.range.max;
+            return true;
+        }
+        if (rounded >= std::ldexp(1.0, growth_raw_layout.magnitude_bits) || rounded < 0.0) {
+            return false;
+        }
+        decltype(growth_raw_layout)::value_type const raw{
+            static_cast<decltype(growth_raw_layout)::value_type>(rounded)};
+        out_raw = raw;
+        return true;
+    }
+    void set_growth_value(double const value) noexcept {
+        decltype(growth_raw_layout)::value_type raw{};
+        [[maybe_unused]] auto const success{try_encode_growth_value(value, raw)};
+        assert((success));
+        set_growth_raw(raw);
+    }
+    [[nodiscard]] constexpr auto signed_range_raw() const noexcept
+        -> decltype(signed_range_raw_layout)::value_type {
+        return extract<decltype(signed_range_raw_layout)>();
+    }
+    constexpr void
+        set_signed_range_raw(decltype(signed_range_raw_layout)::value_type const value) noexcept {
+        insert<decltype(signed_range_raw_layout)>(value);
+    }
+    [[nodiscard]] auto signed_range_value() const noexcept -> double {
+        return std::lerp(signed_range_minimum,
+                         signed_range_maximum,
+                         static_cast<double>(signed_range_raw()) /
+                             static_cast<double>(signed_range_raw_layout.range.max));
+    }
+    [[nodiscard]] static auto try_encode_signed_range_value(
+        double const value, decltype(signed_range_raw_layout)::value_type& out_raw) noexcept
+        -> bool {
+        if (!std::isfinite(value) || value < signed_range_minimum || value > signed_range_maximum) {
+            return false;
+        }
+        auto const scaled{(value - signed_range_minimum) /
+                          (signed_range_maximum - signed_range_minimum) *
+                          static_cast<double>(signed_range_raw_layout.range.max)};
+        if (!std::isfinite(scaled)) {
+            return false;
+        }
+        auto const rounded{std::trunc(scaled)};
+        if (rounded >= static_cast<double>(signed_range_raw_layout.range.max)) {
+            out_raw = signed_range_raw_layout.range.max;
+            return true;
+        }
+        if (rounded >= std::ldexp(1.0, signed_range_raw_layout.magnitude_bits) || rounded < 0.0) {
+            return false;
+        }
+        decltype(signed_range_raw_layout)::value_type const raw{
+            static_cast<decltype(signed_range_raw_layout)::value_type>(rounded)};
+        out_raw = raw;
+        return true;
+    }
+    void set_signed_range_value(double const value) noexcept {
+        decltype(signed_range_raw_layout)::value_type raw{};
+        [[maybe_unused]] auto const success{try_encode_signed_range_value(value, raw)};
+        assert((success));
+        set_signed_range_raw(raw);
+    }
+};
+
+static_assert(ioj::valid_packed_value_layout<RangeFields>());
+
 struct Defaults;
 
 namespace detail {
@@ -841,10 +1298,12 @@ struct Motion : detail::MotionBase {
     // velocity
     static constexpr ioj::PackedField<storage_type, std::int16_t, 0, 12> velocity_raw_layout{};
     static constexpr int velocity_fractional_bits{4};
+    // Range: [-2048 / 16, 2047 / 16]; step: 1 / 16.
 
     // fraction
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 12, 7> fraction_raw_layout{};
     static constexpr int fraction_fractional_bits{7};
+    // Range: [0 / 128, 127 / 128]; step: 1 / 128.
 
     // state
     static constexpr ioj::PackedField<storage_type, std::uint16_t, 19, 13> state_layout{};

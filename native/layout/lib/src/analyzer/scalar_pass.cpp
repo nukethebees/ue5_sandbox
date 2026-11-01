@@ -305,9 +305,8 @@ auto compute_fixed_encoding(AnalysisContext& context, lispb::schema::TypeId type
     auto const sign_bits{fixed_points.signedness[fixed_row] ? std::uint32_t{1} : std::uint32_t{0}};
     auto const whole_bits{fixed_points.total_bits[fixed_row] -
                           fixed_points.fractional_bits[fixed_row] - sign_bits};
-    auto const resolution{
-        std::ldexp(1.0L, -static_cast<int>(fixed_points.fractional_bits[fixed_row]))};
-    auto const scale{std::ldexp(1.0L, static_cast<int>(fixed_points.fractional_bits[fixed_row]))};
+    auto resolution{std::ldexp(1.0L, -static_cast<int>(fixed_points.fractional_bits[fixed_row]))};
+    auto scale{std::ldexp(1.0L, static_cast<int>(fixed_points.fractional_bits[fixed_row]))};
 
     PackedIntegerValue minimum_raw;
     PackedIntegerValue maximum_raw;
@@ -335,32 +334,32 @@ auto compute_fixed_encoding(AnalysisContext& context, lispb::schema::TypeId type
                         resolution;
     }
 
-    auto const minimum_allowed_raw{fixed_points.minimum_raw_value[fixed_row].value_or(minimum_raw)};
-    auto const maximum_allowed_raw{fixed_points.maximum_raw_value[fixed_row].value_or(maximum_raw)};
-    auto const to_value = [&](PackedIntegerValue const raw) {
-        auto const value{static_cast<long double>(raw.magnitude) / scale};
-        return raw.negative ? -value : value;
-    };
-    FixedEncoding result{.signedness = fixed_points.signedness[fixed_row] != 0,
-                         .total_bits = fixed_points.total_bits[fixed_row],
-                         .fractional_bits = fixed_points.fractional_bits[fixed_row],
-                         .whole_bits = whole_bits,
-                         .minimum_raw_value = minimum_raw,
-                         .maximum_raw_value = maximum_raw,
-                         .minimum_allowed_raw_value = minimum_allowed_raw,
-                         .maximum_allowed_raw_value = maximum_allowed_raw,
-                         .scale = scale,
-                         .resolution = resolution,
-                         .minimum_value = minimum_value,
-                         .maximum_value = maximum_value,
-                         .minimum_allowed_value = to_value(minimum_allowed_raw),
-                         .maximum_allowed_value = to_value(maximum_allowed_raw),
-                         .maximum_rounding_error =
-                             fixed_points.rounding[fixed_row] ==
-                                     lispb::codegen::FixedPointRounding::nearest_even
-                                 ? resolution / 2.0L
-                                 : resolution,
-                         .rounding = fixed_points.rounding[fixed_row]};
+    auto const range_form{fixed_points.form[fixed_row] == lispb::codegen::FixedPointForm::range};
+    if (range_form) {
+        minimum_value = fixed_points.minimum_value[fixed_row];
+        maximum_value = fixed_points.maximum_value[fixed_row];
+        auto const codes{static_cast<long double>(maximum_raw.magnitude)};
+        resolution = maximum_value / codes - minimum_value / codes;
+        scale = 1.0L / resolution;
+    }
+    FixedEncoding result{
+        .form = fixed_points.form[fixed_row],
+        .signedness = fixed_points.signedness[fixed_row] != 0,
+        .total_bits = fixed_points.total_bits[fixed_row],
+        .fractional_bits =
+            range_form ? std::nullopt : std::optional{fixed_points.fractional_bits[fixed_row]},
+        .whole_bits = range_form ? std::nullopt : std::optional{whole_bits},
+        .minimum_raw_value = minimum_raw,
+        .maximum_raw_value = maximum_raw,
+        .scale = scale,
+        .resolution = resolution,
+        .minimum_value = minimum_value,
+        .maximum_value = maximum_value,
+        .maximum_rounding_error =
+            fixed_points.rounding[fixed_row] == lispb::codegen::FixedPointRounding::nearest_even
+                ? resolution / 2.0L
+                : resolution,
+        .rounding = fixed_points.rounding[fixed_row]};
     return result;
 }
 

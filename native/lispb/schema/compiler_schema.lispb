@@ -214,6 +214,7 @@
     (value field_mask_name :serialized-name "field-mask-name")
     (value finite :serialized-name "finite")
     (value fixed_schema :serialized-name "fixed-schema")
+    (value form :serialized-name "form")
     (value format :serialized-name "format")
     (value fractional_bits :serialized-name "fractional-bits")
     (value friend_kind :serialized-name "friend-kind")
@@ -362,6 +363,16 @@
     (value reject :serialized-name "reject")
     (value clamp :serialized-name "clamp")))
 
+
+(module fixed_point_form
+  :header "fixed_point_form.h"
+  :namespace lispb::codegen
+  (enum FixedPointForm std::uint8_t
+    (projections (cpp))
+    :native-api true
+    :helpers (to-serialized-string try-parse-serialized)
+    (value binary_point :serialized-name "binary-point")
+    (value range :serialized-name "range")))
 
 (module fixed_point_rounding
   :header "fixed_point_rounding.h"

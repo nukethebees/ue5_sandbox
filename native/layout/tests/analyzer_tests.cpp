@@ -165,7 +165,8 @@ AnalysisCase const cases[]{
      }},
     {"FixedPoint",
      R"((module game :header "Game.h"
-        (fixed-point Value :signed true :total-bits 12 :fractional-bits 4 :rounding toward-zero)))",
+        (fixed-point Value :total-bits 12 :form (binary-point :signed true :fractional-bits 4) :rounding toward-zero)
+        (fixed-point Ranged :total-bits 8 :form (range :minimum 0.0625 :maximum 16))))",
      [](AnalysisContext& context) {
          run_analysis(context, "Value", {.element_count = 10});
          auto const& result{scalar_result(context, context.storage.scalars.fixed_encoding())};
@@ -174,6 +175,15 @@ AnalysisCase const cases[]{
          EXPECT_EQ(result.minimum_value, -128.0L);
          EXPECT_EQ(result.maximum_value, 127.9375L);
          EXPECT_EQ(context.storage.totals[0].total_encoded_bits, 120);
+         run_analysis(context, "Ranged", {.element_count = 1});
+         auto const& ranged{
+             scalar_result(context, context.storage.scalars.fixed_encoding(), "Ranged")};
+         EXPECT_EQ(ranged.form, lispb::codegen::FixedPointForm::range);
+         EXPECT_FALSE(ranged.fractional_bits.has_value());
+         EXPECT_FALSE(ranged.whole_bits.has_value());
+         EXPECT_EQ(ranged.minimum_value, 0.0625L);
+         EXPECT_EQ(ranged.maximum_value, 16.0L);
+         EXPECT_NEAR(static_cast<double>(ranged.resolution), 0.0625, 1e-15);
      }},
     {"MiniFloat",
      R"((module game :header "Game.h"
@@ -289,7 +299,7 @@ AnalysisCase const cases[]{
      }},
     {"FullWidthFixedPointOverflow",
      R"((module game :header "Game.h"
-        (fixed-point Value :signed true :total-bits 64 :fractional-bits 0 :rounding nearest-even)))",
+        (fixed-point Value :total-bits 64 :form (binary-point :signed true :fractional-bits 0) :rounding nearest-even)))",
      [](AnalysisContext& context) {
          run_analysis(
              context, "Value", {.element_count = std::numeric_limits<std::uint64_t>::max()}, true);

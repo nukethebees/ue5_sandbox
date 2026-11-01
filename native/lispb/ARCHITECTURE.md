@@ -254,6 +254,25 @@ layout. Fixed-point fields expose raw integers and explicit floating conversion 
 mini-float, and optional fields expose encoded integers. Variable-length integer encodings have no
 fixed-width packed C++ projection.
 
+Fixed-point declarations require `:total-bits` and one explicit `:form`:
+
+```lisp
+(fixed-point Velocity :total-bits 16
+  :form (binary-point :signed true :fractional-bits 4))
+(fixed-point GrowthFactor :total-bits 8
+  :form (range :minimum 0.0625 :maximum 16.0))
+```
+
+Binary-point values decode as the signed or unsigned raw integer divided by `2^fractional-bits`.
+Range values map unsigned codes evenly between finite, increasing endpoints, including both
+endpoints; their step need not be a power of two. `:rounding` belongs to the declaration and defaults
+to `nearest-even`; `toward-zero` truncates the transformed raw code. These forms define encodings,
+not additional constrained subranges. Generated comments describe the range and exact step formula.
+Standalone projections retain integer `value()`/`set_value()` and add `decoded_value()`,
+`set_decoded_value()`, and `try_encode_value()`. Packed fields retain their named raw/value APIs.
+Floating conversion uses `double`, so wide encodings can have multiple codes decode to the same
+floating value. Raw access preserves every code.
+
 `tests/packed_performance_probes.cpp` compares generated nested access, mutation, factories and array
 loops with handwritten masks. Compile it with optimization, `NDEBUG`, and LTO disabled, then run
 `python native/lispb/tests/check_packed_assembly.py <assembly files>`. The checker accepts Clang/GCC
