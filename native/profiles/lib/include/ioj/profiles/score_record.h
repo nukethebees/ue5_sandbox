@@ -1,8 +1,8 @@
 #pragma once
 
+#include <ioj/levels/mission_outcome.h>
 #include <ioj/levels/objective_outcome.h>
 #include <ioj/levels/team.h>
-#include <ioj/levels/team_outcome.h>
 #include <ioj/profiles/timestamp.h>
 
 #include <string>
@@ -14,7 +14,7 @@ struct ScoreRecord {
     Timestamp date{};
     std::string level_name{};
     Team team{Team::White};
-    TeamOutcome outcome{TeamOutcome::Defeat};
+    MissionOutcome outcome{MissionOutcome::Defeat};
     std::string objective_id{};
     ObjectiveOutcome objective_outcome{ObjectiveOutcome::Failed};
     std::int32_t kills{};

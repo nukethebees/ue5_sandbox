@@ -25,7 +25,7 @@ auto summarize_level_progress(levels::LevelId const& level_id, std::span<ScoreRe
         ++summary.attempt_count;
         summary.best_kills = std::max(summary.best_kills, record.kills);
         summary.last_played_at = std::max(summary.last_played_at, record.date);
-        if (record.outcome != TeamOutcome::Victory) {
+        if (record.outcome != MissionOutcome::Victory) {
             continue;
         }
         ++summary.completion_count;

@@ -81,7 +81,7 @@ struct LevelSim {
     void finalize_telemetry_run(LevelTelemetryRunEndReason reason);
     void stop_run(LevelTelemetryRunEndReason reason);
     void stop_run_if_requested(RunStopConditions const& conditions);
-    auto take_player_team_completion() -> std::optional<TeamCompletion>;
+    auto take_player_team_completion() -> std::optional<TeamMissionCompletion>;
     auto take_finalized_telemetry_run() -> std::optional<LevelTelemetryRunRecord>;
 
     /* **************************************** */

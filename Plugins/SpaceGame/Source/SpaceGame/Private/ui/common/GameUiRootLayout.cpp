@@ -100,7 +100,7 @@ auto UGameUiRootLayout::show_pause_menu(UInputAction& toggle_action, FPauseMenuD
 }
 
 auto UGameUiRootLayout::show_level_completion(FString level_display_name,
-                                              ETeamOutcome const state,
+                                              EMissionOutcome const state,
                                               FString const& objective_id,
                                               sim::LevelTelemetrySnapshot snapshot,
                                               TOptional<float> const par_time_seconds,

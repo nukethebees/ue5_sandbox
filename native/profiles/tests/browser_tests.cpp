@@ -153,7 +153,7 @@ TEST(ProfileAdapter, AdaptsTypedMissionResultsIntoReportOutcomes) {
 
     std::vector<ScoreRecord> const records{{.date = test_date(2026, 4, 3, 12, 30),
                                             .level_name = "test_level_42",
-                                            .outcome = TeamOutcome::Defeat,
+                                            .outcome = MissionOutcome::Defeat,
                                             .objective_id = "deadline",
                                             .objective_outcome = ObjectiveOutcome::Expired,
                                             .kills = 8,

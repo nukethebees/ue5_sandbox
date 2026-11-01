@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SpaceGame/missions/TeamOutcome.h>
+#include <SpaceGame/missions/MissionOutcome.h>
 
 #include <CoreMinimal.h>
 
@@ -12,7 +12,7 @@ struct LevelSim;
 
 struct FMissionCompletion {
     FString level_display_name{};
-    ETeamOutcome state{ETeamOutcome::Defeat};
+    EMissionOutcome state{EMissionOutcome::Defeat};
     FString objective_id{};
     bool persisted{false};
     TOptional<float> par_time_seconds{};

@@ -24,8 +24,8 @@ auto publish_player_completion(sim::LevelSim& simulation, ProfileManager* profil
                    .level_name = metadata.id.value,
                    .team = completion->team,
                    .outcome = completion->outcome,
-                   .objective_id = objectives.name(completion->objective).value,
-                   .objective_outcome = completion->objective_outcome,
+                   .objective_id = objectives.name(completion->triggering_objective).value,
+                   .objective_outcome = completion->triggering_objective_outcome,
                    .kills = kills,
                    .time_seconds = static_cast<float>(sim::simulation_time(
                        completion->tick, simulation.get_clock().get_tick_period()))},

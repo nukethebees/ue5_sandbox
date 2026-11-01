@@ -182,30 +182,30 @@ TEST_F(MissionTest, ReciprocalTeamsAndConsumeOnceCompletion) {
     start({.objectives = {attack, defend},
            .team_results = {{Team::Blue,
                              {levels::ObjectiveName{"attack"}, ObjectiveOutcome::Passed},
-                             TeamOutcome::Victory},
+                             MissionOutcome::Victory},
                             {Team::Red,
                              {levels::ObjectiveName{"defend"}, ObjectiveOutcome::Failed},
-                             TeamOutcome::Defeat}}});
+                             MissionOutcome::Defeat}}});
     tick(10);
-    EXPECT_EQ(mission.team_outcome(Team::Blue), TeamOutcome::Victory);
-    EXPECT_EQ(mission.team_outcome(Team::Red), TeamOutcome::Defeat);
+    EXPECT_EQ(mission.team_outcome(Team::Blue), MissionOutcome::Victory);
+    EXPECT_EQ(mission.team_outcome(Team::Red), MissionOutcome::Defeat);
     EXPECT_EQ(mission.take_completions().size(), 2);
     EXPECT_TRUE(mission.take_completions().empty());
     tick(20);
     EXPECT_TRUE(mission.take_completions().empty());
 }
 
-struct TeamCompletionCase {
+struct TeamMissionCompletionCase {
     char const* name;
     std::optional<Team> team;
-    std::optional<TeamOutcome> outcome;
+    std::optional<MissionOutcome> outcome;
 };
 
-class SelectedTeamCompletion
+class SelectedTeamMissionCompletion
     : public MissionTest
-    , public ::testing::WithParamInterface<TeamCompletionCase> {};
+    , public ::testing::WithParamInterface<TeamMissionCompletionCase> {};
 
-TEST_P(SelectedTeamCompletion, ConsumesAllPendingResultsWhileSelectingTheRequestedTeam) {
+TEST_P(SelectedTeamMissionCompletion, ConsumesAllPendingResultsWhileSelectingTheRequestedTeam) {
     auto attack{objective("attack", timer(1))};
     auto defend{objective(
         "defend", observed("attack", ObjectiveOutcome::Passed), ObjectiveOutcome::Failed)};
@@ -213,10 +213,10 @@ TEST_P(SelectedTeamCompletion, ConsumesAllPendingResultsWhileSelectingTheRequest
     start({.objectives = {attack, defend},
            .team_results = {{Team::Blue,
                              {levels::ObjectiveName{"attack"}, ObjectiveOutcome::Passed},
-                             TeamOutcome::Victory},
+                             MissionOutcome::Victory},
                             {Team::Red,
                              {levels::ObjectiveName{"defend"}, ObjectiveOutcome::Failed},
-                             TeamOutcome::Defeat}}});
+                             MissionOutcome::Defeat}}});
     auto const& test_case{GetParam()};
     EXPECT_FALSE(mission.take_team_completion(test_case.team));
     tick(10);
@@ -235,12 +235,15 @@ TEST_P(SelectedTeamCompletion, ConsumesAllPendingResultsWhileSelectingTheRequest
 
 INSTANTIATE_TEST_SUITE_P(
     Mission,
-    SelectedTeamCompletion,
-    ::testing::Values(TeamCompletionCase{"VictoriousTeam", Team::Blue, TeamOutcome::Victory},
-                      TeamCompletionCase{"DefeatedTeam", Team::Red, TeamOutcome::Defeat},
-                      TeamCompletionCase{"UnrelatedTeam", Team::Green, std::nullopt},
-                      TeamCompletionCase{"NoPlayer", std::nullopt, std::nullopt}),
-    [](::testing::TestParamInfo<TeamCompletionCase> const& info) { return info.param.name; });
+    SelectedTeamMissionCompletion,
+    ::testing::Values(
+        TeamMissionCompletionCase{"VictoriousTeam", Team::Blue, MissionOutcome::Victory},
+        TeamMissionCompletionCase{"DefeatedTeam", Team::Red, MissionOutcome::Defeat},
+        TeamMissionCompletionCase{"UnrelatedTeam", Team::Green, std::nullopt},
+        TeamMissionCompletionCase{"NoPlayer", std::nullopt, std::nullopt}),
+    [](::testing::TestParamInfo<TeamMissionCompletionCase> const& info) {
+        return info.param.name;
+    });
 
 struct RunStopCase {
     char const* name;
@@ -323,12 +326,12 @@ TEST_F(MissionTest, RootAndTeamConflictPrecedenceIsDeterministic) {
     start({.objectives = {source},
            .team_results = {{Team::Blue,
                              {levels::ObjectiveName{"conflict"}, ObjectiveOutcome::Passed},
-                             TeamOutcome::Victory},
+                             MissionOutcome::Victory},
                             {Team::Blue,
                              {levels::ObjectiveName{"conflict"}, ObjectiveOutcome::Passed},
-                             TeamOutcome::Defeat}}});
+                             MissionOutcome::Defeat}}});
     EXPECT_EQ(mission.outcome(ObjectiveId{0}), ObjectiveOutcome::Passed);
-    EXPECT_EQ(mission.team_outcome(Team::Blue), TeamOutcome::Defeat);
+    EXPECT_EQ(mission.team_outcome(Team::Blue), MissionOutcome::Defeat);
 }
 
 TEST_F(MissionTest, RuleRunsSortAndRebuildAfterMembershipChanges) {
@@ -396,7 +399,7 @@ TEST_F(MissionTest, SchemeNamedDagAndOutcomeDependenciesExecuteThroughRuntimeCom
     tick(29);
     EXPECT_FALSE(mission.outcome(ObjectiveId{1}));
     tick(30);
-    EXPECT_EQ(mission.team_outcome(Team::Blue), TeamOutcome::Victory);
+    EXPECT_EQ(mission.team_outcome(Team::Blue), MissionOutcome::Victory);
 }
 
 TEST(MissionAuthoring, RejectsNamedDagCyclesAndCrossObjectiveExpressionReferences) {
@@ -429,8 +432,8 @@ TEST_F(MissionTest, SchemeReciprocalHelperResolvesBothTeams) {
     tick(10);
     EXPECT_EQ(mission.outcome(ObjectiveId{0}), ObjectiveOutcome::Passed);
     EXPECT_EQ(mission.outcome(ObjectiveId{1}), ObjectiveOutcome::Failed);
-    EXPECT_EQ(mission.team_outcome(Team::Blue), TeamOutcome::Victory);
-    EXPECT_EQ(mission.team_outcome(Team::Red), TeamOutcome::Defeat);
+    EXPECT_EQ(mission.team_outcome(Team::Blue), MissionOutcome::Victory);
+    EXPECT_EQ(mission.team_outcome(Team::Red), MissionOutcome::Defeat);
 }
 
 TEST_F(MissionTest, RejectsInvalidReferencesParametersAndDuplicatePrerequisites) {
@@ -446,7 +449,7 @@ TEST_F(MissionTest, RejectsInvalidReferencesParametersAndDuplicatePrerequisites)
         {.objectives = {a},
          .team_results = {{Team::Blue,
                            {levels::ObjectiveName{"missing"}, ObjectiveOutcome::Passed},
-                           TeamOutcome::Victory}}},
+                           MissionOutcome::Victory}}},
         {},
         clock));
     a.expressions[0] = {EntityReachedPositionExpr{

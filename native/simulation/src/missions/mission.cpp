@@ -65,14 +65,14 @@ void Mission::tick(MissionEvaluationContext const& inputs) {
 /* **************************************** */
 // Inspection
 /* **************************************** */
-auto Mission::take_completions() -> std::vector<TeamCompletion> {
+auto Mission::take_completions() -> std::vector<TeamMissionCompletion> {
     return std::exchange(completions_, {});
 }
 auto Mission::take_team_completion(std::optional<Team> const team)
-    -> std::optional<TeamCompletion> {
-    std::optional<TeamCompletion> result;
+    -> std::optional<TeamMissionCompletion> {
+    std::optional<TeamMissionCompletion> result;
     if (team) {
-        auto const found{std::ranges::find(completions_, *team, &TeamCompletion::team)};
+        auto const found{std::ranges::find(completions_, *team, &TeamMissionCompletion::team)};
         if (found != completions_.end()) {
             result = *found;
         }
@@ -83,7 +83,7 @@ auto Mission::take_team_completion(std::optional<Team> const team)
 auto Mission::outcome(ObjectiveId const id) const -> std::optional<ObjectiveOutcome> {
     return data_.objectives.outcome(id);
 }
-auto Mission::team_outcome(Team const team) const -> std::optional<TeamOutcome> {
+auto Mission::team_outcome(Team const team) const -> std::optional<MissionOutcome> {
     assert(static_cast<std::size_t>(team) < team_outcomes_.size());
     return team_outcomes_[team];
 }
@@ -453,7 +453,7 @@ void Mission::settle(MissionEvaluationContext const& inputs) {
                           }
 
                           if (a.result != b.result) {
-                              return a.result == TeamOutcome::Defeat;
+                              return a.result == MissionOutcome::Defeat;
                           }
                           return left < right;
                       });

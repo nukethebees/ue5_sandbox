@@ -16,22 +16,22 @@ TEST(LevelProgress, SummarisesOnlyTheRequestedAuthoredLevel) {
     std::vector<ScoreRecord> const records{
         {.date = test_date(2026, 8, 20),
          .level_name = level_id.value,
-         .outcome = TeamOutcome::Defeat,
+         .outcome = MissionOutcome::Defeat,
          .kills = 12,
          .time_seconds = 30.0f},
         {.date = test_date(2026, 8, 21),
          .level_name = level_id.value,
-         .outcome = TeamOutcome::Victory,
+         .outcome = MissionOutcome::Victory,
          .kills = 8,
          .time_seconds = 75.0f},
         {.date = test_date(2026, 8, 22),
          .level_name = level_id.value,
-         .outcome = TeamOutcome::Victory,
+         .outcome = MissionOutcome::Victory,
          .kills = 10,
          .time_seconds = 60.0f},
         {.date = test_date(2026, 8, 23),
          .level_name = "another-level",
-         .outcome = TeamOutcome::Victory,
+         .outcome = MissionOutcome::Victory,
          .kills = 100,
          .time_seconds = 1.0f},
     };
@@ -50,7 +50,7 @@ TEST(LevelProgress, SummarisesOnlyTheRequestedAuthoredLevel) {
 TEST(LevelProgress, DistinguishesAttemptedAndUnknownLevels) {
 
     std::vector<ScoreRecord> const records{
-        {.level_name = "failed-level", .outcome = TeamOutcome::Defeat, .kills = 3}};
+        {.level_name = "failed-level", .outcome = MissionOutcome::Defeat, .kills = 3}};
 
     auto const attempted{
         summarize_level_progress(levels::LevelId{std::string{"failed-level"}}, records)};

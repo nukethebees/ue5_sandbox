@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "ioj/levels/mission_outcome.h"
 #include "ioj/levels/objective_dependency.h"
 #include "ioj/levels/team.h"
-#include "ioj/levels/team_outcome.h"
 
 namespace ioj::levels {
 struct TeamResultDefinition {
@@ -13,6 +13,6 @@ struct TeamResultDefinition {
 
     Team team{Team::White};
     ObjectiveDependency when{};
-    TeamOutcome result{TeamOutcome::Victory};
+    MissionOutcome result{MissionOutcome::Victory};
 };
 } // namespace ioj::levels

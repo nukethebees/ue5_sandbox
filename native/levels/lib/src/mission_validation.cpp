@@ -172,7 +172,7 @@ auto validate_mission(MissionDefinition const& mission, std::span<EntityId const
     for (auto const& mapping : mission.team_results) {
         valid_team(mapping.team);
         reference(mapping.when);
-        if (mapping.result != TeamOutcome::Victory && mapping.result != TeamOutcome::Defeat) {
+        if (mapping.result != MissionOutcome::Victory && mapping.result != MissionOutcome::Defeat) {
             errors.emplace_back("Invalid team result");
         }
     }

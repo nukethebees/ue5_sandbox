@@ -141,7 +141,7 @@ void LevelSim::stop_run_if_requested(RunStopConditions const& conditions) {
         stop_run(*reason);
     }
 }
-auto LevelSim::take_player_team_completion() -> std::optional<TeamCompletion> {
+auto LevelSim::take_player_team_completion() -> std::optional<TeamMissionCompletion> {
     auto const team{player_ship_simulation_ ? std::optional{player_ship_simulation_->team}
                                             : std::nullopt};
     auto completion{mission_.take_team_completion(team)};

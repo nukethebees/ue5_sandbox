@@ -2,7 +2,7 @@
 
 #include <ioj/sim/missions/compiled_mission.h>
 #include <ioj/sim/missions/mission_evaluation_context.h>
-#include <ioj/sim/missions/team_completion.h>
+#include <ioj/sim/missions/team_mission_completion.h>
 
 namespace ioj::sim {
 class Mission {
@@ -19,16 +19,16 @@ class Mission {
     /* **************************************** */
     // Inspection
     /* **************************************** */
-    auto take_completions() -> std::vector<TeamCompletion>;
+    auto take_completions() -> std::vector<TeamMissionCompletion>;
     // Consume every pending completion; return the first for team, or empty without a match.
-    auto take_team_completion(std::optional<Team> team) -> std::optional<TeamCompletion>;
+    auto take_team_completion(std::optional<Team> team) -> std::optional<TeamMissionCompletion>;
     auto objectives() const -> Objectives const& { return data_.objectives; }
     auto active_objectives() const -> std::span<ObjectiveId const> { return active_; }
     auto inactive_objectives() const -> std::span<ObjectiveId const> { return inactive_; }
     auto completed_objectives() const -> std::span<ObjectiveId const> { return completed_; }
 
     auto outcome(ObjectiveId id) const -> std::optional<ObjectiveOutcome>;
-    auto team_outcome(Team team) const -> std::optional<TeamOutcome>;
+    auto team_outcome(Team team) const -> std::optional<MissionOutcome>;
     auto result(ExprRef expression) const -> ExprResult;
 
     auto active_rules() const -> std::span<RuleId const> { return active_rules_; }
@@ -86,8 +86,8 @@ class Mission {
     std::vector<ExprRef> propagation_;
     std::vector<ObjectiveId> pending_objectives_;
     std::vector<TeamResultIndex> candidate_results_;
-    EnumArray<Team, std::optional<TeamOutcome>> team_outcomes_;
-    std::vector<TeamCompletion> completions_;
+    EnumArray<Team, std::optional<MissionOutcome>> team_outcomes_;
+    std::vector<TeamMissionCompletion> completions_;
     bool begun_{};
 };
 }

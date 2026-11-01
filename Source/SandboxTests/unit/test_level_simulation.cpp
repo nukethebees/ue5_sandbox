@@ -135,7 +135,7 @@ void add_mission(::ioj::sim::LevelSimInitData& data) {
         .team_results = {
             {.team = ioj::Team::Green,
              .when = {ioj::levels::ObjectiveName{"primary"}, ioj::ObjectiveOutcome::Passed},
-             .result = ioj::TeamOutcome::Victory}}};
+             .result = ioj::MissionOutcome::Victory}}};
     std::array const ids{ioj::levels::EntityId{"hero"}, ioj::levels::EntityId{"enemy"}};
     ioj::sim::SimClock clock;
     clock.initialise(data.clock_settings);
@@ -260,7 +260,7 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
              headless.get_mission().team_outcome(ioj::Team::Green) ==
                  visible.get_mission().team_outcome(ioj::Team::Green));
     TestTrue(TEXT("Team wins"),
-             headless.get_mission().team_outcome(ioj::Team::Green) == ioj::TeamOutcome::Victory);
+             headless.get_mission().team_outcome(ioj::Team::Green) == ioj::MissionOutcome::Victory);
     return true;
 }
 

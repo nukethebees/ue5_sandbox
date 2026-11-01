@@ -403,7 +403,7 @@ TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimu
     simulation.advance(0.1);
     EXPECT_EQ(simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}), ObjectiveOutcome::Passed);
     EXPECT_EQ(simulation.get_mission().outcome(ioj::sim::ObjectiveId{1}), ObjectiveOutcome::Passed);
-    EXPECT_EQ(simulation.get_mission().team_outcome(Team::Green), TeamOutcome::Victory);
+    EXPECT_EQ(simulation.get_mission().team_outcome(Team::Green), MissionOutcome::Victory);
     EXPECT_FALSE(simulation.take_player_team_completion());
 }
 
@@ -426,11 +426,12 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
         .objectives = {timed_objective("enemy", Team::White, 0.0),
                        timed_objective("player", Team::Green, 0.2),
                        timed_objective("optional", Team::Green, 10.0)},
-        .team_results = {
-            {Team::White, {ObjectiveName{"enemy"}, ObjectiveOutcome::Passed}, TeamOutcome::Victory},
-            {Team::Green,
-             {ObjectiveName{"player"}, ObjectiveOutcome::Passed},
-             TeamOutcome::Defeat}}};
+        .team_results = {{Team::White,
+                          {ObjectiveName{"enemy"}, ObjectiveOutcome::Passed},
+                          MissionOutcome::Victory},
+                         {Team::Green,
+                          {ObjectiveName{"player"}, ObjectiveOutcome::Passed},
+                          MissionOutcome::Defeat}}};
     SimClock clock;
     clock.initialise(data.clock_settings);
     auto compiled{CompiledMission::compile(definition, {}, clock)};
@@ -445,9 +446,10 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
     auto const result{simulation.take_player_team_completion()};
     ASSERT_TRUE(result);
     EXPECT_EQ(result->team, Team::Green);
-    EXPECT_EQ(result->outcome, TeamOutcome::Defeat);
-    EXPECT_EQ(result->objective_outcome, ObjectiveOutcome::Passed);
-    EXPECT_EQ(simulation.get_mission().objectives().name(result->objective).value, "player");
+    EXPECT_EQ(result->outcome, MissionOutcome::Defeat);
+    EXPECT_EQ(result->triggering_objective_outcome, ObjectiveOutcome::Passed);
+    EXPECT_EQ(simulation.get_mission().objectives().name(result->triggering_objective).value,
+              "player");
     EXPECT_EQ(result->tick.value(), 2);
     EXPECT_EQ(simulation.get_mission().active_objectives().size(), 1);
     EXPECT_FALSE(simulation.take_player_team_completion());
@@ -527,7 +529,7 @@ TEST(NativeSimulation, LevelTelemetryMissionCompletionTest) {
     ASSERT_TRUE(record.has_value()) << "Taking the mission result finalizes telemetry";
     EXPECT_EQ(record->completion.reason, LevelTelemetryRunEndReason::MissionSucceeded)
         << "Mission success selects the telemetry completion reason";
-    EXPECT_EQ(mission_result->outcome, TeamOutcome::Victory);
+    EXPECT_EQ(mission_result->outcome, MissionOutcome::Victory);
 }
 
 TEST(NativeSimulation, LaserFrameOutputsTest) {
@@ -890,7 +892,7 @@ TEST(NativeSimulation, WorldlessLevelSimulationTest) {
     EXPECT_EQ(second.get_capital_ships().get_num_instances(), 2) << "Other battle is unaffected";
     auto result{first.take_player_team_completion()};
     EXPECT_FALSE(result.has_value()) << "Playerless simulation does not choose a player's outcome";
-    EXPECT_EQ(first.get_mission().team_outcome(Team::Green), TeamOutcome::Victory);
+    EXPECT_EQ(first.get_mission().team_outcome(Team::Green), MissionOutcome::Victory);
     EXPECT_FALSE(first.take_player_team_completion().has_value())
         << "Mission result is delivered once";
     first.pause();

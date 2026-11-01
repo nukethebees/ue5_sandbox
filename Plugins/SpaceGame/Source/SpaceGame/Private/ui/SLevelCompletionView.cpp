@@ -50,13 +50,13 @@ void SLevelCompletionView::Construct(FArguments const& args) {
 }
 
 void SLevelCompletionView::update_report(FString const& level_display_name,
-                                         ETeamOutcome const state,
+                                         EMissionOutcome const state,
                                          FString const& objective_id,
                                          sim::LevelTelemetrySnapshot const& snapshot,
                                          TOptional<float> const par_time_seconds,
                                          bool const new_best_time) {
-    check(state == ETeamOutcome::Victory || state == ETeamOutcome::Defeat);
-    auto const succeeded{state == ETeamOutcome::Victory};
+    check(state == EMissionOutcome::Victory || state == EMissionOutcome::Defeat);
+    auto const succeeded{state == EMissionOutcome::Victory};
     mission_name_->SetText(level_display_name.IsEmpty()
                                ? NSLOCTEXT("LevelCompletion", "UnknownMission", "UNNAMED OPERATION")
                                : FText::FromString(level_display_name.ToUpper()));

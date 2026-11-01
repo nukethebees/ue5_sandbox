@@ -15,7 +15,7 @@ ULevelCompletionWidget::ULevelCompletionWidget() {
 }
 
 void ULevelCompletionWidget::prepare_for_open(FString level_display_name,
-                                              ETeamOutcome const state,
+                                              EMissionOutcome const state,
                                               FString const& objective_id,
                                               sim::LevelTelemetrySnapshot snapshot,
                                               TOptional<float> const par_time_seconds,

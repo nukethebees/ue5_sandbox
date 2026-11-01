@@ -1,6 +1,6 @@
 #pragma once
 #include "ioj/sim/telemetry/snapshot.h"
-#include <ioj/levels/team_outcome.h>
+#include <ioj/levels/mission_outcome.h>
 #include <ioj/periodic_timer.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/sim_tick.h>
@@ -63,7 +63,7 @@ class LevelTelemetryManager {
     // Requires Uninitialised or Recording.
     void set_run_metadata(LevelTelemetryRunMetadata metadata);
     void finalize(LevelTelemetryRunEndReason reason);
-    void finalize_mission(TeamOutcome outcome);
+    void finalize_mission(MissionOutcome outcome);
     // Returns empty unless the record awaits extraction.
     auto take_finalized_run(Frequency tick_rate_hz) -> std::optional<LevelTelemetryRunRecord>;
 

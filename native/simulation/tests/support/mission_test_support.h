@@ -17,10 +17,10 @@ inline void install_mission(LevelSimInitData& data, levels::ObjectiveDefinition 
         .objectives = {std::move(objective)},
         .team_results = {{team,
                           {ioj::levels::ObjectiveName{"primary"}, ObjectiveOutcome::Passed},
-                          TeamOutcome::Victory},
+                          MissionOutcome::Victory},
                          {team,
                           {ioj::levels::ObjectiveName{"primary"}, ObjectiveOutcome::Failed},
-                          TeamOutcome::Defeat}}};
+                          MissionOutcome::Defeat}}};
     std::vector<levels::EntityId> names;
     auto const count{data.level_events.initialisation.entity_count};
     for (std::uint32_t index{}; index < count; ++index) {

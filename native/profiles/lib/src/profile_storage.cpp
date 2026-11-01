@@ -99,7 +99,8 @@ auto decode(Json const& json, ProfileResultsData& value) -> bool {
     }
     for (auto const& row : rows) {
         auto const team{try_parse_serialized_team(row.at("team").get<std::string>())};
-        auto const outcome{try_parse_serialized_team_outcome(row.at("outcome").get<std::string>())};
+        auto const outcome{
+            try_parse_serialized_mission_outcome(row.at("outcome").get<std::string>())};
         auto const objective{
             try_parse_serialized_objective_outcome(row.at("objective_outcome").get<std::string>())};
         ScoreRecord record{.date = row.at("date").get<Timestamp>(),

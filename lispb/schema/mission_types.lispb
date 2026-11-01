@@ -18,22 +18,22 @@
         :native-header-include "ioj/levels/objective_outcome.h"
         :reflection uenum))))
 
-(module team_outcome
-  :header "native/levels/lib/include/ioj/levels/team_outcome.h"
-  :header-include "ioj/levels/team_outcome.h"
+(module mission_outcome
+  :header "native/levels/lib/include/ioj/levels/mission_outcome.h"
+  :header-include "ioj/levels/mission_outcome.h"
   :namespace ioj
-  (enum TeamOutcome std::uint8_t
+  (enum MissionOutcome std::uint8_t
     :native-api true
     :helpers (traits to-serialized-string try-parse-serialized)
     (value Victory :serialized-name "victory")
     (value Defeat :serialized-name "defeat")
     (projections
       (cpp)
-      (unreal-projection ETeamOutcome
-        :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TeamOutcome.h"
-        :header-include "SpaceGame/missions/TeamOutcome.h"
-        :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TeamOutcomeConversion.h"
-        :native-header-include "ioj/levels/team_outcome.h"
+      (unreal-projection EMissionOutcome
+        :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/MissionOutcome.h"
+        :header-include "SpaceGame/missions/MissionOutcome.h"
+        :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/MissionOutcomeConversion.h"
+        :native-header-include "ioj/levels/mission_outcome.h"
         :reflection uenum))))
 
 (module expr_result

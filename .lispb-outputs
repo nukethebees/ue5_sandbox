@@ -1,9 +1,9 @@
 lispb-outputs-v1
 Plugins/ShooterGame/Source/ShooterGame/Public/ShooterGame/players/CharacterCameraMode.h
+Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/MissionOutcome.h
+Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/MissionOutcomeConversion.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/ObjectiveOutcome.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/ObjectiveOutcomeConversion.h
-Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TeamOutcome.h
-Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TeamOutcomeConversion.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRate.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRateConversion.h
 Plugins/SpaceGame/Source/SpaceGamePresentation/Private/ui/style/GameUiStyleTypes.cpp
@@ -30,11 +30,11 @@ native/levels/lib/include/ioj/levels/expr_result.h
 native/levels/lib/include/ioj/levels/expr_type.h
 native/levels/lib/include/ioj/levels/level_camera_definition.h
 native/levels/lib/include/ioj/levels/level_camera_definition_reader.h
+native/levels/lib/include/ioj/levels/mission_outcome.h
 native/levels/lib/include/ioj/levels/objective_dependency.h
 native/levels/lib/include/ioj/levels/objective_dependency_reader.h
 native/levels/lib/include/ioj/levels/objective_outcome.h
 native/levels/lib/include/ioj/levels/team.h
-native/levels/lib/include/ioj/levels/team_outcome.h
 native/levels/lib/include/ioj/levels/team_result_definition.h
 native/levels/lib/include/ioj/levels/team_result_definition_reader.h
 native/levels/lib/include/ioj/settings/capital_presentation.h

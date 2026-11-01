@@ -226,7 +226,7 @@ void FLevelLoaderCameraScenario::sample_modal_transitions() {
 
     FMissionCompletion completion;
     completion.persisted = true;
-    completion.state = ETeamOutcome::Victory;
+    completion.state = EMissionOutcome::Victory;
     completion.level_display_name = TEXT("Controller modal test");
     FPlayerControllerTestAccess::complete(*controller, completion);
     sample.completion_open = FPlayerControllerTestAccess::has_modal(*controller);

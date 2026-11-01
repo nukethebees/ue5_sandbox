@@ -1,7 +1,7 @@
 #include <SpaceGame/missions/MissionCompletion.h>
 
 #include <ioj/profiles/completion_publication.h>
-#include <SpaceGame/missions/TeamOutcomeConversion.h>
+#include <SpaceGame/missions/MissionOutcomeConversion.h>
 #include <SpaceGame/persistence/SpaceSaveSubsystem.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 

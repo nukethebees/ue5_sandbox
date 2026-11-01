@@ -55,7 +55,7 @@
     :s7-reader-includes ("ioj/levels/authoring/input_readers.h")
     (member team ioj::Team :initializer "Team::White" :required true)
     (member when @input_dependency :initializer "" :required true)
-    (member result ioj::TeamOutcome :initializer "TeamOutcome::Victory" :required true)
+    (member result ioj::MissionOutcome :initializer "MissionOutcome::Victory" :required true)
     (projections (cpp))))
 
 (module native_objective_dependency

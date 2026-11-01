@@ -1,17 +1,17 @@
 #pragma once
 
+#include <ioj/levels/mission_outcome.h>
 #include <ioj/levels/objective_outcome.h>
 #include <ioj/levels/team.h>
-#include <ioj/levels/team_outcome.h>
 #include <ioj/sim/missions/objective_id.h>
 #include <ioj/sim/sim_tick.h>
 
 namespace ioj::sim {
-struct TeamCompletion {
+struct TeamMissionCompletion {
     Team team{};
-    TeamOutcome outcome{};
-    ObjectiveId objective{};
-    ObjectiveOutcome objective_outcome{};
+    MissionOutcome outcome{};
+    ObjectiveId triggering_objective{};
+    ObjectiveOutcome triggering_objective_outcome{};
     SimTick tick{};
 };
 }

@@ -1,6 +1,6 @@
+#include <ioj/levels/mission_outcome.h>
 #include <ioj/levels/objective_outcome.h>
 #include <ioj/levels/team.h>
-#include <ioj/levels/team_outcome.h>
 #include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/player/fire_rate.h>
 #include <ioj/sim/player/space_ship_common.h>
@@ -51,8 +51,8 @@ TEST(NativeEnums, MissionAndTelemetrySerializedNamesRoundTrip) {
          {ObjectiveOutcome::Passed, ObjectiveOutcome::Failed, ObjectiveOutcome::Expired}) {
         EXPECT_EQ(try_parse_serialized_objective_outcome(to_serialized_string(value)), value);
     }
-    for (auto const value : {TeamOutcome::Victory, TeamOutcome::Defeat}) {
-        EXPECT_EQ(try_parse_serialized_team_outcome(to_serialized_string(value)), value);
+    for (auto const value : {MissionOutcome::Victory, MissionOutcome::Defeat}) {
+        EXPECT_EQ(try_parse_serialized_mission_outcome(to_serialized_string(value)), value);
     }
     using enum LevelTelemetryRunEndReason;
     std::array const reasons{MissionSucceeded,
