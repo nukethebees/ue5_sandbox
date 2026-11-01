@@ -64,16 +64,19 @@ class Objectives {
         return column[id.index()];
     }
 
+    // Immutable
     std::vector<levels::ObjectiveName> identifiers_;
     std::vector<std::string> display_names_;
     std::vector<Team> teams_;
     std::vector<ObjectiveRoots> roots_;
     std::vector<IndexSpan> leaves_;
     std::vector<IndexSpan> composites_;
-    std::vector<ObjectivePrerequisiteCount> prerequisites_;
     std::vector<IndexSpan> dependent_ranges_;
     std::vector<IndexSpan> observer_ranges_;
     std::vector<IndexSpan> team_results_;
+
+    // Mutable
+    std::vector<ObjectivePrerequisiteCount> prerequisites_;
     std::vector<std::optional<ObjectiveOutcome>> outcomes_;
     std::vector<SimTick> activation_ticks_;
     std::vector<ObjectiveMembershipIndex> membership_positions_;
