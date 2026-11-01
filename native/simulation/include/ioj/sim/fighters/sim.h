@@ -50,7 +50,7 @@ struct Sim {
     auto get_healths() const -> HealthConstView {
         return entity_tables_.health.get_const_view<EntityType::Fighter>();
     }
-    auto get_navigation_telemetry() const noexcept -> NavigationTelemetrySnapshot const& {
+    auto get_navigation_telemetry() const noexcept -> telemetry::FighterNavigationSnapshot const& {
         return navigation_telemetry;
     }
 
@@ -165,6 +165,6 @@ struct Sim {
     std::vector<std::uint32_t> pending_fire_indices_;
     std::vector<EntityId> overlap_candidates_;
 
-    NavigationTelemetrySnapshot navigation_telemetry;
+    telemetry::FighterNavigationSnapshot navigation_telemetry;
 };
 } // namespace ioj::sim::fighters

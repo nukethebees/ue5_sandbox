@@ -41,7 +41,7 @@ struct SPACEGAME_API FPlayerModalUi {
                     ioj::FPauseMenuData data) -> bool;
     auto show_completion(ASpaceGamePlayerController& owner,
                          FMissionCompletion const& completion,
-                         ioj::sim::LevelTelemetrySnapshot snapshot) -> bool;
+                         ioj::sim::telemetry::Snapshot snapshot) -> bool;
     void detach_callbacks(ASpaceGamePlayerController& owner);
     void clear_modals(ASpaceGamePlayerController& owner);
     void clear_menus(ASpaceGamePlayerController& owner);

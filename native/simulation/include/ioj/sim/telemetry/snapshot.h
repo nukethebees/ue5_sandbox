@@ -6,8 +6,8 @@
 
 #include <cstdint>
 
-namespace ioj::sim {
-struct LevelTelemetrySnapshot {
+namespace ioj::sim::telemetry {
+struct Snapshot {
     using ActiveEntityCountData = XYSeriesData<SimTick::value_type, std::int32_t>;
     using CumulativeKillCountData = XYSeriesData<SimTick::value_type, std::int32_t>;
 

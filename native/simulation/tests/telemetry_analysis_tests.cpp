@@ -14,8 +14,8 @@ auto metric(Analysis const& analysis, Metric const id) -> MetricSeries const& {
 }
 
 TEST(TelemetryAnalysis, EmptyAndSingleSampleRunsDoNotInventIntervals) {
-    std::array<LevelTelemetryBattleSample, 1> samples{};
-    std::span<LevelTelemetryBattleSample const> const sample_view{samples};
+    std::array<telemetry::BattleSample, 1> samples{};
+    std::span<telemetry::BattleSample const> const sample_view{samples};
     std::array const cases{sample_view.first(0), sample_view};
     for (auto const battle_samples : cases) {
         SCOPED_TRACE(battle_samples.size());
@@ -31,7 +31,7 @@ TEST(TelemetryAnalysis, EmptyAndSingleSampleRunsDoNotInventIntervals) {
 }
 
 TEST(TelemetryAnalysis, DerivesBattleForcesCombatAndProjectileRates) {
-    std::array<LevelTelemetryBattleSample, 2> samples{};
+    std::array<telemetry::BattleSample, 2> samples{};
     auto& begin{samples[0]};
     begin.alive[0][0] = 2;
     begin.combat.spawned[0][0] = 2;
@@ -72,7 +72,7 @@ TEST(TelemetryAnalysis, DerivesBattleForcesCombatAndProjectileRates) {
 }
 
 TEST(TelemetryAnalysis, SampledGaugesSurviveRegressingCounterIntervals) {
-    std::array<LevelTelemetryBattleSample, 2> samples{};
+    std::array<telemetry::BattleSample, 2> samples{};
     auto& begin{samples[0]};
     begin.completed_tick = SimTick{30};
     begin.alive[0][0] = 7;
@@ -98,7 +98,7 @@ TEST(TelemetryAnalysis, SampledGaugesSurviveRegressingCounterIntervals) {
 }
 
 TEST(TelemetryAnalysis, WeightsEntityCountsByIntervalDurationAcrossTeams) {
-    std::array<LevelTelemetryBattleSample, 3> samples{};
+    std::array<telemetry::BattleSample, 3> samples{};
     samples[1].completed_tick = SimTick{60};
     samples[2].completed_tick = SimTick{240};
     constexpr std::array types{Metric::PlayerShips,
@@ -124,7 +124,7 @@ TEST(TelemetryAnalysis, WeightsEntityCountsByIntervalDurationAcrossTeams) {
 }
 
 TEST(TelemetryAnalysis, IgnoresZeroAndRegressingDurationsWithoutLosingSamples) {
-    std::array<LevelTelemetryBattleSample, 4> samples{};
+    std::array<telemetry::BattleSample, 4> samples{};
     samples[0].completed_tick = SimTick{60};
     samples[1].completed_tick = SimTick{60};
     samples[2].completed_tick = SimTick{30};

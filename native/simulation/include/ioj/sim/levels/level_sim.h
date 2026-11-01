@@ -65,7 +65,7 @@ struct LevelSim {
     /* **************************************** */
     // Configuration and commands
     /* **************************************** */
-    void set_telemetry_metadata(LevelTelemetryRunMetadata metadata);
+    void set_telemetry_metadata(telemetry::RunMetadata metadata);
     void set_static_collision(std::span<collision::WorldAABB const> bounds);
     auto get_player_ship_commands() noexcept -> std::optional<player::CommandInterface> {
         if (!player_ship_simulation_) {
@@ -78,11 +78,11 @@ struct LevelSim {
     /* **************************************** */
     // Telemetry and mission results
     /* **************************************** */
-    void finalize_telemetry_run(LevelTelemetryRunEndReason reason);
-    void stop_run(LevelTelemetryRunEndReason reason);
+    void finalize_telemetry_run(telemetry::RunEndReason reason);
+    void stop_run(telemetry::RunEndReason reason);
     void stop_run_if_requested(RunStopConditions const& conditions);
     auto get_player_team_completion() const -> std::optional<TeamMissionCompletion>;
-    auto take_finalized_telemetry_run() -> std::optional<LevelTelemetryRunRecord>;
+    auto take_finalized_telemetry_run() -> std::optional<telemetry::RunRecord>;
 
     /* **************************************** */
     // Accessors

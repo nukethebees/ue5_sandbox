@@ -3,14 +3,14 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace ioj::sim {
-struct LevelTelemetryHistoryConfig {
+namespace ioj::sim::telemetry {
+struct HistoryConfig {
     static constexpr std::size_t default_block_bytes{10u * 1024u * 1024u};
 
     std::size_t block_bytes{default_block_bytes};
 };
 
-struct LevelTelemetryBlockHistoryStats {
+struct BlockHistoryStats {
     std::size_t configured_block_bytes{};
     std::size_t layout_bytes_per_block{};
     std::uint32_t rows_per_block{};
@@ -25,4 +25,4 @@ struct LevelTelemetryBlockHistoryStats {
     std::size_t unused_payload_bytes_in_final_block{};
     std::size_t fixed_layout_overhead_bytes{};
 };
-} // namespace ioj::sim
+} // namespace ioj::sim::telemetry

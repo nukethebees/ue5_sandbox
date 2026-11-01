@@ -54,7 +54,7 @@ TEST(NativeEnums, MissionAndTelemetrySerializedNamesRoundTrip) {
     for (auto const value : {MissionOutcome::Victory, MissionOutcome::Defeat}) {
         EXPECT_EQ(try_parse_serialized_mission_outcome(to_serialized_string(value)), value);
     }
-    using enum LevelTelemetryRunEndReason;
+    using enum telemetry::RunEndReason;
     std::array const reasons{MissionSucceeded,
                              MissionFailed,
                              BattleResolved,
@@ -62,7 +62,7 @@ TEST(NativeEnums, MissionAndTelemetrySerializedNamesRoundTrip) {
                              OrchestratorReset,
                              WorldEnd};
     for (auto const value : reasons) {
-        EXPECT_EQ(try_parse_serialized_level_telemetry_run_end_reason(to_serialized_string(value)),
+        EXPECT_EQ(telemetry::try_parse_serialized_run_end_reason(to_serialized_string(value)),
                   value);
     }
     expect_enum_contracts(reasons,

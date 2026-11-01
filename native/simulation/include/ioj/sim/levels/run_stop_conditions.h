@@ -13,7 +13,7 @@ struct RunStopConditions {
     auto stop_reason(SimClock const& clock,
                      EntityLedger const& ledger,
                      bool has_future_spawns) const noexcept
-        -> std::optional<LevelTelemetryRunEndReason>;
+        -> std::optional<telemetry::RunEndReason>;
 
     bool stop_when_battle_resolved{};
     std::optional<Duration> duration;

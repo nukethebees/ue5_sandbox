@@ -12,8 +12,8 @@ auto publish_player_completion(sim::LevelSim& simulation, ProfileManager* profil
     }
 
     simulation.finalize_telemetry_run(completion->outcome == MissionOutcome::Victory
-                                          ? sim::LevelTelemetryRunEndReason::MissionSucceeded
-                                          : sim::LevelTelemetryRunEndReason::MissionFailed);
+                                          ? sim::telemetry::RunEndReason::MissionSucceeded
+                                          : sim::telemetry::RunEndReason::MissionFailed);
 
     auto const& metadata{simulation.get_level_metadata()};
     auto const& objectives{simulation.get_mission().objectives()};

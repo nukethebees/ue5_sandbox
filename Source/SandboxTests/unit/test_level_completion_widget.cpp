@@ -28,7 +28,7 @@ TEST_CLASS(LevelCompletionWidget, "Sandbox.UnitTests")
             if (IsValid(widget)) {
                 auto const slate_widget{widget->TakeWidget()};
                 (void)slate_widget;
-                ioj::sim::LevelTelemetrySnapshot snapshot;
+                ioj::sim::telemetry::Snapshot snapshot;
                 snapshot.elapsed_seconds = ioj::Duration::make(3723.0);
                 snapshot.tick_rate_hz = ioj::Frequency::make(2.0);
                 snapshot.spawned_entities = 25;

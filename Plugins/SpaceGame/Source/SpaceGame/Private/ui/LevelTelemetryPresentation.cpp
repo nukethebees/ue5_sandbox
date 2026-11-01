@@ -61,7 +61,7 @@ void apply_activity_graph_style(SGraphPlot& graph,
 }
 
 void update_activity_graph(SGraphPlot& graph,
-                           sim::LevelTelemetrySnapshot const& snapshot,
+                           sim::telemetry::Snapshot const& snapshot,
                            FLinearColor const active_entity_color,
                            FLinearColor const kills_color) {
     if (snapshot.active_entity_count_data.is_empty() &&

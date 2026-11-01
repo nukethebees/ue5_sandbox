@@ -7,16 +7,16 @@
 #include <array>
 #include <cstdint>
 
-namespace ioj::sim {
-struct LevelTelemetryBattleSample {
+namespace ioj::sim::telemetry {
+struct BattleSample {
     SimTick completed_tick{};
-    telemetry::CombatTelemetryCounters combat{};
-    telemetry::EntityCounts alive{};
+    CombatTelemetryCounters combat{};
+    EntityCounts alive{};
     std::int32_t active_lasers{};
     std::int32_t lasers_fired{};
 };
 
-struct LevelTelemetryTickSeries {
+struct TickSeries {
     static constexpr std::int32_t team_count{static_cast<std::int32_t>(telemetry::team_count)};
     static constexpr std::int32_t entity_type_count{
         static_cast<std::int32_t>(telemetry::entity_type_count)};
@@ -34,4 +34,4 @@ struct LevelTelemetryTickSeries {
     Int32Data active_lasers{};
     Int32Data lasers_fired{};
 };
-} // namespace ioj::sim
+} // namespace ioj::sim::telemetry

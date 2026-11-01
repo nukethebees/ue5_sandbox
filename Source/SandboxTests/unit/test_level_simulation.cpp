@@ -746,12 +746,12 @@ auto FLevelTelemetryFileAdapterTest::RunTest(FString const&) -> bool {
     ::ioj::sim::GameMemory memory;
     ::ioj::sim::LevelSim simulation{memory, std::move(data)};
     simulation.finish_initialisation();
-    simulation.finalize_telemetry_run(::ioj::sim::LevelTelemetryRunEndReason::WorldEnd);
+    simulation.finalize_telemetry_run(::ioj::sim::telemetry::RunEndReason::WorldEnd);
     auto run{simulation.take_finalized_telemetry_run()};
     if (!TestTrue(TEXT("Native run is finalized"), run.has_value())) {
         return false;
     }
-    ioj::sim::LevelTelemetryReport report{std::move(*run)};
+    ioj::sim::telemetry::Report report{std::move(*run)};
     auto const directory{FPaths::Combine(
         FPaths::ProjectSavedDir(), TEXT("Automation/Telemetry"), FGuid::NewGuid().ToString())};
     ON_SCOPE_EXIT {

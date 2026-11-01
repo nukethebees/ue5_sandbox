@@ -102,7 +102,7 @@ auto UGameUiRootLayout::show_pause_menu(UInputAction& toggle_action, FPauseMenuD
 auto UGameUiRootLayout::show_level_completion(FString level_display_name,
                                               EMissionOutcome const state,
                                               FString const& objective_id,
-                                              sim::LevelTelemetrySnapshot snapshot,
+                                              sim::telemetry::Snapshot snapshot,
                                               TOptional<float> const par_time_seconds,
                                               bool const new_best_time) -> ULevelCompletionWidget* {
     auto* const ui_data{ui_data_.Get()};

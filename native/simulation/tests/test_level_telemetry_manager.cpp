@@ -16,7 +16,7 @@
 namespace ioj::sim {
 
 struct LevelTelemetryManagerTestAccess {
-    static auto history(LevelTelemetryManager const& manager) -> LevelTelemetryBlockHistory const& {
+    static auto history(LevelTelemetryManager const& manager) -> telemetry::BlockHistory const& {
         return manager.history_;
     }
 };
@@ -169,7 +169,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
 
     telemetry_manager.tick();
     entity_ledger.record_spawns(EntityType::Fighter, Team::Red, Health{1}, ids);
-    telemetry_manager.finalize(LevelTelemetryRunEndReason::WorldEnd);
+    telemetry_manager.finalize(telemetry::RunEndReason::WorldEnd);
     auto const record{telemetry_manager.take_finalized_run(clock.get_tick_rate())};
     ASSERT_TRUE(record);
     auto const& samples{record->battle_samples};

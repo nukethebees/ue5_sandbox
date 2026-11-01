@@ -101,7 +101,7 @@ void LevelSim::initialise_subsystems(LevelSimInitData const& data) {
 /* **************************************** */
 // Configuration and commands
 /* **************************************** */
-void LevelSim::set_telemetry_metadata(LevelTelemetryRunMetadata metadata) {
+void LevelSim::set_telemetry_metadata(telemetry::RunMetadata metadata) {
     level_telemetry_manager_.set_run_metadata(std::move(metadata));
 }
 void LevelSim::set_static_collision(std::span<collision::WorldAABB const> bounds) {
@@ -112,10 +112,10 @@ void LevelSim::set_static_collision(std::span<collision::WorldAABB const> bounds
 /* **************************************** */
 // Telemetry and mission results
 /* **************************************** */
-void LevelSim::finalize_telemetry_run(LevelTelemetryRunEndReason const reason) {
+void LevelSim::finalize_telemetry_run(telemetry::RunEndReason const reason) {
     level_telemetry_manager_.finalize(reason);
 }
-void LevelSim::stop_run(LevelTelemetryRunEndReason const reason) {
+void LevelSim::stop_run(telemetry::RunEndReason const reason) {
     level_telemetry_manager_.finalize(reason);
     state_ = LevelState::Paused;
 }
@@ -136,7 +136,7 @@ auto LevelSim::get_player_team_completion() const -> std::optional<TeamMissionCo
     return mission_.get_team_completion(team);
 }
 
-auto LevelSim::take_finalized_telemetry_run() -> std::optional<LevelTelemetryRunRecord> {
+auto LevelSim::take_finalized_telemetry_run() -> std::optional<telemetry::RunRecord> {
     return level_telemetry_manager_.take_finalized_run(clock_.get_tick_rate());
 }
 

@@ -17,7 +17,7 @@ SPACEGAME_API auto
     take_finalized_level_telemetry_report(sim::LevelSim& simulation,
                                           ::ioj::levels::LaunchOptions const& launch_options,
                                           bool presentation_enabled)
-        -> TOptional<sim::LevelTelemetryReport>;
+        -> TOptional<sim::telemetry::Report>;
 
 // Leave pending runs unconsumed during automation tests.
 SPACEGAME_API void

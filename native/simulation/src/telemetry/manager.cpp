@@ -58,7 +58,7 @@ LevelTelemetryManager::LevelTelemetryManager(SimClock const& clock,
                                              EntityLedger const& entity_ledger,
                                              lasers::Sim const& lasers,
                                              GameMemory& game_memory,
-                                             LevelTelemetryHistoryConfig history_config) noexcept
+                                             telemetry::HistoryConfig history_config) noexcept
     : clock_{clock}
     , entity_ledger_{entity_ledger}
     , lasers_{lasers}
@@ -109,7 +109,7 @@ void LevelTelemetryManager::tick() {
 /* **************************************** */
 // Snapshots
 /* **************************************** */
-auto LevelTelemetryManager::make_snapshot() const -> LevelTelemetrySnapshot {
+auto LevelTelemetryManager::make_snapshot() const -> telemetry::Snapshot {
     assert(state_ != State::Uninitialised);
     auto const completed_tick{clock_.get_completed_ticks()};
     auto const tick_rate_hz{clock_.get_tick_rate()};
@@ -126,7 +126,7 @@ auto LevelTelemetryManager::make_snapshot() const -> LevelTelemetrySnapshot {
             current_state_.lasers_fired >= 0) &&
            "Level telemetry snapshots cannot contain negative counts.");
 
-    LevelTelemetrySnapshot snapshot;
+    telemetry::Snapshot snapshot;
     snapshot.elapsed_seconds = Duration::make(static_cast<double>(completed_tick.value()) *
                                               tick_rate_hz.period().get_seconds());
     snapshot.tick_rate_hz = tick_rate_hz;
@@ -165,8 +165,8 @@ void LevelTelemetryManager::update_current_state() {
 
 void LevelTelemetryManager::sample_live_series() {
     using namespace level_telemetry_detail;
-    constexpr auto team_count{LevelTelemetryTickSeries::team_count};
-    constexpr auto entity_type_count{LevelTelemetryTickSeries::entity_type_count};
+    constexpr auto team_count{telemetry::TickSeries::team_count};
+    constexpr auto entity_type_count{telemetry::TickSeries::entity_type_count};
     telemetry::EntityTypeCounts active_entities_by_type{};
     telemetry::EntityTypeCounts last_active_entities_by_type{};
     auto const initial_sample{state_ == State::Uninitialised};
@@ -304,7 +304,7 @@ auto LevelTelemetryManager::append_history_row(tick_type const completed_tick)
     return columns;
 }
 
-auto LevelTelemetryManager::get_history_stats() const noexcept -> LevelTelemetryHistoryStats {
+auto LevelTelemetryManager::get_history_stats() const noexcept -> telemetry::HistoryStats {
     auto const block_stats{history_.get_stats()};
     return {
         .configured_block_bytes = block_stats.configured_block_bytes,
@@ -323,7 +323,7 @@ auto LevelTelemetryManager::get_history_stats() const noexcept -> LevelTelemetry
     };
 }
 
-auto LevelTelemetryManager::materialize_tick_series() const -> LevelTelemetryTickSeries {
+auto LevelTelemetryManager::materialize_tick_series() const -> telemetry::TickSeries {
     using namespace level_telemetry_detail;
     std::array<std::uint32_t, FieldMask::field_count> sample_counts{};
     history_.for_each_block([&sample_counts](auto const block) {
@@ -338,10 +338,10 @@ auto LevelTelemetryManager::materialize_tick_series() const -> LevelTelemetryTic
         }
     });
 
-    LevelTelemetryTickSeries result;
+    telemetry::TickSeries result;
     result.active_entities.reserve(sample_counts[FieldMask::index(Field::ActiveEntities)]);
-    constexpr auto team_count{LevelTelemetryTickSeries::team_count};
-    constexpr auto entity_type_count{LevelTelemetryTickSeries::entity_type_count};
+    constexpr auto team_count{telemetry::TickSeries::team_count};
+    constexpr auto entity_type_count{telemetry::TickSeries::entity_type_count};
     for (std::int32_t entity_type_index{}; entity_type_index < entity_type_count;
          ++entity_type_index) {
         result.active_entities_by_type[entity_type_index].reserve(sample_counts[FieldMask::index(
@@ -423,7 +423,7 @@ void LevelTelemetryManager::sample_battle_state() {
         samples.pop_back();
     }
 
-    samples.push_back(LevelTelemetryBattleSample{
+    samples.push_back(telemetry::BattleSample{
         .completed_tick = tick,
         .combat = entity_ledger_.get_combat_telemetry(),
         .alive = current_state_.active_entities_by_team_and_type,
@@ -435,7 +435,7 @@ void LevelTelemetryManager::sample_battle_state() {
 /* **************************************** */
 // Run capture
 /* **************************************** */
-void LevelTelemetryManager::set_run_metadata(LevelTelemetryRunMetadata metadata) {
+void LevelTelemetryManager::set_run_metadata(telemetry::RunMetadata metadata) {
     assert(state_ == State::Uninitialised || state_ == State::Recording);
 
     if (metadata.launched_utc.empty()) {
@@ -449,14 +449,14 @@ void LevelTelemetryManager::set_run_metadata(LevelTelemetryRunMetadata metadata)
 /* **************************************** */
 
 auto LevelTelemetryManager::take_finalized_run(Frequency const tick_rate_hz)
-    -> std::optional<LevelTelemetryRunRecord> {
+    -> std::optional<telemetry::RunRecord> {
     if (state_ != State::Finalized) {
         return std::nullopt;
     }
 
     state_ = State::RecordTaken;
 
-    return LevelTelemetryRunRecord{
+    return telemetry::RunRecord{
         .metadata = std::move(metadata_),
         .tick_rate_hz = tick_rate_hz,
         .completion = std::move(completion_),
@@ -465,7 +465,7 @@ auto LevelTelemetryManager::take_finalized_run(Frequency const tick_rate_hz)
     };
 }
 
-void LevelTelemetryManager::finalize(LevelTelemetryRunEndReason const reason) {
+void LevelTelemetryManager::finalize(telemetry::RunEndReason const reason) {
     if (state_ != State::Recording) {
         return;
     }

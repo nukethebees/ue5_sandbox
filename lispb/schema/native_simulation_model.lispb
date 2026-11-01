@@ -468,8 +468,8 @@
 (module native_navigation_telemetry
   :header "native/simulation/include/ioj/sim/telemetry/navigation_telemetry.h"
   :header-include "ioj/sim/telemetry/navigation_telemetry.h"
-  :namespace ioj::sim::fighters
-  (record NavigationTelemetrySnapshot
+  :namespace ioj::sim::telemetry
+  (record FighterNavigationSnapshot
     (member separating_fighter_count std::int32_t :initializer "")
     (member avoiding_fighter_count std::int32_t :initializer "")
     (member clear_risk_count std::int32_t :initializer "")
@@ -486,8 +486,8 @@
 (module native_level_telemetry_current_state
   :header "native/simulation/include/ioj/sim/telemetry/current_state.h"
   :header-include "ioj/sim/telemetry/current_state.h"
-  :namespace ioj::sim
-  (record LevelTelemetryCurrentState
+  :namespace ioj::sim::telemetry
+  (record CurrentState
     (member active_entities_by_team_and_type @level_telemetry_entity_counts :initializer "")
     (member active_entities std::int32_t :initializer "")
     (member spawned_entities std::int32_t :initializer "")

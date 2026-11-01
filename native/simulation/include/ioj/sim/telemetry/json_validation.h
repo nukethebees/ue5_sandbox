@@ -22,7 +22,7 @@ inline constexpr std::uint64_t max_exact_json_integer{9007199254740992ULL};
     -> std::expected<std::int32_t, std::string>;
 [[nodiscard]] auto parse_json_uint64(double value, std::string_view path)
     -> std::expected<std::uint64_t, std::string>;
-[[nodiscard]] auto validate_level_telemetry_json_record(LevelTelemetryRunRecord const& record)
+[[nodiscard]] auto validate_level_telemetry_json_record(RunRecord const& record)
     -> std::expected<void, std::string>;
 
 } // namespace ioj::sim::telemetry

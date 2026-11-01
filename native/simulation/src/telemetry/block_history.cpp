@@ -6,11 +6,11 @@
 #include <cassert>
 #include <format>
 
-namespace ioj::sim {
+namespace ioj::sim::telemetry {
 
 namespace level_telemetry_block_history_detail {
 auto capacity_for_bytes(std::size_t const bytes) -> std::uint32_t {
-    using Layout = telemetry::history_rows::Layout;
+    using Layout = history_rows::Layout;
     auto low{std::size_t{0}};
     auto high{static_cast<std::size_t>(Layout::max_capacity / Layout::capacity_granularity)};
     while (low < high) {
@@ -25,26 +25,25 @@ auto capacity_for_bytes(std::size_t const bytes) -> std::uint32_t {
 }
 
 constexpr auto logical_payload_bytes_per_row() -> std::size_t {
-    return sizeof(SimTick) + sizeof(telemetry::HistoryFieldMask) + sizeof(std::int32_t) * 6 +
-           sizeof(telemetry::EntityTypeCounts) + sizeof(telemetry::EntityCounts);
+    return sizeof(SimTick) + sizeof(HistoryFieldMask) + sizeof(std::int32_t) * 6 +
+           sizeof(EntityTypeCounts) + sizeof(EntityCounts);
 }
 }
 
-LevelTelemetryBlockHistory::Block::Block(memory::Block memory_block, std::uint32_t const capacity)
+BlockHistory::Block::Block(memory::Block memory_block, std::uint32_t const capacity)
     : memory_block{std::move(memory_block)}
     , storage{} {
     storage = {.data_ = this->memory_block.data(), .num_ = 0, .capacity_ = capacity};
 }
 
-LevelTelemetryBlockHistory::LevelTelemetryBlockHistory(GameMemory& memory,
-                                                       LevelTelemetryHistoryConfig const config)
+BlockHistory::BlockHistory(GameMemory& memory, HistoryConfig const config)
     : memory_{memory}
     , config_{config}
     , logical_payload_bytes_per_row_{level_telemetry_block_history_detail::
                                          logical_payload_bytes_per_row()}
     , rows_per_block_{
           level_telemetry_block_history_detail::capacity_for_bytes(config.block_bytes)} {
-    using Layout = telemetry::history_rows::Layout;
+    using Layout = history_rows::Layout;
     if (rows_per_block_ < Layout::capacity_granularity) {
         fatal_error(
             std::format("Telemetry block budget of {} bytes cannot hold the minimum {} rows",
@@ -56,7 +55,7 @@ LevelTelemetryBlockHistory::LevelTelemetryBlockHistory(GameMemory& memory,
     blocks_.reserve(64);
 }
 
-void LevelTelemetryBlockHistory::reset() {
+void BlockHistory::reset() {
     for (auto& block : blocks_) {
         block.storage.num_ = 0;
     }
@@ -64,38 +63,37 @@ void LevelTelemetryBlockHistory::reset() {
     row_count_ = 0;
 }
 
-auto LevelTelemetryBlockHistory::append_uninitialized() -> telemetry::history_rows::View {
+auto BlockHistory::append_uninitialized() -> history_rows::View {
     auto& block{acquire_or_reuse_next_block()};
     auto const row{block.storage.num_++};
     ++row_count_;
     return {&block.storage, row, 1};
 }
 
-auto LevelTelemetryBlockHistory::last_view() -> telemetry::history_rows::View {
+auto BlockHistory::last_view() -> history_rows::View {
     assert(row_count_ > 0 && used_block_count_ > 0);
     auto& storage{blocks_[used_block_count_ - 1].storage};
     return {&storage, storage.num_ - 1, 1};
 }
 
-auto LevelTelemetryBlockHistory::last_const_view() const -> telemetry::history_rows::ConstView {
+auto BlockHistory::last_const_view() const -> history_rows::ConstView {
     assert(row_count_ > 0 && used_block_count_ > 0);
     auto const& storage{blocks_[used_block_count_ - 1].storage};
     return {&storage, storage.num_ - 1, 1};
 }
 
-auto LevelTelemetryBlockHistory::block_data(std::uint32_t const index) const -> std::byte const* {
+auto BlockHistory::block_data(std::uint32_t const index) const -> std::byte const* {
     assert(static_cast<std::size_t>(index) < blocks_.size());
     return blocks_[index].memory_block.data();
 }
 
-auto LevelTelemetryBlockHistory::block_view(std::uint32_t const index) const
-    -> telemetry::history_rows::ConstView {
+auto BlockHistory::block_view(std::uint32_t const index) const -> history_rows::ConstView {
     assert(index < used_block_count_);
     auto const& storage{blocks_[index].storage};
     return {&storage, 0, storage.num_};
 }
 
-auto LevelTelemetryBlockHistory::get_stats() const noexcept -> LevelTelemetryBlockHistoryStats {
+auto BlockHistory::get_stats() const noexcept -> BlockHistoryStats {
     auto const unused_samples{
         used_block_count_ > 0 ? rows_per_block_ - blocks_[used_block_count_ - 1].storage.num_ : 0};
     auto const overhead_per_block{layout_bytes_per_block_ -
@@ -117,7 +115,7 @@ auto LevelTelemetryBlockHistory::get_stats() const noexcept -> LevelTelemetryBlo
                 overhead_per_block * static_cast<std::uint32_t>(blocks_.size())};
 }
 
-auto LevelTelemetryBlockHistory::acquire_or_reuse_next_block() -> Block& {
+auto BlockHistory::acquire_or_reuse_next_block() -> Block& {
     if (used_block_count_ > 0) {
         auto& current{blocks_[used_block_count_ - 1]};
         if (current.storage.num_ < rows_per_block_) {
@@ -126,7 +124,7 @@ auto LevelTelemetryBlockHistory::acquire_or_reuse_next_block() -> Block& {
     }
 
     if (used_block_count_ == static_cast<std::uint32_t>(blocks_.size())) {
-        using Layout = telemetry::history_rows::Layout;
+        using Layout = history_rows::Layout;
         blocks_.emplace_back(
             memory_.acquire_block(layout_bytes_per_block_, Layout::allocation_alignment),
             rows_per_block_);
@@ -137,4 +135,4 @@ auto LevelTelemetryBlockHistory::acquire_or_reuse_next_block() -> Block& {
     assert(next.storage.num_ == 0);
     return next;
 }
-} // namespace ioj::sim
+} // namespace ioj::sim::telemetry

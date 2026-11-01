@@ -17,7 +17,7 @@ TEST(NativeSimulation, LevelTelemetryBlockHistoryTest) {
     }()};
     auto const block_bytes{Layout::layout_bytes(1)};
     GameMemory memory{{.root_capacity_bytes = block_bytes * 8}};
-    LevelTelemetryBlockHistory history{memory, {.block_bytes = block_bytes}};
+    telemetry::BlockHistory history{memory, {.block_bytes = block_bytes}};
 
     auto const full_block_end{SimTick{64}};
     for (SimTick tick{}; tick < full_block_end; tick.set_value(tick.value() + 1)) {

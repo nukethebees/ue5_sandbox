@@ -18,17 +18,17 @@ struct FTestBatchOrchestratorTestAccess {
             orchestrator.level_simulation_.GetValue(), events);
     }
     static void set_telemetry_metadata(ATestBatchOrchestrator& orchestrator,
-                                       ::ioj::sim::LevelTelemetryRunMetadata metadata) {
+                                       ::ioj::sim::telemetry::RunMetadata metadata) {
         check(orchestrator.level_simulation_.IsSet());
         orchestrator.level_simulation_->set_telemetry_metadata(std::move(metadata));
     }
     static void stop_run(ATestBatchOrchestrator& orchestrator,
-                         ::ioj::sim::LevelTelemetryRunEndReason reason) {
+                         ::ioj::sim::telemetry::RunEndReason reason) {
         check(orchestrator.level_simulation_.IsSet());
         orchestrator.level_simulation_->stop_run(reason);
     }
     static auto take_finalized_telemetry_report(ATestBatchOrchestrator& orchestrator)
-        -> TOptional<::ioj::sim::LevelTelemetryReport> {
+        -> TOptional<::ioj::sim::telemetry::Report> {
         check(orchestrator.level_simulation_.IsSet());
         return ::ioj::take_finalized_level_telemetry_report(
             orchestrator.level_simulation_.GetValue(),

@@ -14,7 +14,7 @@ struct RunSummary {
     std::string level_id{};
     std::string level_display_name{};
     std::string launched_utc{};
-    LevelTelemetryRunEndReason completion_reason{LevelTelemetryRunEndReason::WorldEnd};
+    RunEndReason completion_reason{RunEndReason::WorldEnd};
 
     [[nodiscard]] auto level_label() const -> std::string_view;
 };

@@ -24,7 +24,7 @@ class SPACEGAME_API ULevelCompletionWidget : public UMenuActivatableWidget {
     void prepare_for_open(FString level_display_name,
                           EMissionOutcome state,
                           FString const& objective_id,
-                          sim::LevelTelemetrySnapshot snapshot,
+                          sim::telemetry::Snapshot snapshot,
                           TOptional<float> par_time_seconds = NullOpt,
                           bool new_best_time = false);
     void request_return_to_mission_control();
@@ -33,7 +33,7 @@ class SPACEGAME_API ULevelCompletionWidget : public UMenuActivatableWidget {
     [[nodiscard]] auto get_level_display_name() const -> FString const& {
         return level_display_name_;
     }
-    [[nodiscard]] auto get_stats_snapshot() const -> sim::LevelTelemetrySnapshot const& {
+    [[nodiscard]] auto get_stats_snapshot() const -> sim::telemetry::Snapshot const& {
         return stats_snapshot_;
     }
     [[nodiscard]] auto get_par_time_seconds() const -> TOptional<float> const& {
@@ -58,7 +58,7 @@ class SPACEGAME_API ULevelCompletionWidget : public UMenuActivatableWidget {
     FString level_display_name_{};
     EMissionOutcome mission_state_{EMissionOutcome::Victory};
     FString objective_id_{};
-    sim::LevelTelemetrySnapshot stats_snapshot_{};
+    sim::telemetry::Snapshot stats_snapshot_{};
     TOptional<float> par_time_seconds_{};
     TSharedPtr<SLevelCompletionView> view_{};
     FGameUiStyle fallback_style_{};

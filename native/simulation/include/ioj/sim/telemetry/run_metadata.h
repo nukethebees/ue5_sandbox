@@ -5,8 +5,8 @@
 #include <optional>
 #include <string>
 
-namespace ioj::sim {
-struct LevelTelemetryRunMetadata {
+namespace ioj::sim::telemetry {
+struct RunMetadata {
     std::string run_id{};
     std::string map_name{};
     std::string level_id{};

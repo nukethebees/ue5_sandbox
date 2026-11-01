@@ -11,11 +11,11 @@
 #include <optional>
 #include <string_view>
 
-namespace ioj::sim {
-using LevelTelemetryRunEndReasonUnderlying = std::uint8_t;
+namespace ioj::sim::telemetry {
+using RunEndReasonUnderlying = std::uint8_t;
 
 // Logical bit width: 3.
-enum class LevelTelemetryRunEndReason : LevelTelemetryRunEndReasonUnderlying {
+enum class RunEndReason : RunEndReasonUnderlying {
     MissionSucceeded = 0,
     MissionFailed = 1,
     BattleResolved = 2,
@@ -26,42 +26,42 @@ enum class LevelTelemetryRunEndReason : LevelTelemetryRunEndReasonUnderlying {
 
 using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto
-    try_parse_serialized_level_telemetry_run_end_reason(std::string_view const value) noexcept
-    -> std::optional<LevelTelemetryRunEndReason> {
+    try_parse_serialized_run_end_reason(std::string_view const value) noexcept
+    -> std::optional<RunEndReason> {
     switch (value.size()) {
         case 9: {
             if (value == "world_end") {
-                return LevelTelemetryRunEndReason::WorldEnd;
+                return RunEndReason::WorldEnd;
             }
             return std::nullopt;
         }
         case 14: {
             if (value == "mission_failed") {
-                return LevelTelemetryRunEndReason::MissionFailed;
+                return RunEndReason::MissionFailed;
             }
             return std::nullopt;
         }
         case 15: {
             if (value == "battle_resolved") {
-                return LevelTelemetryRunEndReason::BattleResolved;
+                return RunEndReason::BattleResolved;
             }
             return std::nullopt;
         }
         case 16: {
             if (value == "duration_reached") {
-                return LevelTelemetryRunEndReason::DurationReached;
+                return RunEndReason::DurationReached;
             }
             return std::nullopt;
         }
         case 17: {
             if (value == "mission_succeeded") {
-                return LevelTelemetryRunEndReason::MissionSucceeded;
+                return RunEndReason::MissionSucceeded;
             }
             return std::nullopt;
         }
         case 18: {
             if (value == "orchestrator_reset") {
-                return LevelTelemetryRunEndReason::OrchestratorReset;
+                return RunEndReason::OrchestratorReset;
             }
             return std::nullopt;
         }
@@ -71,17 +71,16 @@ using ioj::to_serialized_string;
     }
 }
 
-} // namespace ioj::sim
+} // namespace ioj::sim::telemetry
 
 namespace ioj {
 template <>
-inline constexpr MinMax<sim::LevelTelemetryRunEndReason>
-    enum_range<sim::LevelTelemetryRunEndReason>{sim::LevelTelemetryRunEndReason::MissionSucceeded,
-                                                sim::LevelTelemetryRunEndReason::WorldEnd};
+inline constexpr MinMax<sim::telemetry::RunEndReason> enum_range<sim::telemetry::RunEndReason>{
+    sim::telemetry::RunEndReason::MissionSucceeded, sim::telemetry::RunEndReason::WorldEnd};
 } // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::sim::LevelTelemetryRunEndReason, ioj::Serialized>{
+inline constexpr auto ioj::enum_strings<::ioj::sim::telemetry::RunEndReason, ioj::Serialized>{
     ioj::PackedStrings{"mission_succeeded\000mission_failed\000battle_resolved\000duration_"
                        "reached\000orchestrator_reset\000world_end",
                        std::array<std::uint8_t, 7>{0, 18, 33, 49, 66, 85, 95}}};

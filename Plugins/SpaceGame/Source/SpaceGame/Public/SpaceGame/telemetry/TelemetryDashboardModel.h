@@ -28,7 +28,7 @@ struct SPACEGAME_API FTelemetryRunAnalysis {
         -> FTelemetryMetricSeries const*;
 };
 
-SPACEGAME_API auto analyze_level_telemetry_run(ioj::sim::LevelTelemetryReport const& record)
+SPACEGAME_API auto analyze_level_telemetry_run(ioj::sim::telemetry::Report const& record)
     -> FTelemetryRunAnalysis;
 SPACEGAME_API auto telemetry_metric_title(ioj::sim::telemetry::Metric metric) -> FString;
 SPACEGAME_API auto telemetry_metric_units(ioj::sim::telemetry::Metric metric) -> FString;
@@ -37,5 +37,5 @@ struct FTelemetryRunSummary {
     FString run_id{};
     FString level_label{};
     FString launched_utc{};
-    ioj::sim::LevelTelemetryRunEndReason completion_reason{};
+    ioj::sim::telemetry::RunEndReason completion_reason{};
 };

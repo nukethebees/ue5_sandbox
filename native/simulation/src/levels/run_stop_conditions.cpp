@@ -9,7 +9,7 @@ namespace ioj::sim {
 auto RunStopConditions::stop_reason(SimClock const& clock,
                                     EntityLedger const& ledger,
                                     bool const has_future_spawns) const noexcept
-    -> std::optional<LevelTelemetryRunEndReason> {
+    -> std::optional<telemetry::RunEndReason> {
     if (stop_when_battle_resolved && !has_future_spawns) {
         auto const alive{ledger.count_alive_per_team()};
         std::int32_t living_teams{};
@@ -17,12 +17,12 @@ auto RunStopConditions::stop_reason(SimClock const& clock,
             living_teams += count > 0;
         }
         if (living_teams <= 1) {
-            return LevelTelemetryRunEndReason::BattleResolved;
+            return telemetry::RunEndReason::BattleResolved;
         }
     }
 
     if (duration && clock.get_simulation_time() >= duration->get_seconds()) {
-        return LevelTelemetryRunEndReason::DurationReached;
+        return telemetry::RunEndReason::DurationReached;
     }
     return std::nullopt;
 }

@@ -33,7 +33,7 @@ class SLevelCompletionView final : public SCompoundWidget {
     void update_report(FString const& level_display_name,
                        EMissionOutcome state,
                        FString const& objective_id,
-                       sim::LevelTelemetrySnapshot const& snapshot,
+                       sim::telemetry::Snapshot const& snapshot,
                        TOptional<float> par_time_seconds,
                        bool new_best_time);
     void focus_primary_action();

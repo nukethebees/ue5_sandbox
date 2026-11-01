@@ -7,6 +7,6 @@
 namespace ioj::sim::telemetry {
 struct AnalysisInput {
     Frequency tick_rate_hz{Frequency::make(60.0)};
-    std::span<LevelTelemetryBattleSample const> battle_samples;
+    std::span<BattleSample const> battle_samples;
 };
 }

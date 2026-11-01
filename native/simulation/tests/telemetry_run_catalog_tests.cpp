@@ -20,14 +20,14 @@ class CatalogFiles : public ::testing::Test {
         std::filesystem::remove_all(directory, ignored);
     }
     void write(std::string const& id, std::string const& level, std::string const& launch) {
-        LevelTelemetryReport report;
+        telemetry::Report report;
         report.run.metadata.run_id = id;
         report.run.metadata.map_name = level;
         report.run.metadata.level_id = level;
         report.run.metadata.level_display_name = level;
         report.run.metadata.launched_utc = launch;
         report.run.completion.completed_utc = launch;
-        auto const json{serialize_level_telemetry_report(report)};
+        auto const json{telemetry::serialize_report(report)};
         ASSERT_TRUE(json) << json.error();
         std::ofstream{directory / (id + ".json")} << *json;
     }

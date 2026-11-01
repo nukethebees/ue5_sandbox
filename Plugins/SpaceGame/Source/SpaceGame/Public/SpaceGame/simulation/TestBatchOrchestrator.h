@@ -155,7 +155,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void load_authored_level();
     auto should_initialise_in_begin_play() const noexcept -> bool;
     void handle_level_start_failure(FString message);
-    void release_level(ioj::sim::LevelTelemetryRunEndReason reason);
+    void release_level(ioj::sim::telemetry::RunEndReason reason);
 
     /* **************************************** */
     // Presentation

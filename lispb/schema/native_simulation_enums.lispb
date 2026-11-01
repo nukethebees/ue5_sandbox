@@ -52,8 +52,8 @@
 
 (module native_level_telemetry_run_end_reason
   :header "native/simulation/include/ioj/sim/telemetry/run_end_reason.h"
-  :namespace ioj::sim
-  (enum LevelTelemetryRunEndReason @native_uint8
+  :namespace ioj::sim::telemetry
+  (enum RunEndReason @native_uint8
     :native-api true
     :helpers (to-serialized-string try-parse-serialized)
     (value MissionSucceeded :value "0" :serialized-name "mission_succeeded")

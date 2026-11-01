@@ -8,14 +8,14 @@
 #include <cstdint>
 #include <vector>
 
-namespace ioj::sim {
-struct LevelTelemetryRunRecord {
+namespace ioj::sim::telemetry {
+struct RunRecord {
     static constexpr std::int32_t schema_version{11};
 
-    LevelTelemetryRunMetadata metadata{};
+    RunMetadata metadata{};
     Frequency tick_rate_hz{Frequency::make(60.0)};
-    LevelTelemetryRunCompletion completion{};
-    LevelTelemetryTickSeries tick_series{};
-    std::vector<LevelTelemetryBattleSample> battle_samples{};
+    RunCompletion completion{};
+    TickSeries tick_series{};
+    std::vector<BattleSample> battle_samples{};
 };
 }

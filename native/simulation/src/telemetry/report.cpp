@@ -2,7 +2,7 @@
 
 #include <utility>
 
-namespace ioj::sim {
-LevelTelemetryReport::LevelTelemetryReport(LevelTelemetryRunRecord record)
+namespace ioj::sim::telemetry {
+Report::Report(RunRecord record)
     : run{std::move(record)} {}
 }

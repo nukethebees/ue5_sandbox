@@ -473,7 +473,7 @@ TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
         << "Only one simulation tick completes";
     auto const record{simulation.take_finalized_telemetry_run()};
     ASSERT_TRUE(record.has_value()) << "Completion yields a telemetry record";
-    EXPECT_EQ(record->completion.reason, LevelTelemetryRunEndReason::DurationReached)
+    EXPECT_EQ(record->completion.reason, telemetry::RunEndReason::DurationReached)
         << "Completion reason is retained";
     EXPECT_TRUE(simulation.get_mission().completed_objectives().empty())
         << "A duration stop does not infer a mission outcome";
@@ -498,7 +498,7 @@ TEST(NativeSimulation, LevelTelemetryFinalizationPreservesMissionCompletion) {
     player.team = Team::Green;
     player.transform.location = {0, 2000, 0};
     add_player_spawn(data, player);
-    data.telemetry_metadata = LevelTelemetryRunMetadata{
+    data.telemetry_metadata = telemetry::RunMetadata{
         .run_id = "12345678-1234-1234-1234-123456789abc",
         .map_name = "TelemetryMissionTest",
         .launched_utc = "2026-09-06T12:00:00Z",
@@ -520,10 +520,10 @@ TEST(NativeSimulation, LevelTelemetryFinalizationPreservesMissionCompletion) {
     ASSERT_TRUE(mission_result.has_value()) << "Simulation yields the completed mission";
 
     EXPECT_FALSE(simulation.take_finalized_telemetry_run());
-    simulation.finalize_telemetry_run(LevelTelemetryRunEndReason::MissionSucceeded);
+    simulation.finalize_telemetry_run(telemetry::RunEndReason::MissionSucceeded);
     auto record{simulation.take_finalized_telemetry_run()};
     ASSERT_TRUE(record.has_value());
-    EXPECT_EQ(record->completion.reason, LevelTelemetryRunEndReason::MissionSucceeded)
+    EXPECT_EQ(record->completion.reason, telemetry::RunEndReason::MissionSucceeded)
         << "Mission success selects the telemetry completion reason";
     EXPECT_EQ(mission_result->outcome, MissionOutcome::Victory);
     EXPECT_TRUE(simulation.get_player_team_completion());
@@ -909,7 +909,7 @@ TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
     auto data{make_battle()};
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, std::move(data)};
-    simulation.set_telemetry_metadata(LevelTelemetryRunMetadata{
+    simulation.set_telemetry_metadata(telemetry::RunMetadata{
         .run_id = "12345678-1234-1234-1234-123456789abc",
         .map_name = "TelemetryTest",
         .level_id = "telemetry-test",
@@ -934,7 +934,7 @@ TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
     simulation.advance(1.0);
     auto const& clock{simulation.get_clock()};
     simulation.advance(4.0 * clock.get_tick_period());
-    simulation.finalize_telemetry_run(LevelTelemetryRunEndReason::WorldEnd);
+    simulation.finalize_telemetry_run(telemetry::RunEndReason::WorldEnd);
     EXPECT_EQ(simulation.get_state(), LevelState::Running)
         << "Interrupted telemetry finalization does not pause simulation";
 
@@ -942,7 +942,7 @@ TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
     ASSERT_TRUE(record.has_value()) << "Finalized manager yields one run record";
     EXPECT_FALSE(simulation.take_finalized_telemetry_run().has_value())
         << "A finalized run record is yielded only once";
-    EXPECT_EQ(record->completion.reason, LevelTelemetryRunEndReason::WorldEnd)
+    EXPECT_EQ(record->completion.reason, telemetry::RunEndReason::WorldEnd)
         << "Completion preserves its end reason";
     EXPECT_EQ(record->completion.completed_ticks, clock.get_completed_ticks())
         << "Completion preserves completed ticks";

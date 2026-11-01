@@ -115,7 +115,7 @@ auto parse_json_uint64(double const value, std::string_view const path)
     return parse_json_integer<std::uint64_t>(value, path);
 }
 
-auto validate_level_telemetry_json_record(LevelTelemetryRunRecord const& record)
+auto validate_level_telemetry_json_record(RunRecord const& record)
     -> std::expected<void, std::string> {
     auto const completed_ticks{validate_json_count(record.completion.completed_ticks.value(),
                                                    "completion.completed_ticks")};
@@ -135,7 +135,7 @@ auto validate_level_telemetry_json_record(LevelTelemetryRunRecord const& record)
         }
     }
 
-    for (std::int32_t type{}; type < LevelTelemetryTickSeries::entity_type_count; ++type) {
+    for (std::int32_t type{}; type < TickSeries::entity_type_count; ++type) {
         auto const valid{
             validate_series(record.tick_series.active_entities_by_type[type],
                             std::format("tick_series.active_entities_by_type[{}]", type))};
@@ -143,8 +143,8 @@ auto validate_level_telemetry_json_record(LevelTelemetryRunRecord const& record)
             return valid;
         }
     }
-    for (std::int32_t team{}; team < LevelTelemetryTickSeries::team_count; ++team) {
-        for (std::int32_t type{}; type < LevelTelemetryTickSeries::entity_type_count; ++type) {
+    for (std::int32_t team{}; team < TickSeries::team_count; ++team) {
+        for (std::int32_t type{}; type < TickSeries::entity_type_count; ++type) {
             auto const valid{validate_series(
                 record.tick_series.active_entities_by_team_and_type[team][type],
                 std::format("tick_series.active_entities_by_team_and_type[{}][{}]", team, type))};

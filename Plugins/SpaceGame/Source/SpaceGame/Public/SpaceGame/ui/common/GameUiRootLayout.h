@@ -32,7 +32,7 @@ class SPACEGAME_API UGameUiRootLayout : public UCommonActivatableWidget {
     auto show_level_completion(FString level_display_name,
                                EMissionOutcome state,
                                FString const& objective_id,
-                               sim::LevelTelemetrySnapshot snapshot,
+                               sim::telemetry::Snapshot snapshot,
                                TOptional<float> par_time_seconds = NullOpt,
                                bool new_best_time = false) -> ULevelCompletionWidget*;
     void clear_menus();

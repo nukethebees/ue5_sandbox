@@ -27,14 +27,14 @@ class RunCatalog {
     [[nodiscard]] auto get_selected_run_id() const -> std::string const& {
         return selected_run_id_;
     }
-    [[nodiscard]] auto get_selected_record() const -> LevelTelemetryReport const* {
+    [[nodiscard]] auto get_selected_record() const -> Report const* {
         return selected_record_ ? &*selected_record_ : nullptr;
     }
     [[nodiscard]] auto get_selected_error() const -> std::string const& { return selected_error_; }
     [[nodiscard]] auto get_baseline_run_id() const -> std::string const& {
         return baseline_run_id_;
     }
-    [[nodiscard]] auto get_baseline_record() const -> LevelTelemetryReport const* {
+    [[nodiscard]] auto get_baseline_record() const -> Report const* {
         return baseline_record_ ? &*baseline_record_ : nullptr;
     }
     [[nodiscard]] auto get_baseline_candidates() const -> std::vector<RunSummary>;
@@ -52,9 +52,9 @@ class RunCatalog {
     std::vector<std::string> level_filters_;
     std::string level_filter_{"All levels"};
     std::string selected_run_id_;
-    std::optional<LevelTelemetryReport> selected_record_;
+    std::optional<Report> selected_record_;
     std::string baseline_run_id_;
-    std::optional<LevelTelemetryReport> baseline_record_;
+    std::optional<Report> baseline_record_;
     std::string selected_error_;
     std::size_t unreadable_file_count_{};
 };

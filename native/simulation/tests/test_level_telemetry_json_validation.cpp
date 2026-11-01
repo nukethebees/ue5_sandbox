@@ -28,7 +28,7 @@ TEST(LevelTelemetryJsonValidation, ParsesOnlyExactInRangeIntegers) {
 }
 
 TEST(LevelTelemetryJsonValidation, RejectsInvalidRecordInvariants) {
-    LevelTelemetryRunRecord record;
+    telemetry::RunRecord record;
 
     EXPECT_TRUE(validate_level_telemetry_json_record(record).has_value());
 
@@ -48,27 +48,27 @@ TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
     report.run.metadata.run_id = "run-1";
     report.run.metadata.level_display_name = "Convoy \"alpha\"\n\xc3\xa9";
     report.run.tick_rate_hz = Frequency::make(120.0);
-    report.run.completion.reason = LevelTelemetryRunEndReason::MissionSucceeded;
+    report.run.completion.reason = telemetry::RunEndReason::MissionSucceeded;
     report.run.completion.completed_ticks = SimTick{240};
     report.run.tick_series.active_entities.add(0, 2);
     report.run.tick_series.active_entities.add(240, 1);
-    LevelTelemetryBattleSample sample;
+    telemetry::BattleSample sample;
     sample.completed_tick = SimTick{240};
     sample.alive[0][0] = 1;
     sample.combat.shots[0][0] = 3;
     sample.combat.damage_dealt[0][0] = 12.5;
     report.run.battle_samples.push_back(sample);
 
-    auto const serialized{serialize_level_telemetry_report(report)};
+    auto const serialized{telemetry::serialize_report(report)};
     ASSERT_TRUE(serialized.has_value()) << serialized.error();
-    auto const parsed{deserialize_level_telemetry_report(*serialized)};
+    auto const parsed{telemetry::deserialize_report(*serialized)};
     ASSERT_TRUE(parsed.has_value()) << parsed.error();
     EXPECT_EQ(parsed->run.metadata.level_display_name, report.run.metadata.level_display_name);
     EXPECT_TRUE(parsed->presentation_enabled);
     EXPECT_TRUE(parsed->started_paused);
     EXPECT_TRUE(parsed->opens_telemetry);
     EXPECT_EQ(parsed->run.tick_rate_hz.get_hz(), 120.0);
-    EXPECT_EQ(parsed->run.completion.reason, LevelTelemetryRunEndReason::MissionSucceeded);
+    EXPECT_EQ(parsed->run.completion.reason, telemetry::RunEndReason::MissionSucceeded);
     EXPECT_EQ(parsed->run.completion.completed_ticks.value(), 240);
     EXPECT_EQ(serialized->find("environment"), std::string::npos);
     EXPECT_EQ(serialized->find("presentation_mode"), std::string::npos);
@@ -92,7 +92,7 @@ TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
         auto const offset{invalid.find(field)};
         ASSERT_NE(offset, std::string::npos);
         invalid.replace(offset, field.size(), replacement);
-        EXPECT_FALSE(deserialize_level_telemetry_report(invalid));
+        EXPECT_FALSE(telemetry::deserialize_report(invalid));
     }};
     reject_number("\"active_lasers\": 0", "\"active_lasers\": -1");
     reject_number("\"completed_ticks\": 240", "\"completed_ticks\": 1.5");
@@ -100,13 +100,13 @@ TEST(LevelTelemetryJsonValidation, RoundTripsNativeReportAndMissionCompletion) {
 }
 
 TEST(LevelTelemetryJsonValidation, NativeCodecRejectsInvalidInputAndReturnsErrors) {
-    EXPECT_FALSE(deserialize_level_telemetry_report("{").has_value());
-    EXPECT_FALSE(deserialize_level_telemetry_report("[]").has_value());
-    EXPECT_FALSE(deserialize_level_telemetry_report(R"({"schema_version":10})").has_value());
-    LevelTelemetryReport report;
-    auto const empty{serialize_level_telemetry_report(report)};
+    EXPECT_FALSE(telemetry::deserialize_report("{").has_value());
+    EXPECT_FALSE(telemetry::deserialize_report("[]").has_value());
+    EXPECT_FALSE(telemetry::deserialize_report(R"({"schema_version":10})").has_value());
+    telemetry::Report report;
+    auto const empty{telemetry::serialize_report(report)};
     ASSERT_TRUE(empty.has_value());
-    EXPECT_TRUE(deserialize_level_telemetry_report(*empty).has_value());
+    EXPECT_TRUE(telemetry::deserialize_report(*empty).has_value());
 
     for (auto const field : {"launch_state", "results_navigation"}) {
         SCOPED_TRACE(field);
@@ -115,23 +115,23 @@ TEST(LevelTelemetryJsonValidation, NativeCodecRejectsInvalidInputAndReturnsError
         auto const offset{invalid.find(key)};
         ASSERT_NE(offset, std::string::npos);
         invalid.insert(offset + key.size(), "unknown-");
-        EXPECT_FALSE(deserialize_level_telemetry_report(invalid));
+        EXPECT_FALSE(telemetry::deserialize_report(invalid));
     }
 
     report.run.completion.completed_ticks = SimTick{9007199254740993ULL};
-    EXPECT_FALSE(serialize_level_telemetry_report(report).has_value());
+    EXPECT_FALSE(telemetry::serialize_report(report).has_value());
     report.run.completion.completed_ticks = SimTick{0};
-    report.run.completion.reason = static_cast<LevelTelemetryRunEndReason>(255);
-    EXPECT_FALSE(serialize_level_telemetry_report(report).has_value());
+    report.run.completion.reason = static_cast<telemetry::RunEndReason>(255);
+    EXPECT_FALSE(telemetry::serialize_report(report).has_value());
 }
 
 TEST(LevelTelemetryJsonValidation, RejectsCorruptSparseSeriesAndBattleSamples) {
-    LevelTelemetryReport report;
+    telemetry::Report report;
     report.run.completion.completed_ticks = SimTick{1};
     report.run.tick_series.active_entities.add(0, 1);
     report.run.tick_series.active_entities.add(1, 0);
     report.run.battle_samples.push_back({.completed_tick = SimTick{1}, .active_lasers = 3});
-    auto const serialized{serialize_level_telemetry_report(report)};
+    auto const serialized{telemetry::serialize_report(report)};
     ASSERT_TRUE(serialized) << serialized.error();
     auto const valid = nlohmann::json::parse(*serialized);
     struct Case {
@@ -154,7 +154,7 @@ TEST(LevelTelemetryJsonValidation, RejectsCorruptSparseSeriesAndBattleSamples) {
         SCOPED_TRACE(test.name);
         auto invalid = valid;
         test.mutate(invalid);
-        EXPECT_FALSE(deserialize_level_telemetry_report(invalid.dump()));
+        EXPECT_FALSE(telemetry::deserialize_report(invalid.dump()));
     }
 }
 

@@ -5,8 +5,8 @@
 
 #include <cstdint>
 
-namespace ioj::sim::fighters {
-struct NavigationTelemetrySnapshot {
+namespace ioj::sim::telemetry {
+struct FighterNavigationSnapshot {
     std::int32_t separating_fighter_count{};
     std::int32_t avoiding_fighter_count{};
     std::int32_t clear_risk_count{};
@@ -19,4 +19,4 @@ struct NavigationTelemetrySnapshot {
     std::int32_t steering_memory_fighter_count{};
     std::int32_t hard_trace_count{};
 };
-} // namespace ioj::sim::fighters
+} // namespace ioj::sim::telemetry

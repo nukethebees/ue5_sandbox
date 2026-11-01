@@ -147,7 +147,7 @@ auto analyze(AnalysisInput const input) -> Analysis {
             }
             auto const time{static_cast<double>(end.completed_tick.value()) / tick_rate_hz};
             builder(Metric::ActiveEntities).add(time, sum_counts(end.alive), duration);
-            for (std::int32_t type{}; type < LevelTelemetryTickSeries::entity_type_count; ++type) {
+            for (std::int32_t type{}; type < TickSeries::entity_type_count; ++type) {
                 builder(type_metrics[static_cast<std::size_t>(type)])
                     .add(time, type_total(end.alive, type), duration);
             }

@@ -52,7 +52,7 @@ void SLevelCompletionView::Construct(FArguments const& args) {
 void SLevelCompletionView::update_report(FString const& level_display_name,
                                          EMissionOutcome const state,
                                          FString const& objective_id,
-                                         sim::LevelTelemetrySnapshot const& snapshot,
+                                         sim::telemetry::Snapshot const& snapshot,
                                          TOptional<float> const par_time_seconds,
                                          bool const new_best_time) {
     check(state == EMissionOutcome::Victory || state == EMissionOutcome::Defeat);

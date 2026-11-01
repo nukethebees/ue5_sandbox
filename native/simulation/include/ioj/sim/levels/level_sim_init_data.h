@@ -39,8 +39,8 @@ struct LevelSimInitData {
 
     std::size_t frame_memory_capacity_bytes{256 * 1024 * 1024};
 
-    LevelTelemetryRunMetadata telemetry_metadata{};
-    LevelTelemetryHistoryConfig telemetry_history{};
+    telemetry::RunMetadata telemetry_metadata{};
+    telemetry::HistoryConfig telemetry_history{};
 };
 
 }

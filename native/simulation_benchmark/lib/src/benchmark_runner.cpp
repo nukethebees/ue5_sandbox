@@ -224,7 +224,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     }
 
     if (options.telemetry_enabled) {
-        data.telemetry_metadata = sim::LevelTelemetryRunMetadata{
+        data.telemetry_metadata = sim::telemetry::RunMetadata{
             .level_id = level_components.metadata().id.value,
             .level_display_name = level_components.metadata().title,
             .requested_duration_seconds = Duration::make(options.simulated_seconds),
@@ -333,7 +333,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     }
 
     if (options.telemetry_enabled) {
-        simulation.stop_run(sim::LevelTelemetryRunEndReason::DurationReached);
+        simulation.stop_run(sim::telemetry::RunEndReason::DurationReached);
     } else {
         simulation.pause();
     }

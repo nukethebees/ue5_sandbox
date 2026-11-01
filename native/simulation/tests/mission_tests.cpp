@@ -281,7 +281,7 @@ struct RunStopCase {
     bool future_spawns;
     std::uint32_t living_teams;
     SimTick completed_ticks;
-    std::optional<LevelTelemetryRunEndReason> reason;
+    std::optional<telemetry::RunEndReason> reason;
 };
 
 using RunStopping = ::testing::TestWithParam<RunStopCase>;
@@ -313,13 +313,13 @@ INSTANTIATE_TEST_SUITE_P(
                     false,
                     0,
                     SimTick{0},
-                    LevelTelemetryRunEndReason::BattleResolved},
+                    telemetry::RunEndReason::BattleResolved},
         RunStopCase{"SingleTeam",
                     {true, {}},
                     false,
                     1,
                     SimTick{0},
-                    LevelTelemetryRunEndReason::BattleResolved},
+                    telemetry::RunEndReason::BattleResolved},
         RunStopCase{"TwoTeams", {true, {}}, false, 2, SimTick{0}, std::nullopt},
         RunStopCase{"FutureSpawns", {true, {}}, true, 1, SimTick{0}, std::nullopt},
         RunStopCase{
@@ -329,25 +329,25 @@ INSTANTIATE_TEST_SUITE_P(
                     false,
                     2,
                     SimTick{4},
-                    LevelTelemetryRunEndReason::DurationReached},
+                    telemetry::RunEndReason::DurationReached},
         RunStopCase{"AfterDuration",
                     {false, Duration::make(1.0)},
                     false,
                     2,
                     SimTick{5},
-                    LevelTelemetryRunEndReason::DurationReached},
+                    telemetry::RunEndReason::DurationReached},
         RunStopCase{"BattleBeforeDuration",
                     {true, Duration::make(1.0)},
                     false,
                     1,
                     SimTick{4},
-                    LevelTelemetryRunEndReason::BattleResolved},
+                    telemetry::RunEndReason::BattleResolved},
         RunStopCase{"DurationWithFutureSpawns",
                     {true, Duration::make(1.0)},
                     true,
                     1,
                     SimTick{4},
-                    LevelTelemetryRunEndReason::DurationReached}),
+                    telemetry::RunEndReason::DurationReached}),
     [](::testing::TestParamInfo<RunStopCase> const& info) { return info.param.name; });
 
 TEST_F(MissionTest, RootAndTeamConflictPrecedenceIsDeterministic) {

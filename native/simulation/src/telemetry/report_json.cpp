@@ -10,7 +10,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace ioj::sim {
+namespace ioj::sim::telemetry {
 namespace {
 using Json = nlohmann::json;
 
@@ -81,16 +81,15 @@ auto read_value(Json const& value, std::string_view const path) -> Value {
         auto const number{checked->get()};
         if constexpr (std::is_integral_v<Value>) {
             // Reject precision loss before converting an exact JSON integer to double.
-            if (value.is_number_unsigned() &&
-                value.get<std::uint64_t>() > telemetry::max_exact_json_integer) {
+            if (value.is_number_unsigned() && value.get<std::uint64_t>() > max_exact_json_integer) {
                 fail(path, "integer cannot be represented exactly in JSON");
             }
             auto const parsed{[&] {
                 if constexpr (std::is_same_v<Value, std::int32_t>) {
-                    return telemetry::parse_json_int32(number, path);
+                    return parse_json_int32(number, path);
                 } else {
                     static_assert(std::is_same_v<Value, std::uint64_t>);
-                    return telemetry::parse_json_uint64(number, path);
+                    return parse_json_uint64(number, path);
                 }
             }()};
             if (!parsed) {
@@ -190,7 +189,7 @@ void read_counts(Json const& parent,
     }
 }
 
-auto write_series(LevelTelemetryTickSeries::Int32Data const& series) -> Json {
+auto write_series(TickSeries::Int32Data const& series) -> Json {
     auto ticks = Json::array();
     auto values = Json::array();
     auto const count{series.num()};
@@ -204,7 +203,7 @@ auto write_series(LevelTelemetryTickSeries::Int32Data const& series) -> Json {
 void read_series(Json const& parent,
                  std::string_view const field,
                  std::string_view const path,
-                 LevelTelemetryTickSeries::Int32Data& series) {
+                 TickSeries::Int32Data& series) {
     auto const& object{required_object(parent, field, path)};
     auto const location{field_path(path, field)};
     auto const& ticks{required_array(object, "ticks", location)};
@@ -229,7 +228,7 @@ void read_series(Json const& parent,
     }
 }
 
-auto write_combat(telemetry::CombatTelemetryCounters const& source) -> Json {
+auto write_combat(CombatTelemetryCounters const& source) -> Json {
     return {
         {"spawned", write_counts(source.spawned)},
         {"destroyed", write_counts(source.destroyed)},
@@ -243,9 +242,7 @@ auto write_combat(telemetry::CombatTelemetryCounters const& source) -> Json {
     };
 }
 
-void read_combat(Json const& source,
-                 std::string_view const path,
-                 telemetry::CombatTelemetryCounters& output) {
+void read_combat(Json const& source, std::string_view const path, CombatTelemetryCounters& output) {
     read_counts(source, "spawned", path, output.spawned);
     read_counts(source, "destroyed", path, output.destroyed);
     read_counts(source, "shots", path, output.shots);
@@ -257,7 +254,7 @@ void read_combat(Json const& source,
     read_counts(source, "kill_matrix", path, output.kill_matrix);
 }
 
-auto write_tick_series(LevelTelemetryTickSeries const& source) -> Json {
+auto write_tick_series(TickSeries const& source) -> Json {
     Json result{
         {"active_entities", write_series(source.active_entities)},
         {"spawned_entities", write_series(source.spawned_entities)},
@@ -267,15 +264,15 @@ auto write_tick_series(LevelTelemetryTickSeries const& source) -> Json {
         {"lasers_fired", write_series(source.lasers_fired)},
     };
     auto by_type = Json::object();
-    for (std::int32_t type{}; type < LevelTelemetryTickSeries::entity_type_count; ++type) {
+    for (std::int32_t type{}; type < TickSeries::entity_type_count; ++type) {
         by_type[to_serialized_string(static_cast<EntityType>(type))] =
             write_series(source.active_entities_by_type[type]);
     }
     result["active_entities_by_type"] = std::move(by_type);
     auto by_team = Json::object();
-    for (std::int32_t team{}; team < LevelTelemetryTickSeries::team_count; ++team) {
+    for (std::int32_t team{}; team < TickSeries::team_count; ++team) {
         auto row = Json::object();
-        for (std::int32_t type{}; type < LevelTelemetryTickSeries::entity_type_count; ++type) {
+        for (std::int32_t type{}; type < TickSeries::entity_type_count; ++type) {
             row[to_serialized_string(static_cast<EntityType>(type))] =
                 write_series(source.active_entities_by_team_and_type[team][type]);
         }
@@ -285,7 +282,7 @@ auto write_tick_series(LevelTelemetryTickSeries const& source) -> Json {
     return result;
 }
 
-void read_tick_series(Json const& source, LevelTelemetryTickSeries& output) {
+void read_tick_series(Json const& source, TickSeries& output) {
     read_series(source, "active_entities", "tick_series", output.active_entities);
     read_series(source, "spawned_entities", "tick_series", output.spawned_entities);
     read_series(source, "destroyed_entities", "tick_series", output.destroyed_entities);
@@ -294,19 +291,19 @@ void read_tick_series(Json const& source, LevelTelemetryTickSeries& output) {
     read_series(source, "lasers_fired", "tick_series", output.lasers_fired);
 
     auto const& by_type{required_object(source, "active_entities_by_type", "tick_series")};
-    for (std::int32_t type{}; type < LevelTelemetryTickSeries::entity_type_count; ++type) {
+    for (std::int32_t type{}; type < TickSeries::entity_type_count; ++type) {
         read_series(by_type,
                     to_serialized_string(static_cast<EntityType>(type)),
                     "tick_series.active_entities_by_type",
                     output.active_entities_by_type[type]);
     }
     auto const& by_team{required_object(source, "active_entities_by_team_and_type", "tick_series")};
-    for (std::int32_t team{}; team < LevelTelemetryTickSeries::team_count; ++team) {
+    for (std::int32_t team{}; team < TickSeries::team_count; ++team) {
         auto const name{to_serialized_string(static_cast<Team>(team))};
         auto const path{field_path("tick_series.active_entities_by_team_and_type", name)};
         auto const& row{
             required_object(by_team, name, "tick_series.active_entities_by_team_and_type")};
-        for (std::int32_t type{}; type < LevelTelemetryTickSeries::entity_type_count; ++type) {
+        for (std::int32_t type{}; type < TickSeries::entity_type_count; ++type) {
             read_series(row,
                         to_serialized_string(static_cast<EntityType>(type)),
                         path,
@@ -315,26 +312,25 @@ void read_tick_series(Json const& source, LevelTelemetryTickSeries& output) {
     }
 }
 
-auto validate_report(LevelTelemetryReport const& report) -> std::expected<void, std::string> {
-    if (auto const result{telemetry::validate_level_telemetry_json_record(report.run)}; !result) {
+auto validate_report(Report const& report) -> std::expected<void, std::string> {
+    if (auto const result{validate_level_telemetry_json_record(report.run)}; !result) {
         return result;
     }
     auto const& completion{report.run.completion};
-    auto const reason_count{enum_strings<LevelTelemetryRunEndReason, Serialized>.offsets.size() -
-                            1};
+    auto const reason_count{enum_strings<RunEndReason, Serialized>.offsets.size() - 1};
     if (std::to_underlying(completion.reason) >= reason_count) {
         return std::unexpected{"completion contains an invalid enum value"};
     }
     return {};
 }
 
-auto read_report(Json const& root) -> LevelTelemetryReport {
+auto read_report(Json const& root) -> Report {
     auto const schema{read_field<std::int32_t>(root, "schema_version", "")};
-    if (schema != LevelTelemetryRunRecord::schema_version) {
+    if (schema != RunRecord::schema_version) {
         fail("schema_version", "unsupported report schema");
     }
 
-    LevelTelemetryReport report;
+    Report report;
     report.run.metadata.run_id = read_field<std::string>(root, "run_id", "");
     auto const& level{required_object(root, "level", "")};
     report.run.metadata.map_name = read_field<std::string>(level, "map_name", "level");
@@ -370,8 +366,8 @@ auto read_report(Json const& root) -> LevelTelemetryReport {
 
     auto const& completion{required_object(root, "completion", "")};
     auto& result{report.run.completion};
-    result.reason = read_enum(
-        completion, "reason", "completion", try_parse_serialized_level_telemetry_run_end_reason);
+    result.reason =
+        read_enum(completion, "reason", "completion", try_parse_serialized_run_end_reason);
     result.completed_ticks = read_field<SimTick>(completion, "completed_ticks", "completion");
 
     read_tick_series(required_object(root, "tick_series", ""), report.run.tick_series);
@@ -381,7 +377,7 @@ auto read_report(Json const& root) -> LevelTelemetryReport {
     for (std::size_t index{}; index < count; ++index) {
         auto const& source{samples[index]};
         auto const path{std::format("battle_samples[{}]", index)};
-        LevelTelemetryBattleSample sample;
+        BattleSample sample;
         sample.completed_tick = read_field<SimTick>(source, "completed_tick", path);
         read_counts(source, "alive", path, sample.alive);
         read_combat(required_object(source, "combat", path), path + ".combat", sample.combat);
@@ -393,8 +389,7 @@ auto read_report(Json const& root) -> LevelTelemetryReport {
 }
 }
 
-auto serialize_level_telemetry_report(LevelTelemetryReport const& report)
-    -> std::expected<std::string, std::string> {
+auto serialize_report(Report const& report) -> std::expected<std::string, std::string> {
     if (auto const valid{validate_report(report)}; !valid) {
         return std::unexpected{valid.error()};
     }
@@ -415,7 +410,7 @@ auto serialize_level_telemetry_report(LevelTelemetryReport const& report)
                                {"lasers_fired", sample.lasers_fired}});
         }
         Json root{
-            {"schema_version", LevelTelemetryRunRecord::schema_version},
+            {"schema_version", RunRecord::schema_version},
             {"run_id", metadata.run_id},
             {"level",
              {{"map_name", metadata.map_name},
@@ -442,8 +437,7 @@ auto serialize_level_telemetry_report(LevelTelemetryReport const& report)
     }
 }
 
-auto deserialize_level_telemetry_report(std::string_view const json)
-    -> std::expected<LevelTelemetryReport, std::string> {
+auto deserialize_report(std::string_view const json) -> std::expected<Report, std::string> {
     try {
         return read_report(Json::parse(json));
     } catch (ReportParseError const& error) {

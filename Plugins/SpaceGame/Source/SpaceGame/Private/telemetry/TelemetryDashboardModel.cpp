@@ -14,7 +14,7 @@ auto FTelemetryRunAnalysis::find_metric(ioj::sim::telemetry::Metric const metric
     return metrics.FindByPredicate([metric](auto const& value) { return value.metric == metric; });
 }
 
-auto analyze_level_telemetry_run(ioj::sim::LevelTelemetryReport const& record)
+auto analyze_level_telemetry_run(ioj::sim::telemetry::Report const& record)
     -> FTelemetryRunAnalysis {
     auto const native{::ioj::sim::telemetry::analyze({
         .tick_rate_hz = record.run.tick_rate_hz,

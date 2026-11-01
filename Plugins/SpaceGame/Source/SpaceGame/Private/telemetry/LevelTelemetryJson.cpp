@@ -14,7 +14,7 @@ auto level_telemetry_runs_directory() -> FString {
 }
 
 auto read_level_telemetry_run(FString const& path)
-    -> std::expected<ioj::sim::LevelTelemetryReport, FString> {
+    -> std::expected<ioj::sim::telemetry::Report, FString> {
     auto result{ioj::sim::telemetry::read_run_report(std::filesystem::path{*path})};
     if (!result) {
         return std::unexpected{ioj::to_fstring(result.error())};
@@ -22,9 +22,9 @@ auto read_level_telemetry_run(FString const& path)
     return std::move(*result);
 }
 
-auto write_level_telemetry_run(ioj::sim::LevelTelemetryReport const& record,
+auto write_level_telemetry_run(ioj::sim::telemetry::Report const& record,
                                FString const& output_directory) -> std::expected<FString, FString> {
-    auto const serialized{ioj::sim::serialize_level_telemetry_report(record)};
+    auto const serialized{ioj::sim::telemetry::serialize_report(record)};
     if (!serialized) {
         return std::unexpected{ioj::to_fstring(serialized.error())};
     }

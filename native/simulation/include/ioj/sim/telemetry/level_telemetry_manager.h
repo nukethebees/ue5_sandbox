@@ -35,8 +35,8 @@ class LevelTelemetryManager {
     };
 
     using tick_type = SimTick;
-    using ActiveEntityCountData = LevelTelemetrySnapshot::ActiveEntityCountData;
-    using CumulativeKillCountData = LevelTelemetrySnapshot::CumulativeKillCountData;
+    using ActiveEntityCountData = telemetry::Snapshot::ActiveEntityCountData;
+    using CumulativeKillCountData = telemetry::Snapshot::CumulativeKillCountData;
 
     /* **************************************** */
     // Construction and lifecycle
@@ -45,7 +45,7 @@ class LevelTelemetryManager {
                           EntityLedger const& entity_ledger,
                           lasers::Sim const& lasers,
                           GameMemory& game_memory,
-                          LevelTelemetryHistoryConfig history_config = {}) noexcept;
+                          telemetry::HistoryConfig history_config = {}) noexcept;
     LevelTelemetryManager(LevelTelemetryManager const&) = delete;
     LevelTelemetryManager(LevelTelemetryManager&&) = delete;
     auto operator=(LevelTelemetryManager const&) -> LevelTelemetryManager& = delete;
@@ -60,16 +60,16 @@ class LevelTelemetryManager {
     // Run capture and completion
     /* **************************************** */
     // Requires Uninitialised or Recording.
-    void set_run_metadata(LevelTelemetryRunMetadata metadata);
-    void finalize(LevelTelemetryRunEndReason reason);
+    void set_run_metadata(telemetry::RunMetadata metadata);
+    void finalize(telemetry::RunEndReason reason);
     // Returns empty unless the record awaits extraction.
-    auto take_finalized_run(Frequency tick_rate_hz) -> std::optional<LevelTelemetryRunRecord>;
+    auto take_finalized_run(Frequency tick_rate_hz) -> std::optional<telemetry::RunRecord>;
 
     /* **************************************** */
     // Snapshots and queries
     /* **************************************** */
     auto get_state() const noexcept -> State { return state_; }
-    auto make_snapshot() const -> LevelTelemetrySnapshot;
+    auto make_snapshot() const -> telemetry::Snapshot;
 
     auto get_active_entity_count_data() const noexcept -> ActiveEntityCountData const& {
         return active_entity_count_data_;
@@ -77,11 +77,11 @@ class LevelTelemetryManager {
     auto get_cumulative_kill_count_data() const noexcept -> CumulativeKillCountData const& {
         return cumulative_kill_count_data_;
     }
-    auto get_current_state() const noexcept -> LevelTelemetryCurrentState const& {
+    auto get_current_state() const noexcept -> telemetry::CurrentState const& {
         return current_state_;
     }
-    auto get_history_stats() const noexcept -> LevelTelemetryHistoryStats;
-    auto materialize_tick_series() const -> LevelTelemetryTickSeries;
+    auto get_history_stats() const noexcept -> telemetry::HistoryStats;
+    auto materialize_tick_series() const -> telemetry::TickSeries;
   private:
     friend struct LevelTelemetryManagerTestAccess;
 
@@ -100,13 +100,13 @@ class LevelTelemetryManager {
     SimClock const& clock_;
     EntityLedger const& entity_ledger_;
     lasers::Sim const& lasers_;
-    LevelTelemetryCurrentState current_state_{};
-    LevelTelemetryCurrentState last_sampled_state_{};
-    LevelTelemetryBlockHistory history_;
+    telemetry::CurrentState current_state_{};
+    telemetry::CurrentState last_sampled_state_{};
+    telemetry::BlockHistory history_;
 
-    LevelTelemetryRunMetadata metadata_{};
-    LevelTelemetryRunCompletion completion_{};
-    std::vector<LevelTelemetryBattleSample> battle_samples_{};
+    telemetry::RunMetadata metadata_{};
+    telemetry::RunCompletion completion_{};
+    std::vector<telemetry::BattleSample> battle_samples_{};
     ActiveEntityCountData active_entity_count_data_{};
     CumulativeKillCountData cumulative_kill_count_data_{};
 

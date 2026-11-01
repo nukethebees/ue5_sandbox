@@ -12,16 +12,16 @@
 #include <utility>
 
 namespace ioj::sim::telemetry {
-auto make_run_report(LevelTelemetryRunRecord record,
+auto make_run_report(RunRecord record,
                      levels::LaunchOptions const& options,
-                     bool const presentation_enabled) -> LevelTelemetryReport {
-    LevelTelemetryReport report{std::move(record)};
+                     bool const presentation_enabled) -> Report {
+    Report report{std::move(record)};
     report.started_paused = options.launch_mode == levels::LaunchMode::Paused;
     report.opens_telemetry = options.results_navigation == levels::ResultsNavigation::Telemetry;
     report.presentation_enabled = presentation_enabled;
     return report;
 }
-auto summarize_run(LevelTelemetryReport const& report) -> RunStatistics {
+auto summarize_run(Report const& report) -> RunStatistics {
     auto const last{[](auto const& series) { return series.is_empty() ? 0 : series.last_value(); }};
     auto const& run{report.run};
     RunStatistics result{
@@ -33,8 +33,8 @@ auto summarize_run(LevelTelemetryReport const& report) -> RunStatistics {
         .destroyed_entities = last(run.tick_series.destroyed_entities),
         .kills = last(run.tick_series.kills),
         .lasers_fired = last(run.tick_series.lasers_fired),
-        .mission_complete = run.completion.reason == LevelTelemetryRunEndReason::MissionSucceeded ||
-                            run.completion.reason == LevelTelemetryRunEndReason::MissionFailed};
+        .mission_complete = run.completion.reason == RunEndReason::MissionSucceeded ||
+                            run.completion.reason == RunEndReason::MissionFailed};
     if (!run.battle_samples.empty()) {
         auto const sum{[](auto const& counts) {
             using Value = std::remove_cvref_t<decltype(counts[0][0])>;
@@ -55,8 +55,7 @@ auto summarize_run(LevelTelemetryReport const& report) -> RunStatistics {
     }
     return result;
 }
-auto compare_run_context(LevelTelemetryReport const& baseline,
-                         LevelTelemetryReport const& candidate) -> RunComparison {
+auto compare_run_context(Report const& baseline, Report const& candidate) -> RunComparison {
     return {.different_level_source =
                 baseline.run.metadata.level_source != candidate.run.metadata.level_source,
             .different_settings_source =
@@ -84,11 +83,11 @@ auto read_summary(std::filesystem::path const& path) -> std::expected<RunSummary
     }
     try {
         auto const root = nlohmann::json::parse(*text);
-        if (root.at("schema_version") != LevelTelemetryRunRecord::schema_version) {
+        if (root.at("schema_version") != RunRecord::schema_version) {
             return std::unexpected{"Unsupported telemetry schema"};
         }
         auto const& level{root.at("level")};
-        auto const reason{try_parse_serialized_level_telemetry_run_end_reason(
+        auto const reason{try_parse_serialized_run_end_reason(
             root.at("completion").at("reason").get<std::string>())};
         if (!reason) {
             return std::unexpected{"Unknown completion reason"};
@@ -107,13 +106,12 @@ auto read_summary(std::filesystem::path const& path) -> std::expected<RunSummary
 }
 }
 
-auto read_run_report(std::filesystem::path const& path)
-    -> std::expected<LevelTelemetryReport, std::string> {
+auto read_run_report(std::filesystem::path const& path) -> std::expected<Report, std::string> {
     auto text{read_text(path)};
     if (!text) {
         return std::unexpected{std::move(text.error())};
     }
-    auto report{deserialize_level_telemetry_report(*text)};
+    auto report{deserialize_report(*text)};
     if (!report) {
         return std::unexpected{path.string() + ": " + report.error()};
     }

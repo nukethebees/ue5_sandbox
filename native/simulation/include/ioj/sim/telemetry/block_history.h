@@ -8,26 +8,26 @@
 #include <cstdint>
 #include <vector>
 
-namespace ioj::sim {
+namespace ioj::sim::telemetry {
 
-class LevelTelemetryBlockHistory {
+class BlockHistory {
   public:
-    LevelTelemetryBlockHistory(GameMemory& memory, LevelTelemetryHistoryConfig config = {});
-    LevelTelemetryBlockHistory(LevelTelemetryBlockHistory const&) = delete;
-    LevelTelemetryBlockHistory(LevelTelemetryBlockHistory&&) = delete;
-    auto operator=(LevelTelemetryBlockHistory const&) -> LevelTelemetryBlockHistory& = delete;
-    auto operator=(LevelTelemetryBlockHistory&&) -> LevelTelemetryBlockHistory& = delete;
+    BlockHistory(GameMemory& memory, HistoryConfig config = {});
+    BlockHistory(BlockHistory const&) = delete;
+    BlockHistory(BlockHistory&&) = delete;
+    auto operator=(BlockHistory const&) -> BlockHistory& = delete;
+    auto operator=(BlockHistory&&) -> BlockHistory& = delete;
 
     void reset();
-    auto append_uninitialized() -> telemetry::history_rows::View;
-    auto last_view() -> telemetry::history_rows::View;
-    auto last_const_view() const -> telemetry::history_rows::ConstView;
+    auto append_uninitialized() -> history_rows::View;
+    auto last_view() -> history_rows::View;
+    auto last_const_view() const -> history_rows::ConstView;
 
     template <typename Func>
     void for_each_block(Func&& func) const {
         for (std::uint32_t index{}; index < used_block_count_; ++index) {
             auto const& block{blocks_[index]};
-            func(telemetry::history_rows::ConstView{&block.storage, 0, block.storage.num_});
+            func(history_rows::ConstView{&block.storage, 0, block.storage.num_});
         }
     }
 
@@ -39,9 +39,9 @@ class LevelTelemetryBlockHistory {
     auto retained_block_count() const noexcept -> std::uint32_t {
         return static_cast<std::uint32_t>(blocks_.size());
     }
-    auto block_view(std::uint32_t index) const -> telemetry::history_rows::ConstView;
+    auto block_view(std::uint32_t index) const -> history_rows::ConstView;
     auto block_data(std::uint32_t index) const -> std::byte const*;
-    auto get_stats() const noexcept -> LevelTelemetryBlockHistoryStats;
+    auto get_stats() const noexcept -> BlockHistoryStats;
   private:
     struct Block {
         Block(memory::Block memory_block, std::uint32_t capacity);
@@ -53,7 +53,7 @@ class LevelTelemetryBlockHistory {
     auto acquire_or_reuse_next_block() -> Block&;
 
     GameMemory& memory_;
-    LevelTelemetryHistoryConfig config_{};
+    HistoryConfig config_{};
     std::vector<Block> blocks_{};
     std::size_t layout_bytes_per_block_{};
     std::size_t logical_payload_bytes_per_row_{};
@@ -62,4 +62,4 @@ class LevelTelemetryBlockHistory {
     std::uint32_t peak_block_count_{};
     std::uint32_t row_count_{};
 };
-} // namespace ioj::sim
+} // namespace ioj::sim::telemetry

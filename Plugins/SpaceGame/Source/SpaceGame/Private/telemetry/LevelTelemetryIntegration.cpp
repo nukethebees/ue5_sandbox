@@ -17,7 +17,7 @@ namespace ioj {
 auto take_finalized_level_telemetry_report(sim::LevelSim& simulation,
                                            ::ioj::levels::LaunchOptions const& launch_options,
                                            bool const presentation_enabled)
-    -> TOptional<sim::LevelTelemetryReport> {
+    -> TOptional<sim::telemetry::Report> {
     auto record{simulation.take_finalized_telemetry_run()};
     if (!record.has_value()) {
         return {};

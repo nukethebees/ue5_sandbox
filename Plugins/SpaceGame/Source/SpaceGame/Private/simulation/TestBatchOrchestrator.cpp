@@ -74,10 +74,10 @@ void ATestBatchOrchestrator::BeginPlay() {
     }
 }
 void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason) {
-    release_level(ioj::sim::LevelTelemetryRunEndReason::WorldEnd);
+    release_level(ioj::sim::telemetry::RunEndReason::WorldEnd);
     Super::EndPlay(end_play_reason);
 }
-void ATestBatchOrchestrator::release_level(ioj::sim::LevelTelemetryRunEndReason const reason) {
+void ATestBatchOrchestrator::release_level(ioj::sim::telemetry::RunEndReason const reason) {
     SetActorTickEnabled(false);
     if (level_simulation_.IsSet()) {
         level_simulation_->finalize_telemetry_run(reason);
@@ -123,7 +123,7 @@ void ATestBatchOrchestrator::reset_for_new_level() {
         simulation_tick_settings.time_scale = level_simulation_->get_clock().get_time_scale();
     }
 
-    release_level(ioj::sim::LevelTelemetryRunEndReason::OrchestratorReset);
+    release_level(ioj::sim::telemetry::RunEndReason::OrchestratorReset);
     launch_options_ = {};
     ioj::reset_level_world(*world,
                            *this,

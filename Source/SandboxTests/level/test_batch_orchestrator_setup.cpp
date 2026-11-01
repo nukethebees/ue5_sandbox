@@ -81,7 +81,7 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
             return;
         }
         FTestBatchOrchestratorTestAccess::set_telemetry_metadata(
-            orchestrator, sim::LevelTelemetryRunMetadata{.run_id = "frame-ordering"});
+            orchestrator, sim::telemetry::RunMetadata{.run_id = "frame-ordering"});
         struct FFrameObservation {
             uint64 completed_ticks{};
             uint64 presented_tick{};
@@ -110,8 +110,8 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
                          TEXT("Paused frames freeze presentation"));
         orchestrator.start_simulation();
         advance_simulation(orchestrator, dt * 4.0, observe);
-        FTestBatchOrchestratorTestAccess::stop_run(
-            orchestrator, sim::LevelTelemetryRunEndReason::DurationReached);
+        FTestBatchOrchestratorTestAccess::stop_run(orchestrator,
+                                                   sim::telemetry::RunEndReason::DurationReached);
         checks.are_equal(
             uint32{2}, observations.num(), TEXT("Each catch-up frame produces one observation"));
         auto const sample_count{observations.num()};

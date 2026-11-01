@@ -4,9 +4,9 @@
 
 #include <string>
 
-namespace ioj::sim {
-struct LevelTelemetryRunCompletion {
-    LevelTelemetryRunEndReason reason{LevelTelemetryRunEndReason::WorldEnd};
+namespace ioj::sim::telemetry {
+struct RunCompletion {
+    RunEndReason reason{RunEndReason::WorldEnd};
     std::string completed_utc{};
     SimTick completed_ticks{};
 };
