@@ -26,7 +26,7 @@ class Mission {
                         SimClock const& clock) -> std::expected<Mission, std::vector<std::string>>;
 
     void reset_progress();
-    void tick(MissionEvaluationContext const& inputs);
+    void evaluate(MissionEvaluationContext const& inputs);
 
     /* **************************************** */
     // Inspection

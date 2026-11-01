@@ -338,12 +338,12 @@ void LevelSim::resolve_tick() {
     // Evaluate final health and deaths before invalidating row mappings.
     {
         FrameScratchScope scratch_scope{frame_memory};
-        mission_.tick({SimTick{clock_.completed_ticks.value() + 1},
-                       entity_ledger_,
-                       event_manager_.get_entity_ids(),
-                       &collision_pipeline_.queries(),
-                       &frame_memory,
-                       participating_teams_});
+        mission_.evaluate({SimTick{clock_.completed_ticks.value() + 1},
+                           entity_ledger_,
+                           event_manager_.get_entity_ids(),
+                           &collision_pipeline_.queries(),
+                           &frame_memory,
+                           participating_teams_});
     }
 
     {

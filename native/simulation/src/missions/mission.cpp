@@ -242,7 +242,7 @@ void Mission::reset_progress() {
 
     completions_.clear();
 }
-void Mission::tick(MissionEvaluationContext const& inputs) {
+void Mission::evaluate(MissionEvaluationContext const& inputs) {
     evaluate_leaves(inputs);
     evaluate_composites();
     evaluate_objectives(inputs);

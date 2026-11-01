@@ -57,7 +57,7 @@ struct MissionTest : ::testing::Test {
     }
     void tick(SimTick::value_type const tick) {
         FrameScratchScope scratch_scope{scratch};
-        mission.tick({SimTick{tick}, ledger, entities, nullptr, &scratch, teams});
+        mission.evaluate({SimTick{tick}, ledger, entities, nullptr, &scratch, teams});
     }
 };
 auto timer(double const seconds) -> MissionExpr {
