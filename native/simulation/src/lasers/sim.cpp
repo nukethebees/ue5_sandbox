@@ -54,16 +54,6 @@ void Sim::commit_spawns() {
     clear_spawn_buffers();
 }
 
-// ResolutionCommit
-void Sim::cleanup_entities() {
-    assert(simulation_clock.phase() == SimulationPhase::ResolutionCommit);
-    std::ranges::sort(pending_removals_, std::greater{});
-    auto const duplicate{std::ranges::unique(pending_removals_)};
-    pending_removals_.erase(duplicate.begin(), duplicate.end());
-    remove_instances(pending_removals_);
-    pending_removals_.clear();
-}
-
 // Action
 void Sim::simulate(ActionInputs const inputs) {
     auto* const scratch_resource{&inputs.scratch_resource};
@@ -77,6 +67,14 @@ void Sim::simulate(ActionInputs const inputs) {
 }
 
 // ResolutionCommit
+void Sim::cleanup_entities() {
+    assert(simulation_clock.phase() == SimulationPhase::ResolutionCommit);
+    std::ranges::sort(pending_removals_, std::greater{});
+    auto const duplicate{std::ranges::unique(pending_removals_)};
+    pending_removals_.erase(duplicate.begin(), duplicate.end());
+    remove_instances(pending_removals_);
+    pending_removals_.clear();
+}
 void Sim::finish_action() {
     SANDBOX_PROFILE_SCOPE("lasers::Sim::finish_action");
     profiling::plot("Sandbox/LaserCount", get_num_instances());

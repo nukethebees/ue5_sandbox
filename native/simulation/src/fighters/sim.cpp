@@ -114,11 +114,60 @@ Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_table
 /* **************************************** */
 // Sim phases
 /* **************************************** */
+// Preparation
+void Sim::commit_spawns() {
+    assert(is_preparation_mutation_allowed(entity_tables_.lookups.clock()));
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::commit_spawns");
+
+    auto const n_cur{get_num_instances()};
+    auto const n_new{spawn_queue.num()};
+
+    spawn_queue.get_const_view().validate();
+    if (n_new < 1) {
+        return;
+    }
+
+    entities_.add_defaulted(n_new);
+    auto const data{entities_.get_view()};
+    auto const new_data{data.get_view(n_cur, n_new)};
+    auto const spawns{spawn_queue.get_const_view()};
+    auto const navigation_period{get_navigation_tick_period(NavigationRiskTier::Nearby)};
+    copy_vectors(new_data.view_locations().resolve(), spawns.view_locations().resolve());
+    copy_vectors(new_data.view_desired_move_locations().resolve(),
+                 spawns.view_locations().resolve());
+    std::ranges::fill(new_data.speeds(), config.speed);
+    std::ranges::copy(spawns.teams(), new_data.teams().begin());
+    std::ranges::fill(new_data.navigation_risk_tiers(),
+                      NavigationRiskCode{
+                          static_cast<NavigationRiskCode::value_type>(NavigationRiskTier::Nearby)});
+    std::ranges::fill(new_data.avoidance_choice_indices(),
+                      AvoidanceChoice{AvoidanceChoice::DirectMovement});
+    std::ranges::fill(new_data.navigation_update_countdowns_periods(), navigation_period);
+
+    auto const aim_directions{new_data.view_aim_directions().resolve()};
+    auto const rotations{spawns.view_rotations().resolve()};
+    auto const pitches{rotations.pitches()};
+    auto const yaws{rotations.yaws()};
+    auto const rolls{rotations.rolls()};
+    for (std::uint32_t index{}; index < n_new; ++index) {
+        set_vector(aim_directions,
+                   index,
+                   forward_direction(Rotator3f{pitches[index], yaws[index], rolls[index]}));
+    }
+
+    auto const entity_ids{new_data.entity_ids()};
+    auto const teams{new_data.teams()};
+    ledger_.record_spawns(EntityType::Fighter, teams, config.health, entity_ids);
+    entity_tables_.health.initialise_entities<EntityType::Fighter>(entity_ids, config.health);
+    make_deterministic_biases(
+        std::span<EntityId const>{data.entity_ids()}.subspan(n_cur, n_new),
+        std::span<std::uint32_t>{data.integral_biases()}.subspan(n_cur, n_new),
+        std::span<float>{data.float_biases()}.subspan(n_cur, n_new));
+}
 void Sim::update_entity_lookup_table() {
     auto const rows{entities_.get_const_view()};
     entity_tables_.publish<EntityType::Fighter>(rows.entity_ids(), rows.teams(), config.health);
 }
-// Preparation
 void Sim::prepare_tick(float const dt) {
     movement_tick_period_ = dt;
     SANDBOX_PROFILE_SCOPE("fighters::Sim::prepare_tick");
@@ -143,6 +192,7 @@ void Sim::prepare_tick(float const dt) {
     tick_countdowns<std::int16_t>(data.attack_cooldowns(), attack_cleaner_, 16384);
     update_entity_lookup_table();
 }
+
 // Thinking
 void Sim::think(ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::think");
@@ -218,6 +268,11 @@ void Sim::plan_movement(ThinkingInputs const inputs) {
         target_distances[index] = std::sqrt(distance_sq);
     }
 }
+void Sim::generate_fire_commands(ThinkingInputs const inputs) {
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::generate_fire_commands");
+    handle_firing(entities_.get_view(), inputs);
+}
+
 // Action
 void Sim::apply_movement(ActionInputs const inputs) {
     auto* const scratch_resource{&inputs.scratch_resource};
@@ -279,11 +334,7 @@ void Sim::apply_movement(ActionInputs const inputs) {
     }
     pending_fire_indices_.clear();
 }
-// Thinking
-void Sim::generate_fire_commands(ThinkingInputs const inputs) {
-    SANDBOX_PROFILE_SCOPE("fighters::Sim::generate_fire_commands");
-    handle_firing(entities_.get_view(), inputs);
-}
+
 // Resolution
 void Sim::resolve_damage_events(ResolutionInputs const inputs) {
     auto* const scratch_resource{&inputs.scratch_resource};
@@ -303,8 +354,6 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
                                ledger_,
                                scratch_resource);
 }
-
-// Resolution
 void Sim::publish_deaths() {
     ledger_.record_deaths(entity_death_info.get_const_view(),
                           simulation_clock.get_completed_ticks());
@@ -317,7 +366,6 @@ void Sim::remove_components() {
 
     sort_and_deduplicate_removal_indices(local_indices_to_remove);
 }
-// ResolutionCommit
 void Sim::remove_entities() {
     assert(is_removal_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("fighters::Sim::remove_entities");
@@ -326,7 +374,6 @@ void Sim::remove_entities() {
     local_indices_to_remove.clear();
     entity_death_info.reset();
 }
-// ResolutionCommit
 void Sim::finish_action() {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::finish_action");
     profiling::plot("Sandbox/FighterCount", get_num_instances());
@@ -938,56 +985,6 @@ auto Sim::queue_spawns(FighterSpawnQueue::ConstView const new_spawns) -> std::ui
     auto const count{accept_spawn_count(new_spawns.teams())};
     spawn_queue.append_from(new_spawns, 0, count);
     return count;
-}
-// Preparation
-void Sim::commit_spawns() {
-    assert(is_preparation_mutation_allowed(entity_tables_.lookups.clock()));
-    SANDBOX_PROFILE_SCOPE("fighters::Sim::commit_spawns");
-
-    auto const n_cur{get_num_instances()};
-    auto const n_new{spawn_queue.num()};
-
-    spawn_queue.get_const_view().validate();
-    if (n_new < 1) {
-        return;
-    }
-
-    entities_.add_defaulted(n_new);
-    auto const data{entities_.get_view()};
-    auto const new_data{data.get_view(n_cur, n_new)};
-    auto const spawns{spawn_queue.get_const_view()};
-    auto const navigation_period{get_navigation_tick_period(NavigationRiskTier::Nearby)};
-    copy_vectors(new_data.view_locations().resolve(), spawns.view_locations().resolve());
-    copy_vectors(new_data.view_desired_move_locations().resolve(),
-                 spawns.view_locations().resolve());
-    std::ranges::fill(new_data.speeds(), config.speed);
-    std::ranges::copy(spawns.teams(), new_data.teams().begin());
-    std::ranges::fill(new_data.navigation_risk_tiers(),
-                      NavigationRiskCode{
-                          static_cast<NavigationRiskCode::value_type>(NavigationRiskTier::Nearby)});
-    std::ranges::fill(new_data.avoidance_choice_indices(),
-                      AvoidanceChoice{AvoidanceChoice::DirectMovement});
-    std::ranges::fill(new_data.navigation_update_countdowns_periods(), navigation_period);
-
-    auto const aim_directions{new_data.view_aim_directions().resolve()};
-    auto const rotations{spawns.view_rotations().resolve()};
-    auto const pitches{rotations.pitches()};
-    auto const yaws{rotations.yaws()};
-    auto const rolls{rotations.rolls()};
-    for (std::uint32_t index{}; index < n_new; ++index) {
-        set_vector(aim_directions,
-                   index,
-                   forward_direction(Rotator3f{pitches[index], yaws[index], rolls[index]}));
-    }
-
-    auto const entity_ids{new_data.entity_ids()};
-    auto const teams{new_data.teams()};
-    ledger_.record_spawns(EntityType::Fighter, teams, config.health, entity_ids);
-    entity_tables_.health.initialise_entities<EntityType::Fighter>(entity_ids, config.health);
-    make_deterministic_biases(
-        std::span<EntityId const>{data.entity_ids()}.subspan(n_cur, n_new),
-        std::span<std::uint32_t>{data.integral_biases()}.subspan(n_cur, n_new),
-        std::span<float>{data.float_biases()}.subspan(n_cur, n_new));
 }
 
 /* **************************************** */

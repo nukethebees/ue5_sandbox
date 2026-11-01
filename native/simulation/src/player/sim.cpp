@@ -99,10 +99,10 @@ Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_table
 /* **************************************** */
 // Tick phases
 /* **************************************** */
+// Preparation
 void Sim::update_entity_lookup_table() {
     entity_tables_.publish<EntityType::PlayerShip>({&unique_entity_id, 1}, {&team, 1}, max_health_);
 }
-// Preparation
 void Sim::prepare_tick(float const dt) {
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::prepare_tick");
 
@@ -131,6 +131,10 @@ void Sim::think(float const dt) {
     update_body_orientation(dt, state);
     integrate_flight_model(dt, get_active_flight_model_config(), flight_intent_, state);
 }
+void Sim::generate_fire_commands() {
+    SANDBOX_PROFILE_SCOPE("PlayerShipSim::generate_fire_commands");
+    update_laser_firing();
+}
 
 // Action
 void Sim::apply_movement(ActionInputs const inputs) {
@@ -139,12 +143,6 @@ void Sim::apply_movement(ActionInputs const inputs) {
     if (std::exchange(fire_requested_, false)) {
         materialize_fire_command(inputs);
     }
-}
-
-// Thinking
-void Sim::generate_fire_commands() {
-    SANDBOX_PROFILE_SCOPE("PlayerShipSim::generate_fire_commands");
-    update_laser_firing();
 }
 
 // Resolution

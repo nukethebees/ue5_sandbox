@@ -42,23 +42,30 @@ Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_table
 /* **************************************** */
 // Sim phases
 /* **************************************** */
+// Preparation
 void Sim::update_entity_lookup_table() {
     entity_tables_.publish<EntityType::TubeSpinner>(
         entities.get_const_view().entity_ids(), {}, Health{1});
 }
-// Preparation
 void Sim::prepare_tick(float const) {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::prepare_tick");
 
     tick_countdowns<std::int16_t>(entities.get_view().laser_cooldowns(), cooldown_cleaner_, 16384);
     update_entity_lookup_table();
 }
+
 // Thinking
 void Sim::think(float const dt) {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::think");
 
     planned_yaw_delta_ = dt * config.yaw_rotation_speed_degrees;
 }
+void Sim::generate_fire_commands() {
+    SANDBOX_PROFILE_SCOPE("spinners::Sim::generate_fire_commands");
+
+    fire_lasers();
+}
+
 // Action
 void Sim::apply_movement(ActionInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::apply_movement");
@@ -67,12 +74,7 @@ void Sim::apply_movement(ActionInputs const inputs) {
     }
     materialize_fire_commands(inputs);
 }
-// Thinking
-void Sim::generate_fire_commands() {
-    SANDBOX_PROFILE_SCOPE("spinners::Sim::generate_fire_commands");
 
-    fire_lasers();
-}
 // ResolutionCommit
 void Sim::finish_action() {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::finish_action");
