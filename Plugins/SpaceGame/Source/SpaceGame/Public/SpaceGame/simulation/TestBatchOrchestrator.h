@@ -75,8 +75,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     // Simulation state and timing
     /* **************************************** */
-    auto duration_to_tick_period(ioj::Duration duration) const noexcept -> tick_type;
-
     auto get_state() const noexcept -> ioj::sim::LevelState {
         return level_simulation_.IsSet() ? level_simulation_->get_state()
                                          : ioj::sim::LevelState::Uninitialised;
@@ -89,14 +87,16 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     }
     auto get_benchmark_ticks_remaining() const noexcept -> TOptional<tick_type> {
         if (launch_options_.control_context != ::ioj::levels::ControlContext::Benchmark ||
-            !launch_options_.simulated_duration_seconds.has_value()) {
+            !launch_options_.simulated_duration_seconds.has_value() || !level_simulation_.IsSet()) {
             return NullOpt;
         }
-        auto const end_tick{duration_to_tick_period(
-            ioj::Duration::make(launch_options_.simulated_duration_seconds.value()))};
-        auto const completed_ticks{
-            level_simulation_.IsSet() ? level_simulation_->get_clock().get_completed_ticks().value()
-                                      : 0};
+
+        auto const& clk{level_simulation_->get_clock()};
+        auto const end_tick{
+            clk.duration_to_tick_period(
+                   ioj::Duration::make(launch_options_.simulated_duration_seconds.value()))
+                .get()};
+        auto const completed_ticks{clk.get_completed_ticks().value()};
         return completed_ticks >= end_tick ? 0 : end_tick - completed_ticks;
     }
 

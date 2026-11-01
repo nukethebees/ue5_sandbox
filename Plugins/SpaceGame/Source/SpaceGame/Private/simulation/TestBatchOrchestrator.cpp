@@ -493,13 +493,6 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
     ioj::persist_finalized_level_telemetry_run(
         *level_simulation_, launch_options_, presentation_enabled, GetGameInstance());
 }
-auto ATestBatchOrchestrator::duration_to_tick_period(ioj::Duration const duration) const noexcept
-    -> tick_type {
-    auto const tick_rate{level_simulation_.IsSet() ? level_simulation_->get_clock().get_tick_rate()
-                                                   : simulation_tick_settings.tick_rate};
-    return ioj::sim::duration_to_tick_period(tick_rate, duration);
-}
-
 /* **************************************** */
 // Editor commands
 /* **************************************** */
