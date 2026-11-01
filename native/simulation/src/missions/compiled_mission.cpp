@@ -33,7 +33,7 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
     std::vector<std::vector<std::uint32_t>> composite_parents;
     std::vector<std::vector<std::uint32_t>> leaf_parents;
     std::vector<std::vector<ActivationNotification>> dependents(count);
-    std::vector<std::vector<std::uint32_t>> observers(count);
+    std::vector<std::vector<ExprLeafIndex>> observers(count);
     std::vector<std::vector<TeamResultIndex>> mappings(count);
     auto size = [](auto const& values) { return static_cast<std::uint32_t>(values.size()); };
 
@@ -64,7 +64,7 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
                 composite_parents.emplace_back();
                 continue;
             }
-            auto const leaf{size(leaves.results)};
+            ExprLeafIndex const leaf{size(leaves.results)};
             references.emplace_back(leaf, true);
             leaves.results.push_back(ExprResult::Pending);
             leaves.owners.push_back(owner);

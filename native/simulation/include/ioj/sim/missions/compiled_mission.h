@@ -2,6 +2,7 @@
 
 #include <ioj/levels/mission_definition.h>
 #include <ioj/sim/missions/activation_notification.h>
+#include <ioj/sim/missions/expr_leaf_index.h>
 #include <ioj/sim/missions/expr_leaves.h>
 #include <ioj/sim/missions/expr_operators.h>
 #include <ioj/sim/missions/mission_rules.h>
@@ -29,7 +30,7 @@ struct CompiledMission {
     std::vector<std::uint32_t> parents{};
 
     std::vector<ActivationNotification> dependents{};
-    std::vector<std::uint32_t> observers{};
+    std::vector<ExprLeafIndex> observers{};
 
     std::vector<MissionTeamResult> team_results{};
     std::vector<TeamResultIndex> result_indices{};

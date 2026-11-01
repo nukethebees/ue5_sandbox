@@ -125,7 +125,7 @@ void Mission::activate(ObjectiveId const id, SimTick const tick) {
     auto const leaves{data_.objectives.leaves(id)};
     auto const leaves_end{leaves.end()};
 
-    for (auto leaf{leaves.start()}; leaf < leaves_end; ++leaf) {
+    for (ExprLeafIndex leaf{leaves.start()}; leaf < leaves_end; ++leaf) {
         auto const rule{data_.leaves.rules[leaf]};
         active_rules_.push_back(rule);
         newly_active_.push_back(rule);
@@ -241,7 +241,7 @@ void Mission::propagate() {
 /* **************************************** */
 // Rule evaluation
 /* **************************************** */
-auto Mission::rule_leaf(RuleId const rule) const -> std::uint32_t {
+auto Mission::rule_leaf(RuleId const rule) const -> ExprLeafIndex {
     return data_.rules.leaves[rule.type()][rule.index()];
 }
 auto Mission::pending_rule(RuleId const rule) const -> bool {

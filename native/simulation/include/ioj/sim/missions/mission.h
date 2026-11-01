@@ -51,7 +51,7 @@ class Mission {
     /* **************************************** */
     // Rule evaluation
     /* **************************************** */
-    auto rule_leaf(RuleId rule) const -> std::uint32_t;
+    auto rule_leaf(RuleId rule) const -> ExprLeafIndex;
     auto pending_rule(RuleId rule) const -> bool;
     void evaluate(std::span<RuleId const> scheduled,
                   MissionEvaluationContext const& inputs,
@@ -73,12 +73,12 @@ class Mission {
     void settle(MissionEvaluationContext const& inputs);
 
     CompiledMission data_;
-    
+
     // Objective state
     std::vector<ObjectiveId> inactive_;
     std::vector<ObjectiveId> active_;
     std::vector<ObjectiveId> completed_;
-    
+
     // Rules
     std::vector<RuleId> active_rules_;
     std::vector<RuleId> newly_active_;
