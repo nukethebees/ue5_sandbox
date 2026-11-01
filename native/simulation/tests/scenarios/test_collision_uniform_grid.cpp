@@ -319,7 +319,7 @@ TEST(WorldlessSpaceGameSimulation, CollisionUniformGridContainsAllEntityTypes) {
 
     auto& simulation{harness.get_simulation()};
     auto const* const player{simulation.get_player_ship_simulation()};
-    auto const fighter_ids{simulation.get_fighters().get_entity_ids()};
+    auto const fighter_ids{simulation.get_fighters().get_entities().entity_ids()};
     ASSERT_NE(player, nullptr) << "Collision-grid player ship is available";
     ASSERT_FALSE(fighter_ids.empty()) << "Collision-grid fighter is placed";
 

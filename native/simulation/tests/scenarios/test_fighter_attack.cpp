@@ -56,7 +56,7 @@ TEST(WorldlessSpaceGameSimulation, FightersObstacleAvoidance) {
     float maximum_x{-std::numeric_limits<float>::infinity()};
 
     harness.on_end_tick = [&](LevelSim&) {
-        auto const locations{fighters.get_locations()};
+        auto const locations{fighters.get_entities().view_locations()};
         if (locations.num() == 0) {
             return;
         }
@@ -142,7 +142,7 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationCapitalObstruction) {
     float maximum_lateral_distance{};
     float maximum_x{-std::numeric_limits<float>::max()};
     harness.on_end_tick = [&](LevelSim&) {
-        auto const locations{fighters.get_locations()};
+        auto const locations{fighters.get_entities().view_locations()};
         if (locations.num() == 0) {
             return;
         }
@@ -182,7 +182,7 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationClearPath) {
     bool saw_separation{};
     bool saw_avoidance{};
     harness.on_end_tick = [&](LevelSim&) {
-        auto const locations{fighters.get_locations()};
+        auto const locations{fighters.get_entities().view_locations()};
         if (locations.num() == 0) {
             return;
         }
@@ -226,7 +226,7 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationSeparation) {
     float final_distance{};
     bool saw_separation{};
     harness.on_end_tick = [&](LevelSim&) {
-        auto const locations{fighters.get_locations()};
+        auto const locations{fighters.get_entities().view_locations()};
         if (locations.num() != 2) {
             return;
         }
@@ -332,7 +332,7 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
     EXPECT_EQ(harness.get_ledger().get_issued_counts()[EntityType::Fighter],
               static_cast<std::uint32_t>(fighter_count))
         << "Dense fixture spawns exactly one fighter wave";
-    result.locations = tests::copy_vectors(fighters.get_locations());
+    result.locations = tests::copy_vectors(fighters.get_entities().view_locations());
     return result;
 }
 
@@ -419,7 +419,7 @@ TEST(WorldlessSpaceGameSimulation, FightersNavigationHardAvoidanceAuthority) {
     bool previously_avoiding{};
     float maximum_x{-std::numeric_limits<float>::max()};
     harness.on_end_tick = [&](LevelSim&) {
-        auto const locations{fighters.get_locations()};
+        auto const locations{fighters.get_entities().view_locations()};
         auto const location_count{locations.num()};
         for (std::uint32_t i{}; i < location_count; ++i) {
             auto const location{vector_at(locations, i)};
@@ -491,7 +491,7 @@ TEST(WorldlessSpaceGameSimulation, FightersAttackCapital) {
         if (!observed_spawn && harness.get_time() >= 1.0) {
             observed_spawn = true;
             initial_health = capitals.get_health(enemy).value();
-            auto const teams{fighters.get_teams()};
+            auto const teams{fighters.get_entities().teams()};
             EXPECT_FALSE(teams.empty()) << "Hero fighters spawned";
             for (auto const team : teams) {
                 EXPECT_EQ(team, Team::Green) << "Fighter is on the hero team";

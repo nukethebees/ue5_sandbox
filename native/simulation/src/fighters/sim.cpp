@@ -18,6 +18,7 @@
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/phase_checks.h>
 #include <ioj/sim/profiling.h>
+#include <ioj/sim/sim_clock.h>
 #include <ioj/tick_countdown.h>
 #include <ioj/vector_math.h>
 #include <ioj/vector_normalization.h>
@@ -51,7 +52,7 @@ auto Sim::get_navigation_tick_period(NavigationRiskTier const tier) const -> std
 // Level initialisation
 void Sim::initialise(FighterSimConfig const& new_config, FighterLevelData const level_data) {
     config = new_config;
-    collision_radius_ = level_data.collision_radius;
+    auto const& clock{level_data.clock};
 
     for (auto& is_participant : participant_mask) {
         is_participant = 0;
@@ -92,30 +93,27 @@ void Sim::initialise(FighterSimConfig const& new_config, FighterLevelData const 
     };
     auto const frequency_count{frequencies.size()};
     for (std::uint32_t i{}; static_cast<std::size_t>(i) < frequency_count; ++i) {
-        navigation_tick_periods[i] = simulation_clock.frequency_to_tick_period<std::int16_t>(
-            Frequency::make(frequencies[i]));
+        navigation_tick_periods[i] =
+            clock.frequency_to_tick_period<std::int16_t>(Frequency::make(frequencies[i]));
     }
-    auto const clear_update_interval{
-        static_cast<float>(get_navigation_tick_period(NavigationRiskTier::Clear) *
-                           simulation_clock.get_tick_period())};
+    auto const clear_update_interval{static_cast<float>(
+        get_navigation_tick_period(NavigationRiskTier::Clear) * clock.get_tick_period())};
     minimum_navigation_lookahead_time = clear_update_interval * 1.25f;
 
-    attack_restart_ticks_ = simulation_clock.duration_to_tick_period<std::int16_t>(
-        Duration::make(config.laser.fire_cooldown));
+    attack_restart_ticks_ =
+        clock.duration_to_tick_period<std::int16_t>(Duration::make(config.laser.fire_cooldown));
 
-    attack_retry_cooldown_tick_value = simulation_clock.duration_to_tick_period<std::int16_t>(
-        Duration::make(config.attack_retry_cooldown));
+    attack_retry_cooldown_tick_value =
+        clock.duration_to_tick_period<std::int16_t>(Duration::make(config.attack_retry_cooldown));
 }
-Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_tables) noexcept
-    : simulation_clock{clock}
-    , ledger_{ledger}
-    , entity_tables_{entity_tables} {}
+Sim::Sim(EntityTables& entity_tables) noexcept
+    : entity_tables_{entity_tables} {}
 
 /* **************************************** */
 // Sim phases
 /* **************************************** */
 // Preparation
-void Sim::commit_spawns() {
+void Sim::commit_spawns(PreparationInputs const inputs) {
     assert(is_preparation_mutation_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("fighters::Sim::commit_spawns");
 
@@ -157,7 +155,7 @@ void Sim::commit_spawns() {
 
     auto const entity_ids{new_data.entity_ids()};
     auto const teams{new_data.teams()};
-    ledger_.record_spawns(EntityType::Fighter, teams, config.health, entity_ids);
+    inputs.ledger.record_spawns(EntityType::Fighter, teams, config.health, entity_ids);
     entity_tables_.health.initialise_entities<EntityType::Fighter>(entity_ids, config.health);
     make_deterministic_biases(
         std::span<EntityId const>{data.entity_ids()}.subspan(n_cur, n_new),
@@ -168,8 +166,7 @@ void Sim::update_entity_lookup_table() {
     auto const rows{entities_.get_const_view()};
     entity_tables_.publish<EntityType::Fighter>(rows.entity_ids(), rows.teams(), config.health);
 }
-void Sim::prepare_tick(float const dt) {
-    movement_tick_period_ = dt;
+void Sim::prepare_tick() {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::prepare_tick");
 
     auto const data{entities_.get_view()};
@@ -233,7 +230,7 @@ void Sim::plan_movement(ThinkingInputs const inputs) {
         target_velocities,
         config.laser.projectile_speed);
 
-    auto const dt{inputs.dt};
+    auto const dt{static_cast<float>(inputs.clock.get_tick_period())};
     auto const turn_fraction{std::min(1.f, config.turn_speed_unitless * dt)};
     auto const target_ids{data.target_ids()};
     auto const choices{data.avoidance_choice_indices()};
@@ -301,7 +298,7 @@ void Sim::apply_movement(ActionInputs const inputs) {
     data.view_velocities().resolve().each_column(
         [](auto column) { std::ranges::fill(column, 0.f); });
     copy_vectors(aim_directions, planned_directions.get_const_view());
-    move(movement_tick_period_, data, scratch_resource);
+    move(inputs.dt, data, scratch_resource);
     std::ranges::sort(overlap_candidates_);
     auto const duplicates{std::ranges::unique(overlap_candidates_)};
     overlap_candidates_.erase(duplicates.begin(), duplicates.end());
@@ -351,12 +348,11 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
                                healths,
                                local_indices_to_remove,
                                entity_death_info,
-                               ledger_,
+                               inputs.ledger,
                                scratch_resource);
 }
-void Sim::publish_deaths() {
-    ledger_.record_deaths(entity_death_info.get_const_view(),
-                          simulation_clock.get_completed_ticks());
+void Sim::publish_deaths(ResolutionInputs const inputs) {
+    inputs.ledger.record_deaths(entity_death_info.get_const_view(), inputs.tick);
 }
 
 // ResolutionCommit
@@ -433,13 +429,12 @@ void Sim::update_navigation_steering(ThinkingInputs const inputs) {
 
     SANDBOX_PROFILE_SCOPE("fighters::Sim::update_navigation_steering");
 
-    auto const clearance{collision_radius_ + config.avoidance_clearance_buffer};
-    auto const minimum_lookahead_distance{collision_radius_ * 2.f};
+    auto const clearance{inputs.collision_radius + config.avoidance_clearance_buffer};
+    auto const minimum_lookahead_distance{inputs.collision_radius * 2.f};
     auto const avoidance_lookahead_time{
         std::max(config.avoidance_lookahead_time.get(), minimum_navigation_lookahead_time)};
-    auto const active_update_interval{
-        static_cast<float>(get_navigation_tick_period(NavigationRiskTier::Active) *
-                           simulation_clock.get_tick_period())};
+    auto const active_update_interval{static_cast<float>(
+        get_navigation_tick_period(NavigationRiskTier::Active) * inputs.clock.get_tick_period())};
     auto const safe_progress_time{active_update_interval * 1.25f};
     navigation_telemetry = {};
     NavigationScratch scratch{scratch_resource};
@@ -496,7 +491,7 @@ void Sim::update_separation_observations(NavigationScratch& scratch, ThinkingInp
     std::array<EntityInstanceHandle, max_separation_neighbours> nearby_handles;
     auto const& fighter_lookup{entity_tables_.lookups.for_type(EntityType::Fighter)};
     auto const separation_radius{config.separation_radius};
-    auto const immediate_distance{collision_radius_ * 2.f};
+    auto const immediate_distance{inputs.collision_radius * 2.f};
     auto const close_distance{std::max(separation_radius * 0.5f, immediate_distance)};
     auto const immediate_distance_sq{immediate_distance * immediate_distance};
     auto const close_distance_sq{close_distance * close_distance};
@@ -549,7 +544,7 @@ void Sim::update_separation_observations(NavigationScratch& scratch, ThinkingInp
         auto const previous_memory{vector_at(separation_steering, fighter_index)};
         auto const current_tier{static_cast<NavigationRiskTier>(risk_tiers[fighter_index].value())};
         auto const elapsed_since_scan{static_cast<float>(get_navigation_tick_period(current_tier)) *
-                                      simulation_clock.get_tick_period()};
+                                      inputs.clock.get_tick_period()};
         auto const memory_retention{
             config.steering_memory_duration > 0.f
                 ? static_cast<float>(std::clamp(
@@ -886,35 +881,6 @@ void Sim::publish_navigation_telemetry() const {
 /* **************************************** */
 auto Sim::get_num_instances() const noexcept -> std::uint32_t {
     return entities_.num();
-}
-auto Sim::get_view(std::uint32_t const offset, std::uint32_t const width) -> EntityStorage::View {
-    return entities_.get_view(offset, width);
-}
-auto Sim::get_const_view(std::uint32_t const offset, std::uint32_t const width) const
-    -> EntityStorage::ConstView {
-    return entities_.get_const_view(offset, width);
-}
-auto Sim::has_id(EntityId const fighter) const -> bool {
-    return find_index(fighter) != get_num_instances();
-}
-auto Sim::get_target_ids() const noexcept -> std::span<EntityId const> {
-    return entities_.get_const_view().target_ids();
-}
-auto Sim::get_target_id(EntityId const fighter) const noexcept -> EntityId {
-    return entities_.get_const_view().target_ids()[find_index(fighter)];
-}
-auto Sim::get_target_location(EntityId const fighter) const -> Vector3f {
-    return vector_at(entities_.get_const_view().view_target_locations().resolve(),
-                     find_index(fighter));
-}
-auto Sim::get_teams() const -> std::span<Team const> {
-    return entities_.get_const_view().teams();
-}
-auto Sim::find_index(EntityId const fighter) const noexcept -> std::uint32_t {
-    auto const ids{entities_.get_const_view().entity_ids()};
-    auto const found{std::ranges::find(ids, fighter)};
-    return found == ids.end() ? get_num_instances()
-                              : static_cast<EntityFrameIndex::value_type>(found - ids.begin());
 }
 
 /* **************************************** */

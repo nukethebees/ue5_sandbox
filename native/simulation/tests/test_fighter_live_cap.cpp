@@ -54,7 +54,7 @@ void start_and_tick(LevelSim& simulation) {
 
 auto count_team(LevelSim const& simulation, Team const team) -> std::int32_t {
     std::int32_t count{};
-    for (auto const fighter_team : simulation.get_fighters().get_teams()) {
+    for (auto const fighter_team : simulation.get_fighters().get_entities().teams()) {
         count += fighter_team == team ? 1 : 0;
     }
     return count;

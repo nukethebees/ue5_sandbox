@@ -41,8 +41,9 @@ TEST(WorldlessSpaceGameSimulation, PlayerShipVersusCapital) {
         Sample sample{.player_location = player->get_physical_state().transform.location,
                       .accessor_location =
                           Vector3d{observe_entity(harness.get_simulation(), player_id)->location}};
-        sample.fighter_target_locations = tests::copy_vectors(fighters.get_target_locations());
-        sample.fighter_locations = tests::copy_vectors(fighters.get_locations());
+        sample.fighter_target_locations =
+            tests::copy_vectors(fighters.get_entities().view_target_locations());
+        sample.fighter_locations = tests::copy_vectors(fighters.get_entities().view_locations());
         samples.add(harness.get_time(), std::move(sample));
     };
     harness.timeline.finish_at(5.6);

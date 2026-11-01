@@ -22,7 +22,7 @@ LevelSim::LevelSim(GameMemory& game_memory, LevelSimInitData data)
     : memory_manager_{game_memory, data.frame_memory_capacity_bytes}
     , collision_pipeline_{entity_tables_, std::move(data.collision), &game_memory.memory_resource()}
     , lasers_simulation_{clock_, combat_events_}
-    , fighters_simulation_{clock_, entity_ledger_, entity_tables_}
+    , fighters_simulation_{entity_tables_}
     , capital_ships_simulation_{entity_ledger_, entity_tables_}
     , turrets_simulation_{clock_, entity_ledger_, entity_tables_}
     , spinners_simulation_{clock_, entity_ledger_, entity_tables_}
@@ -52,7 +52,7 @@ void LevelSim::finish_initialisation() {
         player_ship_simulation_->update_entity_lookup_table();
     }
     capital_ships_simulation_.update_entity_lookup_table();
-    fighters_simulation_.update_entity_lookup_table();
+    fighters::PhaseInterface{fighters_simulation_}.update_entity_lookup_table();
     turrets_simulation_.update_entity_lookup_table();
     spinners_simulation_.update_entity_lookup_table();
     refresh_spatial_index();
@@ -92,10 +92,7 @@ void LevelSim::initialise_subsystems(LevelSimInitData const& data) {
                                                    : std::nullopt};
     participating_teams_ = event_manager_.get_participating_teams(player_team);
     fighters::PhaseInterface{fighters_simulation_}.initialise(
-        data.fighters,
-        {.participating_teams = participating_teams_,
-         .collision_radius = PositiveFinite<float>::make(
-             collision_pipeline_.queries().get_entity_type_radius(EntityType::Fighter))});
+        data.fighters, {.participating_teams = participating_teams_, .clock = clock_});
     turrets::PhaseInterface{turrets_simulation_}.initialise(data.turrets);
     spinners::PhaseInterface{spinners_simulation_}.initialise(data.spinners);
     lasers::PhaseInterface{lasers_simulation_}.initialise(data.lasers);
@@ -201,7 +198,7 @@ void LevelSim::prepare_tick(float const tick_period) {
     auto const previous_issued_counts{entity_ledger_.get_issued_counts()};
     event_manager_.execute_tick(SimTick{clock_.completed_ticks.value() + 1});
 
-    fighters_phase.commit_spawns();
+    fighters_phase.commit_spawns({.ledger = entity_ledger_});
 
     lasers_phase.commit_spawns();
 
@@ -218,7 +215,7 @@ void LevelSim::prepare_tick(float const tick_period) {
         player_ship_simulation_->update_entity_lookup_table();
     }
     capital_ships_phase.prepare_tick();
-    fighters_phase.prepare_tick(tick_period);
+    fighters_phase.prepare_tick();
     turrets_phase.prepare_tick(tick_period);
     spinners_phase.prepare_tick(tick_period);
 
@@ -243,7 +240,11 @@ void LevelSim::think_tick(float const tick_period) {
     turrets::ThinkingInputs const turret_inputs{
         collision_pipeline_.queries(), lasers_simulation_, frame_memory};
     fighters::ThinkingInputs const fighter_inputs{
-        tick_period, collision_pipeline_.queries(), frame_memory};
+        .clock = clock_,
+        .collision_radius =
+            collision_pipeline_.queries().get_entity_type_radius(EntityType::Fighter),
+        .spatial_query_manager = collision_pipeline_.queries(),
+        .scratch_resource = frame_memory};
 
     turrets_phase.think(turret_inputs);
     fighters_phase.think(fighter_inputs);
@@ -287,7 +288,7 @@ void LevelSim::act_tick(float const tick_period) {
 
     {
         FrameScratchScope scratch_scope{frame_memory};
-        fighters::ActionInputs const fighter_inputs{lasers_simulation_, frame_memory};
+        fighters::ActionInputs const fighter_inputs{tick_period, lasers_simulation_, frame_memory};
         spinners::ActionInputs const spinner_inputs{lasers_simulation_};
         fighters_phase.apply_movement(fighter_inputs);
         spinners_phase.apply_movement(spinner_inputs);
@@ -316,7 +317,10 @@ void LevelSim::resolve_tick() {
         combat_events_.prepare(entity_tables_.lookups, &frame_memory);
 
         capital_ships::ResolutionInputs const capital_inputs{combat_events_, clock_, frame_memory};
-        fighters::ResolutionInputs const fighter_inputs{combat_events_, frame_memory};
+        fighters::ResolutionInputs const fighter_inputs{.combat_events = combat_events_,
+                                                        .ledger = entity_ledger_,
+                                                        .tick = clock_.get_completed_ticks(),
+                                                        .scratch_resource = frame_memory};
         turrets::ResolutionInputs const turret_inputs{combat_events_, frame_memory};
 
         if constexpr (PlayerState == TickPlayerShipState::PresentAlive) {
@@ -330,7 +334,7 @@ void LevelSim::resolve_tick() {
         {
             SANDBOX_PROFILE_SCOPE("LevelSim::advance::publish_entity_deaths");
             capital_ships_phase.publish_deaths(capital_inputs);
-            fighters_phase.publish_deaths();
+            fighters_phase.publish_deaths(fighter_inputs);
             turrets_phase.publish_deaths();
         }
     }

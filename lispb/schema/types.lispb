@@ -298,6 +298,10 @@
   :spelling "ResolutionInputs"
   :header "ioj/sim/turrets/phase_inputs.h")
 
+(type fighters_preparation_inputs
+  :spelling "PreparationInputs"
+  :header "ioj/sim/fighters/phase_inputs.h")
+
 (type fighters_thinking_inputs
   :spelling "ThinkingInputs"
   :header "ioj/sim/fighters/phase_inputs.h")

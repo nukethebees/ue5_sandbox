@@ -9,7 +9,6 @@
 #include <ioj/sim/fighters/fighter_sim_config.h>
 #include <ioj/sim/fighters/fighter_spawn_queue.h>
 #include <ioj/sim/fighters/phase_inputs.h>
-#include <ioj/sim/sim_clock.h>
 #include <ioj/sim/telemetry/navigation_telemetry.h>
 
 #include <array>
@@ -20,10 +19,7 @@
 #include <vector>
 
 namespace ioj::sim {
-class EntityLedger;
 struct LevelSim;
-struct LevelSimTestAccess;
-class LevelSpawnManager;
 }
 
 namespace ioj::sim::fighters {
@@ -31,48 +27,38 @@ class PhaseInterface;
 
 struct FighterLevelData {
     std::span<Team const> participating_teams;
-    PositiveFinite<float> collision_radius;
+    SimClock const& clock;
 };
 
 struct Sim {
     using EntityStorage = FighterEntityData;
 
-    Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_tables) noexcept;
+    explicit Sim(EntityTables& entity_tables) noexcept;
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
     auto operator=(Sim&&) -> Sim& = delete;
 
     /* **************************************** */
-    // Configuration
-    /* **************************************** */
-    auto get_entities() const -> EntityStorage::ConstView { return entities_.get_const_view(); }
-
-    /* **************************************** */
     // Accessors
     /* **************************************** */
+    auto get_entities() const -> EntityStorage::ConstView { return entities_.get_const_view(); }
     auto get_num_instances() const noexcept -> std::uint32_t;
     auto get_overlap_candidates() const noexcept -> std::span<EntityId const> {
         return overlap_candidates_;
     }
-    auto get_const_view(std::uint32_t offset, std::uint32_t width) const
-        -> EntityStorage::ConstView;
-    auto get_entity_ids() const -> std::span<EntityId const> {
-        return entities_.get_const_view().entity_ids();
-    }
     auto get_healths() const -> HealthConstView {
         return entity_tables_.health.get_const_view<EntityType::Fighter>();
     }
-    auto get_locations() const { return entities_.get_const_view().view_locations(); }
-    auto has_id(EntityId fighter) const -> bool;
-    auto get_target_ids() const noexcept -> std::span<EntityId const>;
-    auto get_target_id(EntityId fighter) const noexcept -> EntityId;
-    auto get_target_locations() const { return entities_.get_const_view().view_target_locations(); }
-    auto get_target_location(EntityId fighter) const -> Vector3f;
-    auto get_teams() const -> std::span<Team const>;
     auto get_navigation_telemetry() const noexcept -> NavigationTelemetrySnapshot const& {
         return navigation_telemetry;
     }
+
+    /* **************************************** */
+    // Spawning
+    /* **************************************** */
+    // Queue a single-team wave for the next Preparation, subject to the team's live cap.
+    auto queue_spawns(FighterSpawnQueue::ConstView new_spawns) -> std::uint32_t;
 
   private:
     using NavigationScratch = fighters::NavigationScratch;
@@ -93,22 +79,16 @@ struct Sim {
     /* **************************************** */
     void initialise(FighterSimConfig const& new_config, FighterLevelData level_data);
     void update_entity_lookup_table();
-    void prepare_tick(float dt);
+    void prepare_tick();
     void think(ThinkingInputs const inputs);
     void plan_movement(ThinkingInputs const inputs);
     void apply_movement(ActionInputs const inputs);
     void generate_fire_commands(ThinkingInputs const inputs);
     void resolve_damage_events(ResolutionInputs const inputs);
-    void publish_deaths();
+    void publish_deaths(ResolutionInputs inputs);
     void remove_components();
     void remove_entities();
     void finish_action();
-
-    /* **************************************** */
-    // Accessors
-    /* **************************************** */
-    auto get_view(std::uint32_t offset, std::uint32_t width) -> EntityStorage::View;
-    auto find_index(EntityId fighter) const noexcept -> std::uint32_t;
 
     /* **************************************** */
     // Movement
@@ -143,9 +123,8 @@ struct Sim {
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    auto queue_spawns(FighterSpawnQueue::ConstView new_spawns) -> std::uint32_t;
     auto accept_spawn_count(std::span<Team const> teams) -> std::uint32_t;
-    void commit_spawns();
+    void commit_spawns(PreparationInputs inputs);
 
     /* **************************************** */
     // Destruction
@@ -163,17 +142,11 @@ struct Sim {
     void clear_tick_buffers();
 
     friend class PhaseInterface;
-    friend struct sim::LevelSim;
-    friend class sim::LevelSpawnManager;
-    friend struct sim::LevelSimTestAccess;
 
-    float movement_tick_period_{};
     FighterSimConfig config{};
-    float collision_radius_{};
     std::array<std::uint8_t, enum_count<Team>()> participant_mask{};
     std::array<std::int32_t, enum_count<Team>()> remaining_team_capacity{};
     std::int32_t per_team_limit{};
-    SimClock const& simulation_clock;
     NonNegative<std::int16_t> attack_retry_cooldown_tick_value{};
     std::array<std::int16_t, enum_count<NavigationRiskTier>()> navigation_tick_periods{};
     float minimum_navigation_lookahead_time{};
@@ -182,7 +155,6 @@ struct Sim {
     std::int16_t attack_cleaner_{};
 
     EntityStorage entities_{};
-    EntityLedger& ledger_;
     EntityTables& entity_tables_;
 
     FighterSpawnQueue spawn_queue;

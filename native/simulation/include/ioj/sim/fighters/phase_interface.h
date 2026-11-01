@@ -17,7 +17,9 @@ class PhaseInterface {
         simulation.initialise(config, level_data);
     }
 
-    void prepare_tick(float const dt) { simulation.prepare_tick(dt); }
+    void update_entity_lookup_table() { simulation.update_entity_lookup_table(); }
+
+    void prepare_tick() { simulation.prepare_tick(); }
 
     void think(ThinkingInputs const inputs) { simulation.think(inputs); }
 
@@ -27,13 +29,13 @@ class PhaseInterface {
         simulation.generate_fire_commands(inputs);
     }
 
-    void commit_spawns() { simulation.commit_spawns(); }
+    void commit_spawns(PreparationInputs const inputs) { simulation.commit_spawns(inputs); }
 
     void resolve_damage_events(ResolutionInputs const inputs) {
         simulation.resolve_damage_events(inputs);
     }
 
-    void publish_deaths() { simulation.publish_deaths(); }
+    void publish_deaths(ResolutionInputs const inputs) { simulation.publish_deaths(inputs); }
 
     void remove_components() { simulation.remove_components(); }
 
