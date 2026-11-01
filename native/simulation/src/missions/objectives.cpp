@@ -32,6 +32,16 @@ void Objectives::complete(ObjectiveId const id) {
     at(membership_positions_, id) = static_cast<ObjectiveMembershipIndex>(completed_.size());
     completed_.push_back(id);
 }
+auto Objectives::dependents(ObjectiveId const id) const -> std::span<ActivationNotification const> {
+    auto const range{at(dependent_ranges_, id)};
+    return std::span<ActivationNotification const>{dependents_}.subspan(range.offset, range.count);
+}
+void Objectives::add_dependents(ObjectiveId const id,
+                                std::span<ActivationNotification const> const dependents) {
+    at(dependent_ranges_, id) = {static_cast<std::uint32_t>(dependents_.size()),
+                                 static_cast<std::uint32_t>(dependents.size())};
+    dependents_.insert(dependents_.end(), dependents.begin(), dependents.end());
+}
 void Objectives::remove_member(std::vector<ObjectiveId>& collection, ObjectiveId const id) {
     auto const position{at(membership_positions_, id)};
     assert(position < collection.size() && collection[position] == id);

@@ -4,6 +4,7 @@
 #include <ioj/levels/objective_wins_level.h>
 #include <ioj/levels/team.h>
 #include <ioj/sim/index_span.h>
+#include <ioj/sim/missions/activation_notification.h>
 #include <ioj/sim/missions/objective_id.h>
 #include <ioj/sim/missions/objective_membership_index.h>
 #include <ioj/sim/missions/objective_prerequisite_count.h>
@@ -41,7 +42,8 @@ class Objectives {
     auto remaining_prerequisites(ObjectiveId id) -> ObjectivePrerequisiteCount& {
         return at(remaining_prerequisites_, id);
     }
-    auto dependents(ObjectiveId id) -> IndexSpan& { return at(dependent_ranges_, id); }
+    auto dependents(ObjectiveId id) const -> std::span<ActivationNotification const>;
+    void add_dependents(ObjectiveId id, std::span<ActivationNotification const> dependents);
     auto wins_level(ObjectiveId id) -> ObjectiveWinsLevel& { return at(wins_level_, id); }
   private:
     void remove_member(std::vector<ObjectiveId>& collection, ObjectiveId id);
@@ -61,6 +63,7 @@ class Objectives {
     std::vector<IndexSpan> leaf_ranges_;
     std::vector<IndexSpan> composite_ranges_;
     std::vector<IndexSpan> dependent_ranges_;
+    std::vector<ActivationNotification> dependents_;
 
     // Mutable
     std::vector<ObjectivePrerequisiteCount> remaining_prerequisites_;

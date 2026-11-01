@@ -236,9 +236,7 @@ auto Mission::compile(levels::MissionDefinition const& definition,
 
     for (std::uint32_t row{}; row < count; ++row) {
         ObjectiveId const id{row};
-        result.objectives_.dependents(id) = {size(result.dependents_), size(dependents[row])};
-        result.dependents_.insert(
-            result.dependents_.end(), dependents[row].begin(), dependents[row].end());
+        result.objectives_.add_dependents(id, dependents[row]);
     }
 
     return result;
@@ -346,11 +344,7 @@ void Mission::deactivate_expressions(ObjectiveId const id) {
 void Mission::handle_completion(ObjectiveId const id,
                                 ObjectiveOutcome const outcome,
                                 SimTick const tick) {
-    auto const dependents{objectives_.dependents(id)};
-    auto const dependents_end{dependents.end()};
-
-    for (auto index{dependents.start()}; index < dependents_end; ++index) {
-        auto const dependency{dependents_[index]};
+    for (auto const dependency : objectives_.dependents(id)) {
         if (dependency.outcome == outcome) {
             auto& remaining{objectives_.remaining_prerequisites(dependency.dependent)};
             assert(remaining > 0);
