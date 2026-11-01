@@ -135,7 +135,7 @@ void Mission::activate(ObjectiveId const id, SimTick const tick) {
     auto const composites{data_.objectives.composites(id)};
     auto const composites_end{composites.end()};
 
-    for (auto node{composites.start()}; node < composites_end; ++node) {
+    for (ExprCompositeIndex node{composites.start()}; node < composites_end; ++node) {
         if (data_.composites.remaining[node] == 0) {
             resolve(ExprRef{node, false},
                     data_.composites.types[node] == ExprType::All ? ExprResult::True

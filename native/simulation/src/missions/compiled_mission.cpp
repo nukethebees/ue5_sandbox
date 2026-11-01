@@ -30,8 +30,8 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
     auto& composites{result.composites};
     auto& leaves{result.leaves};
     auto& rules{result.rules};
-    std::vector<std::vector<std::uint32_t>> composite_parents;
-    std::vector<std::vector<std::uint32_t>> leaf_parents;
+    std::vector<std::vector<ExprCompositeIndex>> composite_parents;
+    std::vector<std::vector<ExprCompositeIndex>> leaf_parents;
     std::vector<std::vector<ActivationNotification>> dependents(count);
     std::vector<std::vector<ExprLeafIndex>> observers(count);
     std::vector<std::vector<TeamResultIndex>> mappings(count);
@@ -55,7 +55,8 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
         references.reserve(source.expressions.size());
         for (auto const& expression : source.expressions) {
             if (expression.type() == ExprType::All || expression.type() == ExprType::Any) {
-                references.emplace_back(size(composites.results), false);
+                ExprCompositeIndex const composite{size(composites.results)};
+                references.emplace_back(composite, false);
                 composites.results.push_back(ExprResult::Pending);
                 composites.types.push_back(expression.type());
                 composites.owners.push_back(owner);
