@@ -132,7 +132,7 @@ set(telemetry_headers
   block_history_types.h
   current_state.h
   history_stats.h
-  manager.h
+  level_telemetry_manager.h
   navigation_telemetry.h
   run_data.h
   snapshot.h

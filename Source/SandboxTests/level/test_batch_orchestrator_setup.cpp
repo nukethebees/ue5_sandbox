@@ -1,5 +1,5 @@
 #include "test_batch_orchestrator_setup_scenario.h"
-#include <ioj/sim/telemetry/manager.h>
+#include <ioj/sim/telemetry/level_telemetry_manager.h>
 #include <SandboxTests/support/simulation_step.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/TestBatchOrchestratorTestAccess.h>

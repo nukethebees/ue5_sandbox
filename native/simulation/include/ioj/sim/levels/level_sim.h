@@ -23,7 +23,7 @@
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/spinners/sim.h>
 #include <ioj/sim/tasks/task_manager.h>
-#include <ioj/sim/telemetry/manager.h>
+#include <ioj/sim/telemetry/level_telemetry_manager.h>
 #include <ioj/sim/turrets/sim.h>
 
 #include <cstdint>

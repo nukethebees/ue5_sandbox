@@ -1,5 +1,4 @@
-#include "ioj/sim/telemetry/manager.h"
-
+#include "ioj/sim/telemetry/level_telemetry_manager.h"
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/sim_clock.h>
 
