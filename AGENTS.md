@@ -90,11 +90,14 @@ Unreal Engine 5.8 project.
 
 # Agent Behaviour
 
+* Avoid overly defensive programming. When you identify a possible risk, design gap, or suspected
+  mistake, explain it, suggest options, and ask the maintainer to decide how to handle it.
+  Do not assume the intended policy or add unrequested guards, fallbacks, or fixes.
 * Establish facts through targeted repository inspection. Do not guess; ask when unclear.
   Once context is sufficient, implement rather than continuing exploration.
 * Answer maintainer questions in the final response after completing the work item, where tool
   output cannot bury them. Use progress updates for work status.
-* Apply obvious improvements within the active scope and report them at the end.
+* Suggest improvements beyond the requested changes rather than implementing them without asking.
 * Keep README.md files concise and user-oriented. Put detailed usage in local READMEs or `docs/`,
   and architecture in local `ARCHITECTURE.md` files.
 * For temporary shared-resource contention outside jobs-board tickets, wait rather than retrying
