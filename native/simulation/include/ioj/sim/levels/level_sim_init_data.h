@@ -10,7 +10,7 @@
 #include <ioj/sim/fighters/fighter_sim_config.h>
 #include <ioj/sim/lasers/laser_sim_config.h>
 #include <ioj/sim/levels/compiled_level_events.h>
-#include <ioj/sim/missions/compiled_mission.h>
+#include <ioj/sim/missions/mission.h>
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/spinners/spinner_sim_config.h>
 #include <ioj/sim/telemetry/block_history_types.h>
@@ -32,7 +32,7 @@ struct LevelSimInitData {
 
     std::optional<player::PlayerSpawnData> player;
     CompiledLevelEvents level_events;
-    CompiledMission mission;
+    Mission mission;
     levels::LevelMetadata level_metadata;
 
     CollisionInitData collision;

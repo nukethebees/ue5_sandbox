@@ -3,7 +3,7 @@
 #include <ioj/column_math.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/levels/level_event_schedule.h>
-#include <ioj/sim/missions/compiled_mission.h>
+#include <ioj/sim/missions/mission.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/transform3d.h>
 
@@ -81,7 +81,7 @@ auto compile_level(LevelDefinition const& level,
         for (auto const& entity : definition.entities()) {
             entities.push_back(entity.id);
         }
-        auto mission{sim::CompiledMission::compile(*definition.mission(), entities, clock)};
+        auto mission{sim::Mission::compile(*definition.mission(), entities, clock)};
         if (!mission) {
             return std::unexpected{std::move(mission.error())};
         }

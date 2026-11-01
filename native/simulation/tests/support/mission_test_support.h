@@ -1,5 +1,5 @@
-#include <ioj/sim/missions/compiled_mission.h>
 #pragma once
+
 #include "simulation_test_support.h"
 #include <ioj/sim/missions/mission.h>
 
@@ -28,7 +28,7 @@ inline void install_mission(LevelSimInitData& data, levels::ObjectiveDefinition 
     }
     SimClock clock;
     clock.initialise(data.clock_settings);
-    auto compiled{CompiledMission::compile(definition, names, clock)};
+    auto compiled{Mission::compile(definition, names, clock)};
     ASSERT_TRUE(compiled.has_value());
     data.mission = std::move(*compiled);
 }

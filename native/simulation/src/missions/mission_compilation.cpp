@@ -1,6 +1,5 @@
-#include <ioj/sim/missions/compiled_mission.h>
-
 #include <ioj/levels/mission_validation.h>
+#include <ioj/sim/missions/mission.h>
 #include <ioj/sim/sim_clock.h>
 
 #include <limits>
@@ -8,7 +7,7 @@
 #include <utility>
 
 namespace ioj::sim {
-namespace compiled_mission_detail {
+namespace mission_compilation_detail {
 auto expression_order(std::span<levels::MissionExpr const> const expressions)
     -> std::vector<levels::ExprIndex> {
     auto const count{expressions.size()};
@@ -43,16 +42,16 @@ auto expression_order(std::span<levels::MissionExpr const> const expressions)
 }
 }
 
-auto CompiledMission::compile(levels::MissionDefinition const& definition,
-                              std::span<levels::EntityId const> const entities,
-                              SimClock const& clock)
-    -> std::expected<CompiledMission, std::vector<std::string>> {
+auto Mission::compile(levels::MissionDefinition const& definition,
+                      std::span<levels::EntityId const> const entities,
+                      SimClock const& clock) -> std::expected<Mission, std::vector<std::string>> {
     auto errors{levels::validate_mission(definition, entities)};
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }
     auto const count{definition.objectives.size()};
-    CompiledMission result{.objectives = Objectives{count}};
+    Mission result;
+    result.objectives_ = Objectives{count};
     std::unordered_map<levels::ObjectiveName, ObjectiveId> objectives;
     std::unordered_map<levels::EntityId, std::uint32_t> entity_indices;
     auto const entity_count{entities.size()};
@@ -62,28 +61,28 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
     for (std::uint32_t index{}; index < count; ++index) {
         objectives.emplace(definition.objectives[index].id, ObjectiveId{index});
     }
-    auto& composites{result.composites};
-    auto& leaves{result.leaves};
+    auto& composites{result.composites_};
+    auto& leaves{result.leaves_};
     std::vector<std::vector<ActivationNotification>> dependents(count);
     auto size = [](auto const& values) { return static_cast<std::uint32_t>(values.size()); };
 
     for (std::uint32_t row{}; row < count; ++row) {
         ObjectiveId const owner{row};
         auto const& source{definition.objectives[row]};
-        result.objectives.name(owner) = source.id;
-        result.objectives.title(owner) = source.title.empty() ? source.id.value : source.title;
-        result.objectives.team(owner) = source.team;
-        result.objectives.wins_level(owner) = source.wins_level;
-        result.objectives.prerequisites(owner) =
+        result.objectives_.name(owner) = source.id;
+        result.objectives_.title(owner) = source.title.empty() ? source.id.value : source.title;
+        result.objectives_.team(owner) = source.team;
+        result.objectives_.wins_level(owner) = source.wins_level;
+        result.objectives_.prerequisites(owner) =
             static_cast<ObjectivePrerequisiteCount>(source.dependencies.size());
-        result.objectives.leaves(owner).offset = size(leaves.results);
-        result.objectives.composites(owner).offset = size(composites.results);
+        result.objectives_.leaves(owner).offset = size(leaves.results);
+        result.objectives_.composites(owner).offset = size(composites.results);
         for (auto const& dependency : source.dependencies) {
             dependents[objectives.at(dependency.objective).index()].push_back(
                 {owner, dependency.outcome});
         }
         std::vector<ExprHandle> references(source.expressions.size());
-        auto const order{compiled_mission_detail::expression_order(source.expressions)};
+        auto const order{mission_compilation_detail::expression_order(source.expressions)};
         for (auto const index : order) {
             auto const& expression{source.expressions[index]};
             if (expression.type() == ExprType::All || expression.type() == ExprType::Any) {
@@ -165,19 +164,19 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
         }
         for (auto const root : EnumTraits<ObjectiveOutcome>::values) {
             if (source.roots[root] != levels::absent_expression) {
-                result.objectives.roots(owner)[root] = references[source.roots[root]];
+                result.objectives_.roots(owner)[root] = references[source.roots[root]];
             }
         }
-        result.objectives.leaves(owner).count =
-            size(leaves.results) - result.objectives.leaves(owner).offset;
-        result.objectives.composites(owner).count =
-            size(composites.results) - result.objectives.composites(owner).offset;
+        result.objectives_.leaves(owner).count =
+            size(leaves.results) - result.objectives_.leaves(owner).offset;
+        result.objectives_.composites(owner).count =
+            size(composites.results) - result.objectives_.composites(owner).offset;
     }
     for (std::uint32_t row{}; row < count; ++row) {
         ObjectiveId const id{row};
-        result.objectives.dependents(id) = {size(result.dependents), size(dependents[row])};
-        result.dependents.insert(
-            result.dependents.end(), dependents[row].begin(), dependents[row].end());
+        result.objectives_.dependents(id) = {size(result.dependents_), size(dependents[row])};
+        result.dependents_.insert(
+            result.dependents_.end(), dependents[row].begin(), dependents[row].end());
     }
     return result;
 }

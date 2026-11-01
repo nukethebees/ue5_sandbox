@@ -5,7 +5,7 @@
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/level_initialisation_data.h>
 #include <ioj/sim/levels/level_simulation_builder.h>
-#include <ioj/sim/missions/compiled_mission.h>
+#include <ioj/sim/missions/mission.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
@@ -67,7 +67,7 @@ auto resolve_entity_index(FProxyEntityIndexMap const& entities, AActor const& ac
 auto compile_proxy_mission(::FLevelMissionDefinition const& definition,
                            FProxyEntityIndexMap const& entities,
                            sim::SimClock const& clock)
-    -> std::expected<sim::CompiledMission, FLevelStartErrors> {
+    -> std::expected<sim::Mission, FLevelStartErrors> {
     std::vector<levels::EntityId> ids(static_cast<std::size_t>(entities.Num()));
     for (auto const& entity : entities) {
         ids[entity.Value] = levels::EntityId{"proxy-" + std::to_string(entity.Value)};
@@ -82,7 +82,7 @@ auto compile_proxy_mission(::FLevelMissionDefinition const& definition,
         }
         ids[*index] = levels::EntityId{TCHAR_TO_UTF8(*binding.Key.ToString().ToLower())};
     }
-    auto compiled{sim::CompiledMission::compile(definition.objectives, ids, clock)};
+    auto compiled{sim::Mission::compile(definition.objectives, ids, clock)};
     if (!compiled) {
         for (auto const& message : compiled.error()) {
             errors.add(to_fstring(message));

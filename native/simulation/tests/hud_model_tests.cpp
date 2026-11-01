@@ -1,6 +1,6 @@
 #include "support/simulation_test_support.h"
 #include <ioj/presentation/hud_model.h>
-#include <ioj/sim/missions/compiled_mission.h>
+#include <ioj/sim/missions/mission.h>
 
 namespace ioj::sim::tests {
 namespace hud_test {
@@ -10,7 +10,7 @@ auto data() -> LevelSimInitData {
     result.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     return result;
 }
-auto defence_mission(LevelSimInitData const& data) -> CompiledMission {
+auto defence_mission(LevelSimInitData const& data) -> Mission {
     levels::MissionDefinition definition{
         .objectives = {
             {.id = levels::ObjectiveName{"defence"},
@@ -22,7 +22,7 @@ auto defence_mission(LevelSimInitData const& data) -> CompiledMission {
                  std::array<levels::ExprIndex, 3>{0, 1, levels::absent_expression}}}}};
     SimClock clock;
     clock.initialise(data.clock_settings);
-    auto compiled{CompiledMission::compile(
+    auto compiled{Mission::compile(
         definition, std::array{levels::EntityId{"defended"}, levels::EntityId{"enemy"}}, clock)};
     assert(compiled);
     return std::move(*compiled);

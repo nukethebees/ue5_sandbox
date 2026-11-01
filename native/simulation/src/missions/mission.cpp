@@ -7,7 +7,6 @@
 #include <ioj/vectors3f.h>
 
 #include <algorithm>
-#include <limits>
 
 namespace ioj::sim {
 namespace mission_evaluation_detail {
@@ -28,31 +27,20 @@ auto destroyed(EntityId const id,
 /* **************************************** */
 // Lifecycle
 /* **************************************** */
-Mission::Mission(CompiledMission definition)
-    : data_{std::move(definition)} {
-    auto const count{data_.objectives.size()};
-    inactive_.reserve(count);
-
-    for (std::uint32_t index{}; index < count; ++index) {
-        ObjectiveId const id{index};
-        inactive_.push_back(id);
-        data_.objectives.membership_position(id) = index;
-    }
-}
 void Mission::begin(MissionEvaluationContext const& inputs) {
     assert(!begun_);
 
     begun_ = true;
-    auto const count{data_.objectives.size()};
+    auto const count{objectives_.size()};
 
     for (std::uint32_t index{}; index < count; ++index) {
         ObjectiveId const id{index};
-        if (data_.objectives.prerequisites(id) == 0) {
+        if (objectives_.prerequisites(id) == 0) {
             activate(id, inputs.tick);
         }
     }
 
-    std::ranges::sort(active_leaves_);
+    std::ranges::sort(leaves_.active);
     tick(inputs);
 }
 void Mission::tick(MissionEvaluationContext const& inputs) {
@@ -60,22 +48,25 @@ void Mission::tick(MissionEvaluationContext const& inputs) {
 
     evaluate_leaves(inputs);
 
-    auto const first_completed{static_cast<ObjectiveMembershipIndex>(completed_.size())};
+    auto const first_completed{
+        static_cast<ObjectiveMembershipIndex>(objectives_.completed().size())};
     evaluate_objectives();
 
-    auto const completed_count{completed_.size()};
+    auto const completed{objectives_.completed()};
+    auto const completed_count{completed.size()};
     for (auto position{first_completed}; position < completed_count; ++position) {
-        auto const id{completed_[position]};
-        complete(id, position, inputs.tick);
-        if (!winning_team_ && data_.objectives.outcome(id) == ObjectiveOutcome::Passed &&
-            data_.objectives.wins_level(id) == ObjectiveWinsLevel::Yes) {
+        auto const id{completed[position]};
+        objectives_.commit_completion(position);
+        handle_completion(id, inputs.tick);
+        if (!winning_team_ && objectives_.outcome(id) == ObjectiveOutcome::Passed &&
+            objectives_.wins_level(id) == ObjectiveWinsLevel::Yes) {
             finish(id, inputs);
         }
     }
 
-    std::erase_if(active_leaves_,
+    std::erase_if(leaves_.active,
                   [&](LeafDataHandle const data_handle) { return !pending_leaf(data_handle); });
-    std::ranges::sort(active_leaves_);
+    std::ranges::sort(leaves_.active);
 }
 
 /* **************************************** */
@@ -97,7 +88,7 @@ auto Mission::take_team_completion(std::optional<Team> const team)
     return result;
 }
 auto Mission::outcome(ObjectiveId const id) const -> std::optional<ObjectiveOutcome> {
-    return data_.objectives.outcome(id);
+    return objectives_.outcome(id);
 }
 auto Mission::team_outcome(Team const team) const -> std::optional<MissionOutcome> {
     assert(static_cast<std::size_t>(team) < team_outcomes_.size());
@@ -108,7 +99,7 @@ auto Mission::result(ExprHandle const expression) const -> ExprResult {
         return ExprResult::False;
     }
 
-    auto const& results{expression.leaf() ? data_.leaves.results : data_.composites.results};
+    auto const& results{expression.leaf() ? leaves_.results : composites_.results};
     assert(expression.index() < results.size());
     return results[expression.index()];
 }
@@ -116,51 +107,27 @@ auto Mission::result(ExprHandle const expression) const -> ExprResult {
 /* **************************************** */
 // Objective progression
 /* **************************************** */
-auto Mission::active(ObjectiveId const id) const -> bool {
-    return data_.objectives.activation_tick(id) !=
-               SimTick{std::numeric_limits<SimTick::value_type>::max()} &&
-           !data_.objectives.outcome(id);
-}
-void Mission::remove_member(std::vector<ObjectiveId>& collection, ObjectiveId const id) {
-    auto const position{data_.objectives.membership_position(id)};
-    assert(position < collection.size() && collection[position] == id);
-    collection[position] = collection.back();
-    data_.objectives.membership_position(collection.back()) = position;
-    collection.pop_back();
-}
 void Mission::activate(ObjectiveId const id, SimTick const tick) {
-    assert(!data_.objectives.outcome(id) &&
-           data_.objectives.activation_tick(id) ==
-               SimTick{std::numeric_limits<SimTick::value_type>::max()});
+    objectives_.activate(id, tick);
 
-    remove_member(inactive_, id);
-    data_.objectives.membership_position(id) =
-        static_cast<ObjectiveMembershipIndex>(active_.size());
-    active_.push_back(id);
-    data_.objectives.activation_tick(id) = tick;
-
-    auto const leaves{data_.objectives.leaves(id)};
+    auto const leaves{objectives_.leaves(id)};
     auto const leaves_end{leaves.end()};
 
     for (ExprLeafHandle leaf{leaves.start()}; leaf < leaves_end; ++leaf) {
-        auto const data_handle{data_.leaves.data_handles[leaf]};
-        active_leaves_.push_back(data_handle);
+        auto const data_handle{leaves_.data_handles[leaf]};
+        leaves_.active.push_back(data_handle);
     }
 }
-void Mission::complete(ObjectiveId const id,
-                       ObjectiveMembershipIndex const position,
-                       SimTick const tick) {
-    remove_member(active_, id);
-    data_.objectives.membership_position(id) = position;
-    auto const outcome{*data_.objectives.outcome(id)};
+void Mission::handle_completion(ObjectiveId const id, SimTick const tick) {
+    auto const outcome{*objectives_.outcome(id)};
 
-    auto const dependents{data_.objectives.dependents(id)};
+    auto const dependents{objectives_.dependents(id)};
     auto const dependents_end{dependents.end()};
 
     for (auto index{dependents.start()}; index < dependents_end; ++index) {
-        auto const dependency{data_.dependents[index]};
+        auto const dependency{dependents_[index]};
         if (dependency.outcome == outcome) {
-            auto& remaining{data_.objectives.prerequisites(dependency.dependent)};
+            auto& remaining{objectives_.prerequisites(dependency.dependent)};
             assert(remaining > 0);
             if (--remaining == 0) {
                 activate(dependency.dependent, tick);
@@ -173,35 +140,34 @@ void Mission::complete(ObjectiveId const id,
 // Objective evaluation
 /* **************************************** */
 void Mission::evaluate_objectives() {
-    for (auto const id : active_) {
-        auto const composites{data_.objectives.composites(id)};
+    for (auto const id : objectives_.active()) {
+        auto const composites{objectives_.composites(id)};
         auto const composites_end{composites.end()};
         for (ExprCompositeIndex index{composites.start()}; index < composites_end; ++index) {
-            auto& value{data_.composites.results[index]};
+            auto& value{composites_.results[index]};
             if (value == ExprResult::Pending) {
                 value = evaluate_composite(index);
             }
         }
 
-        auto const& roots{data_.objectives.roots(id)};
+        auto const& roots{objectives_.roots(id)};
         for (auto const outcome : EnumTraits<ObjectiveOutcome>::values) {
             if (result(roots[outcome]) == ExprResult::True) {
-                data_.objectives.outcome(id) = outcome;
-                completed_.push_back(id);
+                objectives_.resolve(id, outcome);
                 break;
             }
         }
     }
 }
 auto Mission::evaluate_composite(ExprCompositeIndex const index) const -> ExprResult {
-    auto const all{data_.composites.types[index] == ExprType::All};
+    auto const all{composites_.types[index] == ExprType::All};
     auto const decisive{all ? ExprResult::False : ExprResult::True};
     auto value{all ? ExprResult::True : ExprResult::False};
-    auto const children{data_.composites.child_ranges[index]};
+    auto const children{composites_.child_ranges[index]};
     auto const children_end{children.end()};
 
     for (auto child{children.start()}; child < children_end; ++child) {
-        auto const child_result{result(data_.composites.children[child])};
+        auto const child_result{result(composites_.children[child])};
         if (child_result == decisive) {
             return decisive;
         }
@@ -216,18 +182,19 @@ auto Mission::evaluate_composite(ExprCompositeIndex const index) const -> ExprRe
 // Leaf evaluation
 /* **************************************** */
 auto Mission::expression_leaf(LeafDataHandle const data_handle) const -> ExprLeafHandle {
-    return data_.leaves.leaf_handles[data_handle.kind()][data_handle.index()];
+    return leaves_.leaf_handles[data_handle.kind()][data_handle.index()];
 }
 auto Mission::pending_leaf(LeafDataHandle const data_handle) const -> bool {
     auto const leaf{expression_leaf(data_handle)};
-    return active(data_.leaves.owners[leaf]) && data_.leaves.results[leaf] == ExprResult::Pending;
+    return objectives_.is_active(leaves_.owners[leaf]) &&
+           leaves_.results[leaf] == ExprResult::Pending;
 }
 void Mission::resolve_leaf(LeafDataHandle const data_handle, ExprResult const value) {
     assert(value != ExprResult::Pending);
-    data_.leaves.results[expression_leaf(data_handle)] = value;
+    leaves_.results[expression_leaf(data_handle)] = value;
 }
 void Mission::evaluate_leaves(MissionEvaluationContext const& inputs) {
-    auto const scheduled{std::span<LeafDataHandle const>{active_leaves_}};
+    auto const scheduled{std::span<LeafDataHandle const>{leaves_.active}};
     assert(std::ranges::is_sorted(scheduled));
     auto const count{scheduled.size()};
     std::size_t first{};
@@ -267,7 +234,7 @@ void Mission::evaluate_run(LeafKind const kind,
 }
 void Mission::evaluate_destroyed(std::span<LeafDataHandle const> const run,
                                  MissionEvaluationContext const& inputs) {
-    auto const& leaves{data_.leaves};
+    auto const& leaves{leaves_};
     auto const life_states{inputs.ledger.get_unique_entities().life_state()};
 
     for (auto const data_handle : run) {
@@ -283,12 +250,12 @@ void Mission::evaluate_destroyed(std::span<LeafDataHandle const> const run,
 }
 void Mission::evaluate_elapsed(std::span<LeafDataHandle const> const run,
                                MissionEvaluationContext const& inputs) {
-    auto const& leaves{data_.leaves};
+    auto const& leaves{leaves_};
 
     for (auto const data_handle : run) {
         if (pending_leaf(data_handle)) {
             auto const activated{
-                data_.objectives.activation_tick(leaves.owners[expression_leaf(data_handle)])};
+                objectives_.activation_tick(leaves.owners[expression_leaf(data_handle)])};
             assert(inputs.tick >= activated);
             if (inputs.tick.value() - activated.value() >=
                 leaves.durations[data_handle.index()].value()) {
@@ -298,12 +265,12 @@ void Mission::evaluate_elapsed(std::span<LeafDataHandle const> const run,
     }
 }
 void Mission::evaluate_resolved(std::span<LeafDataHandle const> const run) {
-    auto const& leaves{data_.leaves};
+    auto const& leaves{leaves_};
 
     for (auto const data_handle : run) {
         if (pending_leaf(data_handle)) {
             auto const outcome{
-                data_.objectives.outcome(leaves.observed_objectives[data_handle.index()])};
+                objectives_.outcome(leaves.observed_objectives[data_handle.index()])};
             if (outcome) {
                 resolve_leaf(data_handle,
                              *outcome == leaves.observed_outcomes[data_handle.index()]
@@ -315,7 +282,7 @@ void Mission::evaluate_resolved(std::span<LeafDataHandle const> const run) {
 }
 void Mission::evaluate_kills(std::span<LeafDataHandle const> const run,
                              MissionEvaluationContext const& inputs) {
-    auto const& leaves{data_.leaves};
+    auto const& leaves{leaves_};
 
     for (auto const data_handle : run) {
         if (!pending_leaf(data_handle)) {
@@ -339,7 +306,7 @@ void Mission::evaluate_kills(std::span<LeafDataHandle const> const run,
 }
 void Mission::evaluate_reached_position(std::span<LeafDataHandle const> const run,
                                         MissionEvaluationContext const& inputs) {
-    auto const& leaves{data_.leaves};
+    auto const& leaves{leaves_};
     auto const life_states{inputs.ledger.get_unique_entities().life_state()};
 
     assert(inputs.spatial && inputs.scratch);
@@ -391,7 +358,7 @@ void Mission::evaluate_reached_position(std::span<LeafDataHandle const> const ru
 // Mission completion
 /* **************************************** */
 void Mission::finish(ObjectiveId const winning_objective, MissionEvaluationContext const& inputs) {
-    auto const winner{data_.objectives.team(winning_objective)};
+    auto const winner{objectives_.team(winning_objective)};
     winning_team_ = winner;
     team_outcomes_[winner] = MissionOutcome::Victory;
     completions_.push_back({winner,

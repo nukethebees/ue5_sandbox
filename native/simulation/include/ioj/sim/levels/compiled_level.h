@@ -2,12 +2,12 @@
 
 #include <ioj/levels/level_metadata.h>
 #include <ioj/sim/levels/compiled_level_events.h>
-#include <ioj/sim/missions/compiled_mission.h>
+#include <ioj/sim/missions/mission.h>
 
 namespace ioj::sim {
 struct CompiledLevel {
     CompiledLevelEvents events;
-    CompiledMission mission;
+    Mission mission;
     levels::LevelMetadata level_metadata;
 };
 }

@@ -20,6 +20,7 @@ struct ExprLeaves {
     std::vector<ObjectiveId> owners;
     std::vector<LeafDataHandle> data_handles;
     EnumArray<LeafKind, std::vector<ExprLeafHandle>> leaf_handles;
+    std::vector<LeafDataHandle> active;
 
     // EntityDestroyed
     std::vector<std::uint32_t> destroyed_entities;

@@ -2,7 +2,6 @@
 #include <ioj/levels/mission_validation.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/levels/run_stop_conditions.h>
-#include <ioj/sim/missions/compiled_mission.h>
 #include <ioj/sim/missions/mission.h>
 #include <ioj/sim/sim_clock.h>
 
@@ -48,9 +47,9 @@ struct MissionTest : ::testing::Test {
 
     MissionTest() { clock.initialise({.tick_rate = Frequency::make(10.0)}); }
     void start(MissionDefinition const& definition) {
-        auto compiled{CompiledMission::compile(definition, names, clock)};
+        auto compiled{Mission::compile(definition, names, clock)};
         ASSERT_TRUE(compiled.has_value()) << (compiled ? "" : compiled.error().front());
-        mission = Mission{std::move(*compiled)};
+        mission = std::move(*compiled);
         mission.begin({SimTick{0}, ledger, entities, nullptr, nullptr, teams});
     }
     void tick(SimTick::value_type const tick) {
@@ -103,12 +102,12 @@ TEST_F(MissionTest, FalseOutcomeLeavesShortCircuitAndAndResolveOrOnlyAfterAllFal
     auto disjunction{conjunction};
     disjunction.id = levels::ObjectiveName{"or"};
     disjunction.expressions[2] = {AnyExpr{.children = {0, 1}}};
-    auto compiled{
-        CompiledMission::compile({.objectives = {a, b, conjunction, disjunction}}, {}, clock)};
+    auto compiled{Mission::compile({.objectives = {a, b, conjunction, disjunction}}, {}, clock)};
     ASSERT_TRUE(compiled);
-    auto const and_root{compiled->objectives.roots(ObjectiveId{2})[ioj::ObjectiveOutcome::Passed]};
-    auto const or_root{compiled->objectives.roots(ObjectiveId{3})[ioj::ObjectiveOutcome::Passed]};
-    mission = Mission{std::move(*compiled)};
+    auto const and_root{
+        compiled->objectives().roots(ObjectiveId{2})[ioj::ObjectiveOutcome::Passed]};
+    auto const or_root{compiled->objectives().roots(ObjectiveId{3})[ioj::ObjectiveOutcome::Passed]};
+    mission = std::move(*compiled);
     mission.begin({SimTick{0}, ledger, {}, nullptr, nullptr, teams});
     tick(10);
     EXPECT_EQ(mission.result(and_root), ExprResult::Pending);
@@ -369,15 +368,15 @@ TEST_F(MissionTest, LeafRunsSortAndRebuildAfterMembershipChanges) {
 TEST_F(MissionTest, RejectsStructuralAndActivationCyclesButAllowsObservationCycles) {
     auto a{objective("a", observed("b", ObjectiveOutcome::Passed))};
     auto b{objective("b", observed("a", ObjectiveOutcome::Passed))};
-    EXPECT_TRUE(CompiledMission::compile({.objectives = {a, b}}, {}, clock));
+    EXPECT_TRUE(Mission::compile({.objectives = {a, b}}, {}, clock));
     a.dependencies = {{levels::ObjectiveName{"b"}, ObjectiveOutcome::Passed}};
     b.dependencies = {{levels::ObjectiveName{"a"}, ObjectiveOutcome::Passed}};
-    EXPECT_FALSE(CompiledMission::compile({.objectives = {a, b}}, {}, clock));
+    EXPECT_FALSE(Mission::compile({.objectives = {a, b}}, {}, clock));
     a.dependencies.clear();
     a.expressions = {{AllExpr{.children = {1}}}, {AnyExpr{.children = {0}}}};
-    EXPECT_FALSE(CompiledMission::compile({.objectives = {a}}, {}, clock));
+    EXPECT_FALSE(Mission::compile({.objectives = {a}}, {}, clock));
     std::get<AnyExpr>(a.expressions[1].payload).children = {99};
-    EXPECT_FALSE(CompiledMission::compile({.objectives = {a}}, {}, clock));
+    EXPECT_FALSE(Mission::compile({.objectives = {a}}, {}, clock));
 }
 
 TEST_F(MissionTest, SchemeNamedDagAndOutcomeDependenciesExecuteThroughRuntimeCompiler) {
@@ -444,14 +443,14 @@ TEST_F(MissionTest, RejectsInvalidReferencesParametersAndDuplicatePrerequisites)
     auto b{objective("b", timer(1))};
     b.dependencies = {{levels::ObjectiveName{"a"}, ObjectiveOutcome::Passed},
                       {levels::ObjectiveName{"a"}, ObjectiveOutcome::Passed}};
-    EXPECT_FALSE(CompiledMission::compile({.objectives = {a, b}}, {}, clock));
-    EXPECT_FALSE(CompiledMission::compile({.objectives = {a, a}}, {}, clock));
+    EXPECT_FALSE(Mission::compile({.objectives = {a, b}}, {}, clock));
+    EXPECT_FALSE(Mission::compile({.objectives = {a, a}}, {}, clock));
     b.dependencies = {{levels::ObjectiveName{"missing"}, ObjectiveOutcome::Passed}};
-    EXPECT_FALSE(CompiledMission::compile({.objectives = {a, b}}, {}, clock));
+    EXPECT_FALSE(Mission::compile({.objectives = {a, b}}, {}, clock));
     a.expressions[0] = {EntityReachedPositionExpr{
         .entity = levels::EntityId{"target"},
         .radius = NonNegativeFinite<double>::make(std::numeric_limits<double>::max())}};
     names.emplace_back("target");
-    EXPECT_FALSE(CompiledMission::compile({.objectives = {a}}, names, clock));
+    EXPECT_FALSE(Mission::compile({.objectives = {a}}, names, clock));
 }
 }

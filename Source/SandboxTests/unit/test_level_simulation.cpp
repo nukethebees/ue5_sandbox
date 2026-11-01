@@ -7,7 +7,7 @@
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/levels/level_sim.h>
-#include <ioj/sim/missions/compiled_mission.h>
+#include <ioj/sim/missions/mission.h>
 #include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
@@ -136,7 +136,7 @@ void add_mission(::ioj::sim::LevelSimInitData& data) {
     std::array const ids{ioj::levels::EntityId{"hero"}, ioj::levels::EntityId{"enemy"}};
     ioj::sim::SimClock clock;
     clock.initialise(data.clock_settings);
-    auto compiled{ioj::sim::CompiledMission::compile(definition, ids, clock)};
+    auto compiled{ioj::sim::Mission::compile(definition, ids, clock)};
     check(compiled);
     data.mission = std::move(*compiled);
 }

@@ -6,7 +6,7 @@
 #include <ioj/sim/levels/initial_spawns.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/levels/level_simulation_builder.h>
-#include <ioj/sim/missions/compiled_mission.h>
+#include <ioj/sim/missions/mission.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
@@ -429,7 +429,7 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
     definition.objectives[1].wins_level = ObjectiveWinsLevel::Yes;
     SimClock clock;
     clock.initialise(data.clock_settings);
-    auto compiled{CompiledMission::compile(definition, {}, clock)};
+    auto compiled{Mission::compile(definition, {}, clock)};
     ASSERT_TRUE(compiled);
     data.mission = std::move(*compiled);
     GameMemory memory;
