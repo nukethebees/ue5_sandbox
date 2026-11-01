@@ -1,13 +1,12 @@
 #pragma once
 
 #include <ioj/levels/objective_name.h>
+#include <ioj/levels/objective_outcome.h>
 #include <ioj/levels/objective_wins_level.h>
 #include <ioj/levels/team.h>
 #include <ioj/sim/index_span.h>
-#include <ioj/sim/missions/activation_notification.h>
 #include <ioj/sim/missions/objective_id.h>
 #include <ioj/sim/missions/objective_membership_index.h>
-#include <ioj/sim/missions/objective_prerequisite_count.h>
 #include <ioj/sim/missions/objective_roots.h>
 
 #include <cassert>
@@ -39,11 +38,10 @@ class Objectives {
     auto roots(ObjectiveId id) const -> ObjectiveRoots const& { return at(roots_, id); }
     auto leaves(ObjectiveId id) -> IndexSpan& { return at(leaf_ranges_, id); }
     auto composites(ObjectiveId id) -> IndexSpan& { return at(composite_ranges_, id); }
-    auto remaining_prerequisites(ObjectiveId id) -> ObjectivePrerequisiteCount& {
-        return at(remaining_prerequisites_, id);
-    }
-    auto dependents(ObjectiveId id) const -> std::span<ActivationNotification const>;
-    void add_dependents(ObjectiveId id, std::span<ActivationNotification const> dependents);
+    auto prerequisite_objectives(ObjectiveId id) const -> std::span<ObjectiveId const>;
+    auto prerequisite_outcomes(ObjectiveId id) const -> std::span<ObjectiveOutcome const>;
+    // Append each objective's prerequisites consecutively during compilation.
+    void add_prerequisite(ObjectiveId id, ObjectiveId prerequisite, ObjectiveOutcome outcome);
     auto wins_level(ObjectiveId id) -> ObjectiveWinsLevel& { return at(wins_level_, id); }
   private:
     void remove_member(std::vector<ObjectiveId>& collection, ObjectiveId id);
@@ -62,11 +60,11 @@ class Objectives {
     std::vector<ObjectiveRoots> roots_;
     std::vector<IndexSpan> leaf_ranges_;
     std::vector<IndexSpan> composite_ranges_;
-    std::vector<IndexSpan> dependent_ranges_;
-    std::vector<ActivationNotification> dependents_;
+    std::vector<IndexSpan> prerequisite_ranges_;
+    std::vector<ObjectiveId> prerequisite_objectives_;
+    std::vector<ObjectiveOutcome> prerequisite_outcomes_;
 
     // Mutable
-    std::vector<ObjectivePrerequisiteCount> remaining_prerequisites_;
     std::vector<ObjectiveMembershipIndex> membership_positions_;
 
     std::vector<ObjectiveId> inactive_;

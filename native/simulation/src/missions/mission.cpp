@@ -95,7 +95,6 @@ auto Mission::compile(levels::MissionDefinition const& definition,
 
     auto& composites{result.composites_};
     auto& leaves{result.leaves_};
-    std::vector<std::vector<ActivationNotification>> dependents(count);
     auto size = [](auto const& values) { return static_cast<std::uint32_t>(values.size()); };
 
     for (std::uint32_t row{}; row < count; ++row) {
@@ -106,15 +105,13 @@ auto Mission::compile(levels::MissionDefinition const& definition,
         result.objectives_.title(owner) = source.title.empty() ? source.id.value : source.title;
         result.objectives_.team(owner) = source.team;
         result.objectives_.wins_level(owner) = source.wins_level;
-        result.objectives_.remaining_prerequisites(owner) =
-            static_cast<ObjectivePrerequisiteCount>(source.dependencies.size());
 
         result.objectives_.leaves(owner).offset = size(leaves.results);
         result.objectives_.composites(owner).offset = size(composites.results);
 
         for (auto const& dependency : source.dependencies) {
-            dependents[objectives.at(dependency.objective).index()].push_back(
-                {owner, dependency.outcome});
+            result.objectives_.add_prerequisite(
+                owner, objectives.at(dependency.objective), dependency.outcome);
         }
 
         std::vector<ExprHandle> references(source.expressions.size());
@@ -234,25 +231,13 @@ auto Mission::compile(levels::MissionDefinition const& definition,
             size(composites.results) - result.objectives_.composites(owner).offset;
     }
 
-    for (std::uint32_t row{}; row < count; ++row) {
-        ObjectiveId const id{row};
-        result.objectives_.add_dependents(id, dependents[row]);
-    }
-
     return result;
 }
 void Mission::begin(MissionEvaluationContext const& inputs) {
     assert(!begun_);
 
     begun_ = true;
-    auto const count{objectives_.size()};
-
-    for (std::uint32_t index{}; index < count; ++index) {
-        ObjectiveId const id{index};
-        if (objectives_.remaining_prerequisites(id) == 0) {
-            activate(id, inputs.tick);
-        }
-    }
+    activate_ready_objectives(inputs.tick);
 
     std::ranges::sort(leaves_.active);
     tick(inputs);
@@ -263,6 +248,7 @@ void Mission::tick(MissionEvaluationContext const& inputs) {
     evaluate_leaves(inputs);
     evaluate_composites();
     evaluate_objectives(inputs);
+    activate_ready_objectives(inputs.tick);
 
     std::ranges::sort(leaves_.active);
 }
@@ -308,6 +294,30 @@ auto Mission::result(ExprHandle const expression) const -> ExprResult {
 /* **************************************** */
 // Objective progression
 /* **************************************** */
+void Mission::activate_ready_objectives(SimTick const tick) {
+    std::size_t index{};
+    while (index < objectives_.inactive().size()) {
+        auto const id{objectives_.inactive()[index]};
+        if (prerequisites_met(id)) {
+            activate(id, tick);
+        } else {
+            ++index;
+        }
+    }
+}
+auto Mission::prerequisites_met(ObjectiveId const id) const -> bool {
+    auto const prerequisites{objectives_.prerequisite_objectives(id)};
+    auto const outcomes{objectives_.prerequisite_outcomes(id)};
+    auto const count{prerequisites.size()};
+
+    for (std::size_t index{}; index < count; ++index) {
+        if (outcome(prerequisites[index]) != outcomes[index]) {
+            return false;
+        }
+    }
+
+    return true;
+}
 void Mission::activate(ObjectiveId const id, SimTick const tick) {
     objectives_.activate(id);
 
@@ -341,20 +351,6 @@ void Mission::deactivate_expressions(ObjectiveId const id) {
         return index >= composites.start() && index < composites.end();
     });
 }
-void Mission::handle_completion(ObjectiveId const id,
-                                ObjectiveOutcome const outcome,
-                                SimTick const tick) {
-    for (auto const dependency : objectives_.dependents(id)) {
-        if (dependency.outcome == outcome) {
-            auto& remaining{objectives_.remaining_prerequisites(dependency.dependent)};
-            assert(remaining > 0);
-
-            if (--remaining == 0) {
-                activate(dependency.dependent, tick);
-            }
-        }
-    }
-}
 
 /* **************************************** */
 // Objective evaluation
@@ -375,7 +371,6 @@ void Mission::evaluate_objectives(MissionEvaluationContext const& inputs) {
     for (auto const [id, outcome] : completed) {
         objectives_.complete(id);
         deactivate_expressions(id);
-        handle_completion(id, outcome, inputs.tick);
 
         if (!winning_team_ && outcome == ObjectiveOutcome::Passed &&
             objectives_.wins_level(id) == ObjectiveWinsLevel::Yes) {

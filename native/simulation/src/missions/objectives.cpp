@@ -9,8 +9,7 @@ Objectives::Objectives(std::size_t const count)
     , roots_(count)
     , leaf_ranges_(count)
     , composite_ranges_(count)
-    , dependent_ranges_(count)
-    , remaining_prerequisites_(count)
+    , prerequisite_ranges_(count)
     , membership_positions_(count) {
     inactive_.reserve(count);
     for (std::uint32_t index{}; index < count; ++index) {
@@ -32,15 +31,29 @@ void Objectives::complete(ObjectiveId const id) {
     at(membership_positions_, id) = static_cast<ObjectiveMembershipIndex>(completed_.size());
     completed_.push_back(id);
 }
-auto Objectives::dependents(ObjectiveId const id) const -> std::span<ActivationNotification const> {
-    auto const range{at(dependent_ranges_, id)};
-    return std::span<ActivationNotification const>{dependents_}.subspan(range.offset, range.count);
+auto Objectives::prerequisite_objectives(ObjectiveId const id) const
+    -> std::span<ObjectiveId const> {
+    auto const range{at(prerequisite_ranges_, id)};
+    return std::span<ObjectiveId const>{prerequisite_objectives_}.subspan(range.offset,
+                                                                          range.count);
 }
-void Objectives::add_dependents(ObjectiveId const id,
-                                std::span<ActivationNotification const> const dependents) {
-    at(dependent_ranges_, id) = {static_cast<std::uint32_t>(dependents_.size()),
-                                 static_cast<std::uint32_t>(dependents.size())};
-    dependents_.insert(dependents_.end(), dependents.begin(), dependents.end());
+auto Objectives::prerequisite_outcomes(ObjectiveId const id) const
+    -> std::span<ObjectiveOutcome const> {
+    auto const range{at(prerequisite_ranges_, id)};
+    return std::span<ObjectiveOutcome const>{prerequisite_outcomes_}.subspan(range.offset,
+                                                                             range.count);
+}
+void Objectives::add_prerequisite(ObjectiveId const id,
+                                  ObjectiveId const prerequisite,
+                                  ObjectiveOutcome const outcome) {
+    auto& range{at(prerequisite_ranges_, id)};
+    if (range.is_empty()) {
+        range.offset = static_cast<std::uint32_t>(prerequisite_objectives_.size());
+    }
+
+    prerequisite_objectives_.push_back(prerequisite);
+    prerequisite_outcomes_.push_back(outcome);
+    ++range.count;
 }
 void Objectives::remove_member(std::vector<ObjectiveId>& collection, ObjectiveId const id) {
     auto const position{at(membership_positions_, id)};
