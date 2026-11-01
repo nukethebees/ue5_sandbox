@@ -189,6 +189,9 @@ Retract earlier completion estimates if new issues invalidate validation or requ
 
 # Testing
 
+* Do not add data members to production classes solely to support tests or benchmarks without
+  explicit maintainer approval. Prefer APIs that serve both production and validation needs;
+  keep test-specific state in fixtures and pass inputs or output collectors explicitly.
 * Run AddressSanitizer (ASAN) builds/tests only when explicitly requested. ASAN is not a default
   validation, readiness, or integration requirement.
 * Create tests only when explicitly asked.
