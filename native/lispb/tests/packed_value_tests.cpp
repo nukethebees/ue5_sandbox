@@ -248,7 +248,11 @@ TEST(PackedRecord, DefaultsIncludeSignedValuesAndReservedBits) {
         (record SameInvalid :layout packed :invalid-value 253
           (member data std::uint8_t) (projections (cpp)))
         (record DistinctInvalid :layout packed :invalid-value 254
-          (member data std::uint8_t :default 7) (projections (cpp))))
+          (member data std::uint8_t :default 7) (projections (cpp)))
+        (enum Kind :bit-width 1 (value First) (value Second) (projections (cpp)))
+        (union Payload (case First @Low) (case Second @Delta))
+        (record TaggedInvalid :layout packed :bits 8 :invalid-value 255
+          (member kind @Kind) (member data @Payload :tag kind) (projections (cpp))))
     )")};
     auto const graph{schema::resolve_type_graph(manifest)};
     auto const& layout{graph.bit_layout(*find_test_type(graph, "values", "Defaults"))};
@@ -258,6 +262,8 @@ TEST(PackedRecord, DefaultsIncludeSignedValuesAndReservedBits) {
     EXPECT_EQ(
         graph.bit_layout(*find_test_type(graph, "values", "DistinctInvalid")).default_raw_value,
         7U);
+    EXPECT_EQ(graph.bit_layout(*find_test_type(graph, "values", "TaggedInvalid")).default_raw_value,
+              255U);
 }
 
 class InvalidPackedRecord : public testing::TestWithParam<char const*> {};

@@ -670,16 +670,19 @@ class BitLayoutResolver {
                 mask(placement.bits)};
             defaults[index] = encoded << placement.offset;
         }
-        if (std::ranges::any_of(result.placements,
-                                [](auto const& placement) { return !placement.guards.empty(); })) {
-            return std::nullopt;
-        }
         auto const definition{graph_.definition(type)};
         auto const invalid{definition.kind() == TypeDefinitionKind::record
                                ? defs_.records.invalid_raw_value[definition]
                                : std::nullopt};
+        if (!any && invalid) {
+            return invalid;
+        }
+        if (std::ranges::any_of(result.placements,
+                                [](auto const& placement) { return !placement.guards.empty(); })) {
+            return std::nullopt;
+        }
         if (!any) {
-            return invalid.value_or(0);
+            return 0;
         }
 
         auto compose = [&](auto&& self,
