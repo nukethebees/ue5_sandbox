@@ -417,7 +417,7 @@ void Sim::select_flight_model_slot(FlightModelSlot const slot) noexcept {
 
 auto Sim::set_flight_model_slot_profile(FlightModelSlot const slot,
                                         FlightModelProfile profile) noexcept -> bool {
-    if (!try_set_flight_model_profile(flight_models_, slot, std::move(profile))) {
+    if (!try_set_flight_model_profile(flight_models_, slot, profile)) {
         return false;
     }
 

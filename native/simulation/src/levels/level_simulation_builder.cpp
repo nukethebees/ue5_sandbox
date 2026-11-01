@@ -134,10 +134,11 @@ auto validate_level_simulation_init_data(LevelSimInitData const& data)
     }
     auto const spinners{data.level_events.schedule.spinner_spawns.get_const_view()};
     auto const spinner_count{spinners.num()};
+    auto const spinner_yaws{spinners.yaws()};
     for (std::uint32_t row{}; row < spinner_count; ++row) {
         check_spawn(EntityType::TubeSpinner,
                     vector_at(spinners.view_locations(), row),
-                    to_quaternion(Rotator3f{0.f, spinners.yaws()[row], 0.f}));
+                    to_quaternion(Rotator3f{0.f, spinner_yaws[row], 0.f}));
     }
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};

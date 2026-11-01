@@ -39,7 +39,7 @@ Objectives::Objectives(std::size_t const count)
     reset_progress();
 }
 void Objectives::reset_progress() {
-    auto const count{size()};
+    auto const count{static_cast<std::uint16_t>(size())};
     inactive_.resize(count);
     active_.clear();
     completed_.clear();

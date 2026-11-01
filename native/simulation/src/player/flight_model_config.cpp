@@ -3,7 +3,6 @@
 #include <array>
 #include <cassert>
 #include <cmath>
-#include <utility>
 
 namespace ioj::sim::player::flight_model_config_detail {
 [[nodiscard]] auto valid_enum(TranslationSemantic const value) noexcept -> bool {
@@ -470,7 +469,7 @@ auto try_set_flight_model_profile(FlightModelLoadout& loadout,
     if (!validate_flight_model_config(profile.config)) {
         return false;
     }
-    flight_model_profile(loadout, slot) = std::move(profile);
+    flight_model_profile(loadout, slot) = profile;
     return true;
 }
 }

@@ -3,14 +3,13 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
-#include <utility>
 
 namespace ioj {
 void GameSettingsSession::initialise(GameSettingsState applied,
                                      GameSettingsState defaults,
                                      sim::player::FlightModelLoadout loadout) {
-    values_.begin(std::move(applied), std::move(defaults));
-    applied_loadout_ = std::move(loadout);
+    values_.begin(applied, defaults);
+    applied_loadout_ = loadout;
     pending_loadout_ = applied_loadout_;
     phase_ = GameSettingsSessionPhase::Inactive;
 }
@@ -19,7 +18,7 @@ auto GameSettingsSession::begin_edit(GameSettingsState applied, GameSettingsStat
     if (is_awaiting_display_confirmation()) {
         return false;
     }
-    values_.begin(std::move(applied), std::move(defaults));
+    values_.begin(applied, defaults);
     pending_loadout_ = applied_loadout_;
     phase_ = GameSettingsSessionPhase::Editing;
     return true;

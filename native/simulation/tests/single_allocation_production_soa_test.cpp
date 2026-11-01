@@ -4,8 +4,8 @@
 #include <ioj/sim/lasers/laser_frame_output.h>
 #include <ioj/sim/lasers/laser_hit_details.h>
 #include <ioj/sim/levels/compiled_level_events.h>
-#include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/spinners/spinner_entity_data.h>
+#include <native/memory/block.h>
 
 #include <gtest/gtest.h>
 

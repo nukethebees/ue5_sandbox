@@ -15,13 +15,18 @@
 
 namespace ioj::sim {
 namespace mission_compilation_detail {
+struct ExpressionVisit {
+    levels::ExprIndex node;
+    std::size_t next_child{};
+};
+
 auto expression_order(std::span<levels::MissionExpr const> const expressions)
     -> std::vector<levels::ExprIndex> {
     auto const count{expressions.size()};
     std::vector<levels::ExprIndex> order;
     order.reserve(count);
     std::vector<bool> visited(count);
-    std::vector<std::pair<levels::ExprIndex, std::size_t>> stack;
+    std::vector<ExpressionVisit> stack;
 
     for (levels::ExprIndex index{}; index < count; ++index) {
         if (visited[index]) {
@@ -33,6 +38,7 @@ auto expression_order(std::span<levels::MissionExpr const> const expressions)
 
         while (!stack.empty()) {
             auto& [node, next_child]{stack.back()};
+            // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- select the current traversal node.
             auto const children{expressions[node].children()};
             if (next_child == children.size()) {
                 order.push_back(node);
@@ -77,7 +83,7 @@ auto Mission::compile(levels::MissionDefinition const& definition,
         return std::unexpected{std::move(errors)};
     }
 
-    auto const count{definition.objectives.size()};
+    auto const count{static_cast<std::uint16_t>(definition.objectives.size())};
     Mission result;
     result.objectives_ = Objectives{count};
 
@@ -132,6 +138,7 @@ auto Mission::compile(levels::MissionDefinition const& definition,
                 composites.results.push_back(ExprResult::Pending);
                 composites.kinds.push_back(kind);
 
+                // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- select this expression's children.
                 auto const children{expression.children()};
                 composites.child_ranges.push_back({size(composites.children), size(children)});
                 for (auto const child : children) {
@@ -286,10 +293,13 @@ auto Mission::result(ExprHandle const expression) const -> ExprResult {
 /* **************************************** */
 void Mission::activate_ready_objectives(MissionEvaluationContext const& inputs) {
     FrameArray<ObjectiveMembershipIndex> ready{inputs.scratch};
-    auto const count{objectives_.inactive().size()};
+    auto const inactive{objectives_.inactive()};
+    auto const count{static_cast<ObjectiveMembershipIndex>(inactive.size())};
     for (ObjectiveMembershipIndex index{}; index < count; ++index) {
-        auto const id{objectives_.inactive()[index]};
-        if (std::ranges::all_of(objectives_.prerequisites(id), [&](auto const prerequisite) {
+        auto const id{inactive[index]};
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- select this objective's prerequisites.
+        auto const prerequisites{objectives_.prerequisites(id)};
+        if (std::ranges::all_of(prerequisites, [&](auto const prerequisite) {
                 return outcome(prerequisite.objective()) == prerequisite.outcome();
             })) {
             ready.add(index);
@@ -347,10 +357,11 @@ void Mission::evaluate_objectives(MissionEvaluationContext const& inputs) {
     auto const has_winner{std::ranges::any_of(completions_, [](auto const& completion) {
         return completion.outcome == MissionOutcome::Victory;
     })};
-    auto const count{objectives_.active().size()};
+    auto const active{objectives_.active()};
+    auto const count{static_cast<ObjectiveMembershipIndex>(active.size())};
 
     for (ObjectiveMembershipIndex position{}; position < count; ++position) {
-        auto const id{objectives_.active()[position]};
+        auto const id{active[position]};
         if (auto const outcome{root_outcome(id)}) {
             completed.add(position);
             if (!has_winner && !winning_objective.is_valid() &&

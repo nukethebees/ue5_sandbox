@@ -464,9 +464,10 @@ void Sim::collect_navigation_updates(NavigationScratch& scratch) {
     scratch.ready_fighter_indices.reserve(count);
     scratch.observed_risk_tiers.set_num(count);
 
+    auto const move_distances{data.move_distances()};
     auto const fighter_count{data.num()};
     for (std::uint32_t index{}; index < fighter_count; ++index) {
-        if (data.move_distances()[index] <= 0.f) {
+        if (move_distances[index] <= 0.f) {
             continue;
         }
 
@@ -580,12 +581,13 @@ void Sim::apply_separation_steering() {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::apply_separation_steering");
 
     auto const data{entities_.get_view()};
+    auto const move_distances{data.move_distances()};
     auto const movement_directions{data.view_movement_directions().resolve()};
     auto const separation_steering{data.view_separation_steering().resolve()};
 
     auto const fighter_count{data.num()};
     for (std::uint32_t index{}; index < fighter_count; ++index) {
-        if (data.move_distances()[index] <= 0.f) {
+        if (move_distances[index] <= 0.f) {
             continue;
         }
 
@@ -815,9 +817,10 @@ void Sim::apply_navigation_choices(NavigationScratch const& scratch) {
     auto const movement_directions{data.view_movement_directions().resolve()};
     auto const float_biases{data.float_biases()};
 
+    auto const move_distances{data.move_distances()};
     auto const fighter_count{data.num()};
     for (std::uint32_t index{}; index < fighter_count; ++index) {
-        if (data.move_distances()[index] <= 0.f) {
+        if (move_distances[index] <= 0.f) {
             continue;
         }
 
