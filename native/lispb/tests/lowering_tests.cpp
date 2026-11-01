@@ -120,7 +120,7 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
                         module_settings_store.header[new_module_settings_store] =
                             strings.intern("NativeEnum.h");
                         module_settings_store.namespace_name[new_module_settings_store] =
-                            strings.intern("fixture");
+                            strings.intern("ioj::fixture");
                     });
                 normal_modules.declarations[new_normal_modules] = store.range<DeclarationHandle>(
                     {append_test_row(enums, [&](auto const new_enums) {
@@ -168,7 +168,8 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
                          "enum class NativeState : NativeStateUnderlying",
                          "try_parse_native_state",
                          "try_parse_serialized_native_state",
-                         "EnumTraits<::fixture::NativeState>"});
+                         "EnumTraits<fixture::NativeState>",
+                         "std::array values{fixture::NativeState::Idle"});
     EXPECT_FALSE(header.contains("CoreMinimal.h"));
 
     std::vector<std::pair<NativeEnumHelper, std::string>> const selections{
@@ -478,13 +479,13 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
     EXPECT_FALSE(native_header.contains("enum_count<"));
     EXPECT_TRUE(projection_header.contains("enum_count<::ENativeState>"));
     EXPECT_TRUE(native_header.contains("enum class NativeState : NativeStateUnderlying"));
-    auto const traits_start{native_header.find("struct EnumTraits<::fixture::NativeState>")};
+    auto const traits_start{native_header.find("struct EnumTraits<fixture::NativeState>")};
     ASSERT_NE(traits_start, std::string::npos);
     auto const traits_end{native_header.find("};", traits_start)};
     ASSERT_NE(traits_end, std::string::npos);
     auto const traits{native_header.substr(traits_start, traits_end - traits_start)};
-    expect_contains_all(traits, {"::fixture::NativeState::Idle", "::fixture::NativeState::Active"});
-    EXPECT_FALSE(traits.contains("::fixture::NativeState::COUNT"));
+    expect_contains_all(traits, {"fixture::NativeState::Idle", "fixture::NativeState::Active"});
+    expect_contains_none(traits, {"::fixture::", "fixture::NativeState::COUNT"});
     EXPECT_FALSE(native_header.contains("CoreMinimal.h"));
     expect_contains_all(
         projection_header,

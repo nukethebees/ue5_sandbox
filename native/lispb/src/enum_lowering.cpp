@@ -537,12 +537,10 @@ auto native_enum_parsers(LoweringContext& context, DeclarationHandle const schem
 }
 
 auto native_enum_traits(LoweringContext& context,
-                        ModuleSettingsId settings,
-                        DeclarationHandle schema) -> Nodes {
+                        DeclarationHandle schema,
+                        CppTypeId const enum_type) -> Nodes {
     auto& ir{context.ir};
     auto const& enums{context.declarations.enums};
-    auto const qualified{native_enum_name(context, settings, schema)};
-    auto const enum_type{ir.types.intern(qualified)};
     auto const value_count{enums.values[schema].size() - (enums.count[schema] ? 1 : 0)};
     NodeListBuilder result{ir};
     if (std::ranges::contains(context.declarations.items(enums.helpers[schema]),
@@ -554,7 +552,8 @@ auto native_enum_traits(LoweringContext& context,
             if (enums.count[schema] && name == *enums.count[schema]) {
                 continue;
             }
-            values.push_back(ir.named(qualified + "::" + context.text(name)));
+            values.push_back(ir.type_reference(ir.types.named(
+                std::string{ir.types.spelling(enum_type)} + "::" + context.text(name))));
         }
         auto const traits{ir.record(
             ir.template_id(ir.named("EnumTraits"), {ir.type_reference(enum_type)}),
@@ -722,7 +721,7 @@ auto lower_enum(LoweringContext& context,
         emission.header_immediate_global = enum_range_declaration(context, schema, enum_type);
         if (needs_traits) {
             emission.header_global = {ir.namespace_node(
-                ir.strings.intern("ioj"), native_enum_traits(context, settings, schema))};
+                ir.strings.intern("ioj"), native_enum_traits(context, schema, enum_type))};
         }
         auto const helpers{context.declarations.items(enums.helpers[schema])};
         for (auto const helper : {NativeEnumHelper::to_string,

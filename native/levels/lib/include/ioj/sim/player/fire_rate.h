@@ -43,14 +43,13 @@ inline constexpr MinMax<sim::ShipFireRate> enum_range<sim::ShipFireRate>{
 
 namespace ioj {
 template <>
-struct EnumTraits<::ioj::sim::ShipFireRate> {
-    static constexpr std::array values{::ioj::sim::ShipFireRate::Single,
-                                       ::ioj::sim::ShipFireRate::Burst3,
-                                       ::ioj::sim::ShipFireRate::FullAuto};
+struct EnumTraits<sim::ShipFireRate> {
+    static constexpr std::array values{
+        sim::ShipFireRate::Single, sim::ShipFireRate::Burst3, sim::ShipFireRate::FullAuto};
 };
 
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::sim::ShipFireRate>() noexcept -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<sim::ShipFireRate>() noexcept -> std::size_t {
     return 3;
 }
 } // namespace ioj

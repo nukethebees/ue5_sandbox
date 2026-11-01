@@ -38,9 +38,8 @@ inline constexpr MinMax<ObjectiveWinsLevel> enum_range<ObjectiveWinsLevel>{Objec
 
 namespace ioj {
 template <>
-struct EnumTraits<::ioj::ObjectiveWinsLevel> {
-    static constexpr std::array values{::ioj::ObjectiveWinsLevel::No,
-                                       ::ioj::ObjectiveWinsLevel::Yes};
+struct EnumTraits<ObjectiveWinsLevel> {
+    static constexpr std::array values{ObjectiveWinsLevel::No, ObjectiveWinsLevel::Yes};
 };
 
 } // namespace ioj

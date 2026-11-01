@@ -147,13 +147,13 @@ inline constexpr MinMax<codegen_compile_fixture::EMissingNames>
 
 namespace ioj {
 template <>
-struct EnumTraits<::codegen_compile_fixture::EPlainFixture> {
-    static constexpr std::array values{::codegen_compile_fixture::EPlainFixture::First,
-                                       ::codegen_compile_fixture::EPlainFixture::ReadableName};
+struct EnumTraits<codegen_compile_fixture::EPlainFixture> {
+    static constexpr std::array values{codegen_compile_fixture::EPlainFixture::First,
+                                       codegen_compile_fixture::EPlainFixture::ReadableName};
 };
 
 template <>
-[[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::EPlainFixture>() noexcept
+[[nodiscard]] constexpr auto enum_count<codegen_compile_fixture::EPlainFixture>() noexcept
     -> std::size_t {
     return 2;
 }
@@ -192,10 +192,10 @@ inline constexpr auto
 
 namespace ioj {
 template <>
-struct EnumTraits<::codegen_compile_fixture::EMissingNames> {
-    static constexpr std::array values{::codegen_compile_fixture::EMissingNames::Unnamed,
-                                       ::codegen_compile_fixture::EMissingNames::Empty,
-                                       ::codegen_compile_fixture::EMissingNames::Escaped};
+struct EnumTraits<codegen_compile_fixture::EMissingNames> {
+    static constexpr std::array values{codegen_compile_fixture::EMissingNames::Unnamed,
+                                       codegen_compile_fixture::EMissingNames::Empty,
+                                       codegen_compile_fixture::EMissingNames::Escaped};
 };
 
 } // namespace ioj

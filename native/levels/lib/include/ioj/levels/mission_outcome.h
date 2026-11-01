@@ -38,9 +38,8 @@ inline constexpr MinMax<MissionOutcome> enum_range<MissionOutcome>{MissionOutcom
 
 namespace ioj {
 template <>
-struct EnumTraits<::ioj::MissionOutcome> {
-    static constexpr std::array values{::ioj::MissionOutcome::Victory,
-                                       ::ioj::MissionOutcome::Defeat};
+struct EnumTraits<MissionOutcome> {
+    static constexpr std::array values{MissionOutcome::Victory, MissionOutcome::Defeat};
 };
 
 } // namespace ioj

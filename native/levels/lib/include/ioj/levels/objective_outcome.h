@@ -40,14 +40,13 @@ inline constexpr MinMax<ObjectiveOutcome> enum_range<ObjectiveOutcome>{Objective
 
 namespace ioj {
 template <>
-struct EnumTraits<::ioj::ObjectiveOutcome> {
-    static constexpr std::array values{::ioj::ObjectiveOutcome::Passed,
-                                       ::ioj::ObjectiveOutcome::Failed,
-                                       ::ioj::ObjectiveOutcome::Expired};
+struct EnumTraits<ObjectiveOutcome> {
+    static constexpr std::array values{
+        ObjectiveOutcome::Passed, ObjectiveOutcome::Failed, ObjectiveOutcome::Expired};
 };
 
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::ObjectiveOutcome>() noexcept -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<ObjectiveOutcome>() noexcept -> std::size_t {
     return 3;
 }
 } // namespace ioj

@@ -74,17 +74,13 @@ inline constexpr MinMax<Team> enum_range<Team>{Team::White, Team::Yellow};
 
 namespace ioj {
 template <>
-struct EnumTraits<::ioj::Team> {
-    static constexpr std::array values{::ioj::Team::White,
-                                       ::ioj::Team::Red,
-                                       ::ioj::Team::Green,
-                                       ::ioj::Team::Blue,
-                                       ::ioj::Team::Orange,
-                                       ::ioj::Team::Yellow};
+struct EnumTraits<Team> {
+    static constexpr std::array values{
+        Team::White, Team::Red, Team::Green, Team::Blue, Team::Orange, Team::Yellow};
 };
 
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::Team>() noexcept -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<Team>() noexcept -> std::size_t {
     return 6;
 }
 } // namespace ioj

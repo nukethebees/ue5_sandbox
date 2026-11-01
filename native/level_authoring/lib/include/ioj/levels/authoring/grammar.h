@@ -321,44 +321,44 @@ inline constexpr MinMax<levels::authoring::RecordKind> enum_range<levels::author
 
 namespace ioj {
 template <>
-struct EnumTraits<::ioj::levels::authoring::Property> {
-    static constexpr std::array values{::ioj::levels::authoring::Property::Id,
-                                       ::ioj::levels::authoring::Property::Title,
-                                       ::ioj::levels::authoring::Property::Description,
-                                       ::ioj::levels::authoring::Property::ParTime,
-                                       ::ioj::levels::authoring::Property::CollisionGrid,
-                                       ::ioj::levels::authoring::Property::Unlock,
-                                       ::ioj::levels::authoring::Property::Player,
-                                       ::ioj::levels::authoring::Property::Camera,
-                                       ::ioj::levels::authoring::Property::Mission,
-                                       ::ioj::levels::authoring::Property::Objectives,
-                                       ::ioj::levels::authoring::Property::Nodes,
-                                       ::ioj::levels::authoring::Property::Pass,
-                                       ::ioj::levels::authoring::Property::Fail,
-                                       ::ioj::levels::authoring::Property::Expire,
-                                       ::ioj::levels::authoring::Property::DependsOn,
-                                       ::ioj::levels::authoring::Property::WinsLevel,
-                                       ::ioj::levels::authoring::Property::Entities,
-                                       ::ioj::levels::authoring::Property::Settings,
-                                       ::ioj::levels::authoring::Property::Levels,
-                                       ::ioj::levels::authoring::Property::Campaigns,
-                                       ::ioj::levels::authoring::Property::Path,
-                                       ::ioj::levels::authoring::Property::Value,
-                                       ::ioj::levels::authoring::Property::Error,
-                                       ::ioj::levels::authoring::Property::LevelSize,
-                                       ::ioj::levels::authoring::Property::CellSize,
-                                       ::ioj::levels::authoring::Property::LookAt,
-                                       ::ioj::levels::authoring::Property::Distance,
-                                       ::ioj::levels::authoring::Property::OffsetDirection,
-                                       ::ioj::levels::authoring::Property::Archetype,
-                                       ::ioj::levels::authoring::Property::Team,
-                                       ::ioj::levels::authoring::Property::Position,
-                                       ::ioj::levels::authoring::Property::Rotation,
-                                       ::ioj::levels::authoring::Property::SpawnAt,
-                                       ::ioj::levels::authoring::Property::Health,
-                                       ::ioj::levels::authoring::Property::LaserDamage,
-                                       ::ioj::levels::authoring::Property::InitialSpawnDelay,
-                                       ::ioj::levels::authoring::Property::SpawnCooldown};
+struct EnumTraits<levels::authoring::Property> {
+    static constexpr std::array values{levels::authoring::Property::Id,
+                                       levels::authoring::Property::Title,
+                                       levels::authoring::Property::Description,
+                                       levels::authoring::Property::ParTime,
+                                       levels::authoring::Property::CollisionGrid,
+                                       levels::authoring::Property::Unlock,
+                                       levels::authoring::Property::Player,
+                                       levels::authoring::Property::Camera,
+                                       levels::authoring::Property::Mission,
+                                       levels::authoring::Property::Objectives,
+                                       levels::authoring::Property::Nodes,
+                                       levels::authoring::Property::Pass,
+                                       levels::authoring::Property::Fail,
+                                       levels::authoring::Property::Expire,
+                                       levels::authoring::Property::DependsOn,
+                                       levels::authoring::Property::WinsLevel,
+                                       levels::authoring::Property::Entities,
+                                       levels::authoring::Property::Settings,
+                                       levels::authoring::Property::Levels,
+                                       levels::authoring::Property::Campaigns,
+                                       levels::authoring::Property::Path,
+                                       levels::authoring::Property::Value,
+                                       levels::authoring::Property::Error,
+                                       levels::authoring::Property::LevelSize,
+                                       levels::authoring::Property::CellSize,
+                                       levels::authoring::Property::LookAt,
+                                       levels::authoring::Property::Distance,
+                                       levels::authoring::Property::OffsetDirection,
+                                       levels::authoring::Property::Archetype,
+                                       levels::authoring::Property::Team,
+                                       levels::authoring::Property::Position,
+                                       levels::authoring::Property::Rotation,
+                                       levels::authoring::Property::SpawnAt,
+                                       levels::authoring::Property::Health,
+                                       levels::authoring::Property::LaserDamage,
+                                       levels::authoring::Property::InitialSpawnDelay,
+                                       levels::authoring::Property::SpawnCooldown};
 };
 
 } // namespace ioj
@@ -378,9 +378,9 @@ inline constexpr auto ioj::enum_strings<::ioj::levels::authoring::Property, ioj:
 
 namespace ioj {
 template <>
-struct EnumTraits<::ioj::levels::authoring::ExpressionSyntax> {
-    static constexpr std::array values{::ioj::levels::authoring::ExpressionSyntax::Definition,
-                                       ::ioj::levels::authoring::ExpressionSyntax::Reference};
+struct EnumTraits<levels::authoring::ExpressionSyntax> {
+    static constexpr std::array values{levels::authoring::ExpressionSyntax::Definition,
+                                       levels::authoring::ExpressionSyntax::Reference};
 };
 
 } // namespace ioj

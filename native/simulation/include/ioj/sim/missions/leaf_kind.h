@@ -32,16 +32,16 @@ inline constexpr MinMax<sim::LeafKind> enum_range<sim::LeafKind>{sim::LeafKind::
 
 namespace ioj {
 template <>
-struct EnumTraits<::ioj::sim::LeafKind> {
-    static constexpr std::array values{::ioj::sim::LeafKind::EntityDestroyed,
-                                       ::ioj::sim::LeafKind::EntityReachedPosition,
-                                       ::ioj::sim::LeafKind::TimeElapsed,
-                                       ::ioj::sim::LeafKind::ObjectiveResolved,
-                                       ::ioj::sim::LeafKind::EntityKillsReached};
+struct EnumTraits<sim::LeafKind> {
+    static constexpr std::array values{sim::LeafKind::EntityDestroyed,
+                                       sim::LeafKind::EntityReachedPosition,
+                                       sim::LeafKind::TimeElapsed,
+                                       sim::LeafKind::ObjectiveResolved,
+                                       sim::LeafKind::EntityKillsReached};
 };
 
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::sim::LeafKind>() noexcept -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<sim::LeafKind>() noexcept -> std::size_t {
     return 5;
 }
 } // namespace ioj

@@ -36,16 +36,16 @@ inline constexpr MinMax<sim::EntityType> enum_range<sim::EntityType>{sim::Entity
 
 namespace ioj {
 template <>
-struct EnumTraits<::ioj::sim::EntityType> {
-    static constexpr std::array values{::ioj::sim::EntityType::PlayerShip,
-                                       ::ioj::sim::EntityType::Turret,
-                                       ::ioj::sim::EntityType::CapitalShip,
-                                       ::ioj::sim::EntityType::Fighter,
-                                       ::ioj::sim::EntityType::TubeSpinner};
+struct EnumTraits<sim::EntityType> {
+    static constexpr std::array values{sim::EntityType::PlayerShip,
+                                       sim::EntityType::Turret,
+                                       sim::EntityType::CapitalShip,
+                                       sim::EntityType::Fighter,
+                                       sim::EntityType::TubeSpinner};
 };
 
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::sim::EntityType>() noexcept -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<sim::EntityType>() noexcept -> std::size_t {
     return 5;
 }
 } // namespace ioj
