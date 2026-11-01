@@ -52,6 +52,7 @@ namespace ioj::sim::player {
 /* **************************************** */
 // Construction and configuration
 /* **************************************** */
+// Level initialisation
 void Sim::initialise(PlayerSpawnData const& spawn) {
     config = spawn.config;
     team = spawn.team;
@@ -101,6 +102,7 @@ Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_table
 void Sim::update_entity_lookup_table() {
     entity_tables_.publish<EntityType::PlayerShip>({&unique_entity_id, 1}, {&team, 1}, max_health_);
 }
+// Preparation
 void Sim::prepare_tick(float const dt) {
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::prepare_tick");
 
@@ -119,6 +121,7 @@ void Sim::prepare_tick(float const dt) {
     update_entity_lookup_table();
 }
 
+// Thinking
 void Sim::think(float const dt) {
     planned_state_ = state_;
     auto& state{planned_state_};
@@ -129,6 +132,7 @@ void Sim::think(float const dt) {
     integrate_flight_model(dt, get_active_flight_model_config(), flight_intent_, state);
 }
 
+// Action
 void Sim::apply_movement(ActionInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::apply_movement");
     state_ = planned_state_;
@@ -137,11 +141,13 @@ void Sim::apply_movement(ActionInputs const inputs) {
     }
 }
 
+// Thinking
 void Sim::generate_fire_commands() {
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::generate_fire_commands");
     update_laser_firing();
 }
 
+// Resolution
 void Sim::resolve_damage_events(ResolutionInputs const inputs) {
     auto* const scratch_resource{&inputs.scratch_resource};
 

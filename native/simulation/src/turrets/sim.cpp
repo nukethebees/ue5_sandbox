@@ -35,6 +35,7 @@ namespace ioj::sim::turrets {
 /* **************************************** */
 // Configuration
 /* **************************************** */
+// Level initialisation
 void Sim::initialise(TurretSimConfig const& new_config) {
     config = new_config;
 
@@ -157,6 +158,7 @@ void Sim::update_entity_lookup_table() {
     auto const rows{entities.get_const_view()};
     entity_tables_.publish<EntityType::Turret>(rows.entity_ids(), rows.teams(), config.max_health);
 }
+// Preparation
 void Sim::prepare_tick(float const) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::prepare_tick");
     clear_tick_buffers();
@@ -185,17 +187,20 @@ void Sim::refresh_target_data(ThinkingInputs const inputs) {
         }
     }
 }
+// Thinking
 void Sim::think(ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::think");
     refresh_target_data(inputs);
     perform_search(inputs);
     refresh_target_data(inputs);
 }
+// Thinking
 void Sim::generate_fire_commands(ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::generate_fire_commands");
 
     fire_at_enemies(inputs);
 }
+// Resolution
 void Sim::resolve_damage_events(ResolutionInputs const inputs) {
     auto* const scratch_resource{&inputs.scratch_resource};
 
@@ -218,17 +223,20 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
         death_locations_.push_back(vector_at(locations, index));
     }
 }
+// Resolution
 void Sim::publish_deaths() {
     ledger_.record_deaths(entity_death_info.get_const_view(),
                           simulation_clock.get_completed_ticks());
 }
 
+// ResolutionCommit
 void Sim::remove_components() {
     assert(is_removal_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("turrets::Sim::remove_components");
 
     sort_and_deduplicate_removal_indices(local_indices_to_remove);
 }
+// ResolutionCommit
 void Sim::remove_entities() {
     assert(is_removal_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("turrets::Sim::remove_entities");
@@ -237,6 +245,7 @@ void Sim::remove_entities() {
     local_indices_to_remove.clear();
     entity_death_info.reset();
 }
+// ResolutionCommit
 void Sim::finish_action() {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::finish_action");
     profiling::plot("Sandbox/TurretCount", get_num_instances());

@@ -48,6 +48,7 @@ auto Sim::get_navigation_tick_period(NavigationRiskTier const tier) const -> std
 /* **************************************** */
 // Configuration
 /* **************************************** */
+// Level initialisation
 void Sim::initialise(FighterSimConfig const& new_config, FighterLevelData const level_data) {
     config = new_config;
     collision_radius_ = level_data.collision_radius;
@@ -117,6 +118,7 @@ void Sim::update_entity_lookup_table() {
     auto const rows{entities_.get_const_view()};
     entity_tables_.publish<EntityType::Fighter>(rows.entity_ids(), rows.teams(), config.health);
 }
+// Preparation
 void Sim::prepare_tick(float const dt) {
     movement_tick_period_ = dt;
     SANDBOX_PROFILE_SCOPE("fighters::Sim::prepare_tick");
@@ -141,6 +143,7 @@ void Sim::prepare_tick(float const dt) {
     tick_countdowns<std::int16_t>(data.attack_cooldowns(), attack_cleaner_, 16384);
     update_entity_lookup_table();
 }
+// Thinking
 void Sim::think(ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::think");
     refresh_target_data(inputs);
@@ -215,6 +218,7 @@ void Sim::plan_movement(ThinkingInputs const inputs) {
         target_distances[index] = std::sqrt(distance_sq);
     }
 }
+// Action
 void Sim::apply_movement(ActionInputs const inputs) {
     auto* const scratch_resource{&inputs.scratch_resource};
 
@@ -275,10 +279,12 @@ void Sim::apply_movement(ActionInputs const inputs) {
     }
     pending_fire_indices_.clear();
 }
+// Thinking
 void Sim::generate_fire_commands(ThinkingInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::generate_fire_commands");
     handle_firing(entities_.get_view(), inputs);
 }
+// Resolution
 void Sim::resolve_damage_events(ResolutionInputs const inputs) {
     auto* const scratch_resource{&inputs.scratch_resource};
 
@@ -298,17 +304,20 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
                                scratch_resource);
 }
 
+// Resolution
 void Sim::publish_deaths() {
     ledger_.record_deaths(entity_death_info.get_const_view(),
                           simulation_clock.get_completed_ticks());
 }
 
+// ResolutionCommit
 void Sim::remove_components() {
     assert(is_removal_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("fighters::Sim::remove_components");
 
     sort_and_deduplicate_removal_indices(local_indices_to_remove);
 }
+// ResolutionCommit
 void Sim::remove_entities() {
     assert(is_removal_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("fighters::Sim::remove_entities");
@@ -317,6 +326,7 @@ void Sim::remove_entities() {
     local_indices_to_remove.clear();
     entity_death_info.reset();
 }
+// ResolutionCommit
 void Sim::finish_action() {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::finish_action");
     profiling::plot("Sandbox/FighterCount", get_num_instances());
@@ -929,6 +939,7 @@ auto Sim::queue_spawns(FighterSpawnQueue::ConstView const new_spawns) -> std::ui
     spawn_queue.append_from(new_spawns, 0, count);
     return count;
 }
+// Preparation
 void Sim::commit_spawns() {
     assert(is_preparation_mutation_allowed(entity_tables_.lookups.clock()));
     SANDBOX_PROFILE_SCOPE("fighters::Sim::commit_spawns");

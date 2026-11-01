@@ -31,6 +31,7 @@ Sim::Sim(SimClock const& clock, CombatEvents& in_combat_events) noexcept
     : combat_events{in_combat_events}
     , simulation_clock{clock} {}
 
+// Level initialisation
 void Sim::initialise(LaserSimConfig const& new_config) {
     config = new_config;
 
@@ -45,6 +46,7 @@ auto Sim::append_spawn_requests(std::uint32_t const count) -> LaserSpawnRequests
     return pending_spawns.right(count);
 }
 
+// Preparation
 void Sim::commit_spawns() {
     assert(is_preparation_mutation_allowed(simulation_clock));
     SANDBOX_PROFILE_SCOPE("lasers::Sim::commit_spawns");
@@ -52,6 +54,7 @@ void Sim::commit_spawns() {
     clear_spawn_buffers();
 }
 
+// ResolutionCommit
 void Sim::cleanup_entities() {
     assert(simulation_clock.phase() == SimulationPhase::ResolutionCommit);
     std::ranges::sort(pending_removals_, std::greater{});
@@ -61,6 +64,7 @@ void Sim::cleanup_entities() {
     pending_removals_.clear();
 }
 
+// Action
 void Sim::simulate(ActionInputs const inputs) {
     auto* const scratch_resource{&inputs.scratch_resource};
     auto const dt{inputs.dt};
@@ -72,6 +76,7 @@ void Sim::simulate(ActionInputs const inputs) {
     expire_instances(dt, scratch_resource);
 }
 
+// ResolutionCommit
 void Sim::finish_action() {
     SANDBOX_PROFILE_SCOPE("lasers::Sim::finish_action");
     profiling::plot("Sandbox/LaserCount", get_num_instances());
