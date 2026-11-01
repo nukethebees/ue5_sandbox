@@ -14,7 +14,7 @@ Objectives::Objectives(std::size_t const count)
     , dependent_ranges_(count)
     , prerequisites_(count)
     , outcomes_(count)
-    , activation_ticks_(count, SimTick{std::numeric_limits<SimTick::value_type>::max()})
+    , activated_at_(count, SimTick{std::numeric_limits<SimTick::value_type>::max()})
     , membership_positions_(count) {
     inactive_.reserve(count);
     for (std::uint32_t index{}; index < count; ++index) {
@@ -33,7 +33,7 @@ void Objectives::activate(ObjectiveId const id, SimTick const tick) {
     remove_member(inactive_, id);
     at(membership_positions_, id) = static_cast<ObjectiveMembershipIndex>(active_.size());
     active_.push_back(id);
-    at(activation_ticks_, id) = tick;
+    at(activated_at_, id) = tick;
 }
 void Objectives::resolve(ObjectiveId const id, ObjectiveOutcome const outcome) {
     at(outcomes_, id) = outcome;

@@ -57,7 +57,7 @@ class Objectives {
     auto outcome(ObjectiveId id) const -> std::optional<ObjectiveOutcome> {
         return at(outcomes_, id);
     }
-    auto activation_tick(ObjectiveId id) const -> SimTick { return at(activation_ticks_, id); }
+    auto activation_tick(ObjectiveId id) const -> SimTick { return at(activated_at_, id); }
   private:
     void remove_member(std::vector<ObjectiveId>& collection, ObjectiveId id);
 
@@ -80,7 +80,7 @@ class Objectives {
     // Mutable
     std::vector<ObjectivePrerequisiteCount> prerequisites_;
     std::vector<std::optional<ObjectiveOutcome>> outcomes_;
-    std::vector<SimTick> activation_ticks_;
+    std::vector<SimTick> activated_at_;
     std::vector<ObjectiveMembershipIndex> membership_positions_;
 
     std::vector<ObjectiveId> inactive_;
