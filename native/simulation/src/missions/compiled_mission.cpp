@@ -64,7 +64,6 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
     }
     auto& composites{result.composites};
     auto& leaves{result.leaves};
-    auto& rules{result.rules};
     std::vector<std::vector<ActivationNotification>> dependents(count);
     auto size = [](auto const& values) { return static_cast<std::uint32_t>(values.size()); };
 
@@ -103,34 +102,35 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
             references[index] = ExprHandle{leaf, true};
             leaves.results.push_back(ExprResult::Pending);
             leaves.owners.push_back(owner);
-            RuleType type{};
+            LeafKind kind{};
             switch (expression.type()) {
                 case ExprType::EntityDestroyed: {
                     auto const& condition{
                         std::get<levels::EntityDestroyedExpr>(expression.payload)};
-                    type = RuleType::EntityDestroyed;
-                    rules.destroyed_entities.push_back(entity_indices.at(condition.entity));
+                    kind = LeafKind::EntityDestroyed;
+                    leaves.destroyed_entities.push_back(entity_indices.at(condition.entity));
                     break;
                 }
                 case ExprType::EntityReachedPosition: {
                     auto const& condition{
                         std::get<levels::EntityReachedPositionExpr>(expression.payload)};
-                    type = RuleType::EntityReachedPosition;
-                    rules.reached_entities.push_back(entity_indices.at(condition.entity));
-                    rules.positions.push_back(condition.position.get());
-                    rules.radius_squared.push_back(condition.radius.get() * condition.radius.get());
+                    kind = LeafKind::EntityReachedPosition;
+                    leaves.reached_entities.push_back(entity_indices.at(condition.entity));
+                    leaves.positions.push_back(condition.position.get());
+                    leaves.radius_squared.push_back(condition.radius.get() *
+                                                    condition.radius.get());
                     break;
                 }
                 case ExprType::TimeElapsed: {
                     auto const& condition{std::get<levels::TimeElapsedExpr>(expression.payload)};
-                    type = RuleType::TimeElapsed;
+                    kind = LeafKind::TimeElapsed;
                     auto const ticks{condition.seconds.get() * clock.get_tick_rate().get_hz()};
                     if (ticks >=
                         static_cast<double>(std::numeric_limits<SimTick::value_type>::max())) {
                         return std::unexpected{
                             std::vector<std::string>{"Mission timer exceeds tick range"}};
                     }
-                    rules.durations.emplace_back(
+                    leaves.durations.emplace_back(
                         clock.duration_to_tick_period(Duration::make(condition.seconds.get()))
                             .get());
                     break;
@@ -138,30 +138,30 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
                 case ExprType::ObjectiveResolved: {
                     auto const& condition{
                         std::get<levels::ObjectiveResolvedExpr>(expression.payload)};
-                    type = RuleType::ObjectiveResolved;
+                    kind = LeafKind::ObjectiveResolved;
                     auto const observed{objectives.at(condition.objective.objective)};
-                    rules.observed_objectives.push_back(observed);
-                    rules.observed_outcomes.push_back(condition.objective.outcome);
+                    leaves.observed_objectives.push_back(observed);
+                    leaves.observed_outcomes.push_back(condition.objective.outcome);
                     break;
                 }
                 case ExprType::EntityKillsReached: {
                     auto const& condition{
                         std::get<levels::EntityKillsReachedExpr>(expression.payload)};
-                    type = RuleType::EntityKillsReached;
-                    rules.kill_sources.push_back(
-                        {size(rules.kill_entities), size(condition.entities)});
-                    rules.kill_targets.push_back(condition.kills);
+                    kind = LeafKind::EntityKillsReached;
+                    leaves.kill_sources.push_back(
+                        {size(leaves.kill_entities), size(condition.entities)});
+                    leaves.kill_targets.push_back(condition.kills);
                     for (auto const& entity : condition.entities) {
-                        rules.kill_entities.push_back(entity_indices.at(entity));
+                        leaves.kill_entities.push_back(entity_indices.at(entity));
                     }
                     break;
                 }
                 default:
                     std::unreachable();
             }
-            auto& rule_leaves{rules.leaves[type]};
-            leaves.rules.push_back(RuleId{size(rule_leaves), type});
-            rule_leaves.push_back(leaf);
+            auto& leaf_handles{leaves.leaf_handles[kind]};
+            leaves.data_handles.push_back(LeafDataHandle{size(leaf_handles), kind});
+            leaf_handles.push_back(leaf);
         }
         for (auto const root : EnumTraits<ObjectiveOutcome>::values) {
             if (source.roots[root] != levels::absent_expression) {

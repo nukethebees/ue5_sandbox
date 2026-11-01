@@ -360,7 +360,7 @@ TEST(NativeSimulation, PositionConditionsUseLiveSpatialDataAndRemainTerminal) {
     simulation.start();
     simulation.advance(0.2);
     EXPECT_EQ(simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}), ObjectiveOutcome::Passed);
-    EXPECT_TRUE(simulation.get_mission().active_rules().empty());
+    EXPECT_TRUE(simulation.get_mission().active_leaves().empty());
 }
 
 TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimulation) {

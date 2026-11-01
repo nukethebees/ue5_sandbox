@@ -81,7 +81,7 @@ auto validate_mission(MissionDefinition const& mission, std::span<EntityId const
         valid_team(objective.team);
         expression_count += objective.expressions.size();
         if (expression_count >= mission_index_limit) {
-            errors.emplace_back("Too many mission expressions for packed rule indices");
+            errors.emplace_back("Too many mission expressions for packed leaf data indices");
             return errors;
         }
         auto has_root{false};

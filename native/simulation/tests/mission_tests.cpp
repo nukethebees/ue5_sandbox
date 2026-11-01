@@ -18,7 +18,7 @@ static_assert(sizeof(ObjectiveId) == sizeof(std::uint32_t));
 static_assert(!std::convertible_to<std::uint32_t, ObjectiveId>);
 static_assert(!std::convertible_to<EntityId, ObjectiveId>);
 static_assert(sizeof(ExprHandle) == sizeof(std::uint32_t));
-static_assert(sizeof(RuleId) == sizeof(std::uint32_t));
+static_assert(sizeof(LeafDataHandle) == sizeof(std::uint32_t));
 
 TEST(MissionAuthoring, RejectsInvalidConstrainedInputsBeforeRuntimeCompilation) {
     for (auto const expression : {"(time-elapsed 1)",
@@ -83,12 +83,12 @@ TEST_F(MissionTest, SharedDagEvaluatesChildrenFirstAndCompletedObjectivesAreTerm
     start({.objectives = {source}});
     tick(10);
     EXPECT_FALSE(mission.outcome(ObjectiveId{0}));
-    EXPECT_EQ(mission.active_rules().size(), 1);
+    EXPECT_EQ(mission.active_leaves().size(), 1);
     tick(10);
     EXPECT_FALSE(mission.outcome(ObjectiveId{0}));
     tick(20);
     EXPECT_EQ(mission.outcome(ObjectiveId{0}), ObjectiveOutcome::Passed);
-    EXPECT_TRUE(mission.active_rules().empty());
+    EXPECT_TRUE(mission.active_leaves().empty());
     tick(100);
     EXPECT_EQ(mission.completed_objectives().size(), 1);
 }
@@ -167,7 +167,7 @@ TEST_F(MissionTest, AllPrerequisitesActivateBeforeNextTickEvaluation) {
     EXPECT_TRUE(mission.inactive_objectives().empty());
     tick(21);
     EXPECT_EQ(mission.outcome(ObjectiveId{2}), ObjectiveOutcome::Passed);
-    EXPECT_TRUE(mission.active_rules().empty());
+    EXPECT_TRUE(mission.active_leaves().empty());
 }
 
 TEST_F(MissionTest, BypassExpiresOnlyExplicitObservers) {
@@ -340,29 +340,29 @@ TEST_F(MissionTest, RootAndTeamConflictPrecedenceIsDeterministic) {
     EXPECT_TRUE(mission.take_completions().empty());
 }
 
-TEST_F(MissionTest, RuleRunsSortAndRebuildAfterMembershipChanges) {
+TEST_F(MissionTest, LeafRunsSortAndRebuildAfterMembershipChanges) {
     names.emplace_back("future");
     entities.emplace_back();
-    auto source{objective("rules", timer(1))};
+    auto source{objective("leaves", timer(1))};
     source.expressions.push_back({EntityDestroyedExpr{.entity = names[0]}});
     source.expressions.push_back(timer(2));
     source.expressions.push_back({AllExpr{.children = {0, 1, 2}}});
     source.roots[ioj::ObjectiveOutcome::Passed] = 3;
     start({.objectives = {source}});
-    auto const initial{mission.active_rules()};
+    auto const initial{mission.active_leaves()};
     ASSERT_EQ(initial.size(), 3);
     EXPECT_TRUE(std::ranges::is_sorted(initial));
-    EXPECT_EQ(initial[0].type(), RuleType::EntityDestroyed);
-    EXPECT_EQ(initial[1].type(), RuleType::TimeElapsed);
-    EXPECT_EQ(initial[2].type(), RuleType::TimeElapsed);
+    EXPECT_EQ(initial[0].kind(), LeafKind::EntityDestroyed);
+    EXPECT_EQ(initial[1].kind(), LeafKind::TimeElapsed);
+    EXPECT_EQ(initial[2].kind(), LeafKind::TimeElapsed);
     tick(10);
-    ASSERT_EQ(mission.active_rules().size(), 2);
-    EXPECT_TRUE(std::ranges::is_sorted(mission.active_rules()));
+    ASSERT_EQ(mission.active_leaves().size(), 2);
+    EXPECT_TRUE(std::ranges::is_sorted(mission.active_leaves()));
     EXPECT_FALSE(mission.outcome(ObjectiveId{0}));
     tick(20);
-    auto const remaining{mission.active_rules()};
+    auto const remaining{mission.active_leaves()};
     ASSERT_EQ(remaining.size(), 1);
-    EXPECT_EQ(remaining[0].type(), RuleType::EntityDestroyed);
+    EXPECT_EQ(remaining[0].kind(), LeafKind::EntityDestroyed);
     EXPECT_FALSE(mission.outcome(ObjectiveId{0}));
 }
 

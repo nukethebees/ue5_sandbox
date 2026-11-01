@@ -47,9 +47,9 @@ and activation-dependency cycles are rejected. False roots do not resolve object
 Completed objectives and expression results are terminal. No objective automatically cancels
 another; use an explicit `:expire` expression to supersede it.
 
-Each evaluation first updates active rules, then evaluates active objectives' expressions
+Each evaluation first updates active leaves, then evaluates active objectives' composite expressions
 children-first. Completions are handled after both passes. Newly activated objectives and
-rules observing an objective's completion are evaluated on the next tick. Timers still measure
+leaves observing an objective's completion are evaluated on the next tick. Timers still measure
 from the tick when their objective was activated.
 
 Share subexpressions within one objective using names:

@@ -31,7 +31,7 @@ class Mission {
     auto team_outcome(Team team) const -> std::optional<MissionOutcome>;
     auto result(ExprHandle expression) const -> ExprResult;
 
-    auto active_rules() const -> std::span<RuleId const> { return active_rules_; }
+    auto active_leaves() const -> std::span<LeafDataHandle const> { return active_leaves_; }
   private:
     /* **************************************** */
     // Objective progression
@@ -48,21 +48,24 @@ class Mission {
     auto evaluate_composite(ExprCompositeIndex index) const -> ExprResult;
 
     /* **************************************** */
-    // Rule evaluation
+    // Leaf evaluation
     /* **************************************** */
-    auto rule_leaf(RuleId rule) const -> ExprLeafHandle;
-    auto pending_rule(RuleId rule) const -> bool;
-    void resolve_rule(RuleId rule, ExprResult value);
-    void evaluate_rules(MissionEvaluationContext const& inputs);
+    auto expression_leaf(LeafDataHandle data_handle) const -> ExprLeafHandle;
+    auto pending_leaf(LeafDataHandle data_handle) const -> bool;
+    void resolve_leaf(LeafDataHandle data_handle, ExprResult value);
+    void evaluate_leaves(MissionEvaluationContext const& inputs);
 
-    void evaluate_run(RuleType type,
-                      std::span<RuleId const> run,
+    void evaluate_run(LeafKind kind,
+                      std::span<LeafDataHandle const> run,
                       MissionEvaluationContext const& inputs);
-    void evaluate_destroyed(std::span<RuleId const> run, MissionEvaluationContext const& inputs);
-    void evaluate_elapsed(std::span<RuleId const> run, MissionEvaluationContext const& inputs);
-    void evaluate_resolved(std::span<RuleId const> run);
-    void evaluate_kills(std::span<RuleId const> run, MissionEvaluationContext const& inputs);
-    void evaluate_reached_position(std::span<RuleId const> run,
+    void evaluate_destroyed(std::span<LeafDataHandle const> run,
+                            MissionEvaluationContext const& inputs);
+    void evaluate_elapsed(std::span<LeafDataHandle const> run,
+                          MissionEvaluationContext const& inputs);
+    void evaluate_resolved(std::span<LeafDataHandle const> run);
+    void evaluate_kills(std::span<LeafDataHandle const> run,
+                        MissionEvaluationContext const& inputs);
+    void evaluate_reached_position(std::span<LeafDataHandle const> run,
                                    MissionEvaluationContext const& inputs);
 
     /* **************************************** */
@@ -77,8 +80,8 @@ class Mission {
     std::vector<ObjectiveId> active_;
     std::vector<ObjectiveId> completed_;
 
-    // Rules
-    std::vector<RuleId> active_rules_;
+    // Leaves
+    std::vector<LeafDataHandle> active_leaves_;
 
     std::optional<Team> winning_team_;
     EnumArray<Team, std::optional<MissionOutcome>> team_outcomes_;

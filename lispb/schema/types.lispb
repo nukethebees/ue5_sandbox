@@ -329,9 +329,9 @@
 (type player_resolution_inputs
   :spelling "ResolutionInputs"
   :header "ioj/sim/player/phase_inputs.h")
-(type mission_rule_type
-  :spelling "ioj::sim::RuleType"
-  :header "ioj/sim/missions/rule_type.h"
+(type mission_leaf_kind
+  :spelling "ioj::sim::LeafKind"
+  :header "ioj/sim/missions/leaf_kind.h"
   :pass-by value)
 
 

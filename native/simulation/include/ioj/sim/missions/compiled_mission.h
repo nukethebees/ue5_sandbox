@@ -7,7 +7,6 @@
 #include <ioj/sim/missions/expr_leaf_handle.h>
 #include <ioj/sim/missions/expr_leaves.h>
 #include <ioj/sim/missions/expr_operators.h>
-#include <ioj/sim/missions/mission_rules.h>
 #include <ioj/sim/missions/objectives.h>
 
 #include <expected>
@@ -25,7 +24,6 @@ struct CompiledMission {
 
     ExprOperators composites{};
     ExprLeaves leaves{};
-    MissionRules rules{};
     std::vector<ExprHandle> children{};
 
     std::vector<ActivationNotification> dependents{};

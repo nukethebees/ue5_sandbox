@@ -52,13 +52,13 @@ void Mission::begin(MissionEvaluationContext const& inputs) {
         }
     }
 
-    std::ranges::sort(active_rules_);
+    std::ranges::sort(active_leaves_);
     tick(inputs);
 }
 void Mission::tick(MissionEvaluationContext const& inputs) {
     assert(begun_);
 
-    evaluate_rules(inputs);
+    evaluate_leaves(inputs);
 
     auto const first_completed{static_cast<ObjectiveMembershipIndex>(completed_.size())};
     evaluate_objectives();
@@ -73,8 +73,9 @@ void Mission::tick(MissionEvaluationContext const& inputs) {
         }
     }
 
-    std::erase_if(active_rules_, [&](RuleId const rule) { return !pending_rule(rule); });
-    std::ranges::sort(active_rules_);
+    std::erase_if(active_leaves_,
+                  [&](LeafDataHandle const data_handle) { return !pending_leaf(data_handle); });
+    std::ranges::sort(active_leaves_);
 }
 
 /* **************************************** */
@@ -142,8 +143,8 @@ void Mission::activate(ObjectiveId const id, SimTick const tick) {
     auto const leaves_end{leaves.end()};
 
     for (ExprLeafHandle leaf{leaves.start()}; leaf < leaves_end; ++leaf) {
-        auto const rule{data_.leaves.rules[leaf]};
-        active_rules_.push_back(rule);
+        auto const data_handle{data_.leaves.data_handles[leaf]};
+        active_leaves_.push_back(data_handle);
     }
 }
 void Mission::complete(ObjectiveId const id,
@@ -212,157 +213,160 @@ auto Mission::evaluate_composite(ExprCompositeIndex const index) const -> ExprRe
 }
 
 /* **************************************** */
-// Rule evaluation
+// Leaf evaluation
 /* **************************************** */
-auto Mission::rule_leaf(RuleId const rule) const -> ExprLeafHandle {
-    return data_.rules.leaves[rule.type()][rule.index()];
+auto Mission::expression_leaf(LeafDataHandle const data_handle) const -> ExprLeafHandle {
+    return data_.leaves.leaf_handles[data_handle.kind()][data_handle.index()];
 }
-auto Mission::pending_rule(RuleId const rule) const -> bool {
-    auto const leaf{rule_leaf(rule)};
+auto Mission::pending_leaf(LeafDataHandle const data_handle) const -> bool {
+    auto const leaf{expression_leaf(data_handle)};
     return active(data_.leaves.owners[leaf]) && data_.leaves.results[leaf] == ExprResult::Pending;
 }
-void Mission::resolve_rule(RuleId const rule, ExprResult const value) {
+void Mission::resolve_leaf(LeafDataHandle const data_handle, ExprResult const value) {
     assert(value != ExprResult::Pending);
-    data_.leaves.results[rule_leaf(rule)] = value;
+    data_.leaves.results[expression_leaf(data_handle)] = value;
 }
-void Mission::evaluate_rules(MissionEvaluationContext const& inputs) {
-    auto const scheduled{std::span<RuleId const>{active_rules_}};
+void Mission::evaluate_leaves(MissionEvaluationContext const& inputs) {
+    auto const scheduled{std::span<LeafDataHandle const>{active_leaves_}};
     assert(std::ranges::is_sorted(scheduled));
     auto const count{scheduled.size()};
     std::size_t first{};
 
     while (first < count) {
-        auto const type{scheduled[first].type()};
+        auto const kind{scheduled[first].kind()};
         auto end{first + 1};
-        while (end < count && scheduled[end].type() == type) {
+        while (end < count && scheduled[end].kind() == kind) {
             ++end;
         }
 
-        // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- select the current type's rule range.
-        evaluate_run(type, scheduled.subspan(first, end - first), inputs);
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- select the current leaf kind's range.
+        evaluate_run(kind, scheduled.subspan(first, end - first), inputs);
         first = end;
     }
 }
-void Mission::evaluate_run(RuleType const type,
-                           std::span<RuleId const> const run,
+void Mission::evaluate_run(LeafKind const kind,
+                           std::span<LeafDataHandle const> const run,
                            MissionEvaluationContext const& inputs) {
-    switch (type) {
-        case RuleType::EntityDestroyed:
+    switch (kind) {
+        case LeafKind::EntityDestroyed:
             evaluate_destroyed(run, inputs);
             break;
-        case RuleType::TimeElapsed:
+        case LeafKind::TimeElapsed:
             evaluate_elapsed(run, inputs);
             break;
-        case RuleType::ObjectiveResolved:
+        case LeafKind::ObjectiveResolved:
             evaluate_resolved(run);
             break;
-        case RuleType::EntityKillsReached:
+        case LeafKind::EntityKillsReached:
             evaluate_kills(run, inputs);
             break;
-        case RuleType::EntityReachedPosition:
+        case LeafKind::EntityReachedPosition:
             evaluate_reached_position(run, inputs);
             break;
     }
 }
-void Mission::evaluate_destroyed(std::span<RuleId const> const run,
+void Mission::evaluate_destroyed(std::span<LeafDataHandle const> const run,
                                  MissionEvaluationContext const& inputs) {
-    auto const& rules{data_.rules};
+    auto const& leaves{data_.leaves};
     auto const life_states{inputs.ledger.get_unique_entities().life_state()};
 
-    for (auto const rule : run) {
-        if (pending_rule(rule)) {
-            auto const id{
-                mission_evaluation_detail::entity(inputs, rules.destroyed_entities[rule.index()])};
+    for (auto const data_handle : run) {
+        if (pending_leaf(data_handle)) {
+            auto const id{mission_evaluation_detail::entity(
+                inputs, leaves.destroyed_entities[data_handle.index()])};
             if (id.is_valid() &&
                 mission_evaluation_detail::destroyed(id, inputs.ledger, life_states)) {
-                resolve_rule(rule, ExprResult::True);
+                resolve_leaf(data_handle, ExprResult::True);
             }
         }
     }
 }
-void Mission::evaluate_elapsed(std::span<RuleId const> const run,
+void Mission::evaluate_elapsed(std::span<LeafDataHandle const> const run,
                                MissionEvaluationContext const& inputs) {
-    auto const& rules{data_.rules};
+    auto const& leaves{data_.leaves};
 
-    for (auto const rule : run) {
-        if (pending_rule(rule)) {
+    for (auto const data_handle : run) {
+        if (pending_leaf(data_handle)) {
             auto const activated{
-                data_.objectives.activation_tick(data_.leaves.owners[rule_leaf(rule)])};
+                data_.objectives.activation_tick(leaves.owners[expression_leaf(data_handle)])};
             assert(inputs.tick >= activated);
-            if (inputs.tick.value() - activated.value() >= rules.durations[rule.index()].value()) {
-                resolve_rule(rule, ExprResult::True);
+            if (inputs.tick.value() - activated.value() >=
+                leaves.durations[data_handle.index()].value()) {
+                resolve_leaf(data_handle, ExprResult::True);
             }
         }
     }
 }
-void Mission::evaluate_resolved(std::span<RuleId const> const run) {
-    auto const& rules{data_.rules};
+void Mission::evaluate_resolved(std::span<LeafDataHandle const> const run) {
+    auto const& leaves{data_.leaves};
 
-    for (auto const rule : run) {
-        if (pending_rule(rule)) {
-            auto const outcome{data_.objectives.outcome(rules.observed_objectives[rule.index()])};
+    for (auto const data_handle : run) {
+        if (pending_leaf(data_handle)) {
+            auto const outcome{
+                data_.objectives.outcome(leaves.observed_objectives[data_handle.index()])};
             if (outcome) {
-                resolve_rule(rule,
-                             *outcome == rules.observed_outcomes[rule.index()] ? ExprResult::True
-                                                                               : ExprResult::False);
+                resolve_leaf(data_handle,
+                             *outcome == leaves.observed_outcomes[data_handle.index()]
+                                 ? ExprResult::True
+                                 : ExprResult::False);
             }
         }
     }
 }
-void Mission::evaluate_kills(std::span<RuleId const> const run,
+void Mission::evaluate_kills(std::span<LeafDataHandle const> const run,
                              MissionEvaluationContext const& inputs) {
-    auto const& rules{data_.rules};
+    auto const& leaves{data_.leaves};
 
-    for (auto const rule : run) {
-        if (!pending_rule(rule)) {
+    for (auto const data_handle : run) {
+        if (!pending_leaf(data_handle)) {
             continue;
         }
 
         std::uint64_t kills{};
-        auto const sources{rules.kill_sources[rule.index()]};
+        auto const sources{leaves.kill_sources[data_handle.index()]};
         auto const sources_end{sources.end()};
         for (auto index{sources.start()}; index < sources_end; ++index) {
-            auto const id{mission_evaluation_detail::entity(inputs, rules.kill_entities[index])};
+            auto const id{mission_evaluation_detail::entity(inputs, leaves.kill_entities[index])};
             if (id.is_valid()) {
                 kills += inputs.ledger.get_kills(id);
             }
         }
 
-        if (kills >= rules.kill_targets[rule.index()]) {
-            resolve_rule(rule, ExprResult::True);
+        if (kills >= leaves.kill_targets[data_handle.index()]) {
+            resolve_leaf(data_handle, ExprResult::True);
         }
     }
 }
-void Mission::evaluate_reached_position(std::span<RuleId const> const run,
+void Mission::evaluate_reached_position(std::span<LeafDataHandle const> const run,
                                         MissionEvaluationContext const& inputs) {
-    auto const& rules{data_.rules};
+    auto const& leaves{data_.leaves};
     auto const life_states{inputs.ledger.get_unique_entities().life_state()};
 
     assert(inputs.spatial && inputs.scratch);
 
     FrameArray<EntityId> ids{inputs.scratch};
-    FrameArray<RuleId> live_rules{inputs.scratch};
+    FrameArray<LeafDataHandle> live_leaves{inputs.scratch};
     auto const count{static_cast<std::uint32_t>(run.size())};
     ids.set_num(count);
-    live_rules.set_num(count);
+    live_leaves.set_num(count);
     std::uint32_t live_count{};
 
-    for (auto const rule : run) {
-        if (!pending_rule(rule)) {
+    for (auto const data_handle : run) {
+        if (!pending_leaf(data_handle)) {
             continue;
         }
 
-        auto const id{
-            mission_evaluation_detail::entity(inputs, rules.reached_entities[rule.index()])};
+        auto const id{mission_evaluation_detail::entity(
+            inputs, leaves.reached_entities[data_handle.index()])};
         if (!id.is_valid()) {
             continue;
         }
 
         if (mission_evaluation_detail::destroyed(id, inputs.ledger, life_states)) {
-            resolve_rule(rule, ExprResult::False);
+            resolve_leaf(data_handle, ExprResult::False);
         } else {
             ids[live_count] = id;
-            live_rules[live_count++] = rule;
+            live_leaves[live_count++] = data_handle;
         }
     }
 
@@ -373,12 +377,12 @@ void Mission::evaluate_reached_position(std::span<RuleId const> const run,
         std::span<EntityId const>{ids.data(), live_count}, output, inputs.scratch);
 
     for (std::uint32_t row{}; row < live_count; ++row) {
-        auto const rule{live_rules[row]};
+        auto const data_handle{live_leaves[row]};
         auto const position{output[row]};
-        auto const target{rules.positions[rule.index()]};
+        auto const target{leaves.positions[data_handle.index()]};
         Vector3d const position_double{position.x(), position.y(), position.z()};
-        if (size_squared(position_double - target) <= rules.radius_squared[rule.index()]) {
-            resolve_rule(rule, ExprResult::True);
+        if (size_squared(position_double - target) <= leaves.radius_squared[data_handle.index()]) {
+            resolve_leaf(data_handle, ExprResult::True);
         }
     }
 }

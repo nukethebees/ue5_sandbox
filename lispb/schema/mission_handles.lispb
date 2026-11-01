@@ -1,7 +1,7 @@
-(module mission_rule_type
-  :header "native/simulation/include/ioj/sim/missions/rule_type.h"
+(module mission_leaf_kind
+  :header "native/simulation/include/ioj/sim/missions/leaf_kind.h"
   :namespace ioj::sim
-  (enum RuleType std::uint8_t
+  (enum LeafKind std::uint8_t
     :bit-width 8
     :native-api true :enum-array true :helpers (traits)
     (value EntityDestroyed) (value EntityReachedPosition) (value TimeElapsed)
@@ -24,11 +24,11 @@
     (member leaf bool :bits 1)
     (projections (cpp :storage std::uint32_t))))
 
-(module mission_rule_id
-  :header "native/simulation/include/ioj/sim/missions/rule_id.h"
+(module mission_leaf_data_handle
+  :header "native/simulation/include/ioj/sim/missions/leaf_data_handle.h"
   :namespace ioj::sim
-  (integer-scalar RuleIndex :bit-width 24)
-  (record RuleId :layout packed :bits 32
-    (member index @RuleIndex)
-    (member type @mission_rule_type :bits 8)
+  (integer-scalar LeafDataIndex :bit-width 24)
+  (record LeafDataHandle :layout packed :bits 32
+    (member index @LeafDataIndex)
+    (member kind @mission_leaf_kind :bits 8)
     (projections (cpp :storage std::uint32_t))))
