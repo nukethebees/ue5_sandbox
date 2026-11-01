@@ -73,11 +73,16 @@ class Mission {
     void settle(MissionEvaluationContext const& inputs);
 
     CompiledMission data_;
+    
+    // Objective state
     std::vector<ObjectiveId> inactive_;
     std::vector<ObjectiveId> active_;
     std::vector<ObjectiveId> completed_;
+    
+    // Rules
     std::vector<RuleId> active_rules_;
     std::vector<RuleId> newly_active_;
+
     std::vector<ExprRef> propagation_;
     std::vector<ObjectiveId> pending_objectives_;
     std::vector<TeamResultIndex> candidate_results_;
