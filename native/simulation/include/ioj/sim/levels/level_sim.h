@@ -142,6 +142,7 @@ struct LevelSim {
 
     LevelState state_{LevelState::Uninitialised};
     SimClock clock_;
+    TeamList participating_teams_;
 
     LevelMemoryManager memory_manager_;
     EntityLedger entity_ledger_;

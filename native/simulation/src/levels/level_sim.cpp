@@ -98,10 +98,10 @@ void LevelSim::initialise_subsystems(LevelSimInitData const& data) {
         data.capital_ships.max_health);
     auto const player_team{player_ship_simulation_ ? std::optional{player_ship_simulation_->team}
                                                    : std::nullopt};
-    auto const teams{event_manager_.get_participating_teams(player_team)};
+    participating_teams_ = event_manager_.get_participating_teams(player_team);
     fighters::PhaseInterface{fighters_simulation_}.initialise(
         data.fighters,
-        {.participating_teams = teams,
+        {.participating_teams = participating_teams_,
          .collision_radius = PositiveFinite<float>::make(
              collision_pipeline_.queries().get_entity_type_radius(EntityType::Fighter))});
     turrets::PhaseInterface{turrets_simulation_}.initialise(data.turrets);
@@ -250,14 +250,7 @@ void LevelSim::think_tick(float const tick_period) {
     SANDBOX_PROFILE_SCOPE("Thinking");
     clock_.transition_to(SimulationPhase::Thinking);
 
-    TeamList active_teams;
-    auto const alive_counts{entity_ledger_.count_alive_per_team()};
-    for (auto const team : EnumTraits<Team>::values) {
-        if (alive_counts[std::to_underlying(team)] > 0) {
-            active_teams.add(team);
-        }
-    }
-    task_manager_.plan_tasks({.active_teams = active_teams});
+    task_manager_.plan_tasks({.active_teams = participating_teams_});
 
     event_manager_.queue_fighter_spawns(tick_period, frame_memory);
 
