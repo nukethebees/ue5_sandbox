@@ -30,6 +30,7 @@ class Objectives {
     Objectives() = default;
     explicit Objectives(std::size_t count);
 
+    void reset_progress();
     auto is_completed(ObjectiveId id) const -> bool;
     auto inactive() const -> std::span<ObjectiveId const> { return inactive_; }
     auto active() const -> std::span<ObjectiveId const> { return active_; }

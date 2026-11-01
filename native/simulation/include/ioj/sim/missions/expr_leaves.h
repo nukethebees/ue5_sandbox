@@ -13,10 +13,17 @@
 #include <ioj/sim/sim_tick.h>
 #include <ioj/vector.h>
 
+#include <algorithm>
 #include <vector>
 
 namespace ioj::sim {
 struct ExprLeaves {
+    void reset_progress() {
+        std::ranges::fill(results, ExprResult::Pending);
+        std::ranges::fill(activated_at, SimTick{});
+        active.clear();
+    }
+
     // Shared
     std::vector<ExprResult> results;
     std::vector<LeafDataHandle> data_handles;

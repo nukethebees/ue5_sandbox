@@ -14,9 +14,16 @@ Objectives::Objectives(std::size_t const count)
     , composite_ranges_(count)
     , prerequisite_ranges_(count) {
     assert(count <= ObjectiveId::invalid_value);
-    inactive_.reserve(count);
+    reset_progress();
+}
+void Objectives::reset_progress() {
+    auto const count{size()};
+    inactive_.resize(count);
+    active_.clear();
+    completed_.clear();
+
     for (std::uint16_t index{}; index < count; ++index) {
-        inactive_.emplace_back(index);
+        inactive_[index] = ObjectiveId{index};
     }
 }
 auto Objectives::is_completed(ObjectiveId const id) const -> bool {

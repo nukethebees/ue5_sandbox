@@ -25,7 +25,10 @@ class Mission {
                         std::span<levels::EntityId const> entities,
                         SimClock const& clock) -> std::expected<Mission, std::vector<std::string>>;
 
+    void reset_progress();
+    // Start or restart progress using the supplied tick as the activation time.
     void begin(MissionEvaluationContext const& inputs);
+    // Requires begin() since construction or the last reset_progress().
     void tick(MissionEvaluationContext const& inputs);
 
     /* **************************************** */
@@ -91,6 +94,5 @@ class Mission {
 
     std::optional<Team> winning_team_;
     std::vector<TeamMissionCompletion> completions_;
-    bool begun_{};
 };
 }

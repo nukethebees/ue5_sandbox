@@ -235,18 +235,22 @@ auto Mission::compile(levels::MissionDefinition const& definition,
 
     return result;
 }
-void Mission::begin(MissionEvaluationContext const& inputs) {
-    assert(!begun_);
+void Mission::reset_progress() {
+    objectives_.reset_progress();
+    leaves_.reset_progress();
+    composites_.reset_progress();
 
-    begun_ = true;
+    winning_team_.reset();
+    completions_.clear();
+}
+void Mission::begin(MissionEvaluationContext const& inputs) {
+    reset_progress();
     activate_ready_objectives(inputs);
 
     std::ranges::sort(leaves_.active);
     tick(inputs);
 }
 void Mission::tick(MissionEvaluationContext const& inputs) {
-    assert(begun_);
-
     evaluate_leaves(inputs);
     evaluate_composites();
     evaluate_objectives(inputs);
