@@ -24,8 +24,8 @@ class Objectives {
     auto inactive() const -> std::span<ObjectiveId const> { return inactive_; }
     auto active() const -> std::span<ObjectiveId const> { return active_; }
     auto completed() const -> std::span<ObjectiveId const> { return completed_; }
-    void activate(ObjectiveId id);
-    void complete(ObjectiveId id);
+    auto activate(ObjectiveMembershipIndex position) -> ObjectiveId;
+    auto complete(ObjectiveMembershipIndex position) -> ObjectiveId;
 
     auto is_valid(ObjectiveId id) const -> bool { return id.is_valid() && id.index() < size(); }
     auto size() const -> std::size_t { return identifiers_.size(); }
@@ -44,7 +44,8 @@ class Objectives {
     void add_prerequisite(ObjectiveId id, ObjectiveId prerequisite, ObjectiveOutcome outcome);
     auto wins_level(ObjectiveId id) -> ObjectiveWinsLevel& { return at(wins_level_, id); }
   private:
-    void remove_member(std::vector<ObjectiveId>& collection, ObjectiveId id);
+    auto remove_member(std::vector<ObjectiveId>& collection, ObjectiveMembershipIndex position)
+        -> ObjectiveId;
 
     template <typename Column>
     auto at(Column& column, ObjectiveId const id) const -> decltype(column[id.index()]) {
@@ -64,8 +65,6 @@ class Objectives {
     std::vector<ObjectivePrerequisite> prerequisites_;
 
     // Mutable
-    std::vector<ObjectiveMembershipIndex> membership_positions_;
-
     std::vector<ObjectiveId> inactive_;
     std::vector<ObjectiveId> active_;
     std::vector<ObjectiveId> completed_;

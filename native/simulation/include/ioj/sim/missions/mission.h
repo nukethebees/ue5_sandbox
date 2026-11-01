@@ -54,7 +54,7 @@ class Mission {
     /* **************************************** */
     void activate_ready_objectives(SimTick tick);
     auto prerequisites_met(ObjectiveId id) const -> bool;
-    void activate(ObjectiveId id, SimTick tick);
+    void activate(ObjectiveMembershipIndex position, SimTick tick);
     void deactivate_expressions(ObjectiveId id);
 
     /* **************************************** */

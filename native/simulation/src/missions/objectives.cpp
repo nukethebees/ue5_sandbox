@@ -1,5 +1,7 @@
 #include <ioj/sim/missions/objectives.h>
 
+#include <algorithm>
+
 namespace ioj::sim {
 Objectives::Objectives(std::size_t const count)
     : identifiers_(count)
@@ -9,28 +11,26 @@ Objectives::Objectives(std::size_t const count)
     , roots_(count)
     , leaf_ranges_(count)
     , composite_ranges_(count)
-    , prerequisite_ranges_(count)
-    , membership_positions_(count) {
+    , prerequisite_ranges_(count) {
     assert(count <= ObjectiveId::invalid_value);
     inactive_.reserve(count);
     for (std::uint16_t index{}; index < count; ++index) {
         inactive_.emplace_back(index);
-        membership_positions_[index] = index;
     }
 }
 auto Objectives::is_completed(ObjectiveId const id) const -> bool {
-    auto const position{at(membership_positions_, id)};
-    return position < completed_.size() && completed_[position] == id;
+    assert(is_valid(id));
+    return std::ranges::contains(completed_, id);
 }
-void Objectives::activate(ObjectiveId const id) {
-    remove_member(inactive_, id);
-    at(membership_positions_, id) = static_cast<ObjectiveMembershipIndex>(active_.size());
+auto Objectives::activate(ObjectiveMembershipIndex const position) -> ObjectiveId {
+    auto const id{remove_member(inactive_, position)};
     active_.push_back(id);
+    return id;
 }
-void Objectives::complete(ObjectiveId const id) {
-    remove_member(active_, id);
-    at(membership_positions_, id) = static_cast<ObjectiveMembershipIndex>(completed_.size());
+auto Objectives::complete(ObjectiveMembershipIndex const position) -> ObjectiveId {
+    auto const id{remove_member(active_, position)};
     completed_.push_back(id);
+    return id;
 }
 auto Objectives::prerequisites(ObjectiveId const id) const
     -> std::span<ObjectivePrerequisite const> {
@@ -49,11 +49,12 @@ void Objectives::add_prerequisite(ObjectiveId const id,
     prerequisites_.emplace_back(prerequisite, outcome);
     ++range.count;
 }
-void Objectives::remove_member(std::vector<ObjectiveId>& collection, ObjectiveId const id) {
-    auto const position{at(membership_positions_, id)};
-    assert(position < collection.size() && collection[position] == id);
+auto Objectives::remove_member(std::vector<ObjectiveId>& collection,
+                               ObjectiveMembershipIndex const position) -> ObjectiveId {
+    assert(position < collection.size());
+    auto const id{collection[position]};
     collection[position] = collection.back();
-    at(membership_positions_, collection.back()) = position;
     collection.pop_back();
+    return id;
 }
 }

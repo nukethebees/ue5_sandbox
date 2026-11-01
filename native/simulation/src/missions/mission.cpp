@@ -295,11 +295,11 @@ auto Mission::result(ExprHandle const expression) const -> ExprResult {
 // Objective progression
 /* **************************************** */
 void Mission::activate_ready_objectives(SimTick const tick) {
-    std::size_t index{};
+    ObjectiveMembershipIndex index{};
     while (index < objectives_.inactive().size()) {
         auto const id{objectives_.inactive()[index]};
         if (prerequisites_met(id)) {
-            activate(id, tick);
+            activate(index, tick);
         } else {
             ++index;
         }
@@ -314,8 +314,8 @@ auto Mission::prerequisites_met(ObjectiveId const id) const -> bool {
 
     return true;
 }
-void Mission::activate(ObjectiveId const id, SimTick const tick) {
-    objectives_.activate(id);
+void Mission::activate(ObjectiveMembershipIndex const position, SimTick const tick) {
+    auto const id{objectives_.activate(position)};
 
     auto const leaves{objectives_.leaves(id)};
     auto const leaves_end{leaves.end()};
@@ -352,26 +352,30 @@ void Mission::deactivate_expressions(ObjectiveId const id) {
 // Objective evaluation
 /* **************************************** */
 void Mission::evaluate_objectives(MissionEvaluationContext const& inputs) {
-    struct Completion {
-        ObjectiveId id;
-        ObjectiveOutcome outcome;
-    };
+    FrameArray<ObjectiveMembershipIndex> completed{inputs.scratch};
+    ObjectiveId winning_objective{};
+    auto const count{objectives_.active().size()};
 
-    FrameArray<Completion> completed{inputs.scratch};
-    for (auto const id : objectives_.active()) {
+    for (ObjectiveMembershipIndex position{}; position < count; ++position) {
+        auto const id{objectives_.active()[position]};
         if (auto const outcome{root_outcome(id)}) {
-            completed.add({id, *outcome});
+            completed.add(position);
+            if (!winning_team_ && !winning_objective.is_valid() &&
+                *outcome == ObjectiveOutcome::Passed &&
+                objectives_.wins_level(id) == ObjectiveWinsLevel::Yes) {
+                winning_objective = id;
+            }
         }
     }
 
-    for (auto const [id, outcome] : completed) {
-        objectives_.complete(id);
+    // Remove from the back so pending positions continue to identify their original objectives.
+    for (auto index{completed.num()}; index > 0; --index) {
+        auto const id{objectives_.complete(completed[index - 1])};
         deactivate_expressions(id);
+    }
 
-        if (!winning_team_ && outcome == ObjectiveOutcome::Passed &&
-            objectives_.wins_level(id) == ObjectiveWinsLevel::Yes) {
-            finish(id, inputs);
-        }
+    if (winning_objective.is_valid()) {
+        finish(winning_objective, inputs);
     }
 }
 auto Mission::root_outcome(ObjectiveId const id) const -> std::optional<ObjectiveOutcome> {
