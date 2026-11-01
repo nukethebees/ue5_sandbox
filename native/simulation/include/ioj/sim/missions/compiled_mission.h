@@ -27,7 +27,6 @@ struct CompiledMission {
     ExprOperators composites{};
     ExprLeaves leaves{};
     MissionRules rules{};
-    std::vector<ExprRef> children{};
     std::vector<ExprCompositeIndex> parents{};
 
     std::vector<ActivationNotification> dependents{};

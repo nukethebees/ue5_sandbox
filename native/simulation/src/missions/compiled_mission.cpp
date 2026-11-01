@@ -61,7 +61,6 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
                 composites.types.push_back(expression.type());
                 composites.owners.push_back(owner);
                 composites.parents.emplace_back();
-                composites.children.emplace_back();
                 composites.remaining.push_back(0);
                 composite_parents.emplace_back();
                 continue;
@@ -144,11 +143,9 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
             std::vector<levels::ExprIndex> children{source_children.begin(), source_children.end()};
             std::ranges::sort(children);
             children.erase(std::unique(children.begin(), children.end()), children.end());
-            composites.children[parent.index()] = {size(result.children), size(children)};
             composites.remaining[parent.index()] = size(children);
             for (auto const child_index : children) {
                 auto const child{references[child_index]};
-                result.children.push_back(child);
                 (child.leaf() ? leaf_parents : composite_parents)[child.index()].push_back(
                     parent.index());
             }

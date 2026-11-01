@@ -13,7 +13,6 @@ struct ExprOperators {
     std::vector<ExprType> types;
     std::vector<ObjectiveId> owners;
     std::vector<IndexSpan> parents;
-    std::vector<IndexSpan> children;
     std::vector<std::uint32_t> remaining;
 };
 }
