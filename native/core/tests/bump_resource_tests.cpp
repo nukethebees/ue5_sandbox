@@ -1,4 +1,4 @@
-#include <native/memory/bump_resource.h>
+#include <ioj/memory/bump_resource.h>
 
 #include <gtest/gtest.h>
 
@@ -26,7 +26,7 @@ class CountingResource final : public std::pmr::memory_resource {
     }
 };
 
-class BumpResourceTest : public testing::Test {
+class BumpResourceTest : public ::testing::Test {
   protected:
     CountingResource upstream_;
     BumpResource resource_{512, upstream_};

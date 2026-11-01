@@ -1,4 +1,4 @@
-#include <native/memory/bump_resource.h>
+#include <ioj/memory/bump_resource.h>
 #include <SpaceGameSimulation/memory/GameMemoryBootstrap.h>
 
 #include <CQTest.h>

@@ -1,4 +1,4 @@
-#include <native/memory/bump_resource.h>
+#include <ioj/memory/bump_resource.h>
 
 #include <sbx/memory_resource.h>
 

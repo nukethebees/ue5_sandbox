@@ -229,7 +229,6 @@
       "configurePreset": "native-lean",
       "targets": [
         "native-core",
-        "native-memory",
         "native-simulation"
       ]
     },

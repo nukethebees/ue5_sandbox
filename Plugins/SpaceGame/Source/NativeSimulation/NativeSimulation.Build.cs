@@ -10,7 +10,6 @@ public class NativeSimulation : ModuleRules
 
         PublicDependencyModuleNames.AddRange(new string[]
         {
-            "NativeMemory",
             "NativeLevels",
             "NativeOneTBB",
             "SandboxCore",
@@ -68,14 +67,6 @@ public class NativeSimulation : ModuleRules
                     Target.Platform.ToString(),
                     Target.Configuration.ToString(),
                     "SandboxNativeCore.lib"),
-                Path.Combine(
-                    repositoryRoot,
-                    "Binaries",
-                    "NativeMemory",
-                    nativeToolchain,
-                    Target.Platform.ToString(),
-                    Target.Configuration.ToString(),
-                    "SandboxNativeMemory.lib"),
             };
 
             foreach (string nativeLibrary in nativeLibraries)

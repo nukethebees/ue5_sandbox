@@ -23,7 +23,6 @@ public class SpaceGame : ModuleRules
             "NativeSimulation",
             "NativeProfiles",
             "NativePresentation",
-            "NativeMemory",
             "SandboxUI",
             "CommonInput",
             "CommonUI",

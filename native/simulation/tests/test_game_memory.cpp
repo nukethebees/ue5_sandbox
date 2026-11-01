@@ -1,6 +1,6 @@
 #include "support/simulation_test_support.h"
+#include <ioj/memory/bump_resource.h>
 #include <ioj/sim/memory/game_memory.h>
-#include <native/memory/bump_resource.h>
 
 namespace ioj::sim::tests {
 

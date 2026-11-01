@@ -21,7 +21,6 @@ endif()
 target_link_libraries(native-simulation
   PUBLIC
     sandbox::native_defaults
-    native-memory
     native-core
     native-levels
     "$<$<BOOL:${IOJ_WITH_TRACY}>:sandbox::profiling-api>"

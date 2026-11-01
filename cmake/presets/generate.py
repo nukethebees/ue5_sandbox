@@ -182,7 +182,7 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
         {"name": "lispb-host", "configurePreset": "lispb-host",
          "targets": ["lispb"]},
         {"name": "native-lean", "configurePreset": "native-lean",
-         "targets": ["native-core", "native-memory", "native-simulation"]},
+         "targets": ["native-core", "native-simulation"]},
         {"name": "task-start", "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
          "targets": ["task-start-build"]},
         {"name": "tool-tests", "configurePreset": DEFAULT_NATIVE_CONFIGURATION,

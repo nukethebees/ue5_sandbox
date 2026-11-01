@@ -33,7 +33,6 @@ public class SandboxTests : ModuleRules
             "NativePresentation",
             "NativeProfiles",
             "NativeLevelAuthoring",
-            "NativeMemory",
             "SandboxUI",
             "NativeUI",
             "Sandbox",

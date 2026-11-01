@@ -7,7 +7,7 @@
 #include "SpaceGameSimulation/memory/GameMemoryBootstrap.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 #include <ioj/levels/launch_options.h>
-#include <native/memory/bump_resource.h>
+#include <ioj/memory/bump_resource.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
 
 #include <SandboxCoreEngine/strings.h>

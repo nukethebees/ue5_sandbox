@@ -66,7 +66,6 @@ add_subdirectory(profiling)
 add_subdirectory(sbx_mimalloc)
 add_subdirectory(lispb)
 add_subdirectory(layout)
-add_subdirectory(memory)
 add_subdirectory(core)
 add_subdirectory(ismc)
 add_subdirectory(gfx)
@@ -96,7 +95,6 @@ add_custom_target(native-tests
     native-soa-tests
     native-level-authoring-tests
     native-level-parser-tests
-    native-memory-tests
     native-simulation-tests
     native-simulation-soak-tests
     native-simulation-benchmark-tests

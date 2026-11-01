@@ -50,7 +50,6 @@ public class SandboxEditor : ModuleRules
         PublicDependencyModuleNames.AddRange(new string[]
         {
             "SandboxCore",
-            "NativeMemory",
             "NativeLevelAuthoring",
             "NativePresentation",
             "Core",

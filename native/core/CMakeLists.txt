@@ -25,6 +25,8 @@ target_sources(native-core
     include/ioj/container_ops.h
     include/ioj/monotonic_clock.h
     include/ioj/memory/allocation.h
+    include/ioj/memory/bump_resource.h
+    include/ioj/memory/statistics.h
     include/ioj/speed_response.h
     include/ioj/diagnostics.h
     include/ioj/require.h
@@ -65,6 +67,7 @@ target_sources(native-core
     src/countdown.cpp
     src/trigonometry.cpp
     src/frame_memory_resource.cpp
+    src/bump_resource.cpp
     src/projectile_intercept.cpp
     src/rotation.cpp
     src/structural_diff.cpp
@@ -79,6 +82,7 @@ target_include_directories(native-core
 set_source_files_properties(
   src/files.cpp
   src/frame_memory_resource.cpp
+  src/bump_resource.cpp
   src/require.cpp
   PROPERTIES
     SKIP_UNITY_BUILD_INCLUSION ON
@@ -91,6 +95,7 @@ target_link_libraries(native-core
 
   PRIVATE
     ioj::core_pch
+    sandbox::mimalloc
     "$<$<BOOL:${IOJ_WITH_TRACY}>:sandbox::profiling>"
     "$<$<BOOL:${IOJ_WITH_UNREAL}>:ioj::unreal_avx2>"
 )
@@ -139,6 +144,7 @@ target_sources(native-core-tests
     tests/fixed_array_tests.cpp
     tests/frame_array_tests.cpp
     tests/frame_memory_resource_tests.cpp
+    tests/bump_resource_tests.cpp
     tests/countdown_tests.cpp
     tests/enum_array_tests.cpp
     tests/interpolation_tests.cpp

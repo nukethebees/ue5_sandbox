@@ -1,5 +1,4 @@
 set(sandbox_unreal_native_dependency_targets
-  native-memory
   sbx-mimalloc
   native-simulation
   native-simulation-s7
