@@ -4,6 +4,28 @@
 #include <functional>
 
 namespace ioj::sim {
+namespace objectives_detail {
+auto move_members(std::vector<ObjectiveId>& source,
+                  std::vector<ObjectiveId>& destination,
+                  std::span<ObjectiveMembershipIndex const> const positions)
+    -> std::span<ObjectiveId const> {
+    assert(std::ranges::adjacent_find(positions, std::greater_equal{}) == positions.end());
+    auto const first{destination.size()};
+    for (auto const position : positions) {
+        assert(position < source.size());
+        destination.push_back(source[position]);
+    }
+
+    // Remove in reverse order to keep remaining positions tied to their original rows.
+    for (auto index{positions.size()}; index > 0; --index) {
+        source[positions[index - 1]] = source.back();
+        source.pop_back();
+    }
+
+    return std::span<ObjectiveId const>{destination}.subspan(first);
+}
+}
+
 Objectives::Objectives(std::size_t const count)
     : identifiers_(count)
     , display_names_(count)
@@ -32,11 +54,11 @@ auto Objectives::is_completed(ObjectiveId const id) const -> bool {
 }
 auto Objectives::activate(std::span<ObjectiveMembershipIndex const> const positions)
     -> std::span<ObjectiveId const> {
-    return move_members(inactive_, active_, positions);
+    return objectives_detail::move_members(inactive_, active_, positions);
 }
 auto Objectives::complete(std::span<ObjectiveMembershipIndex const> const positions)
     -> std::span<ObjectiveId const> {
-    return move_members(active_, completed_, positions);
+    return objectives_detail::move_members(active_, completed_, positions);
 }
 auto Objectives::compilation_view() -> CompilationView {
     return {identifiers_,
@@ -58,24 +80,5 @@ void Objectives::add_prerequisites(ObjectiveId const id,
     at(prerequisite_ranges_, id) = {static_cast<std::uint32_t>(prerequisites_.size()),
                                     static_cast<std::uint32_t>(prerequisites.size())};
     prerequisites_.append_range(prerequisites);
-}
-auto Objectives::move_members(std::vector<ObjectiveId>& source,
-                              std::vector<ObjectiveId>& destination,
-                              std::span<ObjectiveMembershipIndex const> const positions)
-    -> std::span<ObjectiveId const> {
-    assert(std::ranges::adjacent_find(positions, std::greater_equal{}) == positions.end());
-    auto const first{destination.size()};
-    for (auto const position : positions) {
-        assert(position < source.size());
-        destination.push_back(source[position]);
-    }
-
-    // Reverse removal keeps the remaining positions tied to their original rows.
-    for (auto index{positions.size()}; index > 0; --index) {
-        source[positions[index - 1]] = source.back();
-        source.pop_back();
-    }
-
-    return std::span<ObjectiveId const>{destination}.subspan(first);
 }
 }

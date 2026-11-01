@@ -53,10 +53,6 @@ class Objectives {
     void add_prerequisites(ObjectiveId id, std::span<ObjectivePrerequisite const> prerequisites);
     auto wins_level(ObjectiveId id) const -> ObjectiveWinsLevel { return at(wins_level_, id); }
   private:
-    static auto move_members(std::vector<ObjectiveId>& source,
-                             std::vector<ObjectiveId>& destination,
-                             std::span<ObjectiveMembershipIndex const> positions)
-        -> std::span<ObjectiveId const>;
     auto is_valid(ObjectiveId id) const -> bool { return id.is_valid() && id.index() < size(); }
 
     template <typename Column>
