@@ -10,7 +10,7 @@ Objectives::Objectives(std::size_t const count)
     , leaf_ranges_(count)
     , composite_ranges_(count)
     , dependent_ranges_(count)
-    , prerequisites_(count)
+    , remaining_prerequisites_(count)
     , membership_positions_(count) {
     inactive_.reserve(count);
     for (std::uint32_t index{}; index < count; ++index) {

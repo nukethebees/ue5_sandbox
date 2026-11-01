@@ -38,8 +38,8 @@ class Objectives {
     auto roots(ObjectiveId id) const -> ObjectiveRoots const& { return at(roots_, id); }
     auto leaves(ObjectiveId id) -> IndexSpan& { return at(leaf_ranges_, id); }
     auto composites(ObjectiveId id) -> IndexSpan& { return at(composite_ranges_, id); }
-    auto prerequisites(ObjectiveId id) -> ObjectivePrerequisiteCount& {
-        return at(prerequisites_, id);
+    auto remaining_prerequisites(ObjectiveId id) -> ObjectivePrerequisiteCount& {
+        return at(remaining_prerequisites_, id);
     }
     auto dependents(ObjectiveId id) -> IndexSpan& { return at(dependent_ranges_, id); }
     auto wins_level(ObjectiveId id) -> ObjectiveWinsLevel& { return at(wins_level_, id); }
@@ -63,7 +63,7 @@ class Objectives {
     std::vector<IndexSpan> dependent_ranges_;
 
     // Mutable
-    std::vector<ObjectivePrerequisiteCount> prerequisites_;
+    std::vector<ObjectivePrerequisiteCount> remaining_prerequisites_;
     std::vector<ObjectiveMembershipIndex> membership_positions_;
 
     std::vector<ObjectiveId> inactive_;

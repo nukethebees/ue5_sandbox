@@ -106,7 +106,7 @@ auto Mission::compile(levels::MissionDefinition const& definition,
         result.objectives_.title(owner) = source.title.empty() ? source.id.value : source.title;
         result.objectives_.team(owner) = source.team;
         result.objectives_.wins_level(owner) = source.wins_level;
-        result.objectives_.prerequisites(owner) =
+        result.objectives_.remaining_prerequisites(owner) =
             static_cast<ObjectivePrerequisiteCount>(source.dependencies.size());
 
         result.objectives_.leaves(owner).offset = size(leaves.results);
@@ -251,7 +251,7 @@ void Mission::begin(MissionEvaluationContext const& inputs) {
 
     for (std::uint32_t index{}; index < count; ++index) {
         ObjectiveId const id{index};
-        if (objectives_.prerequisites(id) == 0) {
+        if (objectives_.remaining_prerequisites(id) == 0) {
             activate(id, inputs.tick);
         }
     }
@@ -352,7 +352,7 @@ void Mission::handle_completion(ObjectiveId const id,
     for (auto index{dependents.start()}; index < dependents_end; ++index) {
         auto const dependency{dependents_[index]};
         if (dependency.outcome == outcome) {
-            auto& remaining{objectives_.prerequisites(dependency.dependent)};
+            auto& remaining{objectives_.remaining_prerequisites(dependency.dependent)};
             assert(remaining > 0);
 
             if (--remaining == 0) {
