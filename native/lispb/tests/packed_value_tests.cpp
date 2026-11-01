@@ -239,10 +239,9 @@ TEST(PackedRecord, FixedEncodingsComposeWithoutStandaloneProjection) {
     EXPECT_EQ(placement(layout, "position").offset, 18U);
     auto const files{render_test_manifest(context, manifest)};
     ASSERT_EQ(files.size(), 1U);
-    EXPECT_NE(files.front().content.find("Range: [-2048 / 16, 2047 / 16]; step: 1 / 16."),
+    EXPECT_NE(files.front().content.find("Range: [-2048 / 16, 2047 / 16]; step: 0.0625."),
               std::string::npos);
-    EXPECT_NE(files.front().content.find("Range: [0.0625, 16]; step: (16 - (0.0625)) / 255."),
-              std::string::npos);
+    EXPECT_NE(files.front().content.find("Range: [0.0625, 16]; step: 0.0625."), std::string::npos);
 }
 
 TEST(PackedRecord, DefaultsIncludeSignedValuesAndReservedBits) {

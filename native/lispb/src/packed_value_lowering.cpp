@@ -1247,13 +1247,12 @@ class PackedEmitter {
         if (range_form) {
             auto const min_value{fixed.minimum_value[row]};
             auto const max_value{fixed.maximum_value[row]};
-            metadata.push_back(
-                ir_.line_comment(std::format("Range: [{}, {}]; step: ({} - ({})) / {}.",
-                                             min_value,
-                                             max_value,
-                                             max_value,
-                                             min_value,
-                                             mask(placement.bits))));
+            auto const span{max_value - min_value};
+            auto const intervals{static_cast<double>(mask(placement.bits))};
+            auto const step{std::isfinite(span) ? span / intervals
+                                                : max_value / intervals - min_value / intervals};
+            metadata.push_back(ir_.line_comment(
+                std::format("Range: [{}, {}]; step: {}.", min_value, max_value, step)));
             auto const real = [&](double value) {
                 auto spelling{std::format("{}", value)};
                 if (spelling.find_first_of(".eE") == std::string::npos) {
@@ -1272,7 +1271,7 @@ class PackedEmitter {
                  binary(BinaryOperator::divide, cast("double", invoke(raw_name)), codes)});
 
             // Halve opposite extreme endpoints before subtracting to avoid an overflowing span.
-            auto const half_span{!std::isfinite(max_value - min_value)};
+            auto const half_span{!std::isfinite(span)};
             auto const adjusted = [&](Expr input) {
                 return half_span ? binary(BinaryOperator::multiply, input, ir_.literal("0.5"))
                                  : input;
@@ -1301,13 +1300,14 @@ class PackedEmitter {
                                    ? "18446744073709551616"
                                    : std::to_string(std::uint64_t{1} << fractional_bits)};
             metadata.push_back(ir_.line_comment(
-                fractional_bits == 0 ? std::format("Range: [{}, {}]; step: 1.", min_raw, max_raw)
-                                     : std::format("Range: [{} / {}, {} / {}]; step: 1 / {}.",
-                                                   min_raw,
-                                                   divisor,
-                                                   max_raw,
-                                                   divisor,
-                                                   divisor)));
+                fractional_bits == 0
+                    ? std::format("Range: [{}, {}]; step: 1.", min_raw, max_raw)
+                    : std::format("Range: [{} / {}, {} / {}]; step: {}.",
+                                  min_raw,
+                                  divisor,
+                                  max_raw,
+                                  divisor,
+                                  std::ldexp(1.0, -static_cast<int>(fractional_bits)))));
         }
         functions_.push_back(function(decoded_name,
                                       "double",

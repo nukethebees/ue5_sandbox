@@ -267,7 +267,7 @@ Binary-point values decode as the signed or unsigned raw integer divided by `2^f
 Range values map unsigned codes evenly between finite, increasing endpoints, including both
 endpoints; their step need not be a power of two. `:rounding` belongs to the declaration and defaults
 to `nearest-even`; `toward-zero` truncates the transformed raw code. These forms define encodings,
-not additional constrained subranges. Generated comments describe the range and exact step formula.
+not additional constrained subranges. Generated comments describe the range and calculated step value.
 Standalone projections retain integer `value()`/`set_value()` and add `decoded_value()`,
 `set_decoded_value()`, and `try_encode_value()`. Packed fields retain their named raw/value APIs.
 Floating conversion uses `double`, so wide encodings can have multiple codes decode to the same

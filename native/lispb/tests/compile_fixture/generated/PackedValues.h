@@ -29,7 +29,7 @@ struct GrowthFactor : detail::GrowthFactorBase {
     using value_type = std::uint8_t;
     static constexpr ioj::PackedField<storage_type, value_type, 0, storage.encoded_bits>
         value_layout{};
-    // Range: [0.0625, 16]; step: (16 - (0.0625)) / 255.
+    // Range: [0.0625, 16]; step: 0.0625.
     static constexpr double value_minimum{0.0625};
     static constexpr double value_maximum{16.0};
 
@@ -108,7 +108,7 @@ struct UnitFraction : detail::UnitFractionBase {
     using value_type = std::uint8_t;
     static constexpr ioj::PackedField<storage_type, value_type, 0, storage.encoded_bits>
         value_layout{};
-    // Range: [0, 1]; step: (1 - (0)) / 255.
+    // Range: [0, 1]; step: 0.00392156862745098.
     static constexpr double value_minimum{0.0};
     static constexpr double value_maximum{1.0};
 
@@ -187,7 +187,7 @@ struct WideRange : detail::WideRangeBase {
     using value_type = std::uint64_t;
     static constexpr ioj::PackedField<storage_type, value_type, 0, storage.encoded_bits>
         value_layout{};
-    // Range: [0, 1]; step: (1 - (0)) / 18446744073709551615.
+    // Range: [0, 1]; step: 5.421010862427522e-20.
     static constexpr double value_minimum{0.0};
     static constexpr double value_maximum{1.0};
 
@@ -268,7 +268,7 @@ struct BinaryVelocity : detail::BinaryVelocityBase {
     static constexpr ioj::PackedField<storage_type, value_type, 0, storage.encoded_bits>
         value_layout{};
     static constexpr int value_fractional_bits{4};
-    // Range: [-32768 / 16, 32767 / 16]; step: 1 / 16.
+    // Range: [-32768 / 16, 32767 / 16]; step: 0.0625.
 
     constexpr BinaryVelocity() noexcept = default;
     constexpr explicit BinaryVelocity(value_type const value) noexcept
@@ -346,13 +346,13 @@ struct RangeFields : detail::RangeFieldsBase {
 
     // growth
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 8, 8> growth_raw_layout{};
-    // Range: [0.0625, 16]; step: (16 - (0.0625)) / 255.
+    // Range: [0.0625, 16]; step: 0.0625.
     static constexpr double growth_minimum{0.0625};
     static constexpr double growth_maximum{16.0};
 
     // signed_range
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 16, 8> signed_range_raw_layout{};
-    // Range: [-1, 1]; step: (1 - (-1)) / 255.
+    // Range: [-1, 1]; step: 0.00784313725490196.
     static constexpr double signed_range_minimum{-1.0};
     static constexpr double signed_range_maximum{1.0};
 
@@ -1298,12 +1298,12 @@ struct Motion : detail::MotionBase {
     // velocity
     static constexpr ioj::PackedField<storage_type, std::int16_t, 0, 12> velocity_raw_layout{};
     static constexpr int velocity_fractional_bits{4};
-    // Range: [-2048 / 16, 2047 / 16]; step: 1 / 16.
+    // Range: [-2048 / 16, 2047 / 16]; step: 0.0625.
 
     // fraction
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 12, 7> fraction_raw_layout{};
     static constexpr int fraction_fractional_bits{7};
-    // Range: [0 / 128, 127 / 128]; step: 1 / 128.
+    // Range: [0 / 128, 127 / 128]; step: 0.0078125.
 
     // state
     static constexpr ioj::PackedField<storage_type, std::uint16_t, 19, 13> state_layout{};
