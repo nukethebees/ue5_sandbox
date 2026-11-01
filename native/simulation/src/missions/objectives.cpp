@@ -4,8 +4,8 @@
 
 namespace ioj::sim {
 Objectives::Objectives(std::size_t const count)
-    : names_(count)
-    , titles_(count)
+    : identifiers_(count)
+    , display_names_(count)
     , teams_(count)
     , roots_(count)
     , leaves_(count)

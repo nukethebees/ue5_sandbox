@@ -18,11 +18,11 @@ class Objectives {
     explicit Objectives(std::size_t count);
 
     auto is_valid(ObjectiveId id) const -> bool { return id.is_valid() && id.index() < size(); }
-    auto size() const -> std::size_t { return names_.size(); }
-    auto name(ObjectiveId id) -> levels::ObjectiveName& { return at(names_, id); }
-    auto name(ObjectiveId id) const -> levels::ObjectiveName const& { return at(names_, id); }
-    auto title(ObjectiveId id) -> std::string& { return at(titles_, id); }
-    auto title(ObjectiveId id) const -> std::string const& { return at(titles_, id); }
+    auto size() const -> std::size_t { return identifiers_.size(); }
+    auto name(ObjectiveId id) -> levels::ObjectiveName& { return at(identifiers_, id); }
+    auto name(ObjectiveId id) const -> levels::ObjectiveName const& { return at(identifiers_, id); }
+    auto title(ObjectiveId id) -> std::string& { return at(display_names_, id); }
+    auto title(ObjectiveId id) const -> std::string const& { return at(display_names_, id); }
     auto team(ObjectiveId id) -> Team& { return at(teams_, id); }
     auto team(ObjectiveId id) const -> Team { return at(teams_, id); }
     auto roots(ObjectiveId id) -> ObjectiveRoots& { return at(roots_, id); }
@@ -58,8 +58,8 @@ class Objectives {
         return column[id.index()];
     }
 
-    std::vector<levels::ObjectiveName> names_;
-    std::vector<std::string> titles_;
+    std::vector<levels::ObjectiveName> identifiers_;
+    std::vector<std::string> display_names_;
     std::vector<Team> teams_;
     std::vector<ObjectiveRoots> roots_;
     std::vector<IndexSpan> leaves_;
