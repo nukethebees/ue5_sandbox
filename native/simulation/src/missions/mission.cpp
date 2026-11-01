@@ -456,6 +456,7 @@ void Mission::evaluate_leaves(MissionEvaluationContext const& inputs) {
         first = end;
     }
 
+    // Resolved leaves retain their results but no longer need evaluation on later ticks.
     std::erase_if(leaves_.active, [&](LeafDataHandle const data_handle) {
         return leaves_.results[expression_leaf(data_handle)] != ExprResult::Pending;
     });
