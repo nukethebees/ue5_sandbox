@@ -39,23 +39,21 @@ class Mission {
     auto active(ObjectiveId id) const -> bool;
     void remove_member(std::vector<ObjectiveId>& collection, ObjectiveId id);
     void activate(ObjectiveId id, SimTick tick);
-    void complete(ObjectiveId id, ObjectiveOutcome outcome, SimTick tick);
+    void complete(ObjectiveId id, ObjectiveMembershipIndex position, SimTick tick);
 
     /* **************************************** */
-    // Expression propagation
+    // Objective evaluation
     /* **************************************** */
-    void resolve(ExprHandle expression, ExprResult value);
-    void resolve_rule(RuleId rule, ExprResult value);
-    void propagate();
+    void evaluate_objectives();
+    auto evaluate_composite(ExprCompositeIndex index) const -> ExprResult;
 
     /* **************************************** */
     // Rule evaluation
     /* **************************************** */
     auto rule_leaf(RuleId rule) const -> ExprLeafHandle;
     auto pending_rule(RuleId rule) const -> bool;
-    void evaluate(std::span<RuleId const> scheduled,
-                  MissionEvaluationContext const& inputs,
-                  bool activating = false);
+    void resolve_rule(RuleId rule, ExprResult value);
+    void evaluate_rules(MissionEvaluationContext const& inputs);
 
     void evaluate_run(RuleType type,
                       std::span<RuleId const> run,
@@ -68,9 +66,8 @@ class Mission {
                                    MissionEvaluationContext const& inputs);
 
     /* **************************************** */
-    // Settlement
+    // Mission completion
     /* **************************************** */
-    void settle(MissionEvaluationContext const& inputs);
     void finish(ObjectiveId winning_objective, MissionEvaluationContext const& inputs);
 
     CompiledMission data_;
@@ -82,10 +79,7 @@ class Mission {
 
     // Rules
     std::vector<RuleId> active_rules_;
-    std::vector<RuleId> newly_active_;
 
-    std::vector<ExprHandle> propagation_;
-    std::vector<ObjectiveId> pending_objectives_;
     std::optional<Team> winning_team_;
     EnumArray<Team, std::optional<MissionOutcome>> team_outcomes_;
     std::vector<TeamMissionCompletion> completions_;

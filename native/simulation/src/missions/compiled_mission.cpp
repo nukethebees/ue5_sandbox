@@ -3,11 +3,46 @@
 #include <ioj/levels/mission_validation.h>
 #include <ioj/sim/sim_clock.h>
 
-#include <algorithm>
 #include <limits>
 #include <unordered_map>
+#include <utility>
 
 namespace ioj::sim {
+namespace compiled_mission_detail {
+auto expression_order(std::span<levels::MissionExpr const> const expressions)
+    -> std::vector<levels::ExprIndex> {
+    auto const count{expressions.size()};
+    std::vector<levels::ExprIndex> order;
+    order.reserve(count);
+    std::vector<bool> visited(count);
+    std::vector<std::pair<levels::ExprIndex, std::size_t>> stack;
+
+    for (levels::ExprIndex index{}; index < count; ++index) {
+        if (visited[index]) {
+            continue;
+        }
+        visited[index] = true;
+        stack.emplace_back(index, 0);
+
+        while (!stack.empty()) {
+            auto& [node, next_child]{stack.back()};
+            auto const children{expressions[node].children()};
+            if (next_child == children.size()) {
+                order.push_back(node);
+                stack.pop_back();
+            } else {
+                auto const child{children[next_child++]};
+                if (!visited[child]) {
+                    visited[child] = true;
+                    stack.emplace_back(child, 0);
+                }
+            }
+        }
+    }
+    return order;
+}
+}
+
 auto CompiledMission::compile(levels::MissionDefinition const& definition,
                               std::span<levels::EntityId const> const entities,
                               SimClock const& clock)
@@ -30,10 +65,7 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
     auto& composites{result.composites};
     auto& leaves{result.leaves};
     auto& rules{result.rules};
-    std::vector<std::vector<ExprCompositeIndex>> composite_parents;
-    std::vector<std::vector<ExprCompositeIndex>> leaf_parents;
     std::vector<std::vector<ActivationNotification>> dependents(count);
-    std::vector<std::vector<ExprLeafHandle>> observers(count);
     auto size = [](auto const& values) { return static_cast<std::uint32_t>(values.size()); };
 
     for (std::uint32_t row{}; row < count; ++row) {
@@ -51,26 +83,26 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
             dependents[objectives.at(dependency.objective).index()].push_back(
                 {owner, dependency.outcome});
         }
-        std::vector<ExprHandle> references;
-        references.reserve(source.expressions.size());
-        for (auto const& expression : source.expressions) {
+        std::vector<ExprHandle> references(source.expressions.size());
+        auto const order{compiled_mission_detail::expression_order(source.expressions)};
+        for (auto const index : order) {
+            auto const& expression{source.expressions[index]};
             if (expression.type() == ExprType::All || expression.type() == ExprType::Any) {
                 ExprCompositeIndex const composite{size(composites.results)};
-                references.emplace_back(composite, false);
+                references[index] = ExprHandle{composite, false};
                 composites.results.push_back(ExprResult::Pending);
                 composites.types.push_back(expression.type());
-                composites.owners.push_back(owner);
-                composites.parents.emplace_back();
-                composites.remaining.push_back(0);
-                composite_parents.emplace_back();
+                auto const children{expression.children()};
+                composites.child_ranges.push_back({size(result.children), size(children)});
+                for (auto const child : children) {
+                    result.children.push_back(references[child]);
+                }
                 continue;
             }
             ExprLeafHandle const leaf{size(leaves.results)};
-            references.emplace_back(leaf, true);
+            references[index] = ExprHandle{leaf, true};
             leaves.results.push_back(ExprResult::Pending);
             leaves.owners.push_back(owner);
-            leaves.parents.emplace_back();
-            leaf_parents.emplace_back();
             RuleType type{};
             switch (expression.type()) {
                 case ExprType::EntityDestroyed: {
@@ -108,7 +140,6 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
                         std::get<levels::ObjectiveResolvedExpr>(expression.payload)};
                     type = RuleType::ObjectiveResolved;
                     auto const observed{objectives.at(condition.objective.objective)};
-                    observers[observed.index()].push_back(leaf);
                     rules.observed_objectives.push_back(observed);
                     rules.observed_outcomes.push_back(condition.objective.outcome);
                     break;
@@ -132,24 +163,6 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
             leaves.rules.push_back(RuleId{size(rule_leaves), type});
             rule_leaves.push_back(leaf);
         }
-        auto const expression_count{source.expressions.size()};
-        for (std::uint32_t index{}; index < expression_count; ++index) {
-            auto const parent{references[index]};
-            if (parent.leaf()) {
-                continue;
-            }
-            // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- children belong to the current node.
-            auto const source_children{source.expressions[index].children()};
-            std::vector<levels::ExprIndex> children{source_children.begin(), source_children.end()};
-            std::ranges::sort(children);
-            children.erase(std::unique(children.begin(), children.end()), children.end());
-            composites.remaining[parent.index()] = size(children);
-            for (auto const child_index : children) {
-                auto const child{references[child_index]};
-                (child.leaf() ? leaf_parents : composite_parents)[child.index()].push_back(
-                    parent.index());
-            }
-        }
         for (auto const root : EnumTraits<ObjectiveOutcome>::values) {
             if (source.roots[root] != levels::absent_expression) {
                 result.objectives.roots(owner)[root] = references[source.roots[root]];
@@ -160,23 +173,11 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
         result.objectives.composites(owner).count =
             size(composites.results) - result.objectives.composites(owner).offset;
     }
-    auto flatten = [&](auto const& groups, auto& spans, auto& values) {
-        auto const group_count{groups.size()};
-        for (std::uint32_t index{}; index < group_count; ++index) {
-            spans[index] = {size(values), size(groups[index])};
-            values.insert(values.end(), groups[index].begin(), groups[index].end());
-        }
-    };
-    flatten(composite_parents, composites.parents, result.parents);
-    flatten(leaf_parents, leaves.parents, result.parents);
     for (std::uint32_t row{}; row < count; ++row) {
         ObjectiveId const id{row};
         result.objectives.dependents(id) = {size(result.dependents), size(dependents[row])};
         result.dependents.insert(
             result.dependents.end(), dependents[row].begin(), dependents[row].end());
-        result.objectives.observers(id) = {size(result.observers), size(observers[row])};
-        result.observers.insert(
-            result.observers.end(), observers[row].begin(), observers[row].end());
     }
     return result;
 }

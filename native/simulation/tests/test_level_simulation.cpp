@@ -400,6 +400,8 @@ TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimu
     kill_enemy(simulation);
     simulation.advance(0.1);
     EXPECT_EQ(simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}), ObjectiveOutcome::Passed);
+    EXPECT_FALSE(simulation.get_mission().outcome(ioj::sim::ObjectiveId{1}));
+    simulation.advance(0.1);
     EXPECT_EQ(simulation.get_mission().outcome(ioj::sim::ObjectiveId{1}), ObjectiveOutcome::Passed);
     EXPECT_EQ(simulation.get_mission().team_outcome(Team::Green), MissionOutcome::Victory);
     EXPECT_FALSE(simulation.take_player_team_completion());

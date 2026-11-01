@@ -42,8 +42,6 @@ class Objectives {
     }
     auto dependents(ObjectiveId id) -> IndexSpan& { return at(dependent_ranges_, id); }
     auto dependents(ObjectiveId id) const -> IndexSpan { return at(dependent_ranges_, id); }
-    auto observers(ObjectiveId id) -> IndexSpan& { return at(observer_ranges_, id); }
-    auto observers(ObjectiveId id) const -> IndexSpan { return at(observer_ranges_, id); }
     auto wins_level(ObjectiveId id) -> ObjectiveWinsLevel& { return at(wins_level_, id); }
     auto wins_level(ObjectiveId id) const -> ObjectiveWinsLevel { return at(wins_level_, id); }
     auto outcome(ObjectiveId id) -> std::optional<ObjectiveOutcome>& { return at(outcomes_, id); }
@@ -74,7 +72,6 @@ class Objectives {
     std::vector<IndexSpan> leaf_ranges_;
     std::vector<IndexSpan> composite_ranges_;
     std::vector<IndexSpan> dependent_ranges_;
-    std::vector<IndexSpan> observer_ranges_;
 
     // Mutable
     std::vector<ObjectivePrerequisiteCount> prerequisites_;

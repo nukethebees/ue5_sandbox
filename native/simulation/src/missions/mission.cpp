@@ -52,14 +52,29 @@ void Mission::begin(MissionEvaluationContext const& inputs) {
         }
     }
 
-    settle(inputs);
+    std::ranges::sort(active_rules_);
+    tick(inputs);
 }
 void Mission::tick(MissionEvaluationContext const& inputs) {
     assert(begun_);
 
-    evaluate(active_rules_, inputs);
+    evaluate_rules(inputs);
 
-    settle(inputs);
+    auto const first_completed{static_cast<ObjectiveMembershipIndex>(completed_.size())};
+    evaluate_objectives();
+
+    auto const completed_count{completed_.size()};
+    for (auto position{first_completed}; position < completed_count; ++position) {
+        auto const id{completed_[position]};
+        complete(id, position, inputs.tick);
+        if (!winning_team_ && data_.objectives.outcome(id) == ObjectiveOutcome::Passed &&
+            data_.objectives.wins_level(id) == ObjectiveWinsLevel::Yes) {
+            finish(id, inputs);
+        }
+    }
+
+    std::erase_if(active_rules_, [&](RuleId const rule) { return !pending_rule(rule); });
+    std::ranges::sort(active_rules_);
 }
 
 /* **************************************** */
@@ -129,30 +144,14 @@ void Mission::activate(ObjectiveId const id, SimTick const tick) {
     for (ExprLeafHandle leaf{leaves.start()}; leaf < leaves_end; ++leaf) {
         auto const rule{data_.leaves.rules[leaf]};
         active_rules_.push_back(rule);
-        newly_active_.push_back(rule);
     }
-
-    auto const composites{data_.objectives.composites(id)};
-    auto const composites_end{composites.end()};
-
-    for (ExprCompositeIndex node{composites.start()}; node < composites_end; ++node) {
-        if (data_.composites.remaining[node] == 0) {
-            resolve(ExprHandle{node, false},
-                    data_.composites.types[node] == ExprType::All ? ExprResult::True
-                                                                  : ExprResult::False);
-        }
-    }
-
-    pending_objectives_.push_back(id);
 }
-void Mission::complete(ObjectiveId const id, ObjectiveOutcome const outcome, SimTick const tick) {
-    assert(active(id));
-
+void Mission::complete(ObjectiveId const id,
+                       ObjectiveMembershipIndex const position,
+                       SimTick const tick) {
     remove_member(active_, id);
-    data_.objectives.membership_position(id) =
-        static_cast<ObjectiveMembershipIndex>(completed_.size());
-    completed_.push_back(id);
-    data_.objectives.outcome(id) = outcome;
+    data_.objectives.membership_position(id) = position;
+    auto const outcome{*data_.objectives.outcome(id)};
 
     auto const dependents{data_.objectives.dependents(id)};
     auto const dependents_end{dependents.end()};
@@ -167,67 +166,49 @@ void Mission::complete(ObjectiveId const id, ObjectiveOutcome const outcome, Sim
             }
         }
     }
-
-    auto const observers{data_.objectives.observers(id)};
-    auto const observers_end{observers.end()};
-
-    for (auto index{observers.start()}; index < observers_end; ++index) {
-        auto const leaf{data_.observers[index]};
-        if (active(data_.leaves.owners[leaf])) {
-            auto const rule{data_.leaves.rules[leaf]};
-            resolve(ExprHandle{leaf, true},
-                    data_.rules.observed_outcomes[rule.index()] == outcome ? ExprResult::True
-                                                                           : ExprResult::False);
-        }
-    }
 }
 
 /* **************************************** */
-// Expression propagation
+// Objective evaluation
 /* **************************************** */
-void Mission::resolve(ExprHandle const expression, ExprResult const value) {
-    assert(value != ExprResult::Pending);
-
-    auto& values{expression.leaf() ? data_.leaves.results : data_.composites.results};
-    auto const index{expression.index()};
-    if (values[index] != ExprResult::Pending) {
-        return;
-    }
-    values[index] = value;
-    propagation_.push_back(expression);
-    pending_objectives_.push_back(expression.leaf() ? data_.leaves.owners[index]
-                                                    : data_.composites.owners[index]);
-}
-void Mission::resolve_rule(RuleId const rule, ExprResult const value) {
-    resolve(ExprHandle{rule_leaf(rule), true}, value);
-}
-void Mission::propagate() {
-    // NOLINTNEXTLINE(ioj-loop-condition-call) -- propagation appends newly resolved parents.
-    for (std::size_t index{}; index < propagation_.size(); ++index) {
-        auto const child{propagation_[index]};
-        auto const value{result(child)};
-        auto const parents{child.leaf() ? data_.leaves.parents[child.index()]
-                                        : data_.composites.parents[child.index()]};
-        auto const parents_end{parents.end()};
-        for (auto edge{parents.start()}; edge < parents_end; ++edge) {
-            auto const parent{data_.parents[edge]};
-            if (data_.composites.results[parent] != ExprResult::Pending) {
-                continue;
+void Mission::evaluate_objectives() {
+    for (auto const id : active_) {
+        auto const composites{data_.objectives.composites(id)};
+        auto const composites_end{composites.end()};
+        for (ExprCompositeIndex index{composites.start()}; index < composites_end; ++index) {
+            auto& value{data_.composites.results[index]};
+            if (value == ExprResult::Pending) {
+                value = evaluate_composite(index);
             }
-            auto const all{data_.composites.types[parent] == ExprType::All};
-            if ((all && value == ExprResult::False) || (!all && value == ExprResult::True)) {
-                resolve(ExprHandle{parent, false}, value);
-            } else {
-                auto& remaining{data_.composites.remaining[parent]};
-                assert(remaining > 0);
-                if (--remaining == 0) {
-                    resolve(ExprHandle{parent, false}, all ? ExprResult::True : ExprResult::False);
-                }
+        }
+
+        auto const& roots{data_.objectives.roots(id)};
+        for (auto const outcome : EnumTraits<ObjectiveOutcome>::values) {
+            if (result(roots[outcome]) == ExprResult::True) {
+                data_.objectives.outcome(id) = outcome;
+                completed_.push_back(id);
+                break;
             }
         }
     }
+}
+auto Mission::evaluate_composite(ExprCompositeIndex const index) const -> ExprResult {
+    auto const all{data_.composites.types[index] == ExprType::All};
+    auto const decisive{all ? ExprResult::False : ExprResult::True};
+    auto value{all ? ExprResult::True : ExprResult::False};
+    auto const children{data_.composites.child_ranges[index]};
+    auto const children_end{children.end()};
 
-    propagation_.clear();
+    for (auto child{children.start()}; child < children_end; ++child) {
+        auto const child_result{result(data_.children[child])};
+        if (child_result == decisive) {
+            return decisive;
+        }
+        if (child_result == ExprResult::Pending) {
+            value = ExprResult::Pending;
+        }
+    }
+    return value;
 }
 
 /* **************************************** */
@@ -240,9 +221,12 @@ auto Mission::pending_rule(RuleId const rule) const -> bool {
     auto const leaf{rule_leaf(rule)};
     return active(data_.leaves.owners[leaf]) && data_.leaves.results[leaf] == ExprResult::Pending;
 }
-void Mission::evaluate(std::span<RuleId const> const scheduled,
-                       MissionEvaluationContext const& inputs,
-                       bool const activating) {
+void Mission::resolve_rule(RuleId const rule, ExprResult const value) {
+    assert(value != ExprResult::Pending);
+    data_.leaves.results[rule_leaf(rule)] = value;
+}
+void Mission::evaluate_rules(MissionEvaluationContext const& inputs) {
+    auto const scheduled{std::span<RuleId const>{active_rules_}};
     assert(std::ranges::is_sorted(scheduled));
     auto const count{scheduled.size()};
     std::size_t first{};
@@ -254,10 +238,8 @@ void Mission::evaluate(std::span<RuleId const> const scheduled,
             ++end;
         }
 
-        if (activating || type != RuleType::ObjectiveResolved) {
-            // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- select the current type's rule range.
-            evaluate_run(type, scheduled.subspan(first, end - first), inputs);
-        }
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- select the current type's rule range.
+        evaluate_run(type, scheduled.subspan(first, end - first), inputs);
         first = end;
     }
 }
@@ -316,7 +298,6 @@ void Mission::evaluate_elapsed(std::span<RuleId const> const run,
 void Mission::evaluate_resolved(std::span<RuleId const> const run) {
     auto const& rules{data_.rules};
 
-    // Resolve once on activation; subsequent changes arrive via reverse observers.
     for (auto const rule : run) {
         if (pending_rule(rule)) {
             auto const outcome{data_.objectives.outcome(rules.observed_objectives[rule.index()])};
@@ -403,44 +384,8 @@ void Mission::evaluate_reached_position(std::span<RuleId const> const run,
 }
 
 /* **************************************** */
-// Settlement
+// Mission completion
 /* **************************************** */
-void Mission::settle(MissionEvaluationContext const& inputs) {
-    if (newly_active_.empty() && propagation_.empty() && pending_objectives_.empty()) {
-        return;
-    }
-
-    while (!newly_active_.empty() || !propagation_.empty() || !pending_objectives_.empty()) {
-        if (!newly_active_.empty()) {
-            auto rules{std::exchange(newly_active_, {})};
-            std::ranges::sort(rules);
-            evaluate(rules, inputs, true);
-        }
-
-        propagate();
-        auto pending{std::exchange(pending_objectives_, {})};
-        std::ranges::sort(pending);
-        for (auto const id : pending) {
-            if (!active(id)) {
-                continue;
-            }
-            auto const& roots{data_.objectives.roots(id)};
-            for (auto const root : EnumTraits<ObjectiveOutcome>::values) {
-                if (result(roots[root]) == ExprResult::True) {
-                    complete(id, root, inputs.tick);
-                    if (!winning_team_ && root == ObjectiveOutcome::Passed &&
-                        data_.objectives.wins_level(id) == ObjectiveWinsLevel::Yes) {
-                        finish(id, inputs);
-                    }
-                    break;
-                }
-            }
-        }
-    }
-
-    std::erase_if(active_rules_, [&](RuleId const rule) { return !pending_rule(rule); });
-    std::ranges::sort(active_rules_);
-}
 void Mission::finish(ObjectiveId const winning_objective, MissionEvaluationContext const& inputs) {
     auto const winner{data_.objectives.team(winning_objective)};
     winning_team_ = winner;

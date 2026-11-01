@@ -47,6 +47,11 @@ and activation-dependency cycles are rejected. False roots do not resolve object
 Completed objectives and expression results are terminal. No objective automatically cancels
 another; use an explicit `:expire` expression to supersede it.
 
+Each evaluation first updates active rules, then evaluates active objectives' expressions
+children-first. Completions are handled after both passes. Newly activated objectives and
+rules observing an objective's completion are evaluated on the next tick. Timers still measure
+from the tick when their objective was activated.
+
 Share subexpressions within one objective using names:
 
 ```scheme
@@ -57,8 +62,8 @@ Share subexpressions within one objective using names:
 ```
 
 Names are local to the objective; forward references are supported. Simultaneous true roots
-use pass, then fail, then expire precedence. Objective transitions settle in declaration order
-within each notification wave. The first evaluated passing objective marked `:wins-level 'yes`
+use pass, then fail, then expire precedence. Objectives are evaluated in active-list order.
+The first evaluated passing objective marked `:wins-level 'yes`
 decides the winner; later objective completions cannot change the mission outcome.
 
 Load `Libraries/objectives.scm` for `destroy-all`, `destroy-any`, `decisive-mission`, and

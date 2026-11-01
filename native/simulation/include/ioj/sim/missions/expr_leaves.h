@@ -1,7 +1,6 @@
 #pragma once
 
 #include <ioj/levels/expr_result.h>
-#include <ioj/sim/index_span.h>
 #include <ioj/sim/missions/objective_id.h>
 #include <ioj/sim/missions/rule_id.h>
 
@@ -11,7 +10,6 @@ namespace ioj::sim {
 struct ExprLeaves {
     std::vector<ExprResult> results;
     std::vector<ObjectiveId> owners;
-    std::vector<IndexSpan> parents;
     std::vector<RuleId> rules;
 };
 }

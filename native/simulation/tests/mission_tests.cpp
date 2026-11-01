@@ -73,13 +73,13 @@ auto objective(std::string id,
 }
 }
 
-TEST_F(MissionTest, SharedDagPropagatesOnceAndCompletedObjectivesAreTerminal) {
+TEST_F(MissionTest, SharedDagEvaluatesChildrenFirstAndCompletedObjectivesAreTerminal) {
     auto source{objective("shared", timer(1))};
-    source.expressions.push_back(timer(2));
-    source.expressions.push_back({AllExpr{.children = {0, 0, 1}}});
-    source.expressions.push_back({AnyExpr{.children = {0, 1}}});
-    source.expressions.push_back({AllExpr{.children = {2, 3}}});
-    source.roots[ioj::ObjectiveOutcome::Passed] = 4;
+    source.expressions = {{AllExpr{.children = {1, 2}}},
+                          {AllExpr{.children = {3, 3, 4}}},
+                          {AnyExpr{.children = {3, 4}}},
+                          timer(1),
+                          timer(2)};
     start({.objectives = {source}});
     tick(10);
     EXPECT_FALSE(mission.outcome(ObjectiveId{0}));
@@ -111,9 +111,13 @@ TEST_F(MissionTest, FalseOutcomeLeavesShortCircuitAndAndResolveOrOnlyAfterAllFal
     mission = Mission{std::move(*compiled)};
     mission.begin({SimTick{0}, ledger, {}, nullptr, nullptr, teams});
     tick(10);
+    EXPECT_EQ(mission.result(and_root), ExprResult::Pending);
+    tick(11);
     EXPECT_EQ(mission.result(and_root), ExprResult::False);
     EXPECT_EQ(mission.result(or_root), ExprResult::Pending);
     tick(20);
+    EXPECT_EQ(mission.result(or_root), ExprResult::Pending);
+    tick(21);
     EXPECT_EQ(mission.result(or_root), ExprResult::False);
     EXPECT_FALSE(mission.outcome(ObjectiveId{2}));
     EXPECT_FALSE(mission.outcome(ObjectiveId{3}));
@@ -149,7 +153,7 @@ TEST_F(MissionTest, ActivationRelativeTimersAndOutcomeBranches) {
     EXPECT_EQ(mission.inactive_objectives().size(), 1);
 }
 
-TEST_F(MissionTest, AllPrerequisitesAndLateOutcomeObservationSettleInSameTick) {
+TEST_F(MissionTest, AllPrerequisitesActivateBeforeNextTickEvaluation) {
     auto first{objective("first", timer(1))};
     auto second{objective("second", timer(2), ObjectiveOutcome::Expired)};
     auto third{objective("third", observed("first", ObjectiveOutcome::Passed))};
@@ -159,6 +163,9 @@ TEST_F(MissionTest, AllPrerequisitesAndLateOutcomeObservationSettleInSameTick) {
     tick(10);
     EXPECT_EQ(mission.inactive_objectives().size(), 1);
     tick(20);
+    EXPECT_FALSE(mission.outcome(ObjectiveId{2}));
+    EXPECT_TRUE(mission.inactive_objectives().empty());
+    tick(21);
     EXPECT_EQ(mission.outcome(ObjectiveId{2}), ObjectiveOutcome::Passed);
     EXPECT_TRUE(mission.active_rules().empty());
 }
@@ -171,6 +178,9 @@ TEST_F(MissionTest, BypassExpiresOnlyExplicitObservers) {
     auto unrelated{objective("unrelated", timer(10))};
     start({.objectives = {a, b, bypass, unrelated}});
     tick(10);
+    EXPECT_FALSE(mission.outcome(ObjectiveId{0}));
+    EXPECT_FALSE(mission.outcome(ObjectiveId{1}));
+    tick(11);
     EXPECT_EQ(mission.outcome(ObjectiveId{0}), ObjectiveOutcome::Expired);
     EXPECT_EQ(mission.outcome(ObjectiveId{1}), ObjectiveOutcome::Expired);
     EXPECT_FALSE(mission.outcome(ObjectiveId{3}));
@@ -422,6 +432,8 @@ TEST_F(MissionTest, SchemeReciprocalHelperResolvesBothTeams) {
     start(*parsed->mission());
     tick(10);
     EXPECT_EQ(mission.outcome(ObjectiveId{0}), ObjectiveOutcome::Passed);
+    EXPECT_FALSE(mission.outcome(ObjectiveId{1}));
+    tick(11);
     EXPECT_EQ(mission.outcome(ObjectiveId{1}), ObjectiveOutcome::Failed);
     EXPECT_EQ(mission.team_outcome(Team::Blue), MissionOutcome::Victory);
     EXPECT_EQ(mission.team_outcome(Team::Red), MissionOutcome::Defeat);
