@@ -8,7 +8,6 @@
 #include "ioj/levels/authoring/positional_inputs_reader.h"
 #include "ioj/levels/campaign_definition_reader.h"
 #include "ioj/levels/level_camera_definition_reader.h"
-#include "ioj/levels/team_result_definition_reader.h"
 #include "ioj/s7/field_constraints.h"
 #include "ioj/s7/record_reader.h"
 #include <ioj/s7/field_reader.h>
@@ -75,6 +74,9 @@ struct TypeReader<levels::authoring::ObjectiveInput>
                                      case Field::team:
                                          read(result.team);
                                          break;
+                                     case Field::wins_level:
+                                         read(result.wins_level);
+                                         break;
                                      case Field::nodes:
                                          read(result.nodes);
                                          break;
@@ -100,6 +102,7 @@ struct TypeReader<levels::authoring::ObjectiveInput>
         id,
         title,
         team,
+        wins_level,
         nodes,
         pass,
         fail,
@@ -107,8 +110,8 @@ struct TypeReader<levels::authoring::ObjectiveInput>
         depends_on,
     };
 
-    static constexpr std::array<std::string_view, 8> field_names{
-        "id", "title", "team", "nodes", "pass", "fail", "expire", "depends-on"};
+    static constexpr std::array<std::string_view, 9> field_names{
+        "id", "title", "team", "wins-level", "nodes", "pass", "fail", "expire", "depends-on"};
     static constexpr auto required{
         required_fields<Field, field_names.size()>({Field::id, Field::team})};
 };
@@ -124,9 +127,6 @@ struct TypeReader<levels::authoring::MissionInput> : RecordReader<levels::author
                                      case Field::objectives:
                                          read(result.objectives);
                                          break;
-                                     case Field::team_results:
-                                         read(result.team_results);
-                                         break;
                                  }
                              }),
                              required);
@@ -135,10 +135,9 @@ struct TypeReader<levels::authoring::MissionInput> : RecordReader<levels::author
   private:
     enum class Field : std::uint8_t {
         objectives,
-        team_results,
     };
 
-    static constexpr std::array<std::string_view, 2> field_names{"objectives", "team-results"};
+    static constexpr std::array<std::string_view, 1> field_names{"objectives"};
     static constexpr auto required{required_fields<Field, field_names.size()>({Field::objectives})};
 };
 

@@ -11,7 +11,8 @@
 namespace ioj::profiles {
 TEST(CompletionPublication, PublishesPlayerResultAndPayloadOnceWithoutUnreal) {
     levels::ObjectiveDefinition objective{.id = levels::ObjectiveName{"primary"},
-                                          .team = Team::Blue};
+                                          .team = Team::Blue,
+                                          .wins_level = ObjectiveWinsLevel::Yes};
     objective.expressions = {
         {levels::TimeElapsedExpr{.seconds = NonNegativeFinite<double>::make(0.2)}}};
     objective.roots[ObjectiveOutcome::Passed] = 0;
@@ -20,11 +21,7 @@ TEST(CompletionPublication, PublishesPlayerResultAndPayloadOnceWithoutUnreal) {
                       .title = "Publication",
                       .par_time_seconds = 1.f},
          .player_entity_id = levels::EntityId{"player"},
-         .mission = levels::MissionDefinition{.objectives = {std::move(objective)},
-                                              .team_results = {{Team::Blue,
-                                                                {levels::ObjectiveName{"primary"},
-                                                                 ObjectiveOutcome::Passed},
-                                                                MissionOutcome::Victory}}},
+         .mission = levels::MissionDefinition{.objectives = {std::move(objective)}},
          .entities = {{.id = levels::EntityId{"player"},
                        .archetype = levels::EntityArchetype::PlayerFighter,
                        .team = Team::Blue,

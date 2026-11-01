@@ -118,7 +118,7 @@ Other top-level sections belong to their own consumers. Generated `decode` funct
 protocol hooks; ordinary callers use `read`, `read_override` or `read_settings` so partially
 decoded values cannot escape through a successful return. There is no second validation walk.
 
-Level, entity, objective, mission, team-result, catalog/import, camera, collision-grid and
+Level, entity, objective, mission, catalog/import, camera, collision-grid and
 campaign records use this path. `level_inputs.lispb` describes the script-facing records.
 Decode the complete input first; only then assign entity IDs, resolve objective-local
 expression names, assemble domain definitions and run semantic validation. Processing

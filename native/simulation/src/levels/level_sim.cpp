@@ -68,7 +68,8 @@ void LevelSim::finish_initialisation() {
                         entity_ledger_,
                         event_manager_.get_entity_ids(),
                         &collision_pipeline_.queries(),
-                        &frame_memory});
+                        &frame_memory,
+                        participating_teams_});
     }
 
     clock_.reset();
@@ -354,7 +355,8 @@ void LevelSim::resolve_tick() {
                        entity_ledger_,
                        event_manager_.get_entity_ids(),
                        &collision_pipeline_.queries(),
-                       &frame_memory});
+                       &frame_memory,
+                       participating_teams_});
     }
 
     {

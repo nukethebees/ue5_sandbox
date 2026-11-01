@@ -18,6 +18,17 @@
         :native-header-include "ioj/levels/objective_outcome.h"
         :reflection uenum))))
 
+(module objective_wins_level
+  :header "native/levels/lib/include/ioj/levels/objective_wins_level.h"
+  :header-include "ioj/levels/objective_wins_level.h"
+  :namespace ioj
+  (enum ObjectiveWinsLevel std::uint8_t
+    :native-api true
+    :helpers (traits to-serialized-string try-parse-serialized)
+    (value No :serialized-name "no")
+    (value Yes :serialized-name "yes")
+    (projections (cpp))))
+
 (module mission_outcome
   :header "native/levels/lib/include/ioj/levels/mission_outcome.h"
   :header-include "ioj/levels/mission_outcome.h"

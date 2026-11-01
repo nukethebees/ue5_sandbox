@@ -9,7 +9,7 @@
 
   :player 'player
 
-  :mission (decisive-mission 'blue
+  :mission (decisive-mission 'blue 'red
     (time-elapsed 75)
     (destroy-any '(player blue-capital)))
 

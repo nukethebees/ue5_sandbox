@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ioj/levels/objective_name.h>
+#include <ioj/levels/objective_wins_level.h>
 #include <ioj/levels/team.h>
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/missions/objective_id.h>
@@ -43,8 +44,8 @@ class Objectives {
     auto dependents(ObjectiveId id) const -> IndexSpan { return at(dependent_ranges_, id); }
     auto observers(ObjectiveId id) -> IndexSpan& { return at(observer_ranges_, id); }
     auto observers(ObjectiveId id) const -> IndexSpan { return at(observer_ranges_, id); }
-    auto team_results(ObjectiveId id) -> IndexSpan& { return at(team_results_, id); }
-    auto team_results(ObjectiveId id) const -> IndexSpan { return at(team_results_, id); }
+    auto wins_level(ObjectiveId id) -> ObjectiveWinsLevel& { return at(wins_level_, id); }
+    auto wins_level(ObjectiveId id) const -> ObjectiveWinsLevel { return at(wins_level_, id); }
     auto outcome(ObjectiveId id) -> std::optional<ObjectiveOutcome>& { return at(outcomes_, id); }
     auto outcome(ObjectiveId id) const -> std::optional<ObjectiveOutcome> {
         return at(outcomes_, id);
@@ -68,12 +69,12 @@ class Objectives {
     std::vector<levels::ObjectiveName> identifiers_;
     std::vector<std::string> display_names_;
     std::vector<Team> assigned_teams_;
+    std::vector<ObjectiveWinsLevel> wins_level_;
     std::vector<ObjectiveRoots> roots_;
     std::vector<IndexSpan> leaf_ranges_;
     std::vector<IndexSpan> composite_ranges_;
     std::vector<IndexSpan> dependent_ranges_;
     std::vector<IndexSpan> observer_ranges_;
-    std::vector<IndexSpan> team_results_;
 
     // Mutable
     std::vector<ObjectivePrerequisiteCount> prerequisites_;

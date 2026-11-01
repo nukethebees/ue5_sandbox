@@ -12,7 +12,7 @@
             :title (format #f "Turret Trial ~A" number)
             :description description
             :player 'player
-            :mission (decisive-mission 'blue
+            :mission (decisive-mission 'blue 'red
               (entity-kills-reached
                 '(player)
                 (length turret-positions))

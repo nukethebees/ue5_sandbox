@@ -34,7 +34,6 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
     std::vector<std::vector<ExprCompositeIndex>> leaf_parents;
     std::vector<std::vector<ActivationNotification>> dependents(count);
     std::vector<std::vector<ExprLeafIndex>> observers(count);
-    std::vector<std::vector<TeamResultIndex>> mappings(count);
     auto size = [](auto const& values) { return static_cast<std::uint32_t>(values.size()); };
 
     for (std::uint32_t row{}; row < count; ++row) {
@@ -43,6 +42,7 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
         result.objectives.name(owner) = source.id;
         result.objectives.title(owner) = source.title.empty() ? source.id.value : source.title;
         result.objectives.team(owner) = source.team;
+        result.objectives.wins_level(owner) = source.wins_level;
         result.objectives.prerequisites(owner) =
             static_cast<ObjectivePrerequisiteCount>(source.dependencies.size());
         result.objectives.leaves(owner).offset = size(leaves.results);
@@ -71,19 +71,19 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
             leaves.owners.push_back(owner);
             leaves.parents.emplace_back();
             leaf_parents.emplace_back();
-            ConditionType type{};
+            RuleType type{};
             switch (expression.type()) {
                 case ExprType::EntityDestroyed: {
                     auto const& condition{
                         std::get<levels::EntityDestroyedExpr>(expression.payload)};
-                    type = ConditionType::EntityDestroyed;
+                    type = RuleType::EntityDestroyed;
                     rules.destroyed_entities.push_back(entity_indices.at(condition.entity));
                     break;
                 }
                 case ExprType::EntityReachedPosition: {
                     auto const& condition{
                         std::get<levels::EntityReachedPositionExpr>(expression.payload)};
-                    type = ConditionType::EntityReachedPosition;
+                    type = RuleType::EntityReachedPosition;
                     rules.reached_entities.push_back(entity_indices.at(condition.entity));
                     rules.positions.push_back(condition.position.get());
                     rules.radius_squared.push_back(condition.radius.get() * condition.radius.get());
@@ -91,7 +91,7 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
                 }
                 case ExprType::TimeElapsed: {
                     auto const& condition{std::get<levels::TimeElapsedExpr>(expression.payload)};
-                    type = ConditionType::TimeElapsed;
+                    type = RuleType::TimeElapsed;
                     auto const ticks{condition.seconds.get() * clock.get_tick_rate().get_hz()};
                     if (ticks >=
                         static_cast<double>(std::numeric_limits<SimTick::value_type>::max())) {
@@ -106,7 +106,7 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
                 case ExprType::ObjectiveResolved: {
                     auto const& condition{
                         std::get<levels::ObjectiveResolvedExpr>(expression.payload)};
-                    type = ConditionType::ObjectiveResolved;
+                    type = RuleType::ObjectiveResolved;
                     auto const observed{objectives.at(condition.objective.objective)};
                     observers[observed.index()].push_back(leaf);
                     rules.observed_objectives.push_back(observed);
@@ -116,7 +116,7 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
                 case ExprType::EntityKillsReached: {
                     auto const& condition{
                         std::get<levels::EntityKillsReachedExpr>(expression.payload)};
-                    type = ConditionType::EntityKillsReached;
+                    type = RuleType::EntityKillsReached;
                     rules.kill_sources.push_back(
                         {size(rules.kill_entities), size(condition.entities)});
                     rules.kill_targets.push_back(condition.kills);
@@ -160,11 +160,6 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
         result.objectives.composites(owner).count =
             size(composites.results) - result.objectives.composites(owner).offset;
     }
-    for (auto const& mapping : definition.team_results) {
-        auto const owner{objectives.at(mapping.when.objective)};
-        mappings[owner.index()].push_back(size(result.team_results));
-        result.team_results.push_back({owner, mapping.team, mapping.when.outcome, mapping.result});
-    }
     auto flatten = [&](auto const& groups, auto& spans, auto& values) {
         auto const group_count{groups.size()};
         for (std::uint32_t index{}; index < group_count; ++index) {
@@ -182,9 +177,6 @@ auto CompiledMission::compile(levels::MissionDefinition const& definition,
         result.objectives.observers(id) = {size(result.observers), size(observers[row])};
         result.observers.insert(
             result.observers.end(), observers[row].begin(), observers[row].end());
-        result.objectives.team_results(id) = {size(result.result_indices), size(mappings[row])};
-        result.result_indices.insert(
-            result.result_indices.end(), mappings[row].begin(), mappings[row].end());
     }
     return result;
 }

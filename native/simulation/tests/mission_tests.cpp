@@ -44,15 +44,18 @@ struct MissionTest : ::testing::Test {
     Mission mission;
     std::vector<levels::EntityId> names;
     std::vector<EntityId> entities;
+    std::array<Team, 2> teams{Team::Blue, Team::Red};
 
     MissionTest() { clock.initialise({.tick_rate = Frequency::make(10.0)}); }
     void start(MissionDefinition const& definition) {
         auto compiled{CompiledMission::compile(definition, names, clock)};
         ASSERT_TRUE(compiled.has_value()) << (compiled ? "" : compiled.error().front());
         mission = Mission{std::move(*compiled)};
-        mission.begin({SimTick{0}, ledger, entities});
+        mission.begin({SimTick{0}, ledger, entities, nullptr, nullptr, teams});
     }
-    void tick(SimTick::value_type const tick) { mission.tick({SimTick{tick}, ledger, entities}); }
+    void tick(SimTick::value_type const tick) {
+        mission.tick({SimTick{tick}, ledger, entities, nullptr, nullptr, teams});
+    }
 };
 auto timer(double const seconds) -> MissionExpr {
     return {TimeElapsedExpr{.seconds = NonNegativeFinite<double>::make(seconds)}};
@@ -106,7 +109,7 @@ TEST_F(MissionTest, FalseOutcomeLeavesShortCircuitAndAndResolveOrOnlyAfterAllFal
     auto const and_root{compiled->objectives.roots(ObjectiveId{2})[ioj::ObjectiveOutcome::Passed]};
     auto const or_root{compiled->objectives.roots(ObjectiveId{3})[ioj::ObjectiveOutcome::Passed]};
     mission = Mission{std::move(*compiled)};
-    mission.begin({SimTick{0}, ledger, {}});
+    mission.begin({SimTick{0}, ledger, {}, nullptr, nullptr, teams});
     tick(10);
     EXPECT_EQ(mission.result(and_root), ExprResult::False);
     EXPECT_EQ(mission.result(or_root), ExprResult::Pending);
@@ -179,13 +182,8 @@ TEST_F(MissionTest, ReciprocalTeamsAndConsumeOnceCompletion) {
     auto defend{objective(
         "defend", observed("attack", ObjectiveOutcome::Passed), ObjectiveOutcome::Failed)};
     defend.team = Team::Red;
-    start({.objectives = {attack, defend},
-           .team_results = {{Team::Blue,
-                             {levels::ObjectiveName{"attack"}, ObjectiveOutcome::Passed},
-                             MissionOutcome::Victory},
-                            {Team::Red,
-                             {levels::ObjectiveName{"defend"}, ObjectiveOutcome::Failed},
-                             MissionOutcome::Defeat}}});
+    attack.wins_level = ObjectiveWinsLevel::Yes;
+    start({.objectives = {attack, defend}});
     tick(10);
     EXPECT_EQ(mission.team_outcome(Team::Blue), MissionOutcome::Victory);
     EXPECT_EQ(mission.team_outcome(Team::Red), MissionOutcome::Defeat);
@@ -210,13 +208,8 @@ TEST_P(SelectedTeamMissionCompletion, ConsumesAllPendingResultsWhileSelectingThe
     auto defend{objective(
         "defend", observed("attack", ObjectiveOutcome::Passed), ObjectiveOutcome::Failed)};
     defend.team = Team::Red;
-    start({.objectives = {attack, defend},
-           .team_results = {{Team::Blue,
-                             {levels::ObjectiveName{"attack"}, ObjectiveOutcome::Passed},
-                             MissionOutcome::Victory},
-                            {Team::Red,
-                             {levels::ObjectiveName{"defend"}, ObjectiveOutcome::Failed},
-                             MissionOutcome::Defeat}}});
+    attack.wins_level = ObjectiveWinsLevel::Yes;
+    start({.objectives = {attack, defend}});
     auto const& test_case{GetParam()};
     EXPECT_FALSE(mission.take_team_completion(test_case.team));
     tick(10);
@@ -323,15 +316,18 @@ INSTANTIATE_TEST_SUITE_P(
 TEST_F(MissionTest, RootAndTeamConflictPrecedenceIsDeterministic) {
     auto source{objective("conflict", timer(0))};
     source.roots = levels::ObjectiveRoots{std::array<levels::ExprIndex, 3>{0, 0, 0}};
-    start({.objectives = {source},
-           .team_results = {{Team::Blue,
-                             {levels::ObjectiveName{"conflict"}, ObjectiveOutcome::Passed},
-                             MissionOutcome::Victory},
-                            {Team::Blue,
-                             {levels::ObjectiveName{"conflict"}, ObjectiveOutcome::Passed},
-                             MissionOutcome::Defeat}}});
+    source.wins_level = ObjectiveWinsLevel::Yes;
+    auto rival{objective("rival", timer(0))};
+    rival.team = Team::Red;
+    rival.wins_level = ObjectiveWinsLevel::Yes;
+    start({.objectives = {source, rival}});
     EXPECT_EQ(mission.outcome(ObjectiveId{0}), ObjectiveOutcome::Passed);
-    EXPECT_EQ(mission.team_outcome(Team::Blue), MissionOutcome::Defeat);
+    EXPECT_EQ(mission.outcome(ObjectiveId{1}), ObjectiveOutcome::Passed);
+    EXPECT_EQ(mission.team_outcome(Team::Blue), MissionOutcome::Victory);
+    EXPECT_EQ(mission.team_outcome(Team::Red), MissionOutcome::Defeat);
+    EXPECT_EQ(mission.take_completions().size(), 2);
+    tick(10);
+    EXPECT_TRUE(mission.take_completions().empty());
 }
 
 TEST_F(MissionTest, RuleRunsSortAndRebuildAfterMembershipChanges) {
@@ -346,9 +342,9 @@ TEST_F(MissionTest, RuleRunsSortAndRebuildAfterMembershipChanges) {
     auto const initial{mission.active_rules()};
     ASSERT_EQ(initial.size(), 3);
     EXPECT_TRUE(std::ranges::is_sorted(initial));
-    EXPECT_EQ(initial[0].type(), ConditionType::EntityDestroyed);
-    EXPECT_EQ(initial[1].type(), ConditionType::TimeElapsed);
-    EXPECT_EQ(initial[2].type(), ConditionType::TimeElapsed);
+    EXPECT_EQ(initial[0].type(), RuleType::EntityDestroyed);
+    EXPECT_EQ(initial[1].type(), RuleType::TimeElapsed);
+    EXPECT_EQ(initial[2].type(), RuleType::TimeElapsed);
     tick(10);
     ASSERT_EQ(mission.active_rules().size(), 2);
     EXPECT_TRUE(std::ranges::is_sorted(mission.active_rules()));
@@ -356,7 +352,7 @@ TEST_F(MissionTest, RuleRunsSortAndRebuildAfterMembershipChanges) {
     tick(20);
     auto const remaining{mission.active_rules()};
     ASSERT_EQ(remaining.size(), 1);
-    EXPECT_EQ(remaining[0].type(), ConditionType::EntityDestroyed);
+    EXPECT_EQ(remaining[0].type(), RuleType::EntityDestroyed);
     EXPECT_FALSE(mission.outcome(ObjectiveId{0}));
 }
 
@@ -383,11 +379,9 @@ TEST_F(MissionTest, SchemeNamedDagAndOutcomeDependenciesExecuteThroughRuntimeCom
             (objective :id 'first :team 'blue
               :nodes (list (expr 'timer (time-elapsed 1)))
               :pass (all-of (expr-ref 'timer) (any-of (expr-ref 'timer) (time-elapsed 100))))
-            (objective :id 'next :team 'blue
+            (objective :id 'next :team 'blue :wins-level 'yes
               :depends-on (list (objective-resolved 'first 'passed))
-              :pass (all-of (objective-resolved 'first 'passed) (time-elapsed 2))))
-          :team-results (list
-            (team-result :team 'blue :when (objective-resolved 'next 'passed) :result 'victory)))))")};
+              :pass (all-of (objective-resolved 'first 'passed) (time-elapsed 2)))))))")};
     ASSERT_TRUE(parsed);
     ASSERT_TRUE(parsed->mission());
     names.emplace_back("player");
@@ -422,10 +416,7 @@ TEST_F(MissionTest, SchemeReciprocalHelperResolvesBothTeams) {
         :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0)))
         :mission (mission
           :objectives (reciprocal-objectives 'attack 'defend 'blue 'red
-                         (time-elapsed 1) (time-elapsed 10))
-          :team-results (list
-            (team-result :team 'blue :when (objective-resolved 'attack 'passed) :result 'victory)
-            (team-result :team 'red :when (objective-resolved 'defend 'failed) :result 'defeat)))))")};
+                         (time-elapsed 1) (time-elapsed 10)))))")};
     ASSERT_TRUE(parsed);
     ASSERT_TRUE(parsed->mission());
     start(*parsed->mission());
@@ -445,13 +436,6 @@ TEST_F(MissionTest, RejectsInvalidReferencesParametersAndDuplicatePrerequisites)
     EXPECT_FALSE(CompiledMission::compile({.objectives = {a, a}}, {}, clock));
     b.dependencies = {{levels::ObjectiveName{"missing"}, ObjectiveOutcome::Passed}};
     EXPECT_FALSE(CompiledMission::compile({.objectives = {a, b}}, {}, clock));
-    EXPECT_FALSE(CompiledMission::compile(
-        {.objectives = {a},
-         .team_results = {{Team::Blue,
-                           {levels::ObjectiveName{"missing"}, ObjectiveOutcome::Passed},
-                           MissionOutcome::Victory}}},
-        {},
-        clock));
     a.expressions[0] = {EntityReachedPositionExpr{
         .entity = levels::EntityId{"target"},
         .radius = NonNegativeFinite<double>::make(std::numeric_limits<double>::max())}};

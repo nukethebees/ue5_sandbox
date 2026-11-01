@@ -10,11 +10,11 @@ Copy an existing `.scm` scenario, give it a unique `:id`, and add its path to
   :mission (mission
     :objectives (list
       (objective :id 'clear :team 'blue :title "Clear the range"
+        :wins-level 'yes
         :pass (entity-destroyed 'turret)
-        :fail (entity-destroyed 'player)))
-    :team-results (list
-      (team-result :team 'blue :when (objective-resolved 'clear 'passed) :result 'victory)
-      (team-result :team 'blue :when (objective-resolved 'clear 'failed) :result 'defeat)))
+        :fail (entity-destroyed 'player))
+      (objective :id 'opposition :team 'red :wins-level 'yes
+        :pass (objective-resolved 'clear 'failed))))
   :entities (list
     (entity :id 'player :archetype 'player-fighter
       :team 'blue :position '(0 0 0))

@@ -128,14 +128,11 @@ void add_mission(::ioj::sim::LevelSimInitData& data) {
     ioj::levels::MissionDefinition definition{
         .objectives = {{.id = ioj::levels::ObjectiveName{"primary"},
                         .team = ioj::Team::Green,
+                        .wins_level = ioj::ObjectiveWinsLevel::Yes,
                         .expressions = {{ioj::levels::EntityDestroyedExpr{
                             .entity = ioj::levels::EntityId{"enemy"}}}},
                         .roots = ioj::levels::ObjectiveRoots{std::array<ioj::levels::ExprIndex, 3>{
-                            0, ioj::levels::absent_expression, ioj::levels::absent_expression}}}},
-        .team_results = {
-            {.team = ioj::Team::Green,
-             .when = {ioj::levels::ObjectiveName{"primary"}, ioj::ObjectiveOutcome::Passed},
-             .result = ioj::MissionOutcome::Victory}}};
+                            0, ioj::levels::absent_expression, ioj::levels::absent_expression}}}}};
     std::array const ids{ioj::levels::EntityId{"hero"}, ioj::levels::EntityId{"enemy"}};
     ioj::sim::SimClock clock;
     clock.initialise(data.clock_settings);

@@ -372,11 +372,9 @@ TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimu
           (entity :id 'enemy :archetype 'capital-ship :team 'white :position '(1000 0 0) :spawn-at 0.2))
         :mission (mission :objectives (list
           (objective :id 'destroy :team 'green :pass (entity-destroyed 'enemy))
-          (objective :id 'observe :team 'green
+          (objective :id 'observe :team 'green :wins-level 'yes
             :depends-on (list (objective-resolved 'destroy 'passed))
-            :pass (all-of (entity-destroyed 'enemy) (objective-resolved 'destroy 'passed))))
-          :team-results (list (team-result :team 'green
-            :when (objective-resolved 'observe 'passed) :result 'victory)))))")};
+            :pass (all-of (entity-destroyed 'enemy) (objective-resolved 'destroy 'passed)))))))")};
     ASSERT_TRUE(authored);
     auto data{make_battle()};
     data.clock_settings.tick_rate = Frequency::make(10.0);
@@ -422,16 +420,11 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
     add_player_spawn(data, {});
     data.player->team = Team::Green;
     data.player->transform.location = {0.0, 2000.0, 0.0};
-    MissionDefinition definition{
-        .objectives = {timed_objective("enemy", Team::White, 0.0),
-                       timed_objective("player", Team::Green, 0.2),
-                       timed_objective("optional", Team::Green, 10.0)},
-        .team_results = {{Team::White,
-                          {ObjectiveName{"enemy"}, ObjectiveOutcome::Passed},
-                          MissionOutcome::Victory},
-                         {Team::Green,
-                          {ObjectiveName{"player"}, ObjectiveOutcome::Passed},
-                          MissionOutcome::Defeat}}};
+    MissionDefinition definition{.objectives = {timed_objective("enemy", Team::White, 0.2),
+                                                timed_objective("player", Team::Green, 0.3),
+                                                timed_objective("optional", Team::Green, 10.0)}};
+    definition.objectives[0].wins_level = ObjectiveWinsLevel::Yes;
+    definition.objectives[1].wins_level = ObjectiveWinsLevel::Yes;
     SimClock clock;
     clock.initialise(data.clock_settings);
     auto compiled{CompiledMission::compile(definition, {}, clock)};
@@ -449,7 +442,7 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
     EXPECT_EQ(result->outcome, MissionOutcome::Defeat);
     EXPECT_EQ(result->triggering_objective_outcome, ObjectiveOutcome::Passed);
     EXPECT_EQ(simulation.get_mission().objectives().name(result->triggering_objective).value,
-              "player");
+              "enemy");
     EXPECT_EQ(result->tick.value(), 2);
     EXPECT_EQ(simulation.get_mission().active_objectives().size(), 1);
     EXPECT_FALSE(simulation.take_player_team_completion());

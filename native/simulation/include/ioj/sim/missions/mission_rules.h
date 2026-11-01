@@ -3,9 +3,9 @@
 #include <ioj/enum_array.h>
 #include <ioj/levels/objective_outcome.h>
 #include <ioj/sim/index_span.h>
-#include <ioj/sim/missions/condition_type.h>
 #include <ioj/sim/missions/expr_leaf_index.h>
 #include <ioj/sim/missions/objective_id.h>
+#include <ioj/sim/missions/rule_type.h>
 #include <ioj/sim/sim_tick.h>
 #include <ioj/vector.h>
 
@@ -13,8 +13,8 @@
 
 namespace ioj::sim {
 struct MissionRules {
-    // Map each condition rule to its expression leaf.
-    EnumArray<ConditionType, std::vector<ExprLeafIndex>> leaves;
+    // Map each rule to its expression leaf.
+    EnumArray<RuleType, std::vector<ExprLeafIndex>> leaves;
 
     // EntityDestroyed
     std::vector<std::uint32_t> destroyed_entities;

@@ -53,6 +53,7 @@ auto process_mission(MissionInput input, std::string_view path)
         ObjectiveDefinition objective{.id = std::move(source.id),
                                       .title = std::move(source.title),
                                       .team = source.team,
+                                      .wins_level = source.wins_level,
                                       .dependencies = std::move(source.depends_on)};
         std::unordered_map<ObjectiveName, ExprIndex> names;
         auto const node_count{source.nodes.size()};
@@ -88,7 +89,6 @@ auto process_mission(MissionInput input, std::string_view path)
         root(source.expire, ObjectiveOutcome::Expired, "expire");
         result.objectives.push_back(std::move(objective));
     }
-    result.team_results = std::move(input.team_results);
     if (!errors.empty()) {
         return std::unexpected{std::move(errors)};
     }

@@ -38,6 +38,7 @@
     (member id @input_objective_name :initializer "" :required true)
     (member title @native_string :initializer "")
     (member team ioj::Team :initializer "" :required true)
+    (member wins_level ioj::ObjectiveWinsLevel :initializer "ObjectiveWinsLevel::No")
     (member nodes @input_named_exprs :initializer "")
     (member pass @input_optional_expr :initializer "")
     (member fail @input_optional_expr :initializer "")
@@ -45,9 +46,7 @@
     (member depends_on @input_dependencies :initializer "")
     (projections (cpp)))
   (record MissionInput :generate-s7-reader true :s7-tag "mission"
-    :s7-reader-includes ("ioj/levels/team_result_definition_reader.h")
     (member objectives @input_objectives :initializer "" :required true)
-    (member team_results @input_team_results :initializer "")
     (projections (cpp)))
   (record LevelInput :generate-s7-reader true :s7-tag "level"
     :s7-reader-includes ("ioj/levels/level_camera_definition_reader.h")

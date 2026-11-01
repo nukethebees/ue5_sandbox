@@ -12,15 +12,15 @@ inline auto destroyed(std::uint32_t const index) -> levels::MissionExpr {
 }
 inline void install_mission(LevelSimInitData& data, levels::ObjectiveDefinition objective) {
     objective.id = ioj::levels::ObjectiveName{"primary"};
-    auto const team{objective.team};
+    objective.wins_level = ObjectiveWinsLevel::Yes;
+    levels::ObjectiveDefinition opposition{.id = levels::ObjectiveName{"opposition"},
+                                           .team = Team::Red,
+                                           .wins_level = ObjectiveWinsLevel::Yes};
+    opposition.expressions = {{levels::ObjectiveResolvedExpr{
+        .objective = {levels::ObjectiveName{"primary"}, ObjectiveOutcome::Failed}}}};
+    opposition.roots[ObjectiveOutcome::Passed] = 0;
     levels::MissionDefinition definition{
-        .objectives = {std::move(objective)},
-        .team_results = {{team,
-                          {ioj::levels::ObjectiveName{"primary"}, ObjectiveOutcome::Passed},
-                          MissionOutcome::Victory},
-                         {team,
-                          {ioj::levels::ObjectiveName{"primary"}, ObjectiveOutcome::Failed},
-                          MissionOutcome::Defeat}}};
+        .objectives = {std::move(objective), std::move(opposition)}};
     std::vector<levels::EntityId> names;
     auto const count{data.level_events.initialisation.entity_count};
     for (std::uint32_t index{}; index < count; ++index) {

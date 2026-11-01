@@ -126,7 +126,7 @@ TEST_P(WorldlessMission, ResolvesObjectiveLifecycle) {
               failed ? ObjectiveOutcome::Failed : ObjectiveOutcome::Passed);
     EXPECT_EQ(simulation.get_mission().team_outcome(Team::Green),
               failed ? MissionOutcome::Defeat : MissionOutcome::Victory);
-    EXPECT_EQ(simulation.get_mission().completed_objectives().size(), 1);
+    EXPECT_EQ(simulation.get_mission().completed_objectives().size(), failed ? 2 : 1);
     EXPECT_TRUE(simulation.get_mission().active_rules().empty());
     if (scenario == Scenario::RequiredKillsObjective || scenario == Scenario::AuthoredKillTarget) {
         EXPECT_TRUE(gated);

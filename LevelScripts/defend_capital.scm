@@ -11,7 +11,7 @@
 
   :player 'playership
 
-  :mission (decisive-mission 'blue
+  :mission (decisive-mission 'blue 'red
     (all-of
       (time-elapsed 60)
       (destroy-all '(capitalship-red2)))

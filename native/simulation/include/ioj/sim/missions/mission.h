@@ -57,7 +57,7 @@ class Mission {
                   MissionEvaluationContext const& inputs,
                   bool activating = false);
 
-    void evaluate_run(ConditionType type,
+    void evaluate_run(RuleType type,
                       std::span<RuleId const> run,
                       MissionEvaluationContext const& inputs);
     void evaluate_destroyed(std::span<RuleId const> run, MissionEvaluationContext const& inputs);
@@ -71,6 +71,7 @@ class Mission {
     // Settlement
     /* **************************************** */
     void settle(MissionEvaluationContext const& inputs);
+    void finish(ObjectiveId winning_objective, MissionEvaluationContext const& inputs);
 
     CompiledMission data_;
 
@@ -85,7 +86,7 @@ class Mission {
 
     std::vector<ExprRef> propagation_;
     std::vector<ObjectiveId> pending_objectives_;
-    std::vector<TeamResultIndex> candidate_results_;
+    std::optional<Team> winning_team_;
     EnumArray<Team, std::optional<MissionOutcome>> team_outcomes_;
     std::vector<TeamMissionCompletion> completions_;
     bool begun_{};

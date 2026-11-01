@@ -1,10 +1,11 @@
 # Objective authoring
 
-A mission contains `:objectives` and optional `:team-results`. Each objective requires a
+A mission contains `:objectives`. Each objective requires a
 unique `:id`, a `:team`, and at least one of `:pass`, `:fail`, or `:expire`. `:title` is optional.
-Passing an ordinary objective does not end the level. A team-result explicitly maps an
-objective outcome to that team's `victory` or `defeat`; the player's team determines the
-level completion screen.
+`:wins-level` defaults to `'no`. Passing an objective with `:wins-level 'yes` wins the level
+for its assigned team and defeats the other participating teams. Failed and expired objectives
+do not directly decide the mission. To make failure decisive, give an opposing team a winning
+objective that observes that failure. The player's team determines the level completion screen.
 
 ```scheme
 (mission
@@ -13,16 +14,16 @@ level completion screen.
       :pass (entity-reached-position 'player '(0 10000 0) 500)
       :fail (entity-destroyed 'player))
     (objective :id 'hold :team 'blue
+      :wins-level 'yes
       :depends-on (list (objective-resolved 'approach 'passed))
       :pass (time-elapsed 30)
       :fail (any-of (entity-destroyed 'player) (entity-destroyed 'convoy)))
     (objective :id 'bonus :team 'blue
       :pass (entity-destroyed 'enemy)
-      :expire (objective-resolved 'hold 'passed)))
-  :team-results (list
-    (team-result :team 'blue :when (objective-resolved 'hold 'passed) :result 'victory)
-    (team-result :team 'blue :when (objective-resolved 'approach 'failed) :result 'defeat)
-    (team-result :team 'blue :when (objective-resolved 'hold 'failed) :result 'defeat)))
+      :expire (objective-resolved 'hold 'passed))
+    (objective :id 'opposition :team 'red :wins-level 'yes
+      :pass (any-of (objective-resolved 'approach 'failed)
+                    (objective-resolved 'hold 'failed)))))
 ```
 
 Conditions and composition:
@@ -57,12 +58,13 @@ Share subexpressions within one objective using names:
 
 Names are local to the objective; forward references are supported. Simultaneous true roots
 use pass, then fail, then expire precedence. Objective transitions settle in declaration order
-within each notification wave. Conflicting same-tick team mappings prefer defeat; team outcomes
-then remain terminal.
+within each notification wave. The first evaluated passing objective marked `:wins-level 'yes`
+decides the winner; later objective completions cannot change the mission outcome.
 
 Load `Libraries/objectives.scm` for `destroy-all`, `destroy-any`, `decisive-mission`, and
-`reciprocal-objectives`. The reciprocal helper returns attacker/defender objectives; explicitly
-add team mappings for the outcomes that should decide the mission.
+`reciprocal-objectives`. Use `(decisive-mission team opponent pass fail)` for a primary winning
+objective and an opposing winning objective that observes its failure. The reciprocal helper
+returns attacker/defender objectives, each marked `:wins-level 'yes`.
 
 ## Current presentation and persistence limits
 

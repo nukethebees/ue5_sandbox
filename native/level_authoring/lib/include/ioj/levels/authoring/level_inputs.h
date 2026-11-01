@@ -13,8 +13,8 @@
 #include "ioj/levels/level_camera_definition.h"
 #include "ioj/levels/objective_dependency.h"
 #include "ioj/levels/objective_name.h"
+#include "ioj/levels/objective_wins_level.h"
 #include "ioj/levels/team.h"
-#include "ioj/levels/team_result_definition.h"
 #include "ioj/s7/raw_node.h"
 #include "ioj/settings/settings.h"
 #include "ioj/vector_value_math.h"
@@ -133,6 +133,7 @@ struct ObjectiveInput {
     ObjectiveName id{};
     std::string title{};
     Team team{};
+    ObjectiveWinsLevel wins_level{ObjectiveWinsLevel::No};
     std::vector<ioj::levels::authoring::NamedExprInput> nodes{};
     std::optional<ioj::levels::authoring::ExprInput> pass{};
     std::optional<ioj::levels::authoring::ExprInput> fail{};
@@ -142,7 +143,6 @@ struct ObjectiveInput {
 
 struct MissionInput {
     std::vector<ioj::levels::authoring::ObjectiveInput> objectives{};
-    std::vector<ioj::levels::TeamResultDefinition> team_results{};
 };
 
 struct LevelInput {

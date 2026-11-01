@@ -180,16 +180,6 @@ void Mission::complete(ObjectiveId const id, ObjectiveOutcome const outcome, Sim
                                                                            : ExprResult::False);
         }
     }
-
-    auto const team_results{data_.objectives.team_results(id)};
-    auto const team_results_end{team_results.end()};
-
-    for (auto index{team_results.start()}; index < team_results_end; ++index) {
-        auto const mapping{data_.result_indices[index]};
-        if (data_.team_results[mapping].outcome == outcome) {
-            candidate_results_.push_back(mapping);
-        }
-    }
 }
 
 /* **************************************** */
@@ -264,30 +254,30 @@ void Mission::evaluate(std::span<RuleId const> const scheduled,
             ++end;
         }
 
-        if (activating || type != ConditionType::ObjectiveResolved) {
+        if (activating || type != RuleType::ObjectiveResolved) {
             // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- select the current type's rule range.
             evaluate_run(type, scheduled.subspan(first, end - first), inputs);
         }
         first = end;
     }
 }
-void Mission::evaluate_run(ConditionType const type,
+void Mission::evaluate_run(RuleType const type,
                            std::span<RuleId const> const run,
                            MissionEvaluationContext const& inputs) {
     switch (type) {
-        case ConditionType::EntityDestroyed:
+        case RuleType::EntityDestroyed:
             evaluate_destroyed(run, inputs);
             break;
-        case ConditionType::TimeElapsed:
+        case RuleType::TimeElapsed:
             evaluate_elapsed(run, inputs);
             break;
-        case ConditionType::ObjectiveResolved:
+        case RuleType::ObjectiveResolved:
             evaluate_resolved(run);
             break;
-        case ConditionType::EntityKillsReached:
+        case RuleType::EntityKillsReached:
             evaluate_kills(run, inputs);
             break;
-        case ConditionType::EntityReachedPosition:
+        case RuleType::EntityReachedPosition:
             evaluate_reached_position(run, inputs);
             break;
     }
@@ -438,38 +428,38 @@ void Mission::settle(MissionEvaluationContext const& inputs) {
             for (auto const root : EnumTraits<ObjectiveOutcome>::values) {
                 if (result(roots[root]) == ExprResult::True) {
                     complete(id, root, inputs.tick);
+                    if (!winning_team_ && root == ObjectiveOutcome::Passed &&
+                        data_.objectives.wins_level(id) == ObjectiveWinsLevel::Yes) {
+                        finish(id, inputs);
+                    }
                     break;
                 }
             }
         }
     }
 
-    std::ranges::sort(candidate_results_,
-                      [&](TeamResultIndex const left, TeamResultIndex const right) {
-                          auto const& a{data_.team_results[left]};
-                          auto const& b{data_.team_results[right]};
-                          if (a.team != b.team) {
-                              return a.team < b.team;
-                          }
-
-                          if (a.result != b.result) {
-                              return a.result == MissionOutcome::Defeat;
-                          }
-                          return left < right;
-                      });
-
-    for (auto const index : candidate_results_) {
-        auto const mapping{data_.team_results[index]};
-        auto& outcome{team_outcomes_[mapping.team]};
-        if (!outcome) {
-            outcome = mapping.result;
-            completions_.push_back(
-                {mapping.team, mapping.result, mapping.objective, mapping.outcome, inputs.tick});
-        }
-    }
-
-    candidate_results_.clear();
     std::erase_if(active_rules_, [&](RuleId const rule) { return !pending_rule(rule); });
     std::ranges::sort(active_rules_);
+}
+void Mission::finish(ObjectiveId const winning_objective, MissionEvaluationContext const& inputs) {
+    auto const winner{data_.objectives.team(winning_objective)};
+    winning_team_ = winner;
+    team_outcomes_[winner] = MissionOutcome::Victory;
+    completions_.push_back({winner,
+                            MissionOutcome::Victory,
+                            winning_objective,
+                            ObjectiveOutcome::Passed,
+                            inputs.tick});
+
+    for (auto const team : inputs.participating_teams) {
+        if (team != winner) {
+            team_outcomes_[team] = MissionOutcome::Defeat;
+            completions_.push_back({team,
+                                    MissionOutcome::Defeat,
+                                    winning_objective,
+                                    ObjectiveOutcome::Passed,
+                                    inputs.tick});
+        }
+    }
 }
 }

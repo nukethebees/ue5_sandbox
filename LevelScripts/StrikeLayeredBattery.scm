@@ -11,7 +11,7 @@
 
   :player 'player
 
-  :mission (decisive-mission 'blue
+  :mission (decisive-mission 'blue 'red
     (entity-kills-reached '(player) 8)
     (destroy-any '(player)))
 

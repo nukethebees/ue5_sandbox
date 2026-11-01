@@ -7,9 +7,7 @@
 #include <ioj/sim/missions/expr_leaves.h>
 #include <ioj/sim/missions/expr_operators.h>
 #include <ioj/sim/missions/mission_rules.h>
-#include <ioj/sim/missions/mission_team_result.h>
 #include <ioj/sim/missions/objectives.h>
-#include <ioj/sim/missions/team_result_index.h>
 
 #include <expected>
 
@@ -31,8 +29,5 @@ struct CompiledMission {
 
     std::vector<ActivationNotification> dependents{};
     std::vector<ExprLeafIndex> observers{};
-
-    std::vector<MissionTeamResult> team_results{};
-    std::vector<TeamResultIndex> result_indices{};
 };
 }

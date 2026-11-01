@@ -6,7 +6,7 @@
 
   :player 'player
 
-  :mission (decisive-mission 'blue
+  :mission (decisive-mission 'blue 'red
     (entity-kills-reached '(player) 1)
     (any-of
       (destroy-any '(player))

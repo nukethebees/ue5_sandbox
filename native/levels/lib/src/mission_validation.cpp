@@ -60,7 +60,7 @@ auto validate_mission(MissionDefinition const& mission, std::span<EntityId const
     }
     auto valid_team = [&](Team const team) {
         if (!std::ranges::contains(EnumTraits<Team>::values, team)) {
-            errors.emplace_back("Invalid objective or result team");
+            errors.emplace_back("Invalid objective team");
         }
     };
     auto reference = [&](ObjectiveDependency const& dependency) -> bool {
@@ -168,13 +168,6 @@ auto validate_mission(MissionDefinition const& mission, std::span<EntityId const
     }
     if (mission_validation_detail::has_cycle(dependencies)) {
         errors.emplace_back("Objective activation cycle");
-    }
-    for (auto const& mapping : mission.team_results) {
-        valid_team(mapping.team);
-        reference(mapping.when);
-        if (mapping.result != MissionOutcome::Victory && mapping.result != MissionOutcome::Defeat) {
-            errors.emplace_back("Invalid team result");
-        }
     }
     return errors;
 }

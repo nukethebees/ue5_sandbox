@@ -4,7 +4,7 @@
 #pragma once
 
 #include "ioj/packed_value.h"
-#include "ioj/sim/missions/condition_type.h"
+#include "ioj/sim/missions/rule_type.h"
 
 #include <cassert>
 #include <compare>
@@ -27,7 +27,7 @@ struct RuleId : detail::RuleIdBase {
     static constexpr PackedField<storage_type, std::uint32_t, 0, 24> index_layout{};
 
     // type
-    static constexpr PackedField<storage_type, ConditionType, 24, 8> type_layout{};
+    static constexpr PackedField<storage_type, RuleType, 24, 8> type_layout{};
 
     constexpr RuleId() noexcept = default;
     constexpr explicit RuleId(decltype(index_layout)::value_type const index_value,

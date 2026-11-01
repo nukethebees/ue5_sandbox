@@ -6,7 +6,7 @@
 
   :player 'player
 
-  :mission (decisive-mission 'blue
+  :mission (decisive-mission 'blue 'red
     (time-elapsed 3600)
     (destroy-any '(player)))
 

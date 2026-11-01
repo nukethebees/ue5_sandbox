@@ -32,9 +32,9 @@ constexpr auto s7_record_constructors() -> std::string_view {
            "arguments))\n(define (soft-target . arguments) (cons :soft-target arguments))\n(define "
            "(star . arguments) (cons :star arguments))\n(define (starfield . arguments) (cons "
            ":starfield arguments))\n(define (stellar-cluster . arguments) (cons :stellar-cluster "
-           "arguments))\n(define (team-result . arguments) (cons :team-result arguments))\n(define "
-           "(tick . arguments) (cons :tick arguments))\n(define (tube-spinners . arguments) (cons "
-           ":tube-spinners arguments))\n(define (turrets . arguments) (cons :turrets "
-           "arguments))\n(define (twinkle . arguments) (cons :twinkle arguments))\n";
+           "arguments))\n(define (tick . arguments) (cons :tick arguments))\n(define "
+           "(tube-spinners . arguments) (cons :tube-spinners arguments))\n(define (turrets . "
+           "arguments) (cons :turrets arguments))\n(define (twinkle . arguments) (cons :twinkle "
+           "arguments))\n";
 }
 } // namespace ioj::levels::authoring

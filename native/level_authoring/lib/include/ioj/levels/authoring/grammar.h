@@ -33,9 +33,7 @@ enum class Property : PropertyUnderlying {
     Fail,
     Expire,
     DependsOn,
-    TeamResults,
-    When,
-    Result,
+    WinsLevel,
     Entities,
     Settings,
     Levels,
@@ -70,38 +68,19 @@ using ioj::to_serialized_string;
             return std::nullopt;
         }
         case 4: {
-            switch (static_cast<unsigned char>(value[0])) {
-                case 'f': {
-                    if (value == "fail") {
-                        return Property::Fail;
-                    }
-                    return std::nullopt;
-                }
-                case 'p': {
-                    if (value == "pass") {
-                        return Property::Pass;
-                    }
-                    if (value == "path") {
-                        return Property::Path;
-                    }
-                    return std::nullopt;
-                }
-                case 't': {
-                    if (value == "team") {
-                        return Property::Team;
-                    }
-                    return std::nullopt;
-                }
-                case 'w': {
-                    if (value == "when") {
-                        return Property::When;
-                    }
-                    return std::nullopt;
-                }
-                default: {
-                    return std::nullopt;
-                }
+            if (value == "pass") {
+                return Property::Pass;
             }
+            if (value == "fail") {
+                return Property::Fail;
+            }
+            if (value == "path") {
+                return Property::Path;
+            }
+            if (value == "team") {
+                return Property::Team;
+            }
+            return std::nullopt;
         }
         case 5: {
             if (value == "title") {
@@ -147,12 +126,6 @@ using ioj::to_serialized_string;
                 case 'p': {
                     if (value == "player") {
                         return Property::Player;
-                    }
-                    return std::nullopt;
-                }
-                case 'r': {
-                    if (value == "result") {
-                        return Property::Result;
                     }
                     return std::nullopt;
                 }
@@ -238,6 +211,9 @@ using ioj::to_serialized_string;
             if (value == "depends-on") {
                 return Property::DependsOn;
             }
+            if (value == "wins-level") {
+                return Property::WinsLevel;
+            }
             if (value == "level-size") {
                 return Property::LevelSize;
             }
@@ -250,9 +226,6 @@ using ioj::to_serialized_string;
             return std::nullopt;
         }
         case 12: {
-            if (value == "team-results") {
-                return Property::TeamResults;
-            }
             if (value == "laser-damage") {
                 return Property::LaserDamage;
             }
@@ -333,7 +306,6 @@ enum class RecordKind : RecordKindUnderlying {
     Camera,
     CollisionGrid,
     Objective,
-    TeamResult,
     LevelCompleted,
 };
 
@@ -365,9 +337,7 @@ struct EnumTraits<::ioj::levels::authoring::Property> {
                                        ::ioj::levels::authoring::Property::Fail,
                                        ::ioj::levels::authoring::Property::Expire,
                                        ::ioj::levels::authoring::Property::DependsOn,
-                                       ::ioj::levels::authoring::Property::TeamResults,
-                                       ::ioj::levels::authoring::Property::When,
-                                       ::ioj::levels::authoring::Property::Result,
+                                       ::ioj::levels::authoring::Property::WinsLevel,
                                        ::ioj::levels::authoring::Property::Entities,
                                        ::ioj::levels::authoring::Property::Settings,
                                        ::ioj::levels::authoring::Property::Levels,
@@ -394,18 +364,17 @@ struct EnumTraits<::ioj::levels::authoring::Property> {
 } // namespace ioj
 template <>
 inline constexpr auto ioj::enum_strings<::ioj::levels::authoring::Property, ioj::Serialized>{
-    ioj::PackedStrings{
-        "id\000title\000description\000par-time\000collision-"
-        "grid\000unlock\000player\000camera\000mission\000objectives\000nodes\000pass\000fail\000ex"
-        "pire\000depends-on\000team-"
-        "results\000when\000result\000entities\000settings\000levels\000campaigns\000path\000value"
-        "\000error\000level-size\000cell-size\000look-at\000distance\000offset-"
-        "direction\000archetype\000team\000position\000rotation\000spawn-at\000health\000laser-"
-        "damage\000initial-spawn-delay\000spawn-cooldown",
-        std::array<std::uint16_t, 40>{0,   3,   9,   21,  30,  45,  52,  59,  66,  74,
-                                      85,  91,  96,  101, 108, 119, 132, 137, 144, 153,
-                                      162, 169, 179, 184, 190, 196, 207, 217, 225, 234,
-                                      251, 261, 266, 275, 284, 293, 300, 313, 333, 348}}};
+    ioj::PackedStrings{"id\000title\000description\000par-time\000collision-"
+                       "grid\000unlock\000player\000camera\000mission\000objectives\000nodes\000pas"
+                       "s\000fail\000expire\000depends-on\000wins-"
+                       "level\000entities\000settings\000levels\000campaigns\000path\000value\000er"
+                       "ror\000level-size\000cell-size\000look-at\000distance\000offset-"
+                       "direction\000archetype\000team\000position\000rotation\000spawn-"
+                       "at\000health\000laser-damage\000initial-spawn-delay\000spawn-cooldown",
+                       std::array<std::uint16_t, 38>{
+                           0,   3,   9,   21,  30,  45,  52,  59,  66,  74,  85,  91,  96,
+                           101, 108, 119, 130, 139, 148, 155, 165, 170, 176, 182, 193, 203,
+                           211, 220, 237, 247, 252, 261, 270, 279, 286, 299, 319, 334}}};
 
 namespace ioj {
 template <>
@@ -421,9 +390,8 @@ inline constexpr auto
         ioj::PackedStrings{"expr\000expr-ref", std::array<std::uint8_t, 3>{0, 5, 14}}};
 
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::levels::authoring::RecordKind, ioj::Serialized>{
-    ioj::PackedStrings{
-        "level\000campaign\000catalog\000included-"
-        "definition\000entity\000mission\000camera\000collision-grid\000objective\000team-"
-        "result\000level-completed",
-        std::array<std::uint8_t, 12>{0, 6, 15, 23, 43, 50, 58, 65, 80, 90, 102, 118}}};
+inline constexpr auto ioj::enum_strings<::ioj::levels::authoring::RecordKind,
+                                        ioj::Serialized>{ioj::PackedStrings{
+    "level\000campaign\000catalog\000included-"
+    "definition\000entity\000mission\000camera\000collision-grid\000objective\000level-completed",
+    std::array<std::uint8_t, 11>{0, 6, 15, 23, 43, 50, 58, 65, 80, 90, 106}}};

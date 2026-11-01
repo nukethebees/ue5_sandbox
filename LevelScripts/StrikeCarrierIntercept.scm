@@ -11,7 +11,7 @@
 
   :player 'player
 
-  :mission (decisive-mission 'blue
+  :mission (decisive-mission 'blue 'red
     (all-of
       (entity-kills-reached
         '(player blue-capital)

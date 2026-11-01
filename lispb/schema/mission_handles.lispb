@@ -1,7 +1,7 @@
-(module mission_condition_type
-  :header "native/simulation/include/ioj/sim/missions/condition_type.h"
+(module mission_rule_type
+  :header "native/simulation/include/ioj/sim/missions/rule_type.h"
   :namespace ioj::sim
-  (enum ConditionType std::uint8_t
+  (enum RuleType std::uint8_t
     :bit-width 8
     :native-api true :enum-array true :helpers (traits)
     (value EntityDestroyed) (value EntityReachedPosition) (value TimeElapsed)
@@ -30,5 +30,5 @@
   (integer-scalar RuleIndex :bit-width 24)
   (record RuleId :layout packed :bits 32
     (member index @RuleIndex)
-    (member type @mission_condition_type :bits 8)
+    (member type @mission_rule_type :bits 8)
     (projections (cpp :storage std::uint32_t))))
