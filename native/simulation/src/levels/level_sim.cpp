@@ -250,6 +250,8 @@ void LevelSim::think_tick(float const tick_period) {
     SANDBOX_PROFILE_SCOPE("Thinking");
     clock_.transition_to(SimulationPhase::Thinking);
 
+    task_manager_.plan_tasks();
+
     event_manager_.queue_fighter_spawns(tick_period, frame_memory);
 
     turrets::ThinkingInputs const turret_inputs{
