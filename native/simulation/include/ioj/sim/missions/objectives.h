@@ -41,19 +41,12 @@ class Objectives {
     auto roots(ObjectiveId id) -> ObjectiveRoots& { return at(roots_, id); }
     auto roots(ObjectiveId id) const -> ObjectiveRoots const& { return at(roots_, id); }
     auto leaves(ObjectiveId id) -> IndexSpan& { return at(leaf_ranges_, id); }
-    auto leaves(ObjectiveId id) const -> IndexSpan { return at(leaf_ranges_, id); }
     auto composites(ObjectiveId id) -> IndexSpan& { return at(composite_ranges_, id); }
-    auto composites(ObjectiveId id) const -> IndexSpan { return at(composite_ranges_, id); }
     auto prerequisites(ObjectiveId id) -> ObjectivePrerequisiteCount& {
         return at(prerequisites_, id);
     }
-    auto prerequisites(ObjectiveId id) const -> ObjectivePrerequisiteCount {
-        return at(prerequisites_, id);
-    }
     auto dependents(ObjectiveId id) -> IndexSpan& { return at(dependent_ranges_, id); }
-    auto dependents(ObjectiveId id) const -> IndexSpan { return at(dependent_ranges_, id); }
     auto wins_level(ObjectiveId id) -> ObjectiveWinsLevel& { return at(wins_level_, id); }
-    auto wins_level(ObjectiveId id) const -> ObjectiveWinsLevel { return at(wins_level_, id); }
     auto outcome(ObjectiveId id) const -> std::optional<ObjectiveOutcome> {
         return at(outcomes_, id);
     }
