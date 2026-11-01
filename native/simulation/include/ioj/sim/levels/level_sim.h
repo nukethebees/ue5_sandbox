@@ -103,9 +103,9 @@ struct LevelSim {
     auto get_entity_tables() const -> EntityTables const& { return entity_tables_; }
     auto get_mission() const -> Mission const& { return mission_; }
     auto get_task_manager() const -> tasks::TaskManager const& { return task_manager_; }
-    auto get_result_metadata() const -> LevelResultMetadata const& { return result_metadata_; }
-    auto get_level_id() const -> std::string const& { return result_metadata_.level_id; }
-    auto get_level_title() const -> std::string const& { return result_metadata_.level_title; }
+    auto get_level_metadata() const -> levels::LevelMetadata const& { return level_metadata_; }
+    auto get_level_id() const -> std::string const& { return level_metadata_.id.value; }
+    auto get_level_title() const -> std::string const& { return level_metadata_.title; }
     auto get_spatial_query_manager() const -> SpatialQueryManager const& {
         return collision_pipeline_.queries();
     }
@@ -158,7 +158,7 @@ struct LevelSim {
 
     tasks::TaskManager task_manager_;
     Mission mission_;
-    LevelResultMetadata result_metadata_;
+    levels::LevelMetadata level_metadata_;
     LevelEventManager event_manager_;
     LevelTelemetryManager level_telemetry_manager_;
 };

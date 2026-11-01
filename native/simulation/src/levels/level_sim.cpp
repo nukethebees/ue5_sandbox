@@ -27,7 +27,7 @@ LevelSim::LevelSim(GameMemory& game_memory, LevelSimInitData data)
     , turrets_simulation_{clock_, entity_ledger_, entity_tables_}
     , spinners_simulation_{clock_, entity_ledger_, entity_tables_}
     , mission_{std::move(data.mission)}
-    , result_metadata_{std::move(data.result_metadata)}
+    , level_metadata_{std::move(data.level_metadata)}
     , event_manager_{capital_ships_simulation_,
                      fighters_simulation_,
                      turrets_simulation_,

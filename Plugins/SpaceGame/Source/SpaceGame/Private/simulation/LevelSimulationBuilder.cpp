@@ -360,9 +360,9 @@ static auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& c
         return FLevelSimulationBuildResult{std::unexpect, MoveTemp(mission.error())};
     }
     build.data.mission = std::move(*mission);
-    build.data.result_metadata = {
-        .level_id = TCHAR_TO_UTF8(*mission_definition.level_id.ToString()),
-        .level_title = TCHAR_TO_UTF8(*mission_definition.level_display_name)};
+    build.data.level_metadata = {
+        .id = levels::LevelId{TCHAR_TO_UTF8(*mission_definition.level_id.ToString())},
+        .title = TCHAR_TO_UTF8(*mission_definition.level_display_name)};
 
     if (auto valid{sim::validate_level_simulation_init_data(build.data)}; !valid) {
         FLevelStartErrors errors;

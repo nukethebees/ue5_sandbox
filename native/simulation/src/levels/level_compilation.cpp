@@ -69,9 +69,7 @@ auto compile_level(LevelDefinition const& level,
     sim::CompiledLevel compiled;
     auto& initialisation{compiled.events.initialisation};
     auto& schedule{compiled.events.schedule};
-    compiled.result_metadata.level_id = definition.metadata().id.value;
-    compiled.result_metadata.level_title = definition.metadata().title;
-    compiled.result_metadata.par_time_seconds = definition.metadata().par_time_seconds;
+    compiled.level_metadata = definition.metadata();
     initialisation.entity_count = static_cast<std::uint32_t>(definition.entities().size());
     if (!definition.player_entity_id().empty()) {
         initialisation.player_entity_index =

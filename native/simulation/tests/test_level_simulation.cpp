@@ -94,7 +94,7 @@ auto make_scheduled_battle() -> LevelSimInitData {
     assert(compiled);
     data.level_events = std::move(compiled->events);
     data.mission = std::move(compiled->mission);
-    data.result_metadata = std::move(compiled->result_metadata);
+    data.level_metadata = std::move(compiled->level_metadata);
     return data;
 }
 
@@ -210,7 +210,7 @@ TEST(NativeSimulation, BuildsAndControlsAHeadlessPlayerFromNativeDefinitionAndGe
     EXPECT_EQ(built->player->body_transform, fixture.player.body_transform);
     EXPECT_EQ(built->fighters.speed, 1234.f);
     EXPECT_EQ(built->clock_settings.tick_rate.get_hz(), 30.0);
-    EXPECT_EQ(built->result_metadata.level_id, "headless-player");
+    EXPECT_EQ(built->level_metadata.id.value, "headless-player");
 
     GameMemory memory;
     LevelSim simulation{memory, std::move(*built)};
@@ -387,7 +387,7 @@ TEST(NativeSimulation, SchemeFutureEntityAndLateObserverProgressThroughLevelSimu
     ASSERT_TRUE(compiled);
     data.level_events = std::move(compiled->events);
     data.mission = std::move(compiled->mission);
-    data.result_metadata = std::move(compiled->result_metadata);
+    data.level_metadata = std::move(compiled->level_metadata);
     GameMemory memory;
     LevelSim simulation{memory, std::move(data)};
     EXPECT_EQ(simulation.get_level_id(), "future-objective");

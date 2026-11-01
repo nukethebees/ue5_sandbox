@@ -120,7 +120,7 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
     check(compiled);
     data.level_events = std::move(compiled->events);
     data.mission = std::move(compiled->mission);
-    data.result_metadata = std::move(compiled->result_metadata);
+    data.level_metadata = std::move(compiled->level_metadata);
     return data;
 }
 

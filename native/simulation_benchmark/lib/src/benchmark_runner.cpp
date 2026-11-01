@@ -210,7 +210,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     }
     data.level_events = std::move(compiled->events);
     data.mission = std::move(compiled->mission);
-    data.result_metadata = std::move(compiled->result_metadata);
+    data.level_metadata = std::move(compiled->level_metadata);
 
     if (options.fighter_stress_cap.has_value()) {
         auto const team_count{data.level_events.schedule

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/levels/level_metadata.h>
 #include <ioj/settings/tick_settings.h>
 #include <ioj/sim/capital_ships/capital_ship_sim_config.h>
 #include <ioj/sim/collision/cell_coord.h>
@@ -9,7 +10,6 @@
 #include <ioj/sim/fighters/fighter_sim_config.h>
 #include <ioj/sim/lasers/laser_sim_config.h>
 #include <ioj/sim/levels/compiled_level_events.h>
-#include <ioj/sim/levels/level_result_metadata.h>
 #include <ioj/sim/missions/compiled_mission.h>
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/spinners/spinner_sim_config.h>
@@ -33,7 +33,7 @@ struct LevelSimInitData {
     std::optional<player::PlayerSpawnData> player;
     CompiledLevelEvents level_events;
     CompiledMission mission;
-    LevelResultMetadata result_metadata;
+    levels::LevelMetadata level_metadata;
 
     CollisionInitData collision;
 
