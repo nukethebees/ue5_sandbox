@@ -93,11 +93,16 @@ TEST(HudModel, CachesDefenceFailureAndObjectiveMembership) {
     presentation::HudModel hud;
     hud.initialise(simulation.get_mission(), simulation.get_read_access());
     EXPECT_TRUE(hud.has_mission_data());
+    EXPECT_EQ(hud.mission_data().active, 0);
+    EXPECT_TRUE(hud.mission_data().active_titles.empty());
+
+    simulation.start();
+    harness.advance(simulation.get_clock().get_tick_period());
+    EXPECT_TRUE(hud.force_sample().mission);
     EXPECT_EQ(hud.mission_data().active, 1);
     EXPECT_EQ(hud.mission_data().active_titles, "Blue: Hold position");
 
     harness.queue_kills(std::array{simulation.get_capital_ships().get_id(0)});
-    simulation.start();
     harness.advance(0.05);
     EXPECT_TRUE(hud.force_sample().mission);
     EXPECT_EQ(hud.mission_data().completed, 1);
@@ -219,6 +224,10 @@ TEST(HudModel, MissionDisplayTimeUsesSimulationClock) {
     harness.advance(0.05);
     hud.force_sample();
     EXPECT_DOUBLE_EQ(hud.mission_data().elapsed_seconds, 0.2);
+    EXPECT_EQ(hud.mission_data().completed, 0);
+    harness.advance(0.05);
+    hud.force_sample();
+    EXPECT_DOUBLE_EQ(hud.mission_data().elapsed_seconds, 0.3);
     EXPECT_EQ(hud.mission_data().completed, 1);
     EXPECT_EQ(simulation.get_mission().outcome(ObjectiveId{0}), ObjectiveOutcome::Passed);
 }

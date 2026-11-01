@@ -61,16 +61,7 @@ void LevelSim::finish_initialisation() {
     clock_.advance_to(SimulationPhase::Thinking);
 
     level_telemetry_manager_.initialise();
-    {
-        auto& frame_memory{memory_manager_.get_frame_memory()};
-        FrameScratchScope scratch_scope{frame_memory};
-        mission_.begin({SimTick{},
-                        entity_ledger_,
-                        event_manager_.get_entity_ids(),
-                        &collision_pipeline_.queries(),
-                        &frame_memory,
-                        participating_teams_});
-    }
+    mission_.reset_progress();
 
     clock_.reset();
     state_ = LevelState::Paused;

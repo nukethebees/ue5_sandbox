@@ -243,13 +243,6 @@ void Mission::reset_progress() {
     winning_team_.reset();
     completions_.clear();
 }
-void Mission::begin(MissionEvaluationContext const& inputs) {
-    reset_progress();
-    activate_ready_objectives(inputs);
-
-    std::ranges::sort(leaves_.active);
-    tick(inputs);
-}
 void Mission::tick(MissionEvaluationContext const& inputs) {
     evaluate_leaves(inputs);
     evaluate_composites();

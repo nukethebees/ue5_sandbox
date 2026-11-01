@@ -61,14 +61,15 @@ TEST(CompletionPublication, PublishesPlayerResultAndPayloadOnceWithoutUnreal) {
     ASSERT_TRUE(publication);
     EXPECT_EQ(publication->level_title, "Publication");
     EXPECT_EQ(publication->par_time_seconds, 1.f);
-    ScoreRecord const expected{.date = 17,
-                               .level_name = "publication",
-                               .team = Team::Blue,
-                               .outcome = MissionOutcome::Victory,
-                               .objective_id = "primary",
-                               .objective_outcome = ObjectiveOutcome::Passed,
-                               .kills = 2,
-                               .time_seconds = 0.2f};
+    ScoreRecord const expected{
+        .date = 17,
+        .level_name = "publication",
+        .team = Team::Blue,
+        .outcome = MissionOutcome::Victory,
+        .objective_id = "primary",
+        .objective_outcome = ObjectiveOutcome::Passed,
+        .kills = 2,
+        .time_seconds = static_cast<float>(0.2 + simulation.get_clock().get_tick_period())};
     EXPECT_EQ(publication->record, expected);
     EXPECT_TRUE(publication->save_result.persisted);
     EXPECT_TRUE(publication->save_result.new_best_time);

@@ -353,11 +353,13 @@ TEST(NativeSimulation, PositionConditionsUseLiveSpatialDataAndRemainTerminal) {
     LevelSim simulation{memory, std::move(data)};
     simulation.finish_initialisation();
     EXPECT_FALSE(simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}));
+    simulation.start();
+    simulation.advance(2 * simulation.get_clock().get_tick_period());
+
     DirectDamageEvents damage;
     damage.add(simulation.get_capital_ships().get_id(0), 100, {});
     damage.add(simulation.get_capital_ships().get_id(1), 100, {});
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
-    simulation.start();
     simulation.advance(0.2);
     EXPECT_EQ(simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}), ObjectiveOutcome::Passed);
     EXPECT_EQ(simulation.get_mission().completed_objectives().size(), 1);
@@ -444,7 +446,7 @@ TEST(NativeSimulation, LevelCompletionUsesPlayerTeamAndDoesNotCancelOptionalObje
     EXPECT_EQ(result->triggering_objective_outcome, ObjectiveOutcome::Passed);
     EXPECT_EQ(simulation.get_mission().objectives().name(result->triggering_objective).value,
               "enemy");
-    EXPECT_EQ(result->tick.value(), 2);
+    EXPECT_EQ(result->tick.value(), 3);
     EXPECT_EQ(simulation.get_mission().active_objectives().size(), 1);
     EXPECT_FALSE(simulation.take_player_team_completion());
 

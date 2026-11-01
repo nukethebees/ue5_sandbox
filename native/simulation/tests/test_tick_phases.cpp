@@ -279,7 +279,7 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {
     EXPECT_EQ(observe_entity(simulation, turret)->health.value(), 75);
 }
 
-TEST(TickPhases, DelayedObjectiveSeesSameTickResolvedDeathWithoutDuplicateOverlaps) {
+TEST(TickPhases, DelayedObjectiveSeesResolvedDeathWithoutDuplicateOverlaps) {
     auto data{make_world()};
     data.collision.overlap_response.damage_per_overlap_detection = 100;
     auto const capital_index{add_capital_spawn(data, {}, Team::White, 60.f, 60.f, 1000)};
@@ -319,7 +319,7 @@ TEST(TickPhases, DelayedObjectiveSeesSameTickResolvedDeathWithoutDuplicateOverla
     expect_entity_unregistered(simulation, dead_id);
     EXPECT_EQ(ledger.count_alive(), 1);
     EXPECT_EQ(capitals.get_health(capitals.get_id(0)).value(), 900);
-    EXPECT_EQ(simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}), ObjectiveOutcome::Failed);
+    EXPECT_FALSE(simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}));
 
     auto const& queries{simulation.get_spatial_query_manager()};
     EXPECT_EQ(queries.get_aabb_overlap_events().entity_entity_overlaps.num(), 1);
@@ -327,6 +327,7 @@ TEST(TickPhases, DelayedObjectiveSeesSameTickResolvedDeathWithoutDuplicateOverla
     simulation.advance(clk_period);
     EXPECT_EQ(simulation.get_turrets().get_num_instances(), 0);
     expect_entity_unregistered(simulation, dead_id);
+    EXPECT_EQ(simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}), ObjectiveOutcome::Failed);
 }
 
 TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndBoundsAdvanceAfterward) {
@@ -485,6 +486,10 @@ TEST(TickPhases, CapitalDeathIsPublishedBeforeMissionEvaluation) {
         EXPECT_EQ(observe_entity_row(simulation, victim), EntityInstanceHandle::invalid_value);
         EXPECT_EQ(observe_entity_row(simulation, killer), 0);
         EXPECT_EQ(ledger.count_alive(), kill_tick == 1 ? 1 : 3);
+        if (kill_tick == 1) {
+            EXPECT_FALSE(simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}));
+            simulation.advance(period);
+        }
         EXPECT_EQ(simulation.get_mission().outcome(ioj::sim::ObjectiveId{0}),
                   ObjectiveOutcome::Passed);
     }
