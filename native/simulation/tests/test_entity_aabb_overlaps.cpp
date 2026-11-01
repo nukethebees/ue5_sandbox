@@ -4,9 +4,9 @@
 #include <ioj/column_math.h>
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
-#include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/spatial_query_manager_test_access.h>
+#include <native/memory/block.h>
 
 #include <array>
 #include <cstddef>
@@ -116,9 +116,9 @@ struct OverlapFixture {
 
     CollisionAgentStorage owners;
     // Include raw duplicate overlap pairs as well as sorting scratch in the frame budget.
-    GameMemory game_memory{{.root_capacity_bytes = overlap_frame_memory_capacity}};
-    memory::Block frame_memory_backing{game_memory.acquire_block(
-        overlap_frame_memory_capacity, FrameMemoryResource::backing_alignment)};
+    memory::Block frame_memory_backing{*std::pmr::new_delete_resource(),
+                                       overlap_frame_memory_capacity,
+                                       FrameMemoryResource::backing_alignment};
     FrameMemoryResource frame_memory{
         std::span<std::byte>{frame_memory_backing.data(), frame_memory_backing.size_bytes()}};
     SpatialQueryManager query_manager;

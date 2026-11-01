@@ -1,8 +1,8 @@
 #pragma once
 
-#include "ioj/sim/memory/game_memory.h"
 #include "ioj/sim/telemetry/history.h"
 #include <ioj/sim/telemetry/block_history_types.h>
+#include <native/memory/block.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -12,7 +12,7 @@ namespace ioj::sim::telemetry {
 
 class BlockHistory {
   public:
-    BlockHistory(GameMemory& memory, HistoryConfig config = {});
+    BlockHistory(std::pmr::memory_resource& memory, HistoryConfig config = {});
     BlockHistory(BlockHistory const&) = delete;
     BlockHistory(BlockHistory&&) = delete;
     auto operator=(BlockHistory const&) -> BlockHistory& = delete;
@@ -52,7 +52,7 @@ class BlockHistory {
 
     auto acquire_or_reuse_next_block() -> Block&;
 
-    GameMemory& memory_;
+    std::pmr::memory_resource& memory_;
     HistoryConfig config_{};
     std::vector<Block> blocks_{};
     std::size_t layout_bytes_per_block_{};

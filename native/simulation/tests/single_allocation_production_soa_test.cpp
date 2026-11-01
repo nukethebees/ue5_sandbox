@@ -76,9 +76,9 @@ TEST(NativeSimulation, SpinnerAndLaserHitSingleAllocationRowsStaySynchronized) {
 }
 
 TEST(NativeSimulation, LaserFrameOutputAccumulatesBatchesAndReusesStorage) {
-    GameMemory game_memory{{.root_capacity_bytes = 2 * 1024 * 1024}};
+    auto& game_memory{*std::pmr::new_delete_resource()};
     auto frame_block{
-        game_memory.acquire_block(1024 * 1024, FrameMemoryResource::backing_alignment)};
+        memory::Block{game_memory, 1024 * 1024, FrameMemoryResource::backing_alignment}};
     FrameMemoryResource frame_memory{
         std::span<std::byte>{frame_block.data(), frame_block.size_bytes()}};
     FrameScratchScope scratch_scope{frame_memory};

@@ -16,7 +16,7 @@ TEST(NativeSimulation, LevelTelemetryBlockHistoryTest) {
         return result;
     }()};
     auto const block_bytes{Layout::layout_bytes(1)};
-    GameMemory memory{{.root_capacity_bytes = block_bytes * 8}};
+    auto& memory{*std::pmr::new_delete_resource()};
     telemetry::BlockHistory history{memory, {.block_bytes = block_bytes}};
 
     auto const full_block_end{SimTick{64}};

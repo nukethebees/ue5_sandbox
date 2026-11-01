@@ -41,7 +41,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     EntityLedger entity_ledger;
     CombatEvents combat_events{entity_ledger};
     lasers::Sim lasers{clock, combat_events};
-    GameMemory game_memory{{.root_capacity_bytes = std::size_t{2} * 1024 * 1024}};
+    auto& game_memory{*std::pmr::new_delete_resource()};
     LevelTelemetryManager telemetry_manager{
         clock,
         entity_ledger,

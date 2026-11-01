@@ -50,7 +50,6 @@ class FWorldlessSimulationTest {
     TFunction<void(sim::LevelSim&)> on_end_tick;
     FTestTimeline timeline;
   private:
-    sim::GameMemory game_memory_;
     sim::LevelSim simulation_;
 };
 }

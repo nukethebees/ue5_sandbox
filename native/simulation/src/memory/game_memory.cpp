@@ -1,52 +1,32 @@
-#include "ioj/sim/memory/game_memory.h"
+#include <ioj/sim/memory/game_memory.h>
 
-#include <ioj/diagnostics.h>
-
-#include <format>
+#include <algorithm>
+#include <cassert>
 
 namespace ioj::sim {
 
-GameMemory::GameMemory(memory::Config const config, std::pmr::memory_resource& upstream)
-    : backing_{config.root_capacity_bytes, upstream}
-    , root_arena_{backing_.data(), backing_.capacity_bytes()} {}
-
-GameMemory::~GameMemory() = default;
-
-auto GameMemory::try_acquire_block(std::size_t const size_bytes, std::size_t const alignment)
-    -> std::optional<memory::Block> {
-    auto block{root_arena_.try_acquire_block(size_bytes, alignment)};
-    if (!block) {
-        return std::nullopt;
-    }
-    return memory::Block{std::move(block)};
+GameMemory::GameMemory(std::pmr::memory_resource& upstream)
+    : upstream_{upstream} {}
+GameMemory::~GameMemory() {
+    assert(stats_.live_allocation_count == 0);
 }
-
-auto GameMemory::acquire_block(std::size_t const size_bytes, std::size_t const alignment)
-    -> memory::Block {
-    auto block{try_acquire_block(size_bytes, alignment)};
-    if (!block) {
-        auto const stats{root_arena_.get_statistics()};
-        fatal_error(
-            std::format("Game memory exhausted: requested={} alignment={} claimed={} capacity={}",
-                        size_bytes,
-                        alignment,
-                        stats.claimed_bytes,
-                        stats.total_capacity_bytes));
-    }
-    return std::move(*block);
+auto GameMemory::do_allocate(std::size_t const bytes, std::size_t const alignment) -> void* {
+    auto* const allocation{upstream_.allocate(bytes, alignment)};
+    stats_.live_bytes += bytes;
+    ++stats_.live_allocation_count;
+    stats_.peak_live_bytes = std::max(stats_.peak_live_bytes, stats_.live_bytes);
+    stats_.peak_live_allocation_count =
+        std::max(stats_.peak_live_allocation_count, stats_.live_allocation_count);
+    return allocation;
 }
-
-auto GameMemory::memory_resource() noexcept -> std::pmr::memory_resource& {
-    return root_arena_.memory_resource();
+void GameMemory::do_deallocate(void* const allocation,
+                               std::size_t const bytes,
+                               std::size_t const alignment) {
+    upstream_.deallocate(allocation, bytes, alignment);
+    stats_.live_bytes -= bytes;
+    --stats_.live_allocation_count;
 }
-
-auto GameMemory::get_stats() const noexcept -> memory::Statistics {
-    return root_arena_.get_statistics();
+auto GameMemory::do_is_equal(std::pmr::memory_resource const& other) const noexcept -> bool {
+    return this == &other;
 }
-
-auto GameMemory::get_last_allocation_failure() const noexcept
-    -> std::optional<memory::AllocationFailure> {
-    auto const* const failure{root_arena_.get_last_allocation_failure()};
-    return failure != nullptr ? std::optional<memory::AllocationFailure>{*failure} : std::nullopt;
 }
-} // namespace ioj::sim

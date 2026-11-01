@@ -1,23 +1,18 @@
 add_library(native-memory STATIC)
 target_sources(native-memory
   PRIVATE
-    src/backing.cpp
-    src/retained_backing_resource.cpp
+    src/bump_resource.cpp
     src/block.cpp
-    src/root_arena.cpp
 )
 target_include_directories(native-memory PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(native-memory
   PUBLIC
     sandbox::native_defaults
   PRIVATE
-    "$<$<BOOL:${IOJ_WITH_TRACY}>:sandbox::profiling>"
+    sandbox::mimalloc
     "$<$<BOOL:${IOJ_WITH_UNREAL}>:ioj::unreal_avx2>"
 )
 ioj_enable_warnings(native-memory)
-if(IOJ_WITH_TRACY)
-  target_compile_definitions(native-memory PRIVATE IOJ_WITH_TRACY)
-endif()
 
 set_target_properties(native-memory PROPERTIES
   OUTPUT_NAME SandboxNativeMemory
@@ -31,7 +26,7 @@ endif()
 
 add_executable(native-memory-tests)
 ioj_stage_runtime_dependencies(native-memory-tests)
-target_sources(native-memory-tests PRIVATE tests/root_arena_tests.cpp)
+target_sources(native-memory-tests PRIVATE tests/bump_resource_tests.cpp)
 target_link_libraries(native-memory-tests PRIVATE
   native-memory
   GTest::gtest_main

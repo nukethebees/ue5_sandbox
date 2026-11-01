@@ -44,7 +44,7 @@ class LevelTelemetryManager {
     LevelTelemetryManager(SimClock const& clock,
                           EntityLedger const& entity_ledger,
                           lasers::Sim const& lasers,
-                          GameMemory& game_memory,
+                          std::pmr::memory_resource& memory,
                           telemetry::HistoryConfig history_config = {}) noexcept;
     LevelTelemetryManager(LevelTelemetryManager const&) = delete;
     LevelTelemetryManager(LevelTelemetryManager&&) = delete;

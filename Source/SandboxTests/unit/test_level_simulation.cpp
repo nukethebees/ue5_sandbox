@@ -314,8 +314,7 @@ auto FLevelPresentationHostLifecycleTest::RunTest(FString const&) -> bool {
                          FVector{ioj::to_unreal(locations[index])});
     }
 
-    ioj::sim::GameMemory simulation_memory;
-    ioj::sim::LevelSim simulation{simulation_memory, MoveTemp(data)};
+    ioj::sim::LevelSim simulation{*std::pmr::new_delete_resource(), MoveTemp(data)};
     simulation.finish_initialisation();
     auto const& clk{simulation.get_clock()};
     FLevelPresentationHost host;
@@ -399,8 +398,7 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     scheduled_battle.level_events.schedule.capital_spawns.get_view().healths()[0] =
         ::ioj::sim::Health{10000};
     scheduled_battle.collision.overlap_response.damage_per_overlap_detection = 100;
-    ::ioj::sim::GameMemory simulation_memory;
-    ::ioj::sim::LevelSim simulation{simulation_memory, MoveTemp(scheduled_battle)};
+    ::ioj::sim::LevelSim simulation{*std::pmr::new_delete_resource(), MoveTemp(scheduled_battle)};
     simulation.finish_initialisation();
     FLevelPresentation presentation{resources, simulation.get_read_access(), {}};
     simulation.start();
@@ -472,8 +470,7 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
 
     auto death_data{make_battle()};
     death_data.clock_settings.tick_rate = ioj::Frequency::make(10.0);
-    ::ioj::sim::GameMemory deaths_memory;
-    ::ioj::sim::LevelSim deaths{deaths_memory, MoveTemp(death_data)};
+    ::ioj::sim::LevelSim deaths{*std::pmr::new_delete_resource(), MoveTemp(death_data)};
     deaths.finish_initialisation();
     resources.config.presentation.capital_ships.n_small_explosions = 3;
     auto* const explosion{LoadObject<UNiagaraSystem>(
@@ -568,8 +565,7 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
         data.player->flight_models, data.player->flight_models.initial_slot)};
     active_profile.config.boost.energy_drain_per_second = 20.f;
     active_profile.config.energy_recharge_per_second = 0.f;
-    ::ioj::sim::GameMemory simulation_memory;
-    ::ioj::sim::LevelSim simulation{simulation_memory, MoveTemp(data)};
+    ::ioj::sim::LevelSim simulation{*std::pmr::new_delete_resource(), MoveTemp(data)};
     simulation.finish_initialisation();
     simulation.start();
     auto* player{simulation.get_player_ship_simulation()};
@@ -632,8 +628,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
 
     auto data{make_battle()};
     add_mission(data);
-    ::ioj::sim::GameMemory simulation_memory;
-    ::ioj::sim::LevelSim simulation{simulation_memory, MoveTemp(data)};
+    ::ioj::sim::LevelSim simulation{*std::pmr::new_delete_resource(), MoveTemp(data)};
     simulation.finish_initialisation();
     auto const& clk{simulation.get_clock()};
     auto const& lasers{simulation.get_lasers()};
@@ -743,8 +738,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 auto FLevelTelemetryFileAdapterTest::RunTest(FString const&) -> bool {
     auto data{make_battle()};
     data.telemetry_metadata.run_id = "12345678-1234-1234-1234-123456789abc";
-    ::ioj::sim::GameMemory memory;
-    ::ioj::sim::LevelSim simulation{memory, std::move(data)};
+    ::ioj::sim::LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
     simulation.finish_initialisation();
     simulation.finalize_telemetry_run(::ioj::sim::telemetry::RunEndReason::WorldEnd);
     auto run{simulation.take_finalized_telemetry_run()};

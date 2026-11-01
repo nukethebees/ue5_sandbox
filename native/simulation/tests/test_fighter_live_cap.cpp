@@ -73,8 +73,7 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
         auto const participants{team_view.first(team_count)};
         auto const remainder{team_count > 1 ? team_count - 1 : 0};
         auto data{make_cap_battle(participants, team_count * 3 + remainder, 4)};
-        GameMemory simulation_memory;
-        LevelSim simulation{simulation_memory, std::move(data)};
+        LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
         start_and_tick(simulation);
         EXPECT_EQ(simulation.get_fighters().get_num_instances(), team_count * 3)
             << "Floor partition leaves the global remainder unused";
@@ -86,22 +85,19 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
 
     std::vector<Team> const one_capital{Team::White};
     auto data{make_cap_battle(one_capital, 7, 8)};
-    GameMemory simulation_memory;
-    LevelSim simulation{simulation_memory, std::move(data)};
+    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
     start_and_tick(simulation);
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 7)
         << "An absent team does not reserve fighter capacity";
 
     std::vector<Team> const repeated_capital_teams{Team::White, Team::White, Team::Red};
     auto inferred_data{make_cap_battle(repeated_capital_teams, 14, 8)};
-    GameMemory inferred_simulation_memory;
-    LevelSim inferred_simulation{inferred_simulation_memory, std::move(inferred_data)};
+    LevelSim inferred_simulation{*std::pmr::new_delete_resource(), std::move(inferred_data)};
     start_and_tick(inferred_simulation);
     EXPECT_EQ(inferred_simulation.get_fighters().get_num_instances(), 14)
         << "Compiled team inference deduplicates team sources";
 
-    GameMemory empty_simulation_memory;
-    LevelSim empty_simulation{empty_simulation_memory,
+    LevelSim empty_simulation{*std::pmr::new_delete_resource(),
                               make_cap_battle(std::span<Team const>{}, 10, 0)};
     empty_simulation.finish_initialisation();
     auto const empty_clk_period{empty_simulation.get_clock().get_tick_period()};
@@ -114,8 +110,7 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
 TEST(FighterLiveCap, DerivedParticipantsIncludeFutureSpawns) {
     std::vector<Team> const capitals{Team::White};
     auto initial_only{make_cap_battle(capitals, 7, 8)};
-    GameMemory initial_simulation_memory;
-    LevelSim initial_simulation{initial_simulation_memory, std::move(initial_only)};
+    LevelSim initial_simulation{*std::pmr::new_delete_resource(), std::move(initial_only)};
     start_and_tick(initial_simulation);
     EXPECT_EQ(count_team(initial_simulation, Team::White), 7);
 
@@ -132,8 +127,7 @@ TEST(FighterLiveCap, DerivedParticipantsIncludeFutureSpawns) {
     set_vector(turret.view_locations(), 0, {{0.f, 6000.f, 0.f}});
     ASSERT_TRUE(schedule.add_spawn_group(EntityType::Turret, payload_offset, 1));
 
-    GameMemory scheduled_simulation_memory;
-    LevelSim scheduled_simulation{scheduled_simulation_memory, std::move(with_reinforcements)};
+    LevelSim scheduled_simulation{*std::pmr::new_delete_resource(), std::move(with_reinforcements)};
     start_and_tick(scheduled_simulation);
     EXPECT_EQ(count_team(scheduled_simulation, Team::White), 3)
         << "Reserve the future team's share before its first entity spawns";
@@ -144,8 +138,7 @@ TEST(FighterLiveCap, UnknownTeamRejected) {
 
     std::vector<Team> const capitals{Team::Green};
     auto data{make_cap_battle(capitals, 10, 0)};
-    GameMemory simulation_memory;
-    LevelSim simulation{simulation_memory, std::move(data)};
+    LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
     start_and_tick(simulation);
     auto const clk_period{simulation.get_clock().get_tick_period()};
 

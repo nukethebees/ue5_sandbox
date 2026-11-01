@@ -36,7 +36,7 @@ BlockHistory::Block::Block(memory::Block memory_block, std::uint32_t const capac
     storage = {.data_ = this->memory_block.data(), .num_ = 0, .capacity_ = capacity};
 }
 
-BlockHistory::BlockHistory(GameMemory& memory, HistoryConfig const config)
+BlockHistory::BlockHistory(std::pmr::memory_resource& memory, HistoryConfig const config)
     : memory_{memory}
     , config_{config}
     , logical_payload_bytes_per_row_{level_telemetry_block_history_detail::
@@ -126,7 +126,7 @@ auto BlockHistory::acquire_or_reuse_next_block() -> Block& {
     if (used_block_count_ == static_cast<std::uint32_t>(blocks_.size())) {
         using Layout = history_rows::Layout;
         blocks_.emplace_back(
-            memory_.acquire_block(layout_bytes_per_block_, Layout::allocation_alignment),
+            memory::Block{memory_, layout_bytes_per_block_, Layout::allocation_alignment},
             rows_per_block_);
         peak_block_count_ = std::max(peak_block_count_, static_cast<std::uint32_t>(blocks_.size()));
     }

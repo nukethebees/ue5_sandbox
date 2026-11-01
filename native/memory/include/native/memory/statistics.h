@@ -1,16 +1,13 @@
 #pragma once
 
 #include <cstddef>
-#include <cstdint>
 
 namespace ioj::memory {
 
 struct Statistics {
-    std::size_t total_capacity_bytes{};
-    std::size_t claimed_bytes{};
-    std::size_t live_block_bytes{};
-    std::int32_t live_block_count{};
-    std::int32_t peak_live_block_count{};
-    std::int32_t reusable_range_count{};
+    std::size_t live_bytes{};
+    std::size_t peak_live_bytes{};
+    std::size_t live_allocation_count{};
+    std::size_t peak_live_allocation_count{};
 };
 }

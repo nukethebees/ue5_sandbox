@@ -7,6 +7,7 @@ public class NativeMemory : ModuleRules
     public NativeMemory(ReadOnlyTargetRules Target) : base(Target)
     {
         Type = ModuleType.External;
+        PublicDependencyModuleNames.Add("SandboxCore");
 
         if (Target.Platform != UnrealTargetPlatform.Win64 ||
             Target.Architecture != UnrealArch.X64)

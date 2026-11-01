@@ -1,16 +1,13 @@
 #include "native/memory/block.h"
 
-#include "native/memory/root_arena.h"
-
 #include <utility>
 
 namespace ioj::memory {
-Block::Block(RootArena& owner,
-             std::byte* const data,
+Block::Block(std::pmr::memory_resource& resource,
              std::size_t const size_bytes,
-             std::size_t const alignment) noexcept
-    : owner_{&owner}
-    , data_{data}
+             std::size_t const alignment)
+    : owner_{&resource}
+    , data_{static_cast<std::byte*>(resource.allocate(size_bytes, alignment))}
     , size_bytes_{size_bytes}
     , alignment_{alignment} {}
 
@@ -37,7 +34,7 @@ auto Block::operator=(Block&& other) noexcept -> Block& {
 
 void Block::reset() {
     if (owner_ != nullptr) {
-        owner_->release_block(data_, size_bytes_);
+        owner_->deallocate(data_, size_bytes_, alignment_);
         owner_ = nullptr;
         data_ = nullptr;
         size_bytes_ = 0;

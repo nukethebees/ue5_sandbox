@@ -20,26 +20,14 @@ auto FGameMemoryEditorSubsystemTest::RunTest(FString const&) -> bool {
     TestTrue(TEXT("The editor subsystem owns the bootstrap binding"),
              delegate.IsBoundToObject(subsystem));
 
-    auto* const upstream{subsystem->upstream_resource(1024)};
-    TestNotNull(TEXT("The first editor backing allocation is available"), upstream);
-    if (upstream == nullptr) {
-        return false;
-    }
-    auto* const persistent_data{subsystem->backing_data()};
-    {
-        ioj::sim::GameMemory first{{.root_capacity_bytes = 1024}, *upstream};
-        TestEqual(TEXT("Game memory uses the subsystem's persistent backing"),
-                  first.backing_data(),
-                  persistent_data);
-        TestNull(TEXT("A simultaneous editor allocation is unavailable"),
-                 subsystem->upstream_resource(1024));
-        auto fallback{FGameMemoryBootstrap::create_game_memory({.root_capacity_bytes = 1024})};
-        TestTrue(TEXT("Bootstrap uses local memory while the editor backing is occupied"),
-                 fallback->backing_data() != persistent_data);
-    }
-    auto second{FGameMemoryBootstrap::create_game_memory({.root_capacity_bytes = 1024})};
-    TestEqual(TEXT("Sequential game-memory instances reuse the backing address"),
-              second->backing_data(),
-              persistent_data);
+    auto& upstream{subsystem->upstream_resource()};
+    TestTrue(TEXT("Bootstrap exposes the editor resource"), &delegate.Execute() == &upstream);
+    auto* const first{upstream.allocate(1024, 64)};
+    upstream.deallocate(first, 1024, 64);
+    upstream.reset();
+    auto* const second{upstream.allocate(1024, 64)};
+    TestEqual(TEXT("Reset reuses the retained allocation"), second, first);
+    upstream.deallocate(second, 1024, 64);
+    upstream.reset();
     return true;
 }

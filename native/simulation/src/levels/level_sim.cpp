@@ -18,9 +18,10 @@ namespace ioj::sim {
 /* **************************************** */
 // Construction and lifecycle
 /* **************************************** */
-LevelSim::LevelSim(GameMemory& game_memory, LevelSimInitData data)
-    : memory_manager_{game_memory, data.frame_memory_capacity_bytes}
-    , collision_pipeline_{entity_tables_, std::move(data.collision), &game_memory.memory_resource()}
+LevelSim::LevelSim(std::pmr::memory_resource& memory, LevelSimInitData data)
+    : game_memory_{memory}
+    , memory_manager_{game_memory_, data.frame_memory_capacity_bytes}
+    , collision_pipeline_{entity_tables_, std::move(data.collision), &game_memory_}
     , lasers_simulation_{clock_, combat_events_}
     , fighters_simulation_{entity_tables_}
     , capital_ships_simulation_{entity_ledger_, entity_tables_}
@@ -35,7 +36,7 @@ LevelSim::LevelSim(GameMemory& game_memory, LevelSimInitData data)
                      data.capital_ships.fighter_spawn_slots_relative_transforms,
                      std::move(data.level_events)}
     , level_telemetry_manager_{
-          clock_, entity_ledger_, lasers_simulation_, game_memory, data.telemetry_history} {
+          clock_, entity_ledger_, lasers_simulation_, game_memory_, data.telemetry_history} {
     clock_.initialise(data.clock_settings);
     set_telemetry_metadata(std::move(data.telemetry_metadata));
 

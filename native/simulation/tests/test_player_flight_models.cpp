@@ -65,8 +65,8 @@ class SkaterFlightModelTest : public ::testing::Test {
         ASSERT_NE(simulation.get_player_ship_simulation(), nullptr);
     }
 
-    GameMemory simulation_memory;
-    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
+    LevelSim simulation{*std::pmr::new_delete_resource(),
+                        make_data(player::FlightModelPreset::Skater)};
     player::Sim& sim_player{LevelSimTestAccess::player_simulation(simulation)};
     player::FlightModelControllerState const& controller{sim_player.get_controller_state()};
     std::optional<player::CommandInterface> commands{simulation.get_player_ship_commands()};
@@ -118,8 +118,8 @@ using ioj::testing::expect_approximately_equal;
 using ioj::testing::structurally_equal;
 
 TEST(NativeSimulationFlightModels, StarfoxConvergesToCruiseAndSupportsBoostAndBrake) {
-    GameMemory simulation_memory;
-    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Starfox)};
+    LevelSim simulation{*std::pmr::new_delete_resource(),
+                        make_data(player::FlightModelPreset::Starfox)};
     start(simulation);
     auto const& controller{player_sim(simulation).get_controller_state()};
     simulation.get_player_ship_commands()->set_right_input(1.f);
@@ -148,10 +148,10 @@ TEST(NativeSimulationFlightModels, StarfoxConvergesToCruiseAndSupportsBoostAndBr
 }
 
 TEST(NativeSimulationFlightModels, StarfoxEmergencyBrakeIsStrongerThanNormalBrake) {
-    GameMemory normal_memory;
-    LevelSim normal{normal_memory, make_data(player::FlightModelPreset::Starfox)};
-    GameMemory emergency_memory;
-    LevelSim emergency{emergency_memory, make_data(player::FlightModelPreset::Starfox)};
+    LevelSim normal{*std::pmr::new_delete_resource(),
+                    make_data(player::FlightModelPreset::Starfox)};
+    LevelSim emergency{*std::pmr::new_delete_resource(),
+                       make_data(player::FlightModelPreset::Starfox)};
     start(normal);
     start(emergency);
     advance_ticks(normal, 600);
@@ -166,8 +166,8 @@ TEST(NativeSimulationFlightModels, StarfoxEmergencyBrakeIsStrongerThanNormalBrak
 }
 
 TEST(NativeSimulationFlightModels, FighterAcceleratesOnlyWithInputAndThenDrags) {
-    GameMemory simulation_memory;
-    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Fighter)};
+    LevelSim simulation{*std::pmr::new_delete_resource(),
+                        make_data(player::FlightModelPreset::Fighter)};
     start(simulation);
     advance_ticks(simulation, 60);
     EXPECT_NEAR(size(velocity(simulation)), 0.0, 1.e-6);
@@ -183,10 +183,10 @@ TEST(NativeSimulationFlightModels, FighterAcceleratesOnlyWithInputAndThenDrags) 
 }
 
 TEST(NativeSimulationFlightModels, FighterBoostAndBrakeRemainOrthogonal) {
-    GameMemory normal_memory;
-    LevelSim normal{normal_memory, make_data(player::FlightModelPreset::Fighter)};
-    GameMemory boosted_memory;
-    LevelSim boosted{boosted_memory, make_data(player::FlightModelPreset::Fighter)};
+    LevelSim normal{*std::pmr::new_delete_resource(),
+                    make_data(player::FlightModelPreset::Fighter)};
+    LevelSim boosted{*std::pmr::new_delete_resource(),
+                     make_data(player::FlightModelPreset::Fighter)};
     start(normal);
     start(boosted);
     normal.get_player_ship_commands()->set_accelerator(1.f);
@@ -263,10 +263,9 @@ TEST_F(SkaterFlightModelTest, SkaterCanFaceBackwardWhilePreservingForwardTravel)
 }
 
 TEST(NativeSimulationFlightModels, SkaterBrakeAndEmergencyBrakeReduceWithoutReversing) {
-    GameMemory brake_memory;
-    LevelSim brake{brake_memory, make_data(player::FlightModelPreset::Skater)};
-    GameMemory emergency_memory;
-    LevelSim emergency{emergency_memory, make_data(player::FlightModelPreset::Skater)};
+    LevelSim brake{*std::pmr::new_delete_resource(), make_data(player::FlightModelPreset::Skater)};
+    LevelSim emergency{*std::pmr::new_delete_resource(),
+                       make_data(player::FlightModelPreset::Skater)};
     start(brake);
     start(emergency);
     for (auto* simulation : {&brake, &emergency}) {
@@ -287,8 +286,8 @@ TEST(NativeSimulationFlightModels, SkaterBrakeAndEmergencyBrakeReduceWithoutReve
 }
 
 TEST(NativeSimulationFlightModels, GunshipControlsThreeAxesAndStabilizesNeutralInput) {
-    GameMemory simulation_memory;
-    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Gunship)};
+    LevelSim simulation{*std::pmr::new_delete_resource(),
+                        make_data(player::FlightModelPreset::Gunship)};
     start(simulation);
     auto commands{simulation.get_player_ship_commands()};
     commands->set_forward_input(1.f);
@@ -308,8 +307,8 @@ TEST(NativeSimulationFlightModels, GunshipControlsThreeAxesAndStabilizesNeutralI
 }
 
 TEST(NativeSimulationFlightModels, GunshipRotationRemainsIndependentOfTranslationControl) {
-    GameMemory simulation_memory;
-    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Gunship)};
+    LevelSim simulation{*std::pmr::new_delete_resource(),
+                        make_data(player::FlightModelPreset::Gunship)};
     start(simulation);
     auto commands{simulation.get_player_ship_commands()};
     commands->set_right_input(1.f);
@@ -422,10 +421,10 @@ TEST_F(SkaterFlightModelTest, ResponseSeedingUsesTheNewChannelsReferenceFrame) {
 }
 
 TEST(NativeSimulationFlightModels, PassiveDragAndNeutralStabilizationRemainDistinct) {
-    GameMemory passive_memory;
-    LevelSim passive{passive_memory, make_data(player::FlightModelPreset::Skater)};
-    GameMemory stabilized_memory;
-    LevelSim stabilized{stabilized_memory, make_data(player::FlightModelPreset::Skater)};
+    LevelSim passive{*std::pmr::new_delete_resource(),
+                     make_data(player::FlightModelPreset::Skater)};
+    LevelSim stabilized{*std::pmr::new_delete_resource(),
+                        make_data(player::FlightModelPreset::Skater)};
     start(passive);
     start(stabilized);
 

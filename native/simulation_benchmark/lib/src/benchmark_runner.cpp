@@ -231,8 +231,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         };
     }
 
-    sim::GameMemory simulation_memory;
-    sim::LevelSim simulation{simulation_memory, std::move(data)};
+    sim::LevelSim simulation{*std::pmr::new_delete_resource(), std::move(data)};
 
     simulation.finish_initialisation();
     auto const initial_capital_ships{simulation.get_capital_ships().get_num_instances()};

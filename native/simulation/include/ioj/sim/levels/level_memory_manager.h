@@ -6,11 +6,9 @@
 #include <cstddef>
 
 namespace ioj::sim {
-class GameMemory;
-
 class LevelMemoryManager {
   public:
-    LevelMemoryManager(GameMemory& game_memory, std::size_t frame_memory_capacity_bytes);
+    LevelMemoryManager(std::pmr::memory_resource& memory, std::size_t frame_memory_capacity_bytes);
 
     auto get_frame_memory() noexcept -> FrameMemoryResource& { return frame_memory_; }
     auto get_frame_memory() const noexcept -> FrameMemoryResource const& { return frame_memory_; }

@@ -89,9 +89,12 @@ void ATestBatchOrchestrator::release_level(ioj::sim::telemetry::RunEndReason con
     if (level_simulation_.IsSet()) {
         ioj::persist_finalized_level_telemetry_run(
             *level_simulation_, launch_options_, presentation_enabled, GetGameInstance());
+        level_simulation_.Reset();
+        auto* const game_subsystem{ioj::UGameSubsystem::get(GetGameInstance())};
+        check(game_subsystem);
+        game_subsystem->reset_level_memory();
     }
 
-    level_simulation_.Reset();
     prepared_level_.Reset();
 }
 void ATestBatchOrchestrator::start_simulation() {
@@ -341,7 +344,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     }
 
     auto const grid_geometry{build->data.collision.grid_geometry};
-    level_simulation_.Emplace(game_subsystem->get_game_memory(), MoveTemp(build->data));
+    level_simulation_.Emplace(game_subsystem->get_memory_resource(), MoveTemp(build->data));
     auto const* const player_simulation{level_simulation_->get_player_ship_simulation()};
     if (IsValid(player_ship) && player_simulation) {
         player_ship->bind_simulation(*level_simulation_->get_player_ship_commands(),

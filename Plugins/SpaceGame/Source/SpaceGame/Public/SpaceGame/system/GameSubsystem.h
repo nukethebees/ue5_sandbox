@@ -7,10 +7,12 @@
 
 #include "Subsystems/GameInstanceSubsystem.h"
 
+#include <memory_resource>
+
 #include "GameSubsystem.generated.h"
 
-namespace ioj::sim {
-class GameMemory;
+namespace ioj::memory {
+class BumpResource;
 }
 
 namespace ioj {
@@ -86,7 +88,8 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     virtual void Deinitialize() override;
 
     static auto get(UGameInstance const* game_instance) -> UGameSubsystem*;
-    auto get_game_memory() noexcept -> sim::GameMemory&;
+    auto get_memory_resource() noexcept -> std::pmr::memory_resource&;
+    void reset_level_memory();
     auto get_platform_capabilities() const -> FGameCapabilities const&;
     auto get_save_game_browser() -> profiles::SaveGameBrowser&;
     auto get_audio() -> FGameAudioFacade;
@@ -128,7 +131,8 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     /* **************************************** */
     FGameAudio audio_;
     FGameCapabilities platform_capabilities_;
-    TUniquePtr<sim::GameMemory> game_memory_{};
+    TUniquePtr<memory::BumpResource> local_memory_;
+    memory::BumpResource* memory_resource_{};
     profiles::SaveGameBrowser save_game_browser_;
     session::LaunchState launch_state_;
 };

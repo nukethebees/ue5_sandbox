@@ -1,35 +1,29 @@
 #pragma once
 
-#include "native/memory/backing.h"
-#include "native/memory/block.h"
-#include "native/memory/config.h"
-#include <native/memory/root_arena.h>
+#include <native/memory/statistics.h>
 
 #include <memory_resource>
-#include <optional>
 
 namespace ioj::sim {
 
-class GameMemory {
+class GameMemory final : public std::pmr::memory_resource {
   public:
-    // Keep upstream alive until after GameMemory and all of its blocks are destroyed.
-    explicit GameMemory(memory::Config config = {},
-                        std::pmr::memory_resource& upstream = *std::pmr::new_delete_resource());
-    ~GameMemory();
+    explicit GameMemory(std::pmr::memory_resource& upstream);
+    ~GameMemory() override;
+
     GameMemory(GameMemory const&) = delete;
     GameMemory(GameMemory&&) = delete;
     auto operator=(GameMemory const&) -> GameMemory& = delete;
     auto operator=(GameMemory&&) -> GameMemory& = delete;
 
-    auto try_acquire_block(std::size_t size_bytes, std::size_t alignment)
-        -> std::optional<memory::Block>;
-    auto acquire_block(std::size_t size_bytes, std::size_t alignment) -> memory::Block;
-    auto memory_resource() noexcept -> std::pmr::memory_resource&;
-    auto get_stats() const noexcept -> memory::Statistics;
-    auto get_last_allocation_failure() const noexcept -> std::optional<memory::AllocationFailure>;
-    auto backing_data() const noexcept -> std::byte* { return backing_.data(); }
+    auto get_stats() const noexcept -> memory::Statistics { return stats_; }
+
   private:
-    memory::Backing backing_;
-    memory::RootArena root_arena_;
+    auto do_allocate(std::size_t bytes, std::size_t alignment) -> void* override;
+    void do_deallocate(void* allocation, std::size_t bytes, std::size_t alignment) override;
+    auto do_is_equal(std::pmr::memory_resource const& other) const noexcept -> bool override;
+
+    std::pmr::memory_resource& upstream_;
+    memory::Statistics stats_;
 };
-} // namespace ioj::sim
+}

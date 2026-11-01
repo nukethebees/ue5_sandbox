@@ -7,7 +7,7 @@
 #include "SpaceGameSimulation/memory/GameMemoryBootstrap.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 #include <ioj/levels/launch_options.h>
-#include <ioj/sim/memory/game_memory.h>
+#include <native/memory/bump_resource.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
 
 #include <SandboxCoreEngine/strings.h>
@@ -90,7 +90,13 @@ auto UGameSubsystem::get(UGameInstance const* const game_instance) -> UGameSubsy
 void UGameSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
 
-    game_memory_ = FGameMemoryBootstrap::create_game_memory();
+    auto& delegate{FGameMemoryBootstrap::upstream_resource_delegate()};
+    if (delegate.IsBound()) {
+        memory_resource_ = &delegate.Execute();
+    } else {
+        local_memory_ = MakeUnique<memory::BumpResource>();
+        memory_resource_ = local_memory_.Get();
+    }
 
     audio_.initialize(*GetGameInstance());
 
@@ -138,13 +144,18 @@ void UGameSubsystem::Deinitialize() {
     audio_.stop_player_ship_ambience();
     audio_.stop_button_audio();
 
-    game_memory_.Reset();
+    memory_resource_ = nullptr;
+    local_memory_.Reset();
     Super::Deinitialize();
 }
 
-auto UGameSubsystem::get_game_memory() noexcept -> sim::GameMemory& {
-    check(game_memory_.IsValid());
-    return *game_memory_;
+auto UGameSubsystem::get_memory_resource() noexcept -> std::pmr::memory_resource& {
+    check(memory_resource_);
+    return *memory_resource_;
+}
+void UGameSubsystem::reset_level_memory() {
+    check(memory_resource_);
+    memory_resource_->reset();
 }
 
 auto UGameSubsystem::get_platform_capabilities() const -> FGameCapabilities const& {

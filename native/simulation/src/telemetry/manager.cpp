@@ -57,12 +57,12 @@ using level_telemetry_detail::snapshot_with_terminal_sample;
 LevelTelemetryManager::LevelTelemetryManager(SimClock const& clock,
                                              EntityLedger const& entity_ledger,
                                              lasers::Sim const& lasers,
-                                             GameMemory& game_memory,
+                                             std::pmr::memory_resource& memory,
                                              telemetry::HistoryConfig history_config) noexcept
     : clock_{clock}
     , entity_ledger_{entity_ledger}
     , lasers_{lasers}
-    , history_{game_memory, history_config} {}
+    , history_{memory, history_config} {}
 
 void LevelTelemetryManager::initialise() {
     assert(state_ == State::Uninitialised);
