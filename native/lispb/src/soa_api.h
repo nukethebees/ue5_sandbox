@@ -19,10 +19,6 @@ auto soa_row_operations(LoweringContext& context,
                         SoaReceiver receiver,
                         std::string const& type_name,
                         CppTypeId base) -> CppTypeId;
-auto logical_column_access(LoweringContext& context,
-                           DeclarationHandle schema,
-                           std::span<std::string const> path,
-                           std::string receiver = {}) -> std::string;
 auto lower_soa_api(LoweringContext& context,
                    DeclarationHandle schema,
                    SoaReceiver receiver,

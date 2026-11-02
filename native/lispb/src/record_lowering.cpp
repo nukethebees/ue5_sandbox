@@ -140,8 +140,10 @@ auto record_visitor(LoweringContext& context, DeclarationHandle record, std::str
     ir.set_function_body(
         function,
         {ir.switch_stmt(ir.named("field"), cases),
-         ir.expr_stmt(ir.raw_expr("assert(false && \"Invalid record field\")",
-                                  {ir.types.dependency("assert", "cassert")})),
+         ir.expr_stmt(ir.call(ir.named("assert", {ir.types.dependency("assert", "cassert")}),
+                              {ir.binary(BinaryOperator::logical_and,
+                                         ir.literal("false"),
+                                         ir.string_literal("Invalid record field"))})),
          ir.expr_stmt(ir.call(ir.type_reference(ir.types.named(
              "std::unreachable", {ir.types.dependency("std::unreachable", "utility")}))))});
     result.add(ir.header_function(function), 2);

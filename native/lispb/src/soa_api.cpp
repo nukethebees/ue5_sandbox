@@ -8,6 +8,7 @@
 #include "soa_receiver.h"
 
 #include <codegen/ast/cpp_ir.h>
+#include <codegen/ast/cpp_renderer.h>
 #include <codegen/ast/cpp_types.h>
 #include <codegen/ast/function_body_layout.h>
 #include <codegen/ast/function_receiver.h>
@@ -38,7 +39,9 @@ namespace lispb::codegen::detail {
 auto logical_column_access(LoweringContext& context,
                            DeclarationHandle schema,
                            std::span<std::string const> const path,
-                           std::string receiver) -> std::string {
+                           Expr receiver = {},
+                           bool pointer = false) -> Expr {
+    auto& ir{context.ir};
     if (path.empty()) {
         throw std::invalid_argument{"SOA column reference cannot be empty"};
     }
@@ -46,9 +49,6 @@ auto logical_column_access(LoweringContext& context,
     auto const& columns{context.declarations.soa_members};
     auto current{schema};
     for (std::size_t index{}; index < path.size(); ++index) {
-        if (!receiver.empty() && !receiver.ends_with("->")) {
-            receiver += '.';
-        }
         auto const members{context.declarations.items(soas.members[current])};
         auto const found{std::ranges::find(members, path[index], [&](auto id) {
             return context.declarations.strings().view(columns.name[id]);
@@ -59,9 +59,12 @@ auto logical_column_access(LoweringContext& context,
         }
         auto const member{*found};
         bool const nested{columns.kind[member] == SoaMemberKind::nested};
-        receiver += nested ? "view_" : "";
-        receiver += path[index];
-        receiver += "()";
+        auto const name{(nested ? "view_" : "") + path[index]};
+        auto const accessor{!receiver ? ir.named(name)
+                            : pointer ? ir.pointer_member_access(receiver, name)
+                                      : ir.member_access(receiver, name)};
+        receiver = ir.call(accessor);
+        pointer = false;
         if (index + 1 < path.size()) {
             if (!nested) {
                 throw std::invalid_argument{"SOA column path requires a nested column: " +
@@ -149,14 +152,14 @@ auto compact_row_api(LoweringContext& context,
     std::vector<CppTypeId> parameter_types;
     std::vector<Expr> equivalent_arguments;
     auto mapped{soas.equivalent_type[schema].has_value()};
-    auto collect = [&](auto&& self, DeclarationHandle current, std::string const& value) -> void {
+    auto collect = [&](auto&& self, DeclarationHandle current, Expr value) -> void {
         for (auto member : decls.items(soas.members[current])) {
             auto const row{members.index(member)};
             auto component{value};
             if (members.equivalent_member[row]) {
-                component += "." + context.text(*members.equivalent_member[row]);
+                component = ir.member_access(component, *members.equivalent_member[row]);
                 if (members.equivalent_accessor[row]) {
-                    component += "()";
+                    component = ir.call(component);
                 }
             } else {
                 mapped = false;
@@ -167,10 +170,10 @@ auto compact_row_api(LoweringContext& context,
             }
             auto const type{context.for_declaration(current).resolve(members.type[row])};
             parameter_types.push_back(ir.types.decorate(type, "", " const"));
-            equivalent_arguments.push_back(ir.raw_expr(component));
+            equivalent_arguments.push_back(component);
         }
     };
-    collect(collect, schema, "value");
+    collect(collect, schema, ir.named("value"));
     auto can_assign_equivalent = [&](auto&& self, DeclarationHandle current) -> bool {
         if (!soas.equivalent_type[current]) {
             return false;
@@ -190,7 +193,9 @@ auto compact_row_api(LoweringContext& context,
     std::vector<FunctionParameterId> logical_parameters;
     std::vector<Expr> logical_arguments{ir.named("index")};
     NodeListBuilder logical_assignments{ir};
-    logical_assignments.add(ir.raw("assert(index < num());"));
+    logical_assignments.add(ir.expr_stmt(
+        ir.call(ir.named("assert"),
+                {ir.binary(BinaryOperator::less, ir.named("index"), ir.call(ir.named("num")))})));
     auto collect_logical =
         [&](auto&& self, DeclarationHandle current, std::vector<std::string> const& path) -> void {
         for (auto const member : decls.items(soas.members[current])) {
@@ -214,9 +219,15 @@ auto compact_row_api(LoweringContext& context,
             logical_parameters.push_back(ir.parameter(ir.types.decorate(type, "", " const"), name));
             logical_arguments.push_back(ir.named(name));
             auto const access{
-                logical_column_access(context, schema, column, owner ? "view()" : "this->")};
-            logical_assignments.add(ir.raw(nested ? access + ".set(index, " + name + ");"
-                                                  : access + "[index] = " + name + ";"));
+                logical_column_access(context,
+                                      schema,
+                                      column,
+                                      owner ? ir.call(ir.named("view")) : ir.named("this"),
+                                      !owner)};
+            logical_assignments.add(
+                nested ? ir.expr_stmt(ir.call(ir.member_access(access, "set"),
+                                              {ir.named("index"), ir.named(name)}))
+                       : ir.assignment(ir.subscript(access, ir.named("index")), ir.named(name)));
         }
     };
     collect_logical(collect_logical, schema, {});
@@ -231,7 +242,8 @@ auto compact_row_api(LoweringContext& context,
         if (owner && !custom("add")) {
             emit("add",
                  logical_parameters,
-                 {ir.raw("auto const index{num()};\nadd_uninitialised(1);"),
+                 {ir.variable("auto const", "index", ir.call(ir.named("num"))),
+                  ir.expr_stmt(ir.call(ir.named("add_uninitialised"), {ir.literal("1")})),
                   ir.expr_stmt(ir.call(ir.named("set"), logical_arguments)),
                   ir.return_stmt(ir.named("index"))});
         }
@@ -262,8 +274,15 @@ auto expand_columns(LoweringContext& context,
                          std::size_t const end,
                          std::span<std::string const> const path) {
                          result.append(body.substr(copied, begin - copied));
-                         auto const prefix{receiver == SoaReceiver::owner ? "view()" : "this->"};
-                         result += logical_column_access(context, schema, path, prefix);
+                         auto& ir{context.ir};
+                         auto const owner{receiver == SoaReceiver::owner};
+                         auto const access{logical_column_access(context,
+                                                                 schema,
+                                                                 path,
+                                                                 owner ? ir.call(ir.named("view"))
+                                                                       : ir.named("this"),
+                                                                 !owner)};
+                         result += CppRenderer{ir}.render(access);
                          copied = end;
                      });
     result.append(body.substr(copied));
@@ -386,29 +405,32 @@ auto lower_soa_api(LoweringContext& parent_context,
         auto const equivalent{context.resolve(*soas.equivalent_type[schema])};
         header.add(ir.using_declaration(ir.strings.intern("equivalent_type"), equivalent))
             .new_lines(1);
-        std::string expression;
+        Expr expression;
         if (receiver == SoaReceiver::owner) {
-            expression = "const_view()[index]";
+            expression = ir.subscript(ir.call(ir.named("const_view")), ir.named("index"));
         } else {
             auto const constructor{soas.equivalent_constructor[schema]};
-            expression = constructor ? context.text(*constructor) + "(" : "equivalent_type{";
-            bool first{true};
+            std::vector<Expr> arguments;
             for (auto const member : context.declarations.items(soas.members[schema])) {
-                if (!first) {
-                    expression += ", ";
-                }
-                first = false;
                 std::vector<std::string> const path{
                     context.text(context.declarations.soa_members.name[member])};
-                expression += logical_column_access(context, schema, path) + "[index]";
+                arguments.push_back(
+                    ir.subscript(logical_column_access(context, schema, path), ir.named("index")));
             }
-            expression += constructor ? ")" : "}";
+            expression = constructor ? ir.call(ir.type_reference(ir.types.reference(
+                                                   ir.types.intern(context.text(*constructor)))),
+                                               arguments)
+                                     : ir.init_list(arguments, ir.types.named("equivalent_type"));
         }
         auto const function{ir.function("operator[]", "auto")};
         ir.set_function_parameters(function,
                                    {ir.parameter(ir.types.named("std::uint32_t"), "index")});
-        ir.set_function_body(function,
-                             {ir.raw("assert(index < num());\nreturn " + expression + ";")});
+        ir.set_function_body(
+            function,
+            {ir.expr_stmt(ir.call(
+                 ir.named("assert"),
+                 {ir.binary(BinaryOperator::less, ir.named("index"), ir.call(ir.named("num")))})),
+             ir.return_stmt(expression)});
         ir.set_function_return_type(
             function, ir.types.intern("equivalent_type"), ReturnSyntax::trailing);
         ir.set_function_receiver(function, FunctionReceiver::const_);

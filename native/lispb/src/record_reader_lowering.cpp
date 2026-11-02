@@ -6,6 +6,7 @@
 #include <ioj/format_writer.h>
 
 #include <codegen/ast/cpp_ir.h>
+#include <codegen/ast/cpp_renderer.h>
 #include <codegen/ast/cpp_types.h>
 #include <codegen/ast/node_list_builder.h>
 #include <codegen/schema/declarations.h>
@@ -63,12 +64,15 @@ auto reader_fields(LoweringContext& context, DeclarationHandle record)
     return result;
 }
 
-auto constraint_arguments(LoweringContext& context, ChildOccurrenceId field) -> std::string {
+auto constraint_arguments(LoweringContext& context, ChildOccurrenceId field) -> std::vector<Expr> {
+    auto& ir{context.ir};
     auto const& members{context.declarations.child_occurrences};
     auto const& options{members.s7[members.index(field)]};
-    std::string checks;
-    ioj::FormatWriter write{std::back_inserter(checks)};
-    auto const constraint{[&](std::string_view check) { write(", constraints::{}", check); }};
+    std::vector<Expr> checks;
+    auto reference = [&](std::string_view name) {
+        return ir.type_reference(ir.types.named("ioj::s7::constraints::" + std::string{name}));
+    };
+    auto const constraint{[&](std::string_view check) { checks.push_back(reference(check)); }};
     if (options.nonzero) {
         constraint("nonzero");
     }
@@ -85,12 +89,22 @@ auto constraint_arguments(LoweringContext& context, ChildOccurrenceId field) -> 
         constraint("nonempty");
     }
     if (options.minimum) {
-        write(", constraints::minimum({})", bound_literal(context, *options.minimum));
+        checks.push_back(
+            ir.call(reference("minimum"), {ir.literal(bound_literal(context, *options.minimum))}));
     }
     if (options.maximum) {
-        write(", constraints::maximum({})", bound_literal(context, *options.maximum));
+        checks.push_back(
+            ir.call(reference("maximum"), {ir.literal(bound_literal(context, *options.maximum))}));
     }
     return checks;
+}
+
+auto constraint_text(LoweringContext& context, ChildOccurrenceId field) -> std::string {
+    std::string result;
+    for (auto const argument : constraint_arguments(context, field)) {
+        result += ", " + CppRenderer{context.ir}.render(argument);
+    }
+    return result;
 }
 
 auto member_reader(LoweringContext& context, DeclarationHandle record) -> std::string {
@@ -100,9 +114,9 @@ auto member_reader(LoweringContext& context, DeclarationHandle record) -> std::s
     std::map<std::string, std::vector<std::string>> groups;
     for (auto const field : context.declarations.items(records.members[record])) {
         auto const excluded{std::ranges::find(fields, field) == fields.end()};
-        auto const action{
-            excluded ? "std::unreachable();"
-                     : std::format("read(member{});", constraint_arguments(context, field))};
+        auto const action{excluded
+                              ? "std::unreachable();"
+                              : std::format("read(member{});", constraint_text(context, field))};
         groups[action].push_back("field == Field::" +
                                  context.text(members.name[members.index(field)]));
     }
@@ -131,6 +145,12 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
     auto const& members{context.declarations.child_occurrences};
     auto const fields{reader_fields(context, record)};
     auto const positional{records.s7_positional[row] != 0};
+    auto const ctx{ir.named("context")};
+    auto const errors{ir.member_access(ctx, "errors")};
+    auto move = [&](Expr value) {
+        return ir.call(ir.type_reference(ir.types.named("std::move")), {value});
+    };
+    auto const unexpected{ir.init_list({move(errors)}, ir.types.named("std::unexpected"))};
     NodeListBuilder body{ir};
     if (constructing) {
         for (auto const field : fields) {
@@ -149,36 +169,44 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
 
     auto const read_method{constructing ? ".construct" : ""};
     if (positional) {
-        body.add(ir.variable("auto const",
-                             "arguments",
-                             ir.raw_expr(std::format("positional_arguments(context.reader, "
-                                                     "context.node, \"{}\", context.path, {})",
-                                                     context.text(*records.s7_tag[row]),
-                                                     fields.size()),
-                                         {})),
-                 2);
+        body.add(
+            ir.variable("auto const",
+                        "arguments",
+                        ir.call(ir.type_reference(ir.types.named("ioj::s7::positional_arguments")),
+                                {ir.member_access(ctx, "reader"),
+                                 ir.member_access(ctx, "node"),
+                                 ir.string_literal(context.text(*records.s7_tag[row])),
+                                 ir.member_access(ctx, "path"),
+                                 ir.literal(std::to_string(fields.size()))})),
+            2);
         body.add(ir.if_stmt(
-            ir.raw_expr("!arguments", {}),
-            ir.block(
-                {ir.expr_stmt(ir.raw_expr("append_errors(context.errors, arguments.error())", {})),
-                 constructing
-                     ? ir.return_stmt(ir.raw_expr("std::unexpected{std::move(context.errors)}", {}))
-                     : ir.return_stmt()})));
+            ir.unary(UnaryOperator::logical_not, ir.named("arguments")),
+            ir.block({ir.expr_stmt(ir.call(
+                          ir.type_reference(ir.types.named("ioj::s7::append_errors")),
+                          {errors, ir.call(ir.member_access(ir.named("arguments"), "error"))})),
+                      constructing ? ir.return_stmt(unexpected) : ir.return_stmt()})));
         std::size_t index{};
         for (auto const field : fields) {
             auto const name{context.text(members.name[members.index(field)])};
-            auto const destination{(constructing ? "value_" : "result.") + name};
-            auto const path{
-                std::format("std::string{{context.path}} + \".{}\"", field_name(context, field))};
-            body.add(ir.raw(std::format("FieldReader{{{{context.reader, (*arguments)[{}], {}, "
-                                        "context.mode, context.errors}}}}"
-                                        "{}({}{});\n",
-                                        index++,
-                                        path,
-                                        read_method,
-                                        destination,
-                                        constraint_arguments(context, field)),
-                            {}));
+            auto const destination{constructing ? ir.named("value_" + name)
+                                                : ir.member_access(ir.named("result"), name)};
+            auto const path{ir.binary(
+                BinaryOperator::add,
+                ir.init_list({ir.member_access(ctx, "path")}, ir.types.named("std::string")),
+                ir.string_literal("." + field_name(context, field)))};
+            auto const reader{ir.init_list(
+                {ir.init_list(
+                    {ir.member_access(ctx, "reader"),
+                     ir.subscript(ir.unary(UnaryOperator::dereference, ir.named("arguments")),
+                                  ir.literal(std::to_string(index++))),
+                     path,
+                     ir.member_access(ctx, "mode"),
+                     errors})},
+                ir.types.named("ioj::s7::FieldReader"))};
+            auto arguments{constraint_arguments(context, field)};
+            arguments.insert(arguments.begin(), destination);
+            body.add(ir.expr_stmt(
+                ir.call(constructing ? ir.member_access(reader, "construct") : reader, arguments)));
         }
     } else {
         // The IR has no lambda node; keep only the streaming callback's syntax textual.
@@ -199,7 +227,7 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
                       name,
                       read_method,
                       destination,
-                      constraint_arguments(context, field));
+                      constraint_text(context, field));
             }
             if (records.generate_visitor[row]) {
                 // Stage construction before an object exists; excluded fields cannot be looked up.
@@ -223,9 +251,9 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
     if (!constructing) {
         return body.build();
     }
-    auto const return_errors{ir.if_stmt(
-        ir.raw_expr("!context.errors.empty()", {}),
-        ir.block({ir.return_stmt(ir.raw_expr("std::unexpected{std::move(context.errors)}", {}))}))};
+    auto const return_errors{
+        ir.if_stmt(ir.unary(UnaryOperator::logical_not, ir.call(ir.member_access(errors, "empty"))),
+                   ir.block({ir.return_stmt(unexpected)}))};
     body.add(return_errors, 2);
     std::vector<std::string> initializers;
     for (auto const field : fields) {
@@ -241,10 +269,11 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
         auto const name{context.text(members.name[index])};
         auto const& options{members.s7[index]};
         if (!positional && !options.required) {
-            body.add(ir.if_stmt(ir.named("value_" + name),
-                                ir.block({ir.assignment(
-                                    ir.member_access(ir.named("result"), name),
-                                    ir.raw_expr(std::format("std::move(*value_{})", name), {}))})));
+            body.add(ir.if_stmt(
+                ir.named("value_" + name),
+                ir.block({ir.assignment(
+                    ir.member_access(ir.named("result"), name),
+                    move(ir.unary(UnaryOperator::dereference, ir.named("value_" + name))))})));
         }
     }
     body.add(ir.return_stmt(ir.named("result")));
