@@ -99,8 +99,8 @@ auto reference_expression(lispb::codegen::CppIR& cpp,
 
     auto const constant{std::get<ConstantKind>(value)};
     auto const limits{cpp.types.template_type(cpp.types.std.numeric_limits, {type})};
-    auto const call{cpp.call(cpp.type_reference(cpp.types.decorate(
-        limits, "", constant == ConstantKind::nan ? "::quiet_NaN" : "::infinity")))};
+    auto const call{cpp.call(cpp.types.decorate(
+        limits, "", constant == ConstantKind::nan ? "::quiet_NaN" : "::infinity"))};
     if (constant == ConstantKind::negative_infinity) {
         return cpp.unary(lispb::codegen::UnaryOperator::negate, call);
     }
@@ -235,14 +235,13 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
         cpp.block({cpp.expr_stmt(cpp.call(cpp.named("EXPECT_FLOAT_EQ"), {actual, expected}))}),
         cpp.block({cpp.expr_stmt(cpp.call(cpp.named("EXPECT_DOUBLE_EQ"), {actual, expected}))}),
         true)};
-    auto const infinite{cpp.if_stmt(cpp.call(cpp.type_reference(cpp.types.std.isinf), {expected}),
+    auto const infinite{cpp.if_stmt(cpp.call(cpp.types.std.isinf, {expected}),
                                     cpp.block({equal}),
                                     cpp.block({floating_equal}))};
     auto const nan{
-        cpp.if_stmt(cpp.call(cpp.type_reference(cpp.types.std.isnan), {expected}),
-                    cpp.block({cpp.expr_stmt(
-                        cpp.call(cpp.named("EXPECT_TRUE"),
-                                 {cpp.call(cpp.type_reference(cpp.types.std.isnan), {actual})}))}),
+        cpp.if_stmt(cpp.call(cpp.types.std.isnan, {expected}),
+                    cpp.block({cpp.expr_stmt(cpp.call(cpp.named("EXPECT_TRUE"),
+                                                      {cpp.call(cpp.types.std.isnan, {actual})}))}),
                     cpp.block({infinite}))};
     lispb::codegen::FunctionDefinition const expect_value{
         .name = cpp.named("expect_value"),
@@ -267,7 +266,7 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
                                                 cpp.named("count"))),
                    cpp.sizeof_type(cpp.types.intern("T")))};
     auto const untouched_comparison{cpp.call(
-        cpp.type_reference(cpp.types.std.memcmp),
+        cpp.types.std.memcmp,
         {cpp.binary(lispb::codegen::BinaryOperator::add, cpp.named("actual"), cpp.named("count")),
          cpp.binary(lispb::codegen::BinaryOperator::add, cpp.named("before"), cpp.named("count")),
          untouched_bytes})};
@@ -349,11 +348,12 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
         cpp.using_declaration(cpp.strings.intern("KernelCheck"),
                               cpp.types.decorate(cpp.types.std.size_t, "void (*)(", ")")));
     declarations.push_back(cpp.lines(2));
-    declarations.push_back(cpp.record(
-        cpp.strings.intern("KernelCase"),
-        {cpp.instance_member(cpp.types.decorate(cpp.types.std.char_, "", " const*"),
-                             cpp.strings.intern("name")),
-         cpp.instance_member(cpp.types.intern("KernelCheck"), cpp.strings.intern("run"))}));
+    declarations.push_back(cpp.add_record(
+        {.name = cpp.named(cpp.strings.intern("KernelCase")),
+         .children = {
+             cpp.instance_member(cpp.types.decorate(cpp.types.std.char_, "", " const*"),
+                                 cpp.strings.intern("name")),
+             cpp.instance_member(cpp.types.intern("KernelCheck"), cpp.strings.intern("run"))}}));
     declarations.push_back(cpp.lines(2));
     declarations.push_back(cpp.variable(
         cpp.types.template_type(
@@ -389,10 +389,9 @@ INSTANTIATE_TEST_SUITE_P(Kernels, )" + suite +
 )")};
     declarations.push_back(cpp.raw_parts(test_parts));
     file_nodes.add(cpp.namespace_node(cpp.strings.intern(namespace_name), declarations));
-    auto const file{cpp.files.append(*document.emissions.tests(emission), file_nodes.build())};
-    auto& flags{cpp.files.flags[cpp.files.index(file)]};
-    flags.set_pragma_once(false);
-    flags.set_format_generated(true);
+    auto const file{cpp.files.add({.path = *document.emissions.tests(emission),
+                                   .nodes = file_nodes.build(),
+                                   .flags = {.pragma_once = false, .format_generated = true}})};
     return file;
 }
 

@@ -98,9 +98,8 @@ class Renderer {
             children.push_back(ir_.access(lispb::codegen::Access::private_));
             children.push_back(
                 ir_.instance_member(ir_.types.intern("ThisClass&"), ir_.strings.intern("self_")));
-            auto const node{ir_.record(ir_.strings.intern(builder),
-                                       std::move(children),
-                                       lispb::codegen::RecordKind::struct_)};
+            auto const node{ir_.add_record(
+                {.name = ir_.named(ir_.strings.intern(builder)), .children = std::move(children)})};
             children = {node};
         }
         auto const namespace_name{library ? "SlateGenerated::" + owner
@@ -112,10 +111,10 @@ class Renderer {
         nodes.push_back(
             ir_.namespace_node(ir_.strings.intern(namespace_name), std::move(children)));
         auto const file{
-            ir_.files.append(ir_.strings.intern(output_path(owner).generic_string()), nodes)};
-        auto const file_index{ir_.files.index(file)};
-        ir_.files.source[file_index] = ir_.strings.intern(source_path);
-        ir_.files.flags[file_index].set_format_generated(true);
+            ir_.files.add({.path = ir_.strings.intern(output_path(owner).generic_string()),
+                           .source = ir_.strings.intern(source_path),
+                           .nodes = nodes,
+                           .flags = {.format_generated = true}})};
         ir_.modules.append(document_.declarations.names[index], file);
         return file;
     }
@@ -164,9 +163,9 @@ class Renderer {
 
     auto forward_parameter(std::string const& parameter) -> Expr {
         auto const type{ir_.decltype_type(ir_.named(parameter))};
-        return ir_.call(
-            ir_.template_id(ir_.type_reference(ir_.types.std.forward), {ir_.type_reference(type)}),
-            {ir_.named(parameter)});
+        return ir_.template_call(ir_.type_reference(ir_.types.std.forward),
+                                 {ir_.type_reference(type)},
+                                 {ir_.named(parameter)});
     }
 
     auto render_child(ChildId const child) -> Expr {
@@ -252,8 +251,7 @@ class Renderer {
         auto const index{value.index()};
         switch (value.kind()) {
             case ValueKind::text:
-                return ir_.call(ir_.type_reference(ir_.types.decorate(
-                                    ir_.types.named("FText"), "", "::FromString")),
+                return ir_.call(ir_.types.decorate(ir_.types.named("FText"), "", "::FromString"),
                                 {ir_.call(ir_.named("TEXT"),
                                           {ir_.string_literal(document_.values.text[index])})});
             case ValueKind::localized_text:
@@ -323,9 +321,7 @@ class Renderer {
         if (margin) {
             arguments.push_back(render_value(margin));
         }
-        return ir_.call(
-            ir_.type_reference(ir_.types.named(prefix + (fill ? "fill_slot" : "auto_slot"))),
-            arguments);
+        return ir_.call(ir_.types.named(prefix + (fill ? "fill_slot" : "auto_slot")), arguments);
     }
 
     static auto float_literal(std::string value) -> std::string {

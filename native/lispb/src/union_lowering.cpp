@@ -43,9 +43,10 @@ class UnionLowering : public CppIRBuilder {
             alternatives.add(instance_member(lower_member_type(ctx, alternative),
                                              schemas.name[alternative_row]));
         }
-        auto const created_record{
-            record(unions.name[row], alternatives.build(), RecordKind::union_)};
-        set_record_export_specifier(created_record, unions.export_specifier[row]);
+        auto const created_record{add_record({.name = named(unions.name[row]),
+                                              .kind = RecordKind::union_,
+                                              .children = alternatives.build(),
+                                              .export_specifier = unions.export_specifier[row]})};
         return created_record;
     }
 };

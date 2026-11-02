@@ -73,8 +73,6 @@ class SingleAllocationEmitter : public CppIRBuilder {
                 store_text(ctx.text(columns.flattened_identifier[row]) + "_column"),
                 literal(std::to_string(index))));
         }
-        auto const layout{record(store_text("Layout"), children.build(), RecordKind::struct_)};
-        set_record_bases(layout, {base});
         std::vector<StringId> inherited;
         for (auto const name : {"ColumnLayouts",
                                 "column_types",
@@ -93,7 +91,10 @@ class SingleAllocationEmitter : public CppIRBuilder {
                                 "layout_bytes"}) {
             inherited.push_back(store_text(name));
         }
-        set_scope_bindings(layout, inherited);
+        auto const layout{add_record({.name = named(store_text("Layout")),
+                                      .children = children.build(),
+                                      .bases = {base},
+                                      .scope_bindings = inherited})};
         auto result{node_list()};
         result.append(section_header("Layout")).new_lines(1).add(layout);
         return result.build();
@@ -141,11 +142,12 @@ class SingleAllocationEmitter : public CppIRBuilder {
             if (!api.source.empty()) {
                 source.append(api.source).new_lines(2);
             }
-            auto const record_id{record(store_text(name), children.build(), RecordKind::struct_)};
-            set_record_bases(record_id, {base});
-            set_record_export_specifier(
-                record_id,
-                ctx.declarations.soas.export_specifier[ctx.declarations.soas.index(schema)]);
+            auto const record_id{add_record(
+                {.name = named(store_text(name)),
+                 .children = children.build(),
+                 .bases = {base},
+                 .export_specifier =
+                     ctx.declarations.soas.export_specifier[ctx.declarations.soas.index(schema)]})};
             result.add(record_id)
                 .new_lines(1)
                 .append(view_validation_nodes(name, strided))
@@ -210,8 +212,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
             .parameters = {parameter("byte_size_type", "blocks")},
             .implementation = {.kind = FunctionImplementationKind::body,
                                .body = {return_stmt(
-                                   call(type_reference(decorate_type(
-                                            named_type("Layout"), "", "::layout_bytes")),
+                                   call(decorate_type(named_type("Layout"), "", "::layout_bytes"),
                                         {named("blocks")}))}},
             .exception_specification = {.kind = FunctionExceptionKind::noexcept_},
             .receiver = FunctionReceiver::static_,
@@ -242,30 +243,32 @@ class SingleAllocationEmitter : public CppIRBuilder {
             .add(instance_member(decorate_type(std_types().pmr.memory_resource, "", "*"),
                                  store_text("resource_"),
                                  init_list({})));
-        auto const created_record{record(owner_name, children.build(), RecordKind::struct_)};
-        describe_compact_scope(ctx, created_record, model_store.schema[model_store_index]);
-        set_record_bases(
-            created_record,
-            {decorate_type(
-                 named_type("ioj::native_soa::StorageState", NameOrigin::global), "protected ", ""),
-             row_operations});
-        set_record_export_specifier(
-            created_record,
-            ctx.declarations.soas.export_specifier[ctx.declarations.soas.index(
-                model_store.schema[model_store_index])]);
-        set_record_dependencies(
-            created_record, lowering_storage().items(model_store.dependencies[model_store_index]));
+        auto const created_record{add_record(
+            {.name = named(owner_name),
+             .children = children.build(),
+             .bases = {decorate_type(
+                           named_type("ioj::native_soa::StorageState", NameOrigin::global),
+                           "protected ",
+                           ""),
+                       row_operations},
+             .export_specifier = ctx.declarations.soas.export_specifier[ctx.declarations.soas.index(
+                 model_store.schema[model_store_index])],
+             .dependencies = {std::from_range,
+                              lowering_storage().items(
+                                  model_store.dependencies[model_store_index])},
+             .scope_bindings =
+                 compact_scope_bindings(ctx, model_store.schema[model_store_index])})};
         return created_record;
     }
   private:
     /* **************************************** */
     // Construction helpers
     /* **************************************** */
-    void
-        describe_compact_scope(LoweringContext& ctx, RecordId record_id, DeclarationHandle schema) {
+    auto compact_scope_bindings(LoweringContext& ctx, DeclarationHandle schema)
+        -> std::optional<std::vector<StringId>> {
         if (!ctx.declarations.soas.using_declarations[ctx.declarations.soas.index(schema)]
                  .empty()) {
-            return;
+            return std::nullopt;
         }
         // Describe inherited runtime members and declarations retained as generated raw C++.
         std::vector<StringId> names;
@@ -315,7 +318,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
                                 "right"}) {
             names.push_back(store_text(name));
         }
-        set_scope_bindings(record_id, names);
+        return names;
     }
     auto adjacent(Nodes const& nodes) -> Nodes {
         auto result{node_list()};
@@ -364,9 +367,8 @@ class SingleAllocationEmitter : public CppIRBuilder {
         auto const owner_type{named_type(ctx.text(owner_name))};
         auto const copy_parameter{parameter(decorate_type(owner_type, "", " const&"))};
         auto const move_parameter{parameter(decorate_type(owner_type, "", "&&"), "other")};
-        auto const free_data{
-            call(type_reference(decorate_type(named_type("Operations"), "", "::release_storage")),
-                 {unary(UnaryOperator::dereference, named("this"))})};
+        auto const free_data{call(decorate_type(named_type("Operations"), "", "::release_storage"),
+                                  {unary(UnaryOperator::dereference, named("this"))})};
         FunctionDefinition const default_constructor{
             .name = named(owner_name),
             .kind = FunctionKind::constructor,
@@ -375,8 +377,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
                                .initializers = {member_initializer(
                                    owner_name,
                                    unary(UnaryOperator::dereference,
-                                         call(type_reference(
-                                             std_types().pmr.get_default_resource))))}},
+                                         call(std_types().pmr.get_default_resource)))}},
             .exception_specification = {.kind = FunctionExceptionKind::noexcept_},
             .flags = {.is_inline = true, .define_in_header = true}};
         FunctionDefinition const resource_constructor{
@@ -425,9 +426,9 @@ class SingleAllocationEmitter : public CppIRBuilder {
             .parameters = {move_parameter},
             .implementation =
                 {.kind = FunctionImplementationKind::body,
-                 .body = {expr_stmt(call(
-                     type_reference(decorate_type(named_type("Operations"), "", "::take_storage")),
-                     {unary(UnaryOperator::dereference, named("this")), named("other")}))},
+                 .body = {expr_stmt(
+                     call(decorate_type(named_type("Operations"), "", "::take_storage"),
+                          {unary(UnaryOperator::dereference, named("this")), named("other")}))},
                  .initializers = {member_initializer(store_text("resource_"),
                                                      member_access(named("other"), "resource_"))}},
             .exception_specification = {.kind = FunctionExceptionKind::noexcept_},
@@ -437,11 +438,11 @@ class SingleAllocationEmitter : public CppIRBuilder {
             .return_type = decorate_type(owner_type, "", "&"),
             .return_syntax = ReturnSyntax::trailing,
             .parameters = {move_parameter},
-            .implementation =
-                {.kind = FunctionImplementationKind::body,
-                 .body = {return_stmt(call(
-                     type_reference(decorate_type(named_type("Operations"), "", "::move_assign")),
-                     {unary(UnaryOperator::dereference, named("this")), named("other")}))}},
+            .implementation = {.kind = FunctionImplementationKind::body,
+                               .body = {return_stmt(call(
+                                   decorate_type(named_type("Operations"), "", "::move_assign"),
+                                   {unary(UnaryOperator::dereference, named("this")),
+                                    named("other")}))}},
             .flags = {.is_inline = true, .define_in_header = true}};
 
         auto result{node_list()};
@@ -497,10 +498,10 @@ class SingleAllocationEmitter : public CppIRBuilder {
                                       type_template_parameter(store_text("Func"))})};
         children.new_lines(1).add(header_function(add_function(visit)));
 
-        auto const created_record{
-            record(store_text("DataPointers"), children.build(), RecordKind::struct_)};
-        set_record_template(created_record,
-                            template_declaration({type_template_parameter(store_text("Byte"))}));
+        auto const created_record{add_record({.name = named(store_text("DataPointers")),
+                                              .children = children.build(),
+                                              .template_declaration = template_declaration(
+                                                  {type_template_parameter(store_text("Byte"))})})};
         return created_record;
     }
     auto layout_column(LoweringContext& ctx, SingleAllocationColumnId column) -> Expr {
@@ -544,8 +545,8 @@ class SingleAllocationEmitter : public CppIRBuilder {
             .template_declaration =
                 template_declaration({type_template_parameter(store_text("Columns")),
                                       type_template_parameter(store_text("Func"))})};
-        return record(
-            store_text("Schema"), {header_function(add_function(function))}, RecordKind::struct_);
+        return add_record({.name = named(store_text("Schema")),
+                           .children = {header_function(add_function(function))}});
     }
     auto shared_view_type(LoweringContext& ctx, DeclarationHandle schema, bool resolved)
         -> CppTypeId {
@@ -592,9 +593,9 @@ class SingleAllocationEmitter : public CppIRBuilder {
             if (strided) {
                 return this_member_call("column", {literal(std::to_string(index))});
             }
-            return call(template_id(this_member("template column"),
-                                    {type_reference(columns.type[columns.index(column)])}),
-                        {layout_column(ctx, column)});
+            return template_call(this_member("template column"),
+                                 {type_reference(columns.type[columns.index(column)])},
+                                 {layout_column(ctx, column)});
         };
         for (auto const member :
              ctx.declarations.items(ctx.declarations.soas.members[schema_row])) {
@@ -701,12 +702,12 @@ class SingleAllocationEmitter : public CppIRBuilder {
 
         children.append(view_accessor_nodes(ctx, model, true));
         auto const record_id{
-            record(store_text(implementation), children.build(), RecordKind::struct_)};
-        describe_compact_scope(ctx, record_id, schema);
-        set_record_bases(record_id, {base});
-        set_record_template(record_id,
-                            template_declaration({value_template_parameter(std_types().bool_,
-                                                                           store_text("Const"))}));
+            add_record({.name = named(store_text(implementation)),
+                        .children = children.build(),
+                        .bases = {base},
+                        .template_declaration = template_declaration(
+                            {value_template_parameter(std_types().bool_, store_text("Const"))}),
+                        .scope_bindings = compact_scope_bindings(ctx, schema)})};
         result.add(record_id).new_lines(1);
         for (bool const is_const : {true, false}) {
             auto const name{is_const ? const_name : mutable_name};
@@ -728,8 +729,8 @@ class SingleAllocationEmitter : public CppIRBuilder {
             if (!api.source.empty()) {
                 source.append(api.source).new_lines(1);
             }
-            auto const type{record(store_text(name), wrapper.build(), RecordKind::struct_)};
-            set_record_bases(type, {base});
+            auto const type{add_record(
+                {.name = named(store_text(name)), .children = wrapper.build(), .bases = {base}})};
             result.add(type).new_lines(1);
         }
         return result.build();
@@ -787,13 +788,13 @@ class SingleAllocationEmitter : public CppIRBuilder {
                                    .body = {},
                                    .initializers = {member_initializer(
                                        store_text("Base"),
-                                       call(template_id(
-                                                type_reference(named_type(
-                                                    "ioj::soa_storage_detail::make_strided_view",
-                                                    NameOrigin::global)),
-                                                {type_reference(named_type("Base")),
-                                                 type_reference(named_type("Layout"))}),
-                                            arguments))}},
+                                       template_call(
+                                           type_reference(named_type(
+                                               "ioj::soa_storage_detail::make_strided_view",
+                                               NameOrigin::global)),
+                                           {type_reference(named_type("Base")),
+                                            type_reference(named_type("Layout"))},
+                                           arguments))}},
                 .flags = {.is_inline = true, .define_in_header = true}};
             children.new_lines(1).add(header_function(add_function(constructor)));
         }
@@ -814,12 +815,13 @@ class SingleAllocationEmitter : public CppIRBuilder {
             .requires_clause = named("Enabled")};
         children.new_lines(1).add(header_function(add_function(conversion)));
         children.append(view_accessor_nodes(ctx, model, false));
-        auto const record_id{record(store_text("ViewImpl"), children.build(), RecordKind::struct_)};
-        describe_compact_scope(ctx, record_id, schema);
-        set_record_bases(record_id, {base});
-        set_record_template(record_id,
-                            template_declaration({value_template_parameter(std_types().bool_,
-                                                                           store_text("Const"))}));
+        auto const record_id{
+            add_record({.name = named(store_text("ViewImpl")),
+                        .children = children.build(),
+                        .bases = {base},
+                        .template_declaration = template_declaration(
+                            {value_template_parameter(std_types().bool_, store_text("Const"))}),
+                        .scope_bindings = compact_scope_bindings(ctx, schema)})};
         return record_id;
     }
     auto view_validation_nodes(std::string const& name, bool strided) -> Nodes {

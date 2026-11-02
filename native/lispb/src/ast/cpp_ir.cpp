@@ -374,42 +374,37 @@ auto CppIR::enumeration(StringId name,
     return ir_detail::node(NodeKind::enum_, index);
 }
 
-auto CppIR::record(StringId name, std::span<NodeId const> children, RecordKind kind) -> RecordId {
-    return record(named(name), children, kind);
-}
-
-auto CppIR::record(Expr name, std::span<NodeId const> children, RecordKind kind) -> RecordId {
+auto CppIR::add_record(RecordDefinition const& definition) -> RecordId {
     auto const index{struct_nodes_.name.size()};
-    struct_nodes_.name.push_back(name);
-    struct_nodes_.children.push_back(save_nodes(children));
-    struct_nodes_.bases.push_back({});
-    struct_nodes_.template_declaration.push_back({});
-    struct_nodes_.requires_clause.push_back({});
-    struct_nodes_.export_specifier.push_back({});
-    struct_nodes_.record_kind.push_back(kind);
-    struct_nodes_.dependencies.push_back({});
-    return RecordId{ir_detail::node(NodeKind::struct_, index).value};
+    struct_nodes_.name.push_back(definition.name);
+    struct_nodes_.children.push_back(save_nodes(definition.children));
+    struct_nodes_.bases.push_back(save_types(definition.bases));
+    struct_nodes_.template_declaration.push_back(definition.template_declaration);
+    struct_nodes_.requires_clause.push_back(definition.requires_clause);
+    struct_nodes_.export_specifier.push_back(definition.export_specifier);
+    struct_nodes_.record_kind.push_back(definition.kind);
+    struct_nodes_.dependencies.push_back(save_dependencies(definition.dependencies));
+    auto const result{RecordId{ir_detail::node(NodeKind::struct_, index).value}};
+    if (definition.scope_bindings) {
+        set_scope_bindings(result, *definition.scope_bindings);
+    }
+    return result;
 }
 
-void CppIR::set_record_bases(RecordId record, std::span<CppTypeId const> bases) {
-    struct_nodes_.bases[record.index()] = save_types(bases);
-}
-
-void CppIR::set_record_template(RecordId record, TemplateId declaration) {
-    struct_nodes_.template_declaration[record.index()] = declaration;
-}
-
-void CppIR::set_record_requires_clause(RecordId record, Expr clause) {
-    struct_nodes_.requires_clause[record.index()] = clause;
-}
-
-void CppIR::set_record_export_specifier(RecordId record, StringId specifier) {
-    struct_nodes_.export_specifier[record.index()] = specifier;
-}
-
-void CppIR::set_record_dependencies(RecordId record,
-                                    std::span<TypeDependencyId const> dependencies) {
-    struct_nodes_.dependencies[record.index()] = save_dependencies(dependencies);
+auto CppIR::get_view(RecordId record) const -> RecordView {
+    auto const index{record.index()};
+    auto const bindings{scope_bindings_.find(static_cast<NodeId>(record).value)};
+    return {.name = struct_nodes_.name[index],
+            .kind = struct_nodes_.record_kind[index],
+            .children = nodes(struct_nodes_.children[index]),
+            .bases = type_list(struct_nodes_.bases[index]),
+            .template_declaration = struct_nodes_.template_declaration[index],
+            .requires_clause = struct_nodes_.requires_clause[index],
+            .export_specifier = struct_nodes_.export_specifier[index],
+            .dependencies = dependency_list(struct_nodes_.dependencies[index]),
+            .scope_bindings = bindings == scope_bindings_.end()
+                                ? std::nullopt
+                                : std::optional{std::span<StringId const>{bindings->second}}};
 }
 
 auto CppIR::namespace_node(StringId name, std::span<NodeId const> children) -> NodeId {

@@ -176,8 +176,8 @@ class SoaLowering : public CppIRBuilder {
             children.new_lines(1).add(header_function(add_function(function)));
         }
 
-        auto const mask{record(mask_name, children.build())};
-        set_record_bases(mask, {base});
+        auto const mask{
+            add_record({.name = named(mask_name), .children = children.build(), .bases = {base}})};
 
         auto const mask_type{named_type(ctx.text(mask_name))};
         auto result{node_list()};

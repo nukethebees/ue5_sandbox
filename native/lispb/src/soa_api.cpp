@@ -204,10 +204,10 @@ class SoaApiLowering : public CppIRBuilder {
                     arguments.push_back(
                         subscript(logical_column_access(ctx, schema, path), named("index")));
                 }
-                expression = constructor_id ? call(type_reference(reference_type(
-                                                       intern_type(ctx.text(*constructor_id)))),
-                                                   arguments)
-                                            : init_list(arguments, named_type("equivalent_type"));
+                expression =
+                    constructor_id
+                        ? call(reference_type(intern_type(ctx.text(*constructor_id))), arguments)
+                        : init_list(arguments, named_type("equivalent_type"));
             }
             FunctionDefinition const function{
                 .name = named("operator[]"),

@@ -112,7 +112,7 @@ auto lower_expression(lispb::codegen::CppIR& cpp,
             auto const limits{
                 cpp.types.template_type(cpp.types.std.numeric_limits, {concrete_type})};
             auto const constant = [&](std::string_view name) {
-                return cpp.call(cpp.type_reference(cpp.types.decorate(limits, "", name)));
+                return cpp.call(cpp.types.decorate(limits, "", name));
             };
             if (document.expressions.constant(expression) == ConstantKind::nan) {
                 return constant("::quiet_NaN");
@@ -223,20 +223,18 @@ auto raw_arguments(lispb::codegen::CppIR& cpp, Document const& document, Expande
 auto checked_condition(lispb::codegen::CppIR& cpp,
                        lispb::codegen::Expr const condition,
                        std::string const& detail_namespace) -> lispb::codegen::NodeId {
-    return cpp.expr_stmt(
-        cpp.call(cpp.type_reference(cpp.types.named(detail_namespace + "::require")), {condition}));
+    return cpp.expr_stmt(cpp.call(cpp.types.named(detail_namespace + "::require"), {condition}));
 }
 
 auto overlap_check(lispb::codegen::CppIR& cpp,
                    std::string const& detail_namespace,
                    std::string const& lhs,
                    std::string const& rhs) -> lispb::codegen::NodeId {
-    auto const overlaps{
-        cpp.call(cpp.type_reference(cpp.types.named(detail_namespace + "::ranges_overlap")),
-                 {member_call(cpp, lhs, "data"),
-                  member_call(cpp, lhs, "size_bytes"),
-                  member_call(cpp, rhs, "data"),
-                  member_call(cpp, rhs, "size_bytes")})};
+    auto const overlaps{cpp.call(cpp.types.named(detail_namespace + "::ranges_overlap"),
+                                 {member_call(cpp, lhs, "data"),
+                                  member_call(cpp, lhs, "size_bytes"),
+                                  member_call(cpp, rhs, "data"),
+                                  member_call(cpp, rhs, "size_bytes")})};
     auto const condition{cpp.unary(lispb::codegen::UnaryOperator::logical_not, overlaps)};
     return checked_condition(cpp, condition, detail_namespace);
 }
@@ -285,8 +283,8 @@ auto public_body(lispb::codegen::CppIR& cpp,
         }
     }
     auto const name{detail_namespace + "::" + raw_name(document, id)};
-    output.push_back(cpp.expr_stmt(
-        cpp.call(cpp.type_reference(cpp.types.named(name)), raw_arguments(cpp, document, id))));
+    output.push_back(
+        cpp.expr_stmt(cpp.call(cpp.types.named(name), raw_arguments(cpp, document, id))));
     return output;
 }
 
@@ -348,8 +346,7 @@ auto lower_module(lispb::codegen::CppIR& cpp,
         .name = cpp.named("invariant_failed"),
         .return_type = void_type,
         .implementation = {.kind = lispb::codegen::FunctionImplementationKind::body,
-                           .body = {cpp.expr_stmt(
-                               cpp.call(cpp.type_reference(cpp.types.std.abort)))}},
+                           .body = {cpp.expr_stmt(cpp.call(cpp.types.std.abort))}},
         .exception_specification = {.kind = lispb::codegen::FunctionExceptionKind::noexcept_},
         .flags = {.is_noreturn = true}};
     implementation.push_back(cpp.definition(cpp.add_function(invariant_failed)));
@@ -396,8 +393,9 @@ auto lower_module(lispb::codegen::CppIR& cpp,
     lispb::codegen::NodeListBuilder header_nodes{cpp};
     header_nodes.add(cpp.include_dependencies(), 2);
     header_nodes.add(cpp.namespace_node(cpp_namespace, declarations));
-    auto const header{cpp.files.append(document.emissions.header(emission), header_nodes.build())};
-    cpp.files.flags[cpp.files.index(header)].set_format_generated(true);
+    auto const header{cpp.files.add({.path = document.emissions.header(emission),
+                                     .nodes = header_nodes.build(),
+                                     .flags = {.format_generated = true}})};
 
     lispb::codegen::NodeListBuilder source_nodes{cpp};
     source_nodes.add(cpp.include(document.emissions.header_include(emission),
@@ -407,10 +405,9 @@ auto lower_module(lispb::codegen::CppIR& cpp,
     source_nodes.new_lines(2)
         .add(cpp.namespace_node(cpp.strings.intern(detail_namespace), implementation), 2)
         .add(cpp.namespace_node(cpp_namespace, definitions));
-    auto const source{cpp.files.append(document.emissions.source(emission), source_nodes.build())};
-    auto& source_flags{cpp.files.flags[cpp.files.index(source)]};
-    source_flags.set_pragma_once(false);
-    source_flags.set_format_generated(true);
+    auto const source{cpp.files.add({.path = document.emissions.source(emission),
+                                     .nodes = source_nodes.build(),
+                                     .flags = {.pragma_once = false, .format_generated = true}})};
     return cpp.modules.append(document.modules.name(module), header, source);
 }
 

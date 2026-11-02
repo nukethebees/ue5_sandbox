@@ -83,9 +83,9 @@ class RecordLowering : public CppIRBuilder {
         std::vector<EnumValueId> values;
         std::vector<SwitchCaseId> cases;
         Nodes accessors;
-        auto const forwarded_visitor{call(template_id(type_reference(std_types().forward),
-                                                      {type_reference(named_type("Visitor"))}),
-                                          {named("visitor")})};
+        auto const forwarded_visitor{template_call(type_reference(std_types().forward),
+                                                   {type_reference(named_type("Visitor"))},
+                                                   {named("visitor")})};
         for (auto const field : fields) {
             auto const member{members.name[members.index(field)]};
             values.push_back(enumerator(member));
@@ -98,8 +98,8 @@ class RecordLowering : public CppIRBuilder {
                         true));
             cases.push_back(switch_case(
                 field_value,
-                block({return_stmt(call(template_id(named("invoke_field"), {field_value}),
-                                        {named("self"), forwarded_visitor}))}),
+                block({return_stmt(template_call(
+                    named("invoke_field"), {field_value}, {named("self"), forwarded_visitor}))}),
                 false));
         }
 
@@ -122,26 +122,25 @@ class RecordLowering : public CppIRBuilder {
                 BinaryOperator::logical_and,
                 record_type_matches(name),
                 binary(BinaryOperator::less,
-                       call(type_reference(std_types().to_underlying), {named("Selected")}),
-                       call(template_id(type_reference(named_type(
-                                            "ioj::enum_count",
-                                            NameOrigin::global,
-                                            {dependency("ioj::enum_count", "ioj/enum_traits.h")})),
-                                        {type_reference(decorate_type(
-                                            named_type("Self"), "typename ", "::Field"))})))))};
+                       call(std_types().to_underlying, {named("Selected")}),
+                       template_call(type_reference(named_type(
+                                         "ioj::enum_count",
+                                         NameOrigin::global,
+                                         {dependency("ioj::enum_count", "ioj/enum_traits.h")})),
+                                     {type_reference(decorate_type(
+                                         named_type("Self"), "typename ", "::Field"))}))))};
         result.add(header_function(add_function(accessor)), 2);
 
         FunctionDefinition const invoke{
             .name = named("invoke_field"),
             .return_type = std_types().void_,
             .parameters = {parameter("Self&", "self"), parameter("Visitor&&", "visitor")},
-            .implementation = {.kind = FunctionImplementationKind::body,
-                               .body = {expr_stmt(
-                                   call(template_id(
-                                            member_access(forwarded_visitor, "template operator()"),
-                                            {named("Selected")}),
-                                        {call(template_id(named("get_field"), {named("Selected")}),
-                                              {named("self")})}))}},
+            .implementation =
+                {.kind = FunctionImplementationKind::body,
+                 .body = {expr_stmt(template_call(
+                     member_access(forwarded_visitor, "template operator()"),
+                     {named("Selected")},
+                     {template_call(named("get_field"), {named("Selected")}, {named("self")})}))}},
             .receiver = FunctionReceiver::static_,
             .flags = {.is_constexpr = true, .define_in_header = true},
             .template_declaration = template_declaration(
@@ -161,7 +160,7 @@ class RecordLowering : public CppIRBuilder {
                                         assertion(binary(BinaryOperator::logical_and,
                                                          literal("false"),
                                                          string_literal("Invalid record field"))),
-                                        expr_stmt(call(type_reference(std_types().unreachable)))}},
+                                        expr_stmt(call(std_types().unreachable))}},
             .receiver = FunctionReceiver::static_,
             .flags = {.is_constexpr = true, .define_in_header = true},
             .template_declaration =
@@ -212,8 +211,9 @@ class RecordLowering : public CppIRBuilder {
                                             : std::nullopt),
                         1);
         }
-        auto const created_record{record(store_text(name), members.build(), RecordKind::struct_)};
-        set_record_export_specifier(created_record, records.export_specifier[row]);
+        auto const created_record{add_record({.name = named(store_text(name)),
+                                              .children = members.build(),
+                                              .export_specifier = records.export_specifier[row]})};
         return created_record;
     }
 };

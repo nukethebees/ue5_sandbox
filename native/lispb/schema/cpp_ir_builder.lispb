@@ -104,6 +104,34 @@
         (parameter operation "TypeOperation")
         (parameter spelling "std::string_view")
         (parameter passing "ParameterPassing" :default "ParameterPassing::const_reference"))
+      (method add_record "RecordId"
+        (parameter definition "RecordDefinition const&"))
+      (method get_view "RecordView" :const true
+        (parameter record "RecordId"))
+      (method add_file "CppFileId" :target-name "files.add"
+        (parameter definition "CppFileDefinition const&"))
+      (method call "Expr"
+        (parameter callee "CppTypeId")
+        (parameter arguments "std::span<Expr const>" :default "{}"))
+      (method call "Expr"
+        (parameter callee "CppTypeId")
+        (parameter arguments "std::initializer_list<Expr>"))
+      (method template_call "Expr"
+        (parameter callee "Expr")
+        (parameter template_arguments "std::span<Expr const>")
+        (parameter arguments "std::span<Expr const>" :default "{}"))
+      (method template_call "Expr"
+        (parameter callee "Expr")
+        (parameter template_arguments "std::span<Expr const>")
+        (parameter arguments "std::initializer_list<Expr>"))
+      (method template_call "Expr"
+        (parameter callee "Expr")
+        (parameter template_arguments "std::initializer_list<Expr>")
+        (parameter arguments "std::span<Expr const>" :default "{}"))
+      (method template_call "Expr"
+        (parameter callee "Expr")
+        (parameter template_arguments "std::initializer_list<Expr>")
+        (parameter arguments "std::initializer_list<Expr>"))
       (method node_list "NodeListBuilder")
       (method lowering_storage "LoweringStorage&")
       (method clear "void")
@@ -118,15 +146,7 @@
         (parameter visit "std::function<void(NodeId)> const&"))
       (method merge_adjacent_namespaces "void"
         (parameter file "CppFileId"))
-      (method append_file "CppFileId" :target-name "files.append"
-        (parameter path "StringId")
-        (parameter nodes "std::span<NodeId const>" :default "{}"))
-      (method append_file "CppFileId" :target-name "files.append"
-        (parameter path "StringId")
-        (parameter nodes "std::initializer_list<NodeId>"))
       (method file_index "std::size_t" :target-name "files.index" :const true
-        (parameter file "CppFileId"))
-      (method file_flags "CppFileFlags&" :target-name "files.flags_for"
         (parameter file "CppFileId"))
       (method file_nodes "std::span<NodeId const>" :target-name "files.nodes" :const true
         (parameter file "CppFileId"))
@@ -142,24 +162,6 @@
       (method set_file_nodes "void" :target-name "files.set_nodes"
         (parameter file "CppFileId")
         (parameter nodes "std::initializer_list<NodeId>"))
-      (method set_file_prologue "void" :target-name "files.set_prologue"
-        (parameter file "CppFileId")
-        (parameter text "std::span<StringId const>"))
-      (method set_file_prologue "void" :target-name "files.set_prologue"
-        (parameter file "CppFileId")
-        (parameter text "std::initializer_list<StringId>"))
-      (method set_file_epilogue "void" :target-name "files.set_epilogue"
-        (parameter file "CppFileId")
-        (parameter text "std::span<StringId const>"))
-      (method set_file_epilogue "void" :target-name "files.set_epilogue"
-        (parameter file "CppFileId")
-        (parameter text "std::initializer_list<StringId>"))
-      (method set_file_include_order "void" :target-name "files.set_include_order"
-        (parameter file "CppFileId")
-        (parameter prefixes "std::span<StringId const>"))
-      (method set_file_include_order "void" :target-name "files.set_include_order"
-        (parameter file "CppFileId")
-        (parameter prefixes "std::initializer_list<StringId>"))
       (method clear_files "void" :target-name "files.clear")
       (method append_module "ModuleId" :target-name "modules.append"
         (parameter name "StringId")
@@ -312,49 +314,12 @@
         (parameter values "std::initializer_list<EnumValueId>")
         (parameter export_specifier "StringId" :default "{}")
         (parameter scoped "bool" :default "true"))
-      (method record "RecordId"
-        (parameter name "StringId")
-        (parameter children "std::span<NodeId const>" :default "{}")
-        (parameter kind "RecordKind" :default "RecordKind::struct_"))
-      (method record "RecordId"
-        (parameter name "StringId")
-        (parameter children "std::initializer_list<NodeId>")
-        (parameter kind "RecordKind" :default "RecordKind::struct_"))
-      (method set_record_bases "void"
-        (parameter record "RecordId")
-        (parameter bases "std::span<CppTypeId const>"))
-      (method set_record_bases "void"
-        (parameter record "RecordId")
-        (parameter bases "std::initializer_list<CppTypeId>"))
-      (method set_record_template "void"
-        (parameter record "RecordId")
-        (parameter declaration "TemplateId"))
-      (method set_record_requires_clause "void"
-        (parameter record "RecordId")
-        (parameter clause "Expr"))
-      (method set_record_export_specifier "void"
-        (parameter record "RecordId")
-        (parameter specifier "StringId"))
-      (method set_record_dependencies "void"
-        (parameter record "RecordId")
-        (parameter dependencies "std::span<TypeDependencyId const>"))
-      (method set_record_dependencies "void"
-        (parameter record "RecordId")
-        (parameter dependencies "std::initializer_list<TypeDependencyId>"))
       (method namespace_node "NodeId"
         (parameter name "StringId")
         (parameter children "std::span<NodeId const>"))
       (method namespace_node "NodeId"
         (parameter name "StringId")
         (parameter children "std::initializer_list<NodeId>"))
-      (method record "RecordId"
-        (parameter name "Expr")
-        (parameter children "std::span<NodeId const>" :default "{}")
-        (parameter kind "RecordKind" :default "RecordKind::struct_"))
-      (method record "RecordId"
-        (parameter name "Expr")
-        (parameter children "std::initializer_list<NodeId>")
-        (parameter kind "RecordKind" :default "RecordKind::struct_"))
       (method type_template_parameter "TemplateParameterId"
         (parameter name "StringId")
         (parameter default_type "CppTypeId" :default "{}")

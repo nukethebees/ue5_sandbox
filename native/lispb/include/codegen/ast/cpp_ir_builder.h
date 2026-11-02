@@ -158,6 +158,44 @@ class CppIRBuilder {
         ir_.types.set_operation(type, operation, spelling, passing);
     }
 
+    RecordId add_record(RecordDefinition const& definition) { return ir_.add_record(definition); }
+
+    RecordView get_view(RecordId record) const { return ir_.get_view(record); }
+
+    CppFileId add_file(CppFileDefinition const& definition) { return ir_.files.add(definition); }
+
+    Expr call(CppTypeId callee, std::span<Expr const> arguments = {}) {
+        return ir_.call(callee, arguments);
+    }
+
+    Expr call(CppTypeId callee, std::initializer_list<Expr> arguments) {
+        return ir_.call(callee, arguments);
+    }
+
+    Expr template_call(Expr callee,
+                       std::span<Expr const> template_arguments,
+                       std::span<Expr const> arguments = {}) {
+        return ir_.template_call(callee, template_arguments, arguments);
+    }
+
+    Expr template_call(Expr callee,
+                       std::span<Expr const> template_arguments,
+                       std::initializer_list<Expr> arguments) {
+        return ir_.template_call(callee, template_arguments, arguments);
+    }
+
+    Expr template_call(Expr callee,
+                       std::initializer_list<Expr> template_arguments,
+                       std::span<Expr const> arguments = {}) {
+        return ir_.template_call(callee, template_arguments, arguments);
+    }
+
+    Expr template_call(Expr callee,
+                       std::initializer_list<Expr> template_arguments,
+                       std::initializer_list<Expr> arguments) {
+        return ir_.template_call(callee, template_arguments, arguments);
+    }
+
     NodeListBuilder node_list() { return ir_.node_list(); }
 
     LoweringStorage& lowering_storage() { return ir_.lowering_storage(); }
@@ -178,17 +216,7 @@ class CppIRBuilder {
 
     void merge_adjacent_namespaces(CppFileId file) { ir_.merge_adjacent_namespaces(file); }
 
-    CppFileId append_file(StringId path, std::span<NodeId const> nodes = {}) {
-        return ir_.files.append(path, nodes);
-    }
-
-    CppFileId append_file(StringId path, std::initializer_list<NodeId> nodes) {
-        return ir_.files.append(path, nodes);
-    }
-
     std::size_t file_index(CppFileId file) const { return ir_.files.index(file); }
-
-    CppFileFlags& file_flags(CppFileId file) { return ir_.files.flags_for(file); }
 
     std::span<NodeId const> file_nodes(CppFileId file) const { return ir_.files.nodes(file); }
 
@@ -210,30 +238,6 @@ class CppIRBuilder {
 
     void set_file_nodes(CppFileId file, std::initializer_list<NodeId> nodes) {
         ir_.files.set_nodes(file, nodes);
-    }
-
-    void set_file_prologue(CppFileId file, std::span<StringId const> text) {
-        ir_.files.set_prologue(file, text);
-    }
-
-    void set_file_prologue(CppFileId file, std::initializer_list<StringId> text) {
-        ir_.files.set_prologue(file, text);
-    }
-
-    void set_file_epilogue(CppFileId file, std::span<StringId const> text) {
-        ir_.files.set_epilogue(file, text);
-    }
-
-    void set_file_epilogue(CppFileId file, std::initializer_list<StringId> text) {
-        ir_.files.set_epilogue(file, text);
-    }
-
-    void set_file_include_order(CppFileId file, std::span<StringId const> prefixes) {
-        ir_.files.set_include_order(file, prefixes);
-    }
-
-    void set_file_include_order(CppFileId file, std::initializer_list<StringId> prefixes) {
-        ir_.files.set_include_order(file, prefixes);
     }
 
     void clear_files() { ir_.files.clear(); }
@@ -429,65 +433,12 @@ class CppIRBuilder {
         return ir_.enumeration(name, underlying_type, values, export_specifier, scoped);
     }
 
-    RecordId record(StringId name,
-                    std::span<NodeId const> children = {},
-                    RecordKind kind = RecordKind::struct_) {
-        return ir_.record(name, children, kind);
-    }
-
-    RecordId record(StringId name,
-                    std::initializer_list<NodeId> children,
-                    RecordKind kind = RecordKind::struct_) {
-        return ir_.record(name, children, kind);
-    }
-
-    void set_record_bases(RecordId record, std::span<CppTypeId const> bases) {
-        ir_.set_record_bases(record, bases);
-    }
-
-    void set_record_bases(RecordId record, std::initializer_list<CppTypeId> bases) {
-        ir_.set_record_bases(record, bases);
-    }
-
-    void set_record_template(RecordId record, TemplateId declaration) {
-        ir_.set_record_template(record, declaration);
-    }
-
-    void set_record_requires_clause(RecordId record, Expr clause) {
-        ir_.set_record_requires_clause(record, clause);
-    }
-
-    void set_record_export_specifier(RecordId record, StringId specifier) {
-        ir_.set_record_export_specifier(record, specifier);
-    }
-
-    void set_record_dependencies(RecordId record, std::span<TypeDependencyId const> dependencies) {
-        ir_.set_record_dependencies(record, dependencies);
-    }
-
-    void set_record_dependencies(RecordId record,
-                                 std::initializer_list<TypeDependencyId> dependencies) {
-        ir_.set_record_dependencies(record, dependencies);
-    }
-
     NodeId namespace_node(StringId name, std::span<NodeId const> children) {
         return ir_.namespace_node(name, children);
     }
 
     NodeId namespace_node(StringId name, std::initializer_list<NodeId> children) {
         return ir_.namespace_node(name, children);
-    }
-
-    RecordId record(Expr name,
-                    std::span<NodeId const> children = {},
-                    RecordKind kind = RecordKind::struct_) {
-        return ir_.record(name, children, kind);
-    }
-
-    RecordId record(Expr name,
-                    std::initializer_list<NodeId> children,
-                    RecordKind kind = RecordKind::struct_) {
-        return ir_.record(name, children, kind);
     }
 
     TemplateParameterId

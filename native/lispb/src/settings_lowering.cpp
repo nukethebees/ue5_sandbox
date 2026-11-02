@@ -104,10 +104,10 @@ class SettingsLowering : public CppIRBuilder {
         } else {
             header_nodes.append(declarations.build());
         }
-        auto const header_file{
-            append_file(settings_store.header[settings_row], header_nodes.build())};
-        file_flags(header_file).set_format_generated(true);
-        set_file_include_order(header_file, include_order);
+        auto const header_file{add_file({.path = settings_store.header[settings_row],
+                                         .nodes = header_nodes.build(),
+                                         .flags = {.format_generated = true},
+                                         .include_order = {std::from_range, include_order}})};
         CppFileId source_file;
         if (auto const path{settings_store.source[settings_row]}) {
             auto source_nodes{node_list()};
@@ -115,10 +115,10 @@ class SettingsLowering : public CppIRBuilder {
                 .add(include(store_text(source_include(ctx, settings)), IncludeStyle::quoted), 1)
                 .add(include_dependencies(), 2)
                 .append(build_source(ctx, module, functions));
-            source_file = append_file(*path, source_nodes.build());
-            file_flags(source_file).set_pragma_once(false);
-            file_flags(source_file).set_format_generated(true);
-            set_file_include_order(source_file, include_order);
+            source_file = add_file({.path = *path,
+                                    .nodes = source_nodes.build(),
+                                    .flags = {.pragma_once = false, .format_generated = true},
+                                    .include_order = {std::from_range, include_order}});
         }
         result.push_back(
             append_module(settings_store.name[settings_row], header_file, source_file));
@@ -281,9 +281,9 @@ class SettingsLowering : public CppIRBuilder {
                 block({
                     variable("auto const*",
                              "typed_value",
-                             call(template_id(type_reference(std_types().get_if),
-                                              {type_reference(setting_types[index])}),
-                                  {unary(UnaryOperator::address_of, value)})),
+                             template_call(type_reference(std_types().get_if),
+                                           {type_reference(setting_types[index])},
+                                           {unary(UnaryOperator::address_of, value)})),
                     if_stmt(binary(BinaryOperator::equal, typed_value, literal("nullptr")),
                             block({return_stmt(literal("false"))})),
                     assignment(member_access(state, name),
@@ -356,10 +356,11 @@ class SettingsLowering : public CppIRBuilder {
                 .formatting = {.body_layout = FunctionBodyLayout::compact}};
             members.add(header_function(add_function(function)), 1);
         }
-        auto const result{
-            record(modules.api_name[module_row], members.build(), RecordKind::class_)};
-        set_record_template(result,
-                            template_declaration({type_template_parameter(store_text("Derived"))}));
+        auto const result{add_record({.name = named(modules.api_name[module_row]),
+                                      .kind = RecordKind::class_,
+                                      .children = members.build(),
+                                      .template_declaration = template_declaration(
+                                          {type_template_parameter(store_text("Derived"))})})};
         return result;
     }
     auto build_type_headers(LoweringContext& ctx,
@@ -437,9 +438,10 @@ class SettingsLowering : public CppIRBuilder {
                 header.add(declaration_id);
             }
             auto const path{output_directory / (snake_case_type_name(name) + ".h")};
-            auto const file{append_file(store_text(path.generic_string()), header.build())};
-            file_flags(file).set_format_generated(true);
-            set_file_include_order(file, include_order);
+            auto const file{add_file({.path = store_text(path.generic_string()),
+                                      .nodes = header.build(),
+                                      .flags = {.format_generated = true},
+                                      .include_order = {std::from_range, include_order}})};
             result.push_back(append_module(store_text(name), file));
         };
         auto add_enum = [&](std::string_view const name, std::vector<std::string> const& names) {
@@ -472,46 +474,51 @@ class SettingsLowering : public CppIRBuilder {
         }
         add_enum("GameSettingAvailabilityProvider", availability_names);
 
-        auto add_record = [&](std::string_view const name,
-                              std::initializer_list<std::pair<CppTypeId, std::string_view>> fields,
-                              std::initializer_list<std::string_view> const includes) {
-            auto members{node_list()};
-            for (auto const& [type, member] : fields) {
-                members.add(instance_member(type, store_text(member)), 1);
-            }
-            auto const record_id{record(store_text(name), members.build())};
-            set_record_export_specifier(record_id, modules.export_specifier[module_row]);
-            emit_header(name, record_id, includes);
-        };
-        add_record("GameSettingCategoryDescriptor",
-                   {{named_type("GameSettingCategory"), "id"}, {std_types().string_view, "label"}},
-                   {"GameSettingCategory"});
-        add_record("GameSettingDescriptor",
-                   {{named_type("GameSetting"), "id"},
-                    {named_type("GameSettingCategory"), "category"},
-                    {named_type("GameSettingValueType"), "value_type"},
-                    {named_type("GameSettingBackend"), "backend"},
-                    {named_type("SettingApplyMode"), "apply_mode"},
-                    {named_type("GameSettingDevice"), "device"},
-                    {named_type("SettingControlKind"), "control_kind"},
-                    {named_type("GameSettingOptionProvider"), "options_provider"},
-                    {named_type("GameSettingAvailabilityProvider"), "availability_provider"},
-                    {decorate_type(std_types().char_, "", " const*"), "name"},
-                    {std_types().string_view, "label"},
-                    {std_types().string_view, "tooltip"},
-                    {std_types().f64, "minimum"},
-                    {std_types().f64, "maximum"},
-                    {std_types().f64, "step"},
-                    {decorate_type(std_types().char_, "", " const*"), "custom_row"}},
-                   {"GameSetting",
-                    "GameSettingCategory",
-                    "GameSettingValueType",
-                    "GameSettingBackend",
-                    "SettingApplyMode",
-                    "GameSettingDevice",
-                    "SettingControlKind",
-                    "GameSettingOptionProvider",
-                    "GameSettingAvailabilityProvider"});
+        auto emit_record_header =
+            [&](std::string_view const name,
+                std::initializer_list<std::pair<CppTypeId, std::string_view>> fields,
+                std::initializer_list<std::string_view> const includes) {
+                auto members{node_list()};
+                for (auto const& [type, member] : fields) {
+                    members.add(instance_member(type, store_text(member)), 1);
+                }
+                auto const record_id{
+                    add_record({.name = named(store_text(name)),
+                                .children = members.build(),
+                                .export_specifier = modules.export_specifier[module_row]})};
+                emit_header(name, record_id, includes);
+            };
+        emit_record_header(
+            "GameSettingCategoryDescriptor",
+            {{named_type("GameSettingCategory"), "id"}, {std_types().string_view, "label"}},
+            {"GameSettingCategory"});
+        emit_record_header(
+            "GameSettingDescriptor",
+            {{named_type("GameSetting"), "id"},
+             {named_type("GameSettingCategory"), "category"},
+             {named_type("GameSettingValueType"), "value_type"},
+             {named_type("GameSettingBackend"), "backend"},
+             {named_type("SettingApplyMode"), "apply_mode"},
+             {named_type("GameSettingDevice"), "device"},
+             {named_type("SettingControlKind"), "control_kind"},
+             {named_type("GameSettingOptionProvider"), "options_provider"},
+             {named_type("GameSettingAvailabilityProvider"), "availability_provider"},
+             {decorate_type(std_types().char_, "", " const*"), "name"},
+             {std_types().string_view, "label"},
+             {std_types().string_view, "tooltip"},
+             {std_types().f64, "minimum"},
+             {std_types().f64, "maximum"},
+             {std_types().f64, "step"},
+             {decorate_type(std_types().char_, "", " const*"), "custom_row"}},
+            {"GameSetting",
+             "GameSettingCategory",
+             "GameSettingValueType",
+             "GameSettingBackend",
+             "SettingApplyMode",
+             "GameSettingDevice",
+             "SettingControlKind",
+             "GameSettingOptionProvider",
+             "GameSettingAvailabilityProvider"});
 
         auto state_members{node_list()};
         for (std::size_t index{}; index < setting_count; ++index) {
@@ -530,8 +537,9 @@ class SettingsLowering : public CppIRBuilder {
             .implementation = {.kind = FunctionImplementationKind::defaulted},
             .receiver = FunctionReceiver::const_};
         state_members.new_lines(2).add(header_function(add_function(equality)), 1);
-        auto const state{record(state_name, state_members.build())};
-        set_record_export_specifier(state, modules.export_specifier[module_row]);
+        auto const state{add_record({.name = named(state_name),
+                                     .children = state_members.build(),
+                                     .export_specifier = modules.export_specifier[module_row]})};
         emit_header(ctx.text(state_name), state, {});
         emit_header("GameSettingValue",
                     using_declaration(store_text("GameSettingValue"),

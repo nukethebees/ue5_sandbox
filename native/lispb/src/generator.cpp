@@ -253,9 +253,12 @@ class ModuleLowering : public CppIRBuilder {
         }
         auto const& settings_store{ctx.declarations.module_settings_store};
         auto const row{settings_store.index(settings)};
-        auto const file{append_file(settings_store.header[row], nodes.build())};
-        file_flags(file).set_clang_format_off(true);
-        set_file_include_order(file, ctx.declarations.items(settings_store.include_order[row]));
+        auto const file{add_file(
+            {.path = settings_store.header[row],
+             .nodes = nodes.build(),
+             .flags = {.clang_format_off = true},
+             .include_order = {std::from_range,
+                               ctx.declarations.items(settings_store.include_order[row])}})};
         return append_module(settings_store.name[row], file);
     }
 };

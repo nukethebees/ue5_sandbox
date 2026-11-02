@@ -154,8 +154,6 @@ class PackedEmitter : public CppIRBuilder {
             members.push_back(lines(1));
             append(members, private_functions_);
         }
-        auto const record_id{record(text(name_), members)};
-        set_record_bases(record_id, {base_alias});
         std::vector<StringId> inherited;
         for (auto const name : {"storage_type",
                                 "storage",
@@ -168,7 +166,6 @@ class PackedEmitter : public CppIRBuilder {
                                 "value_"}) {
             inherited.push_back(text(name));
         }
-        set_scope_bindings(record_id, inherited);
         auto const declaration_id{graph_.source_declaration(type_)};
         auto const kind{graph_.definition(type_).kind()};
         StringId export_specifier{};
@@ -177,12 +174,16 @@ class PackedEmitter : public CppIRBuilder {
         } else if (kind == schema::TypeDefinitionKind::union_type) {
             export_specifier = context_.declarations.unions.export_specifier[declaration_id];
         }
-        set_record_export_specifier(record_id, export_specifier);
-        set_record_dependencies(record_id, dependencies_);
+        auto const record_id{add_record({.name = named(text(name_)),
+                                         .children = members,
+                                         .bases = {base_alias},
+                                         .export_specifier = export_specifier,
+                                         .dependencies = dependencies_,
+                                         .scope_bindings = inherited})};
         return {forward_declaration(text(name_), RecordKind::struct_, {}, export_specifier),
                 namespace_node(text("detail"), detail_members),
                 record_id,
-                static_assertion(template_call(
+                static_assertion(external_template_call(
                     "ioj::valid_packed_value_layout", "ioj/packed_value.h", {type(name_)}, {}))};
     }
   private:
@@ -263,38 +264,36 @@ class PackedEmitter : public CppIRBuilder {
     auto invoke(std::string_view name, std::initializer_list<Expr> args = {}) -> Expr {
         return call(named(name), args);
     }
-    auto template_call(std::string_view name,
-                       std::string_view header,
-                       std::initializer_list<CppTypeId> types,
-                       std::initializer_list<Expr> args) -> Expr {
+    auto external_template_call(std::string_view name,
+                                std::string_view header,
+                                std::initializer_list<CppTypeId> types,
+                                std::initializer_list<Expr> args) -> Expr {
         std::vector<Expr> arguments;
         for (auto const item : types) {
             arguments.push_back(type_reference(item));
         }
-        return call(template_id(external(name, header), arguments), args);
+        return template_call(external(name, header), arguments, args);
     }
     auto extract(std::string const& field, std::optional<Expr> source = {}) -> Expr {
         return source
-                 ? template_call("ioj::packed_extract",
-                                 "ioj/packed_value.h",
-                                 {descriptor_type(field)},
-                                 {*source})
-                 : call(template_id(named("extract"), {type_reference(descriptor_type(field))}),
-                        {});
+                 ? external_template_call("ioj::packed_extract",
+                                          "ioj/packed_value.h",
+                                          {descriptor_type(field)},
+                                          {*source})
+                 : template_call(named("extract"), {type_reference(descriptor_type(field))}, {});
     }
     auto insert_member(std::string const& field, Expr source, std::optional<Expr> target = {})
         -> NodeId {
-        return expr_stmt(
-            call(template_id(target ? member_access(*target, "insert") : named("insert"),
-                             {type_reference(descriptor_type(field))}),
-                 {source}));
+        return expr_stmt(template_call(target ? member_access(*target, "insert") : named("insert"),
+                                       {type_reference(descriptor_type(field))},
+                                       {source}));
     }
     auto insert(std::string const& field, Expr target, Expr source) -> Expr {
-        return template_call(
+        return external_template_call(
             "ioj::packed_insert", "ioj/packed_value.h", {descriptor_type(field)}, {target, source});
     }
     auto pack(std::string const& field, Expr source) -> Expr {
-        return template_call(
+        return external_template_call(
             "ioj::packed_pack", "ioj/packed_value.h", {descriptor_type(field)}, {source});
     }
     auto descriptor_type(std::string const& name) -> CppTypeId {
@@ -712,7 +711,7 @@ class PackedEmitter : public CppIRBuilder {
                     return {};
                 }
                 return binary(BinaryOperator::less_equal,
-                              call(type_reference(std_types().to_underlying), {value()}),
+                              call(std_types().to_underlying, {value()}),
                               member_access(named(field), "value_mask"));
             }
         }
@@ -871,8 +870,7 @@ class PackedEmitter : public CppIRBuilder {
         }
         auto validity{valid_children(std::nullopt, type_, std::nullopt)};
         if (validity) {
-            auto const base_validity{
-                call(type_reference(decorate_type(type("Base"), "", "::is_valid")), {})};
+            auto const base_validity{call(decorate_type(type("Base"), "", "::is_valid"), {})};
             validity = all({base_validity, validity});
             functions_.push_back(emit_function("is_valid",
                                                std_types().bool_,
@@ -1144,7 +1142,7 @@ class PackedEmitter : public CppIRBuilder {
         auto const decoded_type{access_type(placement)};
         body.push_back(return_stmt(
             aggregate(placement)
-                ? call(type_reference(decorate_type(decoded_type, "", "::from_raw")),
+                ? call(decorate_type(decoded_type, "", "::from_raw"),
                        {cast(decorate_type(decoded_type, "", "::storage_type"), decoded)})
                 : decoded));
         functions_.push_back(emit_function(name, decoded_type, FunctionReceiver::const_, {}, body));
@@ -1191,11 +1189,10 @@ class PackedEmitter : public CppIRBuilder {
         auto const lower{range_bound(layout_name, "min")};
         auto const upper{range_bound(layout_name, "max")};
         auto const ldexp = [&](Expr mantissa, Expr exponent) {
-            return call(type_reference(std_types().ldexp), {mantissa, exponent});
+            return call(std_types().ldexp, {mantissa, exponent});
         };
         auto const not_finite = [&](Expr value) {
-            return unary(UnaryOperator::logical_not,
-                         call(type_reference(std_types().isfinite), {value}));
+            return unary(UnaryOperator::logical_not, call(std_types().isfinite, {value}));
         };
         auto const fail_if = [&](Expr condition) {
             return if_stmt(condition, block({return_stmt(literal("false"))}));
@@ -1223,7 +1220,7 @@ class PackedEmitter : public CppIRBuilder {
             maximum = constant(metadata, path + "_maximum", std_types().f64, real(range.max));
             auto const codes{cast(std_types().f64, upper)};
             decode = call(
-                type_reference(std_types().lerp),
+                std_types().lerp,
                 {minimum,
                  maximum,
                  binary(BinaryOperator::divide, cast(std_types().f64, invoke(raw_name)), codes)});
@@ -1280,20 +1277,17 @@ class PackedEmitter : public CppIRBuilder {
         auto const scaled{named("scaled")};
         auto const rounded{named("rounded")};
         if (fixed.rounding[row] == FixedPointRounding::toward_zero) {
-            body.push_back(variable(
-                "auto const", "rounded", call(type_reference(std_types().trunc), {scaled})));
+            body.push_back(variable("auto const", "rounded", call(std_types().trunc, {scaled})));
         } else {
-            body.push_back(
-                variable("auto", "rounded", call(type_reference(std_types().floor), {scaled})));
+            body.push_back(variable("auto", "rounded", call(std_types().floor, {scaled})));
             body.push_back(variable(
                 "auto const", "fraction", binary(BinaryOperator::subtract, scaled, rounded)));
             auto const fraction{named("fraction")};
-            auto const tie{
-                binary(BinaryOperator::logical_and,
-                       binary(BinaryOperator::equal, fraction, literal("0.5")),
-                       binary(BinaryOperator::not_equal,
-                              call(type_reference(std_types().fmod), {rounded, literal("2.0")}),
-                              literal("0.0")))};
+            auto const tie{binary(BinaryOperator::logical_and,
+                                  binary(BinaryOperator::equal, fraction, literal("0.5")),
+                                  binary(BinaryOperator::not_equal,
+                                         call(std_types().fmod, {rounded, literal("2.0")}),
+                                         literal("0.0")))};
             auto const round_up{binary(BinaryOperator::logical_or,
                                        binary(BinaryOperator::greater, fraction, literal("0.5")),
                                        tie)};

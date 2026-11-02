@@ -115,8 +115,9 @@ class StaticTableLowering : public CppIRBuilder {
         }
 
         auto const created_record{
-            record(tables.name[table_row], children.build(), RecordKind::struct_)};
-        set_record_export_specifier(created_record, tables.export_specifier[table_row]);
+            add_record({.name = named(tables.name[table_row]),
+                        .children = children.build(),
+                        .export_specifier = tables.export_specifier[table_row]})};
         return created_record;
     }
 };

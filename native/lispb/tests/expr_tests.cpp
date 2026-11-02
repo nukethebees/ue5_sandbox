@@ -181,9 +181,9 @@ TEST_F(ExprTest, CollectsSizeofTypeDependenciesThroughArithmetic) {
             .kind = FunctionImplementationKind::body,
             .body = {ir.return_stmt(
                 ir.binary(BinaryOperator::multiply, ir.literal("2"), ir.sizeof_type(element)))}}};
-    auto const file{
-        ir.files.append(ir.strings.intern("Example.h"),
-                        {ir.include_dependencies(), ir.definition(ir.add_function(function))})};
+    auto const file{ir.files.add(
+        {.path = ir.strings.intern("Example.h"),
+         .nodes = {ir.include_dependencies(), ir.definition(ir.add_function(function))}})};
     auto const output{CppRenderer{ir}.render(file)};
     expect_contains_all(output, {"#include \"Project/Element.h\"", "return 2 * sizeof(Element);"});
 }
@@ -414,8 +414,9 @@ TEST_F(AstTest, CollectsDeepControlFlowDependenciesOnlyForDefinitions) {
                                 ir.block({selection}),
                                 ir.block({ir.return_stmt(ir.call(symbol("else_only")))}))}}};
     auto const published_spec{ir.add_function(spec)};
-    auto const file{ir.files.append(ir.strings.intern("Example.h"),
-                                    {ir.include_dependencies(), ir.declaration(published_spec)})};
+    auto const file{
+        ir.files.add({.path = ir.strings.intern("Example.h"),
+                      .nodes = {ir.include_dependencies(), ir.declaration(published_spec)}})};
     EXPECT_EQ(renderer.render(file).find("Project/"), std::string::npos);
 
     ir.files.set_nodes(file, {ir.files.nodes(file).front(), ir.definition(published_spec)});
@@ -441,11 +442,11 @@ TEST_F(AstTest, DeduplicatesSharedSymbolDependenciesAndTheirNestedHeaders) {
                                       .return_type = types.intern("auto"),
                                       .implementation = {.kind = FunctionImplementationKind::body,
                                                          .body = {ir.return_stmt(expression)}}};
-    auto const file{ir.files.append(
-        ir.strings.intern("Example.h"),
-        {ir.include_dependencies(),
-         ir.instance_member(types.intern("auto"), ir.strings.intern("value"), expression),
-         ir.definition(ir.add_function(function))})};
+    auto const file{ir.files.add(
+        {.path = ir.strings.intern("Example.h"),
+         .nodes = {ir.include_dependencies(),
+                   ir.instance_member(types.intern("auto"), ir.strings.intern("value"), expression),
+                   ir.definition(ir.add_function(function))}})};
     auto const output{CppRenderer{ir}.render(file)};
     for (auto const* header : {"Project/Make.h", "Project/Value.h"}) {
         EXPECT_NE(output.find(header), std::string::npos);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <codegen/ast/cpp_file_definition.h>
 #include <codegen/ast/cpp_file_flags.h>
 #include <codegen/ast/indices.h>
 #include <codegen/ast/ir/range.h>
@@ -15,33 +16,17 @@ namespace lispb::codegen {
 
 class CppFiles {
   public:
-    // Require input spans from outside this store; mutations invalidate returned spans.
-    auto append(StringId path, std::span<NodeId const> nodes = {}) -> CppFileId;
-    auto append(StringId path, std::initializer_list<NodeId> nodes) -> CppFileId {
-        return append(path, std::span<NodeId const>{nodes});
-    }
+    auto add(CppFileDefinition const& definition) -> CppFileId;
     // Require a file belonging to this store. Zero denotes an absent file.
     auto index(CppFileId file) const -> std::size_t;
-    auto flags_for(CppFileId file) -> CppFileFlags& { return flags[index(file)]; }
     auto nodes(CppFileId file) const -> std::span<NodeId const>;
     auto prologue(CppFileId file) const -> std::span<StringId const>;
     auto epilogue(CppFileId file) const -> std::span<StringId const>;
     auto include_order(CppFileId file) const -> std::span<StringId const>;
+    // Require input spans from outside this store; mutations invalidate returned spans.
     void set_nodes(CppFileId file, std::span<NodeId const> nodes);
     void set_nodes(CppFileId file, std::initializer_list<NodeId> nodes) {
         set_nodes(file, std::span<NodeId const>{nodes});
-    }
-    void set_prologue(CppFileId file, std::span<StringId const> text);
-    void set_prologue(CppFileId file, std::initializer_list<StringId> text) {
-        set_prologue(file, std::span<StringId const>{text});
-    }
-    void set_epilogue(CppFileId file, std::span<StringId const> text);
-    void set_epilogue(CppFileId file, std::initializer_list<StringId> text) {
-        set_epilogue(file, std::span<StringId const>{text});
-    }
-    void set_include_order(CppFileId file, std::span<StringId const> prefixes);
-    void set_include_order(CppFileId file, std::initializer_list<StringId> prefixes) {
-        set_include_order(file, std::span<StringId const>{prefixes});
     }
     void clear();
 

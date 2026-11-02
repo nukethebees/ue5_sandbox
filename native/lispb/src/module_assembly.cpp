@@ -206,17 +206,19 @@ class ModuleAssembler : public CppIRBuilder {
             }
         }
         auto const include_order{ctx.declarations.items(settings_store.include_order[settings])};
-        auto const header_file{append_file(settings_store.header[settings], header.build())};
-        file_flags(header_file).set_clang_format_off(!format_generated);
-        file_flags(header_file).set_format_generated(format_generated);
-        set_file_include_order(header_file, include_order);
+        auto const header_file{add_file(
+            {.path = settings_store.header[settings],
+             .nodes = header.build(),
+             .flags = {.clang_format_off = !format_generated, .format_generated = format_generated},
+             .include_order = {std::from_range, include_order}})};
         CppFileId source_file;
         if (auto const path{settings_store.source[settings]}) {
-            source_file = append_file(*path, source.build());
-            file_flags(source_file).set_pragma_once(false);
-            file_flags(source_file).set_clang_format_off(!format_generated);
-            file_flags(source_file).set_format_generated(format_generated);
-            set_file_include_order(source_file, include_order);
+            source_file = add_file({.path = *path,
+                                    .nodes = source.build(),
+                                    .flags = {.pragma_once = false,
+                                              .clang_format_off = !format_generated,
+                                              .format_generated = format_generated},
+                                    .include_order = {std::from_range, include_order}});
         }
         auto const result{append_module(settings_store.name[settings], header_file, source_file)};
 
@@ -232,8 +234,9 @@ class ModuleAssembler : public CppIRBuilder {
             reader.new_lines(2);
             reader.add(namespace_node(store_text("ioj::s7"), reader_nodes));
             auto const reader_path{reader_header_path(ctx.text(settings_store.header[settings]))};
-            auto const file{append_file(store_text(reader_path), reader.build())};
-            file_flags(file).set_format_generated(true);
+            auto const file{add_file({.path = store_text(reader_path),
+                                      .nodes = reader.build(),
+                                      .flags = {.format_generated = true}})};
             additional.push_back(append_module(
                 store_text(ctx.text(settings_store.name[settings]) + "Reader"), file, {}));
         }

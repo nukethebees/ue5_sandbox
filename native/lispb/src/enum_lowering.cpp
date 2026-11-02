@@ -205,17 +205,19 @@ class EnumLowering : public CppIRBuilder {
                      include(store_text(generated_header), IncludeStyle::quoted)});
                 auto const module_name{ctx.text(settings_store.name[settings]) + "_" +
                                        ctx.text(projections.name[projection])};
-                auto const projection_file{
-                    append_file(projections.header[projection], projection_nodes)};
-                file_flags(projection_file).set_clang_format_off(true);
+                auto const projection_file{add_file({.path = projections.header[projection],
+                                                     .nodes = projection_nodes,
+                                                     .flags = {.clang_format_off = true}})};
                 emission.additional_modules.push_back(
                     append_module(store_text(module_name), projection_file));
-                auto const conversion_file{append_file(
-                    projections.conversion_header[projection],
-                    {include(projections.native_header_include[projection], IncludeStyle::quoted),
-                     include(projections.header_include[projection], IncludeStyle::quoted),
-                     unreal_conversion_header(ctx, settings, schema, projection)})};
-                file_flags(conversion_file).set_clang_format_off(true);
+                auto const conversion_file{add_file(
+                    {.path = projections.conversion_header[projection],
+                     .nodes = {include(projections.native_header_include[projection],
+                                       IncludeStyle::quoted),
+                               include(projections.header_include[projection],
+                                       IncludeStyle::quoted),
+                               unreal_conversion_header(ctx, settings, schema, projection)},
+                     .flags = {.clang_format_off = true}})};
                 emission.additional_modules.push_back(
                     append_module(store_text(module_name + "_conversion"), conversion_file));
             }
@@ -411,10 +413,9 @@ class EnumLowering : public CppIRBuilder {
                        std::string_view category,
                        std::string_view suffix) -> FunctionId {
         auto const qualified{qualified_enum_name(ctx, settings, schema)};
-        auto const lookup{call(
-            template_id(
-                type_reference(named_type("ioj::enum_string", NameOrigin::global)),
-                {type_reference(named_type("ioj::" + std::string{category}, NameOrigin::global))}),
+        auto const lookup{template_call(
+            type_reference(named_type("ioj::enum_string", NameOrigin::global)),
+            {type_reference(named_type("ioj::" + std::string{category}, NameOrigin::global))},
             {named("value")})};
         return lookup_function(
             ctx, schema, qualified, suffix, {return_stmt(member_call(lookup, "data"))});
@@ -726,10 +727,11 @@ class EnumLowering : public CppIRBuilder {
                     named_type(std::string{type_spelling(enum_type)} + "::" + ctx.text(name),
                                NameOrigin::global)));
             }
-            auto const traits{record(
-                template_id(named("EnumTraits"), {type_reference(enum_type)}),
-                {constexpr_member(std_types().array, store_text("values"), init_list(values))})};
-            set_record_template(traits, template_specialization());
+            auto const traits{
+                add_record({.name = template_id(named("EnumTraits"), {type_reference(enum_type)}),
+                            .children = {constexpr_member(
+                                std_types().array, store_text("values"), init_list(values))},
+                            .template_declaration = template_specialization()})};
             result.add(traits, 2);
         }
 
@@ -744,14 +746,14 @@ class EnumLowering : public CppIRBuilder {
         auto const enum_type{
             named_type(native_enum_name(ctx, settings, schema), NameOrigin::global)};
         auto const formatter{
-            record(template_id(named("formatter"), {type_reference(enum_type)}), {})};
-        set_record_template(formatter, template_specialization());
-        set_record_bases(
-            formatter,
-            {template_type(named_type("ioj::EnumFormatter",
-                                      NameOrigin::global,
-                                      {dependency("ioj::EnumFormatter", "ioj/enum_formatter.h")}),
-                           {enum_type})});
+            add_record({.name = template_id(named("formatter"), {type_reference(enum_type)}),
+                        .children = {},
+                        .bases = {template_type(
+                            named_type("ioj::EnumFormatter",
+                                       NameOrigin::global,
+                                       {dependency("ioj::EnumFormatter", "ioj/enum_formatter.h")}),
+                            {enum_type})},
+                        .template_declaration = template_specialization()})};
         return namespace_node(store_text("std"), {formatter});
     }
     auto unreal_underlying_type(std::string_view const spelling) -> std::string {

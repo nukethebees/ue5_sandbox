@@ -7,18 +7,19 @@
 
 namespace lispb::codegen {
 
-auto CppFiles::append(StringId file_path, std::span<NodeId const> file_nodes) -> CppFileId {
+auto CppFiles::add(CppFileDefinition const& definition) -> CppFileId {
     auto const result{CppFileId{static_cast<std::uint32_t>(path.size() + 1)}};
-    path.push_back(file_path);
-    source.emplace_back();
-    flags.emplace_back();
-    flags.back().set_pragma_once(true);
-    nodes_.push_back(save_nodes(file_nodes));
-    prologue_.emplace_back();
-    epilogue_.emplace_back();
-    include_order_.emplace_back();
+    path.push_back(definition.path);
+    source.push_back(definition.source);
+    auto const options{definition.flags};
+    flags.emplace_back(options.pragma_once, options.clang_format_off, options.format_generated);
+    nodes_.push_back(save_nodes(definition.nodes));
+    prologue_.push_back(save_text(definition.prologue));
+    epilogue_.push_back(save_text(definition.epilogue));
+    include_order_.push_back(save_text(definition.include_order));
     return result;
 }
+
 auto CppFiles::index(CppFileId file) const -> std::size_t {
     assert(file.value != 0 && file.value <= path.size());
     return file.value - 1;
@@ -37,15 +38,6 @@ auto CppFiles::include_order(CppFileId file) const -> std::span<StringId const> 
 }
 void CppFiles::set_nodes(CppFileId file, std::span<NodeId const> nodes) {
     nodes_[index(file)] = save_nodes(nodes);
-}
-void CppFiles::set_prologue(CppFileId file, std::span<StringId const> text) {
-    prologue_[index(file)] = save_text(text);
-}
-void CppFiles::set_epilogue(CppFileId file, std::span<StringId const> text) {
-    epilogue_[index(file)] = save_text(text);
-}
-void CppFiles::set_include_order(CppFileId file, std::span<StringId const> prefixes) {
-    include_order_[index(file)] = save_text(prefixes);
 }
 auto CppFiles::save_nodes(std::span<NodeId const> nodes) -> ir::Range {
     return ir::save_range(node_references_, nodes);

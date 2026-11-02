@@ -143,24 +143,25 @@ class RecordReaderLowering : public CppIRBuilder {
                 decls.add(
                     constexpr_member(intern_type("auto"),
                                      store_text("required"),
-                                     call(template_id(named("required_fields"),
-                                                      {type_reference(named_type("Field")),
-                                                       member_call(named("field_names"), "size")}),
-                                          {init_list(required)})),
+                                     template_call(named("required_fields"),
+                                                   {type_reference(named_type("Field")),
+                                                    member_call(named("field_names"), "size")},
+                                                   {init_list(required)})),
                     1);
             }
         }
-        auto const specialization{
-            record(template_id(named("TypeReader"), {type_reference(value_type)}), decls.build())};
-        set_record_template(specialization, template_specialization());
         std::array const inherited_names{store_text("value_type"), store_text("read")};
-        set_scope_bindings(specialization, inherited_names);
-        set_record_bases(specialization,
-                         {template_type(named_type("ioj::s7::RecordReader",
-                                                   NameOrigin::global,
-                                                   {dependency("ioj::s7::RecordReader",
-                                                               "ioj/s7/record_reader.h")}),
-                                        {value_type})});
+        auto const specialization{add_record(
+            {.name = template_id(named("TypeReader"), {type_reference(value_type)}),
+             .children = decls.build(),
+             .bases = {template_type(
+                 named_type("ioj::s7::RecordReader",
+                            NameOrigin::global,
+                            {dependency("ioj::s7::RecordReader", "ioj/s7/record_reader.h")}),
+                 {value_type})},
+             .template_declaration = template_specialization(),
+             .scope_bindings =
+                 std::vector<StringId>{inherited_names.begin(), inherited_names.end()}})};
         emission.reader_declarations.push_back(specialization);
 
         for (auto const dependency : ctx.semantic.dependencies_of(type)) {
@@ -282,9 +283,8 @@ class RecordReaderLowering : public CppIRBuilder {
             if (group != groups.end()) {
                 group->condition = binary(BinaryOperator::logical_or, group->condition, condition);
             } else {
-                auto const action{options.exclude
-                                      ? expr_stmt(call(type_reference(std_types().unreachable)))
-                                      : read_field(ctx, field, named("member"))};
+                auto const action{options.exclude ? expr_stmt(call(std_types().unreachable))
+                                                  : read_field(ctx, field, named("member"))};
                 groups.push_back({options, condition, action});
             }
         }
@@ -312,7 +312,7 @@ class RecordReaderLowering : public CppIRBuilder {
         auto const positional{records.s7_positional[row] != 0};
         auto const decode_ctx{named("ctx")};
         auto const errors{member_access(decode_ctx, "errors")};
-        auto move = [&](Expr value) { return call(type_reference(std_types().move), {value}); };
+        auto move = [&](Expr value) { return call(std_types().move, {value}); };
         auto const unexpected{init_list({move(errors)}, std_types().unexpected)};
         auto body{node_list()};
         if (constructing) {
@@ -329,8 +329,7 @@ class RecordReaderLowering : public CppIRBuilder {
         if (positional) {
             body.add(variable("auto const",
                               "arguments",
-                              call(type_reference(named_type("ioj::s7::positional_arguments",
-                                                             NameOrigin::global)),
+                              call(named_type("ioj::s7::positional_arguments", NameOrigin::global),
                                    {member_access(decode_ctx, "reader"),
                                     member_access(decode_ctx, "node"),
                                     string_literal(ctx.text(*records.s7_tag[row])),
@@ -339,9 +338,8 @@ class RecordReaderLowering : public CppIRBuilder {
                      2);
             body.add(if_stmt(
                 unary(UnaryOperator::logical_not, named("arguments")),
-                block({expr_stmt(call(
-                           type_reference(named_type("ioj::s7::append_errors", NameOrigin::global)),
-                           {errors, member_call(named("arguments"), "error")})),
+                block({expr_stmt(call(named_type("ioj::s7::append_errors", NameOrigin::global),
+                                      {errors, member_call(named("arguments"), "error")})),
                        constructing ? return_stmt(unexpected) : return_stmt()})));
             std::size_t index{};
             for (auto const field : fields) {
@@ -374,8 +372,7 @@ class RecordReaderLowering : public CppIRBuilder {
                     {unary(UnaryOperator::address_of, named("result"))},
                     {parameter("Field", "selected"), parameter("auto const&", "read")},
                     block({expr_stmt(call(
-                        type_reference(
-                            decorate_type(named_type("value_type"), "", "::visit_field")),
+                        decorate_type(named_type("value_type"), "", "::visit_field"),
                         {named("result"), named("selected"), member_reader(ctx, record_id)}))}));
             } else {
                 std::vector<SwitchCaseId> cases;
@@ -398,10 +395,8 @@ class RecordReaderLowering : public CppIRBuilder {
                 if (records.generate_visitor[row]) {
                     // Stage construction before an object exists; excluded fields cannot be looked
                     // up.
-                    cases.push_back(switch_case(
-                        {},
-                        block({expr_stmt(call(type_reference(std_types().unreachable)))}),
-                        false));
+                    cases.push_back(
+                        switch_case({}, block({expr_stmt(call(std_types().unreachable))}), false));
                 }
                 std::array const parameters{parameter("Field const", "field"),
                                             parameter("auto const&", "read")};
@@ -416,9 +411,8 @@ class RecordReaderLowering : public CppIRBuilder {
                 })) {
                 arguments.push_back(named("required"));
             }
-            body.add(expr_stmt(
-                call(template_id(named("decode_record"), {type_reference(named_type("Field"))}),
-                     arguments)));
+            body.add(expr_stmt(template_call(
+                named("decode_record"), {type_reference(named_type("Field"))}, arguments)));
         }
         if (!constructing) {
             return body.build();

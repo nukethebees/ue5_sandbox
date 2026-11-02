@@ -175,8 +175,10 @@ class FacadeLowering : public CppIRBuilder {
                                               literal("nullptr")));
 
         auto const declaration_node{
-            record(facades.name[row], class_nodes.build(), RecordKind::class_)};
-        set_record_export_specifier(declaration_node, facades.export_specifier[row]);
+            add_record({.name = named(facades.name[row]),
+                        .kind = RecordKind::class_,
+                        .children = class_nodes.build(),
+                        .export_specifier = facades.export_specifier[row]})};
         auto definitions{node_list()};
         if (definitions_in_source) {
             auto const owner{intern_type(ctx.text(facades.name[row]))};

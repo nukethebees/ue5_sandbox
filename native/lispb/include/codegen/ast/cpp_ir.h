@@ -73,8 +73,10 @@
 #include <codegen/ast/modules.h>
 #include <codegen/ast/node_id.h>
 #include <codegen/ast/node_list_builder.h>
+#include <codegen/ast/record_definition.h>
 #include <codegen/ast/record_id.h>
 #include <codegen/ast/record_kind.h>
+#include <codegen/ast/record_view.h>
 #include <codegen/ast/return_syntax.h>
 #include <codegen/ast/template_id.h>
 #include <codegen/ast/template_parameter_id.h>
@@ -222,37 +224,10 @@ class CppIR {
         return enumeration(
             name, underlying_type, std::span<EnumValueId const>{values}, export_specifier, scoped);
     }
-    auto record(StringId name,
-                std::span<NodeId const> children = {},
-                RecordKind kind = RecordKind::struct_) -> RecordId;
-    auto record(StringId name,
-                std::initializer_list<NodeId> children,
-                RecordKind kind = RecordKind::struct_) -> RecordId {
-        return record(name, std::span<NodeId const>{children}, kind);
-    }
-    void set_record_bases(RecordId record, std::span<CppTypeId const> bases);
-    void set_record_bases(RecordId record, std::initializer_list<CppTypeId> bases) {
-        set_record_bases(record, std::span<CppTypeId const>{bases});
-    }
-    void set_record_template(RecordId record, TemplateId declaration);
-    void set_record_requires_clause(RecordId record, Expr clause);
-    void set_record_export_specifier(RecordId record, StringId specifier);
-    void set_record_dependencies(RecordId record, std::span<TypeDependencyId const> dependencies);
-    void set_record_dependencies(RecordId record,
-                                 std::initializer_list<TypeDependencyId> dependencies) {
-        set_record_dependencies(record, std::span<TypeDependencyId const>{dependencies});
-    }
+    auto add_record(RecordDefinition const& definition) -> RecordId;
     auto namespace_node(StringId name, std::span<NodeId const> children) -> NodeId;
     auto namespace_node(StringId name, std::initializer_list<NodeId> children) -> NodeId {
         return namespace_node(name, std::span<NodeId const>{children});
-    }
-    auto record(Expr name,
-                std::span<NodeId const> children = {},
-                RecordKind kind = RecordKind::struct_) -> RecordId;
-    auto record(Expr name,
-                std::initializer_list<NodeId> children,
-                RecordKind kind = RecordKind::struct_) -> RecordId {
-        return record(name, std::span<NodeId const>{children}, kind);
     }
     auto type_template_parameter(StringId name, CppTypeId default_type = {}, bool pack = false)
         -> TemplateParameterId;
@@ -276,6 +251,7 @@ class CppIR {
         return {add_function(definitions)...};
     }
     // Views borrow storage; do not retain them across IR mutations.
+    auto get_view(RecordId record) const -> RecordView;
     auto get_view(FunctionId function) const -> FunctionView;
     auto get_view(FunctionParameterId parameter) const -> FunctionParameterView;
     auto parameter(CppTypeId type, StringId name = {}, Expr default_value = {})
@@ -324,6 +300,33 @@ class CppIR {
         return raw_expr(value, std::span<TypeDependencyId const>{dependencies});
     }
     auto call(Expr callee, std::span<Expr const> arguments = {}) -> Expr;
+    auto call(CppTypeId callee, std::span<Expr const> arguments = {}) -> Expr {
+        return call(type_reference(callee), arguments);
+    }
+    auto call(CppTypeId callee, std::initializer_list<Expr> arguments) -> Expr {
+        return call(callee, std::span<Expr const>{arguments});
+    }
+    auto template_call(Expr callee,
+                       std::span<Expr const> template_arguments,
+                       std::span<Expr const> arguments = {}) -> Expr {
+        return call(template_id(callee, template_arguments), arguments);
+    }
+    auto template_call(Expr callee,
+                       std::initializer_list<Expr> template_arguments,
+                       std::span<Expr const> arguments = {}) -> Expr {
+        return template_call(callee, std::span<Expr const>{template_arguments}, arguments);
+    }
+    auto template_call(Expr callee,
+                       std::span<Expr const> template_arguments,
+                       std::initializer_list<Expr> arguments) -> Expr {
+        return template_call(callee, template_arguments, std::span<Expr const>{arguments});
+    }
+    auto template_call(Expr callee,
+                       std::initializer_list<Expr> template_arguments,
+                       std::initializer_list<Expr> arguments) -> Expr {
+        return template_call(
+            callee, std::span<Expr const>{template_arguments}, std::span<Expr const>{arguments});
+    }
     // Capture local names by value or apply address_of for explicit reference captures.
     auto lambda(std::span<Expr const> captures,
                 std::span<FunctionParameterId const> parameters,

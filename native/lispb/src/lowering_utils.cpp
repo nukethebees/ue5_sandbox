@@ -249,9 +249,9 @@ class FunctionLowering : public CppIRBuilder {
     // Construction helpers
     /* **************************************** */
     auto call_array_callback(std::span<Expr const> const arguments) -> Expr {
-        auto const forwarded{call(template_id(type_reference(std_types().forward),
-                                              {type_reference(intern_type("TFunc"))}),
-                                  {named("func")})};
+        auto const forwarded{template_call(type_reference(std_types().forward),
+                                           {type_reference(intern_type("TFunc"))},
+                                           {named("func")})};
         return call(forwarded, arguments);
     }
 };
