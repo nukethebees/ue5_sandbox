@@ -394,16 +394,15 @@ auto view_accessor_nodes(LoweringContext& context, SingleAllocationModelId model
     auto column_span = [&](SingleAllocationColumnId column) {
         auto const index{std::find(selected.begin(), selected.end(), column) - selected.begin()};
         if (resolved) {
-            return ir.call(ir.pointer_member_access(ir.named("this"), "column"),
+            return ir.call(ir.this_member("column"),
                            {ir.member_access(
-                               ir.pointer_member_access(ir.named("this"), "columns_"),
+                               ir.this_member("columns_"),
                                context.text(columns.flattened_identifier[columns.index(column)]))});
         }
         if (strided) {
-            return ir.call(ir.pointer_member_access(ir.named("this"), "column"),
-                           {ir.literal(std::to_string(index))});
+            return ir.call(ir.this_member("column"), {ir.literal(std::to_string(index))});
         }
-        return ir.call(ir.template_id(ir.pointer_member_access(ir.named("this"), "template column"),
+        return ir.call(ir.template_id(ir.this_member("template column"),
                                       {ir.type_reference(columns.type[columns.index(column)])}),
                        {layout_column(context, column)});
     };
@@ -417,22 +416,21 @@ auto view_accessor_nodes(LoweringContext& context, SingleAllocationModelId model
             auto const nested_strided{is_strided_schema(context, nested)};
             auto const type{shared_view_type(context, nested, resolved || !nested_strided)};
             if (!resolved && nested_strided && strided) {
-                accessor(
-                    "view_" + name,
-                    ir.init_list(
-                        {ir.call(ir.member_access(column_span(nested_columns.front()), "data")),
-                         ir.call(ir.pointer_member_access(ir.named("this"), "byte_stride")),
-                         ir.call(ir.pointer_member_access(ir.named("this"), "num"))}),
-                    type);
+                accessor("view_" + name,
+                         ir.init_list({ir.call(ir.member_access(column_span(nested_columns.front()),
+                                                                "data")),
+                                       ir.call(ir.this_member("byte_stride")),
+                                       ir.call(ir.this_member("num"))}),
+                         type);
             } else if (!resolved && nested_strided) {
                 auto const factory{ir.template_id(
                     ir.type_reference(ir.types.named("ioj::soa_storage_detail::make_strided_view")),
                     {ir.type_reference(type), ir.type_reference(ir.types.intern("Layout"))})};
                 accessor("view_" + name,
                          ir.call(factory,
-                                 {ir.pointer_member_access(ir.named("this"), "state_"),
-                                  ir.pointer_member_access(ir.named("this"), "offset_"),
-                                  ir.call(ir.pointer_member_access(ir.named("this"), "num")),
+                                 {ir.this_member("state_"),
+                                  ir.this_member("offset_"),
+                                  ir.call(ir.this_member("num")),
                                   layout_column(context, nested_columns[0]),
                                   layout_column(context, nested_columns[1])}),
                          type);
@@ -442,11 +440,11 @@ auto view_accessor_nodes(LoweringContext& context, SingleAllocationModelId model
                     pointers.push_back(
                         resolved
                             ? ir.member_access(
-                                  ir.pointer_member_access(ir.named("this"), "columns_"),
+                                  ir.this_member("columns_"),
                                   context.text(columns.flattened_identifier[columns.index(column)]))
                             : ir.call(ir.member_access(column_span(column), "data")));
                 }
-                pointers.push_back(ir.call(ir.pointer_member_access(ir.named("this"), "num")));
+                pointers.push_back(ir.call(ir.this_member("num")));
                 accessor("view_" + name, ir.init_list(pointers), type);
             }
         } else {

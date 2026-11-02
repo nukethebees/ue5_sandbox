@@ -383,6 +383,9 @@ class CppIR {
     auto member_access(Expr object, StringId member) -> Expr;
     auto pointer_member_access(Expr object, std::string_view member) -> Expr;
     auto pointer_member_access(Expr object, StringId member) -> Expr;
+    auto this_member(std::string_view member) -> Expr {
+        return pointer_member_access(named("this"), member);
+    }
     auto unary(UnaryOperator operation, Expr operand) -> Expr;
     auto subscript(Expr object, Expr index) -> Expr;
     auto binary(BinaryOperator operation, Expr left, Expr right, bool line_break_after = false)

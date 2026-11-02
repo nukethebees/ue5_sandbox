@@ -345,17 +345,12 @@ auto lower_soa_api(LoweringContext& parent_context,
                 auto const index{ir.named(index_name)};
                 NodeListBuilder append_body{ir};
                 append_body
-                    .add(ir.variable("auto const",
-                                     index_name,
-                                     ir.call(ir.pointer_member_access(ir.named("this"), "num"))))
-                    .add(ir.expr_stmt(
-                        ir.call(ir.pointer_member_access(ir.named("this"), "add_defaulted"),
-                                {ir.literal("1")})));
+                    .add(ir.variable("auto const", index_name, ir.call(ir.this_member("num"))))
+                    .add(ir.expr_stmt(ir.call(ir.this_member("add_defaulted"), {ir.literal("1")})));
                 auto const count{columns.size()};
                 for (std::size_t column{}; column < count; ++column) {
                     append_body.add(ir.assignment(
-                        ir.subscript(ir.call(ir.member_access(ir.call(ir.pointer_member_access(
-                                                                  ir.named("this"), "view")),
+                        ir.subscript(ir.call(ir.member_access(ir.call(ir.this_member("view")),
                                                               context.text(columns[column]))),
                                      index),
                         ir.named(parameter_schemas.name[parameters[column]])));
