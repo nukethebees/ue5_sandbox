@@ -21,6 +21,7 @@ struct SimClock;
 
 namespace ioj::sim::spinners {
 class PhaseInterface;
+class SpawnInterface;
 
 struct Sim {
     using EntityStorage = SpinnerEntityData;
@@ -74,7 +75,7 @@ struct Sim {
     void fire_lasers(ThinkingInputs const inputs);
 
     friend class PhaseInterface;
-    friend class sim::LevelSpawnManager;
+    friend class SpawnInterface;
 
     friend struct SpinnerSpawnTestAccess;
 

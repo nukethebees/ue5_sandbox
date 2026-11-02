@@ -1,5 +1,7 @@
-target_sources(native-simulation PRIVATE
-  ../../include/ioj/sim/turrets/phase_interface.h
-  ../../include/ioj/sim/turrets/sim.h
-  sim.cpp
+target_sources(native-simulation
+  PRIVATE
+    ../../include/ioj/sim/turrets/phase_interface.h
+    ../../include/ioj/sim/turrets/spawn_interface.h
+    ../../include/ioj/sim/turrets/sim.h
+    sim.cpp
 )

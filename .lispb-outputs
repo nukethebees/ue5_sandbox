@@ -95,6 +95,7 @@ native/levels/lib/include/ioj/sim/turrets/turret_sim_config_reader.h
 native/levels/lib/src/game_settings.cpp
 native/simulation/include/ioj/sim/capital_ships/capital_entity_data.h
 native/simulation/include/ioj/sim/capital_ships/phase_interface.h
+native/simulation/include/ioj/sim/capital_ships/spawn_interface.h
 native/simulation/include/ioj/sim/collision/cell_coord_bounds.h
 native/simulation/include/ioj/sim/collision/cell_coords.h
 native/simulation/include/ioj/sim/collision/collision_scalar_types.h
@@ -156,6 +157,7 @@ native/simulation/include/ioj/sim/player/space_ship_common.h
 native/simulation/include/ioj/sim/sim_tick.h
 native/simulation/include/ioj/sim/simulation_phase.h
 native/simulation/include/ioj/sim/spinners/phase_interface.h
+native/simulation/include/ioj/sim/spinners/spawn_interface.h
 native/simulation/include/ioj/sim/spinners/spinner_entity_data.h
 native/simulation/include/ioj/sim/tasks/instruction.h
 native/simulation/include/ioj/sim/tasks/instruction_handle.h
@@ -166,5 +168,6 @@ native/simulation/include/ioj/sim/telemetry/history.h
 native/simulation/include/ioj/sim/telemetry/navigation_telemetry.h
 native/simulation/include/ioj/sim/telemetry/run_end_reason.h
 native/simulation/include/ioj/sim/turrets/phase_interface.h
+native/simulation/include/ioj/sim/turrets/spawn_interface.h
 native/simulation/include/ioj/sim/turrets/turret_entity_data.h
 native/ui/lib/src/radar_positions.hpp

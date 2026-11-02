@@ -22,6 +22,7 @@ class LevelSpawnManager;
 
 namespace ioj::sim::turrets {
 class PhaseInterface;
+class SpawnInterface;
 
 struct Sim {
     using EntityStorage = TurretEntityData;
@@ -102,7 +103,7 @@ struct Sim {
 
     friend class PhaseInterface;
 
-    friend class sim::LevelSpawnManager;
+    friend class SpawnInterface;
 
     TurretSimConfig config{};
     EntityTables& entity_tables_;

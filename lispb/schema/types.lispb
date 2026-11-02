@@ -418,3 +418,35 @@
 (type lasers_preparation_inputs
   :spelling "PreparationInputs"
   :header "ioj/sim/lasers/phase_inputs.h")
+
+(type spawn_context
+  :spelling "ioj::sim::SpawnContext"
+  :header "ioj/sim/levels/spawn_context.h")
+
+(type capital_spawn_view
+  :spelling "ioj::sim::LevelCapitalSpawnEvents::ConstView"
+  :header "ioj/sim/levels/level_capital_spawn_events.h")
+
+(type turret_spawn_view
+  :spelling "ioj::sim::LevelTurretSpawnEvents::ConstView"
+  :header "ioj/sim/levels/level_turret_spawn_events.h")
+
+(type spawned_entity_ids
+  :spelling "std::vector<ioj::sim::EntityId>"
+  :header "vector")
+
+(type spawned_entity_span
+  :spelling "std::span<ioj::sim::EntityId const>"
+  :header "span")
+
+(type resolved_locations_view
+  :spelling "ioj::vectors3f::ResolvedConstView"
+  :header "ioj/vectors3f.h")
+
+(type float_const_span
+  :spelling "std::span<float const>"
+  :header "span")
+
+(type int32_const_span
+  :spelling "std::span<std::int32_t const>"
+  :header "span")

@@ -20,6 +20,7 @@ class LevelSpawnManager;
 
 namespace ioj::sim::capital_ships {
 class PhaseInterface;
+class SpawnInterface;
 
 struct Sim {
     using EntityStorage = CapitalEntityData;
@@ -72,7 +73,7 @@ struct Sim {
 
     friend class PhaseInterface;
 
-    friend class sim::LevelSpawnManager;
+    friend class SpawnInterface;
 
     settings::PositiveHealth max_health_{Health{5000}};
     EntityTables& entity_tables_;

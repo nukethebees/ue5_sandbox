@@ -3,12 +3,12 @@
 #include <ioj/column_math.h>
 #include <ioj/diagnostics.h>
 #include <ioj/rotator_math.h>
-#include <ioj/sim/capital_ships/sim.h>
+#include <ioj/sim/capital_ships/spawn_interface.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/levels/level_entity_index.h>
 #include <ioj/sim/levels/spawn_context.h>
-#include <ioj/sim/spinners/sim.h>
-#include <ioj/sim/turrets/sim.h>
+#include <ioj/sim/spinners/spawn_interface.h>
+#include <ioj/sim/turrets/spawn_interface.h>
 
 #include <algorithm>
 #include <cassert>
@@ -84,7 +84,7 @@ void LevelSpawnManager::spawn(LevelSpawnGroups::ConstView const groups,
 void LevelSpawnManager::spawn_capitals(LevelCapitalSpawnEvents::ConstView const events,
                                        SpawnContext const context) {
     auto const count{events.num()};
-    auto const ids{capital_ships_.register_ships(events, context)};
+    auto const ids{capital_ships::SpawnInterface{capital_ships_}.register_ships(events, context)};
     spawned_ids_this_tick_.insert(spawned_ids_this_tick_.end(), ids.begin(), ids.end());
     auto const entity_indices{events.entity_indices()};
     auto const initial_delays{events.initial_fighter_spawn_delays()};
@@ -146,7 +146,7 @@ void LevelSpawnManager::queue_fighter_spawns(float const dt,
 
 void LevelSpawnManager::spawn_turrets(LevelTurretSpawnEvents::ConstView const events,
                                       SpawnContext const context) {
-    auto const ids{turrets_.register_turrets(events, context)};
+    auto const ids{turrets::SpawnInterface{turrets_}.register_turrets(events, context)};
     spawned_ids_this_tick_.insert(spawned_ids_this_tick_.end(), ids.begin(), ids.end());
     auto const count{events.num()};
     auto const entity_indices{events.entity_indices()};
@@ -159,7 +159,7 @@ void LevelSpawnManager::spawn_turrets(LevelTurretSpawnEvents::ConstView const ev
 void LevelSpawnManager::spawn_spinners(LevelSpinnerSpawnEvents::ConstView const events,
                                        SpawnContext const context) {
     auto const locations{events.view_locations().resolve()};
-    auto const ids{spinners_.spawn_instances(
+    auto const ids{spinners::SpawnInterface{spinners_}.spawn_instances(
         locations, events.yaws(), events.initial_fire_point_indices(), context)};
     spawned_ids_this_tick_.insert(spawned_ids_this_tick_.end(), ids.begin(), ids.end());
     auto const count{events.num()};
