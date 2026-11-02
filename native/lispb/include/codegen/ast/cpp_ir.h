@@ -173,6 +173,7 @@ class CppIR {
                   std::optional<Expr> initializer = {}) -> NodeId;
     auto static_assertion(StringId condition, StringId message) -> NodeId;
     auto static_assertion(Expr condition, StringId message = {}) -> NodeId;
+    auto assertion(Expr condition) -> NodeId;
     auto access(Access value = Access::public_,
                 AccessIndentation indentation = AccessIndentation::outdented) -> NodeId;
     auto include(StringId path, IncludeStyle style = IncludeStyle::inferred) -> NodeId;

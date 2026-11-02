@@ -117,7 +117,26 @@ void CppTypes::initialise_standard_types() {
         .is_same_v = library("std::is_same_v", "type_traits"),
         .is_floating_point_v = library("std::is_floating_point_v", "type_traits"),
         .is_trivially_copyable_v = library("std::is_trivially_copyable_v", "type_traits"),
-        .pmr = {.memory_resource = library("std::pmr::memory_resource", "memory_resource")},
+        .forward = library("std::forward", "utility"),
+        .move = library("std::move", "utility"),
+        .to_underlying = library("std::to_underlying", "utility"),
+        .unreachable = library("std::unreachable", "utility"),
+        .abort = library("std::abort", "cstdlib"),
+        .get_if = library("std::get_if", "variant"),
+        .nullopt = library("std::nullopt", "optional"),
+        .isnan = library("std::isnan", "cmath"),
+        .isinf = library("std::isinf", "cmath"),
+        .memcmp = library("std::memcmp", "cstring"),
+        .ldexp = library("std::ldexp", "cmath"),
+        .isfinite = library("std::isfinite", "cmath"),
+        .lerp = library("std::lerp", "cmath"),
+        .trunc = library("std::trunc", "cmath"),
+        .floor = library("std::floor", "cmath"),
+        .fmod = library("std::fmod", "cmath"),
+        .to_string = library("std::to_string", "string"),
+        .pmr = {.memory_resource = library("std::pmr::memory_resource", "memory_resource"),
+                .get_default_resource =
+                    library("std::pmr::get_default_resource", "memory_resource")},
     };
 }
 auto CppTypes::strings() const -> Strings& {

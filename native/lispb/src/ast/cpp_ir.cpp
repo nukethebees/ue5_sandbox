@@ -263,6 +263,11 @@ auto CppIR::include(StringId path, IncludeStyle style) -> NodeId {
     return ir_detail::node(NodeKind::include, index);
 }
 
+auto CppIR::assertion(Expr condition) -> NodeId {
+    return expr_stmt(
+        call(named("assert", {types.dependency("assert", "cassert")}), {parenthesized(condition)}));
+}
+
 auto CppIR::include_dependencies() -> NodeId {
     return ir_detail::node(NodeKind::include_dependencies, 0);
 }

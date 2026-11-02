@@ -255,6 +255,8 @@
       (method static_assertion "NodeId"
         (parameter condition "Expr")
         (parameter message "StringId" :default "{}"))
+      (method assertion "NodeId"
+        (parameter condition "Expr"))
       (method access "NodeId"
         (parameter value "Access" :default "Access::public_")
         (parameter indentation "AccessIndentation" :default "AccessIndentation::outdented"))

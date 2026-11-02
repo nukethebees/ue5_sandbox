@@ -354,6 +354,8 @@ class CppIRBuilder {
         return ir_.static_assertion(condition, message);
     }
 
+    NodeId assertion(Expr condition) { return ir_.assertion(condition); }
+
     NodeId access(Access value = Access::public_,
                   AccessIndentation indentation = AccessIndentation::outdented) {
         return ir_.access(value, indentation);

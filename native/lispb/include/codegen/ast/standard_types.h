@@ -10,6 +10,7 @@ namespace lispb::codegen {
 struct StandardTypes {
     struct Pmr {
         CppTypeId memory_resource;
+        CppTypeId get_default_resource;
     };
 
     // Select the smallest fixed-width integer that holds the requested bits.
@@ -69,6 +70,25 @@ struct StandardTypes {
     CppTypeId is_same_v;
     CppTypeId is_floating_point_v;
     CppTypeId is_trivially_copyable_v;
+
+    // Functions and values use the same scope-aware symbol references as types.
+    CppTypeId forward;
+    CppTypeId move;
+    CppTypeId to_underlying;
+    CppTypeId unreachable;
+    CppTypeId abort;
+    CppTypeId get_if;
+    CppTypeId nullopt;
+    CppTypeId isnan;
+    CppTypeId isinf;
+    CppTypeId memcmp;
+    CppTypeId ldexp;
+    CppTypeId isfinite;
+    CppTypeId lerp;
+    CppTypeId trunc;
+    CppTypeId floor;
+    CppTypeId fmod;
+    CppTypeId to_string;
 
     Pmr pmr;
 };
