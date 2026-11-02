@@ -1000,7 +1000,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
             close("}");
             break;
         case NodeKind::if_stmt:
-            write_prefix("if (");
+            write_prefix(ir_.if_stmt_nodes_.is_constexpr[i] ? "if constexpr (" : "if (");
             expr(ir_.if_stmt_nodes_.condition[i]);
             output += ") {\n";
             scoped_nodes(ir_.if_stmt_nodes_.then_children[i]);

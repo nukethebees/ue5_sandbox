@@ -123,8 +123,10 @@ class CppIR {
     auto block(std::initializer_list<NodeId> children) -> BlockId {
         return block(std::span<NodeId const>{children});
     }
-    auto if_stmt(Expr condition, BlockId then_block, std::optional<BlockId> else_block = {})
-        -> NodeId;
+    auto if_stmt(Expr condition,
+                 BlockId then_block,
+                 std::optional<BlockId> else_block = {},
+                 bool is_constexpr = false) -> NodeId;
     // Require a variable declaration, assignment or expression statement as the initializer.
     auto for_stmt(NodeId initializer, Expr condition, Expr increment, BlockId body) -> NodeId;
     auto switch_case(std::optional<Expr> label, BlockId body, bool braced = true) -> SwitchCaseId;

@@ -12,6 +12,7 @@ struct IfStmts {
     std::vector<Expr> condition;
     std::vector<Range> then_children;
     std::vector<std::optional<Range>> else_children;
+    std::vector<bool> is_constexpr;
 };
 
 } // namespace lispb::codegen::ir

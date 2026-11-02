@@ -135,13 +135,16 @@ auto CppIR::block(std::span<NodeId const> children) -> BlockId {
     return BlockId{ir_detail::node(NodeKind::block, index).value};
 }
 
-auto CppIR::if_stmt(Expr condition, BlockId then_block, std::optional<BlockId> else_block)
-    -> NodeId {
+auto CppIR::if_stmt(Expr condition,
+                    BlockId then_block,
+                    std::optional<BlockId> else_block,
+                    bool is_constexpr) -> NodeId {
     auto const index{if_stmt_nodes_.condition.size()};
     if_stmt_nodes_.condition.push_back(condition);
     if_stmt_nodes_.then_children.push_back(block_nodes_.children[then_block.index()]);
     if_stmt_nodes_.else_children.push_back(
         else_block ? std::optional{block_nodes_.children[else_block->index()]} : std::nullopt);
+    if_stmt_nodes_.is_constexpr.push_back(is_constexpr);
     return ir_detail::node(NodeKind::if_stmt, index);
 }
 
@@ -672,7 +675,10 @@ void CppIR::clear() {
     clear(line_comment_nodes_.text);
     clear(block_comment_nodes_.text);
     clear(block_nodes_.children);
-    clear(if_stmt_nodes_.condition, if_stmt_nodes_.then_children, if_stmt_nodes_.else_children);
+    clear(if_stmt_nodes_.condition,
+          if_stmt_nodes_.then_children,
+          if_stmt_nodes_.else_children,
+          if_stmt_nodes_.is_constexpr);
     clear(switch_stmt_nodes_.condition, switch_stmt_nodes_.cases);
     clear(expr_stmt_nodes_.expr, expr_stmt_nodes_.dependencies);
     clear(return_stmt_nodes_.expr, return_stmt_nodes_.dependencies);

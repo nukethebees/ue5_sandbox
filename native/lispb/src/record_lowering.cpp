@@ -46,7 +46,7 @@ auto record_visitor(LoweringContext& context, DeclarationHandle record, std::str
     auto const fields{context.declarations.items(records.members[record])};
     std::vector<EnumValueId> values;
     std::vector<SwitchCaseId> cases;
-    std::string accessors;
+    Nodes accessors;
     auto const forwarded_visitor{ir.call(
         ir.template_id(ir.type_reference(ir.types.named(
                            "std::forward", {ir.types.dependency("std::forward", "utility")})),
@@ -55,11 +55,14 @@ auto record_visitor(LoweringContext& context, DeclarationHandle record, std::str
     for (auto const field : fields) {
         auto const member{members.name[members.index(field)]};
         values.push_back(ir.enumerator(member));
-        auto const id{"Field::" + context.text(member)};
-        accessors += std::format(
-            "if constexpr (Selected == {}) {{ return (self.{}); }}\n", id, context.text(member));
         auto const field_value{ir.type_reference(
             ir.types.decorate(ir.types.named("Field"), "", "::" + context.text(member)))};
+        accessors.push_back(ir.if_stmt(
+            ir.binary(BinaryOperator::equal, ir.named("Selected"), field_value),
+            ir.block(
+                {ir.return_stmt(ir.parenthesized(ir.member_access(ir.named("self"), member)))}),
+            {},
+            true));
         cases.push_back(ir.switch_case(field_value,
                                        ir.block({ir.return_stmt(ir.call(
                                            ir.template_id(ir.named("invoke_field"), {field_value}),
@@ -100,7 +103,7 @@ auto record_visitor(LoweringContext& context, DeclarationHandle record, std::str
     ir.set_function_parameters(accessor, {ir.parameter("Self&", fields.empty() ? "" : "self")});
     ir.function_flags(accessor).set_is_constexpr(true);
     ir.function_flags(accessor).set_define_in_header(true);
-    ir.set_function_body(accessor, fields.empty() ? Nodes{} : Nodes{ir.raw(accessors)});
+    ir.set_function_body(accessor, accessors);
     result.add(ir.header_function(accessor), 2);
 
     auto const invoke{ir.function("invoke_field", "void")};

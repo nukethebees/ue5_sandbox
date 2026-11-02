@@ -243,20 +243,33 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
         cpp.template_declaration({cpp.type_template_parameter(cpp.strings.intern("T"))}));
     cpp.set_function_parameters(
         expect_value, {cpp.parameter("T const", "actual"), cpp.parameter("T const", "expected")});
-    cpp.set_function_body(expect_value, {cpp.raw(R"(if constexpr (std::is_floating_point_v<T>) {
-    if (std::isnan(expected)) {
-        EXPECT_TRUE(std::isnan(actual));
-    } else if (std::isinf(expected)) {
-        EXPECT_EQ(actual, expected);
-    } else if constexpr (std::is_same_v<T, float>) {
-        EXPECT_FLOAT_EQ(actual, expected);
-    } else {
-        EXPECT_DOUBLE_EQ(actual, expected);
-    }
-} else {
-    EXPECT_EQ(actual, expected);
-}
-)")});
+    auto const actual{cpp.named("actual")};
+    auto const expected{cpp.named("expected")};
+    auto const value_type{cpp.type_reference(cpp.types.named("T"))};
+    auto const equal{cpp.expr_stmt(cpp.call(cpp.named("EXPECT_EQ"), {actual, expected}))};
+    auto const floating_equal{cpp.if_stmt(
+        cpp.template_id(cpp.type_reference(cpp.types.named("std::is_same_v")),
+                        {value_type, cpp.type_reference(cpp.types.intern("float"))}),
+        cpp.block({cpp.expr_stmt(cpp.call(cpp.named("EXPECT_FLOAT_EQ"), {actual, expected}))}),
+        cpp.block({cpp.expr_stmt(cpp.call(cpp.named("EXPECT_DOUBLE_EQ"), {actual, expected}))}),
+        true)};
+    auto const infinite{
+        cpp.if_stmt(cpp.call(cpp.type_reference(cpp.types.named("std::isinf")), {expected}),
+                    cpp.block({equal}),
+                    cpp.block({floating_equal}))};
+    auto const nan{
+        cpp.if_stmt(cpp.call(cpp.type_reference(cpp.types.named("std::isnan")), {expected}),
+                    cpp.block({cpp.expr_stmt(cpp.call(
+                        cpp.named("EXPECT_TRUE"),
+                        {cpp.call(cpp.type_reference(cpp.types.named("std::isnan")), {actual})}))}),
+                    cpp.block({infinite}))};
+    cpp.set_function_body(expect_value,
+                          {cpp.if_stmt(cpp.template_id(cpp.type_reference(cpp.types.named(
+                                                           "std::is_floating_point_v")),
+                                                       {value_type}),
+                                       cpp.block({nan}),
+                                       cpp.block({equal}),
+                                       true)});
     auto const expect_result{cpp.function("expect_result", "void")};
     cpp.function_flags(expect_result).set_define_in_header(true);
     cpp.set_function_template(
