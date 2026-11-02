@@ -3,6 +3,7 @@
 #include "declaration_emission.h"
 #include "lowering_context.h"
 #include "lowering_utils.h"
+#include <ioj/ascii.h>
 
 #include <codegen/ast/cpp_ir_builder.h>
 #include <codegen/ast/cpp_types.h>
@@ -61,9 +62,7 @@ class RecordReaderLowering : public CppIRBuilder {
         for (auto const field : fields) {
             auto const member{members.name[members.index(field)]};
             auto const key{field_name(ctx, field)};
-            if (key.empty() || !std::ranges::all_of(key, [](unsigned char c) {
-                    return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-';
-                })) {
+            if (key.empty() || !std::ranges::all_of(key, ioj::is_lowercase_symbol_character)) {
                 throw std::invalid_argument{
                     "S7 field names must contain lowercase letters, digits or hyphens"};
             }

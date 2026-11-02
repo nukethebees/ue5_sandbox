@@ -8,8 +8,7 @@
 namespace ioj::levels::authoring {
 auto is_canonical_symbol(std::string_view const value) -> bool {
     return !value.empty() && ioj::islower(value.front()) &&
-           std::ranges::all_of(
-               value, [](char const c) { return ioj::islower(c) || ioj::isdigit(c) || c == '-'; });
+           std::ranges::all_of(value, ioj::is_lowercase_symbol_character);
 }
 
 auto canonical_symbol(std::string_view const text, std::string_view const fallback) -> std::string {

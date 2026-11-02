@@ -1,5 +1,7 @@
 #include <codegen/sexpr/lexer.h>
 
+#include <ioj/ascii.h>
+
 #include <codegen/sexpr/indices.h>
 #include <codegen/sexpr/source_span.h>
 #include <codegen/sexpr/sources.h>
@@ -91,9 +93,6 @@ class Lexer {
     }
 
     static auto is_tag_start(char const value) -> bool { return value >= 'a' && value <= 'z'; }
-    static auto is_tag_character(char const value) -> bool {
-        return is_tag_start(value) || (value >= '0' && value <= '9') || value == '-';
-    }
 
     auto lex_raw_literal() -> bool {
         if (peek() != '#' || index_ + 1 >= length_ || !is_tag_start(peek_next())) {
@@ -101,7 +100,7 @@ class Lexer {
         }
 
         auto tag_end{index_ + 2};
-        while (tag_end < length_ && is_tag_character(source()[tag_end])) {
+        while (tag_end < length_ && ioj::is_lowercase_symbol_character(source()[tag_end])) {
             ++tag_end;
         }
         if (tag_end >= length_ || source()[tag_end] != '{') {

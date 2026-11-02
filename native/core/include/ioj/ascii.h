@@ -14,6 +14,9 @@ namespace ioj {
 [[nodiscard]] constexpr auto isdigit(char const value) noexcept -> bool {
     return value >= '0' && value <= '9';
 }
+[[nodiscard]] constexpr auto is_lowercase_symbol_character(char const value) noexcept -> bool {
+    return islower(value) || isdigit(value) || value == '-';
+}
 [[nodiscard]] constexpr auto isprint(char const value) noexcept -> bool {
     return value >= ' ' && value <= '~';
 }
