@@ -162,13 +162,6 @@ struct Sim {
     std::int32_t speed_sample_tick_period{1};
     std::vector<Vector2d> speed_samples;
   private:
-    PlayerSimulationState state_{};
-    PlayerSimulationState planned_state_{};
-    PlayerFlightIntent flight_intent_{};
-    Vector2d sampled_target_speed_scale_{};
-    bool sampling_target_speed_{};
-    FlightModelLoadout flight_models_{make_default_flight_model_loadout()};
-    FlightModelSlot active_flight_model_slot_{FlightModelSlot::First};
     /* **************************************** */
     // Tick phases
     /* **************************************** */
@@ -194,7 +187,6 @@ struct Sim {
     void update_laser_firing();
     void fire_laser();
     void materialize_fire_command(ActionInputs const inputs);
-    bool fire_requested_{};
     void fire_lasers_from(ActionInputs const inputs, std::span<Transform3d const> fire_points);
 
     /* **************************************** */
@@ -216,12 +208,20 @@ struct Sim {
     friend struct sim::LevelSim;
     friend struct sim::PlayerSimTestAccess;
 
-    PlayerSimConfig config{};
+    PlayerSimulationState state_{};
+    PlayerSimulationState planned_state_{};
+    PlayerFlightIntent flight_intent_{};
+    Vector2d sampled_target_speed_scale_{};
+    bool sampling_target_speed_{};
+    FlightModelLoadout flight_models_{make_default_flight_model_loadout()};
+    FlightModelSlot active_flight_model_slot_{FlightModelSlot::First};
+    bool fire_requested_{};
+    PlayerSimConfig config_{};
     EntityLedger& ledger_;
     EntityTables& entity_tables_;
     HealthTable& health_table_;
-    SimClock const& simulation_clock;
+    SimClock const& simulation_clock_;
     Health max_health_{1000};
-    bool death_notification_pending{false};
+    bool death_notification_pending_{false};
 };
 } // namespace ioj::sim::player

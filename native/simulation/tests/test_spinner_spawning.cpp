@@ -19,7 +19,7 @@ struct SpinnerSpawnTestAccess {
                       SpawnContext context) {
         simulation.spawn_instances(locations, yaws, fire_points, context);
     }
-    static auto entities(Sim& simulation) -> Sim::EntityStorage& { return simulation.entities; }
+    static auto entities(Sim& simulation) -> Sim::EntityStorage& { return simulation.entities_; }
     static void tick_cooldowns(Sim& simulation) { simulation.prepare_tick(0.f); }
     static void set_cooldown(Sim& simulation, std::int16_t const ticks) {
         simulation.cooldown_restart_ticks_ = NonNegative<std::int16_t>::make(ticks);
@@ -30,7 +30,7 @@ struct SpinnerSpawnTestAccess {
         simulation.apply_movement(inputs);
     }
     static auto cooldowns(Sim& simulation) -> TickCountdownView<std::int16_t> {
-        return {simulation.entities.view().laser_cooldowns(), simulation.cooldown_restart_ticks_};
+        return {simulation.entities_.view().laser_cooldowns(), simulation.cooldown_restart_ticks_};
     }
 };
 }

@@ -40,13 +40,13 @@ namespace ioj::sim::turrets {
 /* **************************************** */
 // Level initialisation
 void Sim::initialise(TurretSimConfig const& new_config, SimClock const& clock) {
-    config = new_config;
+    config_ = new_config;
 
     SANDBOX_PROFILE_SCOPE("turrets::Sim::initialise");
     profiling::plot("Sandbox/TurretCount", 0);
 
     cooldown_restart_ticks_ =
-        clock.duration_to_tick_period<std::int16_t>(Duration::make(config.laser.fire_cooldown));
+        clock.duration_to_tick_period<std::int16_t>(Duration::make(config_.laser.fire_cooldown));
     cooldown_cleaner_ = 0;
 }
 Sim::Sim(EntityTables& entity_tables) noexcept
@@ -67,11 +67,11 @@ auto Sim::register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data,
 
     std::int16_t const target_refresh_tick_period{
         context.clock.frequency_to_tick_period<std::int16_t>(
-            Frequency::make(config.target_refresh_frequency))};
+            Frequency::make(config_.target_refresh_frequency))};
 
-    auto const first_new_index{entities.num()};
-    entities.add_defaulted(n_to_add);
-    auto const entities{this->entities.view()};
+    auto const first_new_index{entities_.num()};
+    entities_.add_defaulted(n_to_add);
+    auto const entities{entities_.view()};
     auto const spawn_count{static_cast<std::size_t>(n_to_add)};
     auto const entities_locations{entities.view_locations().resolve()};
     auto const entities_fire_point_locations{entities.view_fire_point_locations().resolve()};
@@ -94,15 +94,15 @@ auto Sim::register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data,
         auto const index{first_new_index + local_index};
         auto const location{vector_at(spawn_data_locations, local_index)};
         set_vector(entities_locations, index, location);
-        set_vector(entities_fire_point_locations, index, location + config.fire_point_offset);
+        set_vector(entities_fire_point_locations, index, location + config_.fire_point_offset);
         entities_teams[index] = spawn_data_teams[local_index];
         entities_laser_damages[index] = spawn_data_laser_damages[local_index];
         entities_target_refresh_countdowns_periods[index] = target_refresh_tick_period;
         entities_target_refresh_countdowns_remaining_ticks[index] =
-            static_cast<std::int16_t>(target_refresh_next_offset);
-        ++target_refresh_next_offset;
-        if (target_refresh_next_offset == target_refresh_tick_period) {
-            target_refresh_next_offset = 0;
+            static_cast<std::int16_t>(target_refresh_next_offset_);
+        ++target_refresh_next_offset_;
+        if (target_refresh_next_offset_ == target_refresh_tick_period) {
+            target_refresh_next_offset_ = 0;
         }
     }
 
@@ -141,7 +141,7 @@ void Sim::handle_dead_entities(ResolutionCommitInputs const inputs) {
         return;
     }
 
-    auto const entities{this->entities.const_view()};
+    auto const entities{entities_.const_view()};
     auto const entity_ids{entities.entity_ids()};
 
     for (auto const index : inputs.local_indices_to_remove) {
@@ -150,7 +150,7 @@ void Sim::handle_dead_entities(ResolutionCommitInputs const inputs) {
     }
     entity_tables_.lookups.for_type(EntityType::Turret)
         .retire_rows(entity_ids, inputs.local_indices_to_remove);
-    this->entities.remove_at_swap(inputs.local_indices_to_remove);
+    entities_.remove_at_swap(inputs.local_indices_to_remove);
 }
 
 /* **************************************** */
@@ -158,13 +158,13 @@ void Sim::handle_dead_entities(ResolutionCommitInputs const inputs) {
 /* **************************************** */
 // Preparation
 void Sim::update_entity_lookup_table() {
-    auto const rows{entities.const_view()};
-    entity_tables_.publish<EntityType::Turret>(rows.entity_ids(), rows.teams(), config.max_health);
+    auto const rows{entities_.const_view()};
+    entity_tables_.publish<EntityType::Turret>(rows.entity_ids(), rows.teams(), config_.max_health);
 }
 void Sim::prepare_tick() {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::prepare_tick");
 
-    auto const entities{this->entities.view()};
+    auto const entities{entities_.view()};
     tick_countdowns<std::int16_t>(entities.laser_cooldowns(), cooldown_cleaner_, 16384);
     tick_periodic_countdowns<std::int16_t>(entities.target_refresh_countdowns_remaining_ticks());
     update_entity_lookup_table();
@@ -180,7 +180,7 @@ void Sim::think(ThinkingInputs const inputs) {
 void Sim::refresh_target_data(ThinkingInputs const inputs) {
     auto* const scratch_resource{&inputs.scratch_resource};
 
-    auto const entities{this->entities.view()};
+    auto const entities{entities_.view()};
     auto const count{entities.num()};
     auto const target_ids{entities.target_ids()};
     FrameArray<EntityInstanceHandle> targets{scratch_resource};
@@ -208,7 +208,7 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
 
     SANDBOX_PROFILE_SCOPE("turrets::Sim::resolve_damage_events");
 
-    auto const entities{this->entities.view()};
+    auto const entities{entities_.view()};
     auto const healths{entity_tables_.health.view<EntityType::Turret>()};
     sim::resolve_damage_events(inputs.combat_events.events_for(EntityType::Turret),
                                entity_tables_.lookups.for_type(EntityType::Turret),
@@ -251,7 +251,7 @@ void Sim::finish_action() {
 // Accessors
 /* **************************************** */
 auto Sim::num_instances() const noexcept -> std::uint32_t {
-    return entities.num();
+    return entities_.num();
 }
 
 /* **************************************** */
@@ -265,7 +265,7 @@ void Sim::perform_search(ThinkingInputs const inputs) {
         return;
     }
 
-    auto const radius{config.detection_radius};
+    auto const radius{config_.detection_radius};
 
     parallel_for(n_turrets,
                  [this, radius, inputs](std::uint32_t const begin, std::uint32_t const end) {
@@ -282,7 +282,7 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
     std::array<float, 128> candidate_ys;
     std::array<float, 128> candidate_zs;
     FixedArray<LineQueryResult, 128> has_line_of_sight;
-    auto const entities{this->entities.view()};
+    auto const entities{entities_.view()};
 
     PeriodicTickCountdownView<std::int16_t> const refresh_countdowns{
         entities.target_refresh_countdowns_remaining_ticks(),
@@ -372,7 +372,7 @@ void Sim::fire_at_enemies(ThinkingInputs const inputs) {
     starts.reserve(count);
     ends.reserve(count);
 
-    auto const entities{this->entities.view()};
+    auto const entities{entities_.view()};
     auto const disengage_radius{this->disengage_radius()};
     auto const disengage_radius_squared{disengage_radius * disengage_radius};
     auto cooldowns{
@@ -430,8 +430,8 @@ void Sim::fire_at_enemies(ThinkingInputs const inputs) {
     auto const damages{new_lasers.damages()};
     auto const laser_ids{new_lasers.instigator_ids()};
     auto const laser_sources{new_lasers.sources()};
-    std::ranges::fill(new_lasers.speeds(), config.laser.projectile_speed);
-    std::ranges::fill(new_lasers.max_distances(), config.laser.max_distance);
+    std::ranges::fill(new_lasers.speeds(), config_.laser.projectile_speed);
+    std::ranges::fill(new_lasers.max_distances(), config_.laser.max_distance);
 
     auto const target_velocities{entities.view_target_velocities().resolve()};
     auto const laser_damages{entities.laser_damages()};
@@ -446,7 +446,7 @@ void Sim::fire_at_enemies(ThinkingInputs const inputs) {
         auto const target_location{vector_at(target_locations, index)};
         auto const target_velocity{vector_at(target_velocities, index)};
         auto const intercept_time{solve_intercept_time(
-            location, target_location, target_velocity, config.laser.projectile_speed)};
+            location, target_location, target_velocity, config_.laser.projectile_speed)};
         auto const direction{native_math::safe_normal(
             target_location + target_velocity * intercept_time - location, 1.e-8f)};
         Rotator3f rotation{};
@@ -466,7 +466,7 @@ void Sim::fire_at_enemies(ThinkingInputs const inputs) {
     }
 }
 auto Sim::disengage_radius() const -> float {
-    return config.detection_radius * 1.2f;
+    return config_.detection_radius * 1.2f;
 }
 
 /* **************************************** */

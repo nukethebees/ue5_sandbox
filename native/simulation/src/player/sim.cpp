@@ -54,7 +54,7 @@ namespace ioj::sim::player {
 /* **************************************** */
 // Level initialisation
 void Sim::initialise(PlayerSpawnData const& spawn) {
-    config = spawn.config;
+    config_ = spawn.config;
     team = spawn.team;
 
     state_.physical.transform = spawn.transform;
@@ -76,7 +76,7 @@ void Sim::initialise(PlayerSpawnData const& spawn) {
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::initialise");
 
     state_.physical.velocity = Vector3d{};
-    state_.resources.thrust_energy = config.thrust_energy_max;
+    state_.resources.thrust_energy = config_.thrust_energy_max;
     reset_flight_model_controller(state_, active_flight_model_config());
 
     set_laser_mode(LaserFiringState::idle);
@@ -87,14 +87,14 @@ void Sim::initialise(PlayerSpawnData const& spawn) {
     planned_state_ = state_;
 }
 void Sim::set_config(PlayerSimConfig const& new_config) noexcept {
-    config = new_config;
+    config_ = new_config;
 }
 
 Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_tables)
     : ledger_{ledger}
     , entity_tables_{entity_tables}
     , health_table_{entity_tables.health}
-    , simulation_clock{clock} {}
+    , simulation_clock_{clock} {}
 
 /* **************************************** */
 // Tick phases
@@ -208,18 +208,18 @@ void Sim::set_team(Team const new_team) noexcept {
 void Sim::update_body_orientation(float const dt, PlayerSimulationState& state) {
     auto& presentation{state.presentation};
     auto const current_rotation{presentation.body_transform.rotator()};
-    auto const target_pitch{flight_intent_.rotation.x() * config.pitch_angle_max};
+    auto const target_pitch{flight_intent_.rotation.x() * config_.pitch_angle_max};
     auto const new_pitch{player_movement::interpolate_to(
-        current_rotation.pitch, target_pitch, dt, config.pitch_speed)};
+        current_rotation.pitch, target_pitch, dt, config_.pitch_speed)};
 
-    auto const target_yaw{flight_intent_.rotation.y() * config.yaw_angle_max};
+    auto const target_yaw{flight_intent_.rotation.y() * config_.yaw_angle_max};
     auto const new_yaw{
-        player_movement::interpolate_to(current_rotation.yaw, target_yaw, dt, config.yaw_speed)};
+        player_movement::interpolate_to(current_rotation.yaw, target_yaw, dt, config_.yaw_speed)};
 
-    auto const turn_target{flight_intent_.rotation.y() * config.turn_bank_angle_max};
-    auto const turn_speed{flight_intent_.rotation.y() * config.turn_bank_speed};
+    auto const turn_target{flight_intent_.rotation.y() * config_.turn_bank_angle_max};
+    auto const turn_speed{flight_intent_.rotation.y() * config_.turn_bank_speed};
     auto const roll_speed{
-        std::max(static_cast<double>(config.turn_bank_speed), std::abs(turn_speed))};
+        std::max(static_cast<double>(config_.turn_bank_speed), std::abs(turn_speed))};
     auto const new_roll{
         player_movement::interpolate_to(current_rotation.roll, turn_target, dt, roll_speed)};
     presentation.body_transform.rotation = to_quaternion(Rotator3d{new_pitch, new_yaw, new_roll});
@@ -245,10 +245,10 @@ void Sim::update_boost_brake(float const dt, PlayerSimulationState& state) {
             energy_change = -model.emergency_brake.energy_drain_per_second;
             break;
     }
-    resources.thrust_change_rate = energy_change * config.thrust_energy_max;
+    resources.thrust_change_rate = energy_change * config_.thrust_energy_max;
     resources.thrust_energy += dt * resources.thrust_change_rate;
     resources.thrust_energy =
-        std::clamp<float>(resources.thrust_energy, 0.f, config.thrust_energy_max);
+        std::clamp<float>(resources.thrust_energy, 0.f, config_.thrust_energy_max);
     if (resources.thrust_energy <= 0.f) {
         refresh_effective_action(state);
     }
@@ -446,7 +446,7 @@ void Sim::update_laser_firing() {
         case LaserFiringState::burst: {
             if (cooldown_finished) {
                 fire_laser();
-                laser_shot_cooldown = config.laser.fire_cooldown;
+                laser_shot_cooldown = config_.laser.fire_cooldown;
 
                 if (lasers_fired_this_burst >= lasers_per_burst) {
                     set_laser_mode(LaserFiringState::idle);
@@ -470,7 +470,7 @@ void Sim::stop_fire_laser() {
 void Sim::fire_laser() {
     fire_requested_ = true;
     ++lasers_fired_this_burst;
-    laser_shot_cooldown = config.laser.fire_cooldown;
+    laser_shot_cooldown = config_.laser.fire_cooldown;
 }
 
 void Sim::materialize_fire_command(ActionInputs const inputs) {
@@ -509,9 +509,9 @@ void Sim::fire_lasers_from(ActionInputs const inputs,
         set_vector(base_velocities, i, Vector3f{state_.physical.velocity});
     }
 
-    std::ranges::fill(laser_columns.damages(), config.laser.damage);
-    std::ranges::fill(laser_columns.speeds(), config.laser.projectile_speed);
-    std::ranges::fill(laser_columns.max_distances(), config.laser.max_distance);
+    std::ranges::fill(laser_columns.damages(), config_.laser.damage);
+    std::ranges::fill(laser_columns.speeds(), config_.laser.projectile_speed);
+    std::ranges::fill(laser_columns.max_distances(), config_.laser.max_distance);
     std::ranges::fill(laser_columns.sources(), LaserSource{team, EntityType::PlayerShip});
     std::ranges::fill(laser_columns.instigator_ids(), unique_entity_id);
 }
@@ -598,12 +598,12 @@ void Sim::die(EntityId const killer) {
     row.killers()[0] = killer;
     row.reasons()[0] = reason;
     row.locations()[0] = Vector3f{state_.physical.transform.location};
-    ledger_.record_deaths(deaths.const_view(), simulation_clock.get_completed_ticks());
-    death_notification_pending = true;
+    ledger_.record_deaths(deaths.const_view(), simulation_clock_.get_completed_ticks());
+    death_notification_pending_ = true;
 }
 
 auto Sim::consume_death_notification() noexcept -> bool {
-    return std::exchange(death_notification_pending, false);
+    return std::exchange(death_notification_pending_, false);
 }
 
 auto Sim::kills() const -> std::int32_t {
@@ -615,11 +615,11 @@ auto Sim::speed() const noexcept -> float {
 }
 
 auto Sim::energy_is_full() const -> bool {
-    return state_.resources.thrust_energy == config.thrust_energy_max;
+    return state_.resources.thrust_energy == config_.thrust_energy_max;
 }
 
 auto Sim::energy() const -> float {
-    return state_.resources.thrust_energy / config.thrust_energy_max;
+    return state_.resources.thrust_energy / config_.thrust_energy_max;
 }
 
 auto Sim::get_middle_socket() const -> Transform3d {
@@ -627,14 +627,14 @@ auto Sim::get_middle_socket() const -> Transform3d {
 }
 
 auto Sim::laser_effective_range() const noexcept -> float {
-    return config.laser.max_distance;
+    return config_.laser.max_distance;
 }
 
 /* **************************************** */
 // Diagnostics
 /* **************************************** */
 void Sim::sample_speed() {
-    speed_samples[speed_sample_index] = {std::clamp(simulation_clock.simulation_time(), 0.0, 1e9),
+    speed_samples[speed_sample_index] = {std::clamp(simulation_clock_.simulation_time(), 0.0, 1e9),
                                          std::clamp(size(state_.physical.velocity), 0.0, 100e3)};
     ++speed_sample_index;
     if (speed_sample_index >= speed_sample_max) {
@@ -646,9 +646,9 @@ void Sim::configure_speed_sampling() {
     static constexpr double sample_rate_hz{60.0};
     static constexpr double sample_window_seconds{5.0};
     std::int32_t const sample_tick_period{
-        simulation_clock.frequency_to_tick_period<std::int32_t>(Frequency::make(sample_rate_hz))};
+        simulation_clock_.frequency_to_tick_period<std::int32_t>(Frequency::make(sample_rate_hz))};
     SimTick const sample_window_ticks{
-        simulation_clock.duration_to_tick_period(Duration::make(sample_window_seconds))};
+        simulation_clock_.duration_to_tick_period(Duration::make(sample_window_seconds))};
 
     auto const sample_count{(sample_window_ticks.value() + sample_tick_period - 1) /
                             sample_tick_period};

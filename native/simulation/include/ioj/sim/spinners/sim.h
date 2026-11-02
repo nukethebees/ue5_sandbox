@@ -35,7 +35,7 @@ struct Sim {
     /* **************************************** */
     // Configuration
     /* **************************************** */
-    auto get_entities() const -> EntityStorage::ConstView { return entities.const_view(); }
+    auto get_entities() const -> EntityStorage::ConstView { return entities_.const_view(); }
 
     /* **************************************** */
     // Accessors
@@ -72,10 +72,10 @@ struct Sim {
     friend struct SpinnerSpawnTestAccess;
 
     float planned_yaw_delta_{};
-    SpinnerSimConfig config{};
+    SpinnerSimConfig config_{};
     NonNegative<std::int16_t> cooldown_restart_ticks_{};
     std::int16_t cooldown_cleaner_{};
     EntityTables& entity_tables_;
-    EntityStorage entities{};
+    EntityStorage entities_{};
 };
 } // namespace ioj::sim::spinners

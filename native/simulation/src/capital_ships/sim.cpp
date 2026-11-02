@@ -34,7 +34,7 @@ Sim::Sim(EntityTables& entity_tables)
 /* **************************************** */
 // Preparation
 void Sim::update_entity_lookup_table() {
-    auto const rows{entities.const_view()};
+    auto const rows{entities_.const_view()};
     entity_tables_.publish<EntityType::CapitalShip>(rows.entity_ids(), rows.teams(), max_health_);
 }
 void Sim::prepare_tick() {
@@ -47,7 +47,7 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
     auto* const scratch_resource{&inputs.scratch_resource};
 
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::resolve_damage_events");
-    auto const entities{this->entities.view()};
+    auto const entities{entities_.view()};
     auto const healths{entity_tables_.health.view<EntityType::CapitalShip>()};
     sim::resolve_damage_events(inputs.combat_events.events_for(EntityType::CapitalShip),
                                entity_tables_.lookups.for_type(EntityType::CapitalShip),
@@ -85,7 +85,7 @@ void Sim::finish_action() {
 // Accessors
 /* **************************************** */
 auto Sim::num_instances() const noexcept -> std::uint32_t {
-    return entities.num();
+    return entities_.num();
 }
 
 /* **************************************** */
@@ -99,18 +99,18 @@ auto Sim::register_ships(LevelCapitalSpawnEvents::ConstView const spawn_data,
         return {};
     }
 
-    auto const first_new_index{entities.num()};
+    auto const first_new_index{entities_.num()};
     spawn_ships(spawn_data);
 
     auto const spawn_teams{spawn_data.teams()};
     auto const spawn_healths{spawn_data.healths()};
-    auto const new_entity_ids{entities.right(n_to_add).entity_ids()};
+    auto const new_entity_ids{entities_.right(n_to_add).entity_ids()};
     context.ledger.record_spawns(
         EntityType::CapitalShip, spawn_teams, spawn_healths, new_entity_ids);
     std::vector<EntityId> new_ids{new_entity_ids.begin(), new_entity_ids.end()};
     entity_tables_.health.initialise_entities<EntityType::CapitalShip>(new_entity_ids,
                                                                        spawn_healths);
-    auto const entities{this->entities.const_view()};
+    auto const entities{entities_.const_view()};
     auto const locations{entities.view_locations().resolve()};
     auto const rotations{entities.view_rotations().resolve()};
     auto const teams{entities.teams()};
@@ -132,8 +132,8 @@ void Sim::spawn_ships(LevelCapitalSpawnEvents::ConstView const spawn_data) {
     spawn_data.validate();
     auto const n_to_add{spawn_data.num()};
 
-    entities.add_defaulted(n_to_add);
-    auto const appended{entities.right(n_to_add)};
+    entities_.add_defaulted(n_to_add);
+    auto const appended{entities_.right(n_to_add)};
     auto const appended_locations{appended.view_locations().resolve()};
     auto const appended_rotations{appended.view_rotations().resolve()};
     auto const appended_teams{appended.teams()};
@@ -158,7 +158,7 @@ void Sim::handle_dead_entities(ResolutionCommitInputs const inputs) {
         return;
     }
 
-    auto const entities{this->entities.const_view()};
+    auto const entities{entities_.const_view()};
     auto const entity_ids{entities.entity_ids()};
 
     for (auto const index : inputs.local_indices_to_remove) {
@@ -168,7 +168,7 @@ void Sim::handle_dead_entities(ResolutionCommitInputs const inputs) {
 
     entity_tables_.lookups.for_type(EntityType::CapitalShip)
         .retire_rows(entity_ids, inputs.local_indices_to_remove);
-    this->entities.remove_at_swap(inputs.local_indices_to_remove);
+    entities_.remove_at_swap(inputs.local_indices_to_remove);
 }
 
 } // namespace capital_ships

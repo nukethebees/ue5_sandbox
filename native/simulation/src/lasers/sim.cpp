@@ -29,17 +29,17 @@ namespace ioj::sim::lasers {
 /* **************************************** */
 // Level initialisation
 void Sim::initialise(LaserSimConfig const& new_config) {
-    config = new_config;
+    config_ = new_config;
 
     SANDBOX_PROFILE_SCOPE("lasers::Sim::initialise");
     profiling::plot("Sandbox/LaserCount", 0);
 
-    number_spawned = 0;
+    number_spawned_ = 0;
     preallocate_instances();
 }
 auto Sim::append_spawn_requests(std::uint32_t const count) -> LaserSpawnRequests::View {
-    pending_spawns.add_uninitialised(count);
-    return pending_spawns.right(count);
+    pending_spawns_.add_uninitialised(count);
+    return pending_spawns_.right(count);
 }
 
 // Preparation
@@ -77,7 +77,7 @@ void Sim::finish_action() {
 
 auto Sim::num_instances() const noexcept -> std::uint32_t {
     return static_cast<std::uint32_t>(
-        std::ranges::count(entities.const_view().active(), std::uint8_t{1}));
+        std::ranges::count(entities_.const_view().active(), std::uint8_t{1}));
 }
 
 /* **************************************** */
@@ -85,25 +85,25 @@ auto Sim::num_instances() const noexcept -> std::uint32_t {
 /* **************************************** */
 
 void Sim::preallocate_instances() {
-    entities.reserve(config.n_preallocated_instances);
+    entities_.reserve(config_.n_preallocated_instances);
 }
 
 void Sim::process_pending_spawns(PreparationInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("lasers::Sim::process_pending_spawns");
 
-    pending_spawns.const_view().validate();
-    auto const n_to_add{pending_spawns.num()};
-    inputs.combat_events.record_shots(pending_spawns.const_view().instigator_ids());
+    pending_spawns_.const_view().validate();
+    auto const n_to_add{pending_spawns_.num()};
+    inputs.combat_events.record_shots(pending_spawns_.const_view().instigator_ids());
 
     if (n_to_add <= 0) {
         return;
     }
 
-    auto const requests{pending_spawns.const_view()};
+    auto const requests{pending_spawns_.const_view()};
     auto const simulation_time{static_cast<float>(inputs.clock.simulation_time())};
     constexpr float fixed_spawn_offset{10.f};
-    entities.add_uninitialised(n_to_add);
-    auto const output{entities.view().right(n_to_add)};
+    entities_.add_uninitialised(n_to_add);
+    auto const output{entities_.view().right(n_to_add)};
     auto const output_active{output.active()};
     auto const output_locations{output.view_locations().resolve()};
     auto const output_rotations{output.view_rotations().resolve()};
@@ -151,14 +151,14 @@ void Sim::process_pending_spawns(PreparationInputs const inputs) {
         output_spawn_times[spawn_index] = simulation_time;
     }
 
-    number_spawned += n_to_add;
+    number_spawned_ += n_to_add;
 }
 
 /* **************************************** */
 // Movement and collision
 /* **************************************** */
 void Sim::expire_instances(float const dt, std::pmr::vector<LaserIndex>& pending_removals) {
-    auto const entities{this->entities.view()};
+    auto const entities{entities_.view()};
     auto const lifetimes{entities.lifetimes_remaining()};
     auto const active{entities.active()};
 
@@ -174,7 +174,7 @@ void Sim::expire_instances(float const dt, std::pmr::vector<LaserIndex>& pending
     }
 }
 void Sim::update_locations(float const dt) {
-    auto const entities{this->entities.view()};
+    auto const entities{entities_.view()};
     auto const count{entities.num()};
     auto const active{entities.active()};
     auto const lifetimes{entities.lifetimes_remaining()};
@@ -196,7 +196,7 @@ void Sim::handle_collisions(ActionInputs const inputs) {
 
     SANDBOX_PROFILE_SCOPE("lasers::Sim::handle_collisions");
 
-    auto const n{entities.num()};
+    auto const n{entities_.num()};
     if (n < 1) {
         return;
     }
@@ -207,7 +207,7 @@ void Sim::handle_collisions(ActionInputs const inputs) {
     hit_storage.set_num(n);
     auto const trace_ends{end_storage.view().resolve()};
     auto const trace_results{hit_storage.view()};
-    auto const entities{this->entities.const_view()};
+    auto const entities{entities_.const_view()};
     auto const locations{entities.view_locations().const_view().resolve()};
     auto const velocities{entities.view_velocities().const_view().resolve()};
     auto const active_rows{entities.active()};
@@ -250,7 +250,7 @@ void Sim::handle_collisions(ActionInputs const inputs) {
     auto const damages{entities.damages()};
     auto const sources{entities.sources()};
 
-    auto const active{this->entities.view().active()};
+    auto const active{entities_.view().active()};
 
     constexpr float safe_normal_tolerance{1.e-8f};
     for (std::uint32_t entity_index{}; entity_index < n; ++entity_index) {
@@ -288,7 +288,7 @@ void Sim::handle_collisions(ActionInputs const inputs) {
 void Sim::remove_instances(std::span<LaserIndex const> const indices) {
     assert(std::ranges::is_sorted(indices, std::greater{}));
     for (auto const index : indices) {
-        entities.remove_at_swap(index, 1);
+        entities_.remove_at_swap(index, 1);
     }
 }
 
@@ -296,7 +296,7 @@ void Sim::remove_instances(std::span<LaserIndex const> const indices) {
 // Buffer cleanup and validation
 /* **************************************** */
 void Sim::clear_spawn_buffers() {
-    pending_spawns.reset();
+    pending_spawns_.reset();
 }
 
 } // namespace lasers

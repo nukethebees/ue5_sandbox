@@ -32,7 +32,7 @@ struct Sim {
     auto operator=(Sim const&) -> Sim& = delete;
     auto operator=(Sim&&) -> Sim& = delete;
 
-    auto get_entities() const -> EntityStorage::ConstView { return entities.const_view(); }
+    auto get_entities() const -> EntityStorage::ConstView { return entities_.const_view(); }
     auto hits() const -> LaserHitDetails::ConstView { return frame_output_.hits.const_view(); }
     auto hit_ticks() const -> std::span<SimTick const> { return frame_output_.hit_ticks; }
     auto hit_ordinals() const -> std::span<std::int32_t const> {
@@ -40,7 +40,7 @@ struct Sim {
     }
     void reset_frame_output() { frame_output_.reset(); }
     auto num_instances() const noexcept -> std::uint32_t;
-    auto get_number_spawned() const noexcept -> std::uint32_t { return number_spawned; }
+    auto get_number_spawned() const noexcept -> std::uint32_t { return number_spawned_; }
 
     /* **************************************** */
     // Spawning and configuration
@@ -79,13 +79,10 @@ struct Sim {
 
     friend class PhaseInterface;
 
-    LaserSimConfig config{};
-
-    EntityStorage entities;
-    SpawnRequestStorage pending_spawns;
-
+    LaserSimConfig config_{};
+    EntityStorage entities_;
+    SpawnRequestStorage pending_spawns_;
     FrameOutput frame_output_;
-
-    std::uint32_t number_spawned{0};
+    std::uint32_t number_spawned_{0};
 };
 } // namespace ioj::sim::lasers

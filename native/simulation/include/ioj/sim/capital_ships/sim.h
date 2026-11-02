@@ -34,7 +34,7 @@ struct Sim {
     /* **************************************** */
     // Configuration
     /* **************************************** */
-    auto get_entities() const -> EntityStorage::ConstView { return entities.const_view(); }
+    auto get_entities() const -> EntityStorage::ConstView { return entities_.const_view(); }
     auto healths() const -> HealthConstView {
         return entity_tables_.health.const_view<EntityType::CapitalShip>();
     }
@@ -76,8 +76,7 @@ struct Sim {
 
     settings::PositiveHealth max_health_{Health{5000}};
     EntityTables& entity_tables_;
-
-    EntityStorage entities{};
+    EntityStorage entities_{};
     std::vector<EntityFrameChange> frame_changes_;
 };
 } // namespace ioj::sim::capital_ships

@@ -42,8 +42,8 @@ namespace ioj::sim::fighters {
 /* **************************************** */
 auto Sim::navigation_tick_period(NavigationRiskTier const tier) const -> std::int16_t {
     auto const index{static_cast<std::uint32_t>(tier)};
-    assert(index < navigation_tick_periods.size());
-    return navigation_tick_periods[index];
+    assert(index < navigation_tick_periods_.size());
+    return navigation_tick_periods_[index];
 }
 
 /* **************************************** */
@@ -51,23 +51,23 @@ auto Sim::navigation_tick_period(NavigationRiskTier const tier) const -> std::in
 /* **************************************** */
 // Level initialisation
 void Sim::initialise(FighterSimConfig const& new_config, FighterLevelData const level_data) {
-    config = new_config;
+    config_ = new_config;
     auto const& clock{level_data.clock};
 
-    for (auto& is_participant : participant_mask) {
+    for (auto& is_participant : participant_mask_) {
         is_participant = 0;
     }
     for (auto const team : level_data.participating_teams) {
         auto const team_index{static_cast<std::uint32_t>(team)};
-        if (team_index < participant_mask.size()) {
-            participant_mask[team_index] = 1;
+        if (team_index < participant_mask_.size()) {
+            participant_mask_[team_index] = 1;
         }
     }
 
     assert(std::in_range<std::uint32_t>(level_data.participating_teams.size()));
     auto const participant_count{static_cast<std::uint32_t>(level_data.participating_teams.size())};
-    per_team_limit =
-        participant_count == 0 ? 0 : config.max_live_fighters.get() / participant_count;
+    per_team_limit_ =
+        participant_count == 0 ? 0 : config_.max_live_fighters.get() / participant_count;
 
     SANDBOX_PROFILE_SCOPE("fighters::Sim::initialise");
     profiling::plot("Sandbox/FighterCount", 0);
@@ -83,28 +83,28 @@ void Sim::initialise(FighterSimConfig const& new_config, FighterLevelData const 
     profiling::plot("Sandbox/FighterNavigationActive", 0);
     profiling::plot("Sandbox/FighterNavigationImmediate", 0);
     attack_cleaner_ = 0;
-    assert(config.fire_point_distance >= 0.f);
+    assert(config_.fire_point_distance >= 0.f);
 
     std::array<float, enum_count<NavigationRiskTier>()> const frequencies{
-        config.avoidance_clear_update_frequency,
-        config.avoidance_update_frequency,
-        config.avoidance_active_update_frequency,
-        config.avoidance_immediate_update_frequency,
+        config_.avoidance_clear_update_frequency,
+        config_.avoidance_update_frequency,
+        config_.avoidance_active_update_frequency,
+        config_.avoidance_immediate_update_frequency,
     };
     auto const frequency_count{frequencies.size()};
     for (std::uint32_t i{}; static_cast<std::size_t>(i) < frequency_count; ++i) {
-        navigation_tick_periods[i] =
+        navigation_tick_periods_[i] =
             clock.frequency_to_tick_period<std::int16_t>(Frequency::make(frequencies[i]));
     }
     auto const clear_update_interval{static_cast<float>(
         navigation_tick_period(NavigationRiskTier::Clear) * clock.tick_period())};
-    minimum_navigation_lookahead_time = clear_update_interval * 1.25f;
+    minimum_navigation_lookahead_time_ = clear_update_interval * 1.25f;
 
     attack_restart_ticks_ =
-        clock.duration_to_tick_period<std::int16_t>(Duration::make(config.laser.fire_cooldown));
+        clock.duration_to_tick_period<std::int16_t>(Duration::make(config_.laser.fire_cooldown));
 
-    attack_retry_cooldown_tick_value =
-        clock.duration_to_tick_period<std::int16_t>(Duration::make(config.attack_retry_cooldown));
+    attack_retry_cooldown_tick_value_ =
+        clock.duration_to_tick_period<std::int16_t>(Duration::make(config_.attack_retry_cooldown));
 }
 Sim::Sim(EntityTables& entity_tables) noexcept
     : entity_tables_{entity_tables} {}
@@ -118,9 +118,9 @@ void Sim::commit_spawns(PreparationInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::commit_spawns");
 
     auto const n_cur{num_instances()};
-    auto const n_new{spawn_queue.num()};
+    auto const n_new{spawn_queue_.num()};
 
-    spawn_queue.const_view().validate();
+    spawn_queue_.const_view().validate();
     if (n_new < 1) {
         return;
     }
@@ -128,12 +128,12 @@ void Sim::commit_spawns(PreparationInputs const inputs) {
     entities_.add_defaulted(n_new);
     auto const data{entities_.view()};
     auto const new_data{data.view(n_cur, n_new)};
-    auto const spawns{spawn_queue.const_view()};
+    auto const spawns{spawn_queue_.const_view()};
     auto const navigation_period{navigation_tick_period(NavigationRiskTier::Nearby)};
     copy_vectors(new_data.view_locations().resolve(), spawns.view_locations().resolve());
     copy_vectors(new_data.view_desired_move_locations().resolve(),
                  spawns.view_locations().resolve());
-    std::ranges::fill(new_data.speeds(), config.speed);
+    std::ranges::fill(new_data.speeds(), config_.speed);
     std::ranges::copy(spawns.teams(), new_data.teams().begin());
     std::ranges::fill(new_data.navigation_risk_tiers(),
                       NavigationRiskCode{
@@ -155,8 +155,8 @@ void Sim::commit_spawns(PreparationInputs const inputs) {
 
     auto const entity_ids{new_data.entity_ids()};
     auto const teams{new_data.teams()};
-    inputs.ledger.record_spawns(EntityType::Fighter, teams, config.health, entity_ids);
-    entity_tables_.health.initialise_entities<EntityType::Fighter>(entity_ids, config.health);
+    inputs.ledger.record_spawns(EntityType::Fighter, teams, config_.health, entity_ids);
+    entity_tables_.health.initialise_entities<EntityType::Fighter>(entity_ids, config_.health);
     make_deterministic_biases(
         std::span<EntityId const>{data.entity_ids()}.subspan(n_cur, n_new),
         std::span<std::uint32_t>{data.integral_biases()}.subspan(n_cur, n_new),
@@ -164,23 +164,23 @@ void Sim::commit_spawns(PreparationInputs const inputs) {
 }
 void Sim::update_entity_lookup_table() {
     auto const rows{entities_.const_view()};
-    entity_tables_.publish<EntityType::Fighter>(rows.entity_ids(), rows.teams(), config.health);
+    entity_tables_.publish<EntityType::Fighter>(rows.entity_ids(), rows.teams(), config_.health);
 }
 void Sim::prepare_tick() {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::prepare_tick");
 
     auto const data{entities_.view()};
     tick_periodic_countdowns<std::int16_t>(data.navigation_update_countdowns_remaining_ticks());
-    spawn_queue.reset();
+    spawn_queue_.reset();
 
-    for (auto& capacity : remaining_team_capacity) {
-        capacity = per_team_limit;
+    for (auto& capacity : remaining_team_capacity_) {
+        capacity = per_team_limit_;
     }
     for (auto const team : data.teams()) {
         auto const team_index{static_cast<std::uint32_t>(team)};
-        if (team_index < participant_mask.size() && participant_mask[team_index] != 0) {
-            remaining_team_capacity[team_index] =
-                std::max(0, remaining_team_capacity[team_index] - 1);
+        if (team_index < participant_mask_.size() && participant_mask_[team_index] != 0) {
+            remaining_team_capacity_[team_index] =
+                std::max(0, remaining_team_capacity_[team_index] - 1);
         } else {
             log_error(
                 std::format("Live fighter has invalid or non-participating team {}", team_index));
@@ -228,10 +228,10 @@ void Sim::plan_movement(ThinkingInputs const inputs) {
         locations,
         target_locations,
         target_velocities,
-        config.laser.projectile_speed);
+        config_.laser.projectile_speed);
 
     auto const dt{static_cast<float>(inputs.clock.tick_period())};
-    auto const turn_fraction{std::min(1.f, config.turn_speed_unitless * dt)};
+    auto const turn_fraction{std::min(1.f, config_.turn_speed_unitless * dt)};
     auto const target_ids{data.target_ids()};
     auto const choices{data.avoidance_choice_indices()};
     auto const aim_directions{data.view_aim_directions().resolve()};
@@ -310,9 +310,9 @@ void Sim::apply_movement(ActionInputs const inputs) {
     auto const laser_velocities{requests.view_base_velocities().resolve()};
     auto const laser_ids{requests.instigator_ids()};
     auto const laser_sources{requests.sources()};
-    std::ranges::fill(requests.damages(), config.laser.damage);
-    std::ranges::fill(requests.speeds(), config.laser.projectile_speed);
-    std::ranges::fill(requests.max_distances(), config.laser.max_distance);
+    std::ranges::fill(requests.damages(), config_.laser.damage);
+    std::ranges::fill(requests.speeds(), config_.laser.projectile_speed);
+    std::ranges::fill(requests.max_distances(), config_.laser.max_distance);
 
     auto const locations{data.view_locations().resolve()};
     auto const velocities{data.view_velocities().resolve()};
@@ -323,7 +323,7 @@ void Sim::apply_movement(ActionInputs const inputs) {
         auto const direction{vector_at(aim_directions, index)};
         set_vector(laser_locations,
                    row,
-                   vector_at(locations, index) + direction * config.fire_point_distance);
+                   vector_at(locations, index) + direction * config_.fire_point_distance);
         set_rotation(laser_rotations, row, direction_to_rotation(direction));
         set_vector(laser_velocities, row, vector_at(velocities, index));
         laser_ids[row] = entity_ids[index];
@@ -425,14 +425,14 @@ void Sim::update_navigation_steering(ThinkingInputs const inputs) {
 
     SANDBOX_PROFILE_SCOPE("fighters::Sim::update_navigation_steering");
 
-    auto const clearance{inputs.collision_radius + config.avoidance_clearance_buffer};
+    auto const clearance{inputs.collision_radius + config_.avoidance_clearance_buffer};
     auto const minimum_lookahead_distance{inputs.collision_radius * 2.f};
     auto const avoidance_lookahead_time{
-        std::max(config.avoidance_lookahead_time.get(), minimum_navigation_lookahead_time)};
+        std::max(config_.avoidance_lookahead_time.get(), minimum_navigation_lookahead_time_)};
     auto const active_update_interval{static_cast<float>(
         navigation_tick_period(NavigationRiskTier::Active) * inputs.clock.tick_period())};
     auto const safe_progress_time{active_update_interval * 1.25f};
-    navigation_telemetry = {};
+    navigation_telemetry_ = {};
     NavigationScratch scratch{scratch_resource};
 
     // Only expired countdowns observe the world. Held steering is applied to every mover.
@@ -483,11 +483,11 @@ void Sim::update_separation_observations(NavigationScratch& scratch, ThinkingInp
 
     auto const data{entities_.view()};
     // Fixed capacity bounds scoring work and keeps neighbour storage off the heap.
-    std::array<EntityId, max_separation_neighbours> nearby_fighters;
-    std::array<SeparationNeighbour, max_separation_neighbours> neighbours;
-    std::array<EntityInstanceHandle, max_separation_neighbours> nearby_handles;
+    std::array<EntityId, max_separation_neighbours_> nearby_fighters;
+    std::array<SeparationNeighbour, max_separation_neighbours_> neighbours;
+    std::array<EntityInstanceHandle, max_separation_neighbours_> nearby_handles;
     auto const& fighter_lookup{entity_tables_.lookups.for_type(EntityType::Fighter)};
-    auto const separation_radius{config.separation_radius};
+    auto const separation_radius{config_.separation_radius};
     auto const immediate_distance{inputs.collision_radius * 2.f};
     auto const close_distance{std::max(separation_radius * 0.5f, immediate_distance)};
     auto const immediate_distance_sq{immediate_distance * immediate_distance};
@@ -525,8 +525,8 @@ void Sim::update_separation_observations(NavigationScratch& scratch, ThinkingInp
                                                                            fighter_id,
                                                                            nearby_fighters,
                                                                            scratch_resource)};
-        ++navigation_telemetry.separation_query_count;
-        navigation_telemetry.separation_candidate_count += n_nearby;
+        ++navigation_telemetry_.separation_query_count;
+        navigation_telemetry_.separation_candidate_count += n_nearby;
 
         // Bind the varying result count returned by this fighter's scan.
         // NOLINTBEGIN(ioj-loop-view-construction,ioj-loop-view-accessor-call)
@@ -543,9 +543,9 @@ void Sim::update_separation_observations(NavigationScratch& scratch, ThinkingInp
         auto const elapsed_since_scan{static_cast<float>(navigation_tick_period(current_tier)) *
                                       inputs.clock.tick_period()};
         auto const memory_retention{
-            config.steering_memory_duration > 0.f
+            config_.steering_memory_duration > 0.f
                 ? static_cast<float>(std::clamp(
-                      1.0 - elapsed_since_scan / config.steering_memory_duration, 0.0, 1.0))
+                      1.0 - elapsed_since_scan / config_.steering_memory_duration, 0.0, 1.0))
                 : 0.f};
         auto const observation{fighters::observe_separation(
             fighter_location,
@@ -560,13 +560,13 @@ void Sim::update_separation_observations(NavigationScratch& scratch, ThinkingInp
                 .immediate_distance_squared = immediate_distance_sq,
                 .close_distance_squared = close_distance_sq,
                 .memory_retention = static_cast<float>(memory_retention),
-                .separation_strength = config.separation_strength,
-                .dense_traffic_neighbour_threshold = config.dense_traffic_neighbour_threshold,
+                .separation_strength = config_.separation_strength,
+                .dense_traffic_neighbour_threshold = config_.dense_traffic_neighbour_threshold,
                 .integral_bias = integral_biases[fighter_index],
                 .float_bias = float_biases[fighter_index],
             })};
         if (observation.dense_direction_selected) {
-            ++navigation_telemetry.dense_direction_selection_count;
+            ++navigation_telemetry_.dense_direction_selection_count;
         }
         set_vector(separation_steering, fighter_index, observation.steering_memory);
         scratch.observed_risk_tiers[fighter_index] =
@@ -590,7 +590,7 @@ void Sim::apply_separation_steering() {
         auto const direction{
             make_separation_steering_direction(vector_at(movement_directions, index),
                                                vector_at(separation_steering, index),
-                                               config.separation_strength)};
+                                               config_.separation_strength)};
         if (direction) {
             set_vector(movement_directions, index, *direction);
         }
@@ -658,7 +658,7 @@ void Sim::scan_preferred_navigation(NavigationScratch& scratch,
             auto& clear_count{clear_scan_counts[element]};
             clear_count.set_value(
                 static_cast<NavigationScanCount::value_type>(clear_count.value() + 1));
-            if (clear_count.value() >= clear_scans_to_end_avoidance) {
+            if (clear_count.value() >= clear_scans_to_end_avoidance_) {
                 choices[element] = AvoidanceChoice{AvoidanceChoice::DirectMovement};
                 clear_count = NavigationScanCount{};
             }
@@ -680,7 +680,7 @@ void Sim::scan_alternative_navigation(NavigationScratch& scratch,
     scratch.line_of_sight_results.clear();
     scratch.trace_hits.reset();
 
-    auto const count{scratch.blocked_fighter_indices.num() * n_avoidance_choices};
+    auto const count{scratch.blocked_fighter_indices.num() * n_avoidance_choices_};
     scratch.line_of_sight_starts.reserve(count);
     scratch.line_of_sight_ends.reserve(count);
     scratch.trace_choice_indices.reserve(count);
@@ -700,9 +700,9 @@ void Sim::scan_alternative_navigation(NavigationScratch& scratch,
         auto const start{vector_at(locations, index)};
         auto const frame{
             make_avoidance_frame(vector_at(movement_directions, index), float_biases[element])};
-        std::array<Vector3f, n_avoidance_choices> directions;
+        std::array<Vector3f, n_avoidance_choices_> directions;
         make_avoidance_directions(frame, directions);
-        std::array<std::int8_t, n_avoidance_choices> order;
+        std::array<std::int8_t, n_avoidance_choices_> order;
         make_avoidance_choice_order(integral_biases[element], choices[element].value(), order);
 
         for (auto const choice : order) {
@@ -740,7 +740,7 @@ void Sim::execute_navigation_sweeps(NavigationScratch& scratch,
         scratch.trace_hits.view(),
         {},
         collision::TraceEntityFilter::ExcludeFighters);
-    navigation_telemetry.hard_trace_count += trace_count;
+    navigation_telemetry_.hard_trace_count += trace_count;
 }
 void Sim::select_navigation_alternatives(NavigationScratch& scratch,
                                          float const safe_progress_time) {
@@ -762,9 +762,9 @@ void Sim::select_navigation_alternatives(NavigationScratch& scratch,
         // Partial progress must leave room until the next active scan, including its margin.
         auto const safe_progress_distance{speeds[fighter_index] * safe_progress_time};
 
-        auto const candidate_begin{blocked_index * n_avoidance_choices};
+        auto const candidate_begin{blocked_index * n_avoidance_choices_};
 
-        auto const candidate_count{static_cast<std::size_t>(n_avoidance_choices)};
+        auto const candidate_count{static_cast<std::size_t>(n_avoidance_choices_)};
         // Each fighter owns a distinct candidate subrange.
         // NOLINTBEGIN(ioj-loop-view-construction,ioj-loop-view-accessor-call)
         auto const chosen_choice{fighters::choose_navigation_alternative(
@@ -773,7 +773,7 @@ void Sim::select_navigation_alternatives(NavigationScratch& scratch,
             {scratch.trace_choice_indices.data() + candidate_begin, candidate_count},
             {scratch.line_of_sight_results.data() + candidate_begin, candidate_count},
             hits.subspan(candidate_begin, candidate_count),
-            hit_locations.slice(candidate_begin, n_avoidance_choices),
+            hit_locations.slice(candidate_begin, n_avoidance_choices_),
             AvoidanceChoice::StopMovement)};
         // NOLINTEND(ioj-loop-view-construction,ioj-loop-view-accessor-call)
 
@@ -800,7 +800,7 @@ void Sim::apply_navigation_choices(NavigationScratch const& scratch) {
             update_navigation_risk(static_cast<NavigationRiskTier>(risk_tiers[element].value()),
                                    observed,
                                    lower_risk_scan_counts[element].value(),
-                                   lower_risk_scans_to_demote)};
+                                   lower_risk_scans_to_demote_)};
         risk_tiers[element] =
             NavigationRiskCode{static_cast<NavigationRiskCode::value_type>(update.tier)};
         lower_risk_scan_counts[element] = NavigationScanCount{update.lower_risk_scan_count};
@@ -823,32 +823,32 @@ void Sim::apply_navigation_choices(NavigationScratch const& scratch) {
         auto const element{static_cast<std::size_t>(index)};
         auto const steering{vector_at(separation_steering, index)};
         if (!native_math::is_nearly_zero(steering.x(), steering.y(), steering.z(), 1.e-4f)) {
-            ++navigation_telemetry.separating_fighter_count;
-            ++navigation_telemetry.steering_memory_fighter_count;
+            ++navigation_telemetry_.separating_fighter_count;
+            ++navigation_telemetry_.steering_memory_fighter_count;
         }
         auto const choice{choices[element].value()};
         if (is_avoidance_direction_choice(choice)) {
             auto const frame{
                 make_avoidance_frame(vector_at(movement_directions, index), float_biases[element])};
             set_vector(movement_directions, index, make_avoidance_direction(frame, choice));
-            ++navigation_telemetry.avoiding_fighter_count;
+            ++navigation_telemetry_.avoiding_fighter_count;
         } else if (choice == AvoidanceChoice::StopMovement) {
             set_vector(movement_directions, index, Vector3f{0.f, 0.f, 0.f});
-            ++navigation_telemetry.avoiding_fighter_count;
+            ++navigation_telemetry_.avoiding_fighter_count;
         }
 
         switch (static_cast<NavigationRiskTier>(risk_tiers[element].value())) {
             case NavigationRiskTier::Clear:
-                ++navigation_telemetry.clear_risk_count;
+                ++navigation_telemetry_.clear_risk_count;
                 break;
             case NavigationRiskTier::Nearby:
-                ++navigation_telemetry.nearby_risk_count;
+                ++navigation_telemetry_.nearby_risk_count;
                 break;
             case NavigationRiskTier::Active:
-                ++navigation_telemetry.active_risk_count;
+                ++navigation_telemetry_.active_risk_count;
                 break;
             case NavigationRiskTier::Immediate:
-                ++navigation_telemetry.immediate_risk_count;
+                ++navigation_telemetry_.immediate_risk_count;
                 break;
             default:
                 assert(false);
@@ -857,22 +857,22 @@ void Sim::apply_navigation_choices(NavigationScratch const& scratch) {
     }
 }
 void Sim::publish_navigation_telemetry() const {
-    profiling::plot("Sandbox/FightersAvoiding", navigation_telemetry.avoiding_fighter_count);
-    profiling::plot("Sandbox/FighterNavigationTraces", navigation_telemetry.hard_trace_count);
-    profiling::plot("Sandbox/FightersSeparating", navigation_telemetry.separating_fighter_count);
+    profiling::plot("Sandbox/FightersAvoiding", navigation_telemetry_.avoiding_fighter_count);
+    profiling::plot("Sandbox/FighterNavigationTraces", navigation_telemetry_.hard_trace_count);
+    profiling::plot("Sandbox/FightersSeparating", navigation_telemetry_.separating_fighter_count);
     profiling::plot("Sandbox/FighterSeparationQueries",
-                    navigation_telemetry.separation_query_count);
+                    navigation_telemetry_.separation_query_count);
     profiling::plot("Sandbox/FighterSeparationCandidates",
-                    navigation_telemetry.separation_candidate_count);
+                    navigation_telemetry_.separation_candidate_count);
     profiling::plot("Sandbox/FighterDenseDirectionSelections",
-                    navigation_telemetry.dense_direction_selection_count);
+                    navigation_telemetry_.dense_direction_selection_count);
     profiling::plot("Sandbox/FighterSteeringMemory",
-                    navigation_telemetry.steering_memory_fighter_count);
-    profiling::plot("Sandbox/FighterNavigationClear", navigation_telemetry.clear_risk_count);
-    profiling::plot("Sandbox/FighterNavigationNearby", navigation_telemetry.nearby_risk_count);
-    profiling::plot("Sandbox/FighterNavigationActive", navigation_telemetry.active_risk_count);
+                    navigation_telemetry_.steering_memory_fighter_count);
+    profiling::plot("Sandbox/FighterNavigationClear", navigation_telemetry_.clear_risk_count);
+    profiling::plot("Sandbox/FighterNavigationNearby", navigation_telemetry_.nearby_risk_count);
+    profiling::plot("Sandbox/FighterNavigationActive", navigation_telemetry_.active_risk_count);
     profiling::plot("Sandbox/FighterNavigationImmediate",
-                    navigation_telemetry.immediate_risk_count);
+                    navigation_telemetry_.immediate_risk_count);
 }
 
 /* **************************************** */
@@ -922,7 +922,7 @@ auto Sim::accept_spawn_count(std::span<Team const> const teams) -> std::uint32_t
     }
     auto const team{teams.front()};
     auto const team_index{static_cast<std::size_t>(team)};
-    if (team_index >= participant_mask.size() || participant_mask[team_index] == 0) {
+    if (team_index >= participant_mask_.size() || participant_mask_[team_index] == 0) {
         log_error(
             std::format("Rejected fighter spawn request for invalid or non-participating team {}",
                         static_cast<std::uint32_t>(teams[0])));
@@ -936,7 +936,7 @@ auto Sim::accept_spawn_count(std::span<Team const> const teams) -> std::uint32_t
         }
     }
 
-    auto& capacity{remaining_team_capacity[team_index]};
+    auto& capacity{remaining_team_capacity_[team_index]};
     assert(capacity >= 0);
     auto const accepted_count{
         std::min(static_cast<std::uint32_t>(teams.size()), static_cast<std::uint32_t>(capacity))};
@@ -947,7 +947,7 @@ auto Sim::queue_spawns(FighterSpawnQueue::ConstView const new_spawns) -> std::ui
     SANDBOX_PROFILE_SCOPE("fighters::Sim::queue_spawns");
     new_spawns.validate();
     auto const count{accept_spawn_count(new_spawns.teams())};
-    spawn_queue.append_from(new_spawns, 0, count);
+    spawn_queue_.append_from(new_spawns, 0, count);
     return count;
 }
 
@@ -984,8 +984,8 @@ void Sim::handle_firing(EntityStorage::View data, ThinkingInputs const inputs) {
         };
 
     auto const n_ships{data.num()};
-    auto const aim_threshold{config.fire_dot_product_threshold};
-    auto const laser_max_distance{config.laser.max_distance};
+    auto const aim_threshold{config_.fire_dot_product_threshold};
+    auto const laser_max_distance{config_.laser.max_distance};
     auto const laser_max_distance_sq{laser_max_distance * laser_max_distance};
     FrameArray<float> aiming_dot_products{scratch_resource};
     FrameArray<std::uint32_t> can_fire{scratch_resource};
@@ -994,9 +994,9 @@ void Sim::handle_firing(EntityStorage::View data, ThinkingInputs const inputs) {
     FrameArray<LineQueryResult> line_of_sight_results{scratch_resource};
     FrameArray<EntityId> firing_ignored_entities{scratch_resource};
 
-    auto const los_check_buffer{config.los_check_buffer};
+    auto const los_check_buffer{config_.los_check_buffer};
     TickCountdownView<std::int16_t> const cooldowns{
-        std::span<std::int16_t>{data.attack_cooldowns()}, attack_retry_cooldown_tick_value};
+        std::span<std::int16_t>{data.attack_cooldowns()}, attack_retry_cooldown_tick_value_};
     aiming_dot_products.set_num(n_ships);
     auto const planned_aim_directions{data.view_planned_aim_directions().resolve()};
     auto const desired_aiming_directions{data.view_desired_aiming_directions().resolve()};
@@ -1043,7 +1043,7 @@ void Sim::handle_firing(EntityStorage::View data, ThinkingInputs const inputs) {
         auto const end_offset{los_check_buffer + target_radii[element]};
         firing_ignored_entities[index] = entity_ids[element];
         line_of_sight_starts.set(
-            index, predicted_location(fighter_index) + direction * config.fire_point_distance);
+            index, predicted_location(fighter_index) + direction * config_.fire_point_distance);
         line_of_sight_ends.set(index,
                                vector_at(target_locations, fighter_index) - direction * end_offset);
     }

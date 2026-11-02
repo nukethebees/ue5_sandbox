@@ -36,7 +36,7 @@ struct Sim {
     /* **************************************** */
     // Configuration
     /* **************************************** */
-    auto get_entities() const -> EntityStorage::ConstView { return entities.const_view(); }
+    auto get_entities() const -> EntityStorage::ConstView { return entities_.const_view(); }
     auto healths() const -> HealthConstView {
         return entity_tables_.health.const_view<EntityType::Turret>();
     }
@@ -97,12 +97,12 @@ struct Sim {
     friend class PhaseInterface;
     friend class SpawnInterface;
 
-    TurretSimConfig config{};
+    TurretSimConfig config_{};
     EntityTables& entity_tables_;
-    EntityStorage entities{};
+    EntityStorage entities_{};
     std::vector<EntityFrameChange> frame_changes_;
     std::vector<Vector3f> death_locations_;
-    std::int32_t target_refresh_next_offset{0};
+    std::int32_t target_refresh_next_offset_{0};
     NonNegative<std::int16_t> cooldown_restart_ticks_{};
     std::int16_t cooldown_cleaner_{};
 };

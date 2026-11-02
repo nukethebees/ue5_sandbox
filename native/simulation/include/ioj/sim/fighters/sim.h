@@ -46,7 +46,7 @@ struct Sim {
         return entity_tables_.health.const_view<EntityType::Fighter>();
     }
     auto get_navigation_telemetry() const noexcept -> telemetry::FighterNavigationSnapshot const& {
-        return navigation_telemetry;
+        return navigation_telemetry_;
     }
 
     /* **************************************** */
@@ -59,10 +59,10 @@ struct Sim {
     using NavigationScratch = fighters::NavigationScratch;
     using NavigationRiskTier = fighters::NavigationRiskTier;
 
-    static constexpr std::uint32_t n_avoidance_choices{avoidance_direction_count};
-    static constexpr std::uint8_t clear_scans_to_end_avoidance{2};
-    static constexpr std::uint8_t lower_risk_scans_to_demote{2};
-    static constexpr std::uint32_t max_separation_neighbours{separation_neighbour_limit};
+    static constexpr std::uint32_t n_avoidance_choices_{avoidance_direction_count};
+    static constexpr std::uint8_t clear_scans_to_end_avoidance_{2};
+    static constexpr std::uint8_t lower_risk_scans_to_demote_{2};
+    static constexpr std::uint32_t max_separation_neighbours_{separation_neighbour_limit};
 
     /* **************************************** */
     // Navigation
@@ -133,22 +133,18 @@ struct Sim {
 
     friend class PhaseInterface;
 
-    FighterSimConfig config{};
-    std::array<std::uint8_t, enum_count<Team>()> participant_mask{};
-    std::array<std::int32_t, enum_count<Team>()> remaining_team_capacity{};
-    std::int32_t per_team_limit{};
-    NonNegative<std::int16_t> attack_retry_cooldown_tick_value{};
-    std::array<std::int16_t, enum_count<NavigationRiskTier>()> navigation_tick_periods{};
-    float minimum_navigation_lookahead_time{};
-
+    FighterSimConfig config_{};
+    std::array<std::uint8_t, enum_count<Team>()> participant_mask_{};
+    std::array<std::int32_t, enum_count<Team>()> remaining_team_capacity_{};
+    std::int32_t per_team_limit_{};
+    NonNegative<std::int16_t> attack_retry_cooldown_tick_value_{};
+    std::array<std::int16_t, enum_count<NavigationRiskTier>()> navigation_tick_periods_{};
+    float minimum_navigation_lookahead_time_{};
     NonNegative<std::int16_t> attack_restart_ticks_{};
     std::int16_t attack_cleaner_{};
-
     EntityStorage entities_{};
     EntityTables& entity_tables_;
-
-    FighterSpawnQueue spawn_queue;
-
-    telemetry::FighterNavigationSnapshot navigation_telemetry;
+    FighterSpawnQueue spawn_queue_;
+    telemetry::FighterNavigationSnapshot navigation_telemetry_;
 };
 } // namespace ioj::sim::fighters
