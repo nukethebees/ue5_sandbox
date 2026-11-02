@@ -3,32 +3,33 @@
 #include <lispb/indices.h>
 
 #include <concepts>
+#include <cstdint>
 #include <vector>
 
 namespace lispb::codegen::ir {
 
 template <typename T>
-concept NumericLiteralValue =
-    std::same_as<T, signed char> || std::same_as<T, unsigned char> || std::same_as<T, short> ||
-    std::same_as<T, unsigned short> || std::same_as<T, int> || std::same_as<T, unsigned int> ||
-    std::same_as<T, long> || std::same_as<T, unsigned long> || std::same_as<T, long long> ||
-    std::same_as<T, unsigned long long> || std::same_as<T, float> || std::same_as<T, double> ||
-    std::same_as<T, long double>;
+concept NumericLiteralValue = std::same_as<T, std::int8_t> || std::same_as<T, std::int16_t> ||
+                              std::same_as<T, std::int32_t> || std::same_as<T, std::int64_t> ||
+                              std::same_as<T, std::uint8_t> || std::same_as<T, std::uint16_t> ||
+                              std::same_as<T, std::uint32_t> || std::same_as<T, std::uint64_t> ||
+                              std::same_as<T, float> || std::same_as<T, double>;
 
 struct Literals {
     std::vector<StringId> spelling;
 };
 
 struct NumericLiterals {
-    std::vector<int> ints;
-    std::vector<unsigned int> unsigned_ints;
-    std::vector<long> longs;
-    std::vector<unsigned long> unsigned_longs;
-    std::vector<long long> long_longs;
-    std::vector<unsigned long long> unsigned_long_longs;
-    std::vector<float> floats;
-    std::vector<double> doubles;
-    std::vector<long double> long_doubles;
+    std::vector<std::int8_t> i8;
+    std::vector<std::int16_t> i16;
+    std::vector<std::int32_t> i32;
+    std::vector<std::int64_t> i64;
+    std::vector<std::uint8_t> u8;
+    std::vector<std::uint16_t> u16;
+    std::vector<std::uint32_t> u32;
+    std::vector<std::uint64_t> u64;
+    std::vector<float> f32;
+    std::vector<double> f64;
 };
 
 } // namespace lispb::codegen::ir

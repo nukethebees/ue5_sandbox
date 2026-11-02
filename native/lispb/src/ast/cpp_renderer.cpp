@@ -102,7 +102,7 @@ void append_numeric_literal(std::string& output, Value const value) {
     output += spelling;
     if constexpr (std::same_as<Value, unsigned int>) {
         output += 'U';
-    } else if constexpr (std::same_as<Value, long> || std::same_as<Value, long double>) {
+    } else if constexpr (std::same_as<Value, long>) {
         output += 'L';
     } else if constexpr (std::same_as<Value, unsigned long>) {
         output += "UL";
@@ -692,6 +692,13 @@ void CppRenderer::append_expr(
             first = false;
         }
     };
+    auto append_small_literal = [&](auto value) {
+        output += "static_cast<";
+        append_type(output, ir_.expression_type(expr), ctx);
+        output += ">(";
+        expr_detail::append_numeric_literal(output, +value);
+        output += ')';
+    };
     switch (expr.kind()) {
         case ExprKind::parenthesized:
             output += '(';
@@ -704,37 +711,35 @@ void CppRenderer::append_expr(
         case ExprKind::boolean_literal:
             output += index != 0 ? "true" : "false";
             break;
-        case ExprKind::int_literal:
-            expr_detail::append_numeric_literal(output, ir_.numeric_literal_exprs_.ints[index]);
+        case ExprKind::i8_literal:
+            append_small_literal(ir_.numeric_literal_exprs_.i8[index]);
             break;
-        case ExprKind::unsigned_int_literal:
-            expr_detail::append_numeric_literal(output,
-                                                ir_.numeric_literal_exprs_.unsigned_ints[index]);
+        case ExprKind::i16_literal:
+            append_small_literal(ir_.numeric_literal_exprs_.i16[index]);
             break;
-        case ExprKind::long_literal:
-            expr_detail::append_numeric_literal(output, ir_.numeric_literal_exprs_.longs[index]);
+        case ExprKind::i32_literal:
+            expr_detail::append_numeric_literal(output, ir_.numeric_literal_exprs_.i32[index]);
             break;
-        case ExprKind::unsigned_long_literal:
-            expr_detail::append_numeric_literal(output,
-                                                ir_.numeric_literal_exprs_.unsigned_longs[index]);
+        case ExprKind::i64_literal:
+            expr_detail::append_numeric_literal(output, ir_.numeric_literal_exprs_.i64[index]);
             break;
-        case ExprKind::long_long_literal:
-            expr_detail::append_numeric_literal(output,
-                                                ir_.numeric_literal_exprs_.long_longs[index]);
+        case ExprKind::u8_literal:
+            append_small_literal(ir_.numeric_literal_exprs_.u8[index]);
             break;
-        case ExprKind::unsigned_long_long_literal:
-            expr_detail::append_numeric_literal(
-                output, ir_.numeric_literal_exprs_.unsigned_long_longs[index]);
+        case ExprKind::u16_literal:
+            append_small_literal(ir_.numeric_literal_exprs_.u16[index]);
             break;
-        case ExprKind::float_literal:
-            expr_detail::append_numeric_literal(output, ir_.numeric_literal_exprs_.floats[index]);
+        case ExprKind::u32_literal:
+            expr_detail::append_numeric_literal(output, ir_.numeric_literal_exprs_.u32[index]);
             break;
-        case ExprKind::double_literal:
-            expr_detail::append_numeric_literal(output, ir_.numeric_literal_exprs_.doubles[index]);
+        case ExprKind::u64_literal:
+            expr_detail::append_numeric_literal(output, ir_.numeric_literal_exprs_.u64[index]);
             break;
-        case ExprKind::long_double_literal:
-            expr_detail::append_numeric_literal(output,
-                                                ir_.numeric_literal_exprs_.long_doubles[index]);
+        case ExprKind::f32_literal:
+            expr_detail::append_numeric_literal(output, ir_.numeric_literal_exprs_.f32[index]);
+            break;
+        case ExprKind::f64_literal:
+            expr_detail::append_numeric_literal(output, ir_.numeric_literal_exprs_.f64[index]);
             break;
         case ExprKind::string_literal:
             output += '"';

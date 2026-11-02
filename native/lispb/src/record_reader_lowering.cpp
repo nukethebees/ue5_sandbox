@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <filesystem>
 #include <format>
 #include <iterator>
@@ -185,7 +186,7 @@ class RecordReaderLowering : public CppIRBuilder {
             return literal(std_types().f64, text);
         }
         if (text == "-9223372036854775808") {
-            return literal(std::numeric_limits<long long>::min());
+            return literal(std::numeric_limits<std::int64_t>::min());
         }
         return literal(intern_type(text.starts_with('-') ? "long long" : "unsigned long long"),
                        text + (text.starts_with('-') ? "LL" : "ULL"));

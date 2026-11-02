@@ -49,7 +49,7 @@ using lispb::codegen::sexpr::TokenKind;
 
 struct DecimalLiteral {
     std::string spelling;
-    long double value;
+    double value;
 };
 
 struct VariantShape {
@@ -131,7 +131,7 @@ auto parse_decimal_literal(std::string_view const source) -> std::optional<Decim
         spelling.insert(decimal_point + 1, 1, '0');
     }
 
-    long double value{};
+    double value{};
     auto const [end, error]{std::from_chars(
         spelling.data(), spelling.data() + spelling.size(), value, std::chars_format::general)};
     if (error != std::errc{} || end != spelling.data() + spelling.size() || !std::isfinite(value)) {
@@ -612,38 +612,27 @@ class Parser {
             auto const value{document_.expressions.number(expression)};
             if (type == ScalarType::int32) {
                 if (std::trunc(value) != value ||
-                    value < static_cast<long double>(std::numeric_limits<std::int32_t>::min()) ||
-                    value > static_cast<long double>(std::numeric_limits<std::int32_t>::max())) {
+                    value < static_cast<double>(std::numeric_limits<std::int32_t>::min()) ||
+                    value > static_cast<double>(std::numeric_limits<std::int32_t>::max())) {
                     fail(document_.expressions.span(expression),
                          "literal '" + std::string{document_.expressions.literal(expression)} +
                              "' is not representable as int32");
                 }
             } else if (type == ScalarType::uint32) {
-                if (std::trunc(value) != value || value < 0.0L ||
-                    value > static_cast<long double>(std::numeric_limits<std::uint32_t>::max())) {
+                if (std::trunc(value) != value || value < 0.0 ||
+                    value > static_cast<double>(std::numeric_limits<std::uint32_t>::max())) {
                     fail(document_.expressions.span(expression),
                          "literal '" + std::string{document_.expressions.literal(expression)} +
                              "' is not representable as uint32");
                 }
             } else if (type == ScalarType::float32) {
                 auto const magnitude{std::abs(value)};
-                if (magnitude > static_cast<long double>(std::numeric_limits<float>::max()) ||
-                    (magnitude != 0.0L &&
-                     magnitude <
-                         static_cast<long double>(std::numeric_limits<float>::denorm_min()))) {
+                if (magnitude > static_cast<double>(std::numeric_limits<float>::max()) ||
+                    (magnitude != 0.0 &&
+                     magnitude < static_cast<double>(std::numeric_limits<float>::denorm_min()))) {
                     fail(document_.expressions.span(expression),
                          "literal '" + std::string{document_.expressions.literal(expression)} +
                              "' is not representable as float");
-                }
-            } else if (type == ScalarType::float64) {
-                auto const magnitude{std::abs(value)};
-                if (magnitude > static_cast<long double>(std::numeric_limits<double>::max()) ||
-                    (magnitude != 0.0L &&
-                     magnitude <
-                         static_cast<long double>(std::numeric_limits<double>::denorm_min()))) {
-                    fail(document_.expressions.span(expression),
-                         "literal '" + std::string{document_.expressions.literal(expression)} +
-                             "' is not representable as double");
                 }
             }
         }

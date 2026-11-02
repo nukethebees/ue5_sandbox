@@ -28,7 +28,7 @@ auto Expressions::literal_id(ExpressionId const id) const -> lispb::StringId {
 auto Expressions::literal(ExpressionId const id) const -> std::string_view {
     return strings_.view(literal_id(id));
 }
-auto Expressions::number(ExpressionId const id) const -> long double {
+auto Expressions::number(ExpressionId const id) const -> double {
     assert(id.kind() == ExpressionKind::literal);
     return literal_numbers_[id.index()];
 }
@@ -70,7 +70,7 @@ auto Expressions::reference(OperandId const operand, lispb::codegen::sexpr::Sour
     return id;
 }
 auto Expressions::literal(lispb::StringId const spelling,
-                          long double const number,
+                          double const number,
                           lispb::codegen::sexpr::SourceSpan const span) -> ExpressionId {
     auto const id{make_id(ExpressionKind::literal, literal_spellings_.size())};
     literal_spellings_.push_back(spelling);

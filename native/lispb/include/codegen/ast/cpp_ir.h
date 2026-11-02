@@ -584,18 +584,15 @@ class CppIR {
     std::vector<Expr> conditional_noexcept_;
 };
 
-extern template auto CppIR::numeric_literal(signed char) -> Expr;
-extern template auto CppIR::numeric_literal(unsigned char) -> Expr;
-extern template auto CppIR::numeric_literal(short) -> Expr;
-extern template auto CppIR::numeric_literal(unsigned short) -> Expr;
-extern template auto CppIR::numeric_literal(int) -> Expr;
-extern template auto CppIR::numeric_literal(unsigned int) -> Expr;
-extern template auto CppIR::numeric_literal(long) -> Expr;
-extern template auto CppIR::numeric_literal(unsigned long) -> Expr;
-extern template auto CppIR::numeric_literal(long long) -> Expr;
-extern template auto CppIR::numeric_literal(unsigned long long) -> Expr;
+extern template auto CppIR::numeric_literal(std::int8_t) -> Expr;
+extern template auto CppIR::numeric_literal(std::int16_t) -> Expr;
+extern template auto CppIR::numeric_literal(std::int32_t) -> Expr;
+extern template auto CppIR::numeric_literal(std::int64_t) -> Expr;
+extern template auto CppIR::numeric_literal(std::uint8_t) -> Expr;
+extern template auto CppIR::numeric_literal(std::uint16_t) -> Expr;
+extern template auto CppIR::numeric_literal(std::uint32_t) -> Expr;
+extern template auto CppIR::numeric_literal(std::uint64_t) -> Expr;
 extern template auto CppIR::numeric_literal(float) -> Expr;
 extern template auto CppIR::numeric_literal(double) -> Expr;
-extern template auto CppIR::numeric_literal(long double) -> Expr;
 
 } // namespace lispb::codegen

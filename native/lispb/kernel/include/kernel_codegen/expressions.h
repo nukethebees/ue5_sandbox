@@ -25,7 +25,7 @@ class Expressions {
     auto operand(ExpressionId id) const -> OperandId;
     auto literal(ExpressionId id) const -> std::string_view;
     auto literal_id(ExpressionId id) const -> lispb::StringId;
-    auto number(ExpressionId id) const -> long double;
+    auto number(ExpressionId id) const -> double;
     auto constant(ExpressionId id) const -> ConstantKind;
     auto operation(ExpressionId id) const -> BinaryOperator;
     auto left(ExpressionId id) const -> ExpressionId;
@@ -34,7 +34,7 @@ class Expressions {
     auto reference(OperandId const operand, lispb::codegen::sexpr::SourceSpan const span)
         -> ExpressionId;
     auto literal(lispb::StringId const spelling,
-                 long double const number,
+                 double const number,
                  lispb::codegen::sexpr::SourceSpan const span) -> ExpressionId;
     auto constant(ConstantKind const kind, lispb::codegen::sexpr::SourceSpan const span)
         -> ExpressionId;
@@ -49,7 +49,7 @@ class Expressions {
     std::vector<OperandId> reference_operands_;
     std::vector<lispb::codegen::sexpr::SourceSpan> reference_spans_;
     std::vector<lispb::StringId> literal_spellings_;
-    std::vector<long double> literal_numbers_;
+    std::vector<double> literal_numbers_;
     std::vector<lispb::codegen::sexpr::SourceSpan> literal_spans_;
     std::vector<ConstantKind> constant_kinds_;
     std::vector<lispb::codegen::sexpr::SourceSpan> constant_spans_;

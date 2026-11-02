@@ -437,12 +437,12 @@ TEST(KernelRenderer, PairwiseDisjointChecksEveryArray) {
 
 TEST(KernelRenderer, NormalizesAndTypesFiniteDecimalLiterals) {
     for (auto const& [literal, normalized] :
-         std::vector<std::pair<std::string_view, std::string_view>>{{"0", "0.0L"},
-                                                                    {"-12", "-12.0L"},
-                                                                    {"+2", "2.0L"},
-                                                                    {".25", "0.25L"},
-                                                                    {"1.", "1.0L"},
-                                                                    {"1e-4", "1e-04L"}}) {
+         std::vector<std::pair<std::string_view, std::string_view>>{{"0", "0.0"},
+                                                                    {"-12", "-12.0"},
+                                                                    {"+2", "2.0"},
+                                                                    {".25", "0.25"},
+                                                                    {"1.", "1.0"},
+                                                                    {"1e-4", "1e-04"}}) {
         auto const files{render_source(literal_source("float", literal))};
         EXPECT_TRUE(
             files[1].content.contains("static_cast<float>(" + std::string{normalized} + ")"))

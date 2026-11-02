@@ -35,18 +35,8 @@ auto fixture_value(std::size_t const operand_index, std::size_t const element_in
         constexpr std::array<std::int32_t, 8> values{1, -2, 3, -4, 5, -6, 7, -8};
         return values[(operand_index * 3 + element_index * 5) % values.size()];
     } else {
-        constexpr std::array<long double, 12> values{1.0L,
-                                                     -2.0L,
-                                                     0.25L,
-                                                     -0.5L,
-                                                     3.0L,
-                                                     -4.0L,
-                                                     1.0e10L,
-                                                     -1.0e10L,
-                                                     1.0e-10L,
-                                                     -1.0e-10L,
-                                                     7.0L,
-                                                     -8.0L};
+        constexpr std::array<double, 12> values{
+            1.0, -2.0, 0.25, -0.5, 3.0, -4.0, 1.0e10, -1.0e10, 1.0e-10, -1.0e-10, 7.0, -8.0};
         return static_cast<T>(values[(operand_index * 3 + element_index * 5) % values.size()]);
     }
 }
