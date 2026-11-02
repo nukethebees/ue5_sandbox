@@ -10,14 +10,18 @@
 namespace codegen_compile_fixture {
 class FReferenceFacade {
   public:
+    std::int32_t get() const { return target.get(); }
+
+  protected:
     FReferenceFacade(FTarget& new_target)
         : target{new_target} {}
-
-    std::int32_t get() const { return target.get(); }
 
     void set_value(std::int32_t const value) { target.set(value); }
 
   private:
+    void reset() { target.clear(); }
+
+  protected:
     FTarget& target;
 };
 } // namespace codegen_compile_fixture

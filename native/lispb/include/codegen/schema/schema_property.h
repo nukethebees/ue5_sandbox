@@ -125,6 +125,7 @@ enum class SchemaProperty : SchemaPropertyUnderlying {
     tag,
     target_name,
     target_storage,
+    target_access,
     template_parameters,
     tooltip,
     total_bits,
@@ -167,11 +168,11 @@ inline constexpr auto enum_strings<lispb::codegen::SchemaProperty, Serialized>{P
     "codes\000rounding\000s7-constructor\000s7-constructors\000s7-exclude\000s7-name\000s7-"
     "positional\000s7-reader-includes\000s7-tag\000sentinel\000serialized-name\000sign-"
     "bits\000signed\000significand-bits\000source\000spelling\000state-"
-    "name\000static\000step\000storage\000suffix\000tag\000target-name\000target-"
-    "storage\000template-parameters\000tooltip\000total-bits\000trailing-return-"
+    "name\000static\000step\000storage\000suffix\000tag\000target-name\000target-storage\000target-"
+    "access\000template-parameters\000tooltip\000total-bits\000trailing-return-"
     "type\000unit\000using-declarations\000validation\000validation-dependencies\000value\000value-"
     "type",
-    std::array<std::uint16_t, 121>{
+    std::array<std::uint16_t, 122>{
         0,    9,    24,   30,   52,   60,   65,   77,   87,   97,   102,  107,  118,  127,
         132,  141,  149,  160,  180,  186,  196,  214,  232,  244,  250,  261,  269,  290,
         312,  325,  332,  345,  354,  365,  385,  408,  426,  442,  456,  473,  489,  505,
@@ -179,6 +180,6 @@ inline constexpr auto enum_strings<lispb::codegen::SchemaProperty, Serialized>{P
         671,  685,  697,  704,  718,  723,  730,  742,  758,  769,  773,  781,  795,  799,
         807,  817,  828,  850,  857,  867,  876,  885,  897,  905,  922,  930,  939,  947,
         958,  967,  976,  991,  1000, 1015, 1031, 1042, 1050, 1064, 1083, 1090, 1099, 1115,
-        1125, 1132, 1149, 1156, 1165, 1176, 1183, 1188, 1196, 1203, 1207, 1219, 1234, 1254,
-        1262, 1273, 1294, 1299, 1318, 1329, 1353, 1359, 1370}}};
+        1125, 1132, 1149, 1156, 1165, 1176, 1183, 1188, 1196, 1203, 1207, 1219, 1234, 1248,
+        1268, 1276, 1287, 1308, 1313, 1332, 1343, 1367, 1373, 1384}}};
 } // namespace ioj

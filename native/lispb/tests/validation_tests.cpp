@@ -2490,7 +2490,7 @@ TEST(Validation, RejectsFacadesWithoutMethods) {
 TEST(Validation, RejectsUnknownFacadeAccess) {
     CompilerTestContext ctx;
     EXPECT_THROW(parse_test_manifest(ctx, R"((module facade :header "Facade.h"
-      (facade FFacade :target FTarget :method-access protected (method reset void))))"),
+      (facade FFacade FTarget target :method-access invalid (method reset void))))"),
                  lispb::codegen::sexpr::SourceError);
 }
 

@@ -23,6 +23,7 @@
 #include <lispb/indices.h>
 #include <lispb/strings.h>
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -108,34 +109,50 @@ auto lower_facade(LoweringContext& ctx, DeclarationHandle facade) -> Declaration
     }
 
     NodeListBuilder public_nodes{ir};
+    NodeListBuilder protected_nodes{ir};
     NodeListBuilder private_nodes{ir};
-    bool has_public_nodes{};
+    auto section = [&](Access access) -> NodeListBuilder& {
+        switch (access) {
+            case Access::public_:
+                return public_nodes;
+            case Access::protected_:
+                return protected_nodes;
+            case Access::private_:
+                return private_nodes;
+        }
+        std::unreachable();
+    };
     auto add_method = [&](Access access, FunctionId spec) {
-        auto& destination{access == Access::public_ ? public_nodes : private_nodes};
-        destination.add(ir.header_function(spec), 2);
-        has_public_nodes = has_public_nodes || access == Access::public_;
+        section(access).add(ir.header_function(spec), 2);
     };
     add_method(facades.bind_access[row], binding);
-    for (auto const method : methods) {
-        add_method(facades.method_access[row], method);
+    auto const schemas{decls.items(facades.methods[row])};
+    auto const count{methods.size()};
+    for (std::size_t i{}; i < count; ++i) {
+        add_method(method_schemas.access[schemas[i]].value_or(facades.method_access[row]),
+                   methods[i]);
     }
     for (auto const friend_name : decls.items(facades.friends[row])) {
         private_nodes.add(ir.friend_declaration(ir.strings.intern(ctx.text(friend_name)),
                                                 facades.friend_kind[row]),
                           1);
     }
-    private_nodes.add(reference_target
-                          ? ir.instance_member(qualify(ir, target_type, "&"), target_name)
-                          : ir.instance_member(
-                                qualify(ir, target_type, "*"), target_name, ir.literal("nullptr")));
-
     NodeListBuilder class_nodes{ir};
-    if (has_public_nodes) {
-        class_nodes.add(ir.access(Access::public_, AccessIndentation::normal), 1)
-            .append(public_nodes.build());
+    std::optional<Access> last_access;
+    for (auto const access : {Access::public_, Access::protected_, Access::private_}) {
+        auto const nodes{section(access).build()};
+        if (!nodes.empty()) {
+            class_nodes.add(ir.access(access, AccessIndentation::normal), 1).append(nodes);
+            last_access = access;
+        }
     }
-    class_nodes.add(ir.access(Access::private_, AccessIndentation::normal), 1)
-        .append(private_nodes.build());
+    if (last_access != facades.target_access[row]) {
+        class_nodes.add(ir.access(facades.target_access[row], AccessIndentation::normal), 1);
+    }
+    class_nodes.add(reference_target
+                        ? ir.instance_member(qualify(ir, target_type, "&"), target_name)
+                        : ir.instance_member(
+                              qualify(ir, target_type, "*"), target_name, ir.literal("nullptr")));
 
     auto const declaration_node{
         ir.record(facades.name[row], class_nodes.build(), RecordKind::class_)};

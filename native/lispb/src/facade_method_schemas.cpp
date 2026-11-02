@@ -19,14 +19,16 @@ auto FacadeMethodSchemas::append() -> FacadeMethodId {
     is_const.push_back(false);
     is_noexcept.push_back(false);
     target_name.push_back({});
+    access.push_back({});
     return FacadeMethodId{index + 1};
 }
 auto FacadeMethodSchemas::clone(FacadeMethodId id) -> FacadeMethodId {
     return detail::clone_schema_row(
-        *this, id, name, return_type, parameters, is_const, is_noexcept, target_name);
+        *this, id, name, return_type, parameters, is_const, is_noexcept, target_name, access);
 }
 void FacadeMethodSchemas::clear() {
-    detail::clear_schema_columns(name, return_type, parameters, is_const, is_noexcept, target_name);
+    detail::clear_schema_columns(
+        name, return_type, parameters, is_const, is_noexcept, target_name, access);
 }
 
 }

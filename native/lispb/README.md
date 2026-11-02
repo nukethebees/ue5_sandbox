@@ -113,6 +113,21 @@ consumers of new generated declarations.
 lookups and per-form allowlists use its generated enum values; `Fields` shares the same validation
 and diagnostics with string-based DSL consumers. Allowed nested declarations remain grammar rules.
 
+Facades forward typed methods to a stored target. Group methods with `(public ...)`,
+`(protected ...)`, or `(private ...)` to select their C++ access. Groups do not nest;
+ungrouped methods use `:method-access` (public by default). Set `:bind-access` for the
+binding function or reference constructor, and `:target-access` for the stored target
+(public and private by default, respectively). For example:
+
+```lisp
+(facade Builder @target target_
+  :target-storage reference
+  :bind-access protected
+  :target-access protected
+  (protected
+    (method reset void)))
+```
+
 Use `:enum-array true` independently on native or Unreal enums to generate `ioj::enum_count<Enum>()` for
 `ioj::EnumArray<Enum, T>` and `ioj::FixedEnumArray<Enum>`. LispB requires known codes in declaration
 order from zero through count minus one; gaps, aliases, negative codes, hidden values, and count

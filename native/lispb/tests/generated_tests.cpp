@@ -731,9 +731,16 @@ TEST(GeneratedFacade, Operations) {
     source_facade.set_value(42);
     EXPECT_TRUE(source_facade.get() == 42);
 
-    FReferenceFacade reference_facade{target};
+    struct ReferenceFacade : FReferenceFacade {
+        explicit ReferenceFacade(FTarget& value)
+            : FReferenceFacade{value} {}
+        using FReferenceFacade::set_value;
+        auto target_address() const -> FTarget const* { return &target; }
+    };
+    ReferenceFacade reference_facade{target};
     reference_facade.set_value(17);
     EXPECT_TRUE(reference_facade.get() == 17);
+    EXPECT_EQ(reference_facade.target_address(), &target);
 }
 
 TEST(GeneratedEnum, ValuesAndConversions) {

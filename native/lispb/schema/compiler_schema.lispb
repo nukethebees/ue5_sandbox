@@ -281,6 +281,7 @@
     (value tag :serialized-name "tag")
     (value target_name :serialized-name "target-name")
     (value target_storage :serialized-name "target-storage")
+    (value target_access :serialized-name "target-access")
     (value template_parameters :serialized-name "template-parameters")
     (value tooltip :serialized-name "tooltip")
     (value total_bits :serialized-name "total-bits")

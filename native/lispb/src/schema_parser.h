@@ -92,7 +92,11 @@ class SchemaParser {
     auto parse_enum(Declarations& declarations, sexpr::FormId const form) -> DeclarationHandle;
     auto parse_table(Declarations& declarations, sexpr::FormId const form) -> DeclarationHandle;
     auto parse_facade_target_storage(sexpr::FormId const form) -> bool;
-    auto parse_facade_access(sexpr::Fields const& fields, SchemaProperty const key) -> Access;
+    auto parse_facade_access(sexpr::Fields const& fields, SchemaProperty key, Access fallback)
+        -> Access;
+    auto parse_facade_method(Declarations& declarations,
+                             sexpr::FormId form,
+                             std::optional<Access> access = {}) -> FacadeMethodId;
     auto parse_facade_friend_kind(sexpr::Fields const& fields) -> RecordKind;
     auto parse_facade(Declarations& declarations, sexpr::FormId const form) -> DeclarationHandle;
     auto parse_setting_device(sexpr::FormId const form) -> SettingDevice;

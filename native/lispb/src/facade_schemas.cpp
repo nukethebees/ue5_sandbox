@@ -23,6 +23,7 @@ auto FacadeSchemas::append() -> DeclarationHandle {
     export_specifier.push_back({});
     bind_access.push_back(Access::public_);
     method_access.push_back(Access::public_);
+    target_access.push_back(Access::private_);
     friends.push_back({});
     friend_kind.push_back(RecordKind::class_);
     definitions_in_source.push_back(false);
@@ -42,6 +43,7 @@ auto FacadeSchemas::clone(DeclarationHandle id) -> DeclarationHandle {
                                     export_specifier,
                                     bind_access,
                                     method_access,
+                                    target_access,
                                     friends,
                                     friend_kind,
                                     definitions_in_source,
@@ -57,6 +59,7 @@ void FacadeSchemas::clear() {
                                  export_specifier,
                                  bind_access,
                                  method_access,
+                                 target_access,
                                  friends,
                                  friend_kind,
                                  definitions_in_source,

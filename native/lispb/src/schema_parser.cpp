@@ -794,18 +794,41 @@ auto SchemaParser::parse_facade_target_storage(sexpr::FormId const form) -> bool
     parser_.fail(form, std::format("expected 'pointer' or 'reference'; got '{}'", value));
 }
 
-auto SchemaParser::parse_facade_access(sexpr::Fields const& fields, SchemaProperty const key)
-    -> Access {
+auto SchemaParser::parse_facade_access(sexpr::Fields const& fields,
+                                       SchemaProperty const key,
+                                       Access const fallback) -> Access {
     auto const property{to_serialized_string(key)};
     auto const form{fields.optional(property)};
     if (!form) {
-        return Access::public_;
+        return fallback;
     }
     auto const value{try_parse_serialized_access(parser_.text(*form, property))};
-    if (value && *value != Access::protected_) {
+    if (value) {
         return *value;
     }
-    parser_.fail(*form, "facade access must be public or private");
+    parser_.fail(*form, "facade access must be public, protected or private");
+}
+
+auto SchemaParser::parse_facade_method(Declarations& declarations,
+                                       sexpr::FormId const form,
+                                       std::optional<Access> const access) -> FacadeMethodId {
+    Fields const method{parser_, form, "method", 2};
+    method.validate({P::const_, P::noexcept_, P::target_name}, {"parameter"});
+    std::vector<ParameterId> parameters;
+    for (auto const parameter : method.declarations()) {
+        parameters.push_back(parse_parameter(declarations, parameter));
+    }
+
+    auto& records{declarations.facade_methods};
+    auto const id{records.append()};
+    records.name[id] = parser_.identifier(method.positional(0), "facade method name");
+    records.return_type[id] = parse_type_ref(declarations, method.positional(1));
+    records.parameters[id] = declarations.range(parameters);
+    records.is_const[id] = boolean_or(method, P::const_);
+    records.is_noexcept[id] = boolean_or(method, P::noexcept_);
+    records.target_name[id] = optional_identifier(method, P::target_name);
+    records.access[id] = access;
+    return id;
 }
 
 auto SchemaParser::parse_facade_friend_kind(sexpr::Fields const& fields) -> RecordKind {
@@ -828,31 +851,25 @@ auto SchemaParser::parse_facade(Declarations& declarations, sexpr::FormId const 
                      P::export_specifier,
                      P::bind_access,
                      P::method_access,
+                     P::target_access,
                      P::friends,
                      P::friend_kind,
                      P::definitions_in_source,
                      P::target_storage},
-                    {"method"});
+                    {"method", "public", "protected", "private"});
     std::vector<FacadeMethodId> methods;
     for (auto const declaration : fields.declarations()) {
-        Fields const method{parser_, declaration, "method", 2};
-        method.validate({P::const_, P::noexcept_, P::target_name}, {"parameter"});
-        std::vector<ParameterId> parameters;
-        for (auto const parameter : method.declarations()) {
-            parameters.push_back(parse_parameter(declarations, parameter));
+        auto const head{syntax_.head(declaration)};
+        if (head == "method") {
+            methods.push_back(parse_facade_method(declarations, declaration));
+            continue;
         }
-        {
-            auto& records{declarations.facade_methods};
-            auto const record_id{records.append()};
-            auto const record_index{records.index(record_id)};
-            records.name[record_index] =
-                parser_.identifier(method.positional(0), "facade method name");
-            records.return_type[record_index] = parse_type_ref(declarations, method.positional(1));
-            records.parameters[record_index] = declarations.range(parameters);
-            records.is_const[record_index] = boolean_or(method, P::const_);
-            records.is_noexcept[record_index] = boolean_or(method, P::noexcept_);
-            records.target_name[record_index] = optional_identifier(method, P::target_name);
-            methods.push_back(record_id);
+
+        auto const access{try_parse_serialized_access(head).value()};
+        Fields const group{parser_, declaration, head, 0};
+        group.validate({}, {"method"});
+        for (auto const method : group.declarations()) {
+            methods.push_back(parse_facade_method(declarations, method, access));
         }
     }
     auto reference_target{false};
@@ -872,8 +889,12 @@ auto SchemaParser::parse_facade(Declarations& declarations, sexpr::FormId const 
     records.validation_dependencies[record_index] =
         declarations.range(identifier_list_or(fields, P::validation_dependencies));
     records.export_specifier[record_index] = parse_export_specifier(fields);
-    records.bind_access[record_index] = parse_facade_access(fields, P::bind_access);
-    records.method_access[record_index] = parse_facade_access(fields, P::method_access);
+    records.bind_access[record_index] =
+        parse_facade_access(fields, P::bind_access, Access::public_);
+    records.method_access[record_index] =
+        parse_facade_access(fields, P::method_access, Access::public_);
+    records.target_access[record_index] =
+        parse_facade_access(fields, P::target_access, Access::private_);
     records.friends[record_index] = declarations.range(text_id_list_or(fields, P::friends));
     records.friend_kind[record_index] = parse_facade_friend_kind(fields);
     records.definitions_in_source[record_index] = boolean_or(fields, P::definitions_in_source);

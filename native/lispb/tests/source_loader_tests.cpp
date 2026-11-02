@@ -64,6 +64,7 @@
 #include <lispb/schema/integer_domain.h>
 #include <lispb/schema/integer_scalar_types.h>
 #include <lispb/schema/record_types.h>
+#include <lispb/schema/source_renderer.h>
 #include <lispb/schema/type_graph.h>
 #include <lispb/schema/type_origin.h>
 
@@ -1989,11 +1990,16 @@ TEST_F(SourceLoaderTest, LoadsStructuredTypeReferencesAndFacadeStorage) {
   :namespace project
   (facade FFacade @target target
     :target-storage reference
+    :target-access protected
+    :bind-access protected
+    :method-access private
     :definitions-in-source true
-    (method get (type-ref @vector :suffix " const&")
-      :const true
-      :target-name get_value
-      (parameter index int32 :default "0"))))
+    (protected
+      (method get (type-ref @vector :suffix " const&")
+        :const true
+        :target-name get_value
+        (parameter index int32 :default "0")))
+    (method reset void)))
 )");
 
     auto manifest{files.load()};
@@ -2001,11 +2007,21 @@ TEST_F(SourceLoaderTest, LoadsStructuredTypeReferencesAndFacadeStorage) {
     auto const facade_row{facades.index(facade)};
     EXPECT_TRUE(facades.reference_target[facade_row]);
     EXPECT_TRUE(facades.definitions_in_source[facade_row]);
+    EXPECT_EQ(facades.target_access[facade_row], Access::protected_);
+    EXPECT_EQ(facades.bind_access[facade_row], Access::protected_);
+    EXPECT_EQ(facades.method_access[facade_row], Access::private_);
     auto const method_row{facade_methods.index(store.items(facades.methods[facade_row])[0])};
     EXPECT_EQ(files.text(store.type_refs.suffix[facade_methods.return_type[method_row]]),
               " const&");
     EXPECT_EQ(files.text(facade_methods.target_name[method_row]), "get_value");
     EXPECT_TRUE(facade_methods.is_const[method_row]);
+    EXPECT_EQ(facade_methods.access[method_row], Access::protected_);
+    EXPECT_FALSE(facade_methods.access[store.items(facades.methods[facade_row])[1]]);
+
+    auto const canonical{lispb::schema::render_module_source(store, manifest.modules.front())};
+    files.write_root(canonical);
+    auto const reloaded{files.load()};
+    EXPECT_EQ(lispb::schema::render_module_source(store, reloaded.modules.front()), canonical);
 }
 
 TEST_F(SourceLoaderTest, LoadsOpaqueCppBlocksAndKeepsQuotedBodiesCompatible) {

@@ -517,6 +517,10 @@ auto CanonicalRenderer::build_facade(codegen::DeclarationHandle const schema) ->
         result.field("method-access",
                      ir_.atom(codegen::to_serialized_string(facades.method_access[index])));
     }
+    if (facades.target_access[index] != codegen::Access::private_) {
+        result.field("target-access",
+                     ir_.atom(codegen::to_serialized_string(facades.target_access[index])));
+    }
     result.list_field("friends", items(facades.friends[index]), string);
     if (facades.friend_kind[index] != codegen::RecordKind::class_) {
         result.field("friend-kind",
@@ -526,7 +530,7 @@ auto CanonicalRenderer::build_facade(codegen::DeclarationHandle const schema) ->
     if (facades.reference_target[index]) {
         result.field("target-storage", ir_.atom("reference"));
     }
-    for (auto const method : items(facades.methods[index])) {
+    auto build_method = [&](codegen::FacadeMethodId method) {
         auto child{ir_.form(
             "method",
             {ir_.atom(methods.name[method]), build_type_ref(methods.return_type[method])})};
@@ -538,7 +542,22 @@ auto CanonicalRenderer::build_facade(codegen::DeclarationHandle const schema) ->
         for (auto const parameter : items(methods.parameters[method])) {
             child.add(build_parameter(parameter));
         }
-        result.add(child.build());
+        return child.build();
+    };
+    auto const method_ids{items(facades.methods[index])};
+    auto const count{method_ids.size()};
+    for (std::size_t i{}; i < count;) {
+        auto const access{methods.access[method_ids[i]]};
+        if (!access) {
+            result.add(build_method(method_ids[i++]));
+            continue;
+        }
+
+        auto group{ir_.form(codegen::to_serialized_string(*access))};
+        do {
+            group.add(build_method(method_ids[i++]));
+        } while (i < count && methods.access[method_ids[i]] == access);
+        result.add(group.build());
     }
     return result.build();
 }

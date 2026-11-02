@@ -418,11 +418,16 @@
   :namespace codegen_compile_fixture
   (facade FReferenceFacade @target target
     :target-storage reference
-    (method get std::int32_t
-      :const true)
-    (method set_value void
-      :target-name set
-      (parameter value "std::int32_t const"))))
+    :target-access protected
+    :bind-access protected
+    (public
+      (method get std::int32_t :const true))
+    (protected
+      (method set_value void
+        :target-name set
+        (parameter value "std::int32_t const")))
+    (private
+      (method reset void :target-name clear))))
 
 (module source_facade_fixture
   :header "SourceFacade.h"

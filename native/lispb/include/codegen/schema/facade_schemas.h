@@ -32,6 +32,7 @@ struct FacadeSchemas {
     Column<StringId> export_specifier;
     Column<Access> bind_access;
     Column<Access> method_access;
+    Column<Access> target_access;
     Column<SchemaRange<StringId>> friends;
     Column<RecordKind> friend_kind;
     Column<std::uint8_t> definitions_in_source;

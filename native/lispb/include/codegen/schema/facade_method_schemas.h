@@ -1,5 +1,6 @@
 #pragma once
 
+#include <codegen/ast/access.h>
 #include <codegen/schema/indices.h>
 #include <codegen/schema/schema_range.h>
 #include <lispb/indexed_column.h>
@@ -26,6 +27,7 @@ struct FacadeMethodSchemas {
     Column<std::uint8_t> is_const;
     Column<std::uint8_t> is_noexcept;
     Column<std::optional<StringId>> target_name;
+    Column<std::optional<Access>> access;
 };
 
 }
