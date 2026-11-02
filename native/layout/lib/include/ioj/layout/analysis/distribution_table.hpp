@@ -11,9 +11,11 @@
 #include "ioj/single_allocation/view.h"
 
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <memory_resource>
 #include <optional>
+#include <type_traits>
 
 namespace ioj::layout {
 namespace distribution_table {

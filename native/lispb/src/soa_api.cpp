@@ -107,7 +107,8 @@ auto compact_row_api(LoweringContext& context,
     auto emit = [&](std::string_view name,
                     std::vector<FunctionParameterId> parameters,
                     Nodes body) {
-        auto const function{ir.function(name, name == "set" ? "void" : "size_type")};
+        auto const function{
+            ir.function(name, name == "set" ? ir.types.std.void_ : ir.types.named("size_type"))};
         if (name == "set") {
             parameters.insert(parameters.begin(), ir.parameter("size_type", "index"));
             ir.set_function_receiver(
@@ -416,8 +417,7 @@ auto lower_soa_api(LoweringContext& parent_context,
                                      : ir.init_list(arguments, ir.types.named("equivalent_type"));
         }
         auto const function{ir.function("operator[]", "auto")};
-        ir.set_function_parameters(function,
-                                   {ir.parameter(ir.types.named("std::uint32_t"), "index")});
+        ir.set_function_parameters(function, {ir.parameter(ir.types.std.u32, "index")});
         ir.set_function_body(
             function,
             {ir.expr_stmt(ir.call(

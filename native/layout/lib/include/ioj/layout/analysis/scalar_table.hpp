@@ -21,6 +21,7 @@
 #include <cstddef>
 #include <memory_resource>
 #include <optional>
+#include <type_traits>
 
 namespace ioj::layout {
 namespace scalar_table {

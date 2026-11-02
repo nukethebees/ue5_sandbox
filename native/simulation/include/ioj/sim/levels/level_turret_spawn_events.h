@@ -15,8 +15,10 @@
 #include "ioj/vectors3f.h"
 
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <memory_resource>
+#include <type_traits>
 
 namespace ioj::sim {
 namespace level_turret_spawn_events {

@@ -15,8 +15,10 @@
 
 #include <array>
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <memory_resource>
+#include <type_traits>
 
 #define NATIVE_SOA_FIXTURE_API
 

@@ -8,6 +8,8 @@
 #include "ioj/s7/record_reader.h"
 #include <ioj/s7/field_reader.h>
 
+#include <string>
+
 namespace ioj::s7 {
 template <>
 struct TypeReader<levels::ObjectiveDependency> : RecordReader<levels::ObjectiveDependency> {

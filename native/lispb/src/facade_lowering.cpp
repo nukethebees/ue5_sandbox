@@ -41,7 +41,7 @@ auto lower_facade(LoweringContext& context, DeclarationHandle facade) -> Declara
     auto const reference_target{facades.reference_target[row]};
     auto const target_name{facades.target_member_name[row]};
     auto const binding{reference_target ? ir.constructor(facades.name[row])
-                                        : ir.function("bind", "void")};
+                                        : ir.function("bind", ir.types.std.void_)};
     ir.set_function_parameters(binding,
                                {ir.parameter(qualify(ir, target_type, "&"), "new_target")});
     ir.function_flags(binding).set_is_inline(!definitions_in_source);

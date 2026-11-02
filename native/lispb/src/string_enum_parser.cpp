@@ -57,7 +57,7 @@ auto comparisons(CppIR& ir,
                  std::size_t const prefix_size = 0) -> Nodes {
     NodeListBuilder body{ir};
     if (entries.empty()) {
-        body.add(ir.expr_stmt(ir.static_cast_expr(ir.types.intern("void"), input)));
+        body.add(ir.expr_stmt(ir.static_cast_expr(ir.types.std.void_, input)));
     }
     for (auto const entry : entries) {
         body.add(ir.if_stmt(ir.binary(BinaryOperator::equal,
@@ -104,9 +104,8 @@ auto length_bucket(CppIR& ir,
     }
     cases.push_back(ir.switch_case(
         {}, ir.block({ir.return_stmt(ir.type_reference(ir.types.named("std::nullopt")))})));
-    auto const selected_character{
-        ir.static_cast_expr(ir.types.intern("unsigned char"),
-                            ir.subscript(input, ir.literal(std::to_string(position))))};
+    auto const selected_character{ir.static_cast_expr(
+        ir.types.std.unsigned_char, ir.subscript(input, ir.literal(std::to_string(position))))};
     return {ir.switch_stmt(selected_character, cases)};
 }
 
@@ -170,8 +169,8 @@ auto indexed_parser_body(CppIR& ir,
         names.push_back(ir.string_literal(entry.key));
     }
     auto const array_type{ir.types.template_type(
-        ir.types.named("std::array", {ir.types.dependency("std::array", "array")}),
-        {ir.types.named("std::string_view"), ir.types.intern(std::to_string(names.size()))})};
+        ir.types.std.array,
+        {ir.types.std.string_view, ir.types.intern(std::to_string(names.size()))})};
     return {
         ir.variable(ir.types.decorate(array_type, "", " constexpr"), "names", ir.init_list(names)),
         ir.return_stmt(ir.call(lookup, {input, ir.named("names")}))};
@@ -187,18 +186,11 @@ auto lower_string_enum_parser(CppIR& ir,
     auto const function{ir.function(function_name, "auto")};
     ir.set_function_return_type(
         function,
-        ir.types.template_type(
-            ir.types.named("std::optional", {ir.types.dependency("std::optional", "optional")}),
-            {ir.types.named(enum_type)}),
+        ir.types.template_type(ir.types.std.optional, {ir.types.named(enum_type)}),
         ReturnSyntax::trailing);
     ir.set_function_parameters(
         function,
-        {ir.parameter(ir.types.decorate(
-                          ir.types.named("std::string_view",
-                                         {ir.types.dependency("std::string_view", "string_view")}),
-                          "",
-                          " const"),
-                      parameter_name)});
+        {ir.parameter(ir.types.decorate(ir.types.std.string_view, "", " const"), parameter_name)});
     auto& flags{ir.function_flags(function)};
     flags.set_define_in_header(true);
     flags.set_is_constexpr(true);

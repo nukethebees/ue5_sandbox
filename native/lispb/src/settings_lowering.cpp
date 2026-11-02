@@ -161,7 +161,7 @@ auto build_functions(LoweringContext& context,
     };
 
     auto span_type = [&](std::string_view const element) {
-        return ir.types.template_type(ir.types.named("std::span"),
+        return ir.types.template_type(ir.types.std.span,
                                       {ir.types.decorate(ir.types.named(element), "", " const")});
     };
     auto const categories{
@@ -177,8 +177,8 @@ auto build_functions(LoweringContext& context,
     ir.set_function_parameters(descriptor, {id_parameter});
     ir.set_function_body(
         descriptor,
-        {ir.return_stmt(ir.subscript(ir.named("descriptors"),
-                                     ir.static_cast_expr(ir.types.named("std::size_t"), id)))});
+        {ir.return_stmt(
+            ir.subscript(ir.named("descriptors"), ir.static_cast_expr(ir.types.std.size_t, id)))});
 
     auto const getter{create("game_setting_value", ir.types.named("GameSettingValue"))};
     ir.set_function_parameters(getter,
@@ -199,7 +199,7 @@ auto build_functions(LoweringContext& context,
                           ir.return_stmt(ir.init_list({ir.member_access(state, first_name)},
                                                       ir.types.intern("GameSettingValue")))});
 
-    auto const setter{create("set_game_setting_value", ir.types.intern("bool"))};
+    auto const setter{create("set_game_setting_value", ir.types.std.bool_)};
     ir.set_function_parameters(setter,
                                {ir.parameter(state_name + "&", "state"),
                                 id_parameter,
@@ -254,7 +254,7 @@ auto settings_api(LoweringContext& context,
                 ir.call(ir.member_access(ir.call(ir.named("derived")), "settings_state")), name))});
         members.add(ir.header_function(getter), 2);
 
-        auto const setter{ir.function("set_" + context.text(name), "void")};
+        auto const setter{ir.function("set_" + context.text(name), ir.types.std.void_)};
         ir.function_flags(setter).set_define_in_header(true);
         ir.set_function_parameters(
             setter, {ir.parameter(qualify(ir, setting_types[index], " const"), "value")});
@@ -382,7 +382,7 @@ auto build_type_headers(LoweringContext& context,
             values.push_back(ir.enumerator(ir.strings.intern(value)));
         }
         emit_header(name,
-                    ir.enumeration(ir.strings.intern(name), ir.types.named("std::uint8_t"), values),
+                    ir.enumeration(ir.strings.intern(name), ir.types.std.u8, values),
                     {"cstdint"},
                     {});
     };
@@ -461,8 +461,8 @@ auto build_type_headers(LoweringContext& context,
             1);
     }
     auto const state_name{modules.state_name[module_row]};
-    auto const equality{ir.function("operator==", "bool")};
-    ir.set_function_return_type(equality, ir.types.intern("bool"), ReturnSyntax::trailing);
+    auto const equality{ir.function("operator==", ir.types.std.bool_)};
+    ir.set_function_return_type(equality, ir.types.std.bool_, ReturnSyntax::trailing);
     ir.set_function_parameters(
         equality, {ir.parameter(ir.types.intern(context.text(state_name) + " const&"))});
     ir.set_function_receiver(equality, FunctionReceiver::const_);
@@ -472,12 +472,11 @@ auto build_type_headers(LoweringContext& context,
     ir.set_record_export_specifier(state, modules.export_specifier[module_row]);
     ir.set_record_dependencies(state, dependencies);
     emit_header(context.text(state_name), state, {}, {});
-    emit_header(
-        "GameSettingValue",
-        ir.using_declaration(ir.strings.intern("GameSettingValue"),
-                             ir.types.template_type(ir.types.named("std::variant"), value_types)),
-        {"variant"},
-        {});
+    emit_header("GameSettingValue",
+                ir.using_declaration(ir.strings.intern("GameSettingValue"),
+                                     ir.types.template_type(ir.types.std.variant, value_types)),
+                {"variant"},
+                {});
     emit_header(context.text(modules.api_name[module_row]),
                 settings_api(context, module, setting_types),
                 {},
@@ -541,7 +540,7 @@ auto build_source(LoweringContext& context,
 
     NodeListBuilder globals{ir};
     auto array_type = [&](std::string_view const element, std::size_t const count) {
-        return ir.types.decorate(ir.types.template_type(ir.types.named("std::array"),
+        return ir.types.decorate(ir.types.template_type(ir.types.std.array,
                                                         {ir.types.named(element),
                                                          ir.types.intern(std::to_string(count))}),
                                  "",

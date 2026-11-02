@@ -81,10 +81,8 @@ auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nod
     auto const mask_name{*soas.field_mask_name[row]};
     auto const enum_name{context.text(*soas.field_enum_name[row])};
     auto const selected{decls.items(soas.members[row])};
-    auto const uint8_type{
-        ir.types.named("std::uint8_t", {ir.types.dependency("std::uint8_t", "cstdint")})};
-    auto const int32_type{
-        ir.types.named("std::int32_t", {ir.types.dependency("std::int32_t", "cstdint")})};
+    auto const uint8_type{ir.types.std.u8};
+    auto const int32_type{ir.types.std.i32};
     auto const enum_type{ir.types.intern(enum_name)};
     std::vector<EnumValueId> values;
     std::string previous_name;
@@ -107,7 +105,7 @@ auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nod
     values.push_back(ir.enumerator(ir.store_text("Count"), ir.store_text(next_value())));
 
     auto const field_count{ir.types.compose({{.text = ir.store_text("static_cast<")},
-                                             {.type = ir.types.named("std::size_t")},
+                                             {.type = ir.types.std.size_t},
                                              {.text = ir.store_text(">(")},
                                              {.type = ir.types.decorate(enum_type, "", "::Count")},
                                              {.text = ir.store_text(")")}})};
@@ -128,9 +126,8 @@ auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nod
         auto const name{context.text(members.name[member_row])};
         std::vector<FunctionParameterId> parameters;
         for (auto const dimension : selected_dimensions) {
-            parameters.push_back(
-                ir.parameter(ir.types.decorate(ir.types.named("std::int32_t"), "", " const"),
-                             dimensions.index_name[dimensions.index(dimension)]));
+            parameters.push_back(ir.parameter(ir.types.decorate(ir.types.std.i32, "", " const"),
+                                              dimensions.index_name[dimensions.index(dimension)]));
         }
         auto const function{ir.function(name + "_field", enum_type)};
         auto& flags{ir.function_flags(function)};
@@ -168,7 +165,7 @@ auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nod
                       ir.sizeof_type(mask_type),
                       ir.sizeof_type(ir.types.decorate(mask_type, "", "::storage_type")))))
         .add(ir.static_assertion(ir.type_reference(
-            ir.types.template_type(ir.types.named("std::is_trivially_copyable_v"), {mask_type}))));
+            ir.types.template_type(ir.types.std.is_trivially_copyable_v, {mask_type}))));
     return result.build();
 }
 

@@ -70,7 +70,7 @@ TEST_F(ExprTest, PreservesBinaryGroupingAndPostfixBinding) {
     expect_rendered(ir.binary(BinaryOperator::equal, ir.named("c"), inner), "c == (a == b)");
     expect_rendered(ir.call(inner), "(a == b)()");
     expect_rendered(ir.call(ir.named("f"), {inner}), "f(a == b)");
-    expect_rendered(ir.static_cast_expr(types.intern("bool"), inner), "static_cast<bool>(a == b)");
+    expect_rendered(ir.static_cast_expr(types.std.bool_, inner), "static_cast<bool>(a == b)");
 }
 
 TEST_F(ExprTest, RendersUnaryPointerAccessAndLogicalPrecedence) {
@@ -156,9 +156,8 @@ TEST_F(ExprTest, RendersSizeofAndPreservesArithmeticGrouping) {
                               ir.named("count"),
                               ir.sizeof_type(types.intern("Element"))),
                     "count * sizeof(Element)");
-    expect_rendered(
-        ir.static_cast_expr(types.intern("int"), ir.sizeof_type(types.intern("Element"))),
-        "static_cast<int>(sizeof(Element))");
+    expect_rendered(ir.static_cast_expr(types.std.int_, ir.sizeof_type(types.intern("Element"))),
+                    "static_cast<int>(sizeof(Element))");
 }
 
 TEST_F(ExprTest, CollectsSizeofTypeDependenciesThroughArithmetic) {
@@ -183,7 +182,7 @@ TEST_F(ExprTest, KeepsRawVerbatimAndProtectsNestedRawOperands) {
                     "(left, right) == 0");
     expect_rendered(ir.binary(BinaryOperator::equal, ir.literal("0"), raw_expr),
                     "0 == (left, right)");
-    expect_rendered(ir.static_cast_expr(types.intern("int"), raw_expr),
+    expect_rendered(ir.static_cast_expr(types.std.int_, raw_expr),
                     "static_cast<int>((left, right))");
     expect_rendered(ir.init_list({raw_expr}), "{(left, right)}");
 }
@@ -298,15 +297,13 @@ TEST_F(ExprTest, StmtsCollectInitializersAndAssignmentOperands) {
 }
 
 TEST_F(ExprTest, PreservesAbsentEmptyAndStructuredInitializers) {
-    expect_rendered(ir.instance_member(types.intern("int"), ir.strings.intern("value")),
-                    "int value;");
+    expect_rendered(ir.instance_member(types.std.int_, ir.strings.intern("value")), "int value;");
+    expect_rendered(ir.instance_member(types.std.int_, ir.strings.intern("value"), ir.raw_expr("")),
+                    "int value{};");
     expect_rendered(
-        ir.instance_member(types.intern("int"), ir.strings.intern("value"), ir.raw_expr("")),
-        "int value{};");
-    expect_rendered(
-        ir.instance_member(types.intern("int"), ir.strings.intern("value"), ir.literal("42")),
+        ir.instance_member(types.std.int_, ir.strings.intern("value"), ir.literal("42")),
         "int value{42};");
-    expect_rendered(ir.variable(types.intern("int"), ir.strings.intern("value"), ir.raw_expr("")),
+    expect_rendered(ir.variable(types.std.int_, ir.strings.intern("value"), ir.raw_expr("")),
                     "int value{};");
     expect_rendered(
         ir.variable(types.intern("auto const"), ir.strings.intern("value"), ir.call(ir.named("f"))),
@@ -392,7 +389,7 @@ TEST_F(AstTest, CollectsDeepControlFlowDependenciesOnlyForDefinitions) {
         {ir.switch_case(symbol("case_only"), ir.block({ir.expr_stmt(body_call)})),
          ir.switch_case(std::nullopt,
                         ir.block({ir.block({ir.expr_stmt(ir.call(symbol("default_only")))})}))})};
-    auto const spec{ir.function(ir.strings.intern("f"), types.intern("void"))};
+    auto const spec{ir.function(ir.strings.intern("f"), types.std.void_)};
     ir.set_function_body(spec,
                          {ir.if_stmt(ir.call(symbol("condition_only")),
                                      ir.block({selection}),

@@ -6,7 +6,9 @@
 #include "ioj/field_mask.h"
 #include "ioj/single_allocation/layout.h"
 
+#include <cstddef>
 #include <cstdint>
+#include <type_traits>
 
 namespace codegen_compile_fixture {
 

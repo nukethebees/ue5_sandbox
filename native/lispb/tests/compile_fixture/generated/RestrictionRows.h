@@ -9,7 +9,9 @@
 #include "ioj/single_allocation/view.h"
 
 #include <cassert>
+#include <cstddef>
 #include <memory_resource>
+#include <type_traits>
 
 namespace codegen_compile_fixture {
 namespace single_restriction_rows {

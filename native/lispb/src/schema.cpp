@@ -37,12 +37,14 @@ auto resolve_type_use(TypeRefId const reference_id, TypeRegistry const& types)
         result = types.registered.cpp_type[types.registered.index(*found)];
     } else {
         auto const spelling{native_spelling(name)};
-        if (std::ranges::find(
-                fixed_width_integer_types, spelling, &FixedWidthIntegerType::native_name) !=
-            fixed_width_integer_types.end()) {
-            result = cpp_types.intern(spelling, {cpp_types.dependency(spelling, "cstdint")});
-        } else if (spelling == "std::size_t" || spelling == "std::ptrdiff_t") {
-            result = cpp_types.intern(spelling, {cpp_types.dependency(spelling, "cstddef")});
+        if (auto const integer{std::ranges::find(
+                fixed_width_integer_types, spelling, &FixedWidthIntegerType::native_name)};
+            integer != fixed_width_integer_types.end()) {
+            result = cpp_types.std.integer(integer->width, integer->is_signed);
+        } else if (spelling == "std::size_t") {
+            result = cpp_types.std.size_t;
+        } else if (spelling == "std::ptrdiff_t") {
+            result = cpp_types.std.ptrdiff_t;
         } else {
             result = cpp_types.intern(spelling);
         }

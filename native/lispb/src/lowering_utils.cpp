@@ -245,9 +245,8 @@ auto lower_member_type(LoweringContext& context, ChildOccurrenceId member) -> Cp
     if (!count) {
         return element;
     }
-    return ir.types.template_type(
-        ir.types.named("std::array", {ir.types.dependency("std::array", "array")}),
-        {element, ir.types.intern(std::to_string(*count))});
+    return ir.types.template_type(ir.types.std.array,
+                                  {element, ir.types.intern(std::to_string(*count))});
 }
 
 } // namespace lispb::codegen::detail

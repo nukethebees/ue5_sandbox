@@ -17,6 +17,7 @@
 #include <memory_resource>
 #include <optional>
 #include <string_view>
+#include <type_traits>
 
 namespace ioj::layout {
 namespace component_table {

@@ -198,8 +198,7 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
     auto const resource_constructor{ir.constructor(owner_name, true)};
     ir.set_function_parameters(
         resource_constructor,
-        {ir.parameter(ir.types.decorate(ir.types.named("std::pmr::memory_resource"), "", "&"),
-                      "resource")});
+        {ir.parameter(ir.types.decorate(ir.types.std.pmr.memory_resource, "", "&"), "resource")});
     ir.set_function_noexcept(resource_constructor);
     ir.set_function_body(
         resource_constructor,
@@ -208,10 +207,9 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
                                ir.unary(UnaryOperator::address_of, ir.named("resource")))});
     auto const resource_accessor{ir.function("memory_resource", "auto")};
     ir.set_function_body(resource_accessor, {ir.return_stmt(ir.named("resource_"))});
-    ir.set_function_return_type(
-        resource_accessor,
-        ir.types.decorate(ir.types.named("std::pmr::memory_resource"), "", "*"),
-        ReturnSyntax::trailing);
+    ir.set_function_return_type(resource_accessor,
+                                ir.types.decorate(ir.types.std.pmr.memory_resource, "", "*"),
+                                ReturnSyntax::trailing);
     ir.set_function_receiver(resource_accessor, FunctionReceiver::const_);
     ir.set_function_noexcept(resource_accessor);
     auto const destructor{ir.destructor(owner_name)};
@@ -269,8 +267,8 @@ auto data_pointers_node(LoweringContext& context, SingleAllocationModelId model)
     children.add(ir.using_declaration(
         ir.strings.intern("Element"),
         ir.types.template_type(
-            ir.types.named("std::conditional_t"),
-            {ir.types.template_type(ir.types.named("std::is_const_v"), {ir.types.named("Byte")}),
+            ir.types.std.conditional_t,
+            {ir.types.template_type(ir.types.std.is_const_v, {ir.types.named("Byte")}),
              ir.types.decorate(ir.types.named("T"), "", " const"),
              ir.types.named("T")}),
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("T"))})));
@@ -365,7 +363,7 @@ auto shared_view_type(LoweringContext& context, DeclarationHandle schema, bool r
     auto const scope{schema_namespace(context, schema)};
     auto& types{context.ir.types};
     return types.template_type(
-        types.named("std::conditional_t"),
+        types.std.conditional_t,
         {types.named("Const"),
          types.named(scope + (resolved ? "::ResolvedConstView" : "::ConstView")),
          types.named(scope + (resolved ? "::ResolvedView" : "::View"))});
@@ -504,7 +502,7 @@ auto emit_resolved_views(LoweringContext& context,
     ir.set_function_template(
         conversion,
         ir.template_declaration({ir.value_template_parameter(
-            ir.types.intern("bool"), ir.strings.intern("Enabled"), ir.named("Const"))}));
+            ir.types.std.bool_, ir.strings.intern("Enabled"), ir.named("Const"))}));
     ir.set_function_requires_clause(conversion, ir.named("Enabled"));
     ir.set_function_body(
         conversion, {}, {ir.member_initializer(ir.strings.intern("Base"), ir.named("other"))});
@@ -517,7 +515,7 @@ auto emit_resolved_views(LoweringContext& context,
     ir.set_record_bases(record, {base});
     ir.set_record_template(record,
                            ir.template_declaration({ir.value_template_parameter(
-                               ir.types.intern("bool"), ir.strings.intern("Const"))}));
+                               ir.types.std.bool_, ir.strings.intern("Const"))}));
     result.add(record).new_lines(1);
     for (bool const is_const : {true, false}) {
         auto const name{is_const ? const_name : mutable_name};
@@ -580,13 +578,13 @@ auto compact_view_node(LoweringContext& context, SingleAllocationModelId model) 
         children.new_lines(1).add(ir.using_declaration(
             ir.store_text("State"),
             ir.types.template_type(
-                ir.types.named("std::conditional_t"),
+                ir.types.std.conditional_t,
                 {ir.types.named("Const"), ir.types.decorate(state, "", " const"), state})));
         auto const constructor{ir.constructor(ir.strings.intern("ViewImpl"))};
         ir.set_function_parameters(constructor,
                                    {ir.parameter("State*", "state"),
-                                    ir.parameter(ir.types.named("std::uint32_t"), "offset"),
-                                    ir.parameter(ir.types.named("std::uint32_t"), "count")});
+                                    ir.parameter(ir.types.std.u32, "offset"),
+                                    ir.parameter(ir.types.std.u32, "count")});
         std::vector<Expr> arguments{ir.named("state"), ir.named("offset"), ir.named("count")};
         for (auto const column : selected.first(2)) {
             arguments.push_back(layout_column(context, column));
@@ -616,7 +614,7 @@ auto compact_view_node(LoweringContext& context, SingleAllocationModelId model) 
     ir.set_function_template(
         conversion,
         ir.template_declaration({ir.value_template_parameter(
-            ir.types.intern("bool"), ir.strings.intern("Enabled"), ir.named("Const"))}));
+            ir.types.std.bool_, ir.strings.intern("Enabled"), ir.named("Const"))}));
     ir.set_function_requires_clause(conversion, ir.named("Enabled"));
     children.new_lines(1).add(inline_function(context, conversion));
     children.append(view_accessor_nodes(context, model, false));
@@ -626,7 +624,7 @@ auto compact_view_node(LoweringContext& context, SingleAllocationModelId model) 
     ir.set_record_bases(record, {base});
     ir.set_record_template(record,
                            ir.template_declaration({ir.value_template_parameter(
-                               ir.types.intern("bool"), ir.strings.intern("Const"))}));
+                               ir.types.std.bool_, ir.strings.intern("Const"))}));
     return record;
 }
 
@@ -665,7 +663,7 @@ auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationMod
             children.new_lines(1);
         }
         children.add(ir.constexpr_member(
-            ir.types.named("std::size_t"),
+            ir.types.std.size_t,
             ir.strings.intern(context.text(columns.flattened_identifier[row]) + "_column"),
             ir.literal(std::to_string(index))));
     }
@@ -857,10 +855,9 @@ auto emit_single_allocation_container(LoweringContext& context,
         .new_lines(1)
         .add(ir.friend_type(ir.types.named("ioj::soa_storage_detail::StorageRequirements")))
         .new_lines(1)
-        .add(ir.instance_member(
-            ir.types.decorate(ir.types.named("std::pmr::memory_resource"), "", "*"),
-            ir.strings.intern("resource_"),
-            ir.init_list({})));
+        .add(ir.instance_member(ir.types.decorate(ir.types.std.pmr.memory_resource, "", "*"),
+                                ir.strings.intern("resource_"),
+                                ir.init_list({})));
     auto const created_record{ir.record(owner_name, children.build(), RecordKind::struct_)};
     describe_compact_scope(context, created_record, model_store.schema[model_store_index]);
     ir.set_record_bases(

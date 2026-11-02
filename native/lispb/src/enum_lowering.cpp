@@ -81,10 +81,7 @@ auto enum_count_specialization(CppIR& ir, CppTypeId enum_type, std::size_t const
         ir.function(ir.template_id(ir.named("enum_count"), {ir.type_reference(enum_type)}),
                     ir.types.intern("auto"))};
     ir.set_function_template(function, ir.template_specialization());
-    ir.set_function_return_type(
-        function,
-        ir.types.named("std::size_t", {ir.types.dependency("std::size_t", "cstddef")}),
-        ReturnSyntax::trailing);
+    ir.set_function_return_type(function, ir.types.std.size_t, ReturnSyntax::trailing);
     auto& flags{ir.function_flags(function)};
     flags.set_is_nodiscard(true);
     flags.set_is_constexpr(true);
@@ -206,11 +203,9 @@ auto enum_strings_specialization(CppIR& ir,
             offset_values.push_back(ir.literal(std::to_string(offsets[i])));
         }
     }
-    auto const offset_type{ir.types.named(std::format("std::uint{}_t", bits),
-                                          {ir.types.dependency("std::uint32_t", "cstdint")})};
+    auto const offset_type{ir.types.std.integer(bits)};
     auto const offsets_type{ir.types.template_type(
-        ir.types.named("std::array", {ir.types.dependency("std::array", "array")}),
-        {offset_type, ir.types.intern(std::to_string(count))})};
+        ir.types.std.array, {offset_type, ir.types.intern(std::to_string(count))})};
     auto const initializer{ir.init_list(
         {literal, ir.init_list(offset_values, offsets_type)},
         ir.types.named("ioj::PackedStrings",
@@ -282,7 +277,7 @@ auto serialized_parser(LoweringContext& context,
                       "value"),
          ir.parameter(ir.types.decorate(ir.types.named(enum_name), "", "&"), "result")});
     ir.set_function_body(created_function, body.build());
-    ir.set_function_return_type(created_function, ir.types.intern("bool"), ReturnSyntax::trailing);
+    ir.set_function_return_type(created_function, ir.types.std.bool_, ReturnSyntax::trailing);
     ir.set_function_export_specifier(created_function, enums.export_specifier[schema]);
     return created_function;
 }
@@ -418,10 +413,7 @@ auto enum_underlying_type(LoweringContext& context, DeclarationHandle schema) ->
                                     "' has no derivable C++ backing storage"};
     }
 
-    auto const prefix{requirement->signedness ? "int" : "uint"};
-    auto const spelling{"std::" + std::string{prefix} + std::to_string(requirement->bit_width) +
-                        "_t"};
-    return ir.types.named(spelling, {ir.types.dependency(spelling, "cstdint")});
+    return ir.types.std.integer(requirement->bit_width, requirement->signedness);
 }
 
 auto enum_bit_width_comment(LoweringContext& context, DeclarationHandle const schema) -> NodeId {
@@ -582,12 +574,10 @@ auto native_enum_traits(LoweringContext& context,
             values.push_back(ir.type_reference(ir.types.named(
                 std::string{ir.types.spelling(enum_type)} + "::" + context.text(name))));
         }
-        auto const traits{ir.record(
-            ir.template_id(ir.named("EnumTraits"), {ir.type_reference(enum_type)}),
-            {ir.constexpr_member(
-                ir.types.named("std::array", {ir.types.dependency("std::array", "array")}),
-                ir.strings.intern("values"),
-                ir.init_list(values))})};
+        auto const traits{
+            ir.record(ir.template_id(ir.named("EnumTraits"), {ir.type_reference(enum_type)}),
+                      {ir.constexpr_member(
+                          ir.types.std.array, ir.strings.intern("values"), ir.init_list(values))})};
         ir.set_record_template(traits, ir.template_specialization());
         result.add(traits, 2);
     }
@@ -710,10 +700,10 @@ auto unreal_conversion_header(LoweringContext& context,
         auto const name{context.text(enumerators.name[value])};
         decls.add(ir.static_assertion(ir.binary(
                       BinaryOperator::equal,
-                      ir.static_cast_expr(ir.types.intern("int"),
+                      ir.static_cast_expr(ir.types.std.int_,
                                           ir.type_reference(ir.types.decorate(
                                               ir.types.named(projection_name), "", "::" + name))),
-                      ir.static_cast_expr(ir.types.intern("int"),
+                      ir.static_cast_expr(ir.types.std.int_,
                                           ir.type_reference(ir.types.decorate(
                                               ir.types.named(native_name), "", "::" + name))))),
                   1);

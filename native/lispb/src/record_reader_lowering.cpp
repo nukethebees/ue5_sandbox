@@ -175,14 +175,14 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
     auto move = [&](Expr value) {
         return ir.call(ir.type_reference(ir.types.named("std::move")), {value});
     };
-    auto const unexpected{ir.init_list({move(errors)}, ir.types.named("std::unexpected"))};
+    auto const unexpected{ir.init_list({move(errors)}, ir.types.std.unexpected)};
     NodeListBuilder body{ir};
     if (constructing) {
         for (auto const field : fields) {
             auto const name{context.text(members.name[members.index(field)])};
             body.add(ir.variable(
                 ir.types.template_type(
-                    ir.types.named("std::optional"),
+                    ir.types.std.optional,
                     {ir.types.decorate(
                         ir.types.decorate(ir.types.named("value_type"), "", "::" + name),
                         "decltype(",
@@ -214,10 +214,10 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
             auto const name{context.text(members.name[members.index(field)])};
             auto const destination{constructing ? ir.named("value_" + name)
                                                 : ir.member_access(ir.named("result"), name)};
-            auto const path{ir.binary(
-                BinaryOperator::add,
-                ir.init_list({ir.member_access(ctx, "path")}, ir.types.named("std::string")),
-                ir.string_literal("." + field_name(context, field)))};
+            auto const path{
+                ir.binary(BinaryOperator::add,
+                          ir.init_list({ir.member_access(ctx, "path")}, ir.types.std.string),
+                          ir.string_literal("." + field_name(context, field)))};
             auto const reader{ir.init_list(
                 {ir.init_list(
                     {ir.member_access(ctx, "reader"),
@@ -389,7 +389,7 @@ void lower_record_reader(LoweringContext& context,
     auto decode_parameters{read_parameters};
     decode_parameters.push_back(ir.parameter("value_type&", empty ? "" : "result"));
     add_function("decode",
-                 ir.types.intern("void"),
+                 ir.types.std.void_,
                  decode_parameters,
                  record_reader::fields_body(context, record, false));
     if (!records.s7_positional[row]) {
@@ -402,10 +402,9 @@ void lower_record_reader(LoweringContext& context,
                           ir.types.decorate(ir.types.named("value_type"), "", "::Field")),
                       2);
         } else {
-            decls.add(ir.enumeration(
-                          ir.strings.intern("Field"),
-                          ir.types.named(values.size() <= 256 ? "std::uint8_t" : "std::uint32_t"),
-                          values),
+            decls.add(ir.enumeration(ir.strings.intern("Field"),
+                                     values.size() <= 256 ? ir.types.std.u8 : ir.types.std.u32,
+                                     values),
                       2);
         }
         std::vector<Expr> names;
@@ -426,10 +425,8 @@ void lower_record_reader(LoweringContext& context,
             }
         }
         auto const array_type{ir.types.template_type(
-            ir.types.named("std::array", {ir.types.dependency("std::array", "array")}),
-            {ir.types.named("std::string_view",
-                            {ir.types.dependency("std::string_view", "string_view")}),
-             ir.types.intern(std::to_string(named_fields.size()))})};
+            ir.types.std.array,
+            {ir.types.std.string_view, ir.types.intern(std::to_string(named_fields.size()))})};
         decls.add(
             ir.constexpr_member(array_type, ir.strings.intern("field_names"), ir.init_list(names)),
             1);

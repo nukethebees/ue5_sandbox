@@ -11,8 +11,10 @@
 #include "ioj/single_allocation/view.h"
 
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <memory_resource>
+#include <type_traits>
 
 namespace ioj::sim::telemetry {
 

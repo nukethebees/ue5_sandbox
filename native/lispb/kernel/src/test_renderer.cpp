@@ -48,7 +48,7 @@ auto span_argument(lispb::codegen::CppIR& cpp,
                    lispb::StringId const name) -> lispb::codegen::Expr {
     auto const data{cpp.call(cpp.member_access(cpp.named(name), "data"))};
     return cpp.init_list({data, cpp.named("Count")},
-                         cpp.types.template_type(cpp.types.named("std::span"), {type}));
+                         cpp.types.template_type(cpp.types.std.span, {type}));
 }
 
 auto test_argument(lispb::codegen::CppIR& cpp,
@@ -61,7 +61,7 @@ auto test_argument(lispb::codegen::CppIR& cpp,
     if (expanded.storage(id)[operand_index] == StorageKind::scalar) {
         return cpp.named(name);
     }
-    auto const type{cpp.types.named(standard_type(expanded.type(id)))};
+    auto const type{standard_type(cpp.types, expanded.type(id))};
     return span_argument(
         cpp,
         is_target(document, id, operand_index) ? type : cpp.types.decorate(type, "", " const"),
@@ -79,7 +79,7 @@ auto test_arguments(lispb::codegen::CppIR& cpp,
     }
     if (document.variants.kind(expanded.variant(id)) == VariantKind::out_of_place) {
         result.push_back(span_argument(cpp,
-                                       cpp.types.named(standard_type(expanded.type(id))),
+                                       standard_type(cpp.types, expanded.type(id)),
                                        document.operations.output(expanded.operation(id))));
     }
     return result;
@@ -97,7 +97,7 @@ auto reference_expression(lispb::codegen::CppIR& cpp,
     }
 
     auto const constant{std::get<ConstantKind>(value)};
-    auto const limits{cpp.types.template_type(cpp.types.named("std::numeric_limits"), {type})};
+    auto const limits{cpp.types.template_type(cpp.types.std.numeric_limits, {type})};
     auto const call{cpp.call(cpp.type_reference(cpp.types.decorate(
         limits, "", constant == ConstantKind::nan ? "::quiet_NaN" : "::infinity")))};
     if (constant == ConstantKind::negative_infinity) {
@@ -150,11 +150,10 @@ void append_case(lispb::codegen::CppIR& cpp,
                  ExpandedVariantId const id,
                  ReferenceFixture const& fixture) {
     auto const& expanded{document.expanded_variants};
-    auto const type{standard_type(expanded.type(id))};
-    auto const element_type{cpp.types.named(type)};
+    auto const element_type{standard_type(cpp.types, expanded.type(id))};
     auto const count{fixture.expected.size()};
     auto const array_type{cpp.types.template_type(
-        cpp.types.named("std::array"), {element_type, cpp.types.intern(std::to_string(count))})};
+        cpp.types.std.array, {element_type, cpp.types.intern(std::to_string(count))})};
     auto& body{output};
     for (std::size_t index{}; index < document.operations.operands(expanded.operation(id)).size();
          ++index) {
@@ -236,7 +235,7 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
     file_nodes.new_lines(2);
     auto const suite{"Generated" + pascal_case(document.text(document.modules.name(module)))};
     auto const namespace_name{suite + "Tests"};
-    auto const expect_value{cpp.function("expect_value", "void")};
+    auto const expect_value{cpp.function("expect_value", cpp.types.std.void_)};
     cpp.function_flags(expect_value).set_define_in_header(true);
     cpp.set_function_template(
         expect_value,
@@ -248,8 +247,8 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
     auto const value_type{cpp.type_reference(cpp.types.named("T"))};
     auto const equal{cpp.expr_stmt(cpp.call(cpp.named("EXPECT_EQ"), {actual, expected}))};
     auto const floating_equal{cpp.if_stmt(
-        cpp.template_id(cpp.type_reference(cpp.types.named("std::is_same_v")),
-                        {value_type, cpp.type_reference(cpp.types.intern("float"))}),
+        cpp.template_id(cpp.type_reference(cpp.types.std.is_same_v),
+                        {value_type, cpp.type_reference(cpp.types.std.f32)}),
         cpp.block({cpp.expr_stmt(cpp.call(cpp.named("EXPECT_FLOAT_EQ"), {actual, expected}))}),
         cpp.block({cpp.expr_stmt(cpp.call(cpp.named("EXPECT_DOUBLE_EQ"), {actual, expected}))}),
         true)};
@@ -263,14 +262,14 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
                         cpp.named("EXPECT_TRUE"),
                         {cpp.call(cpp.type_reference(cpp.types.named("std::isnan")), {actual})}))}),
                     cpp.block({infinite}))};
-    cpp.set_function_body(expect_value,
-                          {cpp.if_stmt(cpp.template_id(cpp.type_reference(cpp.types.named(
-                                                           "std::is_floating_point_v")),
-                                                       {value_type}),
-                                       cpp.block({nan}),
-                                       cpp.block({equal}),
-                                       true)});
-    auto const expect_result{cpp.function("expect_result", "void")};
+    cpp.set_function_body(
+        expect_value,
+        {cpp.if_stmt(
+            cpp.template_id(cpp.type_reference(cpp.types.std.is_floating_point_v), {value_type}),
+            cpp.block({nan}),
+            cpp.block({equal}),
+            true)});
+    auto const expect_result{cpp.function("expect_result", cpp.types.std.void_)};
     cpp.function_flags(expect_result).set_define_in_header(true);
     cpp.set_function_template(
         expect_result,
@@ -280,14 +279,13 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
         {cpp.parameter("T const*", "actual"),
          cpp.parameter("T const*", "expected"),
          cpp.parameter("T const*", "before"),
-         cpp.parameter(cpp.types.decorate(cpp.types.named("std::size_t"), "", " const"), "count"),
-         cpp.parameter(cpp.types.decorate(cpp.types.named("std::size_t"), "", " const"),
-                       "storage_count")});
+         cpp.parameter(cpp.types.decorate(cpp.types.std.size_t, "", " const"), "count"),
+         cpp.parameter(cpp.types.decorate(cpp.types.std.size_t, "", " const"), "storage_count")});
     auto const index{cpp.named("i")};
     cpp.set_function_body(
         expect_result,
         {cpp.for_stmt(
-             cpp.variable(cpp.types.named("std::size_t"), "i"),
+             cpp.variable(cpp.types.std.size_t, "i"),
              cpp.binary(lispb::codegen::BinaryOperator::less, index, cpp.named("count")),
              cpp.unary(lispb::codegen::UnaryOperator::preincrement, index),
              cpp.block({cpp.expr_stmt(cpp.call(cpp.named("SCOPED_TRACE"), {index})),
@@ -318,12 +316,11 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
     for (auto variant_index{range.offset}; variant_index < end; ++variant_index) {
         auto const id{ExpandedVariantId{variant_index}};
         auto const name{raw_name(document, id)};
-        auto const check{cpp.function(name, "void")};
+        auto const check{cpp.function(name, cpp.types.std.void_)};
         cpp.function_flags(check).set_define_in_header(true);
         cpp.set_function_parameters(
             check,
-            {cpp.parameter(cpp.types.decorate(cpp.types.named("std::size_t"), "", " const"),
-                           "Count")});
+            {cpp.parameter(cpp.types.decorate(cpp.types.std.size_t, "", " const"), "Count")});
         lispb::codegen::Nodes body;
         append_case(cpp,
                     body,
@@ -346,7 +343,7 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
     for (auto const& array : arrays) {
         declarations.push_back(
             cpp.variable(cpp.types.template_type(
-                             cpp.types.named("std::array"),
+                             cpp.types.std.array,
                              {array.type, cpp.types.intern(std::to_string(array.values->size()))}),
                          cpp.named(array.name),
                          array_initializer(cpp, array.type, *array.values),
@@ -354,18 +351,19 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
         declarations.push_back(cpp.lines(2));
     }
     declarations.insert(declarations.end(), cases.begin(), cases.end());
-    declarations.push_back(cpp.using_declaration(
-        cpp.strings.intern("KernelCheck"),
-        cpp.types.decorate(cpp.types.named("std::size_t"), "void (*)(", ")")));
+    declarations.push_back(
+        cpp.using_declaration(cpp.strings.intern("KernelCheck"),
+                              cpp.types.decorate(cpp.types.std.size_t, "void (*)(", ")")));
     declarations.push_back(cpp.lines(2));
     declarations.push_back(cpp.record(
         cpp.strings.intern("KernelCase"),
-        {cpp.instance_member(cpp.types.intern("char const*"), cpp.strings.intern("name")),
+        {cpp.instance_member(cpp.types.decorate(cpp.types.std.char_, "", " const*"),
+                             cpp.strings.intern("name")),
          cpp.instance_member(cpp.types.intern("KernelCheck"), cpp.strings.intern("run"))}));
     declarations.push_back(cpp.lines(2));
     declarations.push_back(cpp.variable(
         cpp.types.template_type(
-            cpp.types.named("std::array"),
+            cpp.types.std.array,
             {cpp.types.named("KernelCase"), cpp.types.intern(std::to_string(case_values.size()))}),
         cpp.named("cases"),
         cpp.init_list({cpp.init_list(case_values)}),
@@ -373,10 +371,10 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
     declarations.push_back(cpp.lines(2));
     declarations.push_back(cpp.using_declaration(
         cpp.strings.intern(suite),
-        cpp.types.template_type(cpp.types.named("testing::TestWithParam"),
-                                {cpp.types.template_type(cpp.types.named("std::tuple"),
-                                                         {cpp.types.named("KernelCase"),
-                                                          cpp.types.named("std::size_t")})})));
+        cpp.types.template_type(
+            cpp.types.named("testing::TestWithParam"),
+            {cpp.types.template_type(cpp.types.std.tuple,
+                                     {cpp.types.named("KernelCase"), cpp.types.std.size_t})})));
     declarations.push_back(cpp.lines(2));
     declarations.push_back(cpp.raw("TEST_P(" + suite + R"(, MatchesReference) {
     auto const& [test, count]{GetParam()};

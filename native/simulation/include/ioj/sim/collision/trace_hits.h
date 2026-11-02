@@ -14,7 +14,9 @@
 #include <ioj/sim/collision/line_trace_result.h>
 
 #include <cassert>
+#include <cstddef>
 #include <memory_resource>
+#include <type_traits>
 
 namespace ioj::sim {
 namespace trace_hits {

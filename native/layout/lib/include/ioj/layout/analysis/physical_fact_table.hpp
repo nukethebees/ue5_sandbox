@@ -12,9 +12,11 @@
 #include "lispb/schema/enum_signedness.h"
 
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <memory_resource>
 #include <optional>
+#include <type_traits>
 
 namespace ioj::layout {
 namespace physical_fact_table {

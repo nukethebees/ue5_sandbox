@@ -91,9 +91,9 @@ TEST_F(AstTest, RendersStaticAssertionsWithOptionalMessages) {
     auto const dependency{ir.types.dependency("a::valid", "a/validation.h")};
     auto const predicate{ir.call(ir.type_reference(ir.types.named("a::valid", {dependency})), {})};
     auto const assertion{ir.static_assertion(predicate)};
-    auto const shadowed{ir.record(
-        ir.strings.intern("Value"),
-        {ir.instance_member(ir.types.intern("int"), ir.strings.intern("valid")), assertion})};
+    auto const shadowed{
+        ir.record(ir.strings.intern("Value"),
+                  {ir.instance_member(ir.types.std.int_, ir.strings.intern("valid")), assertion})};
     auto const output{
         renderer.render(ir.namespace_node(ir.strings.intern("a"), {assertion, shadowed}))};
     expect_contains_all(output, {"static_assert(valid());", "static_assert(a::valid());"});
@@ -277,11 +277,11 @@ TEST_F(AstTest, VisitsChildrenForNestedAndDefinedNodes) {
         ir.record(ir.strings.intern("FData"), {ir.raw("int value;")}, RecordKind::struct_)};
     NodeId const name_space{
         ir.namespace_node(ir.strings.intern("example"), {ir.raw("int value;")})};
-    auto const spec{ir.function(ir.strings.intern("f"), types.intern("void"))};
+    auto const spec{ir.function(ir.strings.intern("f"), types.std.void_)};
     ir.set_function_body(spec, {ir.raw("return;")});
     NodeId const function{ir.definition(spec)};
     NodeId const declaration_node{
-        ir.declaration(ir.function(ir.strings.intern("f"), types.intern("void")))};
+        ir.declaration(ir.function(ir.strings.intern("f"), types.std.void_))};
     NodeId const leaf{ir.raw("int value;")};
 
     auto child_count = [&](NodeId const& node) {
@@ -300,15 +300,14 @@ TEST_F(AstTest, RendersClassInheritanceAndMemberInitializers) {
     auto const record{ir.record(
         ir.strings.intern("FDerived"),
         {
-            ir.instance_member(types.intern("int"), ir.strings.intern("value"), ir.raw_expr("42")),
+            ir.instance_member(types.std.int_, ir.strings.intern("value"), ir.raw_expr("42")),
+            ir.constexpr_member(types.std.int_, ir.strings.intern("answer"), ir.raw_expr("42")),
             ir.constexpr_member(
-                types.intern("int"), ir.strings.intern("answer"), ir.raw_expr("42")),
-            ir.constexpr_member(
-                types.intern("bool"),
+                types.std.bool_,
                 ir.strings.intern("supports_value"),
-                ir.template_id(ir.type_reference(ir.types.named("std::is_constructible_v")),
-                               {ir.type_reference(types.intern("int")),
-                                ir.type_reference(types.intern("TArg"))}),
+                ir.template_id(
+                    ir.type_reference(ir.types.std.is_constructible_v),
+                    {ir.type_reference(types.std.int_), ir.type_reference(types.intern("TArg"))}),
                 ir.template_declaration({ir.type_template_parameter(ir.strings.intern("TArg"))})),
         },
         RecordKind::class_)};
@@ -332,7 +331,7 @@ TEST_F(AstTest, RendersClassInheritanceAndMemberInitializers) {
 }
 
 TEST_F(AstTest, RendersTemplatedConstrainedFunctions) {
-    auto const spec{ir.function(ir.strings.intern("append"), types.intern("void"))};
+    auto const spec{ir.function(ir.strings.intern("append"), types.std.void_)};
     ir.set_function_parameters(
         spec, {ir.parameter(types.intern("Other const&"), ir.strings.intern("other"))});
     ir.set_function_body(spec, {ir.raw("append_from(other);")});
@@ -350,7 +349,7 @@ TEST_F(AstTest, RendersTemplatedConstrainedFunctions) {
 }
 
 TEST_F(AstTest, RendersTypedFunctionFormattingPolicies) {
-    auto compact{ir.function(ir.strings.intern("apply"), types.intern("void"))};
+    auto compact{ir.function(ir.strings.intern("apply"), types.std.void_)};
     ir.set_function_body(compact, {ir.raw("func();")});
     ir.function_flags(compact).set_is_inline(true);
     ir.function_flags(compact).set_define_in_header(true);
@@ -403,7 +402,7 @@ TEST_F(AstTest, RendersConstrainedStructuresAndSpecialMembers) {
     ir.set_function_noexcept(constructor);
     ir.set_function_defaulted(constructor);
 
-    auto const apply{ir.function(ir.strings.intern("apply"), types.intern("void"))};
+    auto const apply{ir.function(ir.strings.intern("apply"), types.std.void_)};
     ir.set_function_parameters(apply,
                                {ir.parameter(types.intern("TFunc&&"), ir.strings.intern("func"))});
     ir.set_function_body(apply, {ir.raw("func();")});
@@ -425,7 +424,7 @@ TEST_F(AstTest, RendersConstrainedStructuresAndSpecialMembers) {
                                    RecordKind::struct_)};
     ir.set_record_template(structure,
                            ir.template_declaration({ir.value_template_parameter(
-                               types.intern("int"), ir.strings.intern("Capacity"))}));
+                               types.std.int_, ir.strings.intern("Capacity"))}));
     ir.set_record_requires_clause(
         structure,
         ir.parenthesized(
@@ -451,7 +450,7 @@ TEST_F(AstTest, RawNodesReportExplicitDependencies) {
 }
 
 TEST_F(AstTest, RendersDeclarationsAndOutOfLineDefinitionsFromOneSpec) {
-    auto const function{ir.function(ir.strings.intern("set"), types.intern("void"))};
+    auto const function{ir.function(ir.strings.intern("set"), types.std.void_)};
     ir.set_function_parameters(
         function,
         {ir.parameter(types.intern("int32 const"), ir.strings.intern("value"), ir.literal("0"))});
@@ -479,7 +478,7 @@ TEST_F(AstTest, CollectsTrailingReturnTypeDependencies) {
 TEST_F(AstTest, CollectsOpaqueDeclarationDependenciesWithoutIncludingTheBody) {
     auto const requirement{types.dependency("SupportsValue", "Project/Requirement.h")};
     auto const implementation{types.dependency("apply", "Project/Implementation.h")};
-    auto const spec{ir.function(ir.strings.intern("use"), types.intern("void"))};
+    auto const spec{ir.function(ir.strings.intern("use"), types.std.void_)};
     ir.set_function_parameters(
         spec, {ir.parameter(types.intern("T const&"), ir.strings.intern("value"))});
     ir.set_function_body(
@@ -520,14 +519,13 @@ TEST_F(AstTest, RendersQualifiedTrailingReturnAndDefaultedConstructor) {
     auto const dependency{types.dependency("a::make_value", "a/value.h")};
     auto const factory{ir.call(ir.type_reference(types.named("a::make_value", {dependency})), {})};
     auto const initialized{ir.constructor(ir.strings.intern("Initialized"))};
-    ir.set_function_parameters(initialized, {ir.parameter("int", "make_value")});
+    ir.set_function_parameters(initialized, {ir.parameter(ir.types.std.int_, "make_value")});
     ir.set_function_body(
         initialized, {}, {ir.member_initializer(ir.strings.intern("value_"), factory)});
     ir.function_flags(initialized).set_define_in_header(true);
-    auto const record{
-        ir.record(ir.strings.intern("Initialized"),
-                  {ir.header_function(initialized),
-                   ir.instance_member(types.intern("int"), ir.strings.intern("value_"))})};
+    auto const record{ir.record(ir.strings.intern("Initialized"),
+                                {ir.header_function(initialized),
+                                 ir.instance_member(types.std.int_, ir.strings.intern("value_"))})};
     auto const output{renderer.render(ir.namespace_node(ir.strings.intern("a"), {record}))};
     EXPECT_TRUE(output.contains("value_{a::make_value()}")) << output;
     EXPECT_EQ(collected_dependencies(ir, ir.header_function(initialized)),
@@ -536,7 +534,7 @@ TEST_F(AstTest, RendersQualifiedTrailingReturnAndDefaultedConstructor) {
 }
 
 TEST_F(AstTest, RejectsOutOfLineDeletedFunction) {
-    auto const function{ir.function(ir.strings.intern("removed"), ir.types.intern("void"))};
+    auto const function{ir.function(ir.strings.intern("removed"), ir.types.std.void_)};
     ir.set_function_deleted(function);
     EXPECT_THROW(ir.definition(function, ir.types.intern("FValue")), std::invalid_argument);
 }
@@ -653,7 +651,7 @@ TEST_P(NamespaceRendering, ShortensOnlyVisibleNamespaceComponents) {
         auto& types{ir.types};
         NodeListBuilder members{ir};
         for (auto const name : test.hidden) {
-            members.add(ir.instance_member(types.intern("int"), ir.strings.intern(name)));
+            members.add(ir.instance_member(types.std.int_, ir.strings.intern(name)));
         }
         members.add(ir.instance_member(types.named(test.target), ir.strings.intern("value")));
         auto const record{ir.record(ir.strings.intern("Holder"), members.build())};
@@ -705,7 +703,7 @@ TEST_F(AstTest, RetainsTypeStructureAndPoliciesAcrossCompositionAndDependencies)
     types.set_operation(registered, TypeOperation::remove_at_swap, "erase");
     auto const named{types.reference(registered)};
     auto const pointer{types.decorate(named, "", " const*")};
-    auto const array{types.template_type(types.named("std::array"), {pointer, types.intern("2")})};
+    auto const array{types.template_type(types.std.array, {pointer, types.intern("2")})};
     auto const copied{types.with_dependencies(pointer, std::vector{dependency})};
     auto const emit = [&](CppTypeId type) {
         return CppRenderer{ir}.render(in_namespace(ir, "a", ir.variable(type, "value")));
@@ -715,8 +713,9 @@ TEST_F(AstTest, RetainsTypeStructureAndPoliciesAcrossCompositionAndDependencies)
     EXPECT_EQ(types.spelling(array), "std::array<a::Token const*, 2>");
     EXPECT_EQ(types.operation(copied, TypeOperation::remove_at_swap), "erase");
     EXPECT_EQ(types.parameter_passing(copied), ParameterPassing::value);
-    EXPECT_EQ(collected_dependencies(ir, ir.variable(array, "value")), std::vector{dependency});
-    EXPECT_EQ(types.template_type(types.named("std::array"), {pointer, types.intern("2")}), array);
+    EXPECT_EQ(collected_dependencies(ir, ir.variable(array, "value")),
+              (std::vector{types.dependency("std::array", "array"), dependency}));
+    EXPECT_EQ(types.template_type(types.std.array, {pointer, types.intern("2")}), array);
     EXPECT_EQ(types.derive(named, types.spelling(named)), named);
     EXPECT_NE(named, types.intern("a::Token", {dependency}, ParameterPassing::value));
     EXPECT_NE(emit(types.intern("a::Token")).find("a::Token value{};"), std::string::npos);
@@ -791,7 +790,7 @@ TEST_F(AstTest, UsesTemplateAndMemberScopesInSignaturesAndExpressions) {
     ir.set_function_body(make, {ir.return_stmt(ir.init_list({}, token))});
     auto const record{
         ir.record(ir.strings.intern("Holder"),
-                  {ir.using_declaration(ir.strings.intern("Token"), ir.types.intern("int")),
+                  {ir.using_declaration(ir.strings.intern("Token"), ir.types.std.int_),
                    ir.declaration(make)})};
     auto const definition{ir.definition(make, ir.types.intern("Holder"))};
     auto const output{renderer.render_nodes(
@@ -823,7 +822,7 @@ TEST_F(AstTest, UsesTemplateAndMemberScopesInSignaturesAndExpressions) {
 }
 
 TEST_F(AstTest, DistinguishesDeclarationsWhenNodesAreReusedAcrossNamespaces) {
-    auto const alias{ir.using_declaration(ir.strings.intern("Token"), ir.types.intern("int"))};
+    auto const alias{ir.using_declaration(ir.strings.intern("Token"), ir.types.std.int_)};
     auto const record{
         ir.record(ir.strings.intern("Holder"),
                   {ir.instance_member(ir.types.named("a::Token"), ir.strings.intern("value"))})};
@@ -843,13 +842,14 @@ TEST_F(AstTest, DistinguishesDeclarationsWhenNodesAreReusedAcrossNamespaces) {
 
 TEST_F(AstTest, TracksLocalHidingAtTheDeclarationAndRestoresEnclosingLookup) {
     auto const token{ir.types.named("a::Token")};
-    auto const function{ir.function("use", "void")};
-    ir.set_function_body(function,
-                         {ir.variable(token, "before"),
-                          ir.block({ir.variable("int", "Token"), ir.variable(token, "inside")}),
-                          ir.variable(token, "after"),
-                          ir.variable("int", "Token"),
-                          ir.variable(token, "hidden")});
+    auto const function{ir.function("use", ir.types.std.void_)};
+    ir.set_function_body(
+        function,
+        {ir.variable(token, "before"),
+         ir.block({ir.variable(ir.types.std.int_, "Token"), ir.variable(token, "inside")}),
+         ir.variable(token, "after"),
+         ir.variable(ir.types.std.int_, "Token"),
+         ir.variable(token, "hidden")});
     auto const output{CppRenderer{ir}.render(in_namespace(ir, "a", ir.definition(function)))};
 
     for (auto const expected :
@@ -863,10 +863,9 @@ TEST_F(AstTest, ResolvesNestedClassOwnersAndForwardDeclaredInjectedNames) {
     auto const make{ir.function("make", token)};
     ir.set_function_parameters(make, {ir.parameter(token, "value")});
     ir.set_function_body(make, {ir.return_stmt(ir.init_list({}, token))});
-    auto const inner{
-        ir.record(ir.strings.intern("Inner"),
-                  {ir.using_declaration(ir.strings.intern("Token"), ir.types.intern("int")),
-                   ir.declaration(make)})};
+    auto const inner{ir.record(ir.strings.intern("Inner"),
+                               {ir.using_declaration(ir.strings.intern("Token"), ir.types.std.int_),
+                                ir.declaration(make)})};
     auto const outer{ir.record(ir.strings.intern("Outer"), {inner})};
     auto const self{
         ir.record(ir.strings.intern("Self"),

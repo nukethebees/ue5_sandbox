@@ -1,5 +1,6 @@
 #include "lowering.h"
 
+#include <codegen/ast/cpp_types.h>
 #include <kernel_codegen/expression_kind.h>
 #include <kernel_codegen/operation_kind.h>
 #include <kernel_codegen/variant_kind.h>
@@ -7,6 +8,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <stdexcept>
+#include <utility>
 
 namespace kernel_codegen::detail {
 
@@ -177,14 +179,19 @@ auto count_source(Document const& document, ExpandedVariantId const id) -> std::
     throw std::logic_error{"out-of-place kernel has no array input"};
 }
 
-auto standard_type(ScalarType const type) -> std::string {
-    if (type == ScalarType::int32) {
-        return "std::int32_t";
+auto standard_type(lispb::codegen::CppTypes const& types, ScalarType const type)
+    -> lispb::codegen::CppTypeId {
+    switch (type) {
+        case ScalarType::int32:
+            return types.std.i32;
+        case ScalarType::uint32:
+            return types.std.u32;
+        case ScalarType::float32:
+            return types.std.f32;
+        case ScalarType::float64:
+            return types.std.f64;
     }
-    if (type == ScalarType::uint32) {
-        return "std::uint32_t";
-    }
-    return std::string{to_serialized_string(type)};
+    std::unreachable();
 }
 
 }

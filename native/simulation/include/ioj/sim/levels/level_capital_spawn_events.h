@@ -15,7 +15,9 @@
 #include "ioj/vectors3f.h"
 
 #include <cassert>
+#include <cstddef>
 #include <memory_resource>
+#include <type_traits>
 
 namespace ioj::sim {
 namespace level_capital_spawn_events {

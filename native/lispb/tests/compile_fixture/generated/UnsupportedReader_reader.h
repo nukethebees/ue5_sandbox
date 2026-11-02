@@ -8,6 +8,7 @@
 #include <ioj/s7/field_reader.h>
 
 #include <array>
+#include <cstdint>
 #include <string_view>
 
 namespace ioj::s7 {

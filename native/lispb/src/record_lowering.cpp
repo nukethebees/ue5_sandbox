@@ -30,11 +30,8 @@ namespace {
 
 auto record_type_matches(CppIR& ir, std::string const& name) -> Expr {
     return ir.type_reference(ir.types.template_type(
-        ir.types.named("std::same_as", {ir.types.dependency("std::same_as", "concepts")}),
-        {ir.types.template_type(
-             ir.types.named("std::remove_const_t",
-                            {ir.types.dependency("std::remove_const_t", "type_traits")}),
-             {ir.types.named("Self")}),
+        ir.types.std.same_as,
+        {ir.types.template_type(ir.types.std.remove_const_t, {ir.types.named("Self")}),
          ir.types.named(name)}));
 }
 
@@ -71,12 +68,10 @@ auto record_visitor(LoweringContext& context, DeclarationHandle record, std::str
     }
 
     NodeListBuilder result{ir};
-    result.add(
-        ir.enumeration(ir.strings.intern("Field"),
-                       ir.types.named(values.size() <= 256 ? "std::uint8_t" : "std::uint32_t",
-                                      {ir.types.dependency("std::uint8_t", "cstdint")}),
-                       values),
-        2);
+    result.add(ir.enumeration(ir.strings.intern("Field"),
+                              values.size() <= 256 ? ir.types.std.u8 : ir.types.std.u32,
+                              values),
+               2);
     auto const accessor{ir.function("get_field", "decltype(auto)")};
     ir.set_function_template(
         accessor,
@@ -106,7 +101,7 @@ auto record_visitor(LoweringContext& context, DeclarationHandle record, std::str
     ir.set_function_body(accessor, accessors);
     result.add(ir.header_function(accessor), 2);
 
-    auto const invoke{ir.function("invoke_field", "void")};
+    auto const invoke{ir.function("invoke_field", ir.types.std.void_)};
     ir.set_function_template(
         invoke,
         ir.template_declaration(
@@ -127,7 +122,7 @@ auto record_visitor(LoweringContext& context, DeclarationHandle record, std::str
                              {ir.named("self")})}))});
     result.add(ir.header_function(invoke), 2);
 
-    auto const function{ir.function("visit_field", "void")};
+    auto const function{ir.function("visit_field", ir.types.std.void_)};
     ir.set_function_template(
         function,
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Self")),
@@ -166,7 +161,7 @@ auto record_node(LoweringContext& context, DeclarationHandle record) -> NodeId {
         auto const comparison{ir.function(
             three_way ? "operator<=>" : "operator==",
             three_way ? ir.types.intern("auto", {ir.types.dependency("auto", "compare")})
-                      : ir.types.intern("bool"))};
+                      : ir.types.std.bool_)};
         ir.set_function_parameters(comparison, {ir.parameter(name + " const&", "")});
         ir.set_function_receiver(comparison, FunctionReceiver::const_);
         if (records.comparison_noexcept[row]) {
