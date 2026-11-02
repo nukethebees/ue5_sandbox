@@ -68,6 +68,13 @@ auto Environments::bind(EnvironmentId environment, StringId name, SymbolBinding 
     assert(name.value != 0 && !symbol.declaration.is_null());
     auto& table{symbols_[index(environment)]};
     auto const [entry, inserted]{table.try_emplace(name, symbol)};
+    if (!inserted) {
+        entry->second.overloaded |=
+            symbol.overloaded ||
+            (entry->second.declaration.kind() == CppDeclarationKind::function &&
+             symbol.declaration.kind() == CppDeclarationKind::function &&
+             !entry->second.same_declaration(symbol));
+    }
     if (!inserted && !symbol.introduced_scope.is_null()) {
         assert(entry->second.introduced_scope.is_null() ||
                entry->second.introduced_scope == symbol.introduced_scope);

@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <optional>
 
 namespace lispb::codegen {
 
@@ -31,6 +32,13 @@ struct CppDeclarationId {
     }
     auto index() const -> std::uint32_t { return value & index_mask; }
     auto is_null() const -> bool { return value == std::numeric_limits<std::uint32_t>::max(); }
+    auto node() const -> std::optional<NodeId> {
+        if (is_null() || kind() < CppDeclarationKind::node_begin) {
+            return std::nullopt;
+        }
+        return NodeId{value -
+                      (static_cast<std::uint32_t>(CppDeclarationKind::node_begin) << kind_shift)};
+    }
     auto operator==(CppDeclarationId const&) const -> bool = default;
   private:
     CppDeclarationId(CppDeclarationKind kind, std::uint32_t index);

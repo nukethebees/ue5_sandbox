@@ -10,6 +10,7 @@ struct SymbolBinding {
     EnvironmentId introduced_scope;
     CppTypeId aliased_type;
     bool ambiguous{};
+    bool overloaded{};
 
     auto same_declaration(SymbolBinding const& other) const -> bool {
         return declaration == other.declaration && declaring_scope == other.declaring_scope;
