@@ -78,15 +78,15 @@ class Renderer {
         if (!library) {
             children.push_back(ir_.using_declaration(ir_.strings.intern("ThisClass"),
                                                      ir_.types.intern("::" + owner)));
-            lispb::codegen::FunctionDefinition constructor{
+            lispb::codegen::FunctionDefinition const constructor{
                 .name = ir_.named(ir_.strings.intern(builder)),
                 .kind = lispb::codegen::FunctionKind::explicit_constructor,
+                .parameters = {ir_.parameter("ThisClass&", "self")},
+                .implementation = {.kind = lispb::codegen::FunctionImplementationKind::body,
+                                   .body = {},
+                                   .initializers = {ir_.member_initializer(
+                                       ir_.strings.intern("self_"), ir_.named("self"))}},
                 .flags = {.define_in_header = true}};
-            constructor.parameters = {ir_.parameter("ThisClass&", "self")};
-            constructor.implementation = {.kind = lispb::codegen::FunctionImplementationKind::body,
-                                          .body = {},
-                                          .initializers = {ir_.member_initializer(
-                                              ir_.strings.intern("self_"), ir_.named("self"))}};
             children.push_back(ir_.header_function(ir_.add_function(constructor)));
         }
         auto const functions{document_.declarations.functions[index]};
@@ -129,10 +129,6 @@ class Renderer {
 
     auto render_function(FunctionId const function, bool const library) -> lispb::codegen::NodeId {
         auto const index{function.value};
-        lispb::codegen::FunctionDefinition spec{
-            .name = ir_.named(text(document_.functions.names[index])),
-            .return_type = ir_.types.intern("auto"),
-            .flags = {.is_inline = library, .define_in_header = true}};
         std::vector<lispb::codegen::FunctionParameterId> cpp_parameters;
         auto const parameters{document_.functions.parameters[index]};
         auto const parameter_end{parameters.begin + parameters.count};
@@ -156,9 +152,13 @@ class Renderer {
         auto const root{document_.functions.roots[index]};
         body.push_back(source_line(document_.child_span(root)));
         body.push_back(ir_.return_stmt(render_child(root)));
-        spec.parameters.assign(cpp_parameters.begin(), cpp_parameters.end());
-        spec.implementation = {.kind = lispb::codegen::FunctionImplementationKind::body,
-                               .body = body};
+        lispb::codegen::FunctionDefinition const spec{
+            .name = ir_.named(text(document_.functions.names[index])),
+            .return_type = ir_.types.intern("auto"),
+            .parameters = {cpp_parameters.begin(), cpp_parameters.end()},
+            .implementation = {.kind = lispb::codegen::FunctionImplementationKind::body,
+                               .body = body},
+            .flags = {.is_inline = library, .define_in_header = true}};
         return ir_.header_function(ir_.add_function(spec));
     }
 

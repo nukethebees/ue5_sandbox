@@ -108,63 +108,66 @@ class RecordLowering : public CppIRBuilder {
                                values.size() <= 256 ? std_types().u8 : std_types().u32,
                                values),
                    2);
-        FunctionDefinition accessor{.name = named("get_field"),
-                                    .return_type = intern_type("decltype(auto)"),
-                                    .flags = {.is_constexpr = true, .define_in_header = true}};
-        accessor.template_declaration = template_declaration(
-            {value_template_parameter(intern_type("Field"), store_text("Selected")),
-             type_template_parameter(store_text("Self"))});
-        accessor.requires_clause = parenthesized(binary(
-            BinaryOperator::logical_and,
-            record_type_matches(name),
-            binary(BinaryOperator::less,
-                   call(type_reference(std_types().to_underlying), {named("Selected")}),
-                   call(template_id(type_reference(named_type(
-                                        "ioj::enum_count",
-                                        NameOrigin::global,
-                                        {dependency("ioj::enum_count", "ioj/enum_traits.h")})),
-                                    {type_reference(decorate_type(
-                                        named_type("Self"), "typename ", "::Field"))})))));
-        accessor.receiver = FunctionReceiver::static_;
-        accessor.parameters = {parameter("Self&", fields.empty() ? "" : "self")};
-        accessor.implementation = {.kind = FunctionImplementationKind::body, .body = accessors};
+        FunctionDefinition const accessor{
+            .name = named("get_field"),
+            .return_type = intern_type("decltype(auto)"),
+            .parameters = {parameter("Self&", fields.empty() ? "" : "self")},
+            .implementation = {.kind = FunctionImplementationKind::body, .body = accessors},
+            .receiver = FunctionReceiver::static_,
+            .flags = {.is_constexpr = true, .define_in_header = true},
+            .template_declaration = template_declaration(
+                {value_template_parameter(intern_type("Field"), store_text("Selected")),
+                 type_template_parameter(store_text("Self"))}),
+            .requires_clause = parenthesized(binary(
+                BinaryOperator::logical_and,
+                record_type_matches(name),
+                binary(BinaryOperator::less,
+                       call(type_reference(std_types().to_underlying), {named("Selected")}),
+                       call(template_id(type_reference(named_type(
+                                            "ioj::enum_count",
+                                            NameOrigin::global,
+                                            {dependency("ioj::enum_count", "ioj/enum_traits.h")})),
+                                        {type_reference(decorate_type(
+                                            named_type("Self"), "typename ", "::Field"))})))))};
         result.add(header_function(add_function(accessor)), 2);
 
-        FunctionDefinition invoke{.name = named("invoke_field"),
-                                  .return_type = std_types().void_,
-                                  .flags = {.is_constexpr = true, .define_in_header = true}};
-        invoke.template_declaration = template_declaration(
-            {value_template_parameter(intern_type("Field"), store_text("Selected")),
-             type_template_parameter(store_text("Self")),
-             type_template_parameter(store_text("Visitor"))});
-        invoke.receiver = FunctionReceiver::static_;
-        invoke.parameters = {parameter("Self&", "self"), parameter("Visitor&&", "visitor")};
-        invoke.implementation = {
-            .kind = FunctionImplementationKind::body,
-            .body = {expr_stmt(call(
-                template_id(member_access(forwarded_visitor, "template operator()"),
-                            {named("Selected")}),
-                {call(template_id(named("get_field"), {named("Selected")}), {named("self")})}))}};
+        FunctionDefinition const invoke{
+            .name = named("invoke_field"),
+            .return_type = std_types().void_,
+            .parameters = {parameter("Self&", "self"), parameter("Visitor&&", "visitor")},
+            .implementation = {.kind = FunctionImplementationKind::body,
+                               .body = {expr_stmt(
+                                   call(template_id(
+                                            member_access(forwarded_visitor, "template operator()"),
+                                            {named("Selected")}),
+                                        {call(template_id(named("get_field"), {named("Selected")}),
+                                              {named("self")})}))}},
+            .receiver = FunctionReceiver::static_,
+            .flags = {.is_constexpr = true, .define_in_header = true},
+            .template_declaration = template_declaration(
+                {value_template_parameter(intern_type("Field"), store_text("Selected")),
+                 type_template_parameter(store_text("Self")),
+                 type_template_parameter(store_text("Visitor"))})};
         result.add(header_function(add_function(invoke)), 2);
 
-        FunctionDefinition function{.name = named("visit_field"),
-                                    .return_type = std_types().void_,
-                                    .flags = {.is_constexpr = true, .define_in_header = true}};
-        function.template_declaration =
-            template_declaration({type_template_parameter(store_text("Self")),
-                                  type_template_parameter(store_text("Visitor"))});
-        function.requires_clause = record_type_matches(name);
-        function.receiver = FunctionReceiver::static_;
-        function.parameters = {parameter("Self&", fields.empty() ? "" : "self"),
-                               parameter("Field", "field"),
-                               parameter("Visitor&&", fields.empty() ? "" : "visitor")};
-        function.implementation = {
-            .kind = FunctionImplementationKind::body,
-            .body = {switch_stmt(named("field"), cases),
-                     assertion(binary(BinaryOperator::logical_and,
-                                      literal("false"),
-                                      string_literal("Invalid record field"))),
-                     expr_stmt(call(type_reference(std_types().unreachable)))}};
+        FunctionDefinition const function{
+            .name = named("visit_field"),
+            .return_type = std_types().void_,
+            .parameters = {parameter("Self&", fields.empty() ? "" : "self"),
+                           parameter("Field", "field"),
+                           parameter("Visitor&&", fields.empty() ? "" : "visitor")},
+            .implementation = {.kind = FunctionImplementationKind::body,
+                               .body = {switch_stmt(named("field"), cases),
+                                        assertion(binary(BinaryOperator::logical_and,
+                                                         literal("false"),
+                                                         string_literal("Invalid record field"))),
+                                        expr_stmt(call(type_reference(std_types().unreachable)))}},
+            .receiver = FunctionReceiver::static_,
+            .flags = {.is_constexpr = true, .define_in_header = true},
+            .template_declaration =
+                template_declaration({type_template_parameter(store_text("Self")),
+                                      type_template_parameter(store_text("Visitor"))}),
+            .requires_clause = record_type_matches(name)};
         result.add(header_function(add_function(function)), 2);
         return result.build();
     }
@@ -177,16 +180,17 @@ class RecordLowering : public CppIRBuilder {
         auto members{node_list()};
         if (records.comparison[row] != RecordComparison::none) {
             auto const three_way{records.comparison[row] == RecordComparison::three_way};
-            auto comparison{FunctionDefinition{
+            FunctionDefinition const comparison{
                 .name = named(three_way ? "operator<=>" : "operator=="),
                 .return_type = three_way ? intern_type("auto", {dependency("auto", "compare")})
-                                         : std_types().bool_}};
-            comparison.parameters = {parameter(name + " const&", "")};
-            comparison.receiver = FunctionReceiver::const_;
-            if (records.comparison_noexcept[row]) {
-                comparison.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
-            }
-            comparison.implementation = {.kind = FunctionImplementationKind::defaulted};
+                                         : std_types().bool_,
+                .parameters = {parameter(name + " const&", "")},
+                .implementation = {.kind = FunctionImplementationKind::defaulted},
+                .exception_specification = {.kind =
+                                                records.comparison_noexcept[row]
+                                                    ? FunctionExceptionKind::noexcept_
+                                                    : FunctionExceptionKind::potentially_throwing},
+                .receiver = FunctionReceiver::const_};
             members.add(header_function(add_function(comparison)));
         }
         for (auto function_id : ctx.declarations.items(records.functions[row])) {

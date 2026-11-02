@@ -124,7 +124,11 @@ class SoaApiLowering : public CppIRBuilder {
                                    join_lines(ctx, function_schemas.body_lines[function_id]),
                                    schema,
                                    receiver)};
-                auto spec{lower_schema_function(ctx, function_id, body)};
+                std::vector<TypeDependencyId> dependencies;
+                for (auto const key : ctx.declarations.items(function_schemas.dependencies[row])) {
+                    append_type_dependencies(dependencies, ctx.text(key), ctx.types);
+                }
+                Nodes implementation{raw_parts(body, dependencies)};
                 if (auto const appended{function_schemas.append_columns[row]}) {
                     auto const columns{ctx.declarations.items(*appended)};
                     auto const parameters{ctx.declarations.items(function_schemas.parameters[row])};
@@ -147,15 +151,17 @@ class SoaApiLowering : public CppIRBuilder {
                                                  index),
                                        named(parameter_schemas.name[parameters[column]])));
                     }
-                    auto const return_type{spec.return_type};
+                    auto const return_type{
+                        ctx.resolve(function_schemas.trailing_return_type[row].value_or(
+                            function_schemas.return_type[row]))};
                     auto const spelling{type_spelling(return_type)};
                     append_body.add(return_stmt(spelling == "auto" || spelling == "decltype(auto)"
                                                     ? index
                                                     : init_list({index}, return_type)));
-                    spec.implementation = {.kind = FunctionImplementationKind::body,
-                                           .body = append_body.build()};
-                    spec.flags.define_in_header = !function_schemas.definition_in_source[row];
+                    implementation = append_body.build();
                 }
+                auto const spec{
+                    lower_schema_function(ctx, function_id, std::move(implementation), true)};
                 if (function_schemas.definition_in_source[function_id]) {
                     auto const return_syntax{spec.return_syntax};
                     auto const return_spelling{type_spelling(spec.return_type)};
@@ -171,9 +177,6 @@ class SoaApiLowering : public CppIRBuilder {
                                                             : return_syntax))
                         .new_lines(2);
                 } else {
-                    spec.flags.define_in_header = spec.flags.define_in_header ||
-                                                  !function_schemas.body_lines[function_id].empty();
-                    spec.flags.is_inline = spec.flags.define_in_header;
                     header.add(header_function(add_function(spec))).new_lines(1);
                 }
             }
@@ -206,17 +209,18 @@ class SoaApiLowering : public CppIRBuilder {
                                                    arguments)
                                             : init_list(arguments, named_type("equivalent_type"));
             }
-            FunctionDefinition function{.name = named("operator[]"),
-                                        .return_type = intern_type("equivalent_type"),
-                                        .return_syntax = ReturnSyntax::trailing,
-                                        .flags = {.is_inline = true, .define_in_header = true}};
-            function.parameters = {parameter(std_types().u32, "index")};
-            function.implementation = {
-                .kind = FunctionImplementationKind::body,
-                .body = {
-                    assertion(binary(BinaryOperator::less, named("index"), call(named("num")))),
-                    return_stmt(expression)}};
-            function.receiver = FunctionReceiver::const_;
+            FunctionDefinition const function{
+                .name = named("operator[]"),
+                .return_type = intern_type("equivalent_type"),
+                .return_syntax = ReturnSyntax::trailing,
+                .parameters = {parameter(std_types().u32, "index")},
+                .implementation = {.kind = FunctionImplementationKind::body,
+                                   .body = {assertion(binary(BinaryOperator::less,
+                                                             named("index"),
+                                                             call(named("num")))),
+                                            return_stmt(expression)}},
+                .receiver = FunctionReceiver::const_,
+                .flags = {.is_inline = true, .define_in_header = true}};
             header.add(header_function(add_function(function))).new_lines(1);
         }
         return {header.build(), source.build()};
@@ -253,17 +257,18 @@ class SoaApiLowering : public CppIRBuilder {
         };
         auto emit =
             [&](std::string_view name, std::vector<FunctionParameterId> parameters, Nodes body) {
-                FunctionDefinition function{.name = named(name),
-                                            .return_type = name == "set" ? std_types().void_
-                                                                         : named_type("size_type"),
-                                            .flags = {.is_inline = true, .define_in_header = true}};
                 if (name == "set") {
                     parameters.insert(parameters.begin(), parameter("size_type", "index"));
-                    function.receiver =
-                        mutable_view ? FunctionReceiver::const_ : FunctionReceiver::unqualified;
                 }
-                function.parameters.assign(parameters.begin(), parameters.end());
-                function.implementation = {.kind = FunctionImplementationKind::body, .body = body};
+                FunctionDefinition const function{
+                    .name = named(name),
+                    .return_type = name == "set" ? std_types().void_ : named_type("size_type"),
+                    .parameters = std::move(parameters),
+                    .implementation = {.kind = FunctionImplementationKind::body,
+                                       .body = std::move(body)},
+                    .receiver = name == "set" && mutable_view ? FunctionReceiver::const_
+                                                              : FunctionReceiver::unqualified,
+                    .flags = {.is_inline = true, .define_in_header = true}};
                 result.add(header_function(add_function(function))).new_lines(1);
             };
 
@@ -272,16 +277,16 @@ class SoaApiLowering : public CppIRBuilder {
                 auto const row{members.index(member)};
                 auto const name{(members.kind[row] == SoaMemberKind::nested ? "view_" : "") +
                                 ctx.text(members.name[row])};
-                FunctionDefinition function{.name = named(name),
-                                            .return_type = intern_type("auto"),
-                                            .flags = {.define_in_header = true}};
-                function.parameters = {
-                    parameter(decorate_type(intern_type("auto"), "this ", "&"), "self")};
-                function.implementation = {
-                    .kind = FunctionImplementationKind::body,
-                    .body = {return_stmt(
-                        call(member_access(call(member_access(named("self"), "view")), name)))}};
-                function.formatting.body_layout = FunctionBodyLayout::compact;
+                FunctionDefinition const function{
+                    .name = named(name),
+                    .return_type = intern_type("auto"),
+                    .parameters = {parameter(decorate_type(intern_type("auto"), "this ", "&"),
+                                             "self")},
+                    .implementation = {.kind = FunctionImplementationKind::body,
+                                       .body = {return_stmt(call(member_access(
+                                           call(member_access(named("self"), "view")), name)))}},
+                    .flags = {.define_in_header = true},
+                    .formatting = {.body_layout = FunctionBodyLayout::compact}};
                 result.add(header_function(add_function(function))).new_lines(1);
             }
         }

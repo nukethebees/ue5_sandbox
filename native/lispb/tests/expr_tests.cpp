@@ -126,21 +126,28 @@ TEST_F(ExprTest, PreservesBitwiseAndShiftPrecedence) {
 }
 
 TEST_F(AstTest, RendersRefQualifiedMethodsAndInlineOutOfLineConstructors) {
-    FunctionDefinition spec{.name = ir.named(ir.strings.intern("view")),
-                            .return_type = types.intern("View"),
-                            .return_syntax = ReturnSyntax::trailing};
-    spec.receiver = FunctionReceiver::const_lvalue;
-    spec.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
+    FunctionDefinition const spec{
+        .name = ir.named(ir.strings.intern("view")),
+        .return_type = types.intern("View"),
+        .return_syntax = ReturnSyntax::trailing,
+        .exception_specification = {.kind = FunctionExceptionKind::noexcept_},
+        .receiver = FunctionReceiver::const_lvalue};
     expect_rendered(ir.declaration(ir.add_function(spec)), "auto view() const & noexcept -> View;");
-    spec.receiver = FunctionReceiver::const_rvalue;
-    spec.implementation = {.kind = FunctionImplementationKind::deleted};
-    expect_rendered(ir.definition(ir.add_function(spec)),
+    FunctionDefinition const rvalue_spec{
+        .name = spec.name,
+        .return_type = spec.return_type,
+        .return_syntax = spec.return_syntax,
+        .implementation = {.kind = FunctionImplementationKind::deleted},
+        .exception_specification = spec.exception_specification,
+        .receiver = FunctionReceiver::const_rvalue};
+    expect_rendered(ir.definition(ir.add_function(rvalue_spec)),
                     "auto view() const && noexcept -> View = delete;");
-    FunctionDefinition constructor_spec{.name = ir.named(ir.strings.intern("View")),
-                                        .kind = FunctionKind::constructor,
-                                        .flags = {.is_inline = true, .define_in_header = true}};
-    constructor_spec.implementation = {.kind = FunctionImplementationKind::body, .body = {}};
-    constructor_spec.formatting = {.body_layout = FunctionBodyLayout::compact};
+    FunctionDefinition const constructor_spec{
+        .name = ir.named(ir.strings.intern("View")),
+        .kind = FunctionKind::constructor,
+        .implementation = {.kind = FunctionImplementationKind::body, .body = {}},
+        .flags = {.is_inline = true, .define_in_header = true},
+        .formatting = {.body_layout = FunctionBodyLayout::compact}};
     auto const constructor{
         ir.definition(ir.add_function(constructor_spec), ir.types.intern("View"), {}, true)};
     expect_rendered(constructor, "inline View::View() {  }");
@@ -166,13 +173,14 @@ TEST_F(ExprTest, RendersSizeofAndPreservesArithmeticGrouping) {
 }
 
 TEST_F(ExprTest, CollectsSizeofTypeDependenciesThroughArithmetic) {
-    FunctionDefinition function{.name = ir.named(ir.strings.intern("bytes")),
-                                .return_type = types.intern("auto")};
     auto const element{types.intern("Element", {types.dependency("Element", "Project/Element.h")})};
-    function.implementation = {
-        .kind = FunctionImplementationKind::body,
-        .body = {ir.return_stmt(
-            ir.binary(BinaryOperator::multiply, ir.literal("2"), ir.sizeof_type(element)))}};
+    FunctionDefinition const function{
+        .name = ir.named(ir.strings.intern("bytes")),
+        .return_type = types.intern("auto"),
+        .implementation = {
+            .kind = FunctionImplementationKind::body,
+            .body = {ir.return_stmt(
+                ir.binary(BinaryOperator::multiply, ir.literal("2"), ir.sizeof_type(element)))}}};
     auto const file{
         ir.files.append(ir.strings.intern("Example.h"),
                         {ir.include_dependencies(), ir.definition(ir.add_function(function))})};
@@ -397,13 +405,14 @@ TEST_F(AstTest, CollectsDeepControlFlowDependenciesOnlyForDefinitions) {
         {ir.switch_case(symbol("case_only"), ir.block({ir.expr_stmt(body_call)})),
          ir.switch_case(std::nullopt,
                         ir.block({ir.block({ir.expr_stmt(ir.call(symbol("default_only")))})}))})};
-    FunctionDefinition spec{.name = ir.named(ir.strings.intern("f")),
-                            .return_type = types.std.void_};
-    spec.implementation = {
-        .kind = FunctionImplementationKind::body,
-        .body = {ir.if_stmt(ir.call(symbol("condition_only")),
-                            ir.block({selection}),
-                            ir.block({ir.return_stmt(ir.call(symbol("else_only")))}))}};
+    FunctionDefinition const spec{
+        .name = ir.named(ir.strings.intern("f")),
+        .return_type = types.std.void_,
+        .implementation = {
+            .kind = FunctionImplementationKind::body,
+            .body = {ir.if_stmt(ir.call(symbol("condition_only")),
+                                ir.block({selection}),
+                                ir.block({ir.return_stmt(ir.call(symbol("else_only")))}))}}};
     auto const published_spec{ir.add_function(spec)};
     auto const file{ir.files.append(ir.strings.intern("Example.h"),
                                     {ir.include_dependencies(), ir.declaration(published_spec)})};
@@ -428,10 +437,10 @@ TEST_F(AstTest, DeduplicatesSharedSymbolDependenciesAndTheirNestedHeaders) {
     auto const symbol{types.dependency("make", "Project/Make.h")};
     auto const value{types.dependency("Value", "Project/Value.h")};
     auto const expression{ir.call(ir.named("make", {symbol, value}))};
-    FunctionDefinition function{.name = ir.named(ir.strings.intern("f")),
-                                .return_type = types.intern("auto")};
-    function.implementation = {.kind = FunctionImplementationKind::body,
-                               .body = {ir.return_stmt(expression)}};
+    FunctionDefinition const function{.name = ir.named(ir.strings.intern("f")),
+                                      .return_type = types.intern("auto"),
+                                      .implementation = {.kind = FunctionImplementationKind::body,
+                                                         .body = {ir.return_stmt(expression)}}};
     auto const file{ir.files.append(
         ir.strings.intern("Example.h"),
         {ir.include_dependencies(),

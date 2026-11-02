@@ -48,16 +48,16 @@ class StaticTableLowering : public CppIRBuilder {
             arguments.push_back(subscript(named(column), named("index")));
         }
 
-        FunctionDefinition created_function{.name = named("get_" + ctx.text(groups.name[row])),
-                                            .return_type = result_type,
-                                            .return_syntax = ReturnSyntax::trailing,
-                                            .flags = {.is_inline = true, .define_in_header = true}};
-        created_function.parameters = {parameter(
-            intern_type("int32 const", {dependency("int32 const", "CoreMinimal.h")}), "index")};
-        created_function.implementation = {
-            .kind = FunctionImplementationKind::body,
-            .body = {return_stmt(init_list(arguments, result_type))}};
-        created_function.receiver = FunctionReceiver::const_;
+        FunctionDefinition const created_function{
+            .name = named("get_" + ctx.text(groups.name[row])),
+            .return_type = result_type,
+            .return_syntax = ReturnSyntax::trailing,
+            .parameters = {parameter(
+                intern_type("int32 const", {dependency("int32 const", "CoreMinimal.h")}), "index")},
+            .implementation = {.kind = FunctionImplementationKind::body,
+                               .body = {return_stmt(init_list(arguments, result_type))}},
+            .receiver = FunctionReceiver::const_,
+            .flags = {.is_inline = true, .define_in_header = true}};
         return header_function(add_function(created_function));
     }
     auto table_node(LoweringContext& ctx, DeclarationHandle table) -> NodeId {
@@ -82,15 +82,15 @@ class StaticTableLowering : public CppIRBuilder {
                          index + 1 < row_count ? 1 : 2);
         }
 
-        FunctionDefinition num{
+        FunctionDefinition const num{
             .name = named("num"),
             .return_type = int32_type,
             .return_syntax = ReturnSyntax::trailing,
+            .implementation = {.kind = FunctionImplementationKind::body,
+                               .body = {return_stmt(named("num_rows"))}},
+            .exception_specification = {.kind = FunctionExceptionKind::noexcept_},
+            .receiver = FunctionReceiver::static_,
             .flags = {.is_constexpr = true, .is_inline = true, .define_in_header = true}};
-        num.implementation = {.kind = FunctionImplementationKind::body,
-                              .body = {return_stmt(named("num_rows"))}};
-        num.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
-        num.receiver = FunctionReceiver::static_;
         children.add(header_function(add_function(num)), 2);
 
         std::vector<std::string> column_names;

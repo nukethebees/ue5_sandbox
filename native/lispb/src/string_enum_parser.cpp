@@ -37,19 +37,19 @@ class StringEnumParserLowering : public CppIRBuilder {
                                   std::string_view const parameter_name,
                                   std::span<StringEnumEntry const> const entries,
                                   bool const indexed) -> NodeId {
-        FunctionDefinition function{
+        auto const input{named(parameter_name)};
+        FunctionDefinition const function{
             .name = named(function_name),
             .return_type = template_type(std_types().optional, {named_type(enum_type)}),
             .return_syntax = ReturnSyntax::trailing,
+            .parameters = {parameter(decorate_type(std_types().string_view, "", " const"),
+                                     parameter_name)},
+            .implementation = {.kind = FunctionImplementationKind::body,
+                               .body = indexed && entries.size() <= linear_limit
+                                         ? indexed_parser_body(input, enum_type, entries)
+                                         : parser_body(input, entries)},
+            .exception_specification = {.kind = FunctionExceptionKind::noexcept_},
             .flags = {.is_constexpr = true, .is_nodiscard = true, .define_in_header = true}};
-        function.parameters = {
-            parameter(decorate_type(std_types().string_view, "", " const"), parameter_name)};
-        function.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
-        auto const input{named(parameter_name)};
-        function.implementation = {.kind = FunctionImplementationKind::body,
-                                   .body = indexed && entries.size() <= linear_limit
-                                             ? indexed_parser_body(input, enum_type, entries)
-                                             : parser_body(input, entries)};
         return header_function(add_function(function));
     }
   private:

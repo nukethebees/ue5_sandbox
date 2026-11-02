@@ -216,13 +216,14 @@ class ModuleLowering : public CppIRBuilder {
                 source += std::format("(define ({} . arguments) (cons :{} arguments))\n", tag, tag);
             }
         }
-        FunctionDefinition function{.name = named("s7_record_constructors"),
-                                    .return_type = std_types().string_view,
-                                    .return_syntax = ReturnSyntax::trailing,
-                                    .flags = {.is_constexpr = true, .define_in_header = true}};
         auto body{node_list()};
         body.add(return_stmt(string_literal(store_text(source))));
-        function.implementation = {.kind = FunctionImplementationKind::body, .body = body.build()};
+        FunctionDefinition const function{
+            .name = named("s7_record_constructors"),
+            .return_type = std_types().string_view,
+            .return_syntax = ReturnSyntax::trailing,
+            .implementation = {.kind = FunctionImplementationKind::body, .body = body.build()},
+            .flags = {.is_constexpr = true, .define_in_header = true}};
         auto decls{node_list()};
         decls.add(header_function(add_function(function)));
         return {.header = decls.build()};

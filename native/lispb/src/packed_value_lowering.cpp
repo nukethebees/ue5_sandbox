@@ -456,15 +456,13 @@ class PackedEmitter : public CppIRBuilder {
         return emit_function(name, type(result), receiver, parameters, body, constexpr_);
     }
     auto default_constructor(bool available) -> NodeId {
-        FunctionDefinition fn{.name = named(text(name_)),
-                              .kind = FunctionKind::constructor,
-                              .flags = {.is_constexpr = true, .define_in_header = true}};
-        fn.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
-        if (available) {
-            fn.implementation = {.kind = FunctionImplementationKind::defaulted};
-        } else {
-            fn.implementation = {.kind = FunctionImplementationKind::deleted};
-        }
+        FunctionDefinition const fn{
+            .name = named(text(name_)),
+            .kind = FunctionKind::constructor,
+            .implementation = {.kind = available ? FunctionImplementationKind::defaulted
+                                                 : FunctionImplementationKind::deleted},
+            .exception_specification = {.kind = FunctionExceptionKind::noexcept_},
+            .flags = {.is_constexpr = true, .define_in_header = true}};
         return header_function(add_function(fn));
     }
     void comparison(bool defaulted) {
@@ -474,23 +472,21 @@ class PackedEmitter : public CppIRBuilder {
                 continue;
             }
             auto const decoded{!defaulted && !equality};
-            FunctionDefinition fn{
+            FunctionDefinition const fn{
                 .name = named(equality ? "operator==" : "operator<=>"),
                 .return_type = equality ? std_types().bool_
                                         : intern_type("auto", {dependency("auto", "compare")}),
+                .parameters = {parameter(owner, decoded ? "other" : "")},
+                .implementation =
+                    decoded ? FunctionImplementation{.kind = FunctionImplementationKind::body,
+                                                     .body = {return_stmt(binary(
+                                                         BinaryOperator::three_way,
+                                                         invoke("value"),
+                                                         member_call(named("other"), "value")))}}
+                            : FunctionImplementation{.kind = FunctionImplementationKind::defaulted},
+                .exception_specification = {.kind = FunctionExceptionKind::noexcept_},
+                .receiver = FunctionReceiver::const_,
                 .flags = {.is_constexpr = true, .is_nodiscard = true, .define_in_header = true}};
-            fn.receiver = FunctionReceiver::const_;
-            fn.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
-            fn.parameters = {parameter(owner, decoded ? "other" : "")};
-            if (decoded) {
-                fn.implementation = {
-                    .kind = FunctionImplementationKind::body,
-                    .body = {return_stmt(binary(BinaryOperator::three_way,
-                                                invoke("value"),
-                                                member_call(named("other"), "value")))}};
-            } else {
-                fn.implementation = {.kind = FunctionImplementationKind::defaulted};
-            }
             operators_.push_back(header_function(add_function(fn)));
         }
     }
@@ -1129,14 +1125,15 @@ class PackedEmitter : public CppIRBuilder {
             functions_.push_back(
                 emit_function("make_" + path, name_, FunctionReceiver::static_, params, body));
         } else {
-            FunctionDefinition ctor{.name = named(text(name_)),
-                                    .kind = FunctionKind::explicit_constructor,
-                                    .flags = {.is_constexpr = true, .define_in_header = true}};
-            ctor.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
-            ctor.parameters.assign(params.begin(), params.end());
-            ctor.implementation = {.kind = FunctionImplementationKind::body,
+            FunctionDefinition const ctor{
+                .name = named(text(name_)),
+                .kind = FunctionKind::explicit_constructor,
+                .parameters = {params.begin(), params.end()},
+                .implementation = {.kind = FunctionImplementationKind::body,
                                    .body = body,
-                                   .initializers = {member_initializer(text("Base"), encoded)}};
+                                   .initializers = {member_initializer(text("Base"), encoded)}},
+                .exception_specification = {.kind = FunctionExceptionKind::noexcept_},
+                .flags = {.is_constexpr = true, .define_in_header = true}};
             constructors_.push_back(header_function(add_function(ctor)));
         }
     }

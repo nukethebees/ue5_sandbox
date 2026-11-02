@@ -46,24 +46,22 @@ class FacadeLowering : public CppIRBuilder {
         auto const definitions_in_source{facades.definitions_in_source[row]};
         auto const reference_target{facades.reference_target[row]};
         auto const target_name{facades.target_member_name[row]};
-        auto binding{reference_target ? FunctionDefinition{.name = named(facades.name[row]),
-                                                           .kind = FunctionKind::constructor}
-                                      : FunctionDefinition{.name = named("bind"),
-                                                           .return_type = std_types().void_}};
-        binding.parameters = {parameter(decorate_type(target_type, "", "&"), "new_target")};
-        binding.flags = {.is_inline = !definitions_in_source,
-                         .define_in_header = !definitions_in_source};
-        if (reference_target) {
-            binding.implementation = {
-                .kind = FunctionImplementationKind::body,
-                .body = {},
-                .initializers = {member_initializer(target_name, named("new_target"))}};
-        } else {
-            binding.implementation = {
-                .kind = FunctionImplementationKind::body,
-                .body = {assignment(named(target_name),
-                                    unary(UnaryOperator::address_of, named("new_target")))}};
-        }
+        FunctionDefinition const binding{
+            .name = named(reference_target ? facades.name[row] : store_text("bind")),
+            .return_type = reference_target ? CppTypeId{} : std_types().void_,
+            .kind = reference_target ? FunctionKind::constructor : FunctionKind::ordinary,
+            .parameters = {parameter(decorate_type(target_type, "", "&"), "new_target")},
+            .implementation =
+                reference_target
+                    ? FunctionImplementation{.kind = FunctionImplementationKind::body,
+                                             .initializers = {member_initializer(
+                                                 target_name, named("new_target"))}}
+                    : FunctionImplementation{.kind = FunctionImplementationKind::body,
+                                             .body = {assignment(named(target_name),
+                                                                 unary(UnaryOperator::address_of,
+                                                                       named("new_target")))}},
+            .flags = {.is_inline = !definitions_in_source,
+                      .define_in_header = !definitions_in_source}};
         std::vector<FunctionId> methods;
         for (auto const method : decls.items(facades.methods[row])) {
             auto const method_row{method_schemas.index(method)};
@@ -113,18 +111,19 @@ class FacadeLowering : public CppIRBuilder {
             } else {
                 body.add(return_stmt(call_expr, std::move(validation_dependencies)));
             }
-            FunctionDefinition function{.name = named(method_schemas.name[method_row]),
-                                        .return_type = return_type,
-                                        .flags = {.is_inline = !definitions_in_source,
-                                                  .define_in_header = !definitions_in_source}};
-            function.parameters = std::move(parameters);
-            function.implementation = {.kind = FunctionImplementationKind::body,
-                                       .body = body.build()};
-            function.receiver = method_schemas.is_const[method_row] ? FunctionReceiver::const_
-                                                                    : FunctionReceiver::unqualified;
-            if (method_schemas.is_noexcept[method_row]) {
-                function.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
-            }
+            FunctionDefinition const function{
+                .name = named(method_schemas.name[method_row]),
+                .return_type = return_type,
+                .parameters = std::move(parameters),
+                .implementation = {.kind = FunctionImplementationKind::body, .body = body.build()},
+                .exception_specification = {.kind =
+                                                method_schemas.is_noexcept[method_row]
+                                                    ? FunctionExceptionKind::noexcept_
+                                                    : FunctionExceptionKind::potentially_throwing},
+                .receiver = method_schemas.is_const[method_row] ? FunctionReceiver::const_
+                                                                : FunctionReceiver::unqualified,
+                .flags = {.is_inline = !definitions_in_source,
+                          .define_in_header = !definitions_in_source}};
             methods.push_back(add_function(function));
         }
 

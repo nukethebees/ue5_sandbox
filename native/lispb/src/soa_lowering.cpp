@@ -154,25 +154,25 @@ class SoaLowering : public CppIRBuilder {
                 parameters.push_back(parameter(decorate_type(std_types().i32, "", " const"),
                                                dimensions.index_name[dimensions.index(dimension)]));
             }
-            FunctionDefinition function{
+            FunctionDefinition const function{
                 .name = named(name + "_field"),
                 .return_type = enum_type,
                 .return_syntax = ReturnSyntax::trailing,
-                .flags = {.is_constexpr = true, .is_nodiscard = true, .define_in_header = true}};
-            function.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
-            function.formatting.body_layout = FunctionBodyLayout::compact;
-            function.receiver = FunctionReceiver::static_;
-            function.parameters.assign(parameters.begin(), parameters.end());
-            function.implementation = {
-                .kind = FunctionImplementationKind::body,
-                .body = {return_stmt(static_cast_expr(
-                    enum_type,
-                    binary(
-                        BinaryOperator::add,
-                        static_cast_expr(int32_type,
-                                         type_reference(decorate_type(
-                                             enum_type, "", "::" + title_case_identifier(name)))),
-                        mask_index_expression(ctx, member))))}};
+                .parameters = {parameters.begin(), parameters.end()},
+                .implementation =
+                    {.kind = FunctionImplementationKind::body,
+                     .body = {return_stmt(static_cast_expr(
+                         enum_type,
+                         binary(BinaryOperator::add,
+                                static_cast_expr(
+                                    int32_type,
+                                    type_reference(decorate_type(
+                                        enum_type, "", "::" + title_case_identifier(name)))),
+                                mask_index_expression(ctx, member))))}},
+                .exception_specification = {.kind = FunctionExceptionKind::noexcept_},
+                .receiver = FunctionReceiver::static_,
+                .flags = {.is_constexpr = true, .is_nodiscard = true, .define_in_header = true},
+                .formatting = {.body_layout = FunctionBodyLayout::compact}};
             children.new_lines(1).add(header_function(add_function(function)));
         }
 
