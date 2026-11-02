@@ -15,5 +15,6 @@ struct CppTypeShape {
     CppTypeId owner{};
     StringId member{};
     CppTypeId initializer_element_type{};
+    CppTypeId unqualified_type{};
 };
 }

@@ -4,6 +4,7 @@
 #include <codegen/ast/cpp_type_part.h>
 #include <codegen/ast/cpp_type_shape.h>
 #include <codegen/ast/indices.h>
+#include <codegen/ast/integer_type.h>
 #include <codegen/ast/ir/range.h>
 #include <codegen/ast/parameter_passing.h>
 #include <codegen/ast/standard_types.h>
@@ -103,6 +104,8 @@ class CppTypes {
 
     // Expression-dependent types have no spelling until rendered in their enclosing scope.
     auto spelling(CppTypeId type) const -> std::string_view;
+    auto unqualified_type(CppTypeId type) const -> CppTypeId;
+    auto integer_type(CppTypeId type) const -> IntegerType;
     auto spelling_id(CppTypeId type) const -> StringId;
     auto dependencies(CppTypeId type) const -> std::span<TypeDependencyId const>;
     auto parameter_passing(CppTypeId type) const -> ParameterPassing;
@@ -131,7 +134,8 @@ class CppTypes {
     void initialise_standard_types();
     auto compose(std::span<CppTypePart const> parts,
                  std::optional<CppTypeId> policy_source,
-                 CppTypeId initializer_element_type) -> CppTypeId;
+                 CppTypeId initializer_element_type,
+                 CppTypeId unqualified_type = {}) -> CppTypeId;
     auto append(StringId spelling,
                 std::span<TypeDependencyId const> dependencies,
                 ParameterPassing passing,

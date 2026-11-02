@@ -239,6 +239,7 @@ auto CppTypes::find(StringId const spelling,
             candidate_shape.operand != shape.operand || candidate_shape.owner != shape.owner ||
             candidate_shape.member != shape.member ||
             candidate_shape.initializer_element_type != shape.initializer_element_type ||
+            candidate_shape.unqualified_type != shape.unqualified_type ||
             (shape.form == CppTypeForm::composed &&
              !std::ranges::equal(std::span{parts_}.subspan(shape.parts.begin, shape.parts.count),
                                  std::span{parts_}.subspan(candidate_shape.parts.begin,
@@ -373,7 +374,8 @@ auto CppTypes::compose(std::span<CppTypePart const> const parts,
 }
 auto CppTypes::compose(std::span<CppTypePart const> const parts,
                        std::optional<CppTypeId> const policy_source,
-                       CppTypeId const initializer_element_type) -> CppTypeId {
+                       CppTypeId const initializer_element_type,
+                       CppTypeId const unqualified_type) -> CppTypeId {
     assert(!parts.empty());
     std::string spelling;
     bool has_spelling{true};
@@ -401,7 +403,8 @@ auto CppTypes::compose(std::span<CppTypePart const> const parts,
     CppTypeShape const shape{.form = CppTypeForm::composed,
                              .parts = {static_cast<std::uint32_t>(parts_.size()),
                                        static_cast<std::uint32_t>(parts.size())},
-                             .initializer_element_type = initializer_element_type};
+                             .initializer_element_type = initializer_element_type,
+                             .unqualified_type = unqualified_type};
     parts_.insert(parts_.end(), parts.begin(), parts.end());
     auto const passing{policy_source ? parameter_passing(*policy_source)
                                      : cpp_type_detail::default_parameter_passing(spelling)};
@@ -472,10 +475,30 @@ auto CppTypes::decorate(CppTypeId const base,
                         std::string_view const prefix,
                         std::string_view const suffix) -> CppTypeId {
     // Intern both pieces before publishing views into the shared string buffer.
+    std::string const prefix_text{prefix};
     std::string const suffix_text{suffix};
-    auto const before{strings_.intern(prefix)};
+    auto const before{strings_.intern(prefix_text)};
     auto const after{strings_.intern(suffix_text)};
-    return compose({{.text = before}, {.type = base}, {.text = after}}, base);
+    auto only_qualifiers = [](std::string_view text) {
+        while (!text.empty()) {
+            if (text.starts_with("const")) {
+                text.remove_prefix(5);
+            } else if (text.starts_with("volatile")) {
+                text.remove_prefix(8);
+            } else if (text.front() == ' ' || text.front() == '&') {
+                text.remove_prefix(1);
+            } else {
+                return false;
+            }
+        }
+        return true;
+    };
+    auto const unqualified{only_qualifiers(prefix_text) && only_qualifiers(suffix_text)
+                               ? unqualified_type(base)
+                               : CppTypeId{}};
+    std::array const parts{
+        CppTypePart{.text = before}, CppTypePart{.type = base}, CppTypePart{.text = after}};
+    return compose(parts, base, {}, unqualified);
 }
 auto CppTypes::nested_type(CppTypeId const owner, std::string_view const member) -> CppTypeId {
     return nested_type(owner, strings_.intern(member));
@@ -526,6 +549,38 @@ auto CppTypes::clone(CppTypeId const base) -> CppTypeId {
 
 auto CppTypes::spelling(CppTypeId const type) const -> std::string_view {
     return strings_.view(spelling_id(type));
+}
+auto CppTypes::unqualified_type(CppTypeId const type) const -> CppTypeId {
+    if (type.value == 0) {
+        return type;
+    }
+    auto const base{shapes_[type.value - 1].unqualified_type};
+    return base.value != 0 ? base : type;
+}
+auto CppTypes::integer_type(CppTypeId const type) const -> IntegerType {
+    auto const base{unqualified_type(type)};
+    if (base.value == 0) {
+        return {};
+    }
+    auto const name{spelling(base)};
+    for (auto const& integer : fixed_width_integer_types) {
+        if (name == integer.native_name) {
+            return {static_cast<unsigned>(integer.width), integer.is_signed};
+        }
+    }
+    if (name == "int" || name == "signed int" || name == "signed") {
+        return {32, true};
+    }
+    if (name == "unsigned" || name == "unsigned int") {
+        return {32, false};
+    }
+    if (name == "signed char") {
+        return {8, true};
+    }
+    if (name == "unsigned char") {
+        return {8, false};
+    }
+    return {};
 }
 auto CppTypes::spelling_id(CppTypeId const type) const -> StringId {
     assert(type.value != 0 && type.value <= spellings_.size());
