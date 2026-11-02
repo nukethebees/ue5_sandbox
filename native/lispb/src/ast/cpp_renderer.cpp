@@ -742,6 +742,12 @@ void CppRenderer::append_expr(
             append_arguments(ir_.initializer_exprs_.elements[index]);
             output += '}';
             break;
+        case ExprKind::designated_initializer:
+            output += '.';
+            output += ir_.strings.view(ir_.designated_initializers_.member[index]);
+            output += " = ";
+            append_expr(output, ir_.designated_initializers_.value[index], context);
+            break;
         case ExprKind::lambda: {
             output += '[';
             append_arguments(ir_.lambda_exprs_.captures[index]);

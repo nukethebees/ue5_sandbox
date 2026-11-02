@@ -299,15 +299,17 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
         ir.if_stmt(ir.unary(UnaryOperator::logical_not, ir.call(ir.member_access(errors, "empty"))),
                    ir.block({ir.return_stmt(unexpected)}))};
     body.add(return_errors, 2);
-    std::vector<std::string> initializers;
+    std::vector<Expr> initializers;
     for (auto const field : fields) {
         auto const index{members.index(field)};
         if (positional || members.s7[index].required) {
             auto const name{context.text(members.name[index])};
-            initializers.push_back(std::format(".{0} = std::move(*value_{0})", name));
+            initializers.push_back(ir.designated_initializer(
+                members.name[index],
+                move(ir.unary(UnaryOperator::dereference, ir.named("value_" + name)))));
         }
     }
-    body.add(ir.variable("value_type", "result", ir.raw_expr(join(initializers, ",\n"), {})), 2);
+    body.add(ir.variable("value_type", "result", ir.init_list(initializers)), 2);
     for (auto const field : fields) {
         auto const index{members.index(field)};
         auto const name{context.text(members.name[index])};

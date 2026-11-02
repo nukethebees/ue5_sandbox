@@ -20,6 +20,7 @@ enum class ExprKind : std::uint8_t {
     reinterpret_cast_,
     sizeof_type,
     initializer_list,
+    designated_initializer,
     raw,
     template_id,
     type_reference,

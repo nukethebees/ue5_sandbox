@@ -21,6 +21,7 @@
 #include <codegen/ast/ir/casts.h>
 #include <codegen/ast/ir/conditional_exprs.h>
 #include <codegen/ast/ir/constexpr_members.h>
+#include <codegen/ast/ir/designated_initializers.h>
 #include <codegen/ast/ir/enumerators.h>
 #include <codegen/ast/ir/enums.h>
 #include <codegen/ast/ir/expr_stmts.h>
@@ -401,6 +402,8 @@ class CppIR {
     auto conditional(Expr condition, Expr when_true, Expr when_false) -> Expr;
     auto sizeof_type(CppTypeId type) -> Expr;
     auto init_list(std::span<Expr const> elements, std::optional<CppTypeId> type = {}) -> Expr;
+    // Use designated initializers only as initializer-list elements.
+    auto designated_initializer(StringId member, Expr value) -> Expr;
     auto init_list(std::initializer_list<Expr> elements, std::optional<CppTypeId> type = {})
         -> Expr {
         return init_list(std::span<Expr const>{elements}, type);
@@ -488,6 +491,7 @@ class CppIR {
     ir::LambdaExprs lambda_exprs_;
     ir::SizeofExprs sizeof_exprs_;
     ir::InitializerExprs initializer_exprs_;
+    ir::DesignatedInitializers designated_initializers_;
     ir::RawExprs raw_exprs_;
     ir::Parameters parameters_;
     ir::MemberInitializers initializers_;

@@ -752,6 +752,7 @@ void CppIR::clear() {
           lambda_exprs_.body,
           lambda_exprs_.template_declaration);
     clear(initializer_exprs_.type, initializer_exprs_.elements);
+    clear(designated_initializers_.member, designated_initializers_.value);
     clear(raw_exprs_.text, raw_exprs_.dependencies);
     clear(parameters_.type, parameters_.name, parameters_.default_value);
     clear(initializers_.member, initializers_.value);
@@ -923,6 +924,14 @@ auto CppIR::init_list(std::span<Expr const> elements, std::optional<CppTypeId> t
         expr_detail::handle(ExprKind::initializer_list, initializer_exprs_.type.size())};
     initializer_exprs_.type.push_back(type);
     initializer_exprs_.elements.push_back(save_exprs(elements));
+    return result;
+}
+auto CppIR::designated_initializer(StringId member, Expr value) -> Expr {
+    assert(member.value != 0 && value);
+    auto const result{expr_detail::handle(ExprKind::designated_initializer,
+                                          designated_initializers_.member.size())};
+    designated_initializers_.member.push_back(member);
+    designated_initializers_.value.push_back(value);
     return result;
 }
 auto CppIR::type_reference(CppTypeId type) -> Expr {
@@ -1329,6 +1338,9 @@ void CppIR::collect_dependencies(Expr expr, std::vector<TypeDependencyId>& resul
             for (auto const child : exprs(initializer_exprs_.elements[index])) {
                 collect_dependencies(child, result);
             }
+            break;
+        case ExprKind::designated_initializer:
+            collect_dependencies(designated_initializers_.value[index], result);
             break;
         case ExprKind::literal:
         case ExprKind::string_literal:
