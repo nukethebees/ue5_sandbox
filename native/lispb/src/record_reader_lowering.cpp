@@ -216,7 +216,9 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
             })) {
             arguments.push_back(ir.named("required"));
         }
-        body.add(ir.expr_stmt(ir.call(ir.named("decode_record<Field>"), arguments)));
+        body.add(ir.expr_stmt(ir.call(
+            ir.template_id(ir.named("decode_record"), {ir.type_reference(ir.types.named("Field"))}),
+            arguments)));
     }
     if (!constructing) {
         return body.build();
@@ -241,7 +243,7 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
         if (!positional && !options.required) {
             body.add(ir.if_stmt(ir.named("value_" + name),
                                 ir.block({ir.assignment(
-                                    ir.named("result." + name),
+                                    ir.member_access(ir.named("result"), name),
                                     ir.raw_expr(std::format("std::move(*value_{})", name), {}))})));
         }
     }
@@ -359,12 +361,15 @@ void lower_record_reader(LoweringContext& context,
             ir.constexpr_member(array_type, ir.strings.intern("field_names"), ir.init_list(names)),
             1);
         if (!required.empty()) {
-            decls.add(
-                ir.constexpr_member(ir.types.intern("auto"),
-                                    ir.strings.intern("required"),
-                                    ir.call(ir.named("required_fields<Field, field_names.size()>"),
-                                            {ir.init_list(required)})),
-                1);
+            decls.add(ir.constexpr_member(
+                          ir.types.intern("auto"),
+                          ir.strings.intern("required"),
+                          ir.call(ir.template_id(
+                                      ir.named("required_fields"),
+                                      {ir.type_reference(ir.types.named("Field")),
+                                       ir.call(ir.member_access(ir.named("field_names"), "size"))}),
+                                  {ir.init_list(required)})),
+                      1);
         }
     }
     auto const specialization{ir.record(

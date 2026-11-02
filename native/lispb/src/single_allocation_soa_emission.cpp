@@ -164,16 +164,15 @@ auto column_access(LoweringContext& context,
         if (found == groups.end()) {
             auto const name{ir.strings.intern(context.path_text(group_path, "_") + "_view")};
             found = groups.emplace(group_path, name).first;
-            auto const accessor{receiver.empty() ? "view_" + context.text(component)
-                                                 : receiver + ".view_" + context.text(component)};
-            body.add(
-                ir.variable(ir.types.intern("auto const&"), name, ir.call(ir.named(accessor))));
+            auto const member{"view_" + context.text(component)};
+            auto const accessor{receiver.empty() ? ir.named(member)
+                                                 : ir.member_access(ir.named(receiver), member)};
+            body.add(ir.variable(ir.types.intern("auto const&"), name, ir.call(accessor)));
         }
         receiver = context.text(found->second);
     }
     auto const last{ir.lowering.paths.items(path).back()};
-    return ir.call(
-        ir.named(receiver.empty() ? context.text(last) : receiver + "." + context.text(last)));
+    return ir.call(receiver.empty() ? ir.named(last) : ir.member_access(ir.named(receiver), last));
 }
 
 auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId model) -> Nodes {
@@ -185,7 +184,7 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
     auto const move_parameter{ir.parameter(context.text(owner_name) + "&&", "other")};
     auto const free_data{ir.call(
         ir.type_reference(ir.types.decorate(ir.types.named("Operations"), "", "::release_storage")),
-        {ir.named("*this")})};
+        {ir.unary(UnaryOperator::dereference, ir.named("this"))})};
     auto const default_constructor{ir.constructor(owner_name)};
     ir.set_function_noexcept(default_constructor);
     ir.set_function_body(
@@ -283,8 +282,8 @@ auto data_pointers_node(LoweringContext& context, SingleAllocationModelId model)
 
     std::vector<Expr> arguments;
     for (auto const column : context.ir.lowering.items(model_store.columns[model_store_index])) {
-        arguments.push_back(ir.named(
-            "self." + context.text(column_store.flattened_identifier[column_store.index(column)])));
+        arguments.push_back(ir.member_access(
+            ir.named("self"), column_store.flattened_identifier[column_store.index(column)]));
     }
     auto const visit{make_function(ir,
                                    "with_columns",
@@ -390,15 +389,16 @@ auto view_accessor_nodes(LoweringContext& context, SingleAllocationModelId model
     auto column_span = [&](SingleAllocationColumnId column) {
         auto const index{std::find(selected.begin(), selected.end(), column) - selected.begin()};
         if (resolved) {
-            return ir.call(ir.named("this->column"),
+            return ir.call(ir.pointer_member_access(ir.named("this"), "column"),
                            {ir.member_access(
-                               ir.named("this->columns_"),
+                               ir.pointer_member_access(ir.named("this"), "columns_"),
                                context.text(columns.flattened_identifier[columns.index(column)]))});
         }
         if (strided) {
-            return ir.call(ir.named("this->column"), {ir.literal(std::to_string(index))});
+            return ir.call(ir.pointer_member_access(ir.named("this"), "column"),
+                           {ir.literal(std::to_string(index))});
         }
-        return ir.call(ir.template_id(ir.named("this->template column"),
+        return ir.call(ir.template_id(ir.pointer_member_access(ir.named("this"), "template column"),
                                       {ir.type_reference(columns.type[columns.index(column)])}),
                        {layout_column(context, column)});
     };
@@ -412,21 +412,22 @@ auto view_accessor_nodes(LoweringContext& context, SingleAllocationModelId model
             auto const nested_strided{is_strided_schema(context, nested)};
             auto const type{shared_view_type(context, nested, resolved || !nested_strided)};
             if (!resolved && nested_strided && strided) {
-                accessor("view_" + name,
-                         ir.init_list({ir.call(ir.member_access(column_span(nested_columns.front()),
-                                                                "data")),
-                                       ir.call(ir.named("this->byte_stride")),
-                                       ir.call(ir.named("this->num"))}),
-                         type);
+                accessor(
+                    "view_" + name,
+                    ir.init_list(
+                        {ir.call(ir.member_access(column_span(nested_columns.front()), "data")),
+                         ir.call(ir.pointer_member_access(ir.named("this"), "byte_stride")),
+                         ir.call(ir.pointer_member_access(ir.named("this"), "num"))}),
+                    type);
             } else if (!resolved && nested_strided) {
                 auto const factory{ir.template_id(
                     ir.type_reference(ir.types.named("ioj::soa_storage_detail::make_strided_view")),
                     {ir.type_reference(type), ir.type_reference(ir.types.intern("Layout"))})};
                 accessor("view_" + name,
                          ir.call(factory,
-                                 {ir.named("this->state_"),
-                                  ir.named("this->offset_"),
-                                  ir.call(ir.named("this->num")),
+                                 {ir.pointer_member_access(ir.named("this"), "state_"),
+                                  ir.pointer_member_access(ir.named("this"), "offset_"),
+                                  ir.call(ir.pointer_member_access(ir.named("this"), "num")),
                                   layout_column(context, nested_columns[0]),
                                   layout_column(context, nested_columns[1])}),
                          type);
@@ -436,11 +437,11 @@ auto view_accessor_nodes(LoweringContext& context, SingleAllocationModelId model
                     pointers.push_back(
                         resolved
                             ? ir.member_access(
-                                  ir.named("this->columns_"),
+                                  ir.pointer_member_access(ir.named("this"), "columns_"),
                                   context.text(columns.flattened_identifier[columns.index(column)]))
                             : ir.call(ir.member_access(column_span(column), "data")));
                 }
-                pointers.push_back(ir.call(ir.named("this->num")));
+                pointers.push_back(ir.call(ir.pointer_member_access(ir.named("this"), "num")));
                 accessor("view_" + name, ir.init_list(pointers), type);
             }
         } else {
