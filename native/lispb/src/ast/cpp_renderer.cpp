@@ -652,6 +652,105 @@ void CppRenderer::initialize_environments(std::span<NodeId const> children) {
     auto& state{state_};
     collect_environment(state.environments.global(), children);
 }
+auto CppRenderer::type_symbol(CppTypeId type, EnvironmentId environment) -> SymbolBinding {
+    type = ir_.types.unqualified_type(type);
+    if (type.value == 0) {
+        return {};
+    }
+    auto const shape{ir_.types.shapes_[type.value - 1]};
+    if (shape.form == CppTypeForm::named) {
+        auto const components{
+            std::span{ir_.types.name_components_}.subspan(shape.parts.begin, shape.parts.count)};
+        auto const resolved{resolve_name(components, shape.origin, environment)};
+        if (resolved.prefix_size == components.size() && !resolved.symbol.ambiguous) {
+            return resolved.symbol;
+        }
+    } else if (shape.form == CppTypeForm::raw) {
+        auto const name{ir_.types.spelling_id(type)};
+        auto const found{state_.environments.lookup(environment, std::span{&name, 1})};
+        if (found.status == LookupStatus::found) {
+            return found.symbol;
+        }
+    }
+    return {};
+}
+auto CppRenderer::value_symbol(Syntax value) -> SymbolBinding {
+    if (value.kind() == SyntaxKind::expression) {
+        auto const expression{value.expression()};
+        if (expression.kind() == ExprKind::symbol_reference) {
+            return value_symbol(ir_.symbol_references_[expression.index()]);
+        }
+    } else if (value.kind() == SyntaxKind::name) {
+        auto const name{ir_.named_exprs_.spelling[value.index()]};
+        auto const found{state_.environments.lookup(state_.current, std::span{&name, 1})};
+        if (found.status == LookupStatus::found) {
+            return found.symbol;
+        }
+    } else if (value.kind() == SyntaxKind::scope_name) {
+        auto const owner{type_symbol(ir_.scope_name_owners_[value.index()], state_.current)};
+        auto const scope{owner.aliased_type.value != 0 ? alias_scope(owner)
+                                                       : owner.introduced_scope};
+        if (!scope.is_null()) {
+            auto const found{
+                state_.environments.lookup_local(scope, ir_.scope_name_members_[value.index()])};
+            if (found.status == LookupStatus::found) {
+                return found.symbol;
+            }
+        }
+    }
+    return {};
+}
+auto CppRenderer::declaration_destination(SymbolBinding symbol) -> TypeDestination {
+    CppTypeId type{};
+    if (symbol.declaration.kind() == CppDeclarationKind::parameter) {
+        type = ir_.get_view(FunctionParameterId{symbol.declaration.index()}).type;
+    } else if (auto const node{symbol.declaration.node()}) {
+        auto const index{node->index()};
+        switch (node->kind()) {
+            case NodeKind::variable_declaration_stmt:
+                type = ir_.variable_declaration_stmt_nodes_.type[index];
+                break;
+            case NodeKind::instance_member:
+                type = ir_.instance_members_.type[index];
+                break;
+            case NodeKind::static_member:
+                type = ir_.static_members_.type[index];
+                break;
+            case NodeKind::constexpr_member:
+                type = ir_.constexpr_members_.type[index];
+                break;
+            default:
+                break;
+        }
+    }
+    return destination_type(type, symbol.declaring_scope);
+}
+auto CppRenderer::destination_type(CppTypeId type, EnvironmentId environment) -> TypeDestination {
+    type = ir_.types.unqualified_type(type);
+    if (type.value == 0 || ir_.types.integer_type(type).bits != 0) {
+        return {type, environment};
+    }
+    auto const symbol{type_symbol(type, environment)};
+    if (symbol.aliased_type.value != 0) {
+        return destination_type(symbol.aliased_type, symbol.declaring_scope);
+    }
+    return {type, environment};
+}
+auto CppRenderer::value_destination(Expr value) -> TypeDestination {
+    if (value.kind() == ExprKind::symbol_reference) {
+        if (auto const type{declaration_destination(value_symbol(value))}; type.type.value != 0) {
+            return type;
+        }
+    } else if (value.kind() == ExprKind::subscript) {
+        auto const object_type{value_destination(ir_.subscript_exprs_.object[value.index()])};
+        if (object_type.type.value != 0) {
+            return destination_type(
+                ir_.types.shapes_[object_type.type.value - 1].initializer_element_type,
+                object_type.scope);
+        }
+    }
+    return destination_type(ir_.expression_type(value), state_.current);
+}
 
 /* **************************************** */
 // Expressions and declarations
@@ -675,63 +774,235 @@ auto CppRenderer::expr_precedence(Expr expr) -> int {
             return 12;
     }
 }
-auto CppRenderer::append_initializer_literal(std::string& output,
-                                             Expr const value,
-                                             CppTypeId const destination) -> bool {
-    auto append = [&](auto const number) {
-        auto const& types{ir_.types.std};
-        auto const fits{
-            (destination == types.i8 && std::in_range<std::int8_t>(number)) ||
-            (destination == types.i16 && std::in_range<std::int16_t>(number)) ||
-            (destination == types.i32 && std::in_range<std::int32_t>(number)) ||
-            (destination == types.i64 && std::in_range<std::int64_t>(number)) ||
-            (destination == types.u8 && std::in_range<std::uint8_t>(number)) ||
-            (destination == types.u16 && std::in_range<std::uint16_t>(number)) ||
-            (destination == types.u32 && std::in_range<std::uint32_t>(number)) ||
-            (destination == types.u64 && std::in_range<std::uint64_t>(number)) ||
-            (destination == types.int_ && std::in_range<int>(number)) ||
-            (destination == types.unsigned_char && std::in_range<unsigned char>(number))};
-        if (!fits) {
-            return false;
-        }
-
-        std::format_to(std::back_inserter(output), "{}", number);
-        // Decimal literals above INT64_MAX require an unsigned suffix.
-        if (std::cmp_greater(number, std::numeric_limits<std::int64_t>::max())) {
-            output += "ULL";
-        }
-        return true;
+auto CppRenderer::integer_constant(Expr const value) const -> std::optional<IntegerConstant> {
+    auto constant = [&](auto const number) -> IntegerConstant {
+        bool const negative{std::cmp_less(number, 0)};
+        auto const magnitude{negative ? std::uint64_t{0} - static_cast<std::uint64_t>(number)
+                                      : static_cast<std::uint64_t>(number)};
+        return {magnitude, negative, ir_.types.integer_type(ir_.expression_type(value))};
     };
     auto const index{value.index()};
     switch (value.kind()) {
         case ExprKind::i8_literal:
-            return append(ir_.numeric_literal_exprs_.i8[index]);
+            return constant(ir_.numeric_literal_exprs_.i8[index]);
         case ExprKind::i16_literal:
-            return append(ir_.numeric_literal_exprs_.i16[index]);
+            return constant(ir_.numeric_literal_exprs_.i16[index]);
         case ExprKind::i32_literal:
-            return append(ir_.numeric_literal_exprs_.i32[index]);
+            return constant(ir_.numeric_literal_exprs_.i32[index]);
         case ExprKind::i64_literal:
-            return append(ir_.numeric_literal_exprs_.i64[index]);
+            return constant(ir_.numeric_literal_exprs_.i64[index]);
         case ExprKind::u8_literal:
-            return append(ir_.numeric_literal_exprs_.u8[index]);
+            return constant(ir_.numeric_literal_exprs_.u8[index]);
         case ExprKind::u16_literal:
-            return append(ir_.numeric_literal_exprs_.u16[index]);
+            return constant(ir_.numeric_literal_exprs_.u16[index]);
         case ExprKind::u32_literal:
-            return append(ir_.numeric_literal_exprs_.u32[index]);
+            return constant(ir_.numeric_literal_exprs_.u32[index]);
         case ExprKind::u64_literal:
-            return append(ir_.numeric_literal_exprs_.u64[index]);
+            return constant(ir_.numeric_literal_exprs_.u64[index]);
+        case ExprKind::parenthesized:
+            return integer_constant(ir_.parenthesized_exprs_.operand[index]);
+        case ExprKind::unary: {
+            auto const operand{ir_.unary_exprs_.operand[index]};
+            if (ir_.unary_exprs_.operation[index] != UnaryOperator::negate ||
+                operand.kind() != SyntaxKind::expression) {
+                return std::nullopt;
+            }
+            auto result{integer_constant(operand.expression())};
+            if (!result) {
+                return std::nullopt;
+            }
+            result->type = result->type.promoted();
+            result->negative = !result->negative && result->magnitude != 0;
+            if (!result->type.is_signed ||
+                !result->type.contains(result->magnitude, result->negative)) {
+                return std::nullopt;
+            }
+            return result;
+        }
+        case ExprKind::binary: {
+            // Recognize the signed-minimum encoding without folding arbitrary arithmetic.
+            if (ir_.binary_exprs_.operation[index] != BinaryOperator::subtract) {
+                return std::nullopt;
+            }
+            auto result{integer_constant(ir_.binary_exprs_.left[index])};
+            auto const right{integer_constant(ir_.binary_exprs_.right[index])};
+            if (!result || !right || !result->negative || !result->type.is_signed ||
+                result->magnitude != result->type.maximum() || right->negative ||
+                right->magnitude != 1 || right->type != IntegerType{32, true}) {
+                return std::nullopt;
+            }
+            ++result->magnitude;
+            return result;
+        }
         default:
-            return false;
+            return std::nullopt;
     }
+}
+void CppRenderer::append_integer_constant(std::string& output, IntegerConstant const value) const {
+    if (value.negative && value.magnitude == (std::uint64_t{1} << 63)) {
+        output += "(-9223372036854775807 - 1)";
+        return;
+    }
+    if (value.negative) {
+        output += '-';
+    }
+    std::format_to(std::back_inserter(output), "{}", value.magnitude);
+    if (!value.negative && value.magnitude > std::numeric_limits<std::int64_t>::max()) {
+        output += "ULL";
+    }
+}
+auto CppRenderer::append_initializer_literal(std::string& output,
+                                             Expr const value,
+                                             CppTypeId const destination) -> bool {
+    auto const type{ir_.types.integer_type(destination)};
+    auto const constant{integer_constant(value)};
+    if (!constant || !type.contains(constant->magnitude, constant->negative)) {
+        return false;
+    }
+    append_integer_constant(output, *constant);
+    return true;
+}
+auto CppRenderer::append_conditional_initializer(std::string& output,
+                                                 Expr value,
+                                                 CppTypeId destination,
+                                                 RenderContext const& ctx,
+                                                 int minimum) -> bool {
+    if (value.kind() == ExprKind::parenthesized) {
+        return append_conditional_initializer(
+            output, ir_.parenthesized_exprs_.operand[value.index()], destination, ctx, minimum);
+    }
+    if (value.kind() != ExprKind::conditional) {
+        return false;
+    }
+    auto const index{value.index()};
+    auto when_true{integer_constant(ir_.conditional_exprs_.when_true[index])};
+    auto when_false{integer_constant(ir_.conditional_exprs_.when_false[index])};
+    if (!when_true || !when_false) {
+        return false;
+    }
+
+    auto const left{when_true->type.promoted()};
+    auto const right{when_false->type.promoted()};
+    auto const common{left.bits > right.bits ? left
+                      : right.bits > left.bits
+                          ? right
+                          : IntegerType{left.bits, left.is_signed && right.is_signed}};
+    auto convert = [&](IntegerConstant& constant) {
+        if (!common.is_signed && constant.negative) {
+            constant.magnitude = (std::uint64_t{0} - constant.magnitude) & common.maximum();
+            constant.negative = false;
+        }
+    };
+    convert(*when_true);
+    convert(*when_false);
+    auto const type{ir_.types.integer_type(destination)};
+    if (!type.contains(when_true->magnitude, when_true->negative) ||
+        !type.contains(when_false->magnitude, when_false->negative)) {
+        return false;
+    }
+
+    // Apply the original common type before shortening either branch.
+    if (minimum > 0) {
+        output += '(';
+    }
+    append_expr(output, ir_.conditional_exprs_.condition[index], ctx, 1);
+    output += " ? ";
+    append_integer_constant(output, *when_true);
+    output += " : ";
+    append_integer_constant(output, *when_false);
+    if (minimum > 0) {
+        output += ')';
+    }
+    return true;
+}
+auto CppRenderer::call_destinations(Syntax callee, ir::Range arguments)
+    -> std::vector<TypeDestination> {
+    auto const symbol{value_symbol(callee)};
+    if (symbol.ambiguous || symbol.overloaded ||
+        symbol.declaration.kind() != CppDeclarationKind::function) {
+        return {};
+    }
+    auto const function{ir_.get_view(FunctionId{symbol.declaration.index()})};
+    if (function.template_declaration || arguments.count > function.parameters.size()) {
+        return {};
+    }
+    // Integer arguments cannot introduce additional candidates through ADL.
+    for (auto const argument : ir_.exprs(arguments)) {
+        if (argument.kind() != SyntaxKind::expression ||
+            (!integer_constant(argument.expression()) &&
+             ir_.types.integer_type(value_destination(argument.expression()).type).bits == 0)) {
+            return {};
+        }
+    }
+    std::vector<TypeDestination> destinations;
+    destinations.reserve(function.parameters.size());
+    for (auto const parameter : function.parameters) {
+        auto const type{destination_type(ir_.get_view(parameter).type, symbol.declaring_scope)};
+        destinations.push_back(type);
+    }
+    return destinations;
+}
+auto CppRenderer::aggregate_members(TypeDestination type) -> std::vector<SymbolBinding> {
+    auto symbol{type_symbol(type.type, type.scope)};
+    while (symbol.aliased_type.value != 0) {
+        symbol = type_symbol(symbol.aliased_type, symbol.declaring_scope);
+    }
+    auto const node{symbol.declaration.node()};
+    if (!node || node->kind() != NodeKind::struct_) {
+        return {};
+    }
+    auto const index{node->index()};
+    if (ir_.struct_nodes_.bases[index].count != 0 ||
+        ir_.struct_nodes_.template_declaration[index]) {
+        return {};
+    }
+    bool public_members{ir_.struct_nodes_.record_kind[index] == RecordKind::struct_};
+    std::vector<SymbolBinding> members;
+    for (auto const child : ir_.nodes(ir_.struct_nodes_.children[index])) {
+        switch (child.kind()) {
+            case NodeKind::instance_member:
+                if (!public_members) {
+                    return {};
+                }
+                members.push_back({.declaration = CppDeclarationId{child},
+                                   .declaring_scope = symbol.introduced_scope});
+                break;
+            case NodeKind::access_specifier:
+                public_members =
+                    ir_.access_specifier_nodes_.access[child.index()] == Access::public_;
+                break;
+            case NodeKind::using_declaration:
+            case NodeKind::static_member:
+            case NodeKind::constexpr_member:
+            case NodeKind::line_comment:
+            case NodeKind::new_lines:
+            case NodeKind::static_assert_:
+                break;
+            default:
+                return {};
+        }
+    }
+    return members;
 }
 void CppRenderer::append_initializer(std::string& output,
                                      Syntax const value,
                                      CppTypeId const destination,
                                      RenderContext const& ctx,
                                      int const minimum) {
-    if (value.kind() == SyntaxKind::expression &&
-        append_initializer_literal(output, value.expression(), destination)) {
-        return;
+    append_initializer(output, value, TypeDestination{destination, state_.current}, ctx, minimum);
+}
+void CppRenderer::append_initializer(std::string& output,
+                                     Syntax const value,
+                                     TypeDestination destination,
+                                     RenderContext const& ctx,
+                                     int const minimum) {
+    destination = destination_type(destination.type, destination.scope);
+    if (value.kind() == SyntaxKind::expression) {
+        if (append_initializer_literal(output, value.expression(), destination.type) ||
+            append_conditional_initializer(
+                output, value.expression(), destination.type, ctx, minimum)) {
+            return;
+        }
     }
     if (value.kind() == SyntaxKind::initializer_list) {
         output += '{';
@@ -744,21 +1015,49 @@ void CppRenderer::append_initializer(std::string& output,
 }
 void CppRenderer::append_initializer_elements(std::string& output,
                                               ir::Range const elements,
-                                              CppTypeId const destination,
+                                              TypeDestination destination,
                                               RenderContext const& ctx) {
+    destination = destination_type(destination.type, destination.scope);
     auto element_type{destination};
-    if (destination.value != 0) {
-        if (auto const type{ir_.types.shapes_[destination.value - 1].initializer_element_type};
+    if (element_type.type.value != 0) {
+        if (auto const type{
+                ir_.types.shapes_[element_type.type.value - 1].initializer_element_type};
             type.value != 0) {
-            element_type = type;
+            element_type = destination_type(type, destination.scope);
         }
     }
+    auto const members{aggregate_members(destination)};
+    // Brace elision can consume several values for one non-scalar member.
+    auto const positional_members_known{std::ranges::all_of(members, [&](SymbolBinding member) {
+        return ir_.types.integer_type(declaration_destination(member).type).bits != 0;
+    })};
+    std::size_t member_index{};
     bool first{true};
     for (auto const element : ir_.exprs(elements)) {
         if (!first) {
             output += ", ";
         }
-        append_initializer(output, element, element_type, ctx, 1);
+        auto type{element_type};
+        auto value{element};
+        if (element.kind() == SyntaxKind::designated_initializer && !members.empty()) {
+            auto const name{ir_.designated_initializers_.member[element.index()]};
+            auto const member{std::ranges::find_if(members, [&](SymbolBinding candidate) {
+                return ir_.instance_members_.name[candidate.declaration.index()] == name;
+            })};
+            type = member != members.end() ? declaration_destination(*member) : TypeDestination{};
+            value = ir_.designated_initializers_.value[element.index()];
+            output += '.';
+            output += ir_.strings.view(name);
+            output += " = ";
+        } else if (positional_members_known && member_index < members.size()) {
+            type = declaration_destination(members[member_index]);
+        }
+        if (!members.empty() && !positional_members_known &&
+            element.kind() != SyntaxKind::designated_initializer) {
+            type = {};
+        }
+        append_initializer(output, value, type, ctx, 1);
+        ++member_index;
         first = false;
     }
 }
@@ -837,12 +1136,24 @@ void CppRenderer::append_expr(
         case ExprKind::raw:
             output += ir_.strings.view(ir_.raw_exprs_.text[index]);
             break;
-        case ExprKind::call:
+        case ExprKind::call: {
             append_expr(output, ir_.call_exprs_.callee[index], ctx, 12);
             output += '(';
-            append_arguments(ir_.call_exprs_.arguments[index]);
+            auto const arguments{ir_.call_exprs_.arguments[index]};
+            auto const destinations{call_destinations(ir_.call_exprs_.callee[index], arguments)};
+            std::size_t argument_index{};
+            for (auto const argument : ir_.exprs(arguments)) {
+                if (argument_index != 0) {
+                    output += ", ";
+                }
+                auto const type{argument_index < destinations.size() ? destinations[argument_index]
+                                                                     : TypeDestination{}};
+                append_initializer(output, argument, type, ctx, 1);
+                ++argument_index;
+            }
             output += ')';
             break;
+        }
         case ExprKind::member_access:
             append_expr(output, ir_.member_exprs_.object[index], ctx, 12);
             output += ir_.member_exprs_.through_pointer[index] ? "->" : ".";
@@ -889,7 +1200,12 @@ void CppRenderer::append_expr(
             output += expr.kind() == ExprKind::static_cast_ ? "static_cast<" : "reinterpret_cast<";
             append_type(output, ir_.cast_exprs_.type[index], ctx);
             output += ">(";
-            append_expr(output, ir_.cast_exprs_.operand[index], ctx, 1);
+            if (expr.kind() == ExprKind::static_cast_) {
+                append_initializer(
+                    output, ir_.cast_exprs_.operand[index], ir_.cast_exprs_.type[index], ctx, 1);
+            } else {
+                append_expr(output, ir_.cast_exprs_.operand[index], ctx, 1);
+            }
             output += ')';
             break;
         case ExprKind::conditional:
@@ -909,10 +1225,11 @@ void CppRenderer::append_expr(
                 append_type(output, *type, ctx);
             }
             output += '{';
-            append_initializer_elements(output,
-                                        ir_.initializer_exprs_.elements[index],
-                                        ir_.initializer_exprs_.type[index].value_or(CppTypeId{}),
-                                        ctx);
+            append_initializer_elements(
+                output,
+                ir_.initializer_exprs_.elements[index],
+                {ir_.initializer_exprs_.type[index].value_or(CppTypeId{}), state_.current},
+                ctx);
             output += '}';
             break;
         case ExprKind::lambda: {
@@ -935,7 +1252,9 @@ void CppRenderer::append_expr(
             output += " {";
             if (!body.empty()) {
                 output += '\n';
-                append_nodes(output, body, ctx.indent(), 1);
+                auto body_context{ctx.indent()};
+                body_context.return_destination = {};
+                append_nodes(output, body, body_context, 1);
                 output += '\n';
                 append_indent(output, ctx);
             }
@@ -1002,7 +1321,8 @@ void CppRenderer::append_template(std::string& output,
                     }
                     if (auto const value{ir_.value_template_parameters_.default_value[index]}) {
                         output += " = ";
-                        append_expr(output, value, ctx);
+                        append_initializer(
+                            output, value, ir_.value_template_parameters_.type[index], ctx);
                     }
                     break;
                 }
@@ -1038,7 +1358,7 @@ void CppRenderer::append_parameters(std::string& output,
         }
         if (auto const value{view.default_value}; value && defaults) {
             output += " = ";
-            append_expr(output, value, ctx);
+            append_initializer(output, value, view.type, ctx);
         }
     }
     output += ')';
@@ -1113,6 +1433,7 @@ auto CppRenderer::signature(std::uint32_t index,
     if (owner) {
         state.current = record_environment(ir_.types.spelling(*owner));
     }
+    auto const owner_environment{state.current};
     auto const function_environment{
         state.environments.append(state.current, EnvironmentKind::function)};
     state.environments.import_symbols(function_environment, template_environment);
@@ -1182,7 +1503,12 @@ auto CppRenderer::signature(std::uint32_t index,
             output += m == 0 ? "\n    : " : "\n    , ";
             output += ir_.strings.view(ir_.initializers_.member[row]);
             output += '{';
-            append_expr(output, ir_.initializers_.value[row], ctx);
+            auto const member{
+                state.environments.lookup_local(owner_environment, ir_.initializers_.member[row])};
+            auto const type{member.status == LookupStatus::found
+                                ? declaration_destination(member.symbol)
+                                : TypeDestination{}};
+            append_initializer(output, ir_.initializers_.value[row], type, ctx);
             output += '}';
         }
     }
@@ -1379,7 +1705,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
             write_prefix("return");
             if (auto const value{ir_.return_stmt_nodes_.expr[i]}) {
                 output += ' ';
-                expr(*value);
+                append_initializer(output, *value, ctx.return_destination, ctx);
             }
             output += ';';
             break;
@@ -1387,7 +1713,10 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
             indent();
             expr(ir_.assignment_stmt_nodes_.target[i]);
             output += " = ";
-            expr(ir_.assignment_stmt_nodes_.value[i]);
+            append_initializer(output,
+                               ir_.assignment_stmt_nodes_.value[i],
+                               value_destination(ir_.assignment_stmt_nodes_.target[i]),
+                               ctx);
             output += ';';
             break;
         case NodeKind::variable_declaration_stmt: {
@@ -1540,8 +1869,10 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
             state.current = function_environment;
             state.current = block_environment(body);
             auto const format{function.formatting};
+            auto body_context{ctx};
+            body_context.return_destination =
+                destination_type(function.return_type, function_environment);
             if (format.body_layout == FunctionBodyLayout::compact) {
-                auto body_context{ctx};
                 body_context.indent_level = 0;
                 output += " { ";
                 append_nodes(output, body, body_context, 1);
@@ -1554,7 +1885,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
                     output += " {";
                 }
                 output += '\n';
-                append_nodes(output, body, ctx.indent(), 1);
+                append_nodes(output, body, body_context.indent(), 1);
                 close("}");
             }
             break;

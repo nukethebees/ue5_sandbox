@@ -36,7 +36,7 @@ struct ReaderHealth : detail::ReaderHealthBase {
     // value
     using value_type = std::uint8_t;
     static constexpr ioj::PackedField<storage_type, value_type, 0, storage.encoded_bits>
-        value_layout{{static_cast<value_type>(0ULL), static_cast<value_type>(100ULL)}};
+        value_layout{{static_cast<value_type>(0), static_cast<value_type>(100)}};
 
     constexpr ReaderHealth() noexcept = default;
     constexpr explicit ReaderHealth(value_type const value) noexcept

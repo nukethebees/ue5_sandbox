@@ -25,6 +25,8 @@
 #include <gtest/gtest.h>
 
 #include <cassert>
+#include <cstdint>
+#include <limits>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -34,6 +36,184 @@
 
 namespace lispb::codegen {
 using lispb::test_support::expect_contains_all;
+
+TEST_F(ExprTest, UsesIntegerDestinationsWithoutChangingStandaloneLiterals) {
+    auto const value{ir.literal(std::uint64_t{255})};
+    auto const original_type{ir.expression_type(value)};
+    auto const qualified{types.decorate(types.std.u8, "", " const")};
+    expect_rendered(ir.variable(qualified, ir.name("count"), value),
+                    "std::uint8_t const count{255};");
+    expect_rendered(ir.static_cast_expr(types.std.u8, value), "static_cast<std::uint8_t>(255)");
+    expect_rendered(ir.static_cast_expr(types.std.u8, ir.literal(std::uint64_t{256})),
+                    "static_cast<std::uint8_t>(256ULL)");
+    expect_rendered(value, "255ULL");
+    EXPECT_EQ(ir.expression_type(value), original_type);
+    expect_rendered(ir.variable(types.intern("auto"), ir.name("count"), value),
+                    "auto count{255ULL};");
+    expect_rendered(ir.variable(types.std.i8, ir.name("count"), ir.literal(std::int64_t{-128})),
+                    "std::int8_t count{-128};");
+    expect_rendered(ir.variable(types.std.i64,
+                                ir.name("count"),
+                                ir.literal(std::numeric_limits<std::int64_t>::min())),
+                    "std::int64_t count{(-9223372036854775807 - 1)};");
+    expect_rendered(ir.variable(types.std.u64,
+                                ir.name("count"),
+                                ir.literal(std::numeric_limits<std::uint64_t>::max())),
+                    "std::uint64_t count{18446744073709551615ULL};");
+}
+
+TEST_F(ExprTest, PreservesConditionalConversionsAndArithmeticIntermediates) {
+    auto const mixed{
+        ir.conditional(ir.named("ready"), ir.literal(-1), ir.literal(std::uint32_t{1}))};
+    expect_rendered(ir.variable(types.std.u64, ir.name("value"), mixed),
+                    "std::uint64_t value{ready ? 4294967295 : 1};");
+    auto const signed_wider{ir.conditional(
+        ir.named("ready"), ir.literal(std::int64_t{-1}), ir.literal(std::uint32_t{1}))};
+    expect_rendered(ir.variable(types.std.i8, ir.name("value"), signed_wider),
+                    "std::int8_t value{ready ? -1 : 1};");
+    auto const arithmetic{ir.binary(
+        BinaryOperator::subtract, ir.literal(std::uint64_t{0}), ir.literal(std::uint64_t{1}))};
+    expect_rendered(ir.variable(types.std.i64, ir.name("value"), arithmetic),
+                    "std::int64_t value{0ULL - 1ULL};");
+}
+
+TEST_F(ExprTest, ResolvesAliasesDefaultsReturnsAndAssignments) {
+    auto const alias{ir.using_declaration(ir.strings.intern("Count"), types.std.u8)};
+    auto const count_type{types.named("Count")};
+    auto const function{ir.add_function(
+        {.name = ir.name("calculate"),
+         .return_type = count_type,
+         .parameters = {ir.parameter(count_type, "count", ir.literal(std::uint64_t{7}))},
+         .implementation = {.kind = FunctionImplementationKind::body,
+                            .body = {ir.assignment(ir.named("count"), ir.literal(std::uint64_t{8})),
+                                     ir.return_stmt(ir.literal(std::uint64_t{9}))}},
+         .flags = {.define_in_header = true}})};
+    auto const scope{
+        ir.namespace_node(ir.strings.intern("example"), {alias, ir.header_function(function)})};
+    auto const output{renderer.render(scope)};
+    expect_contains_all(output, {"count = 7", "count = 8;", "return 9;"});
+}
+
+TEST_F(ExprTest, SimplifiesOnlyUnambiguousNonTemplateCalls) {
+    auto function = [&](CppTypeId type) {
+        return ir.add_function({.name = ir.name("consume"),
+                                .return_type = types.std.void_,
+                                .parameters = {ir.parameter(type, "value")}});
+    };
+    auto const first{function(types.std.u8)};
+    auto const call{ir.expr_stmt(ir.call(ir.name("consume"), {ir.literal(std::uint64_t{7})}))};
+    auto const scope_name{ir.strings.intern("example")};
+    EXPECT_NE(renderer.render(ir.namespace_node(scope_name, {ir.declaration(first), call}))
+                  .find("consume(7);"),
+              std::string::npos);
+    auto const second{function(types.std.u64)};
+    EXPECT_NE(renderer
+                  .render(ir.namespace_node(scope_name,
+                                            {ir.declaration(first), ir.declaration(second), call}))
+                  .find("consume(7ULL);"),
+              std::string::npos);
+}
+
+TEST_F(ExprTest, UsesAggregateMemberTypesAndNestedArrayElements) {
+    auto const record{ir.add_record(
+        {.name = ir.name("Counts"),
+         .children = {ir.instance_member(types.std.u8, ir.strings.intern("small")),
+                      ir.instance_member(types.std.i16, ir.strings.intern("large"))}})};
+    auto const value{
+        ir.variable(types.named("Counts"),
+                    ir.name("counts"),
+                    ir.init_list({ir.literal(std::uint64_t{7}), ir.literal(std::int64_t{-8})}))};
+    auto const scope{ir.namespace_node(ir.strings.intern("example"), {record, value})};
+    EXPECT_NE(renderer.render(scope).find("Counts counts{7, -8};"), std::string::npos);
+    auto const inner{types.template_type(types.std.array, {types.std.u8, types.intern("2")})};
+    auto const outer{types.template_type(types.std.array, {inner, types.intern("1")})};
+    expect_rendered(
+        ir.init_list({ir.init_list({ir.literal(std::uint64_t{7}), ir.literal(std::uint64_t{8})})},
+                     outer),
+        "std::array<std::array<std::uint8_t, 2>, 1>{{7, 8}}");
+    auto const nested{
+        ir.add_record({.name = ir.name("Nested"),
+                       .children = {ir.instance_member(inner, ir.strings.intern("values")),
+                                    ir.instance_member(types.std.u8, ir.strings.intern("last"))}})};
+    auto const nested_value{ir.variable(types.named("Nested"),
+                                        ir.name("nested"),
+                                        ir.init_list({ir.literal(std::uint64_t{1}),
+                                                      ir.literal(std::uint64_t{2}),
+                                                      ir.literal(std::uint64_t{3})}))};
+    EXPECT_NE(
+        renderer.render(ir.namespace_node(ir.strings.intern("example"), {nested, nested_value}))
+            .find("Nested nested{1ULL, 2ULL, 3ULL};"),
+        std::string::npos);
+}
+
+TEST_F(ExprTest, KeepsDeducedLambdaReturnsSeparateAndUsesConstructorMembers) {
+    auto const lambda{ir.lambda({}, {}, ir.block({ir.return_stmt(ir.literal(std::uint64_t{7}))}))};
+    auto const function{ir.add_function(
+        {.name = ir.name("calculate"),
+         .return_type = types.std.u8,
+         .implementation = {.kind = FunctionImplementationKind::body,
+                            .body = {ir.variable(types.intern("auto"), ir.name("helper"), lambda),
+                                     ir.return_stmt(ir.literal(std::uint64_t{8}))}}})};
+    auto const output{renderer.render(ir.definition(function))};
+    expect_contains_all(output, {"return 7ULL;", "return 8;"});
+
+    auto const constructor{ir.add_function(
+        {.name = ir.name("Counter"),
+         .kind = FunctionKind::constructor,
+         .parameters = {ir.parameter(types.std.u64, "count")},
+         .implementation = {.kind = FunctionImplementationKind::body,
+                            .initializers = {ir.member_initializer(ir.strings.intern("count"),
+                                                                   ir.literal(std::uint64_t{9}))}},
+         .flags = {.define_in_header = true}})};
+    auto const record{ir.add_record(
+        {.name = ir.name("Counter"),
+         .children = {ir.header_function(constructor),
+                      ir.instance_member(types.std.u8, ir.strings.intern("count"))}})};
+    EXPECT_NE(renderer.render(record).find("count{9}"), std::string::npos);
+}
+
+TEST_F(ExprTest, KeepsTemplateAndAdlSensitiveCallsTyped) {
+    auto const function{ir.add_function(
+        {.name = ir.name("consume"),
+         .return_type = types.std.void_,
+         .parameters = {ir.parameter(types.named("T"), "value")},
+         .template_declaration =
+             ir.template_declaration({ir.type_template_parameter(ir.strings.intern("T"))})})};
+    auto const call{ir.expr_stmt(ir.call(ir.name("consume"), {ir.literal(std::uint64_t{7})}))};
+    auto const output{renderer.render(
+        ir.namespace_node(ir.strings.intern("example"), {ir.declaration(function), call}))};
+    EXPECT_NE(output.find("consume(7ULL);"), std::string::npos);
+    auto const adl_function{
+        ir.add_function({.name = ir.name("apply"),
+                         .return_type = types.std.void_,
+                         .parameters = {ir.parameter(types.named("Widget"), "widget"),
+                                        ir.parameter(types.std.u8, "value")}})};
+    auto const adl_call{ir.expr_stmt(ir.call(
+        ir.name("apply"),
+        {ir.reference(ir.name("widget"), types.named("Widget")), ir.literal(std::uint64_t{7})}))};
+    EXPECT_NE(renderer
+                  .render(ir.namespace_node(ir.strings.intern("example"),
+                                            {ir.declaration(adl_function), adl_call}))
+                  .find("apply(widget, 7ULL);"),
+              std::string::npos);
+}
+
+TEST_F(ExprTest, ResolvesArrayAliasElementsInTheirDeclarationScope) {
+    auto const element{types.named("Element")};
+    auto const array{types.template_type(types.std.array, {element, types.intern("1")})};
+    auto const declarations{
+        ir.namespace_node(ir.strings.intern("a"),
+                          {ir.using_declaration(ir.strings.intern("Element"), types.std.u16),
+                           ir.using_declaration(ir.strings.intern("Values"), array)})};
+    auto const use{
+        ir.namespace_node(ir.strings.intern("b"),
+                          {ir.using_declaration(ir.strings.intern("Element"), types.std.u8),
+                           ir.variable(types.named("a::Values", NameOrigin::global),
+                                       ir.name("values"),
+                                       ir.init_list({ir.literal(std::uint64_t{256})}))})};
+    auto const output{renderer.render_nodes(std::vector{declarations, use}, {}, 1)};
+    EXPECT_NE(output.find("a::Values values{256};"), std::string::npos) << output;
+}
 namespace {
 
 TEST_F(ExprTest, RequiresExplicitRawAndSupportsIndependentCopies) {

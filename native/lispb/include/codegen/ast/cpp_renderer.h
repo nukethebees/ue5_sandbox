@@ -2,6 +2,7 @@
 
 #include <codegen/ast/expr.h>
 #include <codegen/ast/indices.h>
+#include <codegen/ast/integer_type.h>
 #include <codegen/ast/ir/range.h>
 #include <codegen/ast/name_origin.h>
 #include <codegen/ast/node_id.h>
@@ -13,6 +14,7 @@
 #include <lispb/indices.h>
 
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -61,6 +63,11 @@ class CppRenderer {
                            EnvironmentKind kind = EnvironmentKind::block) -> EnvironmentId;
     auto record_environment(std::string_view owner) -> EnvironmentId;
     void initialize_environments(std::span<NodeId const> children);
+    auto type_symbol(CppTypeId type, EnvironmentId environment) -> SymbolBinding;
+    auto value_symbol(Syntax value) -> SymbolBinding;
+    auto declaration_destination(SymbolBinding symbol) -> TypeDestination;
+    auto destination_type(CppTypeId type, EnvironmentId environment) -> TypeDestination;
+    auto value_destination(Expr value) -> TypeDestination;
 
     /* **************************************** */
     // Expressions and declarations
@@ -74,6 +81,8 @@ class CppRenderer {
                      int minimum = 0,
                      bool equal = false);
     auto expr_precedence(Expr expr) -> int;
+    auto integer_constant(Expr value) const -> std::optional<IntegerConstant>;
+    void append_integer_constant(std::string& output, IntegerConstant value) const;
     void append_initializer(std::string& output,
                             Syntax value,
                             CppTypeId destination,
@@ -81,9 +90,21 @@ class CppRenderer {
                             int minimum = 0);
     void append_initializer_elements(std::string& output,
                                      ir::Range elements,
-                                     CppTypeId destination,
+                                     TypeDestination destination,
                                      RenderContext const& ctx);
+    void append_initializer(std::string& output,
+                            Syntax value,
+                            TypeDestination destination,
+                            RenderContext const& ctx,
+                            int minimum = 0);
     auto append_initializer_literal(std::string& output, Expr value, CppTypeId destination) -> bool;
+    auto append_conditional_initializer(std::string& output,
+                                        Expr value,
+                                        CppTypeId destination,
+                                        RenderContext const& ctx,
+                                        int minimum) -> bool;
+    auto call_destinations(Syntax callee, ir::Range arguments) -> std::vector<TypeDestination>;
+    auto aggregate_members(TypeDestination type) -> std::vector<SymbolBinding>;
     void append_expr(std::string& output,
                      Expr expr,
                      RenderContext const& ctx,

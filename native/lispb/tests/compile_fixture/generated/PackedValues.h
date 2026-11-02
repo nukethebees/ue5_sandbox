@@ -975,9 +975,9 @@ struct SignedTemperature : detail::SignedTemperatureBase {
 
     // temperature
     static constexpr ioj::PackedField<storage_type, std::int8_t, 0, 8> temperature_layout{
-        {static_cast<std::int8_t>(-100LL), static_cast<std::int8_t>(100ULL)}};
-    static constexpr std::int8_t temperature_Freezing{static_cast<std::int8_t>(0ULL)};
-    static constexpr std::int8_t temperature_Unknown{static_cast<std::int8_t>(-128LL)};
+        {static_cast<std::int8_t>(-100), static_cast<std::int8_t>(100)}};
+    static constexpr std::int8_t temperature_Freezing{static_cast<std::int8_t>(0)};
+    static constexpr std::int8_t temperature_Unknown{static_cast<std::int8_t>(-128)};
 
     constexpr SignedTemperature() noexcept = default;
     constexpr explicit SignedTemperature(std::int8_t const temperature_value) noexcept
@@ -1189,7 +1189,7 @@ struct Vitals : detail::VitalsBase {
 
     // health
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 0, 8> health_encoded_layout{
-        {static_cast<std::uint8_t>(0ULL), static_cast<std::uint8_t>(253ULL)}};
+        {static_cast<std::uint8_t>(0), static_cast<std::uint8_t>(253)}};
 
     // state
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 8, 8> state_layout{};
