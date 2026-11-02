@@ -1,1 +1,3 @@
 ; Compiler primitives use explicit standard-library spellings.
+
+(type cpp_ir :spelling "lispb::codegen::CppIR" :header "codegen/ast/cpp_ir.h")

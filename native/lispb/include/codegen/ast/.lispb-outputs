@@ -2,6 +2,7 @@ lispb-outputs-v1
 access.h
 binary_operator.h
 cpp_file_flags.h
+cpp_ir_builder.h
 function_flags.h
 node_kind.h
 parameter_passing.h

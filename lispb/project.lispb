@@ -4,7 +4,8 @@
 
   (cpp-schema compiler-ir
     :types "native/lispb/schema/compiler_types.lispb"
-    :sources ("native/lispb/schema/compiler_ir.lispb")
+    :sources ("native/lispb/schema/compiler_ir.lispb"
+              "native/lispb/schema/cpp_ir_builder.lispb")
     :output-root (project-path "native/lispb/include/codegen/ast"))
 
   (cpp-schema compiler-schema
