@@ -25,11 +25,11 @@
 
 namespace lispb::codegen::detail {
 
-auto assemble_module(LoweringContext& context,
+auto assemble_module(LoweringContext& ctx,
                      ModuleSettingsId settings,
                      std::span<DeclarationEmission> emissions) -> std::vector<ModuleId> {
-    auto& ir{context.ir};
-    auto const& settings_store{context.declarations.module_settings_store};
+    auto& ir{ctx.ir};
+    auto const& settings_store{ctx.declarations.module_settings_store};
     auto const has_output{std::ranges::any_of(emissions, [](DeclarationEmission const& emission) {
         return !emission.header.empty() || !emission.header_prefix.empty() ||
                !emission.header_immediate_global.empty() ||
@@ -52,12 +52,11 @@ auto assemble_module(LoweringContext& context,
     NodeListBuilder source{ir};
     header.add(ir.include_dependencies(), 2);
     if (!settings_store.prelude_lines[settings].empty()) {
-        header.add(ir.raw_lines(context.declarations.items(settings_store.prelude_lines[settings])),
-                   2);
+        header.add(ir.raw_lines(ctx.declarations.items(settings_store.prelude_lines[settings])), 2);
     }
     if (settings_store.source[settings].has_value()) {
-        source.add(
-            ir.include(ir.store_text(source_include(context, settings)), IncludeStyle::quoted), 2);
+        source.add(ir.include(ir.store_text(source_include(ctx, settings)), IncludeStyle::quoted),
+                   2);
         if (std::ranges::any_of(emissions, [](DeclarationEmission const& emission) {
                 return emission.source_dependencies;
             })) {
@@ -205,7 +204,7 @@ auto assemble_module(LoweringContext& context,
             source.append(std::move(source_tail_nodes));
         }
     }
-    auto const include_order{context.declarations.items(settings_store.include_order[settings])};
+    auto const include_order{ctx.declarations.items(settings_store.include_order[settings])};
     auto const header_file{ir.files.append(settings_store.header[settings], header.build())};
     auto const header_row{ir.files.index(header_file)};
     ir.files.flags[header_row].set_clang_format_off(!format_generated);
@@ -226,7 +225,7 @@ auto assemble_module(LoweringContext& context,
     if (!reader_nodes.empty()) {
         NodeListBuilder reader{ir};
         reader.add(
-            ir.include(ir.strings.intern(source_include(context, settings)), IncludeStyle::quoted));
+            ir.include(ir.strings.intern(source_include(ctx, settings)), IncludeStyle::quoted));
         reader.add(ir.include(ir.strings.intern("ioj/s7/field_reader.h"), IncludeStyle::system));
         reader.add(ir.include_dependencies());
         for (auto const include : reader_includes) {
@@ -234,11 +233,11 @@ auto assemble_module(LoweringContext& context,
         }
         reader.new_lines(2);
         reader.add(ir.namespace_node(ir.strings.intern("ioj::s7"), reader_nodes));
-        auto const reader_path{reader_header_path(context.text(settings_store.header[settings]))};
+        auto const reader_path{reader_header_path(ctx.text(settings_store.header[settings]))};
         auto const file{ir.files.append(ir.strings.intern(reader_path), reader.build())};
         ir.files.flags[ir.files.index(file)].set_format_generated(true);
         additional.push_back(ir.modules.append(
-            ir.strings.intern(context.text(settings_store.name[settings]) + "Reader"), file, {}));
+            ir.strings.intern(ctx.text(settings_store.name[settings]) + "Reader"), file, {}));
     }
 
     std::vector<ModuleId> modules;

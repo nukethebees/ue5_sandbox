@@ -18,10 +18,10 @@ namespace ioj::s7 {
 template <>
 struct TypeReader<codegen_compile_fixture::ScalarSettings>
     : RecordReader<codegen_compile_fixture::ScalarSettings> {
-    static ReadResult<value_type> construct(DecodeContext context) {
+    static ReadResult<value_type> construct(DecodeContext ctx) {
         std::optional<decltype(value_type::health)> value_health{};
         decode_record<Field>(
-            context,
+            ctx,
             "scalar",
             field_names,
             [&value_health](Field const field, auto const& read) {
@@ -33,8 +33,8 @@ struct TypeReader<codegen_compile_fixture::ScalarSettings>
                 }
             },
             required);
-        if (!context.errors.empty()) {
-            return std::unexpected{std::move(context.errors)};
+        if (!ctx.errors.empty()) {
+            return std::unexpected{std::move(ctx.errors)};
         }
 
         value_type result{.health = std::move(*value_health)};
@@ -42,9 +42,9 @@ struct TypeReader<codegen_compile_fixture::ScalarSettings>
         return result;
     }
 
-    static void decode(DecodeContext context, value_type& result) {
+    static void decode(DecodeContext ctx, value_type& result) {
         decode_record<Field>(
-            context,
+            ctx,
             "scalar",
             field_names,
             [&result](Field const field, auto const& read) {
@@ -71,9 +71,9 @@ struct TypeReader<codegen_compile_fixture::ScalarSettings>
 template <>
 struct TypeReader<codegen_compile_fixture::RangeValue>
     : RecordReader<codegen_compile_fixture::RangeValue> {
-    static void decode(DecodeContext context, value_type& result) {
+    static void decode(DecodeContext ctx, value_type& result) {
         decode_record<Field>(
-            context,
+            ctx,
             "range",
             field_names,
             [&result](Field selected, auto const& read) {
@@ -94,9 +94,9 @@ struct TypeReader<codegen_compile_fixture::RangeValue>
 template <>
 struct TypeReader<codegen_compile_fixture::RangeSettings>
     : RecordReader<codegen_compile_fixture::RangeSettings> {
-    static void decode(DecodeContext context, value_type& result) {
+    static void decode(DecodeContext ctx, value_type& result) {
         decode_record<Field>(
-            context, "ranges", field_names, [&result](Field selected, auto const& read) {
+            ctx, "ranges", field_names, [&result](Field selected, auto const& read) {
                 value_type::visit_field(
                     result, selected, [&read]<Field field>(auto& member) { read(member); });
             });
@@ -111,8 +111,8 @@ struct TypeReader<codegen_compile_fixture::RangeSettings>
 template <>
 struct TypeReader<codegen_compile_fixture::EmptySettings>
     : RecordReader<codegen_compile_fixture::EmptySettings> {
-    static void decode(DecodeContext context, value_type&) {
-        decode_record<Field>(context, "empty-settings", field_names, [](Field, auto const&) {});
+    static void decode(DecodeContext ctx, value_type&) {
+        decode_record<Field>(ctx, "empty-settings", field_names, [](Field, auto const&) {});
     }
 
   private:
@@ -124,9 +124,9 @@ struct TypeReader<codegen_compile_fixture::EmptySettings>
 template <>
 struct TypeReader<codegen_compile_fixture::WeaponSettings>
     : RecordReader<codegen_compile_fixture::WeaponSettings> {
-    static void decode(DecodeContext context, value_type& result) {
+    static void decode(DecodeContext ctx, value_type& result) {
         decode_record<Field>(
-            context,
+            ctx,
             "weapon",
             field_names,
             [&result](Field selected, auto const& read) {
@@ -155,9 +155,9 @@ struct TypeReader<codegen_compile_fixture::WeaponSettings>
 template <>
 struct TypeReader<codegen_compile_fixture::ActorSettings>
     : RecordReader<codegen_compile_fixture::ActorSettings> {
-    static void decode(DecodeContext context, value_type& result) {
+    static void decode(DecodeContext ctx, value_type& result) {
         decode_record<Field>(
-            context, "actor", field_names, [&result](Field selected, auto const& read) {
+            ctx, "actor", field_names, [&result](Field selected, auto const& read) {
                 value_type::visit_field(
                     result, selected, [&read]<Field field>(auto& member) { read(member); });
             });

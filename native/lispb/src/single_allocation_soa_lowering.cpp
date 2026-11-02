@@ -17,22 +17,22 @@
 
 namespace lispb::codegen::detail {
 
-auto lower_single_allocation(LoweringContext& context, DeclarationHandle schema) -> LoweredSoa {
-    auto& ir{context.ir};
-    auto const model{build_single_allocation_model(context, schema)};
-    auto const& soas{context.declarations.soas};
+auto lower_single_allocation(LoweringContext& ctx, DeclarationHandle schema) -> LoweredSoa {
+    auto& ir{ctx.ir};
+    auto const model{build_single_allocation_model(ctx, schema)};
+    auto const& soas{ctx.declarations.soas};
     auto const row{soas.index(schema)};
-    auto const namespace_name{ir.strings.intern(soa_namespace_name(context.text(soas.name[row])))};
+    auto const namespace_name{ir.strings.intern(soa_namespace_name(ctx.text(soas.name[row])))};
     NodeListBuilder result{ir};
     NodeListBuilder source{ir};
     NodeListBuilder view_source{ir};
     NodeListBuilder shared{ir};
     NodeListBuilder declarations{ir};
     declarations.add(ir.forward_declaration(ir.strings.intern("Schema"))).new_lines(1);
-    auto const views{emit_single_allocation_views(context, model, view_source, declarations)};
+    auto const views{emit_single_allocation_views(ctx, model, view_source, declarations)};
 
     shared.append(declarations.build()).new_lines(2);
-    shared.append(emit_single_allocation_layout(context, model)).new_lines(2);
+    shared.append(emit_single_allocation_layout(ctx, model)).new_lines(2);
     shared.append(views);
     result.add(ir.namespace_node(namespace_name, shared.build()));
     auto const source_views{view_source.build()};
@@ -55,11 +55,11 @@ auto lower_single_allocation(LoweringContext& context, DeclarationHandle schema)
     for (auto const column : ir.lowering.items(models.columns[models.index(model)])) {
         auto const column_row{columns.index(column)};
         result
-            .add(ir.line_comment(context.text(columns.flattened_identifier[column_row]) + ": " +
+            .add(ir.line_comment(ctx.text(columns.flattened_identifier[column_row]) + ": " +
                                  std::string{ir.types.spelling(columns.type[column_row])}))
             .new_lines(1);
     }
-    result.add(emit_single_allocation_container(context, model, source));
+    result.add(emit_single_allocation_container(ctx, model, source));
 
     return {result.build(), source.build()};
 }

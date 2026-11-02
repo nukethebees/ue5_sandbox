@@ -782,7 +782,7 @@ class TypeGraphBuilder {
 
     auto relationship(std::optional<codegen::SemanticRelationId> const source,
                       codegen::ModuleHandle const module,
-                      std::string_view const context) -> RelationshipId {
+                      std::string_view const ctx) -> RelationshipId {
         if (!source) {
             return {};
         }
@@ -796,7 +796,7 @@ class TypeGraphBuilder {
         if (graph_.origin(graph_.occurrences().type[graph_.occurrences().index(target)]) !=
             TypeOrigin::declaration) {
             throw std::invalid_argument{
-                std::string{context} + " relationship target '" +
+                std::string{ctx} + " relationship target '" +
                 str(store_.type_refs.name[store_.semantic_relations.target[relation]]) +
                 "' must resolve to a declared semantic type"};
         }

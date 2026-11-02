@@ -14,13 +14,12 @@ namespace lispb::codegen::detail {
 
 struct LoweringContext;
 
-auto emit_single_allocation_layout(LoweringContext& context, SingleAllocationModelId model)
-    -> Nodes;
-auto emit_single_allocation_views(LoweringContext& context,
+auto emit_single_allocation_layout(LoweringContext& ctx, SingleAllocationModelId model) -> Nodes;
+auto emit_single_allocation_views(LoweringContext& ctx,
                                   SingleAllocationModelId model,
                                   NodeListBuilder& source,
                                   NodeListBuilder& declarations) -> Nodes;
-auto emit_single_allocation_container(LoweringContext& context,
+auto emit_single_allocation_container(LoweringContext& ctx,
                                       SingleAllocationModelId model,
                                       NodeListBuilder& source) -> NodeId;
 

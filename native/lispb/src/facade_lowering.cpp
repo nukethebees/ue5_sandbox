@@ -29,14 +29,14 @@
 
 namespace lispb::codegen::detail {
 
-auto lower_facade(LoweringContext& context, DeclarationHandle facade) -> DeclarationEmission {
-    auto& ir{context.ir};
-    auto const& facades{context.declarations.facades};
-    auto const& method_schemas{context.declarations.facade_methods};
-    auto const& parameter_schemas{context.declarations.parameters};
+auto lower_facade(LoweringContext& ctx, DeclarationHandle facade) -> DeclarationEmission {
+    auto& ir{ctx.ir};
+    auto const& facades{ctx.declarations.facades};
+    auto const& method_schemas{ctx.declarations.facade_methods};
+    auto const& parameter_schemas{ctx.declarations.parameters};
     auto const row{facades.index(facade)};
-    auto const& decls{context.declarations};
-    auto const target_type{context.resolve(facades.target_type[row])};
+    auto const& decls{ctx.declarations};
+    auto const target_type{ctx.resolve(facades.target_type[row])};
     auto const definitions_in_source{facades.definitions_in_source[row]};
     auto const reference_target{facades.reference_target[row]};
     auto const target_name{facades.target_member_name[row]};
@@ -62,7 +62,7 @@ auto lower_facade(LoweringContext& context, DeclarationHandle facade) -> Declara
         std::vector<Expr> arguments;
         for (auto const parameter : decls.items(method_schemas.parameters[method_row])) {
             auto const parameter_row{parameter_schemas.index(parameter)};
-            auto const type{context.resolve(parameter_schemas.type[parameter_row])};
+            auto const type{ctx.resolve(parameter_schemas.type[parameter_row])};
             auto const name{parameter_schemas.name[parameter_row]};
             parameters.push_back(
                 ir.parameter(type,
@@ -74,7 +74,7 @@ auto lower_facade(LoweringContext& context, DeclarationHandle facade) -> Declara
         }
         std::vector<TypeDependencyId> validation_dependencies;
         for (auto const key : decls.items(facades.validation_dependencies[row])) {
-            append_type_dependencies(validation_dependencies, context.text(key), context.types);
+            append_type_dependencies(validation_dependencies, ctx.text(key), ctx.types);
         }
         NodeListBuilder body{ir};
         if (!facades.validation_lines[row].empty()) {
@@ -86,7 +86,7 @@ auto lower_facade(LoweringContext& context, DeclarationHandle facade) -> Declara
         auto const member{reference_target ? ir.member_access(target, method_name)
                                            : ir.pointer_member_access(target, method_name)};
         auto const call{ir.call(member, std::move(arguments))};
-        auto const return_type{context.resolve(method_schemas.return_type[method_row])};
+        auto const return_type{ctx.resolve(method_schemas.return_type[method_row])};
         if (ir.types.spelling(return_type) == "void") {
             body.add(ir.expr_stmt(call, std::move(validation_dependencies)));
         } else {
@@ -120,7 +120,7 @@ auto lower_facade(LoweringContext& context, DeclarationHandle facade) -> Declara
         add_method(facades.method_access[row], method);
     }
     for (auto const friend_name : decls.items(facades.friends[row])) {
-        private_nodes.add(ir.friend_declaration(ir.strings.intern(context.text(friend_name)),
+        private_nodes.add(ir.friend_declaration(ir.strings.intern(ctx.text(friend_name)),
                                                 facades.friend_kind[row]),
                           1);
     }
@@ -142,7 +142,7 @@ auto lower_facade(LoweringContext& context, DeclarationHandle facade) -> Declara
     ir.set_record_export_specifier(declaration_node, facades.export_specifier[row]);
     NodeListBuilder definitions{ir};
     if (definitions_in_source) {
-        auto const owner{ir.types.intern(context.text(facades.name[row]))};
+        auto const owner{ir.types.intern(ctx.text(facades.name[row]))};
         definitions.add(ir.definition(binding, owner));
         for (auto const method : methods) {
             definitions.new_lines(2).add(ir.definition(method, owner));

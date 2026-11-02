@@ -21,8 +21,8 @@ class CppIrTest : public testing::Test {
         EXPECT_EQ(renderer.render(value), expected);
     }
 
-    CompilerTestContext context;
-    CppIR& ir{context.ir};
+    CompilerTestContext ctx;
+    CppIR& ir{ctx.ir};
     CppTypes& types{ir.types};
     CppRenderer renderer{ir};
 };

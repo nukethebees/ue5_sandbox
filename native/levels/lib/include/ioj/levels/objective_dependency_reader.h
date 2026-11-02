@@ -13,24 +13,24 @@
 namespace ioj::s7 {
 template <>
 struct TypeReader<levels::ObjectiveDependency> : RecordReader<levels::ObjectiveDependency> {
-    static void decode(DecodeContext context, value_type& result) {
-        auto const arguments{positional_arguments(
-            context.reader, context.node, "objective-resolved", context.path, 2)};
+    static void decode(DecodeContext ctx, value_type& result) {
+        auto const arguments{
+            positional_arguments(ctx.reader, ctx.node, "objective-resolved", ctx.path, 2)};
 
         if (!arguments) {
-            append_errors(context.errors, arguments.error());
+            append_errors(ctx.errors, arguments.error());
             return;
         }
-        FieldReader{{context.reader,
+        FieldReader{{ctx.reader,
                      (*arguments)[0],
-                     std::string{context.path} + ".objective",
-                     context.mode,
-                     context.errors}}(result.objective);
-        FieldReader{{context.reader,
+                     std::string{ctx.path} + ".objective",
+                     ctx.mode,
+                     ctx.errors}}(result.objective);
+        FieldReader{{ctx.reader,
                      (*arguments)[1],
-                     std::string{context.path} + ".outcome",
-                     context.mode,
-                     context.errors}}(result.outcome);
+                     std::string{ctx.path} + ".outcome",
+                     ctx.mode,
+                     ctx.errors}}(result.outcome);
     }
 };
 

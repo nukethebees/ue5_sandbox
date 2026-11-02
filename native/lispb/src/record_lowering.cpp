@@ -35,12 +35,12 @@ auto record_type_matches(CppIR& ir, std::string const& name) -> Expr {
          ir.types.named(name)}));
 }
 
-auto record_visitor(LoweringContext& context, DeclarationHandle record, std::string const& name)
+auto record_visitor(LoweringContext& ctx, DeclarationHandle record, std::string const& name)
     -> Nodes {
-    auto& ir{context.ir};
-    auto const& records{context.declarations.records};
-    auto const& members{context.declarations.child_occurrences};
-    auto const fields{context.declarations.items(records.members[record])};
+    auto& ir{ctx.ir};
+    auto const& records{ctx.declarations.records};
+    auto const& members{ctx.declarations.child_occurrences};
+    auto const fields{ctx.declarations.items(records.members[record])};
     std::vector<EnumValueId> values;
     std::vector<SwitchCaseId> cases;
     Nodes accessors;
@@ -55,7 +55,7 @@ auto record_visitor(LoweringContext& context, DeclarationHandle record, std::str
         auto const member{members.name[members.index(field)]};
         values.push_back(ir.enumerator(member));
         auto const field_value{ir.type_reference(
-            ir.types.decorate(ir.types.named("Field"), "", "::" + context.text(member)))};
+            ir.types.decorate(ir.types.named("Field"), "", "::" + ctx.text(member)))};
         accessors.push_back(ir.if_stmt(
             ir.binary(BinaryOperator::equal, ir.named("Selected"), field_value),
             ir.block(
@@ -154,13 +154,12 @@ auto record_visitor(LoweringContext& context, DeclarationHandle record, std::str
     return result.build();
 }
 
-auto record_node(LoweringContext& context, DeclarationHandle record) -> NodeId {
-    auto& ir{context.ir};
-    auto const& records{context.declarations.records};
-    auto const& record_members{context.declarations.child_occurrences};
+auto record_node(LoweringContext& ctx, DeclarationHandle record) -> NodeId {
+    auto& ir{ctx.ir};
+    auto const& records{ctx.declarations.records};
+    auto const& record_members{ctx.declarations.child_occurrences};
     auto const row{records.index(record)};
-    auto const name{context.text(records.name[row]) +
-                    (records.constraint_policy[row] ? "Value" : "")};
+    auto const name{ctx.text(records.name[row]) + (records.constraint_policy[row] ? "Value" : "")};
     NodeListBuilder members{ir};
     if (records.comparison[row] != RecordComparison::none) {
         auto const three_way{records.comparison[row] == RecordComparison::three_way};
@@ -176,19 +175,19 @@ auto record_node(LoweringContext& context, DeclarationHandle record) -> NodeId {
         ir.set_function_defaulted(comparison);
         members.add(ir.header_function(comparison));
     }
-    for (auto const function : context.declarations.items(records.functions[row])) {
-        members.add(ir.header_function(lower_schema_function(context, function)));
+    for (auto const function : ctx.declarations.items(records.functions[row])) {
+        members.add(ir.header_function(lower_schema_function(ctx, function)));
     }
     if (records.comparison[row] != RecordComparison::none || !records.functions[row].empty()) {
         members.new_lines(2);
     }
     if (records.generate_visitor[row]) {
-        members.append(record_visitor(context, record, name));
+        members.append(record_visitor(ctx, record, name));
     }
-    for (auto const member : context.declarations.items(records.members[row])) {
+    for (auto const member : ctx.declarations.items(records.members[row])) {
         auto const member_row{record_members.index(member)};
         auto const initializer{record_members.initializer[member_row]};
-        members.add(ir.instance_member(lower_member_type(context, member),
+        members.add(ir.instance_member(lower_member_type(ctx, member),
                                        record_members.name[member_row],
                                        initializer
                                            ? std::optional<Expr>{ir.raw_expr(*initializer, {})}
@@ -203,22 +202,21 @@ auto record_node(LoweringContext& context, DeclarationHandle record) -> NodeId {
 
 } // namespace
 
-auto lower_record(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission {
-    auto result{DeclarationEmission{.header = {record_node(context, schema)}}};
-    auto const& records{context.declarations.records};
+auto lower_record(LoweringContext& ctx, DeclarationHandle schema) -> DeclarationEmission {
+    auto result{DeclarationEmission{.header = {record_node(ctx, schema)}}};
+    auto const& records{ctx.declarations.records};
     auto const row{records.index(schema)};
     if (records.generate_visitor[row]) {
-        auto& ir{context.ir};
-        auto const settings{context.declarations.module_settings(context.module)};
-        auto const namespace_name{
-            context.declarations.module_settings_store.namespace_name[settings]};
-        auto const qualified{(namespace_name ? context.text(*namespace_name) + "::" : "::") +
-                             context.text(records.name[row]) +
+        auto& ir{ctx.ir};
+        auto const settings{ctx.declarations.module_settings(ctx.module)};
+        auto const namespace_name{ctx.declarations.module_settings_store.namespace_name[settings]};
+        auto const qualified{(namespace_name ? ctx.text(*namespace_name) + "::" : "::") +
+                             ctx.text(records.name[row]) +
                              (records.constraint_policy[row] ? "Value" : "") + "::Field"};
-        auto const fields{context.declarations.items(records.members[row])};
+        auto const fields{ctx.declarations.items(records.members[row])};
         std::vector<std::string> names;
         for (auto const field : fields) {
-            names.push_back(context.text(context.declarations.child_occurrences.name[field]));
+            names.push_back(ctx.text(ctx.declarations.child_occurrences.name[field]));
         }
         result.header_global.push_back(ir.namespace_node(
             ir.strings.intern("ioj"),
@@ -227,19 +225,19 @@ auto lower_record(LoweringContext& context, DeclarationHandle schema) -> Declara
         result.header_global.push_back(enum_strings_specialization(ir, qualified, "Name", names));
     }
     if (auto const policy{records.constraint_policy[row]}) {
-        auto const name{context.text(records.name[row])};
-        auto& ir{context.ir};
+        auto const name{ctx.text(records.name[row])};
+        auto& ir{ctx.ir};
         auto const constrained{ir.types.template_type(
             ir.types.named(
                 "ioj::ConstrainedValue",
                 NameOrigin::global,
                 {ir.types.dependency("ioj::ConstrainedValue", "ioj/constrained_value.h")}),
             {ir.types.named(name + "Value"),
-             ir.types.reference(ir.types.intern(context.text(*policy)))})};
+             ir.types.reference(ir.types.intern(ctx.text(*policy)))})};
         result.header.push_back(ir.using_declaration(records.name[row], constrained));
     }
     if (records.s7_tag[schema]) {
-        lower_record_reader(context, schema, result);
+        lower_record_reader(ctx, schema, result);
     }
     return result;
 }

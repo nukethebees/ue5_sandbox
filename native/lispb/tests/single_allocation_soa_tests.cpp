@@ -24,8 +24,8 @@ using lispb::test_support::expect_contains_all;
 using lispb::test_support::expect_contains_none;
 
 TEST(SingleAllocationSoa, OrdinarySchemasGenerateNativeOwnersAndViews) {
-    CompilerTestContext context;
-    auto const files{render_test_manifest(context, parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto const files{render_test_manifest(ctx, parse_test_manifest(ctx, R"(
         (module native :header "Native.h" :namespace example
           (struct Child (member xs array float))
           (struct Rows
@@ -65,8 +65,8 @@ TEST(SingleAllocationSoa, OrdinarySchemasGenerateNativeOwnersAndViews) {
 }
 
 TEST(SingleAllocationSoa, RowOperationsUseNestedEquivalentValues) {
-    CompilerTestContext context;
-    auto const files{render_test_manifest(context, parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto const files{render_test_manifest(ctx, parse_test_manifest(ctx, R"(
         (module native :header "Native.h"
           (struct Points :equivalent-type Point :layout-only true
             (member xs array float :equivalent-member x) (member ys array float :equivalent-member y))
@@ -94,10 +94,10 @@ auto schemas() -> std::string {
 }
 
 auto render(std::string_view declarations) -> std::string {
-    CompilerTestContext context;
+    CompilerTestContext ctx;
     auto const files{render_test_manifest(
-        context,
-        parse_test_manifest(context,
+        ctx,
+        parse_test_manifest(ctx,
                             R"((module test :header "Test.h" :source "Test.cpp" )" +
                                 std::string{declarations} + ")"))};
     return files.front().content;
@@ -143,8 +143,8 @@ TEST_P(InvalidSoaDeclaration, RejectsDeclaration) {
 INSTANTIATE_TEST_SUITE_P(EmptySchema, InvalidSoaDeclaration, testing::Values("(struct Rows)"));
 
 TEST(SingleAllocationSoa, PartialAppendSurvivesCloningAndSourceRoundTrip) {
-    CompilerTestContext context;
-    auto manifest{parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto manifest{parse_test_manifest(ctx, R"(
         (module test :header "Test.h"
           (struct Rows
             (member values array float)
@@ -264,13 +264,13 @@ TEST(SingleAllocationSoa, AllowsNonconflictingOwnerAndMemberNames) {
 class ConflictingSoaModuleDeclaration : public testing::TestWithParam<char const*> {};
 
 TEST_P(ConflictingSoaModuleDeclaration, RejectsSharedViewTypeCollisions) {
-    CompilerTestContext context;
-    auto const manifest{parse_test_manifest(context, std::string{R"(
+    CompilerTestContext ctx;
+    auto const manifest{parse_test_manifest(ctx, std::string{R"(
         (module owner :header "Owner.h" :namespace example
           (struct Rows (member values array float)))
         (module collision :header "Collision.h" :namespace example::rows
           (record )"} + GetParam() + " (projections (cpp))))")};
-    EXPECT_THROW(render_test_manifest(context, manifest), std::invalid_argument);
+    EXPECT_THROW(render_test_manifest(ctx, manifest), std::invalid_argument);
 }
 
 INSTANTIATE_TEST_SUITE_P(SingleAllocationSoa,
@@ -291,8 +291,8 @@ TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
 }
 
 TEST(SingleAllocationSoa, PreservesCommonApiInSchemaNamespace) {
-    CompilerTestContext context;
-    auto const files{render_test_manifest(context, parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto const files{render_test_manifest(ctx, parse_test_manifest(ctx, R"(
         (module api :header "Api.h" :source "Api.cpp"
           (struct LogicalRows
             :export-specifier ROWS_API :using-declarations ("Value = float")

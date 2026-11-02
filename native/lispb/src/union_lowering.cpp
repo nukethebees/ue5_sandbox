@@ -25,16 +25,16 @@
 namespace lispb::codegen::detail {
 namespace {
 
-auto union_node(LoweringContext& context, DeclarationHandle schema) -> NodeId {
-    auto& ir{context.ir};
-    auto const& unions{context.declarations.unions};
-    auto const& schemas{context.declarations.child_occurrences};
+auto union_node(LoweringContext& ctx, DeclarationHandle schema) -> NodeId {
+    auto& ir{ctx.ir};
+    auto const& unions{ctx.declarations.unions};
+    auto const& schemas{ctx.declarations.child_occurrences};
     auto const row{unions.index(schema)};
     NodeListBuilder alternatives{ir};
-    for (auto const alternative : context.declarations.items(unions.alternatives[row])) {
+    for (auto const alternative : ctx.declarations.items(unions.alternatives[row])) {
         auto const alternative_row{schemas.index(alternative)};
-        alternatives.add(ir.instance_member(lower_member_type(context, alternative),
-                                            schemas.name[alternative_row]));
+        alternatives.add(
+            ir.instance_member(lower_member_type(ctx, alternative), schemas.name[alternative_row]));
     }
     auto const created_record{
         ir.record(unions.name[row], alternatives.build(), RecordKind::union_)};
@@ -44,8 +44,8 @@ auto union_node(LoweringContext& context, DeclarationHandle schema) -> NodeId {
 
 } // namespace
 
-auto lower_union(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission {
-    return {.header = {union_node(context, schema)}};
+auto lower_union(LoweringContext& ctx, DeclarationHandle schema) -> DeclarationEmission {
+    return {.header = {union_node(ctx, schema)}};
 }
 
 } // namespace lispb::codegen::detail

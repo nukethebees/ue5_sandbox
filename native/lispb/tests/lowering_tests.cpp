@@ -63,12 +63,11 @@ struct RenderedModule {
     std::string source;
 };
 
-auto render_module(CompilerTestContext& context, ModuleHandle module) -> RenderedModule {
-    auto const files{render_test_manifest(context,
-                                          Manifest{manifest_schema_version,
-                                                   make_test_registry(context),
-                                                   context.storage.declarations,
-                                                   {module}})};
+auto render_module(CompilerTestContext& ctx, ModuleHandle module) -> RenderedModule {
+    auto const files{render_test_manifest(
+        ctx,
+        Manifest{
+            manifest_schema_version, make_test_registry(ctx), ctx.storage.declarations, {module}})};
     EXPECT_EQ(files.size(), 2);
     return RenderedModule{files[0].content, files[1].content};
 }
@@ -76,13 +75,13 @@ auto render_module(CompilerTestContext& context, ModuleHandle module) -> Rendere
 TEST(Lowering, PackedEnumOffsetsUseTheSmallestStorageIncludingTheSentinel) {
     for (auto const length : {254, 255, 65534, 65535}) {
         SCOPED_TRACE(length);
-        CompilerTestContext context;
+        CompilerTestContext ctx;
         auto const source{
             std::format("(module test :header \"Test.h\" (enum State :native-api true "
                         ":helpers (to-serialized-string) (value Only :serialized-name \"{}\") "
                         "(projections (cpp))))",
                         std::string(length, 'x'))};
-        auto const files{render_test_manifest(context, parse_test_manifest(context, source))};
+        auto const files{render_test_manifest(ctx, parse_test_manifest(ctx, source))};
         ASSERT_EQ(files.size(), 1);
         auto const bits{length < 255 ? 8 : length < 65535 ? 16 : 32};
         EXPECT_NE(files.front().content.find(std::format("std::array<std::uint{}_t, 2>", bits)),
@@ -93,24 +92,23 @@ TEST(Lowering, PackedEnumOffsetsUseTheSmallestStorageIncludingTheSentinel) {
 }
 
 TEST(Lowering, EmitsStandaloneNativeEnumApi) {
-    CompilerTestContext context;
-    auto& store{context.storage.declarations};
-    auto& strings{context.storage.strings};
+    CompilerTestContext ctx;
+    auto& store{ctx.storage.declarations};
+    auto& strings{ctx.storage.strings};
     auto& enumerators{store.enumerators};
     auto& enums{store.enums};
     auto& module_settings_store{store.module_settings_store};
     auto& normal_modules{store.normal_modules};
     auto& type_refs{store.type_refs};
     auto const files{render_test_manifest(
-        context,
+        ctx,
         Manifest{
             manifest_schema_version,
-            make_test_registry(
-                context,
-                {{"native_uint8",
-                  context.storage.cpp_types.add(
-                      "std::uint8_t",
-                      {context.storage.cpp_types.dependency("std::uint8_t", "cstdint")})}}),
+            make_test_registry(ctx,
+                               {{"native_uint8",
+                                 ctx.storage.cpp_types.add("std::uint8_t",
+                                                           {ctx.storage.cpp_types.dependency(
+                                                               "std::uint8_t", "cstdint")})}}),
             store,
             {append_test_row(normal_modules, [&](auto const new_normal_modules) {
                 normal_modules.settings[new_normal_modules] = append_test_row(
@@ -186,10 +184,10 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
     for (auto const& [helper, spelling] : selections) {
         auto const selected{
             render_test_manifest(
-                context,
+                ctx,
                 Manifest{
                     manifest_schema_version,
-                    make_test_registry(context),
+                    make_test_registry(ctx),
                     store,
                     {append_test_row(
                         normal_modules,
@@ -240,15 +238,15 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
 TEST(Lowering, EnumFormatterOptInPreservesSourceRoundTrip) {
     for (auto const enabled : {false, true}) {
         SCOPED_TRACE(enabled);
-        CompilerTestContext context;
-        auto const manifest{parse_test_manifest(context,
+        CompilerTestContext ctx;
+        auto const manifest{parse_test_manifest(ctx,
                                                 std::format(R"(
           (module states :header States.h :namespace example
             (enum State std::uint8_t :native-api true :helpers (to-string {})
               (value Ready)
     (projections (cpp)))))",
                                                             enabled ? "formatter" : ""))};
-        auto const output{render_test_manifest(context, manifest).front().content};
+        auto const output{render_test_manifest(ctx, manifest).front().content};
         EXPECT_EQ(output.contains("ioj/enum_formatter.h"), enabled);
         EXPECT_EQ(output.contains("ioj::EnumFormatter<"), enabled);
         EXPECT_EQ(output.contains("struct formatter<"), enabled);
@@ -262,14 +260,14 @@ TEST(Lowering, EnumFormatterOptInPreservesSourceRoundTrip) {
 }
 
 TEST(Lowering, EnumFormatterRequiresNameConversion) {
-    CompilerTestContext context;
-    auto const manifest{parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto const manifest{parse_test_manifest(ctx, R"(
       (module states :header States.h
         (enum State std::uint8_t :native-api true :helpers (formatter)
           (value Ready)
     (projections (cpp)))))")};
     try {
-        static_cast<void>(render_test_manifest(context, manifest));
+        static_cast<void>(render_test_manifest(ctx, manifest));
         FAIL() << "Expected an invalid formatter declaration";
     } catch (std::invalid_argument const& error) {
         EXPECT_STREQ(error.what(), "Enum 'State' formatter requires the to-string helper");
@@ -277,18 +275,18 @@ TEST(Lowering, EnumFormatterRequiresNameConversion) {
 }
 
 TEST(Lowering, DerivesNativeEnumBackingFromSemanticWidthAndSignedness) {
-    CompilerTestContext context;
-    auto& store{context.storage.declarations};
-    auto& strings{context.storage.strings};
+    CompilerTestContext ctx;
+    auto& store{ctx.storage.declarations};
+    auto& strings{ctx.storage.strings};
     auto& enumerators{store.enumerators};
     auto& enums{store.enums};
     auto& module_settings_store{store.module_settings_store};
     auto& normal_modules{store.normal_modules};
     auto const files{render_test_manifest(
-        context,
+        ctx,
         Manifest{
             manifest_schema_version,
-            make_test_registry(context),
+            make_test_registry(ctx),
             store,
             {append_test_row(normal_modules, [&](auto const new_normal_modules) {
                 normal_modules.settings[new_normal_modules] = append_test_row(
@@ -334,15 +332,15 @@ TEST(Lowering, DerivesNativeEnumBackingFromSemanticWidthAndSignedness) {
 }
 
 TEST(Lowering, DerivesFixedWidthEnumBackingWithoutNativeHelpers) {
-    CompilerTestContext context;
-    auto& store{context.storage.declarations};
-    auto& strings{context.storage.strings};
+    CompilerTestContext ctx;
+    auto& store{ctx.storage.declarations};
+    auto& strings{ctx.storage.strings};
     auto& enumerators{store.enumerators};
     auto& enums{store.enums};
     auto& module_settings_store{store.module_settings_store};
     auto& normal_modules{store.normal_modules};
     auto const output{render_module(
-        context, append_test_row(normal_modules, [&](auto const new_normal_modules) {
+        ctx, append_test_row(normal_modules, [&](auto const new_normal_modules) {
             normal_modules.settings[new_normal_modules] =
                 append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
                     module_settings_store.name[new_module_settings_store] =
@@ -382,8 +380,8 @@ TEST(Lowering, DerivesFixedWidthEnumBackingWithoutNativeHelpers) {
 }
 
 TEST(Lowering, EmitsOwningIntegerScalarWithInferredStorage) {
-    CompilerTestContext context;
-    auto const files{render_test_manifest(context, parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto const files{render_test_manifest(ctx, parse_test_manifest(ctx, R"(
       (module values :header "Values.h"
         (integer-scalar Index :bit-width 24 (projections (cpp)))
         (integer-scalar Logical :bit-width 8))
@@ -399,9 +397,9 @@ TEST(Lowering, EmitsOwningIntegerScalarWithInferredStorage) {
 }
 
 TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) {
-    CompilerTestContext context;
-    auto& store{context.storage.declarations};
-    auto& strings{context.storage.strings};
+    CompilerTestContext ctx;
+    auto& store{ctx.storage.declarations};
+    auto& strings{ctx.storage.strings};
     auto& enum_unreal_projections{store.enum_unreal_projections};
     auto& enumerators{store.enumerators};
     auto& enums{store.enums};
@@ -409,15 +407,14 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
     auto& normal_modules{store.normal_modules};
     auto& type_refs{store.type_refs};
     auto const files{render_test_manifest(
-        context,
+        ctx,
         Manifest{
             manifest_schema_version,
-            make_test_registry(
-                context,
-                {{"native_uint8",
-                  context.storage.cpp_types.add(
-                      "std::uint8_t",
-                      {context.storage.cpp_types.dependency("std::uint8_t", "cstdint")})}}),
+            make_test_registry(ctx,
+                               {{"native_uint8",
+                                 ctx.storage.cpp_types.add("std::uint8_t",
+                                                           {ctx.storage.cpp_types.dependency(
+                                                               "std::uint8_t", "cstdint")})}}),
             store,
             {append_test_row(normal_modules, [&](auto const new_normal_modules) {
                 normal_modules.settings[new_normal_modules] = append_test_row(
@@ -501,16 +498,16 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
 }
 
 TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
-    CompilerTestContext context;
-    auto& store{context.storage.declarations};
-    auto& strings{context.storage.strings};
+    CompilerTestContext ctx;
+    auto& store{ctx.storage.declarations};
+    auto& strings{ctx.storage.strings};
     auto& enumerators{store.enumerators};
     auto& enums{store.enums};
     auto& module_settings_store{store.module_settings_store};
     auto& normal_modules{store.normal_modules};
     auto& type_refs{store.type_refs};
     auto const output{render_module(
-        context, append_test_row(normal_modules, [&](auto const new_normal_modules) {
+        ctx, append_test_row(normal_modules, [&](auto const new_normal_modules) {
             normal_modules.settings[new_normal_modules] =
                 append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
                     module_settings_store.name[new_module_settings_store] = strings.intern("modes");
@@ -596,16 +593,16 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
 }
 
 TEST(Lowering, EmitsPlainEnumsInTheirNamespace) {
-    CompilerTestContext context;
-    auto& store{context.storage.declarations};
-    auto& strings{context.storage.strings};
+    CompilerTestContext ctx;
+    auto& store{ctx.storage.declarations};
+    auto& strings{ctx.storage.strings};
     auto& enumerators{store.enumerators};
     auto& enums{store.enums};
     auto& module_settings_store{store.module_settings_store};
     auto& normal_modules{store.normal_modules};
     auto& type_refs{store.type_refs};
     auto const output{render_module(
-        context, append_test_row(normal_modules, [&](auto const new_normal_modules) {
+        ctx, append_test_row(normal_modules, [&](auto const new_normal_modules) {
             normal_modules.settings[new_normal_modules] =
                 append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
                     module_settings_store.name[new_module_settings_store] =
@@ -644,16 +641,16 @@ TEST(Lowering, EmitsPlainEnumsInTheirNamespace) {
 }
 
 TEST(Lowering, EmitsCountsForEnumArrays) {
-    CompilerTestContext context;
-    auto& store{context.storage.declarations};
-    auto& strings{context.storage.strings};
+    CompilerTestContext ctx;
+    auto& store{ctx.storage.declarations};
+    auto& strings{ctx.storage.strings};
     auto& enumerators{store.enumerators};
     auto& enums{store.enums};
     auto& module_settings_store{store.module_settings_store};
     auto& normal_modules{store.normal_modules};
     auto& type_refs{store.type_refs};
     auto const output{render_module(
-        context, append_test_row(normal_modules, [&](auto const new_normal_modules) {
+        ctx, append_test_row(normal_modules, [&](auto const new_normal_modules) {
             normal_modules.settings[new_normal_modules] =
                 append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
                     module_settings_store.name[new_module_settings_store] = strings.intern("modes");
@@ -691,16 +688,16 @@ TEST(Lowering, EmitsCountsForEnumArrays) {
 }
 
 TEST(Lowering, EmitsCountsForReflectedEnumArrays) {
-    CompilerTestContext context;
-    auto& store{context.storage.declarations};
-    auto& strings{context.storage.strings};
+    CompilerTestContext ctx;
+    auto& store{ctx.storage.declarations};
+    auto& strings{ctx.storage.strings};
     auto& enumerators{store.enumerators};
     auto& enums{store.enums};
     auto& module_settings_store{store.module_settings_store};
     auto& normal_modules{store.normal_modules};
     auto& type_refs{store.type_refs};
     auto const output{render_module(
-        context, append_test_row(normal_modules, [&](auto const new_normal_modules) {
+        ctx, append_test_row(normal_modules, [&](auto const new_normal_modules) {
             normal_modules.settings[new_normal_modules] =
                 append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
                     module_settings_store.name[new_module_settings_store] = strings.intern("modes");
@@ -737,16 +734,16 @@ TEST(Lowering, EmitsCountsForReflectedEnumArrays) {
 }
 
 TEST(Lowering, EnumDisplayLookupWithoutOverridesFallsBackDirectly) {
-    CompilerTestContext context;
-    auto& store{context.storage.declarations};
-    auto& strings{context.storage.strings};
+    CompilerTestContext ctx;
+    auto& store{ctx.storage.declarations};
+    auto& strings{ctx.storage.strings};
     auto& enumerators{store.enumerators};
     auto& enums{store.enums};
     auto& module_settings_store{store.module_settings_store};
     auto& normal_modules{store.normal_modules};
     auto& type_refs{store.type_refs};
     auto const output{render_module(
-        context, append_test_row(normal_modules, [&](auto const new_normal_modules) {
+        ctx, append_test_row(normal_modules, [&](auto const new_normal_modules) {
             normal_modules.settings[new_normal_modules] =
                 append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
                     module_settings_store.name[new_module_settings_store] =
@@ -781,16 +778,16 @@ TEST(Lowering, EnumDisplayLookupWithoutOverridesFallsBackDirectly) {
 }
 
 TEST(Lowering, EnumEscapingAndSparseDisplayCasesPreserveFallbacks) {
-    CompilerTestContext context;
-    auto& store{context.storage.declarations};
-    auto& strings{context.storage.strings};
+    CompilerTestContext ctx;
+    auto& store{ctx.storage.declarations};
+    auto& strings{ctx.storage.strings};
     auto& enumerators{store.enumerators};
     auto& enums{store.enums};
     auto& module_settings_store{store.module_settings_store};
     auto& normal_modules{store.normal_modules};
     auto& type_refs{store.type_refs};
     auto const output{render_module(
-        context, append_test_row(normal_modules, [&](auto const new_normal_modules) {
+        ctx, append_test_row(normal_modules, [&](auto const new_normal_modules) {
             normal_modules.settings[new_normal_modules] =
                 append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
                     module_settings_store.name[new_module_settings_store] =
@@ -851,18 +848,18 @@ TEST(Lowering, EnumEscapingAndSparseDisplayCasesPreserveFallbacks) {
 }
 
 TEST(Lowering, EnumCountsUseMlNamespaceForQualifiedHeaderOnlyEnums) {
-    CompilerTestContext context;
-    auto& store{context.storage.declarations};
-    auto& strings{context.storage.strings};
+    CompilerTestContext ctx;
+    auto& store{ctx.storage.declarations};
+    auto& strings{ctx.storage.strings};
     auto& enumerators{store.enumerators};
     auto& enums{store.enums};
     auto& module_settings_store{store.module_settings_store};
     auto& normal_modules{store.normal_modules};
     auto& type_refs{store.type_refs};
     auto const files{render_test_manifest(
-        context,
+        ctx,
         Manifest{manifest_schema_version,
-                 make_test_registry(context),
+                 make_test_registry(ctx),
                  store,
                  {append_test_row(normal_modules, [&](auto const new_normal_modules) {
                      normal_modules.settings[new_normal_modules] = append_test_row(
@@ -899,9 +896,9 @@ TEST(Lowering, EnumCountsUseMlNamespaceForQualifiedHeaderOnlyEnums) {
 }
 
 TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
-    CompilerTestContext context;
-    auto& store{context.storage.declarations};
-    auto& strings{context.storage.strings};
+    CompilerTestContext ctx;
+    auto& store{ctx.storage.declarations};
+    auto& strings{ctx.storage.strings};
     auto& module_settings_store{store.module_settings_store};
     auto& setting_categories{store.setting_categories};
     auto& setting_controls{store.setting_controls};
@@ -964,7 +961,7 @@ TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
              })});
     })};
     auto const files{render_test_manifest(
-        context, Manifest{manifest_schema_version, make_test_registry(context), store, {module}})};
+        ctx, Manifest{manifest_schema_version, make_test_registry(ctx), store, {module}})};
     std::map<std::string, std::string_view> output;
     for (auto const& file : files) {
         output.emplace(file.path.generic_string(), file.content);

@@ -130,15 +130,15 @@ auto binary_precedence(BinaryOperator operation) -> int {
 CppRenderer::CppRenderer(CppIR const& ir, std::string_view indent_text)
     : ir_{ir}
     , indent_text_{indent_text} {}
-auto CppRenderer::render(Expr expr, RenderContext const& context) -> std::string {
+auto CppRenderer::render(Expr expr, RenderContext const& ctx) -> std::string {
     state_.clear();
-    return expression(expr, context);
+    return expression(expr, ctx);
 }
-auto CppRenderer::render(NodeId node, RenderContext const& context) -> std::string {
+auto CppRenderer::render(NodeId node, RenderContext const& ctx) -> std::string {
     state_.clear();
     initialize_environments(std::span{&node, 1});
     std::string output;
-    append_node(output, node, context);
+    append_node(output, node, ctx);
     return output;
 }
 auto CppRenderer::render(CppFileId file) -> std::string {
@@ -184,7 +184,7 @@ auto CppRenderer::render(CppFileId file) -> std::string {
         include_groups.push_back(std::move(system));
     }
     initialize_environments(file_nodes);
-    RenderContext const context{.include_groups = include_groups};
+    RenderContext const ctx{.include_groups = include_groups};
     std::string output;
     if (flags.clang_format_off()) {
         output += "// clang-format off\n";
@@ -205,7 +205,7 @@ auto CppRenderer::render(CppFileId file) -> std::string {
     }
     if (!file_nodes.empty()) {
         output += "\n\n";
-        append_nodes(output, file_nodes, context, 1);
+        append_nodes(output, file_nodes, ctx, 1);
     }
     for (auto const epilogue : ir_.files.epilogue(file)) {
         output += "\n\n";
@@ -221,30 +221,30 @@ auto CppRenderer::render(CppFileId file) -> std::string {
     return output;
 }
 auto CppRenderer::render_nodes(std::span<NodeId const> values,
-                               RenderContext const& context,
+                               RenderContext const& ctx,
                                int newlines) -> std::string {
     state_.clear();
     initialize_environments(values);
     std::string output;
-    append_nodes(output, values, context, newlines);
+    append_nodes(output, values, ctx, newlines);
     return output;
 }
 
 /* **************************************** */
 // Formatting
 /* **************************************** */
-void CppRenderer::append_indent(std::string& output, RenderContext const& context) const {
-    for (int level{}; level < context.indent_level; ++level) {
+void CppRenderer::append_indent(std::string& output, RenderContext const& ctx) const {
+    for (int level{}; level < ctx.indent_level; ++level) {
         output += indent_text_;
     }
 }
 void CppRenderer::append_indented(std::string& output,
                                   std::string_view text,
-                                  RenderContext const& context) const {
+                                  RenderContext const& ctx) const {
     bool line_start{true};
     for (auto const character : text) {
         if (line_start && character != '\n') {
-            append_indent(output, context);
+            append_indent(output, ctx);
         }
         output += character;
         line_start = character == '\n';
@@ -604,9 +604,9 @@ void CppRenderer::initialize_environments(std::span<NodeId const> children) {
 /* **************************************** */
 // Expressions and declarations
 /* **************************************** */
-auto CppRenderer::expression(Expr expr, RenderContext const& context) -> std::string {
+auto CppRenderer::expression(Expr expr, RenderContext const& ctx) -> std::string {
     std::string output;
-    append_expr(output, expr, context);
+    append_expr(output, expr, ctx);
     return output;
 }
 auto CppRenderer::expr_precedence(Expr expr) -> int {
@@ -624,7 +624,7 @@ auto CppRenderer::expr_precedence(Expr expr) -> int {
     }
 }
 void CppRenderer::append_expr(
-    std::string& output, Expr expr, RenderContext const& context, int minimum, bool equal) {
+    std::string& output, Expr expr, RenderContext const& ctx, int minimum, bool equal) {
     auto const index{expr.index()};
     auto const precedence{expr_precedence(expr)};
     auto const parenthesize{precedence < minimum || (equal && precedence == minimum)};
@@ -637,7 +637,7 @@ void CppRenderer::append_expr(
             if (!first) {
                 output += ", ";
             }
-            append_expr(output, argument, context, 1);
+            append_expr(output, argument, ctx, 1);
             first = false;
         }
     };
@@ -647,11 +647,11 @@ void CppRenderer::append_expr(
             break;
         case ExprKind::parenthesized:
             output += '(';
-            append_expr(output, ir_.parenthesized_exprs_.operand[index], context);
+            append_expr(output, ir_.parenthesized_exprs_.operand[index], ctx);
             output += ')';
             break;
         case ExprKind::template_id:
-            append_expr(output, ir_.template_id_exprs_.callee[index], context, 12);
+            append_expr(output, ir_.template_id_exprs_.callee[index], ctx, 12);
             output += '<';
             append_arguments(ir_.template_id_exprs_.arguments[index]);
             output += '>';
@@ -671,20 +671,20 @@ void CppRenderer::append_expr(
             output += ir_.strings.view(ir_.raw_exprs_.text[index]);
             break;
         case ExprKind::call:
-            append_expr(output, ir_.call_exprs_.callee[index], context, 12);
+            append_expr(output, ir_.call_exprs_.callee[index], ctx, 12);
             output += '(';
             append_arguments(ir_.call_exprs_.arguments[index]);
             output += ')';
             break;
         case ExprKind::member_access:
-            append_expr(output, ir_.member_exprs_.object[index], context, 12);
+            append_expr(output, ir_.member_exprs_.object[index], ctx, 12);
             output += ir_.member_exprs_.through_pointer[index] ? "->" : ".";
             output += ir_.strings.view(ir_.member_exprs_.member[index]);
             break;
         case ExprKind::subscript:
-            append_expr(output, ir_.subscript_exprs_.object[index], context, 12);
+            append_expr(output, ir_.subscript_exprs_.object[index], ctx, 12);
             output += '[';
-            append_expr(output, ir_.subscript_exprs_.index[index], context, 1);
+            append_expr(output, ir_.subscript_exprs_.index[index], ctx, 1);
             output += ']';
             break;
         case ExprKind::binary: {
@@ -695,7 +695,7 @@ void CppRenderer::append_expr(
                     ir_.binary_exprs_.operation[operand.index()] == BinaryOperator::logical_and};
                 append_expr(output,
                             operand,
-                            context,
+                            ctx,
                             conjunction ? expr_precedence(operand) : precedence,
                             right || conjunction);
             };
@@ -712,22 +712,22 @@ void CppRenderer::append_expr(
         }
         case ExprKind::unary:
             output += to_serialized_string(ir_.unary_exprs_.operation[index]);
-            append_expr(output, ir_.unary_exprs_.operand[index], context, 11, true);
+            append_expr(output, ir_.unary_exprs_.operand[index], ctx, 11, true);
             break;
         case ExprKind::static_cast_:
         case ExprKind::reinterpret_cast_:
             output += expr.kind() == ExprKind::static_cast_ ? "static_cast<" : "reinterpret_cast<";
             append_type(output, ir_.cast_exprs_.type[index]);
             output += ">(";
-            append_expr(output, ir_.cast_exprs_.operand[index], context, 1);
+            append_expr(output, ir_.cast_exprs_.operand[index], ctx, 1);
             output += ')';
             break;
         case ExprKind::conditional:
-            append_expr(output, ir_.conditional_exprs_.condition[index], context, 1);
+            append_expr(output, ir_.conditional_exprs_.condition[index], ctx, 1);
             output += " ? ";
-            append_expr(output, ir_.conditional_exprs_.when_true[index], context);
+            append_expr(output, ir_.conditional_exprs_.when_true[index], ctx);
             output += " : ";
-            append_expr(output, ir_.conditional_exprs_.when_false[index], context);
+            append_expr(output, ir_.conditional_exprs_.when_false[index], ctx);
             break;
         case ExprKind::sizeof_type:
             output += "sizeof(";
@@ -746,7 +746,7 @@ void CppRenderer::append_expr(
             output += '.';
             output += ir_.strings.view(ir_.designated_initializers_.member[index]);
             output += " = ";
-            append_expr(output, ir_.designated_initializers_.value[index], context);
+            append_expr(output, ir_.designated_initializers_.value[index], ctx);
             break;
         case ExprKind::lambda: {
             output += '[';
@@ -756,17 +756,17 @@ void CppRenderer::append_expr(
                 state_.current,
                 state_.environments.append(state_.current, EnvironmentKind::function)};
             if (auto const declaration{ir_.lambda_exprs_.template_declaration[index]}) {
-                append_template(output, declaration, context, false);
+                append_template(output, declaration, ctx, false);
             }
-            append_parameters(output, ir_.lambda_exprs_.parameters[index], context, true);
+            append_parameters(output, ir_.lambda_exprs_.parameters[index], ctx, true);
             auto const body{ir_.nodes(ir_.lambda_exprs_.body[index])};
             state_.current = block_environment(body);
             output += " {";
             if (!body.empty()) {
                 output += '\n';
-                append_nodes(output, body, context.indent(), 1);
+                append_nodes(output, body, ctx.indent(), 1);
                 output += '\n';
-                append_indent(output, context);
+                append_indent(output, ctx);
             }
             output += '}';
             break;
@@ -780,7 +780,7 @@ void CppRenderer::append_expr(
 }
 void CppRenderer::append_template(std::string& output,
                                   TemplateId declaration,
-                                  RenderContext const& context,
+                                  RenderContext const& ctx,
                                   bool keyword) {
     assert(declaration);
     auto const row{declaration.index()};
@@ -827,7 +827,7 @@ void CppRenderer::append_template(std::string& output,
                     }
                     if (auto const value{ir_.value_template_parameters_.default_value[index]}) {
                         output += " = ";
-                        append_expr(output, value, context);
+                        append_expr(output, value, ctx);
                     }
                     break;
                 }
@@ -844,7 +844,7 @@ void CppRenderer::append_template(std::string& output,
 }
 void CppRenderer::append_parameters(std::string& output,
                                     ir::Range parameters,
-                                    RenderContext const& context,
+                                    RenderContext const& ctx,
                                     bool defaults) {
     output += '(';
     auto const end{parameters.begin + parameters.count};
@@ -862,13 +862,13 @@ void CppRenderer::append_parameters(std::string& output,
         }
         if (auto const value{ir_.parameters_.default_value[parameter.value]}; value && defaults) {
             output += " = ";
-            append_expr(output, value, context);
+            append_expr(output, value, ctx);
         }
     }
     output += ')';
 }
 auto CppRenderer::signature(std::uint32_t index,
-                            RenderContext const& context,
+                            RenderContext const& ctx,
                             EnvironmentId& environment) -> std::string {
     auto const& nodes{ir_.function_nodes_};
     auto const& functions{ir_.functions_};
@@ -879,7 +879,7 @@ auto CppRenderer::signature(std::uint32_t index,
     auto const format{functions.formatting[id]};
     auto const implementation{functions.implementation[id]};
     if (owner && implementation.kind() == FunctionImplementationKind::deleted) {
-        throw std::invalid_argument{"Function '" + expression(functions.name[id], context) +
+        throw std::invalid_argument{"Function '" + expression(functions.name[id], ctx) +
                                     "' deleted function cannot be an out-of-line definition"};
     }
     auto const return_syntax{nodes.return_syntax[index].value_or(functions.return_syntax[id])};
@@ -899,7 +899,7 @@ auto CppRenderer::signature(std::uint32_t index,
     state.current = template_environment;
     std::string template_text;
     if (auto const declaration{functions.template_declaration[id]}) {
-        append_template(template_text, declaration, context);
+        append_template(template_text, declaration, ctx);
     }
     if (functions.flags[id].is_inline() && header && (owner || !in_record_scope(enclosing))) {
         output += "inline ";
@@ -934,7 +934,7 @@ auto CppRenderer::signature(std::uint32_t index,
         append_type(output, *owner);
         output += "::";
     }
-    append_expr(output, functions.name[id], context);
+    append_expr(output, functions.name[id], ctx);
     state.current = enclosing;
     if (owner) {
         state.current = record_environment(ir_.types.spelling(*owner));
@@ -944,7 +944,7 @@ auto CppRenderer::signature(std::uint32_t index,
     state.environments.import_symbols(function_environment, template_environment);
     state.current = function_environment;
     environment = function_environment;
-    append_parameters(output, functions.parameters[id], context, declaration || header);
+    append_parameters(output, functions.parameters[id], ctx, declaration || header);
     switch (receiver) {
         case FunctionReceiver::unqualified:
         case FunctionReceiver::static_:
@@ -974,7 +974,7 @@ auto CppRenderer::signature(std::uint32_t index,
             break;
         case FunctionExceptionKind::conditional:
             output += " noexcept(";
-            append_expr(output, ir_.conditional_noexcept_[exception.index()], context);
+            append_expr(output, ir_.conditional_noexcept_[exception.index()], ctx);
             output += ')';
             break;
     }
@@ -985,7 +985,7 @@ auto CppRenderer::signature(std::uint32_t index,
         append_type(output, functions.return_type[id]);
     }
     if (auto const clause{functions.requires_clause[id]}) {
-        auto const value{expression(clause, context)};
+        auto const value{expression(clause, ctx)};
         switch (format.requires_placement) {
             case FunctionRequiresPlacement::trailing_next_line:
                 output += "\n    requires ";
@@ -1008,7 +1008,7 @@ auto CppRenderer::signature(std::uint32_t index,
             output += m == initializers.begin ? "\n    : " : "\n    , ";
             output += ir_.strings.view(ir_.initializers_.member[row]);
             output += '{';
-            append_expr(output, ir_.initializers_.value[row], context);
+            append_expr(output, ir_.initializers_.value[row], ctx);
             output += '}';
         }
     }
@@ -1026,13 +1026,13 @@ auto CppRenderer::signature(std::uint32_t index,
     }
     return output;
 }
-void CppRenderer::append_node(std::string& output, NodeId node, RenderContext const& context) {
+void CppRenderer::append_node(std::string& output, NodeId node, RenderContext const& ctx) {
     auto& state{state_};
     EnvironmentGuard const scope_guard{state.current, state.current};
     auto const enclosing{state.current};
     auto const i{node.index()};
-    auto indent = [&] { append_indent(output, context); };
-    auto write = [&](std::string_view text) { append_indented(output, text, context); };
+    auto indent = [&] { append_indent(output, ctx); };
+    auto write = [&](std::string_view text) { append_indented(output, text, ctx); };
     auto write_prefix = [&](std::string_view text) {
         indent();
         output += text;
@@ -1044,16 +1044,16 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
     };
     auto type = [&](CppTypeId id) { append_type(output, id); };
     auto text = [&](StringId id) { output += ir_.strings.view(id); };
-    auto expr = [&](Expr id) { append_expr(output, id, context); };
+    auto expr = [&](Expr id) { append_expr(output, id, ctx); };
     auto scoped_nodes = [&](ir::Range children) {
         EnvironmentGuard const guard{state.current, block_environment(ir_.nodes(children))};
-        append_nodes(output, ir_.nodes(children), context.indent(), 1);
+        append_nodes(output, ir_.nodes(children), ctx.indent(), 1);
     };
     auto template_prefix = [&](TemplateId declaration) {
         if (declaration) {
             state.current = state.environments.append(state.current, EnvironmentKind::template_);
             indent();
-            append_template(output, declaration, context);
+            append_template(output, declaration, ctx);
             output += '\n';
         }
     };
@@ -1088,7 +1088,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
     switch (node.kind()) {
         case NodeKind::raw: {
             std::string rendered{ir_.strings.view(ir_.raw_nodes_.text[i])};
-            auto part_context{context};
+            auto part_context{ctx};
             part_context.indent_level = 0;
             for (auto const part : ir_.exprs(ir_.raw_nodes_.parts[i])) {
                 append_expr(rendered, part, part_context);
@@ -1123,7 +1123,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
             write("{");
             output += '\n';
             state.current = block_environment(ir_.nodes(ir_.block_nodes_.children[i]));
-            append_nodes(output, ir_.nodes(ir_.block_nodes_.children[i]), context.indent(), 1);
+            append_nodes(output, ir_.nodes(ir_.block_nodes_.children[i]), ctx.indent(), 1);
             close("}");
             break;
         case NodeKind::if_stmt:
@@ -1142,7 +1142,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
             auto const initializer{ir_.for_stmt_nodes_.initializer[i]};
             state.current = block_environment(std::span{&initializer, 1});
             write_prefix("for (");
-            auto initializer_context{context};
+            auto initializer_context{ctx};
             initializer_context.indent_level = 0;
             append_node(output, initializer, initializer_context);
             output += ' ';
@@ -1261,7 +1261,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
         }
         case NodeKind::include_dependencies: {
             bool first_group{true};
-            for (auto const& group : context.include_groups) {
+            for (auto const& group : ctx.include_groups) {
                 if (!first_group) {
                     output += "\n\n";
                 }
@@ -1346,7 +1346,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
         case NodeKind::function: {
             auto const id{ir_.function_nodes_.function[i].value};
             EnvironmentId function_environment;
-            write(signature(i, context, function_environment));
+            write(signature(i, ctx, function_environment));
             auto const implementation{ir_.functions_.implementation[id]};
             if (ir_.function_nodes_.declaration[i] ||
                 implementation.kind() != FunctionImplementationKind::body) {
@@ -1360,7 +1360,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
             state.current = block_environment(ir_.nodes(body));
             auto const format{ir_.functions_.formatting[id]};
             if (format.body_layout == FunctionBodyLayout::compact) {
-                auto body_context{context};
+                auto body_context{ctx};
                 body_context.indent_level = 0;
                 output += " { ";
                 append_nodes(output, ir_.nodes(body), body_context, 1);
@@ -1373,7 +1373,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
                     output += " {";
                 }
                 output += '\n';
-                append_nodes(output, ir_.nodes(body), context.indent(), 1);
+                append_nodes(output, ir_.nodes(body), ctx.indent(), 1);
                 close("}");
             }
             break;
@@ -1399,8 +1399,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
             auto const end{range.begin + range.count};
             for (auto e{range.begin}; e < end; ++e) {
                 auto const row{ir_.enumerator_references_[e].value};
-                append_indented(
-                    output, ir_.strings.view(ir_.enumerators_.name[row]), context.indent());
+                append_indented(output, ir_.strings.view(ir_.enumerators_.name[row]), ctx.indent());
                 if (auto const initializer{ir_.enumerators_.initializer[row]}) {
                     output += " = ";
                     text(*initializer);
@@ -1440,7 +1439,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
                 type(base);
                 first = false;
             }
-            auto member_context{context.indent()};
+            auto member_context{ctx.indent()};
             state.current = state.node_environments.at(RenderState::node_key(node, enclosing));
             output += " {\n";
             append_nodes(output, ir_.nodes(ir_.struct_nodes_.children[i]), member_context, 2);
@@ -1453,7 +1452,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
             output += name;
             output += name.empty() ? "{\n" : " {\n";
             state.current = state.node_environments.at(RenderState::node_key(node, enclosing));
-            append_nodes(output, ir_.nodes(ir_.namespace_nodes_.children[i]), context, 2);
+            append_nodes(output, ir_.nodes(ir_.namespace_nodes_.children[i]), ctx, 2);
             close("} // namespace");
             if (!name.empty()) {
                 output += ' ';
@@ -1467,7 +1466,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
 }
 void CppRenderer::append_nodes(std::string& output,
                                std::span<NodeId const> values,
-                               RenderContext const& context,
+                               RenderContext const& ctx,
                                int newlines) {
     auto const start{output.size()};
     for (auto const node : values) {
@@ -1483,7 +1482,7 @@ void CppRenderer::append_nodes(std::string& output,
             output.append(static_cast<std::size_t>(newlines), '\n');
         }
         auto const before_node{output.size()};
-        append_node(output, node, context);
+        append_node(output, node, ctx);
         if (output.size() == before_node) {
             output.resize(before_separator);
         }

@@ -39,12 +39,11 @@ using lispb::test_support::expect_contains_all;
 using lispb::test_support::expect_contains_none;
 namespace {
 
-auto example_manifest(CompilerTestContext& context) -> Manifest {
-    auto const handle{context.storage.cpp_types.add(
-        "FHandle", {context.storage.cpp_types.dependency("FHandle", "Project/Handle.h")})};
-    context.storage.cpp_types.set_operation(
-        handle, TypeOperation::remove_at_swap, "remove_at_swap");
-    return parse_test_manifest(context,
+auto example_manifest(CompilerTestContext& ctx) -> Manifest {
+    auto const handle{ctx.storage.cpp_types.add(
+        "FHandle", {ctx.storage.cpp_types.dependency("FHandle", "Project/Handle.h")})};
+    ctx.storage.cpp_types.set_operation(handle, TypeOperation::remove_at_swap, "remove_at_swap");
+    return parse_test_manifest(ctx,
                                R"(
         (module example :header "Generated.h" :source "Generated.cpp"
           :header-include "Project/Generated.h" :namespace example :include-order ("Project/" "SandboxCore/")
@@ -56,8 +55,8 @@ auto example_manifest(CompilerTestContext& context) -> Manifest {
 }
 
 TEST(Generator, LowersDynamicSoaIntoNativeOwnerAndViews) {
-    CompilerTestContext context;
-    auto const files{render_test_manifest(context, example_manifest(context))};
+    CompilerTestContext ctx;
+    auto const files{render_test_manifest(ctx, example_manifest(ctx))};
     ASSERT_EQ(files.size(), 2);
     auto const& header{files.front().content};
     auto const& source{files.back().content};
@@ -73,8 +72,8 @@ TEST(Generator, LowersDynamicSoaIntoNativeOwnerAndViews) {
 }
 
 TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
-    CompilerTestContext context;
-    auto manifest{parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto manifest{parse_test_manifest(ctx, R"(
         (module mask :header "Mask.h" :source "Mask.cpp"
           (struct FRows :field-mask-name FFieldMask :field-enum-name EField
             (member masks array FFieldMask)
@@ -82,7 +81,7 @@ TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
             (member matrix array std::int32_t :mask-field true :mask-dimensions ((row_index "2") (column_index "3")))
             (member last array std::int32_t :mask-field true))))")};
 
-    auto const header{render_test_manifest(context, manifest).front().content};
+    auto const header{render_test_manifest(ctx, manifest).front().content};
     expect_contains_all(
         header,
         {"enum class EField : std::uint8_t",
@@ -98,13 +97,13 @@ TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
 class DuplicateOutputPaths : public testing::TestWithParam<char const*> {};
 
 TEST_P(DuplicateOutputPaths, RejectsDuringLowering) {
-    CompilerTestContext context;
-    auto manifest{example_manifest(context)};
+    CompilerTestContext ctx;
+    auto manifest{example_manifest(ctx)};
     auto duplicate{parse_test_manifest(
-        context, std::format("(umbrella-module duplicate :header {} :headers ())", GetParam()))};
+        ctx, std::format("(umbrella-module duplicate :header {} :headers ())", GetParam()))};
     manifest.modules.push_back(duplicate.modules.front());
 
-    EXPECT_THROW(lower_test_manifest(context, manifest), std::invalid_argument);
+    EXPECT_THROW(lower_test_manifest(ctx, manifest), std::invalid_argument);
 }
 
 INSTANTIATE_TEST_SUITE_P(Generator,
@@ -112,10 +111,10 @@ INSTANTIATE_TEST_SUITE_P(Generator,
                          testing::Values("Generated.h", "generated.h"));
 
 TEST(Generator, RendersDeterministically) {
-    CompilerTestContext context;
-    auto const modules{lower_test_manifest(context, example_manifest(context))};
-    EXPECT_EQ(render_modules(context.ir, modules).front().content,
-              render_modules(context.ir, modules).front().content);
+    CompilerTestContext ctx;
+    auto const modules{lower_test_manifest(ctx, example_manifest(ctx))};
+    EXPECT_EQ(render_modules(ctx.ir, modules).front().content,
+              render_modules(ctx.ir, modules).front().content);
 }
 
 TEST(Generator, WritesAndChecksOutputRoots) {
@@ -266,51 +265,50 @@ TEST(Generator, MapsAbsoluteProjectPathsIntoASeparateOutputRoot) {
 }
 
 TEST(Generator, LowersFacadeWithPrivateBindingAndSourceDefinitions) {
-    CompilerTestContext context;
+    CompilerTestContext ctx;
     auto manifest{parse_test_manifest(
-        context,
+        ctx,
         R"(
         (module facade :header "Facade.h" :source "Facade.cpp" :header-include "Project/Facade.h"
           (facade FFacade @target target :validation ("check(target != nullptr);")
             :validation-dependencies (check) :bind-access private :friends (FOwner) :definitions-in-source true
             (method get int32 (parameter index int32)))))",
         {{"target",
-          context.storage.cpp_types.add(
-              "FTarget", {context.storage.cpp_types.dependency("FTarget", "Project/Target.h")})}})};
+          ctx.storage.cpp_types.add(
+              "FTarget", {ctx.storage.cpp_types.dependency("FTarget", "Project/Target.h")})}})};
 
-    manifest.types.add(
-        "check",
-        context.storage.cpp_types.add(
-            "check", {context.storage.cpp_types.dependency("check", "CoreMinimal.h")}));
+    manifest.types.add("check",
+                       ctx.storage.cpp_types.add(
+                           "check", {ctx.storage.cpp_types.dependency("check", "CoreMinimal.h")}));
 
-    auto const files{render_test_manifest(context, manifest)};
+    auto const files{render_test_manifest(ctx, manifest)};
     ASSERT_EQ(files.size(), 2);
     expect_contains_all(files[0].content, {"friend class FOwner;", "FTarget* target{nullptr};"});
     expect_contains_all(files[1].content,
                         {"void FFacade::bind(FTarget& new_target)", "return target->get(index);"});
 
-    auto& store{context.storage.declarations};
+    auto& store{ctx.storage.declarations};
     auto module{manifest.modules.front()};
     auto facade{store.items(store.normal_modules.declarations[module]).front()};
     store.facades.friend_kind[facade] = RecordKind::struct_;
     store.normal_modules.declarations[module] = store.range({facade});
     manifest.modules.front() = module;
-    auto const struct_files{render_test_manifest(context, manifest)};
+    auto const struct_files{render_test_manifest(ctx, manifest)};
     EXPECT_TRUE(struct_files[0].content.contains("friend struct FOwner;"));
 }
 
 TEST(Generator, LowersFacadeWithReferenceTarget) {
-    CompilerTestContext context;
+    CompilerTestContext ctx;
     auto manifest{parse_test_manifest(
-        context,
+        ctx,
         R"(
         (module facade :header "Facade.h"
           (facade FFacade @target target :target-storage reference (method get int32))))",
         {{"target",
-          context.storage.cpp_types.add(
-              "FTarget", {context.storage.cpp_types.dependency("FTarget", "Project/Target.h")})}})};
+          ctx.storage.cpp_types.add(
+              "FTarget", {ctx.storage.cpp_types.dependency("FTarget", "Project/Target.h")})}})};
 
-    auto const files{render_test_manifest(context, manifest)};
+    auto const files{render_test_manifest(ctx, manifest)};
     ASSERT_EQ(files.size(), 1);
     expect_contains_all(files[0].content,
                         {"FFacade(FTarget& new_target)",
@@ -321,40 +319,40 @@ TEST(Generator, LowersFacadeWithReferenceTarget) {
 }
 
 TEST(Generator, AppliesFacadePreludeSettings) {
-    CompilerTestContext context;
-    auto manifest{parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto manifest{parse_test_manifest(ctx, R"(
         (module facade :header "Facade.h" :prelude ("class FFacadeForward;")
           (facade FFacade FTarget target (method reset void))))")};
 
-    auto const files{render_test_manifest(context, manifest)};
+    auto const files{render_test_manifest(ctx, manifest)};
     ASSERT_EQ(files.size(), 1);
     EXPECT_TRUE(files[0].content.contains("class FFacadeForward;"));
 }
 
 TEST(Generator, AppliesUmbrellaPreludeSettings) {
-    CompilerTestContext context;
-    auto manifest{parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto manifest{parse_test_manifest(ctx, R"(
         (umbrella-module all :header "All.h" :prelude ("#define PROJECT_INCLUDED 1") :headers ("Project/First.h" "Project/Second.h")))")};
 
-    auto const files{render_test_manifest(context, manifest)};
+    auto const files{render_test_manifest(ctx, manifest)};
     ASSERT_EQ(files.size(), 1);
     expect_contains_all(files[0].content,
                         {"#define PROJECT_INCLUDED 1", "#include \"Project/First.h\""});
 }
 
 TEST(Generator, CommittedProductionFilesAreCurrent) {
-    CompilerTestContext context;
+    CompilerTestContext ctx;
     auto const project_root{
         std::filesystem::path{IOJ_CODEGEN_SOURCE_DIR}.parent_path().parent_path()};
     auto const project{
-        lispb::load_project(context.storage.syntax, project_root / "lispb/project.lispb")};
+        lispb::load_project(ctx.storage.syntax, project_root / "lispb/project.lispb")};
     auto const target{*project.find_target("sandbox-code")};
     std::vector<std::filesystem::path> sources;
     for (auto const& source : project.sources(target)) {
         sources.push_back(project.root / source);
     }
-    auto manifest{load_sources(context.storage, project.root / project.types(target), sources)};
-    auto const files{render_test_manifest(context, manifest)};
+    auto manifest{load_sources(ctx.storage, project.root / project.types(target), sources)};
+    auto const files{render_test_manifest(ctx, manifest)};
 
     EXPECT_EQ(generate_files(files, project.root, project.root, true), 0);
 }

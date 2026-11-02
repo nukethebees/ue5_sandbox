@@ -18,10 +18,10 @@ namespace ioj::s7 {
 template <>
 struct TypeReader<codegen_compile_fixture::ReaderDependency>
     : RecordReader<codegen_compile_fixture::ReaderDependency> {
-    static ReadResult<value_type> construct(DecodeContext context) {
+    static ReadResult<value_type> construct(DecodeContext ctx) {
         std::optional<decltype(value_type::child)> value_child{};
         decode_record<Field>(
-            context,
+            ctx,
             "dependent",
             field_names,
             [&value_child](Field const field, auto const& read) {
@@ -32,8 +32,8 @@ struct TypeReader<codegen_compile_fixture::ReaderDependency>
                 }
             },
             required);
-        if (!context.errors.empty()) {
-            return std::unexpected{std::move(context.errors)};
+        if (!ctx.errors.empty()) {
+            return std::unexpected{std::move(ctx.errors)};
         }
 
         value_type result{.child = std::move(*value_child)};
@@ -41,9 +41,9 @@ struct TypeReader<codegen_compile_fixture::ReaderDependency>
         return result;
     }
 
-    static void decode(DecodeContext context, value_type& result) {
+    static void decode(DecodeContext ctx, value_type& result) {
         decode_record<Field>(
-            context,
+            ctx,
             "dependent",
             field_names,
             [&result](Field const field, auto const& read) {

@@ -89,23 +89,23 @@ inline auto test_items(Declarations const& declarations, SchemaRange<Id> const r
     }
 }
 
-auto make_test_type_ref(CompilerTestContext& context, std::string_view spelling) -> TypeRefId;
+auto make_test_type_ref(CompilerTestContext& ctx, std::string_view spelling) -> TypeRefId;
 
-auto make_test_registry(CompilerTestContext& context,
+auto make_test_registry(CompilerTestContext& ctx,
                         std::vector<std::pair<std::string_view, CppTypeId>> const& entries = {})
     -> TypeRegistry;
 
-auto lower_test_manifest(CompilerTestContext& context, Manifest manifest) -> std::vector<ModuleId>;
+auto lower_test_manifest(CompilerTestContext& ctx, Manifest manifest) -> std::vector<ModuleId>;
 
 auto parse_test_manifest(
-    CompilerTestContext& context,
+    CompilerTestContext& ctx,
     std::string_view source,
     std::vector<std::pair<std::string_view, CppTypeId>> const& registrations = {}) -> Manifest;
 
 auto find_test_type(schema::TypeGraph const& graph, std::string_view module, std::string_view name)
     -> std::optional<schema::TypeId>;
 
-auto render_test_manifest(CompilerTestContext& context, Manifest manifest)
+auto render_test_manifest(CompilerTestContext& ctx, Manifest manifest)
     -> std::vector<GeneratedFile>;
 
 auto collected_dependencies(CppIR const& ir, NodeId node) -> std::vector<TypeDependencyId>;

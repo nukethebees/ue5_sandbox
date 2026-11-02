@@ -49,22 +49,22 @@ auto composite(schema::TypeDefinitionKind kind) -> bool {
            kind == schema::TypeDefinitionKind::union_type;
 }
 
-auto value_type(LoweringContext& context, schema::TypeId type, std::uint32_t bits) -> CppTypeId {
-    auto& types{context.ir.types};
-    auto const& graph{context.semantic};
+auto value_type(LoweringContext& ctx, schema::TypeId type, std::uint32_t bits) -> CppTypeId {
+    auto& types{ctx.ir.types};
+    auto const& graph{ctx.semantic};
     auto const definition{graph.definition(type)};
     auto const kind{definition.kind()};
     auto const& definitions{graph.definitions()};
     if (composite(kind) && schema::is_packed_projection(graph, type)) {
-        return types.named(context.text(graph.cpp_spelling(type)), NameOrigin::global);
+        return types.named(ctx.text(graph.cpp_spelling(type)), NameOrigin::global);
     }
     if (kind == schema::TypeDefinitionKind::enumeration) {
         auto const declaration{graph.source_declaration(type)};
-        if (context.declarations.enums.cpp_projection[declaration]) {
-            return types.named(context.text(graph.cpp_spelling(type)), NameOrigin::global);
+        if (ctx.declarations.enums.cpp_projection[declaration]) {
+            return types.named(ctx.text(graph.cpp_spelling(type)), NameOrigin::global);
         }
     }
-    if (context.text(graph.cpp_spelling(type)) == "bool") {
+    if (ctx.text(graph.cpp_spelling(type)) == "bool") {
         return types.std.bool_;
     }
     if (auto const domain{schema::integer_domain(graph, type)}) {
@@ -74,7 +74,7 @@ auto value_type(LoweringContext& context, schema::TypeId type, std::uint32_t bit
     if (kind == schema::TypeDefinitionKind::fixed_point) {
         return types.std.integer(bits, definitions.fixed_points.signedness[definition] != 0);
     }
-    if (packed_signed_width(context.text(graph.cpp_spelling(type)))) {
+    if (packed_signed_width(ctx.text(graph.cpp_spelling(type)))) {
         return types.std.integer(bits, true);
     }
     return types.std.integer(bits);
@@ -89,8 +89,8 @@ auto consecutive(PackedIntegerValue left, PackedIntegerValue right) -> bool {
            right.magnitude == left.magnitude + 1;
 }
 
-auto accessor_name(LoweringContext& context, schema::BitPlacement const& placement) -> std::string {
-    switch (context.semantic.definition(placement.type).kind()) {
+auto accessor_name(LoweringContext& ctx, schema::BitPlacement const& placement) -> std::string {
+    switch (ctx.semantic.definition(placement.type).kind()) {
         case schema::TypeDefinitionKind::fixed_point:
             return placement.path + "_raw";
         case schema::TypeDefinitionKind::linear_quantized:
@@ -103,29 +103,29 @@ auto accessor_name(LoweringContext& context, schema::BitPlacement const& placeme
     }
 }
 
-void append_dependencies(LoweringContext& context,
+void append_dependencies(LoweringContext& ctx,
                          schema::ChildOccurrenceId child,
                          std::vector<TypeDependencyId>& dependencies) {
-    auto const& children{context.semantic.definitions().children};
+    auto const& children{ctx.semantic.definitions().children};
     auto const occurrence{children.semantic_type[child]};
-    auto const& occurrences{context.semantic.occurrences()};
+    auto const& occurrences{ctx.semantic.occurrences()};
     auto const type{occurrences.cpp_type[occurrence]};
     if (type.value == 0) {
         return;
     }
-    auto const required{context.ir.types.dependencies(type)};
+    auto const required{ctx.ir.types.dependencies(type)};
     dependencies.insert(dependencies.end(), required.begin(), required.end());
 }
 
 class PackedEmitter {
   public:
-    PackedEmitter(LoweringContext& context, schema::TypeId type)
-        : context_{context}
-        , ir_{context.ir}
-        , graph_{context.semantic}
+    PackedEmitter(LoweringContext& ctx, schema::TypeId type)
+        : context_{ctx}
+        , ir_{ctx.ir}
+        , graph_{ctx.semantic}
         , type_{type}
         , layout_{graph_.bit_layout(type)}
-        , name_{context.text(graph_.name(type))}
+        , name_{ctx.text(graph_.name(type))}
         , scalar_{!composite(graph_.definition(type).kind())} {
         if (scalar_) {
             layout_.placements.push_back({.type = type_,
@@ -1405,9 +1405,9 @@ class PackedEmitter {
 
 } // namespace
 
-auto lower_packed_value(LoweringContext& context, DeclarationHandle, schema::TypeId type)
+auto lower_packed_value(LoweringContext& ctx, DeclarationHandle, schema::TypeId type)
     -> DeclarationEmission {
-    return {.header = PackedEmitter{context, type}.emit()};
+    return {.header = PackedEmitter{ctx, type}.emit()};
 }
 
 } // namespace lispb::codegen::detail

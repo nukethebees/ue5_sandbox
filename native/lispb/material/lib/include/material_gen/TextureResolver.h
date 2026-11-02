@@ -5,7 +5,7 @@
 namespace material_synth {
 
 struct TextureResolver {
-    void const* context{};
+    void const* ctx{};
     TextureResolveFunction resolve{};
 };
 

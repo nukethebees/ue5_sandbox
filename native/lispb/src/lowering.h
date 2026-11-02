@@ -24,22 +24,21 @@
 
 namespace lispb::codegen::detail {
 
-auto assemble_module(LoweringContext& context,
+auto assemble_module(LoweringContext& ctx,
                      ModuleSettingsId settings,
                      std::span<DeclarationEmission> emissions) -> std::vector<ModuleId>;
-auto lower_record(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission;
-auto lower_union(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission;
-auto lower_static_table(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission;
-auto lower_packed_value(LoweringContext& context,
+auto lower_record(LoweringContext& ctx, DeclarationHandle schema) -> DeclarationEmission;
+auto lower_union(LoweringContext& ctx, DeclarationHandle schema) -> DeclarationEmission;
+auto lower_static_table(LoweringContext& ctx, DeclarationHandle schema) -> DeclarationEmission;
+auto lower_packed_value(LoweringContext& ctx,
                         DeclarationHandle schema,
                         schema::TypeId semantic_type) -> DeclarationEmission;
-auto lower_enum(LoweringContext& context,
+auto lower_enum(LoweringContext& ctx,
                 DeclarationHandle schema,
                 ModuleSettingsId settings,
                 std::optional<StringId> helper_namespace) -> DeclarationEmission;
-auto lower_soa_declaration(LoweringContext& context, DeclarationHandle schema)
-    -> DeclarationEmission;
-auto lower_facade(LoweringContext& context, DeclarationHandle facade) -> DeclarationEmission;
-auto lower_settings_module(LoweringContext& context, ModuleHandle module) -> std::vector<ModuleId>;
+auto lower_soa_declaration(LoweringContext& ctx, DeclarationHandle schema) -> DeclarationEmission;
+auto lower_facade(LoweringContext& ctx, DeclarationHandle facade) -> DeclarationEmission;
+auto lower_settings_module(LoweringContext& ctx, ModuleHandle module) -> std::vector<ModuleId>;
 
 } // namespace lispb::codegen::detail

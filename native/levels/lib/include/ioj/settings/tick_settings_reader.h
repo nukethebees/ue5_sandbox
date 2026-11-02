@@ -14,12 +14,11 @@
 namespace ioj::s7 {
 template <>
 struct TypeReader<settings::TickSettings> : RecordReader<settings::TickSettings> {
-    static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field>(
-            context, "tick", field_names, [&result](Field selected, auto const& read) {
-                value_type::visit_field(
-                    result, selected, [&read]<Field field>(auto& member) { read(member); });
-            });
+    static void decode(DecodeContext ctx, value_type& result) {
+        decode_record<Field>(ctx, "tick", field_names, [&result](Field selected, auto const& read) {
+            value_type::visit_field(
+                result, selected, [&read]<Field field>(auto& member) { read(member); });
+        });
     }
 
   private:

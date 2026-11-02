@@ -177,16 +177,16 @@ auto declaration_emission_order(Declarations const& store,
     return order;
 }
 
-auto lower_s7_constructors(detail::LoweringContext& context) -> detail::DeclarationEmission {
-    auto& ir{context.ir};
-    auto const& records{context.declarations.records};
+auto lower_s7_constructors(detail::LoweringContext& ctx) -> detail::DeclarationEmission {
+    auto& ir{ctx.ir};
+    auto const& records{ctx.declarations.records};
     std::map<std::string, bool> tags;
     auto const count{records.s7_tag.size()};
     for (std::size_t row{}; row < count; ++row) {
         if (!records.s7_tag[row]) {
             continue;
         }
-        auto const tag{context.text(*records.s7_tag[row])};
+        auto const tag{ctx.text(*records.s7_tag[row])};
         if (tag.empty() ||
             tag.find_first_not_of(
                 "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_?!") !=
@@ -219,35 +219,35 @@ auto lower_s7_constructors(detail::LoweringContext& context) -> detail::Declarat
     return {.header = decls.build(), .source_dependencies = false};
 }
 
-auto lower_umbrella(detail::LoweringContext& context, ModuleHandle module) -> ModuleId {
-    auto const settings{context.declarations.umbrella_modules
-                            .settings[context.declarations.umbrella_modules.index(module)]};
-    NodeListBuilder nodes{context.ir};
-    for (auto const header : context.declarations.items(
-             context.declarations.umbrella_modules
-                 .headers[context.declarations.umbrella_modules.index(module)])) {
-        nodes.add(context.ir.include(header, IncludeStyle::quoted));
+auto lower_umbrella(detail::LoweringContext& ctx, ModuleHandle module) -> ModuleId {
+    auto const settings{ctx.declarations.umbrella_modules
+                            .settings[ctx.declarations.umbrella_modules.index(module)]};
+    NodeListBuilder nodes{ctx.ir};
+    for (auto const header :
+         ctx.declarations.items(ctx.declarations.umbrella_modules
+                                    .headers[ctx.declarations.umbrella_modules.index(module)])) {
+        nodes.add(ctx.ir.include(header, IncludeStyle::quoted));
     }
-    if (!context.declarations.module_settings_store
-             .prelude_lines[context.declarations.module_settings_store.index(settings)]
+    if (!ctx.declarations.module_settings_store
+             .prelude_lines[ctx.declarations.module_settings_store.index(settings)]
              .empty()) {
         std::string prelude;
-        for (auto const line : context.declarations.items(
-                 context.declarations.module_settings_store
-                     .prelude_lines[context.declarations.module_settings_store.index(settings)])) {
+        for (auto const line : ctx.declarations.items(
+                 ctx.declarations.module_settings_store
+                     .prelude_lines[ctx.declarations.module_settings_store.index(settings)])) {
             if (!prelude.empty()) {
                 prelude += '\n';
             }
-            prelude += context.declarations.strings().view(line);
+            prelude += ctx.declarations.strings().view(line);
         }
-        nodes.new_lines(2).add(context.ir.raw(prelude));
+        nodes.new_lines(2).add(ctx.ir.raw(prelude));
     }
-    auto& ir{context.ir};
-    auto const& settings_store{context.declarations.module_settings_store};
+    auto& ir{ctx.ir};
+    auto const& settings_store{ctx.declarations.module_settings_store};
     auto const row{settings_store.index(settings)};
     auto const file{ir.files.append(settings_store.header[row], nodes.build())};
     ir.files.flags[ir.files.index(file)].set_clang_format_off(true);
-    ir.files.set_include_order(file, context.declarations.items(settings_store.include_order[row]));
+    ir.files.set_include_order(file, ctx.declarations.items(settings_store.include_order[row]));
     return ir.modules.append(settings_store.name[row], file);
 }
 
@@ -259,7 +259,7 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
     auto& store{manifest.declarations};
     std::vector<ModuleId> result;
     for (auto const module_id : manifest.modules) {
-        detail::LoweringContext context{ir, store, manifest.types, graph, module_id};
+        detail::LoweringContext ctx{ir, store, manifest.types, graph, module_id};
         [&]() {
             auto const module{module_id};
             switch (module.kind()) {
@@ -283,7 +283,7 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                         return {};
                                     }
                                     return detail::lower_packed_value(
-                                        context,
+                                        ctx,
                                         value,
                                         *graph.find_declared(module_id,
                                                              store.integer_scalars.name[value]));
@@ -294,12 +294,12 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                     }
                                     if (store.records.layout[value] == LayoutKind::packed) {
                                         return detail::lower_packed_value(
-                                            context,
+                                            ctx,
                                             value,
                                             *graph.find_declared(module_id,
                                                                  store.records.name[value]));
                                     }
-                                    return detail::lower_record(context, value);
+                                    return detail::lower_record(ctx, value);
                                 }
                                 case DeclarationKind::union_type: {
                                     if (!store.unions.cpp_projection[value]) {
@@ -307,24 +307,24 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                     }
                                     if (store.unions.layout[value] == LayoutKind::packed) {
                                         return detail::lower_packed_value(
-                                            context,
+                                            ctx,
                                             value,
                                             *graph.find_declared(module_id,
                                                                  store.unions.name[value]));
                                     }
-                                    return detail::lower_union(context, value);
+                                    return detail::lower_union(ctx, value);
                                 }
                                 case lispb::codegen::DeclarationKind::static_table: {
 
-                                    return detail::lower_static_table(context, value);
+                                    return detail::lower_static_table(ctx, value);
                                 }
                                 case lispb::codegen::DeclarationKind::soa: {
 
-                                    return detail::lower_soa_declaration(context, value);
+                                    return detail::lower_soa_declaration(ctx, value);
                                 }
                                 case lispb::codegen::DeclarationKind::facade: {
 
-                                    return detail::lower_facade(context, value);
+                                    return detail::lower_facade(ctx, value);
                                 }
                                 case lispb::codegen::DeclarationKind::enumeration: {
                                     if (!store.enums.cpp_projection[value] &&
@@ -332,7 +332,7 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                         return {};
                                     }
                                     return detail::lower_enum(
-                                        context,
+                                        ctx,
                                         value,
                                         settings,
                                         store.normal_modules
@@ -347,7 +347,7 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                 case DeclarationKind::fixed_point:
                                     return store.fixed_points.cpp_projection[value]
                                              ? detail::lower_packed_value(
-                                                   context,
+                                                   ctx,
                                                    value,
                                                    *graph.find_declared(
                                                        module_id, store.fixed_points.name[value]))
@@ -355,7 +355,7 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                 case DeclarationKind::linear_quantized:
                                     return store.linear_quantizeds.cpp_projection[value]
                                              ? detail::lower_packed_value(
-                                                   context,
+                                                   ctx,
                                                    value,
                                                    *graph.find_declared(
                                                        module_id,
@@ -364,7 +364,7 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                 case DeclarationKind::mini_float:
                                     return store.mini_floats.cpp_projection[value]
                                              ? detail::lower_packed_value(
-                                                   context,
+                                                   ctx,
                                                    value,
                                                    *graph.find_declared(
                                                        module_id, store.mini_floats.name[value]))
@@ -372,7 +372,7 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                 case DeclarationKind::optional_presence_bit:
                                     return store.optional_presence_bits.cpp_projection[value]
                                              ? detail::lower_packed_value(
-                                                   context,
+                                                   ctx,
                                                    value,
                                                    *graph.find_declared(
                                                        module_id,
@@ -381,7 +381,7 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                                 case DeclarationKind::optional_sentinel:
                                     return store.optional_sentinels.cpp_projection[value]
                                              ? detail::lower_packed_value(
-                                                   context,
+                                                   ctx,
                                                    value,
                                                    *graph.find_declared(
                                                        module_id,
@@ -395,9 +395,9 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                         }());
                     }
                     if (store.normal_modules.s7_constructors[store.normal_modules.index(module)]) {
-                        emissions.push_back(lower_s7_constructors(context));
+                        emissions.push_back(lower_s7_constructors(ctx));
                     }
-                    auto lowered{detail::assemble_module(context, settings, emissions)};
+                    auto lowered{detail::assemble_module(ctx, settings, emissions)};
                     result.insert(result.end(),
                                   std::make_move_iterator(lowered.begin()),
                                   std::make_move_iterator(lowered.end()));
@@ -405,7 +405,7 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                 }
                 case lispb::codegen::ModuleKind::settings: {
 
-                    auto lowered{detail::lower_settings_module(context, module)};
+                    auto lowered{detail::lower_settings_module(ctx, module)};
                     result.insert(result.end(),
                                   std::make_move_iterator(lowered.begin()),
                                   std::make_move_iterator(lowered.end()));
@@ -413,7 +413,7 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                 }
                 case lispb::codegen::ModuleKind::umbrella: {
 
-                    result.push_back(lower_umbrella(context, module));
+                    result.push_back(lower_umbrella(ctx, module));
                     break;
                 }
                 default:

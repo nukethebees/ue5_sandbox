@@ -9,12 +9,12 @@ namespace lispb::codegen::detail {
 
 struct LoweringContext;
 
-auto schema_namespace(LoweringContext& context, DeclarationHandle schema) -> std::string;
-auto is_strided_schema(LoweringContext& context, DeclarationHandle schema) -> bool;
+auto schema_namespace(LoweringContext& ctx, DeclarationHandle schema) -> std::string;
+auto is_strided_schema(LoweringContext& ctx, DeclarationHandle schema) -> bool;
 
-auto build_single_allocation_model(LoweringContext& context, DeclarationHandle schema)
+auto build_single_allocation_model(LoweringContext& ctx, DeclarationHandle schema)
     -> SingleAllocationModelId;
 
-auto column_for(LoweringContext& context, SingleAllocationModelId model, LoweringPathId path)
+auto column_for(LoweringContext& ctx, SingleAllocationModelId model, LoweringPathId path)
     -> SingleAllocationColumnId;
 } // namespace lispb::codegen::detail

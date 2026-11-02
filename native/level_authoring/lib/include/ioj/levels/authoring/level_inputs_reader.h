@@ -19,9 +19,9 @@
 namespace ioj::s7 {
 template <>
 struct TypeReader<levels::authoring::EntityInput> : RecordReader<levels::authoring::EntityInput> {
-    static void decode(DecodeContext context, value_type& result) {
+    static void decode(DecodeContext ctx, value_type& result) {
         decode_record<Field>(
-            context,
+            ctx,
             "entity",
             field_names,
             [&result](Field selected, auto const& read) {
@@ -61,9 +61,9 @@ struct TypeReader<levels::authoring::EntityInput> : RecordReader<levels::authori
 template <>
 struct TypeReader<levels::authoring::ObjectiveInput>
     : RecordReader<levels::authoring::ObjectiveInput> {
-    static void decode(DecodeContext context, value_type& result) {
+    static void decode(DecodeContext ctx, value_type& result) {
         decode_record<Field>(
-            context,
+            ctx,
             "objective",
             field_names,
             [&result](Field const field, auto const& read) {
@@ -121,9 +121,9 @@ struct TypeReader<levels::authoring::ObjectiveInput>
 
 template <>
 struct TypeReader<levels::authoring::MissionInput> : RecordReader<levels::authoring::MissionInput> {
-    static void decode(DecodeContext context, value_type& result) {
+    static void decode(DecodeContext ctx, value_type& result) {
         decode_record<Field>(
-            context,
+            ctx,
             "mission",
             field_names,
             [&result](Field const field, auto const& read) {
@@ -147,9 +147,9 @@ struct TypeReader<levels::authoring::MissionInput> : RecordReader<levels::author
 
 template <>
 struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authoring::LevelInput> {
-    static void decode(DecodeContext context, value_type& result) {
+    static void decode(DecodeContext ctx, value_type& result) {
         decode_record<Field>(
-            context,
+            ctx,
             "level",
             field_names,
             [&result](Field const field, auto const& read) {
@@ -220,9 +220,9 @@ struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authorin
 template <>
 struct TypeReader<levels::authoring::IncludedLevelInput>
     : RecordReader<levels::authoring::IncludedLevelInput> {
-    static void decode(DecodeContext context, value_type& result) {
+    static void decode(DecodeContext ctx, value_type& result) {
         decode_record<Field>(
-            context,
+            ctx,
             "included-definition",
             field_names,
             [&result](Field const field, auto const& read) {
@@ -255,9 +255,9 @@ struct TypeReader<levels::authoring::IncludedLevelInput>
 template <>
 struct TypeReader<levels::authoring::IncludedCampaignInput>
     : RecordReader<levels::authoring::IncludedCampaignInput> {
-    static void decode(DecodeContext context, value_type& result) {
+    static void decode(DecodeContext ctx, value_type& result) {
         decode_record<Field>(
-            context,
+            ctx,
             "included-definition",
             field_names,
             [&result](Field const field, auto const& read) {
@@ -289,9 +289,9 @@ struct TypeReader<levels::authoring::IncludedCampaignInput>
 
 template <>
 struct TypeReader<levels::authoring::CatalogInput> : RecordReader<levels::authoring::CatalogInput> {
-    static void decode(DecodeContext context, value_type& result) {
+    static void decode(DecodeContext ctx, value_type& result) {
         decode_record<Field>(
-            context, "catalog", field_names, [&result](Field const field, auto const& read) {
+            ctx, "catalog", field_names, [&result](Field const field, auto const& read) {
                 switch (field) {
                     case Field::levels:
                         read(result.levels);

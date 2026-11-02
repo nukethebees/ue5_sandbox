@@ -14,9 +14,9 @@
 namespace ioj::s7 {
 template <>
 struct TypeReader<sim::OverlapResponseConfig> : RecordReader<sim::OverlapResponseConfig> {
-    static void decode(DecodeContext context, value_type& result) {
+    static void decode(DecodeContext ctx, value_type& result) {
         decode_record<Field>(
-            context, "collision-grid", field_names, [&result](Field selected, auto const& read) {
+            ctx, "collision-grid", field_names, [&result](Field selected, auto const& read) {
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::damage_per_overlap_detection) {
                         read(member);

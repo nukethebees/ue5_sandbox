@@ -32,18 +32,18 @@ auto static_array_type(CppIR& ir, CppTypeId element_type) -> CppTypeId {
         {element_type, ir.types.named("num_rows")});
 }
 
-auto group_getter(LoweringContext& context, StaticTableGroupId group) -> NodeId {
-    auto& ir{context.ir};
-    auto const& groups{context.declarations.static_table_groups};
+auto group_getter(LoweringContext& ctx, StaticTableGroupId group) -> NodeId {
+    auto& ir{ctx.ir};
+    auto const& groups{ctx.declarations.static_table_groups};
     auto const row{groups.index(group)};
-    auto const result_type{context.resolve(groups.type[row])};
+    auto const result_type{ctx.resolve(groups.type[row])};
     std::vector<Expr> arguments;
     arguments.reserve(groups.columns[row].size());
-    for (auto const column : context.declarations.items(groups.columns[row])) {
+    for (auto const column : ctx.declarations.items(groups.columns[row])) {
         arguments.push_back(ir.subscript(ir.named(column), ir.named("index")));
     }
 
-    auto const created_function{ir.function("get_" + context.text(groups.name[row]), "auto")};
+    auto const created_function{ir.function("get_" + ctx.text(groups.name[row]), "auto")};
     ir.set_function_parameters(
         created_function,
         {ir.parameter(
@@ -57,15 +57,15 @@ auto group_getter(LoweringContext& context, StaticTableGroupId group) -> NodeId 
     return ir.header_function(created_function);
 }
 
-auto table_node(LoweringContext& context, DeclarationHandle table) -> NodeId {
-    auto& ir{context.ir};
-    auto const& tables{context.declarations.static_tables};
-    auto const& column_schemas{context.declarations.static_table_columns};
-    auto const& row_schemas{context.declarations.static_table_rows};
+auto table_node(LoweringContext& ctx, DeclarationHandle table) -> NodeId {
+    auto& ir{ctx.ir};
+    auto const& tables{ctx.declarations.static_tables};
+    auto const& column_schemas{ctx.declarations.static_table_columns};
+    auto const& row_schemas{ctx.declarations.static_table_rows};
     auto const table_row{tables.index(table)};
-    auto const rows{context.declarations.items(tables.rows[table_row])};
+    auto const rows{ctx.declarations.items(tables.rows[table_row])};
     auto const row_count{rows.size()};
-    auto const columns{context.declarations.items(tables.columns[table_row])};
+    auto const columns{ctx.declarations.items(tables.columns[table_row])};
     auto const int32_type{
         ir.types.intern("int32", {ir.types.dependency("int32", "CoreMinimal.h")})};
     NodeListBuilder children{ir};
@@ -75,7 +75,7 @@ auto table_node(LoweringContext& context, DeclarationHandle table) -> NodeId {
                  2);
 
     for (std::size_t index{0}; index < row_count; ++index) {
-        auto const name{context.text(row_schemas.name[row_schemas.index(rows[index])])};
+        auto const name{ctx.text(row_schemas.name[row_schemas.index(rows[index])])};
         children.add(ir.constexpr_member(int32_type,
                                          ir.strings.intern(name + "_index"),
                                          ir.literal(std::to_string(index))),
@@ -96,22 +96,22 @@ auto table_node(LoweringContext& context, DeclarationHandle table) -> NodeId {
     std::vector<std::string> column_names;
     column_names.reserve(columns.size());
     for (auto const column : columns) {
-        column_names.push_back(context.text(column_schemas.name[column_schemas.index(column)]));
+        column_names.push_back(ctx.text(column_schemas.name[column_schemas.index(column)]));
     }
     children.add(column_apply_arrays_function(ir, column_names), 2)
         .add(column_apply_array_pairs_function(ir, column_names), 2);
 
-    for (auto const group : context.declarations.items(tables.groups[table_row])) {
-        children.add(group_getter(context, group), 2);
+    for (auto const group : ctx.declarations.items(tables.groups[table_row])) {
+        children.add(group_getter(ctx, group), 2);
     }
 
     for (auto const column : columns) {
         auto const column_row{column_schemas.index(column)};
-        children.add(ir.instance_member(
-                         static_array_type(ir, context.resolve(column_schemas.type[column_row])),
-                         column_schemas.name[column_row],
-                         ir.init_list({})),
-                     1);
+        children.add(
+            ir.instance_member(static_array_type(ir, ctx.resolve(column_schemas.type[column_row])),
+                               column_schemas.name[column_row],
+                               ir.init_list({})),
+            1);
     }
 
     auto const created_record{
@@ -122,8 +122,8 @@ auto table_node(LoweringContext& context, DeclarationHandle table) -> NodeId {
 
 } // namespace
 
-auto lower_static_table(LoweringContext& context, DeclarationHandle schema) -> DeclarationEmission {
-    return {.header = {table_node(context, schema)}};
+auto lower_static_table(LoweringContext& ctx, DeclarationHandle schema) -> DeclarationEmission {
+    return {.header = {table_node(ctx, schema)}};
 }
 
 } // namespace lispb::codegen::detail

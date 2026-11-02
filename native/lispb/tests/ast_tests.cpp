@@ -648,8 +648,8 @@ class NamespaceRendering : public testing::TestWithParam<NamespaceCase> {};
 TEST_P(NamespaceRendering, ShortensOnlyVisibleNamespaceComponents) {
     auto const& test{GetParam()};
     for (auto const nested : {false, true}) {
-        CompilerTestContext context;
-        auto& ir{context.ir};
+        CompilerTestContext ctx;
+        auto& ir{ctx.ir};
         auto& types{ir.types};
         NodeListBuilder members{ir};
         for (auto const name : test.hidden) {

@@ -105,8 +105,8 @@ auto production_graph(CompilerStorage& storage) -> TypeGraph {
 }
 
 TEST(SemanticTypeGraph, ResolvesProductionProject) {
-    lispb::codegen::CompilerTestContext context;
-    auto const graph{production_graph(context.storage)};
+    lispb::codegen::CompilerTestContext ctx;
+    auto const graph{production_graph(ctx.storage)};
     ASSERT_FALSE(std::ranges::empty(graph.types()));
     for (auto const type : graph.types()) {
         if (graph.origin(type) == TypeOrigin::declaration) {
@@ -116,17 +116,17 @@ TEST(SemanticTypeGraph, ResolvesProductionProject) {
 }
 
 TEST(SemanticTypeGraph, PreservesExplicitEnumSemanticWidth) {
-    lispb::codegen::CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
+    lispb::codegen::CompilerTestContext ctx;
+    auto& declarations{ctx.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto& module_settings_store{declarations.module_settings_store};
     auto& enums_schemas{declarations.enums};
     auto& enumerators_schemas{declarations.enumerators};
-    auto& strings{context.storage.strings};
-    [[maybe_unused]] auto& storage{context.storage};
+    auto& strings{ctx.storage.strings};
+    [[maybe_unused]] auto& storage{ctx.storage};
     lispb::codegen::Manifest manifest{
         lispb::codegen::manifest_schema_version,
-        lispb::codegen::make_test_registry(context),
+        lispb::codegen::make_test_registry(ctx),
         declarations,
         {append_test_row(normal_modules, [&](auto const new_normal_modules) {
             normal_modules.settings[new_normal_modules] =
@@ -142,7 +142,7 @@ TEST(SemanticTypeGraph, PreservesExplicitEnumSemanticWidth) {
                         enums_schemas.cpp_projection[new_enums] = lispb::codegen::CppProjection{};
                         enums_schemas.name[new_enums] = strings.intern("State");
                         enums_schemas.underlying_type[new_enums] =
-                            lispb::codegen::make_test_type_ref(context, "std::uint8_t");
+                            lispb::codegen::make_test_type_ref(ctx, "std::uint8_t");
                         enums_schemas
                             .values[new_enums] = declarations.range<lispb::codegen::EnumeratorId>(
                             {append_test_row(enumerators_schemas,
@@ -186,11 +186,11 @@ TEST(SemanticTypeGraph, FindsContiguousEnumValidationRangesWithoutChangingCodes)
     auto const check = [](std::string_view body,
                           std::optional<ioj::MinMax<std::uint64_t>> expected) {
         SCOPED_TRACE(body);
-        lispb::codegen::CompilerTestContext context;
+        lispb::codegen::CompilerTestContext ctx;
         auto const source{std::string{"(module values :header \"Values.h\" (enum State "} +
                           std::string{body} + "))"};
-        auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
-        auto const& declarations{context.storage.declarations};
+        auto const manifest{lispb::codegen::parse_test_manifest(ctx, source)};
+        auto const& declarations{ctx.storage.declarations};
         auto const enumeration{
             declarations.items(declarations.normal_modules.declarations[manifest.modules.front()])
                 .front()};
@@ -221,17 +221,17 @@ TEST(SemanticTypeGraph, FindsContiguousEnumValidationRangesWithoutChangingCodes)
 }
 
 TEST(SemanticTypeGraph, KeepsDerivedEnumBackingOutOfSemanticDependencies) {
-    lispb::codegen::CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
+    lispb::codegen::CompilerTestContext ctx;
+    auto& declarations{ctx.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto& module_settings_store{declarations.module_settings_store};
     auto& enums_schemas{declarations.enums};
     auto& enumerators{declarations.enumerators};
-    auto& strings{context.storage.strings};
-    [[maybe_unused]] auto& storage{context.storage};
+    auto& strings{ctx.storage.strings};
+    [[maybe_unused]] auto& storage{ctx.storage};
     lispb::codegen::Manifest manifest{
         lispb::codegen::manifest_schema_version,
-        lispb::codegen::make_test_registry(context),
+        lispb::codegen::make_test_registry(ctx),
         declarations,
         {append_test_row(normal_modules, [&](auto const new_normal_modules) {
             normal_modules.settings[new_normal_modules] =
@@ -276,19 +276,19 @@ TEST(SemanticTypeGraph, KeepsDerivedEnumBackingOutOfSemanticDependencies) {
 }
 
 TEST(SemanticTypeGraph, ResolvesStandaloneIntegerScalarWithoutPhysicalFacts) {
-    lispb::codegen::CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
+    lispb::codegen::CompilerTestContext ctx;
+    auto& declarations{ctx.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto& module_settings_store{declarations.module_settings_store};
     auto& integer_scalars{declarations.integer_scalars};
     auto& packed_named_codes{declarations.packed_named_codes};
     auto& semantic_relations{declarations.semantic_relations};
 
-    auto& strings{context.storage.strings};
-    [[maybe_unused]] auto& storage{context.storage};
+    auto& strings{ctx.storage.strings};
+    [[maybe_unused]] auto& storage{ctx.storage};
     lispb::codegen::Manifest manifest{
         lispb::codegen::manifest_schema_version,
-        lispb::codegen::make_test_registry(context),
+        lispb::codegen::make_test_registry(ctx),
         declarations,
         {append_test_row(normal_modules, [&](auto const new_normal_modules) {
             normal_modules.settings[new_normal_modules] =
@@ -340,7 +340,7 @@ TEST(SemanticTypeGraph, ResolvesStandaloneIntegerScalarWithoutPhysicalFacts) {
                                      semantic_relations.kind[new_semantic_relations] =
                                          lispb::codegen::SemanticRelationKind::offset_into;
                                      semantic_relations.target[new_semantic_relations] =
-                                         lispb::codegen::make_test_type_ref(context,
+                                         lispb::codegen::make_test_type_ref(ctx,
                                                                             "project::EntityTable");
                                      semantic_relations.unit[new_semantic_relations] =
                                          lispb::codegen::SemanticRelationUnit::bytes;
@@ -351,11 +351,11 @@ TEST(SemanticTypeGraph, ResolvesStandaloneIntegerScalarWithoutPhysicalFacts) {
                          integer_scalars.signedness[new_integer_scalars] = false;
                          integer_scalars.minimum_value[new_integer_scalars] = 0;
                          integer_scalars.maximum_value[new_integer_scalars] = 1'023;
-                         context.storage.declarations.integer_scalars
-                             .bit_width[context.storage.declarations.integer_scalars.index(
+                         ctx.storage.declarations.integer_scalars
+                             .bit_width[ctx.storage.declarations.integer_scalars.index(
                                  new_integer_scalars)] = 10;
-                         context.storage.declarations.integer_scalars
-                             .named_codes[context.storage.declarations.integer_scalars.index(
+                         ctx.storage.declarations.integer_scalars
+                             .named_codes[ctx.storage.declarations.integer_scalars.index(
                                  new_integer_scalars)] = {};
                      })});
         })}};
@@ -399,8 +399,8 @@ TEST(SemanticTypeGraph, ResolvesStandaloneIntegerScalarWithoutPhysicalFacts) {
 }
 
 TEST(SemanticTypeGraph, RejectsIntegerScalarRelationshipToExternalLeaf) {
-    lispb::codegen::CompilerTestContext context;
-    [[maybe_unused]] auto& storage{context.storage};
+    lispb::codegen::CompilerTestContext ctx;
+    [[maybe_unused]] auto& storage{ctx.storage};
     auto& modules{storage.declarations.normal_modules};
     auto& modules_settings{storage.declarations.module_settings_store};
     auto& integer_scalars{storage.declarations.integer_scalars};
@@ -408,7 +408,7 @@ TEST(SemanticTypeGraph, RejectsIntegerScalarRelationshipToExternalLeaf) {
     lispb::codegen::Manifest manifest{
         lispb::codegen::manifest_schema_version,
         lispb::codegen::make_test_registry(
-            context,
+            ctx,
             {{"external_table",
               storage.cpp_types.add(
                   "project::ExternalTable",
@@ -439,7 +439,7 @@ TEST(SemanticTypeGraph, RejectsIntegerScalarRelationshipToExternalLeaf) {
                                 semantic_relations.kind[new_semantic_relations] =
                                     lispb::codegen::SemanticRelationKind::index_into;
                                 semantic_relations.target[new_semantic_relations] =
-                                    lispb::codegen::make_test_type_ref(context, "@external_table");
+                                    lispb::codegen::make_test_type_ref(ctx, "@external_table");
                                 semantic_relations.unit[new_semantic_relations] = std::nullopt;
                             });
                     })});
@@ -449,8 +449,8 @@ TEST(SemanticTypeGraph, RejectsIntegerScalarRelationshipToExternalLeaf) {
 }
 
 TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
-    lispb::codegen::CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
+    lispb::codegen::CompilerTestContext ctx;
+    auto& declarations{ctx.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto& module_settings_store{declarations.module_settings_store};
     auto& integer_scalars{declarations.integer_scalars};
@@ -462,11 +462,11 @@ TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
     auto& optional_sentinels_schemas{declarations.optional_sentinels};
     auto& optional_presence_bits_schemas{declarations.optional_presence_bits};
     auto& mini_floats_schemas{declarations.mini_floats};
-    auto& strings{context.storage.strings};
-    [[maybe_unused]] auto& storage{context.storage};
+    auto& strings{ctx.storage.strings};
+    [[maybe_unused]] auto& storage{ctx.storage};
     lispb::codegen::Manifest manifest{
         lispb::codegen::manifest_schema_version,
-        lispb::codegen::make_test_registry(context),
+        lispb::codegen::make_test_registry(ctx),
         declarations,
         {append_test_row(
              normal_modules,
@@ -519,7 +519,7 @@ TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
                                           linear_quantizeds.name[new_linear_quantizeds] =
                                               strings.intern("HealthQ8");
                                           linear_quantizeds.source[new_linear_quantizeds] =
-                                              lispb::codegen::make_test_type_ref(context,
+                                              lispb::codegen::make_test_type_ref(ctx,
                                                                                  "project::Health");
                                           linear_quantizeds.bit_width[new_linear_quantizeds] = 8;
                                           linear_quantizeds.reserved_codes[new_linear_quantizeds] =
@@ -533,7 +533,7 @@ TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
                               integer_varints_schemas.name[new_integer_varints] =
                                   strings.intern("HealthVarint");
                               integer_varints_schemas.source[new_integer_varints] =
-                                  lispb::codegen::make_test_type_ref(context, "project::Health");
+                                  lispb::codegen::make_test_type_ref(ctx, "project::Health");
                               integer_varints_schemas.encoding[new_integer_varints] =
                                   lispb::codegen::IntegerVarintEncoding::unsigned_varint;
                           }),
@@ -554,7 +554,7 @@ TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
                               optional_sentinels_schemas.name[new_optional_sentinels] =
                                   strings.intern("OptionalHealth");
                               optional_sentinels_schemas.source[new_optional_sentinels] =
-                                  lispb::codegen::make_test_type_ref(context, "project::Health");
+                                  lispb::codegen::make_test_type_ref(ctx, "project::Health");
                               optional_sentinels_schemas.sentinel[new_optional_sentinels] =
                                   strings.intern("Invalid");
                           }),
@@ -564,7 +564,7 @@ TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
                               optional_presence_bits_schemas.name[new_optional_presence_bits] =
                                   strings.intern("PresentHealth");
                               optional_presence_bits_schemas.source[new_optional_presence_bits] =
-                                  lispb::codegen::make_test_type_ref(context, "project::Health");
+                                  lispb::codegen::make_test_type_ref(ctx, "project::Health");
                           }),
                       append_test_row(mini_floats_schemas, [&](auto const new_mini_floats) {
                           mini_floats_schemas.name[new_mini_floats] =
@@ -658,8 +658,8 @@ TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
 }
 
 TEST(SemanticTypeGraph, ResolvesPackedIntegerScalarDomainAndDependency) {
-    lispb::codegen::CompilerTestContext context;
-    auto const manifest{lispb::codegen::parse_test_manifest(context, R"(
+    lispb::codegen::CompilerTestContext ctx;
+    auto const manifest{lispb::codegen::parse_test_manifest(ctx, R"(
       (module domains
         (integer-scalar Health :minimum 0 :maximum 1000
           (code Invalid :value 4095 :sentinel true)))
@@ -686,8 +686,8 @@ TEST(SemanticTypeGraph, ResolvesPackedIntegerScalarDomainAndDependency) {
 }
 
 TEST(SemanticTypeGraph, RetainsPackedPhysicalOrdering) {
-    lispb::codegen::CompilerTestContext context;
-    auto const manifest{lispb::codegen::parse_test_manifest(context, R"(
+    lispb::codegen::CompilerTestContext ctx;
+    auto const manifest{lispb::codegen::parse_test_manifest(ctx, R"(
       (module wire :header "Wire.h"
         (record Header :layout packed :bits 32 :byte-order big :bit-order msb-first
           (member kind std::uint8_t)
@@ -705,9 +705,9 @@ TEST(SemanticTypeGraph, RetainsPackedPhysicalOrdering) {
 class InvalidNestedSoaType : public testing::TestWithParam<char const*> {};
 
 TEST_P(InvalidNestedSoaType, RejectsNestedMembersWithoutDeclaredSoaTypes) {
-    lispb::codegen::CompilerTestContext context;
+    lispb::codegen::CompilerTestContext ctx;
     auto const manifest{lispb::codegen::parse_test_manifest(
-        context,
+        ctx,
         std::string{"(module test :header \"Test.h\" "
                     "(record Record (member value float)) "
                     "(struct Child (member values array float)) "
@@ -721,9 +721,9 @@ INSTANTIATE_TEST_SUITE_P(SemanticTypeGraph,
                          testing::Values("Missing", "int", "Record", "Child*", "Child const"));
 
 TEST(SemanticTypeGraph, ResolvesNestedSoaThroughRegisteredCrossModuleType) {
-    lispb::codegen::CompilerTestContext context;
-    auto const child_type{context.storage.cpp_types.intern("first::Child")};
-    auto const manifest{lispb::codegen::parse_test_manifest(context,
+    lispb::codegen::CompilerTestContext ctx;
+    auto const child_type{ctx.storage.cpp_types.intern("first::Child")};
+    auto const manifest{lispb::codegen::parse_test_manifest(ctx,
                                                             R"(
         (module first :header "First.h" :namespace first
           (struct Child (member values array float)))
@@ -747,19 +747,19 @@ TEST(SemanticTypeGraph, ResolvesNestedSoaThroughRegisteredCrossModuleType) {
 }
 
 TEST(SemanticTypeGraph, ResolvesSoaColumnRelationshipsAndDependencies) {
-    lispb::codegen::CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
+    lispb::codegen::CompilerTestContext ctx;
+    auto& declarations{ctx.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto& module_settings_store{declarations.module_settings_store};
     auto& soas_schemas{declarations.soas};
     auto& soa_members{declarations.soa_members};
 
     auto& semantic_relations{declarations.semantic_relations};
-    auto& strings{context.storage.strings};
-    [[maybe_unused]] auto& storage{context.storage};
+    auto& strings{ctx.storage.strings};
+    [[maybe_unused]] auto& storage{ctx.storage};
     lispb::codegen::Manifest manifest{
         lispb::codegen::manifest_schema_version,
-        lispb::codegen::make_test_registry(context),
+        lispb::codegen::make_test_registry(ctx),
         declarations,
         {append_test_row(normal_modules, [&](auto const new_normal_modules) {
             normal_modules.settings[new_normal_modules] =
@@ -783,32 +783,34 @@ TEST(SemanticTypeGraph, ResolvesSoaColumnRelationshipsAndDependencies) {
                                          soa_members.kind[new_soa_members] =
                                              lispb::codegen::SoaMemberKind::array;
                                          soa_members.type[new_soa_members] =
-                                             lispb::codegen::make_test_type_ref(context, "float");
+                                             lispb::codegen::make_test_type_ref(ctx, "float");
                                          soa_members.relationship[new_soa_members] = std::nullopt;
                                      })});
                          }),
                      append_test_row(soas_schemas, [&](auto const new_soas) {
                          soas_schemas.name[new_soas] = strings.intern("User");
-                         soas_schemas
-                             .members[new_soas] = declarations.range<lispb::codegen::SoaMemberId>(
-                             {append_test_row(soa_members, [&](auto const new_soa_members) {
-                                 soa_members.name[new_soa_members] = strings.intern("identifiers");
-                                 soa_members.kind[new_soa_members] =
-                                     lispb::codegen::SoaMemberKind::array;
-                                 soa_members.type[new_soa_members] =
-                                     lispb::codegen::make_test_type_ref(context, "std::uint32_t");
-                                 soa_members.relationship[new_soa_members] = append_test_row(
-                                     semantic_relations, [&](auto const new_semantic_relations) {
-                                         semantic_relations.kind[semantic_relations.index(
-                                             new_semantic_relations)] =
-                                             lispb::codegen::SemanticRelationKind::index_into;
-                                         semantic_relations.target[semantic_relations.index(
-                                             new_semantic_relations)] =
-                                             lispb::codegen::make_test_type_ref(context, "Target");
-                                         semantic_relations.unit[semantic_relations.index(
-                                             new_semantic_relations)] = std::nullopt;
-                                     });
-                             })});
+                         soas_schemas.members[new_soas] =
+                             declarations.range<lispb::codegen::SoaMemberId>(
+                                 {append_test_row(soa_members, [&](auto const new_soa_members) {
+                                     soa_members.name[new_soa_members] =
+                                         strings.intern("identifiers");
+                                     soa_members.kind[new_soa_members] =
+                                         lispb::codegen::SoaMemberKind::array;
+                                     soa_members.type[new_soa_members] =
+                                         lispb::codegen::make_test_type_ref(ctx, "std::uint32_t");
+                                     soa_members.relationship[new_soa_members] = append_test_row(
+                                         semantic_relations,
+                                         [&](auto const new_semantic_relations) {
+                                             semantic_relations.kind[semantic_relations.index(
+                                                 new_semantic_relations)] =
+                                                 lispb::codegen::SemanticRelationKind::index_into;
+                                             semantic_relations.target[semantic_relations.index(
+                                                 new_semantic_relations)] =
+                                                 lispb::codegen::make_test_type_ref(ctx, "Target");
+                                             semantic_relations.unit[semantic_relations.index(
+                                                 new_semantic_relations)] = std::nullopt;
+                                         });
+                                 })});
                      })});
         })}};
 
@@ -835,19 +837,19 @@ TEST(SemanticTypeGraph, ResolvesSoaColumnRelationshipsAndDependencies) {
 }
 
 TEST(SemanticTypeGraph, ResolvesRecordMembersFixedArraysAndDependencies) {
-    lispb::codegen::CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
+    lispb::codegen::CompilerTestContext ctx;
+    auto& declarations{ctx.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto& module_settings_store{declarations.module_settings_store};
     auto& records_schemas{declarations.records};
     auto& record_members_schemas{declarations.child_occurrences};
 
     auto& semantic_relations{declarations.semantic_relations};
-    auto& strings{context.storage.strings};
-    [[maybe_unused]] auto& storage{context.storage};
+    auto& strings{ctx.storage.strings};
+    [[maybe_unused]] auto& storage{ctx.storage};
     lispb::codegen::Manifest manifest{
         lispb::codegen::manifest_schema_version,
-        lispb::codegen::make_test_registry(context),
+        lispb::codegen::make_test_registry(ctx),
         declarations,
         {append_test_row(normal_modules, [&](auto const new_normal_modules) {
             normal_modules.settings[new_normal_modules] =
@@ -871,7 +873,7 @@ TEST(SemanticTypeGraph, ResolvesRecordMembersFixedArraysAndDependencies) {
                                      record_members_schemas.name[new_record_members] =
                                          strings.intern("x");
                                      record_members_schemas.type[new_record_members] =
-                                         lispb::codegen::make_test_type_ref(context, "float");
+                                         lispb::codegen::make_test_type_ref(ctx, "float");
                                  })});
                      }),
                  append_test_row(
@@ -886,7 +888,7 @@ TEST(SemanticTypeGraph, ResolvesRecordMembersFixedArraysAndDependencies) {
                                      record_members_schemas.name[new_record_members] =
                                          strings.intern("value");
                                      record_members_schemas.type[new_record_members] =
-                                         lispb::codegen::make_test_type_ref(context, "float");
+                                         lispb::codegen::make_test_type_ref(ctx, "float");
                                  })});
                      }),
                  append_test_row(records_schemas, [&](auto const new_records) {
@@ -898,7 +900,7 @@ TEST(SemanticTypeGraph, ResolvesRecordMembersFixedArraysAndDependencies) {
                                  record_members_schemas.name[new_record_members] =
                                      strings.intern("points");
                                  record_members_schemas.type[new_record_members] =
-                                     lispb::codegen::make_test_type_ref(context, "Position");
+                                     lispb::codegen::make_test_type_ref(ctx, "Position");
                                  record_members_schemas.count[new_record_members] = 8;
                                  record_members_schemas.relationship[record_members_schemas.index(
                                      new_record_members)] =
@@ -910,8 +912,7 @@ TEST(SemanticTypeGraph, ResolvesRecordMembersFixedArraysAndDependencies) {
                                                  lispb::codegen::SemanticRelationKind::member_of;
                                              semantic_relations.target[semantic_relations.index(
                                                  new_semantic_relations)] =
-                                                 lispb::codegen::make_test_type_ref(context,
-                                                                                    "Table");
+                                                 lispb::codegen::make_test_type_ref(ctx, "Table");
                                              semantic_relations.unit[semantic_relations.index(
                                                  new_semantic_relations)] = std::nullopt;
                                          });
@@ -951,15 +952,15 @@ TEST(SemanticTypeGraph, ResolvesRecordMembersFixedArraysAndDependencies) {
 }
 
 TEST(SemanticTypeGraph, RejectsDirectAndIndirectByValueRecordCycles) {
-    lispb::codegen::CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
+    lispb::codegen::CompilerTestContext ctx;
+    auto& declarations{ctx.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto& module_settings_store{declarations.module_settings_store};
     auto& records{declarations.records};
     auto& record_members{declarations.child_occurrences};
 
-    auto& strings{context.storage.strings};
-    [[maybe_unused]] auto& storage{context.storage};
+    auto& strings{ctx.storage.strings};
+    [[maybe_unused]] auto& storage{ctx.storage};
     auto module{append_test_row(normal_modules, [&](auto const new_normal_modules) {
         normal_modules.settings[new_normal_modules] =
             append_test_row(module_settings_store, [&](auto const new_module_settings_store) {
@@ -977,12 +978,12 @@ TEST(SemanticTypeGraph, RejectsDirectAndIndirectByValueRecordCycles) {
                             {append_test_row(record_members, [&](auto const new_record_members) {
                                 record_members.name[new_record_members] = strings.intern("self");
                                 record_members.type[new_record_members] =
-                                    lispb::codegen::make_test_type_ref(context, "Record");
+                                    lispb::codegen::make_test_type_ref(ctx, "Record");
                             })});
                 })});
     })};
     auto manifest{lispb::codegen::Manifest{lispb::codegen::manifest_schema_version,
-                                           lispb::codegen::make_test_registry(context),
+                                           lispb::codegen::make_test_registry(ctx),
                                            declarations,
                                            {module}}};
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
@@ -997,7 +998,7 @@ TEST(SemanticTypeGraph, RejectsDirectAndIndirectByValueRecordCycles) {
                          {append_test_row(record_members, [&](auto const new_record_members) {
                              record_members.name[new_record_members] = strings.intern("second");
                              record_members.type[new_record_members] =
-                                 lispb::codegen::make_test_type_ref(context, "Second");
+                                 lispb::codegen::make_test_type_ref(ctx, "Second");
                          })});
              }),
          append_test_row(records, [&](auto const new_records) {
@@ -1007,7 +1008,7 @@ TEST(SemanticTypeGraph, RejectsDirectAndIndirectByValueRecordCycles) {
                  {append_test_row(record_members, [&](auto const new_record_members) {
                      record_members.name[new_record_members] = strings.intern("first");
                      record_members.type[new_record_members] =
-                         lispb::codegen::make_test_type_ref(context, "First");
+                         lispb::codegen::make_test_type_ref(ctx, "First");
                  })});
          })});
     manifest.modules = {module};
@@ -1015,18 +1016,18 @@ TEST(SemanticTypeGraph, RejectsDirectAndIndirectByValueRecordCycles) {
 }
 
 TEST(SemanticTypeGraph, PointerSelfReferenceIsNotByValueRecursion) {
-    lispb::codegen::CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
+    lispb::codegen::CompilerTestContext ctx;
+    auto& declarations{ctx.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto& module_settings_store{declarations.module_settings_store};
     auto& records{declarations.records};
     auto& record_members{declarations.child_occurrences};
     auto& type_refs{declarations.type_refs};
-    auto& strings{context.storage.strings};
-    [[maybe_unused]] auto& storage{context.storage};
+    auto& strings{ctx.storage.strings};
+    [[maybe_unused]] auto& storage{ctx.storage};
     lispb::codegen::Manifest manifest{
         lispb::codegen::manifest_schema_version,
-        lispb::codegen::make_test_registry(context),
+        lispb::codegen::make_test_registry(ctx),
         declarations,
         {append_test_row(normal_modules, [&](auto const new_normal_modules) {
             normal_modules.settings[new_normal_modules] =
@@ -1058,11 +1059,11 @@ TEST(SemanticTypeGraph, PointerSelfReferenceIsNotByValueRecursion) {
 }
 
 TEST(SemanticTypeGraph, ClassifiesBoundedUsesWithoutDiscardingSpelling) {
-    lispb::codegen::CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
+    lispb::codegen::CompilerTestContext ctx;
+    auto& declarations{ctx.storage.declarations};
     auto& type_refs{declarations.type_refs};
-    auto& strings{context.storage.strings};
-    [[maybe_unused]] auto& storage{context.storage};
+    auto& strings{ctx.storage.strings};
+    [[maybe_unused]] auto& storage{ctx.storage};
     auto& semantic_strings{storage.strings};
     auto const pointer{lispb::codegen::resolve_type_use(
         append_test_row(type_refs,
@@ -1070,7 +1071,7 @@ TEST(SemanticTypeGraph, ClassifiesBoundedUsesWithoutDiscardingSpelling) {
                             type_refs.name[new_type_refs] = strings.intern("float");
                             type_refs.suffix[new_type_refs] = strings.intern(" const* const*");
                         }),
-        lispb::codegen::make_test_registry(context))};
+        lispb::codegen::make_test_registry(ctx))};
     EXPECT_EQ(storage.cpp_types.spelling(pointer.cpp_type), "float const* const*");
     EXPECT_EQ(pointer.physical.form, lispb::codegen::PhysicalTypeForm::object_pointer);
     EXPECT_EQ(semantic_strings.view(pointer.physical.object_spelling), "float");
@@ -1081,7 +1082,7 @@ TEST(SemanticTypeGraph, ClassifiesBoundedUsesWithoutDiscardingSpelling) {
                             type_refs.name[new_type_refs] = strings.intern("float");
                             type_refs.suffix[new_type_refs] = strings.intern(" const");
                         }),
-        lispb::codegen::make_test_registry(context))};
+        lispb::codegen::make_test_registry(ctx))};
     EXPECT_TRUE(value.physical.contains_value());
     for (auto const suffix : {"&", "&&", "* const&"}) {
         auto const reference{lispb::codegen::resolve_type_use(
@@ -1090,7 +1091,7 @@ TEST(SemanticTypeGraph, ClassifiesBoundedUsesWithoutDiscardingSpelling) {
                                 type_refs.name[new_type_refs] = strings.intern("float");
                                 type_refs.suffix[new_type_refs] = strings.intern(suffix);
                             }),
-            lispb::codegen::make_test_registry(context))};
+            lispb::codegen::make_test_registry(ctx))};
         EXPECT_FALSE(reference.physical.contains_value());
         EXPECT_NE(reference.physical.form, lispb::codegen::PhysicalTypeForm::value);
     }
@@ -1101,7 +1102,7 @@ TEST(SemanticTypeGraph, ClassifiesBoundedUsesWithoutDiscardingSpelling) {
                                 type_refs.name[new_type_refs] = strings.intern("float");
                                 type_refs.suffix[new_type_refs] = strings.intern(suffix);
                             }),
-            lispb::codegen::make_test_registry(context))};
+            lispb::codegen::make_test_registry(ctx))};
         EXPECT_EQ(unsupported.physical.form, lispb::codegen::PhysicalTypeForm::unsupported)
             << suffix;
         EXPECT_FALSE(
@@ -1115,24 +1116,24 @@ TEST(SemanticTypeGraph, ClassifiesBoundedUsesWithoutDiscardingSpelling) {
                             type_refs.suffix[new_type_refs] = strings.intern("");
                             type_refs.nested[new_type_refs] = strings.intern("Inner");
                         }),
-        lispb::codegen::make_test_registry(context))};
+        lispb::codegen::make_test_registry(ctx))};
     EXPECT_EQ(semantic_strings.view(nested.physical.object_spelling), "Owner::Inner");
     EXPECT_FALSE(nested.physical.contains_value());
 }
 
 TEST(SemanticTypeGraph, ResolvesRawUnionAlternativesAndDependencies) {
-    lispb::codegen::CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
+    lispb::codegen::CompilerTestContext ctx;
+    auto& declarations{ctx.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto& module_settings_store{declarations.module_settings_store};
     auto& unions_schemas{declarations.unions};
     auto& union_alternatives_schemas{declarations.child_occurrences};
 
-    auto& strings{context.storage.strings};
-    [[maybe_unused]] auto& storage{context.storage};
+    auto& strings{ctx.storage.strings};
+    [[maybe_unused]] auto& storage{ctx.storage};
     lispb::codegen::Manifest manifest{
         lispb::codegen::manifest_schema_version,
-        lispb::codegen::make_test_registry(context),
+        lispb::codegen::make_test_registry(ctx),
         declarations,
         {append_test_row(normal_modules, [&](auto const new_normal_modules) {
             normal_modules.settings[new_normal_modules] =
@@ -1155,7 +1156,7 @@ TEST(SemanticTypeGraph, ResolvesRawUnionAlternativesAndDependencies) {
                                          union_alternatives_schemas.name[new_union_alternatives] =
                                              strings.intern("identifier");
                                          union_alternatives_schemas.type[new_union_alternatives] =
-                                             lispb::codegen::make_test_type_ref(context,
+                                             lispb::codegen::make_test_type_ref(ctx,
                                                                                 "std::uint32_t");
                                      }),
                                  append_test_row(
@@ -1164,7 +1165,7 @@ TEST(SemanticTypeGraph, ResolvesRawUnionAlternativesAndDependencies) {
                                          union_alternatives_schemas.name[new_union_alternatives] =
                                              strings.intern("bytes");
                                          union_alternatives_schemas.type[new_union_alternatives] =
-                                             lispb::codegen::make_test_type_ref(context,
+                                             lispb::codegen::make_test_type_ref(ctx,
                                                                                 "std::uint8_t");
                                          union_alternatives_schemas.count[new_union_alternatives] =
                                              12;
@@ -1197,8 +1198,8 @@ TEST(SemanticTypeGraph, ResolvesRawUnionAlternativesAndDependencies) {
 }
 
 TEST(SemanticTypeGraph, RejectsUnionAndMixedAggregateCycles) {
-    lispb::codegen::CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
+    lispb::codegen::CompilerTestContext ctx;
+    auto& declarations{ctx.storage.declarations};
     auto& unions{declarations.unions};
     auto& union_alternatives{declarations.child_occurrences};
 
@@ -1206,8 +1207,8 @@ TEST(SemanticTypeGraph, RejectsUnionAndMixedAggregateCycles) {
     auto& module_settings_store{declarations.module_settings_store};
     auto& records{declarations.records};
     auto& record_members{declarations.child_occurrences};
-    auto& strings{context.storage.strings};
-    [[maybe_unused]] auto& storage{context.storage};
+    auto& strings{ctx.storage.strings};
+    [[maybe_unused]] auto& storage{ctx.storage};
     auto& semantic_declarations{storage.declarations};
     auto& semantic_strings{storage.strings};
     auto const union_schema{unions.append()};
@@ -1217,7 +1218,7 @@ TEST(SemanticTypeGraph, RejectsUnionAndMixedAggregateCycles) {
         {append_test_row(union_alternatives, [&](auto const new_union_alternatives) {
             union_alternatives.name[new_union_alternatives] = strings.intern("self");
             union_alternatives.type[new_union_alternatives] =
-                lispb::codegen::make_test_type_ref(context, "Payload");
+                lispb::codegen::make_test_type_ref(ctx, "Payload");
         })});
     unions.export_specifier[union_schema_row] = {};
     auto const union_module{normal_modules.append()};
@@ -1232,7 +1233,7 @@ TEST(SemanticTypeGraph, RejectsUnionAndMixedAggregateCycles) {
     normal_modules.declarations[union_module_row] =
         declarations.range<lispb::codegen::DeclarationHandle>({union_schema});
     lispb::codegen::Manifest manifest{lispb::codegen::manifest_schema_version,
-                                      lispb::codegen::make_test_registry(context),
+                                      lispb::codegen::make_test_registry(ctx),
                                       declarations,
                                       {union_module}};
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
@@ -1242,7 +1243,7 @@ TEST(SemanticTypeGraph, RejectsUnionAndMixedAggregateCycles) {
             union_alternatives.name[union_alternatives.index(new_union_alternatives)] =
                 semantic_strings.intern("record");
             union_alternatives.type[union_alternatives.index(new_union_alternatives)] =
-                lispb::codegen::make_test_type_ref(context, "records::Record");
+                lispb::codegen::make_test_type_ref(ctx, "records::Record");
         })});
     normal_modules.declarations[union_module_row] = semantic_declarations.range({union_schema});
     auto const record_schema{records.append()};
@@ -1252,7 +1253,7 @@ TEST(SemanticTypeGraph, RejectsUnionAndMixedAggregateCycles) {
         {append_test_row(record_members, [&](auto const new_record_members) {
             record_members.name[new_record_members] = strings.intern("payload");
             record_members.type[new_record_members] =
-                lispb::codegen::make_test_type_ref(context, "payloads::Payload");
+                lispb::codegen::make_test_type_ref(ctx, "payloads::Payload");
         })});
     records.export_specifier[record_schema_row] = {};
     auto const record_module{normal_modules.append()};
@@ -1270,8 +1271,8 @@ TEST(SemanticTypeGraph, RejectsUnionAndMixedAggregateCycles) {
 }
 
 TEST(SemanticTypeGraph, ResolvesTaggedUnionDiscriminantMappingsAndDependencies) {
-    lispb::codegen::CompilerTestContext context;
-    auto const manifest{lispb::codegen::parse_test_manifest(context, R"(
+    lispb::codegen::CompilerTestContext ctx;
+    auto const manifest{lispb::codegen::parse_test_manifest(ctx, R"(
       (module payloads :header "Payloads.h"
         (enum Kind :bit-width 2 (value Point) (value Samples))
         (integer-scalar Coordinate :bit-width 8)
@@ -1289,10 +1290,10 @@ TEST(SemanticTypeGraph, ResolvesTaggedUnionDiscriminantMappingsAndDependencies) 
     auto const& children{graph.definitions().children};
     auto const members{graph.definitions().records.members_of(graph.definition(event))};
     ASSERT_EQ(members.size(), 2U);
-    EXPECT_EQ(text(context.storage, children.tag[children.index(members[1])]), "tag");
+    EXPECT_EQ(text(ctx.storage, children.tag[children.index(members[1])]), "tag");
     auto const alternatives{graph.definitions().unions.alternatives_of(graph.definition(payload))};
     ASSERT_EQ(alternatives.size(), 2U);
-    EXPECT_EQ(text(context.storage, children.case_label[children.index(alternatives[0])]), "Point");
+    EXPECT_EQ(text(ctx.storage, children.case_label[children.index(alternatives[0])]), "Point");
     auto const& layout{graph.bit_layout(event)};
     EXPECT_EQ(layout.encoded_bits, 64U);
     auto const leaf{std::ranges::find(layout.placements, "payload_point_x", &BitPlacement::path)};
@@ -1316,7 +1317,7 @@ TEST(SemanticTypeGraph, RejectsPackedFixedPointHelperNameCollisions) {
                             "distance_fractional_bits",
                             "distance_raw_layout"}) {
         SCOPED_TRACE(name);
-        lispb::codegen::CompilerTestContext context;
+        lispb::codegen::CompilerTestContext ctx;
         auto const source{std::string{R"(
           (module values :header "Values.h"
             (fixed-point Distance :total-bits 16 :form (binary-point :signed true :fractional-bits 4) :rounding toward-zero)
@@ -1325,7 +1326,7 @@ TEST(SemanticTypeGraph, RejectsPackedFixedPointHelperNameCollisions) {
               (member )"} +
                           name + R"( std::uint8_t)
               (projections (cpp)))))"};
-        auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
+        auto const manifest{lispb::codegen::parse_test_manifest(ctx, source)};
         EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
     }
 }
@@ -1333,11 +1334,11 @@ TEST(SemanticTypeGraph, RejectsPackedFixedPointHelperNameCollisions) {
 TEST(SemanticTypeGraph, RejectsPackedAccessorMatchingOwningTypeName) {
     for (auto const kind : {"record", "union"}) {
         SCOPED_TRACE(kind);
-        lispb::codegen::CompilerTestContext context;
+        lispb::codegen::CompilerTestContext ctx;
         auto const source{std::string{"(module values :header \"Values.h\" ("} + kind +
                           " value :layout packed (member value std::uint8_t) "
                           "(projections (cpp))))"};
-        auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
+        auto const manifest{lispb::codegen::parse_test_manifest(ctx, source)};
         EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
     }
 }
@@ -1345,11 +1346,11 @@ TEST(SemanticTypeGraph, RejectsPackedAccessorMatchingOwningTypeName) {
 TEST(SemanticTypeGraph, RejectsPackedRootMetadataNameCollisions) {
     for (auto const name : {"extract", "insert", "storage", "storage_type", "packed_integer_tag"}) {
         SCOPED_TRACE(name);
-        lispb::codegen::CompilerTestContext context;
+        lispb::codegen::CompilerTestContext ctx;
         auto const source{std::string{R"((module values :header "Values.h"
           (record Value :layout packed (member )"} +
                           name + " std::uint8_t) (projections (cpp))))"};
-        auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
+        auto const manifest{lispb::codegen::parse_test_manifest(ctx, source)};
         EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
     }
     for (auto const kind : {"record", "union"}) {
@@ -1365,18 +1366,18 @@ TEST(SemanticTypeGraph, RejectsPackedRootMetadataNameCollisions) {
                                 "value_"}) {
             SCOPED_TRACE(kind);
             SCOPED_TRACE(name);
-            lispb::codegen::CompilerTestContext context;
+            lispb::codegen::CompilerTestContext ctx;
             auto const source{std::string{"(module values :header \"Values.h\" ("} + kind + ' ' +
                               name +
                               " :layout packed (member data std::uint8_t) (projections (cpp))))"};
-            auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
+            auto const manifest{lispb::codegen::parse_test_manifest(ctx, source)};
             EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
         }
-        lispb::codegen::CompilerTestContext context;
+        lispb::codegen::CompilerTestContext ctx;
         auto const source{
             std::string{"(module values :header \"Values.h\" ("} + kind +
             " RawTag :layout packed (member Base std::uint8_t) (projections (cpp))))"};
-        auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
+        auto const manifest{lispb::codegen::parse_test_manifest(ctx, source)};
         EXPECT_NO_THROW(resolve_type_graph(manifest));
     }
 }
@@ -1385,11 +1386,11 @@ TEST(SemanticTypeGraph, RejectsScalarNamedCodesCollidingWithDomainMetadata) {
     for (auto const name :
          {"Base", "extract", "insert", "storage", "packed_integer_tag", "value_layout"}) {
         SCOPED_TRACE(name);
-        lispb::codegen::CompilerTestContext context;
+        lispb::codegen::CompilerTestContext ctx;
         auto const source{std::string{R"((module values :header "Values.h"
           (integer-scalar Value :bit-width 8 (code )"} +
                           name + " :value 1) (projections (cpp))))"};
-        auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
+        auto const manifest{lispb::codegen::parse_test_manifest(ctx, source)};
         EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
     }
     for (auto const name : {"Base",
@@ -1408,10 +1409,10 @@ TEST(SemanticTypeGraph, RejectsScalarNamedCodesCollidingWithDomainMetadata) {
                             "is_valid",
                             "value_"}) {
         SCOPED_TRACE(name);
-        lispb::codegen::CompilerTestContext context;
+        lispb::codegen::CompilerTestContext ctx;
         auto const source{std::string{"(module values :header \"Values.h\" (integer-scalar "} +
                           name + " :bit-width 8 (projections (cpp))))"};
-        auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
+        auto const manifest{lispb::codegen::parse_test_manifest(ctx, source)};
         EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
     }
 }
@@ -1463,8 +1464,8 @@ TEST(SemanticTypeGraph, RejectsPackedValidationAndEncodingMetadataCollisions) {
                (integer-scalar Source :bit-width 8 :minimum 0 :maximum 100 (code Invalid :value 255 :sentinel true))
                (optional-sentinel payload_Invalid :source @Source :sentinel Invalid (projections (cpp)))))"}) {
         SCOPED_TRACE(source);
-        lispb::codegen::CompilerTestContext context;
-        auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
+        lispb::codegen::CompilerTestContext ctx;
+        auto const manifest{lispb::codegen::parse_test_manifest(ctx, source)};
         EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
     }
     for (auto const source : {
@@ -1514,8 +1515,8 @@ TEST(SemanticTypeGraph, RejectsPackedValidationAndEncodingMetadataCollisions) {
                  (member default_raw_value std::uint8_t)
                  (projections (cpp)))))"}) {
         SCOPED_TRACE(source);
-        lispb::codegen::CompilerTestContext context;
-        auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
+        lispb::codegen::CompilerTestContext ctx;
+        auto const manifest{lispb::codegen::parse_test_manifest(ctx, source)};
         EXPECT_NO_THROW(resolve_type_graph(manifest));
     }
 }
@@ -1534,7 +1535,7 @@ TEST(SemanticTypeGraph, RejectsInvalidPackedDefaultsAcrossEncodings) {
                             ("(member kind @Kind) (member payload @Choices :tag kind) "
                              "(member value @Health :default 999)")}) {
         SCOPED_TRACE(body);
-        lispb::codegen::CompilerTestContext context;
+        lispb::codegen::CompilerTestContext ctx;
         auto const source{std::string{R"((module values :header "Values.h"
           (integer-scalar Health :bit-width 8 :minimum 0 :maximum 100
             (code Absent :value 255 :sentinel true))
@@ -1551,14 +1552,14 @@ TEST(SemanticTypeGraph, RejectsInvalidPackedDefaultsAcrossEncodings) {
           (union Choices (member child @Child :case Child))
           (record Value :layout packed )"} +
                           body + " (projections (cpp))))"};
-        auto const manifest{lispb::codegen::parse_test_manifest(context, source)};
+        auto const manifest{lispb::codegen::parse_test_manifest(ctx, source)};
         EXPECT_THROW(resolve_type_graph(manifest), std::invalid_argument);
     }
 }
 
 TEST(SemanticTypeGraph, AcceptsValidPackedOptionalAndSignedDefaults) {
-    lispb::codegen::CompilerTestContext context;
-    auto const manifest{lispb::codegen::parse_test_manifest(context, R"(
+    lispb::codegen::CompilerTestContext ctx;
+    auto const manifest{lispb::codegen::parse_test_manifest(ctx, R"(
       (module values :header "Values.h"
         (integer-scalar Health :bit-width 8 :minimum 0 :maximum 100
           (code Absent :value 255 :sentinel true))
@@ -1583,8 +1584,8 @@ TEST(SemanticTypeGraph, AcceptsValidPackedOptionalAndSignedDefaults) {
 }
 
 TEST(SemanticTypeGraph, RejectsSignedEnumProjectionInPackedRecord) {
-    lispb::codegen::CompilerTestContext context;
-    auto const manifest{lispb::codegen::parse_test_manifest(context, R"(
+    lispb::codegen::CompilerTestContext ctx;
+    auto const manifest{lispb::codegen::parse_test_manifest(ctx, R"(
       (module values :header "Values.h"
         (enum Kind :bit-width 8 (value First) (value Second)
           (projections (cpp :storage std::int16_t)))
@@ -1593,8 +1594,8 @@ TEST(SemanticTypeGraph, RejectsSignedEnumProjectionInPackedRecord) {
 }
 
 TEST(SemanticTypeGraph, PackedEnumProjectionOverridesAuthoredUnderlyingStorage) {
-    lispb::codegen::CompilerTestContext context;
-    auto const manifest{lispb::codegen::parse_test_manifest(context, R"(
+    lispb::codegen::CompilerTestContext ctx;
+    auto const manifest{lispb::codegen::parse_test_manifest(ctx, R"(
       (module values :header "Values.h"
         (enum Kind std::int16_t :bit-width 8 (value First) (value Second)
           (projections (cpp :storage std::uint16_t)))
@@ -1603,8 +1604,8 @@ TEST(SemanticTypeGraph, PackedEnumProjectionOverridesAuthoredUnderlyingStorage) 
 }
 
 TEST(SemanticTypeGraph, TaggedPackedDefaultsRemainDisabledAfterValidation) {
-    lispb::codegen::CompilerTestContext context;
-    auto const manifest{lispb::codegen::parse_test_manifest(context, R"(
+    lispb::codegen::CompilerTestContext ctx;
+    auto const manifest{lispb::codegen::parse_test_manifest(ctx, R"(
       (module values :header "Values.h"
         (integer-scalar Health :bit-width 8 :minimum 0 :maximum 100)
         (enum Kind :bit-width 1 (value Health))
@@ -1620,8 +1621,8 @@ TEST(SemanticTypeGraph, TaggedPackedDefaultsRemainDisabledAfterValidation) {
 }
 
 TEST(SemanticTypeGraph, UnionDefaultsSelectOneCompleteAlternative) {
-    lispb::codegen::CompilerTestContext context;
-    auto const manifest{lispb::codegen::parse_test_manifest(context, R"(
+    lispb::codegen::CompilerTestContext ctx;
+    auto const manifest{lispb::codegen::parse_test_manifest(ctx, R"(
       (module values :header "Values.h"
         (integer-scalar Code :bit-width 2 :minimum 1 :maximum 2)
         (union Choice :layout packed
@@ -1646,17 +1647,17 @@ TEST(SemanticTypeGraph, UnionDefaultsSelectOneCompleteAlternative) {
 }
 
 TEST(SemanticTypeGraph, KeepsUnknownRegisteredTypesAsExternalLeaves) {
-    lispb::codegen::CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
+    lispb::codegen::CompilerTestContext ctx;
+    auto& declarations{ctx.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto& module_settings_store{declarations.module_settings_store};
     auto& enums{declarations.enums};
-    auto& strings{context.storage.strings};
-    [[maybe_unused]] auto& storage{context.storage};
+    auto& strings{ctx.storage.strings};
+    [[maybe_unused]] auto& storage{ctx.storage};
     lispb::codegen::Manifest manifest{
         lispb::codegen::manifest_schema_version,
         lispb::codegen::make_test_registry(
-            context,
+            ctx,
             {{"native_handle",
               storage.cpp_types.add(
                   "NativeHandle",
@@ -1675,7 +1676,7 @@ TEST(SemanticTypeGraph, KeepsUnknownRegisteredTypesAsExternalLeaves) {
                         enums.cpp_projection[new_enums] = lispb::codegen::CppProjection{};
                         enums.name[new_enums] = strings.intern("Mode");
                         enums.underlying_type[new_enums] =
-                            lispb::codegen::make_test_type_ref(context, "uint8");
+                            lispb::codegen::make_test_type_ref(ctx, "uint8");
                         enums.values[new_enums] =
                             declarations.range<lispb::codegen::EnumeratorId>({append_test_row(
                                 declarations.enumerators, [&](auto const new_enumerators) {
@@ -1706,13 +1707,13 @@ TEST(SemanticTypeGraph, KeepsUnknownRegisteredTypesAsExternalLeaves) {
 }
 
 TEST(SemanticTypeGraph, RejectsAmbiguousRegisteredDeclarationBindings) {
-    lispb::codegen::CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
+    lispb::codegen::CompilerTestContext ctx;
+    auto& declarations{ctx.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto& module_settings_store{declarations.module_settings_store};
     auto& enums{declarations.enums};
-    auto& strings{context.storage.strings};
-    [[maybe_unused]] auto& storage{context.storage};
+    auto& strings{ctx.storage.strings};
+    [[maybe_unused]] auto& storage{ctx.storage};
     auto enum_module = [&](std::string module_name, std::string const& header) {
         return append_test_row(normal_modules, [&](auto const new_normal_modules) {
             normal_modules.settings[new_normal_modules] =
@@ -1730,7 +1731,7 @@ TEST(SemanticTypeGraph, RejectsAmbiguousRegisteredDeclarationBindings) {
                         enums.cpp_projection[new_enums] = lispb::codegen::CppProjection{};
                         enums.name[new_enums] = strings.intern("Mode");
                         enums.underlying_type[new_enums] =
-                            lispb::codegen::make_test_type_ref(context, "uint8");
+                            lispb::codegen::make_test_type_ref(ctx, "uint8");
                         enums.values[new_enums] =
                             declarations.range<lispb::codegen::EnumeratorId>({append_test_row(
                                 declarations.enumerators, [&](auto const new_enumerators) {
@@ -1743,8 +1744,7 @@ TEST(SemanticTypeGraph, RejectsAmbiguousRegisteredDeclarationBindings) {
     };
     lispb::codegen::Manifest manifest{
         lispb::codegen::manifest_schema_version,
-        lispb::codegen::make_test_registry(context,
-                                           {{"mode", storage.cpp_types.add("project::Mode")}}),
+        lispb::codegen::make_test_registry(ctx, {{"mode", storage.cpp_types.add("project::Mode")}}),
         declarations,
         {enum_module("first", "First.h"), enum_module("second", "Second.h")}};
 
@@ -1754,9 +1754,9 @@ TEST(SemanticTypeGraph, RejectsAmbiguousRegisteredDeclarationBindings) {
 class InvalidDeclaredIdentities : public testing::TestWithParam<std::vector<std::string>> {};
 
 TEST_P(InvalidDeclaredIdentities, RejectsInvalidAndDuplicateDeclaredIdentities) {
-    lispb::codegen::CompilerTestContext context;
-    auto& strings{context.storage.strings};
-    [[maybe_unused]] auto& storage{context.storage};
+    lispb::codegen::CompilerTestContext ctx;
+    auto& strings{ctx.storage.strings};
+    [[maybe_unused]] auto& storage{ctx.storage};
     auto& normal_modules_schemas{storage.declarations.normal_modules};
     auto& module_settings_store_schemas{storage.declarations.module_settings_store};
     auto& enums_schemas{storage.declarations.enums};
@@ -1787,7 +1787,7 @@ TEST_P(InvalidDeclaredIdentities, RejectsInvalidAndDuplicateDeclaredIdentities) 
         return append_test_row(enums_schemas, [&](auto const new_enums) {
             enums_schemas.name[enums_schemas.index(new_enums)] = strings.intern(std::move(name));
             enums_schemas.underlying_type[enums_schemas.index(new_enums)] =
-                lispb::codegen::make_test_type_ref(context, "uint8");
+                lispb::codegen::make_test_type_ref(ctx, "uint8");
             enums_schemas.values[enums_schemas.index(new_enums)] =
                 semantic_declarations.range<lispb::codegen::EnumeratorId>(
                     {append_test_row(enumerators_schemas, [&](auto const new_enumerators) {
@@ -1802,7 +1802,7 @@ TEST_P(InvalidDeclaredIdentities, RejectsInvalidAndDuplicateDeclaredIdentities) 
         enums.push_back(make_enum(name));
     }
     lispb::codegen::Manifest manifest{lispb::codegen::manifest_schema_version,
-                                      lispb::codegen::make_test_registry(context),
+                                      lispb::codegen::make_test_registry(ctx),
                                       semantic_declarations,
                                       {make_module("types", enums)}};
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
@@ -1814,16 +1814,16 @@ INSTANTIATE_TEST_SUITE_P(SemanticTypeGraph,
                                          std::vector<std::string>{"Mode", "Mode"}));
 
 TEST(SemanticTypeGraph, RejectsUnresolvedRegisteredReferences) {
-    lispb::codegen::CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
+    lispb::codegen::CompilerTestContext ctx;
+    auto& declarations{ctx.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto& module_settings_store{declarations.module_settings_store};
     auto& enums{declarations.enums};
-    auto& strings{context.storage.strings};
-    [[maybe_unused]] auto& storage{context.storage};
+    auto& strings{ctx.storage.strings};
+    [[maybe_unused]] auto& storage{ctx.storage};
     lispb::codegen::Manifest manifest{
         lispb::codegen::manifest_schema_version,
-        lispb::codegen::make_test_registry(context),
+        lispb::codegen::make_test_registry(ctx),
         declarations,
         {append_test_row(normal_modules, [&](auto const new_normal_modules) {
             normal_modules.settings[new_normal_modules] =
@@ -1838,7 +1838,7 @@ TEST(SemanticTypeGraph, RejectsUnresolvedRegisteredReferences) {
                         enums.cpp_projection[new_enums] = lispb::codegen::CppProjection{};
                         enums.name[new_enums] = strings.intern("Mode");
                         enums.underlying_type[new_enums] =
-                            lispb::codegen::make_test_type_ref(context, "@missing");
+                            lispb::codegen::make_test_type_ref(ctx, "@missing");
                         enums.values[new_enums] =
                             declarations.range<lispb::codegen::EnumeratorId>({append_test_row(
                                 declarations.enumerators, [&](auto const new_enumerators) {
@@ -1853,19 +1853,19 @@ TEST(SemanticTypeGraph, RejectsUnresolvedRegisteredReferences) {
 }
 
 TEST(SemanticTypeGraph, ReferenceLookupMatchesResolverBindings) {
-    lispb::codegen::CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
+    lispb::codegen::CompilerTestContext ctx;
+    auto& declarations{ctx.storage.declarations};
     auto& normal_modules_schemas{declarations.normal_modules};
     auto& module_settings_store{declarations.module_settings_store};
     auto& records_schemas{declarations.records};
     auto& record_members_schemas{declarations.child_occurrences};
     auto& type_refs{declarations.type_refs};
-    auto& strings{context.storage.strings};
-    [[maybe_unused]] auto& storage{context.storage};
+    auto& strings{ctx.storage.strings};
+    [[maybe_unused]] auto& storage{ctx.storage};
 
     lispb::codegen::Manifest manifest{
         lispb::codegen::manifest_schema_version,
-        lispb::codegen::make_test_registry(context, {{"bar", storage.cpp_types.add("game::Bar")}}),
+        lispb::codegen::make_test_registry(ctx, {{"bar", storage.cpp_types.add("game::Bar")}}),
         declarations,
         {append_test_row(
              normal_modules_schemas,
@@ -1895,7 +1895,7 @@ TEST(SemanticTypeGraph, ReferenceLookupMatchesResolverBindings) {
                                                   record_members_schemas.name[new_record_members] =
                                                       strings.intern("value");
                                                   record_members_schemas.type[new_record_members] =
-                                                      lispb::codegen::make_test_type_ref(context,
+                                                      lispb::codegen::make_test_type_ref(ctx,
                                                                                          "int32");
                                               })});
                               }),
@@ -1913,7 +1913,7 @@ TEST(SemanticTypeGraph, ReferenceLookupMatchesResolverBindings) {
                                                   record_members_schemas.name[new_record_members] =
                                                       strings.intern("value");
                                                   record_members_schemas.type[new_record_members] =
-                                                      lispb::codegen::make_test_type_ref(context,
+                                                      lispb::codegen::make_test_type_ref(ctx,
                                                                                          "int32");
                                               })});
                               }),
@@ -1929,8 +1929,7 @@ TEST(SemanticTypeGraph, ReferenceLookupMatchesResolverBindings) {
                                                record_members_schemas.name[new_record_members] =
                                                    strings.intern("local");
                                                record_members_schemas.type[new_record_members] =
-                                                   lispb::codegen::make_test_type_ref(context,
-                                                                                      "Foo");
+                                                   lispb::codegen::make_test_type_ref(ctx, "Foo");
                                            }),
                                        append_test_row(
                                            record_members_schemas,
@@ -1938,7 +1937,7 @@ TEST(SemanticTypeGraph, ReferenceLookupMatchesResolverBindings) {
                                                record_members_schemas.name[new_record_members] =
                                                    strings.intern("qualified");
                                                record_members_schemas.type[new_record_members] =
-                                                   lispb::codegen::make_test_type_ref(context,
+                                                   lispb::codegen::make_test_type_ref(ctx,
                                                                                       "game::Bar");
                                            }),
                                        append_test_row(
@@ -1947,8 +1946,7 @@ TEST(SemanticTypeGraph, ReferenceLookupMatchesResolverBindings) {
                                                record_members_schemas.name[new_record_members] =
                                                    strings.intern("registered");
                                                record_members_schemas.type[new_record_members] =
-                                                   lispb::codegen::make_test_type_ref(context,
-                                                                                      "@bar");
+                                                   lispb::codegen::make_test_type_ref(ctx, "@bar");
                                            }),
                                        append_test_row(
                                            record_members_schemas,
@@ -1970,7 +1968,7 @@ TEST(SemanticTypeGraph, ReferenceLookupMatchesResolverBindings) {
                                                record_members_schemas.name[new_record_members] =
                                                    strings.intern("ambiguous");
                                                record_members_schemas.type[new_record_members] =
-                                                   lispb::codegen::make_test_type_ref(context,
+                                                   lispb::codegen::make_test_type_ref(ctx,
                                                                                       "game::Foo");
                                            })});
                           })});
@@ -1996,7 +1994,7 @@ TEST(SemanticTypeGraph, ReferenceLookupMatchesResolverBindings) {
                                      record_members_schemas.name[new_record_members] =
                                          strings.intern("value");
                                      record_members_schemas.type[new_record_members] =
-                                         lispb::codegen::make_test_type_ref(context, "int32");
+                                         lispb::codegen::make_test_type_ref(ctx, "int32");
                                  })});
                      })});
          })}};
@@ -2019,34 +2017,32 @@ TEST(SemanticTypeGraph, ReferenceLookupMatchesResolverBindings) {
                       semantic_record_members.semantic_type[semantic_record_members.index(
                           semantic_records.members_of(user)[index])])]);
     }
-    EXPECT_FALSE(
-        graph.find_reference(lispb::codegen::make_test_type_ref(context, "game::Foo"), module)
-            .has_value());
+    EXPECT_FALSE(graph.find_reference(lispb::codegen::make_test_type_ref(ctx, "game::Foo"), module)
+                     .has_value());
     EXPECT_EQ(graph.origin(occurrences.type[occurrences.index(
                   semantic_record_members.semantic_type[semantic_record_members.index(
                       semantic_records.members_of(user).back())])]),
               TypeOrigin::cpp_spelling);
     EXPECT_FALSE(graph
-                     .find_reference(lispb::codegen::make_test_type_ref(context, "Foo"),
+                     .find_reference(lispb::codegen::make_test_type_ref(ctx, "Foo"),
                                      lispb::codegen::ModuleHandle{})
                      .has_value());
-    EXPECT_FALSE(
-        graph.find_reference(lispb::codegen::make_test_type_ref(context, "@missing"), module)
-            .has_value());
+    EXPECT_FALSE(graph.find_reference(lispb::codegen::make_test_type_ref(ctx, "@missing"), module)
+                     .has_value());
 }
 
 TEST(SemanticTypeGraph, TreatsRawCppSpellingsAsExplicitExternalLeaves) {
-    lispb::codegen::CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
+    lispb::codegen::CompilerTestContext ctx;
+    auto& declarations{ctx.storage.declarations};
     auto& normal_modules{declarations.normal_modules};
     auto& module_settings_store{declarations.module_settings_store};
     auto& soas_schemas{declarations.soas};
     auto& soa_members{declarations.soa_members};
-    auto& strings{context.storage.strings};
-    [[maybe_unused]] auto& storage{context.storage};
+    auto& strings{ctx.storage.strings};
+    [[maybe_unused]] auto& storage{ctx.storage};
     lispb::codegen::Manifest manifest{
         lispb::codegen::manifest_schema_version,
-        lispb::codegen::make_test_registry(context),
+        lispb::codegen::make_test_registry(ctx),
         declarations,
         {append_test_row(normal_modules, [&](auto const new_normal_modules) {
             normal_modules.settings[new_normal_modules] =
@@ -2067,8 +2063,7 @@ TEST(SemanticTypeGraph, TreatsRawCppSpellingsAsExplicitExternalLeaves) {
                                     soa_members.kind[new_soa_members] =
                                         lispb::codegen::SoaMemberKind::array;
                                     soa_members.type[new_soa_members] =
-                                        lispb::codegen::make_test_type_ref(context,
-                                                                           "ExternalValue");
+                                        lispb::codegen::make_test_type_ref(ctx, "ExternalValue");
                                 })});
                     })});
         })}};
@@ -2086,8 +2081,8 @@ TEST(SemanticTypeGraph, TreatsRawCppSpellingsAsExplicitExternalLeaves) {
 }
 
 TEST(SemanticTypeGraph, SoaOwnerUsesItsLogicalIdentity) {
-    lispb::codegen::CompilerTestContext context;
-    auto& declarations{context.storage.declarations};
+    lispb::codegen::CompilerTestContext ctx;
+    auto& declarations{ctx.storage.declarations};
     auto& soas_schemas{declarations.soas};
     auto& soa_members{declarations.soa_members};
     auto& type_refs{declarations.type_refs};
@@ -2095,8 +2090,8 @@ TEST(SemanticTypeGraph, SoaOwnerUsesItsLogicalIdentity) {
     auto& module_settings_store{declarations.module_settings_store};
     auto& records_schemas{declarations.records};
     auto& record_members_schemas{declarations.child_occurrences};
-    auto& strings{context.storage.strings};
-    [[maybe_unused]] auto& storage{context.storage};
+    auto& strings{ctx.storage.strings};
+    [[maybe_unused]] auto& storage{ctx.storage};
     auto& semantic_strings{storage.strings};
     auto const rows{soas_schemas.append()};
     auto const rows_row{soas_schemas.index(rows)};
@@ -2105,14 +2100,13 @@ TEST(SemanticTypeGraph, SoaOwnerUsesItsLogicalIdentity) {
         {append_test_row(soa_members, [&](auto const new_soa_members) {
             soa_members.name[new_soa_members] = strings.intern("values");
             soa_members.kind[new_soa_members] = lispb::codegen::SoaMemberKind::array;
-            soa_members.type[new_soa_members] =
-                lispb::codegen::make_test_type_ref(context, "float");
+            soa_members.type[new_soa_members] = lispb::codegen::make_test_type_ref(ctx, "float");
         })});
-    soas_schemas.equivalent_type[rows_row] = lispb::codegen::make_test_type_ref(context, "Row");
+    soas_schemas.equivalent_type[rows_row] = lispb::codegen::make_test_type_ref(ctx, "Row");
     lispb::codegen::Manifest manifest{
         lispb::codegen::manifest_schema_version,
         lispb::codegen::make_test_registry(
-            context,
+            ctx,
             {{"logical", storage.cpp_types.add("model::LogicalRows")},
              {"physical", storage.cpp_types.add("model::LogicalRows")}}),
         declarations,
@@ -2139,7 +2133,7 @@ TEST(SemanticTypeGraph, SoaOwnerUsesItsLogicalIdentity) {
                                          soa_members.kind[new_soa_members] =
                                              lispb::codegen::SoaMemberKind::array;
                                          soa_members.type[new_soa_members] =
-                                             lispb::codegen::make_test_type_ref(context, "float");
+                                             lispb::codegen::make_test_type_ref(ctx, "float");
                                      })});
                              soas_schemas.layout_only[new_soas] = true;
                          }),
@@ -2172,7 +2166,7 @@ TEST(SemanticTypeGraph, SoaOwnerUsesItsLogicalIdentity) {
     EXPECT_EQ(text(storage, graph.cpp_spelling(*id)), "model::LogicalRows");
     EXPECT_EQ(graph.find_registered(semantic_strings.find("logical")), id);
     EXPECT_EQ(graph.find_registered(semantic_strings.find("physical")), id);
-    EXPECT_EQ(graph.find_reference(lispb::codegen::make_test_type_ref(context, "LogicalRows"),
+    EXPECT_EQ(graph.find_reference(lispb::codegen::make_test_type_ref(ctx, "LogicalRows"),
                                    manifest.modules.front()),
               id);
     auto const& soa{graph.definition(*id)};

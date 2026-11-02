@@ -14,9 +14,9 @@
 namespace ioj::s7 {
 template <>
 struct TypeReader<levels::CampaignDefinition> : RecordReader<levels::CampaignDefinition> {
-    static void decode(DecodeContext context, value_type& result) {
+    static void decode(DecodeContext ctx, value_type& result) {
         decode_record<Field>(
-            context,
+            ctx,
             "campaign",
             field_names,
             [&result](Field selected, auto const& read) {

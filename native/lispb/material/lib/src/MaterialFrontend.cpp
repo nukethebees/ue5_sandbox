@@ -827,7 +827,7 @@ class Analyzer {
         }
         auto resolved{resolver_.resolve == nullptr
                           ? std::nullopt
-                          : resolver_.resolve(resolver_.context, syntax_.text(path_form))};
+                          : resolver_.resolve(resolver_.ctx, syntax_.text(path_form))};
         if (!resolved) {
             fail(syntax_.token_span(path_form),
                  "unresolved texture asset '" + std::string{syntax_.text(path_form)} + "'");

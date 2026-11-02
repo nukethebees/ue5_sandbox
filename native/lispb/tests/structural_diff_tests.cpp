@@ -165,8 +165,8 @@ struct CustomComparison {
 
 void diff_members(CustomComparison const& expected,
                   CustomComparison const& actual,
-                  DiffContext& context) {
-    context.diff("value", expected.value, actual.value);
+                  DiffContext& ctx) {
+    ctx.diff("value", expected.value, actual.value);
     if (actual.fail) {
         throw std::runtime_error{"custom comparison failed"};
     }
@@ -174,14 +174,14 @@ void diff_members(CustomComparison const& expected,
 
 TEST(StructuralDiff, RestoresPathsAfterCustomComparisonsThrowAndOwnsDiagnosticStrings) {
     DiffReport result;
-    DiffContext context{result};
+    DiffContext ctx{result};
     {
         std::string name{"temporary"};
         EXPECT_THROW(
-            context.diff(std::string_view{name}, CustomComparison{1}, CustomComparison{2, true}),
+            ctx.diff(std::string_view{name}, CustomComparison{1}, CustomComparison{2, true}),
             std::runtime_error);
     }
-    context.diff("sibling", 3, 4);
+    ctx.diff("sibling", 3, 4);
     EXPECT_EQ(
         result.message(),
         "temporary.value\n  Expected: 1\n  Actual:   2\nsibling\n  Expected: 3\n  Actual:   4\n");

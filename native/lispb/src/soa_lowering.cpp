@@ -30,8 +30,8 @@
 namespace lispb::codegen::detail {
 namespace {
 
-auto mask_field_width(LoweringContext& context, SoaMemberId member) -> std::string {
-    auto const& decls{context.declarations};
+auto mask_field_width(LoweringContext& ctx, SoaMemberId member) -> std::string {
+    auto const& decls{ctx.declarations};
     auto const& members{decls.soa_members};
     auto const& dimensions{decls.soa_mask_dimensions};
     auto const selected{decls.items(members.mask_dimensions[members.index(member)])};
@@ -41,14 +41,14 @@ auto mask_field_width(LoweringContext& context, SoaMemberId member) -> std::stri
     std::vector<std::string> extents;
     extents.reserve(selected.size());
     for (auto const dimension : selected) {
-        extents.push_back("(" + context.text(dimensions.extent[dimensions.index(dimension)]) + ")");
+        extents.push_back("(" + ctx.text(dimensions.extent[dimensions.index(dimension)]) + ")");
     }
     return join(extents, " * ");
 }
 
-auto mask_index_expression(LoweringContext& context, SoaMemberId member) -> Expr {
-    auto& ir{context.ir};
-    auto const& decls{context.declarations};
+auto mask_index_expression(LoweringContext& ctx, SoaMemberId member) -> Expr {
+    auto& ir{ctx.ir};
+    auto const& decls{ctx.declarations};
     auto const& members{decls.soa_members};
     auto const& dimensions{decls.soa_mask_dimensions};
     auto const selected{decls.items(members.mask_dimensions[members.index(member)])};
@@ -67,9 +67,9 @@ auto mask_index_expression(LoweringContext& context, SoaMemberId member) -> Expr
     return result;
 }
 
-auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nodes {
-    auto& ir{context.ir};
-    auto const& decls{context.declarations};
+auto field_mask_nodes(LoweringContext& ctx, DeclarationHandle schema) -> Nodes {
+    auto& ir{ctx.ir};
+    auto const& decls{ctx.declarations};
     auto const& soas{decls.soas};
     auto const& members{decls.soa_members};
     auto const& dimensions{decls.soa_mask_dimensions};
@@ -79,7 +79,7 @@ auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nod
     }
 
     auto const mask_name{*soas.field_mask_name[row]};
-    auto const enum_name{context.text(*soas.field_enum_name[row])};
+    auto const enum_name{ctx.text(*soas.field_enum_name[row])};
     auto const selected{decls.items(soas.members[row])};
     auto const uint8_type{ir.types.std.u8};
     auto const int32_type{ir.types.std.i32};
@@ -97,10 +97,10 @@ auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nod
         if (!members.mask_field[member_row]) {
             continue;
         }
-        auto const name{title_case_identifier(context.text(members.name[member_row]))};
+        auto const name{title_case_identifier(ctx.text(members.name[member_row]))};
         values.push_back(ir.enumerator(ir.store_text(name), ir.store_text(next_value())));
         previous_name = name;
-        previous_width = mask_field_width(context, member);
+        previous_width = mask_field_width(ctx, member);
     }
     values.push_back(ir.enumerator(ir.store_text("Count"), ir.store_text(next_value())));
 
@@ -124,7 +124,7 @@ auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nod
         if (!members.mask_field[member_row] || selected_dimensions.empty()) {
             continue;
         }
-        auto const name{context.text(members.name[member_row])};
+        auto const name{ctx.text(members.name[member_row])};
         std::vector<FunctionParameterId> parameters;
         for (auto const dimension : selected_dimensions) {
             parameters.push_back(ir.parameter(ir.types.decorate(ir.types.std.i32, "", " const"),
@@ -149,14 +149,14 @@ auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nod
                     ir.static_cast_expr(int32_type,
                                         ir.type_reference(ir.types.decorate(
                                             enum_type, "", "::" + title_case_identifier(name)))),
-                    mask_index_expression(context, member))))});
+                    mask_index_expression(ctx, member))))});
         children.new_lines(1).add(ir.header_function(function));
     }
 
     auto const mask{ir.record(mask_name, children.build())};
     ir.set_record_bases(mask, {base});
 
-    auto const mask_type{ir.types.named(context.text(mask_name))};
+    auto const mask_type{ir.types.named(ctx.text(mask_name))};
     NodeListBuilder result{ir};
     result.add(ir.enumeration(*soas.field_enum_name[row], uint8_type, values))
         .new_lines(1)
@@ -172,28 +172,26 @@ auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nod
 
 } // namespace
 
-auto lower_soa_declaration(LoweringContext& context, DeclarationHandle schema)
-    -> DeclarationEmission {
-    auto& ir{context.ir};
-    auto const& soas{context.declarations.soas};
+auto lower_soa_declaration(LoweringContext& ctx, DeclarationHandle schema) -> DeclarationEmission {
+    auto& ir{ctx.ir};
+    auto const& soas{ctx.declarations.soas};
     auto const row{soas.index(schema)};
     NodeListBuilder header{ir};
-    auto const masks{field_mask_nodes(context, schema)};
+    auto const masks{field_mask_nodes(ctx, schema)};
     if (!masks.empty()) {
         header.new_lines(2).append(masks).new_lines(2);
     }
     if (soas.layout_only[row] && soas.const_view_functions[row].empty() &&
         soas.mutable_view_functions[row].empty() && !soas.equivalent_type[row]) {
-        auto const type{context.semantic.find_declared(context.module, soas.name[row])};
-        if (context.semantic.users_of(*type).empty()) {
+        auto const type{ctx.semantic.find_declared(ctx.module, soas.name[row])};
+        if (ctx.semantic.users_of(*type).empty()) {
             header.add(ir.namespace_node(
-                ir.strings.intern(soa_namespace_name(context.text(soas.name[row]))),
-                emit_single_allocation_layout(context,
-                                              build_single_allocation_model(context, schema))));
+                ir.strings.intern(soa_namespace_name(ctx.text(soas.name[row]))),
+                emit_single_allocation_layout(ctx, build_single_allocation_model(ctx, schema))));
             return {.header = header.build(), .format_generated = true};
         }
     }
-    auto lowered{lower_single_allocation(context, schema)};
+    auto lowered{lower_single_allocation(ctx, schema)};
     header.append(lowered.header);
     return {.header = header.build(), .source = lowered.source, .format_generated = true};
 }

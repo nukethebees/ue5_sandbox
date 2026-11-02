@@ -20,10 +20,10 @@ using lispb::test_support::expect_contains_all;
 namespace {
 
 TEST(UnionLowering, GeneratesRawAlternativesAndFixedArrays) {
-    CompilerTestContext context;
-    auto& types{context.storage.cpp_types};
+    CompilerTestContext ctx;
+    auto& types{ctx.storage.cpp_types};
     auto manifest{parse_test_manifest(
-        context,
+        ctx,
         R"(
         (module unions :header "Unions.h" :namespace project
             (union Payload :export-specifier PROJECT_API
@@ -32,7 +32,7 @@ TEST(UnionLowering, GeneratesRawAlternativesAndFixedArrays) {
     (projections (cpp)))))",
         {{"value", types.add("Value", {types.dependency("Value", "Project/Value.h")})}})};
 
-    auto const files{render_test_manifest(context, manifest)};
+    auto const files{render_test_manifest(ctx, manifest)};
 
     ASSERT_EQ(files.size(), 1U);
     auto const& output{files.front().content};
@@ -46,24 +46,24 @@ TEST(UnionLowering, GeneratesRawAlternativesAndFixedArrays) {
 }
 
 TEST(UnionLowering, EmitsByValueDependenciesBeforeTheirUsers) {
-    CompilerTestContext context;
-    auto manifest{parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto manifest{parse_test_manifest(ctx, R"(
         (module unions :header "Unions.h"
             (union Outer (member inner Inner)
     (projections (cpp)))
             (union Inner (member value float)
     (projections (cpp)))))")};
 
-    auto const files{render_test_manifest(context, manifest)};
+    auto const files{render_test_manifest(ctx, manifest)};
     auto const& output{files.front().content};
     EXPECT_LT(output.find("union Inner"), output.find("union Outer"));
 }
 
 TEST(UnionLowering, GeneratesTaggedAggregateWithExplicitPayloadUnion) {
-    CompilerTestContext context;
-    auto& types{context.storage.cpp_types};
+    CompilerTestContext ctx;
+    auto& types{ctx.storage.cpp_types};
     auto manifest{parse_test_manifest(
-        context,
+        ctx,
         R"(
         (module events :header "Events.h" :namespace events
             (enum EventKind std::uint8_t (value Spawn) (value Damage)
@@ -80,7 +80,7 @@ TEST(UnionLowering, GeneratesTaggedAggregateWithExplicitPayloadUnion) {
         {{"event_kind",
           types.add("events::EventKind", {types.dependency("events::EventKind", "Events.h")})}})};
 
-    auto const files{render_test_manifest(context, manifest)};
+    auto const files{render_test_manifest(ctx, manifest)};
 
     ASSERT_EQ(files.size(), 2U);
     auto const& output{files.back().content};

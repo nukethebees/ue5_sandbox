@@ -14,9 +14,9 @@
 namespace ioj::s7 {
 template <>
 struct TypeReader<sim::CapitalShipSimConfig> : RecordReader<sim::CapitalShipSimConfig> {
-    static void decode(DecodeContext context, value_type& result) {
+    static void decode(DecodeContext ctx, value_type& result) {
         decode_record<Field>(
-            context, "capital-ships", field_names, [&result](Field selected, auto const& read) {
+            ctx, "capital-ships", field_names, [&result](Field selected, auto const& read) {
                 value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::spawn_delay) {
                         read(member, constraints::finite);

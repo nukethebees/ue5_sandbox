@@ -21,8 +21,7 @@ using lispb::test_support::expect_contains_all;
 using lispb::test_support::expect_contains_none;
 namespace {
 
-auto render_static_table(CompilerTestContext& context, bool const two_tables = false)
-    -> std::string {
+auto render_static_table(CompilerTestContext& ctx, bool const two_tables = false) -> std::string {
     std::string source{R"((module tables :header "Tables.h" :namespace project::generated
         :prelude ("class FForward;"))"};
     auto append_table = [&](std::string_view name) {
@@ -36,20 +35,20 @@ auto render_static_table(CompilerTestContext& context, bool const two_tables = f
         append_table("FOtherValues");
     }
     source += ')';
-    auto& types{context.storage.cpp_types};
+    auto& types{ctx.storage.cpp_types};
     auto const manifest{parse_test_manifest(
-        context,
+        ctx,
         source,
         {{"value", types.add("FValue", {types.dependency("FValue", "Project/Value.h")})},
          {"point", types.add("FPoint", {types.dependency("FPoint", "Project/Point.h")})}})};
-    auto const files{render_test_manifest(context, manifest)};
+    auto const files{render_test_manifest(ctx, manifest)};
     EXPECT_EQ(files.size(), 1);
     return files.front().content;
 }
 
 TEST(StaticTableLowering, GeneratesFixedRowsColumnsAndCoreFunctions) {
-    CompilerTestContext context;
-    auto const output{render_static_table(context)};
+    CompilerTestContext ctx;
+    auto const output{render_static_table(ctx)};
 
     expect_contains_all(output,
                         {"#include \"Project/Value.h\"",
@@ -72,8 +71,8 @@ TEST(StaticTableLowering, GeneratesFixedRowsColumnsAndCoreFunctions) {
 }
 
 TEST(StaticTableLowering, GeneratesMultipleTablesInOneHeader) {
-    CompilerTestContext context;
-    auto const output{render_static_table(context, true)};
+    CompilerTestContext ctx;
+    auto const output{render_static_table(ctx, true)};
 
     expect_contains_all(output, {"struct PROJECT_API FValues", "struct PROJECT_API FOtherValues"});
 }

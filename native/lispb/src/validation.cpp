@@ -115,38 +115,36 @@ class Validator {
         auto const& occurrences{graph_.occurrences()};
         return occurrences.cpp_type[occurrences.index(occurrence)];
     }
-    void require_value(lispb::StringId id, std::string const& context) {
-        require_value(view(id), context);
+    void require_value(lispb::StringId id, std::string const& ctx) { require_value(view(id), ctx); }
+    void require_non_blank_value(lispb::StringId id, std::string const& ctx) {
+        require_non_blank_value(view(id), ctx);
     }
-    void require_non_blank_value(lispb::StringId id, std::string const& context) {
-        require_non_blank_value(view(id), context);
+    void require_identifier(lispb::StringId id, std::string const& ctx) {
+        require_identifier(view(id), ctx);
     }
-    void require_identifier(lispb::StringId id, std::string const& context) {
-        require_identifier(view(id), context);
-    }
-    void require_qualified_identifier(lispb::StringId id, std::string const& context) {
-        require_qualified_identifier(view(id), context);
+    void require_qualified_identifier(lispb::StringId id, std::string const& ctx) {
+        require_qualified_identifier(view(id), ctx);
     }
     template <typename Id>
-    void require_unique_names(SchemaRange<Id> names, std::string const& context) {
+    void require_unique_names(SchemaRange<Id> names, std::string const& ctx) {
         std::set<lispb::StringId> unique;
         for (auto const name : declarations_.items(names)) {
-            require_value(name, context);
+            require_value(name, ctx);
             if (!unique.insert(name).second) {
-                throw std::invalid_argument{context + " contains duplicate name: " + text(name)};
+                throw std::invalid_argument{ctx + " contains duplicate name: " + text(name)};
             }
         }
     }
-    void require_value(std::string_view value, std::string const& context) {
+    void require_value(std::string_view value, std::string const& ctx) {
         if (value.empty()) {
-            throw std::invalid_argument{context + " must not be empty"};
+            throw std::invalid_argument{ctx + " must not be empty"};
         }
     }
 
-    void require_non_blank_value(std::string_view value, std::string const& context) {
-        require_value(value, context);
+    void require_non_blank_value(std::string_view value, std::string const& ctx) {
+        require_value(value, ctx);
         if (value.find_first_not_of(" \t\r\n") == std::string_view::npos) {
-            throw std::invalid_argument{context + " must not be blank"};
+            throw std::invalid_argument{ctx + " must not be blank"};
         }
     }
 
@@ -308,107 +306,106 @@ class Validator {
     }
 
     void reject_generated_name_collision(std::string_view const value,
-                                         std::string const& context,
+                                         std::string const& ctx,
                                          bool const include_mutations) {
         if (is_generated_storage_member_name(value) ||
             (include_mutations && is_generated_mutation_name(value))) {
-            throw std::invalid_argument{context +
+            throw std::invalid_argument{ctx +
                                         " collides with generated API: " + std::string{value}};
         }
     }
 
-    void require_identifier(std::string_view value, std::string const& context) {
-        require_value(value, context);
+    void require_identifier(std::string_view value, std::string const& ctx) {
+        require_value(value, ctx);
         if (!is_identifier_start(static_cast<unsigned char>(value.front())) ||
             !std::ranges::all_of(value.substr(1), [](char const character) {
                 return is_identifier_character(static_cast<unsigned char>(character));
             })) {
-            throw std::invalid_argument{context +
-                                        " must be a C++ identifier: " + std::string{value}};
+            throw std::invalid_argument{ctx + " must be a C++ identifier: " + std::string{value}};
         }
         if (is_cpp_keyword(value) || is_reserved_identifier(value)) {
             throw std::invalid_argument{
-                context + " must not be a reserved C++ identifier: " + std::string{value}};
+                ctx + " must not be a reserved C++ identifier: " + std::string{value}};
         }
     }
 
-    void require_qualified_identifier(std::string_view value, std::string const& context) {
-        require_value(value, context);
+    void require_qualified_identifier(std::string_view value, std::string const& ctx) {
+        require_value(value, ctx);
         std::size_t begin{};
         while (begin < value.size()) {
             auto const separator{value.find("::", begin)};
             auto const end{separator == std::string_view::npos ? value.size() : separator};
-            require_identifier(value.substr(begin, end - begin), context);
+            require_identifier(value.substr(begin, end - begin), ctx);
             if (separator == std::string_view::npos) {
                 return;
             }
             begin = separator + 2;
         }
-        throw std::invalid_argument{context +
+        throw std::invalid_argument{ctx +
                                     " must be a qualified C++ identifier: " + std::string{value}};
     }
 
-    void require_unique_names(std::vector<std::string> const& names, std::string const& context) {
+    void require_unique_names(std::vector<std::string> const& names, std::string const& ctx) {
         std::set<std::string> unique;
         for (auto const& name : names) {
-            require_value(name, context);
+            require_value(name, ctx);
             if (!unique.insert(name).second) {
-                throw std::invalid_argument{context + " contains duplicate name: " + name};
+                throw std::invalid_argument{ctx + " contains duplicate name: " + name};
             }
         }
     }
 
-    void validate_type(TypeRefId reference, std::string const& context) {
+    void validate_type(TypeRefId reference, std::string const& ctx) {
         auto const type{reference};
-        require_value(text(declarations_.type_refs.name[type]), context + " type");
+        require_value(text(declarations_.type_refs.name[type]), ctx + " type");
         if (declarations_.type_refs.nested[type].has_value()) {
-            require_value(*declarations_.type_refs.nested[type], context + " nested type");
+            require_value(*declarations_.type_refs.nested[type], ctx + " nested type");
         }
         static_cast<void>(graph_.resolved(module_, reference));
     }
 
     void validate_semantic_relation(lispb::codegen::SemanticRelationId const& relationship,
-                                    std::string const& context) {
-        validate_type(declarations_.semantic_relations.target[relationship], context);
+                                    std::string const& ctx) {
+        validate_type(declarations_.semantic_relations.target[relationship], ctx);
         auto const offset_relation{declarations_.semantic_relations.kind[relationship] ==
                                    SemanticRelationKind::offset_into};
         if (offset_relation != declarations_.semantic_relations.unit[relationship].has_value()) {
-            throw std::invalid_argument{context + (offset_relation
-                                                       ? " 'offset_into' requires an explicit unit"
-                                                       : " unit is only valid for 'offset_into'")};
+            throw std::invalid_argument{ctx + (offset_relation
+                                                   ? " 'offset_into' requires an explicit unit"
+                                                   : " unit is only valid for 'offset_into'")};
         }
     }
 
     void validate_type_dependency(CppTypes const& types,
                                   TypeDependencyId const dependency,
-                                  std::string const& context) {
-        require_value(std::string{types.dependency_spelling(dependency)}, context + " spelling");
+                                  std::string const& ctx) {
+        require_value(std::string{types.dependency_spelling(dependency)}, ctx + " spelling");
         if (auto const header{types.dependency_header(dependency)}) {
-            require_value(std::string{*header}, context + " header");
+            require_value(std::string{*header}, ctx + " header");
         }
     }
 
-    void validate_export_specifier(lispb::StringId const value, std::string const& context) {
+    void validate_export_specifier(lispb::StringId const value, std::string const& ctx) {
         if (value.value != 0) {
-            require_identifier(value, context);
+            require_identifier(value, ctx);
         }
     }
 
     void validate_dependency(lispb::StringId key,
                              TypeRegistry const& types,
-                             std::string const& context) {
-        require_non_blank_value(key, context + " dependency");
+                             std::string const& ctx) {
+        require_non_blank_value(key, ctx + " dependency");
         auto const found{types.find(view(key))};
         if (!found ||
             types.cpp_types.dependencies(types.registered.cpp_type[types.registered.index(*found)])
                 .empty()) {
-            throw std::invalid_argument{context + " has unknown dependency: " + text(key)};
+            throw std::invalid_argument{ctx + " has unknown dependency: " + text(key)};
         }
     }
 
     auto parameter_type_names(SchemaRange<ParameterId> parameters,
                               TypeRegistry const& types,
-                              std::string const& context) -> std::vector<std::string> {
+                              std::string const& ctx) -> std::vector<std::string> {
         auto const& parameter_schemas{declarations_.parameters};
         std::vector<std::string> names;
         std::vector<std::string> type_names;
@@ -416,20 +413,20 @@ class Validator {
         for (auto const parameter : declarations_.items(parameters)) {
             auto const name{text(parameter_schemas.name[parameter])};
             names.push_back(name);
-            require_identifier(name, context + " parameter name");
-            validate_type(parameter_schemas.type[parameter], context + " parameter '" + name + "'");
+            require_identifier(name, ctx + " parameter name");
+            validate_type(parameter_schemas.type[parameter], ctx + " parameter '" + name + "'");
             type_names.push_back(std::string{
                 types.cpp_types.spelling(resolved_type(parameter_schemas.type[parameter]))});
             if (parameter_schemas.default_value[parameter].has_value()) {
                 require_non_blank_value(*parameter_schemas.default_value[parameter],
-                                        context + " parameter '" + name + "' default");
+                                        ctx + " parameter '" + name + "' default");
                 has_default = true;
             } else if (has_default) {
-                throw std::invalid_argument{context +
+                throw std::invalid_argument{ctx +
                                             " has a non-defaulted parameter after a defaulted one"};
             }
         }
-        require_unique_names(names, context + " parameters");
+        require_unique_names(names, ctx + " parameters");
         return type_names;
     }
 
@@ -445,7 +442,7 @@ class Validator {
 
     void validate_function(lispb::codegen::FunctionSchemaId const& function,
                            TypeRegistry const& types,
-                           std::string const& context,
+                           std::string const& ctx,
                            std::set<std::string>& signatures,
                            bool const soa_owner = false) {
         auto const& functions{declarations_.functions};
@@ -454,14 +451,14 @@ class Validator {
         if (auto const columns{functions.append_columns[function]}) {
             if (!soa_owner || functions.is_static[function] || functions.is_const[function] ||
                 functions.is_constexpr[function] || !functions.body_lines[function].empty()) {
-                throw std::invalid_argument{context + " append-columns requires a mutable owner "
-                                                      "function without a body or constexpr"};
+                throw std::invalid_argument{ctx + " append-columns requires a mutable owner "
+                                                  "function without a body or constexpr"};
             }
             if (columns->size() != functions.parameters[function].size()) {
-                throw std::invalid_argument{context +
+                throw std::invalid_argument{ctx +
                                             " append-columns requires one column per parameter"};
             }
-            require_unique_names(*columns, context + " append columns");
+            require_unique_names(*columns, ctx + " append columns");
             for (auto const parameter : declarations_.items(functions.parameters[function])) {
                 auto const type{declarations_.parameters.type[parameter]};
                 auto const occurrence{graph_.resolved(module_, type)};
@@ -470,45 +467,40 @@ class Validator {
                 if (form == PhysicalTypeForm::lvalue_reference ||
                     form == PhysicalTypeForm::rvalue_reference) {
                     throw std::invalid_argument{
-                        context +
-                        " append-columns parameters must be passed by value before growth"};
+                        ctx + " append-columns parameters must be passed by value before growth"};
                 }
             }
         }
         if (functions.is_constexpr[function] &&
             (functions.body_lines[function].empty() || functions.definition_in_source[function])) {
-            throw std::invalid_argument{context +
+            throw std::invalid_argument{ctx +
                                         " constexpr function requires a generated header body"};
         }
         if (functions.is_static[function] && functions.is_const[function]) {
-            throw std::invalid_argument{context + " must not be both static and const"};
+            throw std::invalid_argument{ctx + " must not be both static and const"};
         }
         if (functions.is_inline[function] && functions.definition_in_source[function]) {
-            throw std::invalid_argument{context +
-                                        " must not be both inline and defined in the source"};
+            throw std::invalid_argument{ctx + " must not be both inline and defined in the source"};
         }
         if (functions.template_parameters[function] && functions.definition_in_source[function]) {
-            throw std::invalid_argument{context +
-                                        " function templates must be defined in the header"};
+            throw std::invalid_argument{ctx + " function templates must be defined in the header"};
         }
         if (functions.template_parameters[function]) {
             require_non_blank_value(*functions.template_parameters[function],
-                                    context + " template parameters");
+                                    ctx + " template parameters");
         }
         if (functions.requires_clause[function]) {
-            require_non_blank_value(*functions.requires_clause[function],
-                                    context + " requires clause");
+            require_non_blank_value(*functions.requires_clause[function], ctx + " requires clause");
         }
 
         auto const return_type{functions.return_type[function]};
-        validate_type(return_type, context + " return");
+        validate_type(return_type, ctx + " return");
         if (functions.trailing_return_type[function]) {
             if (view(type_refs.name[return_type]) != "auto" ||
                 !view(type_refs.suffix[return_type]).empty() || type_refs.nested[return_type]) {
-                throw std::invalid_argument{context +
-                                            " trailing return type requires an auto return"};
+                throw std::invalid_argument{ctx + " trailing return type requires an auto return"};
             }
-            validate_type(*functions.trailing_return_type[function], context + " trailing return");
+            validate_type(*functions.trailing_return_type[function], ctx + " trailing return");
         }
         auto const effective_return{functions.trailing_return_type[function]
                                         ? *functions.trailing_return_type[function]
@@ -518,25 +510,23 @@ class Validator {
         auto const occurrence_row{occurrences.index(result)};
         if (functions.append_columns[function] &&
             types.cpp_types.strings().view(occurrences.object_spelling[occurrence_row]) == "void") {
-            throw std::invalid_argument{context +
-                                        " append-columns must return a row index or row ID"};
+            throw std::invalid_argument{ctx + " append-columns must return a row index or row ID"};
         }
         if (functions.is_nodiscard[function] &&
             occurrences.physical_form[occurrence_row] == PhysicalTypeForm::value &&
             types.cpp_types.strings().view(occurrences.object_spelling[occurrence_row]) == "void") {
-            throw std::invalid_argument{context + " nodiscard function must not return void"};
+            throw std::invalid_argument{ctx + " nodiscard function must not return void"};
         }
 
         if (!signatures
-                 .insert(
-                     signature(functions.name[function],
-                               parameter_type_names(functions.parameters[function], types, context),
-                               functions.is_const[function]))
+                 .insert(signature(functions.name[function],
+                                   parameter_type_names(functions.parameters[function], types, ctx),
+                                   functions.is_const[function]))
                  .second) {
-            throw std::invalid_argument{"Duplicate " + context + " signature"};
+            throw std::invalid_argument{"Duplicate " + ctx + " signature"};
         }
         for (auto const dependency : declarations_.items(functions.dependencies[function])) {
-            validate_dependency(dependency, types, context);
+            validate_dependency(dependency, types, ctx);
         }
     }
 
@@ -923,32 +913,31 @@ class Validator {
         std::vector<std::string> member_names;
         member_names.reserve(records.members[record].size());
         for (auto const member : declarations_.items(records.members[record])) {
-            auto const context{record_context + " member '" + text(members.name[member]) + "'"};
+            auto const ctx{record_context + " member '" + text(members.name[member]) + "'"};
             require_identifier(text(members.name[member]), record_context + " member name");
             member_names.push_back(text(members.name[member]));
             if (members.kind[member] == ChildOccurrenceKind::reserved) {
                 if (records.layout[record] != LayoutKind::packed || !members.bits[member] ||
                     *members.bits[member] == 0) {
                     throw std::invalid_argument{
-                        context + " reserved regions require a positive width and packed layout"};
+                        ctx + " reserved regions require a positive width and packed layout"};
                 }
                 continue;
             }
-            validate_type(members.type[member], context);
+            validate_type(members.type[member], ctx);
             if (members.case_label[member]) {
-                throw std::invalid_argument{context + " :case is only valid on union alternatives"};
+                throw std::invalid_argument{ctx + " :case is only valid on union alternatives"};
             }
             if (records.layout[record] == LayoutKind::packed &&
                 (members.s7[member].minimum || members.s7[member].maximum)) {
                 throw std::invalid_argument{
-                    context + " packed member bounds belong to its scalar definition"};
+                    ctx + " packed member bounds belong to its scalar definition"};
             }
             if (members.relationship[member].has_value()) {
-                validate_semantic_relation(*members.relationship[member],
-                                           context + " relationship");
+                validate_semantic_relation(*members.relationship[member], ctx + " relationship");
             }
             if (members.count[member] == 0) {
-                throw std::invalid_argument{context + " count must be greater than zero"};
+                throw std::invalid_argument{ctx + " count must be greater than zero"};
             }
         }
         require_unique_names(member_names, record_context + " members");
@@ -966,21 +955,21 @@ class Validator {
         std::set<std::string> signatures;
         for (auto const function : declarations_.items(records.functions[record])) {
             auto const function_name{text(functions.name[function])};
-            auto const context{record_context + " function '" + function_name + "'"};
+            auto const ctx{record_context + " function '" + function_name + "'"};
             if (function_name != "operator[]" && function_name != "operator+" &&
                 function_name != "operator-" && function_name != "operator+=" &&
                 function_name != "operator-=") {
-                require_identifier(function_name, context);
+                require_identifier(function_name, ctx);
             }
             if (function_name == text(records.name[record]) ||
                 std::ranges::find(member_names, function_name) != member_names.end()) {
-                throw std::invalid_argument{context + " collides with a member or owning type"};
+                throw std::invalid_argument{ctx + " collides with a member or owning type"};
             }
-            validate_function(function, types, context, signatures);
+            validate_function(function, types, ctx, signatures);
             if (functions.definition_in_source[function] ||
                 functions.template_parameters[function] || functions.requires_clause[function]) {
                 throw std::invalid_argument{
-                    context + " requires an ordinary header method or bodyless declaration"};
+                    ctx + " requires an ordinary header method or bodyless declaration"};
             }
         }
     }
@@ -1005,20 +994,19 @@ class Validator {
         for (auto const alternative_id :
              declarations_.items(declarations_.unions.alternatives[schema])) {
             auto const alternative{alternative_id};
-            auto const context{"Union '" + text(declarations_.unions.name[schema]) +
-                               "' alternative '" +
-                               text(declarations_.child_occurrences.name[alternative]) + "'"};
+            auto const ctx{"Union '" + text(declarations_.unions.name[schema]) + "' alternative '" +
+                           text(declarations_.child_occurrences.name[alternative]) + "'"};
             require_identifier(text(declarations_.child_occurrences.name[alternative]),
                                "Union '" + text(declarations_.unions.name[schema]) +
                                    "' alternative name");
-            validate_type(declarations_.child_occurrences.type[alternative], context);
+            validate_type(declarations_.child_occurrences.type[alternative], ctx);
             auto const& s7{declarations_.child_occurrences.s7[alternative]};
             if (s7.minimum || s7.maximum) {
                 throw std::invalid_argument{
-                    context + " union alternative bounds belong to its scalar definition"};
+                    ctx + " union alternative bounds belong to its scalar definition"};
             }
             if (declarations_.child_occurrences.count[alternative] == 0) {
-                throw std::invalid_argument{context + " count must be greater than zero"};
+                throw std::invalid_argument{ctx + " count must be greater than zero"};
             }
             alternative_names.push_back(text(declarations_.child_occurrences.name[alternative]));
         }
@@ -1032,12 +1020,12 @@ class Validator {
                                  PackedIntegerValue const maximum_value,
                                  std::optional<std::uint32_t> const bit_width,
                                  SchemaRange<PackedNamedCodeId> const named_codes,
-                                 std::string const& context) {
+                                 std::string const& ctx) {
         if (packed_integer_less(maximum_value, minimum_value)) {
-            throw std::invalid_argument{context + " minimum exceeds maximum"};
+            throw std::invalid_argument{ctx + " minimum exceeds maximum"};
         }
         if (!signedness && minimum_value.negative) {
-            throw std::invalid_argument{context + " unsigned domain contains a negative value"};
+            throw std::invalid_argument{ctx + " unsigned domain contains a negative value"};
         }
         auto required_minimum{minimum_value};
         auto required_maximum{maximum_value};
@@ -1048,14 +1036,14 @@ class Validator {
             auto const name{codes.name[code]};
             auto const value{codes.value[code]};
             auto const sentinel{codes.sentinel[code]};
-            auto const code_context{context + " code '" + text(name) + "'"};
+            auto const code_context{ctx + " code '" + text(name) + "'"};
             require_identifier(text(name), code_context + " name");
             if (!code_names.insert(name).second) {
-                throw std::invalid_argument{context + " has duplicate code: " + text(name)};
+                throw std::invalid_argument{ctx + " has duplicate code: " + text(name)};
             }
             if (!code_values.emplace(value.negative, value.magnitude).second) {
                 throw std::invalid_argument{
-                    context + " has duplicate code value: " + format_packed_integer(value)};
+                    ctx + " has duplicate code value: " + format_packed_integer(value)};
             }
             if (!signedness && value.negative) {
                 throw std::invalid_argument{code_context + " is negative in an unsigned domain"};
@@ -1078,16 +1066,15 @@ class Validator {
         auto const minimum_bits{
             minimum_packed_integer_bits(required_minimum, required_maximum, signedness)};
         if (!minimum_bits.has_value()) {
-            throw std::invalid_argument{context +
-                                        " domain does not fit the supported 1-64-bit range"};
+            throw std::invalid_argument{ctx + " domain does not fit the supported 1-64-bit range"};
         }
         if (bit_width.has_value() && (*bit_width == 0 || *bit_width > 64)) {
-            throw std::invalid_argument{context + " bit width must be in the range 1..64"};
+            throw std::invalid_argument{ctx + " bit width must be in the range 1..64"};
         }
         if (bit_width.has_value() && *bit_width < *minimum_bits) {
             throw std::invalid_argument{
                 std::format("{} {}-bit width is smaller than the required {} bits",
-                            context,
+                            ctx,
                             *bit_width,
                             *minimum_bits)};
         }
@@ -1096,12 +1083,12 @@ class Validator {
     void validate_integer_scalar(lispb::codegen::DeclarationHandle const& scalar,
                                  TypeRegistry const& types) {
         auto const& representations{declarations_.integer_scalars};
-        auto const context{"Integer scalar '" + text(representations.name[scalar]) + "'"};
+        auto const ctx{"Integer scalar '" + text(representations.name[scalar]) + "'"};
         require_identifier(text(representations.name[scalar]), "Integer scalar name");
 
         if (representations.relationship[scalar].has_value()) {
             validate_semantic_relation(*representations.relationship[scalar],
-                                       context + " relationship");
+                                       ctx + " relationship");
             auto const relation_kind{
                 declarations_.semantic_relations.kind[*representations.relationship[scalar]]};
             auto const requires_unsigned{relation_kind == SemanticRelationKind::index_into ||
@@ -1110,28 +1097,28 @@ class Validator {
             if (requires_unsigned && representations.signedness[scalar]) {
                 throw std::invalid_argument{
                     std::format("{} relationship '{:s}' requires an unsigned integer scalar",
-                                context,
+                                ctx,
                                 relation_kind)};
             }
         }
 
         auto const projection{representations.cpp_projection[scalar]};
         if (projection && projection->storage) {
-            validate_type(*projection->storage, context + " C++ storage");
+            validate_type(*projection->storage, ctx + " C++ storage");
             auto const cpp_type{resolved_type(*projection->storage)};
             if (!packed_unsigned_width(types.cpp_types.spelling(cpp_type))) {
-                throw std::invalid_argument{context +
+                throw std::invalid_argument{ctx +
                                             " C++ storage must be an unsigned fixed-width integer"};
             }
         }
     }
 
-    auto require_integer_domain(TypeRefId reference, std::string const& context)
+    auto require_integer_domain(TypeRefId reference, std::string const& ctx)
         -> schema::TypeDefinitionId {
-        validate_type(reference, context + " source");
+        validate_type(reference, ctx + " source");
         auto const source{find_integer_domain(reference, graph_, module_)};
         if (!source.has_value()) {
-            throw std::invalid_argument{context + " source must have a declared integer domain"};
+            throw std::invalid_argument{ctx + " source must have a declared integer domain"};
         }
         return *source;
     }
@@ -1139,21 +1126,20 @@ class Validator {
     void validate_linear_quantized(lispb::codegen::DeclarationHandle const& representation) {
         auto const& representations{declarations_.linear_quantizeds};
         auto const& integer_scalars{graph_.definitions().integer_scalars};
-        auto const context{"Linear quantization '" + text(representations.name[representation]) +
-                           "'"};
+        auto const ctx{"Linear quantization '" + text(representations.name[representation]) + "'"};
         require_identifier(text(representations.name[representation]), "Linear quantization name");
 
-        auto const source{require_integer_domain(representations.source[representation], context)};
+        auto const source{require_integer_domain(representations.source[representation], ctx)};
         auto const bit_width{representations.bit_width[representation]};
         auto const reserved_codes{representations.reserved_codes[representation]};
 
         if (!packed_integer_less(integer_scalars.minimum_value[integer_scalars.index(source)],
                                  integer_scalars.maximum_value[integer_scalars.index(source)])) {
-            throw std::invalid_argument{context +
+            throw std::invalid_argument{ctx +
                                         " source range must contain at least two distinct values"};
         }
         if (bit_width == 0 || bit_width > 64) {
-            throw std::invalid_argument{context + " bit width must be in the range 1..64"};
+            throw std::invalid_argument{ctx + " bit width must be in the range 1..64"};
         }
         auto const maximum_reserved{bit_width == 64
                                         ? (std::numeric_limits<std::uint64_t>::max)() - 1
@@ -1161,7 +1147,7 @@ class Validator {
         if (reserved_codes > maximum_reserved) {
             throw std::invalid_argument{
                 std::format("{} reserves {} codes but at least two usable codes are required",
-                            context,
+                            ctx,
                             reserved_codes)};
         }
     }
@@ -1169,25 +1155,25 @@ class Validator {
     void validate_integer_varint(lispb::codegen::DeclarationHandle const& representation) {
         auto const& representations{declarations_.integer_varints};
         auto const& integer_scalars{graph_.definitions().integer_scalars};
-        auto const context{"Integer varint '" + text(representations.name[representation]) + "'"};
+        auto const ctx{"Integer varint '" + text(representations.name[representation]) + "'"};
         require_identifier(text(representations.name[representation]), "Integer varint name");
 
-        auto const source{require_integer_domain(representations.source[representation], context)};
+        auto const source{require_integer_domain(representations.source[representation], ctx)};
         if (representations.encoding[representation] == IntegerVarintEncoding::unsigned_varint &&
             integer_scalars.signedness[integer_scalars.index(source)]) {
-            throw std::invalid_argument{context + " unsigned encoding requires an unsigned source"};
+            throw std::invalid_argument{ctx + " unsigned encoding requires an unsigned source"};
         }
         if (representations.encoding[representation] != IntegerVarintEncoding::unsigned_varint &&
             !integer_scalars.signedness[integer_scalars.index(source)]) {
-            throw std::invalid_argument{context +
+            throw std::invalid_argument{ctx +
                                         " signed and zigzag encodings require a signed source"};
         }
     }
 
     void validate_fixed_point(lispb::codegen::DeclarationHandle const& representation) {
         auto const& representations{declarations_.fixed_points};
-        auto const context{"Fixed-point representation '" +
-                           text(representations.name[representation]) + "'"};
+        auto const ctx{"Fixed-point representation '" + text(representations.name[representation]) +
+                       "'"};
         require_identifier(text(representations.name[representation]),
                            "Fixed-point representation name");
 
@@ -1196,14 +1182,14 @@ class Validator {
         auto const signedness{representations.signedness[representation]};
 
         if (total_bits == 0 || total_bits > 64) {
-            throw std::invalid_argument{context + " total width must be in the range 1..64"};
+            throw std::invalid_argument{ctx + " total width must be in the range 1..64"};
         }
         if (representations.form[representation] == FixedPointForm::binary_point) {
             auto const maximum_fractional_bits{signedness ? total_bits - 1 : total_bits};
             if (fractional_bits > maximum_fractional_bits) {
                 throw std::invalid_argument{
                     std::format("{} fractional width must be at most {}{}",
-                                context,
+                                ctx,
                                 maximum_fractional_bits,
                                 signedness ? " so one sign bit remains" : "")};
             }
@@ -1212,26 +1198,25 @@ class Validator {
 
         auto const parse_bound = [&](std::optional<StringId> value, std::string_view name) {
             if (!value) {
-                throw std::invalid_argument{context + " range requires " + std::string{name}};
+                throw std::invalid_argument{ctx + " range requires " + std::string{name}};
             }
             auto parsed{parse_fixed_point_endpoint(view(*value))};
             if (!parsed) {
-                throw std::invalid_argument{context + " " + std::string{name} + ": " +
-                                            parsed.error()};
+                throw std::invalid_argument{ctx + " " + std::string{name} + ": " + parsed.error()};
             }
             return *parsed;
         };
         auto const minimum{parse_bound(representations.minimum_value[representation], "minimum")};
         auto const maximum{parse_bound(representations.maximum_value[representation], "maximum")};
         if (maximum <= minimum) {
-            throw std::invalid_argument{context + " maximum must be greater than minimum"};
+            throw std::invalid_argument{ctx + " maximum must be greater than minimum"};
         }
     }
 
     void validate_mini_float(lispb::codegen::DeclarationHandle const& representation) {
         auto const& representations{declarations_.mini_floats};
-        auto const context{"Mini-float representation '" +
-                           text(representations.name[representation]) + "'"};
+        auto const ctx{"Mini-float representation '" + text(representations.name[representation]) +
+                       "'"};
         require_identifier(text(representations.name[representation]),
                            "Mini-float representation name");
 
@@ -1241,61 +1226,59 @@ class Validator {
         auto const exponent_bias{representations.exponent_bias[representation]};
 
         if (sign_bits > 1) {
-            throw std::invalid_argument{context + " sign width must be zero or one"};
+            throw std::invalid_argument{ctx + " sign width must be zero or one"};
         }
         if (exponent_bits < 2 || exponent_bits > 15) {
-            throw std::invalid_argument{context + " exponent width must be in the range 2..15"};
+            throw std::invalid_argument{ctx + " exponent width must be in the range 2..15"};
         }
         if (significand_bits > 62) {
-            throw std::invalid_argument{context + " significand width must be in the range 0..62"};
+            throw std::invalid_argument{ctx + " significand width must be in the range 0..62"};
         }
         auto const total_bits{sign_bits + exponent_bits + significand_bits};
         if (total_bits > 64) {
-            throw std::invalid_argument{context + " total width must not exceed 64 bits"};
+            throw std::invalid_argument{ctx + " total width must not exceed 64 bits"};
         }
         if (exponent_bias < -32'768 || exponent_bias > 32'767) {
-            throw std::invalid_argument{context +
-                                        " exponent bias must be in the range -32768..32767"};
+            throw std::invalid_argument{ctx + " exponent bias must be in the range -32768..32767"};
         }
     }
 
     void validate_optional_sentinel(lispb::codegen::DeclarationHandle const& representation) {
         auto const& representations{declarations_.optional_sentinels};
         auto const& integer_scalars{graph_.definitions().integer_scalars};
-        auto const context{"Optional sentinel representation '" +
-                           text(representations.name[representation]) + "'"};
+        auto const ctx{"Optional sentinel representation '" +
+                       text(representations.name[representation]) + "'"};
         require_identifier(text(representations.name[representation]),
                            "Optional sentinel representation name");
 
-        auto const source{require_integer_domain(representations.source[representation], context)};
+        auto const source{require_integer_domain(representations.source[representation], ctx)};
         auto const sentinel{representations.sentinel[representation]};
         auto const named_codes{
             declarations_.items(integer_scalars.named_codes[integer_scalars.index(source)])};
         auto const& codes{declarations_.packed_named_codes};
-        require_identifier(text(sentinel), context + " sentinel code");
+        require_identifier(text(sentinel), ctx + " sentinel code");
         auto const code{
             std::ranges::find(named_codes, sentinel, [&](auto id) { return codes.name[id]; })};
         if (code == named_codes.end()) {
             auto const has_sentinel{
                 std::ranges::any_of(named_codes, [&](auto id) { return codes.sentinel[id]; })};
-            throw std::invalid_argument{
-                has_sentinel ? context + " names unknown source code '" + text(sentinel) + "'"
-                             : context + " source has no named sentinel codes"};
+            throw std::invalid_argument{has_sentinel ? ctx + " names unknown source code '" +
+                                                           text(sentinel) + "'"
+                                                     : ctx + " source has no named sentinel codes"};
         }
         if (!codes.sentinel[*code]) {
-            throw std::invalid_argument{context + " code '" + text(sentinel) +
-                                        "' is not a sentinel"};
+            throw std::invalid_argument{ctx + " code '" + text(sentinel) + "' is not a sentinel"};
         }
     }
 
     void validate_optional_presence_bit(lispb::codegen::DeclarationHandle const& representation) {
         auto const& representations{declarations_.optional_presence_bits};
-        auto const context{"Optional presence-bit representation '" +
-                           text(representations.name[representation]) + "'"};
+        auto const ctx{"Optional presence-bit representation '" +
+                       text(representations.name[representation]) + "'"};
         require_identifier(text(representations.name[representation]),
                            "Optional presence-bit representation name");
 
-        require_integer_domain(representations.source[representation], context);
+        require_integer_domain(representations.source[representation], ctx);
     }
 
     void validate_soa(lispb::codegen::ModuleHandle const& module,
@@ -1308,11 +1291,10 @@ class Validator {
         for (auto const& schema : schemas) {
             auto const schema_name{text(soas.name[schema])};
             require_identifier(schema_name, "SOA name");
-            auto const context{"SOA '" + schema_name + "'"};
-            require_identifier(soa_namespace_name(schema_name), context + " namespace");
+            auto const ctx{"SOA '" + schema_name + "'"};
+            require_identifier(soa_namespace_name(schema_name), ctx + " namespace");
             if (soas.layout_only[schema] && !soas.functions[schema].empty()) {
-                throw std::invalid_argument{context +
-                                            " layout-only has no owner; use view functions"};
+                throw std::invalid_argument{ctx + " layout-only has no owner; use view functions"};
             }
 
             if (soas.field_mask_name[schema].has_value() !=
@@ -1350,17 +1332,17 @@ class Validator {
                     throw std::invalid_argument{
                         "SOA equivalent accessor requires a member mapping"};
                 }
-                auto const context{"SOA '" + schema_name + "' member '" +
-                                   text(members.name[member]) + "'"};
+                auto const ctx{"SOA '" + schema_name + "' member '" + text(members.name[member]) +
+                               "'"};
                 member_names.push_back(text(members.name[member]));
                 require_identifier(text(members.name[member]),
                                    "SOA '" + schema_name + "' member name");
                 reject_generated_name_collision(
                     text(members.name[member]), "SOA '" + schema_name + "' member name", true);
-                validate_type(members.type[member], context);
+                validate_type(members.type[member], ctx);
                 if (members.relationship[member].has_value()) {
                     validate_semantic_relation(*members.relationship[member],
-                                               context + " relationship");
+                                               ctx + " relationship");
                 }
                 if (soas.field_mask_name[schema].has_value() &&
                     declarations_.type_refs.name[members.type[member]] ==
@@ -1437,9 +1419,9 @@ class Validator {
                                           bool const read_only,
                                           bool const owner = false) {
                 for (auto const function : declarations_.items(function_ids)) {
-                    auto const context{"SOA '" + schema_name + "' function '" +
-                                       text(functions.name[function]) + "'"};
-                    validate_function(function, types, context, function_signatures, owner);
+                    auto const ctx{"SOA '" + schema_name + "' function '" +
+                                   text(functions.name[function]) + "'"};
+                    validate_function(function, types, ctx, function_signatures, owner);
                     if (auto const columns{functions.append_columns[function]}) {
                         auto const declared{declarations_.items(soas.members[schema])};
                         for (auto const column : declarations_.items(*columns)) {
@@ -1449,21 +1431,21 @@ class Validator {
                             if (found == declared.end() ||
                                 members.kind[*found] != SoaMemberKind::array) {
                                 throw std::invalid_argument{
-                                    context + " append column must name a direct array member: " +
+                                    ctx + " append column must name a direct array member: " +
                                     text(column)};
                             }
                         }
                     }
                     if (read_only && !functions.is_const[function] &&
                         !functions.is_static[function]) {
-                        throw std::invalid_argument{context +
+                        throw std::invalid_argument{ctx +
                                                     " read-only view functions must be const"};
                     }
                     if (functions.definition_in_source[function] &&
                         !declarations_.module_settings_store
                              .source[declarations_.normal_modules.settings[module]]) {
                         throw std::invalid_argument{
-                            context + " out-of-line function requires a source output"};
+                            ctx + " out-of-line function requires a source output"};
                     }
                     if (functions.is_static[function] &&
                         std::ranges::any_of(declarations_.items(functions.body_lines[function]),
@@ -1472,7 +1454,7 @@ class Validator {
                                                        std::string::npos;
                                             })) {
                         throw std::invalid_argument{
-                            context + " static function cannot access a receiver column"};
+                            ctx + " static function cannot access a receiver column"};
                     }
                     for (auto const body : declarations_.items(functions.body_lines[function])) {
                         validate_soa_body_columns(graph_, module, schema, view(body));
@@ -1480,9 +1462,9 @@ class Validator {
                     require_identifier(text(functions.name[function]),
                                        "SOA '" + schema_name + "' function name");
                     if (text(functions.name[function]) == schema_name) {
-                        throw std::invalid_argument{context + " collides with its owning type"};
+                        throw std::invalid_argument{ctx + " collides with its owning type"};
                     }
-                    reject_generated_name_collision(text(functions.name[function]), context, false);
+                    reject_generated_name_collision(text(functions.name[function]), ctx, false);
                 }
             };
             std::set<std::string> owner_signatures;
@@ -1583,29 +1565,29 @@ class Validator {
         member_names.insert(column_names.begin(), column_names.end());
         std::set<std::string> group_names;
         for (auto const group : declarations_.items(tables.groups[table])) {
-            auto const context{table_context + " group '" + text(groups.name[group]) + "'"};
+            auto const ctx{table_context + " group '" + text(groups.name[group]) + "'"};
             require_identifier(text(groups.name[group]), table_context + " group name");
             if (!group_names.insert(text(groups.name[group])).second) {
                 throw std::invalid_argument{"Duplicate static table group name: " +
                                             text(groups.name[group])};
             }
-            validate_type(groups.type[group], context + " type");
+            validate_type(groups.type[group], ctx + " type");
             if (groups.columns[group].empty()) {
-                throw std::invalid_argument{context + " must have columns"};
+                throw std::invalid_argument{ctx + " must have columns"};
             }
 
             for (auto const column_name : declarations_.items(groups.columns[group])) {
-                require_identifier(column_name, context + " column name");
+                require_identifier(column_name, ctx + " column name");
                 if (!column_name_set.contains(text(column_name))) {
-                    throw std::invalid_argument{context + " references unknown column '" +
+                    throw std::invalid_argument{ctx + " references unknown column '" +
                                                 text(column_name) + "'"};
                 }
             }
-            require_unique_names(groups.columns[group], context + " columns");
+            require_unique_names(groups.columns[group], ctx + " columns");
 
             auto const getter_name{"get_" + text(groups.name[group])};
             if (!member_names.insert(getter_name).second) {
-                throw std::invalid_argument{context + " getter '" + getter_name +
+                throw std::invalid_argument{ctx + " getter '" + getter_name +
                                             "' collides with another table member"};
             }
         }
@@ -1673,13 +1655,13 @@ class Validator {
             }
             validate_type(methods.return_type[method],
                           facade_context + " method '" + text(methods.name[method]) + "' return");
-            auto const context{facade_context + " method '" + text(methods.name[method]) + "'"};
+            auto const ctx{facade_context + " method '" + text(methods.name[method]) + "'"};
             auto const parameter_types{
-                parameter_type_names(methods.parameters[method], types, context)};
+                parameter_type_names(methods.parameters[method], types, ctx)};
             auto const method_signature{
                 signature(methods.name[method], parameter_types, methods.is_const[method])};
             if (!method_signatures.insert(method_signature).second) {
-                throw std::invalid_argument{"Duplicate " + context + " signature"};
+                throw std::invalid_argument{"Duplicate " + ctx + " signature"};
             }
         }
     }
@@ -1691,40 +1673,40 @@ class Validator {
         auto const& controls{declarations_.setting_controls};
         auto const& categories{declarations_.setting_categories};
 
-        auto const context{
-            "Settings module '" +
-            text(declarations_.module_settings_store.name[modules.settings[module]]) + "'"};
+        auto const ctx{"Settings module '" +
+                       text(declarations_.module_settings_store.name[modules.settings[module]]) +
+                       "'"};
         if (!declarations_.module_settings_store.source[modules.settings[module]].has_value()) {
-            throw std::invalid_argument{context + " must have a source output"};
+            throw std::invalid_argument{ctx + " must have a source output"};
         }
-        require_identifier(text(modules.api_name[module]), context + " API name");
-        require_identifier(text(modules.state_name[module]), context + " state name");
-        validate_export_specifier(modules.export_specifier[module], context + " export specifier");
+        require_identifier(text(modules.api_name[module]), ctx + " API name");
+        require_identifier(text(modules.state_name[module]), ctx + " state name");
+        validate_export_specifier(modules.export_specifier[module], ctx + " export specifier");
         if (modules.categories[module].empty()) {
-            throw std::invalid_argument{context + " must have categories"};
+            throw std::invalid_argument{ctx + " must have categories"};
         }
         if (modules.settings_list[module].empty()) {
-            throw std::invalid_argument{context + " must have settings"};
+            throw std::invalid_argument{ctx + " must have settings"};
         }
 
         std::set<std::string> category_names;
         for (auto const category : declarations_.items(modules.categories[module])) {
-            require_identifier(text(categories.name[category]), context + " category name");
-            require_value(text(categories.label[category]), context + " category label");
+            require_identifier(text(categories.name[category]), ctx + " category name");
+            require_value(text(categories.label[category]), ctx + " category label");
             if (!category_names.insert(text(categories.name[category])).second) {
                 throw std::invalid_argument{
-                    context + " has duplicate category: " + text(categories.name[category])};
+                    ctx + " has duplicate category: " + text(categories.name[category])};
             }
         }
 
         std::set<std::string> setting_names;
         for (auto const setting : declarations_.items(modules.settings_list[module])) {
             auto const control{settings.control[setting]};
-            auto const setting_context{context + " setting '" + text(settings.name[setting]) + "'"};
+            auto const setting_context{ctx + " setting '" + text(settings.name[setting]) + "'"};
             require_identifier(text(settings.name[setting]), setting_context + " name");
             if (!setting_names.insert(text(settings.name[setting])).second) {
                 throw std::invalid_argument{
-                    context + " has duplicate setting: " + text(settings.name[setting])};
+                    ctx + " has duplicate setting: " + text(settings.name[setting])};
             }
             require_value(text(settings.label[setting]), setting_context + " label");
             if (settings.tooltip[setting].has_value()) {

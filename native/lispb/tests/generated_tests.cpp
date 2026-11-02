@@ -28,9 +28,9 @@ struct std::hash<ioj::packed_lookup_fixture::CustomByte> {
 template <>
 struct std::formatter<ioj::packed_lookup_fixture::CustomByte> : std::formatter<unsigned> {
     template <typename FormatContext>
-    auto format(ioj::packed_lookup_fixture::CustomByte const& value, FormatContext& context) const
-        -> typename FormatContext::iterator {
-        return std::formatter<unsigned>::format(100U + value.value(), context);
+    auto format(ioj::packed_lookup_fixture::CustomByte const& value, FormatContext& ctx) const ->
+        typename FormatContext::iterator {
+        return std::formatter<unsigned>::format(100U + value.value(), ctx);
     }
 };
 

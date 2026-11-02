@@ -125,10 +125,10 @@ auto enum_name(SettingDevice const value) -> std::string_view {
     return "Shared";
 }
 
-auto setting_type_name(LoweringContext& context, SettingId const setting) -> std::string {
-    auto const& decls{context.declarations};
+auto setting_type_name(LoweringContext& ctx, SettingId const setting) -> std::string {
+    auto const& decls{ctx.declarations};
     auto const type{decls.settings.value_type[setting]};
-    auto const name{context.text(decls.type_refs.name[type])};
+    auto const name{ctx.text(decls.type_refs.name[type])};
     return title_case(name.starts_with('@') ? name.substr(1) : name);
 }
 
@@ -140,13 +140,13 @@ auto text_value(CppIR& ir, std::string_view const value) -> Expr {
     return ir.string_literal(value);
 }
 
-auto build_functions(LoweringContext& context,
+auto build_functions(LoweringContext& ctx,
                      ModuleHandle const module,
                      std::span<CppTypeId const> const setting_types) -> std::vector<FunctionId> {
-    auto& ir{context.ir};
-    auto const& decls{context.declarations};
+    auto& ir{ctx.ir};
+    auto const& decls{ctx.declarations};
     auto const module_row{decls.settings_modules.index(module)};
-    auto const state_name{context.text(decls.settings_modules.state_name[module_row])};
+    auto const state_name{ctx.text(decls.settings_modules.state_name[module_row])};
     auto const settings{decls.items(decls.settings_modules.settings_list[module_row])};
     auto const state{ir.named("state")};
     auto const id{ir.named("id")};
@@ -188,7 +188,7 @@ auto build_functions(LoweringContext& context,
         auto const name{decls.settings.name[setting]};
         getter_cases.push_back(ir.switch_case(
             ir.type_reference(ir.types.decorate(
-                ir.types.named("GameSetting"), "", "::" + title_case(context.text(name)))),
+                ir.types.named("GameSetting"), "", "::" + title_case(ctx.text(name)))),
             ir.block({ir.return_stmt(ir.init_list({ir.member_access(state, name)},
                                                   ir.types.intern("GameSettingValue")))})));
     }
@@ -211,7 +211,7 @@ auto build_functions(LoweringContext& context,
         auto const typed_value{ir.named("typed_value")};
         setter_cases.push_back(ir.switch_case(
             ir.type_reference(ir.types.decorate(
-                ir.types.named("GameSetting"), "", "::" + title_case(context.text(name)))),
+                ir.types.named("GameSetting"), "", "::" + title_case(ctx.text(name)))),
             ir.block({
                 ir.variable("auto const*",
                             "typed_value",
@@ -232,19 +232,19 @@ auto build_functions(LoweringContext& context,
     return {categories, descriptors, descriptor, getter, setter};
 }
 
-auto settings_api(LoweringContext& context,
+auto settings_api(LoweringContext& ctx,
                   ModuleHandle module,
                   std::span<CppTypeId const> setting_types) -> NodeId {
-    auto& ir{context.ir};
-    auto const& modules{context.declarations.settings_modules};
+    auto& ir{ctx.ir};
+    auto const& modules{ctx.declarations.settings_modules};
     auto const module_row{modules.index(module)};
     NodeListBuilder members{ir};
     members.add(ir.access(Access::public_), 1);
-    auto const settings{context.declarations.items(modules.settings_list[module_row])};
+    auto const settings{ctx.declarations.items(modules.settings_list[module_row])};
     auto const setting_count{settings.size()};
     for (std::size_t index{}; index < setting_count; ++index) {
         auto const setting{settings[index]};
-        auto const name{context.declarations.settings.name[setting]};
+        auto const name{ctx.declarations.settings.name[setting]};
         auto const getter{ir.function(name, ir.types.intern("auto"))};
         ir.set_function_return_type(getter, setting_types[index], ReturnSyntax::trailing);
         ir.set_function_receiver(getter, FunctionReceiver::const_);
@@ -255,7 +255,7 @@ auto settings_api(LoweringContext& context,
                 ir.call(ir.member_access(ir.call(ir.named("derived")), "settings_state")), name))});
         members.add(ir.header_function(getter), 2);
 
-        auto const setter{ir.function("set_" + context.text(name), ir.types.std.void_)};
+        auto const setter{ir.function("set_" + ctx.text(name), ir.types.std.void_)};
         ir.function_flags(setter).set_define_in_header(true);
         ir.set_function_parameters(
             setter, {ir.parameter(qualify(ir, setting_types[index], " const"), "value")});
@@ -264,7 +264,7 @@ auto settings_api(LoweringContext& context,
             {ir.expr_stmt(ir.call(
                 ir.member_access(ir.call(ir.named("derived")), "set_setting"),
                 {ir.type_reference(ir.types.decorate(
-                     ir.types.named("GameSetting"), "", "::" + title_case(context.text(name)))),
+                     ir.types.named("GameSetting"), "", "::" + title_case(ctx.text(name)))),
                  ir.init_list({ir.named("value")}, ir.types.intern("GameSettingValue"))}))});
         members.add(ir.header_function(setter), 2);
     }
@@ -290,15 +290,15 @@ auto settings_api(LoweringContext& context,
     return result;
 }
 
-auto build_type_headers(LoweringContext& context,
+auto build_type_headers(LoweringContext& ctx,
                         ModuleHandle const module,
                         std::span<CppTypeId const> const setting_types,
                         std::vector<TypeDependencyId>& dependencies) -> std::vector<ModuleId> {
-    auto& ir{context.ir};
-    auto const& modules{context.declarations.settings_modules};
-    auto const& setting_schemas{context.declarations.settings};
-    auto const& controls{context.declarations.setting_controls};
-    auto const& decls{context.declarations};
+    auto& ir{ctx.ir};
+    auto const& modules{ctx.declarations.settings_modules};
+    auto const& setting_schemas{ctx.declarations.settings};
+    auto const& controls{ctx.declarations.setting_controls};
+    auto const& decls{ctx.declarations};
     auto const module_row{modules.index(module)};
     auto const settings{modules.settings[module_row]};
     auto const setting_list{decls.items(modules.settings_list[module_row])};
@@ -322,29 +322,29 @@ auto build_type_headers(LoweringContext& context,
         if (unique_types.insert(ir.types.spelling_id(type)).second) {
             value_types.push_back(type);
         }
-        auto const type_name{setting_type_name(context, setting)};
+        auto const type_name{setting_type_name(ctx, setting)};
         if (unique_type_names.insert(type_name).second) {
             type_names.push_back(type_name);
         }
-        setting_names.push_back(title_case(context.text(setting_schemas.name[row])));
-        backends.insert(context.text(setting_schemas.backend[row]));
+        setting_names.push_back(title_case(ctx.text(setting_schemas.name[row])));
+        backends.insert(ctx.text(setting_schemas.backend[row]));
         if (auto const provider{controls.options_provider[control_row]}) {
-            option_providers.insert(context.text(*provider));
+            option_providers.insert(ctx.text(*provider));
         }
         if (auto const provider{controls.availability_provider[control_row]}) {
-            availability_providers.insert(context.text(*provider));
+            availability_providers.insert(ctx.text(*provider));
         }
     }
     for (auto const category : decls.items(modules.categories[module_row])) {
-        category_names.push_back(title_case(context.text(decls.setting_categories.name[category])));
+        category_names.push_back(title_case(ctx.text(decls.setting_categories.name[category])));
     }
 
     auto const& settings_store{decls.module_settings_store};
     auto const settings_row{settings_store.index(settings)};
     auto const output_directory{
-        std::filesystem::path{context.text(settings_store.header[settings_row])}.parent_path()};
+        std::filesystem::path{ctx.text(settings_store.header[settings_row])}.parent_path()};
     auto const include_directory{
-        std::filesystem::path{source_include(context, settings)}.parent_path()};
+        std::filesystem::path{source_include(ctx, settings)}.parent_path()};
     auto const include_order{decls.items(settings_store.include_order[settings_row])};
     auto const prelude{settings_store.prelude_lines[settings_row]};
     std::vector<ModuleId> result;
@@ -364,7 +364,7 @@ auto build_type_headers(LoweringContext& context,
         }
         header.new_lines(2);
         if (!prelude.empty()) {
-            header.add(ir.raw(join_lines(context, prelude)), 2);
+            header.add(ir.raw(join_lines(ctx, prelude)), 2);
         }
         if (auto const scope{settings_store.namespace_name[settings_row]}) {
             header.add(ir.namespace_node(*scope, {declaration}));
@@ -464,36 +464,36 @@ auto build_type_headers(LoweringContext& context,
     auto const state_name{modules.state_name[module_row]};
     auto const equality{ir.function("operator==", ir.types.std.bool_)};
     ir.set_function_return_type(equality, ir.types.std.bool_, ReturnSyntax::trailing);
-    ir.set_function_parameters(
-        equality, {ir.parameter(ir.types.intern(context.text(state_name) + " const&"))});
+    ir.set_function_parameters(equality,
+                               {ir.parameter(ir.types.intern(ctx.text(state_name) + " const&"))});
     ir.set_function_receiver(equality, FunctionReceiver::const_);
     ir.set_function_defaulted(equality);
     state_members.new_lines(2).add(ir.header_function(equality), 1);
     auto const state{ir.record(state_name, state_members.build())};
     ir.set_record_export_specifier(state, modules.export_specifier[module_row]);
     ir.set_record_dependencies(state, dependencies);
-    emit_header(context.text(state_name), state, {}, {});
+    emit_header(ctx.text(state_name), state, {}, {});
     emit_header("GameSettingValue",
                 ir.using_declaration(ir.strings.intern("GameSettingValue"),
                                      ir.types.template_type(ir.types.std.variant, value_types)),
                 {"variant"},
                 {});
-    emit_header(context.text(modules.api_name[module_row]),
-                settings_api(context, module, setting_types),
+    emit_header(ctx.text(modules.api_name[module_row]),
+                settings_api(ctx, module, setting_types),
                 {},
-                {"GameSetting", context.text(state_name), "GameSettingValue"});
+                {"GameSetting", ctx.text(state_name), "GameSettingValue"});
     return result;
 }
 
-auto build_source(LoweringContext& context,
+auto build_source(LoweringContext& ctx,
                   ModuleHandle const module,
                   std::span<FunctionId const> const functions) -> Nodes {
-    auto& ir{context.ir};
-    auto const& modules{context.declarations.settings_modules};
-    auto const& setting_schemas{context.declarations.settings};
-    auto const& controls{context.declarations.setting_controls};
-    auto const& category_schemas{context.declarations.setting_categories};
-    auto const& decls{context.declarations};
+    auto& ir{ctx.ir};
+    auto const& modules{ctx.declarations.settings_modules};
+    auto const& setting_schemas{ctx.declarations.settings};
+    auto const& controls{ctx.declarations.setting_controls};
+    auto const& category_schemas{ctx.declarations.setting_categories};
+    auto const& decls{ctx.declarations};
     auto const module_row{modules.index(module)};
     auto const settings{modules.settings[module_row]};
     auto enum_value = [&](std::string_view const type, std::string_view const name) {
@@ -505,8 +505,8 @@ auto build_source(LoweringContext& context,
     for (auto const category : decls.items(modules.categories[module_row])) {
         auto const row{category_schemas.index(category)};
         categories.push_back(ir.init_list({
-            enum_value("GameSettingCategory", title_case(context.text(category_schemas.name[row]))),
-            text_value(ir, context.text(category_schemas.label[row])),
+            enum_value("GameSettingCategory", title_case(ctx.text(category_schemas.name[row]))),
+            text_value(ir, ctx.text(category_schemas.label[row])),
         }));
     }
     std::vector<Expr> descriptors;
@@ -516,26 +516,24 @@ auto build_source(LoweringContext& context,
         auto const options{controls.options_provider[control_row]};
         auto const availability{controls.availability_provider[control_row]};
         descriptors.push_back(ir.init_list({
-            enum_value("GameSetting", title_case(context.text(setting_schemas.name[row]))),
-            enum_value("GameSettingCategory",
-                       title_case(context.text(setting_schemas.category[row]))),
-            enum_value("GameSettingValueType", setting_type_name(context, setting)),
-            enum_value("GameSettingBackend",
-                       title_case(context.text(setting_schemas.backend[row]))),
+            enum_value("GameSetting", title_case(ctx.text(setting_schemas.name[row]))),
+            enum_value("GameSettingCategory", title_case(ctx.text(setting_schemas.category[row]))),
+            enum_value("GameSettingValueType", setting_type_name(ctx, setting)),
+            enum_value("GameSettingBackend", title_case(ctx.text(setting_schemas.backend[row]))),
             enum_value("SettingApplyMode", enum_name(setting_schemas.apply_mode[row])),
             enum_value("GameSettingDevice", enum_name(setting_schemas.device[row])),
             enum_value("SettingControlKind", enum_name(controls.kind[control_row])),
             enum_value("GameSettingOptionProvider",
-                       options ? title_case(context.text(*options)) : "None"),
+                       options ? title_case(ctx.text(*options)) : "None"),
             enum_value("GameSettingAvailabilityProvider",
-                       availability ? title_case(context.text(*availability)) : "Always"),
-            text_literal(ir, context.text(setting_schemas.name[row])),
-            text_value(ir, context.text(setting_schemas.label[row])),
-            text_value(ir, context.optional_text(setting_schemas.tooltip[row]).value_or("")),
+                       availability ? title_case(ctx.text(*availability)) : "Always"),
+            text_literal(ir, ctx.text(setting_schemas.name[row])),
+            text_value(ir, ctx.text(setting_schemas.label[row])),
+            text_value(ir, ctx.optional_text(setting_schemas.tooltip[row]).value_or("")),
             ir.literal(std::format("{:.6g}", controls.minimum[control_row].value_or(0.0))),
             ir.literal(std::format("{:.6g}", controls.maximum[control_row].value_or(0.0))),
             ir.literal(std::format("{:.6g}", controls.step[control_row].value_or(0.0))),
-            text_literal(ir, context.optional_text(controls.custom_row[control_row]).value_or("")),
+            text_literal(ir, ctx.optional_text(controls.custom_row[control_row]).value_or("")),
         }));
     }
 
@@ -570,28 +568,27 @@ auto build_source(LoweringContext& context,
 
 } // namespace
 
-auto lower_settings_module(LoweringContext& context, ModuleHandle module) -> std::vector<ModuleId> {
-    auto& ir{context.ir};
-    auto const& modules{context.declarations.settings_modules};
-    auto const& setting_schemas{context.declarations.settings};
-    auto const& settings_store{context.declarations.module_settings_store};
+auto lower_settings_module(LoweringContext& ctx, ModuleHandle module) -> std::vector<ModuleId> {
+    auto& ir{ctx.ir};
+    auto const& modules{ctx.declarations.settings_modules};
+    auto const& setting_schemas{ctx.declarations.settings};
+    auto const& settings_store{ctx.declarations.module_settings_store};
     auto const module_row{modules.index(module)};
     auto const settings{modules.settings[module_row]};
     auto const settings_row{settings_store.index(settings)};
-    auto const setting_list{context.declarations.items(modules.settings_list[module_row])};
+    auto const setting_list{ctx.declarations.items(modules.settings_list[module_row])};
     std::vector<TypeDependencyId> dependencies;
     std::vector<CppTypeId> setting_types;
     setting_types.reserve(setting_list.size());
     for (auto const setting : setting_list) {
         setting_types.push_back(
-            context.resolve(setting_schemas.value_type[setting_schemas.index(setting)]));
+            ctx.resolve(setting_schemas.value_type[setting_schemas.index(setting)]));
     }
-    auto const functions{build_functions(context, module, setting_types)};
-    auto result{build_type_headers(context, module, setting_types, dependencies)};
-    auto const include_order{
-        context.declarations.items(settings_store.include_order[settings_row])};
+    auto const functions{build_functions(ctx, module, setting_types)};
+    auto result{build_type_headers(ctx, module, setting_types, dependencies)};
+    auto const include_order{ctx.declarations.items(settings_store.include_order[settings_row])};
     auto const include_directory{
-        std::filesystem::path{source_include(context, settings)}.parent_path()};
+        std::filesystem::path{source_include(ctx, settings)}.parent_path()};
     NodeListBuilder header_nodes{ir};
     for (auto const type :
          {"GameSettingCategoryDescriptor", "GameSettingDescriptor", "GameSettingValue"}) {
@@ -601,13 +598,13 @@ auto lower_settings_module(LoweringContext& context, ModuleHandle module) -> std
     }
     auto const state_include{
         (include_directory /
-         (snake_case_type_name(context.text(modules.state_name[module_row])) + ".h"))
+         (snake_case_type_name(ctx.text(modules.state_name[module_row])) + ".h"))
             .generic_string()};
     header_nodes.add(ir.include(ir.strings.intern(state_include), IncludeStyle::quoted), 1)
         .add(ir.include(ir.strings.intern("span"), IncludeStyle::system), 2);
     auto const prelude{settings_store.prelude_lines[settings_row]};
     if (!prelude.empty()) {
-        header_nodes.add(ir.raw(join_lines(context, prelude)), 2);
+        header_nodes.add(ir.raw(join_lines(ctx, prelude)), 2);
     }
     NodeListBuilder declarations{ir};
     for (auto const function : functions) {
@@ -626,11 +623,10 @@ auto lower_settings_module(LoweringContext& context, ModuleHandle module) -> std
     if (auto const path{settings_store.source[settings_row]}) {
         NodeListBuilder source_nodes{ir};
         source_nodes
-            .add(ir.include(ir.store_text(source_include(context, settings)), IncludeStyle::quoted),
-                 1)
+            .add(ir.include(ir.store_text(source_include(ctx, settings)), IncludeStyle::quoted), 1)
             .add(ir.include(ir.strings.intern("array"), IncludeStyle::system), 1)
             .add(ir.include(ir.strings.intern("cassert"), IncludeStyle::system), 2)
-            .append(build_source(context, module, functions));
+            .append(build_source(ctx, module, functions));
         source_file = ir.files.append(*path, source_nodes.build());
         auto const source_row{ir.files.index(source_file)};
         ir.files.flags[source_row].set_pragma_once(false);

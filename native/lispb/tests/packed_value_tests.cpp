@@ -29,8 +29,8 @@ auto placement(schema::BitLayout const& layout, std::string_view path)
 }
 
 TEST(PackedRecord, NestedLayoutIsIndependentOfCppStorage) {
-    CompilerTestContext context;
-    auto const graph{schema::resolve_type_graph(parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto const graph{schema::resolve_type_graph(parse_test_manifest(ctx, R"(
       (module values :header "Values.h"
         (integer-scalar Index :bit-width 24)
         (integer-scalar Kind :bit-width 8)
@@ -53,8 +53,8 @@ TEST(PackedRecord, NestedLayoutIsIndependentOfCppStorage) {
 }
 
 TEST(PackedRecord, LogicalRecordsAndArraysHaveFlatConstantOffsets) {
-    CompilerTestContext context;
-    auto manifest{parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto manifest{parse_test_manifest(ctx, R"(
       (module values :header "Values.h"
         (integer-scalar Byte :bit-width 8)
         (record Sample (member value @Byte))
@@ -67,7 +67,7 @@ TEST(PackedRecord, LogicalRecordsAndArraysHaveFlatConstantOffsets) {
     EXPECT_EQ(placement(layout, "samples_0_value").offset, 0U);
     EXPECT_EQ(placement(layout, "samples_1_value").offset, 8U);
     EXPECT_EQ(placement(layout, "samples_2_value").offset, 16U);
-    auto const files{render_test_manifest(context, manifest)};
+    auto const files{render_test_manifest(ctx, manifest)};
     ASSERT_EQ(files.size(), 1U);
     EXPECT_FALSE(files.front().content.contains("struct Sample\n"));
     EXPECT_TRUE(files.front().content.contains("samples_2_value()"));
@@ -106,8 +106,8 @@ TEST(PackedRecord, LogicalRecordsAndArraysHaveFlatConstantOffsets) {
 }
 
 TEST(PackedRecord, QualifiedLogicalReferencesNeedNoCppSpelling) {
-    CompilerTestContext context;
-    auto const graph{schema::resolve_type_graph(parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto const graph{schema::resolve_type_graph(parse_test_manifest(ctx, R"(
       (module logical
         (integer-scalar Index :bit-width 24)
         (record Target (member index @Index)))
@@ -131,8 +131,8 @@ TEST(PackedRecord, QualifiedLogicalReferencesNeedNoCppSpelling) {
 }
 
 TEST(PackedRecord, ProjectedDescendantsAreDefinedBeforeOwnersAcrossLogicalIntermediates) {
-    CompilerTestContext context;
-    auto const files{render_test_manifest(context, parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto const files{render_test_manifest(ctx, parse_test_manifest(ctx, R"(
       (module values :header "Values.h"
         (record Owner :layout packed
           (member nested @Logical) (projections (cpp)))
@@ -148,8 +148,8 @@ TEST(PackedRecord, ProjectedDescendantsAreDefinedBeforeOwnersAcrossLogicalInterm
 }
 
 TEST(PackedRecord, ReservedAndMostSignificantFirstUseLogicalExtent) {
-    CompilerTestContext context;
-    auto const graph{schema::resolve_type_graph(parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto const graph{schema::resolve_type_graph(parse_test_manifest(ctx, R"(
       (module values :header "Values.h"
         (integer-scalar Version :bit-width 4)
         (integer-scalar Length :bit-width 16)
@@ -164,8 +164,8 @@ TEST(PackedRecord, ReservedAndMostSignificantFirstUseLogicalExtent) {
 }
 
 TEST(PackedRecord, UnionAlternativesOverlapAndExplicitExtentPads) {
-    CompilerTestContext context;
-    auto const graph{schema::resolve_type_graph(parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto const graph{schema::resolve_type_graph(parse_test_manifest(ctx, R"(
       (module values :header "Values.h"
         (integer-scalar Small :bit-width 8)
         (integer-scalar Large :bit-width 24)
@@ -183,8 +183,8 @@ TEST(PackedRecord, UnionAlternativesOverlapAndExplicitExtentPads) {
 }
 
 TEST(PackedRecord, TaggedAlternativesResolveGuardsAndDirectNestedAccessors) {
-    CompilerTestContext context;
-    auto manifest{parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto manifest{parse_test_manifest(ctx, R"(
       (module values :header "Values.h"
         (integer-scalar Index :bit-width 24)
         (enum Opcode :bit-width 6 (value KillEntity) (value MoveTo) (projections (cpp)))
@@ -206,7 +206,7 @@ TEST(PackedRecord, TaggedAlternativesResolveGuardsAndDirectNestedAccessors) {
     EXPECT_EQ(target.guards.front().bits, 6U);
     EXPECT_EQ(target.guards.front().value, 0U);
     EXPECT_EQ(placement(layout, "payload_move_to_destination").guards.front().value, 1U);
-    auto const files{render_test_manifest(context, manifest)};
+    auto const files{render_test_manifest(ctx, manifest)};
     ASSERT_EQ(files.size(), 1U);
     auto const& output{files.front().content};
     expect_contains_all(output,
@@ -218,8 +218,8 @@ TEST(PackedRecord, TaggedAlternativesResolveGuardsAndDirectNestedAccessors) {
 }
 
 TEST(PackedRecord, FixedEncodingsComposeWithoutStandaloneProjection) {
-    CompilerTestContext context;
-    auto const manifest{parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto const manifest{parse_test_manifest(ctx, R"(
       (module values :header "Values.h"
         (integer-scalar Health :bit-width 8 :minimum 0 :maximum 100)
         (fixed-point Velocity :total-bits 12 :form (binary-point :signed true :fractional-bits 4))
@@ -237,7 +237,7 @@ TEST(PackedRecord, FixedEncodingsComposeWithoutStandaloneProjection) {
     EXPECT_EQ(placement(layout, "velocity").bits, 12U);
     EXPECT_EQ(placement(layout, "health").offset, 12U);
     EXPECT_EQ(placement(layout, "position").offset, 18U);
-    auto const files{render_test_manifest(context, manifest)};
+    auto const files{render_test_manifest(ctx, manifest)};
     ASSERT_EQ(files.size(), 1U);
     EXPECT_NE(files.front().content.find("Range: [-2048 / 16, 2047 / 16]; step: 0.0625."),
               std::string::npos);
@@ -245,8 +245,8 @@ TEST(PackedRecord, FixedEncodingsComposeWithoutStandaloneProjection) {
 }
 
 TEST(PackedRecord, DefaultsIncludeSignedValuesAndReservedBits) {
-    CompilerTestContext context;
-    auto const manifest{parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto const manifest{parse_test_manifest(ctx, R"(
       (module values :header "Values.h"
         (integer-scalar Low :bit-width 3)
         (integer-scalar Delta :bit-width 5 :signed true)
@@ -277,9 +277,8 @@ TEST(PackedRecord, DefaultsIncludeSignedValuesAndReservedBits) {
 class InvalidPackedRecord : public testing::TestWithParam<char const*> {};
 
 TEST_P(InvalidPackedRecord, RejectsInvalidSchemaBeforeEmission) {
-    CompilerTestContext context;
-    EXPECT_THROW(render_test_manifest(context, parse_test_manifest(context, GetParam())),
-                 std::exception);
+    CompilerTestContext ctx;
+    EXPECT_THROW(render_test_manifest(ctx, parse_test_manifest(ctx, GetParam())), std::exception);
 }
 
 INSTANTIATE_TEST_SUITE_P(

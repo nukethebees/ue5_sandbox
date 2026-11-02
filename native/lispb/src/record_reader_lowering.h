@@ -10,7 +10,7 @@ struct DeclarationEmission;
 struct LoweringContext;
 
 auto reader_header_path(std::string_view header) -> std::string;
-void lower_record_reader(LoweringContext& context,
+void lower_record_reader(LoweringContext& ctx,
                          DeclarationHandle record,
                          DeclarationEmission& emission);
 }

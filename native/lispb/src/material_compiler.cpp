@@ -42,9 +42,9 @@ struct ProjectResolver {
     mutable std::vector<fs::path> dependencies;
 };
 
-auto resolve_texture(void const* const context, std::string_view const requested)
+auto resolve_texture(void const* const ctx, std::string_view const requested)
     -> std::optional<std::string> {
-    auto const& resolver{*static_cast<ProjectResolver const*>(context)};
+    auto const& resolver{*static_cast<ProjectResolver const*>(ctx)};
     if (requested.empty() || requested.front() != '/') {
         return std::nullopt;
     }

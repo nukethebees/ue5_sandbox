@@ -199,11 +199,10 @@ class Parser {
         return std::string{syntax_.strings().view(id)};
     }
 
-    auto head(FormId const form, std::string_view const context) const -> std::string {
+    auto head(FormId const form, std::string_view const ctx) const -> std::string {
         if (!syntax_.is_list(form) || syntax_.children(form).empty() ||
             syntax_.kind(syntax_.children(form).front()) != TokenKind::atom) {
-            fail(syntax_.token_span(form),
-                 std::string{"expected "} + std::string{context} + " form");
+            fail(syntax_.token_span(form), std::string{"expected "} + std::string{ctx} + " form");
         }
         return std::string{syntax_.text(syntax_.children(form).front())};
     }

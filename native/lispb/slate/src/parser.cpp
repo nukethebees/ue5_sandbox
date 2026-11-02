@@ -366,12 +366,11 @@ class Parser {
             }
             if (head == "loc") {
                 require_count(form, 4, "expected localization context, key, and text");
-                auto const context{
-                    string(syntax_.children(form)[1], "expected localization context")};
+                auto const ctx{string(syntax_.children(form)[1], "expected localization context")};
                 auto const key{string(syntax_.children(form)[2], "expected localization key")};
                 auto const text{string(syntax_.children(form)[3], "expected localized text")};
                 auto const id{value_id(ValueKind::localized_text, document_.localized.text.size())};
-                document_.localized.contexts.push_back(context);
+                document_.localized.contexts.push_back(ctx);
                 document_.localized.keys.push_back(key);
                 document_.localized.text.push_back(text);
                 document_.localized.spans.push_back(syntax_.token_span(token));

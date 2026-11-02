@@ -65,29 +65,28 @@ auto join(std::vector<std::string> const& values, std::string_view separator) ->
 auto join_lines(std::vector<std::string> const& values) -> std::string {
     return join(values, "\n");
 }
-auto join(LoweringContext const& context, SchemaRange<StringId> values, std::string_view separator)
+auto join(LoweringContext const& ctx, SchemaRange<StringId> values, std::string_view separator)
     -> std::string {
     std::string result;
     bool first{true};
-    for (auto const value : context.declarations.items(values)) {
+    for (auto const value : ctx.declarations.items(values)) {
         if (!first) {
             result += separator;
         }
-        result += context.declarations.strings().view(value);
+        result += ctx.declarations.strings().view(value);
         first = false;
     }
     return result;
 }
-auto join_lines(LoweringContext const& context, SchemaRange<StringId> values) -> std::string {
-    return join(context, values, "\n");
+auto join_lines(LoweringContext const& ctx, SchemaRange<StringId> values) -> std::string {
+    return join(ctx, values, "\n");
 }
 
-auto source_include(LoweringContext const& context, ModuleSettingsId settings) -> std::string {
-    if (context.declarations.module_settings_store.header_include[settings].has_value()) {
-        return context.text(*context.declarations.module_settings_store.header_include[settings]);
+auto source_include(LoweringContext const& ctx, ModuleSettingsId settings) -> std::string {
+    if (ctx.declarations.module_settings_store.header_include[settings].has_value()) {
+        return ctx.text(*ctx.declarations.module_settings_store.header_include[settings]);
     }
-    return std::filesystem::path{
-        context.text(context.declarations.module_settings_store.header[settings])}
+    return std::filesystem::path{ctx.text(ctx.declarations.module_settings_store.header[settings])}
         .filename()
         .generic_string();
 }
@@ -186,27 +185,27 @@ auto column_apply_array_pairs_function(CppIR& ir, std::vector<std::string> const
     return ir.header_function(created_function);
 }
 
-auto lower_schema_function(LoweringContext& context,
+auto lower_schema_function(LoweringContext& ctx,
                            FunctionSchemaId schema,
                            std::optional<std::span<Expr const>> body) -> FunctionId {
-    auto& ir{context.ir};
-    auto const& decls{context.declarations};
+    auto& ir{ctx.ir};
+    auto const& decls{ctx.declarations};
     auto const& functions{decls.functions};
     auto const& parameter_schemas{decls.parameters};
     auto const row{functions.index(schema)};
     std::vector<FunctionParameterId> parameters;
     for (auto const parameter : decls.items(functions.parameters[schema])) {
         auto const default_value{parameter_schemas.default_value[parameter]};
-        parameters.push_back(ir.parameter(context.resolve(parameter_schemas.type[parameter]),
+        parameters.push_back(ir.parameter(ctx.resolve(parameter_schemas.type[parameter]),
                                           parameter_schemas.name[parameter],
                                           default_value ? ir.raw_expr(*default_value) : Expr{}));
     }
     std::vector<TypeDependencyId> dependencies;
     for (auto const key : decls.items(functions.dependencies[schema])) {
-        append_type_dependencies(dependencies, context.text(key), context.types);
+        append_type_dependencies(dependencies, ctx.text(key), ctx.types);
     }
     auto const trailing{functions.trailing_return_type[row]};
-    auto const return_type{context.resolve(trailing.value_or(functions.return_type[row]))};
+    auto const return_type{ctx.resolve(trailing.value_or(functions.return_type[row]))};
     auto const created_function{ir.function(functions.name[row], return_type)};
     ir.set_function_parameters(created_function, std::move(parameters));
     ir.set_function_body(
@@ -238,11 +237,11 @@ auto lower_schema_function(LoweringContext& context,
     return created_function;
 }
 
-auto lower_member_type(LoweringContext& context, ChildOccurrenceId member) -> CppTypeId {
-    auto& ir{context.ir};
-    auto const& members{context.declarations.child_occurrences};
+auto lower_member_type(LoweringContext& ctx, ChildOccurrenceId member) -> CppTypeId {
+    auto& ir{ctx.ir};
+    auto const& members{ctx.declarations.child_occurrences};
     auto const row{members.index(member)};
-    auto const element{context.resolve(members.type[row])};
+    auto const element{ctx.resolve(members.type[row])};
     auto const count{members.count[row]};
     if (!count) {
         return element;

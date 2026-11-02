@@ -13,9 +13,9 @@
 namespace ioj::s7 {
 template <>
 struct TypeReader<sim::LaserWeaponSimConfig> : RecordReader<sim::LaserWeaponSimConfig> {
-    static void decode(DecodeContext context, value_type& result) {
+    static void decode(DecodeContext ctx, value_type& result) {
         decode_record<Field>(
-            context, "laser", field_names, [&result](Field selected, auto const& read) {
+            ctx, "laser", field_names, [&result](Field selected, auto const& read) {
                 value_type::visit_field(
                     result, selected, [&read]<Field field>(auto& member) { read(member); });
             });

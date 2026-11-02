@@ -27,8 +27,8 @@ auto reader_header_path(std::string_view const header) -> std::string {
 }
 
 namespace record_reader {
-auto bound_literal(LoweringContext& context, StringId const bound) -> std::string {
-    auto text{context.text(bound)};
+auto bound_literal(LoweringContext& ctx, StringId const bound) -> std::string {
+    auto text{ctx.text(bound)};
     if (text.contains('.')) {
         return text;
     }
@@ -38,20 +38,20 @@ auto bound_literal(LoweringContext& context, StringId const bound) -> std::strin
     return text + (text.starts_with('-') ? "LL" : "ULL");
 }
 
-auto field_name(LoweringContext& context, ChildOccurrenceId const member) -> std::string {
-    auto const& members{context.declarations.child_occurrences};
+auto field_name(LoweringContext& ctx, ChildOccurrenceId const member) -> std::string {
+    auto const& members{ctx.declarations.child_occurrences};
     auto const row{members.index(member)};
     if (members.s7[row].name) {
-        return context.text(*members.s7[row].name);
+        return ctx.text(*members.s7[row].name);
     }
-    auto name{context.text(members.name[row])};
+    auto name{ctx.text(members.name[row])};
     std::ranges::replace(name, '_', '-');
     return name;
 }
 
-auto reader_fields(LoweringContext& context, DeclarationHandle record)
+auto reader_fields(LoweringContext& ctx, DeclarationHandle record)
     -> std::vector<ChildOccurrenceId> {
-    auto const& decls{context.declarations};
+    auto const& decls{ctx.declarations};
     auto const& records{decls.records};
     std::vector<ChildOccurrenceId> result;
     for (auto field : decls.items(records.members[record])) {
@@ -62,9 +62,9 @@ auto reader_fields(LoweringContext& context, DeclarationHandle record)
     return result;
 }
 
-auto constraint_arguments(LoweringContext& context, ChildOccurrenceId field) -> std::vector<Expr> {
-    auto& ir{context.ir};
-    auto const& members{context.declarations.child_occurrences};
+auto constraint_arguments(LoweringContext& ctx, ChildOccurrenceId field) -> std::vector<Expr> {
+    auto& ir{ctx.ir};
+    auto const& members{ctx.declarations.child_occurrences};
     auto const& options{members.s7[members.index(field)]};
     std::vector<Expr> checks;
     auto reference = [&](std::string_view name) {
@@ -89,21 +89,21 @@ auto constraint_arguments(LoweringContext& context, ChildOccurrenceId field) -> 
     }
     if (options.minimum) {
         checks.push_back(
-            ir.call(reference("minimum"), {ir.literal(bound_literal(context, *options.minimum))}));
+            ir.call(reference("minimum"), {ir.literal(bound_literal(ctx, *options.minimum))}));
     }
     if (options.maximum) {
         checks.push_back(
-            ir.call(reference("maximum"), {ir.literal(bound_literal(context, *options.maximum))}));
+            ir.call(reference("maximum"), {ir.literal(bound_literal(ctx, *options.maximum))}));
     }
     return checks;
 }
 
-auto read_field(LoweringContext& context,
+auto read_field(LoweringContext& ctx,
                 ChildOccurrenceId field,
                 Expr destination,
                 bool constructing = false) -> NodeId {
-    auto& ir{context.ir};
-    auto arguments{constraint_arguments(context, field)};
+    auto& ir{ctx.ir};
+    auto arguments{constraint_arguments(ctx, field)};
     arguments.insert(arguments.begin(), destination);
     auto const reader{ir.named("read")};
     return ir.expr_stmt(
@@ -115,17 +115,17 @@ auto field_value(CppIR& ir, StringId name) -> Expr {
         ir.types.decorate(ir.types.named("Field"), "", "::" + std::string{ir.strings.view(name)}));
 }
 
-auto member_reader(LoweringContext& context, DeclarationHandle record) -> Expr {
-    auto& ir{context.ir};
-    auto const& records{context.declarations.records};
-    auto const& members{context.declarations.child_occurrences};
+auto member_reader(LoweringContext& ctx, DeclarationHandle record) -> Expr {
+    auto& ir{ctx.ir};
+    auto const& records{ctx.declarations.records};
+    auto const& members{ctx.declarations.child_occurrences};
     struct Group {
         S7FieldOptions options;
         Expr condition;
         NodeId action;
     };
     std::vector<Group> groups;
-    for (auto const field : context.declarations.items(records.members[record])) {
+    for (auto const field : ctx.declarations.items(records.members[record])) {
         auto const& options{members.s7[field]};
         auto const group{std::ranges::find_if(groups, [&](Group const& candidate) {
             auto const& other{candidate.options};
@@ -144,7 +144,7 @@ auto member_reader(LoweringContext& context, DeclarationHandle record) -> Expr {
             auto const action{options.exclude
                                   ? ir.expr_stmt(ir.call(ir.type_reference(
                                         ir.types.named("std::unreachable", NameOrigin::global))))
-                                  : read_field(context, field, ir.named("member"))};
+                                  : read_field(ctx, field, ir.named("member"))};
             groups.push_back({options, condition, action});
         }
     }
@@ -163,16 +163,16 @@ auto member_reader(LoweringContext& context, DeclarationHandle record) -> Expr {
                          ir.types.named("Field"), ir.strings.intern("field"))}));
 }
 
-auto fields_body(LoweringContext& context, DeclarationHandle const record, bool const constructing)
+auto fields_body(LoweringContext& ctx, DeclarationHandle const record, bool const constructing)
     -> Nodes {
-    auto& ir{context.ir};
-    auto const& records{context.declarations.records};
+    auto& ir{ctx.ir};
+    auto const& records{ctx.declarations.records};
     auto const row{records.index(record)};
-    auto const& members{context.declarations.child_occurrences};
-    auto const fields{reader_fields(context, record)};
+    auto const& members{ctx.declarations.child_occurrences};
+    auto const fields{reader_fields(ctx, record)};
     auto const positional{records.s7_positional[row] != 0};
-    auto const ctx{ir.named("context")};
-    auto const errors{ir.member_access(ctx, "errors")};
+    auto const decode_ctx{ir.named("ctx")};
+    auto const errors{ir.member_access(decode_ctx, "errors")};
     auto move = [&](Expr value) {
         return ir.call(ir.type_reference(ir.types.named("std::move", NameOrigin::global)), {value});
     };
@@ -180,7 +180,7 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
     NodeListBuilder body{ir};
     if (constructing) {
         for (auto const field : fields) {
-            auto const name{context.text(members.name[members.index(field)])};
+            auto const name{ctx.text(members.name[members.index(field)])};
             body.add(ir.variable(
                 ir.types.template_type(
                     ir.types.std.optional,
@@ -198,10 +198,10 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
                              "arguments",
                              ir.call(ir.type_reference(ir.types.named(
                                          "ioj::s7::positional_arguments", NameOrigin::global)),
-                                     {ir.member_access(ctx, "reader"),
-                                      ir.member_access(ctx, "node"),
-                                      ir.string_literal(context.text(*records.s7_tag[row])),
-                                      ir.member_access(ctx, "path"),
+                                     {ir.member_access(decode_ctx, "reader"),
+                                      ir.member_access(decode_ctx, "node"),
+                                      ir.string_literal(ctx.text(*records.s7_tag[row])),
+                                      ir.member_access(decode_ctx, "path"),
                                       ir.literal(std::to_string(fields.size()))})),
                  2);
         body.add(ir.if_stmt(
@@ -213,23 +213,23 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
                       constructing ? ir.return_stmt(unexpected) : ir.return_stmt()})));
         std::size_t index{};
         for (auto const field : fields) {
-            auto const name{context.text(members.name[members.index(field)])};
+            auto const name{ctx.text(members.name[members.index(field)])};
             auto const destination{constructing ? ir.named("value_" + name)
                                                 : ir.member_access(ir.named("result"), name)};
             auto const path{
                 ir.binary(BinaryOperator::add,
-                          ir.init_list({ir.member_access(ctx, "path")}, ir.types.std.string),
-                          ir.string_literal("." + field_name(context, field)))};
+                          ir.init_list({ir.member_access(decode_ctx, "path")}, ir.types.std.string),
+                          ir.string_literal("." + field_name(ctx, field)))};
             auto const reader{ir.init_list(
                 {ir.init_list(
-                    {ir.member_access(ctx, "reader"),
+                    {ir.member_access(decode_ctx, "reader"),
                      ir.subscript(ir.unary(UnaryOperator::dereference, ir.named("arguments")),
                                   ir.literal(std::to_string(index++))),
                      path,
-                     ir.member_access(ctx, "mode"),
+                     ir.member_access(decode_ctx, "mode"),
                      errors})},
                 ir.types.named("ioj::s7::FieldReader", NameOrigin::global))};
-            auto arguments{constraint_arguments(context, field)};
+            auto arguments{constraint_arguments(ctx, field)};
             arguments.insert(arguments.begin(), destination);
             body.add(ir.expr_stmt(
                 ir.call(constructing ? ir.member_access(reader, "construct") : reader, arguments)));
@@ -246,7 +246,7 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
                 ir.block({ir.expr_stmt(ir.call(
                     ir.type_reference(
                         ir.types.decorate(ir.types.named("value_type"), "", "::visit_field")),
-                    {ir.named("result"), ir.named("selected"), member_reader(context, record)}))}));
+                    {ir.named("result"), ir.named("selected"), member_reader(ctx, record)}))}));
         } else {
             std::vector<SwitchCaseId> cases;
             std::vector<Expr> captures;
@@ -254,17 +254,16 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
                 captures.push_back(ir.unary(UnaryOperator::address_of, ir.named("result")));
             }
             for (auto const field : fields) {
-                auto const name{context.text(members.name[members.index(field)])};
+                auto const name{ctx.text(members.name[members.index(field)])};
                 auto const destination{constructing ? ir.named("value_" + name)
                                                     : ir.member_access(ir.named("result"), name)};
                 if (constructing) {
                     captures.push_back(ir.unary(UnaryOperator::address_of, destination));
                 }
-                cases.push_back(
-                    ir.switch_case(field_value(ir, members.name[field]),
-                                   ir.block({read_field(context, field, destination, constructing),
-                                             ir.break_stmt()}),
-                                   false));
+                cases.push_back(ir.switch_case(
+                    field_value(ir, members.name[field]),
+                    ir.block({read_field(ctx, field, destination, constructing), ir.break_stmt()}),
+                    false));
             }
             if (records.generate_visitor[row]) {
                 // Stage construction before an object exists; excluded fields cannot be looked up.
@@ -279,8 +278,8 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
             visitor = ir.lambda(
                 captures, parameters, ir.block({ir.switch_stmt(ir.named("field"), cases)}));
         }
-        std::vector<Expr> arguments{ir.named("context"),
-                                    ir.string_literal(context.text(*records.s7_tag[row])),
+        std::vector<Expr> arguments{ir.named("ctx"),
+                                    ir.string_literal(ctx.text(*records.s7_tag[row])),
                                     ir.named("field_names"),
                                     visitor};
         if (std::ranges::any_of(fields, [&](auto const field) {
@@ -303,7 +302,7 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
     for (auto const field : fields) {
         auto const index{members.index(field)};
         if (positional || members.s7[index].required) {
-            auto const name{context.text(members.name[index])};
+            auto const name{ctx.text(members.name[index])};
             initializers.push_back(ir.designated_initializer(
                 members.name[index],
                 move(ir.unary(UnaryOperator::dereference, ir.named("value_" + name)))));
@@ -312,7 +311,7 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
     body.add(ir.variable("value_type", "result", ir.init_list(initializers)), 2);
     for (auto const field : fields) {
         auto const index{members.index(field)};
-        auto const name{context.text(members.name[index])};
+        auto const name{ctx.text(members.name[index])};
         auto const& options{members.s7[index]};
         if (!positional && !options.required) {
             body.add(ir.if_stmt(
@@ -328,20 +327,20 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
 
 }
 
-void lower_record_reader(LoweringContext& context,
+void lower_record_reader(LoweringContext& ctx,
                          DeclarationHandle const record,
                          DeclarationEmission& emission) {
-    auto& ir{context.ir};
-    auto const& records{context.declarations.records};
+    auto& ir{ctx.ir};
+    auto const& records{ctx.declarations.records};
     auto const row{records.index(record)};
-    auto const fields{record_reader::reader_fields(context, record)};
+    auto const fields{record_reader::reader_fields(ctx, record)};
     auto const empty{fields.empty()};
-    auto const type{context.semantic.find_declared(context.module, records.name[row]).value()};
-    auto const name{context.text(context.semantic.cpp_spelling(type))};
+    auto const type{ctx.semantic.find_declared(ctx.module, records.name[row]).value()};
+    auto const name{ctx.text(ctx.semantic.cpp_spelling(type))};
     auto const config_type{
         ir.types.named(name + (records.constraint_policy[row] ? "Value" : ""), NameOrigin::global)};
     auto const value_type{config_type};
-    auto const& members{context.declarations.child_occurrences};
+    auto const& members{ctx.declarations.child_occurrences};
     if (std::ranges::any_of(fields, [&](auto field) {
             auto const& options{members.s7[members.index(field)]};
             return options.nonzero || options.positive || options.nonnegative || options.finite ||
@@ -353,7 +352,7 @@ void lower_record_reader(LoweringContext& context,
     std::set<std::string> keys;
     for (auto const field : fields) {
         auto const member{members.name[members.index(field)]};
-        auto const key{record_reader::field_name(context, field)};
+        auto const key{record_reader::field_name(ctx, field)};
         if (key.empty() || !std::ranges::all_of(key, [](unsigned char c) {
                 return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-';
             })) {
@@ -366,7 +365,7 @@ void lower_record_reader(LoweringContext& context,
         values.push_back(ir.enumerator(member));
     }
     NodeListBuilder decls{ir};
-    auto const includes{context.declarations.items(records.s7_reader_includes[row])};
+    auto const includes{ctx.declarations.items(records.s7_reader_includes[row])};
     emission.reader_includes.insert(
         emission.reader_includes.end(), includes.begin(), includes.end());
     auto const add_function{[&](std::string const& method,
@@ -380,8 +379,7 @@ void lower_record_reader(LoweringContext& context,
         ir.function_flags(function).set_define_in_header(true);
         decls.add(ir.header_function(function), 2);
     }};
-    std::vector<FunctionParameterId> const read_parameters{
-        ir.parameter("DecodeContext", "context")};
+    std::vector<FunctionParameterId> const read_parameters{ir.parameter("DecodeContext", "ctx")};
     if (std::ranges::any_of(fields, [&](auto field) {
             auto const index{members.index(field)};
             return !members.initializer[index].has_value();
@@ -391,14 +389,14 @@ void lower_record_reader(LoweringContext& context,
             ir.types.template_type(ir.types.named("ioj::s7::ReadResult", NameOrigin::global),
                                    {ir.types.named("value_type")}),
             read_parameters,
-            record_reader::fields_body(context, record, true));
+            record_reader::fields_body(ctx, record, true));
     }
     auto decode_parameters{read_parameters};
     decode_parameters.push_back(ir.parameter("value_type&", empty ? "" : "result"));
     add_function("decode",
                  ir.types.std.void_,
                  decode_parameters,
-                 record_reader::fields_body(context, record, false));
+                 record_reader::fields_body(ctx, record, false));
     if (!records.s7_positional[row]) {
         decls.add(ir.access(Access::private_), 1);
     }
@@ -417,7 +415,7 @@ void lower_record_reader(LoweringContext& context,
         std::vector<Expr> names;
         std::vector<Expr> required;
         auto const named_fields{records.generate_visitor[row]
-                                    ? context.declarations.items(records.members[row])
+                                    ? ctx.declarations.items(records.members[row])
                                     : std::span<ChildOccurrenceId const>{fields}};
         for (auto const field : named_fields) {
             auto const index{members.index(field)};
@@ -425,10 +423,10 @@ void lower_record_reader(LoweringContext& context,
                 names.push_back(ir.string_literal(""));
                 continue;
             }
-            names.push_back(ir.string_literal(record_reader::field_name(context, field)));
+            names.push_back(ir.string_literal(record_reader::field_name(ctx, field)));
             if (members.s7[index].required) {
                 required.push_back(ir.type_reference(ir.types.decorate(
-                    ir.types.named("Field"), "", "::" + context.text(members.name[index]))));
+                    ir.types.named("Field"), "", "::" + ctx.text(members.name[index]))));
             }
         }
         auto const array_type{ir.types.template_type(
@@ -463,13 +461,13 @@ void lower_record_reader(LoweringContext& context,
                                 {value_type})});
     emission.reader_declarations.push_back(specialization);
 
-    for (auto const dependency : context.semantic.dependencies_of(type)) {
-        auto const declaration{context.semantic.source_declaration(dependency)};
-        auto const module{context.semantic.module(dependency)};
+    for (auto const dependency : ctx.semantic.dependencies_of(type)) {
+        auto const declaration{ctx.semantic.source_declaration(dependency)};
+        auto const module{ctx.semantic.module(dependency)};
         if (declaration.value != 0 && declaration.kind() == DeclarationKind::record &&
-            records.s7_tag[declaration] && module != context.module) {
-            emission.reader_includes.push_back(ir.strings.intern(reader_header_path(
-                source_include(context, context.declarations.module_settings(module)))));
+            records.s7_tag[declaration] && module != ctx.module) {
+            emission.reader_includes.push_back(ir.strings.intern(
+                reader_header_path(source_include(ctx, ctx.declarations.module_settings(module)))));
         }
     }
 }

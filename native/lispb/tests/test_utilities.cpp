@@ -30,33 +30,33 @@
 
 namespace lispb::codegen {
 
-auto make_test_type_ref(CompilerTestContext& context, std::string_view spelling) -> TypeRefId {
-    auto& types{context.storage.declarations.type_refs};
+auto make_test_type_ref(CompilerTestContext& ctx, std::string_view spelling) -> TypeRefId {
+    auto& types{ctx.storage.declarations.type_refs};
     auto const type{types.append()};
-    types.name[types.index(type)] = context.storage.strings.intern(spelling);
+    types.name[types.index(type)] = ctx.storage.strings.intern(spelling);
     return type;
 }
-auto make_test_registry(CompilerTestContext& context,
+auto make_test_registry(CompilerTestContext& ctx,
                         std::vector<std::pair<std::string_view, CppTypeId>> const& entries)
     -> TypeRegistry {
-    TypeRegistry types{context.storage.registered_types};
+    TypeRegistry types{ctx.storage.registered_types};
     for (auto const& [name, type] : entries) {
         types.add(name, type);
     }
     return types;
 }
-auto lower_test_manifest(CompilerTestContext& context, Manifest manifest) -> std::vector<ModuleId> {
+auto lower_test_manifest(CompilerTestContext& ctx, Manifest manifest) -> std::vector<ModuleId> {
     auto const graph{schema::resolve_type_graph(manifest)};
-    return lower_modules(context.ir, manifest, graph);
+    return lower_modules(ctx.ir, manifest, graph);
 }
-auto parse_test_manifest(CompilerTestContext& context,
+auto parse_test_manifest(CompilerTestContext& ctx,
                          std::string_view source,
                          std::vector<std::pair<std::string_view, CppTypeId>> const& registrations)
     -> Manifest {
-    auto& storage{context.storage};
+    auto& storage{ctx.storage};
     auto const file{storage.sources.add("test.lispb", source)};
     return {manifest_schema_version,
-            make_test_registry(context, registrations),
+            make_test_registry(ctx, registrations),
             storage.declarations,
             parse_module_source(storage, file).modules};
 }
@@ -71,9 +71,9 @@ auto find_test_type(schema::TypeGraph const& graph, std::string_view module, std
     }
     return std::nullopt;
 }
-auto render_test_manifest(CompilerTestContext& context, Manifest manifest)
+auto render_test_manifest(CompilerTestContext& ctx, Manifest manifest)
     -> std::vector<GeneratedFile> {
-    return render_modules(context.ir, lower_test_manifest(context, std::move(manifest)));
+    return render_modules(ctx.ir, lower_test_manifest(ctx, std::move(manifest)));
 }
 auto collected_dependencies(CppIR const& ir, NodeId node) -> std::vector<TypeDependencyId> {
     std::vector<TypeDependencyId> result;

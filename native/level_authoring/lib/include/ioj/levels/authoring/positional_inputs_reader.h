@@ -15,61 +15,53 @@ namespace ioj::s7 {
 template <>
 struct TypeReader<levels::authoring::NamedExprInput>
     : RecordReader<levels::authoring::NamedExprInput> {
-    static void decode(DecodeContext context, value_type& result) {
-        auto const arguments{
-            positional_arguments(context.reader, context.node, "expr", context.path, 2)};
+    static void decode(DecodeContext ctx, value_type& result) {
+        auto const arguments{positional_arguments(ctx.reader, ctx.node, "expr", ctx.path, 2)};
 
         if (!arguments) {
-            append_errors(context.errors, arguments.error());
+            append_errors(ctx.errors, arguments.error());
             return;
         }
-        FieldReader{{context.reader,
-                     (*arguments)[0],
-                     std::string{context.path} + ".name",
-                     context.mode,
-                     context.errors}}(result.name);
-        FieldReader{{context.reader,
-                     (*arguments)[1],
-                     std::string{context.path} + ".value",
-                     context.mode,
-                     context.errors}}(result.value);
+        FieldReader{
+            {ctx.reader, (*arguments)[0], std::string{ctx.path} + ".name", ctx.mode, ctx.errors}}(
+            result.name);
+        FieldReader{
+            {ctx.reader, (*arguments)[1], std::string{ctx.path} + ".value", ctx.mode, ctx.errors}}(
+            result.value);
     }
 };
 
 template <>
 struct TypeReader<levels::authoring::UnlockInput> : RecordReader<levels::authoring::UnlockInput> {
-    static void decode(DecodeContext context, value_type& result) {
+    static void decode(DecodeContext ctx, value_type& result) {
         auto const arguments{
-            positional_arguments(context.reader, context.node, "level-completed", context.path, 1)};
+            positional_arguments(ctx.reader, ctx.node, "level-completed", ctx.path, 1)};
 
         if (!arguments) {
-            append_errors(context.errors, arguments.error());
+            append_errors(ctx.errors, arguments.error());
             return;
         }
-        FieldReader{{context.reader,
+        FieldReader{{ctx.reader,
                      (*arguments)[0],
-                     std::string{context.path} + ".level-id",
-                     context.mode,
-                     context.errors}}(result.level);
+                     std::string{ctx.path} + ".level-id",
+                     ctx.mode,
+                     ctx.errors}}(result.level);
     }
 };
 
 template <>
 struct TypeReader<levels::authoring::ExprReferenceInput>
     : RecordReader<levels::authoring::ExprReferenceInput> {
-    static void decode(DecodeContext context, value_type& result) {
-        auto const arguments{
-            positional_arguments(context.reader, context.node, "expr-ref", context.path, 1)};
+    static void decode(DecodeContext ctx, value_type& result) {
+        auto const arguments{positional_arguments(ctx.reader, ctx.node, "expr-ref", ctx.path, 1)};
 
         if (!arguments) {
-            append_errors(context.errors, arguments.error());
+            append_errors(ctx.errors, arguments.error());
             return;
         }
-        FieldReader{{context.reader,
-                     (*arguments)[0],
-                     std::string{context.path} + ".name",
-                     context.mode,
-                     context.errors}}(result.name);
+        FieldReader{
+            {ctx.reader, (*arguments)[0], std::string{ctx.path} + ".name", ctx.mode, ctx.errors}}(
+            result.name);
     }
 };
 

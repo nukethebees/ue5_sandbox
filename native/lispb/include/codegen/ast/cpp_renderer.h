@@ -26,19 +26,18 @@ class CppRenderer {
 
     explicit CppRenderer(CppIR const& ir, std::string_view indent_text = default_indent);
     // Reset lookup state for each entry point; the same renderer can emit multiple files.
-    auto render(Expr expr, RenderContext const& context = {}) -> std::string;
-    auto render(NodeId node, RenderContext const& context = {}) -> std::string;
+    auto render(Expr expr, RenderContext const& ctx = {}) -> std::string;
+    auto render(NodeId node, RenderContext const& ctx = {}) -> std::string;
     auto render(CppFileId file) -> std::string;
-    auto render_nodes(std::span<NodeId const> values, RenderContext const& context, int newlines)
+    auto render_nodes(std::span<NodeId const> values, RenderContext const& ctx, int newlines)
         -> std::string;
   private:
     /* **************************************** */
     // Formatting
     /* **************************************** */
-    void append_indent(std::string& output, RenderContext const& context) const;
-    void append_indented(std::string& output,
-                         std::string_view text,
-                         RenderContext const& context) const;
+    void append_indent(std::string& output, RenderContext const& ctx) const;
+    void
+        append_indented(std::string& output, std::string_view text, RenderContext const& ctx) const;
     auto in_record_scope(EnvironmentId environment) const -> bool;
 
     /* **************************************** */
@@ -63,28 +62,28 @@ class CppRenderer {
     /* **************************************** */
     // Expressions and declarations
     /* **************************************** */
-    auto expression(Expr expr, RenderContext const& context) -> std::string;
+    auto expression(Expr expr, RenderContext const& ctx) -> std::string;
     auto expr_precedence(Expr expr) -> int;
     void append_expr(std::string& output,
                      Expr expr,
-                     RenderContext const& context,
+                     RenderContext const& ctx,
                      int minimum = 0,
                      bool equal = false);
     void append_template(std::string& output,
                          TemplateId declaration,
-                         RenderContext const& context,
+                         RenderContext const& ctx,
                          bool keyword = true);
     void append_parameters(std::string& output,
                            ir::Range parameters,
-                           RenderContext const& context,
+                           RenderContext const& ctx,
                            bool defaults);
     auto signature(std::uint32_t function_index,
-                   RenderContext const& context,
+                   RenderContext const& ctx,
                    EnvironmentId& environment) -> std::string;
-    void append_node(std::string& output, NodeId node, RenderContext const& context);
+    void append_node(std::string& output, NodeId node, RenderContext const& ctx);
     void append_nodes(std::string& output,
                       std::span<NodeId const> values,
-                      RenderContext const& context,
+                      RenderContext const& ctx,
                       int newlines);
 
     CppIR const& ir_;

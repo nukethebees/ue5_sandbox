@@ -6,5 +6,5 @@
 #include <codegen/schema/declaration_handle.h>
 
 namespace lispb::codegen::detail {
-auto lower_single_allocation(LoweringContext& context, DeclarationHandle schema) -> LoweredSoa;
+auto lower_single_allocation(LoweringContext& ctx, DeclarationHandle schema) -> LoweredSoa;
 }

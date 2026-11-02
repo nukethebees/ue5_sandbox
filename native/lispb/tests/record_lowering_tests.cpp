@@ -29,8 +29,8 @@ using lispb::test_support::expect_contains_all;
 namespace {
 
 TEST(RecordLowering, GeneratesUniqueConstructorsAndPreservesSpecialForms) {
-    CompilerTestContext context;
-    auto manifest{parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto manifest{parse_test_manifest(ctx, R"(
       (module constructors :header "Constructors.h" :s7-constructors true
         (record First :generate-s7-reader true :s7-tag "shared"
     (projections (cpp)))
@@ -38,7 +38,7 @@ TEST(RecordLowering, GeneratesUniqueConstructorsAndPreservesSpecialForms) {
     (projections (cpp)))
         (record Special :generate-s7-reader true :s7-tag "special" :s7-constructor false
     (projections (cpp)))))")};
-    auto const files{render_test_manifest(context, manifest)};
+    auto const files{render_test_manifest(ctx, manifest)};
     auto const& output{files.front().content};
     auto const constructor{output.find("(define (shared . arguments)")};
     ASSERT_NE(constructor, std::string::npos);
@@ -49,12 +49,12 @@ TEST(RecordLowering, GeneratesUniqueConstructorsAndPreservesSpecialForms) {
 class InvalidConstructorTags : public testing::TestWithParam<char const*> {};
 
 TEST_P(InvalidConstructorTags, RejectsUnsafeAndConflictingConstructorTags) {
-    CompilerTestContext context;
+    CompilerTestContext ctx;
     auto manifest{parse_test_manifest(
-        context,
+        ctx,
         std::format("(module constructors :header Constructors.h :s7-constructors true {})",
                     GetParam()))};
-    EXPECT_THROW(static_cast<void>(render_test_manifest(context, manifest)), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(render_test_manifest(ctx, manifest)), std::invalid_argument);
 }
 
 INSTANTIATE_TEST_SUITE_P(RecordLowering,
@@ -67,9 +67,9 @@ INSTANTIATE_TEST_SUITE_P(RecordLowering,
     (projections (cpp))))"));
 
 TEST(RecordLowering, GeneratesSemanticMembersAndFixedArrays) {
-    CompilerTestContext context;
+    CompilerTestContext ctx;
     auto manifest{parse_test_manifest(
-        context,
+        ctx,
         R"(
         (module records :header "Records.h" :namespace project
             (record Position (member x float) (member y float)
@@ -78,10 +78,10 @@ TEST(RecordLowering, GeneratesSemanticMembersAndFixedArrays) {
                 (member position Position) (member values @value :count 3)
     (projections (cpp)))))",
         {{"value",
-          context.storage.cpp_types.add(
-              "Value", {context.storage.cpp_types.dependency("Value", "Project/Value.h")})}})};
+          ctx.storage.cpp_types.add(
+              "Value", {ctx.storage.cpp_types.dependency("Value", "Project/Value.h")})}})};
 
-    auto const files{render_test_manifest(context, manifest)};
+    auto const files{render_test_manifest(ctx, manifest)};
 
     ASSERT_EQ(files.size(), 1U);
     auto const& output{files.front().content};
@@ -99,10 +99,10 @@ TEST(RecordLowering, GeneratesSemanticMembersAndFixedArrays) {
 class InvalidRecordDeclaration : public testing::TestWithParam<char const*> {};
 
 TEST_P(InvalidRecordDeclaration, RejectsDeclaration) {
-    CompilerTestContext context;
+    CompilerTestContext ctx;
     auto manifest{parse_test_manifest(
-        context, std::format(R"((module records :header "Records.h" {}))", GetParam()))};
-    EXPECT_THROW(static_cast<void>(lower_test_manifest(context, manifest)), std::invalid_argument);
+        ctx, std::format(R"((module records :header "Records.h" {}))", GetParam()))};
+    EXPECT_THROW(static_cast<void>(lower_test_manifest(ctx, manifest)), std::invalid_argument);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -137,9 +137,9 @@ INSTANTIATE_TEST_SUITE_P(
 class RemovedRecordOption : public testing::TestWithParam<char const*> {};
 
 TEST_P(RemovedRecordOption, RejectsRemovedOverrideGenerationOption) {
-    CompilerTestContext context;
+    CompilerTestContext ctx;
     EXPECT_THROW(static_cast<void>(parse_test_manifest(
-                     context, std::format("(module records :header Records.h {})", GetParam()))),
+                     ctx, std::format("(module records :header Records.h {})", GetParam()))),
                  sexpr::SourceError);
 }
 
@@ -153,21 +153,21 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST(RecordLowering, SettingsMetadataDoesNotChangeOrdinaryRecordOutput) {
     auto const render{[](std::string_view const options) {
-        CompilerTestContext context;
+        CompilerTestContext ctx;
         auto manifest{
-            parse_test_manifest(context,
+            parse_test_manifest(ctx,
                                 std::format(R"((module records :header "Records.h" (record Config
                 (member max_speed float :initializer 2.f {})
     (projections (cpp)))))",
                                             options))};
-        return render_test_manifest(context, manifest).front().content;
+        return render_test_manifest(ctx, manifest).front().content;
     }};
     EXPECT_EQ(render(""), render(":s7-exclude true :s7-name speed"));
 }
 
 TEST(RecordLowering, SettingsOptionsSurviveSourceRoundTrip) {
-    CompilerTestContext context;
-    auto const manifest{parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto const manifest{parse_test_manifest(ctx, R"(
         (module records :header "Records.h"
           (record Config :generate-visitor true
             (member max_speed float :initializer "2.f" :s7-name "speed")
@@ -185,7 +185,7 @@ TEST(RecordLowering, SettingsOptionsSurviveSourceRoundTrip) {
     auto const round_trip{parse_test_manifest(reparsed, source)};
     EXPECT_EQ(schema::render_module_source(round_trip.declarations, round_trip.modules.front()),
               source);
-    auto const output{render_test_manifest(context, manifest).front().content};
+    auto const output{render_test_manifest(ctx, manifest).front().content};
     EXPECT_EQ(output, render_test_manifest(reparsed, round_trip).front().content);
     EXPECT_TRUE(output.contains("case Field::max_speed:\n"));
     EXPECT_FALSE(output.contains("case Field::max_speed: {"));
@@ -194,9 +194,9 @@ TEST(RecordLowering, SettingsOptionsSurviveSourceRoundTrip) {
 
 TEST(RecordLowering, ReaderOptionsSurviveRoundTripAndLeaveOrdinaryOutputUnchanged) {
     auto const render{[](std::string_view const options) {
-        CompilerTestContext context;
+        CompilerTestContext ctx;
         auto const manifest{parse_test_manifest(
-            context,
+            ctx,
             std::format(R"((module records :header "Records.h" :namespace example
                 (record Config {} (member max_speed float :initializer "2.f")
     (projections (cpp)))))",
@@ -205,7 +205,7 @@ TEST(RecordLowering, ReaderOptionsSurviveRoundTripAndLeaveOrdinaryOutputUnchange
             schema::render_module_source(manifest.declarations, manifest.modules.front())};
         CompilerTestContext reparsed;
         auto const round_trip{parse_test_manifest(reparsed, source)};
-        auto const output{render_test_manifest(context, manifest)};
+        auto const output{render_test_manifest(ctx, manifest)};
         auto const second{render_test_manifest(reparsed, round_trip)};
         EXPECT_EQ(output.size(), second.size());
         for (std::size_t i{}; i < output.size(); ++i) {
@@ -224,8 +224,8 @@ TEST(RecordLowering, ReaderOptionsSurviveRoundTripAndLeaveOrdinaryOutputUnchange
 }
 
 TEST(RecordLowering, RetainsReaderConstraintsInCanonicalSource) {
-    CompilerTestContext context;
-    auto const manifest{parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto const manifest{parse_test_manifest(ctx, R"(
         (module records :header "Records.h"
           (record Config :generate-s7-reader true :s7-tag config
             :s7-reader-includes ("CustomReader.h")
@@ -239,7 +239,7 @@ TEST(RecordLowering, RetainsReaderConstraintsInCanonicalSource) {
     auto const round_trip{parse_test_manifest(reparsed, source)};
     EXPECT_EQ(source,
               schema::render_module_source(round_trip.declarations, round_trip.modules.front()));
-    auto const first{render_test_manifest(context, manifest)};
+    auto const first{render_test_manifest(ctx, manifest)};
     auto const second{render_test_manifest(reparsed, round_trip)};
     ASSERT_EQ(first.size(), 2u);
     EXPECT_EQ(first.back().content, second.back().content);
@@ -248,12 +248,12 @@ TEST(RecordLowering, RetainsReaderConstraintsInCanonicalSource) {
 class InvalidRecordReader : public testing::TestWithParam<char const*> {};
 
 TEST_P(InvalidRecordReader, RejectsAmbiguousReaderFieldsAndInvalidBounds) {
-    CompilerTestContext context;
+    CompilerTestContext ctx;
     EXPECT_THROW(
         {
             auto const manifest{parse_test_manifest(
-                context, std::format(R"((module records :header "Records.h" {}))", GetParam()))};
-            static_cast<void>(lower_test_manifest(context, manifest));
+                ctx, std::format(R"((module records :header "Records.h" {}))", GetParam()))};
+            static_cast<void>(lower_test_manifest(ctx, manifest));
         },
         std::exception);
 }
@@ -281,50 +281,49 @@ INSTANTIATE_TEST_SUITE_P(
     (projections (cpp))))"));
 
 TEST(RecordLowering, AllowsEmptyAndNonemptyRecords) {
-    CompilerTestContext context;
+    CompilerTestContext ctx;
     auto record = [&](std::string_view members) {
         return parse_test_manifest(
-            context,
+            ctx,
             R"((module records :header "Records.h" (record Record (projections (cpp)) )" +
                 std::string{members} + "))");
     };
-    EXPECT_NO_THROW(
-        static_cast<void>(lower_test_manifest(context, record("(member value float)"))));
-    auto const files{render_test_manifest(context, record(""))};
+    EXPECT_NO_THROW(static_cast<void>(lower_test_manifest(ctx, record("(member value float)"))));
+    auto const files{render_test_manifest(ctx, record(""))};
     ASSERT_EQ(files.size(), 1U);
     EXPECT_TRUE(files.front().content.contains("struct Record"));
 }
 
 TEST(RecordLowering, EmitsByValueDependenciesBeforeTheirUsers) {
-    CompilerTestContext context;
-    auto manifest{parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto manifest{parse_test_manifest(ctx, R"(
         (module records :header "Records.h"
             (record Sample (member position Position)
     (projections (cpp)))
             (record Position (member x float)
     (projections (cpp)))))")};
 
-    auto const files{render_test_manifest(context, manifest)};
+    auto const files{render_test_manifest(ctx, manifest)};
     auto const& output{files.front().content};
     EXPECT_LT(output.find("struct Position"), output.find("struct Sample"));
 }
 
 TEST(RecordLowering, ForwardDeclaresMutuallyReferringPointerRecords) {
-    CompilerTestContext context;
-    auto manifest{parse_test_manifest(context, R"(
+    CompilerTestContext ctx;
+    auto manifest{parse_test_manifest(ctx, R"(
         (module records :header "Records.h"
             (record First (member next (type-ref Second :suffix "*"))
     (projections (cpp)))
             (record Second (member next (type-ref First :suffix "*"))
     (projections (cpp)))))")};
-    auto const files{render_test_manifest(context, manifest)};
+    auto const files{render_test_manifest(ctx, manifest)};
     auto const& output{files.front().content};
     expect_contains_all(output,
                         {"struct First;", "struct Second;", "Second* next;", "First* next;"});
 }
 
 TEST(RecordLowering, SoaPointerCyclesRetainSemanticEdgesInEitherSourceOrder) {
-    CompilerTestContext context;
+    CompilerTestContext ctx;
     std::array<std::string_view, 2> declarations{
         R"((struct A
             (member others array (type-ref B :suffix "*"))))",
@@ -332,7 +331,7 @@ TEST(RecordLowering, SoaPointerCyclesRetainSemanticEdgesInEitherSourceOrder) {
             (member others array (type-ref A :suffix "*"))))"};
     for (int order{}; order < 2; ++order) {
         auto manifest{parse_test_manifest(
-            context,
+            ctx,
             R"((module pointers :header "Pointers.h" :namespace example::inner )" +
                 std::string{declarations[0]} + std::string{declarations[1]} + ")")};
         auto const graph{schema::resolve_type_graph(manifest)};
@@ -342,7 +341,7 @@ TEST(RecordLowering, SoaPointerCyclesRetainSemanticEdgesInEitherSourceOrder) {
             EXPECT_NE(std::ranges::find(dependencies, *find_test_type(graph, "pointers", other)),
                       dependencies.end());
         }
-        auto const output{render_test_manifest(context, manifest).front().content};
+        auto const output{render_test_manifest(ctx, manifest).front().content};
         EXPECT_LT(output.find("namespace example::inner"), output.find("struct A;"));
         auto const view_definition{output.find("struct ViewImpl")};
         ASSERT_NE(view_definition, std::string::npos);
@@ -354,7 +353,7 @@ TEST(RecordLowering, SoaPointerCyclesRetainSemanticEdgesInEitherSourceOrder) {
 }
 
 TEST(RecordLowering, ForwardDeclarationsMatchGeneratedRecordKindsAndExcludeAliasesAndExternals) {
-    CompilerTestContext context;
+    CompilerTestContext ctx;
     std::string source{
         R"((module kinds :header "Kinds.h" :source "Kinds.cpp" :header-include "Kinds.h"
         (record Uses (projections (cpp)) )"};
@@ -388,8 +387,8 @@ TEST(RecordLowering, ForwardDeclarationsMatchGeneratedRecordKindsAndExcludeAlias
         (struct Values (member xs array float) (member ys array float))
         (integer-scalar Alias :signed false :minimum 0 :maximum 255 :bit-width 8
     (projections (cpp :storage std::uint8_t)))))";
-    auto manifest{parse_test_manifest(context, source)};
-    auto const output{render_test_manifest(context, manifest).front().content};
+    auto manifest{parse_test_manifest(ctx, source)};
+    auto const output{render_test_manifest(ctx, manifest).front().content};
     for (auto const name : {"Record", "Tagged", "Packed", "Table", "Values"}) {
         EXPECT_NE(output.find(std::string{"struct "} + name + ";"), std::string::npos) << name;
     }

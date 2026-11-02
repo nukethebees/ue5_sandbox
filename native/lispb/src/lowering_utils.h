@@ -26,17 +26,17 @@ auto enum_strings_specialization(CppIR& ir,
                                  std::span<std::string const> names,
                                  bool wide = false) -> NodeId;
 
-auto lower_schema_function(LoweringContext& context,
+auto lower_schema_function(LoweringContext& ctx,
                            FunctionSchemaId schema,
                            std::optional<std::span<Expr const>> body = std::nullopt) -> FunctionId;
-auto lower_member_type(LoweringContext& context, ChildOccurrenceId member) -> CppTypeId;
+auto lower_member_type(LoweringContext& ctx, ChildOccurrenceId member) -> CppTypeId;
 
 auto join(std::vector<std::string> const& values, std::string_view separator) -> std::string;
-auto join(LoweringContext const& context, SchemaRange<StringId> values, std::string_view separator)
+auto join(LoweringContext const& ctx, SchemaRange<StringId> values, std::string_view separator)
     -> std::string;
 auto join_lines(std::vector<std::string> const& values) -> std::string;
-auto join_lines(LoweringContext const& context, SchemaRange<StringId> values) -> std::string;
-auto source_include(LoweringContext const& context, ModuleSettingsId settings) -> std::string;
+auto join_lines(LoweringContext const& ctx, SchemaRange<StringId> values) -> std::string;
+auto source_include(LoweringContext const& ctx, ModuleSettingsId settings) -> std::string;
 void append_type_dependencies(std::vector<TypeDependencyId>& result,
                               std::string const& key,
                               TypeRegistry const& types);

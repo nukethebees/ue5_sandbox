@@ -14,9 +14,9 @@
 namespace ioj::s7 {
 template <>
 struct TypeReader<levels::LevelCameraDefinition> : RecordReader<levels::LevelCameraDefinition> {
-    static void decode(DecodeContext context, value_type& result) {
+    static void decode(DecodeContext ctx, value_type& result) {
         decode_record<Field>(
-            context,
+            ctx,
             "camera",
             field_names,
             [&result](Field selected, auto const& read) {

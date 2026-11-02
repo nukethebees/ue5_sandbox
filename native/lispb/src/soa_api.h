@@ -14,12 +14,12 @@
 
 namespace lispb::codegen::detail {
 
-auto soa_row_operations(LoweringContext& context,
+auto soa_row_operations(LoweringContext& ctx,
                         DeclarationHandle schema,
                         SoaReceiver receiver,
                         std::string const& type_name,
                         CppTypeId base) -> CppTypeId;
-auto lower_soa_api(LoweringContext& context,
+auto lower_soa_api(LoweringContext& ctx,
                    DeclarationHandle schema,
                    SoaReceiver receiver,
                    std::string const& type_name,

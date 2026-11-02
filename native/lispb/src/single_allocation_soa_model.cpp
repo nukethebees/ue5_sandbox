@@ -30,23 +30,23 @@
 #include <vector>
 
 namespace lispb::codegen::detail {
-auto schema_namespace(LoweringContext& context, DeclarationHandle schema) -> std::string {
-    auto const scoped{context.for_declaration(schema)};
-    auto const& decls{context.declarations};
+auto schema_namespace(LoweringContext& ctx, DeclarationHandle schema) -> std::string {
+    auto const scoped{ctx.for_declaration(schema)};
+    auto const& decls{ctx.declarations};
     auto const& settings{decls.module_settings_store};
     auto const namespace_name{settings.namespace_name[decls.module_settings(scoped.module)]};
-    return (namespace_name ? context.text(*namespace_name) + "::" : "") +
-           soa_namespace_name(context.text(decls.soas.name[schema]));
+    return (namespace_name ? ctx.text(*namespace_name) + "::" : "") +
+           soa_namespace_name(ctx.text(decls.soas.name[schema]));
 }
 
-auto is_strided_schema(LoweringContext& context, DeclarationHandle schema) -> bool {
-    auto const& decls{context.declarations};
+auto is_strided_schema(LoweringContext& ctx, DeclarationHandle schema) -> bool {
+    auto const& decls{ctx.declarations};
     auto const& soas{decls.soas};
     auto const& members{decls.soa_members};
     std::optional<CppTypeId> element_type;
     std::size_t count{};
     auto homogeneous = [&](auto&& self, DeclarationHandle current) -> bool {
-        auto const scoped{context.for_declaration(current)};
+        auto const scoped{ctx.for_declaration(current)};
         for (auto const member : decls.items(soas.members[current])) {
             auto const row{members.index(member)};
             if (members.kind[row] == SoaMemberKind::nested) {
@@ -67,11 +67,11 @@ auto is_strided_schema(LoweringContext& context, DeclarationHandle schema) -> bo
     return homogeneous(homogeneous, schema) && count >= 2;
 }
 
-auto build_single_allocation_model(LoweringContext& context, DeclarationHandle schema)
+auto build_single_allocation_model(LoweringContext& ctx, DeclarationHandle schema)
     -> SingleAllocationModelId {
-    auto& ir{context.ir};
-    auto const& type_graph{context.semantic};
-    auto const module_name{context.module};
+    auto& ir{ctx.ir};
+    auto const& type_graph{ctx.semantic};
+    auto const module_name{ctx.module};
     auto& storage{ir.lowering};
     auto& models{storage.single_allocation_models};
     auto& columns{storage.single_allocation_columns};
@@ -84,11 +84,10 @@ auto build_single_allocation_model(LoweringContext& context, DeclarationHandle s
         ir.types.dependency("single_allocation_storage", "ioj/native_soa/storage.h")};
     std::vector<SingleAllocationColumnId> column_ids;
 
-    auto const root_id{
-        type_graph.find_declared(module_name, context.declarations.soas.name[schema])};
+    auto const root_id{type_graph.find_declared(module_name, ctx.declarations.soas.name[schema])};
     if (!root_id.has_value()) {
         throw std::invalid_argument{"Missing resolved single-allocation SOA: " +
-                                    context.text(context.declarations.soas.name[schema])};
+                                    ctx.text(ctx.declarations.soas.name[schema])};
     }
     auto const root_type{type_graph.definition(*root_id)};
     std::set<std::string> flattened_names;
@@ -121,7 +120,7 @@ auto build_single_allocation_model(LoweringContext& context, DeclarationHandle s
             auto type{type_graph.occurrences().cpp_type[type_graph.occurrences().index(
                 type_graph.definitions().soa_columns.semantic_type
                     [type_graph.definitions().soa_columns.index(member)])]};
-            auto const flattened{context.path_text(path, "_")};
+            auto const flattened{ctx.path_text(path, "_")};
             if (!flattened_names.insert(flattened).second) {
                 throw std::invalid_argument{"Single-allocation column name collision: " +
                                             flattened};
@@ -146,9 +145,9 @@ auto build_single_allocation_model(LoweringContext& context, DeclarationHandle s
     return result;
 }
 
-auto column_for(LoweringContext& context, SingleAllocationModelId model, LoweringPathId path)
+auto column_for(LoweringContext& ctx, SingleAllocationModelId model, LoweringPathId path)
     -> SingleAllocationColumnId {
-    return context.ir.lowering.column_lookup.at({model, path});
+    return ctx.ir.lowering.column_lookup.at({model, path});
 }
 
 } // namespace lispb::codegen::detail

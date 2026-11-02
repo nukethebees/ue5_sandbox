@@ -132,7 +132,7 @@ class TemporaryManifest {
         std::filesystem::create_directories((directory_ / name).parent_path());
         std::ofstream output{directory_ / name};
         output << content;
-        context.storage.sources.refresh();
+        ctx.storage.sources.refresh();
     }
 
     auto path(std::string const& name) const -> std::filesystem::path { return directory_ / name; }
@@ -144,29 +144,27 @@ class TemporaryManifest {
 
     auto load() const -> Manifest {
         std::filesystem::path const modules[]{path("modules.lispb")};
-        return load_sources(context.storage, path("types.lispb"), modules);
+        return load_sources(ctx.storage, path("types.lispb"), modules);
     }
     auto render(Manifest manifest) const -> std::vector<GeneratedFile> {
-        return render_test_manifest(context, std::move(manifest));
+        return render_test_manifest(ctx, std::move(manifest));
     }
     auto lower(Manifest manifest) const -> std::vector<ModuleId> {
-        return lower_test_manifest(context, std::move(manifest));
+        return lower_test_manifest(ctx, std::move(manifest));
     }
     auto graph() const -> lispb::schema::TypeGraph {
         auto manifest{load()};
         return lispb::schema::resolve_type_graph(manifest);
     }
-    auto store() const -> Declarations& { return context.storage.declarations; }
+    auto store() const -> Declarations& { return ctx.storage.declarations; }
 
-    auto text(lispb::StringId id) const -> std::string_view {
-        return context.storage.strings.view(id);
-    }
+    auto text(lispb::StringId id) const -> std::string_view { return ctx.storage.strings.view(id); }
     auto text(std::string_view value) const -> std::string_view { return value; }
     template <typename Id>
     auto text(std::optional<Id> id) const -> std::optional<std::string_view> {
         return id.transform([&](auto value) { return text(value); });
     }
-    mutable CompilerTestContext context;
+    mutable CompilerTestContext ctx;
   private:
     std::filesystem::path directory_;
 };
@@ -298,20 +296,19 @@ TEST_F(SourceLoaderTest, RecordMethodDeclarationsForwardDeclareLaterAndMutualTyp
                           std::as_const(editable),
                           [&](TypeReferenceRole const& role, TypeRefId, TypeReferenceKind kind) {
                               const_uses.emplace_back(
-                                  type_reference_role_text(files.context.storage.strings, role),
-                                  kind);
+                                  type_reference_role_text(files.ctx.storage.strings, role), kind);
                           });
     std::vector<std::pair<std::string, TypeReferenceKind>> mutable_uses;
     editable = rewrite_type_references(
         store, editable, [&](TypeReferenceRole const& role, TypeRefId id, TypeReferenceKind kind) {
-            mutable_uses.emplace_back(type_reference_role_text(files.context.storage.strings, role),
+            mutable_uses.emplace_back(type_reference_role_text(files.ctx.storage.strings, role),
                                       kind);
             auto const reference{type_refs.clone(id)};
             auto const reference_row{type_refs.index(reference)};
             if (files.text(type_refs.name[reference_row]) != "B") {
                 return id;
             }
-            type_refs.name[reference_row] = files.context.storage.strings.intern("Renamed");
+            type_refs.name[reference_row] = files.ctx.storage.strings.intern("Renamed");
             return reference;
         });
     EXPECT_EQ(mutable_uses, const_uses);
@@ -746,7 +743,7 @@ TEST(SourceLoader, ScalarProjectionControlsOwningRepresentation) {
         auto const manifest{files.load()};
         auto const graph{lispb::schema::resolve_type_graph(manifest)};
         auto const reason{*find_test_type(graph, "reasons", "Reason")};
-        auto const context{*find_test_type(graph, "reasons", "Context")};
+        auto const ctx{*find_test_type(graph, "reasons", "Context")};
         auto const& scalars{graph.definitions().integer_scalars};
         auto const row{scalars.index(graph.definition(reason))};
         EXPECT_FALSE(lispb::schema::is_valid(scalars.cpp_representation[row]));
@@ -757,11 +754,11 @@ TEST(SourceLoader, ScalarProjectionControlsOwningRepresentation) {
         EXPECT_EQ(scalars.bit_width[row], 8U);
         EXPECT_EQ(scalars.named_codes[row].size(), 2U);
         EXPECT_FALSE(lispb::schema::is_valid(
-            scalars.cpp_representation[scalars.index(graph.definition(context))]));
-        EXPECT_NE(std::ranges::find(graph.dependencies_of(reason), context),
+            scalars.cpp_representation[scalars.index(graph.definition(ctx))]));
+        EXPECT_NE(std::ranges::find(graph.dependencies_of(reason), ctx),
                   graph.dependencies_of(reason).end());
-        EXPECT_NE(std::ranges::find(graph.dependencies_of(context), reason),
-                  graph.dependencies_of(context).end());
+        EXPECT_NE(std::ranges::find(graph.dependencies_of(ctx), reason),
+                  graph.dependencies_of(ctx).end());
         auto const generated{files.render(manifest)};
         if (projected) {
             ASSERT_FALSE(generated.empty());
@@ -841,10 +838,10 @@ TEST_F(SourceLoaderTest, IncludedExternalScalarsRetainExternalIdentityAndEnrichP
     files.write("common/scalars.lispb", R"(
       (type signed_byte :spelling "int8" (integer :signed true :bit-width 8))
       (type real :spelling "double" (floating-point :format ieee754-binary64)))");
-    auto const registry{load_type_registry(files.context.storage, files.path("types.lispb"))};
+    auto const registry{load_type_registry(files.ctx.storage, files.path("types.lispb"))};
     ASSERT_EQ(registry.sources.size(), 3);
-    EXPECT_EQ(files.context.storage.syntax
-                  .span(registry.declarations.at(files.context.storage.strings.find("signed_byte")))
+    EXPECT_EQ(files.ctx.storage.syntax
+                  .span(registry.declarations.at(files.ctx.storage.strings.find("signed_byte")))
                   .file,
               registry.sources[2]);
     auto manifest{files.load()};
@@ -889,9 +886,9 @@ TEST_F(SourceLoaderTest, IncludedExternalScalarsRetainExternalIdentityAndEnrichP
     }
     std::filesystem::path const modules[]{files.path("modules.lispb")};
     lispb::Compilation compiled;
-    lispb::schema::TypeGraph compile_graph{files.store(), files.context.storage.cpp_types};
-    compile_schema(files.context.storage,
-                   files.context.ir,
+    lispb::schema::TypeGraph compile_graph{files.store(), files.ctx.storage.cpp_types};
+    compile_schema(files.ctx.storage,
+                   files.ctx.ir,
                    manifest,
                    compile_graph,
                    compiled,
@@ -1162,11 +1159,11 @@ TEST_F(SourceLoaderTest, ReadsCommentsAndTypedSoa) {
     auto manifest{files.load()};
 
     ASSERT_EQ(manifest.types.entries.size(), 1);
-    EXPECT_EQ(files.text(files.context.storage.cpp_types.spelling(
+    EXPECT_EQ(files.text(files.ctx.storage.cpp_types.spelling(
                   manifest.types.registered
                       .cpp_type[manifest.types.registered.index(*manifest.types.find("handle"))])),
               "FHandle");
-    EXPECT_EQ(files.context.storage.cpp_types.operation(
+    EXPECT_EQ(files.ctx.storage.cpp_types.operation(
                   manifest.types.registered
                       .cpp_type[manifest.types.registered.index(*manifest.types.find("handle"))],
                   TypeOperation::add_element),
@@ -1175,7 +1172,7 @@ TEST_F(SourceLoaderTest, ReadsCommentsAndTypedSoa) {
     auto const& schema{schema_at(manifest, 0)};
     auto const& member{store.items(store.soas.members[schema])[0]};
     auto const member_row{soa_members.index(member)};
-    EXPECT_EQ(files.text(files.context.storage.cpp_types.spelling(
+    EXPECT_EQ(files.text(files.ctx.storage.cpp_types.spelling(
                   resolve_type(soa_members.type[member_row], manifest.types))),
               "FHandle");
     ASSERT_TRUE(soa_members.relationship[member_row].has_value());
