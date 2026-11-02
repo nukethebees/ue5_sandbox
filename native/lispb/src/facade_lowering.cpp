@@ -46,18 +46,17 @@ class FacadeLowering : public CppIRBuilder {
         auto const definitions_in_source{facades.definitions_in_source[row]};
         auto const reference_target{facades.reference_target[row]};
         auto const target_name{facades.target_member_name[row]};
-        auto const binding{reference_target ? constructor(facades.name[row])
-                                            : function("bind", std_types().void_)};
-        set_function_parameters(binding,
-                                {parameter(decorate_type(target_type, "", "&"), "new_target")});
-        function_flags(binding).set_is_inline(!definitions_in_source);
-        function_flags(binding).set_define_in_header(!definitions_in_source);
+        auto binding{reference_target ? constructor_definition(facades.name[row])
+                                      : function_definition("bind", std_types().void_)};
+        binding.parameters = {parameter(decorate_type(target_type, "", "&"), "new_target")};
+        binding.flags.set_is_inline(!definitions_in_source);
+        binding.flags.set_define_in_header(!definitions_in_source);
         if (reference_target) {
-            set_function_body(binding, {}, {member_initializer(target_name, named("new_target"))});
+            binding.implementation =
+                function_body({}, {member_initializer(target_name, named("new_target"))});
         } else {
-            set_function_body(binding,
-                              {assignment(named(target_name),
-                                          unary(UnaryOperator::address_of, named("new_target")))});
+            binding.implementation = function_body({assignment(
+                named(target_name), unary(UnaryOperator::address_of, named("new_target")))});
         }
         std::vector<FunctionId> methods;
         for (auto const method : decls.items(facades.methods[row])) {
@@ -102,21 +101,21 @@ class FacadeLowering : public CppIRBuilder {
             } else {
                 body.add(return_stmt(call_expr, std::move(validation_dependencies)));
             }
-            auto const function_id{function(method_schemas.name[method_row], return_type)};
-            set_function_parameters(function_id, std::move(parameters));
-            set_function_body(function_id, body.build());
-            set_function_receiver(function_id,
-                                  method_schemas.is_const[method_row]
-                                      ? FunctionReceiver::const_
-                                      : FunctionReceiver::unqualified);
+            auto function_id{function_definition(method_schemas.name[method_row], return_type)};
+            function_id.parameters = std::move(parameters);
+            function_id.implementation = function_body(body.build());
+            function_id.receiver = method_schemas.is_const[method_row]
+                                     ? FunctionReceiver::const_
+                                     : FunctionReceiver::unqualified;
             if (method_schemas.is_noexcept[method_row]) {
-                set_function_noexcept(function_id);
+                function_id.exception_specification = noexcept_specification();
             }
-            function_flags(function_id).set_is_inline(!definitions_in_source);
-            function_flags(function_id).set_define_in_header(!definitions_in_source);
-            methods.push_back(function_id);
+            function_id.flags.set_is_inline(!definitions_in_source);
+            function_id.flags.set_define_in_header(!definitions_in_source);
+            methods.push_back(function(function_id));
         }
 
+        auto const binding_id{function(binding)};
         auto public_nodes{node_list()};
         auto protected_nodes{node_list()};
         auto private_nodes{node_list()};
@@ -134,7 +133,7 @@ class FacadeLowering : public CppIRBuilder {
         auto add_method = [&](Access visibility, FunctionId spec) {
             section(visibility).add(header_function(spec), 2);
         };
-        add_method(facades.bind_access[row], binding);
+        add_method(facades.bind_access[row], binding_id);
         auto const schemas{decls.items(facades.methods[row])};
         auto const count{methods.size()};
         for (std::size_t i{}; i < count; ++i) {
@@ -169,7 +168,7 @@ class FacadeLowering : public CppIRBuilder {
         auto definitions{node_list()};
         if (definitions_in_source) {
             auto const owner{intern_type(ctx.text(facades.name[row]))};
-            definitions.add(definition(binding, owner));
+            definitions.add(definition(binding_id, owner));
             for (auto const method : methods) {
                 definitions.new_lines(2).add(definition(method, owner));
             }

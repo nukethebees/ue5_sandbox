@@ -196,8 +196,8 @@ void append_case(lispb::codegen::CppIR& cpp,
                         lispb::codegen::NameOrigin::global))};
     body.push_back(cpp.expr_stmt(cpp.call(function, test_arguments(cpp, document, id))));
 
-    auto const expect_result{cpp.type_reference(cpp.types.named(
-        std::string{suite} + "::expect_result", lispb::codegen::NameOrigin::global))};
+    auto expect_result{cpp.type_reference(cpp.types.named(std::string{suite} + "::expect_result",
+                                                          lispb::codegen::NameOrigin::global))};
     body.push_back(
         cpp.expr_stmt(cpp.call(expect_result,
                                {cpp.call(cpp.member_access(cpp.named(destination), "data")),
@@ -225,13 +225,12 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
     file_nodes.add(cpp.include_dependencies(), 2);
     auto const suite{"Generated" + pascal_case(document.text(document.modules.name(module)))};
     auto const namespace_name{suite + "Tests"};
-    auto const expect_value{cpp.function("expect_value", cpp.types.std.void_)};
-    cpp.function_flags(expect_value).set_define_in_header(true);
-    cpp.set_function_template(
-        expect_value,
-        cpp.template_declaration({cpp.type_template_parameter(cpp.strings.intern("T"))}));
-    cpp.set_function_parameters(
-        expect_value, {cpp.parameter("T const", "actual"), cpp.parameter("T const", "expected")});
+    auto expect_value{cpp.function_definition("expect_value", cpp.types.std.void_)};
+    expect_value.flags.set_define_in_header(true);
+    expect_value.template_declaration =
+        cpp.template_declaration({cpp.type_template_parameter(cpp.strings.intern("T"))});
+    expect_value.parameters = {cpp.parameter("T const", "actual"),
+                               cpp.parameter("T const", "expected")};
     auto const actual{cpp.named("actual")};
     auto const expected{cpp.named("expected")};
     auto const value_type{cpp.type_reference(cpp.types.named("T"))};
@@ -251,28 +250,23 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
                         cpp.call(cpp.named("EXPECT_TRUE"),
                                  {cpp.call(cpp.type_reference(cpp.types.std.isnan), {actual})}))}),
                     cpp.block({infinite}))};
-    cpp.set_function_body(
-        expect_value,
-        {cpp.if_stmt(
-            cpp.template_id(cpp.type_reference(cpp.types.std.is_floating_point_v), {value_type}),
-            cpp.block({nan}),
-            cpp.block({equal}),
-            true)});
-    auto const expect_result{cpp.function("expect_result", cpp.types.std.void_)};
-    cpp.function_flags(expect_result).set_define_in_header(true);
-    cpp.set_function_template(
-        expect_result,
-        cpp.template_declaration({cpp.type_template_parameter(cpp.strings.intern("T"))}));
-    cpp.set_function_parameters(
-        expect_result,
-        {cpp.parameter("T const*", "actual"),
-         cpp.parameter("T const*", "expected"),
-         cpp.parameter("T const*", "before"),
-         cpp.parameter(cpp.types.decorate(cpp.types.std.size_t, "", " const"), "count"),
-         cpp.parameter(cpp.types.decorate(cpp.types.std.size_t, "", " const"), "storage_count")});
+    expect_value.implementation = cpp.function_body({cpp.if_stmt(
+        cpp.template_id(cpp.type_reference(cpp.types.std.is_floating_point_v), {value_type}),
+        cpp.block({nan}),
+        cpp.block({equal}),
+        true)});
+    auto expect_result{cpp.function_definition("expect_result", cpp.types.std.void_)};
+    expect_result.flags.set_define_in_header(true);
+    expect_result.template_declaration =
+        cpp.template_declaration({cpp.type_template_parameter(cpp.strings.intern("T"))});
+    expect_result.parameters = {
+        cpp.parameter("T const*", "actual"),
+        cpp.parameter("T const*", "expected"),
+        cpp.parameter("T const*", "before"),
+        cpp.parameter(cpp.types.decorate(cpp.types.std.size_t, "", " const"), "count"),
+        cpp.parameter(cpp.types.decorate(cpp.types.std.size_t, "", " const"), "storage_count")};
     auto const index{cpp.named("i")};
-    cpp.set_function_body(
-        expect_result,
+    expect_result.implementation = cpp.function_body(
         {cpp.for_stmt(
              cpp.variable(cpp.types.std.size_t, "i"),
              cpp.binary(lispb::codegen::BinaryOperator::less, index, cpp.named("count")),
@@ -305,11 +299,10 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
     for (auto variant_index{range.offset}; variant_index < end; ++variant_index) {
         auto const id{ExpandedVariantId{variant_index}};
         auto const name{raw_name(document, id)};
-        auto const check{cpp.function(name, cpp.types.std.void_)};
-        cpp.function_flags(check).set_define_in_header(true);
-        cpp.set_function_parameters(
-            check,
-            {cpp.parameter(cpp.types.decorate(cpp.types.std.size_t, "", " const"), "Count")});
+        auto check{cpp.function_definition(name, cpp.types.std.void_)};
+        check.flags.set_define_in_header(true);
+        check.parameters = {
+            cpp.parameter(cpp.types.decorate(cpp.types.std.size_t, "", " const"), "Count")};
         lispb::codegen::Nodes body;
         append_case(cpp,
                     body,
@@ -319,15 +312,15 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
                     document,
                     id,
                     fixtures[variant_index - range.offset]);
-        cpp.set_function_body(check, body);
-        cases.push_back(cpp.header_function(check));
+        check.implementation = cpp.function_body(body);
+        cases.push_back(cpp.header_function(cpp.function(check)));
         cases.push_back(cpp.lines(2));
         case_values.push_back(
             cpp.init_list({cpp.string_literal(pascal_case(name)), cpp.named(name)}));
     }
-    lispb::codegen::Nodes declarations{cpp.header_function(expect_value),
+    lispb::codegen::Nodes declarations{cpp.header_function(cpp.function(expect_value)),
                                        cpp.lines(2),
-                                       cpp.header_function(expect_result),
+                                       cpp.header_function(cpp.function(expect_result)),
                                        cpp.lines(2)};
     for (auto const& array : arrays) {
         declarations.push_back(

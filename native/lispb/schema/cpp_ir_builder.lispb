@@ -371,22 +371,22 @@
       (method template_specialization "TemplateId")
       (method raw_template_declaration "TemplateId"
         (parameter parameters "StringId"))
-      (method function "FunctionId"
+      (method function_definition "FunctionDefinition"
         (parameter name "StringId")
         (parameter return_type "CppTypeId"))
-      (method function "FunctionId"
+      (method function_definition "FunctionDefinition"
         (parameter name "Expr")
         (parameter return_type "CppTypeId"))
-      (method function "FunctionId"
+      (method function_definition "FunctionDefinition"
         (parameter name "std::string_view")
         (parameter return_type "CppTypeId"))
-      (method function "FunctionId"
+      (method function_definition "FunctionDefinition"
         (parameter name "std::string_view")
         (parameter return_type "std::string_view"))
-      (method constructor "FunctionId"
+      (method constructor_definition "FunctionDefinition"
         (parameter name "StringId")
         (parameter is_explicit "bool" :default "false"))
-      (method destructor "FunctionId"
+      (method destructor_definition "FunctionDefinition"
         (parameter name "StringId"))
       (method parameter "FunctionParameterId"
         (parameter type "CppTypeId")
@@ -406,86 +406,29 @@
       (method member_initializer "MemberInitializerId"
         (parameter member "StringId")
         (parameter value "Expr"))
-      (method set_function_parameters "void"
-        (parameter function "FunctionId")
-        (parameter parameters "std::span<FunctionParameterId const>"))
-      (method set_function_parameters "void"
-        (parameter function "FunctionId")
-        (parameter parameters "std::initializer_list<FunctionParameterId>"))
-      (method set_function_body "void"
-        (parameter function "FunctionId")
+      (method function "FunctionId"
+        (parameter definition "FunctionDefinition const&"))
+      (method function_body "FunctionImplementationId"
         (parameter body "std::span<NodeId const>")
         (parameter initializers "std::span<MemberInitializerId const>" :default "{}"))
-      (method set_function_body "void"
-        (parameter function "FunctionId")
+      (method function_body "FunctionImplementationId"
         (parameter body "std::initializer_list<NodeId>")
         (parameter initializers "std::span<MemberInitializerId const>" :default "{}"))
-      (method set_function_body "void"
-        (parameter function "FunctionId")
+      (method function_body "FunctionImplementationId"
         (parameter body "std::span<NodeId const>")
         (parameter initializers "std::initializer_list<MemberInitializerId>"))
-      (method set_function_body "void"
-        (parameter function "FunctionId")
+      (method function_body "FunctionImplementationId"
         (parameter body "std::initializer_list<NodeId>")
         (parameter initializers "std::initializer_list<MemberInitializerId>"))
-      (method set_function_defaulted "void"
-        (parameter function "FunctionId"))
-      (method set_function_deleted "void"
-        (parameter function "FunctionId"))
-      (method set_function_dependencies "void"
-        (parameter function "FunctionId")
-        (parameter dependencies "std::span<TypeDependencyId const>"))
-      (method set_function_dependencies "void"
-        (parameter function "FunctionId")
-        (parameter dependencies "std::initializer_list<TypeDependencyId>"))
-      (method function_flags "FunctionFlags&"
-        (parameter function "FunctionId"))
-      (method function_formatting "FunctionFormatting&"
-        (parameter function "FunctionId"))
-      (method function_return_type "CppTypeId" :const true
-        (parameter function "FunctionId"))
-      (method function_parameters "std::span<FunctionParameterId const>" :const true
-        (parameter function "FunctionId"))
-      (method function_return_syntax "ReturnSyntax" :const true
-        (parameter function "FunctionId"))
-      (method function_receiver "FunctionReceiver" :const true
-        (parameter function "FunctionId"))
+      (method defaulted_function "FunctionImplementationId")
+      (method deleted_function "FunctionImplementationId")
+      (method noexcept_specification "FunctionExceptionId")
+      (method conditional_noexcept "FunctionExceptionId"
+        (parameter condition "Expr"))
       (method parameter_name "StringId" :const true
         (parameter parameter "FunctionParameterId"))
       (method parameter_type "CppTypeId" :const true
         (parameter parameter "FunctionParameterId"))
-      (method set_parameter_type "void"
-        (parameter parameter "FunctionParameterId")
-        (parameter type "CppTypeId"))
-      (method set_function_name "void"
-        (parameter function "FunctionId")
-        (parameter name "StringId"))
-      (method set_function_name "void"
-        (parameter function "FunctionId")
-        (parameter name "Expr"))
-      (method set_function_return_type "void"
-        (parameter function "FunctionId")
-        (parameter type "CppTypeId")
-        (parameter syntax "ReturnSyntax" :default "ReturnSyntax::direct"))
-      (method set_function_noexcept "void"
-        (parameter function "FunctionId"))
-      (method set_function_may_throw "void"
-        (parameter function "FunctionId"))
-      (method set_function_conditional_noexcept "void"
-        (parameter function "FunctionId")
-        (parameter condition "Expr"))
-      (method set_function_receiver "void"
-        (parameter function "FunctionId")
-        (parameter receiver "FunctionReceiver"))
-      (method set_function_export_specifier "void"
-        (parameter function "FunctionId")
-        (parameter specifier "StringId"))
-      (method set_function_template "void"
-        (parameter function "FunctionId")
-        (parameter declaration "TemplateId"))
-      (method set_function_requires_clause "void"
-        (parameter function "FunctionId")
-        (parameter clause "Expr"))
       (method raw "NodeId"
         (parameter value "StringId")
         (parameter dependencies "std::span<TypeDependencyId const>" :default "{}"))

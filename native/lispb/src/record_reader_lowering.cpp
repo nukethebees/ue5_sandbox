@@ -80,12 +80,12 @@ class RecordReaderLowering : public CppIRBuilder {
                                     CppTypeId const return_type,
                                     std::vector<FunctionParameterId> const& parameters,
                                     Nodes body) {
-            auto const function_id{function(method, return_type)};
-            set_function_parameters(function_id, parameters);
-            set_function_receiver(function_id, FunctionReceiver::static_);
-            set_function_body(function_id, body);
-            function_flags(function_id).set_define_in_header(true);
-            decls.add(header_function(function_id), 2);
+            auto function_id{function_definition(method, return_type)};
+            function_id.parameters.assign(parameters.begin(), parameters.end());
+            function_id.receiver = FunctionReceiver::static_;
+            function_id.implementation = function_body(body);
+            function_id.flags.set_define_in_header(true);
+            decls.add(header_function(function(function_id)), 2);
         }};
         std::vector<FunctionParameterId> const read_parameters{parameter("DecodeContext", "ctx")};
         if (std::ranges::any_of(fields, [&](auto field) {

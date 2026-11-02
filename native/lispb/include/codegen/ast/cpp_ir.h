@@ -6,6 +6,7 @@
 #include <codegen/ast/block_id.h>
 #include <codegen/ast/cpp_files.h>
 #include <codegen/ast/expr.h>
+#include <codegen/ast/function_definition.h>
 #include <codegen/ast/function_flags.h>
 #include <codegen/ast/function_formatting.h>
 #include <codegen/ast/function_kind.h>
@@ -262,12 +263,14 @@ class CppIR {
     // Retain arbitrary parameter-list syntax authored by the source language.
     auto raw_template_declaration(StringId parameters) -> TemplateId;
     // Require an actual return type; use the dedicated constructor/destructor factories otherwise.
-    auto function(StringId name, CppTypeId return_type) -> FunctionId;
-    auto function(Expr name, CppTypeId return_type) -> FunctionId;
-    auto function(std::string_view name, CppTypeId return_type) -> FunctionId;
-    auto function(std::string_view name, std::string_view return_type) -> FunctionId;
-    auto constructor(StringId name, bool is_explicit = false) -> FunctionId;
-    auto destructor(StringId name) -> FunctionId;
+    auto function(FunctionDefinition const& definition) -> FunctionId;
+    auto function_definition(StringId name, CppTypeId return_type) -> FunctionDefinition;
+    auto function_definition(Expr name, CppTypeId return_type) -> FunctionDefinition;
+    auto function_definition(std::string_view name, CppTypeId return_type) -> FunctionDefinition;
+    auto function_definition(std::string_view name, std::string_view return_type)
+        -> FunctionDefinition;
+    auto constructor_definition(StringId name, bool is_explicit = false) -> FunctionDefinition;
+    auto destructor_definition(StringId name) -> FunctionDefinition;
     auto parameter(CppTypeId type, StringId name = {}, Expr default_value = {})
         -> FunctionParameterId;
     auto parameter(CppTypeId type, std::string_view name, Expr default_value = {})
@@ -276,62 +279,31 @@ class CppIR {
         -> FunctionParameterId;
     auto member_initializer(StringId member, StringId value) -> MemberInitializerId;
     auto member_initializer(StringId member, Expr value) -> MemberInitializerId;
-    void set_function_parameters(FunctionId function,
-                                 std::span<FunctionParameterId const> parameters);
-    void set_function_parameters(FunctionId function,
-                                 std::initializer_list<FunctionParameterId> parameters) {
-        set_function_parameters(function, std::span<FunctionParameterId const>{parameters});
+    auto function_body(std::span<NodeId const> body,
+                       std::span<MemberInitializerId const> initializers = {})
+        -> FunctionImplementationId;
+    auto function_body(std::initializer_list<NodeId> body,
+                       std::span<MemberInitializerId const> initializers = {})
+        -> FunctionImplementationId {
+        return function_body(std::span<NodeId const>{body}, initializers);
     }
-    void set_function_body(FunctionId function,
-                           std::span<NodeId const> body,
-                           std::span<MemberInitializerId const> initializers = {});
-    void set_function_body(FunctionId function,
-                           std::initializer_list<NodeId> body,
-                           std::span<MemberInitializerId const> initializers = {}) {
-        set_function_body(function, std::span<NodeId const>{body}, initializers);
+    auto function_body(std::span<NodeId const> body,
+                       std::initializer_list<MemberInitializerId> initializers)
+        -> FunctionImplementationId {
+        return function_body(body, std::span<MemberInitializerId const>{initializers});
     }
-    void set_function_body(FunctionId function,
-                           std::span<NodeId const> body,
-                           std::initializer_list<MemberInitializerId> initializers) {
-        set_function_body(function, body, std::span<MemberInitializerId const>{initializers});
+    auto function_body(std::initializer_list<NodeId> body,
+                       std::initializer_list<MemberInitializerId> initializers)
+        -> FunctionImplementationId {
+        return function_body(std::span<NodeId const>{body},
+                             std::span<MemberInitializerId const>{initializers});
     }
-    void set_function_body(FunctionId function,
-                           std::initializer_list<NodeId> body,
-                           std::initializer_list<MemberInitializerId> initializers) {
-        set_function_body(function,
-                          std::span<NodeId const>{body},
-                          std::span<MemberInitializerId const>{initializers});
-    }
-    void set_function_defaulted(FunctionId function);
-    void set_function_deleted(FunctionId function);
-    void set_function_dependencies(FunctionId function,
-                                   std::span<TypeDependencyId const> dependencies);
-    void set_function_dependencies(FunctionId function,
-                                   std::initializer_list<TypeDependencyId> dependencies) {
-        set_function_dependencies(function, std::span<TypeDependencyId const>{dependencies});
-    }
-    auto function_flags(FunctionId function) -> FunctionFlags&;
-    auto function_formatting(FunctionId function) -> FunctionFormatting&;
-    auto function_return_type(FunctionId function) const -> CppTypeId;
-    auto function_parameters(FunctionId function) const -> std::span<FunctionParameterId const>;
-    auto function_return_syntax(FunctionId function) const -> ReturnSyntax;
-    auto function_receiver(FunctionId function) const -> FunctionReceiver;
+    auto defaulted_function() -> FunctionImplementationId;
+    auto deleted_function() -> FunctionImplementationId;
+    auto noexcept_specification() -> FunctionExceptionId;
+    auto conditional_noexcept(Expr condition) -> FunctionExceptionId;
     auto parameter_name(FunctionParameterId parameter) const -> StringId;
     auto parameter_type(FunctionParameterId parameter) const -> CppTypeId;
-    void set_parameter_type(FunctionParameterId parameter, CppTypeId type);
-    void set_function_name(FunctionId function, StringId name);
-    void set_function_name(FunctionId function, Expr name);
-    void set_function_return_type(FunctionId function,
-                                  CppTypeId type,
-                                  ReturnSyntax syntax = ReturnSyntax::direct);
-    void set_function_noexcept(FunctionId function);
-    void set_function_may_throw(FunctionId function);
-    // Require a nonempty condition expression.
-    void set_function_conditional_noexcept(FunctionId function, Expr condition);
-    void set_function_receiver(FunctionId function, FunctionReceiver receiver);
-    void set_function_export_specifier(FunctionId function, StringId specifier);
-    void set_function_template(FunctionId function, TemplateId declaration);
-    void set_function_requires_clause(FunctionId function, Expr clause);
     auto raw(StringId value, std::span<TypeDependencyId const> dependencies = {}) -> NodeId;
     // Interleave authored text (raw expressions) with structured substitutions at final emission.
     auto raw_parts(std::span<Expr const> parts, std::span<TypeDependencyId const> dependencies = {})
@@ -427,7 +399,6 @@ class CppIR {
   private:
     friend class CppRenderer;
     auto merge_adjacent_namespaces(std::vector<NodeId>& values) -> bool;
-    auto append_function(Expr name, CppTypeId return_type, FunctionKind kind) -> FunctionId;
     void collect_dependencies(TemplateId declaration, std::vector<TypeDependencyId>& result) const;
     ir::TypeTemplateParameters type_template_parameters_;
     ir::ValueTemplateParameters value_template_parameters_;

@@ -419,52 +419,49 @@ auto CppIR::namespace_node(StringId name, std::span<NodeId const> children) -> N
     return ir_detail::node(NodeKind::namespace_, index);
 }
 
-auto CppIR::function(StringId name, CppTypeId return_type) -> FunctionId {
-    return function(named(name), return_type);
-}
-
-auto CppIR::function(Expr name, CppTypeId return_type) -> FunctionId {
-    assert(return_type.value != 0);
-    return append_function(name, return_type, FunctionKind::ordinary);
-}
-
-auto CppIR::function(std::string_view name, CppTypeId return_type) -> FunctionId {
-    return function(strings.intern(name), return_type);
-}
-
-auto CppIR::function(std::string_view name, std::string_view return_type) -> FunctionId {
-    return function(strings.intern(name), types.intern(return_type));
-}
-
-auto CppIR::append_function(Expr name, CppTypeId return_type, FunctionKind kind) -> FunctionId {
+auto CppIR::function(FunctionDefinition const& definition) -> FunctionId {
+    assert(definition.name);
+    assert(definition.kind != FunctionKind::ordinary || definition.return_type.value != 0);
     FunctionId const result{static_cast<std::uint32_t>(functions_.name.size())};
-    functions_.name.push_back(name);
-    functions_.return_type.push_back(return_type);
-    functions_.parameters.push_back({});
-    functions_.return_syntax.push_back(ReturnSyntax::direct);
-    functions_.kind.push_back(kind);
-    functions_.implementation.emplace_back();
-    functions_.exception_specification.emplace_back();
-    functions_.receiver.push_back(FunctionReceiver::unqualified);
-    functions_.flags.push_back({});
-    functions_.export_specifier.push_back({});
-    functions_.template_declaration.push_back({});
-    functions_.requires_clause.push_back({});
-    functions_.formatting.push_back({});
-    functions_.dependencies.push_back({});
+    functions_.name.push_back(definition.name);
+    functions_.return_type.push_back(definition.return_type);
+    functions_.return_syntax.push_back(definition.return_syntax);
+    functions_.kind.push_back(definition.kind);
+    functions_.implementation.push_back(definition.implementation);
+    functions_.exception_specification.push_back(definition.exception_specification);
+    functions_.receiver.push_back(definition.receiver);
+    functions_.flags.push_back(definition.flags);
+    functions_.export_specifier.push_back(definition.export_specifier);
+    functions_.template_declaration.push_back(definition.template_declaration);
+    functions_.requires_clause.push_back(definition.requires_clause);
+    functions_.formatting.push_back(definition.formatting);
+    functions_.parameters.push_back(
+        ir::save_range(parameter_references_, std::span{definition.parameters}));
+    functions_.dependencies.push_back(save_dependencies(definition.dependencies));
     return result;
 }
 
-auto CppIR::constructor(StringId name, bool is_explicit) -> FunctionId {
-    return append_function(named(name),
-                           {},
-                           is_explicit ? FunctionKind::explicit_constructor
-                                       : FunctionKind::constructor);
+auto CppIR::function_definition(StringId name, CppTypeId return_type) -> FunctionDefinition {
+    return function_definition(named(name), return_type);
 }
-
-auto CppIR::destructor(StringId name) -> FunctionId {
-    return append_function(
-        named(strings.intern("~" + std::string{strings.view(name)})), {}, FunctionKind::destructor);
+auto CppIR::function_definition(Expr name, CppTypeId return_type) -> FunctionDefinition {
+    return {.name = name, .return_type = return_type};
+}
+auto CppIR::function_definition(std::string_view name, CppTypeId return_type)
+    -> FunctionDefinition {
+    return function_definition(strings.intern(name), return_type);
+}
+auto CppIR::function_definition(std::string_view name, std::string_view return_type)
+    -> FunctionDefinition {
+    return function_definition(strings.intern(name), types.intern(return_type));
+}
+auto CppIR::constructor_definition(StringId name, bool is_explicit) -> FunctionDefinition {
+    return {.name = named(name),
+            .kind = is_explicit ? FunctionKind::explicit_constructor : FunctionKind::constructor};
+}
+auto CppIR::destructor_definition(StringId name) -> FunctionDefinition {
+    return {.name = named(strings.intern("~" + std::string{strings.view(name)})),
+            .kind = FunctionKind::destructor};
 }
 
 auto CppIR::parameter(CppTypeId type, StringId name, Expr default_value) -> FunctionParameterId {
@@ -496,105 +493,32 @@ auto CppIR::member_initializer(StringId member, Expr value) -> MemberInitializer
     return result;
 }
 
-void CppIR::set_function_parameters(FunctionId function,
-                                    std::span<FunctionParameterId const> parameters) {
-    functions_.parameters[function.value] = ir::save_range(parameter_references_, parameters);
-}
-
-void CppIR::set_function_body(FunctionId function,
-                              std::span<NodeId const> body,
-                              std::span<MemberInitializerId const> initializers) {
+auto CppIR::function_body(std::span<NodeId const> body,
+                          std::span<MemberInitializerId const> initializers)
+    -> FunctionImplementationId {
     auto const index{static_cast<std::uint32_t>(function_bodies_.block.size())};
     function_bodies_.block.push_back(block(body));
     function_bodies_.initializers.push_back(ir::save_range(initializer_references_, initializers));
-    functions_.implementation[function.value] = FunctionImplementationId{
+    return FunctionImplementationId{
         (static_cast<std::uint32_t>(FunctionImplementationKind::body) << 24) | index};
 }
-
-void CppIR::set_function_defaulted(FunctionId function) {
-    functions_.implementation[function.value] = FunctionImplementationId{
+auto CppIR::defaulted_function() -> FunctionImplementationId {
+    return FunctionImplementationId{
         static_cast<std::uint32_t>(FunctionImplementationKind::defaulted) << 24};
 }
-
-void CppIR::set_function_deleted(FunctionId function) {
-    functions_.implementation[function.value] = FunctionImplementationId{
-        static_cast<std::uint32_t>(FunctionImplementationKind::deleted) << 24};
+auto CppIR::deleted_function() -> FunctionImplementationId {
+    return FunctionImplementationId{static_cast<std::uint32_t>(FunctionImplementationKind::deleted)
+                                    << 24};
 }
-
-void CppIR::set_function_dependencies(FunctionId function,
-                                      std::span<TypeDependencyId const> dependencies) {
-    functions_.dependencies[function.value] = save_dependencies(dependencies);
+auto CppIR::noexcept_specification() -> FunctionExceptionId {
+    return FunctionExceptionId{static_cast<std::uint32_t>(FunctionExceptionKind::noexcept_) << 24};
 }
-
-void CppIR::set_function_name(FunctionId function, StringId name) {
-    set_function_name(function, named(name));
-}
-
-void CppIR::set_function_name(FunctionId function, Expr name) {
-    functions_.name[function.value] = name;
-}
-
-void CppIR::set_function_return_type(FunctionId function, CppTypeId type, ReturnSyntax syntax) {
-    assert(type.value != 0);
-    functions_.return_type[function.value] = type;
-    functions_.return_syntax[function.value] = syntax;
-    functions_.kind[function.value] = FunctionKind::ordinary;
-}
-
-void CppIR::set_function_noexcept(FunctionId function) {
-    functions_.exception_specification[function.value] =
-        FunctionExceptionId{static_cast<std::uint32_t>(FunctionExceptionKind::noexcept_) << 24};
-}
-
-void CppIR::set_function_may_throw(FunctionId function) {
-    functions_.exception_specification[function.value] = {};
-}
-
-void CppIR::set_function_conditional_noexcept(FunctionId function, Expr condition) {
+auto CppIR::conditional_noexcept(Expr condition) -> FunctionExceptionId {
     assert(condition);
     auto const index{static_cast<std::uint32_t>(conditional_noexcept_.size())};
     conditional_noexcept_.push_back(condition);
-    functions_.exception_specification[function.value] = FunctionExceptionId{
+    return FunctionExceptionId{
         (static_cast<std::uint32_t>(FunctionExceptionKind::conditional) << 24) | index};
-}
-
-void CppIR::set_function_receiver(FunctionId function, FunctionReceiver receiver) {
-    functions_.receiver[function.value] = receiver;
-}
-
-void CppIR::set_function_export_specifier(FunctionId function, StringId specifier) {
-    functions_.export_specifier[function.value] = specifier;
-}
-
-void CppIR::set_function_template(FunctionId function, TemplateId declaration) {
-    functions_.template_declaration[function.value] = declaration;
-}
-
-void CppIR::set_function_requires_clause(FunctionId function, Expr clause) {
-    functions_.requires_clause[function.value] = clause;
-}
-
-auto CppIR::function_flags(FunctionId function) -> FunctionFlags& {
-    return functions_.flags[function.value];
-}
-
-auto CppIR::function_formatting(FunctionId function) -> FunctionFormatting& {
-    return functions_.formatting[function.value];
-}
-
-auto CppIR::function_return_type(FunctionId function) const -> CppTypeId {
-    return functions_.return_type[function.value];
-}
-auto CppIR::function_parameters(FunctionId function) const -> std::span<FunctionParameterId const> {
-    return ir::range_values(parameter_references_, functions_.parameters[function.value]);
-}
-
-auto CppIR::function_return_syntax(FunctionId function) const -> ReturnSyntax {
-    return functions_.return_syntax[function.value];
-}
-
-auto CppIR::function_receiver(FunctionId function) const -> FunctionReceiver {
-    return functions_.receiver[function.value];
 }
 
 auto CppIR::parameter_name(FunctionParameterId parameter) const -> StringId {
@@ -602,9 +526,6 @@ auto CppIR::parameter_name(FunctionParameterId parameter) const -> StringId {
 }
 auto CppIR::parameter_type(FunctionParameterId parameter) const -> CppTypeId {
     return parameters_.type[parameter.value];
-}
-void CppIR::set_parameter_type(FunctionParameterId parameter, CppTypeId type) {
-    parameters_.type[parameter.value] = type;
 }
 
 auto CppIR::function_node(FunctionId function,
@@ -616,10 +537,8 @@ auto CppIR::function_node(FunctionId function,
         functions_.implementation[function.value].kind() == FunctionImplementationKind::deleted) {
         throw std::invalid_argument{"A deleted function cannot be an out-of-line definition"};
     }
-    if (!declaration &&
-        functions_.implementation[function.value].kind() == FunctionImplementationKind::none) {
-        set_function_body(function, {});
-    }
+    assert(declaration ||
+           functions_.implementation[function.value].kind() != FunctionImplementationKind::none);
     auto const index{function_nodes_.function.size()};
     function_nodes_.function.push_back(function);
     function_nodes_.owner.push_back(owner);

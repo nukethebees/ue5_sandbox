@@ -37,24 +37,22 @@ class StringEnumParserLowering : public CppIRBuilder {
                                   std::string_view const parameter_name,
                                   std::span<StringEnumEntry const> const entries,
                                   bool const indexed) -> NodeId {
-        auto const function_id{function(function_name, "auto")};
-        set_function_return_type(function_id,
-                                 template_type(std_types().optional, {named_type(enum_type)}),
-                                 ReturnSyntax::trailing);
-        set_function_parameters(
-            function_id,
-            {parameter(decorate_type(std_types().string_view, "", " const"), parameter_name)});
-        auto& flags{function_flags(function_id)};
+        auto function_id{function_definition(function_name, "auto")};
+        function_id.return_type = template_type(std_types().optional, {named_type(enum_type)});
+        function_id.return_syntax = ReturnSyntax::trailing;
+        function_id.parameters = {
+            parameter(decorate_type(std_types().string_view, "", " const"), parameter_name)};
+        auto& flags{function_id.flags};
         flags.set_define_in_header(true);
         flags.set_is_constexpr(true);
         flags.set_is_nodiscard(true);
-        set_function_noexcept(function_id);
+        function_id.exception_specification = noexcept_specification();
         auto const input{named(parameter_name)};
-        set_function_body(function_id,
-                          indexed && entries.size() <= linear_limit
+        function_id.implementation =
+            function_body(indexed && entries.size() <= linear_limit
                               ? indexed_parser_body(input, enum_type, entries)
                               : parser_body(input, entries));
-        return header_function(function_id);
+        return header_function(function(function_id));
     }
   private:
     auto character_literal(unsigned char const character) -> Expr {

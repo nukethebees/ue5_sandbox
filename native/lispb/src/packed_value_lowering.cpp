@@ -420,19 +420,21 @@ class PackedEmitter : public CppIRBuilder {
                        std::span<FunctionParameterId const> parameters,
                        Nodes const& body,
                        bool constexpr_ = true) -> NodeId {
-        auto const fn{function(name, result)};
-        set_function_receiver(fn, receiver);
-        set_function_noexcept(fn);
-        set_function_parameters(fn, parameters);
-        set_function_return_type(fn,
-                                 result,
-                                 result == std_types().void_ ? ReturnSyntax::direct
-                                                             : ReturnSyntax::trailing);
-        function_flags(fn).set_is_constexpr(constexpr_);
-        function_flags(fn).set_is_nodiscard(result != std_types().void_);
-        function_flags(fn).set_define_in_header(true);
-        set_function_body(fn, body);
-        return header_function(fn);
+        FunctionFlags flags;
+        flags.set_is_constexpr(constexpr_);
+        flags.set_is_nodiscard(result != std_types().void_);
+        flags.set_define_in_header(true);
+        return header_function(function({
+            .name = named(name),
+            .return_type = result,
+            .return_syntax =
+                result == std_types().void_ ? ReturnSyntax::direct : ReturnSyntax::trailing,
+            .parameters = {parameters.begin(), parameters.end()},
+            .implementation = function_body(body),
+            .exception_specification = noexcept_specification(),
+            .receiver = receiver,
+            .flags = flags,
+        }));
     }
     auto emit_function(std::string const& name,
                        CppTypeId result,
@@ -456,16 +458,16 @@ class PackedEmitter : public CppIRBuilder {
         return emit_function(name, type(result), receiver, parameters, body, constexpr_);
     }
     auto default_constructor(bool available) -> NodeId {
-        auto const fn{constructor(text(name_))};
-        function_flags(fn).set_is_constexpr(true);
-        function_flags(fn).set_define_in_header(true);
-        set_function_noexcept(fn);
+        auto fn{constructor_definition(text(name_))};
+        fn.flags.set_is_constexpr(true);
+        fn.flags.set_define_in_header(true);
+        fn.exception_specification = noexcept_specification();
         if (available) {
-            set_function_defaulted(fn);
+            fn.implementation = defaulted_function();
         } else {
-            set_function_deleted(fn);
+            fn.implementation = deleted_function();
         }
-        return header_function(fn);
+        return header_function(function(fn));
     }
     void comparison(bool defaulted) {
         auto const owner{decorate_type(type(name_), "", " const&")};
@@ -474,25 +476,25 @@ class PackedEmitter : public CppIRBuilder {
                 continue;
             }
             auto const decoded{!defaulted && !equality};
-            auto const fn{function(equality ? "operator==" : "operator<=>",
-                                   equality
-                                       ? std_types().bool_
-                                       : intern_type("auto", {dependency("auto", "compare")}))};
-            set_function_receiver(fn, FunctionReceiver::const_);
-            set_function_noexcept(fn);
-            function_flags(fn).set_is_constexpr(true);
-            function_flags(fn).set_define_in_header(true);
-            function_flags(fn).set_is_nodiscard(true);
-            set_function_parameters(fn, {parameter(owner, decoded ? "other" : "")});
+            auto fn{function_definition(
+                equality ? "operator==" : "operator<=>",
+                equality ? std_types().bool_
+                         : intern_type("auto", {dependency("auto", "compare")}))};
+            fn.receiver = FunctionReceiver::const_;
+            fn.exception_specification = noexcept_specification();
+            fn.flags.set_is_constexpr(true);
+            fn.flags.set_define_in_header(true);
+            fn.flags.set_is_nodiscard(true);
+            fn.parameters = {parameter(owner, decoded ? "other" : "")};
             if (decoded) {
-                set_function_body(fn,
-                                  {return_stmt(binary(BinaryOperator::three_way,
+                fn.implementation =
+                    function_body({return_stmt(binary(BinaryOperator::three_way,
                                                       invoke("value"),
                                                       member_call(named("other"), "value")))});
             } else {
-                set_function_defaulted(fn);
+                fn.implementation = defaulted_function();
             }
-            operators_.push_back(header_function(fn));
+            operators_.push_back(header_function(function(fn)));
         }
     }
     auto scalar_domain(schema::TypeId scalar,
@@ -1130,13 +1132,13 @@ class PackedEmitter : public CppIRBuilder {
             functions_.push_back(
                 emit_function("make_" + path, name_, FunctionReceiver::static_, params, body));
         } else {
-            auto const ctor{constructor(text(name_), true)};
-            function_flags(ctor).set_is_constexpr(true);
-            function_flags(ctor).set_define_in_header(true);
-            set_function_noexcept(ctor);
-            set_function_parameters(ctor, params);
-            set_function_body(ctor, body, {member_initializer(text("Base"), encoded)});
-            constructors_.push_back(header_function(ctor));
+            auto ctor{constructor_definition(text(name_), true)};
+            ctor.flags.set_is_constexpr(true);
+            ctor.flags.set_define_in_header(true);
+            ctor.exception_specification = noexcept_specification();
+            ctor.parameters.assign(params.begin(), params.end());
+            ctor.implementation = function_body(body, {member_initializer(text("Base"), encoded)});
+            constructors_.push_back(header_function(function(ctor)));
         }
     }
     void accessor(std::uint32_t index) {

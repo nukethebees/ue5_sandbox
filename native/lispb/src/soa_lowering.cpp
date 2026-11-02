@@ -154,27 +154,25 @@ class SoaLowering : public CppIRBuilder {
                 parameters.push_back(parameter(decorate_type(std_types().i32, "", " const"),
                                                dimensions.index_name[dimensions.index(dimension)]));
             }
-            auto const function_id{function(name + "_field", enum_type)};
-            auto& flags{function_flags(function_id)};
+            auto function_id{function_definition(name + "_field", enum_type)};
+            auto& flags{function_id.flags};
             flags.set_is_constexpr(true);
             flags.set_define_in_header(true);
             flags.set_is_nodiscard(true);
-            set_function_noexcept(function_id);
-            function_formatting(function_id).body_layout = FunctionBodyLayout::compact;
-            set_function_receiver(function_id, FunctionReceiver::static_);
-            set_function_parameters(function_id, parameters);
-            set_function_return_type(function_id, enum_type, ReturnSyntax::trailing);
-            set_function_body(
-                function_id,
-                {return_stmt(static_cast_expr(
-                    enum_type,
-                    binary(
-                        BinaryOperator::add,
-                        static_cast_expr(int32_type,
-                                         type_reference(decorate_type(
-                                             enum_type, "", "::" + title_case_identifier(name)))),
-                        mask_index_expression(ctx, member))))});
-            children.new_lines(1).add(header_function(function_id));
+            function_id.exception_specification = noexcept_specification();
+            function_id.formatting.body_layout = FunctionBodyLayout::compact;
+            function_id.receiver = FunctionReceiver::static_;
+            function_id.parameters.assign(parameters.begin(), parameters.end());
+            function_id.return_type = enum_type;
+            function_id.return_syntax = ReturnSyntax::trailing;
+            function_id.implementation = function_body({return_stmt(static_cast_expr(
+                enum_type,
+                binary(BinaryOperator::add,
+                       static_cast_expr(int32_type,
+                                        type_reference(decorate_type(
+                                            enum_type, "", "::" + title_case_identifier(name)))),
+                       mask_index_expression(ctx, member))))});
+            children.new_lines(1).add(header_function(function(function_id)));
         }
 
         auto const mask{record(mask_name, children.build())};

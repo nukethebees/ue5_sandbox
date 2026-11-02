@@ -292,22 +292,20 @@ auto public_body(lispb::codegen::CppIR& cpp,
 
 auto overlap_helper(lispb::codegen::CppIR& cpp) -> lispb::codegen::NodeId {
     using lispb::codegen::BinaryOperator;
-    auto const function{cpp.function("ranges_overlap", cpp.types.std.bool_)};
+    auto function{cpp.function_definition("ranges_overlap", cpp.types.std.bool_)};
     auto const pointer_type{cpp.types.decorate(cpp.types.std.void_, "", " const* const")};
     auto const size_type{cpp.types.decorate(cpp.types.std.size_t, "", " const")};
     auto const address_type{cpp.types.std.uintptr_t};
-    cpp.set_function_parameters(function,
-                                {cpp.parameter(pointer_type, "lhs"),
-                                 cpp.parameter(size_type, "lhs_size"),
-                                 cpp.parameter(pointer_type, "rhs"),
-                                 cpp.parameter(size_type, "rhs_size")});
-    cpp.set_function_noexcept(function);
+    function.parameters = {cpp.parameter(pointer_type, "lhs"),
+                           cpp.parameter(size_type, "lhs_size"),
+                           cpp.parameter(pointer_type, "rhs"),
+                           cpp.parameter(size_type, "rhs_size")};
+    function.exception_specification = cpp.noexcept_specification();
     auto const lhs_size{cpp.named("lhs_size")};
     auto const rhs_size{cpp.named("rhs_size")};
     auto const lhs_address{cpp.named("lhs_address")};
     auto const rhs_address{cpp.named("rhs_address")};
-    cpp.set_function_body(
-        function,
+    function.implementation = cpp.function_body(
         {cpp.if_stmt(cpp.binary(BinaryOperator::logical_or,
                                 cpp.binary(BinaryOperator::equal, lhs_size, cpp.literal("0")),
                                 cpp.binary(BinaryOperator::equal, rhs_size, cpp.literal("0"))),
@@ -326,7 +324,7 @@ auto overlap_helper(lispb::codegen::CppIR& cpp) -> lispb::codegen::NodeId {
              cpp.binary(BinaryOperator::less,
                         cpp.binary(BinaryOperator::subtract, lhs_address, rhs_address),
                         rhs_size)))});
-    return cpp.definition(function);
+    return cpp.definition(cpp.function(function));
 }
 
 }
@@ -342,41 +340,42 @@ auto lower_module(lispb::codegen::CppIR& cpp,
     lispb::codegen::Nodes declarations;
     lispb::codegen::Nodes definitions;
     lispb::codegen::Nodes implementation;
-    auto const invariant_failed{cpp.function("invariant_failed", void_type)};
-    cpp.function_flags(invariant_failed).set_is_noreturn(true);
-    cpp.set_function_noexcept(invariant_failed);
-    cpp.set_function_body(invariant_failed,
-                          {cpp.expr_stmt(cpp.call(cpp.type_reference(cpp.types.std.abort)))});
-    implementation.push_back(cpp.definition(invariant_failed));
-    auto const require{cpp.function("require", cpp.types.std.void_)};
-    cpp.set_function_parameters(
-        require,
-        {cpp.parameter(cpp.types.decorate(cpp.types.std.bool_, "", " const"), "condition")});
-    cpp.set_function_noexcept(require);
-    cpp.set_function_body(
-        require,
+    auto invariant_failed{cpp.function_definition("invariant_failed", void_type)};
+    invariant_failed.flags.set_is_noreturn(true);
+    invariant_failed.exception_specification = cpp.noexcept_specification();
+    invariant_failed.implementation =
+        cpp.function_body({cpp.expr_stmt(cpp.call(cpp.type_reference(cpp.types.std.abort)))});
+    implementation.push_back(cpp.definition(cpp.function(invariant_failed)));
+    auto require{cpp.function_definition("require", cpp.types.std.void_)};
+    require.parameters = {
+        cpp.parameter(cpp.types.decorate(cpp.types.std.bool_, "", " const"), "condition")};
+    require.exception_specification = cpp.noexcept_specification();
+    require.implementation = cpp.function_body(
         {cpp.if_stmt(cpp.unary(lispb::codegen::UnaryOperator::logical_not, cpp.named("condition")),
                      cpp.block({cpp.expr_stmt(cpp.call(cpp.named("invariant_failed"), {}))}))});
-    implementation.push_back(cpp.definition(require));
+    implementation.push_back(cpp.definition(cpp.function(require)));
     implementation.push_back(overlap_helper(cpp));
 
     auto const range{document.modules.expanded_variants(module)};
     auto const end{range.offset + range.count};
     for (auto variant_index{range.offset}; variant_index < end; ++variant_index) {
         auto const id{ExpandedVariantId{variant_index}};
-        auto const raw_function{cpp.function(raw_name(document, id), void_type)};
-        cpp.set_function_parameters(raw_function, parameters(cpp, document, id, true));
-        cpp.set_function_body(raw_function, raw_body(cpp, document, id));
-        cpp.set_function_noexcept(raw_function);
-        implementation.push_back(cpp.definition(raw_function));
+        auto raw_function{cpp.function_definition(raw_name(document, id), void_type)};
+        raw_function.parameters = parameters(cpp, document, id, true);
+        raw_function.implementation = cpp.function_body(raw_body(cpp, document, id));
+        raw_function.exception_specification = cpp.noexcept_specification();
+        implementation.push_back(cpp.definition(cpp.function(raw_function)));
 
         auto function_parameters{parameters(cpp, document, id, false)};
-        auto const function{cpp.function(document.variants.name(expanded.variant(id)), void_type)};
-        cpp.set_function_parameters(function, std::move(function_parameters));
-        cpp.set_function_body(function, public_body(cpp, document, id, detail_namespace));
-        cpp.set_function_noexcept(function);
-        declarations.push_back(cpp.declaration(function));
-        definitions.push_back(cpp.definition(function));
+        auto function{
+            cpp.function_definition(document.variants.name(expanded.variant(id)), void_type)};
+        function.parameters = std::move(function_parameters);
+        function.implementation =
+            cpp.function_body(public_body(cpp, document, id, detail_namespace));
+        function.exception_specification = cpp.noexcept_specification();
+        auto const published{cpp.function(function)};
+        declarations.push_back(cpp.declaration(published));
+        definitions.push_back(cpp.definition(published));
     }
 
     lispb::codegen::NodeListBuilder header_nodes{cpp};

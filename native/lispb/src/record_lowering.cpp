@@ -108,72 +108,61 @@ class RecordLowering : public CppIRBuilder {
                                values.size() <= 256 ? std_types().u8 : std_types().u32,
                                values),
                    2);
-        auto const accessor{function("get_field", "decltype(auto)")};
-        set_function_template(
-            accessor,
-            template_declaration(
-                {value_template_parameter(intern_type("Field"), store_text("Selected")),
-                 type_template_parameter(store_text("Self"))}));
-        set_function_requires_clause(
-            accessor,
-            parenthesized(binary(
-                BinaryOperator::logical_and,
-                record_type_matches(name),
-                binary(BinaryOperator::less,
-                       call(type_reference(std_types().to_underlying), {named("Selected")}),
-                       call(template_id(type_reference(named_type(
-                                            "ioj::enum_count",
-                                            NameOrigin::global,
-                                            {dependency("ioj::enum_count", "ioj/enum_traits.h")})),
-                                        {type_reference(decorate_type(
-                                            named_type("Self"), "typename ", "::Field"))}))))));
-        set_function_receiver(accessor, FunctionReceiver::static_);
-        set_function_parameters(accessor, {parameter("Self&", fields.empty() ? "" : "self")});
-        function_flags(accessor).set_is_constexpr(true);
-        function_flags(accessor).set_define_in_header(true);
-        set_function_body(accessor, accessors);
-        result.add(header_function(accessor), 2);
+        auto accessor{function_definition("get_field", "decltype(auto)")};
+        accessor.template_declaration = template_declaration(
+            {value_template_parameter(intern_type("Field"), store_text("Selected")),
+             type_template_parameter(store_text("Self"))});
+        accessor.requires_clause = parenthesized(binary(
+            BinaryOperator::logical_and,
+            record_type_matches(name),
+            binary(BinaryOperator::less,
+                   call(type_reference(std_types().to_underlying), {named("Selected")}),
+                   call(template_id(type_reference(named_type(
+                                        "ioj::enum_count",
+                                        NameOrigin::global,
+                                        {dependency("ioj::enum_count", "ioj/enum_traits.h")})),
+                                    {type_reference(decorate_type(
+                                        named_type("Self"), "typename ", "::Field"))})))));
+        accessor.receiver = FunctionReceiver::static_;
+        accessor.parameters = {parameter("Self&", fields.empty() ? "" : "self")};
+        accessor.flags.set_is_constexpr(true);
+        accessor.flags.set_define_in_header(true);
+        accessor.implementation = function_body(accessors);
+        result.add(header_function(function(accessor)), 2);
 
-        auto const invoke{function("invoke_field", std_types().void_)};
-        set_function_template(
-            invoke,
-            template_declaration(
-                {value_template_parameter(intern_type("Field"), store_text("Selected")),
-                 type_template_parameter(store_text("Self")),
-                 type_template_parameter(store_text("Visitor"))}));
-        set_function_receiver(invoke, FunctionReceiver::static_);
-        set_function_parameters(invoke,
-                                {parameter("Self&", "self"), parameter("Visitor&&", "visitor")});
-        function_flags(invoke).set_is_constexpr(true);
-        function_flags(invoke).set_define_in_header(true);
-        set_function_body(
-            invoke,
-            {expr_stmt(call(
-                template_id(member_access(forwarded_visitor, "template operator()"),
-                            {named("Selected")}),
-                {call(template_id(named("get_field"), {named("Selected")}), {named("self")})}))});
-        result.add(header_function(invoke), 2);
+        auto invoke{function_definition("invoke_field", std_types().void_)};
+        invoke.template_declaration = template_declaration(
+            {value_template_parameter(intern_type("Field"), store_text("Selected")),
+             type_template_parameter(store_text("Self")),
+             type_template_parameter(store_text("Visitor"))});
+        invoke.receiver = FunctionReceiver::static_;
+        invoke.parameters = {parameter("Self&", "self"), parameter("Visitor&&", "visitor")};
+        invoke.flags.set_is_constexpr(true);
+        invoke.flags.set_define_in_header(true);
+        invoke.implementation = function_body({expr_stmt(
+            call(template_id(member_access(forwarded_visitor, "template operator()"),
+                             {named("Selected")}),
+                 {call(template_id(named("get_field"), {named("Selected")}), {named("self")})}))});
+        result.add(header_function(function(invoke)), 2);
 
-        auto const function_id{function("visit_field", std_types().void_)};
-        set_function_template(
-            function_id,
+        auto function_id{function_definition("visit_field", std_types().void_)};
+        function_id.template_declaration =
             template_declaration({type_template_parameter(store_text("Self")),
-                                  type_template_parameter(store_text("Visitor"))}));
-        set_function_requires_clause(function_id, record_type_matches(name));
-        set_function_receiver(function_id, FunctionReceiver::static_);
-        set_function_parameters(function_id,
-                                {parameter("Self&", fields.empty() ? "" : "self"),
-                                 parameter("Field", "field"),
-                                 parameter("Visitor&&", fields.empty() ? "" : "visitor")});
-        function_flags(function_id).set_is_constexpr(true);
-        function_flags(function_id).set_define_in_header(true);
-        set_function_body(function_id,
-                          {switch_stmt(named("field"), cases),
+                                  type_template_parameter(store_text("Visitor"))});
+        function_id.requires_clause = record_type_matches(name);
+        function_id.receiver = FunctionReceiver::static_;
+        function_id.parameters = {parameter("Self&", fields.empty() ? "" : "self"),
+                                  parameter("Field", "field"),
+                                  parameter("Visitor&&", fields.empty() ? "" : "visitor")};
+        function_id.flags.set_is_constexpr(true);
+        function_id.flags.set_define_in_header(true);
+        function_id.implementation =
+            function_body({switch_stmt(named("field"), cases),
                            assertion(binary(BinaryOperator::logical_and,
                                             literal("false"),
                                             string_literal("Invalid record field"))),
                            expr_stmt(call(type_reference(std_types().unreachable)))});
-        result.add(header_function(function_id), 2);
+        result.add(header_function(function(function_id)), 2);
         return result.build();
     }
     auto record_node(LoweringContext& ctx, DeclarationHandle record_id) -> NodeId {
@@ -185,20 +174,20 @@ class RecordLowering : public CppIRBuilder {
         auto members{node_list()};
         if (records.comparison[row] != RecordComparison::none) {
             auto const three_way{records.comparison[row] == RecordComparison::three_way};
-            auto const comparison{
-                function(three_way ? "operator<=>" : "operator==",
-                         three_way ? intern_type("auto", {dependency("auto", "compare")})
-                                   : std_types().bool_)};
-            set_function_parameters(comparison, {parameter(name + " const&", "")});
-            set_function_receiver(comparison, FunctionReceiver::const_);
+            auto comparison{
+                function_definition(three_way ? "operator<=>" : "operator==",
+                                    three_way ? intern_type("auto", {dependency("auto", "compare")})
+                                              : std_types().bool_)};
+            comparison.parameters = {parameter(name + " const&", "")};
+            comparison.receiver = FunctionReceiver::const_;
             if (records.comparison_noexcept[row]) {
-                set_function_noexcept(comparison);
+                comparison.exception_specification = noexcept_specification();
             }
-            set_function_defaulted(comparison);
-            members.add(header_function(comparison));
+            comparison.implementation = defaulted_function();
+            members.add(header_function(function(comparison)));
         }
-        for (auto const function_id : ctx.declarations.items(records.functions[row])) {
-            members.add(header_function(lower_schema_function(ctx, function_id)));
+        for (auto function_id : ctx.declarations.items(records.functions[row])) {
+            members.add(header_function(function(lower_schema_function(ctx, function_id))));
         }
         if (records.comparison[row] != RecordComparison::none || !records.functions[row].empty()) {
             members.new_lines(2);

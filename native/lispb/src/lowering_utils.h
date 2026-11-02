@@ -29,7 +29,8 @@ auto enum_strings_specialization(LoweringContext& ctx,
 
 auto lower_schema_function(LoweringContext& ctx,
                            FunctionSchemaId schema,
-                           std::optional<std::span<Expr const>> body = std::nullopt) -> FunctionId;
+                           std::optional<std::span<Expr const>> body = std::nullopt)
+    -> FunctionDefinition;
 auto lower_member_type(LoweringContext& ctx, ChildOccurrenceId member) -> CppTypeId;
 
 auto join(std::vector<std::string> const& values, std::string_view separator) -> std::string;
