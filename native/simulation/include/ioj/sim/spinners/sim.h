@@ -1,10 +1,8 @@
 #pragma once
 #include <ioj/column_math.h>
 #include <ioj/frame_memory_resource.h>
-#include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/profiling.h>
-#include <ioj/sim/sim_clock.h>
 #include <ioj/sim/spinners/phase_inputs.h>
 #include <ioj/sim/spinners/spinner_entity_data.h>
 #include <ioj/sim/spinners/spinner_sim_config.h>
@@ -17,7 +15,8 @@
 
 namespace ioj::sim {
 class LevelSpawnManager;
-class EntityLedger;
+struct SpawnContext;
+struct SimClock;
 }
 
 namespace ioj::sim::spinners {
@@ -26,7 +25,7 @@ class PhaseInterface;
 struct Sim {
     using EntityStorage = SpinnerEntityData;
 
-    Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_tables) noexcept;
+    explicit Sim(EntityTables& entity_tables) noexcept;
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
@@ -49,7 +48,7 @@ struct Sim {
     /* **************************************** */
     // Sim phases
     /* **************************************** */
-    void initialise(SpinnerSimConfig const& new_config);
+    void initialise(SpinnerSimConfig const& new_config, SimClock const& clock);
     void update_entity_lookup_table();
     void prepare_tick(float dt);
     void think(float dt);
@@ -62,8 +61,8 @@ struct Sim {
     /* **************************************** */
     auto spawn_instances(vectors3f::ResolvedConstView const new_locations,
                          std::span<float const> const new_yaws,
-                         std::span<std::int32_t const> const new_fire_point_indices)
-        -> std::span<EntityId const>;
+                         std::span<std::int32_t const> const new_fire_point_indices,
+                         SpawnContext context) -> std::span<EntityId const>;
 
     /* **************************************** */
     // Movement
@@ -83,8 +82,6 @@ struct Sim {
     SpinnerSimConfig config{};
     NonNegative<std::int16_t> cooldown_restart_ticks_{};
     std::int16_t cooldown_cleaner_{};
-    SimClock const& simulation_clock;
-    EntityLedger& ledger_;
     EntityTables& entity_tables_;
     EntityStorage entities{};
 };

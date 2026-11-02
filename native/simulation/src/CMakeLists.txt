@@ -92,6 +92,7 @@ set(levels_headers
   level_read_access.h
   level_sim.h
   level_state.h
+  spawn_context.h
   reference_level_simulation_data.h
   tick_player_ship_state.h
 )

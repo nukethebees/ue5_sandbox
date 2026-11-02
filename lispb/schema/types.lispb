@@ -410,3 +410,11 @@
 (type spinners_thinking_inputs
   :spelling "ThinkingInputs"
   :header "ioj/sim/spinners/phase_inputs.h")
+
+(type sim_clock
+  :spelling "ioj::sim::SimClock"
+  :header "ioj/sim/sim_clock.h")
+
+(type lasers_preparation_inputs
+  :spelling "PreparationInputs"
+  :header "ioj/sim/lasers/phase_inputs.h")

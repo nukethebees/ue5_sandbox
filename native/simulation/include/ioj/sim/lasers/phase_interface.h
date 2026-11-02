@@ -17,7 +17,7 @@ class PhaseInterface {
 
     void simulate(ActionInputs const inputs) { simulation.simulate(inputs); }
 
-    void commit_spawns() { simulation.commit_spawns(); }
+    void commit_spawns(PreparationInputs const inputs) { simulation.commit_spawns(inputs); }
 
     void cleanup_entities(ResolutionCommitInputs const inputs) {
         simulation.cleanup_entities(inputs);

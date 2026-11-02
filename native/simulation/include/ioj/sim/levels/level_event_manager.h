@@ -24,8 +24,8 @@ class LevelEventManager {
     auto operator=(LevelEventManager const&) -> LevelEventManager& = delete;
     auto operator=(LevelEventManager&&) -> LevelEventManager& = delete;
 
-    void begin(EntityId player_id = {});
-    void execute_tick(SimTick tick);
+    void begin(SpawnContext context, EntityId player_id = {});
+    void execute_tick(SimTick tick, SpawnContext context);
     void queue_fighter_spawns(float dt, FrameMemoryResource& scratch_resource) {
         spawn_manager_.queue_fighter_spawns(dt, scratch_resource);
     }

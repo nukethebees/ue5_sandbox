@@ -1,7 +1,6 @@
 #include <ioj/column_math.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
-#include <ioj/sim/combat_events.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/sim_clock.h>
@@ -39,8 +38,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     SimClock clock;
     clock.initialise({});
     EntityLedger entity_ledger;
-    CombatEvents combat_events{entity_ledger};
-    lasers::Sim lasers{clock, combat_events};
+    lasers::Sim lasers;
     auto& game_memory{*std::pmr::new_delete_resource()};
     LevelTelemetryManager telemetry_manager{
         clock,

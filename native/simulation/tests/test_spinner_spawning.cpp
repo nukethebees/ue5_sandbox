@@ -1,10 +1,10 @@
 #include "support/simulation_test_support.h"
 #include <ioj/column_math.h>
 #include <ioj/rotator_math.h>
-#include <ioj/sim/combat_events.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/lasers/sim.h>
+#include <ioj/sim/levels/spawn_context.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/spinners/sim.h>
 #include <ioj/tick_countdown.h>
@@ -15,8 +15,9 @@ struct SpinnerSpawnTestAccess {
     static void spawn(Sim& simulation,
                       vectors3f::ResolvedConstView locations,
                       std::span<float const> yaws,
-                      std::span<std::int32_t const> fire_points) {
-        simulation.spawn_instances(locations, yaws, fire_points);
+                      std::span<std::int32_t const> fire_points,
+                      SpawnContext context) {
+        simulation.spawn_instances(locations, yaws, fire_points, context);
     }
     static auto entities(Sim& simulation) -> Sim::EntityStorage& { return simulation.entities; }
     static void tick_cooldowns(Sim& simulation) { simulation.prepare_tick(0.f); }
@@ -41,10 +42,10 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
     using Access = spinners::SpinnerSpawnTestAccess;
     SimClock clock;
     EntityLedger ledger;
-    CombatEvents combat_events{ledger};
     EntityTables tables{clock};
-    lasers::Sim lasers{clock, combat_events};
-    spinners::Sim simulation{clock, ledger, tables};
+    lasers::Sim lasers;
+    spinners::Sim simulation{tables};
+    SpawnContext const spawn_context{ledger, clock};
     auto& entity_storage{Access::entities(simulation)};
     Access::set_cooldown(simulation, 23);
 
@@ -58,7 +59,8 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
     Access::spawn(simulation,
                   locations.left(1).const_view().resolve(),
                   std::span{yaws}.first(1),
-                  std::span{fire_points}.first(1));
+                  std::span{fire_points}.first(1),
+                  spawn_context);
     auto const first_id{entity_storage.const_view().entity_ids()[0]};
     Access::cooldowns(simulation).restart_counter(0);
     Access::tick_cooldowns(simulation);
@@ -67,14 +69,16 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
     Access::spawn(simulation,
                   locations.right(2).const_view().resolve(),
                   std::span{yaws}.last(2),
-                  std::span{fire_points}.last(2));
+                  std::span{fire_points}.last(2),
+                  spawn_context);
     auto const second_id{entity_storage.const_view().entity_ids()[1]};
     Access::cooldowns(simulation).restart_counter(1);
-    Access::spawn(simulation, locations.const_view().resolve(), yaws, fire_points);
+    Access::spawn(simulation, locations.const_view().resolve(), yaws, fire_points, spawn_context);
     Access::spawn(simulation,
                   locations.left(0).const_view().resolve(),
                   std::span{yaws}.first(0),
-                  std::span{fire_points}.first(0));
+                  std::span{fire_points}.first(0),
+                  spawn_context);
 
     auto const entities{entity_storage.const_view()};
     entities.validate();

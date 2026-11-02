@@ -14,7 +14,7 @@
 #include <vector>
 
 namespace ioj::sim {
-class EntityLedger;
+struct SpawnContext;
 class LevelSpawnManager;
 }
 
@@ -24,7 +24,7 @@ class PhaseInterface;
 struct Sim {
     using EntityStorage = CapitalEntityData;
 
-    Sim(EntityLedger& ledger, EntityTables& entity_tables);
+    explicit Sim(EntityTables& entity_tables);
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
@@ -61,7 +61,8 @@ struct Sim {
     /* **************************************** */
     // Ship spawning
     /* **************************************** */
-    auto register_ships(LevelCapitalSpawnEvents::ConstView spawn_data) -> std::vector<EntityId>;
+    auto register_ships(LevelCapitalSpawnEvents::ConstView spawn_data, SpawnContext context)
+        -> std::vector<EntityId>;
     void spawn_ships(LevelCapitalSpawnEvents::ConstView spawn_data);
 
     /* **************************************** */
@@ -74,7 +75,6 @@ struct Sim {
     friend class sim::LevelSpawnManager;
 
     settings::PositiveHealth max_health_{Health{5000}};
-    EntityLedger& ledger_;
     EntityTables& entity_tables_;
 
     EntityStorage entities{};

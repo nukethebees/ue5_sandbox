@@ -1,6 +1,7 @@
 #include "ioj/sim/levels/level_event_manager.h"
 
 #include <ioj/diagnostics.h>
+#include <ioj/sim/levels/spawn_context.h>
 
 #include <cassert>
 #include <cstdint>
@@ -28,14 +29,14 @@ LevelEventManager::LevelEventManager(capital_ships::Sim& capital_ships,
                               schedule_.spinner_spawns.const_view());
 }
 
-void LevelEventManager::begin(EntityId const player_id) {
+void LevelEventManager::begin(SpawnContext const context, EntityId const player_id) {
     if (player_entity_index_ != invalid_level_entity_index) {
         spawn_manager_.set_entity_id(player_entity_index_, player_id);
     }
-    spawn_manager_.spawn(schedule_.spawn_groups.const_view(0, spawn_group_offset_));
+    spawn_manager_.spawn(schedule_.spawn_groups.const_view(0, spawn_group_offset_), context);
 }
 
-void LevelEventManager::execute_tick(SimTick const tick) {
+void LevelEventManager::execute_tick(SimTick const tick, SpawnContext const context) {
     spawn_manager_.reset_tick_output();
     auto const event_tick_count{schedule_.execution_ticks.size()};
     if (static_cast<std::size_t>(next_event_index_) == event_tick_count) {
@@ -52,7 +53,8 @@ void LevelEventManager::execute_tick(SimTick const tick) {
     auto const counts{schedule_.event_group_counts[next_event_index_]};
     if (counts.spawn_groups.value() != 0) {
         spawn_manager_.spawn(
-            schedule_.spawn_groups.const_view(spawn_group_offset_, counts.spawn_groups.value()));
+            schedule_.spawn_groups.const_view(spawn_group_offset_, counts.spawn_groups.value()),
+            context);
         spawn_group_offset_ += counts.spawn_groups.value();
     }
     ++next_event_index_;

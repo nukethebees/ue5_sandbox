@@ -76,7 +76,8 @@
       (parameter config (type-ref ioj::sim::LaserSimConfig :suffix " const&")))
     (method simulate void
       (parameter inputs (type-ref @lasers_action_inputs :suffix " const")))
-    (method commit_spawns void)
+    (method commit_spawns void
+      (parameter inputs (type-ref @lasers_preparation_inputs :suffix " const")))
     (method cleanup_entities void
       (parameter inputs (type-ref @lasers_resolution_commit_inputs :suffix " const")))
     (method finish_action void)))
@@ -149,7 +150,8 @@
     :friend-kind struct
     :target-storage reference
     (method initialise void
-      (parameter config (type-ref ioj::sim::TurretSimConfig :suffix " const&")))
+      (parameter config (type-ref ioj::sim::TurretSimConfig :suffix " const&"))
+      (parameter clock (type-ref @sim_clock :suffix " const&")))
     (method update_entity_lookup_table void)
     (method prepare_tick void)
     (method think void
@@ -177,7 +179,8 @@
     :friend-kind struct
     :target-storage reference
     (method initialise void
-      (parameter config (type-ref ioj::sim::SpinnerSimConfig :suffix " const&")))
+      (parameter config (type-ref ioj::sim::SpinnerSimConfig :suffix " const&"))
+      (parameter clock (type-ref @sim_clock :suffix " const&")))
     (method update_entity_lookup_table void)
     (method prepare_tick void
       (parameter dt "float const"))

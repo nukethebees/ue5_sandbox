@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/sim/sim_tick.h>
+
 #include <cstdint>
 #include <memory_resource>
 #include <vector>
@@ -10,14 +12,15 @@ class FrameMemoryResource;
 
 namespace ioj::sim {
 class CombatEvents;
+class EntityLedger;
 struct EntityDeathInfo;
-struct SimClock;
 }
 
 namespace ioj::sim::capital_ships {
 struct ResolutionInputs {
     CombatEvents const& combat_events;
-    SimClock const& clock;
+    EntityLedger& ledger;
+    SimTick tick;
     FrameMemoryResource& scratch_resource;
     std::pmr::vector<std::uint32_t>& local_indices_to_remove;
     EntityDeathInfo& entity_death_info;

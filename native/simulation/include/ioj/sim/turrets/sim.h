@@ -6,7 +6,6 @@
 #include <ioj/sim/levels/level_spawn_groups.h>
 #include <ioj/sim/levels/level_spinner_spawn_events.h>
 #include <ioj/sim/levels/level_turret_spawn_events.h>
-#include <ioj/sim/sim_clock.h>
 #include <ioj/sim/turrets/phase_inputs.h>
 #include <ioj/sim/turrets/turret_entity_data.h>
 #include <ioj/sim/turrets/turret_sim_config.h>
@@ -16,7 +15,8 @@
 #include <vector>
 
 namespace ioj::sim {
-class EntityLedger;
+struct SpawnContext;
+struct SimClock;
 class LevelSpawnManager;
 }
 
@@ -26,7 +26,7 @@ class PhaseInterface;
 struct Sim {
     using EntityStorage = TurretEntityData;
 
-    Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_tables) noexcept;
+    explicit Sim(EntityTables& entity_tables) noexcept;
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
@@ -58,7 +58,7 @@ struct Sim {
     /* **************************************** */
     // Sim phases
     /* **************************************** */
-    void initialise(TurretSimConfig const& new_config);
+    void initialise(TurretSimConfig const& new_config, SimClock const& clock);
     void update_entity_lookup_table();
     void prepare_tick();
     void think(ThinkingInputs const inputs);
@@ -72,7 +72,7 @@ struct Sim {
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    auto register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data)
+    auto register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data, SpawnContext context)
         -> std::vector<EntityId>;
 
     /* **************************************** */
@@ -105,8 +105,6 @@ struct Sim {
     friend class sim::LevelSpawnManager;
 
     TurretSimConfig config{};
-    SimClock const& simulation_clock;
-    EntityLedger& ledger_;
     EntityTables& entity_tables_;
     EntityStorage entities{};
     std::vector<EntityFrameChange> frame_changes_;

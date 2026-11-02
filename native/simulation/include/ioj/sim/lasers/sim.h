@@ -5,14 +5,12 @@
 #include <ioj/sim/lasers/laser_sim_config.h>
 #include <ioj/sim/lasers/laser_spawn_requests.h>
 #include <ioj/sim/lasers/phase_inputs.h>
-#include <ioj/sim/sim_clock.h>
 
 #include <cstdint>
 #include <span>
 #include <vector>
 
 namespace ioj::sim {
-class CombatEvents;
 struct LevelSim;
 }
 
@@ -28,7 +26,7 @@ struct Sim {
     /* **************************************** */
     // Construction and access
     /* **************************************** */
-    Sim(SimClock const& clock, CombatEvents& in_combat_events) noexcept;
+    Sim() = default;
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
@@ -55,7 +53,7 @@ struct Sim {
     // Tick phases
     /* **************************************** */
     void initialise(LaserSimConfig const& new_config);
-    void commit_spawns();
+    void commit_spawns(PreparationInputs const inputs);
     void cleanup_entities(ResolutionCommitInputs const inputs);
     void simulate(ActionInputs const inputs);
     void finish_action();
@@ -64,7 +62,7 @@ struct Sim {
     // Spawn preparation
     /* **************************************** */
     void preallocate_instances();
-    void process_pending_spawns();
+    void process_pending_spawns(PreparationInputs const inputs);
 
     /* **************************************** */
     // Movement and collision
@@ -82,8 +80,6 @@ struct Sim {
     /* **************************************** */
     friend class PhaseInterface;
 
-    CombatEvents& combat_events;
-    SimClock const& simulation_clock;
     LaserSimConfig config{};
 
     EntityStorage entities;

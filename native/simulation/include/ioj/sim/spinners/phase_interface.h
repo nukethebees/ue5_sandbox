@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/sim/sim_clock.h"
 #include "ioj/sim/spinners/phase_inputs.h"
 #include "ioj/sim/spinners/sim.h"
 #include "ioj/sim/spinners/spinner_sim_config.h"
@@ -13,7 +14,9 @@ class PhaseInterface {
     PhaseInterface(Sim& new_target)
         : simulation{new_target} {}
 
-    void initialise(SpinnerSimConfig const& config) { simulation.initialise(config); }
+    void initialise(SpinnerSimConfig const& config, SimClock const& clock) {
+        simulation.initialise(config, clock);
+    }
 
     void update_entity_lookup_table() { simulation.update_entity_lookup_table(); }
 

@@ -33,6 +33,8 @@ class FrameMemoryResource;
 }
 
 namespace ioj::sim {
+struct SpawnContext;
+
 class LevelSpawnManager {
     struct FighterSpawnSource {
         EntityId capital_id{};
@@ -56,16 +58,16 @@ class LevelSpawnManager {
                     LevelTurretSpawnEvents::ConstView turret_payloads,
                     LevelSpinnerSpawnEvents::ConstView spinner_payloads);
     void set_entity_id(LevelEntityIndex entity_index, EntityId id);
-    void spawn(LevelSpawnGroups::ConstView groups);
+    void spawn(LevelSpawnGroups::ConstView groups, SpawnContext context);
     void queue_fighter_spawns(float dt, FrameMemoryResource& scratch_resource);
     void reset_tick_output() { spawned_ids_this_tick_.clear(); }
     auto spawned_ids() const -> std::span<EntityId const> { return spawned_ids_this_tick_; }
     auto id(LevelEntityIndex entity_index) const -> EntityId;
     auto entity_ids() const noexcept -> std::span<EntityId const> { return entity_ids_; }
   private:
-    void spawn_capitals(LevelCapitalSpawnEvents::ConstView events);
-    void spawn_turrets(LevelTurretSpawnEvents::ConstView events);
-    void spawn_spinners(LevelSpinnerSpawnEvents::ConstView events);
+    void spawn_capitals(LevelCapitalSpawnEvents::ConstView events, SpawnContext context);
+    void spawn_turrets(LevelTurretSpawnEvents::ConstView events, SpawnContext context);
+    void spawn_spinners(LevelSpinnerSpawnEvents::ConstView events, SpawnContext context);
 
     LevelCapitalSpawnEvents::ConstView capital_payloads_{};
     LevelTurretSpawnEvents::ConstView turret_payloads_{};

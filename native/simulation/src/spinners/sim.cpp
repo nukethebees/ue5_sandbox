@@ -6,8 +6,10 @@
 #include <ioj/rotator_math.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/lasers/sim.h>
+#include <ioj/sim/levels/spawn_context.h>
 #include <ioj/sim/phase_checks.h>
 #include <ioj/sim/profiling.h>
+#include <ioj/sim/sim_clock.h>
 #include <ioj/sim/spinners/spinner_sim_config.h>
 #include <ioj/tick_countdown.h>
 
@@ -25,19 +27,17 @@ namespace ioj::sim::spinners {
 // Configuration
 /* **************************************** */
 // Level initialisation
-void Sim::initialise(SpinnerSimConfig const& new_config) {
+void Sim::initialise(SpinnerSimConfig const& new_config, SimClock const& clock) {
     config = new_config;
 
     SANDBOX_PROFILE_SCOPE("spinners::Sim::initialise");
 
-    cooldown_restart_ticks_ = simulation_clock.duration_to_tick_period<std::int16_t>(
-        Duration::make(config.laser.fire_cooldown));
+    cooldown_restart_ticks_ =
+        clock.duration_to_tick_period<std::int16_t>(Duration::make(config.laser.fire_cooldown));
     cooldown_cleaner_ = 0;
 }
-Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_tables) noexcept
-    : simulation_clock{clock}
-    , ledger_{ledger}
-    , entity_tables_{entity_tables} {}
+Sim::Sim(EntityTables& entity_tables) noexcept
+    : entity_tables_{entity_tables} {}
 
 /* **************************************** */
 // Sim phases
@@ -87,10 +87,10 @@ auto Sim::num_instances() const noexcept -> std::uint32_t {
 /* **************************************** */
 auto Sim::spawn_instances(vectors3f::ResolvedConstView const new_locations,
                           std::span<float const> const new_yaws,
-                          std::span<std::int32_t const> const new_fire_point_indices)
-    -> std::span<EntityId const> {
+                          std::span<std::int32_t const> const new_fire_point_indices,
+                          SpawnContext const context) -> std::span<EntityId const> {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::spawn_instances");
-    assert(is_preparation_mutation_allowed(simulation_clock));
+    assert(is_preparation_mutation_allowed(entity_tables_.lookups.clock()));
 
     auto const n{new_locations.num()};
 
@@ -122,7 +122,7 @@ auto Sim::spawn_instances(vectors3f::ResolvedConstView const new_locations,
 
     entities.const_view().validate();
 
-    ledger_.record_spawns(EntityType::TubeSpinner, Team::White, Health{1}, entity_ids);
+    context.ledger.record_spawns(EntityType::TubeSpinner, Team::White, Health{1}, entity_ids);
 
     return entity_ids;
 }

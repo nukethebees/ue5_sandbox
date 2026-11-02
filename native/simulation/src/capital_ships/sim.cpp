@@ -7,6 +7,7 @@
 #include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/health.h>
+#include <ioj/sim/levels/spawn_context.h>
 #include <ioj/sim/phase_checks.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/sim_clock.h>
@@ -25,9 +26,8 @@ void Sim::initialise(settings::PositiveHealth const max_health) {
     max_health_ = max_health;
     profiling::plot("Sandbox/CapitalShipCount", 0);
 }
-Sim::Sim(EntityLedger& ledger, EntityTables& entity_tables)
-    : ledger_{ledger}
-    , entity_tables_{entity_tables} {}
+Sim::Sim(EntityTables& entity_tables)
+    : entity_tables_{entity_tables} {}
 
 /* **************************************** */
 // Sim phases
@@ -56,12 +56,11 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
                                healths,
                                inputs.local_indices_to_remove,
                                inputs.entity_death_info,
-                               ledger_,
+                               inputs.ledger,
                                scratch_resource);
 }
 void Sim::publish_deaths(ResolutionInputs const inputs) {
-    ledger_.record_deaths(inputs.entity_death_info.const_view(),
-                          inputs.clock.get_completed_ticks());
+    inputs.ledger.record_deaths(inputs.entity_death_info.const_view(), inputs.tick);
 }
 
 // ResolutionCommit
@@ -92,8 +91,8 @@ auto Sim::num_instances() const noexcept -> std::uint32_t {
 /* **************************************** */
 // Ship spawning
 /* **************************************** */
-auto Sim::register_ships(LevelCapitalSpawnEvents::ConstView const spawn_data)
-    -> std::vector<EntityId> {
+auto Sim::register_ships(LevelCapitalSpawnEvents::ConstView const spawn_data,
+                         SpawnContext const context) -> std::vector<EntityId> {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::register_ships");
     auto const n_to_add{spawn_data.num()};
     if (n_to_add == 0) {
@@ -106,7 +105,8 @@ auto Sim::register_ships(LevelCapitalSpawnEvents::ConstView const spawn_data)
     auto const spawn_teams{spawn_data.teams()};
     auto const spawn_healths{spawn_data.healths()};
     auto const new_entity_ids{entities.right(n_to_add).entity_ids()};
-    ledger_.record_spawns(EntityType::CapitalShip, spawn_teams, spawn_healths, new_entity_ids);
+    context.ledger.record_spawns(
+        EntityType::CapitalShip, spawn_teams, spawn_healths, new_entity_ids);
     std::vector<EntityId> new_ids{new_entity_ids.begin(), new_entity_ids.end()};
     entity_tables_.health.initialise_entities<EntityType::CapitalShip>(new_entity_ids,
                                                                        spawn_healths);

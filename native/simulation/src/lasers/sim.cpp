@@ -10,6 +10,7 @@
 #include <ioj/sim/lasers/laser_hit_details.h>
 #include <ioj/sim/phase_checks.h>
 #include <ioj/sim/profiling.h>
+#include <ioj/sim/sim_clock.h>
 #include <ioj/vectors3f.h>
 
 #include <algorithm>
@@ -26,10 +27,6 @@ namespace ioj::sim::lasers {
 /* **************************************** */
 // Construction and tick phases
 /* **************************************** */
-Sim::Sim(SimClock const& clock, CombatEvents& in_combat_events) noexcept
-    : combat_events{in_combat_events}
-    , simulation_clock{clock} {}
-
 // Level initialisation
 void Sim::initialise(LaserSimConfig const& new_config) {
     config = new_config;
@@ -46,10 +43,10 @@ auto Sim::append_spawn_requests(std::uint32_t const count) -> LaserSpawnRequests
 }
 
 // Preparation
-void Sim::commit_spawns() {
-    assert(is_preparation_mutation_allowed(simulation_clock));
+void Sim::commit_spawns(PreparationInputs const inputs) {
+    assert(is_preparation_mutation_allowed(inputs.clock));
     SANDBOX_PROFILE_SCOPE("lasers::Sim::commit_spawns");
-    process_pending_spawns();
+    process_pending_spawns(inputs);
     clear_spawn_buffers();
 }
 
@@ -67,7 +64,7 @@ void Sim::simulate(ActionInputs const inputs) {
 // ResolutionCommit
 void Sim::cleanup_entities(ResolutionCommitInputs const inputs) {
     auto& pending_removals{inputs.pending_removals};
-    assert(simulation_clock.phase() == SimulationPhase::ResolutionCommit);
+    assert(inputs.clock.phase() == SimulationPhase::ResolutionCommit);
     std::ranges::sort(pending_removals, std::greater{});
     auto const duplicate{std::ranges::unique(pending_removals)};
     pending_removals.erase(duplicate.begin(), duplicate.end());
@@ -91,19 +88,19 @@ void Sim::preallocate_instances() {
     entities.reserve(config.n_preallocated_instances);
 }
 
-void Sim::process_pending_spawns() {
+void Sim::process_pending_spawns(PreparationInputs const inputs) {
     SANDBOX_PROFILE_SCOPE("lasers::Sim::process_pending_spawns");
 
     pending_spawns.const_view().validate();
     auto const n_to_add{pending_spawns.num()};
-    combat_events.record_shots(pending_spawns.const_view().instigator_ids());
+    inputs.combat_events.record_shots(pending_spawns.const_view().instigator_ids());
 
     if (n_to_add <= 0) {
         return;
     }
 
     auto const requests{pending_spawns.const_view()};
-    auto const simulation_time{static_cast<float>(simulation_clock.simulation_time())};
+    auto const simulation_time{static_cast<float>(inputs.clock.simulation_time())};
     constexpr float fixed_spawn_offset{10.f};
     entities.add_uninitialised(n_to_add);
     auto const output{entities.view().right(n_to_add)};
@@ -284,9 +281,9 @@ void Sim::handle_collisions(ActionInputs const inputs) {
                         emission_direction.z(),
                         sources[element]);
     }
-    combat_events.queue_damage(collision_damage_events.const_view());
+    inputs.combat_events.queue_damage(collision_damage_events.const_view());
 
-    frame_output_.append_hits(hit_details.const_view(), simulation_clock.get_completed_ticks());
+    frame_output_.append_hits(hit_details.const_view(), inputs.tick);
 }
 void Sim::remove_instances(std::span<LaserIndex const> const indices) {
     assert(std::ranges::is_sorted(indices, std::greater{}));

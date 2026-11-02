@@ -16,8 +16,10 @@
 #include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/lasers/sim.h>
+#include <ioj/sim/levels/spawn_context.h>
 #include <ioj/sim/phase_checks.h>
 #include <ioj/sim/profiling.h>
+#include <ioj/sim/sim_clock.h>
 #include <ioj/sim/turrets/turret_sim_config.h>
 #include <ioj/tick_countdown.h>
 #include <ioj/vector_math.h>
@@ -37,26 +39,24 @@ namespace ioj::sim::turrets {
 // Configuration
 /* **************************************** */
 // Level initialisation
-void Sim::initialise(TurretSimConfig const& new_config) {
+void Sim::initialise(TurretSimConfig const& new_config, SimClock const& clock) {
     config = new_config;
 
     SANDBOX_PROFILE_SCOPE("turrets::Sim::initialise");
     profiling::plot("Sandbox/TurretCount", 0);
 
-    cooldown_restart_ticks_ = simulation_clock.duration_to_tick_period<std::int16_t>(
-        Duration::make(config.laser.fire_cooldown));
+    cooldown_restart_ticks_ =
+        clock.duration_to_tick_period<std::int16_t>(Duration::make(config.laser.fire_cooldown));
     cooldown_cleaner_ = 0;
 }
-Sim::Sim(SimClock const& clock, EntityLedger& ledger, EntityTables& entity_tables) noexcept
-    : simulation_clock{clock}
-    , ledger_{ledger}
-    , entity_tables_{entity_tables} {}
+Sim::Sim(EntityTables& entity_tables) noexcept
+    : entity_tables_{entity_tables} {}
 
 /* **************************************** */
 // Spawning
 /* **************************************** */
-auto Sim::register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data)
-    -> std::vector<EntityId> {
+auto Sim::register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data,
+                           SpawnContext const context) -> std::vector<EntityId> {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::register_turrets");
     assert(is_preparation_mutation_allowed(entity_tables_.lookups.clock()));
     spawn_data.validate();
@@ -66,7 +66,7 @@ auto Sim::register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data)
     }
 
     std::int16_t const target_refresh_tick_period{
-        simulation_clock.frequency_to_tick_period<std::int16_t>(
+        context.clock.frequency_to_tick_period<std::int16_t>(
             Frequency::make(config.target_refresh_frequency))};
 
     auto const first_new_index{entities.num()};
@@ -111,7 +111,8 @@ auto Sim::register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data)
         set_rotation(entities_rotations, first_new_index + i, rotation);
     }
     auto const new_entity_ids{entities_entity_ids.subspan(first_new_index, n_to_add)};
-    ledger_.record_spawns(EntityType::Turret, spawn_data_teams, spawn_data_healths, new_entity_ids);
+    context.ledger.record_spawns(
+        EntityType::Turret, spawn_data_teams, spawn_data_healths, new_entity_ids);
     std::vector<EntityId> new_ids{new_entity_ids.begin(), new_entity_ids.end()};
     entity_tables_.health.initialise_entities<EntityType::Turret>(new_entity_ids,
                                                                   spawn_data_healths);
@@ -216,7 +217,7 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
                                healths,
                                inputs.local_indices_to_remove,
                                inputs.entity_death_info,
-                               ledger_,
+                               inputs.ledger,
                                scratch_resource);
     auto const locations{entities.view_locations().resolve()};
 
@@ -225,8 +226,7 @@ void Sim::resolve_damage_events(ResolutionInputs const inputs) {
     }
 }
 void Sim::publish_deaths(ResolutionInputs const inputs) {
-    ledger_.record_deaths(inputs.entity_death_info.const_view(),
-                          simulation_clock.get_completed_ticks());
+    inputs.ledger.record_deaths(inputs.entity_death_info.const_view(), inputs.tick);
 }
 
 // ResolutionCommit
