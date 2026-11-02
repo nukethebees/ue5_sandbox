@@ -48,7 +48,7 @@ auto lower_facade(LoweringContext& context, DeclarationHandle facade) -> Declara
     ir.function_flags(binding).set_define_in_header(!definitions_in_source);
     if (reference_target) {
         ir.set_function_body(
-            binding, {}, {ir.member_initializer(target_name, ir.strings.intern("new_target"))});
+            binding, {}, {ir.member_initializer(target_name, ir.named("new_target"))});
     } else {
         ir.set_function_body(
             binding,

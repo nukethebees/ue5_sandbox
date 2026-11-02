@@ -83,7 +83,7 @@ class Renderer {
             ir_.set_function_body(
                 constructor,
                 {},
-                {ir_.member_initializer(ir_.strings.intern("self_"), ir_.store_text("self"))});
+                {ir_.member_initializer(ir_.strings.intern("self_"), ir_.named("self"))});
             ir_.function_flags(constructor).set_define_in_header(true);
             children.push_back(ir_.header_function(constructor));
         }

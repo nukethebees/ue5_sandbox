@@ -191,7 +191,10 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
     ir.set_function_body(
         default_constructor,
         {},
-        {ir.member_initializer(owner_name, ir.store_text("*std::pmr::get_default_resource()"))});
+        {ir.member_initializer(owner_name,
+                               ir.unary(UnaryOperator::dereference,
+                                        ir.call(ir.type_reference(
+                                            ir.types.named("std::pmr::get_default_resource")))))});
     auto const resource_constructor{ir.constructor(owner_name, true)};
     ir.set_function_parameters(
         resource_constructor,
@@ -201,7 +204,8 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
     ir.set_function_body(
         resource_constructor,
         {},
-        {ir.member_initializer(ir.strings.intern("resource_"), ir.store_text("&resource"))});
+        {ir.member_initializer(ir.strings.intern("resource_"),
+                               ir.unary(UnaryOperator::address_of, ir.named("resource")))});
     auto const resource_accessor{ir.function("memory_resource", "auto")};
     ir.set_function_body(resource_accessor, {ir.return_stmt(ir.named("resource_"))});
     ir.set_function_return_type(
@@ -229,7 +233,8 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
             ir.call(ir.type_reference(
                         ir.types.decorate(ir.types.named("Operations"), "", "::take_storage")),
                     {ir.unary(UnaryOperator::dereference, ir.named("this")), ir.named("other")}))},
-        {ir.member_initializer(ir.strings.intern("resource_"), ir.store_text("other.resource_"))});
+        {ir.member_initializer(ir.strings.intern("resource_"),
+                               ir.member_access(ir.named("other"), "resource_"))});
     auto const move_assignment{ir.function("operator=", "auto")};
     ir.set_function_parameters(move_assignment, {move_parameter});
     ir.set_function_body(
@@ -493,7 +498,7 @@ auto emit_resolved_views(LoweringContext& context,
             ir.types.intern("bool"), ir.strings.intern("Enabled"), ir.named("Const"))}));
     ir.set_function_requires_clause(conversion, ir.named("Enabled"));
     ir.set_function_body(
-        conversion, {}, {ir.member_initializer(ir.strings.intern("Base"), ir.store_text("other"))});
+        conversion, {}, {ir.member_initializer(ir.strings.intern("Base"), ir.named("other"))});
     children.new_lines(1).add(inline_function(context, conversion));
 
     children.append(view_accessor_nodes(context, model, true));
@@ -572,25 +577,26 @@ auto compact_view_node(LoweringContext& context, SingleAllocationModelId model) 
                                    {ir.parameter("State*", "state"),
                                     ir.parameter(ir.types.named("std::uint32_t"), "offset"),
                                     ir.parameter(ir.types.named("std::uint32_t"), "count")});
-        std::vector<std::string> arguments{"state", "offset", "count"};
+        std::vector<Expr> arguments{ir.named("state"), ir.named("offset"), ir.named("count")};
         for (auto const column : selected.first(2)) {
-            arguments.push_back(
-                "Layout::" + context.text(columns.flattened_identifier[columns.index(column)]) +
-                "_column");
+            arguments.push_back(layout_column(context, column));
         }
         ir.set_function_body(
             constructor,
             {},
             {ir.member_initializer(
                 ir.strings.intern("Base"),
-                ir.store_text("ioj::soa_storage_detail::make_strided_view<Base, Layout>(" +
-                              join(arguments, ", ") + ")"))});
+                ir.call(ir.template_id(ir.type_reference(ir.types.named(
+                                           "ioj::soa_storage_detail::make_strided_view")),
+                                       {ir.type_reference(ir.types.named("Base")),
+                                        ir.type_reference(ir.types.named("Layout"))}),
+                        arguments))});
         children.new_lines(1).add(inline_function(context, constructor));
     }
     auto const conversion{ir.constructor(ir.strings.intern("ViewImpl"))};
     ir.set_function_parameters(conversion, {ir.parameter("ViewImpl<false> const&", "other")});
     ir.set_function_body(
-        conversion, {}, {ir.member_initializer(ir.strings.intern("Base"), ir.store_text("other"))});
+        conversion, {}, {ir.member_initializer(ir.strings.intern("Base"), ir.named("other"))});
     ir.set_function_template(
         conversion,
         ir.template_declaration({ir.value_template_parameter(
