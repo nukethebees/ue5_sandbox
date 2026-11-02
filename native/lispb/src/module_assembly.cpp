@@ -5,7 +5,7 @@
 #include "record_reader_lowering.h"
 
 #include <codegen/ast/cpp_files.h>
-#include <codegen/ast/cpp_ir.h>
+#include <codegen/ast/cpp_ir_builder.h>
 #include <codegen/ast/include_style.h>
 #include <codegen/ast/modules.h>
 #include <codegen/ast/node_list_builder.h>
@@ -24,227 +24,244 @@
 #include <vector>
 
 namespace lispb::codegen::detail {
+namespace {
 
-auto assemble_module(LoweringContext& ctx,
-                     ModuleSettingsId settings,
-                     std::span<DeclarationEmission> emissions) -> std::vector<ModuleId> {
-    auto& ir{ctx.ir};
-    auto const& settings_store{ctx.declarations.module_settings_store};
-    auto const has_output{std::ranges::any_of(emissions, [](DeclarationEmission const& emission) {
-        return !emission.header.empty() || !emission.header_prefix.empty() ||
-               !emission.header_immediate_global.empty() ||
-               !emission.header_generated_include.empty() || !emission.header_after.empty() ||
-               !emission.header_global.empty() || !emission.header_tail.empty() ||
-               !emission.source.empty() || !emission.source_global.empty() ||
-               !emission.source_tail.empty() || !emission.reader_declarations.empty();
-    })};
-    if (!has_output) {
+class ModuleAssembler : public CppIRBuilder {
+  public:
+    explicit ModuleAssembler(CppIR& ir)
+        : CppIRBuilder{ir} {}
+    auto assemble_module(LoweringContext& ctx,
+                         ModuleSettingsId settings,
+                         std::span<DeclarationEmission> emissions) -> std::vector<ModuleId> {
+        auto const& settings_store{ctx.declarations.module_settings_store};
+        auto const has_output{
+            std::ranges::any_of(emissions, [](DeclarationEmission const& emission) {
+                return !emission.header.empty() || !emission.header_prefix.empty() ||
+                       !emission.header_immediate_global.empty() ||
+                       !emission.header_generated_include.empty() ||
+                       !emission.header_after.empty() || !emission.header_global.empty() ||
+                       !emission.header_tail.empty() || !emission.source.empty() ||
+                       !emission.source_global.empty() || !emission.source_tail.empty() ||
+                       !emission.reader_declarations.empty();
+            })};
+        if (!has_output) {
+            std::vector<ModuleId> additional;
+            for (auto const& emission : emissions) {
+                additional.insert(additional.end(),
+                                  emission.additional_modules.begin(),
+                                  emission.additional_modules.end());
+            }
+            return additional;
+        }
+
+        NodeListBuilder header{ir_};
+        NodeListBuilder source{ir_};
+        header.add(include_dependencies(), 2);
+        if (!settings_store.prelude_lines[settings].empty()) {
+            header.add(raw_lines(ctx.declarations.items(settings_store.prelude_lines[settings])),
+                       2);
+        }
+        if (settings_store.source[settings].has_value()) {
+            source.add(include(store_text(source_include(ctx, settings)), IncludeStyle::quoted), 2);
+            if (std::ranges::any_of(emissions, [](DeclarationEmission const& emission) {
+                    return emission.source_dependencies;
+                })) {
+                source.add(include_dependencies(), 2);
+            }
+        }
+
         std::vector<ModuleId> additional;
-        for (auto const& emission : emissions) {
+        bool format_generated{};
+        NodeListBuilder header_declarations{ir_};
+        NodeListBuilder header_sections{ir_};
+        NodeListBuilder header_generated_include{ir_};
+        NodeListBuilder header_after{ir_};
+        NodeListBuilder source_definitions{ir_};
+        NodeListBuilder header_global{ir_};
+        NodeListBuilder header_tail{ir_};
+        NodeListBuilder source_global{ir_};
+        NodeListBuilder source_tail{ir_};
+        NodeListBuilder reader_declarations{ir_};
+        std::vector<StringId> reader_includes;
+        bool has_header{};
+        auto flush_header_declarations = [&] {
+            if (!has_header) {
+                return;
+            }
+            auto nodes{header_declarations.build()};
+            if (auto const namespace_name{settings_store.namespace_name[settings]}) {
+                header_sections.add(namespace_node(*namespace_name, nodes));
+            } else {
+                header_sections.append(nodes);
+            }
+            has_header = false;
+        };
+        bool has_source{};
+        bool has_header_global{};
+        bool has_header_after{};
+        bool has_header_tail{};
+        bool has_source_global{};
+        bool has_source_tail{};
+        std::optional<std::string> tail_namespace;
+        for (auto& emission : emissions) {
+            if (!emission.reader_declarations.empty()) {
+                reader_declarations.append(std::move(emission.reader_declarations)).new_lines(2);
+                for (auto const include_value : emission.reader_includes) {
+                    if (std::ranges::find(reader_includes, include_value) ==
+                        reader_includes.end()) {
+                        reader_includes.push_back(include_value);
+                    }
+                }
+            }
+            header.append(std::move(emission.header_prefix));
+            header_generated_include.append(std::move(emission.header_generated_include));
+            if (!emission.header.empty()) {
+                if (has_header) {
+                    header_declarations.new_lines(2);
+                }
+                header_declarations.append(std::move(emission.header));
+                has_header = true;
+            }
+            if (!emission.header_immediate_global.empty()) {
+                flush_header_declarations();
+                header_sections.new_lines(2).append(emission.header_immediate_global).new_lines(2);
+            }
+            auto append_section = [](NodeListBuilder& builder, Nodes& nodes, bool& started) {
+                if (nodes.empty()) {
+                    return;
+                }
+                if (started) {
+                    builder.new_lines(2);
+                }
+                builder.append(std::move(nodes));
+                started = true;
+            };
+            append_section(header_global, emission.header_global, has_header_global);
+            append_section(header_after, emission.header_after, has_header_after);
+            append_section(header_tail, emission.header_tail, has_header_tail);
+            append_section(source_global, emission.source_global, has_source_global);
+            append_section(source_tail, emission.source_tail, has_source_tail);
+            if (emission.tail_namespace.has_value()) {
+                if (tail_namespace.has_value() && tail_namespace != emission.tail_namespace) {
+                    throw std::invalid_argument{"Conflicting declaration helper namespaces"};
+                }
+                tail_namespace = emission.tail_namespace;
+            }
+            if (!emission.source.empty()) {
+                if (has_source) {
+                    source_definitions.new_lines(2);
+                }
+                source_definitions.append(std::move(emission.source));
+                has_source = true;
+            }
+            format_generated = format_generated || emission.format_generated;
             additional.insert(additional.end(),
                               emission.additional_modules.begin(),
                               emission.additional_modules.end());
         }
-        return additional;
-    }
-
-    NodeListBuilder header{ir};
-    NodeListBuilder source{ir};
-    header.add(ir.include_dependencies(), 2);
-    if (!settings_store.prelude_lines[settings].empty()) {
-        header.add(ir.raw_lines(ctx.declarations.items(settings_store.prelude_lines[settings])), 2);
-    }
-    if (settings_store.source[settings].has_value()) {
-        source.add(ir.include(ir.store_text(source_include(ctx, settings)), IncludeStyle::quoted),
-                   2);
-        if (std::ranges::any_of(emissions, [](DeclarationEmission const& emission) {
-                return emission.source_dependencies;
-            })) {
-            source.add(ir.include_dependencies(), 2);
+        auto generated_include{header_generated_include.build()};
+        if (!generated_include.empty()) {
+            header.new_lines(2).append(std::move(generated_include)).new_lines(2);
         }
-    }
-
-    std::vector<ModuleId> additional;
-    bool format_generated{};
-    NodeListBuilder header_declarations{ir};
-    NodeListBuilder header_sections{ir};
-    NodeListBuilder header_generated_include{ir};
-    NodeListBuilder header_after{ir};
-    NodeListBuilder source_definitions{ir};
-    NodeListBuilder header_global{ir};
-    NodeListBuilder header_tail{ir};
-    NodeListBuilder source_global{ir};
-    NodeListBuilder source_tail{ir};
-    NodeListBuilder reader_declarations{ir};
-    std::vector<StringId> reader_includes;
-    bool has_header{};
-    auto flush_header_declarations = [&] {
-        if (!has_header) {
-            return;
+        flush_header_declarations();
+        auto after_nodes{header_after.build()};
+        auto source_nodes{source_definitions.build()};
+        header.append(header_sections.build());
+        header.append(header_global.build());
+        if (has_header_global && !after_nodes.empty()) {
+            header.new_lines(2);
         }
-        auto nodes{header_declarations.build()};
-        if (auto const namespace_name{settings_store.namespace_name[settings]}) {
-            header_sections.add(ir.namespace_node(*namespace_name, nodes));
+        if (settings_store.namespace_name[settings].has_value()) {
+            if (!after_nodes.empty()) {
+                header.add(namespace_node(*settings_store.namespace_name[settings],
+                                          std::move(after_nodes)));
+            }
         } else {
-            header_sections.append(nodes);
+            header.append(std::move(after_nodes));
         }
-        has_header = false;
-    };
-    bool has_source{};
-    bool has_header_global{};
-    bool has_header_after{};
-    bool has_header_tail{};
-    bool has_source_global{};
-    bool has_source_tail{};
-    std::optional<std::string> tail_namespace;
-    for (auto& emission : emissions) {
-        if (!emission.reader_declarations.empty()) {
-            reader_declarations.append(std::move(emission.reader_declarations)).new_lines(2);
-            for (auto const include : emission.reader_includes) {
-                if (std::ranges::find(reader_includes, include) == reader_includes.end()) {
-                    reader_includes.push_back(include);
-                }
+        auto header_tail_nodes{header_tail.build()};
+        if (!header_tail_nodes.empty()) {
+            if (tail_namespace.has_value() && !tail_namespace->empty()) {
+                header.add(namespace_node(ir_.strings.intern(*tail_namespace),
+                                          std::move(header_tail_nodes)),
+                           2);
+            } else {
+                header.append(std::move(header_tail_nodes));
             }
         }
-        header.append(std::move(emission.header_prefix));
-        header_generated_include.append(std::move(emission.header_generated_include));
-        if (!emission.header.empty()) {
-            if (has_header) {
-                header_declarations.new_lines(2);
-            }
-            header_declarations.append(std::move(emission.header));
-            has_header = true;
+        auto internal_nodes{source_global.build()};
+        if (!internal_nodes.empty()) {
+            source.add(namespace_node(ir_.strings.intern(""), std::move(internal_nodes)), 2);
         }
-        if (!emission.header_immediate_global.empty()) {
-            flush_header_declarations();
-            header_sections.new_lines(2).append(emission.header_immediate_global).new_lines(2);
-        }
-        auto append_section = [](NodeListBuilder& builder, Nodes& nodes, bool& started) {
-            if (nodes.empty()) {
-                return;
+        if (settings_store.namespace_name[settings].has_value()) {
+            if (!source_nodes.empty()) {
+                source.add(namespace_node(*settings_store.namespace_name[settings],
+                                          std::move(source_nodes)));
             }
-            if (started) {
-                builder.new_lines(2);
-            }
-            builder.append(std::move(nodes));
-            started = true;
-        };
-        append_section(header_global, emission.header_global, has_header_global);
-        append_section(header_after, emission.header_after, has_header_after);
-        append_section(header_tail, emission.header_tail, has_header_tail);
-        append_section(source_global, emission.source_global, has_source_global);
-        append_section(source_tail, emission.source_tail, has_source_tail);
-        if (emission.tail_namespace.has_value()) {
-            if (tail_namespace.has_value() && tail_namespace != emission.tail_namespace) {
-                throw std::invalid_argument{"Conflicting declaration helper namespaces"};
-            }
-            tail_namespace = emission.tail_namespace;
-        }
-        if (!emission.source.empty()) {
-            if (has_source) {
-                source_definitions.new_lines(2);
-            }
-            source_definitions.append(std::move(emission.source));
-            has_source = true;
-        }
-        format_generated = format_generated || emission.format_generated;
-        additional.insert(additional.end(),
-                          emission.additional_modules.begin(),
-                          emission.additional_modules.end());
-    }
-    auto generated_include{header_generated_include.build()};
-    if (!generated_include.empty()) {
-        header.new_lines(2).append(std::move(generated_include)).new_lines(2);
-    }
-    flush_header_declarations();
-    auto after_nodes{header_after.build()};
-    auto source_nodes{source_definitions.build()};
-    header.append(header_sections.build());
-    header.append(header_global.build());
-    if (has_header_global && !after_nodes.empty()) {
-        header.new_lines(2);
-    }
-    if (settings_store.namespace_name[settings].has_value()) {
-        if (!after_nodes.empty()) {
-            header.add(ir.namespace_node(*settings_store.namespace_name[settings],
-                                         std::move(after_nodes)));
-        }
-    } else {
-        header.append(std::move(after_nodes));
-    }
-    auto header_tail_nodes{header_tail.build()};
-    if (!header_tail_nodes.empty()) {
-        if (tail_namespace.has_value() && !tail_namespace->empty()) {
-            header.add(
-                ir.namespace_node(ir.strings.intern(*tail_namespace), std::move(header_tail_nodes)),
-                2);
         } else {
-            header.append(std::move(header_tail_nodes));
+            source.append(std::move(source_nodes));
         }
-    }
-    auto internal_nodes{source_global.build()};
-    if (!internal_nodes.empty()) {
-        source.add(ir.namespace_node(ir.strings.intern(""), std::move(internal_nodes)), 2);
-    }
-    if (settings_store.namespace_name[settings].has_value()) {
-        if (!source_nodes.empty()) {
-            source.add(ir.namespace_node(*settings_store.namespace_name[settings],
-                                         std::move(source_nodes)));
+        auto source_tail_nodes{source_tail.build()};
+        if (!source_tail_nodes.empty()) {
+            if (tail_namespace.has_value() && !tail_namespace->empty()) {
+                source.add(namespace_node(ir_.strings.intern(*tail_namespace),
+                                          std::move(source_tail_nodes)),
+                           2);
+            } else {
+                source.append(std::move(source_tail_nodes));
+            }
         }
-    } else {
-        source.append(std::move(source_nodes));
-    }
-    auto source_tail_nodes{source_tail.build()};
-    if (!source_tail_nodes.empty()) {
-        if (tail_namespace.has_value() && !tail_namespace->empty()) {
-            source.add(
-                ir.namespace_node(ir.strings.intern(*tail_namespace), std::move(source_tail_nodes)),
-                2);
-        } else {
-            source.append(std::move(source_tail_nodes));
+        auto const include_order{ctx.declarations.items(settings_store.include_order[settings])};
+        auto const header_file{ir_.files.append(settings_store.header[settings], header.build())};
+        auto const header_row{ir_.files.index(header_file)};
+        ir_.files.flags[header_row].set_clang_format_off(!format_generated);
+        ir_.files.flags[header_row].set_format_generated(format_generated);
+        ir_.files.set_include_order(header_file, include_order);
+        CppFileId source_file;
+        if (auto const path{settings_store.source[settings]}) {
+            source_file = ir_.files.append(*path, source.build());
+            auto const source_row{ir_.files.index(source_file)};
+            ir_.files.flags[source_row].set_pragma_once(false);
+            ir_.files.flags[source_row].set_clang_format_off(!format_generated);
+            ir_.files.flags[source_row].set_format_generated(format_generated);
+            ir_.files.set_include_order(source_file, include_order);
         }
-    }
-    auto const include_order{ctx.declarations.items(settings_store.include_order[settings])};
-    auto const header_file{ir.files.append(settings_store.header[settings], header.build())};
-    auto const header_row{ir.files.index(header_file)};
-    ir.files.flags[header_row].set_clang_format_off(!format_generated);
-    ir.files.flags[header_row].set_format_generated(format_generated);
-    ir.files.set_include_order(header_file, include_order);
-    CppFileId source_file;
-    if (auto const path{settings_store.source[settings]}) {
-        source_file = ir.files.append(*path, source.build());
-        auto const source_row{ir.files.index(source_file)};
-        ir.files.flags[source_row].set_pragma_once(false);
-        ir.files.flags[source_row].set_clang_format_off(!format_generated);
-        ir.files.flags[source_row].set_format_generated(format_generated);
-        ir.files.set_include_order(source_file, include_order);
-    }
-    auto const result{ir.modules.append(settings_store.name[settings], header_file, source_file)};
+        auto const result{
+            ir_.modules.append(settings_store.name[settings], header_file, source_file)};
 
-    auto reader_nodes{reader_declarations.build()};
-    if (!reader_nodes.empty()) {
-        NodeListBuilder reader{ir};
-        reader.add(
-            ir.include(ir.strings.intern(source_include(ctx, settings)), IncludeStyle::quoted));
-        reader.add(ir.include(ir.strings.intern("ioj/s7/field_reader.h"), IncludeStyle::system));
-        reader.add(ir.include_dependencies());
-        for (auto const include : reader_includes) {
-            reader.add(ir.include(include, IncludeStyle::quoted));
+        auto reader_nodes{reader_declarations.build()};
+        if (!reader_nodes.empty()) {
+            NodeListBuilder reader{ir_};
+            reader.add(
+                include(ir_.strings.intern(source_include(ctx, settings)), IncludeStyle::quoted));
+            reader.add(include(ir_.strings.intern("ioj/s7/field_reader.h"), IncludeStyle::system));
+            reader.add(include_dependencies());
+            for (auto const include_value : reader_includes) {
+                reader.add(include(include_value, IncludeStyle::quoted));
+            }
+            reader.new_lines(2);
+            reader.add(namespace_node(ir_.strings.intern("ioj::s7"), reader_nodes));
+            auto const reader_path{reader_header_path(ctx.text(settings_store.header[settings]))};
+            auto const file{ir_.files.append(ir_.strings.intern(reader_path), reader.build())};
+            ir_.files.flags[ir_.files.index(file)].set_format_generated(true);
+            additional.push_back(ir_.modules.append(
+                ir_.strings.intern(ctx.text(settings_store.name[settings]) + "Reader"), file, {}));
         }
-        reader.new_lines(2);
-        reader.add(ir.namespace_node(ir.strings.intern("ioj::s7"), reader_nodes));
-        auto const reader_path{reader_header_path(ctx.text(settings_store.header[settings]))};
-        auto const file{ir.files.append(ir.strings.intern(reader_path), reader.build())};
-        ir.files.flags[ir.files.index(file)].set_format_generated(true);
-        additional.push_back(ir.modules.append(
-            ir.strings.intern(ctx.text(settings_store.name[settings]) + "Reader"), file, {}));
-    }
 
-    std::vector<ModuleId> modules;
-    modules.reserve(additional.size() + 1);
-    modules.push_back(result);
-    modules.insert(modules.end(), additional.begin(), additional.end());
-    return modules;
+        std::vector<ModuleId> modules;
+        modules.reserve(additional.size() + 1);
+        modules.push_back(result);
+        modules.insert(modules.end(), additional.begin(), additional.end());
+        return modules;
+    }
+};
+
+} // namespace
+
+auto assemble_module(LoweringContext& ctx,
+                     ModuleSettingsId settings,
+                     std::span<DeclarationEmission> emissions) -> std::vector<ModuleId> {
+    return ModuleAssembler{ctx.ir}.assemble_module(ctx, settings, emissions);
 }
 
 } // namespace lispb::codegen::detail

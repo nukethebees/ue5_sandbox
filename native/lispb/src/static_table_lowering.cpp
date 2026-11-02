@@ -3,7 +3,7 @@
 #include "lowering_context.h"
 #include "lowering_utils.h"
 
-#include <codegen/ast/cpp_ir.h>
+#include <codegen/ast/cpp_ir_builder.h>
 #include <codegen/ast/cpp_types.h>
 #include <codegen/ast/function_receiver.h>
 #include <codegen/ast/indices.h>
@@ -25,105 +25,110 @@
 namespace lispb::codegen::detail {
 namespace {
 
-auto static_array_type(CppIR& ir, CppTypeId element_type) -> CppTypeId {
-    return ir.types.template_type(
-        ir.types.named("TStaticArray",
-                       {ir.types.dependency("TStaticArray", "Containers/StaticArray.h")}),
-        {element_type, ir.types.named("num_rows")});
-}
-
-auto group_getter(LoweringContext& ctx, StaticTableGroupId group) -> NodeId {
-    auto& ir{ctx.ir};
-    auto const& groups{ctx.declarations.static_table_groups};
-    auto const row{groups.index(group)};
-    auto const result_type{ctx.resolve(groups.type[row])};
-    std::vector<Expr> arguments;
-    arguments.reserve(groups.columns[row].size());
-    for (auto const column : ctx.declarations.items(groups.columns[row])) {
-        arguments.push_back(ir.subscript(ir.named(column), ir.named("index")));
+class StaticTableLowering : public CppIRBuilder {
+  public:
+    explicit StaticTableLowering(CppIR& ir)
+        : CppIRBuilder{ir} {}
+    auto lower_static_table(LoweringContext& ctx, DeclarationHandle schema) -> DeclarationEmission {
+        return {.header = {table_node(ctx, schema)}};
     }
-
-    auto const created_function{ir.function("get_" + ctx.text(groups.name[row]), "auto")};
-    ir.set_function_parameters(
-        created_function,
-        {ir.parameter(
-            ir.types.intern("int32 const", {ir.types.dependency("int32 const", "CoreMinimal.h")}),
-            "index")});
-    ir.set_function_body(created_function, {ir.return_stmt(ir.init_list(arguments, result_type))});
-    ir.set_function_return_type(created_function, result_type, ReturnSyntax::trailing);
-    ir.set_function_receiver(created_function, FunctionReceiver::const_);
-    ir.function_flags(created_function).set_is_inline(true);
-    ir.function_flags(created_function).set_define_in_header(true);
-    return ir.header_function(created_function);
-}
-
-auto table_node(LoweringContext& ctx, DeclarationHandle table) -> NodeId {
-    auto& ir{ctx.ir};
-    auto const& tables{ctx.declarations.static_tables};
-    auto const& column_schemas{ctx.declarations.static_table_columns};
-    auto const& row_schemas{ctx.declarations.static_table_rows};
-    auto const table_row{tables.index(table)};
-    auto const rows{ctx.declarations.items(tables.rows[table_row])};
-    auto const row_count{rows.size()};
-    auto const columns{ctx.declarations.items(tables.columns[table_row])};
-    auto const int32_type{
-        ir.types.intern("int32", {ir.types.dependency("int32", "CoreMinimal.h")})};
-    NodeListBuilder children{ir};
-    children.add(ir.constexpr_member(int32_type,
-                                     ir.strings.intern("num_rows"),
-                                     ir.literal(std::to_string(row_count))),
-                 2);
-
-    for (std::size_t index{0}; index < row_count; ++index) {
-        auto const name{ctx.text(row_schemas.name[row_schemas.index(rows[index])])};
-        children.add(ir.constexpr_member(int32_type,
-                                         ir.strings.intern(name + "_index"),
-                                         ir.literal(std::to_string(index))),
-                     index + 1 < row_count ? 1 : 2);
+  private:
+    auto static_array_type(CppTypeId element_type) -> CppTypeId {
+        return ir_.types.template_type(
+            ir_.types.named("TStaticArray",
+                            {ir_.types.dependency("TStaticArray", "Containers/StaticArray.h")}),
+            {element_type, ir_.types.named("num_rows")});
     }
+    auto group_getter(LoweringContext& ctx, StaticTableGroupId group) -> NodeId {
+        auto const& groups{ctx.declarations.static_table_groups};
+        auto const row{groups.index(group)};
+        auto const result_type{ctx.resolve(groups.type[row])};
+        std::vector<Expr> arguments;
+        arguments.reserve(groups.columns[row].size());
+        for (auto const column : ctx.declarations.items(groups.columns[row])) {
+            arguments.push_back(subscript(named(column), named("index")));
+        }
 
-    auto const num{ir.function("num", "auto")};
-    ir.set_function_body(num, {ir.return_stmt(ir.named("num_rows"))});
-    ir.set_function_return_type(num, int32_type, ReturnSyntax::trailing);
-    ir.set_function_noexcept(num);
-    ir.set_function_receiver(num, FunctionReceiver::static_);
-    auto& flags{ir.function_flags(num)};
-    flags.set_is_constexpr(true);
-    flags.set_is_inline(true);
-    flags.set_define_in_header(true);
-    children.add(ir.header_function(num), 2);
-
-    std::vector<std::string> column_names;
-    column_names.reserve(columns.size());
-    for (auto const column : columns) {
-        column_names.push_back(ctx.text(column_schemas.name[column_schemas.index(column)]));
+        auto const created_function{function("get_" + ctx.text(groups.name[row]), "auto")};
+        set_function_parameters(
+            created_function,
+            {parameter(ir_.types.intern("int32 const",
+                                        {ir_.types.dependency("int32 const", "CoreMinimal.h")}),
+                       "index")});
+        set_function_body(created_function, {return_stmt(init_list(arguments, result_type))});
+        set_function_return_type(created_function, result_type, ReturnSyntax::trailing);
+        set_function_receiver(created_function, FunctionReceiver::const_);
+        function_flags(created_function).set_is_inline(true);
+        function_flags(created_function).set_define_in_header(true);
+        return header_function(created_function);
     }
-    children.add(column_apply_arrays_function(ir, column_names), 2)
-        .add(column_apply_array_pairs_function(ir, column_names), 2);
+    auto table_node(LoweringContext& ctx, DeclarationHandle table) -> NodeId {
+        auto const& tables{ctx.declarations.static_tables};
+        auto const& column_schemas{ctx.declarations.static_table_columns};
+        auto const& row_schemas{ctx.declarations.static_table_rows};
+        auto const table_row{tables.index(table)};
+        auto const rows{ctx.declarations.items(tables.rows[table_row])};
+        auto const row_count{rows.size()};
+        auto const columns{ctx.declarations.items(tables.columns[table_row])};
+        auto const int32_type{
+            ir_.types.intern("int32", {ir_.types.dependency("int32", "CoreMinimal.h")})};
+        NodeListBuilder children{ir_};
+        children.add(constexpr_member(int32_type,
+                                      ir_.strings.intern("num_rows"),
+                                      literal(std::to_string(row_count))),
+                     2);
 
-    for (auto const group : ctx.declarations.items(tables.groups[table_row])) {
-        children.add(group_getter(ctx, group), 2);
+        for (std::size_t index{0}; index < row_count; ++index) {
+            auto const name{ctx.text(row_schemas.name[row_schemas.index(rows[index])])};
+            children.add(constexpr_member(int32_type,
+                                          ir_.strings.intern(name + "_index"),
+                                          literal(std::to_string(index))),
+                         index + 1 < row_count ? 1 : 2);
+        }
+
+        auto const num{function("num", "auto")};
+        set_function_body(num, {return_stmt(named("num_rows"))});
+        set_function_return_type(num, int32_type, ReturnSyntax::trailing);
+        set_function_noexcept(num);
+        set_function_receiver(num, FunctionReceiver::static_);
+        auto& flags{function_flags(num)};
+        flags.set_is_constexpr(true);
+        flags.set_is_inline(true);
+        flags.set_define_in_header(true);
+        children.add(header_function(num), 2);
+
+        std::vector<std::string> column_names;
+        column_names.reserve(columns.size());
+        for (auto const column : columns) {
+            column_names.push_back(ctx.text(column_schemas.name[column_schemas.index(column)]));
+        }
+        children.add(column_apply_arrays_function(ir_, column_names), 2)
+            .add(column_apply_array_pairs_function(ir_, column_names), 2);
+
+        for (auto const group : ctx.declarations.items(tables.groups[table_row])) {
+            children.add(group_getter(ctx, group), 2);
+        }
+
+        for (auto const column : columns) {
+            auto const column_row{column_schemas.index(column)};
+            children.add(
+                instance_member(static_array_type(ctx.resolve(column_schemas.type[column_row])),
+                                column_schemas.name[column_row],
+                                init_list({})),
+                1);
+        }
+
+        auto const created_record{
+            record(tables.name[table_row], children.build(), RecordKind::struct_)};
+        set_record_export_specifier(created_record, tables.export_specifier[table_row]);
+        return created_record;
     }
-
-    for (auto const column : columns) {
-        auto const column_row{column_schemas.index(column)};
-        children.add(
-            ir.instance_member(static_array_type(ir, ctx.resolve(column_schemas.type[column_row])),
-                               column_schemas.name[column_row],
-                               ir.init_list({})),
-            1);
-    }
-
-    auto const created_record{
-        ir.record(tables.name[table_row], children.build(), RecordKind::struct_)};
-    ir.set_record_export_specifier(created_record, tables.export_specifier[table_row]);
-    return created_record;
-}
+};
 
 } // namespace
 
 auto lower_static_table(LoweringContext& ctx, DeclarationHandle schema) -> DeclarationEmission {
-    return {.header = {table_node(ctx, schema)}};
+    return StaticTableLowering{ctx.ir}.lower_static_table(ctx, schema);
 }
 
 } // namespace lispb::codegen::detail
