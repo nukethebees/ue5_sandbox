@@ -181,10 +181,6 @@ struct Sim {
     void resolve_damage_events(ResolutionInputs const inputs);
 
     /* **************************************** */
-    // Identity and accounting
-    /* **************************************** */
-
-    /* **************************************** */
     // Movement
     /* **************************************** */
     void update_body_orientation(float dt, PlayerSimulationState& state);

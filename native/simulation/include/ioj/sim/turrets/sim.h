@@ -52,9 +52,6 @@ struct Sim {
     /* **************************************** */
     auto num_instances() const noexcept -> std::uint32_t;
 
-    /* **************************************** */
-    // Checks
-    /* **************************************** */
   private:
     /* **************************************** */
     // Sim phases
@@ -75,10 +72,6 @@ struct Sim {
     /* **************************************** */
     auto register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data, SpawnContext context)
         -> std::vector<EntityId>;
-
-    /* **************************************** */
-    // Entity data
-    /* **************************************** */
 
     /* **************************************** */
     // Searching
@@ -102,7 +95,6 @@ struct Sim {
     void handle_dead_entities(ResolutionCommitInputs const inputs);
 
     friend class PhaseInterface;
-
     friend class SpawnInterface;
 
     TurretSimConfig config{};

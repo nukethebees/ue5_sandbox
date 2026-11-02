@@ -42,9 +42,6 @@ struct Sim {
     /* **************************************** */
     auto num_instances() const noexcept -> std::uint32_t;
 
-    /* **************************************** */
-    // Checks
-    /* **************************************** */
   private:
     /* **************************************** */
     // Sim phases
@@ -66,17 +63,12 @@ struct Sim {
                          SpawnContext context) -> std::span<EntityId const>;
 
     /* **************************************** */
-    // Movement
-    /* **************************************** */
-
-    /* **************************************** */
     // Firing
     /* **************************************** */
     void fire_lasers(ThinkingInputs const inputs);
 
     friend class PhaseInterface;
     friend class SpawnInterface;
-
     friend struct SpinnerSpawnTestAccess;
 
     float planned_yaw_delta_{};

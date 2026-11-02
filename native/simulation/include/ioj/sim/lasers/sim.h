@@ -76,8 +76,7 @@ struct Sim {
     // Buffer cleanup
     /* **************************************** */
     void clear_spawn_buffers();
-    // Dependencies and state
-    /* **************************************** */
+
     friend class PhaseInterface;
 
     LaserSimConfig config{};

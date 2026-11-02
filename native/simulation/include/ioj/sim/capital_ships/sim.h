@@ -72,7 +72,6 @@ struct Sim {
     void handle_dead_entities(ResolutionCommitInputs const inputs);
 
     friend class PhaseInterface;
-
     friend class SpawnInterface;
 
     settings::PositiveHealth max_health_{Health{5000}};
