@@ -6,6 +6,7 @@
 #include <codegen/ast/indices.h>
 #include <codegen/ast/ir/range.h>
 #include <codegen/ast/parameter_passing.h>
+#include <codegen/ast/standard_types.h>
 #include <codegen/ast/type_operation.h>
 #include <lispb/indices.h>
 
@@ -107,6 +108,7 @@ class CppTypes {
     auto dependency_header(TypeDependencyId dependency) const -> std::optional<std::string_view>;
   private:
     friend class CppRenderer;
+    void initialise_standard_types();
     auto append(StringId spelling,
                 std::span<TypeDependencyId const> dependencies,
                 ParameterPassing passing,
@@ -138,6 +140,9 @@ class CppTypes {
     std::vector<StringId> dependency_headers_;
     std::vector<std::uint8_t> dependency_has_headers_;
     std::unordered_map<std::uint64_t, TypeDependencyId> dependency_index_;
+
+  public:
+    StandardTypes std;
 };
 
 } // namespace lispb::codegen

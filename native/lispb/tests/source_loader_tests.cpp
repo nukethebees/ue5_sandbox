@@ -92,12 +92,13 @@ namespace {
 
 TEST(CompilerStorage, RebuildsAfterFullResetWithoutRetainingSourceText) {
     CompilerStorage storage;
+    auto const initial_bytes{storage.strings.byte_size()};
     constexpr std::string_view source{
         "(module game :header \"Game.h\" (record Value (member count std::uint32_t)))"};
     std::optional<std::size_t> populated_bytes;
     for (int iteration{}; iteration < 3; ++iteration) {
         storage.reset();
-        EXPECT_EQ(storage.strings.byte_size(), 0U);
+        EXPECT_EQ(storage.strings.byte_size(), initial_bytes);
         EXPECT_EQ(storage.diagnostics.size(), 0U);
 
         auto const file{storage.sources.add("reset.lispb", source)};

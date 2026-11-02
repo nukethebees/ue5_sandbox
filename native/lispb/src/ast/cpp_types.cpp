@@ -70,7 +70,56 @@ auto default_parameter_passing(std::string_view const spelling) -> ParameterPass
 } // namespace cpp_type_detail
 
 CppTypes::CppTypes(Strings& strings)
-    : strings_{strings} {}
+    : strings_{strings} {
+    initialise_standard_types();
+}
+void CppTypes::initialise_standard_types() {
+    auto library = [&](std::string_view name, std::string_view header) {
+        return named(name, {dependency(name, header)});
+    };
+    std = {
+        .u8 = library("std::uint8_t", "cstdint"),
+        .u16 = library("std::uint16_t", "cstdint"),
+        .u32 = library("std::uint32_t", "cstdint"),
+        .u64 = library("std::uint64_t", "cstdint"),
+        .i8 = library("std::int8_t", "cstdint"),
+        .i16 = library("std::int16_t", "cstdint"),
+        .i32 = library("std::int32_t", "cstdint"),
+        .i64 = library("std::int64_t", "cstdint"),
+        .f32 = intern("float"),
+        .f64 = intern("double"),
+        .bool_ = intern("bool"),
+        .void_ = intern("void"),
+        .char_ = intern("char"),
+        .unsigned_char = intern("unsigned char"),
+        .int_ = intern("int"),
+        .size_t = library("std::size_t", "cstddef"),
+        .ptrdiff_t = library("std::ptrdiff_t", "cstddef"),
+        .uintptr_t = library("std::uintptr_t", "cstdint"),
+        .intptr_t = library("std::intptr_t", "cstdint"),
+        .byte = library("std::byte", "cstddef"),
+        .string = library("std::string", "string"),
+        .string_view = library("std::string_view", "string_view"),
+        .array = library("std::array", "array"),
+        .span = library("std::span", "span"),
+        .vector = library("std::vector", "vector"),
+        .optional = library("std::optional", "optional"),
+        .unexpected = library("std::unexpected", "expected"),
+        .variant = library("std::variant", "variant"),
+        .tuple = library("std::tuple", "tuple"),
+        .numeric_limits = library("std::numeric_limits", "limits"),
+        .conditional_t = library("std::conditional_t", "type_traits"),
+        .remove_cvref_t = library("std::remove_cvref_t", "type_traits"),
+        .remove_const_t = library("std::remove_const_t", "type_traits"),
+        .same_as = library("std::same_as", "concepts"),
+        .is_const_v = library("std::is_const_v", "type_traits"),
+        .is_constructible_v = library("std::is_constructible_v", "type_traits"),
+        .is_same_v = library("std::is_same_v", "type_traits"),
+        .is_floating_point_v = library("std::is_floating_point_v", "type_traits"),
+        .is_trivially_copyable_v = library("std::is_trivially_copyable_v", "type_traits"),
+        .pmr = {.memory_resource = library("std::pmr::memory_resource", "memory_resource")},
+    };
+}
 auto CppTypes::strings() const -> Strings& {
     return strings_;
 }
@@ -94,6 +143,7 @@ void CppTypes::clear() {
     dependency_headers_.clear();
     dependency_has_headers_.clear();
     dependency_index_.clear();
+    initialise_standard_types();
 }
 auto CppTypes::append(StringId const spelling,
                       std::span<TypeDependencyId const> const dependencies,

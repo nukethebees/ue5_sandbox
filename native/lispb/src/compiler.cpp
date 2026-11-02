@@ -45,10 +45,10 @@ void Compiler::reset_compilation() {
     manifest_.types.clear();
     storage_.registered_types.clear();
     storage_.declarations.clear();
-    storage_.cpp_types.clear();
     storage_.syntax.clear();
     storage_.sources.clear_expansions();
     storage_.strings.reset_temporary();
+    storage_.cpp_types.clear();
     storage_.sources.refresh();
 }
 
