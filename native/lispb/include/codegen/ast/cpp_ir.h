@@ -491,7 +491,7 @@ class CppIR {
     auto boolean_literal(bool value) -> Expr;
     auto nullptr_literal() -> Expr;
     template <ir::NumericLiteralValue Value>
-    auto numeric_literal(Value value) -> Expr;
+    auto numeric_literal(Value number) -> Expr;
     auto merge_adjacent_namespaces(std::vector<NodeId>& values) -> bool;
     void collect_dependencies(TemplateId declaration, std::vector<TypeDependencyId>& result) const;
     ir::TypeTemplateParameters type_template_parameters_;

@@ -52,7 +52,7 @@ class CppRenderer {
     auto alias_scope(SymbolBinding alias) -> EnvironmentId;
     void append_name(std::string& output, std::span<StringId const> components, NameOrigin origin);
     auto declaration_name(Syntax syntax) -> StringId;
-    void declare_name(EnvironmentId environment, Syntax name, CppDeclarationId declaration);
+    void declare_name(EnvironmentId environment, Syntax syntax, CppDeclarationId declaration);
     void collect_environment(EnvironmentId environment,
                              std::span<NodeId const> children,
                              bool bindings_known = false);

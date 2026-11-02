@@ -449,13 +449,12 @@ auto soa_row_operations(LoweringContext& ctx,
                         CppTypeId base) -> CppTypeId {
     return SoaApiLowering{ctx.ir}.soa_row_operations(ctx, schema, receiver, type_name, base);
 }
-auto lower_soa_api(LoweringContext& parent_context,
+auto lower_soa_api(LoweringContext& ctx,
                    DeclarationHandle schema,
                    SoaReceiver const receiver,
                    std::string const& type_name,
                    CppTypeId base) -> LoweredSoa {
-    return SoaApiLowering{parent_context.ir}.lower_soa_api(
-        parent_context, schema, receiver, type_name, base);
+    return SoaApiLowering{ctx.ir}.lower_soa_api(ctx, schema, receiver, type_name, base);
 }
 
 } // namespace lispb::codegen::detail

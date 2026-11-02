@@ -375,7 +375,7 @@ class EnumLowering : public CppIRBuilder {
                 named_type("TCHAR", {dependency("TCHAR", "CoreMinimal.h")}), "", " const*"),
             .return_syntax = ReturnSyntax::trailing,
             .parameters = {parameter(decorate_type(named_type(enum_name), "", " const"), "value")},
-            .implementation = {.kind = FunctionImplementationKind::body, .body = body}};
+            .implementation = {.kind = FunctionImplementationKind::body, .body = std::move(body)}};
         return add_function(function);
     }
     auto packed_enum_strings(LoweringContext& ctx,

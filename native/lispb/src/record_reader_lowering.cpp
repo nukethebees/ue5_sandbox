@@ -20,6 +20,7 @@
 #include <limits>
 #include <set>
 #include <stdexcept>
+#include <utility>
 
 namespace lispb::codegen::detail {
 auto reader_header_path(std::string_view const header) -> std::string {
@@ -84,7 +85,8 @@ class RecordReaderLowering : public CppIRBuilder {
                 .name = this->name(method),
                 .return_type = return_type,
                 .parameters = {parameters.begin(), parameters.end()},
-                .implementation = {.kind = FunctionImplementationKind::body, .body = body},
+                .implementation = {.kind = FunctionImplementationKind::body,
+                                   .body = std::move(body)},
                 .receiver = FunctionReceiver::static_,
                 .flags = {.define_in_header = true}};
             decls.add(header_function(add_function(function)), 2);

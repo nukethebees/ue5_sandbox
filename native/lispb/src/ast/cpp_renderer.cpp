@@ -102,7 +102,7 @@ void append_numeric_literal(std::string& output, Value const value) {
     output += spelling;
     if constexpr (std::same_as<Value, unsigned int>) {
         output += 'U';
-    } else if constexpr (std::same_as<Value, long>) {
+    } else if constexpr (std::same_as<Value, long> || std::same_as<Value, long double>) {
         output += 'L';
     } else if constexpr (std::same_as<Value, unsigned long>) {
         output += "UL";
@@ -112,8 +112,6 @@ void append_numeric_literal(std::string& output, Value const value) {
         output += "ULL";
     } else if constexpr (std::same_as<Value, float>) {
         output += 'f';
-    } else if constexpr (std::same_as<Value, long double>) {
-        output += 'L';
     }
 }
 
@@ -295,7 +293,9 @@ void CppRenderer::append_type(std::string& output, CppTypeId const type, RenderC
     if (shape.form == CppTypeForm::closure) {
         throw std::logic_error{
             "An unnamed closure type must be named through its owning declaration"};
-    } else if (shape.form == CppTypeForm::raw) {
+    }
+
+    if (shape.form == CppTypeForm::raw) {
         output += ir_.types.spelling(type);
     } else if (shape.form == CppTypeForm::named) {
         std::vector<StringId> components;
@@ -421,14 +421,14 @@ void CppRenderer::append_name(std::string& output,
 
 /* **************************************** */
 // Environments, expressions and nodes
-auto CppRenderer::declaration_name(Syntax expression) -> StringId {
-    while (expression.kind() == SyntaxKind::template_id) {
-        expression = ir_.template_id_exprs_.callee[expression.index()];
+auto CppRenderer::declaration_name(Syntax syntax) -> StringId {
+    while (syntax.kind() == SyntaxKind::template_id) {
+        syntax = ir_.template_id_exprs_.callee[syntax.index()];
     }
-    if (expression.kind() != SyntaxKind::name) {
+    if (syntax.kind() != SyntaxKind::name) {
         return {};
     }
-    auto const text{ir_.strings.view(ir_.named_exprs_.spelling[expression.index()])};
+    auto const text{ir_.strings.view(ir_.named_exprs_.spelling[syntax.index()])};
     return ir_.strings.intern(text.substr(0, text.find_first_of("<:")));
 }
 void CppRenderer::declare_name(EnvironmentId environment,
