@@ -91,6 +91,32 @@ auto untemplated(std::string_view name) -> std::string {
 }
 
 namespace expr_detail {
+template <typename Value>
+void append_numeric_literal(std::string& output, Value const value) {
+    auto spelling{std::format("{}", value)};
+    if constexpr (std::floating_point<Value>) {
+        if (spelling.find_first_of(".eE") == std::string::npos) {
+            spelling += ".0";
+        }
+    }
+    output += spelling;
+    if constexpr (std::same_as<Value, unsigned int>) {
+        output += 'U';
+    } else if constexpr (std::same_as<Value, long>) {
+        output += 'L';
+    } else if constexpr (std::same_as<Value, unsigned long>) {
+        output += "UL";
+    } else if constexpr (std::same_as<Value, long long>) {
+        output += "LL";
+    } else if constexpr (std::same_as<Value, unsigned long long>) {
+        output += "ULL";
+    } else if constexpr (std::same_as<Value, float>) {
+        output += 'f';
+    } else if constexpr (std::same_as<Value, long double>) {
+        output += 'L';
+    }
+}
+
 auto binary_precedence(BinaryOperator operation) -> int {
     switch (operation) {
         case BinaryOperator::logical_or:
@@ -675,33 +701,37 @@ void CppRenderer::append_expr(
         case ExprKind::boolean_literal:
             output += index != 0 ? "true" : "false";
             break;
-        case ExprKind::numeric_literal:
-            std::visit(
-                [&]<typename Value>(Value const value) {
-                    auto spelling{std::format("{}", value)};
-                    if constexpr (std::floating_point<Value>) {
-                        if (spelling.find_first_of(".eE") == std::string::npos) {
-                            spelling += ".0";
-                        }
-                    }
-                    output += spelling;
-                    if constexpr (std::same_as<Value, unsigned int>) {
-                        output += 'U';
-                    } else if constexpr (std::same_as<Value, long>) {
-                        output += 'L';
-                    } else if constexpr (std::same_as<Value, unsigned long>) {
-                        output += "UL";
-                    } else if constexpr (std::same_as<Value, long long>) {
-                        output += "LL";
-                    } else if constexpr (std::same_as<Value, unsigned long long>) {
-                        output += "ULL";
-                    } else if constexpr (std::same_as<Value, float>) {
-                        output += 'f';
-                    } else if constexpr (std::same_as<Value, long double>) {
-                        output += 'L';
-                    }
-                },
-                ir_.numeric_literal_exprs_.value[index]);
+        case ExprKind::int_literal:
+            expr_detail::append_numeric_literal(output, ir_.numeric_literal_exprs_.ints[index]);
+            break;
+        case ExprKind::unsigned_int_literal:
+            expr_detail::append_numeric_literal(output,
+                                                ir_.numeric_literal_exprs_.unsigned_ints[index]);
+            break;
+        case ExprKind::long_literal:
+            expr_detail::append_numeric_literal(output, ir_.numeric_literal_exprs_.longs[index]);
+            break;
+        case ExprKind::unsigned_long_literal:
+            expr_detail::append_numeric_literal(output,
+                                                ir_.numeric_literal_exprs_.unsigned_longs[index]);
+            break;
+        case ExprKind::long_long_literal:
+            expr_detail::append_numeric_literal(output,
+                                                ir_.numeric_literal_exprs_.long_longs[index]);
+            break;
+        case ExprKind::unsigned_long_long_literal:
+            expr_detail::append_numeric_literal(
+                output, ir_.numeric_literal_exprs_.unsigned_long_longs[index]);
+            break;
+        case ExprKind::float_literal:
+            expr_detail::append_numeric_literal(output, ir_.numeric_literal_exprs_.floats[index]);
+            break;
+        case ExprKind::double_literal:
+            expr_detail::append_numeric_literal(output, ir_.numeric_literal_exprs_.doubles[index]);
+            break;
+        case ExprKind::long_double_literal:
+            expr_detail::append_numeric_literal(output,
+                                                ir_.numeric_literal_exprs_.long_doubles[index]);
             break;
         case ExprKind::string_literal:
             output += '"';

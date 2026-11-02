@@ -295,10 +295,8 @@ class CppIR {
             return boolean_literal(value);
         } else if constexpr (std::same_as<Value, StringId>) {
             return spelled_literal(value);
-        } else if constexpr (std::constructible_from<ir::NumericLiteral,
-                                                     std::in_place_type_t<Value>,
-                                                     Value>) {
-            return numeric_literal(ir::NumericLiteral{std::in_place_type<Value>, value});
+        } else if constexpr (ir::NumericLiteralValue<Value>) {
+            return numeric_literal(value);
         } else if constexpr (std::convertible_to<decltype(value), std::string_view>) {
             return spelled_literal(std::string_view{std::forward<decltype(value)>(value)});
         } else {
@@ -449,7 +447,8 @@ class CppIR {
   private:
     friend class CppRenderer;
     auto boolean_literal(bool value) -> Expr;
-    auto numeric_literal(ir::NumericLiteral value) -> Expr;
+    template <ir::NumericLiteralValue Value>
+    auto numeric_literal(Value value) -> Expr;
     auto spelled_literal(std::string_view value) -> Expr;
     auto spelled_literal(StringId value) -> Expr;
     auto merge_adjacent_namespaces(std::vector<NodeId>& values) -> bool;
@@ -536,5 +535,19 @@ class CppIR {
     ir::FunctionBodies function_bodies_;
     std::vector<Expr> conditional_noexcept_;
 };
+
+extern template auto CppIR::numeric_literal(signed char) -> Expr;
+extern template auto CppIR::numeric_literal(unsigned char) -> Expr;
+extern template auto CppIR::numeric_literal(short) -> Expr;
+extern template auto CppIR::numeric_literal(unsigned short) -> Expr;
+extern template auto CppIR::numeric_literal(int) -> Expr;
+extern template auto CppIR::numeric_literal(unsigned int) -> Expr;
+extern template auto CppIR::numeric_literal(long) -> Expr;
+extern template auto CppIR::numeric_literal(unsigned long) -> Expr;
+extern template auto CppIR::numeric_literal(long long) -> Expr;
+extern template auto CppIR::numeric_literal(unsigned long long) -> Expr;
+extern template auto CppIR::numeric_literal(float) -> Expr;
+extern template auto CppIR::numeric_literal(double) -> Expr;
+extern template auto CppIR::numeric_literal(long double) -> Expr;
 
 } // namespace lispb::codegen

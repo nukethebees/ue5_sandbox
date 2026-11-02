@@ -672,7 +672,15 @@ void CppIR::clear() {
     clear(namespace_nodes_.name, namespace_nodes_.children);
     clear(named_exprs_.spelling, named_exprs_.dependencies);
     clear(literal_exprs_.spelling);
-    clear(numeric_literal_exprs_.value);
+    clear(numeric_literal_exprs_.ints,
+          numeric_literal_exprs_.unsigned_ints,
+          numeric_literal_exprs_.longs,
+          numeric_literal_exprs_.unsigned_longs,
+          numeric_literal_exprs_.long_longs,
+          numeric_literal_exprs_.unsigned_long_longs,
+          numeric_literal_exprs_.floats,
+          numeric_literal_exprs_.doubles,
+          numeric_literal_exprs_.long_doubles);
     clear(string_literal_exprs_);
     clear(call_exprs_.callee, call_exprs_.arguments);
     clear(member_exprs_.object, member_exprs_.member, member_exprs_.through_pointer);
@@ -769,55 +777,86 @@ auto CppIR::spelled_literal(std::string_view value) -> Expr {
 auto CppIR::boolean_literal(bool const value) -> Expr {
     return expr_detail::handle(ExprKind::boolean_literal, value);
 }
-auto CppIR::numeric_literal(ir::NumericLiteral value) -> Expr {
-    return std::visit(
-        [&]<typename Value>(Value const number) -> Expr {
-            if constexpr (std::same_as<Value, signed char>) {
-                return static_cast_expr(types.intern("signed char"),
-                                        literal(static_cast<int>(number)));
-            } else if constexpr (std::same_as<Value, unsigned char>) {
-                return static_cast_expr(types.std.unsigned_char,
-                                        literal(static_cast<unsigned int>(number)));
-            } else if constexpr (std::same_as<Value, short>) {
-                return static_cast_expr(types.intern("short"), literal(static_cast<int>(number)));
-            } else if constexpr (std::same_as<Value, unsigned short>) {
-                return static_cast_expr(types.intern("unsigned short"),
-                                        literal(static_cast<unsigned int>(number)));
-            } else {
-                if constexpr (std::floating_point<Value>) {
-                    if (!std::isfinite(number)) {
-                        auto const scalar{std::same_as<Value, float> ? types.std.f32
-                                          : std::same_as<Value, double>
-                                              ? types.std.f64
-                                              : types.intern("long double")};
-                        auto const limits{types.template_type(types.std.numeric_limits, {scalar})};
-                        auto const result{call(
-                            scope_member(limits, std::isnan(number) ? "quiet_NaN" : "infinity"))};
-                        return std::signbit(number) ? unary(UnaryOperator::negate, result) : result;
-                    }
-                    if (std::signbit(number)) {
-                        return unary(UnaryOperator::negate, literal(-number));
-                    }
-                } else if constexpr (std::signed_integral<Value>) {
-                    if (number == std::numeric_limits<Value>::min()) {
-                        return parenthesized(
-                            binary(BinaryOperator::subtract,
-                                   unary(UnaryOperator::negate,
-                                         literal(std::numeric_limits<Value>::max())),
-                                   literal(1)));
-                    }
-                    if (number < 0) {
-                        return unary(UnaryOperator::negate, literal(-number));
-                    }
-                }
-                auto const result{expr_detail::handle(ExprKind::numeric_literal,
-                                                      numeric_literal_exprs_.value.size())};
-                numeric_literal_exprs_.value.push_back(value);
-                return result;
+template <ir::NumericLiteralValue Value>
+auto CppIR::numeric_literal(Value const number) -> Expr {
+    if constexpr (std::same_as<Value, signed char>) {
+        return static_cast_expr(types.intern("signed char"), literal(static_cast<int>(number)));
+    } else if constexpr (std::same_as<Value, unsigned char>) {
+        return static_cast_expr(types.std.unsigned_char,
+                                literal(static_cast<unsigned int>(number)));
+    } else if constexpr (std::same_as<Value, short>) {
+        return static_cast_expr(types.intern("short"), literal(static_cast<int>(number)));
+    } else if constexpr (std::same_as<Value, unsigned short>) {
+        return static_cast_expr(types.intern("unsigned short"),
+                                literal(static_cast<unsigned int>(number)));
+    } else {
+        if constexpr (std::floating_point<Value>) {
+            if (!std::isfinite(number)) {
+                auto const scalar{std::same_as<Value, float>    ? types.std.f32
+                                  : std::same_as<Value, double> ? types.std.f64
+                                                                : types.intern("long double")};
+                auto const limits{types.template_type(types.std.numeric_limits, {scalar})};
+                auto const result{
+                    call(scope_member(limits, std::isnan(number) ? "quiet_NaN" : "infinity"))};
+                return std::signbit(number) ? unary(UnaryOperator::negate, result) : result;
             }
-        },
-        value);
+            if (std::signbit(number)) {
+                return unary(UnaryOperator::negate, literal(-number));
+            }
+        } else if constexpr (std::signed_integral<Value>) {
+            if (number == std::numeric_limits<Value>::min()) {
+                return parenthesized(
+                    binary(BinaryOperator::subtract,
+                           unary(UnaryOperator::negate, literal(std::numeric_limits<Value>::max())),
+                           literal(1)));
+            }
+            if (number < 0) {
+                return unary(UnaryOperator::negate, literal(-number));
+            }
+        }
+
+        auto const store = [number](auto& values, ExprKind const kind) {
+            auto const result{expr_detail::handle(kind, values.size())};
+            values.push_back(number);
+            return result;
+        };
+        if constexpr (std::same_as<Value, int>) {
+            return store(numeric_literal_exprs_.ints, ExprKind::int_literal);
+        } else if constexpr (std::same_as<Value, unsigned int>) {
+            return store(numeric_literal_exprs_.unsigned_ints, ExprKind::unsigned_int_literal);
+        } else if constexpr (std::same_as<Value, long>) {
+            return store(numeric_literal_exprs_.longs, ExprKind::long_literal);
+        } else if constexpr (std::same_as<Value, unsigned long>) {
+            return store(numeric_literal_exprs_.unsigned_longs, ExprKind::unsigned_long_literal);
+        } else if constexpr (std::same_as<Value, long long>) {
+            return store(numeric_literal_exprs_.long_longs, ExprKind::long_long_literal);
+        } else if constexpr (std::same_as<Value, unsigned long long>) {
+            return store(numeric_literal_exprs_.unsigned_long_longs,
+                         ExprKind::unsigned_long_long_literal);
+        } else if constexpr (std::same_as<Value, float>) {
+            return store(numeric_literal_exprs_.floats, ExprKind::float_literal);
+        } else if constexpr (std::same_as<Value, double>) {
+            return store(numeric_literal_exprs_.doubles, ExprKind::double_literal);
+        } else if constexpr (std::same_as<Value, long double>) {
+            return store(numeric_literal_exprs_.long_doubles, ExprKind::long_double_literal);
+        }
+    }
 }
+
+template auto CppIR::numeric_literal(signed char) -> Expr;
+template auto CppIR::numeric_literal(unsigned char) -> Expr;
+template auto CppIR::numeric_literal(short) -> Expr;
+template auto CppIR::numeric_literal(unsigned short) -> Expr;
+template auto CppIR::numeric_literal(int) -> Expr;
+template auto CppIR::numeric_literal(unsigned int) -> Expr;
+template auto CppIR::numeric_literal(long) -> Expr;
+template auto CppIR::numeric_literal(unsigned long) -> Expr;
+template auto CppIR::numeric_literal(long long) -> Expr;
+template auto CppIR::numeric_literal(unsigned long long) -> Expr;
+template auto CppIR::numeric_literal(float) -> Expr;
+template auto CppIR::numeric_literal(double) -> Expr;
+template auto CppIR::numeric_literal(long double) -> Expr;
+
 auto CppIR::spelled_literal(StringId value) -> Expr {
     auto const result{expr_detail::handle(ExprKind::literal, literal_exprs_.spelling.size())};
     literal_exprs_.spelling.push_back(value);
@@ -1361,7 +1400,15 @@ void CppIR::collect_dependencies(Expr expr, std::vector<TypeDependencyId>& resul
             break;
         case ExprKind::literal:
         case ExprKind::boolean_literal:
-        case ExprKind::numeric_literal:
+        case ExprKind::int_literal:
+        case ExprKind::unsigned_int_literal:
+        case ExprKind::long_literal:
+        case ExprKind::unsigned_long_literal:
+        case ExprKind::long_long_literal:
+        case ExprKind::unsigned_long_long_literal:
+        case ExprKind::float_literal:
+        case ExprKind::double_literal:
+        case ExprKind::long_double_literal:
         case ExprKind::string_literal:
             break;
         case ExprKind::invalid:
