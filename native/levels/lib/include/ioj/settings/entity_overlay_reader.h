@@ -17,24 +17,25 @@ template <>
 struct TypeReader<settings::EntityOverlay> : RecordReader<settings::EntityOverlay> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "entity-overlay", field_names, ([&](Field selected, auto const& read) {
-                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+            context, "entity-overlay", field_names, [&result](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::enabled || field == Field::soft_target) {
                         read(member);
-                    } else if constexpr (field == Field::maximum_range ||
-                                         field == Field::bar_size_pixels ||
-                                         field == Field::screen_offset_pixels ||
-                                         field == Field::minimum_bar_scale ||
-                                         field == Field::maximum_bar_scale ||
-                                         field == Field::inset_pixels ||
-                                         field == Field::maximum_inset_height_ratio ||
-                                         field == Field::objective_frame_pixels ||
-                                         field == Field::objective_bar_height_scale ||
-                                         field == Field::screen_edge_padding_pixels) {
-                        read(member, ioj::s7::constraints::finite);
+                    }
+                    if constexpr (field == Field::maximum_range ||
+                                  field == Field::bar_size_pixels ||
+                                  field == Field::screen_offset_pixels ||
+                                  field == Field::minimum_bar_scale ||
+                                  field == Field::maximum_bar_scale ||
+                                  field == Field::inset_pixels ||
+                                  field == Field::maximum_inset_height_ratio ||
+                                  field == Field::objective_frame_pixels ||
+                                  field == Field::objective_bar_height_scale ||
+                                  field == Field::screen_edge_padding_pixels) {
+                        read(member, constraints::finite);
                     }
                 });
-            }));
+            });
     }
 
   private:

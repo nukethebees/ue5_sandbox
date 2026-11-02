@@ -15,10 +15,10 @@ template <>
 struct TypeReader<sim::HudSettings> : RecordReader<sim::HudSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "hud", field_names, ([&](Field selected, auto const& read) {
+            context, "hud", field_names, [&result](Field selected, auto const& read) {
                 value_type::visit_field(
-                    result, selected, [&]<Field field>(auto& member) { read(member); });
-            }));
+                    result, selected, [&read]<Field field>(auto& member) { read(member); });
+            });
     }
 
   private:

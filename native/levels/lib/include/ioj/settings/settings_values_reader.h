@@ -26,10 +26,10 @@ template <>
 struct TypeReader<settings::SettingsValues> : RecordReader<settings::SettingsValues> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "settings", field_names, ([&](Field selected, auto const& read) {
+            context, "settings", field_names, [&result](Field selected, auto const& read) {
                 value_type::visit_field(
-                    result, selected, [&]<Field field>(auto& member) { read(member); });
-            }));
+                    result, selected, [&read]<Field field>(auto& member) { read(member); });
+            });
     }
 
   private:

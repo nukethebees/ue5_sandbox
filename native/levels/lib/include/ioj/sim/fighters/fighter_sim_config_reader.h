@@ -17,8 +17,8 @@ template <>
 struct TypeReader<sim::FighterSimConfig> : RecordReader<sim::FighterSimConfig> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "fighters", field_names, ([&](Field selected, auto const& read) {
-                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+            context, "fighters", field_names, [&result](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::max_live_fighters ||
                                   field == Field::fire_dot_product_threshold ||
                                   field == Field::avoidance_clear_update_frequency ||
@@ -34,15 +34,16 @@ struct TypeReader<sim::FighterSimConfig> : RecordReader<sim::FighterSimConfig> {
                                   field == Field::laser || field == Field::health ||
                                   field == Field::attack_retry_cooldown) {
                         read(member);
-                    } else if constexpr (field == Field::speed ||
-                                         field == Field::turn_speed_unitless ||
-                                         field == Field::los_check_buffer) {
-                        read(member, ioj::s7::constraints::finite);
-                    } else if constexpr (field == Field::fire_point_distance) {
+                    }
+                    if constexpr (field == Field::fire_point_distance) {
                         std::unreachable();
                     }
+                    if constexpr (field == Field::speed || field == Field::turn_speed_unitless ||
+                                  field == Field::los_check_buffer) {
+                        read(member, constraints::finite);
+                    }
                 });
-            }));
+            });
     }
 
   private:

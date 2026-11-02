@@ -16,13 +16,13 @@ struct TypeReader<codegen_compile_fixture::UnsupportedReader>
     : RecordReader<codegen_compile_fixture::UnsupportedReader> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "unsupported", field_names, ([&](Field const field, auto const& read) {
+            context, "unsupported", field_names, [&result](Field const field, auto const& read) {
                 switch (field) {
                     case Field::target:
                         read(result.target);
                         break;
                 }
-            }));
+            });
     }
 
   private:

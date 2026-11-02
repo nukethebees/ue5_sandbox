@@ -23,19 +23,20 @@ struct TypeReader<levels::authoring::EntityInput> : RecordReader<levels::authori
             context,
             "entity",
             field_names,
-            ([&](Field selected, auto const& read) {
-                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+            [&result](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::id || field == Field::archetype ||
                                   field == Field::team || field == Field::position ||
                                   field == Field::rotation || field == Field::spawn_at ||
                                   field == Field::health || field == Field::laser_damage) {
                         read(member);
-                    } else if constexpr (field == Field::initial_spawn_delay ||
-                                         field == Field::spawn_cooldown) {
-                        read(member, ioj::s7::constraints::finite);
+                    }
+                    if constexpr (field == Field::initial_spawn_delay ||
+                                  field == Field::spawn_cooldown) {
+                        read(member, constraints::finite);
                     }
                 });
-            }),
+            },
             required);
     }
 
@@ -60,41 +61,42 @@ template <>
 struct TypeReader<levels::authoring::ObjectiveInput>
     : RecordReader<levels::authoring::ObjectiveInput> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field>(context,
-                             "objective",
-                             field_names,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::id:
-                                         read(result.id);
-                                         break;
-                                     case Field::title:
-                                         read(result.title);
-                                         break;
-                                     case Field::team:
-                                         read(result.team);
-                                         break;
-                                     case Field::wins_level:
-                                         read(result.wins_level);
-                                         break;
-                                     case Field::nodes:
-                                         read(result.nodes);
-                                         break;
-                                     case Field::pass:
-                                         read(result.pass);
-                                         break;
-                                     case Field::fail:
-                                         read(result.fail);
-                                         break;
-                                     case Field::expire:
-                                         read(result.expire);
-                                         break;
-                                     case Field::depends_on:
-                                         read(result.depends_on);
-                                         break;
-                                 }
-                             }),
-                             required);
+        decode_record<Field>(
+            context,
+            "objective",
+            field_names,
+            [&result](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::id:
+                        read(result.id);
+                        break;
+                    case Field::title:
+                        read(result.title);
+                        break;
+                    case Field::team:
+                        read(result.team);
+                        break;
+                    case Field::wins_level:
+                        read(result.wins_level);
+                        break;
+                    case Field::nodes:
+                        read(result.nodes);
+                        break;
+                    case Field::pass:
+                        read(result.pass);
+                        break;
+                    case Field::fail:
+                        read(result.fail);
+                        break;
+                    case Field::expire:
+                        read(result.expire);
+                        break;
+                    case Field::depends_on:
+                        read(result.depends_on);
+                        break;
+                }
+            },
+            required);
     }
 
   private:
@@ -119,17 +121,18 @@ struct TypeReader<levels::authoring::ObjectiveInput>
 template <>
 struct TypeReader<levels::authoring::MissionInput> : RecordReader<levels::authoring::MissionInput> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field>(context,
-                             "mission",
-                             field_names,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::objectives:
-                                         read(result.objectives);
-                                         break;
-                                 }
-                             }),
-                             required);
+        decode_record<Field>(
+            context,
+            "mission",
+            field_names,
+            [&result](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::objectives:
+                        read(result.objectives);
+                        break;
+                }
+            },
+            required);
     }
 
   private:
@@ -144,44 +147,45 @@ struct TypeReader<levels::authoring::MissionInput> : RecordReader<levels::author
 template <>
 struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authoring::LevelInput> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field>(context,
-                             "level",
-                             field_names,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::id:
-                                         read(result.id);
-                                         break;
-                                     case Field::title:
-                                         read(result.title);
-                                         break;
-                                     case Field::description:
-                                         read(result.description);
-                                         break;
-                                     case Field::par_time:
-                                         read(result.par_time, ioj::s7::constraints::finite);
-                                         break;
-                                     case Field::unlock:
-                                         read(result.unlock);
-                                         break;
-                                     case Field::player:
-                                         read(result.player);
-                                         break;
-                                     case Field::camera:
-                                         read(result.camera);
-                                         break;
-                                     case Field::settings:
-                                         read(result.settings);
-                                         break;
-                                     case Field::mission:
-                                         read(result.mission);
-                                         break;
-                                     case Field::entities:
-                                         read(result.entities);
-                                         break;
-                                 }
-                             }),
-                             required);
+        decode_record<Field>(
+            context,
+            "level",
+            field_names,
+            [&result](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::id:
+                        read(result.id);
+                        break;
+                    case Field::title:
+                        read(result.title);
+                        break;
+                    case Field::description:
+                        read(result.description);
+                        break;
+                    case Field::par_time:
+                        read(result.par_time, constraints::finite);
+                        break;
+                    case Field::unlock:
+                        read(result.unlock);
+                        break;
+                    case Field::player:
+                        read(result.player);
+                        break;
+                    case Field::camera:
+                        read(result.camera);
+                        break;
+                    case Field::settings:
+                        read(result.settings);
+                        break;
+                    case Field::mission:
+                        read(result.mission);
+                        break;
+                    case Field::entities:
+                        read(result.entities);
+                        break;
+                }
+            },
+            required);
     }
 
   private:
@@ -216,23 +220,24 @@ template <>
 struct TypeReader<levels::authoring::IncludedLevelInput>
     : RecordReader<levels::authoring::IncludedLevelInput> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field>(context,
-                             "included-definition",
-                             field_names,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::path:
-                                         read(result.path);
-                                         break;
-                                     case Field::value:
-                                         read(result.value);
-                                         break;
-                                     case Field::error:
-                                         read(result.error);
-                                         break;
-                                 }
-                             }),
-                             required);
+        decode_record<Field>(
+            context,
+            "included-definition",
+            field_names,
+            [&result](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::path:
+                        read(result.path);
+                        break;
+                    case Field::value:
+                        read(result.value);
+                        break;
+                    case Field::error:
+                        read(result.error);
+                        break;
+                }
+            },
+            required);
     }
 
   private:
@@ -250,23 +255,24 @@ template <>
 struct TypeReader<levels::authoring::IncludedCampaignInput>
     : RecordReader<levels::authoring::IncludedCampaignInput> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field>(context,
-                             "included-definition",
-                             field_names,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::path:
-                                         read(result.path);
-                                         break;
-                                     case Field::value:
-                                         read(result.value);
-                                         break;
-                                     case Field::error:
-                                         read(result.error);
-                                         break;
-                                 }
-                             }),
-                             required);
+        decode_record<Field>(
+            context,
+            "included-definition",
+            field_names,
+            [&result](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::path:
+                        read(result.path);
+                        break;
+                    case Field::value:
+                        read(result.value);
+                        break;
+                    case Field::error:
+                        read(result.error);
+                        break;
+                }
+            },
+            required);
     }
 
   private:
@@ -284,7 +290,7 @@ template <>
 struct TypeReader<levels::authoring::CatalogInput> : RecordReader<levels::authoring::CatalogInput> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "catalog", field_names, ([&](Field const field, auto const& read) {
+            context, "catalog", field_names, [&result](Field const field, auto const& read) {
                 switch (field) {
                     case Field::levels:
                         read(result.levels);
@@ -293,7 +299,7 @@ struct TypeReader<levels::authoring::CatalogInput> : RecordReader<levels::author
                         read(result.campaigns);
                         break;
                 }
-            }));
+            });
     }
 
   private:

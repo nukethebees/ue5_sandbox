@@ -16,11 +16,11 @@ template <>
 struct TypeReader<settings::PlayerPresentation> : RecordReader<settings::PlayerPresentation> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "player-ship", field_names, ([&](Field selected, auto const& read) {
-                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
-                    read(member, ioj::s7::constraints::finite);
+            context, "player-ship", field_names, [&result](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
+                    read(member, constraints::finite);
                 });
-            }));
+            });
     }
 
   private:

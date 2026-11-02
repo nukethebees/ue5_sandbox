@@ -16,27 +16,27 @@ template <>
 struct TypeReader<settings::Radar> : RecordReader<settings::Radar> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "radar", field_names, ([&](Field selected, auto const& read) {
-                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+            context, "radar", field_names, [&result](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::enabled) {
                         read(member);
-                    } else if constexpr (field == Field::combat_range ||
-                                         field == Field::tactical_range ||
-                                         field == Field::maximum_range ||
-                                         field == Field::combat_display_radius ||
-                                         field == Field::grid_opacity ||
-                                         field == Field::core_cell_radius ||
-                                         field == Field::combat_cell_radius ||
-                                         field == Field::tactical_cell_radius ||
-                                         field == Field::strategic_cell_radius ||
-                                         field == Field::glyph_size_scale ||
-                                         field == Field::objective_size_multiplier ||
-                                         field == Field::objective_ring_padding_pixels ||
-                                         field == Field::objective_ring_thickness_pixels) {
-                        read(member, ioj::s7::constraints::finite);
+                    }
+                    if constexpr (field == Field::combat_range || field == Field::tactical_range ||
+                                  field == Field::maximum_range ||
+                                  field == Field::combat_display_radius ||
+                                  field == Field::grid_opacity ||
+                                  field == Field::core_cell_radius ||
+                                  field == Field::combat_cell_radius ||
+                                  field == Field::tactical_cell_radius ||
+                                  field == Field::strategic_cell_radius ||
+                                  field == Field::glyph_size_scale ||
+                                  field == Field::objective_size_multiplier ||
+                                  field == Field::objective_ring_padding_pixels ||
+                                  field == Field::objective_ring_thickness_pixels) {
+                        read(member, constraints::finite);
                     }
                 });
-            }));
+            });
     }
 
   private:

@@ -16,18 +16,20 @@ template <>
 struct TypeReader<sim::CapitalShipSimConfig> : RecordReader<sim::CapitalShipSimConfig> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "capital-ships", field_names, ([&](Field selected, auto const& read) {
-                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
-                    if constexpr (field == Field::max_health) {
-                        read(member);
-                    } else if constexpr (field == Field::spawn_delay) {
-                        read(member, ioj::s7::constraints::finite);
-                    } else if constexpr (field == Field::fighter_spawn_slots ||
-                                         field == Field::fighter_spawn_slots_relative_transforms) {
+            context, "capital-ships", field_names, [&result](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
+                    if constexpr (field == Field::spawn_delay) {
+                        read(member, constraints::finite);
+                    }
+                    if constexpr (field == Field::fighter_spawn_slots ||
+                                  field == Field::fighter_spawn_slots_relative_transforms) {
                         std::unreachable();
                     }
+                    if constexpr (field == Field::max_health) {
+                        read(member);
+                    }
                 });
-            }));
+            });
     }
 
   private:

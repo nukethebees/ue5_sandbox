@@ -17,22 +17,21 @@ template <>
 struct TypeReader<sim::PlayerSimConfig> : RecordReader<sim::PlayerSimConfig> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "player-ship", field_names, ([&](Field selected, auto const& read) {
-                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+            context, "player-ship", field_names, [&result](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::thrust_energy_max || field == Field::laser ||
                                   field == Field::health || field == Field::laser_mode ||
                                   field == Field::laser_fire_rate) {
                         read(member);
-                    } else if constexpr (field == Field::pitch_angle_max ||
-                                         field == Field::pitch_speed ||
-                                         field == Field::yaw_angle_max ||
-                                         field == Field::yaw_speed ||
-                                         field == Field::turn_bank_angle_max ||
-                                         field == Field::turn_bank_speed) {
-                        read(member, ioj::s7::constraints::finite);
+                    }
+                    if constexpr (field == Field::pitch_angle_max || field == Field::pitch_speed ||
+                                  field == Field::yaw_angle_max || field == Field::yaw_speed ||
+                                  field == Field::turn_bank_angle_max ||
+                                  field == Field::turn_bank_speed) {
+                        read(member, constraints::finite);
                     }
                 });
-            }));
+            });
     }
 
   private:

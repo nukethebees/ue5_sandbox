@@ -16,17 +16,16 @@ template <>
 struct TypeReader<starfield::GenerationSettings> : RecordReader<starfield::GenerationSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "generation", field_names, ([&](Field selected, auto const& read) {
-                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+            context, "generation", field_names, [&result](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
+                    if constexpr (field == Field::star_count) {
+                        read(member, constraints::minimum(1ULL), constraints::maximum(1000000ULL));
+                    }
                     if constexpr (field == Field::random_seed) {
                         read(member);
-                    } else if constexpr (field == Field::star_count) {
-                        read(member,
-                             ioj::s7::constraints::minimum(1ULL),
-                             ioj::s7::constraints::maximum(1000000ULL));
                     }
                 });
-            }));
+            });
     }
 
   private:
@@ -39,21 +38,21 @@ template <>
 struct TypeReader<starfield::StarSettings> : RecordReader<starfield::StarSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "star", field_names, ([&](Field selected, auto const& read) {
-                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+            context, "star", field_names, [&result](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
+                    if constexpr (field == Field::scale) {
+                        read(member, constraints::positive, constraints::finite);
+                    }
+                    if constexpr (field == Field::size_multiplier) {
+                        read(member, constraints::nonnegative, constraints::finite);
+                    }
                     if constexpr (field == Field::global_brightness ||
                                   field == Field::colour_variation_strength ||
                                   field == Field::parallax_strength) {
-                        read(member, ioj::s7::constraints::finite);
-                    } else if constexpr (field == Field::size_multiplier) {
-                        read(member,
-                             ioj::s7::constraints::nonnegative,
-                             ioj::s7::constraints::finite);
-                    } else if constexpr (field == Field::scale) {
-                        read(member, ioj::s7::constraints::positive, ioj::s7::constraints::finite);
+                        read(member, constraints::finite);
                     }
                 });
-            }));
+            });
     }
 
   private:
@@ -70,18 +69,19 @@ template <>
 struct TypeReader<starfield::GalacticBandSettings> : RecordReader<starfield::GalacticBandSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "galactic-band", field_names, ([&](Field selected, auto const& read) {
-                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+            context, "galactic-band", field_names, [&result](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::strength) {
-                        read(member, ioj::s7::constraints::finite);
-                    } else if constexpr (field == Field::width_degrees) {
+                        read(member, constraints::finite);
+                    }
+                    if constexpr (field == Field::width_degrees) {
                         read(member,
-                             ioj::s7::constraints::positive,
-                             ioj::s7::constraints::finite,
-                             ioj::s7::constraints::maximum(90ULL));
+                             constraints::positive,
+                             constraints::finite,
+                             constraints::maximum(90ULL));
                     }
                 });
-            }));
+            });
     }
 
   private:
@@ -95,15 +95,16 @@ struct TypeReader<starfield::StellarClusterSettings>
     : RecordReader<starfield::StellarClusterSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "stellar-cluster", field_names, ([&](Field selected, auto const& read) {
-                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+            context, "stellar-cluster", field_names, [&result](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::strength) {
-                        read(member, ioj::s7::constraints::finite);
-                    } else if constexpr (field == Field::width_degrees) {
-                        read(member, ioj::s7::constraints::positive, ioj::s7::constraints::finite);
+                        read(member, constraints::finite);
+                    }
+                    if constexpr (field == Field::width_degrees) {
+                        read(member, constraints::positive, constraints::finite);
                     }
                 });
-            }));
+            });
     }
 
   private:
@@ -116,15 +117,16 @@ template <>
 struct TypeReader<starfield::DustLaneSettings> : RecordReader<starfield::DustLaneSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "dust-lane", field_names, ([&](Field selected, auto const& read) {
-                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+            context, "dust-lane", field_names, [&result](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::strength || field == Field::irregularity) {
-                        read(member, ioj::s7::constraints::finite);
-                    } else if constexpr (field == Field::width_degrees) {
-                        read(member, ioj::s7::constraints::positive, ioj::s7::constraints::finite);
+                        read(member, constraints::finite);
+                    }
+                    if constexpr (field == Field::width_degrees) {
+                        read(member, constraints::positive, constraints::finite);
                     }
                 });
-            }));
+            });
     }
 
   private:
@@ -138,19 +140,18 @@ template <>
 struct TypeReader<starfield::BrightStarSettings> : RecordReader<starfield::BrightStarSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "bright-star", field_names, ([&](Field selected, auto const& read) {
-                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+            context, "bright-star", field_names, [&result](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::fraction ||
                                   field == Field::brightness_multiplier ||
                                   field == Field::shape_strength) {
-                        read(member, ioj::s7::constraints::finite);
-                    } else if constexpr (field == Field::size_multiplier) {
-                        read(member,
-                             ioj::s7::constraints::nonnegative,
-                             ioj::s7::constraints::finite);
+                        read(member, constraints::finite);
+                    }
+                    if constexpr (field == Field::size_multiplier) {
+                        read(member, constraints::nonnegative, constraints::finite);
                     }
                 });
-            }));
+            });
     }
 
   private:
@@ -164,11 +165,11 @@ template <>
 struct TypeReader<starfield::TwinkleSettings> : RecordReader<starfield::TwinkleSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "twinkle", field_names, ([&](Field selected, auto const& read) {
-                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
-                    read(member, ioj::s7::constraints::finite);
+            context, "twinkle", field_names, [&result](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
+                    read(member, constraints::finite);
                 });
-            }));
+            });
     }
 
   private:
@@ -181,15 +182,16 @@ template <>
 struct TypeReader<starfield::GalacticHazeSettings> : RecordReader<starfield::GalacticHazeSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "galactic-haze", field_names, ([&](Field selected, auto const& read) {
-                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+            context, "galactic-haze", field_names, [&result](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::strength) {
-                        read(member, ioj::s7::constraints::finite);
-                    } else if constexpr (field == Field::width_degrees) {
-                        read(member, ioj::s7::constraints::positive, ioj::s7::constraints::finite);
+                        read(member, constraints::finite);
+                    }
+                    if constexpr (field == Field::width_degrees) {
+                        read(member, constraints::positive, constraints::finite);
                     }
                 });
-            }));
+            });
     }
 
   private:
@@ -202,15 +204,16 @@ template <>
 struct TypeReader<starfield::GalacticCoreSettings> : RecordReader<starfield::GalacticCoreSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "galactic-core", field_names, ([&](Field selected, auto const& read) {
-                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+            context, "galactic-core", field_names, [&result](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::strength) {
-                        read(member, ioj::s7::constraints::finite);
-                    } else if constexpr (field == Field::width_degrees) {
-                        read(member, ioj::s7::constraints::positive, ioj::s7::constraints::finite);
+                        read(member, constraints::finite);
+                    }
+                    if constexpr (field == Field::width_degrees) {
+                        read(member, constraints::positive, constraints::finite);
                     }
                 });
-            }));
+            });
     }
 
   private:
@@ -223,15 +226,16 @@ template <>
 struct TypeReader<starfield::NebularKnotSettings> : RecordReader<starfield::NebularKnotSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "nebular-knot", field_names, ([&](Field selected, auto const& read) {
-                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
+            context, "nebular-knot", field_names, [&result](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
                     if constexpr (field == Field::strength) {
-                        read(member, ioj::s7::constraints::finite);
-                    } else if constexpr (field == Field::size_degrees) {
-                        read(member, ioj::s7::constraints::positive, ioj::s7::constraints::finite);
+                        read(member, constraints::finite);
+                    }
+                    if constexpr (field == Field::size_degrees) {
+                        read(member, constraints::positive, constraints::finite);
                     }
                 });
-            }));
+            });
     }
 
   private:
@@ -244,10 +248,10 @@ template <>
 struct TypeReader<starfield::Settings> : RecordReader<starfield::Settings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "starfield", field_names, ([&](Field selected, auto const& read) {
+            context, "starfield", field_names, [&result](Field selected, auto const& read) {
                 value_type::visit_field(
-                    result, selected, [&]<Field field>(auto& member) { read(member); });
-            }));
+                    result, selected, [&read]<Field field>(auto& member) { read(member); });
+            });
     }
 
   private:

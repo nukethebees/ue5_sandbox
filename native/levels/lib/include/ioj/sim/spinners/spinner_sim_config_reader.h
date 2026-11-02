@@ -17,17 +17,19 @@ template <>
 struct TypeReader<sim::SpinnerSimConfig> : RecordReader<sim::SpinnerSimConfig> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "tube-spinners", field_names, ([&](Field selected, auto const& read) {
-                value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
-                    if constexpr (field == Field::laser) {
-                        read(member);
-                    } else if constexpr (field == Field::yaw_rotation_speed_degrees) {
-                        read(member, ioj::s7::constraints::finite);
-                    } else if constexpr (field == Field::fire_point_offsets) {
+            context, "tube-spinners", field_names, [&result](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
+                    if constexpr (field == Field::fire_point_offsets) {
                         std::unreachable();
                     }
+                    if constexpr (field == Field::yaw_rotation_speed_degrees) {
+                        read(member, constraints::finite);
+                    }
+                    if constexpr (field == Field::laser) {
+                        read(member);
+                    }
                 });
-            }));
+            });
     }
 
   private:

@@ -19,10 +19,10 @@ struct TypeReader<levels::LevelCameraDefinition> : RecordReader<levels::LevelCam
             context,
             "camera",
             field_names,
-            ([&](Field selected, auto const& read) {
+            [&result](Field selected, auto const& read) {
                 value_type::visit_field(
-                    result, selected, [&]<Field field>(auto& member) { read(member); });
-            }),
+                    result, selected, [&read]<Field field>(auto& member) { read(member); });
+            },
             required);
     }
 

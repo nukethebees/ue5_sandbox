@@ -15,19 +15,20 @@ namespace ioj::s7 {
 template <>
 struct TypeReader<codegen_compile_fixture::ReaderDependency>
     : RecordReader<codegen_compile_fixture::ReaderDependency> {
-    static ioj::s7::ReadResult<value_type> construct(DecodeContext context) {
+    static ReadResult<value_type> construct(DecodeContext context) {
         std::optional<decltype(value_type::child)> value_child{};
-        decode_record<Field>(context,
-                             "dependent",
-                             field_names,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::child:
-                                         read.construct(value_child);
-                                         break;
-                                 }
-                             }),
-                             required);
+        decode_record<Field>(
+            context,
+            "dependent",
+            field_names,
+            [&value_child](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::child:
+                        read.construct(value_child);
+                        break;
+                }
+            },
+            required);
         if (!context.errors.empty()) {
             return std::unexpected{std::move(context.errors)};
         }
@@ -38,17 +39,18 @@ struct TypeReader<codegen_compile_fixture::ReaderDependency>
     }
 
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field>(context,
-                             "dependent",
-                             field_names,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::child:
-                                         read(result.child);
-                                         break;
-                                 }
-                             }),
-                             required);
+        decode_record<Field>(
+            context,
+            "dependent",
+            field_names,
+            [&result](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::child:
+                        read(result.child);
+                        break;
+                }
+            },
+            required);
     }
 
   private:

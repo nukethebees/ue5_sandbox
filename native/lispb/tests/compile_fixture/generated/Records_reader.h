@@ -15,21 +15,21 @@ namespace ioj::s7 {
 template <>
 struct TypeReader<codegen_compile_fixture::ScalarSettings>
     : RecordReader<codegen_compile_fixture::ScalarSettings> {
-    static ioj::s7::ReadResult<value_type> construct(DecodeContext context) {
+    static ReadResult<value_type> construct(DecodeContext context) {
         std::optional<decltype(value_type::health)> value_health{};
-        decode_record<Field>(context,
-                             "scalar",
-                             field_names,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::health:
-                                         read.construct(value_health,
-                                                        ioj::s7::constraints::minimum(10ULL),
-                                                        ioj::s7::constraints::maximum(90ULL));
-                                         break;
-                                 }
-                             }),
-                             required);
+        decode_record<Field>(
+            context,
+            "scalar",
+            field_names,
+            [&value_health](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::health:
+                        read.construct(
+                            value_health, constraints::minimum(10ULL), constraints::maximum(90ULL));
+                        break;
+                }
+            },
+            required);
         if (!context.errors.empty()) {
             return std::unexpected{std::move(context.errors)};
         }
@@ -40,19 +40,20 @@ struct TypeReader<codegen_compile_fixture::ScalarSettings>
     }
 
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field>(context,
-                             "scalar",
-                             field_names,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::health:
-                                         read(result.health,
-                                              ioj::s7::constraints::minimum(10ULL),
-                                              ioj::s7::constraints::maximum(90ULL));
-                                         break;
-                                 }
-                             }),
-                             required);
+        decode_record<Field>(
+            context,
+            "scalar",
+            field_names,
+            [&result](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::health:
+                        read(result.health,
+                             constraints::minimum(10ULL),
+                             constraints::maximum(90ULL));
+                        break;
+                }
+            },
+            required);
     }
 
   private:
@@ -72,10 +73,10 @@ struct TypeReader<codegen_compile_fixture::RangeValue>
             context,
             "range",
             field_names,
-            ([&](Field selected, auto const& read) {
+            [&result](Field selected, auto const& read) {
                 value_type::visit_field(
-                    result, selected, [&]<Field field>(auto& member) { read(member); });
-            }),
+                    result, selected, [&read]<Field field>(auto& member) { read(member); });
+            },
             required);
     }
 
@@ -92,10 +93,10 @@ struct TypeReader<codegen_compile_fixture::RangeSettings>
     : RecordReader<codegen_compile_fixture::RangeSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "ranges", field_names, ([&](Field selected, auto const& read) {
+            context, "ranges", field_names, [&result](Field selected, auto const& read) {
                 value_type::visit_field(
-                    result, selected, [&]<Field field>(auto& member) { read(member); });
-            }));
+                    result, selected, [&read]<Field field>(auto& member) { read(member); });
+            });
     }
 
   private:
@@ -108,7 +109,7 @@ template <>
 struct TypeReader<codegen_compile_fixture::EmptySettings>
     : RecordReader<codegen_compile_fixture::EmptySettings> {
     static void decode(DecodeContext context, value_type&) {
-        decode_record<Field>(context, "empty-settings", field_names, ([](Field, auto const&) {}));
+        decode_record<Field>(context, "empty-settings", field_names, [](Field, auto const&) {});
     }
 
   private:
@@ -121,22 +122,24 @@ template <>
 struct TypeReader<codegen_compile_fixture::WeaponSettings>
     : RecordReader<codegen_compile_fixture::WeaponSettings> {
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field>(context,
-                             "weapon",
-                             field_names,
-                             ([&](Field selected, auto const& read) {
-                                 value_type::visit_field(
-                                     result, selected, [&]<Field field>(auto& member) {
-                                         if constexpr (field == Field::turn_rate) {
-                                             read(member);
-                                         } else if constexpr (field == Field::damage) {
-                                             read(member, ioj::s7::constraints::nonnegative);
-                                         } else if constexpr (field == Field::asset_distance) {
-                                             std::unreachable();
-                                         }
-                                     });
-                             }),
-                             required);
+        decode_record<Field>(
+            context,
+            "weapon",
+            field_names,
+            [&result](Field selected, auto const& read) {
+                value_type::visit_field(result, selected, [&read]<Field field>(auto& member) {
+                    if constexpr (field == Field::damage) {
+                        read(member, constraints::nonnegative);
+                    }
+                    if constexpr (field == Field::turn_rate) {
+                        read(member);
+                    }
+                    if constexpr (field == Field::asset_distance) {
+                        std::unreachable();
+                    }
+                });
+            },
+            required);
     }
 
   private:
@@ -151,10 +154,10 @@ struct TypeReader<codegen_compile_fixture::ActorSettings>
     : RecordReader<codegen_compile_fixture::ActorSettings> {
     static void decode(DecodeContext context, value_type& result) {
         decode_record<Field>(
-            context, "actor", field_names, ([&](Field selected, auto const& read) {
+            context, "actor", field_names, [&result](Field selected, auto const& read) {
                 value_type::visit_field(
-                    result, selected, [&]<Field field>(auto& member) { read(member); });
-            }));
+                    result, selected, [&read]<Field field>(auto& member) { read(member); });
+            });
     }
 
   private:
