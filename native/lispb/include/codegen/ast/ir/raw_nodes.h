@@ -9,6 +9,7 @@ namespace lispb::codegen::ir {
 
 struct RawNodes {
     std::vector<StringId> text;
+    std::vector<Range> parts;
     std::vector<Range> dependencies;
 };
 

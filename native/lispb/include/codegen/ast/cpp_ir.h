@@ -34,6 +34,7 @@
 #include <codegen/ast/ir/includes.h>
 #include <codegen/ast/ir/initializer_exprs.h>
 #include <codegen/ast/ir/instance_members.h>
+#include <codegen/ast/ir/lambda_exprs.h>
 #include <codegen/ast/ir/line_breaks.h>
 #include <codegen/ast/ir/line_comments.h>
 #include <codegen/ast/ir/line_directives.h>
@@ -324,6 +325,9 @@ class CppIR {
     void set_function_template(FunctionId function, TemplateId declaration);
     void set_function_requires_clause(FunctionId function, Expr clause);
     auto raw(StringId value, std::span<TypeDependencyId const> dependencies = {}) -> NodeId;
+    // Interleave authored text (raw expressions) with structured substitutions at final emission.
+    auto raw_parts(std::span<Expr const> parts, std::span<TypeDependencyId const> dependencies = {})
+        -> NodeId;
     auto raw_lines(std::span<StringId const> lines,
                    std::span<TypeDependencyId const> dependencies = {}) -> NodeId;
     auto raw(std::string_view value, std::span<TypeDependencyId const> dependencies = {}) -> NodeId;
@@ -358,6 +362,20 @@ class CppIR {
         return raw_expr(value, std::span<TypeDependencyId const>{dependencies});
     }
     auto call(Expr callee, std::span<Expr const> arguments = {}) -> Expr;
+    // Capture local names by value or apply address_of for explicit reference captures.
+    auto lambda(std::span<Expr const> captures,
+                std::span<FunctionParameterId const> parameters,
+                BlockId body,
+                TemplateId template_declaration = {}) -> Expr;
+    auto lambda(std::initializer_list<Expr> captures,
+                std::initializer_list<FunctionParameterId> parameters,
+                BlockId body,
+                TemplateId template_declaration = {}) -> Expr {
+        return lambda(std::span<Expr const>{captures},
+                      std::span<FunctionParameterId const>{parameters},
+                      body,
+                      template_declaration);
+    }
     auto call(Expr callee, std::initializer_list<Expr> arguments) -> Expr {
         return call(callee, std::span<Expr const>{arguments});
     }
@@ -464,6 +482,7 @@ class CppIR {
     ir::UnaryExprs unary_exprs_;
     ir::Casts cast_exprs_;
     ir::ConditionalExprs conditional_exprs_;
+    ir::LambdaExprs lambda_exprs_;
     ir::SizeofExprs sizeof_exprs_;
     ir::InitializerExprs initializer_exprs_;
     ir::RawExprs raw_exprs_;

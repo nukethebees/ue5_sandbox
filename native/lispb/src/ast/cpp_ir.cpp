@@ -667,7 +667,7 @@ void CppIR::clear() {
           arguments_,
           type_references_,
           dependencies_);
-    clear(raw_nodes_.text, raw_nodes_.dependencies);
+    clear(raw_nodes_.text, raw_nodes_.parts, raw_nodes_.dependencies);
     clear(raw_lines_nodes_.lines, raw_lines_nodes_.dependencies);
     clear(raw_lines_);
     clear(line_comment_nodes_.text);
@@ -747,6 +747,10 @@ void CppIR::clear() {
     clear(
         conditional_exprs_.condition, conditional_exprs_.when_true, conditional_exprs_.when_false);
     clear(sizeof_exprs_.type);
+    clear(lambda_exprs_.captures,
+          lambda_exprs_.parameters,
+          lambda_exprs_.body,
+          lambda_exprs_.template_declaration);
     clear(initializer_exprs_.type, initializer_exprs_.elements);
     clear(raw_exprs_.text, raw_exprs_.dependencies);
     clear(parameters_.type, parameters_.name, parameters_.default_value);
@@ -777,6 +781,15 @@ auto CppIR::raw(std::string_view value, std::span<TypeDependencyId const> depend
 auto CppIR::raw(StringId value, std::span<TypeDependencyId const> dependencies) -> NodeId {
     auto const index{raw_nodes_.text.size()};
     raw_nodes_.text.push_back(value);
+    raw_nodes_.parts.push_back({});
+    raw_nodes_.dependencies.push_back(save_dependencies(dependencies));
+    return ir_detail::node(NodeKind::raw, index);
+}
+auto CppIR::raw_parts(std::span<Expr const> parts, std::span<TypeDependencyId const> dependencies)
+    -> NodeId {
+    auto const index{raw_nodes_.text.size()};
+    raw_nodes_.text.push_back({});
+    raw_nodes_.parts.push_back(save_exprs(parts));
     raw_nodes_.dependencies.push_back(save_dependencies(dependencies));
     return ir_detail::node(NodeKind::raw, index);
 }
@@ -786,6 +799,18 @@ auto CppIR::raw_lines(std::span<StringId const> lines,
     raw_lines_nodes_.lines.push_back(ir::save_range(raw_lines_, lines));
     raw_lines_nodes_.dependencies.push_back(save_dependencies(dependencies));
     return ir_detail::node(NodeKind::raw_lines, index);
+}
+
+auto CppIR::lambda(std::span<Expr const> captures,
+                   std::span<FunctionParameterId const> parameters,
+                   BlockId body,
+                   TemplateId template_declaration) -> Expr {
+    auto const result{expr_detail::handle(ExprKind::lambda, lambda_exprs_.body.size())};
+    lambda_exprs_.captures.push_back(save_exprs(captures));
+    lambda_exprs_.parameters.push_back(ir::save_range(parameter_references_, parameters));
+    lambda_exprs_.body.push_back(block_nodes_.children[body.index()]);
+    lambda_exprs_.template_declaration.push_back(template_declaration);
+    return result;
 }
 
 auto CppIR::named(std::string_view value, std::span<TypeDependencyId const> dependencies) -> Expr {
@@ -1084,6 +1109,9 @@ void CppIR::collect_dependencies(NodeId node, std::vector<TypeDependencyId>& res
     switch (node.kind()) {
         case NodeKind::raw:
             append(dependency_list(raw_nodes_.dependencies[i]));
+            for (auto const part : exprs(raw_nodes_.parts[i])) {
+                collect_dependencies(part, result);
+            }
             break;
         case NodeKind::raw_lines:
             append(dependency_list(raw_lines_nodes_.dependencies[i]));
@@ -1274,6 +1302,22 @@ void CppIR::collect_dependencies(Expr expr, std::vector<TypeDependencyId>& resul
             collect_dependencies(conditional_exprs_.condition[index], result);
             collect_dependencies(conditional_exprs_.when_true[index], result);
             collect_dependencies(conditional_exprs_.when_false[index], result);
+            break;
+        case ExprKind::lambda:
+            collect_dependencies(lambda_exprs_.template_declaration[index], result);
+            for (auto const capture : exprs(lambda_exprs_.captures[index])) {
+                collect_dependencies(capture, result);
+            }
+            for (auto const parameter :
+                 ir::range_values(parameter_references_, lambda_exprs_.parameters[index])) {
+                append(types.dependencies(parameters_.type[parameter.value]));
+                if (auto const value{parameters_.default_value[parameter.value]}) {
+                    collect_dependencies(value, result);
+                }
+            }
+            for (auto const child : nodes(lambda_exprs_.body[index])) {
+                collect_dependencies(child, result);
+            }
             break;
         case ExprKind::sizeof_type:
             append(types.dependencies(sizeof_exprs_.type[index]));

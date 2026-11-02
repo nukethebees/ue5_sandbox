@@ -463,6 +463,7 @@ void CppRenderer::collect_environment(EnvironmentId environment,
                                         ? ir_.strings.view(ir_.raw_nodes_.text[i])
                                         : std::string_view{}};
                     if ((!text.empty() && !text.starts_with("#include ")) ||
+                        (node.kind() == NodeKind::raw && ir_.raw_nodes_.parts[i].count != 0) ||
                         node.kind() == NodeKind::raw_lines) {
                         environments.mark_unknown(environment);
                     }
@@ -668,6 +669,29 @@ void CppRenderer::append_expr(
             append_arguments(ir_.initializer_exprs_.elements[index]);
             output += '}';
             break;
+        case ExprKind::lambda: {
+            output += '[';
+            append_arguments(ir_.lambda_exprs_.captures[index]);
+            output += ']';
+            EnvironmentGuard const guard{
+                state_.current,
+                state_.environments.append(state_.current, EnvironmentKind::function)};
+            if (auto const declaration{ir_.lambda_exprs_.template_declaration[index]}) {
+                append_template(output, declaration, context, false);
+            }
+            append_parameters(output, ir_.lambda_exprs_.parameters[index], context, true);
+            auto const body{ir_.nodes(ir_.lambda_exprs_.body[index])};
+            state_.current = block_environment(body);
+            output += " {";
+            if (!body.empty()) {
+                output += '\n';
+                append_nodes(output, body, context.indent(), 1);
+                output += '\n';
+                append_indent(output, context);
+            }
+            output += '}';
+            break;
+        }
         case ExprKind::invalid:
             std::unreachable();
     }
@@ -677,10 +701,11 @@ void CppRenderer::append_expr(
 }
 void CppRenderer::append_template(std::string& output,
                                   TemplateId declaration,
-                                  RenderContext const& context) {
+                                  RenderContext const& context,
+                                  bool keyword) {
     assert(declaration);
     auto const row{declaration.index()};
-    output += "template <";
+    output += keyword ? "template <" : "<";
     if (declaration.kind() == TemplateKind::authored_raw) {
         output += ir_.strings.view(ir_.templates_.authored_text[row]);
         state_.environments.mark_unknown(state_.current);
@@ -737,6 +762,31 @@ void CppRenderer::append_template(std::string& output,
         }
     }
     output += '>';
+}
+void CppRenderer::append_parameters(std::string& output,
+                                    ir::Range parameters,
+                                    RenderContext const& context,
+                                    bool defaults) {
+    output += '(';
+    auto const end{parameters.begin + parameters.count};
+    for (auto p{parameters.begin}; p < end; ++p) {
+        if (p != parameters.begin) {
+            output += ", ";
+        }
+        auto const parameter{ir_.parameter_references_[p]};
+        append_type(output, ir_.parameters_.type[parameter.value]);
+        auto const name{ir_.parameters_.name[parameter.value]};
+        if (name.value != 0) {
+            output += ' ';
+            output += ir_.strings.view(name);
+            state_.environments.declare(state_.current, name, CppDeclarationId{parameter});
+        }
+        if (auto const value{ir_.parameters_.default_value[parameter.value]}; value && defaults) {
+            output += " = ";
+            append_expr(output, value, context);
+        }
+    }
+    output += ')';
 }
 auto CppRenderer::signature(std::uint32_t index,
                             RenderContext const& context,
@@ -812,28 +862,7 @@ auto CppRenderer::signature(std::uint32_t index,
     state.environments.import_symbols(function_environment, template_environment);
     state.current = function_environment;
     environment = function_environment;
-    output += '(';
-    auto const parameters{functions.parameters[id]};
-    auto const parameter_end{parameters.begin + parameters.count};
-    for (auto p{parameters.begin}; p < parameter_end; ++p) {
-        if (p != parameters.begin) {
-            output += ", ";
-        }
-        auto const parameter{ir_.parameter_references_[p]};
-        append_type(output, ir_.parameters_.type[parameter.value]);
-        auto const parameter_name{ir_.strings.intern(ir_.parameters_.name[parameter.value])};
-        if (parameter_name.value != 0) {
-            output += ' ';
-            output += ir_.strings.view(parameter_name);
-            state.environments.declare(state.current, parameter_name, CppDeclarationId{parameter});
-        }
-        if (auto const value{ir_.parameters_.default_value[parameter.value]};
-            value && (declaration || header)) {
-            output += " = ";
-            append_expr(output, value, context);
-        }
-    }
-    output += ')';
+    append_parameters(output, functions.parameters[id], context, declaration || header);
     switch (receiver) {
         case FunctionReceiver::unqualified:
         case FunctionReceiver::static_:
@@ -975,9 +1004,16 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
         output += ';';
     };
     switch (node.kind()) {
-        case NodeKind::raw:
-            write(ir_.strings.view(ir_.raw_nodes_.text[i]));
+        case NodeKind::raw: {
+            std::string rendered{ir_.strings.view(ir_.raw_nodes_.text[i])};
+            auto part_context{context};
+            part_context.indent_level = 0;
+            for (auto const part : ir_.exprs(ir_.raw_nodes_.parts[i])) {
+                append_expr(rendered, part, part_context);
+            }
+            write(rendered);
             break;
+        }
         case NodeKind::raw_lines: {
             auto const range{ir_.raw_lines_nodes_.lines[i]};
             auto const end{range.begin + range.count};

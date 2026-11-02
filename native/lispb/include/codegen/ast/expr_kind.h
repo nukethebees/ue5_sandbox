@@ -14,6 +14,7 @@ enum class ExprKind : std::uint8_t {
     subscript,
     binary,
     conditional,
+    lambda,
     unary,
     static_cast_,
     reinterpret_cast_,

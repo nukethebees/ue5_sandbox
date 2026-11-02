@@ -64,7 +64,14 @@ class CppRenderer {
                      RenderContext const& context,
                      int minimum = 0,
                      bool equal = false);
-    void append_template(std::string& output, TemplateId declaration, RenderContext const& context);
+    void append_template(std::string& output,
+                         TemplateId declaration,
+                         RenderContext const& context,
+                         bool keyword = true);
+    void append_parameters(std::string& output,
+                           ir::Range parameters,
+                           RenderContext const& context,
+                           bool defaults);
     auto signature(std::uint32_t function_index,
                    RenderContext const& context,
                    EnvironmentId& environment) -> std::string;
