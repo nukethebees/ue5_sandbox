@@ -66,6 +66,6 @@ template <>
 }
 
 template <>
-inline constexpr auto enum_strings<sim::player::PlayerResourceState::Field, Name>{PackedStrings{
-    "thrust_energy\000thrust_change_rate", std::array<std::uint8_t, 3>{0ULL, 14ULL, 33ULL}}};
+inline constexpr auto enum_strings<sim::player::PlayerResourceState::Field, Name>{
+    PackedStrings{"thrust_energy\000thrust_change_rate", std::array<std::uint8_t, 3>{0, 14, 33}}};
 } // namespace ioj

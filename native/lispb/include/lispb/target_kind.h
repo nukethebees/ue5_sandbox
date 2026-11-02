@@ -78,5 +78,5 @@ inline constexpr MinMax<lispb::TargetKind> enum_range<lispb::TargetKind>{lispb::
 template <>
 inline constexpr auto enum_strings<lispb::TargetKind, Serialized>{
     PackedStrings{"none\000cpp-schema\000slate\000kernel\000material\000group",
-                  std::array<std::uint8_t, 7>{0ULL, 5ULL, 16ULL, 22ULL, 29ULL, 38ULL, 44ULL}}};
+                  std::array<std::uint8_t, 7>{0, 5, 16, 22, 29, 38, 44}}};
 } // namespace ioj

@@ -49,14 +49,12 @@ struct EnumTraits<levels::EntityArchetype> {
 };
 
 template <>
-inline constexpr auto enum_strings<levels::EntityArchetype, Name>{
-    PackedStrings{"PlayerFighter\000CapitalShip\000StaticTurret",
-                  std::array<std::uint8_t, 4>{0ULL, 14ULL, 26ULL, 39ULL}}};
+inline constexpr auto enum_strings<levels::EntityArchetype, Name>{PackedStrings{
+    "PlayerFighter\000CapitalShip\000StaticTurret", std::array<std::uint8_t, 4>{0, 14, 26, 39}}};
 
 template <>
-inline constexpr auto enum_strings<levels::EntityArchetype, Serialized>{
-    PackedStrings{"player-fighter\000capital-ship\000static-turret",
-                  std::array<std::uint8_t, 4>{0ULL, 15ULL, 28ULL, 42ULL}}};
+inline constexpr auto enum_strings<levels::EntityArchetype, Serialized>{PackedStrings{
+    "player-fighter\000capital-ship\000static-turret", std::array<std::uint8_t, 4>{0, 15, 28, 42}}};
 } // namespace ioj
 namespace std {
 template <>

@@ -84,5 +84,5 @@ template <>
 template <>
 inline constexpr auto enum_strings<sim::LaserWeaponSimConfig::Field, Name>{
     PackedStrings{"damage\000projectile_speed\000max_distance\000fire_cooldown",
-                  std::array<std::uint8_t, 5>{0ULL, 7ULL, 24ULL, 37ULL, 51ULL}}};
+                  std::array<std::uint8_t, 5>{0, 7, 24, 37, 51}}};
 } // namespace ioj

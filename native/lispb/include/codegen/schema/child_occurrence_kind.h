@@ -40,5 +40,5 @@ inline constexpr MinMax<lispb::codegen::ChildOccurrenceKind>
 
 template <>
 inline constexpr auto enum_strings<lispb::codegen::ChildOccurrenceKind, Serialized>{
-    PackedStrings{"value\000reserved", std::array<std::uint8_t, 3>{0ULL, 6ULL, 15ULL}}};
+    PackedStrings{"value\000reserved", std::array<std::uint8_t, 3>{0, 6, 15}}};
 } // namespace ioj

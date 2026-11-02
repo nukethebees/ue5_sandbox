@@ -91,8 +91,7 @@ inline constexpr MinMax<kernel_codegen::detail::OperationField>
 
 template <>
 inline constexpr auto enum_strings<kernel_codegen::detail::OperationField, Serialized>{
-    PackedStrings{
-        "operand\000component-"
-        "operand\000components\000types\000output\000expression\000variants\000aliasing",
-        std::array<std::uint8_t, 9>{0ULL, 8ULL, 26ULL, 37ULL, 43ULL, 50ULL, 61ULL, 70ULL, 79ULL}}};
+    PackedStrings{"operand\000component-"
+                  "operand\000components\000types\000output\000expression\000variants\000aliasing",
+                  std::array<std::uint8_t, 9>{0, 8, 26, 37, 43, 50, 61, 70, 79}}};
 } // namespace ioj

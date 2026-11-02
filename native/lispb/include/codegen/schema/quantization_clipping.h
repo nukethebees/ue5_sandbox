@@ -40,5 +40,5 @@ inline constexpr MinMax<lispb::codegen::QuantizationClipping>
 
 template <>
 inline constexpr auto enum_strings<lispb::codegen::QuantizationClipping, Serialized>{
-    PackedStrings{"reject\000clamp", std::array<std::uint8_t, 3>{0ULL, 7ULL, 13ULL}}};
+    PackedStrings{"reject\000clamp", std::array<std::uint8_t, 3>{0, 7, 13}}};
 } // namespace ioj

@@ -261,7 +261,7 @@ struct BinaryVelocity : detail::BinaryVelocityBase {
     using value_type = std::int16_t;
     static constexpr ioj::PackedField<storage_type, value_type, 0, storage.encoded_bits>
         value_layout{};
-    static constexpr int value_fractional_bits{4U};
+    static constexpr int value_fractional_bits{4};
     // Range: [-32768 / 16, 32767 / 16]; step: 0.0625.
 
     constexpr BinaryVelocity() noexcept = default;
@@ -1244,12 +1244,12 @@ struct Motion : detail::MotionBase {
 
     // velocity
     static constexpr ioj::PackedField<storage_type, std::int16_t, 0, 12> velocity_raw_layout{};
-    static constexpr int velocity_fractional_bits{4U};
+    static constexpr int velocity_fractional_bits{4};
     // Range: [-2048 / 16, 2047 / 16]; step: 0.0625.
 
     // fraction
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 12, 7> fraction_raw_layout{};
-    static constexpr int fraction_fractional_bits{7U};
+    static constexpr int fraction_fractional_bits{7};
     // Range: [0 / 128, 127 / 128]; step: 0.0078125.
 
     // state

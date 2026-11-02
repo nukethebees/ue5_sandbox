@@ -39,6 +39,6 @@ inline constexpr MinMax<lispb::codegen::EnumReflection> enum_range<lispb::codege
     lispb::codegen::EnumReflection::none, lispb::codegen::EnumReflection::blueprint};
 
 template <>
-inline constexpr auto enum_strings<lispb::codegen::EnumReflection, Serialized>{PackedStrings{
-    "none\000uenum\000blueprint", std::array<std::uint8_t, 4>{0ULL, 5ULL, 11ULL, 21ULL}}};
+inline constexpr auto enum_strings<lispb::codegen::EnumReflection, Serialized>{
+    PackedStrings{"none\000uenum\000blueprint", std::array<std::uint8_t, 4>{0, 5, 11, 21}}};
 } // namespace ioj

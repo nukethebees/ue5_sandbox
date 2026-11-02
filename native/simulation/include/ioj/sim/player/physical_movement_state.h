@@ -68,5 +68,5 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<sim::player::PhysicalMovementState::Field, Name>{
-    PackedStrings{"transform\000velocity", std::array<std::uint8_t, 3>{0ULL, 10ULL, 19ULL}}};
+    PackedStrings{"transform\000velocity", std::array<std::uint8_t, 3>{0, 10, 19}}};
 } // namespace ioj

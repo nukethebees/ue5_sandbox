@@ -62,5 +62,5 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<settings::PlayerPresentation::Field, Name>{
-    PackedStrings{"boost_effect_colour_intensity", std::array<std::uint8_t, 2>{0ULL, 30ULL}}};
+    PackedStrings{"boost_effect_colour_intensity", std::array<std::uint8_t, 2>{0, 30}}};
 } // namespace ioj

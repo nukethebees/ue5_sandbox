@@ -45,6 +45,6 @@ struct EnumTraits<sim::ShipLaserMode> {
 };
 
 template <>
-inline constexpr auto enum_strings<sim::ShipLaserMode, Serialized>{PackedStrings{
-    "single\000double\000hyper", std::array<std::uint8_t, 4>{0ULL, 7ULL, 14ULL, 20ULL}}};
+inline constexpr auto enum_strings<sim::ShipLaserMode, Serialized>{
+    PackedStrings{"single\000double\000hyper", std::array<std::uint8_t, 4>{0, 7, 14, 20}}};
 } // namespace ioj

@@ -238,6 +238,7 @@ auto CppTypes::find(StringId const spelling,
         if (candidate_shape.form != shape.form || candidate_shape.origin != shape.origin ||
             candidate_shape.operand != shape.operand || candidate_shape.owner != shape.owner ||
             candidate_shape.member != shape.member ||
+            candidate_shape.initializer_element_type != shape.initializer_element_type ||
             (shape.form == CppTypeForm::composed &&
              !std::ranges::equal(std::span{parts_}.subspan(shape.parts.begin, shape.parts.count),
                                  std::span{parts_}.subspan(candidate_shape.parts.begin,
@@ -368,6 +369,11 @@ auto CppTypes::named(std::string_view const spelling,
 
 auto CppTypes::compose(std::span<CppTypePart const> const parts,
                        std::optional<CppTypeId> const policy_source) -> CppTypeId {
+    return compose(parts, policy_source, {});
+}
+auto CppTypes::compose(std::span<CppTypePart const> const parts,
+                       std::optional<CppTypeId> const policy_source,
+                       CppTypeId const initializer_element_type) -> CppTypeId {
     assert(!parts.empty());
     std::string spelling;
     bool has_spelling{true};
@@ -394,7 +400,8 @@ auto CppTypes::compose(std::span<CppTypePart const> const parts,
 
     CppTypeShape const shape{.form = CppTypeForm::composed,
                              .parts = {static_cast<std::uint32_t>(parts_.size()),
-                                       static_cast<std::uint32_t>(parts.size())}};
+                                       static_cast<std::uint32_t>(parts.size())},
+                             .initializer_element_type = initializer_element_type};
     parts_.insert(parts_.end(), parts.begin(), parts.end());
     auto const passing{policy_source ? parameter_passing(*policy_source)
                                      : cpp_type_detail::default_parameter_passing(spelling)};
@@ -495,7 +502,9 @@ auto CppTypes::template_type(CppTypeId const primary, std::span<CppTypeId const>
         parts.push_back({.type = argument});
     }
     parts.push_back({.text = strings_.intern(">")});
-    return compose(parts);
+    auto const element_type{primary == std.array && arguments.size() == 2 ? arguments.front()
+                                                                          : CppTypeId{}};
+    return compose(parts, {}, element_type);
 }
 
 auto CppTypes::with_dependencies(CppTypeId const base,

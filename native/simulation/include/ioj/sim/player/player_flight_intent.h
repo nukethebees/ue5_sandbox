@@ -97,5 +97,5 @@ template <>
 template <>
 inline constexpr auto enum_strings<sim::player::PlayerFlightIntent::Field, Name>{PackedStrings{
     "translation\000rotation\000accelerator\000boost_held\000brake_held\000emergency_brake_held",
-    std::array<std::uint8_t, 7>{0ULL, 12ULL, 21ULL, 33ULL, 44ULL, 55ULL, 76ULL}}};
+    std::array<std::uint8_t, 7>{0, 12, 21, 33, 44, 55, 76}}};
 } // namespace ioj

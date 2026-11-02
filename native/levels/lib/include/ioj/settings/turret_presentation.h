@@ -62,5 +62,5 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<settings::TurretPresentation::Field, Name>{
-    PackedStrings{"death_effect_scale", std::array<std::uint8_t, 2>{0ULL, 19ULL}}};
+    PackedStrings{"death_effect_scale", std::array<std::uint8_t, 2>{0, 19}}};
 } // namespace ioj

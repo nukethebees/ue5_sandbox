@@ -39,6 +39,6 @@ inline constexpr MinMax<material_synth::MaterialDomain> enum_range<material_synt
     material_synth::MaterialDomain::ui, material_synth::MaterialDomain::post_process};
 
 template <>
-inline constexpr auto enum_strings<material_synth::MaterialDomain, Serialized>{PackedStrings{
-    "ui\000surface\000post-process", std::array<std::uint8_t, 4>{0ULL, 3ULL, 11ULL, 24ULL}}};
+inline constexpr auto enum_strings<material_synth::MaterialDomain, Serialized>{
+    PackedStrings{"ui\000surface\000post-process", std::array<std::uint8_t, 4>{0, 3, 11, 24}}};
 } // namespace ioj

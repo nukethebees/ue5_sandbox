@@ -42,5 +42,5 @@ inline constexpr MinMax<kernel_codegen::detail::ConstantKind>
 
 template <>
 inline constexpr auto enum_strings<kernel_codegen::detail::ConstantKind, Serialized>{PackedStrings{
-    "nan\000infinity\000negative-infinity", std::array<std::uint8_t, 4>{0ULL, 4ULL, 13ULL, 31ULL}}};
+    "nan\000infinity\000negative-infinity", std::array<std::uint8_t, 4>{0, 4, 13, 31}}};
 } // namespace ioj

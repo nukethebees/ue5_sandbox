@@ -33,7 +33,6 @@ inline constexpr MinMax<lispb::codegen::UnaryOperator> enum_range<lispb::codegen
     lispb::codegen::UnaryOperator::logical_not, lispb::codegen::UnaryOperator::negate};
 
 template <>
-inline constexpr auto enum_strings<lispb::codegen::UnaryOperator, Serialized>{
-    PackedStrings{"!\000*\000&\000++\000~\000-",
-                  std::array<std::uint8_t, 7>{0ULL, 2ULL, 4ULL, 6ULL, 9ULL, 11ULL, 13ULL}}};
+inline constexpr auto enum_strings<lispb::codegen::UnaryOperator, Serialized>{PackedStrings{
+    "!\000*\000&\000++\000~\000-", std::array<std::uint8_t, 7>{0, 2, 4, 6, 9, 11, 13}}};
 } // namespace ioj

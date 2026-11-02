@@ -608,7 +608,7 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<starfield::GenerationSettings::Field, Name>{
-    PackedStrings{"star_count\000random_seed", std::array<std::uint8_t, 3>{0ULL, 11ULL, 23ULL}}};
+    PackedStrings{"star_count\000random_seed", std::array<std::uint8_t, 3>{0, 11, 23}}};
 
 template <>
 [[nodiscard]] constexpr auto enum_count<starfield::StarSettings::Field>() noexcept -> std::size_t {
@@ -619,7 +619,7 @@ template <>
 inline constexpr auto enum_strings<starfield::StarSettings::Field, Name>{
     PackedStrings{"scale\000size_multiplier\000global_brightness\000colour_variation_"
                   "strength\000parallax_strength",
-                  std::array<std::uint8_t, 6>{0ULL, 6ULL, 22ULL, 40ULL, 66ULL, 84ULL}}};
+                  std::array<std::uint8_t, 6>{0, 6, 22, 40, 66, 84}}};
 
 template <>
 [[nodiscard]] constexpr auto enum_count<starfield::GalacticBandSettings::Field>() noexcept
@@ -629,7 +629,7 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<starfield::GalacticBandSettings::Field, Name>{
-    PackedStrings{"strength\000width_degrees", std::array<std::uint8_t, 3>{0ULL, 9ULL, 23ULL}}};
+    PackedStrings{"strength\000width_degrees", std::array<std::uint8_t, 3>{0, 9, 23}}};
 
 template <>
 [[nodiscard]] constexpr auto enum_count<starfield::StellarClusterSettings::Field>() noexcept
@@ -639,7 +639,7 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<starfield::StellarClusterSettings::Field, Name>{
-    PackedStrings{"strength\000width_degrees", std::array<std::uint8_t, 3>{0ULL, 9ULL, 23ULL}}};
+    PackedStrings{"strength\000width_degrees", std::array<std::uint8_t, 3>{0, 9, 23}}};
 
 template <>
 [[nodiscard]] constexpr auto enum_count<starfield::DustLaneSettings::Field>() noexcept
@@ -648,9 +648,8 @@ template <>
 }
 
 template <>
-inline constexpr auto enum_strings<starfield::DustLaneSettings::Field, Name>{
-    PackedStrings{"strength\000width_degrees\000irregularity",
-                  std::array<std::uint8_t, 4>{0ULL, 9ULL, 23ULL, 36ULL}}};
+inline constexpr auto enum_strings<starfield::DustLaneSettings::Field, Name>{PackedStrings{
+    "strength\000width_degrees\000irregularity", std::array<std::uint8_t, 4>{0, 9, 23, 36}}};
 
 template <>
 [[nodiscard]] constexpr auto enum_count<starfield::BrightStarSettings::Field>() noexcept
@@ -661,7 +660,7 @@ template <>
 template <>
 inline constexpr auto enum_strings<starfield::BrightStarSettings::Field, Name>{
     PackedStrings{"fraction\000size_multiplier\000brightness_multiplier\000shape_strength",
-                  std::array<std::uint8_t, 5>{0ULL, 9ULL, 25ULL, 47ULL, 62ULL}}};
+                  std::array<std::uint8_t, 5>{0, 9, 25, 47, 62}}};
 
 template <>
 [[nodiscard]] constexpr auto enum_count<starfield::TwinkleSettings::Field>() noexcept
@@ -671,7 +670,7 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<starfield::TwinkleSettings::Field, Name>{
-    PackedStrings{"strength\000speed", std::array<std::uint8_t, 3>{0ULL, 9ULL, 15ULL}}};
+    PackedStrings{"strength\000speed", std::array<std::uint8_t, 3>{0, 9, 15}}};
 
 template <>
 [[nodiscard]] constexpr auto enum_count<starfield::GalacticHazeSettings::Field>() noexcept
@@ -681,7 +680,7 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<starfield::GalacticHazeSettings::Field, Name>{
-    PackedStrings{"strength\000width_degrees", std::array<std::uint8_t, 3>{0ULL, 9ULL, 23ULL}}};
+    PackedStrings{"strength\000width_degrees", std::array<std::uint8_t, 3>{0, 9, 23}}};
 
 template <>
 [[nodiscard]] constexpr auto enum_count<starfield::GalacticCoreSettings::Field>() noexcept
@@ -691,7 +690,7 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<starfield::GalacticCoreSettings::Field, Name>{
-    PackedStrings{"strength\000width_degrees", std::array<std::uint8_t, 3>{0ULL, 9ULL, 23ULL}}};
+    PackedStrings{"strength\000width_degrees", std::array<std::uint8_t, 3>{0, 9, 23}}};
 
 template <>
 [[nodiscard]] constexpr auto enum_count<starfield::NebularKnotSettings::Field>() noexcept
@@ -701,7 +700,7 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<starfield::NebularKnotSettings::Field, Name>{
-    PackedStrings{"strength\000size_degrees", std::array<std::uint8_t, 3>{0ULL, 9ULL, 22ULL}}};
+    PackedStrings{"strength\000size_degrees", std::array<std::uint8_t, 3>{0, 9, 22}}};
 
 template <>
 [[nodiscard]] constexpr auto enum_count<starfield::Settings::Field>() noexcept -> std::size_t {
@@ -709,9 +708,8 @@ template <>
 }
 
 template <>
-inline constexpr auto enum_strings<starfield::Settings::Field, Name>{PackedStrings{
-    "generation\000star\000galactic_band\000stellar_cluster\000dust_lane\000bright_"
-    "star\000twinkle\000galactic_haze\000galactic_core\000nebular_knot",
-    std::array<std::uint8_t, 11>{
-        0ULL, 11ULL, 16ULL, 30ULL, 46ULL, 56ULL, 68ULL, 76ULL, 90ULL, 104ULL, 117ULL}}};
+inline constexpr auto enum_strings<starfield::Settings::Field, Name>{
+    PackedStrings{"generation\000star\000galactic_band\000stellar_cluster\000dust_lane\000bright_"
+                  "star\000twinkle\000galactic_haze\000galactic_core\000nebular_knot",
+                  std::array<std::uint8_t, 11>{0, 11, 16, 30, 46, 56, 68, 76, 90, 104, 117}}};
 } // namespace ioj

@@ -62,5 +62,5 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<sim::LaserSimConfig::Field, Name>{
-    PackedStrings{"n_preallocated_instances", std::array<std::uint8_t, 2>{0ULL, 25ULL}}};
+    PackedStrings{"n_preallocated_instances", std::array<std::uint8_t, 2>{0, 25}}};
 } // namespace ioj

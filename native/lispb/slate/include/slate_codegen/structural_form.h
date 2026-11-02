@@ -132,22 +132,9 @@ inline constexpr MinMax<slate_codegen::detail::StructuralForm>
         slate_codegen::detail::StructuralForm::params};
 
 template <>
-inline constexpr auto enum_strings<slate_codegen::detail::StructuralForm, Serialized>{
-    PackedStrings{"widget-class\000widget-"
-                  "library\000function\000vbox\000hbox\000slot\000auto\000fill\000assign\000existin"
-                  "g\000call\000let\000params",
-                  std::array<std::uint8_t, 14>{0ULL,
-                                               13ULL,
-                                               28ULL,
-                                               37ULL,
-                                               42ULL,
-                                               47ULL,
-                                               52ULL,
-                                               57ULL,
-                                               62ULL,
-                                               69ULL,
-                                               78ULL,
-                                               83ULL,
-                                               87ULL,
-                                               94ULL}}};
+inline constexpr auto enum_strings<slate_codegen::detail::StructuralForm, Serialized>{PackedStrings{
+    "widget-class\000widget-"
+    "library\000function\000vbox\000hbox\000slot\000auto\000fill\000assign\000existing\000call\000l"
+    "et\000params",
+    std::array<std::uint8_t, 14>{0, 13, 28, 37, 42, 47, 52, 57, 62, 69, 78, 83, 87, 94}}};
 } // namespace ioj

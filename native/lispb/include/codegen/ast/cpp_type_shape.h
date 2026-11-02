@@ -14,5 +14,6 @@ struct CppTypeShape {
     Syntax operand{};
     CppTypeId owner{};
     StringId member{};
+    CppTypeId initializer_element_type{};
 };
 }

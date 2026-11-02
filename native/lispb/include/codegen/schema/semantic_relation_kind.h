@@ -96,15 +96,13 @@ template <>
 inline constexpr auto enum_strings<lispb::codegen::SemanticRelationKind, Name>{
     PackedStrings{"index_into\000count_of\000offset_into\000discriminates\000contains\000member_"
                   "of\000quantises\000encoded_as\000references",
-                  std::array<std::uint8_t, 10>{
-                      0ULL, 11ULL, 20ULL, 32ULL, 46ULL, 55ULL, 65ULL, 75ULL, 86ULL, 97ULL}}};
+                  std::array<std::uint8_t, 10>{0, 11, 20, 32, 46, 55, 65, 75, 86, 97}}};
 
 template <>
 inline constexpr auto enum_strings<lispb::codegen::SemanticRelationKind, Serialized>{
     PackedStrings{"index_into\000count_of\000offset_into\000discriminates\000contains\000member_"
                   "of\000quantises\000encoded_as\000references",
-                  std::array<std::uint8_t, 10>{
-                      0ULL, 11ULL, 20ULL, 32ULL, 46ULL, 55ULL, 65ULL, 75ULL, 86ULL, 97ULL}}};
+                  std::array<std::uint8_t, 10>{0, 11, 20, 32, 46, 55, 65, 75, 86, 97}}};
 } // namespace ioj
 namespace std {
 template <>

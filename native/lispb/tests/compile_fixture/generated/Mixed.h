@@ -257,5 +257,5 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<codegen_compile_fixture::mixed::CrossSettings::Field, Name>{
-    PackedStrings{"actor", std::array<std::uint8_t, 2>{0ULL, 6ULL}}};
+    PackedStrings{"actor", std::array<std::uint8_t, 2>{0, 6}}};
 } // namespace ioj

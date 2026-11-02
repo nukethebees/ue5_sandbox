@@ -94,8 +94,8 @@ struct EnumTraits<levels::ExprType> {
 };
 
 template <>
-inline constexpr auto enum_strings<levels::ExprType, Serialized>{PackedStrings{
-    "all-of\000any-of\000entity-destroyed\000entity-reached-position\000time-elapsed\000objective-"
-    "resolved\000entity-kills-reached",
-    std::array<std::uint8_t, 8>{0ULL, 7ULL, 14ULL, 31ULL, 55ULL, 68ULL, 87ULL, 108ULL}}};
+inline constexpr auto enum_strings<levels::ExprType, Serialized>{
+    PackedStrings{"all-of\000any-of\000entity-destroyed\000entity-reached-position\000time-"
+                  "elapsed\000objective-resolved\000entity-kills-reached",
+                  std::array<std::uint8_t, 8>{0, 7, 14, 31, 55, 68, 87, 108}}};
 } // namespace ioj

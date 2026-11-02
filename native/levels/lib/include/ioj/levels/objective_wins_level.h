@@ -39,5 +39,5 @@ struct EnumTraits<ObjectiveWinsLevel> {
 
 template <>
 inline constexpr auto enum_strings<ObjectiveWinsLevel, Serialized>{
-    PackedStrings{"no\000yes", std::array<std::uint8_t, 3>{0ULL, 3ULL, 7ULL}}};
+    PackedStrings{"no\000yes", std::array<std::uint8_t, 3>{0, 3, 7}}};
 } // namespace ioj

@@ -74,5 +74,5 @@ inline constexpr MinMax<kernel_codegen::detail::EmissionField>
 template <>
 inline constexpr auto enum_strings<kernel_codegen::detail::EmissionField, Serialized>{
     PackedStrings{"header\000source\000tests\000header-include\000namespace",
-                  std::array<std::uint8_t, 6>{0ULL, 7ULL, 14ULL, 20ULL, 35ULL, 45ULL}}};
+                  std::array<std::uint8_t, 6>{0, 7, 14, 20, 35, 45}}};
 } // namespace ioj

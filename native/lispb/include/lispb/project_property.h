@@ -39,6 +39,5 @@ template <>
 inline constexpr auto enum_strings<lispb::ProjectProperty, Serialized>{
     PackedStrings{"language-version\000project-root\000types\000sources\000output-root\000include-"
                   "directories\000source\000artifact\000targets",
-                  std::array<std::uint8_t, 10>{
-                      0ULL, 17ULL, 30ULL, 36ULL, 44ULL, 56ULL, 76ULL, 83ULL, 92ULL, 100ULL}}};
+                  std::array<std::uint8_t, 10>{0, 17, 30, 36, 44, 56, 76, 83, 92, 100}}};
 } // namespace ioj

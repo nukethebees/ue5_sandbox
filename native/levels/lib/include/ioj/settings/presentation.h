@@ -102,5 +102,5 @@ template <>
 template <>
 inline constexpr auto enum_strings<settings::Presentation::Field, Name>{PackedStrings{
     "player_ship\000laser_projectiles\000capital_ships\000turrets\000entity_overlay\000radar",
-    std::array<std::uint8_t, 7>{0ULL, 12ULL, 30ULL, 44ULL, 52ULL, 67ULL, 73ULL}}};
+    std::array<std::uint8_t, 7>{0, 12, 30, 44, 52, 67, 73}}};
 } // namespace ioj

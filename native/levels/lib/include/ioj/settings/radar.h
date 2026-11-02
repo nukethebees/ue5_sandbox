@@ -162,19 +162,6 @@ inline constexpr auto enum_strings<settings::Radar::Field, Name>{
                   "radius\000grid_opacity\000core_cell_radius\000combat_cell_radius\000tactical_"
                   "cell_radius\000strategic_cell_radius\000glyph_size_scale\000objective_size_"
                   "multiplier\000objective_ring_padding_pixels\000objective_ring_thickness_pixels",
-                  std::array<std::uint16_t, 15>{0ULL,
-                                                8ULL,
-                                                21ULL,
-                                                36ULL,
-                                                50ULL,
-                                                72ULL,
-                                                85ULL,
-                                                102ULL,
-                                                121ULL,
-                                                142ULL,
-                                                164ULL,
-                                                181ULL,
-                                                207ULL,
-                                                237ULL,
-                                                269ULL}}};
+                  std::array<std::uint16_t, 15>{
+                      0, 8, 21, 36, 50, 72, 85, 102, 121, 142, 164, 181, 207, 237, 269}}};
 } // namespace ioj

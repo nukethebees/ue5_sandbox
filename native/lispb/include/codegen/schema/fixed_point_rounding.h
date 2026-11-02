@@ -40,5 +40,5 @@ inline constexpr MinMax<lispb::codegen::FixedPointRounding>
 
 template <>
 inline constexpr auto enum_strings<lispb::codegen::FixedPointRounding, Serialized>{
-    PackedStrings{"nearest-even\000toward-zero", std::array<std::uint8_t, 3>{0ULL, 13ULL, 25ULL}}};
+    PackedStrings{"nearest-even\000toward-zero", std::array<std::uint8_t, 3>{0, 13, 25}}};
 } // namespace ioj

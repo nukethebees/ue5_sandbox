@@ -40,7 +40,6 @@ inline constexpr MinMax<slate_codegen::detail::SlotOption>
                                                   slate_codegen::detail::SlotOption::valign};
 
 template <>
-inline constexpr auto enum_strings<slate_codegen::detail::SlotOption, Serialized>{
-    PackedStrings{"weight\000padding\000halign\000valign",
-                  std::array<std::uint8_t, 5>{0ULL, 7ULL, 15ULL, 22ULL, 29ULL}}};
+inline constexpr auto enum_strings<slate_codegen::detail::SlotOption, Serialized>{PackedStrings{
+    "weight\000padding\000halign\000valign", std::array<std::uint8_t, 5>{0, 7, 15, 22, 29}}};
 } // namespace ioj

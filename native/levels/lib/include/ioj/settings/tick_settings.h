@@ -69,5 +69,5 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<settings::TickSettings::Field, Name>{
-    PackedStrings{"tick_rate\000time_scale", std::array<std::uint8_t, 3>{0ULL, 10ULL, 21ULL}}};
+    PackedStrings{"tick_rate\000time_scale", std::array<std::uint8_t, 3>{0, 10, 21}}};
 } // namespace ioj

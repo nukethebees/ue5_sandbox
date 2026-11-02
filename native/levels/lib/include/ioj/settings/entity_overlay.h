@@ -147,17 +147,5 @@ inline constexpr auto enum_strings<settings::EntityOverlay::Field, Name>{PackedS
     "enabled\000maximum_range\000bar_size_pixels\000screen_offset_pixels\000minimum_bar_"
     "scale\000maximum_bar_scale\000inset_pixels\000maximum_inset_height_ratio\000objective_frame_"
     "pixels\000objective_bar_height_scale\000screen_edge_padding_pixels\000soft_target",
-    std::array<std::uint8_t, 13>{0ULL,
-                                 8ULL,
-                                 22ULL,
-                                 38ULL,
-                                 59ULL,
-                                 77ULL,
-                                 95ULL,
-                                 108ULL,
-                                 135ULL,
-                                 158ULL,
-                                 185ULL,
-                                 212ULL,
-                                 224ULL}}};
+    std::array<std::uint8_t, 13>{0, 8, 22, 38, 59, 77, 95, 108, 135, 158, 185, 212, 224}}};
 } // namespace ioj

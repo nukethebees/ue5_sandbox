@@ -79,8 +79,8 @@ inline constexpr MinMax<lispb::codegen::NativeEnumHelper>
                                                  lispb::codegen::NativeEnumHelper::formatter};
 
 template <>
-inline constexpr auto enum_strings<lispb::codegen::NativeEnumHelper, Serialized>{PackedStrings{
-    "to-string\000try-parse\000to-display-string\000to-serialized-string\000try-parse-"
-    "serialized\000traits\000formatter",
-    std::array<std::uint8_t, 8>{0ULL, 10ULL, 20ULL, 38ULL, 59ULL, 80ULL, 87ULL, 97ULL}}};
+inline constexpr auto enum_strings<lispb::codegen::NativeEnumHelper, Serialized>{
+    PackedStrings{"to-string\000try-parse\000to-display-string\000to-serialized-string\000try-"
+                  "parse-serialized\000traits\000formatter",
+                  std::array<std::uint8_t, 8>{0, 10, 20, 38, 59, 80, 87, 97}}};
 } // namespace ioj

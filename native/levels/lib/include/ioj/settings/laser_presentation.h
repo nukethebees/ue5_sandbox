@@ -68,5 +68,5 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<settings::LaserPresentation::Field, Name>{PackedStrings{
-    "min_cull_distance\000max_cull_distance", std::array<std::uint8_t, 3>{0ULL, 18ULL, 36ULL}}};
+    "min_cull_distance\000max_cull_distance", std::array<std::uint8_t, 3>{0, 18, 36}}};
 } // namespace ioj

@@ -38,5 +38,5 @@ inline constexpr MinMax<lispb::PathBase> enum_range<lispb::PathBase>{lispb::Path
 
 template <>
 inline constexpr auto enum_strings<lispb::PathBase, Serialized>{
-    PackedStrings{"project-path\000build-path", std::array<std::uint8_t, 3>{0ULL, 13ULL, 24ULL}}};
+    PackedStrings{"project-path\000build-path", std::array<std::uint8_t, 3>{0, 13, 24}}};
 } // namespace ioj

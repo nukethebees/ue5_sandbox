@@ -142,21 +142,6 @@ inline constexpr auto enum_strings<material_synth::MaterialClause, Serialized>{P
     "asset\000domain\000blend\000shading\000two-sided\000disable-depth-test\000usage\000adopt-"
     "existing\000opacity-mask-clip\000parameter\000let\000emissive\000opacity\000base-"
     "color\000opacity-mask\000world-position-offset",
-    std::array<std::uint8_t, 17>{0ULL,
-                                 6ULL,
-                                 13ULL,
-                                 19ULL,
-                                 27ULL,
-                                 37ULL,
-                                 56ULL,
-                                 62ULL,
-                                 77ULL,
-                                 95ULL,
-                                 105ULL,
-                                 109ULL,
-                                 118ULL,
-                                 126ULL,
-                                 137ULL,
-                                 150ULL,
-                                 172ULL}}};
+    std::array<std::uint8_t, 17>{
+        0, 6, 13, 19, 27, 37, 56, 62, 77, 95, 105, 109, 118, 126, 137, 150, 172}}};
 } // namespace ioj

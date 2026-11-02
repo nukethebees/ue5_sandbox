@@ -40,7 +40,6 @@ inline constexpr MinMax<kernel_codegen::detail::ScalarType>
                                                    kernel_codegen::detail::ScalarType::float64};
 
 template <>
-inline constexpr auto enum_strings<kernel_codegen::detail::ScalarType, Serialized>{
-    PackedStrings{"int32\000uint32\000float\000double",
-                  std::array<std::uint8_t, 5>{0ULL, 6ULL, 13ULL, 19ULL, 26ULL}}};
+inline constexpr auto enum_strings<kernel_codegen::detail::ScalarType, Serialized>{PackedStrings{
+    "int32\000uint32\000float\000double", std::array<std::uint8_t, 5>{0, 6, 13, 19, 26}}};
 } // namespace ioj

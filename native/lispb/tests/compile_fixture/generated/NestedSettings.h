@@ -74,6 +74,5 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<codegen_compile_fixture::SettingsTarget::Field, Name>{
-    PackedStrings{"first\000second\000external_value",
-                  std::array<std::uint8_t, 4>{0ULL, 6ULL, 13ULL, 28ULL}}};
+    PackedStrings{"first\000second\000external_value", std::array<std::uint8_t, 4>{0, 6, 13, 28}}};
 } // namespace ioj

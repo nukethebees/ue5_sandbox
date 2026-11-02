@@ -41,5 +41,5 @@ inline constexpr MinMax<kernel_codegen::detail::OperationKind>
 
 template <>
 inline constexpr auto enum_strings<kernel_codegen::detail::OperationKind, Serialized>{
-    PackedStrings{"map\000component-map", std::array<std::uint8_t, 3>{0ULL, 4ULL, 18ULL}}};
+    PackedStrings{"map\000component-map", std::array<std::uint8_t, 3>{0, 4, 18}}};
 } // namespace ioj

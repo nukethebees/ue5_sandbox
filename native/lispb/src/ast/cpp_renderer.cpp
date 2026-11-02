@@ -45,6 +45,7 @@
 #include <format>
 #include <functional>
 #include <iterator>
+#include <limits>
 #include <optional>
 #include <set>
 #include <span>
@@ -674,6 +675,93 @@ auto CppRenderer::expr_precedence(Expr expr) -> int {
             return 12;
     }
 }
+auto CppRenderer::append_initializer_literal(std::string& output,
+                                             Expr const value,
+                                             CppTypeId const destination) -> bool {
+    auto append = [&](auto const number) {
+        auto const& types{ir_.types.std};
+        auto const fits{
+            (destination == types.i8 && std::in_range<std::int8_t>(number)) ||
+            (destination == types.i16 && std::in_range<std::int16_t>(number)) ||
+            (destination == types.i32 && std::in_range<std::int32_t>(number)) ||
+            (destination == types.i64 && std::in_range<std::int64_t>(number)) ||
+            (destination == types.u8 && std::in_range<std::uint8_t>(number)) ||
+            (destination == types.u16 && std::in_range<std::uint16_t>(number)) ||
+            (destination == types.u32 && std::in_range<std::uint32_t>(number)) ||
+            (destination == types.u64 && std::in_range<std::uint64_t>(number)) ||
+            (destination == types.int_ && std::in_range<int>(number)) ||
+            (destination == types.unsigned_char && std::in_range<unsigned char>(number))};
+        if (!fits) {
+            return false;
+        }
+
+        std::format_to(std::back_inserter(output), "{}", number);
+        // Decimal literals above INT64_MAX require an unsigned suffix.
+        if (std::cmp_greater(number, std::numeric_limits<std::int64_t>::max())) {
+            output += "ULL";
+        }
+        return true;
+    };
+    auto const index{value.index()};
+    switch (value.kind()) {
+        case ExprKind::i8_literal:
+            return append(ir_.numeric_literal_exprs_.i8[index]);
+        case ExprKind::i16_literal:
+            return append(ir_.numeric_literal_exprs_.i16[index]);
+        case ExprKind::i32_literal:
+            return append(ir_.numeric_literal_exprs_.i32[index]);
+        case ExprKind::i64_literal:
+            return append(ir_.numeric_literal_exprs_.i64[index]);
+        case ExprKind::u8_literal:
+            return append(ir_.numeric_literal_exprs_.u8[index]);
+        case ExprKind::u16_literal:
+            return append(ir_.numeric_literal_exprs_.u16[index]);
+        case ExprKind::u32_literal:
+            return append(ir_.numeric_literal_exprs_.u32[index]);
+        case ExprKind::u64_literal:
+            return append(ir_.numeric_literal_exprs_.u64[index]);
+        default:
+            return false;
+    }
+}
+void CppRenderer::append_initializer(std::string& output,
+                                     Syntax const value,
+                                     CppTypeId const destination,
+                                     RenderContext const& ctx,
+                                     int const minimum) {
+    if (value.kind() == SyntaxKind::expression &&
+        append_initializer_literal(output, value.expression(), destination)) {
+        return;
+    }
+    if (value.kind() == SyntaxKind::initializer_list) {
+        output += '{';
+        append_initializer_elements(
+            output, ir_.initializer_exprs_.elements[value.index()], destination, ctx);
+        output += '}';
+        return;
+    }
+    append_expr(output, value, ctx, minimum);
+}
+void CppRenderer::append_initializer_elements(std::string& output,
+                                              ir::Range const elements,
+                                              CppTypeId const destination,
+                                              RenderContext const& ctx) {
+    auto element_type{destination};
+    if (destination.value != 0) {
+        if (auto const type{ir_.types.shapes_[destination.value - 1].initializer_element_type};
+            type.value != 0) {
+            element_type = type;
+        }
+    }
+    bool first{true};
+    for (auto const element : ir_.exprs(elements)) {
+        if (!first) {
+            output += ", ";
+        }
+        append_initializer(output, element, element_type, ctx, 1);
+        first = false;
+    }
+}
 void CppRenderer::append_expr(
     std::string& output, Expr expr, RenderContext const& ctx, int minimum, bool equal) {
     auto const index{expr.index()};
@@ -821,7 +909,10 @@ void CppRenderer::append_expr(
                 append_type(output, *type, ctx);
             }
             output += '{';
-            append_arguments(ir_.initializer_exprs_.elements[index]);
+            append_initializer_elements(output,
+                                        ir_.initializer_exprs_.elements[index],
+                                        ir_.initializer_exprs_.type[index].value_or(CppTypeId{}),
+                                        ctx);
             output += '}';
             break;
         case ExprKind::lambda: {
@@ -1146,12 +1237,12 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
         output += path;
         output += system ? '>' : '"';
     };
-    auto initialize = [&](Syntax value) {
+    auto initialize = [&](Syntax value, CppTypeId destination) {
         auto const direct_list{value.kind() == SyntaxKind::initializer_list};
         if (!direct_list) {
             output += '{';
         }
-        expr(value);
+        append_initializer(output, value, destination, ctx);
         if (!direct_list) {
             output += '}';
         }
@@ -1163,7 +1254,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
         output += ' ';
         output += ir_.strings.view(members.name[i]);
         if (auto const initializer{members.initializer[i]}) {
-            initialize(initializer);
+            initialize(initializer, members.type[i]);
         }
         output += ';';
     };
@@ -1314,7 +1405,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
             expr(variables.name[i]);
             declare_name(enclosing, variables.name[i], CppDeclarationId{node});
             if (auto const initializer{variables.initializer[i]}) {
-                initialize(*initializer);
+                initialize(*initializer, variables.type[i]);
             } else {
                 output += "{}";
             }

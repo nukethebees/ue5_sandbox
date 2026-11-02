@@ -46,20 +46,6 @@ inline constexpr auto enum_strings<layout::DeclarationKind, Display>{
     PackedStrings{"external\000enum\000integer scalar\000linear quantized\000integer "
                   "varint\000fixed point\000mini float\000optional sentinel\000optional presence "
                   "bit\000packed record\000record\000union\000SoA\000table\000facade",
-                  std::array<std::uint8_t, 16>{0ULL,
-                                               9ULL,
-                                               14ULL,
-                                               29ULL,
-                                               46ULL,
-                                               61ULL,
-                                               73ULL,
-                                               84ULL,
-                                               102ULL,
-                                               124ULL,
-                                               138ULL,
-                                               145ULL,
-                                               151ULL,
-                                               155ULL,
-                                               161ULL,
-                                               168ULL}}};
+                  std::array<std::uint8_t, 16>{
+                      0, 9, 14, 29, 46, 61, 73, 84, 102, 124, 138, 145, 151, 155, 161, 168}}};
 } // namespace ioj

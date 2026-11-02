@@ -75,6 +75,6 @@ template <>
 }
 
 template <>
-inline constexpr auto enum_strings<levels::CampaignDefinition::Field, Name>{PackedStrings{
-    "id\000title\000level_ids", std::array<std::uint8_t, 4>{0ULL, 3ULL, 9ULL, 19ULL}}};
+inline constexpr auto enum_strings<levels::CampaignDefinition::Field, Name>{
+    PackedStrings{"id\000title\000level_ids", std::array<std::uint8_t, 4>{0, 3, 9, 19}}};
 } // namespace ioj

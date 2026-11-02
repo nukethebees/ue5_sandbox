@@ -98,5 +98,5 @@ template <>
 inline constexpr auto enum_strings<lispb::codegen::EnumConversion, Serialized>{PackedStrings{
     "lex-to-string\000string-view\000string\000lex-to-display-string\000display-string-"
     "view\000display-string\000lex-to-serialized-string\000try-parse-serialized",
-    std::array<std::uint8_t, 9>{0ULL, 14ULL, 26ULL, 33ULL, 55ULL, 75ULL, 90ULL, 115ULL, 136ULL}}};
+    std::array<std::uint8_t, 9>{0, 14, 26, 33, 55, 75, 90, 115, 136}}};
 } // namespace ioj

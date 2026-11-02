@@ -82,12 +82,12 @@ template <>
 template <>
 inline constexpr auto enum_strings<Team, Name>{
     PackedStrings{"White\000Red\000Green\000Blue\000Orange\000Yellow",
-                  std::array<std::uint8_t, 7>{0ULL, 6ULL, 10ULL, 16ULL, 21ULL, 28ULL, 35ULL}}};
+                  std::array<std::uint8_t, 7>{0, 6, 10, 16, 21, 28, 35}}};
 
 template <>
 inline constexpr auto enum_strings<Team, Serialized>{
     PackedStrings{"white\000red\000green\000blue\000orange\000yellow",
-                  std::array<std::uint8_t, 7>{0ULL, 6ULL, 10ULL, 16ULL, 21ULL, 28ULL, 35ULL}}};
+                  std::array<std::uint8_t, 7>{0, 6, 10, 16, 21, 28, 35}}};
 } // namespace ioj
 namespace std {
 template <>

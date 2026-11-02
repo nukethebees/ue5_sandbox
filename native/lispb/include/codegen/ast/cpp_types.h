@@ -129,6 +129,9 @@ class CppTypes {
     auto template_type(Syntax expression, std::span<TypeDependencyId const> dependencies)
         -> CppTypeId;
     void initialise_standard_types();
+    auto compose(std::span<CppTypePart const> parts,
+                 std::optional<CppTypeId> policy_source,
+                 CppTypeId initializer_element_type) -> CppTypeId;
     auto append(StringId spelling,
                 std::span<TypeDependencyId const> dependencies,
                 ParameterPassing passing,

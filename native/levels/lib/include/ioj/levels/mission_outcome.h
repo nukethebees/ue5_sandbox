@@ -39,5 +39,5 @@ struct EnumTraits<MissionOutcome> {
 
 template <>
 inline constexpr auto enum_strings<MissionOutcome, Serialized>{
-    PackedStrings{"victory\000defeat", std::array<std::uint8_t, 3>{0ULL, 8ULL, 15ULL}}};
+    PackedStrings{"victory\000defeat", std::array<std::uint8_t, 3>{0, 8, 15}}};
 } // namespace ioj

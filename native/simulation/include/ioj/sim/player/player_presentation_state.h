@@ -68,5 +68,5 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<sim::player::PlayerPresentationState::Field, Name>{PackedStrings{
-    "body_transform\000boost_start_sequence", std::array<std::uint8_t, 3>{0ULL, 15ULL, 36ULL}}};
+    "body_transform\000boost_start_sequence", std::array<std::uint8_t, 3>{0, 15, 36}}};
 } // namespace ioj

@@ -213,8 +213,7 @@ inline constexpr auto enum_strings<material_synth::MaterialOperator, Serialized>
     "data\000sample\000texture\000swizzle\000world-position\000object-position\000pixel-"
     "normal\000vertex-normal\000camera-vector\000camera-position\000vertex-color\000transform-"
     "position\000scene-texture\000shader-call\000custom",
-    std::array<std::uint16_t, 30>{0ULL,   7ULL,   14ULL,  21ULL,  23ULL,  25ULL,  27ULL,  29ULL,
-                                  34ULL,  43ULL,  48ULL,  53ULL,  57ULL,  61ULL,  70ULL,  95ULL,
-                                  102ULL, 110ULL, 118ULL, 133ULL, 149ULL, 162ULL, 176ULL, 190ULL,
-                                  206ULL, 219ULL, 238ULL, 252ULL, 264ULL, 271ULL}}};
+    std::array<std::uint16_t, 30>{0,   7,   14,  21,  23,  25,  27,  29,  34,  43,
+                                  48,  53,  57,  61,  70,  95,  102, 110, 118, 133,
+                                  149, 162, 176, 190, 206, 219, 238, 252, 264, 271}}};
 } // namespace ioj

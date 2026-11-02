@@ -46,6 +46,6 @@ template <>
 }
 
 template <>
-inline constexpr auto enum_strings<ObjectiveOutcome, Serialized>{PackedStrings{
-    "passed\000failed\000expired", std::array<std::uint8_t, 4>{0ULL, 7ULL, 14ULL, 22ULL}}};
+inline constexpr auto enum_strings<ObjectiveOutcome, Serialized>{
+    PackedStrings{"passed\000failed\000expired", std::array<std::uint8_t, 4>{0, 7, 14, 22}}};
 } // namespace ioj

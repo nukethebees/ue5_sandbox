@@ -93,8 +93,7 @@ template <>
 inline constexpr auto enum_strings<EGameUiIcon, Name>{
     PackedStrings{TEXT("Hive\000Video\000Gameplay\000Audio\000Controls\000Accessibility\000System"
                        "\000LevelIncomplete\000LevelComplete"),
-                  std::array<std::uint8_t, 10>{
-                      0ULL, 5ULL, 11ULL, 20ULL, 26ULL, 35ULL, 49ULL, 56ULL, 72ULL, 86ULL}}};
+                  std::array<std::uint8_t, 10>{0, 5, 11, 20, 26, 35, 49, 56, 72, 86}}};
 } // namespace ioj
 
 SPACEGAMEPRESENTATION_API auto LexToString(EGameUiIcon const value) -> TCHAR const*;

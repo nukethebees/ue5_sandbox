@@ -173,6 +173,6 @@ static_assert(valid_packed_value_layout<Instruction>());
 } // namespace ioj::sim::tasks
 namespace ioj {
 template <>
-inline constexpr auto enum_strings<sim::tasks::InstructionKind, Serialized>{PackedStrings{
-    "kill\000idle\000move-to", std::array<std::uint8_t, 4>{0ULL, 5ULL, 10ULL, 18ULL}}};
+inline constexpr auto enum_strings<sim::tasks::InstructionKind, Serialized>{
+    PackedStrings{"kill\000idle\000move-to", std::array<std::uint8_t, 4>{0, 5, 10, 18}}};
 } // namespace ioj

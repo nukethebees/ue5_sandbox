@@ -45,21 +45,5 @@ inline constexpr MinMax<lispb::codegen::BinaryOperator> enum_range<lispb::codege
 template <>
 inline constexpr auto enum_strings<lispb::codegen::BinaryOperator, Serialized>{PackedStrings{
     "==\000>=\000>\000-\000+\000*\000||\000&&\000!=\000/\000<\000&\000|\000<<\000<=\000<=>",
-    std::array<std::uint8_t, 17>{0ULL,
-                                 3ULL,
-                                 6ULL,
-                                 8ULL,
-                                 10ULL,
-                                 12ULL,
-                                 14ULL,
-                                 17ULL,
-                                 20ULL,
-                                 23ULL,
-                                 25ULL,
-                                 27ULL,
-                                 29ULL,
-                                 31ULL,
-                                 34ULL,
-                                 37ULL,
-                                 41ULL}}};
+    std::array<std::uint8_t, 17>{0, 3, 6, 8, 10, 12, 14, 17, 20, 23, 25, 27, 29, 31, 34, 37, 41}}};
 } // namespace ioj

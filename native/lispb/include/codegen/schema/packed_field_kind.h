@@ -83,5 +83,5 @@ inline constexpr MinMax<lispb::codegen::PackedFieldKind>
 template <>
 inline constexpr auto enum_strings<lispb::codegen::PackedFieldKind, Serialized>{
     PackedStrings{"unsigned\000signed\000enum\000linear-quantized\000fixed-point\000mini-float",
-                  std::array<std::uint8_t, 7>{0ULL, 9ULL, 16ULL, 21ULL, 38ULL, 50ULL, 61ULL}}};
+                  std::array<std::uint8_t, 7>{0, 9, 16, 21, 38, 50, 61}}};
 } // namespace ioj

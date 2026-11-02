@@ -308,7 +308,7 @@ struct EnumTraits<codegen_compile_fixture::ReaderEnum> {
 
 template <>
 inline constexpr auto enum_strings<codegen_compile_fixture::ReaderEnum, Serialized>{
-    PackedStrings{"MixedCase", std::array<std::uint8_t, 2>{0ULL, 10ULL}}};
+    PackedStrings{"MixedCase", std::array<std::uint8_t, 2>{0, 10}}};
 
 template <>
 [[nodiscard]] constexpr auto enum_count<codegen_compile_fixture::PositionalChild::Field>() noexcept
@@ -318,7 +318,7 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<codegen_compile_fixture::PositionalChild::Field, Name>{
-    PackedStrings{"name\000count", std::array<std::uint8_t, 3>{0ULL, 5ULL, 11ULL}}};
+    PackedStrings{"name\000count", std::array<std::uint8_t, 3>{0, 5, 11}}};
 
 template <>
 [[nodiscard]] constexpr auto enum_count<codegen_compile_fixture::DefaultReadable::Field>() noexcept
@@ -328,7 +328,7 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<codegen_compile_fixture::DefaultReadable::Field, Name>{
-    PackedStrings{"count\000maybe", std::array<std::uint8_t, 3>{0ULL, 6ULL, 12ULL}}};
+    PackedStrings{"count\000maybe", std::array<std::uint8_t, 3>{0, 6, 12}}};
 
 template <>
 [[nodiscard]] constexpr auto
@@ -338,7 +338,7 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<codegen_compile_fixture::RecursiveReadable::Field, Name>{
-    PackedStrings{"children", std::array<std::uint8_t, 2>{0ULL, 9ULL}}};
+    PackedStrings{"children", std::array<std::uint8_t, 2>{0, 9}}};
 
 template <>
 [[nodiscard]] constexpr auto enum_count<codegen_compile_fixture::ReadableChild::Field>() noexcept
@@ -348,7 +348,7 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<codegen_compile_fixture::ReadableChild::Field, Name>{
-    PackedStrings{"name\000count", std::array<std::uint8_t, 3>{0ULL, 5ULL, 11ULL}}};
+    PackedStrings{"name\000count", std::array<std::uint8_t, 3>{0, 5, 11}}};
 
 template <>
 [[nodiscard]] constexpr auto enum_count<codegen_compile_fixture::ReadableRecord::Field>() noexcept
@@ -360,6 +360,5 @@ template <>
 inline constexpr auto enum_strings<codegen_compile_fixture::ReadableRecord::Field, Name>{
     PackedStrings{
         "child\000values\000points\000enabled\000maybe\000scale\000offset\000title\000mode",
-        std::array<std::uint8_t, 10>{
-            0ULL, 6ULL, 13ULL, 20ULL, 28ULL, 34ULL, 40ULL, 47ULL, 53ULL, 58ULL}}};
+        std::array<std::uint8_t, 10>{0, 6, 13, 20, 28, 34, 40, 47, 53, 58}}};
 } // namespace ioj

@@ -79,5 +79,5 @@ template <>
 template <>
 inline constexpr auto enum_strings<sim::HudSettings::Field, Name>{PackedStrings{
     "player_status_update_period\000entity_count_update_period\000mission_status_update_period",
-    std::array<std::uint8_t, 4>{0ULL, 28ULL, 55ULL, 84ULL}}};
+    std::array<std::uint8_t, 4>{0, 28, 55, 84}}};
 } // namespace ioj

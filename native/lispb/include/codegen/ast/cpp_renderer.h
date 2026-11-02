@@ -74,6 +74,16 @@ class CppRenderer {
                      int minimum = 0,
                      bool equal = false);
     auto expr_precedence(Expr expr) -> int;
+    void append_initializer(std::string& output,
+                            Syntax value,
+                            CppTypeId destination,
+                            RenderContext const& ctx,
+                            int minimum = 0);
+    void append_initializer_elements(std::string& output,
+                                     ir::Range elements,
+                                     CppTypeId destination,
+                                     RenderContext const& ctx);
+    auto append_initializer_literal(std::string& output, Expr value, CppTypeId destination) -> bool;
     void append_expr(std::string& output,
                      Expr expr,
                      RenderContext const& ctx,

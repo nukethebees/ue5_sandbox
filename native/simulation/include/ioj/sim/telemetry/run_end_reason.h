@@ -83,5 +83,5 @@ template <>
 inline constexpr auto enum_strings<sim::telemetry::RunEndReason, Serialized>{
     PackedStrings{"mission_succeeded\000mission_failed\000battle_resolved\000duration_"
                   "reached\000orchestrator_reset\000world_end",
-                  std::array<std::uint8_t, 7>{0ULL, 18ULL, 33ULL, 49ULL, 66ULL, 85ULL, 95ULL}}};
+                  std::array<std::uint8_t, 7>{0, 18, 33, 49, 66, 85, 95}}};
 } // namespace ioj

@@ -158,15 +158,15 @@ template <>
 
 template <>
 inline constexpr auto enum_strings<codegen_compile_fixture::EPlainFixture, Name>{
-    PackedStrings{"First\000ReadableName", std::array<std::uint8_t, 3>{0ULL, 6ULL, 19ULL}}};
+    PackedStrings{"First\000ReadableName", std::array<std::uint8_t, 3>{0, 6, 19}}};
 
 template <>
 inline constexpr auto enum_strings<codegen_compile_fixture::EPlainFixture, Display>{
-    PackedStrings{"First\000Readable Name", std::array<std::uint8_t, 3>{0ULL, 6ULL, 20ULL}}};
+    PackedStrings{"First\000Readable Name", std::array<std::uint8_t, 3>{0, 6, 20}}};
 
 template <>
 inline constexpr auto enum_strings<codegen_compile_fixture::EPlainFixture, Serialized>{
-    PackedStrings{"first\000readable_name", std::array<std::uint8_t, 3>{0ULL, 6ULL, 20ULL}}};
+    PackedStrings{"first\000readable_name", std::array<std::uint8_t, 3>{0, 6, 20}}};
 } // namespace ioj
 namespace std {
 template <>
@@ -177,7 +177,7 @@ struct formatter<::codegen_compile_fixture::EPlainFixture>
 namespace ioj {
 template <>
 inline constexpr auto enum_strings<codegen_compile_fixture::ENameOnlyFixture, Name>{
-    PackedStrings{"First\000Second", std::array<std::uint8_t, 3>{0ULL, 6ULL, 13ULL}}};
+    PackedStrings{"First\000Second", std::array<std::uint8_t, 3>{0, 6, 13}}};
 } // namespace ioj
 namespace std {
 template <>
@@ -187,13 +187,12 @@ struct formatter<::codegen_compile_fixture::ENameOnlyFixture>
 
 namespace ioj {
 template <>
-inline constexpr auto enum_strings<codegen_compile_fixture::EReorderedFixture, Name>{PackedStrings{
-    "First\000Second\000Later", std::array<std::uint8_t, 4>{0ULL, 6ULL, 13ULL, 19ULL}}};
+inline constexpr auto enum_strings<codegen_compile_fixture::EReorderedFixture, Name>{
+    PackedStrings{"First\000Second\000Later", std::array<std::uint8_t, 4>{0, 6, 13, 19}}};
 
 template <>
 inline constexpr auto enum_strings<codegen_compile_fixture::EReorderedFixture, Serialized>{
-    PackedStrings{"first\000second\000later",
-                  std::array<std::uint8_t, 4>{0ULL, 6ULL, 13ULL, 19ULL}}};
+    PackedStrings{"first\000second\000later", std::array<std::uint8_t, 4>{0, 6, 13, 19}}};
 
 template <>
 struct EnumTraits<codegen_compile_fixture::EMissingNames> {
@@ -203,17 +202,15 @@ struct EnumTraits<codegen_compile_fixture::EMissingNames> {
 };
 
 template <>
-inline constexpr auto enum_strings<codegen_compile_fixture::EMissingNames, Name>{
-    PackedStrings{"Unnamed\000Empty\000Escaped\000Count",
-                  std::array<std::uint8_t, 5>{0ULL, 8ULL, 14ULL, 22ULL, 28ULL}}};
+inline constexpr auto enum_strings<codegen_compile_fixture::EMissingNames, Name>{PackedStrings{
+    "Unnamed\000Empty\000Escaped\000Count", std::array<std::uint8_t, 5>{0, 8, 14, 22, 28}}};
 
 template <>
-inline constexpr auto enum_strings<codegen_compile_fixture::EMissingNames, Display>{
-    PackedStrings{"Unnamed\000Empty\000quote\"\\line\n\000Count",
-                  std::array<std::uint8_t, 5>{0ULL, 8ULL, 14ULL, 27ULL, 33ULL}}};
+inline constexpr auto enum_strings<codegen_compile_fixture::EMissingNames, Display>{PackedStrings{
+    "Unnamed\000Empty\000quote\"\\line\n\000Count", std::array<std::uint8_t, 5>{0, 8, 14, 27, 33}}};
 
 template <>
 inline constexpr auto enum_strings<codegen_compile_fixture::EMissingNames, Serialized>{
     PackedStrings{"unnamed\000empty\0002digits\000<invalid EMissingNames>",
-                  std::array<std::uint8_t, 5>{0ULL, 8ULL, 14ULL, 22ULL, 46ULL}}};
+                  std::array<std::uint8_t, 5>{0, 8, 14, 22, 46}}};
 } // namespace ioj

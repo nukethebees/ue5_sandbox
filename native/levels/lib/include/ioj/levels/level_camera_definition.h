@@ -77,5 +77,5 @@ template <>
 template <>
 inline constexpr auto enum_strings<levels::LevelCameraDefinition::Field, Name>{
     PackedStrings{"target_entity_ids\000offset_direction\000distance",
-                  std::array<std::uint8_t, 4>{0ULL, 18ULL, 35ULL, 44ULL}}};
+                  std::array<std::uint8_t, 4>{0, 18, 35, 44}}};
 } // namespace ioj

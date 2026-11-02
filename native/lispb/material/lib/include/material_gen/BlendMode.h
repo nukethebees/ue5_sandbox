@@ -71,5 +71,5 @@ inline constexpr MinMax<material_synth::BlendMode> enum_range<material_synth::Bl
 template <>
 inline constexpr auto enum_strings<material_synth::BlendMode, Serialized>{
     PackedStrings{"additive\000translucent\000opaque\000masked\000alpha-composite",
-                  std::array<std::uint8_t, 6>{0ULL, 9ULL, 21ULL, 28ULL, 35ULL, 51ULL}}};
+                  std::array<std::uint8_t, 6>{0, 9, 21, 28, 35, 51}}};
 } // namespace ioj

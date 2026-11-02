@@ -86,7 +86,7 @@ TEST(Lowering, PackedEnumOffsetsUseTheSmallestStorageIncludingTheSentinel) {
         auto const bits{length < 255 ? 8 : length < 65535 ? 16 : 32};
         EXPECT_NE(files.front().content.find(std::format("std::array<std::uint{}_t, 2>", bits)),
                   std::string::npos);
-        EXPECT_NE(files.front().content.find(std::format("{{0ULL, {}ULL}}", length + 1)),
+        EXPECT_NE(files.front().content.find(std::format("{{0, {}}}", length + 1)),
                   std::string::npos);
     }
 }
