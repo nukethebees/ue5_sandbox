@@ -889,6 +889,12 @@ auto CppIR::sizeof_type(CppTypeId type) -> Expr {
     sizeof_exprs_.type.push_back(type);
     return result;
 }
+auto CppIR::reinterpret_cast_expr(CppTypeId type, Expr operand) -> Expr {
+    auto const result{expr_detail::handle(ExprKind::reinterpret_cast_, cast_exprs_.type.size())};
+    cast_exprs_.type.push_back(type);
+    cast_exprs_.operand.push_back(operand);
+    return result;
+}
 auto CppIR::init_list(std::span<Expr const> elements, std::optional<CppTypeId> type) -> Expr {
     auto const result{
         expr_detail::handle(ExprKind::initializer_list, initializer_exprs_.type.size())};
@@ -1258,6 +1264,7 @@ void CppIR::collect_dependencies(Expr expr, std::vector<TypeDependencyId>& resul
             collect_dependencies(unary_exprs_.operand[index], result);
             break;
         case ExprKind::static_cast_:
+        case ExprKind::reinterpret_cast_:
             append(types.dependencies(cast_exprs_.type[index]));
             collect_dependencies(cast_exprs_.operand[index], result);
             break;

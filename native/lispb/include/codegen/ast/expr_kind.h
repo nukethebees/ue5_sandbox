@@ -16,6 +16,7 @@ enum class ExprKind : std::uint8_t {
     conditional,
     unary,
     static_cast_,
+    reinterpret_cast_,
     sizeof_type,
     initializer_list,
     raw,

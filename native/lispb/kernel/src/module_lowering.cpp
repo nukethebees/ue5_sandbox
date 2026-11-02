@@ -290,18 +290,43 @@ auto public_body(lispb::codegen::CppIR& cpp,
     return output;
 }
 
-auto overlap_helper() -> std::string_view {
-    return R"(auto ranges_overlap(void const* const lhs, std::size_t const lhs_size,
-                    void const* const rhs, std::size_t const rhs_size) noexcept -> bool {
-    if (lhs_size == 0 || rhs_size == 0) {
-        return false;
-    }
-
-    auto const lhs_address{reinterpret_cast<std::uintptr_t>(lhs)};
-    auto const rhs_address{reinterpret_cast<std::uintptr_t>(rhs)};
-    return lhs_address <= rhs_address ? rhs_address - lhs_address < lhs_size
-                                      : lhs_address - rhs_address < rhs_size;
-})";
+auto overlap_helper(lispb::codegen::CppIR& cpp) -> lispb::codegen::NodeId {
+    using lispb::codegen::BinaryOperator;
+    auto const function{cpp.function("ranges_overlap", "bool")};
+    auto const pointer_type{cpp.types.decorate(cpp.types.intern("void"), "", " const* const")};
+    auto const size_type{cpp.types.decorate(cpp.types.named("std::size_t"), "", " const")};
+    auto const address_type{cpp.types.named("std::uintptr_t")};
+    cpp.set_function_parameters(function,
+                                {cpp.parameter(pointer_type, "lhs"),
+                                 cpp.parameter(size_type, "lhs_size"),
+                                 cpp.parameter(pointer_type, "rhs"),
+                                 cpp.parameter(size_type, "rhs_size")});
+    cpp.set_function_noexcept(function);
+    auto const lhs_size{cpp.named("lhs_size")};
+    auto const rhs_size{cpp.named("rhs_size")};
+    auto const lhs_address{cpp.named("lhs_address")};
+    auto const rhs_address{cpp.named("rhs_address")};
+    cpp.set_function_body(
+        function,
+        {cpp.if_stmt(cpp.binary(BinaryOperator::logical_or,
+                                cpp.binary(BinaryOperator::equal, lhs_size, cpp.literal("0")),
+                                cpp.binary(BinaryOperator::equal, rhs_size, cpp.literal("0"))),
+                     cpp.block({cpp.return_stmt(cpp.literal("false"))})),
+         cpp.variable("auto const",
+                      "lhs_address",
+                      cpp.reinterpret_cast_expr(address_type, cpp.named("lhs"))),
+         cpp.variable("auto const",
+                      "rhs_address",
+                      cpp.reinterpret_cast_expr(address_type, cpp.named("rhs"))),
+         cpp.return_stmt(cpp.conditional(
+             cpp.binary(BinaryOperator::less_equal, lhs_address, rhs_address),
+             cpp.binary(BinaryOperator::less,
+                        cpp.binary(BinaryOperator::subtract, rhs_address, lhs_address),
+                        lhs_size),
+             cpp.binary(BinaryOperator::less,
+                        cpp.binary(BinaryOperator::subtract, lhs_address, rhs_address),
+                        rhs_size)))});
+    return cpp.definition(function);
 }
 
 }
@@ -318,10 +343,16 @@ auto lower_module(lispb::codegen::CppIR& cpp,
     lispb::codegen::Nodes definitions;
     lispb::codegen::Nodes implementation;
     implementation.push_back(
-        cpp.raw("[[noreturn]] void invariant_failed() noexcept { std::abort(); }\n\n"
-                "void require(bool const condition) noexcept {\n"
-                "    if (!condition) {\n        invariant_failed();\n    }\n}"));
-    implementation.push_back(cpp.raw(overlap_helper()));
+        cpp.raw("[[noreturn]] void invariant_failed() noexcept { std::abort(); }"));
+    auto const require{cpp.function("require", "void")};
+    cpp.set_function_parameters(require, {cpp.parameter("bool const", "condition")});
+    cpp.set_function_noexcept(require);
+    cpp.set_function_body(
+        require,
+        {cpp.if_stmt(cpp.unary(lispb::codegen::UnaryOperator::logical_not, cpp.named("condition")),
+                     cpp.block({cpp.expr_stmt(cpp.call(cpp.named("invariant_failed"), {}))}))});
+    implementation.push_back(cpp.definition(require));
+    implementation.push_back(overlap_helper(cpp));
 
     auto const range{document.modules.expanded_variants(module)};
     auto const end{range.offset + range.count};

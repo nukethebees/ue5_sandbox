@@ -641,7 +641,8 @@ void CppRenderer::append_expr(
             append_expr(output, ir_.unary_exprs_.operand[index], context, 11, true);
             break;
         case ExprKind::static_cast_:
-            output += "static_cast<";
+        case ExprKind::reinterpret_cast_:
+            output += expr.kind() == ExprKind::static_cast_ ? "static_cast<" : "reinterpret_cast<";
             append_type(output, ir_.cast_exprs_.type[index]);
             output += ">(";
             append_expr(output, ir_.cast_exprs_.operand[index], context, 1);

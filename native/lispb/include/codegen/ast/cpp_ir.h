@@ -378,6 +378,7 @@ class CppIR {
         return template_id(callee, std::span<Expr const>{arguments});
     }
     auto static_cast_expr(CppTypeId type, Expr operand) -> Expr;
+    auto reinterpret_cast_expr(CppTypeId type, Expr operand) -> Expr;
     auto conditional(Expr condition, Expr when_true, Expr when_false) -> Expr;
     auto sizeof_type(CppTypeId type) -> Expr;
     auto init_list(std::span<Expr const> elements, std::optional<CppTypeId> type = {}) -> Expr;
