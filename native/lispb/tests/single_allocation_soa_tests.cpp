@@ -78,7 +78,7 @@ TEST(SingleAllocationSoa, RowOperationsUseNestedEquivalentValues) {
                         {("void set(size_type index, std::int32_t const new_ids, Point const "
                           "new_points) const"),
                          "view_points().set(index, new_points);",
-                         "set(index, (value.x), (value.y));",
+                         "set(index, value.x, value.y);",
                          "size_type add(std::int32_t const new_ids, Point const new_points)",
                          "using Base::set;",
                          "using RowOperations::add;"});
