@@ -34,10 +34,9 @@ class StaticTableLowering : public CppIRBuilder {
     }
   private:
     auto static_array_type(CppTypeId element_type) -> CppTypeId {
-        return ir_.types.template_type(
-            ir_.types.named("TStaticArray",
-                            {ir_.types.dependency("TStaticArray", "Containers/StaticArray.h")}),
-            {element_type, ir_.types.named("num_rows")});
+        return template_type(
+            named_type("TStaticArray", {dependency("TStaticArray", "Containers/StaticArray.h")}),
+            {element_type, named_type("num_rows")});
     }
     auto group_getter(LoweringContext& ctx, StaticTableGroupId group) -> NodeId {
         auto const& groups{ctx.declarations.static_table_groups};
@@ -52,8 +51,7 @@ class StaticTableLowering : public CppIRBuilder {
         auto const created_function{function("get_" + ctx.text(groups.name[row]), "auto")};
         set_function_parameters(
             created_function,
-            {parameter(ir_.types.intern("int32 const",
-                                        {ir_.types.dependency("int32 const", "CoreMinimal.h")}),
+            {parameter(intern_type("int32 const", {dependency("int32 const", "CoreMinimal.h")}),
                        "index")});
         set_function_body(created_function, {return_stmt(init_list(arguments, result_type))});
         set_function_return_type(created_function, result_type, ReturnSyntax::trailing);
@@ -70,18 +68,16 @@ class StaticTableLowering : public CppIRBuilder {
         auto const rows{ctx.declarations.items(tables.rows[table_row])};
         auto const row_count{rows.size()};
         auto const columns{ctx.declarations.items(tables.columns[table_row])};
-        auto const int32_type{
-            ir_.types.intern("int32", {ir_.types.dependency("int32", "CoreMinimal.h")})};
-        NodeListBuilder children{ir_};
-        children.add(constexpr_member(int32_type,
-                                      ir_.strings.intern("num_rows"),
-                                      literal(std::to_string(row_count))),
+        auto const int32_type{intern_type("int32", {dependency("int32", "CoreMinimal.h")})};
+        auto children{node_list()};
+        children.add(constexpr_member(
+                         int32_type, store_text("num_rows"), literal(std::to_string(row_count))),
                      2);
 
         for (std::size_t index{0}; index < row_count; ++index) {
             auto const name{ctx.text(row_schemas.name[row_schemas.index(rows[index])])};
             children.add(constexpr_member(int32_type,
-                                          ir_.strings.intern(name + "_index"),
+                                          store_text(name + "_index"),
                                           literal(std::to_string(index))),
                          index + 1 < row_count ? 1 : 2);
         }
@@ -102,8 +98,8 @@ class StaticTableLowering : public CppIRBuilder {
         for (auto const column : columns) {
             column_names.push_back(ctx.text(column_schemas.name[column_schemas.index(column)]));
         }
-        children.add(column_apply_arrays_function(ir_, column_names), 2)
-            .add(column_apply_array_pairs_function(ir_, column_names), 2);
+        children.add(column_apply_arrays_function(ctx, column_names), 2)
+            .add(column_apply_array_pairs_function(ctx, column_names), 2);
 
         for (auto const group : ctx.declarations.items(tables.groups[table_row])) {
             children.add(group_getter(ctx, group), 2);

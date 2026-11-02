@@ -92,17 +92,15 @@ class SoaApiLowering : public CppIRBuilder {
             has_custom_row_function(ctx, schema, receiver, "set")) {
             return base;
         }
-        auto& types{ctx.ir.types};
         auto const operations{receiver == SoaReceiver::owner ? "OwnerRowOperations"
                                                              : "ViewRowOperations"};
-        return types.template_type(
-            types.named("ioj::soa_storage_detail::" + std::string{operations},
-                        NameOrigin::global,
-                        {types.dependency(operations, "ioj/single_allocation/view.h")}),
-            {types.named(type_name),
-             types.named(schema_namespace(ctx, schema) + "::Layout::column_types",
-                         NameOrigin::global),
-             base});
+        return template_type(named_type("ioj::soa_storage_detail::" + std::string{operations},
+                                        NameOrigin::global,
+                                        {dependency(operations, "ioj/single_allocation/view.h")}),
+                             {named_type(type_name),
+                              named_type(schema_namespace(ctx, schema) + "::Layout::column_types",
+                                         NameOrigin::global),
+                              base});
     }
     auto lower_soa_api(LoweringContext& parent_context,
                        DeclarationHandle schema,
@@ -111,8 +109,8 @@ class SoaApiLowering : public CppIRBuilder {
                        CppTypeId base) -> LoweredSoa {
         auto ctx{parent_context.for_declaration(schema)};
         auto const& soas{ctx.declarations.soas};
-        NodeListBuilder header{ir_};
-        NodeListBuilder source{ir_};
+        auto header{node_list()};
+        auto source{node_list()};
         header.append(compact_row_api(ctx, schema, receiver, base));
         for (auto const alias : ctx.declarations.items(soas.using_declarations[schema])) {
             header.add(raw("using " + ctx.text(alias) + ";")).new_lines(1);
@@ -138,7 +136,7 @@ class SoaApiLowering : public CppIRBuilder {
                         index_name += '_';
                     }
                     auto const index{named(index_name)};
-                    NodeListBuilder append_body{ir_};
+                    auto append_body{node_list()};
                     append_body.add(variable("auto const", index_name, call(this_member("num"))))
                         .add(expr_stmt(call(this_member("add_defaulted"), {literal("1")})));
                     auto const count{columns.size()};
@@ -150,7 +148,7 @@ class SoaApiLowering : public CppIRBuilder {
                                        named(parameter_schemas.name[parameters[column]])));
                     }
                     auto const return_type{function_return_type(spec)};
-                    auto const spelling{ir_.types.spelling(return_type)};
+                    auto const spelling{type_spelling(return_type)};
                     append_body.add(return_stmt(spelling == "auto" || spelling == "decltype(auto)"
                                                     ? index
                                                     : init_list({index}, return_type)));
@@ -160,14 +158,14 @@ class SoaApiLowering : public CppIRBuilder {
                 }
                 if (function_schemas.definition_in_source[function_id]) {
                     auto const return_syntax{function_return_syntax(spec)};
-                    auto const return_spelling{ir_.types.spelling(function_return_type(spec))};
+                    auto const return_spelling{type_spelling(function_return_type(spec))};
                     auto const use_trailing_return{return_syntax == ReturnSyntax::direct &&
                                                    return_spelling != "auto" &&
                                                    return_spelling != "decltype(auto)"};
                     header.add(declaration(spec)).new_lines(1);
                     source
                         .add(definition(spec,
-                                        ir_.types.intern(type_name),
+                                        intern_type(type_name),
                                         use_trailing_return ? ReturnSyntax::trailing
                                                             : return_syntax))
                         .new_lines(2);
@@ -190,8 +188,7 @@ class SoaApiLowering : public CppIRBuilder {
         }
         if (soas.equivalent_type[schema]) {
             auto const equivalent{ctx.resolve(*soas.equivalent_type[schema])};
-            header.add(using_declaration(ir_.strings.intern("equivalent_type"), equivalent))
-                .new_lines(1);
+            header.add(using_declaration(store_text("equivalent_type"), equivalent)).new_lines(1);
             Expr expression;
             if (receiver == SoaReceiver::owner) {
                 expression = subscript(call(named("const_view")), named("index"));
@@ -204,14 +201,13 @@ class SoaApiLowering : public CppIRBuilder {
                     arguments.push_back(
                         subscript(logical_column_access(ctx, schema, path), named("index")));
                 }
-                expression = constructor_id
-                               ? call(type_reference(ir_.types.reference(
-                                          ir_.types.intern(ctx.text(*constructor_id)))),
-                                      arguments)
-                               : init_list(arguments, ir_.types.named("equivalent_type"));
+                expression = constructor_id ? call(type_reference(reference_type(
+                                                       intern_type(ctx.text(*constructor_id)))),
+                                                   arguments)
+                                            : init_list(arguments, named_type("equivalent_type"));
             }
             auto const function_id{function("operator[]", "auto")};
-            set_function_parameters(function_id, {parameter(ir_.types.std.u32, "index")});
+            set_function_parameters(function_id, {parameter(std_types().u32, "index")});
             set_function_body(
                 function_id,
                 {expr_stmt(
@@ -219,7 +215,7 @@ class SoaApiLowering : public CppIRBuilder {
                           {binary(BinaryOperator::less, named("index"), call(named("num")))})),
                  return_stmt(expression)});
             set_function_return_type(
-                function_id, ir_.types.intern("equivalent_type"), ReturnSyntax::trailing);
+                function_id, intern_type("equivalent_type"), ReturnSyntax::trailing);
             set_function_receiver(function_id, FunctionReceiver::const_);
             auto& flags{function_flags(function_id)};
             flags.set_is_inline(true);
@@ -252,7 +248,7 @@ class SoaApiLowering : public CppIRBuilder {
         auto const& decls{ctx.declarations};
         auto const& soas{decls.soas};
         auto const& members{decls.soa_members};
-        NodeListBuilder result{ir_};
+        auto result{node_list()};
         auto const owner{receiver == SoaReceiver::owner};
         auto const mutable_view{receiver == SoaReceiver::mutable_view};
         auto custom = [&](std::string_view name) {
@@ -260,8 +256,8 @@ class SoaApiLowering : public CppIRBuilder {
         };
         auto emit =
             [&](std::string_view name, std::vector<FunctionParameterId> parameters, Nodes body) {
-                auto const function_id{function(
-                    name, name == "set" ? ir_.types.std.void_ : ir_.types.named("size_type"))};
+                auto const function_id{
+                    function(name, name == "set" ? std_types().void_ : named_type("size_type"))};
                 if (name == "set") {
                     parameters.insert(parameters.begin(), parameter("size_type", "index"));
                     set_function_receiver(function_id,
@@ -283,8 +279,7 @@ class SoaApiLowering : public CppIRBuilder {
                 auto const function_id{function(name, "auto")};
                 set_function_parameters(
                     function_id,
-                    {parameter(ir_.types.decorate(ir_.types.intern("auto"), "this ", "&"),
-                               "self")});
+                    {parameter(decorate_type(intern_type("auto"), "this ", "&"), "self")});
                 set_function_body(function_id,
                                   {return_stmt(call(member_access(
                                       call(member_access(named("self"), "view")), name)))});
@@ -297,12 +292,12 @@ class SoaApiLowering : public CppIRBuilder {
             return result.build();
         }
         if (owner) {
-            result.add(using_declaration(ir_.strings.intern("RowOperations"), base)).new_lines(1);
+            result.add(using_declaration(store_text("RowOperations"), base)).new_lines(1);
         }
-        result.add(using_import(ir_.types.named(owner ? "RowOperations::set" : "Base::set")))
+        result.add(using_import(named_type(owner ? "RowOperations::set" : "Base::set")))
             .new_lines(1);
         if (owner && !custom("add")) {
-            result.add(using_import(ir_.types.named("RowOperations::add"))).new_lines(1);
+            result.add(using_import(named_type("RowOperations::add"))).new_lines(1);
         }
 
         std::vector<CppTypeId> parameter_types;
@@ -325,7 +320,7 @@ class SoaApiLowering : public CppIRBuilder {
                     continue;
                 }
                 auto const type{ctx.for_declaration(current).resolve(members.type[row])};
-                parameter_types.push_back(ir_.types.decorate(type, "", " const"));
+                parameter_types.push_back(decorate_type(type, "", " const"));
                 equivalent_arguments.push_back(component);
             }
         };
@@ -348,7 +343,7 @@ class SoaApiLowering : public CppIRBuilder {
         };
         std::vector<FunctionParameterId> logical_parameters;
         std::vector<Expr> logical_arguments{named("index")};
-        NodeListBuilder logical_assignments{ir_};
+        auto logical_assignments{node_list()};
         logical_assignments.add(expr_stmt(call(
             named("assert"), {binary(BinaryOperator::less, named("index"), call(named("num")))})));
         auto collect_logical = [&](auto&& self,
@@ -372,8 +367,7 @@ class SoaApiLowering : public CppIRBuilder {
                 }
                 auto const name{"new_" + join(column, "_")};
                 auto const type{member_context.resolve(type_reference_value)};
-                logical_parameters.push_back(
-                    parameter(ir_.types.decorate(type, "", " const"), name));
+                logical_parameters.push_back(parameter(decorate_type(type, "", " const"), name));
                 logical_arguments.push_back(named(name));
                 auto const visibility{logical_column_access(
                     ctx, schema, column, owner ? call(named("view")) : named("this"), !owner)};
@@ -388,8 +382,8 @@ class SoaApiLowering : public CppIRBuilder {
             parameter_types,
             logical_parameters,
             {},
-            [&](auto type) { return ir_.types.spelling(type); },
-            [&](auto parameter_id) { return ir_.types.spelling(parameter_type(parameter_id)); })};
+            [&](auto type) { return type_spelling(type); },
+            [&](auto parameter_id) { return type_spelling(parameter_type(parameter_id)); })};
         if (!same_parameters) {
             emit("set", logical_parameters, logical_assignments.build());
             if (owner && !custom("add")) {
@@ -403,7 +397,7 @@ class SoaApiLowering : public CppIRBuilder {
         }
         if (mapped) {
             auto const equivalent{ctx.resolve(*soas.equivalent_type[schema])};
-            auto const value{parameter(ir_.types.decorate(equivalent, "", " const"), "value")};
+            auto const value{parameter(decorate_type(equivalent, "", " const"), "value")};
             auto set_arguments{equivalent_arguments};
             set_arguments.insert(set_arguments.begin(), named("index"));
             emit("set", {value}, {expr_stmt(call(named("set"), set_arguments))});

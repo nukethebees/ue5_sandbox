@@ -36,6 +36,7 @@ class CppTypes {
     auto operator=(CppTypes const&) -> CppTypes& = delete;
 
     auto strings() const -> Strings&;
+    auto standard_types() const -> StandardTypes const& { return std; }
     void clear();
 
     // Add a distinct registration whose policies may still be configured.

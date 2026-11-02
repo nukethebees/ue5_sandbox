@@ -4,7 +4,10 @@
 #pragma once
 
 #include "codegen/ast/cpp_ir.h"
+#include <codegen/ast/cpp_types.h>
+#include <lispb/strings.h>
 
+#include <cstddef>
 #include <cstdint>
 
 namespace lispb::codegen {
@@ -12,6 +15,238 @@ class CppIRBuilder {
   protected:
     CppIRBuilder(CppIR& new_target)
         : ir_{new_target} {}
+
+    Strings& type_strings() const { return ir_.types.strings(); }
+
+    StandardTypes const& std_types() const { return ir_.types.standard_types(); }
+
+    CppTypeId add_type(std::string_view spelling,
+                       std::span<TypeDependencyId const> dependencies = {},
+                       std::optional<ParameterPassing> passing = std::nullopt) {
+        return ir_.types.add(spelling, dependencies, passing);
+    }
+
+    CppTypeId add_type(std::string_view spelling,
+                       std::initializer_list<TypeDependencyId> dependencies,
+                       std::optional<ParameterPassing> passing = std::nullopt) {
+        return ir_.types.add(spelling, dependencies, passing);
+    }
+
+    CppTypeId intern_type(std::string_view spelling,
+                          std::span<TypeDependencyId const> dependencies = {},
+                          std::optional<ParameterPassing> passing = std::nullopt) {
+        return ir_.types.intern(spelling, dependencies, passing);
+    }
+
+    CppTypeId intern_type(std::string_view spelling,
+                          std::initializer_list<TypeDependencyId> dependencies,
+                          std::optional<ParameterPassing> passing = std::nullopt) {
+        return ir_.types.intern(spelling, dependencies, passing);
+    }
+
+    CppTypeId derive_type(CppTypeId base, std::string_view spelling) {
+        return ir_.types.derive(base, spelling);
+    }
+
+    CppTypeId derive_type(CppTypeId base,
+                          std::string_view spelling,
+                          std::span<TypeDependencyId const> dependencies) {
+        return ir_.types.derive(base, spelling, dependencies);
+    }
+
+    CppTypeId named_type(std::string_view spelling,
+                         std::span<TypeDependencyId const> dependencies = {},
+                         std::optional<ParameterPassing> passing = std::nullopt) {
+        return ir_.types.named(spelling, dependencies, passing);
+    }
+
+    CppTypeId named_type(std::string_view spelling,
+                         std::initializer_list<TypeDependencyId> dependencies,
+                         std::optional<ParameterPassing> passing = std::nullopt) {
+        return ir_.types.named(spelling, dependencies, passing);
+    }
+
+    CppTypeId named_type(std::string_view spelling,
+                         NameOrigin origin,
+                         std::span<TypeDependencyId const> dependencies = {},
+                         std::optional<ParameterPassing> passing = std::nullopt) {
+        return ir_.types.named(spelling, origin, dependencies, passing);
+    }
+
+    CppTypeId named_type(std::string_view spelling,
+                         NameOrigin origin,
+                         std::initializer_list<TypeDependencyId> dependencies,
+                         std::optional<ParameterPassing> passing = std::nullopt) {
+        return ir_.types.named(spelling, origin, dependencies, passing);
+    }
+
+    CppTypeId reference_type(CppTypeId type) { return ir_.types.reference(type); }
+
+    CppTypeId compose_type(std::span<CppTypePart const> parts,
+                           std::optional<CppTypeId> policy_source = {}) {
+        return ir_.types.compose(parts, policy_source);
+    }
+
+    CppTypeId compose_type(std::initializer_list<CppTypePart> parts,
+                           std::optional<CppTypeId> policy_source = {}) {
+        return ir_.types.compose(parts, policy_source);
+    }
+
+    CppTypeId decorate_type(CppTypeId base, std::string_view prefix, std::string_view suffix) {
+        return ir_.types.decorate(base, prefix, suffix);
+    }
+
+    CppTypeId template_type(CppTypeId primary, std::span<CppTypeId const> arguments) {
+        return ir_.types.template_type(primary, arguments);
+    }
+
+    CppTypeId template_type(CppTypeId primary, std::initializer_list<CppTypeId> arguments) {
+        return ir_.types.template_type(primary, arguments);
+    }
+
+    CppTypeId type_with_dependencies(CppTypeId base,
+                                     std::span<TypeDependencyId const> dependencies) {
+        return ir_.types.with_dependencies(base, dependencies);
+    }
+
+    CppTypeId clone_type(CppTypeId base) { return ir_.types.clone(base); }
+
+    std::string_view type_spelling(CppTypeId type) const { return ir_.types.spelling(type); }
+
+    StringId type_spelling_id(CppTypeId type) const { return ir_.types.spelling_id(type); }
+
+    std::span<TypeDependencyId const> type_dependencies(CppTypeId type) const {
+        return ir_.types.dependencies(type);
+    }
+
+    ParameterPassing type_parameter_passing(CppTypeId type) const {
+        return ir_.types.parameter_passing(type);
+    }
+
+    std::optional<std::string_view> type_operation(CppTypeId type, TypeOperation operation) const {
+        return ir_.types.operation(type, operation);
+    }
+
+    ParameterPassing type_operation_parameter_passing(CppTypeId type,
+                                                      TypeOperation operation) const {
+        return ir_.types.operation_parameter_passing(type, operation);
+    }
+
+    TypeDependencyId dependency(std::string_view spelling,
+                                std::optional<std::string_view> header = std::nullopt) {
+        return ir_.types.dependency(spelling, header);
+    }
+
+    std::string_view dependency_spelling(TypeDependencyId dependency) const {
+        return ir_.types.dependency_spelling(dependency);
+    }
+
+    std::optional<std::string_view> dependency_header(TypeDependencyId dependency) const {
+        return ir_.types.dependency_header(dependency);
+    }
+
+    void clear_types() { ir_.types.clear(); }
+
+    void set_type_parameter_passing(CppTypeId type, ParameterPassing passing) {
+        ir_.types.set_parameter_passing(type, passing);
+    }
+
+    void set_type_operation(CppTypeId type,
+                            TypeOperation operation,
+                            std::string_view spelling,
+                            ParameterPassing passing = ParameterPassing::const_reference) {
+        ir_.types.set_operation(type, operation, spelling, passing);
+    }
+
+    NodeListBuilder node_list() { return ir_.node_list(); }
+
+    LoweringStorage& lowering_storage() { return ir_.lowering_storage(); }
+
+    void clear() { ir_.clear(); }
+
+    void collect_dependencies(Expr expr, std::vector<TypeDependencyId>& result) const {
+        ir_.collect_dependencies(expr, result);
+    }
+
+    void collect_dependencies(NodeId node, std::vector<TypeDependencyId>& result) const {
+        ir_.collect_dependencies(node, result);
+    }
+
+    void for_each_child(NodeId node, std::function<void(NodeId)> const& visit) const {
+        ir_.for_each_child(node, visit);
+    }
+
+    void merge_adjacent_namespaces(CppFileId file) { ir_.merge_adjacent_namespaces(file); }
+
+    CppFileId append_file(StringId path, std::span<NodeId const> nodes = {}) {
+        return ir_.files.append(path, nodes);
+    }
+
+    CppFileId append_file(StringId path, std::initializer_list<NodeId> nodes) {
+        return ir_.files.append(path, nodes);
+    }
+
+    std::size_t file_index(CppFileId file) const { return ir_.files.index(file); }
+
+    CppFileFlags& file_flags(CppFileId file) { return ir_.files.flags_for(file); }
+
+    std::span<NodeId const> file_nodes(CppFileId file) const { return ir_.files.nodes(file); }
+
+    std::span<StringId const> file_prologue(CppFileId file) const {
+        return ir_.files.prologue(file);
+    }
+
+    std::span<StringId const> file_epilogue(CppFileId file) const {
+        return ir_.files.epilogue(file);
+    }
+
+    std::span<StringId const> file_include_order(CppFileId file) const {
+        return ir_.files.include_order(file);
+    }
+
+    void set_file_nodes(CppFileId file, std::span<NodeId const> nodes) {
+        ir_.files.set_nodes(file, nodes);
+    }
+
+    void set_file_nodes(CppFileId file, std::initializer_list<NodeId> nodes) {
+        ir_.files.set_nodes(file, nodes);
+    }
+
+    void set_file_prologue(CppFileId file, std::span<StringId const> text) {
+        ir_.files.set_prologue(file, text);
+    }
+
+    void set_file_prologue(CppFileId file, std::initializer_list<StringId> text) {
+        ir_.files.set_prologue(file, text);
+    }
+
+    void set_file_epilogue(CppFileId file, std::span<StringId const> text) {
+        ir_.files.set_epilogue(file, text);
+    }
+
+    void set_file_epilogue(CppFileId file, std::initializer_list<StringId> text) {
+        ir_.files.set_epilogue(file, text);
+    }
+
+    void set_file_include_order(CppFileId file, std::span<StringId const> prefixes) {
+        ir_.files.set_include_order(file, prefixes);
+    }
+
+    void set_file_include_order(CppFileId file, std::initializer_list<StringId> prefixes) {
+        ir_.files.set_include_order(file, prefixes);
+    }
+
+    void clear_files() { ir_.files.clear(); }
+
+    ModuleId append_module(StringId name, CppFileId header = {}, CppFileId source = {}) {
+        return ir_.modules.append(name, header, source);
+    }
+
+    std::size_t module_index(ModuleId module_id) const { return ir_.modules.index(module_id); }
+
+    void clear_modules() { ir_.modules.clear(); }
+
+    std::string_view text_view(StringId id) const { return ir_.strings.view(id); }
 
     StringId store_text(std::string_view value) { return ir_.store_text(value); }
 
@@ -597,6 +832,7 @@ class CppIRBuilder {
         ir_.set_scope_bindings(node, names);
     }
 
+  private:
     CppIR& ir_;
 };
 } // namespace lispb::codegen

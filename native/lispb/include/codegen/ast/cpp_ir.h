@@ -69,6 +69,7 @@
 #include <codegen/ast/ir/variables.h>
 #include <codegen/ast/modules.h>
 #include <codegen/ast/node_id.h>
+#include <codegen/ast/node_list_builder.h>
 #include <codegen/ast/record_id.h>
 #include <codegen/ast/record_kind.h>
 #include <codegen/ast/return_syntax.h>
@@ -115,6 +116,8 @@ class CppIR {
     LoweringStorage lowering;
     CppFiles files;
     Modules modules;
+    auto node_list() -> NodeListBuilder { return NodeListBuilder{*this}; }
+    auto lowering_storage() -> LoweringStorage& { return lowering; }
     auto store_text(std::string_view value) -> StringId;
     auto store_optional_text(std::optional<std::string_view> value) -> std::optional<StringId>;
     void clear();

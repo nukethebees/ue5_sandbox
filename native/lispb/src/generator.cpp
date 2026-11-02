@@ -5,7 +5,7 @@
 #include "lowering_context.h"
 
 #include <codegen/ast/cpp_files.h>
-#include <codegen/ast/cpp_ir.h>
+#include <codegen/ast/cpp_ir_builder.h>
 #include <codegen/ast/cpp_renderer.h>
 #include <codegen/ast/cpp_types.h>
 #include <codegen/ast/include_style.h>
@@ -93,45 +93,6 @@ namespace {
 template <typename>
 inline constexpr bool unlowered_declaration_schema{false};
 
-auto generated_forward_declarations(CppIR& ir, ModuleHandle module, schema::TypeGraph const& graph)
-    -> detail::DeclarationEmission {
-    std::set<schema::TypeId> targets;
-    for (auto const use : graph.type_uses()) {
-        auto const signature{detail::is_record_signature(use, graph)};
-        if (graph.module(use) == module &&
-            uses_forward_declaration(graph.target(use),
-                                     graph,
-                                     signature ? graph.kind(use) : TypeReferenceKind::ordinary) &&
-            (graph.module(graph.occurrences().type[graph.occurrences().index(graph.target(use))]) ==
-                 module ||
-             (signature && uses_cross_module_signature_forward_declaration(
-                               graph.target(use), graph.kind(use), graph)))) {
-            targets.insert(graph.occurrences().type[graph.occurrences().index(graph.target(use))]);
-        }
-    }
-    NodeListBuilder decls{ir};
-    NodeListBuilder prefix{ir};
-    for (auto const target : targets) {
-        auto const node{target};
-        auto const namespace_name{std::string{ir.strings.view(graph.namespace_name(node))}};
-        auto declaration{ir.forward_declaration(
-            ir.strings.intern(
-                std::string{ir.strings.view(graph.cpp_spelling(node))
-                                .substr(namespace_name.empty() ? 0 : namespace_name.size() + 2)}),
-            *forward_declaration_kind(node, graph))};
-        if (graph.module(node) == module) {
-            decls.add(declaration);
-        } else if (namespace_name.empty()) {
-            prefix.add(declaration);
-        } else {
-            NodeListBuilder children{ir};
-            children.add(declaration);
-            prefix.add(ir.namespace_node(ir.strings.intern(namespace_name), children.build()));
-        }
-    }
-    return {.header_prefix = prefix.build(), .header = decls.build(), .source_dependencies = false};
-}
-
 auto declaration_emission_order(Declarations const& store,
                                 ModuleHandle module,
                                 std::span<DeclarationHandle const> declarations,
@@ -177,84 +138,133 @@ auto declaration_emission_order(Declarations const& store,
     return order;
 }
 
-auto lower_s7_constructors(detail::LoweringContext& ctx) -> detail::DeclarationEmission {
-    auto& ir{ctx.ir};
-    auto const& records{ctx.declarations.records};
-    std::map<std::string, bool> tags;
-    auto const count{records.s7_tag.size()};
-    for (std::size_t row{}; row < count; ++row) {
-        if (!records.s7_tag[row]) {
-            continue;
-        }
-        auto const tag{ctx.text(*records.s7_tag[row])};
-        if (tag.empty() ||
-            tag.find_first_not_of(
-                "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_?!") !=
-                std::string::npos ||
-            (tag.front() >= '0' && tag.front() <= '9')) {
-            throw std::invalid_argument{std::format("Invalid S7 constructor tag '{}'", tag)};
-        }
-        auto const enabled{records.s7_constructor[row] != 0};
-        auto const [entry, inserted]{tags.emplace(tag, enabled)};
-        if (!inserted && entry->second != enabled) {
-            throw std::invalid_argument{
-                std::format("Conflicting S7 constructor policies for '{}'", tag)};
-        }
-    }
-    std::string source;
-    for (auto const& [tag, enabled] : tags) {
-        if (enabled) {
-            source += std::format("(define ({} . arguments) (cons :{} arguments))\n", tag, tag);
-        }
-    }
-    auto const function{ir.function("s7_record_constructors", "auto")};
-    ir.set_function_return_type(function, ir.types.std.string_view, ReturnSyntax::trailing);
-    ir.function_flags(function).set_define_in_header(true);
-    ir.function_flags(function).set_is_constexpr(true);
-    NodeListBuilder body{ir};
-    body.add(ir.return_stmt(ir.string_literal(ir.strings.intern(source))));
-    ir.set_function_body(function, body.build());
-    NodeListBuilder decls{ir};
-    decls.add(ir.header_function(function));
-    return {.header = decls.build(), .source_dependencies = false};
-}
+class ModuleLowering : public CppIRBuilder {
+  public:
+    explicit ModuleLowering(CppIR& ir)
+        : CppIRBuilder{ir} {}
 
-auto lower_umbrella(detail::LoweringContext& ctx, ModuleHandle module) -> ModuleId {
-    auto const settings{ctx.declarations.umbrella_modules
-                            .settings[ctx.declarations.umbrella_modules.index(module)]};
-    NodeListBuilder nodes{ctx.ir};
-    for (auto const header :
-         ctx.declarations.items(ctx.declarations.umbrella_modules
-                                    .headers[ctx.declarations.umbrella_modules.index(module)])) {
-        nodes.add(ctx.ir.include(header, IncludeStyle::quoted));
-    }
-    if (!ctx.declarations.module_settings_store
-             .prelude_lines[ctx.declarations.module_settings_store.index(settings)]
-             .empty()) {
-        std::string prelude;
-        for (auto const line : ctx.declarations.items(
-                 ctx.declarations.module_settings_store
-                     .prelude_lines[ctx.declarations.module_settings_store.index(settings)])) {
-            if (!prelude.empty()) {
-                prelude += '\n';
+    /* **************************************** */
+    // Module emission
+    /* **************************************** */
+    auto generated_forward_declarations(ModuleHandle module, schema::TypeGraph const& graph)
+        -> detail::DeclarationEmission {
+        std::set<schema::TypeId> targets;
+        for (auto const use : graph.type_uses()) {
+            auto const signature{detail::is_record_signature(use, graph)};
+            if (graph.module(use) == module &&
+                uses_forward_declaration(graph.target(use),
+                                         graph,
+                                         signature ? graph.kind(use)
+                                                   : TypeReferenceKind::ordinary) &&
+                (graph.module(
+                     graph.occurrences().type[graph.occurrences().index(graph.target(use))]) ==
+                     module ||
+                 (signature && uses_cross_module_signature_forward_declaration(
+                                   graph.target(use), graph.kind(use), graph)))) {
+                targets.insert(
+                    graph.occurrences().type[graph.occurrences().index(graph.target(use))]);
             }
-            prelude += ctx.declarations.strings().view(line);
         }
-        nodes.new_lines(2).add(ctx.ir.raw(prelude));
+        auto decls{node_list()};
+        auto prefix{node_list()};
+        for (auto const target : targets) {
+            auto const node{target};
+            auto const namespace_name{std::string{text_view(graph.namespace_name(node))}};
+            auto declaration{forward_declaration(
+                store_text(std::string{
+                    text_view(graph.cpp_spelling(node))
+                        .substr(namespace_name.empty() ? 0 : namespace_name.size() + 2)}),
+                *forward_declaration_kind(node, graph))};
+            if (graph.module(node) == module) {
+                decls.add(declaration);
+            } else if (namespace_name.empty()) {
+                prefix.add(declaration);
+            } else {
+                auto children{node_list()};
+                children.add(declaration);
+                prefix.add(namespace_node(store_text(namespace_name), children.build()));
+            }
+        }
+        return {
+            .header_prefix = prefix.build(), .header = decls.build(), .source_dependencies = false};
     }
-    auto& ir{ctx.ir};
-    auto const& settings_store{ctx.declarations.module_settings_store};
-    auto const row{settings_store.index(settings)};
-    auto const file{ir.files.append(settings_store.header[row], nodes.build())};
-    ir.files.flags[ir.files.index(file)].set_clang_format_off(true);
-    ir.files.set_include_order(file, ctx.declarations.items(settings_store.include_order[row]));
-    return ir.modules.append(settings_store.name[row], file);
-}
+    auto lower_s7_constructors(detail::LoweringContext& ctx) -> detail::DeclarationEmission {
+        auto const& records{ctx.declarations.records};
+        std::map<std::string, bool> tags;
+        auto const count{records.s7_tag.size()};
+        for (std::size_t row{}; row < count; ++row) {
+            if (!records.s7_tag[row]) {
+                continue;
+            }
+            auto const tag{ctx.text(*records.s7_tag[row])};
+            if (tag.empty() ||
+                tag.find_first_not_of(
+                    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_?!") !=
+                    std::string::npos ||
+                (tag.front() >= '0' && tag.front() <= '9')) {
+                throw std::invalid_argument{std::format("Invalid S7 constructor tag '{}'", tag)};
+            }
+            auto const enabled{records.s7_constructor[row] != 0};
+            auto const [entry, inserted]{tags.emplace(tag, enabled)};
+            if (!inserted && entry->second != enabled) {
+                throw std::invalid_argument{
+                    std::format("Conflicting S7 constructor policies for '{}'", tag)};
+            }
+        }
+        std::string source;
+        for (auto const& [tag, enabled] : tags) {
+            if (enabled) {
+                source += std::format("(define ({} . arguments) (cons :{} arguments))\n", tag, tag);
+            }
+        }
+        auto const function_id{function("s7_record_constructors", "auto")};
+        set_function_return_type(function_id, std_types().string_view, ReturnSyntax::trailing);
+        function_flags(function_id).set_define_in_header(true);
+        function_flags(function_id).set_is_constexpr(true);
+        auto body{node_list()};
+        body.add(return_stmt(string_literal(store_text(source))));
+        set_function_body(function_id, body.build());
+        auto decls{node_list()};
+        decls.add(header_function(function_id));
+        return {.header = decls.build(), .source_dependencies = false};
+    }
+    auto lower_umbrella(detail::LoweringContext& ctx, ModuleHandle module) -> ModuleId {
+        auto const settings{ctx.declarations.umbrella_modules
+                                .settings[ctx.declarations.umbrella_modules.index(module)]};
+        auto nodes{node_list()};
+        for (auto const header : ctx.declarations.items(
+                 ctx.declarations.umbrella_modules
+                     .headers[ctx.declarations.umbrella_modules.index(module)])) {
+            nodes.add(include(header, IncludeStyle::quoted));
+        }
+        if (!ctx.declarations.module_settings_store
+                 .prelude_lines[ctx.declarations.module_settings_store.index(settings)]
+                 .empty()) {
+            std::string prelude;
+            for (auto const line : ctx.declarations.items(
+                     ctx.declarations.module_settings_store
+                         .prelude_lines[ctx.declarations.module_settings_store.index(settings)])) {
+                if (!prelude.empty()) {
+                    prelude += '\n';
+                }
+                prelude += ctx.declarations.strings().view(line);
+            }
+            nodes.new_lines(2).add(raw(prelude));
+        }
+        auto const& settings_store{ctx.declarations.module_settings_store};
+        auto const row{settings_store.index(settings)};
+        auto const file{append_file(settings_store.header[row], nodes.build())};
+        file_flags(file).set_clang_format_off(true);
+        set_file_include_order(file, ctx.declarations.items(settings_store.include_order[row]));
+        return append_module(settings_store.name[row], file);
+    }
+};
 
 } // namespace
 
 auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph)
     -> std::vector<ModuleId> {
+    ModuleLowering emitter{ir};
     auto const complete{detail::complete_dependencies(graph)};
     auto& store{manifest.declarations};
     std::vector<ModuleId> result;
@@ -271,7 +281,7 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                         store.normal_modules.declarations[store.normal_modules.index(module)])};
                     std::vector<detail::DeclarationEmission> emissions;
                     emissions.reserve(decls.size() + 1);
-                    emissions.push_back(generated_forward_declarations(ir, module_id, graph));
+                    emissions.push_back(emitter.generated_forward_declarations(module_id, graph));
                     for (auto const index :
                          declaration_emission_order(store, module_id, decls, graph, complete)) {
                         auto const declaration{decls[index]};
@@ -395,7 +405,7 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                         }());
                     }
                     if (store.normal_modules.s7_constructors[store.normal_modules.index(module)]) {
-                        emissions.push_back(lower_s7_constructors(ctx));
+                        emissions.push_back(emitter.lower_s7_constructors(ctx));
                     }
                     auto lowered{detail::assemble_module(ctx, settings, emissions)};
                     result.insert(result.end(),
@@ -413,7 +423,7 @@ auto lower_modules(CppIR& ir, Manifest& manifest, schema::TypeGraph const& graph
                 }
                 case lispb::codegen::ModuleKind::umbrella: {
 
-                    result.push_back(lower_umbrella(ctx, module));
+                    result.push_back(emitter.lower_umbrella(ctx, module));
                     break;
                 }
                 default:

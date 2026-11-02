@@ -54,8 +54,8 @@ class ModuleAssembler : public CppIRBuilder {
             return additional;
         }
 
-        NodeListBuilder header{ir_};
-        NodeListBuilder source{ir_};
+        auto header{node_list()};
+        auto source{node_list()};
         header.add(include_dependencies(), 2);
         if (!settings_store.prelude_lines[settings].empty()) {
             header.add(raw_lines(ctx.declarations.items(settings_store.prelude_lines[settings])),
@@ -72,16 +72,16 @@ class ModuleAssembler : public CppIRBuilder {
 
         std::vector<ModuleId> additional;
         bool format_generated{};
-        NodeListBuilder header_declarations{ir_};
-        NodeListBuilder header_sections{ir_};
-        NodeListBuilder header_generated_include{ir_};
-        NodeListBuilder header_after{ir_};
-        NodeListBuilder source_definitions{ir_};
-        NodeListBuilder header_global{ir_};
-        NodeListBuilder header_tail{ir_};
-        NodeListBuilder source_global{ir_};
-        NodeListBuilder source_tail{ir_};
-        NodeListBuilder reader_declarations{ir_};
+        auto header_declarations{node_list()};
+        auto header_sections{node_list()};
+        auto header_generated_include{node_list()};
+        auto header_after{node_list()};
+        auto source_definitions{node_list()};
+        auto header_global{node_list()};
+        auto header_tail{node_list()};
+        auto source_global{node_list()};
+        auto source_tail{node_list()};
+        auto reader_declarations{node_list()};
         std::vector<StringId> reader_includes;
         bool has_header{};
         auto flush_header_declarations = [&] {
@@ -182,16 +182,15 @@ class ModuleAssembler : public CppIRBuilder {
         auto header_tail_nodes{header_tail.build()};
         if (!header_tail_nodes.empty()) {
             if (tail_namespace.has_value() && !tail_namespace->empty()) {
-                header.add(namespace_node(ir_.strings.intern(*tail_namespace),
-                                          std::move(header_tail_nodes)),
-                           2);
+                header.add(
+                    namespace_node(store_text(*tail_namespace), std::move(header_tail_nodes)), 2);
             } else {
                 header.append(std::move(header_tail_nodes));
             }
         }
         auto internal_nodes{source_global.build()};
         if (!internal_nodes.empty()) {
-            source.add(namespace_node(ir_.strings.intern(""), std::move(internal_nodes)), 2);
+            source.add(namespace_node(store_text(""), std::move(internal_nodes)), 2);
         }
         if (settings_store.namespace_name[settings].has_value()) {
             if (!source_nodes.empty()) {
@@ -204,48 +203,43 @@ class ModuleAssembler : public CppIRBuilder {
         auto source_tail_nodes{source_tail.build()};
         if (!source_tail_nodes.empty()) {
             if (tail_namespace.has_value() && !tail_namespace->empty()) {
-                source.add(namespace_node(ir_.strings.intern(*tail_namespace),
-                                          std::move(source_tail_nodes)),
-                           2);
+                source.add(
+                    namespace_node(store_text(*tail_namespace), std::move(source_tail_nodes)), 2);
             } else {
                 source.append(std::move(source_tail_nodes));
             }
         }
         auto const include_order{ctx.declarations.items(settings_store.include_order[settings])};
-        auto const header_file{ir_.files.append(settings_store.header[settings], header.build())};
-        auto const header_row{ir_.files.index(header_file)};
-        ir_.files.flags[header_row].set_clang_format_off(!format_generated);
-        ir_.files.flags[header_row].set_format_generated(format_generated);
-        ir_.files.set_include_order(header_file, include_order);
+        auto const header_file{append_file(settings_store.header[settings], header.build())};
+        file_flags(header_file).set_clang_format_off(!format_generated);
+        file_flags(header_file).set_format_generated(format_generated);
+        set_file_include_order(header_file, include_order);
         CppFileId source_file;
         if (auto const path{settings_store.source[settings]}) {
-            source_file = ir_.files.append(*path, source.build());
-            auto const source_row{ir_.files.index(source_file)};
-            ir_.files.flags[source_row].set_pragma_once(false);
-            ir_.files.flags[source_row].set_clang_format_off(!format_generated);
-            ir_.files.flags[source_row].set_format_generated(format_generated);
-            ir_.files.set_include_order(source_file, include_order);
+            source_file = append_file(*path, source.build());
+            file_flags(source_file).set_pragma_once(false);
+            file_flags(source_file).set_clang_format_off(!format_generated);
+            file_flags(source_file).set_format_generated(format_generated);
+            set_file_include_order(source_file, include_order);
         }
-        auto const result{
-            ir_.modules.append(settings_store.name[settings], header_file, source_file)};
+        auto const result{append_module(settings_store.name[settings], header_file, source_file)};
 
         auto reader_nodes{reader_declarations.build()};
         if (!reader_nodes.empty()) {
-            NodeListBuilder reader{ir_};
-            reader.add(
-                include(ir_.strings.intern(source_include(ctx, settings)), IncludeStyle::quoted));
-            reader.add(include(ir_.strings.intern("ioj/s7/field_reader.h"), IncludeStyle::system));
+            auto reader{node_list()};
+            reader.add(include(store_text(source_include(ctx, settings)), IncludeStyle::quoted));
+            reader.add(include(store_text("ioj/s7/field_reader.h"), IncludeStyle::system));
             reader.add(include_dependencies());
             for (auto const include_value : reader_includes) {
                 reader.add(include(include_value, IncludeStyle::quoted));
             }
             reader.new_lines(2);
-            reader.add(namespace_node(ir_.strings.intern("ioj::s7"), reader_nodes));
+            reader.add(namespace_node(store_text("ioj::s7"), reader_nodes));
             auto const reader_path{reader_header_path(ctx.text(settings_store.header[settings]))};
-            auto const file{ir_.files.append(ir_.strings.intern(reader_path), reader.build())};
-            ir_.files.flags[ir_.files.index(file)].set_format_generated(true);
-            additional.push_back(ir_.modules.append(
-                ir_.strings.intern(ctx.text(settings_store.name[settings]) + "Reader"), file, {}));
+            auto const file{append_file(store_text(reader_path), reader.build())};
+            file_flags(file).set_format_generated(true);
+            additional.push_back(append_module(
+                store_text(ctx.text(settings_store.name[settings]) + "Reader"), file, {}));
         }
 
         std::vector<ModuleId> modules;

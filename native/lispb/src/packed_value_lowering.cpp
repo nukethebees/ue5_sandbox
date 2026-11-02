@@ -49,37 +49,6 @@ auto composite(schema::TypeDefinitionKind kind) -> bool {
            kind == schema::TypeDefinitionKind::union_type;
 }
 
-auto value_type(LoweringContext& ctx, schema::TypeId type, std::uint32_t bits) -> CppTypeId {
-    auto& types{ctx.ir.types};
-    auto const& graph{ctx.semantic};
-    auto const definition{graph.definition(type)};
-    auto const kind{definition.kind()};
-    auto const& definitions{graph.definitions()};
-    if (composite(kind) && schema::is_packed_projection(graph, type)) {
-        return types.named(ctx.text(graph.cpp_spelling(type)), NameOrigin::global);
-    }
-    if (kind == schema::TypeDefinitionKind::enumeration) {
-        auto const declaration_id{graph.source_declaration(type)};
-        if (ctx.declarations.enums.cpp_projection[declaration_id]) {
-            return types.named(ctx.text(graph.cpp_spelling(type)), NameOrigin::global);
-        }
-    }
-    if (ctx.text(graph.cpp_spelling(type)) == "bool") {
-        return types.std.bool_;
-    }
-    if (auto const domain{schema::integer_domain(graph, type)}) {
-        auto const row{definitions.integer_scalars.index(*domain)};
-        return types.std.integer(bits, definitions.integer_scalars.signedness[row] != 0);
-    }
-    if (kind == schema::TypeDefinitionKind::fixed_point) {
-        return types.std.integer(bits, definitions.fixed_points.signedness[definition] != 0);
-    }
-    if (packed_signed_width(ctx.text(graph.cpp_spelling(type)))) {
-        return types.std.integer(bits, true);
-    }
-    return types.std.integer(bits);
-}
-
 auto consecutive(PackedIntegerValue left, PackedIntegerValue right) -> bool {
     if (left.negative) {
         return left.magnitude == 1 ? right.magnitude == 0
@@ -101,20 +70,6 @@ auto accessor_name(LoweringContext& ctx, schema::BitPlacement const& placement) 
         default:
             return placement.path;
     }
-}
-
-void append_dependencies(LoweringContext& ctx,
-                         schema::ChildOccurrenceId child,
-                         std::vector<TypeDependencyId>& dependencies) {
-    auto const& children{ctx.semantic.definitions().children};
-    auto const occurrence{children.semantic_type[child]};
-    auto const& occurrences{ctx.semantic.occurrences()};
-    auto const type{occurrences.cpp_type[occurrence]};
-    if (type.value == 0) {
-        return;
-    }
-    auto const required{ctx.ir.types.dependencies(type)};
-    dependencies.insert(dependencies.end(), required.begin(), required.end());
 }
 
 class PackedEmitter : public CppIRBuilder {
@@ -141,31 +96,29 @@ class PackedEmitter : public CppIRBuilder {
         auto const detail_namespace{(owner_namespace.empty() ? "" : owner_namespace + "::") +
                                     "detail::"};
         Nodes detail_members;
-        auto default_value{ir_.types.intern("0")};
-        auto const base{
-            ir_.types.named("ioj::PackedValueBase",
-                            NameOrigin::global,
-                            {ir_.types.dependency("ioj::PackedValueBase", "ioj/packed_value.h")})};
-        auto const storage_type{ir_.types.std.integer(layout_.storage_bits)};
+        auto default_value{intern_type("0")};
+        auto const base{named_type("ioj::PackedValueBase",
+                                   NameOrigin::global,
+                                   {dependency("ioj::PackedValueBase", "ioj/packed_value.h")})};
+        auto const storage_type{std_types().integer(layout_.storage_bits)};
         if (layout_.default_raw_value.value_or(0) != 0) {
             auto const default_name{soa_namespace_name(name_) + "_default_raw_value"};
             auto const default_symbol{type(detail_namespace + default_name, NameOrigin::global)};
-            detail_members.push_back(
-                variable(ir_.types.decorate(storage_type, "inline constexpr ", ""),
-                         text(default_name),
-                         number(*layout_.default_raw_value)));
+            detail_members.push_back(variable(decorate_type(storage_type, "inline constexpr ", ""),
+                                              text(default_name),
+                                              number(*layout_.default_raw_value)));
             default_value = default_symbol;
         }
-        auto const descriptor{ir_.types.template_type(
-            ir_.types.named("ioj::PackedStorage",
-                            NameOrigin::global,
-                            {ir_.types.dependency("ioj::PackedStorage", "ioj/packed_value.h")}),
-            {storage_type, ir_.types.intern(std::to_string(*layout_.encoded_bits))})};
-        auto const storage{ir_.types.compose({{.type = descriptor},
-                                              {.text = text("{")},
-                                              {.type = default_value},
-                                              {.text = text("}")}})};
-        auto const base_type{ir_.types.template_type(base, {type(name_), storage})};
+        auto const descriptor{
+            template_type(named_type("ioj::PackedStorage",
+                                     NameOrigin::global,
+                                     {dependency("ioj::PackedStorage", "ioj/packed_value.h")}),
+                          {storage_type, intern_type(std::to_string(*layout_.encoded_bits))})};
+        auto const storage{compose_type({{.type = descriptor},
+                                         {.text = text("{")},
+                                         {.type = default_value},
+                                         {.text = text("}")}})};
+        auto const base_type{template_type(base, {type(name_), storage})};
         auto const base_name{name_ + "Base"};
         auto const base_alias{type(detail_namespace + base_name, NameOrigin::global)};
         detail_members.push_back(using_declaration(text(base_name), base_type));
@@ -173,9 +126,9 @@ class PackedEmitter : public CppIRBuilder {
         metadata_.push_back(using_declaration(text("Base"), base_alias));
         metadata_.push_back(using_declaration(
             text("packed_integer_tag"),
-            ir_.types.named(scalar_ ? "ioj::packed::scalar_tag" : "ioj::packed::integer_tag",
-                            NameOrigin::global,
-                            {ir_.types.dependency("ioj::PackedStorage", "ioj/packed_value.h")})));
+            named_type(scalar_ ? "ioj::packed::scalar_tag" : "ioj::packed::integer_tag",
+                       NameOrigin::global,
+                       {dependency("ioj::PackedStorage", "ioj/packed_value.h")})));
         packed_members();
         Nodes members{access()};
         members.push_back(lines(1));
@@ -233,6 +186,48 @@ class PackedEmitter : public CppIRBuilder {
                     "ioj::valid_packed_value_layout", "ioj/packed_value.h", {type(name_)}, {}))};
     }
   private:
+    auto value_type(LoweringContext& ctx, schema::TypeId type, std::uint32_t bits) -> CppTypeId {
+        auto const& graph{ctx.semantic};
+        auto const definition{graph.definition(type)};
+        auto const kind{definition.kind()};
+        auto const& definitions{graph.definitions()};
+        if (composite(kind) && schema::is_packed_projection(graph, type)) {
+            return named_type(ctx.text(graph.cpp_spelling(type)), NameOrigin::global);
+        }
+        if (kind == schema::TypeDefinitionKind::enumeration) {
+            auto const declaration_id{graph.source_declaration(type)};
+            if (ctx.declarations.enums.cpp_projection[declaration_id]) {
+                return named_type(ctx.text(graph.cpp_spelling(type)), NameOrigin::global);
+            }
+        }
+        if (ctx.text(graph.cpp_spelling(type)) == "bool") {
+            return std_types().bool_;
+        }
+        if (auto const domain{schema::integer_domain(graph, type)}) {
+            auto const row{definitions.integer_scalars.index(*domain)};
+            return std_types().integer(bits, definitions.integer_scalars.signedness[row] != 0);
+        }
+        if (kind == schema::TypeDefinitionKind::fixed_point) {
+            return std_types().integer(bits, definitions.fixed_points.signedness[definition] != 0);
+        }
+        if (packed_signed_width(ctx.text(graph.cpp_spelling(type)))) {
+            return std_types().integer(bits, true);
+        }
+        return std_types().integer(bits);
+    }
+    void append_dependencies(LoweringContext& ctx,
+                             schema::ChildOccurrenceId child,
+                             std::vector<TypeDependencyId>& dependencies) {
+        auto const& children{ctx.semantic.definitions().children};
+        auto const occurrence{children.semantic_type[child]};
+        auto const& occurrences{ctx.semantic.occurrences()};
+        auto const type{occurrences.cpp_type[occurrence]};
+        if (type.value == 0) {
+            return;
+        }
+        auto const required{type_dependencies(type)};
+        dependencies.insert(dependencies.end(), required.begin(), required.end());
+    }
     using Predicate = std::optional<Expr>;
     struct Validation {
         bool input_required{};
@@ -251,11 +246,11 @@ class PackedEmitter : public CppIRBuilder {
     }
     auto text(std::string_view value) -> StringId { return store_text(value); }
     auto type(std::string_view value, NameOrigin origin = NameOrigin::enclosing) -> CppTypeId {
-        return ir_.types.named(
+        return named_type(
             value,
             origin,
             value.starts_with("std::")
-                ? std::initializer_list<TypeDependencyId>{ir_.types.dependency(value, "cstdint")}
+                ? std::initializer_list<TypeDependencyId>{dependency(value, "cstdint")}
                 : std::initializer_list<TypeDependencyId>{});
     }
     auto number(std::uint64_t value) -> Expr {
@@ -268,8 +263,7 @@ class PackedEmitter : public CppIRBuilder {
     auto value() -> Expr { return named("value"); }
     auto stored_value() -> Expr { return named("value_"); }
     auto external(std::string_view name, std::string_view header) -> Expr {
-        return type_reference(
-            ir_.types.named(name, NameOrigin::global, {ir_.types.dependency(name, header)}));
+        return type_reference(named_type(name, NameOrigin::global, {dependency(name, header)}));
     }
     auto invoke(std::string_view name, std::initializer_list<Expr> args = {}) -> Expr {
         return call(named(name), args);
@@ -314,7 +308,7 @@ class PackedEmitter : public CppIRBuilder {
             "ioj::packed_pack", "ioj/packed_value.h", {descriptor_type(field)}, {source});
     }
     auto descriptor_type(std::string const& name) -> CppTypeId {
-        return ir_.types.decorate(ir_.types.intern(name), "decltype(", ")");
+        return decorate_type(intern_type(name), "decltype(", ")");
     }
     auto descriptor_value(std::string const& name) -> CppTypeId {
         return field_value_types_.at(name);
@@ -353,8 +347,8 @@ class PackedEmitter : public CppIRBuilder {
     }
     auto boolean(Predicate predicate) -> Expr { return predicate.value_or(literal("true")); }
     auto assertion(Expr condition) -> NodeId {
-        return expr_stmt(call(named("assert", {ir_.types.dependency("assert", "cassert")}),
-                              {parenthesized(condition)}));
+        return expr_stmt(
+            call(named("assert", {dependency("assert", "cassert")}), {parenthesized(condition)}));
     }
     void assert_if(Nodes& body, Predicate predicate) {
         if (predicate) {
@@ -405,7 +399,7 @@ class PackedEmitter : public CppIRBuilder {
                                          definitions.linear_quantized.reserved_codes[definition]};
         }
         auto initializer{init_list({})};
-        auto const signedness{ir_.types.std.is_signed_integer(value_type(context_, logical, bits))};
+        auto const signedness{std_types().is_signed_integer(value_type(context_, logical, bits))};
         auto const physical_min{PackedIntegerValue::from_parts(
             signedness, signedness ? std::uint64_t{1} << (bits - 1) : 0)};
         auto const physical_max{PackedIntegerValue{mask(bits - (signedness ? 1 : 0))}};
@@ -415,25 +409,24 @@ class PackedEmitter : public CppIRBuilder {
             initializer = init_list(
                 {init_list({cast(decoded, integer(lower)), cast(decoded, integer(upper))})});
         }
-        auto const packed{
-            ir_.types.named("ioj::PackedField",
-                            NameOrigin::global,
-                            {ir_.types.dependency("ioj::PackedField", "ioj/packed_value.h")})};
-        auto const descriptor{ir_.types.template_type(
+        auto const packed{named_type("ioj::PackedField",
+                                     NameOrigin::global,
+                                     {dependency("ioj::PackedField", "ioj/packed_value.h")})};
+        auto const descriptor{template_type(
             packed,
             {type("storage_type"),
              decoded,
-             ir_.types.intern(std::to_string(offset)),
-             ir_.types.intern(logical == type_ && !composite(graph_.definition(type_).kind())
-                                  ? "storage.encoded_bits"
-                                  : std::to_string(bits))})};
+             intern_type(std::to_string(offset)),
+             intern_type(logical == type_ && !composite(graph_.definition(type_).kind())
+                             ? "storage.encoded_bits"
+                             : std::to_string(bits))})};
         constant(metadata, name, descriptor, initializer);
     }
     auto range_bound(std::string const& layout, std::string_view bound) -> Expr {
         return member_access(member_access(named(layout), "range"), bound);
     }
     auto const_parameter(CppTypeId alias, std::string_view name) -> FunctionParameterId {
-        return parameter(ir_.types.decorate(alias, "", " const"), name);
+        return parameter(decorate_type(alias, "", " const"), name);
     }
     auto emit_function(std::string const& name,
                        CppTypeId result,
@@ -447,10 +440,10 @@ class PackedEmitter : public CppIRBuilder {
         set_function_parameters(fn, parameters);
         set_function_return_type(fn,
                                  result,
-                                 result == ir_.types.std.void_ ? ReturnSyntax::direct
-                                                               : ReturnSyntax::trailing);
+                                 result == std_types().void_ ? ReturnSyntax::direct
+                                                             : ReturnSyntax::trailing);
         function_flags(fn).set_is_constexpr(constexpr_);
-        function_flags(fn).set_is_nodiscard(result != ir_.types.std.void_);
+        function_flags(fn).set_is_nodiscard(result != std_types().void_);
         function_flags(fn).set_define_in_header(true);
         set_function_body(fn, body);
         return header_function(fn);
@@ -489,16 +482,16 @@ class PackedEmitter : public CppIRBuilder {
         return header_function(fn);
     }
     void comparison(bool defaulted) {
-        auto const owner{ir_.types.decorate(type(name_), "", " const&")};
+        auto const owner{decorate_type(type(name_), "", " const&")};
         for (auto const equality : {false, true}) {
             if (equality && defaulted) {
                 continue;
             }
             auto const decoded{!defaulted && !equality};
-            auto const fn{function(
-                equality ? "operator==" : "operator<=>",
-                equality ? ir_.types.std.bool_
-                         : ir_.types.intern("auto", {ir_.types.dependency("auto", "compare")}))};
+            auto const fn{function(equality ? "operator==" : "operator<=>",
+                                   equality
+                                       ? std_types().bool_
+                                       : intern_type("auto", {dependency("auto", "compare")}))};
             set_function_receiver(fn, FunctionReceiver::const_);
             set_function_noexcept(fn);
             function_flags(fn).set_is_constexpr(true);
@@ -726,7 +719,7 @@ class PackedEmitter : public CppIRBuilder {
                     auto const occurrence{graph_.resolved(graph_.module(logical), *explicit_type)};
                     auto const& occurrences{graph_.occurrences()};
                     auto const underlying{occurrences.cpp_type[occurrence]};
-                    if (auto const width{packed_unsigned_width(ir_.types.spelling(underlying))}) {
+                    if (auto const width{packed_unsigned_width(type_spelling(underlying))}) {
                         underlying_bits = static_cast<std::uint32_t>(*width);
                     }
                 } else {
@@ -747,13 +740,13 @@ class PackedEmitter : public CppIRBuilder {
                               member_access(named(field), "value_mask"));
             }
         }
-        if (decoded == ir_.types.std.bool_ || bits == 8 || bits == 16 || bits == 32 || bits == 64) {
+        if (decoded == std_types().bool_ || bits == 8 || bits == 16 || bits == 32 || bits == 64) {
             return {};
         }
         if (checked_domain && domain_implies_width(logical, bits)) {
             return {};
         }
-        return ir_.types.std.is_signed_integer(decoded)
+        return std_types().is_signed_integer(decoded)
                  ? binary(BinaryOperator::equal, extract(field, pack(field, value())), value())
                  : binary(BinaryOperator::less_equal,
                           cast("storage_type", value()),
@@ -769,7 +762,7 @@ class PackedEmitter : public CppIRBuilder {
             result.stored_helper = width ? name + "_domain" : name;
             if (width) {
                 private_functions_.push_back(emit_function(*result.stored_helper,
-                                                           ir_.types.std.bool_,
+                                                           std_types().bool_,
                                                            FunctionReceiver::static_,
                                                            {const_parameter(alias, "value")},
                                                            {return_stmt(*domain)}));
@@ -778,7 +771,7 @@ class PackedEmitter : public CppIRBuilder {
         }
         functions_.push_back(
             emit_function(name,
-                          ir_.types.std.bool_,
+                          std_types().bool_,
                           FunctionReceiver::static_,
                           {const_parameter(alias, result.input_required ? "value" : "")},
                           {return_stmt(boolean(all({domain, width})))}));
@@ -890,7 +883,7 @@ class PackedEmitter : public CppIRBuilder {
                                  [](auto const& placement) { return placement.alternative; })) {
             build_constructor(std::nullopt);
         }
-        comparison(!scalar_ || !ir_.types.std.is_signed_integer(
+        comparison(!scalar_ || !std_types().is_signed_integer(
                                    value_type(context_, type_, *layout_.encoded_bits)));
         std::set<std::pair<std::optional<std::uint32_t>, schema::ChildOccurrenceId>> alternatives;
         for (std::size_t index{}; index < count; ++index) {
@@ -903,10 +896,10 @@ class PackedEmitter : public CppIRBuilder {
         auto validity{valid_children(std::nullopt, type_, std::nullopt)};
         if (validity) {
             auto const base_validity{
-                call(type_reference(ir_.types.decorate(type("Base"), "", "::is_valid")), {})};
+                call(type_reference(decorate_type(type("Base"), "", "::is_valid")), {})};
             validity = all({base_validity, validity});
             functions_.push_back(emit_function("is_valid",
-                                               ir_.types.std.bool_,
+                                               std_types().bool_,
                                                FunctionReceiver::const_,
                                                {},
                                                {return_stmt(*validity)}));
@@ -1067,7 +1060,7 @@ class PackedEmitter : public CppIRBuilder {
 
         auto const already_storage{aggregate(placement) || !addressable(placement) ||
                                    value_type(context_, placement.type, placement.bits) ==
-                                       ir_.types.std.integer(layout_.storage_bits)};
+                                       std_types().integer(layout_.storage_bits)};
         return already_storage ? input : cast("storage_type", input);
     }
     auto combine_fields(std::span<Expr const> fields) -> Expr {
@@ -1172,8 +1165,8 @@ class PackedEmitter : public CppIRBuilder {
         auto const decoded_type{access_type(placement)};
         body.push_back(return_stmt(
             aggregate(placement)
-                ? call(type_reference(ir_.types.decorate(decoded_type, "", "::from_raw")),
-                       {cast(ir_.types.decorate(decoded_type, "", "::storage_type"), decoded)})
+                ? call(type_reference(decorate_type(decoded_type, "", "::from_raw")),
+                       {cast(decorate_type(decoded_type, "", "::storage_type"), decoded)})
                 : decoded));
         functions_.push_back(emit_function(name, decoded_type, FunctionReceiver::const_, {}, body));
         if (placement.discriminator) {
@@ -1194,7 +1187,7 @@ class PackedEmitter : public CppIRBuilder {
             body.push_back(insert_member(name + "_layout", encoded));
         }
         functions_.push_back(emit_function("set_" + name,
-                                           ir_.types.std.void_,
+                                           std_types().void_,
                                            FunctionReceiver::unqualified,
                                            {const_parameter(decoded_type, "value")},
                                            body));
@@ -1247,15 +1240,15 @@ class PackedEmitter : public CppIRBuilder {
                 }
                 return literal(spelling);
             };
-            minimum = constant(metadata, path + "_minimum", ir_.types.std.f64, real(range.min));
-            maximum = constant(metadata, path + "_maximum", ir_.types.std.f64, real(range.max));
-            auto const codes{cast(ir_.types.std.f64, upper)};
+            minimum = constant(metadata, path + "_minimum", std_types().f64, real(range.min));
+            maximum = constant(metadata, path + "_maximum", std_types().f64, real(range.max));
+            auto const codes{cast(std_types().f64, upper)};
             decode = library_call(
                 "std::lerp",
                 "cmath",
                 {minimum,
                  maximum,
-                 binary(BinaryOperator::divide, cast(ir_.types.std.f64, invoke(raw_name)), codes)});
+                 binary(BinaryOperator::divide, cast(std_types().f64, invoke(raw_name)), codes)});
 
             // Halve opposite extreme endpoints before subtracting to avoid an overflowing span.
             auto const half_span{!std::isfinite(span)};
@@ -1271,11 +1264,11 @@ class PackedEmitter : public CppIRBuilder {
         } else {
             auto const fractional_bits{fixed.fractional_bits[row]};
             auto const fractional{constant(
-                metadata, path + "_fractional_bits", ir_.types.std.int_, number(fractional_bits))};
+                metadata, path + "_fractional_bits", std_types().int_, number(fractional_bits))};
             auto const negative_fractional{unary(UnaryOperator::negate, fractional)};
-            minimum = ldexp(cast(ir_.types.std.f64, lower), negative_fractional);
-            maximum = ldexp(cast(ir_.types.std.f64, upper), negative_fractional);
-            decode = ldexp(cast(ir_.types.std.f64, invoke(raw_name)), negative_fractional);
+            minimum = ldexp(cast(std_types().f64, lower), negative_fractional);
+            maximum = ldexp(cast(std_types().f64, upper), negative_fractional);
+            decode = ldexp(cast(std_types().f64, invoke(raw_name)), negative_fractional);
             scale = ldexp(value(), fractional);
 
             auto const magnitude_bits{placement.bits - (signedness ? 1U : 0U)};
@@ -1295,7 +1288,7 @@ class PackedEmitter : public CppIRBuilder {
                                          std::ldexp(1.0, -static_cast<int>(fractional_bits)))));
         }
         functions_.push_back(emit_function(decoded_name,
-                                           ir_.types.std.f64,
+                                           std_types().f64,
                                            FunctionReceiver::const_,
                                            {},
                                            {return_stmt(decode)},
@@ -1335,7 +1328,7 @@ class PackedEmitter : public CppIRBuilder {
         if (range_form) {
             // The largest 64-bit code rounds to 2^64 as a double; handle it before casting.
             body.push_back(if_stmt(
-                binary(BinaryOperator::greater_equal, rounded, cast(ir_.types.std.f64, upper)),
+                binary(BinaryOperator::greater_equal, rounded, cast(std_types().f64, upper)),
                 block({assignment(named("out_raw"), upper), return_stmt(literal("true"))})));
         }
         body.push_back(fail_if(
@@ -1346,27 +1339,26 @@ class PackedEmitter : public CppIRBuilder {
                           signedness ? unary(UnaryOperator::negate, range) : literal("0.0")))));
         auto const raw_type{descriptor_value(layout_name)};
         body.push_back(
-            variable(ir_.types.decorate(raw_type, "", " const"), "raw", cast(raw_type, rounded)));
+            variable(decorate_type(raw_type, "", " const"), "raw", cast(raw_type, rounded)));
         if (auto const valid{value_check(placement, named("raw"))}) {
             body.push_back(fail_if(unary(UnaryOperator::logical_not, *valid)));
         }
         body.push_back(assignment(named("out_raw"), named("raw")));
         body.push_back(return_stmt(literal("true")));
-        functions_.push_back(
-            emit_function(encode_name,
-                          ir_.types.std.bool_,
-                          FunctionReceiver::static_,
-                          {const_parameter(ir_.types.std.f64, "value"),
-                           parameter(ir_.types.decorate(raw_type, "", "&"), "out_raw")},
-                          body,
-                          false));
+        functions_.push_back(emit_function(encode_name,
+                                           std_types().bool_,
+                                           FunctionReceiver::static_,
+                                           {const_parameter(std_types().f64, "value"),
+                                            parameter(decorate_type(raw_type, "", "&"), "out_raw")},
+                                           body,
+                                           false));
         functions_.push_back(emit_function(
             "set_" + decoded_name,
-            ir_.types.std.void_,
+            std_types().void_,
             FunctionReceiver::unqualified,
-            {const_parameter(ir_.types.std.f64, "value")},
+            {const_parameter(std_types().f64, "value")},
             {variable(raw_type, "raw", init_list({})),
-             variable(ir_.types.decorate(ir_.types.intern("auto"), "[[maybe_unused]] ", " const"),
+             variable(decorate_type(intern_type("auto"), "[[maybe_unused]] ", " const"),
                       "success",
                       invoke(encode_name, {value(), named("raw")})),
              assertion(named("success")),

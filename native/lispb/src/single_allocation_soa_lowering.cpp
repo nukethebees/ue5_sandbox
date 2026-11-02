@@ -26,13 +26,13 @@ class SingleAllocationLowering : public CppIRBuilder {
         auto const model{build_single_allocation_model(ctx, schema)};
         auto const& soas{ctx.declarations.soas};
         auto const row{soas.index(schema)};
-        auto const namespace_name{ir_.strings.intern(soa_namespace_name(ctx.text(soas.name[row])))};
-        NodeListBuilder result{ir_};
-        NodeListBuilder source{ir_};
-        NodeListBuilder view_source{ir_};
-        NodeListBuilder shared{ir_};
-        NodeListBuilder declarations{ir_};
-        declarations.add(forward_declaration(ir_.strings.intern("Schema"))).new_lines(1);
+        auto const namespace_name{store_text(soa_namespace_name(ctx.text(soas.name[row])))};
+        auto result{node_list()};
+        auto source{node_list()};
+        auto view_source{node_list()};
+        auto shared{node_list()};
+        auto declarations{node_list()};
+        declarations.add(forward_declaration(store_text("Schema"))).new_lines(1);
         auto const views{emit_single_allocation_views(ctx, model, view_source, declarations)};
 
         shared.append(declarations.build()).new_lines(2);
@@ -54,13 +54,13 @@ class SingleAllocationLowering : public CppIRBuilder {
             .add(block_comment("****************************************"))
             .new_lines(1);
         result.add(line_comment("Columns:")).new_lines(1);
-        auto const& models{ir_.lowering.single_allocation_models};
-        auto const& columns{ir_.lowering.single_allocation_columns};
-        for (auto const column : ir_.lowering.items(models.columns[models.index(model)])) {
+        auto const& models{lowering_storage().single_allocation_models};
+        auto const& columns{lowering_storage().single_allocation_columns};
+        for (auto const column : lowering_storage().items(models.columns[models.index(model)])) {
             auto const column_row{columns.index(column)};
             result
                 .add(line_comment(ctx.text(columns.flattened_identifier[column_row]) + ": " +
-                                  std::string{ir_.types.spelling(columns.type[column_row])}))
+                                  std::string{type_spelling(columns.type[column_row])}))
                 .new_lines(1);
         }
         result.add(emit_single_allocation_container(ctx, model, source));

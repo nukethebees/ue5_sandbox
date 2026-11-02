@@ -1,12 +1,175 @@
-; Keep these typed overloads aligned with the CppIR construction API.
+; Keep these typed overloads aligned with CppIR and its type, file, and module APIs.
 (module cpp_ir_builder
   :header "cpp_ir_builder.h"
   :namespace lispb::codegen
+  :prelude ("#include <codegen/ast/cpp_types.h>" "#include <lispb/strings.h>")
   (facade CppIRBuilder @cpp_ir ir_
     :target-storage reference
-    :target-access protected
+    :target-access private
     :bind-access protected
     (protected
+      (method type_strings "Strings&" :target-name "types.strings" :const true)
+      (method std_types "StandardTypes const&" :target-name "types.standard_types" :const true)
+      (method add_type "CppTypeId" :target-name "types.add"
+        (parameter spelling "std::string_view")
+        (parameter dependencies "std::span<TypeDependencyId const>" :default "{}")
+        (parameter passing "std::optional<ParameterPassing>" :default "std::nullopt"))
+      (method add_type "CppTypeId" :target-name "types.add"
+        (parameter spelling "std::string_view")
+        (parameter dependencies "std::initializer_list<TypeDependencyId>")
+        (parameter passing "std::optional<ParameterPassing>" :default "std::nullopt"))
+      (method intern_type "CppTypeId" :target-name "types.intern"
+        (parameter spelling "std::string_view")
+        (parameter dependencies "std::span<TypeDependencyId const>" :default "{}")
+        (parameter passing "std::optional<ParameterPassing>" :default "std::nullopt"))
+      (method intern_type "CppTypeId" :target-name "types.intern"
+        (parameter spelling "std::string_view")
+        (parameter dependencies "std::initializer_list<TypeDependencyId>")
+        (parameter passing "std::optional<ParameterPassing>" :default "std::nullopt"))
+      (method derive_type "CppTypeId" :target-name "types.derive"
+        (parameter base "CppTypeId")
+        (parameter spelling "std::string_view"))
+      (method derive_type "CppTypeId" :target-name "types.derive"
+        (parameter base "CppTypeId")
+        (parameter spelling "std::string_view")
+        (parameter dependencies "std::span<TypeDependencyId const>"))
+      (method named_type "CppTypeId" :target-name "types.named"
+        (parameter spelling "std::string_view")
+        (parameter dependencies "std::span<TypeDependencyId const>" :default "{}")
+        (parameter passing "std::optional<ParameterPassing>" :default "std::nullopt"))
+      (method named_type "CppTypeId" :target-name "types.named"
+        (parameter spelling "std::string_view")
+        (parameter dependencies "std::initializer_list<TypeDependencyId>")
+        (parameter passing "std::optional<ParameterPassing>" :default "std::nullopt"))
+      (method named_type "CppTypeId" :target-name "types.named"
+        (parameter spelling "std::string_view")
+        (parameter origin "NameOrigin")
+        (parameter dependencies "std::span<TypeDependencyId const>" :default "{}")
+        (parameter passing "std::optional<ParameterPassing>" :default "std::nullopt"))
+      (method named_type "CppTypeId" :target-name "types.named"
+        (parameter spelling "std::string_view")
+        (parameter origin "NameOrigin")
+        (parameter dependencies "std::initializer_list<TypeDependencyId>")
+        (parameter passing "std::optional<ParameterPassing>" :default "std::nullopt"))
+      (method reference_type "CppTypeId" :target-name "types.reference"
+        (parameter type "CppTypeId"))
+      (method compose_type "CppTypeId" :target-name "types.compose"
+        (parameter parts "std::span<CppTypePart const>")
+        (parameter policy_source "std::optional<CppTypeId>" :default "{}"))
+      (method compose_type "CppTypeId" :target-name "types.compose"
+        (parameter parts "std::initializer_list<CppTypePart>")
+        (parameter policy_source "std::optional<CppTypeId>" :default "{}"))
+      (method decorate_type "CppTypeId" :target-name "types.decorate"
+        (parameter base "CppTypeId")
+        (parameter prefix "std::string_view")
+        (parameter suffix "std::string_view"))
+      (method template_type "CppTypeId" :target-name "types.template_type"
+        (parameter primary "CppTypeId")
+        (parameter arguments "std::span<CppTypeId const>"))
+      (method template_type "CppTypeId" :target-name "types.template_type"
+        (parameter primary "CppTypeId")
+        (parameter arguments "std::initializer_list<CppTypeId>"))
+      (method type_with_dependencies "CppTypeId" :target-name "types.with_dependencies"
+        (parameter base "CppTypeId")
+        (parameter dependencies "std::span<TypeDependencyId const>"))
+      (method clone_type "CppTypeId" :target-name "types.clone"
+        (parameter base "CppTypeId"))
+      (method type_spelling "std::string_view" :target-name "types.spelling" :const true
+        (parameter type "CppTypeId"))
+      (method type_spelling_id "StringId" :target-name "types.spelling_id" :const true
+        (parameter type "CppTypeId"))
+      (method type_dependencies "std::span<TypeDependencyId const>" :target-name "types.dependencies" :const true
+        (parameter type "CppTypeId"))
+      (method type_parameter_passing "ParameterPassing" :target-name "types.parameter_passing" :const true
+        (parameter type "CppTypeId"))
+      (method type_operation "std::optional<std::string_view>" :target-name "types.operation" :const true
+        (parameter type "CppTypeId")
+        (parameter operation "TypeOperation"))
+      (method type_operation_parameter_passing "ParameterPassing" :target-name "types.operation_parameter_passing" :const true
+        (parameter type "CppTypeId")
+        (parameter operation "TypeOperation"))
+      (method dependency "TypeDependencyId" :target-name "types.dependency"
+        (parameter spelling "std::string_view")
+        (parameter header "std::optional<std::string_view>" :default "std::nullopt"))
+      (method dependency_spelling "std::string_view" :target-name "types.dependency_spelling" :const true
+        (parameter dependency "TypeDependencyId"))
+      (method dependency_header "std::optional<std::string_view>" :target-name "types.dependency_header" :const true
+        (parameter dependency "TypeDependencyId"))
+      (method clear_types "void" :target-name "types.clear")
+      (method set_type_parameter_passing "void" :target-name "types.set_parameter_passing"
+        (parameter type "CppTypeId")
+        (parameter passing "ParameterPassing"))
+      (method set_type_operation "void" :target-name "types.set_operation"
+        (parameter type "CppTypeId")
+        (parameter operation "TypeOperation")
+        (parameter spelling "std::string_view")
+        (parameter passing "ParameterPassing" :default "ParameterPassing::const_reference"))
+      (method node_list "NodeListBuilder")
+      (method lowering_storage "LoweringStorage&")
+      (method clear "void")
+      (method collect_dependencies "void" :const true
+        (parameter expr "Expr")
+        (parameter result "std::vector<TypeDependencyId>&"))
+      (method collect_dependencies "void" :const true
+        (parameter node "NodeId")
+        (parameter result "std::vector<TypeDependencyId>&"))
+      (method for_each_child "void" :const true
+        (parameter node "NodeId")
+        (parameter visit "std::function<void(NodeId)> const&"))
+      (method merge_adjacent_namespaces "void"
+        (parameter file "CppFileId"))
+      (method append_file "CppFileId" :target-name "files.append"
+        (parameter path "StringId")
+        (parameter nodes "std::span<NodeId const>" :default "{}"))
+      (method append_file "CppFileId" :target-name "files.append"
+        (parameter path "StringId")
+        (parameter nodes "std::initializer_list<NodeId>"))
+      (method file_index "std::size_t" :target-name "files.index" :const true
+        (parameter file "CppFileId"))
+      (method file_flags "CppFileFlags&" :target-name "files.flags_for"
+        (parameter file "CppFileId"))
+      (method file_nodes "std::span<NodeId const>" :target-name "files.nodes" :const true
+        (parameter file "CppFileId"))
+      (method file_prologue "std::span<StringId const>" :target-name "files.prologue" :const true
+        (parameter file "CppFileId"))
+      (method file_epilogue "std::span<StringId const>" :target-name "files.epilogue" :const true
+        (parameter file "CppFileId"))
+      (method file_include_order "std::span<StringId const>" :target-name "files.include_order" :const true
+        (parameter file "CppFileId"))
+      (method set_file_nodes "void" :target-name "files.set_nodes"
+        (parameter file "CppFileId")
+        (parameter nodes "std::span<NodeId const>"))
+      (method set_file_nodes "void" :target-name "files.set_nodes"
+        (parameter file "CppFileId")
+        (parameter nodes "std::initializer_list<NodeId>"))
+      (method set_file_prologue "void" :target-name "files.set_prologue"
+        (parameter file "CppFileId")
+        (parameter text "std::span<StringId const>"))
+      (method set_file_prologue "void" :target-name "files.set_prologue"
+        (parameter file "CppFileId")
+        (parameter text "std::initializer_list<StringId>"))
+      (method set_file_epilogue "void" :target-name "files.set_epilogue"
+        (parameter file "CppFileId")
+        (parameter text "std::span<StringId const>"))
+      (method set_file_epilogue "void" :target-name "files.set_epilogue"
+        (parameter file "CppFileId")
+        (parameter text "std::initializer_list<StringId>"))
+      (method set_file_include_order "void" :target-name "files.set_include_order"
+        (parameter file "CppFileId")
+        (parameter prefixes "std::span<StringId const>"))
+      (method set_file_include_order "void" :target-name "files.set_include_order"
+        (parameter file "CppFileId")
+        (parameter prefixes "std::initializer_list<StringId>"))
+      (method clear_files "void" :target-name "files.clear")
+      (method append_module "ModuleId" :target-name "modules.append"
+        (parameter name "StringId")
+        (parameter header "CppFileId" :default "{}")
+        (parameter source "CppFileId" :default "{}"))
+      (method module_index "std::size_t" :target-name "modules.index" :const true
+        (parameter module_id "ModuleId"))
+      (method clear_modules "void" :target-name "modules.clear")
+      (method text_view "std::string_view" :target-name "strings.view" :const true
+        (parameter id "StringId"))
       (method store_text "StringId"
         (parameter value "std::string_view"))
       (method store_optional_text "std::optional<StringId>"

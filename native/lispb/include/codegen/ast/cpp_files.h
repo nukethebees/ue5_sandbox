@@ -22,6 +22,7 @@ class CppFiles {
     }
     // Require a file belonging to this store. Zero denotes an absent file.
     auto index(CppFileId file) const -> std::size_t;
+    auto flags_for(CppFileId file) -> CppFileFlags& { return flags[index(file)]; }
     auto nodes(CppFileId file) const -> std::span<NodeId const>;
     auto prologue(CppFileId file) const -> std::span<StringId const>;
     auto epilogue(CppFileId file) const -> std::span<StringId const>;

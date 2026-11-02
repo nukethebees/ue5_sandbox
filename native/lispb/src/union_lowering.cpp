@@ -37,7 +37,7 @@ class UnionLowering : public CppIRBuilder {
         auto const& unions{ctx.declarations.unions};
         auto const& schemas{ctx.declarations.child_occurrences};
         auto const row{unions.index(schema)};
-        NodeListBuilder alternatives{ir_};
+        auto alternatives{node_list()};
         for (auto const alternative : ctx.declarations.items(unions.alternatives[row])) {
             auto const alternative_row{schemas.index(alternative)};
             alternatives.add(instance_member(lower_member_type(ctx, alternative),

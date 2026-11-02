@@ -1650,8 +1650,12 @@ class Validator {
                                             "' collides with a generated member"};
             }
             if (methods.target_name[method].has_value()) {
-                require_identifier(*methods.target_name[method],
-                                   facade_context + " method target name");
+                for (auto const component :
+                     view(*methods.target_name[method]) | std::views::split('.')) {
+                    require_identifier(std::string_view{component.begin(), component.end()},
+                                       facade_context + " method target name");
+                }
+                require_value(*methods.target_name[method], facade_context + " method target name");
             }
             validate_type(methods.return_type[method],
                           facade_context + " method '" + text(methods.name[method]) + "' return");

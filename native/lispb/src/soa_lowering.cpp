@@ -38,7 +38,7 @@ class SoaLowering : public CppIRBuilder {
         -> DeclarationEmission {
         auto const& soas{ctx.declarations.soas};
         auto const row{soas.index(schema)};
-        NodeListBuilder header{ir_};
+        auto header{node_list()};
         auto const masks{field_mask_nodes(ctx, schema)};
         if (!masks.empty()) {
             header.new_lines(2).append(masks).new_lines(2);
@@ -47,10 +47,9 @@ class SoaLowering : public CppIRBuilder {
             soas.mutable_view_functions[row].empty() && !soas.equivalent_type[row]) {
             auto const type{ctx.semantic.find_declared(ctx.module, soas.name[row])};
             if (ctx.semantic.users_of(*type).empty()) {
-                header.add(
-                    namespace_node(ir_.strings.intern(soa_namespace_name(ctx.text(soas.name[row]))),
-                                   emit_single_allocation_layout(
-                                       ctx, build_single_allocation_model(ctx, schema))));
+                header.add(namespace_node(store_text(soa_namespace_name(ctx.text(soas.name[row]))),
+                                          emit_single_allocation_layout(
+                                              ctx, build_single_allocation_model(ctx, schema))));
                 return {.header = header.build(), .format_generated = true};
             }
         }
@@ -106,9 +105,9 @@ class SoaLowering : public CppIRBuilder {
         auto const mask_name{*soas.field_mask_name[row]};
         auto const enum_name{ctx.text(*soas.field_enum_name[row])};
         auto const selected{decls.items(soas.members[row])};
-        auto const uint8_type{ir_.types.std.u8};
-        auto const int32_type{ir_.types.std.i32};
-        auto const enum_type{ir_.types.intern(enum_name)};
+        auto const uint8_type{std_types().u8};
+        auto const int32_type{std_types().i32};
+        auto const enum_type{intern_type(enum_name)};
         std::vector<EnumValueId> values;
         std::string previous_name;
         std::string previous_width;
@@ -129,20 +128,19 @@ class SoaLowering : public CppIRBuilder {
         }
         values.push_back(enumerator(store_text("Count"), store_text(next_value())));
 
-        auto const field_count{
-            ir_.types.compose({{.text = store_text("static_cast<")},
-                               {.type = ir_.types.std.size_t},
-                               {.text = store_text(">(")},
-                               {.type = ir_.types.decorate(enum_type, "", "::Count")},
-                               {.text = store_text(")")}})};
-        auto const base{ir_.types.template_type(
-            ir_.types.named("ioj::FieldMask",
-                            NameOrigin::global,
-                            {ir_.types.dependency("ioj::FieldMask", "ioj/field_mask.h")}),
-            {enum_type, field_count})};
-        NodeListBuilder children{ir_};
+        auto const field_count{compose_type({{.text = store_text("static_cast<")},
+                                             {.type = std_types().size_t},
+                                             {.text = store_text(">(")},
+                                             {.type = decorate_type(enum_type, "", "::Count")},
+                                             {.text = store_text(")")}})};
+        auto const base{
+            template_type(named_type("ioj::FieldMask",
+                                     NameOrigin::global,
+                                     {dependency("ioj::FieldMask", "ioj/field_mask.h")}),
+                          {enum_type, field_count})};
+        auto children{node_list()};
         children.add(using_declaration(store_text("Base"), base))
-            .add(using_import(ir_.types.named("Base::Base")));
+            .add(using_import(named_type("Base::Base")));
 
         for (auto const member : selected) {
             auto const member_row{members.index(member)};
@@ -153,7 +151,7 @@ class SoaLowering : public CppIRBuilder {
             auto const name{ctx.text(members.name[member_row])};
             std::vector<FunctionParameterId> parameters;
             for (auto const dimension : selected_dimensions) {
-                parameters.push_back(parameter(ir_.types.decorate(ir_.types.std.i32, "", " const"),
+                parameters.push_back(parameter(decorate_type(std_types().i32, "", " const"),
                                                dimensions.index_name[dimensions.index(dimension)]));
             }
             auto const function_id{function(name + "_field", enum_type)};
@@ -173,7 +171,7 @@ class SoaLowering : public CppIRBuilder {
                     binary(
                         BinaryOperator::add,
                         static_cast_expr(int32_type,
-                                         type_reference(ir_.types.decorate(
+                                         type_reference(decorate_type(
                                              enum_type, "", "::" + title_case_identifier(name)))),
                         mask_index_expression(ctx, member))))});
             children.new_lines(1).add(header_function(function_id));
@@ -182,17 +180,17 @@ class SoaLowering : public CppIRBuilder {
         auto const mask{record(mask_name, children.build())};
         set_record_bases(mask, {base});
 
-        auto const mask_type{ir_.types.named(ctx.text(mask_name))};
-        NodeListBuilder result{ir_};
+        auto const mask_type{named_type(ctx.text(mask_name))};
+        auto result{node_list()};
         result.add(enumeration(*soas.field_enum_name[row], uint8_type, values))
             .new_lines(1)
             .add(mask)
             .add(static_assertion(
                 binary(BinaryOperator::equal,
                        sizeof_type(mask_type),
-                       sizeof_type(ir_.types.decorate(mask_type, "", "::storage_type")))))
-            .add(static_assertion(type_reference(
-                ir_.types.template_type(ir_.types.std.is_trivially_copyable_v, {mask_type}))));
+                       sizeof_type(decorate_type(mask_type, "", "::storage_type")))))
+            .add(static_assertion(
+                type_reference(template_type(std_types().is_trivially_copyable_v, {mask_type}))));
         return result.build();
     }
 };

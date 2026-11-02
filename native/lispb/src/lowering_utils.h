@@ -19,8 +19,9 @@
 
 namespace lispb::codegen::detail {
 
-auto enum_count_specialization(CppIR& ir, CppTypeId enum_type, std::size_t count) -> NodeId;
-auto enum_strings_specialization(CppIR& ir,
+auto enum_count_specialization(LoweringContext& ctx, CppTypeId enum_type, std::size_t count)
+    -> NodeId;
+auto enum_strings_specialization(LoweringContext& ctx,
                                  std::string_view qualified,
                                  std::string_view category,
                                  std::span<std::string const> names,
@@ -40,11 +41,11 @@ auto source_include(LoweringContext const& ctx, ModuleSettingsId settings) -> st
 void append_type_dependencies(std::vector<TypeDependencyId>& result,
                               std::string const& key,
                               TypeRegistry const& types);
-auto qualify(CppIR& ir, CppTypeId type, std::string const& suffix) -> CppTypeId;
 auto title_case_identifier(std::string_view const identifier) -> std::string;
 auto snake_case_type_name(std::string_view name) -> std::string;
-auto column_apply_arrays_function(CppIR& ir, std::vector<std::string> const& columns) -> NodeId;
-auto column_apply_array_pairs_function(CppIR& ir, std::vector<std::string> const& columns)
+auto column_apply_arrays_function(LoweringContext& ctx, std::vector<std::string> const& columns)
     -> NodeId;
+auto column_apply_array_pairs_function(LoweringContext& ctx,
+                                       std::vector<std::string> const& columns) -> NodeId;
 
 } // namespace lispb::codegen::detail

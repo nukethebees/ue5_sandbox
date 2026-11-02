@@ -128,6 +128,10 @@ binding function or reference constructor, and `:target-access` for the stored t
     (method reset void)))
 ```
 
+Facade methods may use a dotted `:target-name`, such as `"types.named"`, to forward through
+nested members. Each component is validated as a C++ identifier and emitted as structured
+member access.
+
 Use `:enum-array true` independently on native or Unreal enums to generate `ioj::enum_count<Enum>()` for
 `ioj::EnumArray<Enum, T>` and `ioj::FixedEnumArray<Enum>`. LispB requires known codes in declaration
 order from zero through count minus one; gaps, aliases, negative codes, hidden values, and count

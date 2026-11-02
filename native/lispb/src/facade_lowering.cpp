@@ -24,6 +24,7 @@
 #include <lispb/strings.h>
 
 #include <optional>
+#include <ranges>
 #include <string>
 #include <utility>
 #include <vector>
@@ -46,8 +47,9 @@ class FacadeLowering : public CppIRBuilder {
         auto const reference_target{facades.reference_target[row]};
         auto const target_name{facades.target_member_name[row]};
         auto const binding{reference_target ? constructor(facades.name[row])
-                                            : function("bind", ir_.types.std.void_)};
-        set_function_parameters(binding, {parameter(qualify(ir_, target_type, "&"), "new_target")});
+                                            : function("bind", std_types().void_)};
+        set_function_parameters(binding,
+                                {parameter(decorate_type(target_type, "", "&"), "new_target")});
         function_flags(binding).set_is_inline(!definitions_in_source);
         function_flags(binding).set_define_in_header(!definitions_in_source);
         if (reference_target) {
@@ -78,18 +80,24 @@ class FacadeLowering : public CppIRBuilder {
             for (auto const key : decls.items(facades.validation_dependencies[row])) {
                 append_type_dependencies(validation_dependencies, ctx.text(key), ctx.types);
             }
-            NodeListBuilder body{ir_};
+            auto body{node_list()};
             if (!facades.validation_lines[row].empty()) {
                 body.add(raw_lines(decls.items(facades.validation_lines[row])));
             }
             auto const target{named(target_name)};
             auto const method_name{
                 method_schemas.target_name[method_row].value_or(method_schemas.name[method_row])};
-            auto const member{reference_target ? member_access(target, method_name)
-                                               : pointer_member_access(target, method_name)};
+            auto member{target};
+            bool pointer{!reference_target};
+            for (auto const component : ctx.text(method_name) | std::views::split('.')) {
+                auto const name{std::string_view{component.begin(), component.end()}};
+                member =
+                    pointer ? pointer_member_access(member, name) : member_access(member, name);
+                pointer = false;
+            }
             auto const call_expr{call(member, std::move(arguments))};
             auto const return_type{ctx.resolve(method_schemas.return_type[method_row])};
-            if (ir_.types.spelling(return_type) == "void") {
+            if (type_spelling(return_type) == "void") {
                 body.add(expr_stmt(call_expr, std::move(validation_dependencies)));
             } else {
                 body.add(return_stmt(call_expr, std::move(validation_dependencies)));
@@ -109,9 +117,9 @@ class FacadeLowering : public CppIRBuilder {
             methods.push_back(function_id);
         }
 
-        NodeListBuilder public_nodes{ir_};
-        NodeListBuilder protected_nodes{ir_};
-        NodeListBuilder private_nodes{ir_};
+        auto public_nodes{node_list()};
+        auto protected_nodes{node_list()};
+        auto private_nodes{node_list()};
         auto section = [&](Access visibility) -> NodeListBuilder& {
             switch (visibility) {
                 case Access::public_:
@@ -134,11 +142,10 @@ class FacadeLowering : public CppIRBuilder {
                        methods[i]);
         }
         for (auto const friend_name : decls.items(facades.friends[row])) {
-            private_nodes.add(friend_declaration(ir_.strings.intern(ctx.text(friend_name)),
-                                                 facades.friend_kind[row]),
-                              1);
+            private_nodes.add(
+                friend_declaration(store_text(ctx.text(friend_name)), facades.friend_kind[row]), 1);
         }
-        NodeListBuilder class_nodes{ir_};
+        auto class_nodes{node_list()};
         std::optional<Access> last_access;
         for (auto const visibility : {Access::public_, Access::protected_, Access::private_}) {
             auto const nodes{section(visibility).build()};
@@ -150,17 +157,18 @@ class FacadeLowering : public CppIRBuilder {
         if (last_access != facades.target_access[row]) {
             class_nodes.add(access(facades.target_access[row], AccessIndentation::normal), 1);
         }
-        class_nodes.add(
-            reference_target
-                ? instance_member(qualify(ir_, target_type, "&"), target_name)
-                : instance_member(qualify(ir_, target_type, "*"), target_name, literal("nullptr")));
+        class_nodes.add(reference_target
+                            ? instance_member(decorate_type(target_type, "", "&"), target_name)
+                            : instance_member(decorate_type(target_type, "", "*"),
+                                              target_name,
+                                              literal("nullptr")));
 
         auto const declaration_node{
             record(facades.name[row], class_nodes.build(), RecordKind::class_)};
         set_record_export_specifier(declaration_node, facades.export_specifier[row]);
-        NodeListBuilder definitions{ir_};
+        auto definitions{node_list()};
         if (definitions_in_source) {
-            auto const owner{ir_.types.intern(ctx.text(facades.name[row]))};
+            auto const owner{intern_type(ctx.text(facades.name[row]))};
             definitions.add(definition(binding, owner));
             for (auto const method : methods) {
                 definitions.new_lines(2).add(definition(method, owner));

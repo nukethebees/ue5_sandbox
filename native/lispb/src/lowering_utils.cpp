@@ -106,10 +106,6 @@ void append_type_dependencies(std::vector<TypeDependencyId>& result,
     result.insert(result.end(), dependencies.begin(), dependencies.end());
 }
 
-auto qualify(CppIR& ir, CppTypeId type, std::string const& suffix) -> CppTypeId {
-    return ir.types.decorate(type, "", suffix);
-}
-
 auto title_case_identifier(std::string_view const identifier) -> std::string {
     std::string result;
     result.reserve(identifier.size());
@@ -127,25 +123,26 @@ auto title_case_identifier(std::string_view const identifier) -> std::string {
     return result;
 }
 
-auto lower_member_type(LoweringContext& ctx, ChildOccurrenceId member) -> CppTypeId {
-    auto& ir{ctx.ir};
-    auto const& members{ctx.declarations.child_occurrences};
-    auto const row{members.index(member)};
-    auto const element{ctx.resolve(members.type[row])};
-    auto const count{members.count[row]};
-    if (!count) {
-        return element;
-    }
-    return ir.types.template_type(ir.types.std.array,
-                                  {element, ir.types.intern(std::to_string(*count))});
-}
-
 namespace {
 
 class FunctionLowering : public CppIRBuilder {
   public:
     explicit FunctionLowering(CppIR& ir)
         : CppIRBuilder{ir} {}
+
+    /* **************************************** */
+    // Lowering
+    /* **************************************** */
+    auto lower_member_type(LoweringContext& ctx, ChildOccurrenceId member) -> CppTypeId {
+        auto const& members{ctx.declarations.child_occurrences};
+        auto const row{members.index(member)};
+        auto const element{ctx.resolve(members.type[row])};
+        auto const count{members.count[row]};
+        if (!count) {
+            return element;
+        }
+        return template_type(std_types().array, {element, intern_type(std::to_string(*count))});
+    }
     auto column_apply_arrays_function(std::vector<std::string> const& columns) -> NodeId {
         std::vector<Expr> arguments;
         arguments.reserve(columns.size());
@@ -157,12 +154,11 @@ class FunctionLowering : public CppIRBuilder {
                                 {parameter("this auto&&", "self"), parameter("TFunc&&", "func")});
         set_function_body(created_function, {return_stmt(call_array_callback(arguments))});
         set_function_return_type(
-            created_function, ir_.types.intern("decltype(auto)"), ReturnSyntax::trailing);
+            created_function, intern_type("decltype(auto)"), ReturnSyntax::trailing);
         function_flags(created_function).set_is_inline(true);
         function_flags(created_function).set_define_in_header(true);
-        set_function_template(
-            created_function,
-            template_declaration({type_template_parameter(ir_.strings.intern("TFunc"))}));
+        set_function_template(created_function,
+                              template_declaration({type_template_parameter(store_text("TFunc"))}));
         return header_function(created_function);
     }
     auto column_apply_array_pairs_function(std::vector<std::string> const& columns) -> NodeId {
@@ -179,14 +175,13 @@ class FunctionLowering : public CppIRBuilder {
                                  parameter("TFunc&&", "func")});
         set_function_body(created_function, {return_stmt(call_array_callback(arguments))});
         set_function_return_type(
-            created_function, ir_.types.intern("decltype(auto)"), ReturnSyntax::trailing);
+            created_function, intern_type("decltype(auto)"), ReturnSyntax::trailing);
         function_flags(created_function).set_is_inline(true);
         function_flags(created_function).set_define_in_header(true);
-        set_function_template(
-            created_function,
-            template_declaration({type_template_parameter(ir_.strings.intern("Self")),
-                                  type_template_parameter(ir_.strings.intern("Other")),
-                                  type_template_parameter(ir_.strings.intern("TFunc"))}));
+        set_function_template(created_function,
+                              template_declaration({type_template_parameter(store_text("Self")),
+                                                    type_template_parameter(store_text("Other")),
+                                                    type_template_parameter(store_text("TFunc"))}));
         function_formatting(created_function) = {
             .trailing_return_placement = FunctionTrailingReturnPlacement::next_line,
         };
@@ -244,27 +239,34 @@ class FunctionLowering : public CppIRBuilder {
         return created_function;
     }
   private:
+    /* **************************************** */
+    // Construction helpers
+    /* **************************************** */
     auto call_array_callback(std::span<Expr const> const arguments) -> Expr {
-        auto const forwarded{call(
-            template_id(
-                type_reference(ir_.types.named("std::forward",
-                                               NameOrigin::global,
-                                               {ir_.types.dependency("std::forward", "utility")})),
-                {type_reference(ir_.types.intern("TFunc"))}),
-            {named("func")})};
+        auto const forwarded{
+            call(template_id(type_reference(named_type("std::forward",
+                                                       NameOrigin::global,
+                                                       {dependency("std::forward", "utility")})),
+                             {type_reference(intern_type("TFunc"))}),
+                 {named("func")})};
         return call(forwarded, arguments);
     }
 };
 
 } // namespace
 
-auto column_apply_arrays_function(CppIR& ir, std::vector<std::string> const& columns) -> NodeId {
-    return FunctionLowering{ir}.column_apply_arrays_function(columns);
-}
-auto column_apply_array_pairs_function(CppIR& ir, std::vector<std::string> const& columns)
+auto column_apply_arrays_function(LoweringContext& ctx, std::vector<std::string> const& columns)
     -> NodeId {
-    return FunctionLowering{ir}.column_apply_array_pairs_function(columns);
+    return FunctionLowering{ctx.ir}.column_apply_arrays_function(columns);
 }
+auto column_apply_array_pairs_function(LoweringContext& ctx,
+                                       std::vector<std::string> const& columns) -> NodeId {
+    return FunctionLowering{ctx.ir}.column_apply_array_pairs_function(columns);
+}
+auto lower_member_type(LoweringContext& ctx, ChildOccurrenceId member) -> CppTypeId {
+    return FunctionLowering{ctx.ir}.lower_member_type(ctx, member);
+}
+
 auto lower_schema_function(LoweringContext& ctx,
                            FunctionSchemaId schema,
                            std::optional<std::span<Expr const>> body) -> FunctionId {

@@ -78,24 +78,24 @@ class SettingsLowering : public CppIRBuilder {
             ctx.declarations.items(settings_store.include_order[settings_row])};
         auto const include_directory{
             std::filesystem::path{source_include(ctx, settings)}.parent_path()};
-        NodeListBuilder header_nodes{ir_};
+        auto header_nodes{node_list()};
         for (auto const type :
              {"GameSettingCategoryDescriptor", "GameSettingDescriptor", "GameSettingValue"}) {
             auto const include_value{
                 (include_directory / (snake_case_type_name(type) + ".h")).generic_string()};
-            header_nodes.add(include(ir_.strings.intern(include_value), IncludeStyle::quoted), 1);
+            header_nodes.add(include(store_text(include_value), IncludeStyle::quoted), 1);
         }
         auto const state_include{
             (include_directory /
              (snake_case_type_name(ctx.text(modules.state_name[module_row])) + ".h"))
                 .generic_string()};
-        header_nodes.add(include(ir_.strings.intern(state_include), IncludeStyle::quoted), 1)
-            .add(include(ir_.strings.intern("span"), IncludeStyle::system), 2);
+        header_nodes.add(include(store_text(state_include), IncludeStyle::quoted), 1)
+            .add(include(store_text("span"), IncludeStyle::system), 2);
         auto const prelude{settings_store.prelude_lines[settings_row]};
         if (!prelude.empty()) {
             header_nodes.add(raw(join_lines(ctx, prelude)), 2);
         }
-        NodeListBuilder declarations{ir_};
+        auto declarations{node_list()};
         for (auto const function_id : functions) {
             declarations.add(declaration(function_id), 1);
         }
@@ -105,25 +105,24 @@ class SettingsLowering : public CppIRBuilder {
             header_nodes.append(declarations.build());
         }
         auto const header_file{
-            ir_.files.append(settings_store.header[settings_row], header_nodes.build())};
-        ir_.files.flags[ir_.files.index(header_file)].set_format_generated(true);
-        ir_.files.set_include_order(header_file, include_order);
+            append_file(settings_store.header[settings_row], header_nodes.build())};
+        file_flags(header_file).set_format_generated(true);
+        set_file_include_order(header_file, include_order);
         CppFileId source_file;
         if (auto const path{settings_store.source[settings_row]}) {
-            NodeListBuilder source_nodes{ir_};
+            auto source_nodes{node_list()};
             source_nodes
                 .add(include(store_text(source_include(ctx, settings)), IncludeStyle::quoted), 1)
-                .add(include(ir_.strings.intern("array"), IncludeStyle::system), 1)
-                .add(include(ir_.strings.intern("cassert"), IncludeStyle::system), 2)
+                .add(include(store_text("array"), IncludeStyle::system), 1)
+                .add(include(store_text("cassert"), IncludeStyle::system), 2)
                 .append(build_source(ctx, module, functions));
-            source_file = ir_.files.append(*path, source_nodes.build());
-            auto const source_row{ir_.files.index(source_file)};
-            ir_.files.flags[source_row].set_pragma_once(false);
-            ir_.files.flags[source_row].set_format_generated(true);
-            ir_.files.set_include_order(source_file, include_order);
+            source_file = append_file(*path, source_nodes.build());
+            file_flags(source_file).set_pragma_once(false);
+            file_flags(source_file).set_format_generated(true);
+            set_file_include_order(source_file, include_order);
         }
         result.push_back(
-            ir_.modules.append(settings_store.name[settings_row], header_file, source_file));
+            append_module(settings_store.name[settings_row], header_file, source_file));
         return result;
     }
   private:
@@ -231,8 +230,8 @@ class SettingsLowering : public CppIRBuilder {
         };
 
         auto span_type = [&](std::string_view const element) {
-            return ir_.types.template_type(
-                ir_.types.std.span, {ir_.types.decorate(ir_.types.named(element), "", " const")});
+            return template_type(std_types().span,
+                                 {decorate_type(named_type(element), "", " const")});
         };
         auto const categories{create("game_setting_category_descriptors",
                                      span_type("GameSettingCategoryDescriptor"))};
@@ -244,31 +243,31 @@ class SettingsLowering : public CppIRBuilder {
 
         auto const descriptor{
             create("game_setting_descriptor",
-                   ir_.types.decorate(ir_.types.named("GameSettingDescriptor"), "", " const&"))};
+                   decorate_type(named_type("GameSettingDescriptor"), "", " const&"))};
         set_function_parameters(descriptor, {id_parameter});
         set_function_body(descriptor,
                           {return_stmt(subscript(named("descriptors"),
-                                                 static_cast_expr(ir_.types.std.size_t, id)))});
+                                                 static_cast_expr(std_types().size_t, id)))});
 
-        auto const getter{create("game_setting_value", ir_.types.named("GameSettingValue"))};
+        auto const getter{create("game_setting_value", named_type("GameSettingValue"))};
         set_function_parameters(getter, {parameter(state_name + " const&", "state"), id_parameter});
         std::vector<SwitchCaseId> getter_cases;
         for (auto const setting : settings) {
             auto const name{decls.settings.name[setting]};
-            getter_cases.push_back(switch_case(
-                type_reference(ir_.types.decorate(
-                    ir_.types.named("GameSetting"), "", "::" + title_case(ctx.text(name)))),
-                block({return_stmt(init_list({member_access(state, name)},
-                                             ir_.types.intern("GameSettingValue")))})));
+            getter_cases.push_back(
+                switch_case(type_reference(decorate_type(
+                                named_type("GameSetting"), "", "::" + title_case(ctx.text(name)))),
+                            block({return_stmt(init_list({member_access(state, name)},
+                                                         intern_type("GameSettingValue")))})));
         }
         auto const first_name{decls.settings.name[settings.front()]};
         set_function_body(getter,
                           {switch_stmt(id, getter_cases),
                            expr_stmt(call(named("assert"), {literal("false")})),
                            return_stmt(init_list({member_access(state, first_name)},
-                                                 ir_.types.intern("GameSettingValue")))});
+                                                 intern_type("GameSettingValue")))});
 
-        auto const setter{create("set_game_setting_value", ir_.types.std.bool_)};
+        auto const setter{create("set_game_setting_value", std_types().bool_)};
         set_function_parameters(setter,
                                 {parameter(state_name + "&", "state"),
                                  id_parameter,
@@ -279,14 +278,14 @@ class SettingsLowering : public CppIRBuilder {
             auto const name{decls.settings.name[settings[index]]};
             auto const typed_value{named("typed_value")};
             setter_cases.push_back(switch_case(
-                type_reference(ir_.types.decorate(
-                    ir_.types.named("GameSetting"), "", "::" + title_case(ctx.text(name)))),
+                type_reference(decorate_type(
+                    named_type("GameSetting"), "", "::" + title_case(ctx.text(name)))),
                 block({
                     variable("auto const*",
                              "typed_value",
-                             call(template_id(type_reference(ir_.types.named("std::get_if",
-                                                                             NameOrigin::global)),
-                                              {type_reference(setting_types[index])}),
+                             call(template_id(
+                                      type_reference(named_type("std::get_if", NameOrigin::global)),
+                                      {type_reference(setting_types[index])}),
                                   {unary(UnaryOperator::address_of, value)})),
                     if_stmt(binary(BinaryOperator::equal, typed_value, literal("nullptr")),
                             block({return_stmt(literal("false"))})),
@@ -304,14 +303,14 @@ class SettingsLowering : public CppIRBuilder {
                       std::span<CppTypeId const> setting_types) -> NodeId {
         auto const& modules{ctx.declarations.settings_modules};
         auto const module_row{modules.index(module)};
-        NodeListBuilder members{ir_};
+        auto members{node_list()};
         members.add(access(Access::public_), 1);
         auto const settings{ctx.declarations.items(modules.settings_list[module_row])};
         auto const setting_count{settings.size()};
         for (std::size_t index{}; index < setting_count; ++index) {
             auto const setting{settings[index]};
             auto const name{ctx.declarations.settings.name[setting]};
-            auto const getter{function(name, ir_.types.intern("auto"))};
+            auto const getter{function(name, intern_type("auto"))};
             set_function_return_type(getter, setting_types[index], ReturnSyntax::trailing);
             set_function_receiver(getter, FunctionReceiver::const_);
             function_flags(getter).set_define_in_header(true);
@@ -321,22 +320,22 @@ class SettingsLowering : public CppIRBuilder {
                     call(member_access(call(named("derived")), "settings_state")), name))});
             members.add(header_function(getter), 2);
 
-            auto const setter{function("set_" + ctx.text(name), ir_.types.std.void_)};
+            auto const setter{function("set_" + ctx.text(name), std_types().void_)};
             function_flags(setter).set_define_in_header(true);
             set_function_parameters(
-                setter, {parameter(qualify(ir_, setting_types[index], " const"), "value")});
+                setter, {parameter(decorate_type(setting_types[index], "", " const"), "value")});
             set_function_body(
                 setter,
-                {expr_stmt(call(
-                    member_access(call(named("derived")), "set_setting"),
-                    {type_reference(ir_.types.decorate(
-                         ir_.types.named("GameSetting"), "", "::" + title_case(ctx.text(name)))),
-                     init_list({named("value")}, ir_.types.intern("GameSettingValue"))}))});
+                {expr_stmt(
+                    call(member_access(call(named("derived")), "set_setting"),
+                         {type_reference(decorate_type(
+                              named_type("GameSetting"), "", "::" + title_case(ctx.text(name)))),
+                          init_list({named("value")}, intern_type("GameSettingValue"))}))});
             members.add(header_function(setter), 2);
         }
         members.add(access(Access::private_), 1);
         for (auto const is_const : {false, true}) {
-            auto const derived_type{ir_.types.intern(is_const ? "Derived const&" : "Derived&")};
+            auto const derived_type{intern_type(is_const ? "Derived const&" : "Derived&")};
             auto const function_id{function("derived", "auto")};
             set_function_return_type(function_id, derived_type, ReturnSyntax::trailing);
             set_function_receiver(
@@ -351,8 +350,8 @@ class SettingsLowering : public CppIRBuilder {
         }
         auto const result{
             record(modules.api_name[module_row], members.build(), RecordKind::class_)};
-        set_record_template(
-            result, template_declaration({type_template_parameter(ir_.strings.intern("Derived"))}));
+        set_record_template(result,
+                            template_declaration({type_template_parameter(store_text("Derived"))}));
         return result;
     }
     auto build_type_headers(LoweringContext& ctx,
@@ -381,10 +380,10 @@ class SettingsLowering : public CppIRBuilder {
             auto const row{setting_schemas.index(setting)};
             auto const control_row{controls.index(setting_schemas.control[row])};
             auto const type{setting_types[index]};
-            auto const type_dependencies{ir_.types.dependencies(type)};
+            auto const required_dependencies{type_dependencies(type)};
             dependencies.insert(
-                dependencies.end(), type_dependencies.begin(), type_dependencies.end());
-            if (unique_types.insert(ir_.types.spelling_id(type)).second) {
+                dependencies.end(), required_dependencies.begin(), required_dependencies.end());
+            if (unique_types.insert(type_spelling_id(type)).second) {
                 value_types.push_back(type);
             }
             auto const type_name{setting_type_name(ctx, setting)};
@@ -417,15 +416,15 @@ class SettingsLowering : public CppIRBuilder {
                                NodeId const declaration_id,
                                std::initializer_list<std::string_view> const standard_headers,
                                std::initializer_list<std::string_view> const type_headers) {
-            NodeListBuilder header{ir_};
+            auto header{node_list()};
             header.add(include_dependencies(), 1);
             for (auto const include_value : standard_headers) {
-                header.add(include(ir_.strings.intern(include_value), IncludeStyle::system), 1);
+                header.add(include(store_text(include_value), IncludeStyle::system), 1);
             }
             for (auto const type : type_headers) {
                 auto const include_value{
                     (include_directory / (snake_case_type_name(type) + ".h")).generic_string()};
-                header.add(include(ir_.strings.intern(include_value), IncludeStyle::quoted), 1);
+                header.add(include(store_text(include_value), IncludeStyle::quoted), 1);
             }
             header.new_lines(2);
             if (!prelude.empty()) {
@@ -437,21 +436,18 @@ class SettingsLowering : public CppIRBuilder {
                 header.add(declaration_id);
             }
             auto const path{output_directory / (snake_case_type_name(name) + ".h")};
-            auto const file{
-                ir_.files.append(ir_.strings.intern(path.generic_string()), header.build())};
-            ir_.files.flags[ir_.files.index(file)].set_format_generated(true);
-            ir_.files.set_include_order(file, include_order);
-            result.push_back(ir_.modules.append(ir_.strings.intern(name), file));
+            auto const file{append_file(store_text(path.generic_string()), header.build())};
+            file_flags(file).set_format_generated(true);
+            set_file_include_order(file, include_order);
+            result.push_back(append_module(store_text(name), file));
         };
         auto add_enum = [&](std::string_view const name, std::vector<std::string> const& names) {
             std::vector<EnumValueId> values;
             for (auto const& value : names) {
-                values.push_back(enumerator(ir_.strings.intern(value)));
+                values.push_back(enumerator(store_text(value)));
             }
-            emit_header(name,
-                        enumeration(ir_.strings.intern(name), ir_.types.std.u8, values),
-                        {"cstdint"},
-                        {});
+            emit_header(
+                name, enumeration(store_text(name), std_types().u8, values), {"cstdint"}, {});
         };
         add_enum("GameSetting", setting_names);
         add_enum("GameSettingCategory", category_names);
@@ -480,13 +476,12 @@ class SettingsLowering : public CppIRBuilder {
             [&](std::string_view const name,
                 std::initializer_list<std::pair<std::string_view, std::string_view>> fields,
                 std::initializer_list<std::string_view> const includes) {
-                NodeListBuilder members{ir_};
+                auto members{node_list()};
                 for (auto const& [type, member] : fields) {
-                    members.add(instance_member(ir_.types.reference(ir_.types.intern(type)),
-                                                ir_.strings.intern(member)),
-                                1);
+                    members.add(
+                        instance_member(reference_type(intern_type(type)), store_text(member)), 1);
                 }
-                auto const record_id{record(ir_.strings.intern(name), members.build())};
+                auto const record_id{record(store_text(name), members.build())};
                 set_record_export_specifier(record_id, modules.export_specifier[module_row]);
                 emit_header(name, record_id, {"string_view"}, includes);
             };
@@ -520,7 +515,7 @@ class SettingsLowering : public CppIRBuilder {
                     "GameSettingOptionProvider",
                     "GameSettingAvailabilityProvider"});
 
-        NodeListBuilder state_members{ir_};
+        auto state_members{node_list()};
         for (std::size_t index{}; index < setting_count; ++index) {
             state_members.add(
                 instance_member(setting_types[index],
@@ -529,10 +524,10 @@ class SettingsLowering : public CppIRBuilder {
                 1);
         }
         auto const state_name{modules.state_name[module_row]};
-        auto const equality{function("operator==", ir_.types.std.bool_)};
-        set_function_return_type(equality, ir_.types.std.bool_, ReturnSyntax::trailing);
+        auto const equality{function("operator==", std_types().bool_)};
+        set_function_return_type(equality, std_types().bool_, ReturnSyntax::trailing);
         set_function_parameters(equality,
-                                {parameter(ir_.types.intern(ctx.text(state_name) + " const&"))});
+                                {parameter(intern_type(ctx.text(state_name) + " const&"))});
         set_function_receiver(equality, FunctionReceiver::const_);
         set_function_defaulted(equality);
         state_members.new_lines(2).add(header_function(equality), 1);
@@ -541,8 +536,8 @@ class SettingsLowering : public CppIRBuilder {
         set_record_dependencies(state, dependencies);
         emit_header(ctx.text(state_name), state, {}, {});
         emit_header("GameSettingValue",
-                    using_declaration(ir_.strings.intern("GameSettingValue"),
-                                      ir_.types.template_type(ir_.types.std.variant, value_types)),
+                    using_declaration(store_text("GameSettingValue"),
+                                      template_type(std_types().variant, value_types)),
                     {"variant"},
                     {});
         emit_header(ctx.text(modules.api_name[module_row]),
@@ -562,8 +557,7 @@ class SettingsLowering : public CppIRBuilder {
         auto const module_row{modules.index(module)};
         auto const settings{modules.settings[module_row]};
         auto enum_value = [&](std::string_view const type, std::string_view const name) {
-            return type_reference(
-                ir_.types.decorate(ir_.types.named(type), "", "::" + std::string{name}));
+            return type_reference(decorate_type(named_type(type), "", "::" + std::string{name}));
         };
 
         std::vector<Expr> categories;
@@ -604,25 +598,24 @@ class SettingsLowering : public CppIRBuilder {
             }));
         }
 
-        NodeListBuilder globals{ir_};
+        auto globals{node_list()};
         auto array_type = [&](std::string_view const element, std::size_t const count) {
-            return ir_.types.decorate(
-                ir_.types.template_type(
-                    ir_.types.std.array,
-                    {ir_.types.named(element), ir_.types.intern(std::to_string(count))}),
+            return decorate_type(
+                template_type(std_types().array,
+                              {named_type(element), intern_type(std::to_string(count))}),
                 "",
                 " const");
         };
         globals
             .add(static_member(array_type("GameSettingCategoryDescriptor", categories.size()),
-                               ir_.strings.intern("category_descriptors"),
+                               store_text("category_descriptors"),
                                init_list({init_list(categories)})),
                  2)
             .add(static_member(array_type("GameSettingDescriptor", descriptors.size()),
-                               ir_.strings.intern("descriptors"),
+                               store_text("descriptors"),
                                init_list({init_list(descriptors)})));
-        NodeListBuilder source{ir_};
-        source.add(namespace_node(ir_.strings.intern(""), globals.build()), 2);
+        auto source{node_list()};
+        source.add(namespace_node(store_text(""), globals.build()), 2);
         for (auto const function_id : functions) {
             source.add(definition(function_id), 2);
         }
