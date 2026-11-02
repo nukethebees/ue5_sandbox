@@ -148,26 +148,25 @@ class RecordLowering : public CppIRBuilder {
                 {call(template_id(named("get_field"), {named("Selected")}), {named("self")})}))}};
         result.add(header_function(add_function(invoke)), 2);
 
-        FunctionDefinition function_id{.name = named("visit_field"),
-                                       .return_type = std_types().void_};
-        function_id.template_declaration =
+        FunctionDefinition function{.name = named("visit_field"), .return_type = std_types().void_};
+        function.template_declaration =
             template_declaration({type_template_parameter(store_text("Self")),
                                   type_template_parameter(store_text("Visitor"))});
-        function_id.requires_clause = record_type_matches(name);
-        function_id.receiver = FunctionReceiver::static_;
-        function_id.parameters = {parameter("Self&", fields.empty() ? "" : "self"),
-                                  parameter("Field", "field"),
-                                  parameter("Visitor&&", fields.empty() ? "" : "visitor")};
-        function_id.flags.set_is_constexpr(true);
-        function_id.flags.set_define_in_header(true);
-        function_id.implementation = {
+        function.requires_clause = record_type_matches(name);
+        function.receiver = FunctionReceiver::static_;
+        function.parameters = {parameter("Self&", fields.empty() ? "" : "self"),
+                               parameter("Field", "field"),
+                               parameter("Visitor&&", fields.empty() ? "" : "visitor")};
+        function.flags.set_is_constexpr(true);
+        function.flags.set_define_in_header(true);
+        function.implementation = {
             .kind = FunctionImplementationKind::body,
             .body = {switch_stmt(named("field"), cases),
                      assertion(binary(BinaryOperator::logical_and,
                                       literal("false"),
                                       string_literal("Invalid record field"))),
                      expr_stmt(call(type_reference(std_types().unreachable)))}};
-        result.add(header_function(add_function(function_id)), 2);
+        result.add(header_function(add_function(function)), 2);
         return result.build();
     }
     auto record_node(LoweringContext& ctx, DeclarationHandle record_id) -> NodeId {

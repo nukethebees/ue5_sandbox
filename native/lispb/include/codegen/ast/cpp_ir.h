@@ -82,6 +82,8 @@
 #include <codegen/lowering/lowering_storage.h>
 #include <lispb/indices.h>
 
+#include <array>
+#include <concepts>
 #include <cstdint>
 #include <functional>
 #include <initializer_list>
@@ -89,6 +91,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <unordered_map>
 #include <vector>
 
@@ -266,6 +269,12 @@ class CppIR {
     auto raw_template_declaration(StringId parameters) -> TemplateId;
     // Require a return type for ordinary functions; constructors and destructors omit it.
     auto add_function(FunctionDefinition const& definition) -> FunctionId;
+    template <typename... Definitions>
+        requires (std::same_as<std::remove_cvref_t<Definitions>, FunctionDefinition> && ...)
+    auto add_functions(Definitions const&... definitions)
+        -> std::array<FunctionId, sizeof...(Definitions)> {
+        return {add_function(definitions)...};
+    }
     // Views borrow storage; do not retain them across IR mutations.
     auto get_view(FunctionId function) const -> FunctionView;
     auto get_view(FunctionParameterId parameter) const -> FunctionParameterView;

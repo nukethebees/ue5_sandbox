@@ -154,19 +154,18 @@ class SoaLowering : public CppIRBuilder {
                 parameters.push_back(parameter(decorate_type(std_types().i32, "", " const"),
                                                dimensions.index_name[dimensions.index(dimension)]));
             }
-            FunctionDefinition function_id{.name = named(name + "_field"),
-                                           .return_type = enum_type};
-            auto& flags{function_id.flags};
+            FunctionDefinition function{.name = named(name + "_field"), .return_type = enum_type};
+            auto& flags{function.flags};
             flags.set_is_constexpr(true);
             flags.set_define_in_header(true);
             flags.set_is_nodiscard(true);
-            function_id.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
-            function_id.formatting.body_layout = FunctionBodyLayout::compact;
-            function_id.receiver = FunctionReceiver::static_;
-            function_id.parameters.assign(parameters.begin(), parameters.end());
-            function_id.return_type = enum_type;
-            function_id.return_syntax = ReturnSyntax::trailing;
-            function_id.implementation = {
+            function.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
+            function.formatting.body_layout = FunctionBodyLayout::compact;
+            function.receiver = FunctionReceiver::static_;
+            function.parameters.assign(parameters.begin(), parameters.end());
+            function.return_type = enum_type;
+            function.return_syntax = ReturnSyntax::trailing;
+            function.implementation = {
                 .kind = FunctionImplementationKind::body,
                 .body = {return_stmt(static_cast_expr(
                     enum_type,
@@ -176,7 +175,7 @@ class SoaLowering : public CppIRBuilder {
                                          type_reference(decorate_type(
                                              enum_type, "", "::" + title_case_identifier(name)))),
                         mask_index_expression(ctx, member))))}};
-            children.new_lines(1).add(header_function(add_function(function_id)));
+            children.new_lines(1).add(header_function(add_function(function)));
         }
 
         auto const mask{record(mask_name, children.build())};

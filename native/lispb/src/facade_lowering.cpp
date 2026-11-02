@@ -71,7 +71,11 @@ class FacadeLowering : public CppIRBuilder {
             std::vector<Expr> arguments;
             for (auto const parameter_id : decls.items(method_schemas.parameters[method_row])) {
                 auto const parameter_row{parameter_schemas.index(parameter_id)};
-                auto const type{ctx.resolve(parameter_schemas.type[parameter_row])};
+                auto type{ctx.resolve(parameter_schemas.type[parameter_row])};
+                auto const is_pack{parameter_schemas.is_pack[parameter_row]};
+                if (is_pack) {
+                    type = decorate_type(type, "", "...");
+                }
                 auto const name{parameter_schemas.name[parameter_row]};
                 parameters.push_back(
                     parameter(type,
@@ -79,7 +83,9 @@ class FacadeLowering : public CppIRBuilder {
                               parameter_schemas.default_value[parameter_row]
                                   ? raw_expr(*parameter_schemas.default_value[parameter_row])
                                   : Expr{}));
-                arguments.push_back(named(name));
+                auto const argument{named(name)};
+                arguments.push_back(is_pack ? unary(UnaryOperator::pack_expansion, argument)
+                                            : argument);
             }
             std::vector<TypeDependencyId> validation_dependencies;
             for (auto const key : decls.items(facades.validation_dependencies[row])) {
@@ -107,20 +113,19 @@ class FacadeLowering : public CppIRBuilder {
             } else {
                 body.add(return_stmt(call_expr, std::move(validation_dependencies)));
             }
-            FunctionDefinition function_id{.name = named(method_schemas.name[method_row]),
-                                           .return_type = return_type};
-            function_id.parameters = std::move(parameters);
-            function_id.implementation = {.kind = FunctionImplementationKind::body,
-                                          .body = body.build()};
-            function_id.receiver = method_schemas.is_const[method_row]
-                                     ? FunctionReceiver::const_
-                                     : FunctionReceiver::unqualified;
+            FunctionDefinition function{.name = named(method_schemas.name[method_row]),
+                                        .return_type = return_type};
+            function.parameters = std::move(parameters);
+            function.implementation = {.kind = FunctionImplementationKind::body,
+                                       .body = body.build()};
+            function.receiver = method_schemas.is_const[method_row] ? FunctionReceiver::const_
+                                                                    : FunctionReceiver::unqualified;
             if (method_schemas.is_noexcept[method_row]) {
-                function_id.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
+                function.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
             }
-            function_id.flags.set_is_inline(!definitions_in_source);
-            function_id.flags.set_define_in_header(!definitions_in_source);
-            methods.push_back(add_function(function_id));
+            function.flags.set_is_inline(!definitions_in_source);
+            function.flags.set_define_in_header(!definitions_in_source);
+            methods.push_back(add_function(function));
         }
 
         auto const binding_id{add_function(binding)};

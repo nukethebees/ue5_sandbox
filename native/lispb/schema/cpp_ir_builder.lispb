@@ -395,6 +395,8 @@
         (parameter parameter "FunctionParameterId"))
       (method add_function "FunctionId"
         (parameter definition "FunctionDefinition const&"))
+      (method add_functions "auto"
+        (parameter definitions "std::same_as<FunctionDefinition> auto const&" :pack true))
       (method raw "NodeId"
         (parameter value "StringId")
         (parameter dependencies "std::span<TypeDependencyId const>" :default "{}"))

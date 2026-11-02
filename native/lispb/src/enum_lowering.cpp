@@ -58,20 +58,20 @@ class EnumLowering : public CppIRBuilder {
     // Lowering
     /* **************************************** */
     auto enum_count_specialization(CppTypeId enum_type, std::size_t const count) -> NodeId {
-        FunctionDefinition function_id{
+        FunctionDefinition function{
             .name = template_id(named("enum_count"), {type_reference(enum_type)}),
             .return_type = intern_type("auto")};
-        function_id.template_declaration = template_specialization();
-        function_id.return_type = std_types().size_t;
-        function_id.return_syntax = ReturnSyntax::trailing;
-        auto& flags{function_id.flags};
+        function.template_declaration = template_specialization();
+        function.return_type = std_types().size_t;
+        function.return_syntax = ReturnSyntax::trailing;
+        auto& flags{function.flags};
         flags.set_is_nodiscard(true);
         flags.set_is_constexpr(true);
-        function_id.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
+        function.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
         flags.set_define_in_header(true);
-        function_id.implementation = {.kind = FunctionImplementationKind::body,
-                                      .body = {return_stmt(literal(std::to_string(count)))}};
-        return header_function(add_function(function_id));
+        function.implementation = {.kind = FunctionImplementationKind::body,
+                                   .body = {return_stmt(literal(std::to_string(count)))}};
+        return header_function(add_function(function));
     }
     auto enum_strings_specialization(std::string_view qualified,
                                      std::string_view category,
@@ -370,15 +370,15 @@ class EnumLowering : public CppIRBuilder {
                          std::string const& enum_name,
                          std::string_view suffix,
                          Nodes body) -> FunctionId {
-        FunctionDefinition function_id{.name = named(internal_name(ctx, schema, suffix)),
-                                       .return_type = intern_type("auto")};
-        function_id.parameters = {
+        FunctionDefinition function{.name = named(internal_name(ctx, schema, suffix)),
+                                    .return_type = intern_type("auto")};
+        function.parameters = {
             parameter(decorate_type(named_type(enum_name), "", " const"), "value")};
-        function_id.implementation = {.kind = FunctionImplementationKind::body, .body = body};
-        function_id.return_type = decorate_type(
+        function.implementation = {.kind = FunctionImplementationKind::body, .body = body};
+        function.return_type = decorate_type(
             named_type("TCHAR", {dependency("TCHAR", "CoreMinimal.h")}), "", " const*");
-        function_id.return_syntax = ReturnSyntax::trailing;
-        return add_function(function_id);
+        function.return_syntax = ReturnSyntax::trailing;
+        return add_function(function);
     }
     auto packed_enum_strings(LoweringContext& ctx,
                              ModuleSettingsId settings,
@@ -820,23 +820,21 @@ class EnumLowering : public CppIRBuilder {
         }
 
         auto const target_type{named_type(target)};
-        FunctionDefinition function_id{.name = named(function_name),
-                                       .return_type = intern_type("auto")};
-        function_id.return_type = target_type;
-        function_id.return_syntax = ReturnSyntax::trailing;
-        function_id.parameters = {
-            parameter(decorate_type(named_type(source), "", " const"), "value")};
-        auto& flags{function_id.flags};
+        FunctionDefinition function{.name = named(function_name),
+                                    .return_type = intern_type("auto")};
+        function.return_type = target_type;
+        function.return_syntax = ReturnSyntax::trailing;
+        function.parameters = {parameter(decorate_type(named_type(source), "", " const"), "value")};
+        auto& flags{function.flags};
         flags.set_define_in_header(true);
         flags.set_is_constexpr(true);
         flags.set_is_nodiscard(true);
-        function_id.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
+        function.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
         auto body{node_list()};
         body.add(switch_stmt(named("value"), cases), 2);
         body.add(return_stmt(static_cast_expr(target_type, named("value"))));
-        function_id.implementation = {.kind = FunctionImplementationKind::body,
-                                      .body = body.build()};
-        return header_function(add_function(function_id));
+        function.implementation = {.kind = FunctionImplementationKind::body, .body = body.build()};
+        return header_function(add_function(function));
     }
     auto unreal_conversion_header(LoweringContext& ctx,
                                   ModuleSettingsId const settings,

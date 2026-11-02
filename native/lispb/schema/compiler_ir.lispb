@@ -56,6 +56,7 @@
     (value preincrement :serialized-name "++")
     (value bitwise_not :serialized-name "~")
     (value negate :serialized-name "-")
+    (value pack_expansion :serialized-name "...")
     (projections (cpp))))
 
 (module compiler_parameter_passing

@@ -34,6 +34,7 @@
 #include <lispb/indices.h>
 #include <lispb/strings.h>
 
+#include <array>
 #include <cctype>
 #include <cstddef>
 #include <filesystem>
@@ -210,7 +211,7 @@ class SettingsLowering : public CppIRBuilder {
     auto build_functions(LoweringContext& ctx,
                          ModuleHandle const module,
                          std::span<CppTypeId const> const setting_types)
-        -> std::vector<FunctionId> {
+        -> std::array<FunctionId, 5> {
         auto const& decls{ctx.declarations};
         auto const module_row{decls.settings_modules.index(module)};
         auto const state_name{ctx.text(decls.settings_modules.state_name[module_row])};
@@ -220,11 +221,11 @@ class SettingsLowering : public CppIRBuilder {
         auto const value{named("value")};
         auto const id_parameter{parameter("GameSetting const", "id")};
         auto create = [&](std::string_view const name, CppTypeId const type) {
-            FunctionDefinition function_id{.name = named(name), .return_type = type};
-            function_id.return_type = type;
-            function_id.return_syntax = ReturnSyntax::trailing;
-            function_id.export_specifier = decls.settings_modules.export_specifier[module_row];
-            return function_id;
+            FunctionDefinition function{.name = named(name), .return_type = type};
+            function.return_type = type;
+            function.return_syntax = ReturnSyntax::trailing;
+            function.export_specifier = decls.settings_modules.export_specifier[module_row];
+            return function;
         };
 
         auto span_type = [&](std::string_view const element) {
@@ -295,11 +296,7 @@ class SettingsLowering : public CppIRBuilder {
             .kind = FunctionImplementationKind::body,
             .body = {switch_stmt(id, setter_cases), return_stmt(literal("false"))}};
 
-        return {add_function(categories),
-                add_function(descriptors),
-                add_function(descriptor),
-                add_function(getter),
-                add_function(setter)};
+        return add_functions(categories, descriptors, descriptor, getter, setter);
     }
     auto settings_api(LoweringContext& ctx,
                       ModuleHandle module,
@@ -341,19 +338,18 @@ class SettingsLowering : public CppIRBuilder {
         members.add(access(Access::private_), 1);
         for (auto const is_const : {false, true}) {
             auto const derived_type{intern_type(is_const ? "Derived const&" : "Derived&")};
-            FunctionDefinition function_id{.name = named("derived"),
-                                           .return_type = intern_type("auto")};
-            function_id.return_type = derived_type;
-            function_id.return_syntax = ReturnSyntax::trailing;
-            function_id.receiver =
-                is_const ? FunctionReceiver::const_ : FunctionReceiver::unqualified;
-            function_id.flags.set_define_in_header(true);
-            function_id.formatting.body_layout = FunctionBodyLayout::compact;
-            function_id.implementation = {
+            FunctionDefinition function{.name = named("derived"),
+                                        .return_type = intern_type("auto")};
+            function.return_type = derived_type;
+            function.return_syntax = ReturnSyntax::trailing;
+            function.receiver = is_const ? FunctionReceiver::const_ : FunctionReceiver::unqualified;
+            function.flags.set_define_in_header(true);
+            function.formatting.body_layout = FunctionBodyLayout::compact;
+            function.implementation = {
                 .kind = FunctionImplementationKind::body,
                 .body = {return_stmt(static_cast_expr(
                     derived_type, unary(UnaryOperator::dereference, named("this"))))}};
-            members.add(header_function(add_function(function_id)), 1);
+            members.add(header_function(add_function(function)), 1);
         }
         auto const result{
             record(modules.api_name[module_row], members.build(), RecordKind::class_)};

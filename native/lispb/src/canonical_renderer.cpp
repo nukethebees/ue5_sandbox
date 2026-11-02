@@ -175,6 +175,7 @@ auto CanonicalRenderer::build_parameter(codegen::ParameterId const parameter) ->
     result.optional_field("default", parameters.default_value[parameter], [this](auto value) {
         return ir_.string(value);
     });
+    result.flag("pack", parameters.is_pack[parameter]);
     return result.build();
 }
 auto CanonicalRenderer::build_function(codegen::FunctionSchemaId const function,

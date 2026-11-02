@@ -291,7 +291,8 @@
     (value validation :serialized-name "validation")
     (value validation_dependencies :serialized-name "validation-dependencies")
     (value value :serialized-name "value")
-    (value value_type :serialized-name "value-type")))
+    (value value_type :serialized-name "value-type")
+    (value pack :serialized-name "pack")))
 
 (module native_enum_helper
   :header "native_enum_helper.h"

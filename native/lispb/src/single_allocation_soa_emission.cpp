@@ -542,16 +542,16 @@ class SingleAllocationEmitter : public CppIRBuilder {
                 ctx, columns.member_path[columns.index(column)], "source", groups, body));
         }
         body.add(return_stmt(call(named("func"), arguments)));
-        auto function_id{
+        auto function{
             make_function("with_columns",
                           "auto",
                           {parameter("Columns const&", "source"), parameter("Func&&", "func")},
                           body.build(),
                           FunctionReceiver::static_)};
-        function_id.template_declaration =
+        function.template_declaration =
             template_declaration({type_template_parameter(store_text("Columns")),
                                   type_template_parameter(store_text("Func"))});
-        return record(store_text("Schema"), {inline_function(function_id)}, RecordKind::struct_);
+        return record(store_text("Schema"), {inline_function(function)}, RecordKind::struct_);
     }
     auto shared_view_type(LoweringContext& ctx, DeclarationHandle schema, bool resolved)
         -> CppTypeId {
@@ -575,13 +575,13 @@ class SingleAllocationEmitter : public CppIRBuilder {
         auto const strided{is_strided_schema(ctx, schema)};
         auto children{node_list()};
         auto accessor = [&](std::string_view name, Expr value, CppTypeId type = {}) {
-            auto function_id{
+            auto function{
                 make_function(name, "auto", {}, {return_stmt(value)}, FunctionReceiver::const_)};
             if (type.value != 0) {
-                function_id.return_type = type;
-                function_id.return_syntax = ReturnSyntax::trailing;
+                function.return_type = type;
+                function.return_syntax = ReturnSyntax::trailing;
             }
-            children.new_lines(1).add(compact_function(function_id));
+            children.new_lines(1).add(compact_function(function));
         };
         auto column_span = [&](SingleAllocationColumnId column) {
             auto const index{std::find(selected.begin(), selected.end(), column) -
@@ -774,16 +774,16 @@ class SingleAllocationEmitter : public CppIRBuilder {
                 store_text("State"),
                 template_type(std_types().conditional_t,
                               {named_type("Const"), decorate_type(state, "", " const"), state})));
-            FunctionDefinition constructor_id{.name = named(store_text("ViewImpl")),
-                                              .kind = FunctionKind::constructor};
-            constructor_id.parameters = {parameter("State*", "state"),
-                                         parameter(std_types().u32, "offset"),
-                                         parameter(std_types().u32, "count")};
+            FunctionDefinition constructor{.name = named(store_text("ViewImpl")),
+                                           .kind = FunctionKind::constructor};
+            constructor.parameters = {parameter("State*", "state"),
+                                      parameter(std_types().u32, "offset"),
+                                      parameter(std_types().u32, "count")};
             std::vector<Expr> arguments{named("state"), named("offset"), named("count")};
             for (auto const column : selected.first(2)) {
                 arguments.push_back(layout_column(ctx, column));
             }
-            constructor_id.implementation = {
+            constructor.implementation = {
                 .kind = FunctionImplementationKind::body,
                 .body = {},
                 .initializers = {member_initializer(
@@ -794,7 +794,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
                              {type_reference(named_type("Base")),
                               type_reference(named_type("Layout"))}),
                          arguments))}};
-            children.new_lines(1).add(inline_function(constructor_id));
+            children.new_lines(1).add(inline_function(constructor));
         }
         FunctionDefinition conversion{.name = named(store_text("ViewImpl")),
                                       .kind = FunctionKind::constructor};

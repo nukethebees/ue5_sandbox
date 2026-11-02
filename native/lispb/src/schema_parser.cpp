@@ -280,13 +280,14 @@ auto SchemaParser::type_ref_list(Declarations& declarations,
 auto SchemaParser::parse_parameter(Declarations& declarations, sexpr::FormId const form)
     -> ParameterId {
     Fields const fields{parser_, form, "parameter", 2};
-    fields.validate({P::default_});
+    fields.validate({P::default_, P::pack});
     auto& records{declarations.parameters};
     auto const record_id{records.append()};
     auto const record_index{records.index(record_id)};
     records.type[record_index] = parse_type_ref(declarations, fields.positional(1));
     records.name[record_index] = parser_.identifier(fields.positional(0), "parameter name");
     records.default_value[record_index] = optional_text_id(fields, P::default_);
+    records.is_pack[record_index] = boolean_or(fields, P::pack);
     return record_id;
 }
 

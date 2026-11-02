@@ -16,13 +16,14 @@ auto ParameterSchemas::append() -> ParameterId {
     type.push_back({});
     name.push_back({});
     default_value.push_back({});
+    is_pack.push_back(false);
     return ParameterId{index + 1};
 }
 auto ParameterSchemas::clone(ParameterId id) -> ParameterId {
-    return detail::clone_schema_row(*this, id, type, name, default_value);
+    return detail::clone_schema_row(*this, id, type, name, default_value, is_pack);
 }
 void ParameterSchemas::clear() {
-    detail::clear_schema_columns(type, name, default_value);
+    detail::clear_schema_columns(type, name, default_value, is_pack);
 }
 
 }

@@ -21,6 +21,7 @@ enum class UnaryOperator : UnaryOperatorUnderlying {
     preincrement,
     bitwise_not,
     negate,
+    pack_expansion,
 };
 
 using ioj::to_serialized_string;
@@ -30,9 +31,9 @@ using ioj::to_serialized_string;
 namespace ioj {
 template <>
 inline constexpr MinMax<lispb::codegen::UnaryOperator> enum_range<lispb::codegen::UnaryOperator>{
-    lispb::codegen::UnaryOperator::logical_not, lispb::codegen::UnaryOperator::negate};
+    lispb::codegen::UnaryOperator::logical_not, lispb::codegen::UnaryOperator::pack_expansion};
 
 template <>
 inline constexpr auto enum_strings<lispb::codegen::UnaryOperator, Serialized>{PackedStrings{
-    "!\000*\000&\000++\000~\000-", std::array<std::uint8_t, 7>{0, 2, 4, 6, 9, 11, 13}}};
+    "!\000*\000&\000++\000~\000-\000...", std::array<std::uint8_t, 8>{0, 2, 4, 6, 9, 11, 13, 17}}};
 } // namespace ioj

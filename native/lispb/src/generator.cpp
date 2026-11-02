@@ -216,18 +216,17 @@ class ModuleLowering : public CppIRBuilder {
                 source += std::format("(define ({} . arguments) (cons :{} arguments))\n", tag, tag);
             }
         }
-        FunctionDefinition function_id{.name = named("s7_record_constructors"),
-                                       .return_type = intern_type("auto")};
-        function_id.return_type = std_types().string_view;
-        function_id.return_syntax = ReturnSyntax::trailing;
-        function_id.flags.set_define_in_header(true);
-        function_id.flags.set_is_constexpr(true);
+        FunctionDefinition function{.name = named("s7_record_constructors"),
+                                    .return_type = intern_type("auto")};
+        function.return_type = std_types().string_view;
+        function.return_syntax = ReturnSyntax::trailing;
+        function.flags.set_define_in_header(true);
+        function.flags.set_is_constexpr(true);
         auto body{node_list()};
         body.add(return_stmt(string_literal(store_text(source))));
-        function_id.implementation = {.kind = FunctionImplementationKind::body,
-                                      .body = body.build()};
+        function.implementation = {.kind = FunctionImplementationKind::body, .body = body.build()};
         auto decls{node_list()};
-        decls.add(header_function(add_function(function_id)));
+        decls.add(header_function(add_function(function)));
         return {.header = decls.build()};
     }
     auto lower_umbrella(detail::LoweringContext& ctx, ModuleHandle module) -> ModuleId {

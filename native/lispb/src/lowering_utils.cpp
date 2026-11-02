@@ -200,7 +200,11 @@ class FunctionLowering : public CppIRBuilder {
         std::vector<FunctionParameterId> parameters;
         for (auto const parameter_id : decls.items(functions.parameters[schema])) {
             auto const default_value{parameter_schemas.default_value[parameter_id]};
-            parameters.push_back(parameter(ctx.resolve(parameter_schemas.type[parameter_id]),
+            auto type{ctx.resolve(parameter_schemas.type[parameter_id])};
+            if (parameter_schemas.is_pack[parameter_id]) {
+                type = decorate_type(type, "", "...");
+            }
+            parameters.push_back(parameter(type,
                                            parameter_schemas.name[parameter_id],
                                            default_value ? raw_expr(*default_value) : Expr{}));
         }

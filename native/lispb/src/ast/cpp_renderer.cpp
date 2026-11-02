@@ -714,10 +714,18 @@ void CppRenderer::append_expr(
             append_operand(ir_.binary_exprs_.right[index], true);
             break;
         }
-        case ExprKind::unary:
-            output += to_serialized_string(ir_.unary_exprs_.operation[index]);
-            append_expr(output, ir_.unary_exprs_.operand[index], ctx, 11, true);
+        case ExprKind::unary: {
+            auto const operation{ir_.unary_exprs_.operation[index]};
+            auto const operand{ir_.unary_exprs_.operand[index]};
+            if (operation == UnaryOperator::pack_expansion) {
+                append_expr(output, operand, ctx, 1);
+                output += "...";
+            } else {
+                output += to_serialized_string(operation);
+                append_expr(output, operand, ctx, 11, true);
+            }
             break;
+        }
         case ExprKind::static_cast_:
         case ExprKind::reinterpret_cast_:
             output += expr.kind() == ExprKind::static_cast_ ? "static_cast<" : "reinterpret_cast<";

@@ -21,6 +21,7 @@ struct ParameterSchemas {
     Column<TypeRefId> type;
     Column<StringId> name;
     Column<std::optional<StringId>> default_value;
+    Column<bool> is_pack;
 };
 
 }

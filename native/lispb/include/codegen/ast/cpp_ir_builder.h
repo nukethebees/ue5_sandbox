@@ -547,6 +547,10 @@ class CppIRBuilder {
         return ir_.add_function(definition);
     }
 
+    auto add_functions(std::same_as<FunctionDefinition> auto const&... definitions) {
+        return ir_.add_functions(definitions...);
+    }
+
     NodeId raw(StringId value, std::span<TypeDependencyId const> dependencies = {}) {
         return ir_.raw(value, dependencies);
     }
