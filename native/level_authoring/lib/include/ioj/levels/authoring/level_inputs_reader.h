@@ -32,7 +32,7 @@ struct TypeReader<levels::authoring::EntityInput> : RecordReader<levels::authori
                         read(member);
                     } else if constexpr (field == Field::initial_spawn_delay ||
                                          field == Field::spawn_cooldown) {
-                        read(member, constraints::finite);
+                        read(member, ioj::s7::constraints::finite);
                     }
                 });
             }),
@@ -159,7 +159,7 @@ struct TypeReader<levels::authoring::LevelInput> : RecordReader<levels::authorin
                                          read(result.description);
                                          break;
                                      case Field::par_time:
-                                         read(result.par_time, constraints::finite);
+                                         read(result.par_time, ioj::s7::constraints::finite);
                                          break;
                                      case Field::unlock:
                                          read(result.unlock);

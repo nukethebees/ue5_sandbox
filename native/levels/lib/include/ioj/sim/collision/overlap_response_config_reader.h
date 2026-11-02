@@ -21,7 +21,7 @@ struct TypeReader<sim::OverlapResponseConfig> : RecordReader<sim::OverlapRespons
                     if constexpr (field == Field::damage_per_overlap_detection) {
                         read(member);
                     } else if constexpr (field == Field::level_size || field == Field::cell_size) {
-                        read(member, constraints::finite);
+                        read(member, ioj::s7::constraints::finite);
                     }
                 });
             }));

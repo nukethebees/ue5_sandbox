@@ -18,7 +18,7 @@ struct TypeReader<settings::PlayerPresentation> : RecordReader<settings::PlayerP
         decode_record<Field>(
             context, "player-ship", field_names, ([&](Field selected, auto const& read) {
                 value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
-                    read(member, constraints::finite);
+                    read(member, ioj::s7::constraints::finite);
                 });
             }));
     }

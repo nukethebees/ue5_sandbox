@@ -33,7 +33,7 @@ struct TypeReader<settings::Radar> : RecordReader<settings::Radar> {
                                          field == Field::objective_size_multiplier ||
                                          field == Field::objective_ring_padding_pixels ||
                                          field == Field::objective_ring_thickness_pixels) {
-                        read(member, constraints::finite);
+                        read(member, ioj::s7::constraints::finite);
                     }
                 });
             }));

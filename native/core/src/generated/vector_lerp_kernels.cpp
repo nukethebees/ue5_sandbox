@@ -18,14 +18,13 @@ void require(bool const condition) noexcept {
     }
 }
 
-auto ranges_overlap(void const* const lhs,
+bool ranges_overlap(void const* const lhs,
                     std::size_t const lhs_size,
                     void const* const rhs,
-                    std::size_t const rhs_size) noexcept -> bool {
+                    std::size_t const rhs_size) noexcept {
     if (lhs_size == 0 || rhs_size == 0) {
         return false;
     }
-
     auto const lhs_address{reinterpret_cast<std::uintptr_t>(lhs)};
     auto const rhs_address{reinterpret_cast<std::uintptr_t>(rhs)};
     return lhs_address <= rhs_address ? rhs_address - lhs_address < lhs_size

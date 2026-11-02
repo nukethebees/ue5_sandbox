@@ -15,7 +15,7 @@ namespace ioj::s7 {
 template <>
 struct TypeReader<codegen_compile_fixture::ReaderDependency>
     : RecordReader<codegen_compile_fixture::ReaderDependency> {
-    static ReadResult<value_type> construct(DecodeContext context) {
+    static ioj::s7::ReadResult<value_type> construct(DecodeContext context) {
         std::optional<decltype(value_type::child)> value_child{};
         decode_record<Field>(context,
                              "dependent",

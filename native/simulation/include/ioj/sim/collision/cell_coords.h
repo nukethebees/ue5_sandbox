@@ -91,7 +91,7 @@ struct ResolvedView
     using Base::Base;
     using Base::set;
     void set(size_type index, ioj::sim::collision::CellCoord const value) const {
-        set(index, (value.x()), (value.y()), (value.z()));
+        set(index, value.x(), value.y(), value.z());
     }
     using equivalent_type = ioj::sim::collision::CellCoord;
     auto operator[](std::uint32_t index) const -> equivalent_type {
@@ -116,7 +116,7 @@ struct ViewImpl : soa_storage_detail::StridedViewBase<std::int32_t, Const> {
                                      soa_storage_detail::StorageState const,
                                      soa_storage_detail::StorageState>;
     ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
-        : Base{ioj::soa_storage_detail::make_strided_view<Base, Layout>(
+        : Base{soa_storage_detail::make_strided_view<Base, Layout>(
               state, offset, count, Layout::xs_column, Layout::ys_column)} {}
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
@@ -144,7 +144,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
     using Base::Base;
     using Base::set;
     void set(size_type index, ioj::sim::collision::CellCoord const value) const {
-        set(index, (value.x()), (value.y()), (value.z()));
+        set(index, value.x(), value.y(), value.z());
     }
     using equivalent_type = ioj::sim::collision::CellCoord;
     auto operator[](std::uint32_t index) const -> equivalent_type {
@@ -215,9 +215,9 @@ struct CellCoords
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index, CellCoord const value) {
-        set(index, (value.x()), (value.y()), (value.z()));
+        set(index, value.x(), value.y(), value.z());
     }
-    size_type add(CellCoord const value) { return add((value.x()), (value.y()), (value.z())); }
+    size_type add(CellCoord const value) { return add(value.x(), value.y(), value.z()); }
     using equivalent_type = CellCoord;
     auto operator[](std::uint32_t index) const -> equivalent_type {
         assert(index < num());

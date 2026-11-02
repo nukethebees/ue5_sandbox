@@ -89,7 +89,7 @@ struct ResolvedView
     using Base::Base;
     using Base::set;
     void set(size_type index, Rotator3f const value) const {
-        set(index, (value.pitch), (value.yaw), (value.roll));
+        set(index, value.pitch, value.yaw, value.roll);
     }
     using equivalent_type = Rotator3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
@@ -114,7 +114,7 @@ struct ViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
                                      soa_storage_detail::StorageState const,
                                      soa_storage_detail::StorageState>;
     ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
-        : Base{ioj::soa_storage_detail::make_strided_view<Base, Layout>(
+        : Base{soa_storage_detail::make_strided_view<Base, Layout>(
               state, offset, count, Layout::pitches_column, Layout::yaws_column)} {}
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
@@ -140,7 +140,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
     using Base::Base;
     using Base::set;
     void set(size_type index, Rotator3f const value) const {
-        set(index, (value.pitch), (value.yaw), (value.roll));
+        set(index, value.pitch, value.yaw, value.roll);
     }
     using equivalent_type = Rotator3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
@@ -211,9 +211,9 @@ struct Rotators3f
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index, Rotator3f const value) {
-        set(index, (value.pitch), (value.yaw), (value.roll));
+        set(index, value.pitch, value.yaw, value.roll);
     }
-    size_type add(Rotator3f const value) { return add((value.pitch), (value.yaw), (value.roll)); }
+    size_type add(Rotator3f const value) { return add(value.pitch, value.yaw, value.roll); }
     using equivalent_type = Rotator3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
         assert(index < num());

@@ -22,7 +22,7 @@ struct TypeReader<sim::SpinnerSimConfig> : RecordReader<sim::SpinnerSimConfig> {
                     if constexpr (field == Field::laser) {
                         read(member);
                     } else if constexpr (field == Field::yaw_rotation_speed_degrees) {
-                        read(member, constraints::finite);
+                        read(member, ioj::s7::constraints::finite);
                     } else if constexpr (field == Field::fire_point_offsets) {
                         std::unreachable();
                     }

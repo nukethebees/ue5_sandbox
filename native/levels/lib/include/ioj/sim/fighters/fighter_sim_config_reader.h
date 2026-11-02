@@ -37,7 +37,7 @@ struct TypeReader<sim::FighterSimConfig> : RecordReader<sim::FighterSimConfig> {
                     } else if constexpr (field == Field::speed ||
                                          field == Field::turn_speed_unitless ||
                                          field == Field::los_check_buffer) {
-                        read(member, constraints::finite);
+                        read(member, ioj::s7::constraints::finite);
                     } else if constexpr (field == Field::fire_point_distance) {
                         std::unreachable();
                     }

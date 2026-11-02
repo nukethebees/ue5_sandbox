@@ -18,7 +18,7 @@ struct TypeReader<settings::LaserPresentation> : RecordReader<settings::LaserPre
         decode_record<Field>(
             context, "laser-projectiles", field_names, ([&](Field selected, auto const& read) {
                 value_type::visit_field(result, selected, [&]<Field field>(auto& member) {
-                    read(member, constraints::finite);
+                    read(member, ioj::s7::constraints::finite);
                 });
             }));
     }

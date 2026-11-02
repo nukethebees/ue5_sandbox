@@ -15,40 +15,40 @@ struct TypeReader<levels::authoring::NamedExprInput>
     : RecordReader<levels::authoring::NamedExprInput> {
     static void decode(DecodeContext context, value_type& result) {
         auto const arguments{
-            positional_arguments(context.reader, context.node, "expr", context.path, 2)};
+            ioj::s7::positional_arguments(context.reader, context.node, "expr", context.path, 2)};
 
         if (!arguments) {
-            append_errors(context.errors, arguments.error());
+            ioj::s7::append_errors(context.errors, arguments.error());
             return;
         }
-        FieldReader{{context.reader,
-                     (*arguments)[0],
-                     std::string{context.path} + ".name",
-                     context.mode,
-                     context.errors}}(result.name);
-        FieldReader{{context.reader,
-                     (*arguments)[1],
-                     std::string{context.path} + ".value",
-                     context.mode,
-                     context.errors}}(result.value);
+        ioj::s7::FieldReader{{context.reader,
+                              (*arguments)[0],
+                              std::string{context.path} + ".name",
+                              context.mode,
+                              context.errors}}(result.name);
+        ioj::s7::FieldReader{{context.reader,
+                              (*arguments)[1],
+                              std::string{context.path} + ".value",
+                              context.mode,
+                              context.errors}}(result.value);
     }
 };
 
 template <>
 struct TypeReader<levels::authoring::UnlockInput> : RecordReader<levels::authoring::UnlockInput> {
     static void decode(DecodeContext context, value_type& result) {
-        auto const arguments{
-            positional_arguments(context.reader, context.node, "level-completed", context.path, 1)};
+        auto const arguments{ioj::s7::positional_arguments(
+            context.reader, context.node, "level-completed", context.path, 1)};
 
         if (!arguments) {
-            append_errors(context.errors, arguments.error());
+            ioj::s7::append_errors(context.errors, arguments.error());
             return;
         }
-        FieldReader{{context.reader,
-                     (*arguments)[0],
-                     std::string{context.path} + ".level-id",
-                     context.mode,
-                     context.errors}}(result.level);
+        ioj::s7::FieldReader{{context.reader,
+                              (*arguments)[0],
+                              std::string{context.path} + ".level-id",
+                              context.mode,
+                              context.errors}}(result.level);
     }
 };
 
@@ -56,18 +56,18 @@ template <>
 struct TypeReader<levels::authoring::ExprReferenceInput>
     : RecordReader<levels::authoring::ExprReferenceInput> {
     static void decode(DecodeContext context, value_type& result) {
-        auto const arguments{
-            positional_arguments(context.reader, context.node, "expr-ref", context.path, 1)};
+        auto const arguments{ioj::s7::positional_arguments(
+            context.reader, context.node, "expr-ref", context.path, 1)};
 
         if (!arguments) {
-            append_errors(context.errors, arguments.error());
+            ioj::s7::append_errors(context.errors, arguments.error());
             return;
         }
-        FieldReader{{context.reader,
-                     (*arguments)[0],
-                     std::string{context.path} + ".name",
-                     context.mode,
-                     context.errors}}(result.name);
+        ioj::s7::FieldReader{{context.reader,
+                              (*arguments)[0],
+                              std::string{context.path} + ".name",
+                              context.mode,
+                              context.errors}}(result.name);
     }
 };
 

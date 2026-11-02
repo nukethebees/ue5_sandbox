@@ -25,7 +25,7 @@ struct TypeReader<settings::CapitalPresentation> : RecordReader<settings::Capita
                                          field == Field::max_small_explosion_range ||
                                          field == Field::large_explosion_delay ||
                                          field == Field::proxy_arrow_size) {
-                        read(member, constraints::finite);
+                        read(member, ioj::s7::constraints::finite);
                     }
                 });
             }));

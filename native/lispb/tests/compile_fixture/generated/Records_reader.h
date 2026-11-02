@@ -15,7 +15,7 @@ namespace ioj::s7 {
 template <>
 struct TypeReader<codegen_compile_fixture::ScalarSettings>
     : RecordReader<codegen_compile_fixture::ScalarSettings> {
-    static ReadResult<value_type> construct(DecodeContext context) {
+    static ioj::s7::ReadResult<value_type> construct(DecodeContext context) {
         std::optional<decltype(value_type::health)> value_health{};
         decode_record<Field>(context,
                              "scalar",
@@ -24,8 +24,8 @@ struct TypeReader<codegen_compile_fixture::ScalarSettings>
                                  switch (field) {
                                      case Field::health:
                                          read.construct(value_health,
-                                                        constraints::minimum(10ULL),
-                                                        constraints::maximum(90ULL));
+                                                        ioj::s7::constraints::minimum(10ULL),
+                                                        ioj::s7::constraints::maximum(90ULL));
                                          break;
                                  }
                              }),
@@ -47,8 +47,8 @@ struct TypeReader<codegen_compile_fixture::ScalarSettings>
                                  switch (field) {
                                      case Field::health:
                                          read(result.health,
-                                              constraints::minimum(10ULL),
-                                              constraints::maximum(90ULL));
+                                              ioj::s7::constraints::minimum(10ULL),
+                                              ioj::s7::constraints::maximum(90ULL));
                                          break;
                                  }
                              }),
@@ -130,7 +130,7 @@ struct TypeReader<codegen_compile_fixture::WeaponSettings>
                                          if constexpr (field == Field::turn_rate) {
                                              read(member);
                                          } else if constexpr (field == Field::damage) {
-                                             read(member, constraints::nonnegative);
+                                             read(member, ioj::s7::constraints::nonnegative);
                                          } else if constexpr (field == Field::asset_distance) {
                                              std::unreachable();
                                          }

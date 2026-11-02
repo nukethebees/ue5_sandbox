@@ -31,11 +31,11 @@ template <>
 struct TypeReader<codegen_compile_fixture::EmptyPositional>
     : RecordReader<codegen_compile_fixture::EmptyPositional> {
     static void decode(DecodeContext context, value_type&) {
-        auto const arguments{
-            positional_arguments(context.reader, context.node, "empty-position", context.path, 0)};
+        auto const arguments{ioj::s7::positional_arguments(
+            context.reader, context.node, "empty-position", context.path, 0)};
 
         if (!arguments) {
-            append_errors(context.errors, arguments.error());
+            ioj::s7::append_errors(context.errors, arguments.error());
             return;
         }
     }
@@ -44,28 +44,28 @@ struct TypeReader<codegen_compile_fixture::EmptyPositional>
 template <>
 struct TypeReader<codegen_compile_fixture::PositionalChild>
     : RecordReader<codegen_compile_fixture::PositionalChild> {
-    static ReadResult<value_type> construct(DecodeContext context) {
+    static ioj::s7::ReadResult<value_type> construct(DecodeContext context) {
         std::optional<decltype(value_type::name)> value_name{};
         std::optional<decltype(value_type::count)> value_count{};
-        auto const arguments{
-            positional_arguments(context.reader, context.node, "position", context.path, 2)};
+        auto const arguments{ioj::s7::positional_arguments(
+            context.reader, context.node, "position", context.path, 2)};
 
         if (!arguments) {
-            append_errors(context.errors, arguments.error());
+            ioj::s7::append_errors(context.errors, arguments.error());
             return std::unexpected{std::move(context.errors)};
         }
-        FieldReader{{context.reader,
-                     (*arguments)[0],
-                     std::string{context.path} + ".name",
-                     context.mode,
-                     context.errors}}
+        ioj::s7::FieldReader{{context.reader,
+                              (*arguments)[0],
+                              std::string{context.path} + ".name",
+                              context.mode,
+                              context.errors}}
             .construct(value_name);
-        FieldReader{{context.reader,
-                     (*arguments)[1],
-                     std::string{context.path} + ".count",
-                     context.mode,
-                     context.errors}}
-            .construct(value_count, constraints::nonnegative);
+        ioj::s7::FieldReader{{context.reader,
+                              (*arguments)[1],
+                              std::string{context.path} + ".count",
+                              context.mode,
+                              context.errors}}
+            .construct(value_count, ioj::s7::constraints::nonnegative);
         if (!context.errors.empty()) {
             return std::unexpected{std::move(context.errors)};
         }
@@ -76,23 +76,23 @@ struct TypeReader<codegen_compile_fixture::PositionalChild>
     }
 
     static void decode(DecodeContext context, value_type& result) {
-        auto const arguments{
-            positional_arguments(context.reader, context.node, "position", context.path, 2)};
+        auto const arguments{ioj::s7::positional_arguments(
+            context.reader, context.node, "position", context.path, 2)};
 
         if (!arguments) {
-            append_errors(context.errors, arguments.error());
+            ioj::s7::append_errors(context.errors, arguments.error());
             return;
         }
-        FieldReader{{context.reader,
-                     (*arguments)[0],
-                     std::string{context.path} + ".name",
-                     context.mode,
-                     context.errors}}(result.name);
-        FieldReader{{context.reader,
-                     (*arguments)[1],
-                     std::string{context.path} + ".count",
-                     context.mode,
-                     context.errors}}(result.count, constraints::nonnegative);
+        ioj::s7::FieldReader{{context.reader,
+                              (*arguments)[0],
+                              std::string{context.path} + ".name",
+                              context.mode,
+                              context.errors}}(result.name);
+        ioj::s7::FieldReader{{context.reader,
+                              (*arguments)[1],
+                              std::string{context.path} + ".count",
+                              context.mode,
+                              context.errors}}(result.count, ioj::s7::constraints::nonnegative);
     }
 };
 
@@ -138,22 +138,23 @@ struct TypeReader<codegen_compile_fixture::RecursiveReadable>
 template <>
 struct TypeReader<codegen_compile_fixture::BoundedInteger>
     : RecordReader<codegen_compile_fixture::BoundedInteger> {
-    static ReadResult<value_type> construct(DecodeContext context) {
+    static ioj::s7::ReadResult<value_type> construct(DecodeContext context) {
         std::optional<decltype(value_type::value)> value_value{};
-        decode_record<Field>(context,
-                             "integer",
-                             field_names,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::value:
-                                         read.construct(
-                                             value_value,
-                                             constraints::minimum((-9223372036854775807LL - 1LL)),
-                                             constraints::maximum(9223372036854775806ULL));
-                                         break;
-                                 }
-                             }),
-                             required);
+        decode_record<Field>(
+            context,
+            "integer",
+            field_names,
+            ([&](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::value:
+                        read.construct(
+                            value_value,
+                            ioj::s7::constraints::minimum((-9223372036854775807LL - 1LL)),
+                            ioj::s7::constraints::maximum(9223372036854775806ULL));
+                        break;
+                }
+            }),
+            required);
         if (!context.errors.empty()) {
             return std::unexpected{std::move(context.errors)};
         }
@@ -164,19 +165,20 @@ struct TypeReader<codegen_compile_fixture::BoundedInteger>
     }
 
     static void decode(DecodeContext context, value_type& result) {
-        decode_record<Field>(context,
-                             "integer",
-                             field_names,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::value:
-                                         read(result.value,
-                                              constraints::minimum((-9223372036854775807LL - 1LL)),
-                                              constraints::maximum(9223372036854775806ULL));
-                                         break;
-                                 }
-                             }),
-                             required);
+        decode_record<Field>(
+            context,
+            "integer",
+            field_names,
+            ([&](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::value:
+                        read(result.value,
+                             ioj::s7::constraints::minimum((-9223372036854775807LL - 1LL)),
+                             ioj::s7::constraints::maximum(9223372036854775806ULL));
+                        break;
+                }
+            }),
+            required);
     }
 
   private:
@@ -191,7 +193,7 @@ struct TypeReader<codegen_compile_fixture::BoundedInteger>
 template <>
 struct TypeReader<codegen_compile_fixture::ReadableChild>
     : RecordReader<codegen_compile_fixture::ReadableChild> {
-    static ReadResult<value_type> construct(DecodeContext context) {
+    static ioj::s7::ReadResult<value_type> construct(DecodeContext context) {
         std::optional<decltype(value_type::name)> value_name{};
         std::optional<decltype(value_type::count)> value_count{};
         decode_record<Field>(context,
@@ -203,7 +205,8 @@ struct TypeReader<codegen_compile_fixture::ReadableChild>
                                          read.construct(value_name);
                                          break;
                                      case Field::count:
-                                         read.construct(value_count, constraints::nonnegative);
+                                         read.construct(value_count,
+                                                        ioj::s7::constraints::nonnegative);
                                          break;
                                      default:
                                          std::unreachable();
@@ -232,7 +235,7 @@ struct TypeReader<codegen_compile_fixture::ReadableChild>
                                          if constexpr (field == Field::name) {
                                              read(member);
                                          } else if constexpr (field == Field::count) {
-                                             read(member, constraints::nonnegative);
+                                             read(member, ioj::s7::constraints::nonnegative);
                                          }
                                      });
                              }),
@@ -249,7 +252,7 @@ struct TypeReader<codegen_compile_fixture::ReadableChild>
 template <>
 struct TypeReader<codegen_compile_fixture::ReadableRecord>
     : RecordReader<codegen_compile_fixture::ReadableRecord> {
-    static ReadResult<value_type> construct(DecodeContext context) {
+    static ioj::s7::ReadResult<value_type> construct(DecodeContext context) {
         std::optional<decltype(value_type::child)> value_child{};
         std::optional<decltype(value_type::values)> value_values{};
         std::optional<decltype(value_type::points)> value_points{};
@@ -259,48 +262,48 @@ struct TypeReader<codegen_compile_fixture::ReadableRecord>
         std::optional<decltype(value_type::offset)> value_offset{};
         std::optional<decltype(value_type::title)> value_title{};
         std::optional<decltype(value_type::mode)> value_mode{};
-        decode_record<Field>(context,
-                             "record",
-                             field_names,
-                             ([&](Field const field, auto const& read) {
-                                 switch (field) {
-                                     case Field::child:
-                                         read.construct(value_child);
-                                         break;
-                                     case Field::values:
-                                         read.construct(value_values);
-                                         break;
-                                     case Field::points:
-                                         read.construct(value_points);
-                                         break;
-                                     case Field::enabled:
-                                         read.construct(value_enabled);
-                                         break;
-                                     case Field::maybe:
-                                         read.construct(value_maybe);
-                                         break;
-                                     case Field::scale:
-                                         read.construct(
-                                             value_scale,
-                                             constraints::positive,
-                                             constraints::finite,
-                                             constraints::minimum(5.00000000000000000e-01),
-                                             constraints::maximum(5ULL));
-                                         break;
-                                     case Field::offset:
-                                         read.construct(value_offset, constraints::nonzero);
-                                         break;
-                                     case Field::title:
-                                         read.construct(value_title, constraints::nonempty);
-                                         break;
-                                     case Field::mode:
-                                         read.construct(value_mode);
-                                         break;
-                                     default:
-                                         std::unreachable();
-                                 }
-                             }),
-                             required);
+        decode_record<Field>(
+            context,
+            "record",
+            field_names,
+            ([&](Field const field, auto const& read) {
+                switch (field) {
+                    case Field::child:
+                        read.construct(value_child);
+                        break;
+                    case Field::values:
+                        read.construct(value_values);
+                        break;
+                    case Field::points:
+                        read.construct(value_points);
+                        break;
+                    case Field::enabled:
+                        read.construct(value_enabled);
+                        break;
+                    case Field::maybe:
+                        read.construct(value_maybe);
+                        break;
+                    case Field::scale:
+                        read.construct(value_scale,
+                                       ioj::s7::constraints::positive,
+                                       ioj::s7::constraints::finite,
+                                       ioj::s7::constraints::minimum(5.00000000000000000e-01),
+                                       ioj::s7::constraints::maximum(5ULL));
+                        break;
+                    case Field::offset:
+                        read.construct(value_offset, ioj::s7::constraints::nonzero);
+                        break;
+                    case Field::title:
+                        read.construct(value_title, ioj::s7::constraints::nonempty);
+                        break;
+                    case Field::mode:
+                        read.construct(value_mode);
+                        break;
+                    default:
+                        std::unreachable();
+                }
+            }),
+            required);
         if (!context.errors.empty()) {
             return std::unexpected{std::move(context.errors)};
         }
@@ -346,15 +349,15 @@ struct TypeReader<codegen_compile_fixture::ReadableRecord>
                                   field == Field::maybe || field == Field::mode) {
                         read(member);
                     } else if constexpr (field == Field::title) {
-                        read(member, constraints::nonempty);
+                        read(member, ioj::s7::constraints::nonempty);
                     } else if constexpr (field == Field::offset) {
-                        read(member, constraints::nonzero);
+                        read(member, ioj::s7::constraints::nonzero);
                     } else if constexpr (field == Field::scale) {
                         read(member,
-                             constraints::positive,
-                             constraints::finite,
-                             constraints::minimum(5.00000000000000000e-01),
-                             constraints::maximum(5ULL));
+                             ioj::s7::constraints::positive,
+                             ioj::s7::constraints::finite,
+                             ioj::s7::constraints::minimum(5.00000000000000000e-01),
+                             ioj::s7::constraints::maximum(5ULL));
                     }
                 });
             }),

@@ -32,7 +32,7 @@ struct TypeReader<settings::SoftTarget> : RecordReader<settings::SoftTarget> {
                                          field == Field::bracket_start_radius_multiplier ||
                                          field == Field::opacity ||
                                          field == Field::pulse_opacity_boost) {
-                        read(member, constraints::finite);
+                        read(member, ioj::s7::constraints::finite);
                     }
                 });
             }));

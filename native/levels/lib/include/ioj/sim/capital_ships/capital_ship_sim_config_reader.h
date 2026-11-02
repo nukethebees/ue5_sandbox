@@ -21,7 +21,7 @@ struct TypeReader<sim::CapitalShipSimConfig> : RecordReader<sim::CapitalShipSimC
                     if constexpr (field == Field::max_health) {
                         read(member);
                     } else if constexpr (field == Field::spawn_delay) {
-                        read(member, constraints::finite);
+                        read(member, ioj::s7::constraints::finite);
                     } else if constexpr (field == Field::fighter_spawn_slots ||
                                          field == Field::fighter_spawn_slots_relative_transforms) {
                         std::unreachable();

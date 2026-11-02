@@ -23,7 +23,7 @@ struct TypeReader<sim::TurretSimConfig> : RecordReader<sim::TurretSimConfig> {
                                   field == Field::laser || field == Field::max_health) {
                         read(member);
                     } else if constexpr (field == Field::detection_radius) {
-                        read(member, constraints::finite);
+                        read(member, ioj::s7::constraints::finite);
                     } else if constexpr (field == Field::fire_point_offset) {
                         std::unreachable();
                     }

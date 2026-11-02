@@ -31,7 +31,7 @@ struct TypeReader<settings::EntityOverlay> : RecordReader<settings::EntityOverla
                                          field == Field::objective_frame_pixels ||
                                          field == Field::objective_bar_height_scale ||
                                          field == Field::screen_edge_padding_pixels) {
-                        read(member, constraints::finite);
+                        read(member, ioj::s7::constraints::finite);
                     }
                 });
             }));

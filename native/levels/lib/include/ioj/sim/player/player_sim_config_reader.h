@@ -29,7 +29,7 @@ struct TypeReader<sim::PlayerSimConfig> : RecordReader<sim::PlayerSimConfig> {
                                          field == Field::yaw_speed ||
                                          field == Field::turn_bank_angle_max ||
                                          field == Field::turn_bank_speed) {
-                        read(member, constraints::finite);
+                        read(member, ioj::s7::constraints::finite);
                     }
                 });
             }));
