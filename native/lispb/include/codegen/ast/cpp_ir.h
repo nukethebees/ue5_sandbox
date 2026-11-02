@@ -399,6 +399,7 @@ class CppIR {
     auto binary(BinaryOperator operation, Expr left, Expr right, bool line_break_after = false)
         -> Expr;
     auto type_reference(CppTypeId type) -> Expr;
+    auto decltype_type(Expr operand) -> CppTypeId;
     auto parenthesized(Expr expr) -> Expr;
     auto template_id(Expr callee, std::span<Expr const> arguments) -> Expr;
     auto template_id(Expr callee, std::initializer_list<Expr> arguments) -> Expr {

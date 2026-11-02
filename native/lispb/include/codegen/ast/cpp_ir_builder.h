@@ -794,6 +794,8 @@ class CppIRBuilder {
 
     Expr type_reference(CppTypeId type) { return ir_.type_reference(type); }
 
+    CppTypeId decltype_type(Expr operand) { return ir_.decltype_type(operand); }
+
     Expr parenthesized(Expr expr) { return ir_.parenthesized(expr); }
 
     Expr template_id(Expr callee, std::span<Expr const> arguments) {

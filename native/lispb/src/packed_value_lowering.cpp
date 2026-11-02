@@ -298,7 +298,7 @@ class PackedEmitter : public CppIRBuilder {
             "ioj::packed_pack", "ioj/packed_value.h", {descriptor_type(field)}, {source});
     }
     auto descriptor_type(std::string const& name) -> CppTypeId {
-        return decorate_type(intern_type(name), "decltype(", ")");
+        return decltype_type(named(name));
     }
     auto descriptor_value(std::string const& name) -> CppTypeId {
         return field_value_types_.at(name);

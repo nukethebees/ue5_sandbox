@@ -27,6 +27,7 @@ class Strings;
 
 namespace lispb::codegen {
 
+class CppIR;
 class CppRenderer;
 
 class CppTypes {
@@ -98,6 +99,7 @@ class CppTypes {
     // Return an unpublished copy whose policies can be configured independently.
     auto clone(CppTypeId base) -> CppTypeId;
 
+    // Expression-dependent types have no spelling until rendered in their enclosing scope.
     auto spelling(CppTypeId type) const -> std::string_view;
     auto spelling_id(CppTypeId type) const -> StringId;
     auto dependencies(CppTypeId type) const -> std::span<TypeDependencyId const>;
@@ -118,7 +120,9 @@ class CppTypes {
     auto dependency_spelling(TypeDependencyId dependency) const -> std::string_view;
     auto dependency_header(TypeDependencyId dependency) const -> std::optional<std::string_view>;
   private:
+    friend class CppIR;
     friend class CppRenderer;
+    auto decltype_type(Expr operand, std::span<TypeDependencyId const> dependencies) -> CppTypeId;
     void initialise_standard_types();
     auto append(StringId spelling,
                 std::span<TypeDependencyId const> dependencies,

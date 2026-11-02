@@ -263,7 +263,7 @@ auto CppRenderer::in_record_scope(EnvironmentId environment) const -> bool {
 /* **************************************** */
 // Types and environments
 /* **************************************** */
-void CppRenderer::append_type(std::string& output, CppTypeId const type) {
+void CppRenderer::append_type(std::string& output, CppTypeId const type, RenderContext const& ctx) {
     assert(type.value != 0 && type.value <= ir_.types.shapes_.size());
     auto const shape{ir_.types.shapes_[type.value - 1]};
     if (shape.form == CppTypeForm::raw) {
@@ -275,11 +275,15 @@ void CppRenderer::append_type(std::string& output, CppTypeId const type) {
             components.push_back(component);
         }
         append_name(output, components, shape.origin);
+    } else if (shape.form == CppTypeForm::decltype_) {
+        output += "decltype(";
+        append_expr(output, shape.operand, ctx);
+        output += ')';
     } else {
         for (auto const part :
              std::span{ir_.types.parts_}.subspan(shape.parts.begin, shape.parts.count)) {
             if (part.type.value != 0) {
-                append_type(output, part.type);
+                append_type(output, part.type, ctx);
             } else {
                 output += ir_.strings.view(part.text);
             }
@@ -643,7 +647,7 @@ void CppRenderer::append_expr(
     };
     switch (expr.kind()) {
         case ExprKind::type_reference:
-            append_type(output, ir_.type_reference_exprs_.type[index]);
+            append_type(output, ir_.type_reference_exprs_.type[index], ctx);
             break;
         case ExprKind::parenthesized:
             output += '(';
@@ -717,7 +721,7 @@ void CppRenderer::append_expr(
         case ExprKind::static_cast_:
         case ExprKind::reinterpret_cast_:
             output += expr.kind() == ExprKind::static_cast_ ? "static_cast<" : "reinterpret_cast<";
-            append_type(output, ir_.cast_exprs_.type[index]);
+            append_type(output, ir_.cast_exprs_.type[index], ctx);
             output += ">(";
             append_expr(output, ir_.cast_exprs_.operand[index], ctx, 1);
             output += ')';
@@ -731,12 +735,12 @@ void CppRenderer::append_expr(
             break;
         case ExprKind::sizeof_type:
             output += "sizeof(";
-            append_type(output, ir_.sizeof_exprs_.type[index]);
+            append_type(output, ir_.sizeof_exprs_.type[index], ctx);
             output += ')';
             break;
         case ExprKind::initializer_list:
             if (auto const type{ir_.initializer_exprs_.type[index]}) {
-                append_type(output, *type);
+                append_type(output, *type, ctx);
             }
             output += '{';
             append_arguments(ir_.initializer_exprs_.elements[index]);
@@ -811,12 +815,12 @@ void CppRenderer::append_template(std::string& output,
                     auto const default_type{ir_.type_template_parameters_.default_type[index]};
                     if (default_type.value != 0) {
                         output += " = ";
-                        append_type(output, default_type);
+                        append_type(output, default_type, ctx);
                     }
                     break;
                 }
                 case TemplateParameterKind::value: {
-                    append_type(output, ir_.value_template_parameters_.type[index]);
+                    append_type(output, ir_.value_template_parameters_.type[index], ctx);
                     if (ir_.value_template_parameters_.pack[index]) {
                         output += "...";
                     }
@@ -853,7 +857,7 @@ void CppRenderer::append_parameters(std::string& output,
             output += ", ";
         }
         auto const parameter{ir_.parameter_references_[p]};
-        append_type(output, ir_.parameters_.type[parameter.value]);
+        append_type(output, ir_.parameters_.type[parameter.value], ctx);
         auto const name{ir_.parameters_.name[parameter.value]};
         if (name.value != 0) {
             output += ' ';
@@ -920,7 +924,7 @@ auto CppRenderer::signature(std::uint32_t index,
         if (return_syntax == ReturnSyntax::trailing) {
             output += "auto";
         } else {
-            append_type(output, functions.return_type[id]);
+            append_type(output, functions.return_type[id], ctx);
         }
         output += ' ';
     } else if (functions.kind[id] == FunctionKind::explicit_constructor && !owner) {
@@ -931,7 +935,7 @@ auto CppRenderer::signature(std::uint32_t index,
         output += ' ';
     }
     if (owner) {
-        append_type(output, *owner);
+        append_type(output, *owner, ctx);
         output += "::";
     }
     append_expr(output, functions.name[id], ctx);
@@ -982,7 +986,7 @@ auto CppRenderer::signature(std::uint32_t index,
         output += format.trailing_return_placement == FunctionTrailingReturnPlacement::next_line
                     ? "\n    -> "
                     : " -> ";
-        append_type(output, functions.return_type[id]);
+        append_type(output, functions.return_type[id], ctx);
     }
     if (auto const clause{functions.requires_clause[id]}) {
         auto const value{expression(clause, ctx)};
@@ -1042,7 +1046,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
         indent();
         output += text;
     };
-    auto type = [&](CppTypeId id) { append_type(output, id); };
+    auto type = [&](CppTypeId id) { append_type(output, id, ctx); };
     auto text = [&](StringId id) { output += ir_.strings.view(id); };
     auto expr = [&](Expr id) { append_expr(output, id, ctx); };
     auto scoped_nodes = [&](ir::Range children) {

@@ -316,14 +316,11 @@ class RecordReaderLowering : public CppIRBuilder {
         if (constructing) {
             for (auto const field : fields) {
                 auto const name{ctx.text(members.name[members.index(field)])};
-                body.add(variable(
-                    template_type(
-                        std_types().optional,
-                        {decorate_type(decorate_type(named_type("value_type"), "", "::" + name),
-                                       "decltype(",
-                                       ")")}),
-                    "value_" + name,
-                    literal("")));
+                body.add(variable(template_type(std_types().optional,
+                                                {decltype_type(type_reference(
+                                                    named_type("value_type::" + name)))}),
+                                  "value_" + name,
+                                  literal("")));
             }
         }
 

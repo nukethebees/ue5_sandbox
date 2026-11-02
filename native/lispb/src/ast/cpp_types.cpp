@@ -236,6 +236,7 @@ auto CppTypes::find(StringId const spelling,
         auto const index{candidate.value - 1};
         auto const candidate_shape{shapes_[index]};
         if (candidate_shape.form != shape.form || candidate_shape.origin != shape.origin ||
+            candidate_shape.operand != shape.operand ||
             (shape.form == CppTypeForm::composed &&
              !std::ranges::equal(std::span{parts_}.subspan(shape.parts.begin, shape.parts.count),
                                  std::span{parts_}.subspan(candidate_shape.parts.begin,
@@ -368,11 +369,14 @@ auto CppTypes::compose(std::span<CppTypePart const> const parts,
                        std::optional<CppTypeId> const policy_source) -> CppTypeId {
     assert(!parts.empty());
     std::string spelling;
+    bool has_spelling{true};
     std::vector<TypeDependencyId> dependencies;
     for (auto const part : parts) {
         assert(part.text.value == 0 || part.type.value == 0);
         if (part.type.value != 0) {
-            spelling += this->spelling(part.type);
+            auto const part_spelling{this->spelling(part.type)};
+            has_spelling = has_spelling && !part_spelling.empty();
+            spelling += part_spelling;
             for (auto const dependency : this->dependencies(part.type)) {
                 if (std::ranges::find(dependencies, dependency) == dependencies.end()) {
                     dependencies.push_back(dependency);
@@ -381,6 +385,10 @@ auto CppTypes::compose(std::span<CppTypePart const> const parts,
         } else {
             spelling += strings_.view(part.text);
         }
+    }
+
+    if (!has_spelling) {
+        spelling.clear();
     }
 
     CppTypeShape const shape{.form = CppTypeForm::composed,
@@ -394,6 +402,16 @@ auto CppTypes::compose(std::span<CppTypePart const> const parts,
         parts_.resize(shape.parts.begin);
     }
     return result;
+}
+
+auto CppTypes::decltype_type(Expr const operand,
+                             std::span<TypeDependencyId const> const dependencies) -> CppTypeId {
+    assert(operand);
+    return intern_shape("",
+                        dependencies,
+                        ParameterPassing::const_reference,
+                        {},
+                        {.form = CppTypeForm::decltype_, .operand = operand});
 }
 
 auto CppTypes::reference(CppTypeId const type) -> CppTypeId {

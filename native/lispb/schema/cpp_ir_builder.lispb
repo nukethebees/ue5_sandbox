@@ -581,6 +581,8 @@
         (parameter line_break_after "bool" :default "false"))
       (method type_reference "Expr"
         (parameter type "CppTypeId"))
+      (method decltype_type "CppTypeId"
+        (parameter operand "Expr"))
       (method parenthesized "Expr"
         (parameter expr "Expr"))
       (method template_id "Expr"

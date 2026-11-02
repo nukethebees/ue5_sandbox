@@ -43,7 +43,7 @@ class CppRenderer {
     /* **************************************** */
     // Types and environments
     /* **************************************** */
-    void append_type(std::string& output, CppTypeId type);
+    void append_type(std::string& output, CppTypeId type, RenderContext const& ctx);
     auto resolve_name(std::span<StringId const> components,
                       NameOrigin origin,
                       EnvironmentId environment) -> ResolvedName;
