@@ -112,6 +112,7 @@
     (member is_inline bool :bits 1)
     (member is_nodiscard bool :bits 1)
     (member define_in_header bool :bits 1)
+    (member is_noreturn bool :bits 1)
     (projections (cpp :storage std::uint8_t))))
 
 (module compiler_cpp_file_flags

@@ -34,16 +34,21 @@ struct FunctionFlags : detail::FunctionFlagsBase {
     // define_in_header
     static constexpr ioj::PackedField<storage_type, bool, 3, 1> define_in_header_layout{};
 
+    // is_noreturn
+    static constexpr ioj::PackedField<storage_type, bool, 4, 1> is_noreturn_layout{};
+
     constexpr FunctionFlags() noexcept = default;
     constexpr explicit FunctionFlags(bool const is_constexpr_value,
                                      bool const is_inline_value,
                                      bool const is_nodiscard_value,
-                                     bool const define_in_header_value) noexcept
+                                     bool const define_in_header_value,
+                                     bool const is_noreturn_value) noexcept
         : Base{static_cast<storage_type>(
               ioj::packed_pack<decltype(is_constexpr_layout)>(is_constexpr_value) |
               ioj::packed_pack<decltype(is_inline_layout)>(is_inline_value) |
               ioj::packed_pack<decltype(is_nodiscard_layout)>(is_nodiscard_value) |
-              ioj::packed_pack<decltype(define_in_header_layout)>(define_in_header_value))} {}
+              ioj::packed_pack<decltype(define_in_header_layout)>(define_in_header_value) |
+              ioj::packed_pack<decltype(is_noreturn_layout)>(is_noreturn_value))} {}
 
     [[nodiscard]] constexpr auto operator<=>(FunctionFlags const&) const noexcept = default;
 
@@ -70,6 +75,12 @@ struct FunctionFlags : detail::FunctionFlagsBase {
     }
     constexpr void set_define_in_header(bool const value) noexcept {
         insert<decltype(define_in_header_layout)>(value);
+    }
+    [[nodiscard]] constexpr auto is_noreturn() const noexcept -> bool {
+        return extract<decltype(is_noreturn_layout)>();
+    }
+    constexpr void set_is_noreturn(bool const value) noexcept {
+        insert<decltype(is_noreturn_layout)>(value);
     }
 };
 

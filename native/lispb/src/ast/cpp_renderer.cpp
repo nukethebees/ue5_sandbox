@@ -888,6 +888,9 @@ auto CppRenderer::signature(std::uint32_t index,
     if (functions.flags[id].is_nodiscard()) {
         output += "[[nodiscard]] ";
     }
+    if (functions.flags[id].is_noreturn()) {
+        output += "[[noreturn]] ";
+    }
     auto& state{state_};
     EnvironmentGuard const guard{state.current, state.current};
     auto const enclosing{state.current};

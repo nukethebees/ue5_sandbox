@@ -342,8 +342,15 @@ auto lower_module(lispb::codegen::CppIR& cpp,
     lispb::codegen::Nodes declarations;
     lispb::codegen::Nodes definitions;
     lispb::codegen::Nodes implementation;
-    implementation.push_back(
-        cpp.raw("[[noreturn]] void invariant_failed() noexcept { std::abort(); }"));
+    auto const invariant_failed{cpp.function("invariant_failed", void_type)};
+    cpp.function_flags(invariant_failed).set_is_noreturn(true);
+    cpp.set_function_noexcept(invariant_failed);
+    cpp.set_function_body(invariant_failed,
+                          {cpp.expr_stmt(cpp.call(cpp.type_reference(
+                              cpp.types.named("std::abort",
+                                              lispb::codegen::NameOrigin::global,
+                                              {cpp.types.dependency("std::abort", "cstdlib")}))))});
+    implementation.push_back(cpp.definition(invariant_failed));
     auto const require{cpp.function("require", cpp.types.std.void_)};
     cpp.set_function_parameters(
         require,
