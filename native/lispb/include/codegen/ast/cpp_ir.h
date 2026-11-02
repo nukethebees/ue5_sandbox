@@ -346,6 +346,8 @@ class CppIR {
     }
     auto member_access(Expr object, std::string_view member) -> Expr;
     auto member_access(Expr object, StringId member) -> Expr;
+    auto scope_member(CppTypeId owner, std::string_view member) -> Expr;
+    auto scope_member(CppTypeId owner, StringId member) -> Expr;
     auto pointer_member_access(Expr object, std::string_view member) -> Expr;
     auto pointer_member_access(Expr object, StringId member) -> Expr;
     auto this_member(std::string_view member) -> Expr {

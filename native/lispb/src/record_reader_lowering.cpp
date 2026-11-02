@@ -109,7 +109,7 @@ class RecordReaderLowering : public CppIRBuilder {
         if (!records.s7_positional[row]) {
             if (records.generate_visitor[row]) {
                 decls.add(using_declaration(store_text("Field"),
-                                            decorate_type(named_type("value_type"), "", "::Field")),
+                                            nested_type(named_type("value_type"), "Field")),
                           2);
             } else {
                 decls.add(enumeration(store_text("Field"),
@@ -130,8 +130,7 @@ class RecordReaderLowering : public CppIRBuilder {
                 }
                 names.push_back(string_literal(field_name(ctx, field)));
                 if (members.s7[index].required) {
-                    required.push_back(type_reference(decorate_type(
-                        named_type("Field"), "", "::" + ctx.text(members.name[index]))));
+                    required.push_back(scope_member(named_type("Field"), members.name[index]));
                 }
             }
             auto const array_type{template_type(
@@ -253,10 +252,7 @@ class RecordReaderLowering : public CppIRBuilder {
         return expr_stmt(
             call(constructing ? member_access(reader, "construct") : reader, arguments));
     }
-    auto field_value(StringId name) -> Expr {
-        return type_reference(
-            decorate_type(named_type("Field"), "", "::" + std::string{text_view(name)}));
-    }
+    auto field_value(StringId name) -> Expr { return scope_member(named_type("Field"), name); }
     auto member_reader(LoweringContext& ctx, DeclarationHandle record_id) -> Expr {
         auto const& records{ctx.declarations.records};
         auto const& members{ctx.declarations.child_occurrences};
@@ -371,7 +367,7 @@ class RecordReaderLowering : public CppIRBuilder {
                     {unary(UnaryOperator::address_of, named("result"))},
                     {parameter("Field", "selected"), parameter("auto const&", "read")},
                     block({expr_stmt(call(
-                        decorate_type(named_type("value_type"), "", "::visit_field"),
+                        scope_member(named_type("value_type"), "visit_field"),
                         {named("result"), named("selected"), member_reader(ctx, record_id)}))}));
             } else {
                 std::vector<SwitchCaseId> cases;

@@ -89,8 +89,7 @@ class RecordLowering : public CppIRBuilder {
         for (auto const field : fields) {
             auto const member{members.name[members.index(field)]};
             values.push_back(enumerator(member));
-            auto const field_value{
-                type_reference(decorate_type(named_type("Field"), "", "::" + ctx.text(member)))};
+            auto const field_value{scope_member(named_type("Field"), member)};
             accessors.push_back(
                 if_stmt(binary(BinaryOperator::equal, named("Selected"), field_value),
                         block({return_stmt(parenthesized(member_access(named("self"), member)))}),
@@ -123,12 +122,13 @@ class RecordLowering : public CppIRBuilder {
                 record_type_matches(name),
                 binary(BinaryOperator::less,
                        call(std_types().to_underlying, {named("Selected")}),
-                       template_call(type_reference(named_type(
-                                         "ioj::enum_count",
-                                         NameOrigin::global,
-                                         {dependency("ioj::enum_count", "ioj/enum_traits.h")})),
-                                     {type_reference(decorate_type(
-                                         named_type("Self"), "typename ", "::Field"))}))))};
+                       template_call(
+                           type_reference(
+                               named_type("ioj::enum_count",
+                                          NameOrigin::global,
+                                          {dependency("ioj::enum_count", "ioj/enum_traits.h")})),
+                           {type_reference(decorate_type(
+                               nested_type(named_type("Self"), "Field"), "typename ", ""))}))))};
         result.add(header_function(add_function(accessor)), 2);
 
         FunctionDefinition const invoke{

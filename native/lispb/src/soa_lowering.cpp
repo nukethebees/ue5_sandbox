@@ -128,8 +128,8 @@ class SoaLowering : public CppIRBuilder {
         }
         values.push_back(enumerator(store_text("Count"), store_text(next_value())));
 
-        auto const field_count{static_cast_expr(
-            std_types().size_t, type_reference(decorate_type(enum_type, "", "::Count")))};
+        auto const field_count{
+            static_cast_expr(std_types().size_t, scope_member(enum_type, "Count"))};
         auto const base{
             template_type(named_type("ioj::FieldMask",
                                      NameOrigin::global,
@@ -160,12 +160,11 @@ class SoaLowering : public CppIRBuilder {
                     {.kind = FunctionImplementationKind::body,
                      .body = {return_stmt(static_cast_expr(
                          enum_type,
-                         binary(BinaryOperator::add,
-                                static_cast_expr(
-                                    int32_type,
-                                    type_reference(decorate_type(
-                                        enum_type, "", "::" + title_case_identifier(name)))),
-                                mask_index_expression(ctx, member))))}},
+                         binary(
+                             BinaryOperator::add,
+                             static_cast_expr(int32_type,
+                                              scope_member(enum_type, title_case_identifier(name))),
+                             mask_index_expression(ctx, member))))}},
                 .exception_specification = {.kind = FunctionExceptionKind::noexcept_},
                 .receiver = FunctionReceiver::static_,
                 .flags = {.is_constexpr = true, .is_nodiscard = true, .define_in_header = true},
@@ -181,10 +180,9 @@ class SoaLowering : public CppIRBuilder {
         result.add(enumeration(*soas.field_enum_name[row], uint8_type, values))
             .new_lines(1)
             .add(mask)
-            .add(static_assertion(
-                binary(BinaryOperator::equal,
-                       sizeof_type(mask_type),
-                       sizeof_type(decorate_type(mask_type, "", "::storage_type")))))
+            .add(static_assertion(binary(BinaryOperator::equal,
+                                         sizeof_type(mask_type),
+                                         sizeof_type(nested_type(mask_type, "storage_type")))))
             .add(static_assertion(
                 type_reference(template_type(std_types().is_trivially_copyable_v, {mask_type}))));
         return result.build();

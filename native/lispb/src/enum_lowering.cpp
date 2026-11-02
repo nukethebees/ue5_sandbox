@@ -435,10 +435,9 @@ class EnumLowering : public CppIRBuilder {
             body.add(if_stmt(binary(BinaryOperator::equal,
                                     named("value"),
                                     text_literal(ctx.text(*serialized_name))),
-                             block({assignment(
-                                        named("result"),
-                                        type_reference(named_type(
-                                            enum_name + "::" + ctx.text(enumerators.name[value])))),
+                             block({assignment(named("result"),
+                                               scope_member(named_type(enum_name),
+                                                            enumerators.name[value])),
                                     return_stmt(literal("true"))})),
                      1);
         }
@@ -624,9 +623,7 @@ class EnumLowering : public CppIRBuilder {
                 "ioj::MinMax", NameOrigin::global, {dependency("ioj::MinMax", "ioj/min_max.h")}),
             {enum_type})};
         auto enumerator_value = [&](EnumeratorId const value) {
-            return type_reference(named_type(std::string{type_spelling(enum_type)} + "::" +
-                                                 ctx.text(ctx.declarations.enumerators.name[value]),
-                                             NameOrigin::global));
+            return scope_member(enum_type, ctx.declarations.enumerators.name[value]);
         };
         auto const variable_id{
             variable(range_type,
@@ -695,9 +692,7 @@ class EnumLowering : public CppIRBuilder {
                     key = value_name;
                 }
                 indexed = indexed && code && !code->negative && code->magnitude == entries.size();
-                entries.push_back(
-                    {std::move(key),
-                     type_reference(decorate_type(named_type(name), "", "::" + value_name))});
+                entries.push_back({std::move(key), scope_member(named_type(name), value_name)});
             }
 
             auto const prefix{helper == NativeEnumHelper::try_parse ? "try_parse_"
@@ -723,9 +718,7 @@ class EnumLowering : public CppIRBuilder {
                 if (enums.count[schema] && name == *enums.count[schema]) {
                     continue;
                 }
-                values.push_back(type_reference(
-                    named_type(std::string{type_spelling(enum_type)} + "::" + ctx.text(name),
-                               NameOrigin::global)));
+                values.push_back(scope_member(enum_type, name));
             }
             auto const traits{
                 add_record({.name = template_id(named("EnumTraits"), {type_reference(enum_type)}),
@@ -800,9 +793,8 @@ class EnumLowering : public CppIRBuilder {
         for (auto const value : values) {
             auto const name{ctx.text(enumerators.name[value])};
             cases.push_back(
-                switch_case(type_reference(decorate_type(named_type(source), "", "::" + name)),
-                            block({return_stmt(type_reference(
-                                decorate_type(named_type(target), "", "::" + name)))})));
+                switch_case(scope_member(named_type(source), name),
+                            block({return_stmt(scope_member(named_type(target), name))})));
         }
 
         auto const target_type{named_type(target)};
@@ -837,14 +829,12 @@ class EnumLowering : public CppIRBuilder {
         auto const& enumerators{ctx.declarations.enumerators};
         for (auto const value : values) {
             auto const name{ctx.text(enumerators.name[value])};
-            decls.add(static_assertion(binary(
-                          BinaryOperator::equal,
-                          static_cast_expr(std_types().int_,
-                                           type_reference(decorate_type(
-                                               named_type(projection_name), "", "::" + name))),
-                          static_cast_expr(std_types().int_,
-                                           type_reference(decorate_type(
-                                               named_type(native_name), "", "::" + name))))),
+            decls.add(static_assertion(
+                          binary(BinaryOperator::equal,
+                                 static_cast_expr(std_types().int_,
+                                                  scope_member(named_type(projection_name), name)),
+                                 static_cast_expr(std_types().int_,
+                                                  scope_member(named_type(native_name), name)))),
                       1);
         }
         return namespace_node(store_text("ioj"), decls.build());

@@ -281,6 +281,10 @@ void CppRenderer::append_type(std::string& output, CppTypeId const type, RenderC
         output += ')';
     } else if (shape.form == CppTypeForm::template_id) {
         append_expr(output, shape.operand, ctx);
+    } else if (shape.form == CppTypeForm::nested) {
+        append_type(output, shape.owner, ctx);
+        output += "::";
+        output += ir_.strings.view(shape.member);
     } else {
         for (auto const part :
              std::span{ir_.types.parts_}.subspan(shape.parts.begin, shape.parts.count)) {
@@ -685,6 +689,11 @@ void CppRenderer::append_expr(
         case ExprKind::member_access:
             append_expr(output, ir_.member_exprs_.object[index], ctx, 12);
             output += ir_.member_exprs_.through_pointer[index] ? "->" : ".";
+            output += ir_.strings.view(ir_.member_exprs_.member[index]);
+            break;
+        case ExprKind::scope_member:
+            append_expr(output, ir_.member_exprs_.object[index], ctx);
+            output += "::";
             output += ir_.strings.view(ir_.member_exprs_.member[index]);
             break;
         case ExprKind::subscript:

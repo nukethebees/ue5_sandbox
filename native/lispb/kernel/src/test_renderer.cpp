@@ -99,8 +99,8 @@ auto reference_expression(lispb::codegen::CppIR& cpp,
 
     auto const constant{std::get<ConstantKind>(value)};
     auto const limits{cpp.types.template_type(cpp.types.std.numeric_limits, {type})};
-    auto const call{cpp.call(cpp.types.decorate(
-        limits, "", constant == ConstantKind::nan ? "::quiet_NaN" : "::infinity"))};
+    auto const call{cpp.call(
+        cpp.scope_member(limits, constant == ConstantKind::nan ? "quiet_NaN" : "infinity"))};
     if (constant == ConstantKind::negative_infinity) {
         return cpp.unary(lispb::codegen::UnaryOperator::negate, call);
     }

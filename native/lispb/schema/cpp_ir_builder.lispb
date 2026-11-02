@@ -63,6 +63,18 @@
         (parameter base "CppTypeId")
         (parameter prefix "std::string_view")
         (parameter suffix "std::string_view"))
+      (method nested_type "CppTypeId" :target-name "types.nested_type"
+        (parameter owner "CppTypeId")
+        (parameter member "std::string_view"))
+      (method nested_type "CppTypeId" :target-name "types.nested_type"
+        (parameter owner "CppTypeId")
+        (parameter member "StringId"))
+      (method scope_member "Expr"
+        (parameter owner "CppTypeId")
+        (parameter member "std::string_view"))
+      (method scope_member "Expr"
+        (parameter owner "CppTypeId")
+        (parameter member "StringId"))
       (method template_type "CppTypeId" :target-name "types.template_type"
         (parameter primary "CppTypeId")
         (parameter arguments "std::span<CppTypeId const>"))

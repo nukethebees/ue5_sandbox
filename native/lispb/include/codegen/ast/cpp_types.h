@@ -90,6 +90,8 @@ class CppTypes {
         return compose(std::span<CppTypePart const>{parts}, policy_source);
     }
     auto decorate(CppTypeId base, std::string_view prefix, std::string_view suffix) -> CppTypeId;
+    auto nested_type(CppTypeId owner, std::string_view member) -> CppTypeId;
+    auto nested_type(CppTypeId owner, StringId member) -> CppTypeId;
     auto template_type(CppTypeId primary, std::span<CppTypeId const> arguments) -> CppTypeId;
     auto template_type(CppTypeId primary, std::initializer_list<CppTypeId> arguments) -> CppTypeId {
         return template_type(primary, std::span<CppTypeId const>{arguments});

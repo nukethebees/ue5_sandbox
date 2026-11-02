@@ -251,7 +251,7 @@ class Renderer {
         auto const index{value.index()};
         switch (value.kind()) {
             case ValueKind::text:
-                return ir_.call(ir_.types.decorate(ir_.types.named("FText"), "", "::FromString"),
+                return ir_.call(ir_.scope_member(ir_.types.named("FText"), "FromString"),
                                 {ir_.call(ir_.named("TEXT"),
                                           {ir_.string_literal(document_.values.text[index])})});
             case ValueKind::localized_text:
@@ -296,10 +296,8 @@ class Renderer {
                 member,
                 {ir_.unary(lispb::codegen::UnaryOperator::address_of, ir_.named("self_")),
                  ir_.unary(lispb::codegen::UnaryOperator::address_of,
-                           ir_.type_reference(ir_.types.decorate(
-                               ir_.types.named("ThisClass"),
-                               "",
-                               "::" + text(document_.values.text[value.index()]))))});
+                           ir_.scope_member(ir_.types.named("ThisClass"),
+                                            text(document_.values.text[value.index()])))});
         }
         return ir_.member_call(object, name, {render_value(value)});
     }

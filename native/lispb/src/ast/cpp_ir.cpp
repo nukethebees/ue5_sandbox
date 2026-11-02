@@ -802,6 +802,16 @@ auto CppIR::member_access(Expr object, StringId member) -> Expr {
     member_exprs_.through_pointer.push_back(false);
     return result;
 }
+auto CppIR::scope_member(CppTypeId const owner, std::string_view const member) -> Expr {
+    return scope_member(owner, strings.intern(member));
+}
+auto CppIR::scope_member(CppTypeId const owner, StringId const member) -> Expr {
+    auto const result{expr_detail::handle(ExprKind::scope_member, member_exprs_.object.size())};
+    member_exprs_.object.push_back(type_reference(owner));
+    member_exprs_.member.push_back(member);
+    member_exprs_.through_pointer.push_back(false);
+    return result;
+}
 auto CppIR::pointer_member_access(Expr object, std::string_view member) -> Expr {
     return pointer_member_access(object, strings.intern(member));
 }
@@ -1240,6 +1250,7 @@ void CppIR::collect_dependencies(Expr expr, std::vector<TypeDependencyId>& resul
             }
             break;
         case ExprKind::member_access:
+        case ExprKind::scope_member:
             collect_dependencies(member_exprs_.object[index], result);
             break;
         case ExprKind::subscript:

@@ -112,12 +112,12 @@ auto lower_expression(lispb::codegen::CppIR& cpp,
             auto const limits{
                 cpp.types.template_type(cpp.types.std.numeric_limits, {concrete_type})};
             auto const constant = [&](std::string_view name) {
-                return cpp.call(cpp.types.decorate(limits, "", name));
+                return cpp.call(cpp.scope_member(limits, name));
             };
             if (document.expressions.constant(expression) == ConstantKind::nan) {
-                return constant("::quiet_NaN");
+                return constant("quiet_NaN");
             }
-            auto const infinity{constant("::infinity")};
+            auto const infinity{constant("infinity")};
             if (document.expressions.constant(expression) == ConstantKind::infinity) {
                 return infinity;
             }

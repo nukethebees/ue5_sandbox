@@ -236,7 +236,8 @@ auto CppTypes::find(StringId const spelling,
         auto const index{candidate.value - 1};
         auto const candidate_shape{shapes_[index]};
         if (candidate_shape.form != shape.form || candidate_shape.origin != shape.origin ||
-            candidate_shape.operand != shape.operand ||
+            candidate_shape.operand != shape.operand || candidate_shape.owner != shape.owner ||
+            candidate_shape.member != shape.member ||
             (shape.form == CppTypeForm::composed &&
              !std::ranges::equal(std::span{parts_}.subspan(shape.parts.begin, shape.parts.count),
                                  std::span{parts_}.subspan(candidate_shape.parts.begin,
@@ -459,6 +460,20 @@ auto CppTypes::decorate(CppTypeId const base,
     auto const before{strings_.intern(prefix)};
     auto const after{strings_.intern(suffix_text)};
     return compose({{.text = before}, {.type = base}, {.text = after}}, base);
+}
+auto CppTypes::nested_type(CppTypeId const owner, std::string_view const member) -> CppTypeId {
+    return nested_type(owner, strings_.intern(member));
+}
+auto CppTypes::nested_type(CppTypeId const owner, StringId const member) -> CppTypeId {
+    auto const owner_spelling{spelling(owner)};
+    auto const name{owner_spelling.empty()
+                        ? std::string{}
+                        : std::string{owner_spelling} + "::" + std::string{strings_.view(member)}};
+    return intern_shape(name,
+                        dependencies(owner),
+                        ParameterPassing::const_reference,
+                        {},
+                        {.form = CppTypeForm::nested, .owner = owner, .member = member});
 }
 
 auto CppTypes::template_type(CppTypeId const primary, std::span<CppTypeId const> const arguments)

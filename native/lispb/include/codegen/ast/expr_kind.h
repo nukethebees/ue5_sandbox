@@ -11,6 +11,7 @@ enum class ExprKind : std::uint8_t {
     string_literal,
     call,
     member_access,
+    scope_member,
     subscript,
     binary,
     conditional,

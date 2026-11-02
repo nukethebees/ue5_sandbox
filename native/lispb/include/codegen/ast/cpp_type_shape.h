@@ -1,8 +1,10 @@
 #pragma once
 #include <codegen/ast/cpp_type_form.h>
 #include <codegen/ast/expr.h>
+#include <codegen/ast/indices.h>
 #include <codegen/ast/ir/range.h>
 #include <codegen/ast/name_origin.h>
+#include <lispb/indices.h>
 
 namespace lispb::codegen {
 struct CppTypeShape {
@@ -10,5 +12,7 @@ struct CppTypeShape {
     ir::Range parts{};
     NameOrigin origin{NameOrigin::enclosing};
     Expr operand{};
+    CppTypeId owner{};
+    StringId member{};
 };
 }

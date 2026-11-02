@@ -256,8 +256,7 @@ class SettingsLowering : public CppIRBuilder {
         for (auto const setting : settings) {
             auto const name{decls.settings.name[setting]};
             getter_cases.push_back(
-                switch_case(type_reference(decorate_type(
-                                named_type("GameSetting"), "", "::" + title_case(ctx.text(name)))),
+                switch_case(scope_member(named_type("GameSetting"), title_case(ctx.text(name))),
                             block({return_stmt(init_list({member_access(state, name)},
                                                          intern_type("GameSettingValue")))})));
         }
@@ -276,8 +275,7 @@ class SettingsLowering : public CppIRBuilder {
             auto const name{decls.settings.name[settings[index]]};
             auto const typed_value{named("typed_value")};
             setter_cases.push_back(switch_case(
-                type_reference(decorate_type(
-                    named_type("GameSetting"), "", "::" + title_case(ctx.text(name)))),
+                scope_member(named_type("GameSetting"), title_case(ctx.text(name))),
                 block({
                     variable("auto const*",
                              "typed_value",
@@ -334,8 +332,7 @@ class SettingsLowering : public CppIRBuilder {
                      .body = {expr_stmt(member_call(
                          call(named("derived")),
                          "set_setting",
-                         {type_reference(decorate_type(
-                              named_type("GameSetting"), "", "::" + title_case(ctx.text(name)))),
+                         {scope_member(named_type("GameSetting"), title_case(ctx.text(name))),
                           init_list({named("value")}, intern_type("GameSettingValue"))}))}},
                 .flags = {.define_in_header = true}};
             members.add(header_function(add_function(setter)), 2);
@@ -561,7 +558,7 @@ class SettingsLowering : public CppIRBuilder {
         auto const module_row{modules.index(module)};
         auto const settings{modules.settings[module_row]};
         auto enum_value = [&](std::string_view const type, std::string_view const name) {
-            return type_reference(decorate_type(named_type(type), "", "::" + std::string{name}));
+            return scope_member(named_type(type), name);
         };
 
         std::vector<Expr> categories;

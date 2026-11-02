@@ -580,9 +580,9 @@ class PackedEmitter : public CppIRBuilder {
                     auto const projected{
                         context_.declarations.enums.cpp_projection[declaration_id].has_value()};
                     auto const enumerator_value{
-                        projected ? type_reference(type(context_.text(graph_.cpp_spelling(scalar)) +
-                                                            "::" + enumerator,
-                                                        NameOrigin::global))
+                        projected ? scope_member(type(context_.text(graph_.cpp_spelling(scalar)),
+                                                      NameOrigin::global),
+                                                 enumerator)
                                   : cast(decoded,
                                          integer(PackedIntegerValue::from_parts(code->negative,
                                                                                 code->magnitude)))};
@@ -870,7 +870,7 @@ class PackedEmitter : public CppIRBuilder {
         }
         auto validity{valid_children(std::nullopt, type_, std::nullopt)};
         if (validity) {
-            auto const base_validity{call(decorate_type(type("Base"), "", "::is_valid"), {})};
+            auto const base_validity{call(scope_member(type("Base"), "is_valid"), {})};
             validity = all({base_validity, validity});
             functions_.push_back(emit_function("is_valid",
                                                std_types().bool_,
@@ -898,10 +898,9 @@ class PackedEmitter : public CppIRBuilder {
         for (std::size_t ordinal{}; ordinal < count; ++ordinal) {
             auto const code{domains.code(domain, ordinal)};
             if (code && !code->negative && code->magnitude == guard.value) {
-                return type_reference(
-                    type(context_.text(graph_.cpp_spelling(guard.enumeration)) + "::" +
-                             context_.text(context_.declarations.enumerators.name[values[ordinal]]),
-                         NameOrigin::global));
+                return scope_member(
+                    type(context_.text(graph_.cpp_spelling(guard.enumeration)), NameOrigin::global),
+                    context_.declarations.enumerators.name[values[ordinal]]);
             }
         }
         std::unreachable();
@@ -1141,10 +1140,9 @@ class PackedEmitter : public CppIRBuilder {
         auto const decoded{extract(name + "_layout")};
         auto const decoded_type{access_type(placement)};
         body.push_back(return_stmt(
-            aggregate(placement)
-                ? call(decorate_type(decoded_type, "", "::from_raw"),
-                       {cast(decorate_type(decoded_type, "", "::storage_type"), decoded)})
-                : decoded));
+            aggregate(placement) ? call(scope_member(decoded_type, "from_raw"),
+                                        {cast(nested_type(decoded_type, "storage_type"), decoded)})
+                                 : decoded));
         functions_.push_back(emit_function(name, decoded_type, FunctionReceiver::const_, {}, body));
         if (placement.discriminator) {
             return;

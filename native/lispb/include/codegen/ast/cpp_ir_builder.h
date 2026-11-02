@@ -96,6 +96,20 @@ class CppIRBuilder {
         return ir_.types.decorate(base, prefix, suffix);
     }
 
+    CppTypeId nested_type(CppTypeId owner, std::string_view member) {
+        return ir_.types.nested_type(owner, member);
+    }
+
+    CppTypeId nested_type(CppTypeId owner, StringId member) {
+        return ir_.types.nested_type(owner, member);
+    }
+
+    Expr scope_member(CppTypeId owner, std::string_view member) {
+        return ir_.scope_member(owner, member);
+    }
+
+    Expr scope_member(CppTypeId owner, StringId member) { return ir_.scope_member(owner, member); }
+
     CppTypeId template_type(CppTypeId primary, std::span<CppTypeId const> arguments) {
         return ir_.types.template_type(primary, arguments);
     }
