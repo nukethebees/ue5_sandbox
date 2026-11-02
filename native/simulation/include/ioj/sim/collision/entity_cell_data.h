@@ -184,7 +184,7 @@ struct ResolvedView
              ioj::sim::collision::CellCoord const new_min_cells,
              ioj::sim::collision::CellCoord const new_max_cells,
              EntityId const new_entity_ids) const {
-        assert(index < num());
+        assert((index < num()));
         this->view_min_points().set(index, new_min_points);
         this->view_max_points().set(index, new_max_points);
         this->view_min_cells().set(index, new_min_cells);
@@ -269,7 +269,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
              ioj::sim::collision::CellCoord const new_min_cells,
              ioj::sim::collision::CellCoord const new_max_cells,
              EntityId const new_entity_ids) const {
-        assert(index < num());
+        assert((index < num()));
         this->view_min_points().set(index, new_min_points);
         this->view_max_points().set(index, new_max_points);
         this->view_min_cells().set(index, new_min_cells);
@@ -356,7 +356,7 @@ struct EntityCellData
              CellCoord const new_min_cells,
              CellCoord const new_max_cells,
              EntityId const new_entity_ids) {
-        assert(index < num());
+        assert((index < num()));
         view().view_min_points().set(index, new_min_points);
         view().view_max_points().set(index, new_max_points);
         view().view_min_cells().set(index, new_min_cells);

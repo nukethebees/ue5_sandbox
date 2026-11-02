@@ -62,7 +62,7 @@ struct SpinnerSimConfig {
             case Field::laser:
                 return invoke_field<Field::laser>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

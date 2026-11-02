@@ -1877,7 +1877,7 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     float x_at(std::uint32_t index) const;
     using equivalent_type = ioj::native_soa_fixture::ApiPair;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return equivalent_type{xs()[index], ys()[index]};
     }
 };
@@ -1903,7 +1903,7 @@ struct ResolvedView
     }
     using equivalent_type = ioj::native_soa_fixture::ApiPair;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return equivalent_type{xs()[index], ys()[index]};
     }
 };
@@ -1933,7 +1933,7 @@ struct ConstView : ViewImpl<true> {
     float x_at(std::uint32_t index) const;
     using equivalent_type = ioj::native_soa_fixture::ApiPair;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return equivalent_type{xs()[index], ys()[index]};
     }
 };
@@ -1958,7 +1958,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
     }
     using equivalent_type = ioj::native_soa_fixture::ApiPair;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return equivalent_type{xs()[index], ys()[index]};
     }
 };
@@ -2068,7 +2068,7 @@ struct ResolvedView
              float const new_values,
              ApiMask const new_masks,
              ioj::native_soa_fixture::ApiPair const new_positions) const {
-        assert(index < num());
+        assert((index < num()));
         this->values()[index] = new_values;
         this->masks()[index] = new_masks;
         this->view_positions().set(index, new_positions);
@@ -2136,7 +2136,7 @@ struct NATIVE_SOA_FIXTURE_API View
              float const new_values,
              ApiMask const new_masks,
              ioj::native_soa_fixture::ApiPair const new_positions) const {
-        assert(index < num());
+        assert((index < num()));
         this->values()[index] = new_values;
         this->masks()[index] = new_masks;
         this->view_positions().set(index, new_positions);
@@ -2211,7 +2211,7 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
              float const new_values,
              ApiMask const new_masks,
              ioj::native_soa_fixture::ApiPair const new_positions) {
-        assert(index < num());
+        assert((index < num()));
         view().values()[index] = new_values;
         view().masks()[index] = new_masks;
         view().view_positions().set(index, new_positions);
@@ -2308,7 +2308,7 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
     using equivalent_type = ioj::native_soa_fixture::ApiPair;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return equivalent_type{xs()[index], ys()[index]};
     }
 };
@@ -2326,7 +2326,7 @@ struct ResolvedView
     }
     using equivalent_type = ioj::native_soa_fixture::ApiPair;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return equivalent_type{xs()[index], ys()[index]};
     }
 };
@@ -2361,7 +2361,7 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
     using equivalent_type = ioj::native_soa_fixture::ApiPair;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return equivalent_type{xs()[index], ys()[index]};
     }
 };
@@ -2378,7 +2378,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
     }
     using equivalent_type = ioj::native_soa_fixture::ApiPair;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return equivalent_type{xs()[index], ys()[index]};
     }
 };
@@ -2445,7 +2445,7 @@ struct EquivalentOwner
     size_type add(ApiPair const value) { return add(value.x, value.y); }
     using equivalent_type = ApiPair;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return const_view()[index];
     }
   private:
@@ -2522,7 +2522,7 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
     using equivalent_type = ioj::Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return equivalent_type{horizontal()[index], vertical()[index], depth()[index]};
     }
 };
@@ -2540,7 +2540,7 @@ struct ResolvedView
     }
     using equivalent_type = ioj::Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return equivalent_type{horizontal()[index], vertical()[index], depth()[index]};
     }
 };
@@ -2576,7 +2576,7 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
     using equivalent_type = ioj::Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return equivalent_type{horizontal()[index], vertical()[index], depth()[index]};
     }
 };
@@ -2593,7 +2593,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
     }
     using equivalent_type = ioj::Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return equivalent_type{horizontal()[index], vertical()[index], depth()[index]};
     }
 };
@@ -2662,7 +2662,7 @@ struct AccessorOwner
     size_type add(Vector3f const value) { return add(value.x(), value.y(), value.z()); }
     using equivalent_type = Vector3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return const_view()[index];
     }
   private:

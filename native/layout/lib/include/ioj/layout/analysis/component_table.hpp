@@ -11,7 +11,6 @@
 
 #include "lispb/schema/indices.h"
 
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <memory_resource>

@@ -103,7 +103,7 @@ struct RangeValue {
             case Field::maximum:
                 return invoke_field<Field::maximum>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 
@@ -147,7 +147,7 @@ struct RangeSettings {
             case Field::enabled:
                 return invoke_field<Field::enabled>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 
@@ -189,7 +189,7 @@ struct ApiPair {
             case Field::y:
                 return invoke_field<Field::y>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 
@@ -231,7 +231,7 @@ struct FormerVisitorNames {
             case Field::field_name:
                 return invoke_field<Field::field_name>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 
@@ -260,7 +260,7 @@ struct EmptySettings {
         requires std::same_as<std::remove_const_t<Self>, EmptySettings>
     {
         switch (field) {}
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 };
@@ -305,7 +305,7 @@ struct WeaponSettings {
             case Field::asset_distance:
                 return invoke_field<Field::asset_distance>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 
@@ -354,7 +354,7 @@ struct ActorSettings {
             case Field::optional_limit:
                 return invoke_field<Field::optional_limit>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

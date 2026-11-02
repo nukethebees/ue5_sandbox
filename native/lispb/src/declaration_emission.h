@@ -25,7 +25,6 @@ struct DeclarationEmission {
     std::vector<StringId> reader_includes;
     std::vector<ModuleId> additional_modules;
     std::optional<std::string> tail_namespace;
-    bool source_dependencies{true};
     bool format_generated{};
 };
 

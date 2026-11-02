@@ -114,7 +114,7 @@ struct EntityInput {
             case Field::spawn_cooldown:
                 return invoke_field<Field::spawn_cooldown>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

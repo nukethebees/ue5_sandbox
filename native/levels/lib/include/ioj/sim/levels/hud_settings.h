@@ -61,7 +61,7 @@ struct HudSettings {
                 return invoke_field<Field::mission_status_update_period>(
                     self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

@@ -68,7 +68,7 @@ struct CapitalShipSimConfig {
             case Field::max_health:
                 return invoke_field<Field::max_health>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

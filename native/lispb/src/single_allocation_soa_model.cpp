@@ -83,8 +83,6 @@ class SingleAllocationModelLowering : public CppIRBuilder {
         auto const row{models.index(result)};
         models.schema[row] = schema;
         std::vector<TypeDependencyId> dependencies{
-            dependency("assert", "cassert"),
-            dependency("memory_resource", "memory_resource"),
             dependency("single_allocation_storage", "ioj/native_soa/storage.h")};
         std::vector<SingleAllocationColumnId> column_ids;
 

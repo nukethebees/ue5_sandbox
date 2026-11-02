@@ -246,12 +246,7 @@ class PackedEmitter : public CppIRBuilder {
     }
     auto text(std::string_view value) -> StringId { return store_text(value); }
     auto type(std::string_view value, NameOrigin origin = NameOrigin::enclosing) -> CppTypeId {
-        return named_type(
-            value,
-            origin,
-            value.starts_with("std::")
-                ? std::initializer_list<TypeDependencyId>{dependency(value, "cstdint")}
-                : std::initializer_list<TypeDependencyId>{});
+        return named_type(value, origin);
     }
     auto number(std::uint64_t value) -> Expr {
         return literal(
@@ -267,11 +262,6 @@ class PackedEmitter : public CppIRBuilder {
     }
     auto invoke(std::string_view name, std::initializer_list<Expr> args = {}) -> Expr {
         return call(named(name), args);
-    }
-    auto library_call(std::string_view name,
-                      std::string_view header,
-                      std::initializer_list<Expr> args) -> Expr {
-        return call(external(name, header), args);
     }
     auto template_call(std::string_view name,
                        std::string_view header,
@@ -346,10 +336,6 @@ class PackedEmitter : public CppIRBuilder {
         return result.value_or(literal("false"));
     }
     auto boolean(Predicate predicate) -> Expr { return predicate.value_or(literal("true")); }
-    auto assertion(Expr condition) -> NodeId {
-        return expr_stmt(
-            call(named("assert", {dependency("assert", "cassert")}), {parenthesized(condition)}));
-    }
     void assert_if(Nodes& body, Predicate predicate) {
         if (predicate) {
             body.push_back(assertion(*predicate));
@@ -736,7 +722,7 @@ class PackedEmitter : public CppIRBuilder {
                     return {};
                 }
                 return binary(BinaryOperator::less_equal,
-                              library_call("std::to_underlying", "utility", {value()}),
+                              call(type_reference(std_types().to_underlying), {value()}),
                               member_access(named(field), "value_mask"));
             }
         }
@@ -1212,11 +1198,11 @@ class PackedEmitter : public CppIRBuilder {
         auto const lower{range_bound(layout_name, "min")};
         auto const upper{range_bound(layout_name, "max")};
         auto const ldexp = [&](Expr mantissa, Expr exponent) {
-            return library_call("std::ldexp", "cmath", {mantissa, exponent});
+            return call(type_reference(std_types().ldexp), {mantissa, exponent});
         };
         auto const not_finite = [&](Expr value) {
             return unary(UnaryOperator::logical_not,
-                         library_call("std::isfinite", "cmath", {value}));
+                         call(type_reference(std_types().isfinite), {value}));
         };
         auto const fail_if = [&](Expr condition) {
             return if_stmt(condition, block({return_stmt(literal("false"))}));
@@ -1243,9 +1229,8 @@ class PackedEmitter : public CppIRBuilder {
             minimum = constant(metadata, path + "_minimum", std_types().f64, real(range.min));
             maximum = constant(metadata, path + "_maximum", std_types().f64, real(range.max));
             auto const codes{cast(std_types().f64, upper)};
-            decode = library_call(
-                "std::lerp",
-                "cmath",
+            decode = call(
+                type_reference(std_types().lerp),
                 {minimum,
                  maximum,
                  binary(BinaryOperator::divide, cast(std_types().f64, invoke(raw_name)), codes)});
@@ -1302,11 +1287,11 @@ class PackedEmitter : public CppIRBuilder {
         auto const scaled{named("scaled")};
         auto const rounded{named("rounded")};
         if (fixed.rounding[row] == FixedPointRounding::toward_zero) {
-            body.push_back(
-                variable("auto const", "rounded", library_call("std::trunc", "cmath", {scaled})));
+            body.push_back(variable(
+                "auto const", "rounded", call(type_reference(std_types().trunc), {scaled})));
         } else {
             body.push_back(
-                variable("auto", "rounded", library_call("std::floor", "cmath", {scaled})));
+                variable("auto", "rounded", call(type_reference(std_types().floor), {scaled})));
             body.push_back(variable(
                 "auto const", "fraction", binary(BinaryOperator::subtract, scaled, rounded)));
             auto const fraction{named("fraction")};
@@ -1314,7 +1299,7 @@ class PackedEmitter : public CppIRBuilder {
                 binary(BinaryOperator::logical_and,
                        binary(BinaryOperator::equal, fraction, literal("0.5")),
                        binary(BinaryOperator::not_equal,
-                              library_call("std::fmod", "cmath", {rounded, literal("2.0")}),
+                              call(type_reference(std_types().fmod), {rounded, literal("2.0")}),
                               literal("0.0")))};
             auto const round_up{binary(BinaryOperator::logical_or,
                                        binary(BinaryOperator::greater, fraction, literal("0.5")),

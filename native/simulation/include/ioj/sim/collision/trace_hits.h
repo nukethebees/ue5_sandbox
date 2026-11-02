@@ -124,7 +124,7 @@ struct ResolvedView
              EntityId const new_entities,
              ioj::sim::collision::StaticGeometryIndex const new_static_geometry_indices,
              ioj::sim::TraceHit const new_hits) const {
-        assert(index < num());
+        assert((index < num()));
         this->view_locations().set(index, new_locations);
         this->entities()[index] = new_entities;
         this->static_geometry_indices()[index] = new_static_geometry_indices;
@@ -180,7 +180,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
              EntityId const new_entities,
              ioj::sim::collision::StaticGeometryIndex const new_static_geometry_indices,
              ioj::sim::TraceHit const new_hits) const {
-        assert(index < num());
+        assert((index < num()));
         this->view_locations().set(index, new_locations);
         this->entities()[index] = new_entities;
         this->static_geometry_indices()[index] = new_static_geometry_indices;
@@ -257,7 +257,7 @@ struct TraceHits
              EntityId const new_entities,
              collision::StaticGeometryIndex const new_static_geometry_indices,
              TraceHit const new_hits) {
-        assert(index < num());
+        assert((index < num()));
         view().view_locations().set(index, new_locations);
         view().entities()[index] = new_entities;
         view().static_geometry_indices()[index] = new_static_geometry_indices;

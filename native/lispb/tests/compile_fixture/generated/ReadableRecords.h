@@ -78,7 +78,7 @@ struct PositionalChild {
             case Field::count:
                 return invoke_field<Field::count>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 
@@ -120,7 +120,7 @@ struct DefaultReadable {
             case Field::maybe:
                 return invoke_field<Field::maybe>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 
@@ -156,7 +156,7 @@ struct RecursiveReadable {
             case Field::children:
                 return invoke_field<Field::children>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 
@@ -201,7 +201,7 @@ struct ReadableChild {
             case Field::count:
                 return invoke_field<Field::count>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 
@@ -285,7 +285,7 @@ struct ReadableRecord {
             case Field::mode:
                 return invoke_field<Field::mode>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

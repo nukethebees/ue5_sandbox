@@ -47,7 +47,7 @@ struct LaserSimConfig {
                 return invoke_field<Field::n_preallocated_instances>(
                     self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

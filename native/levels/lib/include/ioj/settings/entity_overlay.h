@@ -118,7 +118,7 @@ struct EntityOverlay {
             case Field::soft_target:
                 return invoke_field<Field::soft_target>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

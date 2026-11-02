@@ -3,8 +3,18 @@
 
 #include "ioj/settings/game_settings.h"
 
+#include "ioj/settings/game_anti_aliasing_method.h"
+#include "ioj/settings/game_graphics_preset.h"
+#include "ioj/settings/game_quality_level.h"
+#include "ioj/settings/game_window_mode.h"
+#include "ioj/settings/screen_resolution.h"
+
 #include <array>
 #include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <span>
+#include <variant>
 
 namespace ioj {
 namespace {
@@ -664,7 +674,7 @@ auto game_setting_value(GameSettingsState const& state, GameSetting const id) ->
             return GameSettingValue{state.invert_gamepad_vertical_translation};
         }
     }
-    assert(false);
+    assert((false));
     return GameSettingValue{state.resolution};
 }
 

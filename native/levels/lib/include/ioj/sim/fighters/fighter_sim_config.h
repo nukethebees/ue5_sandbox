@@ -169,7 +169,7 @@ struct FighterSimConfig {
             case Field::los_check_buffer:
                 return invoke_field<Field::los_check_buffer>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

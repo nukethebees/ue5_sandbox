@@ -63,11 +63,7 @@ class ModuleAssembler : public CppIRBuilder {
         }
         if (settings_store.source[settings].has_value()) {
             source.add(include(store_text(source_include(ctx, settings)), IncludeStyle::quoted), 2);
-            if (std::ranges::any_of(emissions, [](DeclarationEmission const& emission) {
-                    return emission.source_dependencies;
-                })) {
-                source.add(include_dependencies(), 2);
-            }
+            source.add(include_dependencies(), 2);
         }
 
         std::vector<ModuleId> additional;

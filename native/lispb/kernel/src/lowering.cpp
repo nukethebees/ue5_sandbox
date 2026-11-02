@@ -140,13 +140,6 @@ auto raw_name(Document const& document, ExpandedVariantId const id) -> std::stri
     return result;
 }
 
-auto contains_constant(Expressions const& expressions, ExpressionId const expression) -> bool {
-    return expression.kind() == ExpressionKind::constant ||
-           (expression.kind() == ExpressionKind::binary &&
-            (contains_constant(expressions, expressions.left(expression)) ||
-             contains_constant(expressions, expressions.right(expression))));
-}
-
 auto array_names(Document const& document, ExpandedVariantId const id) -> std::vector<std::string> {
     auto const& expanded{document.expanded_variants};
     std::vector<std::string> result;

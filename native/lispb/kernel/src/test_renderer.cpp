@@ -17,6 +17,7 @@
 #include <kernel_codegen/variant_kind.h>
 #include <lispb/strings.h>
 
+#include <array>
 #include <cassert>
 #include <cctype>
 #include <cstddef>
@@ -221,20 +222,7 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
              2)
         .add(cpp.include(cpp.strings.intern("gtest/gtest.h"), lispb::codegen::IncludeStyle::system),
              2);
-    for (auto const include : {"array",
-                               "cmath",
-                               "cstddef",
-                               "cstdint",
-                               "cstring",
-                               "limits",
-                               "span",
-                               "string",
-                               "tuple",
-                               "type_traits"}) {
-        file_nodes.add(
-            cpp.include(cpp.strings.intern(include), lispb::codegen::IncludeStyle::system));
-    }
-    file_nodes.new_lines(2);
+    file_nodes.add(cpp.include_dependencies(), 2);
     auto const suite{"Generated" + pascal_case(document.text(document.modules.name(module)))};
     auto const namespace_name{suite + "Tests"};
     auto const expect_value{cpp.function("expect_value", cpp.types.std.void_)};
@@ -254,20 +242,15 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
         cpp.block({cpp.expr_stmt(cpp.call(cpp.named("EXPECT_FLOAT_EQ"), {actual, expected}))}),
         cpp.block({cpp.expr_stmt(cpp.call(cpp.named("EXPECT_DOUBLE_EQ"), {actual, expected}))}),
         true)};
-    auto const infinite{cpp.if_stmt(cpp.call(cpp.type_reference(cpp.types.named(
-                                                 "std::isinf", lispb::codegen::NameOrigin::global)),
-                                             {expected}),
+    auto const infinite{cpp.if_stmt(cpp.call(cpp.type_reference(cpp.types.std.isinf), {expected}),
                                     cpp.block({equal}),
                                     cpp.block({floating_equal}))};
-    auto const nan{cpp.if_stmt(cpp.call(cpp.type_reference(cpp.types.named(
-                                            "std::isnan", lispb::codegen::NameOrigin::global)),
-                                        {expected}),
-                               cpp.block({cpp.expr_stmt(cpp.call(
-                                   cpp.named("EXPECT_TRUE"),
-                                   {cpp.call(cpp.type_reference(cpp.types.named(
-                                                 "std::isnan", lispb::codegen::NameOrigin::global)),
-                                             {actual})}))}),
-                               cpp.block({infinite}))};
+    auto const nan{
+        cpp.if_stmt(cpp.call(cpp.type_reference(cpp.types.std.isnan), {expected}),
+                    cpp.block({cpp.expr_stmt(
+                        cpp.call(cpp.named("EXPECT_TRUE"),
+                                 {cpp.call(cpp.type_reference(cpp.types.std.isnan), {actual})}))}),
+                    cpp.block({infinite}))};
     cpp.set_function_body(
         expect_value,
         {cpp.if_stmt(
@@ -299,8 +282,7 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
                                                {cpp.subscript(cpp.named("actual"), index),
                                                 cpp.subscript(cpp.named("expected"), index)}))})),
          cpp.expr_stmt(cpp.call(cpp.named("EXPECT_EQ"),
-                                {cpp.call(cpp.type_reference(cpp.types.named(
-                                              "std::memcmp", lispb::codegen::NameOrigin::global)),
+                                {cpp.call(cpp.type_reference(cpp.types.std.memcmp),
                                           {cpp.binary(lispb::codegen::BinaryOperator::add,
                                                       cpp.named("actual"),
                                                       cpp.named("count")),
@@ -383,19 +365,24 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
             {cpp.types.template_type(cpp.types.std.tuple,
                                      {cpp.types.named("KernelCase"), cpp.types.std.size_t})})));
     declarations.push_back(cpp.lines(2));
-    declarations.push_back(cpp.raw("TEST_P(" + suite + R"(, MatchesReference) {
+    std::array const test_parts{cpp.raw_expr("TEST_P(" + suite + R"(, MatchesReference) {
     auto const& [test, count]{GetParam()};
     test.run(count);
 }
-INSTANTIATE_TEST_SUITE_P(Kernels, )" +
-                                   suite +
-                                   ", ::testing::Combine(::testing::ValuesIn(cases), "
-                                   "::testing::Values<std::size_t>(0, 1, 7, 8, 9, 31)), " +
-                                   R"(([](auto const& info) {
+INSTANTIATE_TEST_SUITE_P(Kernels, )" + suite +
+                                             ", ::testing::Combine(::testing::ValuesIn(cases), "
+                                             "::testing::Values<"),
+                                cpp.type_reference(cpp.types.std.size_t),
+                                cpp.raw_expr(R"(>(0, 1, 7, 8, 9, 31)), ([](auto const& info) {
     auto const& [test, count]{info.param};
-    return std::string{test.name} + "Count" + std::to_string(count);
+    return )"),
+                                cpp.type_reference(cpp.types.std.string),
+                                cpp.raw_expr("{test.name} + \"Count\" + "),
+                                cpp.type_reference(cpp.types.std.to_string),
+                                cpp.raw_expr(R"((count);
 }));
-)"));
+)")};
+    declarations.push_back(cpp.raw_parts(test_parts));
     file_nodes.add(cpp.namespace_node(cpp.strings.intern(namespace_name), declarations));
     auto const file{cpp.files.append(*document.emissions.tests(emission), file_nodes.build())};
     auto& flags{cpp.files.flags[cpp.files.index(file)]};

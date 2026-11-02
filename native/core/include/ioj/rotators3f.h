@@ -79,7 +79,7 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
     using equivalent_type = Rotator3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
@@ -96,7 +96,7 @@ struct ResolvedView
     }
     using equivalent_type = Rotator3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
@@ -132,7 +132,7 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
     using equivalent_type = Rotator3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
@@ -147,7 +147,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
     }
     using equivalent_type = Rotator3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
@@ -218,7 +218,7 @@ struct Rotators3f
     size_type add(Rotator3f const value) { return add(value.pitch, value.yaw, value.roll); }
     using equivalent_type = Rotator3f;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return const_view()[index];
     }
   private:

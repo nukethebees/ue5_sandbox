@@ -130,7 +130,7 @@ struct Radar {
                 return invoke_field<Field::objective_ring_thickness_pixels>(
                     self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

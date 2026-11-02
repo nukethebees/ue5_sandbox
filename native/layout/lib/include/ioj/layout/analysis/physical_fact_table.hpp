@@ -11,7 +11,6 @@
 #include "lispb/indices.h"
 #include "lispb/schema/enum_signedness.h"
 
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <memory_resource>

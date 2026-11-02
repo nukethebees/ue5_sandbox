@@ -79,7 +79,7 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
     using equivalent_type = ioj::sim::collision::CellCoord;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };
@@ -97,7 +97,7 @@ struct ResolvedView
     }
     using equivalent_type = ioj::sim::collision::CellCoord;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };
@@ -133,7 +133,7 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
     using equivalent_type = ioj::sim::collision::CellCoord;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };
@@ -150,7 +150,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
     }
     using equivalent_type = ioj::sim::collision::CellCoord;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return equivalent_type{xs()[index], ys()[index], zs()[index]};
     }
 };
@@ -221,7 +221,7 @@ struct CellCoords
     size_type add(CellCoord const value) { return add(value.x(), value.y(), value.z()); }
     using equivalent_type = CellCoord;
     auto operator[](std::uint32_t index) const -> equivalent_type {
-        assert(index < num());
+        assert((index < num()));
         return const_view()[index];
     }
   private:

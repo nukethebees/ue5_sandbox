@@ -116,7 +116,7 @@ struct ResolvedView
     using Base::Base;
     using Base::set;
     void set(size_type index, Vector3f const new_starts, Vector3f const new_ends) const {
-        assert(index < num());
+        assert((index < num()));
         this->view_starts().set(index, new_starts);
         this->view_ends().set(index, new_ends);
     }
@@ -162,7 +162,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
     using Base::Base;
     using Base::set;
     void set(size_type index, Vector3f const new_starts, Vector3f const new_ends) const {
-        assert(index < num());
+        assert((index < num()));
         this->view_starts().set(index, new_starts);
         this->view_ends().set(index, new_ends);
     }
@@ -231,7 +231,7 @@ struct LineTraces
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index, Vector3f const new_starts, Vector3f const new_ends) {
-        assert(index < num());
+        assert((index < num()));
         view().view_starts().set(index, new_starts);
         view().view_ends().set(index, new_ends);
     }

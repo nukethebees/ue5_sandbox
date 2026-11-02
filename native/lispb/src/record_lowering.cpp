@@ -83,12 +83,9 @@ class RecordLowering : public CppIRBuilder {
         std::vector<EnumValueId> values;
         std::vector<SwitchCaseId> cases;
         Nodes accessors;
-        auto const forwarded_visitor{
-            call(template_id(type_reference(named_type("std::forward",
-                                                       NameOrigin::global,
-                                                       {dependency("std::forward", "utility")})),
-                             {type_reference(named_type("Visitor"))}),
-                 {named("visitor")})};
+        auto const forwarded_visitor{call(template_id(type_reference(std_types().forward),
+                                                      {type_reference(named_type("Visitor"))}),
+                                          {named("visitor")})};
         for (auto const field : fields) {
             auto const member{members.name[members.index(field)]};
             values.push_back(enumerator(member));
@@ -122,18 +119,14 @@ class RecordLowering : public CppIRBuilder {
             parenthesized(binary(
                 BinaryOperator::logical_and,
                 record_type_matches(name),
-                binary(
-                    BinaryOperator::less,
-                    call(type_reference(named_type("std::to_underlying",
-                                                   NameOrigin::global,
-                                                   {dependency("std::to_underlying", "utility")})),
-                         {named("Selected")}),
-                    call(template_id(type_reference(named_type(
-                                         "ioj::enum_count",
-                                         NameOrigin::global,
-                                         {dependency("ioj::enum_count", "ioj/enum_traits.h")})),
-                                     {type_reference(decorate_type(
-                                         named_type("Self"), "typename ", "::Field"))}))))));
+                binary(BinaryOperator::less,
+                       call(type_reference(std_types().to_underlying), {named("Selected")}),
+                       call(template_id(type_reference(named_type(
+                                            "ioj::enum_count",
+                                            NameOrigin::global,
+                                            {dependency("ioj::enum_count", "ioj/enum_traits.h")})),
+                                        {type_reference(decorate_type(
+                                            named_type("Self"), "typename ", "::Field"))}))))));
         set_function_receiver(accessor, FunctionReceiver::static_);
         set_function_parameters(accessor, {parameter("Self&", fields.empty() ? "" : "self")});
         function_flags(accessor).set_is_constexpr(true);
@@ -176,14 +169,10 @@ class RecordLowering : public CppIRBuilder {
         function_flags(function_id).set_define_in_header(true);
         set_function_body(function_id,
                           {switch_stmt(named("field"), cases),
-                           expr_stmt(call(named("assert", {dependency("assert", "cassert")}),
-                                          {binary(BinaryOperator::logical_and,
-                                                  literal("false"),
-                                                  string_literal("Invalid record field"))})),
-                           expr_stmt(call(type_reference(
-                               named_type("std::unreachable",
-                                          NameOrigin::global,
-                                          {dependency("std::unreachable", "utility")}))))});
+                           assertion(binary(BinaryOperator::logical_and,
+                                            literal("false"),
+                                            string_literal("Invalid record field"))),
+                           expr_stmt(call(type_reference(std_types().unreachable)))});
         result.add(header_function(function_id), 2);
         return result.build();
     }

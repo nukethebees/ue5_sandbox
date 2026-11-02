@@ -65,7 +65,6 @@ class SettingsLowering : public CppIRBuilder {
         auto const settings{modules.settings[module_row]};
         auto const settings_row{settings_store.index(settings)};
         auto const setting_list{ctx.declarations.items(modules.settings_list[module_row])};
-        std::vector<TypeDependencyId> dependencies;
         std::vector<CppTypeId> setting_types;
         setting_types.reserve(setting_list.size());
         for (auto const setting : setting_list) {
@@ -73,7 +72,7 @@ class SettingsLowering : public CppIRBuilder {
                 ctx.resolve(setting_schemas.value_type[setting_schemas.index(setting)]));
         }
         auto const functions{build_functions(ctx, module, setting_types)};
-        auto result{build_type_headers(ctx, module, setting_types, dependencies)};
+        auto result{build_type_headers(ctx, module, setting_types)};
         auto const include_order{
             ctx.declarations.items(settings_store.include_order[settings_row])};
         auto const include_directory{
@@ -90,7 +89,7 @@ class SettingsLowering : public CppIRBuilder {
              (snake_case_type_name(ctx.text(modules.state_name[module_row])) + ".h"))
                 .generic_string()};
         header_nodes.add(include(store_text(state_include), IncludeStyle::quoted), 1)
-            .add(include(store_text("span"), IncludeStyle::system), 2);
+            .add(include_dependencies(), 2);
         auto const prelude{settings_store.prelude_lines[settings_row]};
         if (!prelude.empty()) {
             header_nodes.add(raw(join_lines(ctx, prelude)), 2);
@@ -113,8 +112,7 @@ class SettingsLowering : public CppIRBuilder {
             auto source_nodes{node_list()};
             source_nodes
                 .add(include(store_text(source_include(ctx, settings)), IncludeStyle::quoted), 1)
-                .add(include(store_text("array"), IncludeStyle::system), 1)
-                .add(include(store_text("cassert"), IncludeStyle::system), 2)
+                .add(include_dependencies(), 2)
                 .append(build_source(ctx, module, functions));
             source_file = append_file(*path, source_nodes.build());
             file_flags(source_file).set_pragma_once(false);
@@ -263,7 +261,7 @@ class SettingsLowering : public CppIRBuilder {
         auto const first_name{decls.settings.name[settings.front()]};
         set_function_body(getter,
                           {switch_stmt(id, getter_cases),
-                           expr_stmt(call(named("assert"), {literal("false")})),
+                           assertion(literal("false")),
                            return_stmt(init_list({member_access(state, first_name)},
                                                  intern_type("GameSettingValue")))});
 
@@ -283,9 +281,8 @@ class SettingsLowering : public CppIRBuilder {
                 block({
                     variable("auto const*",
                              "typed_value",
-                             call(template_id(
-                                      type_reference(named_type("std::get_if", NameOrigin::global)),
-                                      {type_reference(setting_types[index])}),
+                             call(template_id(type_reference(std_types().get_if),
+                                              {type_reference(setting_types[index])}),
                                   {unary(UnaryOperator::address_of, value)})),
                     if_stmt(binary(BinaryOperator::equal, typed_value, literal("nullptr")),
                             block({return_stmt(literal("false"))})),
@@ -356,8 +353,8 @@ class SettingsLowering : public CppIRBuilder {
     }
     auto build_type_headers(LoweringContext& ctx,
                             ModuleHandle const module,
-                            std::span<CppTypeId const> const setting_types,
-                            std::vector<TypeDependencyId>& dependencies) -> std::vector<ModuleId> {
+                            std::span<CppTypeId const> const setting_types)
+        -> std::vector<ModuleId> {
         auto const& modules{ctx.declarations.settings_modules};
         auto const& setting_schemas{ctx.declarations.settings};
         auto const& controls{ctx.declarations.setting_controls};
@@ -380,9 +377,6 @@ class SettingsLowering : public CppIRBuilder {
             auto const row{setting_schemas.index(setting)};
             auto const control_row{controls.index(setting_schemas.control[row])};
             auto const type{setting_types[index]};
-            auto const required_dependencies{type_dependencies(type)};
-            dependencies.insert(
-                dependencies.end(), required_dependencies.begin(), required_dependencies.end());
             if (unique_types.insert(type_spelling_id(type)).second) {
                 value_types.push_back(type);
             }
@@ -414,13 +408,9 @@ class SettingsLowering : public CppIRBuilder {
         std::vector<ModuleId> result;
         auto emit_header = [&](std::string_view const name,
                                NodeId const declaration_id,
-                               std::initializer_list<std::string_view> const standard_headers,
                                std::initializer_list<std::string_view> const type_headers) {
             auto header{node_list()};
             header.add(include_dependencies(), 1);
-            for (auto const include_value : standard_headers) {
-                header.add(include(store_text(include_value), IncludeStyle::system), 1);
-            }
             for (auto const type : type_headers) {
                 auto const include_value{
                     (include_directory / (snake_case_type_name(type) + ".h")).generic_string()};
@@ -446,8 +436,7 @@ class SettingsLowering : public CppIRBuilder {
             for (auto const& value : names) {
                 values.push_back(enumerator(store_text(value)));
             }
-            emit_header(
-                name, enumeration(store_text(name), std_types().u8, values), {"cstdint"}, {});
+            emit_header(name, enumeration(store_text(name), std_types().u8, values), {});
         };
         add_enum("GameSetting", setting_names);
         add_enum("GameSettingCategory", category_names);
@@ -472,39 +461,37 @@ class SettingsLowering : public CppIRBuilder {
         }
         add_enum("GameSettingAvailabilityProvider", availability_names);
 
-        auto add_record =
-            [&](std::string_view const name,
-                std::initializer_list<std::pair<std::string_view, std::string_view>> fields,
-                std::initializer_list<std::string_view> const includes) {
-                auto members{node_list()};
-                for (auto const& [type, member] : fields) {
-                    members.add(
-                        instance_member(reference_type(intern_type(type)), store_text(member)), 1);
-                }
-                auto const record_id{record(store_text(name), members.build())};
-                set_record_export_specifier(record_id, modules.export_specifier[module_row]);
-                emit_header(name, record_id, {"string_view"}, includes);
-            };
+        auto add_record = [&](std::string_view const name,
+                              std::initializer_list<std::pair<CppTypeId, std::string_view>> fields,
+                              std::initializer_list<std::string_view> const includes) {
+            auto members{node_list()};
+            for (auto const& [type, member] : fields) {
+                members.add(instance_member(type, store_text(member)), 1);
+            }
+            auto const record_id{record(store_text(name), members.build())};
+            set_record_export_specifier(record_id, modules.export_specifier[module_row]);
+            emit_header(name, record_id, includes);
+        };
         add_record("GameSettingCategoryDescriptor",
-                   {{"GameSettingCategory", "id"}, {"std::string_view", "label"}},
+                   {{named_type("GameSettingCategory"), "id"}, {std_types().string_view, "label"}},
                    {"GameSettingCategory"});
         add_record("GameSettingDescriptor",
-                   {{"GameSetting", "id"},
-                    {"GameSettingCategory", "category"},
-                    {"GameSettingValueType", "value_type"},
-                    {"GameSettingBackend", "backend"},
-                    {"SettingApplyMode", "apply_mode"},
-                    {"GameSettingDevice", "device"},
-                    {"SettingControlKind", "control_kind"},
-                    {"GameSettingOptionProvider", "options_provider"},
-                    {"GameSettingAvailabilityProvider", "availability_provider"},
-                    {"char const*", "name"},
-                    {"std::string_view", "label"},
-                    {"std::string_view", "tooltip"},
-                    {"double", "minimum"},
-                    {"double", "maximum"},
-                    {"double", "step"},
-                    {"char const*", "custom_row"}},
+                   {{named_type("GameSetting"), "id"},
+                    {named_type("GameSettingCategory"), "category"},
+                    {named_type("GameSettingValueType"), "value_type"},
+                    {named_type("GameSettingBackend"), "backend"},
+                    {named_type("SettingApplyMode"), "apply_mode"},
+                    {named_type("GameSettingDevice"), "device"},
+                    {named_type("SettingControlKind"), "control_kind"},
+                    {named_type("GameSettingOptionProvider"), "options_provider"},
+                    {named_type("GameSettingAvailabilityProvider"), "availability_provider"},
+                    {decorate_type(std_types().char_, "", " const*"), "name"},
+                    {std_types().string_view, "label"},
+                    {std_types().string_view, "tooltip"},
+                    {std_types().f64, "minimum"},
+                    {std_types().f64, "maximum"},
+                    {std_types().f64, "step"},
+                    {decorate_type(std_types().char_, "", " const*"), "custom_row"}},
                    {"GameSetting",
                     "GameSettingCategory",
                     "GameSettingValueType",
@@ -533,16 +520,13 @@ class SettingsLowering : public CppIRBuilder {
         state_members.new_lines(2).add(header_function(equality), 1);
         auto const state{record(state_name, state_members.build())};
         set_record_export_specifier(state, modules.export_specifier[module_row]);
-        set_record_dependencies(state, dependencies);
-        emit_header(ctx.text(state_name), state, {}, {});
+        emit_header(ctx.text(state_name), state, {});
         emit_header("GameSettingValue",
                     using_declaration(store_text("GameSettingValue"),
                                       template_type(std_types().variant, value_types)),
-                    {"variant"},
                     {});
         emit_header(ctx.text(modules.api_name[module_row]),
                     settings_api(ctx, module, setting_types),
-                    {},
                     {"GameSetting", ctx.text(state_name), "GameSettingValue"});
         return result;
     }

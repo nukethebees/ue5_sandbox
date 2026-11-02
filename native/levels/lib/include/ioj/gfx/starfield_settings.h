@@ -51,7 +51,7 @@ struct GenerationSettings {
             case Field::random_seed:
                 return invoke_field<Field::random_seed>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 
@@ -114,7 +114,7 @@ struct StarSettings {
             case Field::parallax_strength:
                 return invoke_field<Field::parallax_strength>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 
@@ -161,7 +161,7 @@ struct GalacticBandSettings {
             case Field::width_degrees:
                 return invoke_field<Field::width_degrees>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 
@@ -205,7 +205,7 @@ struct StellarClusterSettings {
             case Field::width_degrees:
                 return invoke_field<Field::width_degrees>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 
@@ -255,7 +255,7 @@ struct DustLaneSettings {
             case Field::irregularity:
                 return invoke_field<Field::irregularity>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 
@@ -313,7 +313,7 @@ struct BrightStarSettings {
             case Field::shape_strength:
                 return invoke_field<Field::shape_strength>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 
@@ -359,7 +359,7 @@ struct TwinkleSettings {
             case Field::speed:
                 return invoke_field<Field::speed>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 
@@ -403,7 +403,7 @@ struct GalacticHazeSettings {
             case Field::width_degrees:
                 return invoke_field<Field::width_degrees>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 
@@ -447,7 +447,7 @@ struct GalacticCoreSettings {
             case Field::width_degrees:
                 return invoke_field<Field::width_degrees>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 
@@ -491,7 +491,7 @@ struct NebularKnotSettings {
             case Field::size_degrees:
                 return invoke_field<Field::size_degrees>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 
@@ -583,7 +583,7 @@ struct Settings {
             case Field::nebular_knot:
                 return invoke_field<Field::nebular_knot>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

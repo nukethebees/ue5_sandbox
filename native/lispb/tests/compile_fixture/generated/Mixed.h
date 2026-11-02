@@ -60,7 +60,7 @@ struct CrossSettings {
             case Field::actor:
                 return invoke_field<Field::actor>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

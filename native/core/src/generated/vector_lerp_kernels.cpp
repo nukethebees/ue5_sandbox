@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <span>
 
 namespace vector_lerp_detail {
 [[noreturn]] void invariant_failed() noexcept {

@@ -459,7 +459,7 @@ struct ResolvedView
              float const new_target_distance_sq,
              float const new_target_distances,
              float const new_target_radii) const {
-        assert(index < num());
+        assert((index < num()));
         this->entity_ids()[index] = new_entity_ids;
         this->integral_biases()[index] = new_integral_biases;
         this->float_biases()[index] = new_float_biases;
@@ -699,7 +699,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
              float const new_target_distance_sq,
              float const new_target_distances,
              float const new_target_radii) const {
-        assert(index < num());
+        assert((index < num()));
         this->entity_ids()[index] = new_entity_ids;
         this->integral_biases()[index] = new_integral_biases;
         this->float_biases()[index] = new_float_biases;
@@ -912,7 +912,7 @@ struct FighterEntityData
              float const new_target_distance_sq,
              float const new_target_distances,
              float const new_target_radii) {
-        assert(index < num());
+        assert((index < num()));
         view().entity_ids()[index] = new_entity_ids;
         view().integral_biases()[index] = new_integral_biases;
         view().float_biases()[index] = new_float_biases;

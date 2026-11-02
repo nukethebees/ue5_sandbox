@@ -116,7 +116,7 @@ struct SettingsValues {
             case Field::starfield:
                 return invoke_field<Field::starfield>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

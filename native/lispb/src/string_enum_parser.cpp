@@ -92,7 +92,7 @@ class StringEnumParserLowering : public CppIRBuilder {
                 binary(BinaryOperator::equal, input, string_literal(entry.key.substr(prefix_size))),
                 block({return_stmt(entry.value)})));
         }
-        body.add(return_stmt(type_reference(named_type("std::nullopt", NameOrigin::global))));
+        body.add(return_stmt(type_reference(std_types().nullopt)));
         return body.build();
     }
     auto length_bucket(Expr const input,
@@ -128,9 +128,7 @@ class StringEnumParserLowering : public CppIRBuilder {
                 switch_case(character_literal(character),
                             block(length_bucket(input, length, group, prefix_size, position + 1))));
         }
-        cases.push_back(switch_case(
-            {},
-            block({return_stmt(type_reference(named_type("std::nullopt", NameOrigin::global)))})));
+        cases.push_back(switch_case({}, block({return_stmt(type_reference(std_types().nullopt))})));
         auto const selected_character{static_cast_expr(
             std_types().unsigned_char, subscript(input, literal(std::to_string(position))))};
         return {switch_stmt(selected_character, cases)};
@@ -152,8 +150,7 @@ class StringEnumParserLowering : public CppIRBuilder {
             body.add(
                 if_stmt(unary(UnaryOperator::logical_not,
                               call(member_access(input, "starts_with"), {string_literal(prefix)})),
-                        block({return_stmt(
-                            type_reference(named_type("std::nullopt", NameOrigin::global)))})),
+                        block({return_stmt(type_reference(std_types().nullopt))})),
                 2);
             body.add(variable("auto const",
                               "suffix",
@@ -173,9 +170,7 @@ class StringEnumParserLowering : public CppIRBuilder {
                 switch_case(literal(std::to_string(length)),
                             block(length_bucket(suffix, length, group, prefix.size()))));
         }
-        cases.push_back(switch_case(
-            {},
-            block({return_stmt(type_reference(named_type("std::nullopt", NameOrigin::global)))})));
+        cases.push_back(switch_case({}, block({return_stmt(type_reference(std_types().nullopt))})));
         body.add(switch_stmt(call(member_access(suffix, "size")), cases));
         return body.build();
     }

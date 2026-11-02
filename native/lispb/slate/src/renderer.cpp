@@ -87,11 +87,9 @@ class Renderer {
             ir_.function_flags(constructor).set_define_in_header(true);
             children.push_back(ir_.header_function(constructor));
         }
-        bool has_parameters{};
         auto const functions{document_.declarations.functions[index]};
         auto const end{functions.begin + functions.count};
         for (auto function{functions.begin}; function < end; ++function) {
-            has_parameters = has_parameters || document_.functions.parameters[function].count != 0;
             children.push_back(render_function(FunctionId{function}, library));
         }
         if (!library) {
@@ -108,10 +106,7 @@ class Renderer {
                                       ? std::string{"SlateGenerated"}
                                       : "SlateGenerated::" + owner.substr(0, separator)};
         lispb::codegen::Nodes nodes;
-        if (has_parameters) {
-            nodes.push_back(
-                ir_.include(ir_.store_text("utility"), lispb::codegen::IncludeStyle::system));
-        }
+        nodes.push_back(ir_.include_dependencies());
         nodes.push_back(
             ir_.namespace_node(ir_.strings.intern(namespace_name), std::move(children)));
         auto const file{
@@ -165,10 +160,9 @@ class Renderer {
 
     auto forward_parameter(std::string const& parameter) -> Expr {
         auto const type{ir_.types.intern("decltype(" + parameter + ")")};
-        return ir_.call(ir_.template_id(ir_.type_reference(ir_.types.named(
-                                            "std::forward", lispb::codegen::NameOrigin::global)),
-                                        {ir_.type_reference(type)}),
-                        {ir_.named(parameter)});
+        return ir_.call(
+            ir_.template_id(ir_.type_reference(ir_.types.std.forward), {ir_.type_reference(type)}),
+            {ir_.named(parameter)});
     }
 
     auto render_child(ChildId const child) -> Expr {

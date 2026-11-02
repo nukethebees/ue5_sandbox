@@ -280,9 +280,9 @@ class RecordReaderLowering : public CppIRBuilder {
             if (group != groups.end()) {
                 group->condition = binary(BinaryOperator::logical_or, group->condition, condition);
             } else {
-                auto const action{options.exclude ? expr_stmt(call(type_reference(named_type(
-                                                        "std::unreachable", NameOrigin::global))))
-                                                  : read_field(ctx, field, named("member"))};
+                auto const action{options.exclude
+                                      ? expr_stmt(call(type_reference(std_types().unreachable)))
+                                      : read_field(ctx, field, named("member"))};
                 groups.push_back({options, condition, action});
             }
         }
@@ -310,9 +310,7 @@ class RecordReaderLowering : public CppIRBuilder {
         auto const positional{records.s7_positional[row] != 0};
         auto const decode_ctx{named("ctx")};
         auto const errors{member_access(decode_ctx, "errors")};
-        auto move = [&](Expr value) {
-            return call(type_reference(named_type("std::move", NameOrigin::global)), {value});
-        };
+        auto move = [&](Expr value) { return call(type_reference(std_types().move), {value}); };
         auto const unexpected{init_list({move(errors)}, std_types().unexpected)};
         auto body{node_list()};
         if (constructing) {
@@ -401,10 +399,10 @@ class RecordReaderLowering : public CppIRBuilder {
                 if (records.generate_visitor[row]) {
                     // Stage construction before an object exists; excluded fields cannot be looked
                     // up.
-                    cases.push_back(switch_case({},
-                                                block({expr_stmt(call(type_reference(named_type(
-                                                    "std::unreachable", NameOrigin::global))))}),
-                                                false));
+                    cases.push_back(switch_case(
+                        {},
+                        block({expr_stmt(call(type_reference(std_types().unreachable)))}),
+                        false));
                 }
                 std::array const parameters{parameter("Field const", "field"),
                                             parameter("auto const&", "read")};

@@ -53,7 +53,7 @@ struct TickSettings {
             case Field::time_scale:
                 return invoke_field<Field::time_scale>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

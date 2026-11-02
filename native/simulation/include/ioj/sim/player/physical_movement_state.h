@@ -51,7 +51,7 @@ struct PhysicalMovementState {
             case Field::velocity:
                 return invoke_field<Field::velocity>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

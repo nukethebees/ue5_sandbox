@@ -10,7 +10,6 @@
 
 #include "codegen/schema/packed_integer_value.h"
 
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <memory_resource>

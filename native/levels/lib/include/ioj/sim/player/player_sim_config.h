@@ -111,7 +111,7 @@ struct PlayerSimConfig {
             case Field::laser_fire_rate:
                 return invoke_field<Field::laser_fire_rate>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

@@ -59,7 +59,7 @@ struct OverlapResponseConfig {
             case Field::cell_size:
                 return invoke_field<Field::cell_size>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

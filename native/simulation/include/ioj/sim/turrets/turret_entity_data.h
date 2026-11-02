@@ -262,7 +262,7 @@ struct ResolvedView
              EntityId const new_target_ids,
              Vector3f const new_target_locations,
              Vector3f const new_target_velocities) const {
-        assert(index < num());
+        assert((index < num()));
         this->entity_ids()[index] = new_entity_ids;
         this->integral_biases()[index] = new_integral_biases;
         this->view_locations().set(index, new_locations);
@@ -393,7 +393,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
              EntityId const new_target_ids,
              Vector3f const new_target_locations,
              Vector3f const new_target_velocities) const {
-        assert(index < num());
+        assert((index < num()));
         this->entity_ids()[index] = new_entity_ids;
         this->integral_biases()[index] = new_integral_biases;
         this->view_locations().set(index, new_locations);
@@ -521,7 +521,7 @@ struct TurretEntityData
              EntityId const new_target_ids,
              Vector3f const new_target_locations,
              Vector3f const new_target_velocities) {
-        assert(index < num());
+        assert((index < num()));
         view().entity_ids()[index] = new_entity_ids;
         view().integral_biases()[index] = new_integral_biases;
         view().view_locations().set(index, new_locations);

@@ -137,7 +137,7 @@ struct ResolvedView
              Vector3f const new_locations,
              Rotator3f const new_rotations,
              ::ioj::Team const new_teams) const {
-        assert(index < num());
+        assert((index < num()));
         this->entity_ids()[index] = new_entity_ids;
         this->view_locations().set(index, new_locations);
         this->view_rotations().set(index, new_rotations);
@@ -201,7 +201,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
              Vector3f const new_locations,
              Rotator3f const new_rotations,
              ::ioj::Team const new_teams) const {
-        assert(index < num());
+        assert((index < num()));
         this->entity_ids()[index] = new_entity_ids;
         this->view_locations().set(index, new_locations);
         this->view_rotations().set(index, new_rotations);
@@ -280,7 +280,7 @@ struct CapitalEntityData
              Vector3f const new_locations,
              Rotator3f const new_rotations,
              ::ioj::Team const new_teams) {
-        assert(index < num());
+        assert((index < num()));
         view().entity_ids()[index] = new_entity_ids;
         view().view_locations().set(index, new_locations);
         view().view_rotations().set(index, new_rotations);

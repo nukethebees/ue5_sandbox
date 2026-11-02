@@ -26,7 +26,6 @@ auto operand_names(Document const& document, ExpandedVariantId id, std::size_t o
     -> std::vector<std::string>;
 auto output_names(Document const& document, ExpandedVariantId id) -> std::vector<std::string>;
 auto raw_name(Document const& document, ExpandedVariantId id) -> std::string;
-auto contains_constant(Expressions const& expressions, ExpressionId expression) -> bool;
 auto array_names(Document const& document, ExpandedVariantId id) -> std::vector<std::string>;
 auto count_source(Document const& document, ExpandedVariantId id) -> std::string;
 auto standard_type(lispb::codegen::CppTypes const& types, ScalarType type)

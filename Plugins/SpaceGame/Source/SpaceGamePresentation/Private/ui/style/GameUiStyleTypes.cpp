@@ -3,6 +3,8 @@
 
 #include "SpaceGamePresentation/ui/style/GameUiStyleTypes.h"
 
+#include "CoreMinimal.h"
+
 namespace {
 auto get_game_ui_icon_name(EGameUiIcon const value) -> TCHAR const* {
     return ioj::enum_string<ioj::Name>(value).data();

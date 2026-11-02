@@ -203,7 +203,7 @@ struct ResolvedView
              EntityId const new_instigator_ids,
              float const new_initial_lifetimes,
              float const new_spawn_times) const {
-        assert(index < num());
+        assert((index < num()));
         this->active()[index] = new_active;
         this->sources()[index] = new_sources;
         this->view_locations().set(index, new_locations);
@@ -300,7 +300,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
              EntityId const new_instigator_ids,
              float const new_initial_lifetimes,
              float const new_spawn_times) const {
-        assert(index < num());
+        assert((index < num()));
         this->active()[index] = new_active;
         this->sources()[index] = new_sources;
         this->view_locations().set(index, new_locations);
@@ -405,7 +405,7 @@ struct LaserEntities
              EntityId const new_instigator_ids,
              float const new_initial_lifetimes,
              float const new_spawn_times) {
-        assert(index < num());
+        assert((index < num()));
         view().active()[index] = new_active;
         view().sources()[index] = new_sources;
         view().view_locations().set(index, new_locations);

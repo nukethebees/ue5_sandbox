@@ -58,7 +58,7 @@ struct CampaignDefinition {
             case Field::level_ids:
                 return invoke_field<Field::level_ids>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

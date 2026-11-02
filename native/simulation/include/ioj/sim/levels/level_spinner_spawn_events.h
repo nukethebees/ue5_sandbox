@@ -122,7 +122,7 @@ struct ResolvedView
              Vector3f const new_locations,
              float const new_yaws,
              std::int32_t const new_initial_fire_point_indices) const {
-        assert(index < num());
+        assert((index < num()));
         this->entity_indices()[index] = new_entity_indices;
         this->view_locations().set(index, new_locations);
         this->yaws()[index] = new_yaws;
@@ -181,7 +181,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
              Vector3f const new_locations,
              float const new_yaws,
              std::int32_t const new_initial_fire_point_indices) const {
-        assert(index < num());
+        assert((index < num()));
         this->entity_indices()[index] = new_entity_indices;
         this->view_locations().set(index, new_locations);
         this->yaws()[index] = new_yaws;
@@ -261,7 +261,7 @@ struct LevelSpinnerSpawnEvents
              Vector3f const new_locations,
              float const new_yaws,
              std::int32_t const new_initial_fire_point_indices) {
-        assert(index < num());
+        assert((index < num()));
         view().entity_indices()[index] = new_entity_indices;
         view().view_locations().set(index, new_locations);
         view().yaws()[index] = new_yaws;

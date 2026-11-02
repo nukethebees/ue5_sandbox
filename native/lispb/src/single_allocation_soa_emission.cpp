@@ -399,8 +399,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
                           {member_initializer(
                               owner_name,
                               unary(UnaryOperator::dereference,
-                                    call(type_reference(named_type("std::pmr::get_default_resource",
-                                                                   NameOrigin::global)))))});
+                                    call(type_reference(std_types().pmr.get_default_resource))))});
         auto const resource_constructor{constructor(owner_name, true)};
         set_function_parameters(
             resource_constructor,
@@ -810,9 +809,9 @@ class SingleAllocationEmitter : public CppIRBuilder {
     }
     auto view_validation_nodes(std::string const& name, bool strided) -> Nodes {
         auto const validation{template_id(
-            type_reference(named_type(strided ? "std::is_trivially_copyable_v"
-                                              : "ioj::soa_storage_detail::validate_compact_view",
-                                      NameOrigin::global)),
+            type_reference(strided ? std_types().is_trivially_copyable_v
+                                   : named_type("ioj::soa_storage_detail::validate_compact_view",
+                                                NameOrigin::global)),
             {type_reference(named_type(name))})};
         return {static_assertion(strided ? validation : call(validation))};
     }

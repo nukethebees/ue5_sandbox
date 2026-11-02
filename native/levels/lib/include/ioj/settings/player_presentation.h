@@ -46,7 +46,7 @@ struct PlayerPresentation {
                 return invoke_field<Field::boost_effect_colour_intensity>(
                     self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

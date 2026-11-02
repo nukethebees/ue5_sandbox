@@ -169,7 +169,7 @@ struct ResolvedView
              Health const new_healths,
              float const new_initial_fighter_spawn_delays,
              float const new_fighter_spawn_cooldowns) const {
-        assert(index < num());
+        assert((index < num()));
         this->entity_indices()[index] = new_entity_indices;
         this->view_locations().set(index, new_locations);
         this->view_rotations().set(index, new_rotations);
@@ -248,7 +248,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
              Health const new_healths,
              float const new_initial_fighter_spawn_delays,
              float const new_fighter_spawn_cooldowns) const {
-        assert(index < num());
+        assert((index < num()));
         this->entity_indices()[index] = new_entity_indices;
         this->view_locations().set(index, new_locations);
         this->view_rotations().set(index, new_rotations);
@@ -342,7 +342,7 @@ struct LevelCapitalSpawnEvents
              Health const new_healths,
              float const new_initial_fighter_spawn_delays,
              float const new_fighter_spawn_cooldowns) {
-        assert(index < num());
+        assert((index < num()));
         view().entity_indices()[index] = new_entity_indices;
         view().view_locations().set(index, new_locations);
         view().view_rotations().set(index, new_rotations);

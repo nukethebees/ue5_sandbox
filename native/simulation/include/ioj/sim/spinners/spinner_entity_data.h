@@ -128,7 +128,7 @@ struct ResolvedView
              float const new_yaws,
              std::int16_t const new_laser_cooldowns,
              std::int32_t const new_next_fire_point_indices) const {
-        assert(index < num());
+        assert((index < num()));
         this->entity_ids()[index] = new_entity_ids;
         this->view_locations().set(index, new_locations);
         this->yaws()[index] = new_yaws;
@@ -190,7 +190,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
              float const new_yaws,
              std::int16_t const new_laser_cooldowns,
              std::int32_t const new_next_fire_point_indices) const {
-        assert(index < num());
+        assert((index < num()));
         this->entity_ids()[index] = new_entity_ids;
         this->view_locations().set(index, new_locations);
         this->yaws()[index] = new_yaws;
@@ -271,7 +271,7 @@ struct SpinnerEntityData
              float const new_yaws,
              std::int16_t const new_laser_cooldowns,
              std::int32_t const new_next_fire_point_indices) {
-        assert(index < num());
+        assert((index < num()));
         view().entity_ids()[index] = new_entity_ids;
         view().view_locations().set(index, new_locations);
         view().yaws()[index] = new_yaws;

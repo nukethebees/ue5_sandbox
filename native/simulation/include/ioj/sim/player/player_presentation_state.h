@@ -51,7 +51,7 @@ struct PlayerPresentationState {
                 return invoke_field<Field::boost_start_sequence>(self,
                                                                  std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

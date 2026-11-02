@@ -56,7 +56,7 @@ struct SettingsTarget {
             case Field::external_value:
                 return invoke_field<Field::external_value>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

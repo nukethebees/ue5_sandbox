@@ -46,7 +46,7 @@ struct TurretPresentation {
                 return invoke_field<Field::death_effect_scale>(self,
                                                                std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

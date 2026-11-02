@@ -210,9 +210,7 @@ class SoaApiLowering : public CppIRBuilder {
             set_function_parameters(function_id, {parameter(std_types().u32, "index")});
             set_function_body(
                 function_id,
-                {expr_stmt(
-                     call(named("assert"),
-                          {binary(BinaryOperator::less, named("index"), call(named("num")))})),
+                {assertion(binary(BinaryOperator::less, named("index"), call(named("num")))),
                  return_stmt(expression)});
             set_function_return_type(
                 function_id, intern_type("equivalent_type"), ReturnSyntax::trailing);
@@ -344,8 +342,8 @@ class SoaApiLowering : public CppIRBuilder {
         std::vector<FunctionParameterId> logical_parameters;
         std::vector<Expr> logical_arguments{named("index")};
         auto logical_assignments{node_list()};
-        logical_assignments.add(expr_stmt(call(
-            named("assert"), {binary(BinaryOperator::less, named("index"), call(named("num")))})));
+        logical_assignments.add(
+            assertion(binary(BinaryOperator::less, named("index"), call(named("num")))));
         auto collect_logical = [&](auto&& self,
                                    DeclarationHandle current,
                                    std::vector<std::string> const& path) -> void {

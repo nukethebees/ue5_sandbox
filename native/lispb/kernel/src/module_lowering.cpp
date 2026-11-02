@@ -346,10 +346,7 @@ auto lower_module(lispb::codegen::CppIR& cpp,
     cpp.function_flags(invariant_failed).set_is_noreturn(true);
     cpp.set_function_noexcept(invariant_failed);
     cpp.set_function_body(invariant_failed,
-                          {cpp.expr_stmt(cpp.call(cpp.type_reference(
-                              cpp.types.named("std::abort",
-                                              lispb::codegen::NameOrigin::global,
-                                              {cpp.types.dependency("std::abort", "cstdlib")}))))});
+                          {cpp.expr_stmt(cpp.call(cpp.type_reference(cpp.types.std.abort)))});
     implementation.push_back(cpp.definition(invariant_failed));
     auto const require{cpp.function("require", cpp.types.std.void_)};
     cpp.set_function_parameters(
@@ -383,9 +380,7 @@ auto lower_module(lispb::codegen::CppIR& cpp,
     }
 
     lispb::codegen::NodeListBuilder header_nodes{cpp};
-    header_nodes
-        .add(cpp.include(cpp.strings.intern("cstdint"), lispb::codegen::IncludeStyle::system))
-        .add(cpp.include(cpp.strings.intern("span"), lispb::codegen::IncludeStyle::system), 2);
+    header_nodes.add(cpp.include_dependencies(), 2);
     header_nodes.add(cpp.namespace_node(cpp_namespace, declarations));
     auto const header{cpp.files.append(document.emissions.header(emission), header_nodes.build())};
     cpp.files.flags[cpp.files.index(header)].set_format_generated(true);
@@ -394,17 +389,7 @@ auto lower_module(lispb::codegen::CppIR& cpp,
     source_nodes.add(cpp.include(document.emissions.header_include(emission),
                                  lispb::codegen::IncludeStyle::quoted),
                      2);
-    source_nodes
-        .add(cpp.include(cpp.strings.intern("cstddef"), lispb::codegen::IncludeStyle::system))
-        .add(cpp.include(cpp.strings.intern("cstdint"), lispb::codegen::IncludeStyle::system))
-        .add(cpp.include(cpp.strings.intern("cstdlib"), lispb::codegen::IncludeStyle::system));
-    if (std::ranges::any_of(document.modules.operations(module), [&](auto const operation) {
-            return contains_constant(document.expressions,
-                                     document.operations.expression(operation));
-        })) {
-        source_nodes.add(
-            cpp.include(cpp.strings.intern("limits"), lispb::codegen::IncludeStyle::system));
-    }
+    source_nodes.add(cpp.include_dependencies());
     source_nodes.new_lines(2)
         .add(cpp.namespace_node(cpp.strings.intern(detail_namespace), implementation), 2)
         .add(cpp.namespace_node(cpp_namespace, definitions));

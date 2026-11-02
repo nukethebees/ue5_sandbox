@@ -118,7 +118,7 @@ struct ResolvedView
     using Base::Base;
     using Base::set;
     void set(size_type index, Vector3f const new_min_points, Vector3f const new_max_points) const {
-        assert(index < num());
+        assert((index < num()));
         this->view_min_points().set(index, new_min_points);
         this->view_max_points().set(index, new_max_points);
     }
@@ -168,7 +168,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
     using Base::Base;
     using Base::set;
     void set(size_type index, Vector3f const new_min_points, Vector3f const new_max_points) const {
-        assert(index < num());
+        assert((index < num()));
         this->view_min_points().set(index, new_min_points);
         this->view_max_points().set(index, new_max_points);
     }
@@ -237,7 +237,7 @@ struct WorldAABBs
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index, Vector3f const new_min_points, Vector3f const new_max_points) {
-        assert(index < num());
+        assert((index < num()));
         view().view_min_points().set(index, new_min_points);
         view().view_max_points().set(index, new_max_points);
     }

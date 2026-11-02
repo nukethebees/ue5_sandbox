@@ -128,7 +128,7 @@ struct ResolvedView
              Vector3f const new_locations,
              Vector3f const new_emission_directions,
              ioj::sim::LaserSource const new_sources) const {
-        assert(index < num());
+        assert((index < num()));
         this->view_locations().set(index, new_locations);
         this->view_emission_directions().set(index, new_emission_directions);
         this->sources()[index] = new_sources;
@@ -187,7 +187,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
              Vector3f const new_locations,
              Vector3f const new_emission_directions,
              ioj::sim::LaserSource const new_sources) const {
-        assert(index < num());
+        assert((index < num()));
         this->view_locations().set(index, new_locations);
         this->view_emission_directions().set(index, new_emission_directions);
         this->sources()[index] = new_sources;
@@ -264,7 +264,7 @@ struct LaserHitDetails
              Vector3f const new_locations,
              Vector3f const new_emission_directions,
              LaserSource const new_sources) {
-        assert(index < num());
+        assert((index < num()));
         view().view_locations().set(index, new_locations);
         view().view_emission_directions().set(index, new_emission_directions);
         view().sources()[index] = new_sources;

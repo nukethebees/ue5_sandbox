@@ -111,7 +111,7 @@ struct ResolvedView
              EntityId const new_entities,
              float const new_distances,
              Vector3f const new_directions) const {
-        assert(index < num());
+        assert((index < num()));
         this->entities()[index] = new_entities;
         this->distances()[index] = new_distances;
         this->view_directions().set(index, new_directions);
@@ -163,7 +163,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
              EntityId const new_entities,
              float const new_distances,
              Vector3f const new_directions) const {
-        assert(index < num());
+        assert((index < num()));
         this->entities()[index] = new_entities;
         this->distances()[index] = new_distances;
         this->view_directions().set(index, new_directions);
@@ -236,7 +236,7 @@ struct RangeQueryMatches
              EntityId const new_entities,
              float const new_distances,
              Vector3f const new_directions) {
-        assert(index < num());
+        assert((index < num()));
         view().entities()[index] = new_entities;
         view().distances()[index] = new_distances;
         view().view_directions().set(index, new_directions);

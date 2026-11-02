@@ -189,7 +189,7 @@ struct ResolvedView
              float const new_max_distances,
              EntityId const new_instigator_ids,
              ioj::sim::LaserSource const new_sources) const {
-        assert(index < num());
+        assert((index < num()));
         this->view_locations().set(index, new_locations);
         this->view_rotations().set(index, new_rotations);
         this->view_base_velocities().set(index, new_base_velocities);
@@ -278,7 +278,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
              float const new_max_distances,
              EntityId const new_instigator_ids,
              ioj::sim::LaserSource const new_sources) const {
-        assert(index < num());
+        assert((index < num()));
         this->view_locations().set(index, new_locations);
         this->view_rotations().set(index, new_rotations);
         this->view_base_velocities().set(index, new_base_velocities);
@@ -375,7 +375,7 @@ struct LaserSpawnRequests
              float const new_max_distances,
              EntityId const new_instigator_ids,
              LaserSource const new_sources) {
-        assert(index < num());
+        assert((index < num()));
         view().view_locations().set(index, new_locations);
         view().view_rotations().set(index, new_rotations);
         view().view_base_velocities().set(index, new_base_velocities);

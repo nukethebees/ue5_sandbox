@@ -128,7 +128,7 @@ struct SoftTarget {
             case Field::fade_out_duration:
                 return invoke_field<Field::fade_out_duration>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

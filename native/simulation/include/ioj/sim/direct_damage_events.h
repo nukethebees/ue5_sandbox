@@ -8,7 +8,6 @@
 #include "ioj/single_allocation/layout.h"
 #include "ioj/single_allocation/view.h"
 
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <memory_resource>

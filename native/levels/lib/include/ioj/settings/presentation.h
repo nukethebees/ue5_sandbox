@@ -81,7 +81,7 @@ struct Presentation {
             case Field::radar:
                 return invoke_field<Field::radar>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

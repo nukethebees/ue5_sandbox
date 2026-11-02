@@ -185,8 +185,7 @@ class ModuleLowering : public CppIRBuilder {
                 prefix.add(namespace_node(store_text(namespace_name), children.build()));
             }
         }
-        return {
-            .header_prefix = prefix.build(), .header = decls.build(), .source_dependencies = false};
+        return {.header_prefix = prefix.build(), .header = decls.build()};
     }
     auto lower_s7_constructors(detail::LoweringContext& ctx) -> detail::DeclarationEmission {
         auto const& records{ctx.declarations.records};
@@ -226,7 +225,7 @@ class ModuleLowering : public CppIRBuilder {
         set_function_body(function_id, body.build());
         auto decls{node_list()};
         decls.add(header_function(function_id));
-        return {.header = decls.build(), .source_dependencies = false};
+        return {.header = decls.build()};
     }
     auto lower_umbrella(detail::LoweringContext& ctx, ModuleHandle module) -> ModuleId {
         auto const settings{ctx.declarations.umbrella_modules

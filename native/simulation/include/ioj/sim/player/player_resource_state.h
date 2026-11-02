@@ -50,7 +50,7 @@ struct PlayerResourceState {
                 return invoke_field<Field::thrust_change_rate>(self,
                                                                std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

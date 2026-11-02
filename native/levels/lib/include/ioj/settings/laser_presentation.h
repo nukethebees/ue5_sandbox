@@ -51,7 +51,7 @@ struct LaserPresentation {
             case Field::max_cull_distance:
                 return invoke_field<Field::max_cull_distance>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 

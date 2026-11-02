@@ -157,7 +157,6 @@ class EnumLowering : public CppIRBuilder {
         auto const qualified{qualified_enum_name(ctx, settings, schema)};
         auto const enum_type{named_type(qualified.contains("::") ? qualified : "::" + qualified,
                                         NameOrigin::global)};
-        emission.source_dependencies = false;
         if (enums.native_api[schema]) {
             auto prefix{node_list()};
             auto const needs_traits{

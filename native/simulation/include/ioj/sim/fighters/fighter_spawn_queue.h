@@ -130,7 +130,7 @@ struct ResolvedView
              Vector3f const new_locations,
              Rotator3f const new_rotations,
              ::ioj::Team const new_teams) const {
-        assert(index < num());
+        assert((index < num()));
         this->view_locations().set(index, new_locations);
         this->view_rotations().set(index, new_rotations);
         this->teams()[index] = new_teams;
@@ -191,7 +191,7 @@ struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, 
              Vector3f const new_locations,
              Rotator3f const new_rotations,
              ::ioj::Team const new_teams) const {
-        assert(index < num());
+        assert((index < num()));
         this->view_locations().set(index, new_locations);
         this->view_rotations().set(index, new_rotations);
         this->teams()[index] = new_teams;
@@ -266,7 +266,7 @@ struct FighterSpawnQueue
              Vector3f const new_locations,
              Rotator3f const new_rotations,
              ::ioj::Team const new_teams) {
-        assert(index < num());
+        assert((index < num()));
         view().view_locations().set(index, new_locations);
         view().view_rotations().set(index, new_rotations);
         view().teams()[index] = new_teams;

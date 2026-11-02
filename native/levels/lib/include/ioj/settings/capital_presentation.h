@@ -81,7 +81,7 @@ struct CapitalPresentation {
             case Field::proxy_arrow_size:
                 return invoke_field<Field::proxy_arrow_size>(self, std::forward<Visitor>(visitor));
         }
-        assert(false && "Invalid record field");
+        assert((false && "Invalid record field"));
         std::unreachable();
     }
 
