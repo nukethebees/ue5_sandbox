@@ -46,17 +46,23 @@ class FacadeLowering : public CppIRBuilder {
         auto const definitions_in_source{facades.definitions_in_source[row]};
         auto const reference_target{facades.reference_target[row]};
         auto const target_name{facades.target_member_name[row]};
-        auto binding{reference_target ? constructor_definition(facades.name[row])
-                                      : function_definition("bind", std_types().void_)};
+        auto binding{reference_target ? FunctionDefinition{.name = named(facades.name[row]),
+                                                           .kind = FunctionKind::constructor}
+                                      : FunctionDefinition{.name = named("bind"),
+                                                           .return_type = std_types().void_}};
         binding.parameters = {parameter(decorate_type(target_type, "", "&"), "new_target")};
         binding.flags.set_is_inline(!definitions_in_source);
         binding.flags.set_define_in_header(!definitions_in_source);
         if (reference_target) {
-            binding.implementation =
-                function_body({}, {member_initializer(target_name, named("new_target"))});
+            binding.implementation = {
+                .kind = FunctionImplementationKind::body,
+                .body = {},
+                .initializers = {member_initializer(target_name, named("new_target"))}};
         } else {
-            binding.implementation = function_body({assignment(
-                named(target_name), unary(UnaryOperator::address_of, named("new_target")))});
+            binding.implementation = {
+                .kind = FunctionImplementationKind::body,
+                .body = {assignment(named(target_name),
+                                    unary(UnaryOperator::address_of, named("new_target")))}};
         }
         std::vector<FunctionId> methods;
         for (auto const method : decls.items(facades.methods[row])) {
@@ -101,21 +107,23 @@ class FacadeLowering : public CppIRBuilder {
             } else {
                 body.add(return_stmt(call_expr, std::move(validation_dependencies)));
             }
-            auto function_id{function_definition(method_schemas.name[method_row], return_type)};
+            FunctionDefinition function_id{.name = named(method_schemas.name[method_row]),
+                                           .return_type = return_type};
             function_id.parameters = std::move(parameters);
-            function_id.implementation = function_body(body.build());
+            function_id.implementation = {.kind = FunctionImplementationKind::body,
+                                          .body = body.build()};
             function_id.receiver = method_schemas.is_const[method_row]
                                      ? FunctionReceiver::const_
                                      : FunctionReceiver::unqualified;
             if (method_schemas.is_noexcept[method_row]) {
-                function_id.exception_specification = noexcept_specification();
+                function_id.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
             }
             function_id.flags.set_is_inline(!definitions_in_source);
             function_id.flags.set_define_in_header(!definitions_in_source);
-            methods.push_back(function(function_id));
+            methods.push_back(add_function(function_id));
         }
 
-        auto const binding_id{function(binding)};
+        auto const binding_id{add_function(binding)};
         auto public_nodes{node_list()};
         auto protected_nodes{node_list()};
         auto private_nodes{node_list()};

@@ -108,7 +108,8 @@ class RecordLowering : public CppIRBuilder {
                                values.size() <= 256 ? std_types().u8 : std_types().u32,
                                values),
                    2);
-        auto accessor{function_definition("get_field", "decltype(auto)")};
+        FunctionDefinition accessor{.name = named("get_field"),
+                                    .return_type = intern_type("decltype(auto)")};
         accessor.template_declaration = template_declaration(
             {value_template_parameter(intern_type("Field"), store_text("Selected")),
              type_template_parameter(store_text("Self"))});
@@ -127,10 +128,10 @@ class RecordLowering : public CppIRBuilder {
         accessor.parameters = {parameter("Self&", fields.empty() ? "" : "self")};
         accessor.flags.set_is_constexpr(true);
         accessor.flags.set_define_in_header(true);
-        accessor.implementation = function_body(accessors);
-        result.add(header_function(function(accessor)), 2);
+        accessor.implementation = {.kind = FunctionImplementationKind::body, .body = accessors};
+        result.add(header_function(add_function(accessor)), 2);
 
-        auto invoke{function_definition("invoke_field", std_types().void_)};
+        FunctionDefinition invoke{.name = named("invoke_field"), .return_type = std_types().void_};
         invoke.template_declaration = template_declaration(
             {value_template_parameter(intern_type("Field"), store_text("Selected")),
              type_template_parameter(store_text("Self")),
@@ -139,13 +140,16 @@ class RecordLowering : public CppIRBuilder {
         invoke.parameters = {parameter("Self&", "self"), parameter("Visitor&&", "visitor")};
         invoke.flags.set_is_constexpr(true);
         invoke.flags.set_define_in_header(true);
-        invoke.implementation = function_body({expr_stmt(
-            call(template_id(member_access(forwarded_visitor, "template operator()"),
-                             {named("Selected")}),
-                 {call(template_id(named("get_field"), {named("Selected")}), {named("self")})}))});
-        result.add(header_function(function(invoke)), 2);
+        invoke.implementation = {
+            .kind = FunctionImplementationKind::body,
+            .body = {expr_stmt(call(
+                template_id(member_access(forwarded_visitor, "template operator()"),
+                            {named("Selected")}),
+                {call(template_id(named("get_field"), {named("Selected")}), {named("self")})}))}};
+        result.add(header_function(add_function(invoke)), 2);
 
-        auto function_id{function_definition("visit_field", std_types().void_)};
+        FunctionDefinition function_id{.name = named("visit_field"),
+                                       .return_type = std_types().void_};
         function_id.template_declaration =
             template_declaration({type_template_parameter(store_text("Self")),
                                   type_template_parameter(store_text("Visitor"))});
@@ -156,13 +160,14 @@ class RecordLowering : public CppIRBuilder {
                                   parameter("Visitor&&", fields.empty() ? "" : "visitor")};
         function_id.flags.set_is_constexpr(true);
         function_id.flags.set_define_in_header(true);
-        function_id.implementation =
-            function_body({switch_stmt(named("field"), cases),
-                           assertion(binary(BinaryOperator::logical_and,
-                                            literal("false"),
-                                            string_literal("Invalid record field"))),
-                           expr_stmt(call(type_reference(std_types().unreachable)))});
-        result.add(header_function(function(function_id)), 2);
+        function_id.implementation = {
+            .kind = FunctionImplementationKind::body,
+            .body = {switch_stmt(named("field"), cases),
+                     assertion(binary(BinaryOperator::logical_and,
+                                      literal("false"),
+                                      string_literal("Invalid record field"))),
+                     expr_stmt(call(type_reference(std_types().unreachable)))}};
+        result.add(header_function(add_function(function_id)), 2);
         return result.build();
     }
     auto record_node(LoweringContext& ctx, DeclarationHandle record_id) -> NodeId {
@@ -174,20 +179,20 @@ class RecordLowering : public CppIRBuilder {
         auto members{node_list()};
         if (records.comparison[row] != RecordComparison::none) {
             auto const three_way{records.comparison[row] == RecordComparison::three_way};
-            auto comparison{
-                function_definition(three_way ? "operator<=>" : "operator==",
-                                    three_way ? intern_type("auto", {dependency("auto", "compare")})
-                                              : std_types().bool_)};
+            auto comparison{FunctionDefinition{
+                .name = named(three_way ? "operator<=>" : "operator=="),
+                .return_type = three_way ? intern_type("auto", {dependency("auto", "compare")})
+                                         : std_types().bool_}};
             comparison.parameters = {parameter(name + " const&", "")};
             comparison.receiver = FunctionReceiver::const_;
             if (records.comparison_noexcept[row]) {
-                comparison.exception_specification = noexcept_specification();
+                comparison.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
             }
-            comparison.implementation = defaulted_function();
-            members.add(header_function(function(comparison)));
+            comparison.implementation = {.kind = FunctionImplementationKind::defaulted};
+            members.add(header_function(add_function(comparison)));
         }
         for (auto function_id : ctx.declarations.items(records.functions[row])) {
-            members.add(header_function(function(lower_schema_function(ctx, function_id))));
+            members.add(header_function(add_function(lower_schema_function(ctx, function_id))));
         }
         if (records.comparison[row] != RecordComparison::none || !records.functions[row].empty()) {
             members.new_lines(2);

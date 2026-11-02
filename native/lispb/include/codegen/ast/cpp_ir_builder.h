@@ -516,30 +516,6 @@ class CppIRBuilder {
         return ir_.raw_template_declaration(parameters);
     }
 
-    FunctionDefinition function_definition(StringId name, CppTypeId return_type) {
-        return ir_.function_definition(name, return_type);
-    }
-
-    FunctionDefinition function_definition(Expr name, CppTypeId return_type) {
-        return ir_.function_definition(name, return_type);
-    }
-
-    FunctionDefinition function_definition(std::string_view name, CppTypeId return_type) {
-        return ir_.function_definition(name, return_type);
-    }
-
-    FunctionDefinition function_definition(std::string_view name, std::string_view return_type) {
-        return ir_.function_definition(name, return_type);
-    }
-
-    FunctionDefinition constructor_definition(StringId name, bool is_explicit = false) {
-        return ir_.constructor_definition(name, is_explicit);
-    }
-
-    FunctionDefinition destructor_definition(StringId name) {
-        return ir_.destructor_definition(name);
-    }
-
     FunctionParameterId parameter(CppTypeId type, StringId name = {}, Expr default_value = {}) {
         return ir_.parameter(type, name, default_value);
     }
@@ -561,46 +537,14 @@ class CppIRBuilder {
         return ir_.member_initializer(member, value);
     }
 
-    FunctionId function(FunctionDefinition const& definition) { return ir_.function(definition); }
+    FunctionView get_view(FunctionId function) const { return ir_.get_view(function); }
 
-    FunctionImplementationId function_body(std::span<NodeId const> body,
-                                           std::span<MemberInitializerId const> initializers = {}) {
-        return ir_.function_body(body, initializers);
+    FunctionParameterView get_view(FunctionParameterId parameter) const {
+        return ir_.get_view(parameter);
     }
 
-    FunctionImplementationId function_body(std::initializer_list<NodeId> body,
-                                           std::span<MemberInitializerId const> initializers = {}) {
-        return ir_.function_body(body, initializers);
-    }
-
-    FunctionImplementationId
-        function_body(std::span<NodeId const> body,
-                      std::initializer_list<MemberInitializerId> initializers) {
-        return ir_.function_body(body, initializers);
-    }
-
-    FunctionImplementationId
-        function_body(std::initializer_list<NodeId> body,
-                      std::initializer_list<MemberInitializerId> initializers) {
-        return ir_.function_body(body, initializers);
-    }
-
-    FunctionImplementationId defaulted_function() { return ir_.defaulted_function(); }
-
-    FunctionImplementationId deleted_function() { return ir_.deleted_function(); }
-
-    FunctionExceptionId noexcept_specification() { return ir_.noexcept_specification(); }
-
-    FunctionExceptionId conditional_noexcept(Expr condition) {
-        return ir_.conditional_noexcept(condition);
-    }
-
-    StringId parameter_name(FunctionParameterId parameter) const {
-        return ir_.parameter_name(parameter);
-    }
-
-    CppTypeId parameter_type(FunctionParameterId parameter) const {
-        return ir_.parameter_type(parameter);
+    FunctionId add_function(FunctionDefinition const& definition) {
+        return ir_.add_function(definition);
     }
 
     NodeId raw(StringId value, std::span<TypeDependencyId const> dependencies = {}) {

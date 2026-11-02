@@ -76,31 +76,31 @@ class RecordReaderLowering : public CppIRBuilder {
         auto const includes{ctx.declarations.items(records.s7_reader_includes[row])};
         emission.reader_includes.insert(
             emission.reader_includes.end(), includes.begin(), includes.end());
-        auto const add_function{[&](std::string const& method,
-                                    CppTypeId const return_type,
-                                    std::vector<FunctionParameterId> const& parameters,
-                                    Nodes body) {
-            auto function_id{function_definition(method, return_type)};
+        auto const emit_method{[&](std::string const& method,
+                                   CppTypeId const return_type,
+                                   std::vector<FunctionParameterId> const& parameters,
+                                   Nodes body) {
+            FunctionDefinition function_id{.name = named(method), .return_type = return_type};
             function_id.parameters.assign(parameters.begin(), parameters.end());
             function_id.receiver = FunctionReceiver::static_;
-            function_id.implementation = function_body(body);
+            function_id.implementation = {.kind = FunctionImplementationKind::body, .body = body};
             function_id.flags.set_define_in_header(true);
-            decls.add(header_function(function(function_id)), 2);
+            decls.add(header_function(add_function(function_id)), 2);
         }};
         std::vector<FunctionParameterId> const read_parameters{parameter("DecodeContext", "ctx")};
         if (std::ranges::any_of(fields, [&](auto field) {
                 auto const index{members.index(field)};
                 return !members.initializer[index].has_value();
             })) {
-            add_function("construct",
-                         template_type(named_type("ioj::s7::ReadResult", NameOrigin::global),
-                                       {named_type("value_type")}),
-                         read_parameters,
-                         fields_body(ctx, record_id, true));
+            emit_method("construct",
+                        template_type(named_type("ioj::s7::ReadResult", NameOrigin::global),
+                                      {named_type("value_type")}),
+                        read_parameters,
+                        fields_body(ctx, record_id, true));
         }
         auto decode_parameters{read_parameters};
         decode_parameters.push_back(parameter("value_type&", empty ? "" : "result"));
-        add_function(
+        emit_method(
             "decode", std_types().void_, decode_parameters, fields_body(ctx, record_id, false));
         if (!records.s7_positional[row]) {
             decls.add(access(Access::private_), 1);

@@ -149,18 +149,19 @@ class FunctionLowering : public CppIRBuilder {
         for (auto const& column : columns) {
             arguments.push_back(member_access(named("self"), column));
         }
-        auto created_function{function_definition("apply_arrays", "auto")};
+        FunctionDefinition created_function{.name = named("apply_arrays"),
+                                            .return_type = intern_type("auto")};
         created_function.parameters = {parameter("this auto&&", "self"),
                                        parameter("TFunc&&", "func")};
-        created_function.implementation =
-            function_body({return_stmt(call_array_callback(arguments))});
+        created_function.implementation = {.kind = FunctionImplementationKind::body,
+                                           .body = {return_stmt(call_array_callback(arguments))}};
         created_function.return_type = intern_type("decltype(auto)");
         created_function.return_syntax = ReturnSyntax::trailing;
         created_function.flags.set_is_inline(true);
         created_function.flags.set_define_in_header(true);
         created_function.template_declaration =
             template_declaration({type_template_parameter(store_text("TFunc"))});
-        return header_function(function(created_function));
+        return header_function(add_function(created_function));
     }
     auto column_apply_array_pairs_function(std::vector<std::string> const& columns) -> NodeId {
         std::vector<Expr> arguments;
@@ -169,12 +170,13 @@ class FunctionLowering : public CppIRBuilder {
             arguments.push_back(member_access(named("self"), column));
             arguments.push_back(member_access(named("other"), column));
         }
-        auto created_function{function_definition("apply_array_pairs", "auto")};
+        FunctionDefinition created_function{.name = named("apply_array_pairs"),
+                                            .return_type = intern_type("auto")};
         created_function.parameters = {parameter("this Self&&", "self"),
                                        parameter("Other&&", "other"),
                                        parameter("TFunc&&", "func")};
-        created_function.implementation =
-            function_body({return_stmt(call_array_callback(arguments))});
+        created_function.implementation = {.kind = FunctionImplementationKind::body,
+                                           .body = {return_stmt(call_array_callback(arguments))}};
         created_function.return_type = intern_type("decltype(auto)");
         created_function.return_syntax = ReturnSyntax::trailing;
         created_function.flags.set_is_inline(true);
@@ -186,7 +188,7 @@ class FunctionLowering : public CppIRBuilder {
         created_function.formatting = {
             .trailing_return_placement = FunctionTrailingReturnPlacement::next_line,
         };
-        return header_function(function(created_function));
+        return header_function(add_function(created_function));
     }
     auto lower_schema_function(LoweringContext& ctx,
                                FunctionSchemaId schema,
@@ -208,11 +210,13 @@ class FunctionLowering : public CppIRBuilder {
         }
         auto const trailing{functions.trailing_return_type[row]};
         auto const return_type{ctx.resolve(trailing.value_or(functions.return_type[row]))};
-        auto created_function{function_definition(functions.name[row], return_type)};
+        FunctionDefinition created_function{.name = named(functions.name[row]),
+                                            .return_type = return_type};
         created_function.parameters = std::move(parameters);
-        created_function.implementation = function_body(
-            {body ? raw_parts(*body, dependencies)
-                  : raw_lines(decls.items(functions.body_lines[schema]), dependencies)});
+        created_function.implementation = {
+            .kind = FunctionImplementationKind::body,
+            .body = {body ? raw_parts(*body, dependencies)
+                          : raw_lines(decls.items(functions.body_lines[schema]), dependencies)}};
         if (trailing) {
             created_function.return_type = return_type;
             created_function.return_syntax = ReturnSyntax::trailing;
@@ -221,7 +225,7 @@ class FunctionLowering : public CppIRBuilder {
                                   : functions.is_const[row]  ? FunctionReceiver::const_
                                                              : FunctionReceiver::unqualified;
         if (functions.is_noexcept[row]) {
-            created_function.exception_specification = noexcept_specification();
+            created_function.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
         }
         auto& flags{created_function.flags};
         flags.set_is_constexpr(functions.is_constexpr[schema]);

@@ -225,7 +225,8 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
     file_nodes.add(cpp.include_dependencies(), 2);
     auto const suite{"Generated" + pascal_case(document.text(document.modules.name(module)))};
     auto const namespace_name{suite + "Tests"};
-    auto expect_value{cpp.function_definition("expect_value", cpp.types.std.void_)};
+    lispb::codegen::FunctionDefinition expect_value{.name = cpp.named("expect_value"),
+                                                    .return_type = cpp.types.std.void_};
     expect_value.flags.set_define_in_header(true);
     expect_value.template_declaration =
         cpp.template_declaration({cpp.type_template_parameter(cpp.strings.intern("T"))});
@@ -250,12 +251,15 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
                         cpp.call(cpp.named("EXPECT_TRUE"),
                                  {cpp.call(cpp.type_reference(cpp.types.std.isnan), {actual})}))}),
                     cpp.block({infinite}))};
-    expect_value.implementation = cpp.function_body({cpp.if_stmt(
-        cpp.template_id(cpp.type_reference(cpp.types.std.is_floating_point_v), {value_type}),
-        cpp.block({nan}),
-        cpp.block({equal}),
-        true)});
-    auto expect_result{cpp.function_definition("expect_result", cpp.types.std.void_)};
+    expect_value.implementation = {
+        .kind = lispb::codegen::FunctionImplementationKind::body,
+        .body = {cpp.if_stmt(
+            cpp.template_id(cpp.type_reference(cpp.types.std.is_floating_point_v), {value_type}),
+            cpp.block({nan}),
+            cpp.block({equal}),
+            true)}};
+    lispb::codegen::FunctionDefinition expect_result{.name = cpp.named("expect_result"),
+                                                     .return_type = cpp.types.std.void_};
     expect_result.flags.set_define_in_header(true);
     expect_result.template_declaration =
         cpp.template_declaration({cpp.type_template_parameter(cpp.strings.intern("T"))});
@@ -266,30 +270,33 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
         cpp.parameter(cpp.types.decorate(cpp.types.std.size_t, "", " const"), "count"),
         cpp.parameter(cpp.types.decorate(cpp.types.std.size_t, "", " const"), "storage_count")};
     auto const index{cpp.named("i")};
-    expect_result.implementation = cpp.function_body(
-        {cpp.for_stmt(
-             cpp.variable(cpp.types.std.size_t, "i"),
-             cpp.binary(lispb::codegen::BinaryOperator::less, index, cpp.named("count")),
-             cpp.unary(lispb::codegen::UnaryOperator::preincrement, index),
-             cpp.block({cpp.expr_stmt(cpp.call(cpp.named("SCOPED_TRACE"), {index})),
-                        cpp.expr_stmt(cpp.call(cpp.named("expect_value"),
-                                               {cpp.subscript(cpp.named("actual"), index),
-                                                cpp.subscript(cpp.named("expected"), index)}))})),
-         cpp.expr_stmt(cpp.call(cpp.named("EXPECT_EQ"),
-                                {cpp.call(cpp.type_reference(cpp.types.std.memcmp),
-                                          {cpp.binary(lispb::codegen::BinaryOperator::add,
-                                                      cpp.named("actual"),
-                                                      cpp.named("count")),
-                                           cpp.binary(lispb::codegen::BinaryOperator::add,
-                                                      cpp.named("before"),
-                                                      cpp.named("count")),
-                                           cpp.binary(lispb::codegen::BinaryOperator::multiply,
-                                                      cpp.parenthesized(cpp.binary(
-                                                          lispb::codegen::BinaryOperator::subtract,
-                                                          cpp.named("storage_count"),
-                                                          cpp.named("count"))),
-                                                      cpp.sizeof_type(cpp.types.intern("T")))}),
-                                 cpp.literal("0")}))});
+    expect_result.implementation = {
+        .kind = lispb::codegen::FunctionImplementationKind::body,
+        .body = {cpp.for_stmt(
+                     cpp.variable(cpp.types.std.size_t, "i"),
+                     cpp.binary(lispb::codegen::BinaryOperator::less, index, cpp.named("count")),
+                     cpp.unary(lispb::codegen::UnaryOperator::preincrement, index),
+                     cpp.block(
+                         {cpp.expr_stmt(cpp.call(cpp.named("SCOPED_TRACE"), {index})),
+                          cpp.expr_stmt(cpp.call(cpp.named("expect_value"),
+                                                 {cpp.subscript(cpp.named("actual"), index),
+                                                  cpp.subscript(cpp.named("expected"), index)}))})),
+                 cpp.expr_stmt(
+                     cpp.call(cpp.named("EXPECT_EQ"),
+                              {cpp.call(cpp.type_reference(cpp.types.std.memcmp),
+                                        {cpp.binary(lispb::codegen::BinaryOperator::add,
+                                                    cpp.named("actual"),
+                                                    cpp.named("count")),
+                                         cpp.binary(lispb::codegen::BinaryOperator::add,
+                                                    cpp.named("before"),
+                                                    cpp.named("count")),
+                                         cpp.binary(lispb::codegen::BinaryOperator::multiply,
+                                                    cpp.parenthesized(cpp.binary(
+                                                        lispb::codegen::BinaryOperator::subtract,
+                                                        cpp.named("storage_count"),
+                                                        cpp.named("count"))),
+                                                    cpp.sizeof_type(cpp.types.intern("T")))}),
+                               cpp.literal("0")}))}};
     lispb::codegen::Nodes cases;
     std::vector<lispb::codegen::Expr> case_values;
     std::vector<FixtureArray> arrays;
@@ -299,7 +306,8 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
     for (auto variant_index{range.offset}; variant_index < end; ++variant_index) {
         auto const id{ExpandedVariantId{variant_index}};
         auto const name{raw_name(document, id)};
-        auto check{cpp.function_definition(name, cpp.types.std.void_)};
+        lispb::codegen::FunctionDefinition check{.name = cpp.named(name),
+                                                 .return_type = cpp.types.std.void_};
         check.flags.set_define_in_header(true);
         check.parameters = {
             cpp.parameter(cpp.types.decorate(cpp.types.std.size_t, "", " const"), "Count")};
@@ -312,15 +320,16 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
                     document,
                     id,
                     fixtures[variant_index - range.offset]);
-        check.implementation = cpp.function_body(body);
-        cases.push_back(cpp.header_function(cpp.function(check)));
+        check.implementation = {.kind = lispb::codegen::FunctionImplementationKind::body,
+                                .body = body};
+        cases.push_back(cpp.header_function(cpp.add_function(check)));
         cases.push_back(cpp.lines(2));
         case_values.push_back(
             cpp.init_list({cpp.string_literal(pascal_case(name)), cpp.named(name)}));
     }
-    lispb::codegen::Nodes declarations{cpp.header_function(cpp.function(expect_value)),
+    lispb::codegen::Nodes declarations{cpp.header_function(cpp.add_function(expect_value)),
                                        cpp.lines(2),
-                                       cpp.header_function(cpp.function(expect_result)),
+                                       cpp.header_function(cpp.add_function(expect_result)),
                                        cpp.lines(2)};
     for (auto const& array : arrays) {
         declarations.push_back(

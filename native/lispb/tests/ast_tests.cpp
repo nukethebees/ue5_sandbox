@@ -164,8 +164,10 @@ TEST_F(AstTest, RendersAccessSpecifiersWithExplicitIndentation) {
 }
 
 TEST_F(AstTest, RendersBraceInitialisedTree) {
-    auto getter{ir.function_definition(ir.strings.intern("get"), types.intern("auto"))};
-    getter.implementation = ir.function_body({ir.raw("return value;")});
+    FunctionDefinition getter{.name = ir.named(ir.strings.intern("get")),
+                              .return_type = types.intern("auto")};
+    getter.implementation = {.kind = FunctionImplementationKind::body,
+                             .body = {ir.raw("return value;")}};
     getter.return_type = types.intern("int32");
     getter.return_syntax = ReturnSyntax::trailing;
     getter.receiver = FunctionReceiver::const_;
@@ -184,7 +186,7 @@ TEST_F(AstTest, RendersBraceInitialisedTree) {
                                             {
                                                 ir.instance_member(types.intern("int32"),
                                                                    ir.strings.intern("value")),
-                                                ir.header_function(ir.function(getter)),
+                                                ir.header_function(ir.add_function(getter)),
                                             },
                                             RecordKind::struct_),
                               }),
@@ -279,11 +281,12 @@ TEST_F(AstTest, VisitsChildrenForNestedAndDefinedNodes) {
         ir.record(ir.strings.intern("FData"), {ir.raw("int value;")}, RecordKind::struct_)};
     NodeId const name_space{
         ir.namespace_node(ir.strings.intern("example"), {ir.raw("int value;")})};
-    auto spec{ir.function_definition(ir.strings.intern("f"), types.std.void_)};
-    spec.implementation = ir.function_body({ir.raw("return;")});
-    NodeId const function{ir.definition(ir.function(spec))};
-    NodeId const declaration_node{ir.declaration(
-        ir.function(ir.function_definition(ir.strings.intern("f"), types.std.void_)))};
+    FunctionDefinition spec{.name = ir.named(ir.strings.intern("f")),
+                            .return_type = types.std.void_};
+    spec.implementation = {.kind = FunctionImplementationKind::body, .body = {ir.raw("return;")}};
+    NodeId const function{ir.definition(ir.add_function(spec))};
+    NodeId const declaration_node{ir.declaration(ir.add_function(FunctionDefinition{
+        .name = ir.named(ir.strings.intern("f")), .return_type = types.std.void_}))};
     NodeId const leaf{ir.raw("int value;")};
 
     auto child_count = [&](NodeId const& node) {
@@ -333,9 +336,11 @@ TEST_F(AstTest, RendersClassInheritanceAndMemberInitializers) {
 }
 
 TEST_F(AstTest, RendersTemplatedConstrainedFunctions) {
-    auto spec{ir.function_definition(ir.strings.intern("append"), types.std.void_)};
+    FunctionDefinition spec{.name = ir.named(ir.strings.intern("append")),
+                            .return_type = types.std.void_};
     spec.parameters = {ir.parameter(types.intern("Other const&"), ir.strings.intern("other"))};
-    spec.implementation = ir.function_body({ir.raw("append_from(other);")});
+    spec.implementation = {.kind = FunctionImplementationKind::body,
+                           .body = {ir.raw("append_from(other);")}};
     spec.flags.set_is_inline(true);
     spec.flags.set_define_in_header(true);
     spec.template_declaration =
@@ -343,15 +348,17 @@ TEST_F(AstTest, RendersTemplatedConstrainedFunctions) {
     spec.requires_clause =
         ir.template_id(ir.named("Appendable"), {ir.type_reference(types.intern("Other"))});
 
-    auto const rendered{CppRenderer{ir}.render(ir.header_function(ir.function(spec)))};
+    auto const rendered{CppRenderer{ir}.render(ir.header_function(ir.add_function(spec)))};
     expect_contains_all(
         rendered,
         {"template <typename Other>", "requires Appendable<Other>", "append_from(other);"});
 }
 
 TEST_F(AstTest, RendersTypedFunctionFormattingPolicies) {
-    auto compact{ir.function_definition(ir.strings.intern("apply"), types.std.void_)};
-    compact.implementation = ir.function_body({ir.raw("func();")});
+    FunctionDefinition compact{.name = ir.named(ir.strings.intern("apply")),
+                               .return_type = types.std.void_};
+    compact.implementation = {.kind = FunctionImplementationKind::body,
+                              .body = {ir.raw("func();")}};
     compact.flags.set_is_inline(true);
     compact.flags.set_define_in_header(true);
     compact.template_declaration =
@@ -364,7 +371,7 @@ TEST_F(AstTest, RendersTypedFunctionFormattingPolicies) {
         .template_placement = FunctionTemplatePlacement::same_line,
     };
     expect_rendered(
-        ir.record(ir.strings.intern("FValue"), {ir.header_function(ir.function(compact))}),
+        ir.record(ir.strings.intern("FValue"), {ir.header_function(ir.add_function(compact))}),
         "struct FValue {\n"
         "    template <typename TFunc> void apply() requires Invocable<TFunc> { func(); }\n"
         "};");
@@ -374,7 +381,7 @@ TEST_F(AstTest, RendersTypedFunctionFormattingPolicies) {
         .requires_placement = FunctionRequiresPlacement::before_signature,
     };
     expect_rendered(
-        ir.record(ir.strings.intern("FValue"), {ir.header_function(ir.function(prefixed))}),
+        ir.record(ir.strings.intern("FValue"), {ir.header_function(ir.add_function(prefixed))}),
         "struct FValue {\n"
         "    template <typename TFunc>\n"
         "        requires Invocable<TFunc>\n"
@@ -388,26 +395,28 @@ TEST_F(AstTest, RendersTypedFunctionFormattingPolicies) {
     separate_brace.formatting = FunctionFormatting{
         .opening_brace_placement = FunctionOpeningBracePlacement::separate_line,
     };
-    expect_rendered(
-        ir.record(ir.strings.intern("FValue"), {ir.header_function(ir.function(separate_brace))}),
-        "struct FValue {\n"
-        "    void apply()\n"
-        "        requires Invocable<TFunc>\n"
-        "    {\n"
-        "        func();\n"
-        "    }\n"
-        "};");
+    expect_rendered(ir.record(ir.strings.intern("FValue"),
+                              {ir.header_function(ir.add_function(separate_brace))}),
+                    "struct FValue {\n"
+                    "    void apply()\n"
+                    "        requires Invocable<TFunc>\n"
+                    "    {\n"
+                    "        func();\n"
+                    "    }\n"
+                    "};");
 }
 
 TEST_F(AstTest, RendersConstrainedStructuresAndSpecialMembers) {
     auto const dependency{types.dependency("check", "CoreMinimal.h")};
-    auto constructor{ir.constructor_definition(ir.strings.intern("TFixedData"))};
-    constructor.exception_specification = ir.noexcept_specification();
-    constructor.implementation = ir.defaulted_function();
+    FunctionDefinition constructor{.name = ir.named(ir.strings.intern("TFixedData")),
+                                   .kind = FunctionKind::constructor};
+    constructor.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
+    constructor.implementation = {.kind = FunctionImplementationKind::defaulted};
 
-    auto apply{ir.function_definition(ir.strings.intern("apply"), types.std.void_)};
+    FunctionDefinition apply{.name = ir.named(ir.strings.intern("apply")),
+                             .return_type = types.std.void_};
     apply.parameters = {ir.parameter(types.intern("TFunc&&"), ir.strings.intern("func"))};
-    apply.implementation = ir.function_body({ir.raw("func();")});
+    apply.implementation = {.kind = FunctionImplementationKind::body, .body = {ir.raw("func();")}};
     apply.flags.set_is_inline(true);
     apply.flags.set_define_in_header(true);
     apply.template_declaration =
@@ -418,9 +427,9 @@ TEST_F(AstTest, RendersConstrainedStructuresAndSpecialMembers) {
     };
 
     auto const structure{ir.record(ir.strings.intern("TFixedData"),
-                                   {ir.declaration(ir.function(constructor)),
+                                   {ir.declaration(ir.add_function(constructor)),
                                     ir.lines(1),
-                                    ir.header_function(ir.function(apply)),
+                                    ir.header_function(ir.add_function(apply)),
                                     ir.lines(2),
                                     ir.access(Access::private_)},
                                    RecordKind::struct_)};
@@ -452,13 +461,15 @@ TEST_F(AstTest, RawNodesReportExplicitDependencies) {
 }
 
 TEST_F(AstTest, RendersDeclarationsAndOutOfLineDefinitionsFromOneSpec) {
-    auto function{ir.function_definition(ir.strings.intern("set"), types.std.void_)};
+    FunctionDefinition function{.name = ir.named(ir.strings.intern("set")),
+                                .return_type = types.std.void_};
     function.parameters = {
         ir.parameter(types.intern("int32 const"), ir.strings.intern("value"), ir.literal("0"))};
-    function.implementation = ir.function_body({ir.raw("stored = value;")});
-    function.exception_specification = ir.noexcept_specification();
+    function.implementation = {.kind = FunctionImplementationKind::body,
+                               .body = {ir.raw("stored = value;")}};
+    function.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
 
-    auto const published_function{ir.function(function)};
+    auto const published_function{ir.add_function(function)};
     expect_rendered(ir.declaration(published_function),
                     "void set(int32 const value = 0) noexcept;");
     expect_rendered(ir.definition(published_function, types.intern("FValue")),
@@ -469,10 +480,11 @@ TEST_F(AstTest, RendersDeclarationsAndOutOfLineDefinitionsFromOneSpec) {
 
 TEST_F(AstTest, CollectsTrailingReturnTypeDependencies) {
     auto const dependency{types.dependency("FResult", "Project/Result.h")};
-    auto spec{ir.function_definition(ir.strings.intern("make"), types.intern("auto"))};
+    FunctionDefinition spec{.name = ir.named(ir.strings.intern("make")),
+                            .return_type = types.intern("auto")};
     spec.return_type = types.intern("FResult", {dependency});
     spec.return_syntax = ReturnSyntax::trailing;
-    NodeId const function{ir.declaration(ir.function(spec))};
+    NodeId const function{ir.declaration(ir.add_function(spec))};
 
     EXPECT_EQ(CppRenderer{ir}.render(function), "auto make() -> FResult;");
     EXPECT_EQ(collected_dependencies(ir, function), std::vector<TypeDependencyId>{dependency});
@@ -481,15 +493,17 @@ TEST_F(AstTest, CollectsTrailingReturnTypeDependencies) {
 TEST_F(AstTest, CollectsOpaqueDeclarationDependenciesWithoutIncludingTheBody) {
     auto const requirement{types.dependency("SupportsValue", "Project/Requirement.h")};
     auto const implementation{types.dependency("apply", "Project/Implementation.h")};
-    auto spec{ir.function_definition(ir.strings.intern("use"), types.std.void_)};
+    FunctionDefinition spec{.name = ir.named(ir.strings.intern("use")),
+                            .return_type = types.std.void_};
     spec.parameters = {ir.parameter(types.intern("T const&"), ir.strings.intern("value"))};
-    spec.implementation = ir.function_body(
-        {ir.expr_stmt(ir.call(ir.named("apply", {implementation}), {ir.named("value")}))});
+    spec.implementation = {
+        .kind = FunctionImplementationKind::body,
+        .body = {ir.expr_stmt(ir.call(ir.named("apply", {implementation}), {ir.named("value")}))}};
     spec.template_declaration =
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("T"))});
     spec.requires_clause = ir.template_id(ir.named("SupportsValue", {requirement}),
                                           {ir.type_reference(types.intern("T"))});
-    auto const published_spec{ir.function(spec)};
+    auto const published_spec{ir.add_function(spec)};
     auto const file{ir.files.append(ir.strings.intern("Example.h"),
                                     {ir.include_dependencies(), ir.declaration(published_spec)})};
     auto const header{renderer.render(file)};
@@ -505,29 +519,33 @@ TEST_F(AstTest, CollectsOpaqueDeclarationDependenciesWithoutIncludingTheBody) {
 }
 
 TEST_F(AstTest, RendersQualifiedTrailingReturnAndDefaultedConstructor) {
-    auto function{ir.function_definition(ir.strings.intern("qualified_placeholder_return"),
-                                         types.intern("int32"))};
+    FunctionDefinition function{.name = ir.named(ir.strings.intern("qualified_placeholder_return")),
+                                .return_type = types.intern("int32")};
     function.return_type = types.intern("int32");
     function.return_syntax = ReturnSyntax::trailing;
     function.receiver = FunctionReceiver::static_;
     function.flags.set_is_constexpr(true);
-    expect_rendered(ir.declaration(ir.function(function)),
+    expect_rendered(ir.declaration(ir.add_function(function)),
                     "static constexpr auto qualified_placeholder_return() -> int32;");
 
-    auto constructor{ir.constructor_definition(ir.strings.intern("FValue"))};
-    constructor.implementation = ir.defaulted_function();
-    expect_rendered(ir.definition(ir.function(constructor), ir.types.intern("FValue")),
+    FunctionDefinition constructor{.name = ir.named(ir.strings.intern("FValue")),
+                                   .kind = FunctionKind::constructor};
+    constructor.implementation = {.kind = FunctionImplementationKind::defaulted};
+    expect_rendered(ir.definition(ir.add_function(constructor), ir.types.intern("FValue")),
                     "FValue::FValue() = default;");
 
     auto const dependency{types.dependency("a::make_value", "a/value.h")};
     auto const factory{ir.call(
         ir.type_reference(types.named("a::make_value", NameOrigin::global, {dependency})), {})};
-    auto initialized{ir.constructor_definition(ir.strings.intern("Initialized"))};
+    FunctionDefinition initialized{.name = ir.named(ir.strings.intern("Initialized")),
+                                   .kind = FunctionKind::constructor};
     initialized.parameters = {ir.parameter(ir.types.std.int_, "make_value")};
-    initialized.implementation =
-        ir.function_body({}, {ir.member_initializer(ir.strings.intern("value_"), factory)});
+    initialized.implementation = {
+        .kind = FunctionImplementationKind::body,
+        .body = {},
+        .initializers = {ir.member_initializer(ir.strings.intern("value_"), factory)}};
     initialized.flags.set_define_in_header(true);
-    auto const published_initialized{ir.function(initialized)};
+    auto const published_initialized{ir.add_function(initialized)};
     auto const record{ir.record(ir.strings.intern("Initialized"),
                                 {ir.header_function(published_initialized),
                                  ir.instance_member(types.std.int_, ir.strings.intern("value_"))})};
@@ -539,9 +557,10 @@ TEST_F(AstTest, RendersQualifiedTrailingReturnAndDefaultedConstructor) {
 }
 
 TEST_F(AstTest, RejectsOutOfLineDeletedFunction) {
-    auto function{ir.function_definition(ir.strings.intern("removed"), ir.types.std.void_)};
-    function.implementation = ir.deleted_function();
-    EXPECT_THROW(ir.definition(ir.function(function), ir.types.intern("FValue")),
+    FunctionDefinition function{.name = ir.named(ir.strings.intern("removed")),
+                                .return_type = ir.types.std.void_};
+    function.implementation = {.kind = FunctionImplementationKind::deleted};
+    EXPECT_THROW(ir.definition(ir.add_function(function), ir.types.intern("FValue")),
                  std::invalid_argument);
 }
 
@@ -575,15 +594,17 @@ TEST_F(AstTest, RendersForwardUsingAndFilePolicyNodes) {
 }
 
 TEST_F(AstTest, AppliesStaticAndDefaultArgumentRulesToFunctionForms) {
-    auto function{ir.function_definition(ir.strings.intern("make"), types.intern("int32"))};
+    FunctionDefinition function{.name = ir.named(ir.strings.intern("make")),
+                                .return_type = types.intern("int32")};
     function.parameters = {
         ir.parameter(types.intern("int32 const"), ir.strings.intern("value"), ir.literal("7"))};
-    function.implementation = ir.function_body({ir.return_stmt(ir.raw_expr("value"))});
+    function.implementation = {.kind = FunctionImplementationKind::body,
+                               .body = {ir.return_stmt(ir.raw_expr("value"))}};
     function.receiver = FunctionReceiver::static_;
     function.flags.set_is_inline(true);
     function.flags.set_define_in_header(true);
 
-    auto const published_function{ir.function(function)};
+    auto const published_function{ir.add_function(function)};
     expect_rendered(
         ir.record(ir.strings.intern("FValue"), {ir.header_function(published_function)}),
         "struct FValue {\n"
@@ -621,13 +642,13 @@ TEST_F(AstTest, RendersEnumsAndExportedFreeFunctions) {
                     "    First = 1,\n"
                     "    Second UMETA(DisplayName = \"Second Value\"),\n"
                     "};");
-    auto function{
-        ir.function_definition(ir.strings.intern("to_string_view"), types.intern("auto"))};
+    auto function{FunctionDefinition{.name = ir.named(ir.strings.intern("to_string_view")),
+                                     .return_type = types.intern("auto")}};
     function.return_type = types.intern("FStringView");
     function.return_syntax = ReturnSyntax::trailing;
     function.export_specifier = ir.strings.intern("PROJECT_API");
-    function.implementation = ir.function_body({});
-    auto const published_function{ir.function(function)};
+    function.implementation = {.kind = FunctionImplementationKind::body, .body = {}};
+    auto const published_function{ir.add_function(function)};
     expect_rendered(ir.declaration(published_function),
                     "PROJECT_API auto to_string_view() -> FStringView;");
     expect_rendered(ir.definition(published_function),
@@ -801,10 +822,11 @@ TEST_F(AstTest, AccountsForReopenedAndAnonymousNamespaceBindings) {
 
 TEST_F(AstTest, UsesTemplateAndMemberScopesInSignaturesAndExpressions) {
     auto const token{ir.types.named("a::Token", NameOrigin::global)};
-    auto make{ir.function_definition("make", token)};
+    FunctionDefinition make{.name = ir.named("make"), .return_type = token};
     make.parameters = {ir.parameter(token, "argument")};
-    make.implementation = ir.function_body({ir.return_stmt(ir.init_list({}, token))});
-    auto const published_make{ir.function(make)};
+    make.implementation = {.kind = FunctionImplementationKind::body,
+                           .body = {ir.return_stmt(ir.init_list({}, token))}};
+    auto const published_make{ir.add_function(make)};
     auto const record{
         ir.record(ir.strings.intern("Holder"),
                   {ir.using_declaration(ir.strings.intern("Token"), ir.types.std.int_),
@@ -819,17 +841,18 @@ TEST_F(AstTest, UsesTemplateAndMemberScopesInSignaturesAndExpressions) {
                          "Token Holder::make(a::Token argument)",
                          "return a::Token{};"});
 
-    auto template_function{ir.function_definition("use", token)};
+    FunctionDefinition template_function{.name = ir.named("use"), .return_type = token};
     template_function.return_type = token;
     template_function.return_syntax = ReturnSyntax::trailing;
     template_function.template_declaration =
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Token"))});
-    template_function.implementation =
-        ir.function_body({ir.variable(token, "value", ir.init_list({}, token)),
-                          ir.expr_stmt(ir.sizeof_type(token)),
-                          ir.return_stmt(ir.static_cast_expr(token, ir.named("value")))});
+    template_function.implementation = {
+        .kind = FunctionImplementationKind::body,
+        .body = {ir.variable(token, "value", ir.init_list({}, token)),
+                 ir.expr_stmt(ir.sizeof_type(token)),
+                 ir.return_stmt(ir.static_cast_expr(token, ir.named("value")))}};
     auto const templated{renderer.render(
-        in_namespace(ir, "a", ir.definition(ir.function(template_function), {}, {}, true)))};
+        in_namespace(ir, "a", ir.definition(ir.add_function(template_function), {}, {}, true)))};
     for (auto const expected : {"-> a::Token",
                                 "a::Token value{a::Token{}};",
                                 "sizeof(a::Token)",
@@ -859,15 +882,16 @@ TEST_F(AstTest, DistinguishesDeclarationsWhenNodesAreReusedAcrossNamespaces) {
 
 TEST_F(AstTest, TracksLocalHidingAtTheDeclarationAndRestoresEnclosingLookup) {
     auto const token{ir.types.named("a::Token", NameOrigin::global)};
-    auto function{ir.function_definition("use", ir.types.std.void_)};
-    function.implementation = ir.function_body(
-        {ir.variable(token, "before"),
-         ir.block({ir.variable(ir.types.std.int_, "Token"), ir.variable(token, "inside")}),
-         ir.variable(token, "after"),
-         ir.variable(ir.types.std.int_, "Token"),
-         ir.variable(token, "hidden")});
+    FunctionDefinition function{.name = ir.named("use"), .return_type = ir.types.std.void_};
+    function.implementation = {
+        .kind = FunctionImplementationKind::body,
+        .body = {ir.variable(token, "before"),
+                 ir.block({ir.variable(ir.types.std.int_, "Token"), ir.variable(token, "inside")}),
+                 ir.variable(token, "after"),
+                 ir.variable(ir.types.std.int_, "Token"),
+                 ir.variable(token, "hidden")}};
     auto const output{
-        CppRenderer{ir}.render(in_namespace(ir, "a", ir.definition(ir.function(function))))};
+        CppRenderer{ir}.render(in_namespace(ir, "a", ir.definition(ir.add_function(function))))};
 
     for (auto const expected :
          {"Token before{};", "a::Token inside{};", "Token after{};", "a::Token hidden{};"}) {
@@ -877,10 +901,11 @@ TEST_F(AstTest, TracksLocalHidingAtTheDeclarationAndRestoresEnclosingLookup) {
 
 TEST_F(AstTest, ResolvesNestedClassOwnersAndForwardDeclaredInjectedNames) {
     auto const token{ir.types.named("a::Token", NameOrigin::global)};
-    auto make{ir.function_definition("make", token)};
+    FunctionDefinition make{.name = ir.named("make"), .return_type = token};
     make.parameters = {ir.parameter(token, "value")};
-    make.implementation = ir.function_body({ir.return_stmt(ir.init_list({}, token))});
-    auto const published_make{ir.function(make)};
+    make.implementation = {.kind = FunctionImplementationKind::body,
+                           .body = {ir.return_stmt(ir.init_list({}, token))}};
+    auto const published_make{ir.add_function(make)};
     auto const inner{ir.record(ir.strings.intern("Inner"),
                                {ir.using_declaration(ir.strings.intern("Token"), ir.types.std.int_),
                                 ir.declaration(published_make)})};
@@ -904,14 +929,14 @@ TEST_F(AstTest, ResolvesNestedClassOwnersAndForwardDeclaredInjectedNames) {
 
 TEST_F(AstTest, KeepsTemplateHeadersIndependentOfFunctionParameters) {
     auto const token{ir.types.named("a::Token", NameOrigin::global)};
-    auto function{ir.function_definition("use", token)};
+    FunctionDefinition function{.name = ir.named("use"), .return_type = token};
     function.template_declaration =
         ir.template_declaration({ir.value_template_parameter(token, ir.strings.intern("N"))});
     function.parameters = {ir.parameter(token, "Token"), ir.parameter(token, "other")};
     function.return_type = token;
     function.return_syntax = ReturnSyntax::trailing;
     auto const output{
-        CppRenderer{ir}.render(in_namespace(ir, "a", ir.declaration(ir.function(function))))};
+        CppRenderer{ir}.render(in_namespace(ir, "a", ir.declaration(ir.add_function(function))))};
 
     EXPECT_TRUE(output.contains("template <Token N>")) << output;
     EXPECT_TRUE(output.contains("use(Token Token, a::Token other) -> a::Token;")) << output;

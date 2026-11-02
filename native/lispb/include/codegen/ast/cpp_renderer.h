@@ -74,7 +74,7 @@ class CppRenderer {
                          RenderContext const& ctx,
                          bool keyword = true);
     void append_parameters(std::string& output,
-                           ir::Range parameters,
+                           std::span<FunctionParameterId const> parameters,
                            RenderContext const& ctx,
                            bool defaults);
     auto signature(std::uint32_t function_index,

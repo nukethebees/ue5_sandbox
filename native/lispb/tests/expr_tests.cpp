@@ -126,23 +126,25 @@ TEST_F(ExprTest, PreservesBitwiseAndShiftPrecedence) {
 }
 
 TEST_F(AstTest, RendersRefQualifiedMethodsAndInlineOutOfLineConstructors) {
-    auto spec{ir.function_definition(ir.strings.intern("view"), types.intern("auto"))};
+    FunctionDefinition spec{.name = ir.named(ir.strings.intern("view")),
+                            .return_type = types.intern("auto")};
     spec.return_type = types.intern("View");
     spec.return_syntax = ReturnSyntax::trailing;
     spec.receiver = FunctionReceiver::const_lvalue;
-    spec.exception_specification = ir.noexcept_specification();
-    expect_rendered(ir.declaration(ir.function(spec)), "auto view() const & noexcept -> View;");
+    spec.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
+    expect_rendered(ir.declaration(ir.add_function(spec)), "auto view() const & noexcept -> View;");
     spec.receiver = FunctionReceiver::const_rvalue;
-    spec.implementation = ir.deleted_function();
-    expect_rendered(ir.definition(ir.function(spec)),
+    spec.implementation = {.kind = FunctionImplementationKind::deleted};
+    expect_rendered(ir.definition(ir.add_function(spec)),
                     "auto view() const && noexcept -> View = delete;");
-    auto constructor_spec{ir.constructor_definition(ir.strings.intern("View"))};
-    constructor_spec.implementation = ir.function_body({});
+    FunctionDefinition constructor_spec{.name = ir.named(ir.strings.intern("View")),
+                                        .kind = FunctionKind::constructor};
+    constructor_spec.implementation = {.kind = FunctionImplementationKind::body, .body = {}};
     constructor_spec.flags.set_is_inline(true);
     constructor_spec.flags.set_define_in_header(true);
     constructor_spec.formatting = {.body_layout = FunctionBodyLayout::compact};
     auto const constructor{
-        ir.definition(ir.function(constructor_spec), ir.types.intern("View"), {}, true)};
+        ir.definition(ir.add_function(constructor_spec), ir.types.intern("View"), {}, true)};
     expect_rendered(constructor, "inline View::View() {  }");
 }
 
@@ -166,13 +168,16 @@ TEST_F(ExprTest, RendersSizeofAndPreservesArithmeticGrouping) {
 }
 
 TEST_F(ExprTest, CollectsSizeofTypeDependenciesThroughArithmetic) {
-    auto function{ir.function_definition(ir.strings.intern("bytes"), types.intern("auto"))};
+    FunctionDefinition function{.name = ir.named(ir.strings.intern("bytes")),
+                                .return_type = types.intern("auto")};
     auto const element{types.intern("Element", {types.dependency("Element", "Project/Element.h")})};
-    function.implementation = ir.function_body({ir.return_stmt(
-        ir.binary(BinaryOperator::multiply, ir.literal("2"), ir.sizeof_type(element)))});
+    function.implementation = {
+        .kind = FunctionImplementationKind::body,
+        .body = {ir.return_stmt(
+            ir.binary(BinaryOperator::multiply, ir.literal("2"), ir.sizeof_type(element)))}};
     auto const file{
         ir.files.append(ir.strings.intern("Example.h"),
-                        {ir.include_dependencies(), ir.definition(ir.function(function))})};
+                        {ir.include_dependencies(), ir.definition(ir.add_function(function))})};
     auto const output{CppRenderer{ir}.render(file)};
     expect_contains_all(output, {"#include \"Project/Element.h\"", "return 2 * sizeof(Element);"});
 }
@@ -394,12 +399,14 @@ TEST_F(AstTest, CollectsDeepControlFlowDependenciesOnlyForDefinitions) {
         {ir.switch_case(symbol("case_only"), ir.block({ir.expr_stmt(body_call)})),
          ir.switch_case(std::nullopt,
                         ir.block({ir.block({ir.expr_stmt(ir.call(symbol("default_only")))})}))})};
-    auto spec{ir.function_definition(ir.strings.intern("f"), types.std.void_)};
-    spec.implementation =
-        ir.function_body({ir.if_stmt(ir.call(symbol("condition_only")),
-                                     ir.block({selection}),
-                                     ir.block({ir.return_stmt(ir.call(symbol("else_only")))}))});
-    auto const published_spec{ir.function(spec)};
+    FunctionDefinition spec{.name = ir.named(ir.strings.intern("f")),
+                            .return_type = types.std.void_};
+    spec.implementation = {
+        .kind = FunctionImplementationKind::body,
+        .body = {ir.if_stmt(ir.call(symbol("condition_only")),
+                            ir.block({selection}),
+                            ir.block({ir.return_stmt(ir.call(symbol("else_only")))}))}};
+    auto const published_spec{ir.add_function(spec)};
     auto const file{ir.files.append(ir.strings.intern("Example.h"),
                                     {ir.include_dependencies(), ir.declaration(published_spec)})};
     EXPECT_EQ(renderer.render(file).find("Project/"), std::string::npos);
@@ -423,13 +430,15 @@ TEST_F(AstTest, DeduplicatesSharedSymbolDependenciesAndTheirNestedHeaders) {
     auto const symbol{types.dependency("make", "Project/Make.h")};
     auto const value{types.dependency("Value", "Project/Value.h")};
     auto const expression{ir.call(ir.named("make", {symbol, value}))};
-    auto function{ir.function_definition(ir.strings.intern("f"), types.intern("auto"))};
-    function.implementation = ir.function_body({ir.return_stmt(expression)});
+    FunctionDefinition function{.name = ir.named(ir.strings.intern("f")),
+                                .return_type = types.intern("auto")};
+    function.implementation = {.kind = FunctionImplementationKind::body,
+                               .body = {ir.return_stmt(expression)}};
     auto const file{ir.files.append(
         ir.strings.intern("Example.h"),
         {ir.include_dependencies(),
          ir.instance_member(types.intern("auto"), ir.strings.intern("value"), expression),
-         ir.definition(ir.function(function))})};
+         ir.definition(ir.add_function(function))})};
     auto const output{CppRenderer{ir}.render(file)};
     for (auto const* header : {"Project/Make.h", "Project/Value.h"}) {
         EXPECT_NE(output.find(header), std::string::npos);

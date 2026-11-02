@@ -10,7 +10,9 @@
 #include <codegen/ast/function_flags.h>
 #include <codegen/ast/function_formatting.h>
 #include <codegen/ast/function_kind.h>
+#include <codegen/ast/function_parameter_view.h>
 #include <codegen/ast/function_receiver.h>
+#include <codegen/ast/function_view.h>
 #include <codegen/ast/include_style.h>
 #include <codegen/ast/indices.h>
 #include <codegen/ast/ir/access_specifiers.h>
@@ -262,15 +264,11 @@ class CppIR {
     auto template_specialization() -> TemplateId;
     // Retain arbitrary parameter-list syntax authored by the source language.
     auto raw_template_declaration(StringId parameters) -> TemplateId;
-    // Require an actual return type; use the dedicated constructor/destructor factories otherwise.
-    auto function(FunctionDefinition const& definition) -> FunctionId;
-    auto function_definition(StringId name, CppTypeId return_type) -> FunctionDefinition;
-    auto function_definition(Expr name, CppTypeId return_type) -> FunctionDefinition;
-    auto function_definition(std::string_view name, CppTypeId return_type) -> FunctionDefinition;
-    auto function_definition(std::string_view name, std::string_view return_type)
-        -> FunctionDefinition;
-    auto constructor_definition(StringId name, bool is_explicit = false) -> FunctionDefinition;
-    auto destructor_definition(StringId name) -> FunctionDefinition;
+    // Require a return type for ordinary functions; constructors and destructors omit it.
+    auto add_function(FunctionDefinition const& definition) -> FunctionId;
+    // Views borrow storage; do not retain them across IR mutations.
+    auto get_view(FunctionId function) const -> FunctionView;
+    auto get_view(FunctionParameterId parameter) const -> FunctionParameterView;
     auto parameter(CppTypeId type, StringId name = {}, Expr default_value = {})
         -> FunctionParameterId;
     auto parameter(CppTypeId type, std::string_view name, Expr default_value = {})
@@ -279,31 +277,6 @@ class CppIR {
         -> FunctionParameterId;
     auto member_initializer(StringId member, StringId value) -> MemberInitializerId;
     auto member_initializer(StringId member, Expr value) -> MemberInitializerId;
-    auto function_body(std::span<NodeId const> body,
-                       std::span<MemberInitializerId const> initializers = {})
-        -> FunctionImplementationId;
-    auto function_body(std::initializer_list<NodeId> body,
-                       std::span<MemberInitializerId const> initializers = {})
-        -> FunctionImplementationId {
-        return function_body(std::span<NodeId const>{body}, initializers);
-    }
-    auto function_body(std::span<NodeId const> body,
-                       std::initializer_list<MemberInitializerId> initializers)
-        -> FunctionImplementationId {
-        return function_body(body, std::span<MemberInitializerId const>{initializers});
-    }
-    auto function_body(std::initializer_list<NodeId> body,
-                       std::initializer_list<MemberInitializerId> initializers)
-        -> FunctionImplementationId {
-        return function_body(std::span<NodeId const>{body},
-                             std::span<MemberInitializerId const>{initializers});
-    }
-    auto defaulted_function() -> FunctionImplementationId;
-    auto deleted_function() -> FunctionImplementationId;
-    auto noexcept_specification() -> FunctionExceptionId;
-    auto conditional_noexcept(Expr condition) -> FunctionExceptionId;
-    auto parameter_name(FunctionParameterId parameter) const -> StringId;
-    auto parameter_type(FunctionParameterId parameter) const -> CppTypeId;
     auto raw(StringId value, std::span<TypeDependencyId const> dependencies = {}) -> NodeId;
     // Interleave authored text (raw expressions) with structured substitutions at final emission.
     auto raw_parts(std::span<Expr const> parts, std::span<TypeDependencyId const> dependencies = {})

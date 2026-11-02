@@ -529,7 +529,7 @@ void CppRenderer::collect_environment(EnvironmentId environment,
                 break;
             case NodeKind::function:
                 if (!ir_.function_nodes_.owner[i]) {
-                    add_expr(ir_.functions_.name[ir_.function_nodes_.function[i].value],
+                    add_expr(ir_.get_view(ir_.function_nodes_.function[i]).name,
                              CppDeclarationId{ir_.function_nodes_.function[i]});
                 }
                 break;
@@ -762,7 +762,11 @@ void CppRenderer::append_expr(
             if (auto const declaration{ir_.lambda_exprs_.template_declaration[index]}) {
                 append_template(output, declaration, ctx, false);
             }
-            append_parameters(output, ir_.lambda_exprs_.parameters[index], ctx, true);
+            append_parameters(
+                output,
+                ir::range_values(ir_.parameter_references_, ir_.lambda_exprs_.parameters[index]),
+                ctx,
+                true);
             auto const body{ir_.nodes(ir_.lambda_exprs_.body[index])};
             state_.current = block_environment(body);
             output += " {";
@@ -847,24 +851,25 @@ void CppRenderer::append_template(std::string& output,
     output += '>';
 }
 void CppRenderer::append_parameters(std::string& output,
-                                    ir::Range parameters,
+                                    std::span<FunctionParameterId const> parameters,
                                     RenderContext const& ctx,
                                     bool defaults) {
     output += '(';
-    auto const end{parameters.begin + parameters.count};
-    for (auto p{parameters.begin}; p < end; ++p) {
-        if (p != parameters.begin) {
+    auto const count{parameters.size()};
+    for (std::size_t p{}; p < count; ++p) {
+        if (p != 0) {
             output += ", ";
         }
-        auto const parameter{ir_.parameter_references_[p]};
-        append_type(output, ir_.parameters_.type[parameter.value], ctx);
-        auto const name{ir_.parameters_.name[parameter.value]};
+        auto const parameter{parameters[p]};
+        auto const view{ir_.get_view(parameter)};
+        append_type(output, view.type, ctx);
+        auto const name{view.name};
         if (name.value != 0) {
             output += ' ';
             output += ir_.strings.view(name);
             state_.environments.declare(state_.current, name, CppDeclarationId{parameter});
         }
-        if (auto const value{ir_.parameters_.default_value[parameter.value]}; value && defaults) {
+        if (auto const value{view.default_value}; value && defaults) {
             output += " = ";
             append_expr(output, value, ctx);
         }
@@ -875,24 +880,23 @@ auto CppRenderer::signature(std::uint32_t index,
                             RenderContext const& ctx,
                             EnvironmentId& environment) -> std::string {
     auto const& nodes{ir_.function_nodes_};
-    auto const& functions{ir_.functions_};
-    auto const id{nodes.function[index].value};
+    auto const function{ir_.get_view(nodes.function[index])};
     auto const declaration{nodes.declaration[index] != 0};
     auto const header{nodes.is_header[index] != 0};
     auto const owner{nodes.owner[index]};
-    auto const format{functions.formatting[id]};
-    auto const implementation{functions.implementation[id]};
-    if (owner && implementation.kind() == FunctionImplementationKind::deleted) {
-        throw std::invalid_argument{"Function '" + expression(functions.name[id], ctx) +
+    auto const format{function.formatting};
+    auto const implementation{function.implementation};
+    if (owner && implementation.kind == FunctionImplementationKind::deleted) {
+        throw std::invalid_argument{"Function '" + expression(function.name, ctx) +
                                     "' deleted function cannot be an out-of-line definition"};
     }
-    auto const return_syntax{nodes.return_syntax[index].value_or(functions.return_syntax[id])};
-    auto const receiver{functions.receiver[id]};
+    auto const return_syntax{nodes.return_syntax[index].value_or(function.return_syntax)};
+    auto const receiver{function.receiver};
     std::string output;
-    if (functions.flags[id].is_nodiscard()) {
+    if (function.flags.is_nodiscard()) {
         output += "[[nodiscard]] ";
     }
-    if (functions.flags[id].is_noreturn()) {
+    if (function.flags.is_noreturn()) {
         output += "[[noreturn]] ";
     }
     auto& state{state_};
@@ -902,32 +906,31 @@ auto CppRenderer::signature(std::uint32_t index,
         state.environments.append(enclosing, EnvironmentKind::template_)};
     state.current = template_environment;
     std::string template_text;
-    if (auto const declaration{functions.template_declaration[id]}) {
+    if (auto const declaration{function.template_declaration}) {
         append_template(template_text, declaration, ctx);
     }
-    if (functions.flags[id].is_inline() && header && (owner || !in_record_scope(enclosing))) {
+    if (function.flags.is_inline() && header && (owner || !in_record_scope(enclosing))) {
         output += "inline ";
     }
     if (receiver == FunctionReceiver::static_ && !owner) {
         output += "static ";
     }
-    if (functions.flags[id].is_constexpr()) {
+    if (function.flags.is_constexpr()) {
         output += "constexpr ";
     }
-    auto const export_specifier{(declaration || header) ? functions.export_specifier[id]
-                                                        : StringId{}};
+    auto const export_specifier{(declaration || header) ? function.export_specifier : StringId{}};
     if (export_specifier.value != 0 && !format.export_after_return_type) {
         output += ir_.strings.view(export_specifier);
         output += ' ';
     }
-    if (functions.kind[id] == FunctionKind::ordinary) {
+    if (function.kind == FunctionKind::ordinary) {
         if (return_syntax == ReturnSyntax::trailing) {
             output += "auto";
         } else {
-            append_type(output, functions.return_type[id], ctx);
+            append_type(output, function.return_type, ctx);
         }
         output += ' ';
-    } else if (functions.kind[id] == FunctionKind::explicit_constructor && !owner) {
+    } else if (function.kind == FunctionKind::explicit_constructor && !owner) {
         output += "explicit ";
     }
     if (export_specifier.value != 0 && format.export_after_return_type) {
@@ -938,7 +941,7 @@ auto CppRenderer::signature(std::uint32_t index,
         append_type(output, *owner, ctx);
         output += "::";
     }
-    append_expr(output, functions.name[id], ctx);
+    append_expr(output, function.name, ctx);
     state.current = enclosing;
     if (owner) {
         state.current = record_environment(ir_.types.spelling(*owner));
@@ -948,7 +951,7 @@ auto CppRenderer::signature(std::uint32_t index,
     state.environments.import_symbols(function_environment, template_environment);
     state.current = function_environment;
     environment = function_environment;
-    append_parameters(output, functions.parameters[id], ctx, declaration || header);
+    append_parameters(output, function.parameters, ctx, declaration || header);
     switch (receiver) {
         case FunctionReceiver::unqualified:
         case FunctionReceiver::static_:
@@ -969,8 +972,8 @@ auto CppRenderer::signature(std::uint32_t index,
             output += " const &&";
             break;
     }
-    auto const exception{functions.exception_specification[id]};
-    switch (exception.kind()) {
+    auto const exception{function.exception_specification};
+    switch (exception.kind) {
         case FunctionExceptionKind::potentially_throwing:
             break;
         case FunctionExceptionKind::noexcept_:
@@ -978,17 +981,17 @@ auto CppRenderer::signature(std::uint32_t index,
             break;
         case FunctionExceptionKind::conditional:
             output += " noexcept(";
-            append_expr(output, ir_.conditional_noexcept_[exception.index()], ctx);
+            append_expr(output, exception.condition, ctx);
             output += ')';
             break;
     }
-    if (functions.kind[id] == FunctionKind::ordinary && return_syntax == ReturnSyntax::trailing) {
+    if (function.kind == FunctionKind::ordinary && return_syntax == ReturnSyntax::trailing) {
         output += format.trailing_return_placement == FunctionTrailingReturnPlacement::next_line
                     ? "\n    -> "
                     : " -> ";
-        append_type(output, functions.return_type[id], ctx);
+        append_type(output, function.return_type, ctx);
     }
-    if (auto const clause{functions.requires_clause[id]}) {
+    if (auto const clause{function.requires_clause}) {
         auto const value{expression(clause, ctx)};
         switch (format.requires_placement) {
             case FunctionRequiresPlacement::trailing_next_line:
@@ -1004,12 +1007,12 @@ auto CppRenderer::signature(std::uint32_t index,
                 break;
         }
     }
-    if (!declaration && implementation.kind() == FunctionImplementationKind::body) {
-        auto const initializers{ir_.function_bodies_.initializers[implementation.index()]};
-        auto const end{initializers.begin + initializers.count};
-        for (auto m{initializers.begin}; m < end; ++m) {
-            auto const row{ir_.initializer_references_[m].value};
-            output += m == initializers.begin ? "\n    : " : "\n    , ";
+    if (!declaration && implementation.kind == FunctionImplementationKind::body) {
+        auto const initializers{implementation.initializers};
+        auto const count{initializers.size()};
+        for (std::size_t m{}; m < count; ++m) {
+            auto const row{initializers[m].value};
+            output += m == 0 ? "\n    : " : "\n    , ";
             output += ir_.strings.view(ir_.initializers_.member[row]);
             output += '{';
             append_expr(output, ir_.initializers_.value[row], ctx);
@@ -1021,12 +1024,12 @@ auto CppRenderer::signature(std::uint32_t index,
             format.template_placement == FunctionTemplatePlacement::same_line ? " " : "\n";
         output.insert(0, template_text);
     }
-    if (ioj::is_any(implementation.kind(),
+    if (ioj::is_any(implementation.kind,
                     {FunctionImplementationKind::defaulted, FunctionImplementationKind::deleted})) {
         output += format.disposition_placement == FunctionDispositionPlacement::next_line ? "\n= "
                                                                                           : " = ";
         output +=
-            implementation.kind() == FunctionImplementationKind::defaulted ? "default" : "delete";
+            implementation.kind == FunctionImplementationKind::defaulted ? "default" : "delete";
     }
     return output;
 }
@@ -1348,26 +1351,24 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
             break;
         }
         case NodeKind::function: {
-            auto const id{ir_.function_nodes_.function[i].value};
+            auto const function{ir_.get_view(ir_.function_nodes_.function[i])};
             EnvironmentId function_environment;
             write(signature(i, ctx, function_environment));
-            auto const implementation{ir_.functions_.implementation[id]};
+            auto const implementation{function.implementation};
             if (ir_.function_nodes_.declaration[i] ||
-                implementation.kind() != FunctionImplementationKind::body) {
+                implementation.kind != FunctionImplementationKind::body) {
                 output += ';';
                 break;
             }
-            auto const body{
-                ir_.block_nodes_
-                    .children[ir_.function_bodies_.block[implementation.index()].index()]};
+            auto const body{implementation.body};
             state.current = function_environment;
-            state.current = block_environment(ir_.nodes(body));
-            auto const format{ir_.functions_.formatting[id]};
+            state.current = block_environment(body);
+            auto const format{function.formatting};
             if (format.body_layout == FunctionBodyLayout::compact) {
                 auto body_context{ctx};
                 body_context.indent_level = 0;
                 output += " { ";
-                append_nodes(output, ir_.nodes(body), body_context, 1);
+                append_nodes(output, body, body_context, 1);
                 output += " }";
             } else {
                 if (format.opening_brace_placement ==
@@ -1377,7 +1378,7 @@ void CppRenderer::append_node(std::string& output, NodeId node, RenderContext co
                     output += " {";
                 }
                 output += '\n';
-                append_nodes(output, ir_.nodes(body), ctx.indent(), 1);
+                append_nodes(output, body, ctx.indent(), 1);
                 close("}");
             }
             break;

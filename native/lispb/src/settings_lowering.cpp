@@ -220,7 +220,7 @@ class SettingsLowering : public CppIRBuilder {
         auto const value{named("value")};
         auto const id_parameter{parameter("GameSetting const", "id")};
         auto create = [&](std::string_view const name, CppTypeId const type) {
-            auto function_id{function_definition(name, type)};
+            FunctionDefinition function_id{.name = named(name), .return_type = type};
             function_id.return_type = type;
             function_id.return_syntax = ReturnSyntax::trailing;
             function_id.export_specifier = decls.settings_modules.export_specifier[module_row];
@@ -233,16 +233,20 @@ class SettingsLowering : public CppIRBuilder {
         };
         auto categories{create("game_setting_category_descriptors",
                                span_type("GameSettingCategoryDescriptor"))};
-        categories.implementation = function_body({return_stmt(named("category_descriptors"))});
+        categories.implementation = {.kind = FunctionImplementationKind::body,
+                                     .body = {return_stmt(named("category_descriptors"))}};
 
         auto descriptors{create("game_setting_descriptors", span_type("GameSettingDescriptor"))};
-        descriptors.implementation = function_body({return_stmt(named("descriptors"))});
+        descriptors.implementation = {.kind = FunctionImplementationKind::body,
+                                      .body = {return_stmt(named("descriptors"))}};
 
         auto descriptor{create("game_setting_descriptor",
                                decorate_type(named_type("GameSettingDescriptor"), "", " const&"))};
         descriptor.parameters = {id_parameter};
-        descriptor.implementation = function_body({return_stmt(
-            subscript(named("descriptors"), static_cast_expr(std_types().size_t, id)))});
+        descriptor.implementation = {
+            .kind = FunctionImplementationKind::body,
+            .body = {return_stmt(
+                subscript(named("descriptors"), static_cast_expr(std_types().size_t, id)))}};
 
         auto getter{create("game_setting_value", named_type("GameSettingValue"))};
         getter.parameters = {parameter(state_name + " const&", "state"), id_parameter};
@@ -256,11 +260,11 @@ class SettingsLowering : public CppIRBuilder {
                                                          intern_type("GameSettingValue")))})));
         }
         auto const first_name{decls.settings.name[settings.front()]};
-        getter.implementation =
-            function_body({switch_stmt(id, getter_cases),
-                           assertion(literal("false")),
-                           return_stmt(init_list({member_access(state, first_name)},
-                                                 intern_type("GameSettingValue")))});
+        getter.implementation = {.kind = FunctionImplementationKind::body,
+                                 .body = {switch_stmt(id, getter_cases),
+                                          assertion(literal("false")),
+                                          return_stmt(init_list({member_access(state, first_name)},
+                                                                intern_type("GameSettingValue")))}};
 
         auto setter{create("set_game_setting_value", std_types().bool_)};
         setter.parameters = {parameter(state_name + "&", "state"),
@@ -287,14 +291,15 @@ class SettingsLowering : public CppIRBuilder {
                     return_stmt(literal("true")),
                 })));
         }
-        setter.implementation =
-            function_body({switch_stmt(id, setter_cases), return_stmt(literal("false"))});
+        setter.implementation = {
+            .kind = FunctionImplementationKind::body,
+            .body = {switch_stmt(id, setter_cases), return_stmt(literal("false"))}};
 
-        return {function(categories),
-                function(descriptors),
-                function(descriptor),
-                function(getter),
-                function(setter)};
+        return {add_function(categories),
+                add_function(descriptors),
+                add_function(descriptor),
+                add_function(getter),
+                add_function(setter)};
     }
     auto settings_api(LoweringContext& ctx,
                       ModuleHandle module,
@@ -308,39 +313,47 @@ class SettingsLowering : public CppIRBuilder {
         for (std::size_t index{}; index < setting_count; ++index) {
             auto const setting{settings[index]};
             auto const name{ctx.declarations.settings.name[setting]};
-            auto getter{function_definition(name, intern_type("auto"))};
+            FunctionDefinition getter{.name = named(name), .return_type = intern_type("auto")};
             getter.return_type = setting_types[index];
             getter.return_syntax = ReturnSyntax::trailing;
             getter.receiver = FunctionReceiver::const_;
             getter.flags.set_define_in_header(true);
-            getter.implementation = function_body({return_stmt(member_access(
-                call(member_access(call(named("derived")), "settings_state")), name))});
-            members.add(header_function(function(getter)), 2);
+            getter.implementation = {
+                .kind = FunctionImplementationKind::body,
+                .body = {return_stmt(member_access(
+                    call(member_access(call(named("derived")), "settings_state")), name))}};
+            members.add(header_function(add_function(getter)), 2);
 
-            auto setter{function_definition("set_" + ctx.text(name), std_types().void_)};
+            FunctionDefinition setter{.name = named("set_" + ctx.text(name)),
+                                      .return_type = std_types().void_};
             setter.flags.set_define_in_header(true);
             setter.parameters = {
                 parameter(decorate_type(setting_types[index], "", " const"), "value")};
-            setter.implementation = function_body({expr_stmt(
-                call(member_access(call(named("derived")), "set_setting"),
-                     {type_reference(decorate_type(
-                          named_type("GameSetting"), "", "::" + title_case(ctx.text(name)))),
-                      init_list({named("value")}, intern_type("GameSettingValue"))}))});
-            members.add(header_function(function(setter)), 2);
+            setter.implementation = {
+                .kind = FunctionImplementationKind::body,
+                .body = {expr_stmt(
+                    call(member_access(call(named("derived")), "set_setting"),
+                         {type_reference(decorate_type(
+                              named_type("GameSetting"), "", "::" + title_case(ctx.text(name)))),
+                          init_list({named("value")}, intern_type("GameSettingValue"))}))}};
+            members.add(header_function(add_function(setter)), 2);
         }
         members.add(access(Access::private_), 1);
         for (auto const is_const : {false, true}) {
             auto const derived_type{intern_type(is_const ? "Derived const&" : "Derived&")};
-            auto function_id{function_definition("derived", "auto")};
+            FunctionDefinition function_id{.name = named("derived"),
+                                           .return_type = intern_type("auto")};
             function_id.return_type = derived_type;
             function_id.return_syntax = ReturnSyntax::trailing;
             function_id.receiver =
                 is_const ? FunctionReceiver::const_ : FunctionReceiver::unqualified;
             function_id.flags.set_define_in_header(true);
             function_id.formatting.body_layout = FunctionBodyLayout::compact;
-            function_id.implementation = function_body({return_stmt(
-                static_cast_expr(derived_type, unary(UnaryOperator::dereference, named("this"))))});
-            members.add(header_function(function(function_id)), 1);
+            function_id.implementation = {
+                .kind = FunctionImplementationKind::body,
+                .body = {return_stmt(static_cast_expr(
+                    derived_type, unary(UnaryOperator::dereference, named("this"))))}};
+            members.add(header_function(add_function(function_id)), 1);
         }
         auto const result{
             record(modules.api_name[module_row], members.build(), RecordKind::class_)};
@@ -508,13 +521,13 @@ class SettingsLowering : public CppIRBuilder {
                 1);
         }
         auto const state_name{modules.state_name[module_row]};
-        auto equality{function_definition("operator==", std_types().bool_)};
+        FunctionDefinition equality{.name = named("operator=="), .return_type = std_types().bool_};
         equality.return_type = std_types().bool_;
         equality.return_syntax = ReturnSyntax::trailing;
         equality.parameters = {parameter(intern_type(ctx.text(state_name) + " const&"))};
         equality.receiver = FunctionReceiver::const_;
-        equality.implementation = defaulted_function();
-        state_members.new_lines(2).add(header_function(function(equality)), 1);
+        equality.implementation = {.kind = FunctionImplementationKind::defaulted};
+        state_members.new_lines(2).add(header_function(add_function(equality)), 1);
         auto const state{record(state_name, state_members.build())};
         set_record_export_specifier(state, modules.export_specifier[module_row]);
         emit_header(ctx.text(state_name), state, {});

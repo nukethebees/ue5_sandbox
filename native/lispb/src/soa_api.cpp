@@ -152,7 +152,8 @@ class SoaApiLowering : public CppIRBuilder {
                     append_body.add(return_stmt(spelling == "auto" || spelling == "decltype(auto)"
                                                     ? index
                                                     : init_list({index}, return_type)));
-                    spec.implementation = function_body(append_body.build());
+                    spec.implementation = {.kind = FunctionImplementationKind::body,
+                                           .body = append_body.build()};
                     spec.flags.set_define_in_header(!function_schemas.definition_in_source[row]);
                 }
                 if (function_schemas.definition_in_source[function_id]) {
@@ -161,7 +162,7 @@ class SoaApiLowering : public CppIRBuilder {
                     auto const use_trailing_return{return_syntax == ReturnSyntax::direct &&
                                                    return_spelling != "auto" &&
                                                    return_spelling != "decltype(auto)"};
-                    auto const published{function(spec)};
+                    auto const published{add_function(spec)};
                     header.add(declaration(published)).new_lines(1);
                     source
                         .add(definition(published,
@@ -174,7 +175,7 @@ class SoaApiLowering : public CppIRBuilder {
                         spec.flags.define_in_header() ||
                         !function_schemas.body_lines[function_id].empty());
                     spec.flags.set_is_inline(spec.flags.define_in_header());
-                    header.add(header_function(function(spec))).new_lines(1);
+                    header.add(header_function(add_function(spec))).new_lines(1);
                 }
             }
         };
@@ -206,18 +207,21 @@ class SoaApiLowering : public CppIRBuilder {
                                                    arguments)
                                             : init_list(arguments, named_type("equivalent_type"));
             }
-            auto function_id{function_definition("operator[]", "auto")};
+            FunctionDefinition function_id{.name = named("operator[]"),
+                                           .return_type = intern_type("auto")};
             function_id.parameters = {parameter(std_types().u32, "index")};
-            function_id.implementation = function_body(
-                {assertion(binary(BinaryOperator::less, named("index"), call(named("num")))),
-                 return_stmt(expression)});
+            function_id.implementation = {
+                .kind = FunctionImplementationKind::body,
+                .body = {
+                    assertion(binary(BinaryOperator::less, named("index"), call(named("num")))),
+                    return_stmt(expression)}};
             function_id.return_type = intern_type("equivalent_type");
             function_id.return_syntax = ReturnSyntax::trailing;
             function_id.receiver = FunctionReceiver::const_;
             auto& flags{function_id.flags};
             flags.set_is_inline(true);
             flags.set_define_in_header(true);
-            header.add(header_function(function(function_id))).new_lines(1);
+            header.add(header_function(add_function(function_id))).new_lines(1);
         }
         return {header.build(), source.build()};
     }
@@ -251,35 +255,40 @@ class SoaApiLowering : public CppIRBuilder {
         auto custom = [&](std::string_view name) {
             return has_custom_row_function(ctx, schema, receiver, name);
         };
-        auto emit =
-            [&](std::string_view name, std::vector<FunctionParameterId> parameters, Nodes body) {
-                auto function_id{function_definition(
-                    name, name == "set" ? std_types().void_ : named_type("size_type"))};
-                if (name == "set") {
-                    parameters.insert(parameters.begin(), parameter("size_type", "index"));
-                    function_id.receiver =
-                        mutable_view ? FunctionReceiver::const_ : FunctionReceiver::unqualified;
-                }
-                function_id.parameters.assign(parameters.begin(), parameters.end());
-                function_id.implementation = function_body(body);
-                function_id.flags.set_define_in_header(true);
-                function_id.flags.set_is_inline(true);
-                result.add(header_function(function(function_id))).new_lines(1);
-            };
+        auto emit = [&](std::string_view name,
+                        std::vector<FunctionParameterId> parameters,
+                        Nodes body) {
+            FunctionDefinition function_id{.name = named(name),
+                                           .return_type = name == "set" ? std_types().void_
+                                                                        : named_type("size_type")};
+            if (name == "set") {
+                parameters.insert(parameters.begin(), parameter("size_type", "index"));
+                function_id.receiver =
+                    mutable_view ? FunctionReceiver::const_ : FunctionReceiver::unqualified;
+            }
+            function_id.parameters.assign(parameters.begin(), parameters.end());
+            function_id.implementation = {.kind = FunctionImplementationKind::body, .body = body};
+            function_id.flags.set_define_in_header(true);
+            function_id.flags.set_is_inline(true);
+            result.add(header_function(add_function(function_id))).new_lines(1);
+        };
 
         if (owner) {
             for (auto member : decls.items(soas.members[schema])) {
                 auto const row{members.index(member)};
                 auto const name{(members.kind[row] == SoaMemberKind::nested ? "view_" : "") +
                                 ctx.text(members.name[row])};
-                auto function_id{function_definition(name, "auto")};
+                FunctionDefinition function_id{.name = named(name),
+                                               .return_type = intern_type("auto")};
                 function_id.parameters = {
                     parameter(decorate_type(intern_type("auto"), "this ", "&"), "self")};
-                function_id.implementation = function_body({return_stmt(
-                    call(member_access(call(member_access(named("self"), "view")), name)))});
+                function_id.implementation = {
+                    .kind = FunctionImplementationKind::body,
+                    .body = {return_stmt(
+                        call(member_access(call(member_access(named("self"), "view")), name)))}};
                 function_id.flags.set_define_in_header(true);
                 function_id.formatting.body_layout = FunctionBodyLayout::compact;
-                result.add(header_function(function(function_id))).new_lines(1);
+                result.add(header_function(add_function(function_id))).new_lines(1);
             }
         }
         if ((!owner && !mutable_view) || custom("set")) {
@@ -377,7 +386,7 @@ class SoaApiLowering : public CppIRBuilder {
             logical_parameters,
             {},
             [&](auto type) { return type_spelling(type); },
-            [&](auto parameter_id) { return type_spelling(parameter_type(parameter_id)); })};
+            [&](auto parameter_id) { return type_spelling(get_view(parameter_id).type); })};
         if (!same_parameters) {
             emit("set", logical_parameters, logical_assignments.build());
             if (owner && !custom("add")) {

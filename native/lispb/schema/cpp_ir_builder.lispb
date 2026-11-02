@@ -371,23 +371,6 @@
       (method template_specialization "TemplateId")
       (method raw_template_declaration "TemplateId"
         (parameter parameters "StringId"))
-      (method function_definition "FunctionDefinition"
-        (parameter name "StringId")
-        (parameter return_type "CppTypeId"))
-      (method function_definition "FunctionDefinition"
-        (parameter name "Expr")
-        (parameter return_type "CppTypeId"))
-      (method function_definition "FunctionDefinition"
-        (parameter name "std::string_view")
-        (parameter return_type "CppTypeId"))
-      (method function_definition "FunctionDefinition"
-        (parameter name "std::string_view")
-        (parameter return_type "std::string_view"))
-      (method constructor_definition "FunctionDefinition"
-        (parameter name "StringId")
-        (parameter is_explicit "bool" :default "false"))
-      (method destructor_definition "FunctionDefinition"
-        (parameter name "StringId"))
       (method parameter "FunctionParameterId"
         (parameter type "CppTypeId")
         (parameter name "StringId" :default "{}")
@@ -406,29 +389,12 @@
       (method member_initializer "MemberInitializerId"
         (parameter member "StringId")
         (parameter value "Expr"))
-      (method function "FunctionId"
+      (method get_view "FunctionView" :const true
+        (parameter function "FunctionId"))
+      (method get_view "FunctionParameterView" :const true
+        (parameter parameter "FunctionParameterId"))
+      (method add_function "FunctionId"
         (parameter definition "FunctionDefinition const&"))
-      (method function_body "FunctionImplementationId"
-        (parameter body "std::span<NodeId const>")
-        (parameter initializers "std::span<MemberInitializerId const>" :default "{}"))
-      (method function_body "FunctionImplementationId"
-        (parameter body "std::initializer_list<NodeId>")
-        (parameter initializers "std::span<MemberInitializerId const>" :default "{}"))
-      (method function_body "FunctionImplementationId"
-        (parameter body "std::span<NodeId const>")
-        (parameter initializers "std::initializer_list<MemberInitializerId>"))
-      (method function_body "FunctionImplementationId"
-        (parameter body "std::initializer_list<NodeId>")
-        (parameter initializers "std::initializer_list<MemberInitializerId>"))
-      (method defaulted_function "FunctionImplementationId")
-      (method deleted_function "FunctionImplementationId")
-      (method noexcept_specification "FunctionExceptionId")
-      (method conditional_noexcept "FunctionExceptionId"
-        (parameter condition "Expr"))
-      (method parameter_name "StringId" :const true
-        (parameter parameter "FunctionParameterId"))
-      (method parameter_type "CppTypeId" :const true
-        (parameter parameter "FunctionParameterId"))
       (method raw "NodeId"
         (parameter value "StringId")
         (parameter dependencies "std::span<TypeDependencyId const>" :default "{}"))

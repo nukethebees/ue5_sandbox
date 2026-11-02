@@ -48,17 +48,19 @@ class StaticTableLowering : public CppIRBuilder {
             arguments.push_back(subscript(named(column), named("index")));
         }
 
-        auto created_function{function_definition("get_" + ctx.text(groups.name[row]), "auto")};
+        FunctionDefinition created_function{.name = named("get_" + ctx.text(groups.name[row])),
+                                            .return_type = intern_type("auto")};
         created_function.parameters = {parameter(
             intern_type("int32 const", {dependency("int32 const", "CoreMinimal.h")}), "index")};
-        created_function.implementation =
-            function_body({return_stmt(init_list(arguments, result_type))});
+        created_function.implementation = {
+            .kind = FunctionImplementationKind::body,
+            .body = {return_stmt(init_list(arguments, result_type))}};
         created_function.return_type = result_type;
         created_function.return_syntax = ReturnSyntax::trailing;
         created_function.receiver = FunctionReceiver::const_;
         created_function.flags.set_is_inline(true);
         created_function.flags.set_define_in_header(true);
-        return header_function(function(created_function));
+        return header_function(add_function(created_function));
     }
     auto table_node(LoweringContext& ctx, DeclarationHandle table) -> NodeId {
         auto const& tables{ctx.declarations.static_tables};
@@ -82,17 +84,18 @@ class StaticTableLowering : public CppIRBuilder {
                          index + 1 < row_count ? 1 : 2);
         }
 
-        auto num{function_definition("num", "auto")};
-        num.implementation = function_body({return_stmt(named("num_rows"))});
+        FunctionDefinition num{.name = named("num"), .return_type = intern_type("auto")};
+        num.implementation = {.kind = FunctionImplementationKind::body,
+                              .body = {return_stmt(named("num_rows"))}};
         num.return_type = int32_type;
         num.return_syntax = ReturnSyntax::trailing;
-        num.exception_specification = noexcept_specification();
+        num.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
         num.receiver = FunctionReceiver::static_;
         auto& flags{num.flags};
         flags.set_is_constexpr(true);
         flags.set_is_inline(true);
         flags.set_define_in_header(true);
-        children.add(header_function(function(num)), 2);
+        children.add(header_function(add_function(num)), 2);
 
         std::vector<std::string> column_names;
         column_names.reserve(columns.size());

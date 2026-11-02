@@ -58,18 +58,20 @@ class EnumLowering : public CppIRBuilder {
     // Lowering
     /* **************************************** */
     auto enum_count_specialization(CppTypeId enum_type, std::size_t const count) -> NodeId {
-        auto function_id{function_definition(
-            template_id(named("enum_count"), {type_reference(enum_type)}), intern_type("auto"))};
+        FunctionDefinition function_id{
+            .name = template_id(named("enum_count"), {type_reference(enum_type)}),
+            .return_type = intern_type("auto")};
         function_id.template_declaration = template_specialization();
         function_id.return_type = std_types().size_t;
         function_id.return_syntax = ReturnSyntax::trailing;
         auto& flags{function_id.flags};
         flags.set_is_nodiscard(true);
         flags.set_is_constexpr(true);
-        function_id.exception_specification = noexcept_specification();
+        function_id.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
         flags.set_define_in_header(true);
-        function_id.implementation = function_body({return_stmt(literal(std::to_string(count)))});
-        return header_function(function(function_id));
+        function_id.implementation = {.kind = FunctionImplementationKind::body,
+                                      .body = {return_stmt(literal(std::to_string(count)))}};
+        return header_function(add_function(function_id));
     }
     auto enum_strings_specialization(std::string_view qualified,
                                      std::string_view category,
@@ -368,14 +370,15 @@ class EnumLowering : public CppIRBuilder {
                          std::string const& enum_name,
                          std::string_view suffix,
                          Nodes body) -> FunctionId {
-        auto function_id{function_definition(internal_name(ctx, schema, suffix), "auto")};
+        FunctionDefinition function_id{.name = named(internal_name(ctx, schema, suffix)),
+                                       .return_type = intern_type("auto")};
         function_id.parameters = {
             parameter(decorate_type(named_type(enum_name), "", " const"), "value")};
-        function_id.implementation = function_body(body);
+        function_id.implementation = {.kind = FunctionImplementationKind::body, .body = body};
         function_id.return_type = decorate_type(
             named_type("TCHAR", {dependency("TCHAR", "CoreMinimal.h")}), "", " const*");
         function_id.return_syntax = ReturnSyntax::trailing;
-        return function(function_id);
+        return add_function(function_id);
     }
     auto packed_enum_strings(LoweringContext& ctx,
                              ModuleSettingsId settings,
@@ -444,7 +447,8 @@ class EnumLowering : public CppIRBuilder {
                      1);
         }
         body.add(return_stmt(literal("false")));
-        auto created_function{function_definition("try_parse_serialized", "auto")};
+        FunctionDefinition created_function{.name = named("try_parse_serialized"),
+                                            .return_type = intern_type("auto")};
         created_function.parameters = {
             parameter(decorate_type(
                           named_type("FStringView", {dependency("FStringView", "CoreMinimal.h")}),
@@ -452,11 +456,12 @@ class EnumLowering : public CppIRBuilder {
                           " const"),
                       "value"),
             parameter(decorate_type(named_type(enum_name), "", "&"), "result")};
-        created_function.implementation = function_body(body.build());
+        created_function.implementation = {.kind = FunctionImplementationKind::body,
+                                           .body = body.build()};
         created_function.return_type = std_types().bool_;
         created_function.return_syntax = ReturnSyntax::trailing;
         created_function.export_specifier = enums.export_specifier[schema];
-        return function(created_function);
+        return add_function(created_function);
     }
     auto conversion_function(LoweringContext& ctx,
                              ModuleSettingsId settings,
@@ -485,17 +490,19 @@ class EnumLowering : public CppIRBuilder {
             named(internal_name(
                 ctx, schema, serialized ? "serialized_name" : (display ? "display_name" : "name"))),
             {named("value")})};
-        auto result{function_definition(StringId{}, intern_type("auto"))};
+        FunctionDefinition result{.name = named(StringId{}), .return_type = intern_type("auto")};
         result.parameters = {
             parameter(decorate_type(named_type(parameter_type_value), "", " const"), "value")};
-        result.implementation = function_body({return_stmt(lookup)});
+        result.implementation = {.kind = FunctionImplementationKind::body,
+                                 .body = {return_stmt(lookup)}};
         result.export_specifier = enums.export_specifier[schema];
         auto configure_result = [&](std::string_view name, CppTypeId type, bool construct = false) {
             result.name = named(store_text(name));
             result.return_type = type;
             result.return_syntax = ReturnSyntax::trailing;
             if (construct) {
-                result.implementation = function_body({return_stmt(init_list({lookup}, type))});
+                result.implementation = {.kind = FunctionImplementationKind::body,
+                                         .body = {return_stmt(init_list({lookup}, type))}};
             }
         };
         auto unreal_type = [&](std::string_view name) {
@@ -527,7 +534,7 @@ class EnumLowering : public CppIRBuilder {
             case EnumConversion::try_parse_serialized:
                 break;
         }
-        return function(result);
+        return add_function(result);
     }
     auto annotation(LoweringContext& ctx, EnumeratorId value, bool const reflected)
         -> std::optional<std::string> {
@@ -813,7 +820,8 @@ class EnumLowering : public CppIRBuilder {
         }
 
         auto const target_type{named_type(target)};
-        auto function_id{function_definition(function_name, "auto")};
+        FunctionDefinition function_id{.name = named(function_name),
+                                       .return_type = intern_type("auto")};
         function_id.return_type = target_type;
         function_id.return_syntax = ReturnSyntax::trailing;
         function_id.parameters = {
@@ -822,12 +830,13 @@ class EnumLowering : public CppIRBuilder {
         flags.set_define_in_header(true);
         flags.set_is_constexpr(true);
         flags.set_is_nodiscard(true);
-        function_id.exception_specification = noexcept_specification();
+        function_id.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
         auto body{node_list()};
         body.add(switch_stmt(named("value"), cases), 2);
         body.add(return_stmt(static_cast_expr(target_type, named("value"))));
-        function_id.implementation = function_body(body.build());
-        return header_function(function(function_id));
+        function_id.implementation = {.kind = FunctionImplementationKind::body,
+                                      .body = body.build()};
+        return header_function(add_function(function_id));
     }
     auto unreal_conversion_header(LoweringContext& ctx,
                                   ModuleSettingsId const settings,

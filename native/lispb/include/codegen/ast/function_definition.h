@@ -1,10 +1,10 @@
 #pragma once
 
 #include <codegen/ast/expr.h>
-#include <codegen/ast/function_exception_id.h>
+#include <codegen/ast/function_exception_specification.h>
 #include <codegen/ast/function_flags.h>
 #include <codegen/ast/function_formatting.h>
-#include <codegen/ast/function_implementation_id.h>
+#include <codegen/ast/function_implementation.h>
 #include <codegen/ast/function_kind.h>
 #include <codegen/ast/function_receiver.h>
 #include <codegen/ast/indices.h>
@@ -16,7 +16,7 @@
 
 namespace lispb::codegen {
 
-// Assemble locally, then publish an immutable function with CppIR::function().
+// Assemble locally, then publish an immutable function with CppIR::add_function().
 struct FunctionDefinition {
     Expr name{};
     CppTypeId return_type{};
@@ -24,8 +24,8 @@ struct FunctionDefinition {
     FunctionKind kind{FunctionKind::ordinary};
     std::vector<FunctionParameterId> parameters;
     // Leave empty for a declaration without an implementation.
-    FunctionImplementationId implementation{};
-    FunctionExceptionId exception_specification{};
+    FunctionImplementation implementation{};
+    FunctionExceptionSpecification exception_specification{};
     FunctionReceiver receiver{FunctionReceiver::unqualified};
     FunctionFlags flags{};
     StringId export_specifier{};
