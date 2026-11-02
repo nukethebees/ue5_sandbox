@@ -65,7 +65,11 @@ auto lower_facade(LoweringContext& context, DeclarationHandle facade) -> Declara
             auto const type{context.resolve(parameter_schemas.type[parameter_row])};
             auto const name{parameter_schemas.name[parameter_row]};
             parameters.push_back(
-                ir.parameter(type, name, parameter_schemas.default_value[parameter_row]));
+                ir.parameter(type,
+                             name,
+                             parameter_schemas.default_value[parameter_row]
+                                 ? ir.raw_expr(*parameter_schemas.default_value[parameter_row])
+                                 : Expr{}));
             arguments.push_back(ir.named(name));
         }
         std::vector<TypeDependencyId> validation_dependencies;

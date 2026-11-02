@@ -194,9 +194,10 @@ auto lower_schema_function(LoweringContext& context,
     auto const row{functions.index(schema)};
     std::vector<FunctionParameterId> parameters;
     for (auto const parameter : decls.items(functions.parameters[schema])) {
+        auto const default_value{parameter_schemas.default_value[parameter]};
         parameters.push_back(ir.parameter(context.resolve(parameter_schemas.type[parameter]),
                                           parameter_schemas.name[parameter],
-                                          parameter_schemas.default_value[parameter]));
+                                          default_value ? ir.raw_expr(*default_value) : Expr{}));
     }
     std::vector<TypeDependencyId> dependencies;
     for (auto const key : decls.items(functions.dependencies[schema])) {

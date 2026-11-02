@@ -452,10 +452,9 @@ TEST_F(AstTest, RawNodesReportExplicitDependencies) {
 
 TEST_F(AstTest, RendersDeclarationsAndOutOfLineDefinitionsFromOneSpec) {
     auto const function{ir.function(ir.strings.intern("set"), types.intern("void"))};
-    ir.set_function_parameters(function,
-                               {ir.parameter(types.intern("int32 const"),
-                                             ir.strings.intern("value"),
-                                             ir.store_text("0"))});
+    ir.set_function_parameters(
+        function,
+        {ir.parameter(types.intern("int32 const"), ir.strings.intern("value"), ir.literal("0"))});
     ir.set_function_body(function, {ir.raw("stored = value;")});
     ir.set_function_noexcept(function);
 
@@ -573,10 +572,9 @@ TEST_F(AstTest, RendersForwardUsingAndFilePolicyNodes) {
 
 TEST_F(AstTest, AppliesStaticAndDefaultArgumentRulesToFunctionForms) {
     auto const function{ir.function(ir.strings.intern("make"), types.intern("int32"))};
-    ir.set_function_parameters(function,
-                               {ir.parameter(types.intern("int32 const"),
-                                             ir.strings.intern("value"),
-                                             ir.store_text("7"))});
+    ir.set_function_parameters(
+        function,
+        {ir.parameter(types.intern("int32 const"), ir.strings.intern("value"), ir.literal("7"))});
     ir.set_function_body(function, {ir.return_stmt(ir.raw_expr("value"))});
     ir.set_function_receiver(function, FunctionReceiver::static_);
     ir.function_flags(function).set_is_inline(true);

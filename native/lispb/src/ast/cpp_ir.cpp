@@ -455,8 +455,7 @@ auto CppIR::destructor(StringId name) -> FunctionId {
         named(strings.intern("~" + std::string{strings.view(name)})), {}, FunctionKind::destructor);
 }
 
-auto CppIR::parameter(CppTypeId type, StringId name, std::optional<StringId> default_value)
-    -> FunctionParameterId {
+auto CppIR::parameter(CppTypeId type, StringId name, Expr default_value) -> FunctionParameterId {
     FunctionParameterId const result{static_cast<std::uint32_t>(parameters_.name.size())};
     parameters_.type.push_back(type);
     parameters_.name.push_back(name);
@@ -464,14 +463,13 @@ auto CppIR::parameter(CppTypeId type, StringId name, std::optional<StringId> def
     return result;
 }
 
-auto CppIR::parameter(CppTypeId type, std::string_view name, std::optional<StringId> default_value)
+auto CppIR::parameter(CppTypeId type, std::string_view name, Expr default_value)
     -> FunctionParameterId {
     return parameter(type, strings.intern(name), default_value);
 }
 
-auto CppIR::parameter(std::string_view type,
-                      std::string_view name,
-                      std::optional<StringId> default_value) -> FunctionParameterId {
+auto CppIR::parameter(std::string_view type, std::string_view name, Expr default_value)
+    -> FunctionParameterId {
     return parameter(types.intern(type), strings.intern(name), default_value);
 }
 
@@ -1185,6 +1183,10 @@ void CppIR::collect_dependencies(NodeId node, std::vector<TypeDependencyId>& res
             auto const range{functions_.parameters[id]};
             for (auto const parameter : ir::range_values(parameter_references_, range)) {
                 type(parameters_.type[parameter.value]);
+                if (auto const value{parameters_.default_value[parameter.value]};
+                    value && (function_nodes_.declaration[i] || function_nodes_.is_header[i])) {
+                    collect_dependencies(value, result);
+                }
             }
             auto const implementation{functions_.implementation[id]};
             if (!function_nodes_.declaration[i] &&

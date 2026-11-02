@@ -259,14 +259,12 @@ class CppIR {
     auto function(std::string_view name, std::string_view return_type) -> FunctionId;
     auto constructor(StringId name, bool is_explicit = false) -> FunctionId;
     auto destructor(StringId name) -> FunctionId;
-    auto parameter(CppTypeId type, StringId name = {}, std::optional<StringId> default_value = {})
+    auto parameter(CppTypeId type, StringId name = {}, Expr default_value = {})
         -> FunctionParameterId;
-    auto parameter(CppTypeId type,
-                   std::string_view name,
-                   std::optional<StringId> default_value = {}) -> FunctionParameterId;
-    auto parameter(std::string_view type,
-                   std::string_view name = {},
-                   std::optional<StringId> default_value = {}) -> FunctionParameterId;
+    auto parameter(CppTypeId type, std::string_view name, Expr default_value = {})
+        -> FunctionParameterId;
+    auto parameter(std::string_view type, std::string_view name = {}, Expr default_value = {})
+        -> FunctionParameterId;
     auto member_initializer(StringId member, StringId value) -> MemberInitializerId;
     auto member_initializer(StringId member, Expr value) -> MemberInitializerId;
     void set_function_parameters(FunctionId function,

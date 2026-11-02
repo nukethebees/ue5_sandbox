@@ -830,7 +830,7 @@ auto CppRenderer::signature(std::uint32_t index,
         if (auto const value{ir_.parameters_.default_value[parameter.value]};
             value && (declaration || header)) {
             output += " = ";
-            output += ir_.strings.view(*value);
+            append_expr(output, value, context);
         }
     }
     output += ')';
