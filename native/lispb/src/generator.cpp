@@ -217,11 +217,9 @@ class ModuleLowering : public CppIRBuilder {
             }
         }
         FunctionDefinition function{.name = named("s7_record_constructors"),
-                                    .return_type = intern_type("auto")};
-        function.return_type = std_types().string_view;
-        function.return_syntax = ReturnSyntax::trailing;
-        function.flags.set_define_in_header(true);
-        function.flags.set_is_constexpr(true);
+                                    .return_type = std_types().string_view,
+                                    .return_syntax = ReturnSyntax::trailing,
+                                    .flags = {.is_constexpr = true, .define_in_header = true}};
         auto body{node_list()};
         body.add(return_stmt(string_literal(store_text(source))));
         function.implementation = {.kind = FunctionImplementationKind::body, .body = body.build()};

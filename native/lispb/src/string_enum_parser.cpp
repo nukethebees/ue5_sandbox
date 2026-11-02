@@ -37,16 +37,13 @@ class StringEnumParserLowering : public CppIRBuilder {
                                   std::string_view const parameter_name,
                                   std::span<StringEnumEntry const> const entries,
                                   bool const indexed) -> NodeId {
-        FunctionDefinition function{.name = named(function_name),
-                                    .return_type = intern_type("auto")};
-        function.return_type = template_type(std_types().optional, {named_type(enum_type)});
-        function.return_syntax = ReturnSyntax::trailing;
+        FunctionDefinition function{
+            .name = named(function_name),
+            .return_type = template_type(std_types().optional, {named_type(enum_type)}),
+            .return_syntax = ReturnSyntax::trailing,
+            .flags = {.is_constexpr = true, .is_nodiscard = true, .define_in_header = true}};
         function.parameters = {
             parameter(decorate_type(std_types().string_view, "", " const"), parameter_name)};
-        auto& flags{function.flags};
-        flags.set_define_in_header(true);
-        flags.set_is_constexpr(true);
-        flags.set_is_nodiscard(true);
         function.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
         auto const input{named(parameter_name)};
         function.implementation = {.kind = FunctionImplementationKind::body,

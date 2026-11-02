@@ -221,9 +221,8 @@ class SettingsLowering : public CppIRBuilder {
         auto const value{named("value")};
         auto const id_parameter{parameter("GameSetting const", "id")};
         auto create = [&](std::string_view const name, CppTypeId const type) {
-            FunctionDefinition function{.name = named(name), .return_type = type};
-            function.return_type = type;
-            function.return_syntax = ReturnSyntax::trailing;
+            FunctionDefinition function{
+                .name = named(name), .return_type = type, .return_syntax = ReturnSyntax::trailing};
             function.export_specifier = decls.settings_modules.export_specifier[module_row];
             return function;
         };
@@ -310,11 +309,11 @@ class SettingsLowering : public CppIRBuilder {
         for (std::size_t index{}; index < setting_count; ++index) {
             auto const setting{settings[index]};
             auto const name{ctx.declarations.settings.name[setting]};
-            FunctionDefinition getter{.name = named(name), .return_type = intern_type("auto")};
-            getter.return_type = setting_types[index];
-            getter.return_syntax = ReturnSyntax::trailing;
+            FunctionDefinition getter{.name = named(name),
+                                      .return_type = setting_types[index],
+                                      .return_syntax = ReturnSyntax::trailing,
+                                      .flags = {.define_in_header = true}};
             getter.receiver = FunctionReceiver::const_;
-            getter.flags.set_define_in_header(true);
             getter.implementation = {
                 .kind = FunctionImplementationKind::body,
                 .body = {return_stmt(member_access(
@@ -322,8 +321,8 @@ class SettingsLowering : public CppIRBuilder {
             members.add(header_function(add_function(getter)), 2);
 
             FunctionDefinition setter{.name = named("set_" + ctx.text(name)),
-                                      .return_type = std_types().void_};
-            setter.flags.set_define_in_header(true);
+                                      .return_type = std_types().void_,
+                                      .flags = {.define_in_header = true}};
             setter.parameters = {
                 parameter(decorate_type(setting_types[index], "", " const"), "value")};
             setter.implementation = {
@@ -339,11 +338,10 @@ class SettingsLowering : public CppIRBuilder {
         for (auto const is_const : {false, true}) {
             auto const derived_type{intern_type(is_const ? "Derived const&" : "Derived&")};
             FunctionDefinition function{.name = named("derived"),
-                                        .return_type = intern_type("auto")};
-            function.return_type = derived_type;
-            function.return_syntax = ReturnSyntax::trailing;
+                                        .return_type = derived_type,
+                                        .return_syntax = ReturnSyntax::trailing,
+                                        .flags = {.define_in_header = true}};
             function.receiver = is_const ? FunctionReceiver::const_ : FunctionReceiver::unqualified;
-            function.flags.set_define_in_header(true);
             function.formatting.body_layout = FunctionBodyLayout::compact;
             function.implementation = {
                 .kind = FunctionImplementationKind::body,
@@ -517,9 +515,9 @@ class SettingsLowering : public CppIRBuilder {
                 1);
         }
         auto const state_name{modules.state_name[module_row]};
-        FunctionDefinition equality{.name = named("operator=="), .return_type = std_types().bool_};
-        equality.return_type = std_types().bool_;
-        equality.return_syntax = ReturnSyntax::trailing;
+        FunctionDefinition equality{.name = named("operator=="),
+                                    .return_type = std_types().bool_,
+                                    .return_syntax = ReturnSyntax::trailing};
         equality.parameters = {parameter(intern_type(ctx.text(state_name) + " const&"))};
         equality.receiver = FunctionReceiver::const_;
         equality.implementation = {.kind = FunctionImplementationKind::defaulted};

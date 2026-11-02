@@ -51,8 +51,8 @@ class FacadeLowering : public CppIRBuilder {
                                       : FunctionDefinition{.name = named("bind"),
                                                            .return_type = std_types().void_}};
         binding.parameters = {parameter(decorate_type(target_type, "", "&"), "new_target")};
-        binding.flags.set_is_inline(!definitions_in_source);
-        binding.flags.set_define_in_header(!definitions_in_source);
+        binding.flags = {.is_inline = !definitions_in_source,
+                         .define_in_header = !definitions_in_source};
         if (reference_target) {
             binding.implementation = {
                 .kind = FunctionImplementationKind::body,
@@ -114,7 +114,9 @@ class FacadeLowering : public CppIRBuilder {
                 body.add(return_stmt(call_expr, std::move(validation_dependencies)));
             }
             FunctionDefinition function{.name = named(method_schemas.name[method_row]),
-                                        .return_type = return_type};
+                                        .return_type = return_type,
+                                        .flags = {.is_inline = !definitions_in_source,
+                                                  .define_in_header = !definitions_in_source}};
             function.parameters = std::move(parameters);
             function.implementation = {.kind = FunctionImplementationKind::body,
                                        .body = body.build()};
@@ -123,8 +125,6 @@ class FacadeLowering : public CppIRBuilder {
             if (method_schemas.is_noexcept[method_row]) {
                 function.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
             }
-            function.flags.set_is_inline(!definitions_in_source);
-            function.flags.set_define_in_header(!definitions_in_source);
             methods.push_back(add_function(function));
         }
 

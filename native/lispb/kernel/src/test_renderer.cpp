@@ -226,8 +226,8 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
     auto const suite{"Generated" + pascal_case(document.text(document.modules.name(module)))};
     auto const namespace_name{suite + "Tests"};
     lispb::codegen::FunctionDefinition expect_value{.name = cpp.named("expect_value"),
-                                                    .return_type = cpp.types.std.void_};
-    expect_value.flags.set_define_in_header(true);
+                                                    .return_type = cpp.types.std.void_,
+                                                    .flags = {.define_in_header = true}};
     expect_value.template_declaration =
         cpp.template_declaration({cpp.type_template_parameter(cpp.strings.intern("T"))});
     expect_value.parameters = {cpp.parameter("T const", "actual"),
@@ -259,8 +259,8 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
             cpp.block({equal}),
             true)}};
     lispb::codegen::FunctionDefinition expect_result{.name = cpp.named("expect_result"),
-                                                     .return_type = cpp.types.std.void_};
-    expect_result.flags.set_define_in_header(true);
+                                                     .return_type = cpp.types.std.void_,
+                                                     .flags = {.define_in_header = true}};
     expect_result.template_declaration =
         cpp.template_declaration({cpp.type_template_parameter(cpp.strings.intern("T"))});
     expect_result.parameters = {
@@ -307,8 +307,8 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
         auto const id{ExpandedVariantId{variant_index}};
         auto const name{raw_name(document, id)};
         lispb::codegen::FunctionDefinition check{.name = cpp.named(name),
-                                                 .return_type = cpp.types.std.void_};
-        check.flags.set_define_in_header(true);
+                                                 .return_type = cpp.types.std.void_,
+                                                 .flags = {.define_in_header = true}};
         check.parameters = {
             cpp.parameter(cpp.types.decorate(cpp.types.std.size_t, "", " const"), "Count")};
         lispb::codegen::Nodes body;

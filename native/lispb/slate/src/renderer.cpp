@@ -80,13 +80,13 @@ class Renderer {
                                                      ir_.types.intern("::" + owner)));
             lispb::codegen::FunctionDefinition constructor{
                 .name = ir_.named(ir_.strings.intern(builder)),
-                .kind = lispb::codegen::FunctionKind::explicit_constructor};
+                .kind = lispb::codegen::FunctionKind::explicit_constructor,
+                .flags = {.define_in_header = true}};
             constructor.parameters = {ir_.parameter("ThisClass&", "self")};
             constructor.implementation = {.kind = lispb::codegen::FunctionImplementationKind::body,
                                           .body = {},
                                           .initializers = {ir_.member_initializer(
                                               ir_.strings.intern("self_"), ir_.named("self"))}};
-            constructor.flags.set_define_in_header(true);
             children.push_back(ir_.header_function(ir_.add_function(constructor)));
         }
         auto const functions{document_.declarations.functions[index]};
@@ -131,7 +131,8 @@ class Renderer {
         auto const index{function.value};
         lispb::codegen::FunctionDefinition spec{
             .name = ir_.named(text(document_.functions.names[index])),
-            .return_type = ir_.types.intern("auto")};
+            .return_type = ir_.types.intern("auto"),
+            .flags = {.is_inline = library, .define_in_header = true}};
         std::vector<lispb::codegen::FunctionParameterId> cpp_parameters;
         auto const parameters{document_.functions.parameters[index]};
         auto const parameter_end{parameters.begin + parameters.count};
@@ -158,8 +159,6 @@ class Renderer {
         spec.parameters.assign(cpp_parameters.begin(), cpp_parameters.end());
         spec.implementation = {.kind = lispb::codegen::FunctionImplementationKind::body,
                                .body = body};
-        spec.flags.set_is_inline(library);
-        spec.flags.set_define_in_header(true);
         return ir_.header_function(ir_.add_function(spec));
     }
 

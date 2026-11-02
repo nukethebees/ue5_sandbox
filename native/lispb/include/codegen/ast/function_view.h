@@ -1,6 +1,7 @@
 #pragma once
 
 #include <codegen/ast/function_definition.h>
+#include <codegen/ast/function_flags.h>
 
 #include <span>
 

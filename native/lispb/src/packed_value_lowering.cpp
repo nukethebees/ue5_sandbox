@@ -420,10 +420,6 @@ class PackedEmitter : public CppIRBuilder {
                        std::span<FunctionParameterId const> parameters,
                        Nodes const& body,
                        bool constexpr_ = true) -> NodeId {
-        FunctionFlags flags;
-        flags.set_is_constexpr(constexpr_);
-        flags.set_is_nodiscard(result != std_types().void_);
-        flags.set_define_in_header(true);
         return header_function(add_function({
             .name = named(name),
             .return_type = result,
@@ -433,7 +429,9 @@ class PackedEmitter : public CppIRBuilder {
             .implementation = {.kind = FunctionImplementationKind::body, .body = body},
             .exception_specification = {.kind = FunctionExceptionKind::noexcept_},
             .receiver = receiver,
-            .flags = flags,
+            .flags = {.is_constexpr = constexpr_,
+                      .is_nodiscard = result != std_types().void_,
+                      .define_in_header = true},
         }));
     }
     auto emit_function(std::string const& name,
@@ -458,9 +456,9 @@ class PackedEmitter : public CppIRBuilder {
         return emit_function(name, type(result), receiver, parameters, body, constexpr_);
     }
     auto default_constructor(bool available) -> NodeId {
-        FunctionDefinition fn{.name = named(text(name_)), .kind = FunctionKind::constructor};
-        fn.flags.set_is_constexpr(true);
-        fn.flags.set_define_in_header(true);
+        FunctionDefinition fn{.name = named(text(name_)),
+                              .kind = FunctionKind::constructor,
+                              .flags = {.is_constexpr = true, .define_in_header = true}};
         fn.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
         if (available) {
             fn.implementation = {.kind = FunctionImplementationKind::defaulted};
@@ -479,12 +477,10 @@ class PackedEmitter : public CppIRBuilder {
             FunctionDefinition fn{
                 .name = named(equality ? "operator==" : "operator<=>"),
                 .return_type = equality ? std_types().bool_
-                                        : intern_type("auto", {dependency("auto", "compare")})};
+                                        : intern_type("auto", {dependency("auto", "compare")}),
+                .flags = {.is_constexpr = true, .is_nodiscard = true, .define_in_header = true}};
             fn.receiver = FunctionReceiver::const_;
             fn.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
-            fn.flags.set_is_constexpr(true);
-            fn.flags.set_define_in_header(true);
-            fn.flags.set_is_nodiscard(true);
             fn.parameters = {parameter(owner, decoded ? "other" : "")};
             if (decoded) {
                 fn.implementation = {
@@ -1134,9 +1130,8 @@ class PackedEmitter : public CppIRBuilder {
                 emit_function("make_" + path, name_, FunctionReceiver::static_, params, body));
         } else {
             FunctionDefinition ctor{.name = named(text(name_)),
-                                    .kind = FunctionKind::explicit_constructor};
-            ctor.flags.set_is_constexpr(true);
-            ctor.flags.set_define_in_header(true);
+                                    .kind = FunctionKind::explicit_constructor,
+                                    .flags = {.is_constexpr = true, .define_in_header = true}};
             ctor.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
             ctor.parameters.assign(params.begin(), params.end());
             ctor.implementation = {.kind = FunctionImplementationKind::body,

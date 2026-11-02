@@ -1,8 +1,8 @@
 #pragma once
 
 #include <codegen/ast/expr.h>
+#include <codegen/ast/function_definition_flags.h>
 #include <codegen/ast/function_exception_specification.h>
-#include <codegen/ast/function_flags.h>
 #include <codegen/ast/function_formatting.h>
 #include <codegen/ast/function_implementation.h>
 #include <codegen/ast/function_kind.h>
@@ -27,7 +27,7 @@ struct FunctionDefinition {
     FunctionImplementation implementation{};
     FunctionExceptionSpecification exception_specification{};
     FunctionReceiver receiver{FunctionReceiver::unqualified};
-    FunctionFlags flags{};
+    FunctionDefinitionFlags flags{};
     StringId export_specifier{};
     TemplateId template_declaration{};
     Expr requires_clause{};

@@ -109,7 +109,8 @@ class RecordLowering : public CppIRBuilder {
                                values),
                    2);
         FunctionDefinition accessor{.name = named("get_field"),
-                                    .return_type = intern_type("decltype(auto)")};
+                                    .return_type = intern_type("decltype(auto)"),
+                                    .flags = {.is_constexpr = true, .define_in_header = true}};
         accessor.template_declaration = template_declaration(
             {value_template_parameter(intern_type("Field"), store_text("Selected")),
              type_template_parameter(store_text("Self"))});
@@ -126,20 +127,18 @@ class RecordLowering : public CppIRBuilder {
                                         named_type("Self"), "typename ", "::Field"))})))));
         accessor.receiver = FunctionReceiver::static_;
         accessor.parameters = {parameter("Self&", fields.empty() ? "" : "self")};
-        accessor.flags.set_is_constexpr(true);
-        accessor.flags.set_define_in_header(true);
         accessor.implementation = {.kind = FunctionImplementationKind::body, .body = accessors};
         result.add(header_function(add_function(accessor)), 2);
 
-        FunctionDefinition invoke{.name = named("invoke_field"), .return_type = std_types().void_};
+        FunctionDefinition invoke{.name = named("invoke_field"),
+                                  .return_type = std_types().void_,
+                                  .flags = {.is_constexpr = true, .define_in_header = true}};
         invoke.template_declaration = template_declaration(
             {value_template_parameter(intern_type("Field"), store_text("Selected")),
              type_template_parameter(store_text("Self")),
              type_template_parameter(store_text("Visitor"))});
         invoke.receiver = FunctionReceiver::static_;
         invoke.parameters = {parameter("Self&", "self"), parameter("Visitor&&", "visitor")};
-        invoke.flags.set_is_constexpr(true);
-        invoke.flags.set_define_in_header(true);
         invoke.implementation = {
             .kind = FunctionImplementationKind::body,
             .body = {expr_stmt(call(
@@ -148,7 +147,9 @@ class RecordLowering : public CppIRBuilder {
                 {call(template_id(named("get_field"), {named("Selected")}), {named("self")})}))}};
         result.add(header_function(add_function(invoke)), 2);
 
-        FunctionDefinition function{.name = named("visit_field"), .return_type = std_types().void_};
+        FunctionDefinition function{.name = named("visit_field"),
+                                    .return_type = std_types().void_,
+                                    .flags = {.is_constexpr = true, .define_in_header = true}};
         function.template_declaration =
             template_declaration({type_template_parameter(store_text("Self")),
                                   type_template_parameter(store_text("Visitor"))});
@@ -157,8 +158,6 @@ class RecordLowering : public CppIRBuilder {
         function.parameters = {parameter("Self&", fields.empty() ? "" : "self"),
                                parameter("Field", "field"),
                                parameter("Visitor&&", fields.empty() ? "" : "visitor")};
-        function.flags.set_is_constexpr(true);
-        function.flags.set_define_in_header(true);
         function.implementation = {
             .kind = FunctionImplementationKind::body,
             .body = {switch_stmt(named("field"), cases),

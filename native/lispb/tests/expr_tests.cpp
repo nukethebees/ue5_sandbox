@@ -127,9 +127,8 @@ TEST_F(ExprTest, PreservesBitwiseAndShiftPrecedence) {
 
 TEST_F(AstTest, RendersRefQualifiedMethodsAndInlineOutOfLineConstructors) {
     FunctionDefinition spec{.name = ir.named(ir.strings.intern("view")),
-                            .return_type = types.intern("auto")};
-    spec.return_type = types.intern("View");
-    spec.return_syntax = ReturnSyntax::trailing;
+                            .return_type = types.intern("View"),
+                            .return_syntax = ReturnSyntax::trailing};
     spec.receiver = FunctionReceiver::const_lvalue;
     spec.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
     expect_rendered(ir.declaration(ir.add_function(spec)), "auto view() const & noexcept -> View;");
@@ -138,10 +137,9 @@ TEST_F(AstTest, RendersRefQualifiedMethodsAndInlineOutOfLineConstructors) {
     expect_rendered(ir.definition(ir.add_function(spec)),
                     "auto view() const && noexcept -> View = delete;");
     FunctionDefinition constructor_spec{.name = ir.named(ir.strings.intern("View")),
-                                        .kind = FunctionKind::constructor};
+                                        .kind = FunctionKind::constructor,
+                                        .flags = {.is_inline = true, .define_in_header = true}};
     constructor_spec.implementation = {.kind = FunctionImplementationKind::body, .body = {}};
-    constructor_spec.flags.set_is_inline(true);
-    constructor_spec.flags.set_define_in_header(true);
     constructor_spec.formatting = {.body_layout = FunctionBodyLayout::compact};
     auto const constructor{
         ir.definition(ir.add_function(constructor_spec), ir.types.intern("View"), {}, true)};

@@ -154,17 +154,15 @@ class SoaLowering : public CppIRBuilder {
                 parameters.push_back(parameter(decorate_type(std_types().i32, "", " const"),
                                                dimensions.index_name[dimensions.index(dimension)]));
             }
-            FunctionDefinition function{.name = named(name + "_field"), .return_type = enum_type};
-            auto& flags{function.flags};
-            flags.set_is_constexpr(true);
-            flags.set_define_in_header(true);
-            flags.set_is_nodiscard(true);
+            FunctionDefinition function{
+                .name = named(name + "_field"),
+                .return_type = enum_type,
+                .return_syntax = ReturnSyntax::trailing,
+                .flags = {.is_constexpr = true, .is_nodiscard = true, .define_in_header = true}};
             function.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
             function.formatting.body_layout = FunctionBodyLayout::compact;
             function.receiver = FunctionReceiver::static_;
             function.parameters.assign(parameters.begin(), parameters.end());
-            function.return_type = enum_type;
-            function.return_syntax = ReturnSyntax::trailing;
             function.implementation = {
                 .kind = FunctionImplementationKind::body,
                 .body = {return_stmt(static_cast_expr(

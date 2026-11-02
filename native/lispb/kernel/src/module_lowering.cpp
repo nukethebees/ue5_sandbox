@@ -344,8 +344,8 @@ auto lower_module(lispb::codegen::CppIR& cpp,
     lispb::codegen::Nodes definitions;
     lispb::codegen::Nodes implementation;
     lispb::codegen::FunctionDefinition invariant_failed{.name = cpp.named("invariant_failed"),
-                                                        .return_type = void_type};
-    invariant_failed.flags.set_is_noreturn(true);
+                                                        .return_type = void_type,
+                                                        .flags = {.is_noreturn = true}};
     invariant_failed.exception_specification = {
         .kind = lispb::codegen::FunctionExceptionKind::noexcept_};
     invariant_failed.implementation = {

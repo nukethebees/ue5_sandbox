@@ -60,15 +60,11 @@ class EnumLowering : public CppIRBuilder {
     auto enum_count_specialization(CppTypeId enum_type, std::size_t const count) -> NodeId {
         FunctionDefinition function{
             .name = template_id(named("enum_count"), {type_reference(enum_type)}),
-            .return_type = intern_type("auto")};
+            .return_type = std_types().size_t,
+            .return_syntax = ReturnSyntax::trailing,
+            .flags = {.is_constexpr = true, .is_nodiscard = true, .define_in_header = true}};
         function.template_declaration = template_specialization();
-        function.return_type = std_types().size_t;
-        function.return_syntax = ReturnSyntax::trailing;
-        auto& flags{function.flags};
-        flags.set_is_nodiscard(true);
-        flags.set_is_constexpr(true);
         function.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
-        flags.set_define_in_header(true);
         function.implementation = {.kind = FunctionImplementationKind::body,
                                    .body = {return_stmt(literal(std::to_string(count)))}};
         return header_function(add_function(function));
@@ -370,14 +366,14 @@ class EnumLowering : public CppIRBuilder {
                          std::string const& enum_name,
                          std::string_view suffix,
                          Nodes body) -> FunctionId {
-        FunctionDefinition function{.name = named(internal_name(ctx, schema, suffix)),
-                                    .return_type = intern_type("auto")};
+        FunctionDefinition function{
+            .name = named(internal_name(ctx, schema, suffix)),
+            .return_type = decorate_type(
+                named_type("TCHAR", {dependency("TCHAR", "CoreMinimal.h")}), "", " const*"),
+            .return_syntax = ReturnSyntax::trailing};
         function.parameters = {
             parameter(decorate_type(named_type(enum_name), "", " const"), "value")};
         function.implementation = {.kind = FunctionImplementationKind::body, .body = body};
-        function.return_type = decorate_type(
-            named_type("TCHAR", {dependency("TCHAR", "CoreMinimal.h")}), "", " const*");
-        function.return_syntax = ReturnSyntax::trailing;
         return add_function(function);
     }
     auto packed_enum_strings(LoweringContext& ctx,
@@ -448,7 +444,8 @@ class EnumLowering : public CppIRBuilder {
         }
         body.add(return_stmt(literal("false")));
         FunctionDefinition created_function{.name = named("try_parse_serialized"),
-                                            .return_type = intern_type("auto")};
+                                            .return_type = std_types().bool_,
+                                            .return_syntax = ReturnSyntax::trailing};
         created_function.parameters = {
             parameter(decorate_type(
                           named_type("FStringView", {dependency("FStringView", "CoreMinimal.h")}),
@@ -458,8 +455,6 @@ class EnumLowering : public CppIRBuilder {
             parameter(decorate_type(named_type(enum_name), "", "&"), "result")};
         created_function.implementation = {.kind = FunctionImplementationKind::body,
                                            .body = body.build()};
-        created_function.return_type = std_types().bool_;
-        created_function.return_syntax = ReturnSyntax::trailing;
         created_function.export_specifier = enums.export_specifier[schema];
         return add_function(created_function);
     }
@@ -490,7 +485,7 @@ class EnumLowering : public CppIRBuilder {
             named(internal_name(
                 ctx, schema, serialized ? "serialized_name" : (display ? "display_name" : "name"))),
             {named("value")})};
-        FunctionDefinition result{.name = named(StringId{}), .return_type = intern_type("auto")};
+        FunctionDefinition result{.return_syntax = ReturnSyntax::trailing};
         result.parameters = {
             parameter(decorate_type(named_type(parameter_type_value), "", " const"), "value")};
         result.implementation = {.kind = FunctionImplementationKind::body,
@@ -499,7 +494,6 @@ class EnumLowering : public CppIRBuilder {
         auto configure_result = [&](std::string_view name, CppTypeId type, bool construct = false) {
             result.name = named(store_text(name));
             result.return_type = type;
-            result.return_syntax = ReturnSyntax::trailing;
             if (construct) {
                 result.implementation = {.kind = FunctionImplementationKind::body,
                                          .body = {return_stmt(init_list({lookup}, type))}};
@@ -820,15 +814,12 @@ class EnumLowering : public CppIRBuilder {
         }
 
         auto const target_type{named_type(target)};
-        FunctionDefinition function{.name = named(function_name),
-                                    .return_type = intern_type("auto")};
-        function.return_type = target_type;
-        function.return_syntax = ReturnSyntax::trailing;
+        FunctionDefinition function{
+            .name = named(function_name),
+            .return_type = target_type,
+            .return_syntax = ReturnSyntax::trailing,
+            .flags = {.is_constexpr = true, .is_nodiscard = true, .define_in_header = true}};
         function.parameters = {parameter(decorate_type(named_type(source), "", " const"), "value")};
-        auto& flags{function.flags};
-        flags.set_define_in_header(true);
-        flags.set_is_constexpr(true);
-        flags.set_is_nodiscard(true);
         function.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
         auto body{node_list()};
         body.add(switch_stmt(named("value"), cases), 2);

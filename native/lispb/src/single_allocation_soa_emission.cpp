@@ -211,8 +211,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
                                                    {named("blocks")}))},
                                  FunctionReceiver::static_,
                                  ReturnSyntax::trailing)};
-        bytes.flags.set_is_constexpr(true);
-        bytes.flags.set_define_in_header(true);
+        bytes.flags = {.is_constexpr = true, .define_in_header = true};
         bytes.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
         children.new_lines(1)
             .add(header_function(add_function(bytes)))
@@ -332,9 +331,8 @@ class SingleAllocationEmitter : public CppIRBuilder {
                          block_comment("****************************************")});
     }
     auto inline_function(FunctionDefinition spec) -> NodeId {
-        auto& flags{spec.flags};
-        flags.set_is_inline(true);
-        flags.set_define_in_header(true);
+        spec.flags.is_inline = true;
+        spec.flags.define_in_header = true;
         return header_function(add_function(spec));
     }
     auto compact_function(FunctionDefinition spec) -> NodeId {
@@ -411,12 +409,12 @@ class SingleAllocationEmitter : public CppIRBuilder {
             .body = {},
             .initializers = {member_initializer(
                 store_text("resource_"), unary(UnaryOperator::address_of, named("resource")))}};
-        FunctionDefinition resource_accessor{.name = named("memory_resource"),
-                                             .return_type = intern_type("auto")};
+        FunctionDefinition resource_accessor{
+            .name = named("memory_resource"),
+            .return_type = decorate_type(std_types().pmr.memory_resource, "", "*"),
+            .return_syntax = ReturnSyntax::trailing};
         resource_accessor.implementation = {.kind = FunctionImplementationKind::body,
                                             .body = {return_stmt(named("resource_"))}};
-        resource_accessor.return_type = decorate_type(std_types().pmr.memory_resource, "", "*");
-        resource_accessor.return_syntax = ReturnSyntax::trailing;
         resource_accessor.receiver = FunctionReceiver::const_;
         resource_accessor.exception_specification = {.kind = FunctionExceptionKind::noexcept_};
         FunctionDefinition destructor_value{.name = named("~" + std::string{text_view(owner_name)}),
@@ -428,10 +426,9 @@ class SingleAllocationEmitter : public CppIRBuilder {
         copy_constructor.parameters = {copy_parameter};
         copy_constructor.implementation = {.kind = FunctionImplementationKind::deleted};
         FunctionDefinition copy_assignment{.name = named("operator="),
-                                           .return_type = intern_type("auto")};
+                                           .return_type = decorate_type(owner_type, "", "&"),
+                                           .return_syntax = ReturnSyntax::trailing};
         copy_assignment.parameters = {copy_parameter};
-        copy_assignment.return_type = decorate_type(owner_type, "", "&");
-        copy_assignment.return_syntax = ReturnSyntax::trailing;
         copy_assignment.implementation = {.kind = FunctionImplementationKind::deleted};
         FunctionDefinition move_constructor{.name = named(owner_name),
                                             .kind = FunctionKind::constructor};
@@ -445,15 +442,14 @@ class SingleAllocationEmitter : public CppIRBuilder {
             .initializers = {member_initializer(store_text("resource_"),
                                                 member_access(named("other"), "resource_"))}};
         FunctionDefinition move_assignment{.name = named("operator="),
-                                           .return_type = intern_type("auto")};
+                                           .return_type = decorate_type(owner_type, "", "&"),
+                                           .return_syntax = ReturnSyntax::trailing};
         move_assignment.parameters = {move_parameter};
         move_assignment.implementation = {
             .kind = FunctionImplementationKind::body,
             .body = {return_stmt(
                 call(type_reference(decorate_type(named_type("Operations"), "", "::move_assign")),
                      {unary(UnaryOperator::dereference, named("this")), named("other")}))}};
-        move_assignment.return_type = decorate_type(owner_type, "", "&");
-        move_assignment.return_syntax = ReturnSyntax::trailing;
 
         auto result{node_list()};
         result.append(section_header("Lifetime"))
@@ -575,12 +571,13 @@ class SingleAllocationEmitter : public CppIRBuilder {
         auto const strided{is_strided_schema(ctx, schema)};
         auto children{node_list()};
         auto accessor = [&](std::string_view name, Expr value, CppTypeId type = {}) {
-            auto function{
-                make_function(name, "auto", {}, {return_stmt(value)}, FunctionReceiver::const_)};
-            if (type.value != 0) {
-                function.return_type = type;
-                function.return_syntax = ReturnSyntax::trailing;
-            }
+            FunctionDefinition function{.name = named(name),
+                                        .return_type = type.value != 0 ? type : intern_type("auto"),
+                                        .return_syntax = type.value != 0 ? ReturnSyntax::trailing
+                                                                         : ReturnSyntax::direct,
+                                        .implementation = {.kind = FunctionImplementationKind::body,
+                                                           .body = {return_stmt(value)}},
+                                        .receiver = FunctionReceiver::const_};
             children.new_lines(1).add(compact_function(function));
         };
         auto column_span = [&](SingleAllocationColumnId column) {

@@ -449,7 +449,12 @@ auto CppIR::add_function(FunctionDefinition const& definition) -> FunctionId {
         FunctionExceptionId{(static_cast<std::uint32_t>(exception.kind) << 24) | exception_index});
 
     functions_.receiver.push_back(definition.receiver);
-    functions_.flags.push_back(definition.flags);
+    auto const flags{definition.flags};
+    functions_.flags.emplace_back(flags.is_constexpr,
+                                  flags.is_inline,
+                                  flags.is_nodiscard,
+                                  flags.define_in_header,
+                                  flags.is_noreturn);
     functions_.export_specifier.push_back(definition.export_specifier);
     functions_.template_declaration.push_back(definition.template_declaration);
     functions_.requires_clause.push_back(definition.requires_clause);

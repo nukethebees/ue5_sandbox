@@ -165,14 +165,12 @@ TEST_F(AstTest, RendersAccessSpecifiersWithExplicitIndentation) {
 
 TEST_F(AstTest, RendersBraceInitialisedTree) {
     FunctionDefinition getter{.name = ir.named(ir.strings.intern("get")),
-                              .return_type = types.intern("auto")};
+                              .return_type = types.intern("int32"),
+                              .return_syntax = ReturnSyntax::trailing,
+                              .flags = {.is_inline = true, .define_in_header = true}};
     getter.implementation = {.kind = FunctionImplementationKind::body,
                              .body = {ir.raw("return value;")}};
-    getter.return_type = types.intern("int32");
-    getter.return_syntax = ReturnSyntax::trailing;
     getter.receiver = FunctionReceiver::const_;
-    getter.flags.set_is_inline(true);
-    getter.flags.set_define_in_header(true);
 
     auto const file{ir.files.append(
         ir.strings.intern("Example.h"),
@@ -337,12 +335,11 @@ TEST_F(AstTest, RendersClassInheritanceAndMemberInitializers) {
 
 TEST_F(AstTest, RendersTemplatedConstrainedFunctions) {
     FunctionDefinition spec{.name = ir.named(ir.strings.intern("append")),
-                            .return_type = types.std.void_};
+                            .return_type = types.std.void_,
+                            .flags = {.is_inline = true, .define_in_header = true}};
     spec.parameters = {ir.parameter(types.intern("Other const&"), ir.strings.intern("other"))};
     spec.implementation = {.kind = FunctionImplementationKind::body,
                            .body = {ir.raw("append_from(other);")}};
-    spec.flags.set_is_inline(true);
-    spec.flags.set_define_in_header(true);
     spec.template_declaration =
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Other"))});
     spec.requires_clause =
@@ -356,11 +353,10 @@ TEST_F(AstTest, RendersTemplatedConstrainedFunctions) {
 
 TEST_F(AstTest, RendersTypedFunctionFormattingPolicies) {
     FunctionDefinition compact{.name = ir.named(ir.strings.intern("apply")),
-                               .return_type = types.std.void_};
+                               .return_type = types.std.void_,
+                               .flags = {.is_inline = true, .define_in_header = true}};
     compact.implementation = {.kind = FunctionImplementationKind::body,
                               .body = {ir.raw("func();")}};
-    compact.flags.set_is_inline(true);
-    compact.flags.set_define_in_header(true);
     compact.template_declaration =
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("TFunc"))});
     compact.requires_clause =
@@ -414,11 +410,10 @@ TEST_F(AstTest, RendersConstrainedStructuresAndSpecialMembers) {
     constructor.implementation = {.kind = FunctionImplementationKind::defaulted};
 
     FunctionDefinition apply{.name = ir.named(ir.strings.intern("apply")),
-                             .return_type = types.std.void_};
+                             .return_type = types.std.void_,
+                             .flags = {.is_inline = true, .define_in_header = true}};
     apply.parameters = {ir.parameter(types.intern("TFunc&&"), ir.strings.intern("func"))};
     apply.implementation = {.kind = FunctionImplementationKind::body, .body = {ir.raw("func();")}};
-    apply.flags.set_is_inline(true);
-    apply.flags.set_define_in_header(true);
     apply.template_declaration =
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("TFunc"))});
     apply.formatting = FunctionFormatting{
@@ -481,9 +476,8 @@ TEST_F(AstTest, RendersDeclarationsAndOutOfLineDefinitionsFromOneSpec) {
 TEST_F(AstTest, CollectsTrailingReturnTypeDependencies) {
     auto const dependency{types.dependency("FResult", "Project/Result.h")};
     FunctionDefinition spec{.name = ir.named(ir.strings.intern("make")),
-                            .return_type = types.intern("auto")};
-    spec.return_type = types.intern("FResult", {dependency});
-    spec.return_syntax = ReturnSyntax::trailing;
+                            .return_type = types.intern("FResult", {dependency}),
+                            .return_syntax = ReturnSyntax::trailing};
     NodeId const function{ir.declaration(ir.add_function(spec))};
 
     EXPECT_EQ(CppRenderer{ir}.render(function), "auto make() -> FResult;");
@@ -520,11 +514,10 @@ TEST_F(AstTest, CollectsOpaqueDeclarationDependenciesWithoutIncludingTheBody) {
 
 TEST_F(AstTest, RendersQualifiedTrailingReturnAndDefaultedConstructor) {
     FunctionDefinition function{.name = ir.named(ir.strings.intern("qualified_placeholder_return")),
-                                .return_type = types.intern("int32")};
-    function.return_type = types.intern("int32");
-    function.return_syntax = ReturnSyntax::trailing;
+                                .return_type = types.intern("int32"),
+                                .return_syntax = ReturnSyntax::trailing,
+                                .flags = {.is_constexpr = true}};
     function.receiver = FunctionReceiver::static_;
-    function.flags.set_is_constexpr(true);
     expect_rendered(ir.declaration(ir.add_function(function)),
                     "static constexpr auto qualified_placeholder_return() -> int32;");
 
@@ -538,13 +531,13 @@ TEST_F(AstTest, RendersQualifiedTrailingReturnAndDefaultedConstructor) {
     auto const factory{ir.call(
         ir.type_reference(types.named("a::make_value", NameOrigin::global, {dependency})), {})};
     FunctionDefinition initialized{.name = ir.named(ir.strings.intern("Initialized")),
-                                   .kind = FunctionKind::constructor};
+                                   .kind = FunctionKind::constructor,
+                                   .flags = {.define_in_header = true}};
     initialized.parameters = {ir.parameter(ir.types.std.int_, "make_value")};
     initialized.implementation = {
         .kind = FunctionImplementationKind::body,
         .body = {},
         .initializers = {ir.member_initializer(ir.strings.intern("value_"), factory)}};
-    initialized.flags.set_define_in_header(true);
     auto const published_initialized{ir.add_function(initialized)};
     auto const record{ir.record(ir.strings.intern("Initialized"),
                                 {ir.header_function(published_initialized),
@@ -595,14 +588,13 @@ TEST_F(AstTest, RendersForwardUsingAndFilePolicyNodes) {
 
 TEST_F(AstTest, AppliesStaticAndDefaultArgumentRulesToFunctionForms) {
     FunctionDefinition function{.name = ir.named(ir.strings.intern("make")),
-                                .return_type = types.intern("int32")};
+                                .return_type = types.intern("int32"),
+                                .flags = {.is_inline = true, .define_in_header = true}};
     function.parameters = {
         ir.parameter(types.intern("int32 const"), ir.strings.intern("value"), ir.literal("7"))};
     function.implementation = {.kind = FunctionImplementationKind::body,
                                .body = {ir.return_stmt(ir.raw_expr("value"))}};
     function.receiver = FunctionReceiver::static_;
-    function.flags.set_is_inline(true);
-    function.flags.set_define_in_header(true);
 
     auto const published_function{ir.add_function(function)};
     expect_rendered(
@@ -643,9 +635,8 @@ TEST_F(AstTest, RendersEnumsAndExportedFreeFunctions) {
                     "    Second UMETA(DisplayName = \"Second Value\"),\n"
                     "};");
     auto function{FunctionDefinition{.name = ir.named(ir.strings.intern("to_string_view")),
-                                     .return_type = types.intern("auto")}};
-    function.return_type = types.intern("FStringView");
-    function.return_syntax = ReturnSyntax::trailing;
+                                     .return_type = types.intern("FStringView"),
+                                     .return_syntax = ReturnSyntax::trailing}};
     function.export_specifier = ir.strings.intern("PROJECT_API");
     function.implementation = {.kind = FunctionImplementationKind::body, .body = {}};
     auto const published_function{ir.add_function(function)};
@@ -841,9 +832,8 @@ TEST_F(AstTest, UsesTemplateAndMemberScopesInSignaturesAndExpressions) {
                          "Token Holder::make(a::Token argument)",
                          "return a::Token{};"});
 
-    FunctionDefinition template_function{.name = ir.named("use"), .return_type = token};
-    template_function.return_type = token;
-    template_function.return_syntax = ReturnSyntax::trailing;
+    FunctionDefinition template_function{
+        .name = ir.named("use"), .return_type = token, .return_syntax = ReturnSyntax::trailing};
     template_function.template_declaration =
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Token"))});
     template_function.implementation = {
@@ -929,12 +919,11 @@ TEST_F(AstTest, ResolvesNestedClassOwnersAndForwardDeclaredInjectedNames) {
 
 TEST_F(AstTest, KeepsTemplateHeadersIndependentOfFunctionParameters) {
     auto const token{ir.types.named("a::Token", NameOrigin::global)};
-    FunctionDefinition function{.name = ir.named("use"), .return_type = token};
+    FunctionDefinition function{
+        .name = ir.named("use"), .return_type = token, .return_syntax = ReturnSyntax::trailing};
     function.template_declaration =
         ir.template_declaration({ir.value_template_parameter(token, ir.strings.intern("N"))});
     function.parameters = {ir.parameter(token, "Token"), ir.parameter(token, "other")};
-    function.return_type = token;
-    function.return_syntax = ReturnSyntax::trailing;
     auto const output{
         CppRenderer{ir}.render(in_namespace(ir, "a", ir.declaration(ir.add_function(function))))};
 
