@@ -279,6 +279,8 @@ void CppRenderer::append_type(std::string& output, CppTypeId const type, RenderC
         output += "decltype(";
         append_expr(output, shape.operand, ctx);
         output += ')';
+    } else if (shape.form == CppTypeForm::template_id) {
+        append_expr(output, shape.operand, ctx);
     } else {
         for (auto const part :
              std::span{ir_.types.parts_}.subspan(shape.parts.begin, shape.parts.count)) {

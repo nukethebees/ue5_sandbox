@@ -881,6 +881,13 @@ auto CppIR::decltype_type(Expr const operand) -> CppTypeId {
     collect_dependencies(operand, dependencies);
     return types.decltype_type(operand, dependencies);
 }
+auto CppIR::template_type(CppTypeId const primary, std::span<Expr const> const arguments)
+    -> CppTypeId {
+    auto const expression{template_id(type_reference(primary), arguments)};
+    std::vector<TypeDependencyId> dependencies;
+    collect_dependencies(expression, dependencies);
+    return types.template_type(expression, dependencies);
+}
 auto CppIR::parenthesized(Expr expr) -> Expr {
     auto const result{
         expr_detail::handle(ExprKind::parenthesized, parenthesized_exprs_.operand.size())};

@@ -401,6 +401,10 @@ class CppIR {
         -> Expr;
     auto type_reference(CppTypeId type) -> Expr;
     auto decltype_type(Expr operand) -> CppTypeId;
+    auto template_type(CppTypeId primary, std::span<Expr const> arguments) -> CppTypeId;
+    auto template_type(CppTypeId primary, std::initializer_list<Expr> arguments) -> CppTypeId {
+        return template_type(primary, std::span<Expr const>{arguments});
+    }
     auto parenthesized(Expr expr) -> Expr;
     auto template_id(Expr callee, std::span<Expr const> arguments) -> Expr;
     auto template_id(Expr callee, std::initializer_list<Expr> arguments) -> Expr {

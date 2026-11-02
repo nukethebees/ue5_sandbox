@@ -414,6 +414,16 @@ auto CppTypes::decltype_type(Expr const operand,
                         {.form = CppTypeForm::decltype_, .operand = operand});
 }
 
+auto CppTypes::template_type(Expr const expression,
+                             std::span<TypeDependencyId const> const dependencies) -> CppTypeId {
+    assert(expression.kind() == ExprKind::template_id);
+    return intern_shape("",
+                        dependencies,
+                        ParameterPassing::const_reference,
+                        {},
+                        {.form = CppTypeForm::template_id, .operand = expression});
+}
+
 auto CppTypes::reference(CppTypeId const type) -> CppTypeId {
     if (shapes_[type.value - 1].form != CppTypeForm::raw) {
         return type;

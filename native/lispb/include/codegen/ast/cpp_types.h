@@ -123,6 +123,8 @@ class CppTypes {
     friend class CppIR;
     friend class CppRenderer;
     auto decltype_type(Expr operand, std::span<TypeDependencyId const> dependencies) -> CppTypeId;
+    auto template_type(Expr expression, std::span<TypeDependencyId const> dependencies)
+        -> CppTypeId;
     void initialise_standard_types();
     auto append(StringId spelling,
                 std::span<TypeDependencyId const> dependencies,

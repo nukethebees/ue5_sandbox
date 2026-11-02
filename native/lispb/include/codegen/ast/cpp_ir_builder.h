@@ -671,6 +671,14 @@ class CppIRBuilder {
 
     CppTypeId decltype_type(Expr operand) { return ir_.decltype_type(operand); }
 
+    CppTypeId template_type(CppTypeId primary, std::span<Expr const> arguments) {
+        return ir_.template_type(primary, arguments);
+    }
+
+    CppTypeId template_type(CppTypeId primary, std::initializer_list<Expr> arguments) {
+        return ir_.template_type(primary, arguments);
+    }
+
     Expr parenthesized(Expr expr) { return ir_.parenthesized(expr); }
 
     Expr template_id(Expr callee, std::span<Expr const> arguments) {

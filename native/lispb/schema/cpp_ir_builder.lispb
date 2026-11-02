@@ -503,6 +503,12 @@
         (parameter type "CppTypeId"))
       (method decltype_type "CppTypeId"
         (parameter operand "Expr"))
+      (method template_type "CppTypeId"
+        (parameter primary "CppTypeId")
+        (parameter arguments "std::span<Expr const>"))
+      (method template_type "CppTypeId"
+        (parameter primary "CppTypeId")
+        (parameter arguments "std::initializer_list<Expr>"))
       (method parenthesized "Expr"
         (parameter expr "Expr"))
       (method template_id "Expr"

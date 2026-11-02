@@ -128,16 +128,13 @@ class SoaLowering : public CppIRBuilder {
         }
         values.push_back(enumerator(store_text("Count"), store_text(next_value())));
 
-        auto const field_count{compose_type({{.text = store_text("static_cast<")},
-                                             {.type = std_types().size_t},
-                                             {.text = store_text(">(")},
-                                             {.type = decorate_type(enum_type, "", "::Count")},
-                                             {.text = store_text(")")}})};
+        auto const field_count{static_cast_expr(
+            std_types().size_t, type_reference(decorate_type(enum_type, "", "::Count")))};
         auto const base{
             template_type(named_type("ioj::FieldMask",
                                      NameOrigin::global,
                                      {dependency("ioj::FieldMask", "ioj/field_mask.h")}),
-                          {enum_type, field_count})};
+                          {type_reference(enum_type), field_count})};
         auto children{node_list()};
         children.add(using_declaration(store_text("Base"), base))
             .add(using_import(named_type("Base::Base")));
