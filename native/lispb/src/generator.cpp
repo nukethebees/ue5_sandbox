@@ -210,8 +210,8 @@ auto lower_s7_constructors(detail::LoweringContext& context) -> detail::Declarat
     auto const function{ir.function("s7_record_constructors", "auto")};
     ir.set_function_return_type(
         function,
-        ir.types.intern("std::string_view",
-                        {ir.types.dependency("std::string_view", "string_view")}),
+        ir.types.named("std::string_view",
+                       {ir.types.dependency("std::string_view", "string_view")}),
         ReturnSyntax::trailing);
     ir.function_flags(function).set_define_in_header(true);
     ir.function_flags(function).set_is_constexpr(true);

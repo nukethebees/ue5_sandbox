@@ -37,9 +37,8 @@ namespace ioj {
 template <>
 inline constexpr MinMax<lispb::codegen::SettingDevice> enum_range<lispb::codegen::SettingDevice>{
     lispb::codegen::SettingDevice::shared, lispb::codegen::SettingDevice::controller};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::lispb::codegen::SettingDevice, ioj::Serialized>{
-    ioj::PackedStrings{"shared\000keyboard-mouse\000controller",
-                       std::array<std::uint8_t, 4>{0, 7, 22, 33}}};
+inline constexpr auto enum_strings<lispb::codegen::SettingDevice, Serialized>{PackedStrings{
+    "shared\000keyboard-mouse\000controller", std::array<std::uint8_t, 4>{0, 7, 22, 33}}};
+} // namespace ioj

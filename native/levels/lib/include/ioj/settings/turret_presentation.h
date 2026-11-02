@@ -6,6 +6,7 @@
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -24,7 +25,7 @@ struct TurretPresentation {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, TurretPresentation> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::death_effect_scale) {
             return (self.death_effect_scale);
@@ -54,11 +55,12 @@ struct TurretPresentation {
 } // namespace ioj::settings
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::settings::TurretPresentation::Field>() noexcept
+[[nodiscard]] constexpr auto enum_count<settings::TurretPresentation::Field>() noexcept
     -> std::size_t {
     return 1;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::settings::TurretPresentation::Field, ioj::Name>{
-    ioj::PackedStrings{"death_effect_scale", std::array<std::uint8_t, 2>{0, 19}}};
+inline constexpr auto enum_strings<settings::TurretPresentation::Field, Name>{
+    PackedStrings{"death_effect_scale", std::array<std::uint8_t, 2>{0, 19}}};
+} // namespace ioj

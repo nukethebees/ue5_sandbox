@@ -23,7 +23,7 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : ioj::single_allocation_layout::ColumnLayouts<EntityId, std::int32_t, EntityId> {
+struct Layout : single_allocation_layout::ColumnLayouts<EntityId, std::int32_t, EntityId> {
     static constexpr std::size_t damaged_entities_column{0};
     static constexpr std::size_t damage_amounts_column{1};
     static constexpr std::size_t instigators_column{2};
@@ -57,14 +57,13 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::sim::direct_damage_events::Layout;
-    using view_type = ::ioj::sim::direct_damage_events::ResolvedView;
-    using const_view_type = ::ioj::sim::direct_damage_events::ResolvedConstView;
-    using soa_schema = ::ioj::sim::direct_damage_events::Schema;
+    using Layout = direct_damage_events::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
@@ -78,12 +77,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<ResolvedView,
-                                            ::ioj::sim::direct_damage_events::Layout::column_types,
-                                            ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::sim::direct_damage_events::Layout::column_types,
+        ioj::sim::direct_damage_events::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -93,17 +91,14 @@ struct ResolvedView
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = ::ioj::sim::direct_damage_events::Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = ::ioj::sim::direct_damage_events::Layout;
-    using view_type = ::ioj::sim::direct_damage_events::View;
-    using const_view_type = ::ioj::sim::direct_damage_events::ConstView;
-    using resolved_view_type =
-        std::conditional_t<Const,
-                           ::ioj::sim::direct_damage_events::ResolvedConstView,
-                           ::ioj::sim::direct_damage_events::ResolvedView>;
+    using Layout = direct_damage_events::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -120,19 +115,16 @@ struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View
-    : soa_storage_detail::ViewRowOperations<View,
-                                            ::ioj::sim::direct_damage_events::Layout::column_types,
-                                            ViewImpl<false>> {
+static_assert(soa_storage_detail::validate_compact_view<ConstView>());
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::sim::direct_damage_events::Layout::column_types,
+        ioj::sim::direct_damage_events::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+static_assert(soa_storage_detail::validate_compact_view<View>());
 
 } // namespace direct_damage_events
 
@@ -144,27 +136,25 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // damage_amounts: std::int32_t
 // instigators: EntityId
 struct DirectDamageEvents
-    : protected ioj::native_soa::StorageState
+    : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<DirectDamageEvents,
-                                             ::ioj::sim::direct_damage_events::Layout::column_types,
-                                             ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::sim::direct_damage_events::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::sim::direct_damage_events::Layout;
+                                             direct_damage_events::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = direct_damage_events::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = direct_damage_events::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::sim::direct_damage_events::View;
-    using ConstView = ::ioj::sim::direct_damage_events::ConstView;
+    using View = direct_damage_events::View;
+    using ConstView = direct_damage_events::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -186,15 +176,15 @@ struct DirectDamageEvents
     }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::sim::direct_damage_events::DataPointers<Byte>;
+    using DataPointers = direct_damage_events::DataPointers<Byte>;
   public:
     auto damaged_entities(this auto& self) { return self.view().damaged_entities(); }
     auto damage_amounts(this auto& self) { return self.view().damage_amounts(); }
     auto instigators(this auto& self) { return self.view().instigators(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        DirectDamageEvents,
-        ::ioj::sim::direct_damage_events::Layout::column_types,
-        ioj::native_soa::StorageOperations>;
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<DirectDamageEvents,
+                                               direct_damage_events::Layout::column_types,
+                                               native_soa::StorageOperations>;
     using RowOperations::set;
     void add(EntityId const damaged_entity,
              std::int32_t const damage_amount,
@@ -208,7 +198,7 @@ struct DirectDamageEvents
     }
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

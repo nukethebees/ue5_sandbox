@@ -338,6 +338,7 @@ class CppIR {
                     std::optional<CppTypeId> owner = {},
                     std::optional<ReturnSyntax> syntax = {},
                     bool header = false) -> NodeId;
+    // Refer to a local name. Use type_reference with structured CppTypes for qualified symbols.
     auto named(std::string_view value, std::span<TypeDependencyId const> dependencies = {}) -> Expr;
     auto named(StringId value, std::span<TypeDependencyId const> dependencies = {}) -> Expr;
     auto named(std::string_view value, std::initializer_list<TypeDependencyId> dependencies)

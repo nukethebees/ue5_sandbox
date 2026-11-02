@@ -22,7 +22,7 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : ioj::single_allocation_layout::ColumnLayouts<float, float, float> {
+struct Layout : single_allocation_layout::ColumnLayouts<float, float, float> {
     static constexpr std::size_t pitches_column{0};
     static constexpr std::size_t yaws_column{1};
     static constexpr std::size_t rolls_column{2};
@@ -56,14 +56,13 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::rotators3f::Layout;
-    using view_type = ::ioj::rotators3f::ResolvedView;
-    using const_view_type = ::ioj::rotators3f::ResolvedConstView;
-    using soa_schema = ::ioj::rotators3f::Schema;
+    using Layout = rotators3f::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
@@ -82,11 +81,10 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     }
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<ResolvedView,
-                                            ::ioj::rotators3f::Layout::column_types,
-                                            ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<ResolvedView,
-                                                            ::ioj::rotators3f::Layout::column_types,
+                                                            ioj::rotators3f::Layout::column_types,
                                                             ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -104,18 +102,17 @@ struct ResolvedView
 // Strided views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
-    using soa_schema = ::ioj::rotators3f::Schema;
-    using Base = ioj::soa_storage_detail::StridedViewBase<float, Const>;
+struct ViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::StridedViewBase<float, Const>;
     using Base::Base;
-    using Layout = ::ioj::rotators3f::Layout;
-    using view_type = ::ioj::rotators3f::View;
-    using const_view_type = ::ioj::rotators3f::ConstView;
-    using resolved_view_type = std::
-        conditional_t<Const, ::ioj::rotators3f::ResolvedConstView, ::ioj::rotators3f::ResolvedView>;
+    using Layout = rotators3f::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     using State = std::conditional_t<Const,
-                                     ioj::soa_storage_detail::StorageState const,
-                                     ioj::soa_storage_detail::StorageState>;
+                                     soa_storage_detail::StorageState const,
+                                     soa_storage_detail::StorageState>;
     ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
         : Base{ioj::soa_storage_detail::make_strided_view<Base, Layout>(
               state, offset, count, Layout::pitches_column, Layout::yaws_column)} {}
@@ -137,11 +134,9 @@ struct ConstView : ViewImpl<true> {
     }
 };
 static_assert(std::is_trivially_copyable_v<ConstView>);
-struct View
-    : soa_storage_detail::
-          ViewRowOperations<View, ::ioj::rotators3f::Layout::column_types, ViewImpl<false>> {
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ::ioj::rotators3f::Layout::column_types, ViewImpl<false>>;
+        ViewRowOperations<View, ioj::rotators3f::Layout::column_types, ViewImpl<false>>;
     using Base::Base;
     using Base::set;
     void set(size_type index, Rotator3f const value) const {
@@ -165,27 +160,25 @@ static_assert(std::is_trivially_copyable_v<View>);
 // yaws: float
 // rolls: float
 struct Rotators3f
-    : protected ioj::native_soa::StorageState
+    : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<Rotators3f,
-                                             ::ioj::rotators3f::Layout::column_types,
-                                             ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::rotators3f::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::rotators3f::Layout;
+                                             rotators3f::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = rotators3f::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = rotators3f::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::rotators3f::View;
-    using ConstView = ::ioj::rotators3f::ConstView;
+    using View = rotators3f::View;
+    using ConstView = rotators3f::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -207,15 +200,14 @@ struct Rotators3f
     }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::rotators3f::DataPointers<Byte>;
+    using DataPointers = rotators3f::DataPointers<Byte>;
   public:
     auto pitches(this auto& self) { return self.view().pitches(); }
     auto yaws(this auto& self) { return self.view().yaws(); }
     auto rolls(this auto& self) { return self.view().rolls(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<Rotators3f,
-                                               ::ioj::rotators3f::Layout::column_types,
-                                               ioj::native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<Rotators3f,
+                                                                 rotators3f::Layout::column_types,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index, Rotator3f const value) {
@@ -229,7 +221,7 @@ struct Rotators3f
     }
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj

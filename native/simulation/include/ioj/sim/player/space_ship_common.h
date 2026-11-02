@@ -7,6 +7,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
 
+#include <array>
 #include <cstdint>
 
 namespace ioj::sim::player {
@@ -28,9 +29,8 @@ namespace ioj {
 template <>
 inline constexpr MinMax<sim::player::BoostBrakeState> enum_range<sim::player::BoostBrakeState>{
     sim::player::BoostBrakeState::None, sim::player::BoostBrakeState::EmergencyBrake};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::sim::player::BoostBrakeState, ioj::Name>{
-    ioj::PackedStrings{"None\000Boost\000Brake\000EmergencyBrake",
-                       std::array<std::uint8_t, 5>{0, 5, 11, 17, 32}}};
+inline constexpr auto enum_strings<sim::player::BoostBrakeState, Name>{PackedStrings{
+    "None\000Boost\000Brake\000EmergencyBrake", std::array<std::uint8_t, 5>{0, 5, 11, 17, 32}}};
+} // namespace ioj

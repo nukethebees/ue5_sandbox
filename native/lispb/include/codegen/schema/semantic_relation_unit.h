@@ -37,8 +37,8 @@ template <>
 inline constexpr MinMax<lispb::codegen::SemanticRelationUnit>
     enum_range<lispb::codegen::SemanticRelationUnit>{lispb::codegen::SemanticRelationUnit::elements,
                                                      lispb::codegen::SemanticRelationUnit::bytes};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::lispb::codegen::SemanticRelationUnit, ioj::Serialized>{
-    ioj::PackedStrings{"elements\000bytes", std::array<std::uint8_t, 3>{0, 9, 15}}};
+inline constexpr auto enum_strings<lispb::codegen::SemanticRelationUnit, Serialized>{
+    PackedStrings{"elements\000bytes", std::array<std::uint8_t, 3>{0, 9, 15}}};
+} // namespace ioj

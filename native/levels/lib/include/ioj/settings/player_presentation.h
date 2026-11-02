@@ -6,6 +6,7 @@
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -24,7 +25,7 @@ struct PlayerPresentation {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, PlayerPresentation> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::boost_effect_colour_intensity) {
             return (self.boost_effect_colour_intensity);
@@ -54,11 +55,12 @@ struct PlayerPresentation {
 } // namespace ioj::settings
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::settings::PlayerPresentation::Field>() noexcept
+[[nodiscard]] constexpr auto enum_count<settings::PlayerPresentation::Field>() noexcept
     -> std::size_t {
     return 1;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::settings::PlayerPresentation::Field, ioj::Name>{
-    ioj::PackedStrings{"boost_effect_colour_intensity", std::array<std::uint8_t, 2>{0, 30}}};
+inline constexpr auto enum_strings<settings::PlayerPresentation::Field, Name>{
+    PackedStrings{"boost_effect_colour_intensity", std::array<std::uint8_t, 2>{0, 30}}};
+} // namespace ioj

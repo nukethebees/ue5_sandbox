@@ -12,6 +12,7 @@
 #include "ioj/settings/radar.h"
 #include "ioj/settings/turret_presentation.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -35,7 +36,7 @@ struct Presentation {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, Presentation> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::player_ship) {
             return (self.player_ship);
@@ -94,13 +95,12 @@ struct Presentation {
 } // namespace ioj::settings
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::settings::Presentation::Field>() noexcept
-    -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<settings::Presentation::Field>() noexcept -> std::size_t {
     return 6;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::settings::Presentation::Field, ioj::Name>{
-    ioj::PackedStrings{
-        "player_ship\000laser_projectiles\000capital_ships\000turrets\000entity_overlay\000radar",
-        std::array<std::uint8_t, 7>{0, 12, 30, 44, 52, 67, 73}}};
+inline constexpr auto enum_strings<settings::Presentation::Field, Name>{PackedStrings{
+    "player_ship\000laser_projectiles\000capital_ships\000turrets\000entity_overlay\000radar",
+    std::array<std::uint8_t, 7>{0, 12, 30, 44, 52, 67, 73}}};
+} // namespace ioj

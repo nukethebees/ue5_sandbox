@@ -316,7 +316,7 @@ class PackedEmitter {
         return ir_.types.decorate(ir_.types.intern(name), "decltype(", ")");
     }
     auto descriptor_value(std::string const& name) -> CppTypeId {
-        return ir_.types.decorate(descriptor_type(name), "", "::value_type");
+        return field_value_types_.at(name);
     }
     auto cast(CppTypeId target, Expr source) -> Expr {
         return ir_.static_cast_expr(target, source);
@@ -387,6 +387,7 @@ class PackedEmitter {
                       std::uint32_t bits,
                       CppTypeId decoded,
                       std::uint32_t offset = 0) {
+        field_value_types_.emplace(name, decoded);
         auto const& definitions{graph_.definitions()};
         auto const definition{graph_.definition(logical)};
         std::optional<PackedIntegerValue> minimum;
@@ -632,11 +633,12 @@ class PackedEmitter {
                     auto const projected{
                         context_.declarations.enums.cpp_projection[declaration].has_value()};
                     auto const enumerator_value{
-                        projected ? ir_.named(context_.text(graph_.cpp_spelling(scalar)) +
-                                              "::" + enumerator)
-                                  : cast(decoded,
-                                         integer(PackedIntegerValue::from_parts(code->negative,
-                                                                                code->magnitude)))};
+                        projected
+                            ? ir_.type_reference(type(context_.text(graph_.cpp_spelling(scalar)) +
+                                                      "::" + enumerator))
+                            : cast(decoded,
+                                   integer(PackedIntegerValue::from_parts(code->negative,
+                                                                          code->magnitude)))};
                     checks.push_back(binary(BinaryOperator::equal, expression, enumerator_value));
                 }
                 return any(checks);
@@ -944,9 +946,9 @@ class PackedEmitter {
         for (std::size_t ordinal{}; ordinal < count; ++ordinal) {
             auto const code{domains.code(domain, ordinal)};
             if (code && !code->negative && code->magnitude == guard.value) {
-                return ir_.named(
+                return ir_.type_reference(type(
                     context_.text(graph_.cpp_spelling(guard.enumeration)) +
-                    "::" + context_.text(context_.declarations.enumerators.name[values[ordinal]]));
+                    "::" + context_.text(context_.declarations.enumerators.name[values[ordinal]])));
             }
         }
         std::unreachable();
@@ -1406,6 +1408,7 @@ class PackedEmitter {
     std::vector<TypeDependencyId> dependencies_;
     std::set<std::string> constants_;
     std::map<std::string, Validation> checks_;
+    std::map<std::string, CppTypeId> field_value_types_;
 };
 
 } // namespace

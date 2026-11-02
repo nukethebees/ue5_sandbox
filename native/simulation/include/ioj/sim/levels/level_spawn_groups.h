@@ -24,8 +24,7 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : ioj::single_allocation_layout::ColumnLayouts<EntityType, std::int32_t, LevelEventCount> {
+struct Layout : single_allocation_layout::ColumnLayouts<EntityType, std::int32_t, LevelEventCount> {
     static constexpr std::size_t types_column{0};
     static constexpr std::size_t offsets_column{1};
     static constexpr std::size_t counts_column{2};
@@ -59,14 +58,13 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::sim::level_spawn_groups::Layout;
-    using view_type = ::ioj::sim::level_spawn_groups::ResolvedView;
-    using const_view_type = ::ioj::sim::level_spawn_groups::ResolvedConstView;
-    using soa_schema = ::ioj::sim::level_spawn_groups::Schema;
+    using Layout = level_spawn_groups::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
@@ -80,12 +78,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<ResolvedView,
-                                            ::ioj::sim::level_spawn_groups::Layout::column_types,
-                                            ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::sim::level_spawn_groups::Layout::column_types,
+        ioj::sim::level_spawn_groups::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -95,16 +92,14 @@ struct ResolvedView
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = ::ioj::sim::level_spawn_groups::Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = ::ioj::sim::level_spawn_groups::Layout;
-    using view_type = ::ioj::sim::level_spawn_groups::View;
-    using const_view_type = ::ioj::sim::level_spawn_groups::ConstView;
-    using resolved_view_type = std::conditional_t<Const,
-                                                  ::ioj::sim::level_spawn_groups::ResolvedConstView,
-                                                  ::ioj::sim::level_spawn_groups::ResolvedView>;
+    using Layout = level_spawn_groups::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -117,19 +112,16 @@ struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View
-    : soa_storage_detail::ViewRowOperations<View,
-                                            ::ioj::sim::level_spawn_groups::Layout::column_types,
-                                            ViewImpl<false>> {
+static_assert(soa_storage_detail::validate_compact_view<ConstView>());
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::sim::level_spawn_groups::Layout::column_types,
+        ioj::sim::level_spawn_groups::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+static_assert(soa_storage_detail::validate_compact_view<View>());
 
 } // namespace level_spawn_groups
 
@@ -141,27 +133,25 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // offsets: std::int32_t
 // counts: LevelEventCount
 struct LevelSpawnGroups
-    : protected ioj::native_soa::StorageState
+    : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<LevelSpawnGroups,
-                                             ::ioj::sim::level_spawn_groups::Layout::column_types,
-                                             ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::sim::level_spawn_groups::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::sim::level_spawn_groups::Layout;
+                                             level_spawn_groups::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = level_spawn_groups::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = level_spawn_groups::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::sim::level_spawn_groups::View;
-    using ConstView = ::ioj::sim::level_spawn_groups::ConstView;
+    using View = level_spawn_groups::View;
+    using ConstView = level_spawn_groups::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -183,20 +173,20 @@ struct LevelSpawnGroups
     }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::sim::level_spawn_groups::DataPointers<Byte>;
+    using DataPointers = level_spawn_groups::DataPointers<Byte>;
   public:
     auto types(this auto& self) { return self.view().types(); }
     auto offsets(this auto& self) { return self.view().offsets(); }
     auto counts(this auto& self) { return self.view().counts(); }
     using RowOperations =
         soa_storage_detail::OwnerRowOperations<LevelSpawnGroups,
-                                               ::ioj::sim::level_spawn_groups::Layout::column_types,
-                                               ioj::native_soa::StorageOperations>;
+                                               level_spawn_groups::Layout::column_types,
+                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

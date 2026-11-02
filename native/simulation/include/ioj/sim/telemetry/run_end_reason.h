@@ -7,6 +7,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -77,10 +78,10 @@ namespace ioj {
 template <>
 inline constexpr MinMax<sim::telemetry::RunEndReason> enum_range<sim::telemetry::RunEndReason>{
     sim::telemetry::RunEndReason::MissionSucceeded, sim::telemetry::RunEndReason::WorldEnd};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::sim::telemetry::RunEndReason, ioj::Serialized>{
-    ioj::PackedStrings{"mission_succeeded\000mission_failed\000battle_resolved\000duration_"
-                       "reached\000orchestrator_reset\000world_end",
-                       std::array<std::uint8_t, 7>{0, 18, 33, 49, 66, 85, 95}}};
+inline constexpr auto enum_strings<sim::telemetry::RunEndReason, Serialized>{
+    PackedStrings{"mission_succeeded\000mission_failed\000battle_resolved\000duration_"
+                  "reached\000orchestrator_reset\000world_end",
+                  std::array<std::uint8_t, 7>{0, 18, 33, 49, 66, 85, 95}}};
+} // namespace ioj

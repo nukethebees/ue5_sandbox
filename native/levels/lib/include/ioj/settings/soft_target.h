@@ -7,6 +7,7 @@
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -37,7 +38,7 @@ struct SoftTarget {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, SoftTarget> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::acquisition_radius_pixels) {
             return (self.acquisition_radius_pixels);
@@ -148,17 +149,16 @@ struct SoftTarget {
 } // namespace ioj::settings
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::settings::SoftTarget::Field>() noexcept
-    -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<settings::SoftTarget::Field>() noexcept -> std::size_t {
     return 13;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::settings::SoftTarget::Field, ioj::Name>{
-    ioj::PackedStrings{
-        "acquisition_radius_pixels\000retention_radius_pixels\000centre_tie_radius_"
-        "pixels\000switch_improvement_ratio\000range_transition_start_multiplier\000minimum_radius_"
-        "pixels\000maximum_radius_pixels\000bounds_padding_pixels\000bracket_start_radius_"
-        "multiplier\000opacity\000pulse_opacity_boost\000pulse_duration\000fade_out_duration",
-        std::array<std::uint16_t, 14>{
-            0, 26, 50, 75, 100, 134, 156, 178, 200, 232, 240, 260, 275, 293}}};
+inline constexpr auto enum_strings<settings::SoftTarget::Field, Name>{PackedStrings{
+    "acquisition_radius_pixels\000retention_radius_pixels\000centre_tie_radius_pixels\000switch_"
+    "improvement_ratio\000range_transition_start_multiplier\000minimum_radius_pixels\000maximum_"
+    "radius_pixels\000bounds_padding_pixels\000bracket_start_radius_multiplier\000opacity\000pulse_"
+    "opacity_boost\000pulse_duration\000fade_out_duration",
+    std::array<std::uint16_t, 14>{
+        0, 26, 50, 75, 100, 134, 156, 178, 200, 232, 240, 260, 275, 293}}};
+} // namespace ioj

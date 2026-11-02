@@ -7,6 +7,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
 
+#include <array>
 #include <cstdint>
 
 namespace lispb {
@@ -33,10 +34,10 @@ namespace ioj {
 template <>
 inline constexpr MinMax<lispb::ProjectProperty> enum_range<lispb::ProjectProperty>{
     lispb::ProjectProperty::language_version, lispb::ProjectProperty::targets};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::lispb::ProjectProperty, ioj::Serialized>{
-    ioj::PackedStrings{"language-version\000project-root\000types\000sources\000output-"
-                       "root\000include-directories\000source\000artifact\000targets",
-                       std::array<std::uint8_t, 10>{0, 17, 30, 36, 44, 56, 76, 83, 92, 100}}};
+inline constexpr auto enum_strings<lispb::ProjectProperty, Serialized>{
+    PackedStrings{"language-version\000project-root\000types\000sources\000output-root\000include-"
+                  "directories\000source\000artifact\000targets",
+                  std::array<std::uint8_t, 10>{0, 17, 30, 36, 44, 56, 76, 83, 92, 100}}};
+} // namespace ioj

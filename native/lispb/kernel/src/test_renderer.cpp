@@ -43,10 +43,12 @@ auto pascal_case(std::string_view const name) -> std::string {
     return result;
 }
 
-auto span_argument(lispb::codegen::CppIR& cpp, std::string const& type, lispb::StringId const name)
-    -> lispb::codegen::Expr {
+auto span_argument(lispb::codegen::CppIR& cpp,
+                   lispb::codegen::CppTypeId const type,
+                   lispb::StringId const name) -> lispb::codegen::Expr {
     auto const data{cpp.call(cpp.member_access(cpp.named(name), "data"))};
-    return cpp.init_list({data, cpp.named("Count")}, cpp.types.intern("std::span<" + type + ">"));
+    return cpp.init_list({data, cpp.named("Count")},
+                         cpp.types.template_type(cpp.types.named("std::span"), {type}));
 }
 
 auto test_argument(lispb::codegen::CppIR& cpp,
@@ -59,9 +61,11 @@ auto test_argument(lispb::codegen::CppIR& cpp,
     if (expanded.storage(id)[operand_index] == StorageKind::scalar) {
         return cpp.named(name);
     }
-    auto const type{standard_type(expanded.type(id))};
+    auto const type{cpp.types.named(standard_type(expanded.type(id)))};
     return span_argument(
-        cpp, is_target(document, id, operand_index) ? type : type + " const", name);
+        cpp,
+        is_target(document, id, operand_index) ? type : cpp.types.decorate(type, "", " const"),
+        name);
 }
 
 auto test_arguments(lispb::codegen::CppIR& cpp,
@@ -75,7 +79,7 @@ auto test_arguments(lispb::codegen::CppIR& cpp,
     }
     if (document.variants.kind(expanded.variant(id)) == VariantKind::out_of_place) {
         result.push_back(span_argument(cpp,
-                                       standard_type(expanded.type(id)),
+                                       cpp.types.named(standard_type(expanded.type(id))),
                                        document.operations.output(expanded.operation(id))));
     }
     return result;
@@ -93,11 +97,13 @@ auto reference_expression(lispb::codegen::CppIR& cpp,
     }
 
     auto const constant{std::get<ConstantKind>(value)};
-    auto const prefix{"std::numeric_limits<" + std::string{cpp.types.spelling(type)} + ">::"};
+    auto const limits{cpp.types.template_type(cpp.types.named("std::numeric_limits"), {type})};
+    auto const call{cpp.call(cpp.type_reference(cpp.types.decorate(
+        limits, "", constant == ConstantKind::nan ? "::quiet_NaN" : "::infinity")))};
     if (constant == ConstantKind::negative_infinity) {
-        return cpp.raw_expr("-" + prefix + "infinity()");
+        return cpp.unary(lispb::codegen::UnaryOperator::negate, call);
     }
-    return cpp.call(cpp.named(prefix + (constant == ConstantKind::nan ? "quiet_NaN" : "infinity")));
+    return call;
 }
 
 auto array_initializer(lispb::codegen::CppIR& cpp,
@@ -145,10 +151,10 @@ void append_case(lispb::codegen::CppIR& cpp,
                  ReferenceFixture const& fixture) {
     auto const& expanded{document.expanded_variants};
     auto const type{standard_type(expanded.type(id))};
-    auto const element_type{cpp.types.intern(type)};
+    auto const element_type{cpp.types.named(type)};
     auto const count{fixture.expected.size()};
-    auto const array_type{
-        cpp.types.intern("std::array<" + type + ", " + std::to_string(count) + ">")};
+    auto const array_type{cpp.types.template_type(
+        cpp.types.named("std::array"), {element_type, cpp.types.intern(std::to_string(count))})};
     auto& body{output};
     for (std::size_t index{}; index < document.operations.operands(expanded.operation(id)).size();
          ++index) {
@@ -183,8 +189,9 @@ void append_case(lispb::codegen::CppIR& cpp,
                                 fixture_array(cpp, arrays, suite, element_type, fixture.expected)));
 
     body.push_back(cpp.variable("auto const", "before", cpp.named(destination)));
-    auto const function{cpp.named(document.text(document.emissions.cpp_namespace(emission)) + "::" +
-                                  document.text(document.variants.name(expanded.variant(id))))};
+    auto const function{cpp.type_reference(
+        cpp.types.named(document.text(document.emissions.cpp_namespace(emission)) +
+                        "::" + document.text(document.variants.name(expanded.variant(id)))))};
     body.push_back(cpp.expr_stmt(cpp.call(function, test_arguments(cpp, document, id))));
 
     auto const expect_result{
@@ -255,17 +262,19 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
     cpp.set_function_template(
         expect_result,
         cpp.template_declaration({cpp.type_template_parameter(cpp.strings.intern("T"))}));
-    cpp.set_function_parameters(expect_result,
-                                {cpp.parameter("T const*", "actual"),
-                                 cpp.parameter("T const*", "expected"),
-                                 cpp.parameter("T const*", "before"),
-                                 cpp.parameter("std::size_t const", "count"),
-                                 cpp.parameter("std::size_t const", "storage_count")});
+    cpp.set_function_parameters(
+        expect_result,
+        {cpp.parameter("T const*", "actual"),
+         cpp.parameter("T const*", "expected"),
+         cpp.parameter("T const*", "before"),
+         cpp.parameter(cpp.types.decorate(cpp.types.named("std::size_t"), "", " const"), "count"),
+         cpp.parameter(cpp.types.decorate(cpp.types.named("std::size_t"), "", " const"),
+                       "storage_count")});
     auto const index{cpp.named("i")};
     cpp.set_function_body(
         expect_result,
         {cpp.for_stmt(
-             cpp.variable("std::size_t", "i"),
+             cpp.variable(cpp.types.named("std::size_t"), "i"),
              cpp.binary(lispb::codegen::BinaryOperator::less, index, cpp.named("count")),
              cpp.unary(lispb::codegen::UnaryOperator::preincrement, index),
              cpp.block({cpp.expr_stmt(cpp.call(cpp.named("SCOPED_TRACE"), {index})),
@@ -273,7 +282,7 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
                                                {cpp.subscript(cpp.named("actual"), index),
                                                 cpp.subscript(cpp.named("expected"), index)}))})),
          cpp.expr_stmt(cpp.call(cpp.named("EXPECT_EQ"),
-                                {cpp.call(cpp.named("std::memcmp"),
+                                {cpp.call(cpp.type_reference(cpp.types.named("std::memcmp")),
                                           {cpp.binary(lispb::codegen::BinaryOperator::add,
                                                       cpp.named("actual"),
                                                       cpp.named("count")),
@@ -298,7 +307,10 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
         auto const name{raw_name(document, id)};
         auto const check{cpp.function(name, "void")};
         cpp.function_flags(check).set_define_in_header(true);
-        cpp.set_function_parameters(check, {cpp.parameter("std::size_t const", "Count")});
+        cpp.set_function_parameters(
+            check,
+            {cpp.parameter(cpp.types.decorate(cpp.types.named("std::size_t"), "", " const"),
+                           "Count")});
         lispb::codegen::Nodes body;
         append_case(cpp,
                     body,
@@ -320,31 +332,38 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
                                        cpp.lines(2)};
     for (auto const& array : arrays) {
         declarations.push_back(
-            cpp.variable(cpp.types.intern("inline constexpr std::array<" +
-                                          std::string{cpp.types.spelling(array.type)} + ", " +
-                                          std::to_string(array.values->size()) + ">"),
-                         array.name,
-                         array_initializer(cpp, array.type, *array.values)));
+            cpp.variable(cpp.types.template_type(
+                             cpp.types.named("std::array"),
+                             {array.type, cpp.types.intern(std::to_string(array.values->size()))}),
+                         cpp.named(array.name),
+                         array_initializer(cpp, array.type, *array.values),
+                         {.is_inline = true, .is_constexpr = true}));
         declarations.push_back(cpp.lines(2));
     }
     declarations.insert(declarations.end(), cases.begin(), cases.end());
-    declarations.push_back(cpp.using_declaration(cpp.strings.intern("KernelCheck"),
-                                                 cpp.types.intern("void (*)(std::size_t)")));
+    declarations.push_back(cpp.using_declaration(
+        cpp.strings.intern("KernelCheck"),
+        cpp.types.decorate(cpp.types.named("std::size_t"), "void (*)(", ")")));
     declarations.push_back(cpp.lines(2));
     declarations.push_back(cpp.record(
         cpp.strings.intern("KernelCase"),
         {cpp.instance_member(cpp.types.intern("char const*"), cpp.strings.intern("name")),
          cpp.instance_member(cpp.types.intern("KernelCheck"), cpp.strings.intern("run"))}));
     declarations.push_back(cpp.lines(2));
-    declarations.push_back(
-        cpp.variable(cpp.types.intern("inline constexpr std::array<KernelCase, " +
-                                      std::to_string(case_values.size()) + ">"),
-                     cpp.strings.intern("cases"),
-                     cpp.init_list({cpp.init_list(case_values)})));
+    declarations.push_back(cpp.variable(
+        cpp.types.template_type(
+            cpp.types.named("std::array"),
+            {cpp.types.named("KernelCase"), cpp.types.intern(std::to_string(case_values.size()))}),
+        cpp.named("cases"),
+        cpp.init_list({cpp.init_list(case_values)}),
+        {.is_inline = true, .is_constexpr = true}));
     declarations.push_back(cpp.lines(2));
     declarations.push_back(cpp.using_declaration(
         cpp.strings.intern(suite),
-        cpp.types.intern("::testing::TestWithParam<std::tuple<KernelCase, std::size_t>>")));
+        cpp.types.template_type(cpp.types.named("testing::TestWithParam"),
+                                {cpp.types.template_type(cpp.types.named("std::tuple"),
+                                                         {cpp.types.named("KernelCase"),
+                                                          cpp.types.named("std::size_t")})})));
     declarations.push_back(cpp.lines(2));
     declarations.push_back(cpp.raw("TEST_P(" + suite + R"(, MatchesReference) {
     auto const& [test, count]{GetParam()};

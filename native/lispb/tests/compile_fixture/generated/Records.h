@@ -10,6 +10,7 @@
 
 #include <compile_fixture/range_policy.hpp>
 
+#include <array>
 #include <cassert>
 #include <compare>
 #include <concepts>
@@ -110,7 +111,7 @@ struct RangeValue {
     int maximum{10};
 };
 
-using Range = ioj::ConstrainedValue<RangeValue, codegen_compile_fixture::range_policy>;
+using Range = ioj::ConstrainedValue<RangeValue, range_policy>;
 
 struct RangeSettings {
     enum class Field : std::uint8_t {
@@ -364,81 +365,74 @@ struct ActorSettings {
 } // namespace codegen_compile_fixture
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::RangeValue::Field>() noexcept
+[[nodiscard]] constexpr auto enum_count<codegen_compile_fixture::RangeValue::Field>() noexcept
     -> std::size_t {
     return 2;
 }
-} // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::RangeValue::Field, ioj::Name>{
-    ioj::PackedStrings{"minimum\000maximum", std::array<std::uint8_t, 3>{0, 8, 16}}};
 
-namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::RangeSettings::Field>() noexcept
+inline constexpr auto enum_strings<codegen_compile_fixture::RangeValue::Field, Name>{
+    PackedStrings{"minimum\000maximum", std::array<std::uint8_t, 3>{0, 8, 16}}};
+
+template <>
+[[nodiscard]] constexpr auto enum_count<codegen_compile_fixture::RangeSettings::Field>() noexcept
     -> std::size_t {
     return 2;
 }
-} // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::RangeSettings::Field, ioj::Name>{
-    ioj::PackedStrings{"range\000enabled", std::array<std::uint8_t, 3>{0, 6, 14}}};
 
-namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::ApiPair::Field>() noexcept
+inline constexpr auto enum_strings<codegen_compile_fixture::RangeSettings::Field, Name>{
+    PackedStrings{"range\000enabled", std::array<std::uint8_t, 3>{0, 6, 14}}};
+
+template <>
+[[nodiscard]] constexpr auto enum_count<codegen_compile_fixture::ApiPair::Field>() noexcept
     -> std::size_t {
     return 2;
 }
-} // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::ApiPair::Field, ioj::Name>{
-    ioj::PackedStrings{"x\000y", std::array<std::uint8_t, 3>{0, 2, 4}}};
 
-namespace ioj {
+template <>
+inline constexpr auto enum_strings<codegen_compile_fixture::ApiPair::Field, Name>{
+    PackedStrings{"x\000y", std::array<std::uint8_t, 3>{0, 2, 4}}};
+
 template <>
 [[nodiscard]] constexpr auto
-    enum_count<::codegen_compile_fixture::FormerVisitorNames::Field>() noexcept -> std::size_t {
+    enum_count<codegen_compile_fixture::FormerVisitorNames::Field>() noexcept -> std::size_t {
     return 2;
 }
-} // namespace ioj
-template <>
-inline constexpr auto
-    ioj::enum_strings<::codegen_compile_fixture::FormerVisitorNames::Field, ioj::Name>{
-        ioj::PackedStrings{"Count\000field_name", std::array<std::uint8_t, 3>{0, 6, 17}}};
 
-namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::EmptySettings::Field>() noexcept
+inline constexpr auto enum_strings<codegen_compile_fixture::FormerVisitorNames::Field, Name>{
+    PackedStrings{"Count\000field_name", std::array<std::uint8_t, 3>{0, 6, 17}}};
+
+template <>
+[[nodiscard]] constexpr auto enum_count<codegen_compile_fixture::EmptySettings::Field>() noexcept
     -> std::size_t {
     return 0;
 }
-} // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::EmptySettings::Field, ioj::Name>{
-    ioj::PackedStrings{"", std::array<std::uint8_t, 1>{0}}};
 
-namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::WeaponSettings::Field>() noexcept
+inline constexpr auto enum_strings<codegen_compile_fixture::EmptySettings::Field, Name>{
+    PackedStrings{"", std::array<std::uint8_t, 1>{0}}};
+
+template <>
+[[nodiscard]] constexpr auto enum_count<codegen_compile_fixture::WeaponSettings::Field>() noexcept
     -> std::size_t {
     return 3;
 }
-} // namespace ioj
-template <>
-inline constexpr auto
-    ioj::enum_strings<::codegen_compile_fixture::WeaponSettings::Field, ioj::Name>{
-        ioj::PackedStrings{"damage\000turn_rate\000asset_distance",
-                           std::array<std::uint8_t, 4>{0, 7, 17, 32}}};
 
-namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::ActorSettings::Field>() noexcept
+inline constexpr auto enum_strings<codegen_compile_fixture::WeaponSettings::Field, Name>{
+    PackedStrings{"damage\000turn_rate\000asset_distance",
+                  std::array<std::uint8_t, 4>{0, 7, 17, 32}}};
+
+template <>
+[[nodiscard]] constexpr auto enum_count<codegen_compile_fixture::ActorSettings::Field>() noexcept
     -> std::size_t {
     return 3;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::ActorSettings::Field, ioj::Name>{
-    ioj::PackedStrings{"max_health\000weapon\000optional_limit",
-                       std::array<std::uint8_t, 4>{0, 11, 18, 33}}};
+inline constexpr auto enum_strings<codegen_compile_fixture::ActorSettings::Field, Name>{
+    PackedStrings{"max_health\000weapon\000optional_limit",
+                  std::array<std::uint8_t, 4>{0, 11, 18, 33}}};
+} // namespace ioj

@@ -17,6 +17,7 @@
 #include "ioj/sim/spinners/spinner_sim_config.h"
 #include "ioj/sim/turrets/turret_sim_config.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -45,7 +46,7 @@ struct SettingsValues {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, SettingsValues> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::tick) {
             return (self.tick);
@@ -134,14 +135,13 @@ struct SettingsValues {
 } // namespace ioj::settings
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::settings::SettingsValues::Field>() noexcept
-    -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<settings::SettingsValues::Field>() noexcept -> std::size_t {
     return 11;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::settings::SettingsValues::Field, ioj::Name>{
-    ioj::PackedStrings{
-        "tick\000player_ship\000laser_projectiles\000capital_ships\000fighters\000turrets\000tube_"
-        "spinners\000collision_grid\000hud\000presentation\000starfield",
-        std::array<std::uint8_t, 12>{0, 5, 17, 35, 49, 58, 66, 80, 95, 99, 112, 122}}};
+inline constexpr auto enum_strings<settings::SettingsValues::Field, Name>{PackedStrings{
+    "tick\000player_ship\000laser_projectiles\000capital_ships\000fighters\000turrets\000tube_"
+    "spinners\000collision_grid\000hud\000presentation\000starfield",
+    std::array<std::uint8_t, 12>{0, 5, 17, 35, 49, 58, 66, 80, 95, 99, 112, 122}}};
+} // namespace ioj

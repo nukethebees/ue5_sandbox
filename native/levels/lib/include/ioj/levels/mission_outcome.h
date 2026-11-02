@@ -25,7 +25,7 @@ enum class MissionOutcome : MissionOutcomeUnderlying {
     try_parse_serialized_mission_outcome(std::string_view const value) noexcept
     -> std::optional<MissionOutcome> {
     std::array<std::string_view, 2> constexpr names{"victory", "defeat"};
-    return ioj::try_parse_enum<MissionOutcome>(value, names);
+    return try_parse_enum<MissionOutcome>(value, names);
 }
 
 template <>
@@ -37,7 +37,7 @@ struct EnumTraits<MissionOutcome> {
     static constexpr std::array values{MissionOutcome::Victory, MissionOutcome::Defeat};
 };
 
-} // namespace ioj
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::MissionOutcome, ioj::Serialized>{
-    ioj::PackedStrings{"victory\000defeat", std::array<std::uint8_t, 3>{0, 8, 15}}};
+inline constexpr auto enum_strings<MissionOutcome, Serialized>{
+    PackedStrings{"victory\000defeat", std::array<std::uint8_t, 3>{0, 8, 15}}};
+} // namespace ioj

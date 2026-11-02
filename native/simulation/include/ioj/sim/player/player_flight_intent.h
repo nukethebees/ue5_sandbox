@@ -7,6 +7,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/vector_value_math.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -28,7 +29,7 @@ struct PlayerFlightIntent {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, PlayerFlightIntent> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::translation) {
             return (self.translation);
@@ -88,13 +89,13 @@ struct PlayerFlightIntent {
 } // namespace ioj::sim::player
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::sim::player::PlayerFlightIntent::Field>() noexcept
+[[nodiscard]] constexpr auto enum_count<sim::player::PlayerFlightIntent::Field>() noexcept
     -> std::size_t {
     return 6;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::sim::player::PlayerFlightIntent::Field,
-                                        ioj::Name>{ioj::PackedStrings{
+inline constexpr auto enum_strings<sim::player::PlayerFlightIntent::Field, Name>{PackedStrings{
     "translation\000rotation\000accelerator\000boost_held\000brake_held\000emergency_brake_held",
     std::array<std::uint8_t, 7>{0, 12, 21, 33, 44, 55, 76}}};
+} // namespace ioj

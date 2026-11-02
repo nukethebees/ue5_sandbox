@@ -6,6 +6,7 @@
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -25,7 +26,7 @@ struct LaserPresentation {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, LaserPresentation> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::min_cull_distance) {
             return (self.min_cull_distance);
@@ -60,12 +61,12 @@ struct LaserPresentation {
 } // namespace ioj::settings
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::settings::LaserPresentation::Field>() noexcept
+[[nodiscard]] constexpr auto enum_count<settings::LaserPresentation::Field>() noexcept
     -> std::size_t {
     return 2;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::settings::LaserPresentation::Field, ioj::Name>{
-    ioj::PackedStrings{"min_cull_distance\000max_cull_distance",
-                       std::array<std::uint8_t, 3>{0, 18, 36}}};
+inline constexpr auto enum_strings<settings::LaserPresentation::Field, Name>{PackedStrings{
+    "min_cull_distance\000max_cull_distance", std::array<std::uint8_t, 3>{0, 18, 36}}};
+} // namespace ioj

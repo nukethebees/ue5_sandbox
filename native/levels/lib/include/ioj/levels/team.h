@@ -78,15 +78,17 @@ template <>
 [[nodiscard]] constexpr auto enum_count<Team>() noexcept -> std::size_t {
     return 6;
 }
+
+template <>
+inline constexpr auto enum_strings<Team, Name>{
+    PackedStrings{"White\000Red\000Green\000Blue\000Orange\000Yellow",
+                  std::array<std::uint8_t, 7>{0, 6, 10, 16, 21, 28, 35}}};
+
+template <>
+inline constexpr auto enum_strings<Team, Serialized>{
+    PackedStrings{"white\000red\000green\000blue\000orange\000yellow",
+                  std::array<std::uint8_t, 7>{0, 6, 10, 16, 21, 28, 35}}};
 } // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::ioj::Team, ioj::Name>{
-    ioj::PackedStrings{"White\000Red\000Green\000Blue\000Orange\000Yellow",
-                       std::array<std::uint8_t, 7>{0, 6, 10, 16, 21, 28, 35}}};
-template <>
-inline constexpr auto ioj::enum_strings<::ioj::Team, ioj::Serialized>{
-    ioj::PackedStrings{"white\000red\000green\000blue\000orange\000yellow",
-                       std::array<std::uint8_t, 7>{0, 6, 10, 16, 21, 28, 35}}};
 namespace std {
 template <>
 struct formatter<::ioj::Team> : ioj::EnumFormatter<::ioj::Team> {};

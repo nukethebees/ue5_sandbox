@@ -46,12 +46,14 @@ template <>
 [[nodiscard]] constexpr auto enum_count<sim::EntityType>() noexcept -> std::size_t {
     return 5;
 }
+
+template <>
+inline constexpr auto enum_strings<sim::EntityType, Name>{
+    PackedStrings{"PlayerShip\000Turret\000CapitalShip\000Fighter\000TubeSpinner",
+                  std::array<std::uint8_t, 6>{0, 11, 18, 30, 38, 50}}};
+
+template <>
+inline constexpr auto enum_strings<sim::EntityType, Serialized>{
+    PackedStrings{"player_ship\000turret\000capital_ship\000capital_ship_fighter\000tube_spinner",
+                  std::array<std::uint8_t, 6>{0, 12, 19, 32, 53, 66}}};
 } // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::ioj::sim::EntityType, ioj::Name>{
-    ioj::PackedStrings{"PlayerShip\000Turret\000CapitalShip\000Fighter\000TubeSpinner",
-                       std::array<std::uint8_t, 6>{0, 11, 18, 30, 38, 50}}};
-template <>
-inline constexpr auto ioj::enum_strings<::ioj::sim::EntityType, ioj::Serialized>{ioj::PackedStrings{
-    "player_ship\000turret\000capital_ship\000capital_ship_fighter\000tube_spinner",
-    std::array<std::uint8_t, 6>{0, 12, 19, 32, 53, 66}}};

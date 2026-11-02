@@ -588,8 +588,7 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
 
     EXPECT_TRUE(output.source.contains("#include \"Project/Modes.h\""));
     EXPECT_FALSE(output.source.contains("switch (value)"));
-    expect_contains_all(output.header,
-                        {"ioj::enum_strings<::EMode, ioj::Name>", "Readable Value", "readable"});
+    expect_contains_all(output.header, {"enum_strings<EMode, Name>", "Readable Value", "readable"});
     expect_contains_all(output.source,
                         {"ioj::enum_string<ioj::Serialized>(value).data()",
                          "result = EMode::Readable;",
@@ -641,7 +640,7 @@ TEST(Lowering, EmitsPlainEnumsInTheirNamespace) {
                          "using EStateUnderlying = int;",
                          "namespace project::states {\nauto to_string(EState const value)"});
     EXPECT_FALSE(output.header.contains("UENUM"));
-    EXPECT_TRUE(output.header.contains("ioj::enum_strings<::project::states::EState, ioj::Name>"));
+    EXPECT_TRUE(output.header.contains("enum_strings<project::states::EState, Name>"));
 }
 
 TEST(Lowering, EmitsCountsForEnumArrays) {
@@ -775,8 +774,8 @@ TEST(Lowering, EnumDisplayLookupWithoutOverridesFallsBackDirectly) {
         }))};
 
     EXPECT_TRUE(output.source.contains("return ioj::enum_string<ioj::Display>(value).data();"));
-    EXPECT_TRUE(output.header.contains("ioj::enum_strings<::EState, ioj::Display>"));
-    EXPECT_FALSE(output.header.contains("ioj::enum_strings<::EState, ioj::Name>"));
+    EXPECT_TRUE(output.header.contains("enum_strings<EState, Display>"));
+    EXPECT_FALSE(output.header.contains("enum_strings<EState, Name>"));
     EXPECT_EQ(occurrences(output.source, "switch (value)"), 0);
     EXPECT_TRUE(output.source.contains("return FString{get_state_display_name(value)};"));
 }
@@ -896,7 +895,7 @@ TEST(Lowering, EnumCountsUseMlNamespaceForQualifiedHeaderOnlyEnums) {
     expect_contains_all(
         files.front().content,
         {"namespace ioj {",
-         "enum_count<::project::states::EState>() noexcept -> std::size_t {\n    return 1;\n}"});
+         "enum_count<project::states::EState>() noexcept -> std::size_t {\n    return 1;\n}"});
 }
 
 TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {

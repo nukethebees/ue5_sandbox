@@ -19,6 +19,7 @@
 #include "ioj/settings/settings.h"
 #include "ioj/vector_value_math.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -47,7 +48,7 @@ struct EntityInput {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, EntityInput> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::id) {
             return (self.id);
@@ -177,13 +178,14 @@ struct CatalogInput {
 } // namespace ioj::levels::authoring
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::levels::authoring::EntityInput::Field>() noexcept
+[[nodiscard]] constexpr auto enum_count<levels::authoring::EntityInput::Field>() noexcept
     -> std::size_t {
     return 10;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::levels::authoring::EntityInput::Field, ioj::Name>{
-    ioj::PackedStrings{"id\000archetype\000team\000position\000rotation\000spawn_"
-                       "at\000health\000laser_damage\000initial_spawn_delay\000spawn_cooldown",
-                       std::array<std::uint8_t, 11>{0, 3, 13, 18, 27, 36, 45, 52, 65, 85, 100}}};
+inline constexpr auto enum_strings<levels::authoring::EntityInput::Field, Name>{
+    PackedStrings{"id\000archetype\000team\000position\000rotation\000spawn_at\000health\000laser_"
+                  "damage\000initial_spawn_delay\000spawn_cooldown",
+                  std::array<std::uint8_t, 11>{0, 3, 13, 18, 27, 36, 45, 52, 65, 85, 100}}};
+} // namespace ioj

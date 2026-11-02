@@ -8,6 +8,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -90,20 +91,19 @@ inline constexpr MinMax<lispb::codegen::SemanticRelationKind>
     enum_range<lispb::codegen::SemanticRelationKind>{
         lispb::codegen::SemanticRelationKind::index_into,
         lispb::codegen::SemanticRelationKind::references};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::lispb::codegen::SemanticRelationKind, ioj::Name>{
-    ioj::PackedStrings{
-        "index_into\000count_of\000offset_into\000discriminates\000contains\000member_"
-        "of\000quantises\000encoded_as\000references",
-        std::array<std::uint8_t, 10>{0, 11, 20, 32, 46, 55, 65, 75, 86, 97}}};
+inline constexpr auto enum_strings<lispb::codegen::SemanticRelationKind, Name>{
+    PackedStrings{"index_into\000count_of\000offset_into\000discriminates\000contains\000member_"
+                  "of\000quantises\000encoded_as\000references",
+                  std::array<std::uint8_t, 10>{0, 11, 20, 32, 46, 55, 65, 75, 86, 97}}};
+
 template <>
-inline constexpr auto ioj::enum_strings<::lispb::codegen::SemanticRelationKind, ioj::Serialized>{
-    ioj::PackedStrings{
-        "index_into\000count_of\000offset_into\000discriminates\000contains\000member_"
-        "of\000quantises\000encoded_as\000references",
-        std::array<std::uint8_t, 10>{0, 11, 20, 32, 46, 55, 65, 75, 86, 97}}};
+inline constexpr auto enum_strings<lispb::codegen::SemanticRelationKind, Serialized>{
+    PackedStrings{"index_into\000count_of\000offset_into\000discriminates\000contains\000member_"
+                  "of\000quantises\000encoded_as\000references",
+                  std::array<std::uint8_t, 10>{0, 11, 20, 32, 46, 55, 65, 75, 86, 97}}};
+} // namespace ioj
 namespace std {
 template <>
 struct formatter<::lispb::codegen::SemanticRelationKind>

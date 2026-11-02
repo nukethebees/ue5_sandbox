@@ -7,6 +7,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
 
+#include <array>
 #include <cstdint>
 
 namespace lispb::codegen {
@@ -40,11 +41,9 @@ namespace ioj {
 template <>
 inline constexpr MinMax<lispb::codegen::BinaryOperator> enum_range<lispb::codegen::BinaryOperator>{
     lispb::codegen::BinaryOperator::equal, lispb::codegen::BinaryOperator::three_way};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::lispb::codegen::BinaryOperator, ioj::Serialized>{
-    ioj::PackedStrings{
-        "==\000>=\000>\000-\000+\000*\000||\000&&\000!=\000/\000<\000&\000|\000<<\000<=\000<=>",
-        std::array<std::uint8_t, 17>{
-            0, 3, 6, 8, 10, 12, 14, 17, 20, 23, 25, 27, 29, 31, 34, 37, 41}}};
+inline constexpr auto enum_strings<lispb::codegen::BinaryOperator, Serialized>{PackedStrings{
+    "==\000>=\000>\000-\000+\000*\000||\000&&\000!=\000/\000<\000&\000|\000<<\000<=\000<=>",
+    std::array<std::uint8_t, 17>{0, 3, 6, 8, 10, 12, 14, 17, 20, 23, 25, 27, 29, 31, 34, 37, 41}}};
+} // namespace ioj

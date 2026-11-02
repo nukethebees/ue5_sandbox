@@ -7,6 +7,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -129,12 +130,11 @@ inline constexpr MinMax<slate_codegen::detail::StructuralForm>
     enum_range<slate_codegen::detail::StructuralForm>{
         slate_codegen::detail::StructuralForm::widget_class,
         slate_codegen::detail::StructuralForm::params};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::slate_codegen::detail::StructuralForm, ioj::Serialized>{
-    ioj::PackedStrings{
-        "widget-class\000widget-"
-        "library\000function\000vbox\000hbox\000slot\000auto\000fill\000assign\000existing\000call"
-        "\000let\000params",
-        std::array<std::uint8_t, 14>{0, 13, 28, 37, 42, 47, 52, 57, 62, 69, 78, 83, 87, 94}}};
+inline constexpr auto enum_strings<slate_codegen::detail::StructuralForm, Serialized>{PackedStrings{
+    "widget-class\000widget-"
+    "library\000function\000vbox\000hbox\000slot\000auto\000fill\000assign\000existing\000call\000l"
+    "et\000params",
+    std::array<std::uint8_t, 14>{0, 13, 28, 37, 42, 47, 52, 57, 62, 69, 78, 83, 87, 94}}};
+} // namespace ioj

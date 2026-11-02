@@ -1,5 +1,6 @@
 #pragma once
 
+#include <codegen/ast/expr.h>
 #include <codegen/ast/node_id.h>
 
 #include <span>
@@ -13,7 +14,7 @@ class CppIR;
 namespace lispb::codegen::detail {
 struct StringEnumEntry {
     std::string key;
-    std::string value;
+    Expr value;
 };
 
 // Require indexed entries to map to consecutive enum values starting at zero.

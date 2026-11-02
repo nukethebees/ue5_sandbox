@@ -13,7 +13,7 @@
 #include <variant>
 
 namespace ioj {
-using GameSettingValue = std::variant<ioj::ScreenResolution,
+using GameSettingValue = std::variant<ScreenResolution,
                                       GameWindowMode,
                                       bool,
                                       float,

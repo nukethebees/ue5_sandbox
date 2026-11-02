@@ -6,6 +6,7 @@
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -23,7 +24,7 @@ struct PlayerResourceState {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, PlayerResourceState> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::thrust_energy) {
             return (self.thrust_energy);
@@ -59,12 +60,12 @@ struct PlayerResourceState {
 } // namespace ioj::sim::player
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::sim::player::PlayerResourceState::Field>() noexcept
+[[nodiscard]] constexpr auto enum_count<sim::player::PlayerResourceState::Field>() noexcept
     -> std::size_t {
     return 2;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::sim::player::PlayerResourceState::Field, ioj::Name>{
-    ioj::PackedStrings{"thrust_energy\000thrust_change_rate",
-                       std::array<std::uint8_t, 3>{0, 14, 33}}};
+inline constexpr auto enum_strings<sim::player::PlayerResourceState::Field, Name>{
+    PackedStrings{"thrust_energy\000thrust_change_rate", std::array<std::uint8_t, 3>{0, 14, 33}}};
+} // namespace ioj

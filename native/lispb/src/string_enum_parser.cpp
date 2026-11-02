@@ -20,7 +20,7 @@ namespace lispb::codegen::detail {
 namespace string_enum_parser {
 struct EntryView {
     std::string_view key;
-    std::string_view value;
+    Expr value;
 };
 using Entries = std::vector<EntryView>;
 inline constexpr std::size_t linear_limit{4};
@@ -63,9 +63,9 @@ auto comparisons(CppIR& ir,
         body.add(ir.if_stmt(ir.binary(BinaryOperator::equal,
                                       input,
                                       ir.string_literal(entry.key.substr(prefix_size))),
-                            ir.block({ir.return_stmt(ir.named(entry.value))})));
+                            ir.block({ir.return_stmt(entry.value)})));
     }
-    body.add(ir.return_stmt(ir.named("std::nullopt")));
+    body.add(ir.return_stmt(ir.type_reference(ir.types.named("std::nullopt"))));
     return body.build();
 }
 
@@ -102,7 +102,8 @@ auto length_bucket(CppIR& ir,
             character_literal(ir, character),
             ir.block(length_bucket(ir, input, length, group, prefix_size, position + 1))));
     }
-    cases.push_back(ir.switch_case({}, ir.block({ir.return_stmt(ir.named("std::nullopt"))})));
+    cases.push_back(ir.switch_case(
+        {}, ir.block({ir.return_stmt(ir.type_reference(ir.types.named("std::nullopt")))})));
     auto const selected_character{
         ir.static_cast_expr(ir.types.intern("unsigned char"),
                             ir.subscript(input, ir.literal(std::to_string(position))))};
@@ -124,10 +125,11 @@ auto parser_body(CppIR& ir, Expr const input, std::span<StringEnumEntry const> c
     auto const prefix{common_prefix(all)};
     auto suffix{input};
     if (!prefix.empty()) {
-        body.add(ir.if_stmt(ir.unary(UnaryOperator::logical_not,
-                                     ir.call(ir.member_access(input, "starts_with"),
-                                             {ir.string_literal(prefix)})),
-                            ir.block({ir.return_stmt(ir.named("std::nullopt"))})),
+        body.add(ir.if_stmt(
+                     ir.unary(UnaryOperator::logical_not,
+                              ir.call(ir.member_access(input, "starts_with"),
+                                      {ir.string_literal(prefix)})),
+                     ir.block({ir.return_stmt(ir.type_reference(ir.types.named("std::nullopt")))})),
                  2);
         body.add(ir.variable("auto const",
                              "suffix",
@@ -147,7 +149,8 @@ auto parser_body(CppIR& ir, Expr const input, std::span<StringEnumEntry const> c
             ir.switch_case(ir.literal(std::to_string(length)),
                            ir.block(length_bucket(ir, suffix, length, group, prefix.size()))));
     }
-    cases.push_back(ir.switch_case({}, ir.block({ir.return_stmt(ir.named("std::nullopt"))})));
+    cases.push_back(ir.switch_case(
+        {}, ir.block({ir.return_stmt(ir.type_reference(ir.types.named("std::nullopt")))})));
     body.add(ir.switch_stmt(ir.call(ir.member_access(suffix, "size")), cases));
     return body.build();
 }
@@ -157,9 +160,10 @@ auto indexed_parser_body(CppIR& ir,
                          std::string_view enum_type,
                          std::span<StringEnumEntry const> entries) -> Nodes {
     auto const lookup{
-        ir.template_id(ir.named("ioj::try_parse_enum",
-                                {ir.types.dependency("ioj::try_parse_enum", "ioj/parse_enum.h")}),
-                       {ir.type_reference(ir.types.intern(enum_type))})};
+        ir.template_id(ir.type_reference(ir.types.named(
+                           "ioj::try_parse_enum",
+                           {ir.types.dependency("ioj::try_parse_enum", "ioj/parse_enum.h")})),
+                       {ir.type_reference(ir.types.named(enum_type))})};
     std::vector<Expr> names;
     names.reserve(entries.size());
     for (auto const& entry : entries) {
@@ -181,14 +185,19 @@ auto lower_string_enum_parser(CppIR& ir,
                               std::span<StringEnumEntry const> const entries,
                               bool const indexed) -> NodeId {
     auto const function{ir.function(function_name, "auto")};
-    ir.set_function_return_type(function,
-                                ir.types.intern("std::optional<" + std::string{enum_type} + ">",
-                                                {ir.types.dependency("std::optional", "optional")}),
-                                ReturnSyntax::trailing);
+    ir.set_function_return_type(
+        function,
+        ir.types.template_type(
+            ir.types.named("std::optional", {ir.types.dependency("std::optional", "optional")}),
+            {ir.types.named(enum_type)}),
+        ReturnSyntax::trailing);
     ir.set_function_parameters(
         function,
-        {ir.parameter(ir.types.intern("std::string_view const",
-                                      {ir.types.dependency("std::string_view", "string_view")}),
+        {ir.parameter(ir.types.decorate(
+                          ir.types.named("std::string_view",
+                                         {ir.types.dependency("std::string_view", "string_view")}),
+                          "",
+                          " const"),
                       parameter_name)});
     auto& flags{ir.function_flags(function)};
     flags.set_define_in_header(true);

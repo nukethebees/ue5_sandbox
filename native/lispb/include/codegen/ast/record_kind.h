@@ -36,8 +36,8 @@ namespace ioj {
 template <>
 inline constexpr MinMax<lispb::codegen::RecordKind> enum_range<lispb::codegen::RecordKind>{
     lispb::codegen::RecordKind::struct_, lispb::codegen::RecordKind::union_};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::lispb::codegen::RecordKind, ioj::Serialized>{
-    ioj::PackedStrings{"struct\000class\000union", std::array<std::uint8_t, 4>{0, 7, 13, 19}}};
+inline constexpr auto enum_strings<lispb::codegen::RecordKind, Serialized>{
+    PackedStrings{"struct\000class\000union", std::array<std::uint8_t, 4>{0, 7, 13, 19}}};
+} // namespace ioj

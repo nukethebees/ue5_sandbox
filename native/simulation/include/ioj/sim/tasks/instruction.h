@@ -33,7 +33,7 @@ using ioj::to_serialized_string;
     try_parse_serialized_instruction_kind(std::string_view const value) noexcept
     -> std::optional<InstructionKind> {
     std::array<std::string_view, 3> constexpr names{"kill", "idle", "move-to"};
-    return ioj::try_parse_enum<InstructionKind>(value, names);
+    return try_parse_enum<InstructionKind>(value, names);
 }
 
 } // namespace ioj::sim::tasks
@@ -84,101 +84,95 @@ struct Instruction : detail::InstructionBase {
 
     [[nodiscard]] constexpr auto operator<=>(Instruction const&) const noexcept = default;
 
-    [[nodiscard]] static constexpr auto
-        is_valid_kind(decltype(kind_layout)::value_type const value) noexcept -> bool {
+    [[nodiscard]] static constexpr auto is_valid_kind(InstructionKind const value) noexcept
+        -> bool {
         return value <= kind_layout.range.max;
     }
-    [[nodiscard]] static constexpr auto
-        is_valid_data_kill_index(decltype(data_kill_index_layout)::value_type const value) noexcept
+    [[nodiscard]] static constexpr auto is_valid_data_kill_index(std::uint32_t const value) noexcept
         -> bool {
         return static_cast<storage_type>(value) <= data_kill_index_layout.value_mask;
     }
-    [[nodiscard]] static constexpr auto is_valid_data_kill_entity_type(
-        decltype(data_kill_entity_type_layout)::value_type const value) noexcept -> bool {
+    [[nodiscard]] static constexpr auto
+        is_valid_data_kill_entity_type(EntityType const value) noexcept -> bool {
         return value <= data_kill_entity_type_layout.range.max;
     }
     [[nodiscard]] static constexpr auto make_data_kill(EntityId const data_kill_value) noexcept
         -> Instruction {
         assert((data_kill_value.is_valid()));
         auto result{from_raw(static_cast<storage_type>(
-            packed_pack<decltype(kind_layout)>(ioj::sim::tasks::InstructionKind::Kill) |
+            packed_pack<decltype(kind_layout)>(InstructionKind::Kill) |
             packed_pack<decltype(data_kill_layout)>(
                 static_cast<storage_type>(data_kill_value.raw_value()))))};
         return result;
     }
     [[nodiscard]] static constexpr auto make_data_idle() noexcept -> Instruction {
-        auto result{
-            from_raw(packed_pack<decltype(kind_layout)>(ioj::sim::tasks::InstructionKind::Idle))};
+        auto result{from_raw(packed_pack<decltype(kind_layout)>(InstructionKind::Idle))};
         return result;
     }
     [[nodiscard]] static constexpr auto
-        make_data_move_to(decltype(data_move_to_location_index_layout)::value_type const
-                              data_move_to_location_index_value) noexcept -> Instruction {
-        auto result{from_raw(static_cast<storage_type>(
-            packed_pack<decltype(kind_layout)>(ioj::sim::tasks::InstructionKind::MoveTo) |
-            packed_pack<decltype(data_move_to_location_index_layout)>(
-                data_move_to_location_index_value)))};
+        make_data_move_to(std::uint32_t const data_move_to_location_index_value) noexcept
+        -> Instruction {
+        auto result{from_raw(
+            static_cast<storage_type>(packed_pack<decltype(kind_layout)>(InstructionKind::MoveTo) |
+                                      packed_pack<decltype(data_move_to_location_index_layout)>(
+                                          data_move_to_location_index_value)))};
         return result;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() &&
                (is_valid_kind(extract<decltype(kind_layout)>()) &&
-                ((extract<decltype(kind_layout)>() == ioj::sim::tasks::InstructionKind::Kill &&
+                ((extract<decltype(kind_layout)>() == InstructionKind::Kill &&
                   (extract<decltype(data_kill_layout)>() != data_kill_invalid_value &&
                    is_valid_data_kill_entity_type(
                        extract<decltype(data_kill_entity_type_layout)>()))) ||
-                 extract<decltype(kind_layout)>() == ioj::sim::tasks::InstructionKind::Idle ||
-                 extract<decltype(kind_layout)>() == ioj::sim::tasks::InstructionKind::MoveTo));
+                 extract<decltype(kind_layout)>() == InstructionKind::Idle ||
+                 extract<decltype(kind_layout)>() == InstructionKind::MoveTo));
     }
-    [[nodiscard]] constexpr auto kind() const noexcept -> decltype(kind_layout)::value_type {
+    [[nodiscard]] constexpr auto kind() const noexcept -> InstructionKind {
         return extract<decltype(kind_layout)>();
     }
     [[nodiscard]] constexpr auto data_kill() const noexcept -> EntityId {
-        assert((extract<decltype(kind_layout)>() == ioj::sim::tasks::InstructionKind::Kill));
+        assert((extract<decltype(kind_layout)>() == InstructionKind::Kill));
         return EntityId::from_raw(
             static_cast<EntityId::storage_type>(extract<decltype(data_kill_layout)>()));
     }
     constexpr void set_data_kill(EntityId const value) noexcept {
-        assert((extract<decltype(kind_layout)>() == ioj::sim::tasks::InstructionKind::Kill));
+        assert((extract<decltype(kind_layout)>() == InstructionKind::Kill));
         assert((value.is_valid()));
         insert<decltype(data_kill_layout)>(static_cast<storage_type>(value.raw_value()));
     }
-    [[nodiscard]] constexpr auto data_kill_index() const noexcept
-        -> decltype(data_kill_index_layout)::value_type {
-        assert((extract<decltype(kind_layout)>() == ioj::sim::tasks::InstructionKind::Kill));
+    [[nodiscard]] constexpr auto data_kill_index() const noexcept -> std::uint32_t {
+        assert((extract<decltype(kind_layout)>() == InstructionKind::Kill));
         return extract<decltype(data_kill_index_layout)>();
     }
-    constexpr void
-        set_data_kill_index(decltype(data_kill_index_layout)::value_type const value) noexcept {
-        assert((extract<decltype(kind_layout)>() == ioj::sim::tasks::InstructionKind::Kill));
+    constexpr void set_data_kill_index(std::uint32_t const value) noexcept {
+        assert((extract<decltype(kind_layout)>() == InstructionKind::Kill));
         assert((is_valid_data_kill_index(value)));
         insert<decltype(data_kill_index_layout)>(value);
     }
-    [[nodiscard]] constexpr auto data_kill_entity_type() const noexcept
-        -> decltype(data_kill_entity_type_layout)::value_type {
-        assert((extract<decltype(kind_layout)>() == ioj::sim::tasks::InstructionKind::Kill));
+    [[nodiscard]] constexpr auto data_kill_entity_type() const noexcept -> EntityType {
+        assert((extract<decltype(kind_layout)>() == InstructionKind::Kill));
         return extract<decltype(data_kill_entity_type_layout)>();
     }
-    constexpr void set_data_kill_entity_type(
-        decltype(data_kill_entity_type_layout)::value_type const value) noexcept {
-        assert((extract<decltype(kind_layout)>() == ioj::sim::tasks::InstructionKind::Kill));
+    constexpr void set_data_kill_entity_type(EntityType const value) noexcept {
+        assert((extract<decltype(kind_layout)>() == InstructionKind::Kill));
         assert((is_valid_data_kill_entity_type(value)));
         insert<decltype(data_kill_entity_type_layout)>(value);
     }
-    [[nodiscard]] constexpr auto data_move_to_location_index() const noexcept
-        -> decltype(data_move_to_location_index_layout)::value_type {
-        assert((extract<decltype(kind_layout)>() == ioj::sim::tasks::InstructionKind::MoveTo));
+    [[nodiscard]] constexpr auto data_move_to_location_index() const noexcept -> std::uint32_t {
+        assert((extract<decltype(kind_layout)>() == InstructionKind::MoveTo));
         return extract<decltype(data_move_to_location_index_layout)>();
     }
-    constexpr void set_data_move_to_location_index(
-        decltype(data_move_to_location_index_layout)::value_type const value) noexcept {
-        assert((extract<decltype(kind_layout)>() == ioj::sim::tasks::InstructionKind::MoveTo));
+    constexpr void set_data_move_to_location_index(std::uint32_t const value) noexcept {
+        assert((extract<decltype(kind_layout)>() == InstructionKind::MoveTo));
         insert<decltype(data_move_to_location_index_layout)>(value);
     }
 };
 
 static_assert(valid_packed_value_layout<Instruction>());
 } // namespace ioj::sim::tasks
+namespace ioj {
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::sim::tasks::InstructionKind, ioj::Serialized>{
-    ioj::PackedStrings{"kill\000idle\000move-to", std::array<std::uint8_t, 4>{0, 5, 10, 18}}};
+inline constexpr auto enum_strings<sim::tasks::InstructionKind, Serialized>{
+    PackedStrings{"kill\000idle\000move-to", std::array<std::uint8_t, 4>{0, 5, 10, 18}}};
+} // namespace ioj

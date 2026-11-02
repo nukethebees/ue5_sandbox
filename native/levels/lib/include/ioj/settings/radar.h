@@ -6,6 +6,7 @@
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -37,7 +38,7 @@ struct Radar {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, Radar> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::enabled) {
             return (self.enabled);
@@ -151,16 +152,16 @@ struct Radar {
 } // namespace ioj::settings
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::settings::Radar::Field>() noexcept -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<settings::Radar::Field>() noexcept -> std::size_t {
     return 14;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::settings::Radar::Field, ioj::Name>{
-    ioj::PackedStrings{
-        "enabled\000combat_range\000tactical_range\000maximum_range\000combat_display_"
-        "radius\000grid_opacity\000core_cell_radius\000combat_cell_radius\000tactical_cell_"
-        "radius\000strategic_cell_radius\000glyph_size_scale\000objective_size_"
-        "multiplier\000objective_ring_padding_pixels\000objective_ring_thickness_pixels",
-        std::array<std::uint16_t, 15>{
-            0, 8, 21, 36, 50, 72, 85, 102, 121, 142, 164, 181, 207, 237, 269}}};
+inline constexpr auto enum_strings<settings::Radar::Field, Name>{
+    PackedStrings{"enabled\000combat_range\000tactical_range\000maximum_range\000combat_display_"
+                  "radius\000grid_opacity\000core_cell_radius\000combat_cell_radius\000tactical_"
+                  "cell_radius\000strategic_cell_radius\000glyph_size_scale\000objective_size_"
+                  "multiplier\000objective_ring_padding_pixels\000objective_ring_thickness_pixels",
+                  std::array<std::uint16_t, 15>{
+                      0, 8, 21, 36, 50, 72, 85, 102, 121, 142, 164, 181, 207, 237, 269}}};
+} // namespace ioj

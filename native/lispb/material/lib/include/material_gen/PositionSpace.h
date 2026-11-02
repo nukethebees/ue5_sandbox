@@ -36,8 +36,8 @@ namespace ioj {
 template <>
 inline constexpr MinMax<material_synth::PositionSpace> enum_range<material_synth::PositionSpace>{
     material_synth::PositionSpace::world, material_synth::PositionSpace::local};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::material_synth::PositionSpace, ioj::Serialized>{
-    ioj::PackedStrings{"world\000local", std::array<std::uint8_t, 3>{0, 6, 12}}};
+inline constexpr auto enum_strings<material_synth::PositionSpace, Serialized>{
+    PackedStrings{"world\000local", std::array<std::uint8_t, 3>{0, 6, 12}}};
+} // namespace ioj

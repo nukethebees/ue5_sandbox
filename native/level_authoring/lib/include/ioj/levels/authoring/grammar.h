@@ -280,7 +280,7 @@ using ioj::to_serialized_string;
     try_parse_serialized_expression_syntax(std::string_view const value) noexcept
     -> std::optional<ExpressionSyntax> {
     std::array<std::string_view, 2> constexpr names{"expr", "expr-ref"};
-    return ioj::try_parse_enum<ExpressionSyntax>(value, names);
+    return try_parse_enum<ExpressionSyntax>(value, names);
 }
 
 } // namespace ioj::levels::authoring
@@ -359,37 +359,32 @@ struct EnumTraits<levels::authoring::Property> {
                                        levels::authoring::Property::SpawnCooldown};
 };
 
-} // namespace ioj
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::levels::authoring::Property, ioj::Serialized>{
-    ioj::PackedStrings{"id\000title\000description\000par-time\000collision-"
-                       "grid\000unlock\000player\000camera\000mission\000objectives\000nodes\000pas"
-                       "s\000fail\000expire\000depends-on\000wins-"
-                       "level\000entities\000settings\000levels\000campaigns\000path\000value\000er"
-                       "ror\000level-size\000cell-size\000look-at\000distance\000offset-"
-                       "direction\000archetype\000team\000position\000rotation\000spawn-"
-                       "at\000health\000laser-damage\000initial-spawn-delay\000spawn-cooldown",
-                       std::array<std::uint16_t, 38>{
-                           0,   3,   9,   21,  30,  45,  52,  59,  66,  74,  85,  91,  96,
-                           101, 108, 119, 130, 139, 148, 155, 165, 170, 176, 182, 193, 203,
-                           211, 220, 237, 247, 252, 261, 270, 279, 286, 299, 319, 334}}};
+inline constexpr auto enum_strings<levels::authoring::Property, Serialized>{PackedStrings{
+    "id\000title\000description\000par-time\000collision-"
+    "grid\000unlock\000player\000camera\000mission\000objectives\000nodes\000pass\000fail\000expire"
+    "\000depends-on\000wins-"
+    "level\000entities\000settings\000levels\000campaigns\000path\000value\000error\000level-"
+    "size\000cell-size\000look-at\000distance\000offset-"
+    "direction\000archetype\000team\000position\000rotation\000spawn-at\000health\000laser-"
+    "damage\000initial-spawn-delay\000spawn-cooldown",
+    std::array<std::uint16_t, 38>{0,   3,   9,   21,  30,  45,  52,  59,  66,  74,  85,  91,  96,
+                                  101, 108, 119, 130, 139, 148, 155, 165, 170, 176, 182, 193, 203,
+                                  211, 220, 237, 247, 252, 261, 270, 279, 286, 299, 319, 334}}};
 
-namespace ioj {
 template <>
 struct EnumTraits<levels::authoring::ExpressionSyntax> {
     static constexpr std::array values{levels::authoring::ExpressionSyntax::Definition,
                                        levels::authoring::ExpressionSyntax::Reference};
 };
 
-} // namespace ioj
 template <>
-inline constexpr auto
-    ioj::enum_strings<::ioj::levels::authoring::ExpressionSyntax, ioj::Serialized>{
-        ioj::PackedStrings{"expr\000expr-ref", std::array<std::uint8_t, 3>{0, 5, 14}}};
+inline constexpr auto enum_strings<levels::authoring::ExpressionSyntax, Serialized>{
+    PackedStrings{"expr\000expr-ref", std::array<std::uint8_t, 3>{0, 5, 14}}};
 
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::levels::authoring::RecordKind,
-                                        ioj::Serialized>{ioj::PackedStrings{
+inline constexpr auto enum_strings<levels::authoring::RecordKind, Serialized>{PackedStrings{
     "level\000campaign\000catalog\000included-"
     "definition\000entity\000mission\000camera\000collision-grid\000objective\000level-completed",
     std::array<std::uint8_t, 11>{0, 6, 15, 23, 43, 50, 58, 65, 80, 90, 106}}};
+} // namespace ioj

@@ -1547,7 +1547,7 @@ inline constexpr std::array<KernelCase, 57> cases{
      {"DotProduct3dDoubleArrayArrayArrayArrayArrayArrayRaw",
       dot_product_3d_double_array_array_array_array_array_array_raw}}};
 
-using GeneratedArrayMath = ::testing::TestWithParam<std::tuple<KernelCase, std::size_t>>;
+using GeneratedArrayMath = testing::TestWithParam<std::tuple<KernelCase, std::size_t>>;
 
 TEST_P(GeneratedArrayMath, MatchesReference) {
     auto const& [test, count]{GetParam()};

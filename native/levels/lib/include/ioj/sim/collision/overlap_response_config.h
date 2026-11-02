@@ -7,6 +7,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/math_types.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -27,7 +28,7 @@ struct OverlapResponseConfig {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, OverlapResponseConfig> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::damage_per_overlap_detection) {
             return (self.damage_per_overlap_detection);
@@ -69,12 +70,13 @@ struct OverlapResponseConfig {
 } // namespace ioj::sim
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::sim::OverlapResponseConfig::Field>() noexcept
+[[nodiscard]] constexpr auto enum_count<sim::OverlapResponseConfig::Field>() noexcept
     -> std::size_t {
     return 3;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::sim::OverlapResponseConfig::Field, ioj::Name>{
-    ioj::PackedStrings{"damage_per_overlap_detection\000level_size\000cell_size",
-                       std::array<std::uint8_t, 4>{0, 29, 40, 50}}};
+inline constexpr auto enum_strings<sim::OverlapResponseConfig::Field, Name>{
+    PackedStrings{"damage_per_overlap_detection\000level_size\000cell_size",
+                  std::array<std::uint8_t, 4>{0, 29, 40, 50}}};
+} // namespace ioj

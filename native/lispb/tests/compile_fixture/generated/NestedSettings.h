@@ -7,6 +7,7 @@
 #include "ioj/enum_traits.h"
 #include "Records.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -66,13 +67,12 @@ struct SettingsTarget {
 } // namespace codegen_compile_fixture
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::SettingsTarget::Field>() noexcept
+[[nodiscard]] constexpr auto enum_count<codegen_compile_fixture::SettingsTarget::Field>() noexcept
     -> std::size_t {
     return 3;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto
-    ioj::enum_strings<::codegen_compile_fixture::SettingsTarget::Field, ioj::Name>{
-        ioj::PackedStrings{"first\000second\000external_value",
-                           std::array<std::uint8_t, 4>{0, 6, 13, 28}}};
+inline constexpr auto enum_strings<codegen_compile_fixture::SettingsTarget::Field, Name>{
+    PackedStrings{"first\000second\000external_value", std::array<std::uint8_t, 4>{0, 6, 13, 28}}};
+} // namespace ioj

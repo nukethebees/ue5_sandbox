@@ -3,7 +3,6 @@
 #include "lowering_context.h"
 #include "lowering_utils.h"
 #include "string_enum_parser.h"
-#include <ioj/format_writer.h>
 
 #include <codegen/ast/binary_operator.h>
 #include <codegen/ast/cpp_files.h>
@@ -84,7 +83,7 @@ auto enum_count_specialization(CppIR& ir, CppTypeId enum_type, std::size_t const
     ir.set_function_template(function, ir.template_specialization());
     ir.set_function_return_type(
         function,
-        ir.types.intern("std::size_t", {ir.types.dependency("std::size_t", "cstddef")}),
+        ir.types.named("std::size_t", {ir.types.dependency("std::size_t", "cstddef")}),
         ReturnSyntax::trailing);
     auto& flags{ir.function_flags(function)};
     flags.set_is_nodiscard(true);
@@ -104,7 +103,9 @@ auto lookup_function(LoweringContext& context,
                      Nodes body) -> FunctionId {
     auto& ir{context.ir};
     auto const function{ir.function(internal_name(context, schema, suffix), "auto")};
-    ir.set_function_parameters(function, {ir.parameter(enum_name + " const", "value")});
+    ir.set_function_parameters(
+        function,
+        {ir.parameter(ir.types.decorate(ir.types.named(enum_name), "", " const"), "value")});
     ir.set_function_body(function, body);
     ir.set_function_return_type(
         function,
@@ -129,7 +130,7 @@ auto packed_enum_strings(LoweringContext& context,
         values[domains.code(domain, ordinal)->magnitude] = declared_values[ordinal];
     }
     auto const name{context.text(enums.name[schema])};
-    auto const qualified{"::" + qualified_enum_name(context, settings, schema)};
+    auto const qualified{qualified_enum_name(context, settings, schema)};
     std::vector<std::string> names;
     names.reserve(value_count);
     for (auto const value : values) {
@@ -188,32 +189,36 @@ auto enum_strings_specialization(CppIR& ir,
     if (!blob.empty()) {
         blob.pop_back();
     }
-    auto const literal{[wide](std::string_view text) {
-        auto result{std::format("\"{}\"", escape_cpp_string(text))};
-        return wide ? std::format("TEXT({})", result) : result;
-    }};
-    std::string output;
-    ioj::FormatWriter write{std::back_inserter(output)};
-    write("template <>\ninline constexpr auto ioj::enum_strings<{}, ioj::{}>{{\n    "
-          "ioj::PackedStrings{{\n        {},\n        std::array<std::uint{}_t, {}>{{",
-          qualified,
-          category,
-          literal(blob),
-          bits,
-          offsets.size());
+    auto const literal{wide ? text_literal(ir, blob) : ir.string_literal(blob)};
+    std::vector<Expr> offset_values;
     auto const count{offsets.size()};
     for (std::size_t i{}; i < count; ++i) {
-        if (i != 0) {
-            output += ", ";
-        }
         if (wide && offsets[i] != wide_offsets[i]) {
-            write("(sizeof(TCHAR) == 2 ? {} : {})", wide_offsets[i], offsets[i]);
+            offset_values.push_back(ir.raw_expr(
+                std::format("(sizeof(TCHAR) == 2 ? {} : {})", wide_offsets[i], offsets[i])));
         } else {
-            write("{}", offsets[i]);
+            offset_values.push_back(ir.literal(std::to_string(offsets[i])));
         }
     }
-    output += "}}};";
-    return ir.raw(output, {ir.types.dependency("ioj::PackedStrings", "ioj/enum_strings.h")});
+    auto const offset_type{ir.types.named(std::format("std::uint{}_t", bits),
+                                          {ir.types.dependency("std::uint32_t", "cstdint")})};
+    auto const offsets_type{ir.types.template_type(
+        ir.types.named("std::array", {ir.types.dependency("std::array", "array")}),
+        {offset_type, ir.types.intern(std::to_string(count))})};
+    auto const initializer{ir.init_list(
+        {literal, ir.init_list(offset_values, offsets_type)},
+        ir.types.named("ioj::PackedStrings",
+                       {ir.types.dependency("ioj::PackedStrings", "ioj/enum_strings.h")}))};
+    auto const variable{ir.variable(
+        ir.types.intern("auto"),
+        ir.template_id(ir.named("enum_strings"),
+                       {ir.type_reference(ir.types.named(qualified)),
+                        ir.type_reference(ir.types.named("ioj::" + std::string{category}))}),
+        initializer,
+        {.template_declaration = ir.template_specialization(),
+         .is_inline = true,
+         .is_constexpr = true})};
+    return ir.namespace_node(ir.store_text("ioj"), {variable});
 }
 
 namespace {
@@ -224,8 +229,16 @@ auto string_lookup(LoweringContext& context,
                    std::string_view category,
                    std::string_view suffix) -> FunctionId {
     auto const qualified{qualified_enum_name(context, settings, schema)};
-    auto body{std::format("return ioj::enum_string<ioj::{}>(value).data();", category)};
-    return lookup_function(context, schema, qualified, suffix, {context.ir.raw(body)});
+    auto& ir{context.ir};
+    auto const lookup{ir.call(
+        ir.template_id(ir.type_reference(ir.types.named("ioj::enum_string")),
+                       {ir.type_reference(ir.types.named("ioj::" + std::string{category}))}),
+        {ir.named("value")})};
+    return lookup_function(context,
+                           schema,
+                           qualified,
+                           suffix,
+                           {ir.return_stmt(ir.call(ir.member_access(lookup, "data")))});
 }
 
 auto serialized_parser(LoweringContext& context,
@@ -241,15 +254,15 @@ auto serialized_parser(LoweringContext& context,
         if (!serialized_name) {
             continue;
         }
-        body.add(
-            ir.if_stmt(ir.binary(BinaryOperator::equal,
-                                 ir.named("value"),
-                                 text_literal(ir, context.text(*serialized_name))),
-                       ir.block({ir.assignment(ir.named("result"),
-                                               ir.named(enum_name + "::" +
-                                                        context.text(enumerators.name[value]))),
-                                 ir.return_stmt(ir.literal("true"))})),
-            1);
+        body.add(ir.if_stmt(ir.binary(BinaryOperator::equal,
+                                      ir.named("value"),
+                                      text_literal(ir, context.text(*serialized_name))),
+                            ir.block({ir.assignment(ir.named("result"),
+                                                    ir.type_reference(ir.types.named(
+                                                        enum_name + "::" +
+                                                        context.text(enumerators.name[value])))),
+                                      ir.return_stmt(ir.literal("true"))})),
+                 1);
     }
     body.add(ir.return_stmt(ir.literal("false")));
     auto const created_function{ir.function("try_parse_serialized", "auto")};
@@ -396,7 +409,7 @@ auto enum_underlying_type(LoweringContext& context, DeclarationHandle schema) ->
     auto const prefix{requirement->signedness ? "int" : "uint"};
     auto const spelling{"std::" + std::string{prefix} + std::to_string(requirement->bit_width) +
                         "_t"};
-    return ir.types.intern(spelling, {ir.types.dependency(spelling, "cstdint")});
+    return ir.types.named(spelling, {ir.types.dependency(spelling, "cstdint")});
 }
 
 auto enum_bit_width_comment(LoweringContext& context, DeclarationHandle const schema) -> NodeId {
@@ -525,7 +538,9 @@ auto native_enum_parsers(LoweringContext& context, DeclarationHandle const schem
                 key = value_name;
             }
             indexed = indexed && code && !code->negative && code->magnitude == entries.size();
-            entries.push_back({std::move(key), name + "::" + value_name});
+            entries.push_back({std::move(key),
+                               ir.type_reference(ir.types.decorate(
+                                   ir.types.named(name), "", "::" + value_name))});
         }
 
         auto const prefix{helper == NativeEnumHelper::try_parse ? "try_parse_"
@@ -558,7 +573,7 @@ auto native_enum_traits(LoweringContext& context,
         auto const traits{ir.record(
             ir.template_id(ir.named("EnumTraits"), {ir.type_reference(enum_type)}),
             {ir.constexpr_member(
-                ir.types.intern("std::array", {ir.types.dependency("std::array", "array")}),
+                ir.types.named("std::array", {ir.types.dependency("std::array", "array")}),
                 ir.strings.intern("values"),
                 ir.init_list(values))})};
         ir.set_record_template(traits, ir.template_specialization());
@@ -575,7 +590,7 @@ auto native_enum_formatter(LoweringContext& context,
                            ModuleSettingsId settings,
                            DeclarationHandle schema) -> NodeId {
     auto& ir{context.ir};
-    auto const enum_type{ir.types.intern(native_enum_name(context, settings, schema))};
+    auto const enum_type{ir.types.named(native_enum_name(context, settings, schema))};
     auto const formatter{
         ir.record(ir.template_id(ir.named("formatter"), {ir.type_reference(enum_type)}), {})};
     ir.set_record_template(formatter, ir.template_specialization());
@@ -617,13 +632,13 @@ auto unreal_projection_header(LoweringContext& context,
                   projections.name[projection], underlying, enum_values(context, schema, true)),
               2);
     decls.add(ir.using_declaration(ir.strings.intern(name + "Underlying"), underlying), 2);
-    decls.append(enum_range_declaration(context, schema, ir.types.intern("::" + name)));
+    decls.append(enum_range_declaration(context, schema, ir.types.named("::" + name)));
     decls.new_lines(2);
     if (projections.enum_array[projection]) {
         decls.add(
             ir.namespace_node(ir.strings.intern("ioj"),
                               {enum_count_specialization(
-                                  ir, ir.types.intern("::" + name), enums.values[schema].size())}));
+                                  ir, ir.types.named("::" + name), enums.values[schema].size())}));
     }
     return decls.build();
 }
@@ -639,14 +654,17 @@ auto native_conversion_function(LoweringContext& context,
     cases.reserve(values.size());
     for (auto const value : values) {
         auto const name{context.text(enumerators.name[value])};
-        cases.push_back(ir.switch_case(ir.named(source + "::" + name),
-                                       ir.block({ir.return_stmt(ir.named(target + "::" + name))})));
+        cases.push_back(ir.switch_case(
+            ir.type_reference(ir.types.decorate(ir.types.named(source), "", "::" + name)),
+            ir.block({ir.return_stmt(
+                ir.type_reference(ir.types.decorate(ir.types.named(target), "", "::" + name)))})));
     }
 
-    auto const target_type{ir.types.intern(target)};
+    auto const target_type{ir.types.named(target)};
     auto const function{ir.function(function_name, "auto")};
     ir.set_function_return_type(function, target_type, ReturnSyntax::trailing);
-    ir.set_function_parameters(function, {ir.parameter(source + " const", "value")});
+    ir.set_function_parameters(
+        function, {ir.parameter(ir.types.decorate(ir.types.named(source), "", " const"), "value")});
     auto& flags{ir.function_flags(function)};
     flags.set_define_in_header(true);
     flags.set_is_constexpr(true);
@@ -678,13 +696,14 @@ auto unreal_conversion_header(LoweringContext& context,
     auto const& enumerators{context.declarations.enumerators};
     for (auto const value : values) {
         auto const name{context.text(enumerators.name[value])};
-        decls.add(ir.static_assertion(ir.store_text(std::format(
-                                          "static_cast<int>({}::{}) == static_cast<int>({}::{})",
-                                          projection_name,
-                                          name,
-                                          native_name,
-                                          name)),
-                                      {}),
+        decls.add(ir.static_assertion(ir.binary(
+                      BinaryOperator::equal,
+                      ir.static_cast_expr(ir.types.intern("int"),
+                                          ir.type_reference(ir.types.decorate(
+                                              ir.types.named(projection_name), "", "::" + name))),
+                      ir.static_cast_expr(ir.types.intern("int"),
+                                          ir.type_reference(ir.types.decorate(
+                                              ir.types.named(native_name), "", "::" + name))))),
                   1);
     }
     return ir.namespace_node(ir.strings.intern("ioj"), decls.build());
@@ -809,10 +828,7 @@ auto lower_enum(LoweringContext& context,
     if (enums.enum_array[schema]) {
         emission.header_global.push_back(ir.namespace_node(
             ir.strings.intern("ioj"),
-            {enum_count_specialization(
-                ir,
-                ir.types.intern("::" + qualified_enum_name(context, settings, schema)),
-                enums.values[schema].size())}));
+            {enum_count_specialization(ir, enum_type, enums.values[schema].size())}));
     }
 
     NodeListBuilder lex_declarations{ir};

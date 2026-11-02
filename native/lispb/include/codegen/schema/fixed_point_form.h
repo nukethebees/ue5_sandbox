@@ -36,8 +36,8 @@ namespace ioj {
 template <>
 inline constexpr MinMax<lispb::codegen::FixedPointForm> enum_range<lispb::codegen::FixedPointForm>{
     lispb::codegen::FixedPointForm::binary_point, lispb::codegen::FixedPointForm::range};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::lispb::codegen::FixedPointForm, ioj::Serialized>{
-    ioj::PackedStrings{"binary-point\000range", std::array<std::uint8_t, 3>{0, 13, 19}}};
+inline constexpr auto enum_strings<lispb::codegen::FixedPointForm, Serialized>{
+    PackedStrings{"binary-point\000range", std::array<std::uint8_t, 3>{0, 13, 19}}};
+} // namespace ioj

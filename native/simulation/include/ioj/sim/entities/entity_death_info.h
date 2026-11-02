@@ -24,8 +24,7 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : ioj::single_allocation_layout::ColumnLayouts<DeathReason, EntityId, EntityId, Vector3f> {
+struct Layout : single_allocation_layout::ColumnLayouts<DeathReason, EntityId, EntityId, Vector3f> {
     static constexpr std::size_t reasons_column{0};
     static constexpr std::size_t victims_column{1};
     static constexpr std::size_t killers_column{2};
@@ -61,14 +60,13 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::sim::entity_death_info::Layout;
-    using view_type = ::ioj::sim::entity_death_info::ResolvedView;
-    using const_view_type = ::ioj::sim::entity_death_info::ResolvedConstView;
-    using soa_schema = ::ioj::sim::entity_death_info::Schema;
+    using Layout = entity_death_info::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
@@ -83,12 +81,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<ResolvedView,
-                                            ::ioj::sim::entity_death_info::Layout::column_types,
-                                            ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::sim::entity_death_info::Layout::column_types,
+        ioj::sim::entity_death_info::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -98,16 +95,14 @@ struct ResolvedView
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = ::ioj::sim::entity_death_info::Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = ::ioj::sim::entity_death_info::Layout;
-    using view_type = ::ioj::sim::entity_death_info::View;
-    using const_view_type = ::ioj::sim::entity_death_info::ConstView;
-    using resolved_view_type = std::conditional_t<Const,
-                                                  ::ioj::sim::entity_death_info::ResolvedConstView,
-                                                  ::ioj::sim::entity_death_info::ResolvedView>;
+    using Layout = entity_death_info::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -121,19 +116,14 @@ struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View
-    : soa_storage_detail::ViewRowOperations<View,
-                                            ::ioj::sim::entity_death_info::Layout::column_types,
-                                            ViewImpl<false>> {
-    using Base = ioj::soa_storage_detail::ViewRowOperations<
-        View,
-        ::ioj::sim::entity_death_info::Layout::column_types,
-        ViewImpl<false>>;
+static_assert(soa_storage_detail::validate_compact_view<ConstView>());
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
+    using Base = ioj::soa_storage_detail::
+        ViewRowOperations<View, ioj::sim::entity_death_info::Layout::column_types, ViewImpl<false>>;
     using Base::Base;
     using Base::set;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+static_assert(soa_storage_detail::validate_compact_view<View>());
 
 } // namespace entity_death_info
 
@@ -146,27 +136,25 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // killers: EntityId
 // locations: Vector3f
 struct EntityDeathInfo
-    : protected ioj::native_soa::StorageState
+    : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<EntityDeathInfo,
-                                             ::ioj::sim::entity_death_info::Layout::column_types,
-                                             ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::sim::entity_death_info::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::sim::entity_death_info::Layout;
+                                             entity_death_info::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = entity_death_info::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = entity_death_info::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::sim::entity_death_info::View;
-    using ConstView = ::ioj::sim::entity_death_info::ConstView;
+    using View = entity_death_info::View;
+    using ConstView = entity_death_info::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -188,7 +176,7 @@ struct EntityDeathInfo
     }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::sim::entity_death_info::DataPointers<Byte>;
+    using DataPointers = entity_death_info::DataPointers<Byte>;
   public:
     auto reasons(this auto& self) { return self.view().reasons(); }
     auto victims(this auto& self) { return self.view().victims(); }
@@ -196,13 +184,13 @@ struct EntityDeathInfo
     auto locations(this auto& self) { return self.view().locations(); }
     using RowOperations =
         soa_storage_detail::OwnerRowOperations<EntityDeathInfo,
-                                               ::ioj::sim::entity_death_info::Layout::column_types,
-                                               ioj::native_soa::StorageOperations>;
+                                               entity_death_info::Layout::column_types,
+                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

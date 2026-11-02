@@ -31,10 +31,9 @@ struct CppFileFlags : detail::CppFileFlagsBase {
     static constexpr ioj::PackedField<storage_type, bool, 2, 1> format_generated_layout{};
 
     constexpr CppFileFlags() noexcept = default;
-    constexpr explicit CppFileFlags(
-        decltype(pragma_once_layout)::value_type const pragma_once_value,
-        decltype(clang_format_off_layout)::value_type const clang_format_off_value,
-        decltype(format_generated_layout)::value_type const format_generated_value) noexcept
+    constexpr explicit CppFileFlags(bool const pragma_once_value,
+                                    bool const clang_format_off_value,
+                                    bool const format_generated_value) noexcept
         : Base{static_cast<storage_type>(
               ioj::packed_pack<decltype(pragma_once_layout)>(pragma_once_value) |
               ioj::packed_pack<decltype(clang_format_off_layout)>(clang_format_off_value) |
@@ -42,27 +41,22 @@ struct CppFileFlags : detail::CppFileFlagsBase {
 
     [[nodiscard]] constexpr auto operator<=>(CppFileFlags const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto pragma_once() const noexcept
-        -> decltype(pragma_once_layout)::value_type {
+    [[nodiscard]] constexpr auto pragma_once() const noexcept -> bool {
         return extract<decltype(pragma_once_layout)>();
     }
-    constexpr void set_pragma_once(decltype(pragma_once_layout)::value_type const value) noexcept {
+    constexpr void set_pragma_once(bool const value) noexcept {
         insert<decltype(pragma_once_layout)>(value);
     }
-    [[nodiscard]] constexpr auto clang_format_off() const noexcept
-        -> decltype(clang_format_off_layout)::value_type {
+    [[nodiscard]] constexpr auto clang_format_off() const noexcept -> bool {
         return extract<decltype(clang_format_off_layout)>();
     }
-    constexpr void
-        set_clang_format_off(decltype(clang_format_off_layout)::value_type const value) noexcept {
+    constexpr void set_clang_format_off(bool const value) noexcept {
         insert<decltype(clang_format_off_layout)>(value);
     }
-    [[nodiscard]] constexpr auto format_generated() const noexcept
-        -> decltype(format_generated_layout)::value_type {
+    [[nodiscard]] constexpr auto format_generated() const noexcept -> bool {
         return extract<decltype(format_generated_layout)>();
     }
-    constexpr void
-        set_format_generated(decltype(format_generated_layout)::value_type const value) noexcept {
+    constexpr void set_format_generated(bool const value) noexcept {
         insert<decltype(format_generated_layout)>(value);
     }
 };

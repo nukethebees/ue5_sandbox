@@ -7,6 +7,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -87,11 +88,10 @@ inline constexpr MinMax<kernel_codegen::detail::OperationField>
     enum_range<kernel_codegen::detail::OperationField>{
         kernel_codegen::detail::OperationField::operand,
         kernel_codegen::detail::OperationField::aliasing};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::OperationField, ioj::Serialized>{
-    ioj::PackedStrings{
-        "operand\000component-"
-        "operand\000components\000types\000output\000expression\000variants\000aliasing",
-        std::array<std::uint8_t, 9>{0, 8, 26, 37, 43, 50, 61, 70, 79}}};
+inline constexpr auto enum_strings<kernel_codegen::detail::OperationField, Serialized>{
+    PackedStrings{"operand\000component-"
+                  "operand\000components\000types\000output\000expression\000variants\000aliasing",
+                  std::array<std::uint8_t, 9>{0, 8, 26, 37, 43, 50, 61, 70, 79}}};
+} // namespace ioj

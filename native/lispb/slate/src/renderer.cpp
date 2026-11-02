@@ -165,7 +165,8 @@ class Renderer {
 
     auto forward_parameter(std::string const& parameter) -> Expr {
         auto const type{ir_.types.intern("decltype(" + parameter + ")")};
-        return ir_.call(ir_.template_id(ir_.named("std::forward"), {ir_.type_reference(type)}),
+        return ir_.call(ir_.template_id(ir_.type_reference(ir_.types.named("std::forward")),
+                                        {ir_.type_reference(type)}),
                         {ir_.named(parameter)});
     }
 
@@ -253,7 +254,8 @@ class Renderer {
         auto const index{value.index()};
         switch (value.kind()) {
             case ValueKind::text:
-                return ir_.call(ir_.named("FText::FromString"),
+                return ir_.call(ir_.type_reference(ir_.types.decorate(
+                                    ir_.types.named("FText"), "", "::FromString")),
                                 {ir_.call(ir_.named("TEXT"),
                                           {ir_.string_literal(document_.values.text[index])})});
             case ValueKind::localized_text:
@@ -279,7 +281,8 @@ class Renderer {
             case ValueKind::boolean:
                 return ir_.literal(document_.values.text[index]);
             default:
-                return ir_.named(text(document_.values.text[index]));
+                return ir_.type_reference(
+                    ir_.types.reference(ir_.types.intern(text(document_.values.text[index]))));
         }
     }
 
@@ -297,7 +300,10 @@ class Renderer {
                 ir_.member_access(object, member),
                 {ir_.unary(lispb::codegen::UnaryOperator::address_of, ir_.named("self_")),
                  ir_.unary(lispb::codegen::UnaryOperator::address_of,
-                           ir_.named("ThisClass::" + text(document_.values.text[value.index()])))});
+                           ir_.type_reference(ir_.types.decorate(
+                               ir_.types.named("ThisClass"),
+                               "",
+                               "::" + text(document_.values.text[value.index()]))))});
         }
         return ir_.call(ir_.member_access(object, name), {render_value(value)});
     }
@@ -319,7 +325,9 @@ class Renderer {
         if (margin) {
             arguments.push_back(render_value(margin));
         }
-        return ir_.call(ir_.named(prefix + (fill ? "fill_slot" : "auto_slot")), arguments);
+        return ir_.call(
+            ir_.type_reference(ir_.types.named(prefix + (fill ? "fill_slot" : "auto_slot"))),
+            arguments);
     }
 
     static auto float_literal(std::string value) -> std::string {

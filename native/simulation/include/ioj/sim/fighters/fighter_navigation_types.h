@@ -157,7 +157,7 @@ static_assert(valid_packed_value_layout<AvoidanceChoice>());
 } // namespace ioj::sim::fighters
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::sim::fighters::NavigationRiskTier>() noexcept
+[[nodiscard]] constexpr auto enum_count<sim::fighters::NavigationRiskTier>() noexcept
     -> std::size_t {
     return 4;
 }

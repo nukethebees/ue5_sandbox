@@ -30,16 +30,16 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout
-    : ioj::single_allocation_layout::ColumnLayouts<LevelEntityIndex,
-                                                   float,
-                                                   float,
-                                                   float,
-                                                   float,
-                                                   float,
-                                                   float,
-                                                   ::ioj::Team,
-                                                   Health,
-                                                   std::int32_t> {
+    : single_allocation_layout::ColumnLayouts<LevelEntityIndex,
+                                              float,
+                                              float,
+                                              float,
+                                              float,
+                                              float,
+                                              float,
+                                              ::ioj::Team,
+                                              Health,
+                                              std::int32_t> {
     static constexpr std::size_t entity_indices_column{0};
     static constexpr std::size_t locations_xs_column{1};
     static constexpr std::size_t locations_ys_column{2};
@@ -107,29 +107,27 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::sim::level_turret_spawn_events::Layout;
-    using view_type = ::ioj::sim::level_turret_spawn_events::ResolvedView;
-    using const_view_type = ::ioj::sim::level_turret_spawn_events::ResolvedConstView;
-    using soa_schema = ::ioj::sim::level_turret_spawn_events::Schema;
+    using Layout = level_turret_spawn_events::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto entity_indices() const { return this->column(this->columns_.entity_indices); }
-    auto view_locations() const -> std::
-        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
+    auto view_locations() const
+        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
         return {this->columns_.locations_xs,
                 this->columns_.locations_ys,
                 this->columns_.locations_zs,
                 this->num()};
     }
-    auto view_rotations() const -> std::conditional_t<Const,
-                                                      ::ioj::rotators3f::ResolvedConstView,
-                                                      ::ioj::rotators3f::ResolvedView> {
+    auto view_rotations() const
+        -> std::conditional_t<Const, rotators3f::ResolvedConstView, rotators3f::ResolvedView> {
         return {this->columns_.rotations_pitches,
                 this->columns_.rotations_yaws,
                 this->columns_.rotations_rolls,
@@ -144,13 +142,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<
-          ResolvedView,
-          ::ioj::sim::level_turret_spawn_events::Layout::column_types,
-          ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::sim::level_turret_spawn_events::Layout::column_types,
+        ioj::sim::level_turret_spawn_events::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -175,17 +171,14 @@ struct ResolvedView
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = ::ioj::sim::level_turret_spawn_events::Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = ::ioj::sim::level_turret_spawn_events::Layout;
-    using view_type = ::ioj::sim::level_turret_spawn_events::View;
-    using const_view_type = ::ioj::sim::level_turret_spawn_events::ConstView;
-    using resolved_view_type =
-        std::conditional_t<Const,
-                           ::ioj::sim::level_turret_spawn_events::ResolvedConstView,
-                           ::ioj::sim::level_turret_spawn_events::ResolvedView>;
+    using Layout = level_turret_spawn_events::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -194,9 +187,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
         return this->template column<LevelEntityIndex>(Layout::entity_indices_column);
     }
     auto view_locations() const
-        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
-        return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>,
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, vectors3f::ConstView, vectors3f::View>,
             Layout>(this->state_,
                     this->offset_,
                     this->num(),
@@ -204,9 +197,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                     Layout::locations_ys_column);
     }
     auto view_rotations() const
-        -> std::conditional_t<Const, ::ioj::rotators3f::ConstView, ::ioj::rotators3f::View> {
-        return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::rotators3f::ConstView, ::ioj::rotators3f::View>,
+        -> std::conditional_t<Const, rotators3f::ConstView, rotators3f::View> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, rotators3f::ConstView, rotators3f::View>,
             Layout>(this->state_,
                     this->offset_,
                     this->num(),
@@ -223,15 +216,11 @@ struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View
-    : soa_storage_detail::ViewRowOperations<
-          View,
-          ::ioj::sim::level_turret_spawn_events::Layout::column_types,
-          ViewImpl<false>> {
+static_assert(soa_storage_detail::validate_compact_view<ConstView>());
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::sim::level_turret_spawn_events::Layout::column_types,
+        ioj::sim::level_turret_spawn_events::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -251,7 +240,7 @@ struct View
         this->laser_damages()[index] = new_laser_damages;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+static_assert(soa_storage_detail::validate_compact_view<View>());
 
 } // namespace level_turret_spawn_events
 
@@ -270,28 +259,25 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // healths: Health
 // laser_damages: std::int32_t
 struct LevelTurretSpawnEvents
-    : protected ioj::native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<
-          LevelTurretSpawnEvents,
-          ::ioj::sim::level_turret_spawn_events::Layout::column_types,
-          ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::sim::level_turret_spawn_events::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::sim::level_turret_spawn_events::Layout;
+    : protected native_soa::StorageState
+    , soa_storage_detail::OwnerRowOperations<LevelTurretSpawnEvents,
+                                             level_turret_spawn_events::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = level_turret_spawn_events::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = level_turret_spawn_events::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::sim::level_turret_spawn_events::View;
-    using ConstView = ::ioj::sim::level_turret_spawn_events::ConstView;
+    using View = level_turret_spawn_events::View;
+    using ConstView = level_turret_spawn_events::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -313,7 +299,7 @@ struct LevelTurretSpawnEvents
     }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::sim::level_turret_spawn_events::DataPointers<Byte>;
+    using DataPointers = level_turret_spawn_events::DataPointers<Byte>;
   public:
     auto entity_indices(this auto& self) { return self.view().entity_indices(); }
     auto view_locations(this auto& self) { return self.view().view_locations(); }
@@ -321,10 +307,10 @@ struct LevelTurretSpawnEvents
     auto teams(this auto& self) { return self.view().teams(); }
     auto healths(this auto& self) { return self.view().healths(); }
     auto laser_damages(this auto& self) { return self.view().laser_damages(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        LevelTurretSpawnEvents,
-        ::ioj::sim::level_turret_spawn_events::Layout::column_types,
-        ioj::native_soa::StorageOperations>;
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<LevelTurretSpawnEvents,
+                                               level_turret_spawn_events::Layout::column_types,
+                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,
@@ -361,7 +347,7 @@ struct LevelTurretSpawnEvents
     }
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

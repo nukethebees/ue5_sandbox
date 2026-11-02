@@ -116,24 +116,23 @@ struct CountedValue : detail::CountedValueBase {
     static constexpr PackedField<storage_type, CountedState, 0, 8> state_layout{};
 
     constexpr CountedValue() noexcept = default;
-    constexpr explicit CountedValue(decltype(state_layout)::value_type const state_value) noexcept
+    constexpr explicit CountedValue(CountedState const state_value) noexcept
         : Base{static_cast<storage_type>(state_value)} {
         assert((is_valid_state(state_value)));
     }
 
     [[nodiscard]] constexpr auto operator<=>(CountedValue const&) const noexcept = default;
 
-    [[nodiscard]] static constexpr auto
-        is_valid_state(decltype(state_layout)::value_type const value) noexcept -> bool {
+    [[nodiscard]] static constexpr auto is_valid_state(CountedState const value) noexcept -> bool {
         return value <= state_layout.range.max;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_state(extract<decltype(state_layout)>());
     }
-    [[nodiscard]] constexpr auto state() const noexcept -> decltype(state_layout)::value_type {
+    [[nodiscard]] constexpr auto state() const noexcept -> CountedState {
         return extract<decltype(state_layout)>();
     }
-    constexpr void set_state(decltype(state_layout)::value_type const value) noexcept {
+    constexpr void set_state(CountedState const value) noexcept {
         assert((is_valid_state(value)));
         insert<decltype(state_layout)>(value);
     }
@@ -160,29 +159,24 @@ struct PackedLookup : detail::PackedLookupBase {
     static constexpr PackedField<storage_type, std::uint8_t, 8, 8> packed_extract_layout{};
 
     constexpr PackedLookup() noexcept = default;
-    constexpr explicit PackedLookup(
-        decltype(packed_insert_layout)::value_type const packed_insert_value,
-        decltype(packed_extract_layout)::value_type const packed_extract_value) noexcept
+    constexpr explicit PackedLookup(std::uint8_t const packed_insert_value,
+                                    std::uint8_t const packed_extract_value) noexcept
         : Base{static_cast<storage_type>(
               packed_pack<decltype(packed_insert_layout)>(packed_insert_value) |
               packed_pack<decltype(packed_extract_layout)>(packed_extract_value))} {}
 
     [[nodiscard]] constexpr auto operator<=>(PackedLookup const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto packed_insert() const noexcept
-        -> decltype(packed_insert_layout)::value_type {
+    [[nodiscard]] constexpr auto packed_insert() const noexcept -> std::uint8_t {
         return extract<decltype(packed_insert_layout)>();
     }
-    constexpr void
-        set_packed_insert(decltype(packed_insert_layout)::value_type const value) noexcept {
+    constexpr void set_packed_insert(std::uint8_t const value) noexcept {
         insert<decltype(packed_insert_layout)>(value);
     }
-    [[nodiscard]] constexpr auto packed_extract() const noexcept
-        -> decltype(packed_extract_layout)::value_type {
+    [[nodiscard]] constexpr auto packed_extract() const noexcept -> std::uint8_t {
         return extract<decltype(packed_extract_layout)>();
     }
-    constexpr void
-        set_packed_extract(decltype(packed_extract_layout)::value_type const value) noexcept {
+    constexpr void set_packed_extract(std::uint8_t const value) noexcept {
         insert<decltype(packed_extract_layout)>(value);
     }
 };

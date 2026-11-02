@@ -8,6 +8,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/frequency.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -27,7 +28,7 @@ struct TickSettings {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, TickSettings> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::tick_rate) {
             return (self.tick_rate);
@@ -62,11 +63,11 @@ struct TickSettings {
 } // namespace ioj::settings
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::settings::TickSettings::Field>() noexcept
-    -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<settings::TickSettings::Field>() noexcept -> std::size_t {
     return 2;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::settings::TickSettings::Field, ioj::Name>{
-    ioj::PackedStrings{"tick_rate\000time_scale", std::array<std::uint8_t, 3>{0, 10, 21}}};
+inline constexpr auto enum_strings<settings::TickSettings::Field, Name>{
+    PackedStrings{"tick_rate\000time_scale", std::array<std::uint8_t, 3>{0, 10, 21}}};
+} // namespace ioj

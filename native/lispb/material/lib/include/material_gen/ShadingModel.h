@@ -36,8 +36,8 @@ namespace ioj {
 template <>
 inline constexpr MinMax<material_synth::ShadingModel> enum_range<material_synth::ShadingModel>{
     material_synth::ShadingModel::default_lit, material_synth::ShadingModel::unlit};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::material_synth::ShadingModel, ioj::Serialized>{
-    ioj::PackedStrings{"default-lit\000unlit", std::array<std::uint8_t, 3>{0, 12, 18}}};
+inline constexpr auto enum_strings<material_synth::ShadingModel, Serialized>{
+    PackedStrings{"default-lit\000unlit", std::array<std::uint8_t, 3>{0, 12, 18}}};
+} // namespace ioj

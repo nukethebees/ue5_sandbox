@@ -7,6 +7,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -76,10 +77,10 @@ template <>
 inline constexpr MinMax<lispb::codegen::NativeEnumHelper>
     enum_range<lispb::codegen::NativeEnumHelper>{lispb::codegen::NativeEnumHelper::to_string,
                                                  lispb::codegen::NativeEnumHelper::formatter};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::lispb::codegen::NativeEnumHelper, ioj::Serialized>{
-    ioj::PackedStrings{"to-string\000try-parse\000to-display-string\000to-serialized-string\000try-"
-                       "parse-serialized\000traits\000formatter",
-                       std::array<std::uint8_t, 8>{0, 10, 20, 38, 59, 80, 87, 97}}};
+inline constexpr auto enum_strings<lispb::codegen::NativeEnumHelper, Serialized>{
+    PackedStrings{"to-string\000try-parse\000to-display-string\000to-serialized-string\000try-"
+                  "parse-serialized\000traits\000formatter",
+                  std::array<std::uint8_t, 8>{0, 10, 20, 38, 59, 80, 87, 97}}};
+} // namespace ioj

@@ -7,6 +7,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -69,9 +70,9 @@ inline constexpr MinMax<kernel_codegen::detail::EmissionField>
     enum_range<kernel_codegen::detail::EmissionField>{
         kernel_codegen::detail::EmissionField::header,
         kernel_codegen::detail::EmissionField::namespace_};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::EmissionField, ioj::Serialized>{
-    ioj::PackedStrings{"header\000source\000tests\000header-include\000namespace",
-                       std::array<std::uint8_t, 6>{0, 7, 14, 20, 35, 45}}};
+inline constexpr auto enum_strings<kernel_codegen::detail::EmissionField, Serialized>{
+    PackedStrings{"header\000source\000tests\000header-include\000namespace",
+                  std::array<std::uint8_t, 6>{0, 7, 14, 20, 35, 45}}};
+} // namespace ioj

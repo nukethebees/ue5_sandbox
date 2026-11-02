@@ -10,6 +10,7 @@
 #include "ioj/settings/simulation_constraints.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -32,7 +33,7 @@ struct TurretSimConfig {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, TurretSimConfig> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::detection_radius) {
             return (self.detection_radius);
@@ -86,13 +87,12 @@ struct TurretSimConfig {
 } // namespace ioj::sim
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::sim::TurretSimConfig::Field>() noexcept
-    -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<sim::TurretSimConfig::Field>() noexcept -> std::size_t {
     return 5;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::sim::TurretSimConfig::Field, ioj::Name>{
-    ioj::PackedStrings{
-        "detection_radius\000target_refresh_frequency\000fire_point_offset\000laser\000max_health",
-        std::array<std::uint8_t, 6>{0, 17, 42, 60, 66, 77}}};
+inline constexpr auto enum_strings<sim::TurretSimConfig::Field, Name>{PackedStrings{
+    "detection_radius\000target_refresh_frequency\000fire_point_offset\000laser\000max_health",
+    std::array<std::uint8_t, 6>{0, 17, 42, 60, 66, 77}}};
+} // namespace ioj

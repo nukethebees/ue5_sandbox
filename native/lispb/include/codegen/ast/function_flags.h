@@ -35,11 +35,10 @@ struct FunctionFlags : detail::FunctionFlagsBase {
     static constexpr ioj::PackedField<storage_type, bool, 3, 1> define_in_header_layout{};
 
     constexpr FunctionFlags() noexcept = default;
-    constexpr explicit FunctionFlags(
-        decltype(is_constexpr_layout)::value_type const is_constexpr_value,
-        decltype(is_inline_layout)::value_type const is_inline_value,
-        decltype(is_nodiscard_layout)::value_type const is_nodiscard_value,
-        decltype(define_in_header_layout)::value_type const define_in_header_value) noexcept
+    constexpr explicit FunctionFlags(bool const is_constexpr_value,
+                                     bool const is_inline_value,
+                                     bool const is_nodiscard_value,
+                                     bool const define_in_header_value) noexcept
         : Base{static_cast<storage_type>(
               ioj::packed_pack<decltype(is_constexpr_layout)>(is_constexpr_value) |
               ioj::packed_pack<decltype(is_inline_layout)>(is_inline_value) |
@@ -48,35 +47,28 @@ struct FunctionFlags : detail::FunctionFlagsBase {
 
     [[nodiscard]] constexpr auto operator<=>(FunctionFlags const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto is_constexpr() const noexcept
-        -> decltype(is_constexpr_layout)::value_type {
+    [[nodiscard]] constexpr auto is_constexpr() const noexcept -> bool {
         return extract<decltype(is_constexpr_layout)>();
     }
-    constexpr void
-        set_is_constexpr(decltype(is_constexpr_layout)::value_type const value) noexcept {
+    constexpr void set_is_constexpr(bool const value) noexcept {
         insert<decltype(is_constexpr_layout)>(value);
     }
-    [[nodiscard]] constexpr auto is_inline() const noexcept
-        -> decltype(is_inline_layout)::value_type {
+    [[nodiscard]] constexpr auto is_inline() const noexcept -> bool {
         return extract<decltype(is_inline_layout)>();
     }
-    constexpr void set_is_inline(decltype(is_inline_layout)::value_type const value) noexcept {
+    constexpr void set_is_inline(bool const value) noexcept {
         insert<decltype(is_inline_layout)>(value);
     }
-    [[nodiscard]] constexpr auto is_nodiscard() const noexcept
-        -> decltype(is_nodiscard_layout)::value_type {
+    [[nodiscard]] constexpr auto is_nodiscard() const noexcept -> bool {
         return extract<decltype(is_nodiscard_layout)>();
     }
-    constexpr void
-        set_is_nodiscard(decltype(is_nodiscard_layout)::value_type const value) noexcept {
+    constexpr void set_is_nodiscard(bool const value) noexcept {
         insert<decltype(is_nodiscard_layout)>(value);
     }
-    [[nodiscard]] constexpr auto define_in_header() const noexcept
-        -> decltype(define_in_header_layout)::value_type {
+    [[nodiscard]] constexpr auto define_in_header() const noexcept -> bool {
         return extract<decltype(define_in_header_layout)>();
     }
-    constexpr void
-        set_define_in_header(decltype(define_in_header_layout)::value_type const value) noexcept {
+    constexpr void set_define_in_header(bool const value) noexcept {
         insert<decltype(define_in_header_layout)>(value);
     }
 };

@@ -30,17 +30,17 @@ struct ObjectiveId : detail::ObjectiveIdBase {
     static constexpr PackedField<storage_type, std::uint16_t, 0, 16> index_layout{};
 
     constexpr ObjectiveId() noexcept = default;
-    constexpr explicit ObjectiveId(decltype(index_layout)::value_type const index_value) noexcept
+    constexpr explicit ObjectiveId(std::uint16_t const index_value) noexcept
         : Base{index_value} {
         assert((value_ != invalid_value));
     }
 
     [[nodiscard]] constexpr auto operator<=>(ObjectiveId const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto index() const noexcept -> decltype(index_layout)::value_type {
+    [[nodiscard]] constexpr auto index() const noexcept -> std::uint16_t {
         return extract<decltype(index_layout)>();
     }
-    constexpr void set_index(decltype(index_layout)::value_type const value) noexcept {
+    constexpr void set_index(std::uint16_t const value) noexcept {
         insert<decltype(index_layout)>(value);
     }
 };

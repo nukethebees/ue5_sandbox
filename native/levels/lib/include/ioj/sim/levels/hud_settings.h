@@ -7,6 +7,7 @@
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -27,7 +28,7 @@ struct HudSettings {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, HudSettings> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::player_status_update_period) {
             return (self.player_status_update_period);
@@ -71,12 +72,12 @@ struct HudSettings {
 } // namespace ioj::sim
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::sim::HudSettings::Field>() noexcept -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<sim::HudSettings::Field>() noexcept -> std::size_t {
     return 3;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::sim::HudSettings::Field, ioj::Name>{
-    ioj::PackedStrings{
-        "player_status_update_period\000entity_count_update_period\000mission_status_update_period",
-        std::array<std::uint8_t, 4>{0, 28, 55, 84}}};
+inline constexpr auto enum_strings<sim::HudSettings::Field, Name>{PackedStrings{
+    "player_status_update_period\000entity_count_update_period\000mission_status_update_period",
+    std::array<std::uint8_t, 4>{0, 28, 55, 84}}};
+} // namespace ioj

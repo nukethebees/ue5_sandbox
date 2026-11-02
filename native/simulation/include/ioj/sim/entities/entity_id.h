@@ -34,9 +34,8 @@ struct EntityId : detail::EntityIdBase {
     static constexpr PackedField<storage_type, EntityType, 24, 8> entity_type_layout{};
 
     constexpr EntityId() noexcept = default;
-    constexpr explicit EntityId(
-        decltype(index_layout)::value_type const index_value,
-        decltype(entity_type_layout)::value_type const entity_type_value) noexcept
+    constexpr explicit EntityId(std::uint32_t const index_value,
+                                EntityType const entity_type_value) noexcept
         : Base{static_cast<storage_type>(
               packed_pack<decltype(index_layout)>(index_value) |
               packed_pack<decltype(entity_type_layout)>(entity_type_value))} {
@@ -47,30 +46,27 @@ struct EntityId : detail::EntityIdBase {
 
     [[nodiscard]] constexpr auto operator<=>(EntityId const&) const noexcept = default;
 
-    [[nodiscard]] static constexpr auto
-        is_valid_index(decltype(index_layout)::value_type const value) noexcept -> bool {
+    [[nodiscard]] static constexpr auto is_valid_index(std::uint32_t const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= index_layout.value_mask;
     }
-    [[nodiscard]] static constexpr auto
-        is_valid_entity_type(decltype(entity_type_layout)::value_type const value) noexcept
+    [[nodiscard]] static constexpr auto is_valid_entity_type(EntityType const value) noexcept
         -> bool {
         return value <= entity_type_layout.range.max;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_entity_type(extract<decltype(entity_type_layout)>());
     }
-    [[nodiscard]] constexpr auto index() const noexcept -> decltype(index_layout)::value_type {
+    [[nodiscard]] constexpr auto index() const noexcept -> std::uint32_t {
         return extract<decltype(index_layout)>();
     }
-    constexpr void set_index(decltype(index_layout)::value_type const value) noexcept {
+    constexpr void set_index(std::uint32_t const value) noexcept {
         assert((is_valid_index(value)));
         insert<decltype(index_layout)>(value);
     }
-    [[nodiscard]] constexpr auto entity_type() const noexcept
-        -> decltype(entity_type_layout)::value_type {
+    [[nodiscard]] constexpr auto entity_type() const noexcept -> EntityType {
         return extract<decltype(entity_type_layout)>();
     }
-    constexpr void set_entity_type(decltype(entity_type_layout)::value_type const value) noexcept {
+    constexpr void set_entity_type(EntityType const value) noexcept {
         assert((is_valid_entity_type(value)));
         insert<decltype(entity_type_layout)>(value);
     }

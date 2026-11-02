@@ -29,12 +29,11 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout
-    : ioj::single_allocation_layout::ColumnLayouts<
-          std::string_view,
-          std::uint8_t,
-          std::uint8_t,
-          std::optional<ioj::layout::EnumCodeValue>,
-          std::optional<lispb::codegen::PackedIntegerValue>> {
+    : single_allocation_layout::ColumnLayouts<std::string_view,
+                                              std::uint8_t,
+                                              std::uint8_t,
+                                              std::optional<ioj::layout::EnumCodeValue>,
+                                              std::optional<lispb::codegen::PackedIntegerValue>> {
     static constexpr std::size_t name_column{0};
     static constexpr std::size_t sentinel_column{1};
     static constexpr std::size_t count_sentinel_column{2};
@@ -76,14 +75,13 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::layout::code_table::Layout;
-    using view_type = ::ioj::layout::code_table::ResolvedView;
-    using const_view_type = ::ioj::layout::code_table::ResolvedConstView;
-    using soa_schema = ::ioj::layout::code_table::Schema;
+    using Layout = code_table::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
@@ -99,12 +97,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<ResolvedView,
-                                            ::ioj::layout::code_table::Layout::column_types,
-                                            ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base =
         ioj::soa_storage_detail::ViewRowOperations<ResolvedView,
-                                                   ::ioj::layout::code_table::Layout::column_types,
+                                                   ioj::layout::code_table::Layout::column_types,
                                                    ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -114,16 +111,14 @@ struct ResolvedView
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = ::ioj::layout::code_table::Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = ::ioj::layout::code_table::Layout;
-    using view_type = ::ioj::layout::code_table::View;
-    using const_view_type = ::ioj::layout::code_table::ConstView;
-    using resolved_view_type = std::conditional_t<Const,
-                                                  ::ioj::layout::code_table::ResolvedConstView,
-                                                  ::ioj::layout::code_table::ResolvedView>;
+    using Layout = code_table::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -146,17 +141,14 @@ struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View
-    : soa_storage_detail::ViewRowOperations<View,
-                                            ::ioj::layout::code_table::Layout::column_types,
-                                            ViewImpl<false>> {
+static_assert(soa_storage_detail::validate_compact_view<ConstView>());
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ::ioj::layout::code_table::Layout::column_types, ViewImpl<false>>;
+        ViewRowOperations<View, ioj::layout::code_table::Layout::column_types, ViewImpl<false>>;
     using Base::Base;
     using Base::set;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+static_assert(soa_storage_detail::validate_compact_view<View>());
 
 } // namespace code_table
 
@@ -170,27 +162,25 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // code: std::optional<ioj::layout::EnumCodeValue>
 // integer_value: std::optional<lispb::codegen::PackedIntegerValue>
 struct CodeTable
-    : protected ioj::native_soa::StorageState
+    : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<CodeTable,
-                                             ::ioj::layout::code_table::Layout::column_types,
-                                             ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::layout::code_table::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::layout::code_table::Layout;
+                                             code_table::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = code_table::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = code_table::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::layout::code_table::View;
-    using ConstView = ::ioj::layout::code_table::ConstView;
+    using View = code_table::View;
+    using ConstView = code_table::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -212,23 +202,22 @@ struct CodeTable
     }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::layout::code_table::DataPointers<Byte>;
+    using DataPointers = code_table::DataPointers<Byte>;
   public:
     auto name(this auto& self) { return self.view().name(); }
     auto sentinel(this auto& self) { return self.view().sentinel(); }
     auto count_sentinel(this auto& self) { return self.view().count_sentinel(); }
     auto code(this auto& self) { return self.view().code(); }
     auto integer_value(this auto& self) { return self.view().integer_value(); }
-    using RowOperations =
-        soa_storage_detail::OwnerRowOperations<CodeTable,
-                                               ::ioj::layout::code_table::Layout::column_types,
-                                               ioj::native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<CodeTable,
+                                                                 code_table::Layout::column_types,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     std::size_t append();
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::layout

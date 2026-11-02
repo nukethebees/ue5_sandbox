@@ -11,6 +11,7 @@
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 #include "ship_laser_mode.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -39,7 +40,7 @@ struct PlayerSimConfig {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, PlayerSimConfig> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::thrust_energy_max) {
             return (self.thrust_energy_max);
@@ -129,14 +130,13 @@ struct PlayerSimConfig {
 } // namespace ioj::sim
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::sim::PlayerSimConfig::Field>() noexcept
-    -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<sim::PlayerSimConfig::Field>() noexcept -> std::size_t {
     return 11;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::sim::PlayerSimConfig::Field, ioj::Name>{
-    ioj::PackedStrings{
-        "thrust_energy_max\000pitch_angle_max\000pitch_speed\000yaw_angle_max\000yaw_speed\000turn_"
-        "bank_angle_max\000turn_bank_speed\000laser\000health\000laser_mode\000laser_fire_rate",
-        std::array<std::uint8_t, 12>{0, 18, 34, 46, 60, 70, 90, 106, 112, 119, 130, 146}}};
+inline constexpr auto enum_strings<sim::PlayerSimConfig::Field, Name>{PackedStrings{
+    "thrust_energy_max\000pitch_angle_max\000pitch_speed\000yaw_angle_max\000yaw_speed\000turn_"
+    "bank_angle_max\000turn_bank_speed\000laser\000health\000laser_mode\000laser_fire_rate",
+    std::array<std::uint8_t, 12>{0, 18, 34, 46, 60, 70, 90, 106, 112, 119, 130, 146}}};
+} // namespace ioj

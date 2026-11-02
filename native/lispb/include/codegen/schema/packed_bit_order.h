@@ -37,8 +37,8 @@ template <>
 inline constexpr MinMax<lispb::codegen::PackedBitOrder> enum_range<lispb::codegen::PackedBitOrder>{
     lispb::codegen::PackedBitOrder::least_significant_first,
     lispb::codegen::PackedBitOrder::most_significant_first};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::lispb::codegen::PackedBitOrder, ioj::Serialized>{
-    ioj::PackedStrings{"lsb-first\000msb-first", std::array<std::uint8_t, 3>{0, 10, 20}}};
+inline constexpr auto enum_strings<lispb::codegen::PackedBitOrder, Serialized>{
+    PackedStrings{"lsb-first\000msb-first", std::array<std::uint8_t, 3>{0, 10, 20}}};
+} // namespace ioj

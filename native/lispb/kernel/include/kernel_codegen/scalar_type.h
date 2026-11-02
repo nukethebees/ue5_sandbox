@@ -38,9 +38,8 @@ template <>
 inline constexpr MinMax<kernel_codegen::detail::ScalarType>
     enum_range<kernel_codegen::detail::ScalarType>{kernel_codegen::detail::ScalarType::int32,
                                                    kernel_codegen::detail::ScalarType::float64};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::ScalarType, ioj::Serialized>{
-    ioj::PackedStrings{"int32\000uint32\000float\000double",
-                       std::array<std::uint8_t, 5>{0, 6, 13, 19, 26}}};
+inline constexpr auto enum_strings<kernel_codegen::detail::ScalarType, Serialized>{PackedStrings{
+    "int32\000uint32\000float\000double", std::array<std::uint8_t, 5>{0, 6, 13, 19, 26}}};
+} // namespace ioj

@@ -8,6 +8,7 @@
 #include "ioj/transform3d.h"
 #include "ioj/vector_value_math.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -25,7 +26,7 @@ struct PhysicalMovementState {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, PhysicalMovementState> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::transform) {
             return (self.transform);
@@ -60,12 +61,12 @@ struct PhysicalMovementState {
 } // namespace ioj::sim::player
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::sim::player::PhysicalMovementState::Field>() noexcept
+[[nodiscard]] constexpr auto enum_count<sim::player::PhysicalMovementState::Field>() noexcept
     -> std::size_t {
     return 2;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto
-    ioj::enum_strings<::ioj::sim::player::PhysicalMovementState::Field, ioj::Name>{
-        ioj::PackedStrings{"transform\000velocity", std::array<std::uint8_t, 3>{0, 10, 19}}};
+inline constexpr auto enum_strings<sim::player::PhysicalMovementState::Field, Name>{
+    PackedStrings{"transform\000velocity", std::array<std::uint8_t, 3>{0, 10, 19}}};
+} // namespace ioj

@@ -37,8 +37,8 @@ namespace ioj {
 template <>
 inline constexpr MinMax<lispb::codegen::EnumReflection> enum_range<lispb::codegen::EnumReflection>{
     lispb::codegen::EnumReflection::none, lispb::codegen::EnumReflection::blueprint};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::lispb::codegen::EnumReflection, ioj::Serialized>{
-    ioj::PackedStrings{"none\000uenum\000blueprint", std::array<std::uint8_t, 4>{0, 5, 11, 21}}};
+inline constexpr auto enum_strings<lispb::codegen::EnumReflection, Serialized>{
+    PackedStrings{"none\000uenum\000blueprint", std::array<std::uint8_t, 4>{0, 5, 11, 21}}};
+} // namespace ioj

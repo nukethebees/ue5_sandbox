@@ -8,6 +8,7 @@
 #include "ioj/settings/simulation_constraints.h"
 #include "ioj/transform3d.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -30,7 +31,7 @@ struct CapitalShipSimConfig {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, CapitalShipSimConfig> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::spawn_delay) {
             return (self.spawn_delay);
@@ -79,13 +80,13 @@ struct CapitalShipSimConfig {
 } // namespace ioj::sim
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::sim::CapitalShipSimConfig::Field>() noexcept
+[[nodiscard]] constexpr auto enum_count<sim::CapitalShipSimConfig::Field>() noexcept
     -> std::size_t {
     return 4;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::sim::CapitalShipSimConfig::Field,
-                                        ioj::Name>{ioj::PackedStrings{
+inline constexpr auto enum_strings<sim::CapitalShipSimConfig::Field, Name>{PackedStrings{
     "spawn_delay\000fighter_spawn_slots\000fighter_spawn_slots_relative_transforms\000max_health",
     std::array<std::uint8_t, 5>{0, 12, 32, 72, 83}}};
+} // namespace ioj

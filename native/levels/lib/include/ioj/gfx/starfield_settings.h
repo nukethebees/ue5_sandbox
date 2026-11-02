@@ -6,6 +6,7 @@
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -25,7 +26,7 @@ struct GenerationSettings {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, GenerationSettings> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::star_count) {
             return (self.star_count);
@@ -72,7 +73,7 @@ struct StarSettings {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, StarSettings> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::scale) {
             return (self.scale);
@@ -135,7 +136,7 @@ struct GalacticBandSettings {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, GalacticBandSettings> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::strength) {
             return (self.strength);
@@ -179,7 +180,7 @@ struct StellarClusterSettings {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, StellarClusterSettings> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::strength) {
             return (self.strength);
@@ -224,7 +225,7 @@ struct DustLaneSettings {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, DustLaneSettings> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::strength) {
             return (self.strength);
@@ -276,7 +277,7 @@ struct BrightStarSettings {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, BrightStarSettings> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::fraction) {
             return (self.fraction);
@@ -333,7 +334,7 @@ struct TwinkleSettings {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, TwinkleSettings> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::strength) {
             return (self.strength);
@@ -377,7 +378,7 @@ struct GalacticHazeSettings {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, GalacticHazeSettings> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::strength) {
             return (self.strength);
@@ -421,7 +422,7 @@ struct GalacticCoreSettings {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, GalacticCoreSettings> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::strength) {
             return (self.strength);
@@ -465,7 +466,7 @@ struct NebularKnotSettings {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, NebularKnotSettings> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::strength) {
             return (self.strength);
@@ -517,7 +518,7 @@ struct Settings {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, Settings> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::generation) {
             return (self.generation);
@@ -600,128 +601,115 @@ struct Settings {
 } // namespace ioj::starfield
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::starfield::GenerationSettings::Field>() noexcept
+[[nodiscard]] constexpr auto enum_count<starfield::GenerationSettings::Field>() noexcept
     -> std::size_t {
     return 2;
 }
-} // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::ioj::starfield::GenerationSettings::Field, ioj::Name>{
-    ioj::PackedStrings{"star_count\000random_seed", std::array<std::uint8_t, 3>{0, 11, 23}}};
 
-namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::starfield::StarSettings::Field>() noexcept
-    -> std::size_t {
+inline constexpr auto enum_strings<starfield::GenerationSettings::Field, Name>{
+    PackedStrings{"star_count\000random_seed", std::array<std::uint8_t, 3>{0, 11, 23}}};
+
+template <>
+[[nodiscard]] constexpr auto enum_count<starfield::StarSettings::Field>() noexcept -> std::size_t {
     return 5;
 }
-} // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::ioj::starfield::StarSettings::Field, ioj::Name>{
-    ioj::PackedStrings{"scale\000size_multiplier\000global_brightness\000colour_variation_"
-                       "strength\000parallax_strength",
-                       std::array<std::uint8_t, 6>{0, 6, 22, 40, 66, 84}}};
 
-namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::starfield::GalacticBandSettings::Field>() noexcept
+inline constexpr auto enum_strings<starfield::StarSettings::Field, Name>{
+    PackedStrings{"scale\000size_multiplier\000global_brightness\000colour_variation_"
+                  "strength\000parallax_strength",
+                  std::array<std::uint8_t, 6>{0, 6, 22, 40, 66, 84}}};
+
+template <>
+[[nodiscard]] constexpr auto enum_count<starfield::GalacticBandSettings::Field>() noexcept
     -> std::size_t {
     return 2;
 }
-} // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::ioj::starfield::GalacticBandSettings::Field, ioj::Name>{
-    ioj::PackedStrings{"strength\000width_degrees", std::array<std::uint8_t, 3>{0, 9, 23}}};
 
-namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::starfield::StellarClusterSettings::Field>() noexcept
+inline constexpr auto enum_strings<starfield::GalacticBandSettings::Field, Name>{
+    PackedStrings{"strength\000width_degrees", std::array<std::uint8_t, 3>{0, 9, 23}}};
+
+template <>
+[[nodiscard]] constexpr auto enum_count<starfield::StellarClusterSettings::Field>() noexcept
     -> std::size_t {
     return 2;
 }
-} // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::ioj::starfield::StellarClusterSettings::Field, ioj::Name>{
-    ioj::PackedStrings{"strength\000width_degrees", std::array<std::uint8_t, 3>{0, 9, 23}}};
 
-namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::starfield::DustLaneSettings::Field>() noexcept
+inline constexpr auto enum_strings<starfield::StellarClusterSettings::Field, Name>{
+    PackedStrings{"strength\000width_degrees", std::array<std::uint8_t, 3>{0, 9, 23}}};
+
+template <>
+[[nodiscard]] constexpr auto enum_count<starfield::DustLaneSettings::Field>() noexcept
     -> std::size_t {
     return 3;
 }
-} // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::ioj::starfield::DustLaneSettings::Field, ioj::Name>{
-    ioj::PackedStrings{"strength\000width_degrees\000irregularity",
-                       std::array<std::uint8_t, 4>{0, 9, 23, 36}}};
 
-namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::starfield::BrightStarSettings::Field>() noexcept
+inline constexpr auto enum_strings<starfield::DustLaneSettings::Field, Name>{PackedStrings{
+    "strength\000width_degrees\000irregularity", std::array<std::uint8_t, 4>{0, 9, 23, 36}}};
+
+template <>
+[[nodiscard]] constexpr auto enum_count<starfield::BrightStarSettings::Field>() noexcept
     -> std::size_t {
     return 4;
 }
-} // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::ioj::starfield::BrightStarSettings::Field, ioj::Name>{
-    ioj::PackedStrings{"fraction\000size_multiplier\000brightness_multiplier\000shape_strength",
-                       std::array<std::uint8_t, 5>{0, 9, 25, 47, 62}}};
 
-namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::starfield::TwinkleSettings::Field>() noexcept
+inline constexpr auto enum_strings<starfield::BrightStarSettings::Field, Name>{
+    PackedStrings{"fraction\000size_multiplier\000brightness_multiplier\000shape_strength",
+                  std::array<std::uint8_t, 5>{0, 9, 25, 47, 62}}};
+
+template <>
+[[nodiscard]] constexpr auto enum_count<starfield::TwinkleSettings::Field>() noexcept
     -> std::size_t {
     return 2;
 }
-} // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::ioj::starfield::TwinkleSettings::Field, ioj::Name>{
-    ioj::PackedStrings{"strength\000speed", std::array<std::uint8_t, 3>{0, 9, 15}}};
 
-namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::starfield::GalacticHazeSettings::Field>() noexcept
+inline constexpr auto enum_strings<starfield::TwinkleSettings::Field, Name>{
+    PackedStrings{"strength\000speed", std::array<std::uint8_t, 3>{0, 9, 15}}};
+
+template <>
+[[nodiscard]] constexpr auto enum_count<starfield::GalacticHazeSettings::Field>() noexcept
     -> std::size_t {
     return 2;
 }
-} // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::ioj::starfield::GalacticHazeSettings::Field, ioj::Name>{
-    ioj::PackedStrings{"strength\000width_degrees", std::array<std::uint8_t, 3>{0, 9, 23}}};
 
-namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::starfield::GalacticCoreSettings::Field>() noexcept
+inline constexpr auto enum_strings<starfield::GalacticHazeSettings::Field, Name>{
+    PackedStrings{"strength\000width_degrees", std::array<std::uint8_t, 3>{0, 9, 23}}};
+
+template <>
+[[nodiscard]] constexpr auto enum_count<starfield::GalacticCoreSettings::Field>() noexcept
     -> std::size_t {
     return 2;
 }
-} // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::ioj::starfield::GalacticCoreSettings::Field, ioj::Name>{
-    ioj::PackedStrings{"strength\000width_degrees", std::array<std::uint8_t, 3>{0, 9, 23}}};
 
-namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::starfield::NebularKnotSettings::Field>() noexcept
+inline constexpr auto enum_strings<starfield::GalacticCoreSettings::Field, Name>{
+    PackedStrings{"strength\000width_degrees", std::array<std::uint8_t, 3>{0, 9, 23}}};
+
+template <>
+[[nodiscard]] constexpr auto enum_count<starfield::NebularKnotSettings::Field>() noexcept
     -> std::size_t {
     return 2;
 }
-} // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::ioj::starfield::NebularKnotSettings::Field, ioj::Name>{
-    ioj::PackedStrings{"strength\000size_degrees", std::array<std::uint8_t, 3>{0, 9, 22}}};
 
-namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::starfield::Settings::Field>() noexcept
-    -> std::size_t {
+inline constexpr auto enum_strings<starfield::NebularKnotSettings::Field, Name>{
+    PackedStrings{"strength\000size_degrees", std::array<std::uint8_t, 3>{0, 9, 22}}};
+
+template <>
+[[nodiscard]] constexpr auto enum_count<starfield::Settings::Field>() noexcept -> std::size_t {
     return 10;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::starfield::Settings::Field, ioj::Name>{
-    ioj::PackedStrings{
-        "generation\000star\000galactic_band\000stellar_cluster\000dust_lane\000bright_"
-        "star\000twinkle\000galactic_haze\000galactic_core\000nebular_knot",
-        std::array<std::uint8_t, 11>{0, 11, 16, 30, 46, 56, 68, 76, 90, 104, 117}}};
+inline constexpr auto enum_strings<starfield::Settings::Field, Name>{
+    PackedStrings{"generation\000star\000galactic_band\000stellar_cluster\000dust_lane\000bright_"
+                  "star\000twinkle\000galactic_haze\000galactic_core\000nebular_knot",
+                  std::array<std::uint8_t, 11>{0, 11, 16, 30, 46, 56, 68, 76, 90, 104, 117}}};
+} // namespace ioj

@@ -155,40 +155,45 @@ template <>
     -> std::size_t {
     return 2;
 }
+
+template <>
+inline constexpr auto enum_strings<codegen_compile_fixture::EPlainFixture, Name>{
+    PackedStrings{"First\000ReadableName", std::array<std::uint8_t, 3>{0, 6, 19}}};
+
+template <>
+inline constexpr auto enum_strings<codegen_compile_fixture::EPlainFixture, Display>{
+    PackedStrings{"First\000Readable Name", std::array<std::uint8_t, 3>{0, 6, 20}}};
+
+template <>
+inline constexpr auto enum_strings<codegen_compile_fixture::EPlainFixture, Serialized>{
+    PackedStrings{"first\000readable_name", std::array<std::uint8_t, 3>{0, 6, 20}}};
 } // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::EPlainFixture, ioj::Name>{
-    ioj::PackedStrings{"First\000ReadableName", std::array<std::uint8_t, 3>{0, 6, 19}}};
-template <>
-inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::EPlainFixture, ioj::Display>{
-    ioj::PackedStrings{"First\000Readable Name", std::array<std::uint8_t, 3>{0, 6, 20}}};
-template <>
-inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::EPlainFixture, ioj::Serialized>{
-    ioj::PackedStrings{"first\000readable_name", std::array<std::uint8_t, 3>{0, 6, 20}}};
 namespace std {
 template <>
 struct formatter<::codegen_compile_fixture::EPlainFixture>
     : ioj::EnumFormatter<::codegen_compile_fixture::EPlainFixture> {};
 } // namespace std
 
+namespace ioj {
 template <>
-inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::ENameOnlyFixture, ioj::Name>{
-    ioj::PackedStrings{"First\000Second", std::array<std::uint8_t, 3>{0, 6, 13}}};
+inline constexpr auto enum_strings<codegen_compile_fixture::ENameOnlyFixture, Name>{
+    PackedStrings{"First\000Second", std::array<std::uint8_t, 3>{0, 6, 13}}};
+} // namespace ioj
 namespace std {
 template <>
 struct formatter<::codegen_compile_fixture::ENameOnlyFixture>
     : ioj::EnumFormatter<::codegen_compile_fixture::ENameOnlyFixture> {};
 } // namespace std
 
-template <>
-inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::EReorderedFixture, ioj::Name>{
-    ioj::PackedStrings{"First\000Second\000Later", std::array<std::uint8_t, 4>{0, 6, 13, 19}}};
-template <>
-inline constexpr auto
-    ioj::enum_strings<::codegen_compile_fixture::EReorderedFixture, ioj::Serialized>{
-        ioj::PackedStrings{"first\000second\000later", std::array<std::uint8_t, 4>{0, 6, 13, 19}}};
-
 namespace ioj {
+template <>
+inline constexpr auto enum_strings<codegen_compile_fixture::EReorderedFixture, Name>{
+    PackedStrings{"First\000Second\000Later", std::array<std::uint8_t, 4>{0, 6, 13, 19}}};
+
+template <>
+inline constexpr auto enum_strings<codegen_compile_fixture::EReorderedFixture, Serialized>{
+    PackedStrings{"first\000second\000later", std::array<std::uint8_t, 4>{0, 6, 13, 19}}};
+
 template <>
 struct EnumTraits<codegen_compile_fixture::EMissingNames> {
     static constexpr std::array values{codegen_compile_fixture::EMissingNames::Unnamed,
@@ -196,16 +201,16 @@ struct EnumTraits<codegen_compile_fixture::EMissingNames> {
                                        codegen_compile_fixture::EMissingNames::Escaped};
 };
 
+template <>
+inline constexpr auto enum_strings<codegen_compile_fixture::EMissingNames, Name>{PackedStrings{
+    "Unnamed\000Empty\000Escaped\000Count", std::array<std::uint8_t, 5>{0, 8, 14, 22, 28}}};
+
+template <>
+inline constexpr auto enum_strings<codegen_compile_fixture::EMissingNames, Display>{PackedStrings{
+    "Unnamed\000Empty\000quote\"\\line\n\000Count", std::array<std::uint8_t, 5>{0, 8, 14, 27, 33}}};
+
+template <>
+inline constexpr auto enum_strings<codegen_compile_fixture::EMissingNames, Serialized>{
+    PackedStrings{"unnamed\000empty\0002digits\000<invalid EMissingNames>",
+                  std::array<std::uint8_t, 5>{0, 8, 14, 22, 46}}};
 } // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::EMissingNames, ioj::Name>{
-    ioj::PackedStrings{"Unnamed\000Empty\000Escaped\000Count",
-                       std::array<std::uint8_t, 5>{0, 8, 14, 22, 28}}};
-template <>
-inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::EMissingNames, ioj::Display>{
-    ioj::PackedStrings{"Unnamed\000Empty\000quote\"\\line\n\000Count",
-                       std::array<std::uint8_t, 5>{0, 8, 14, 27, 33}}};
-template <>
-inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::EMissingNames, ioj::Serialized>{
-    ioj::PackedStrings{"unnamed\000empty\0002digits\000<invalid EMissingNames>",
-                       std::array<std::uint8_t, 5>{0, 8, 14, 22, 46}}};

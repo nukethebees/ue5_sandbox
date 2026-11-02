@@ -29,22 +29,22 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout
-    : ioj::single_allocation_layout::ColumnLayouts<std::uint8_t,
-                                                   LaserSource,
-                                                   float,
-                                                   float,
-                                                   float,
-                                                   float,
-                                                   float,
-                                                   float,
-                                                   float,
-                                                   float,
-                                                   float,
-                                                   std::int32_t,
-                                                   float,
-                                                   EntityId,
-                                                   float,
-                                                   float> {
+    : single_allocation_layout::ColumnLayouts<std::uint8_t,
+                                              LaserSource,
+                                              float,
+                                              float,
+                                              float,
+                                              float,
+                                              float,
+                                              float,
+                                              float,
+                                              float,
+                                              float,
+                                              std::int32_t,
+                                              float,
+                                              EntityId,
+                                              float,
+                                              float> {
     static constexpr std::size_t active_column{0};
     static constexpr std::size_t sources_column{1};
     static constexpr std::size_t locations_xs_column{2};
@@ -137,37 +137,35 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::sim::lasers::laser_entities::Layout;
-    using view_type = ::ioj::sim::lasers::laser_entities::ResolvedView;
-    using const_view_type = ::ioj::sim::lasers::laser_entities::ResolvedConstView;
-    using soa_schema = ::ioj::sim::lasers::laser_entities::Schema;
+    using Layout = laser_entities::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto active() const { return this->column(this->columns_.active); }
     auto sources() const { return this->column(this->columns_.sources); }
-    auto view_locations() const -> std::
-        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
+    auto view_locations() const
+        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
         return {this->columns_.locations_xs,
                 this->columns_.locations_ys,
                 this->columns_.locations_zs,
                 this->num()};
     }
-    auto view_rotations() const -> std::conditional_t<Const,
-                                                      ::ioj::rotators3f::ResolvedConstView,
-                                                      ::ioj::rotators3f::ResolvedView> {
+    auto view_rotations() const
+        -> std::conditional_t<Const, rotators3f::ResolvedConstView, rotators3f::ResolvedView> {
         return {this->columns_.rotations_pitches,
                 this->columns_.rotations_yaws,
                 this->columns_.rotations_rolls,
                 this->num()};
     }
-    auto view_velocities() const -> std::
-        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
+    auto view_velocities() const
+        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
         return {this->columns_.velocities_xs,
                 this->columns_.velocities_ys,
                 this->columns_.velocities_zs,
@@ -184,13 +182,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<
-          ResolvedView,
-          ::ioj::sim::lasers::laser_entities::Layout::column_types,
-          ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::sim::lasers::laser_entities::Layout::column_types,
+        ioj::sim::lasers::laser_entities::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -223,17 +219,14 @@ struct ResolvedView
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = ::ioj::sim::lasers::laser_entities::Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = ::ioj::sim::lasers::laser_entities::Layout;
-    using view_type = ::ioj::sim::lasers::laser_entities::View;
-    using const_view_type = ::ioj::sim::lasers::laser_entities::ConstView;
-    using resolved_view_type =
-        std::conditional_t<Const,
-                           ::ioj::sim::lasers::laser_entities::ResolvedConstView,
-                           ::ioj::sim::lasers::laser_entities::ResolvedView>;
+    using Layout = laser_entities::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -241,9 +234,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto active() const { return this->template column<std::uint8_t>(Layout::active_column); }
     auto sources() const { return this->template column<LaserSource>(Layout::sources_column); }
     auto view_locations() const
-        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
-        return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>,
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, vectors3f::ConstView, vectors3f::View>,
             Layout>(this->state_,
                     this->offset_,
                     this->num(),
@@ -251,9 +244,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                     Layout::locations_ys_column);
     }
     auto view_rotations() const
-        -> std::conditional_t<Const, ::ioj::rotators3f::ConstView, ::ioj::rotators3f::View> {
-        return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::rotators3f::ConstView, ::ioj::rotators3f::View>,
+        -> std::conditional_t<Const, rotators3f::ConstView, rotators3f::View> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, rotators3f::ConstView, rotators3f::View>,
             Layout>(this->state_,
                     this->offset_,
                     this->num(),
@@ -261,9 +254,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
                     Layout::rotations_yaws_column);
     }
     auto view_velocities() const
-        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
-        return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View>,
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, vectors3f::ConstView, vectors3f::View>,
             Layout>(this->state_,
                     this->offset_,
                     this->num(),
@@ -286,15 +279,11 @@ struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View
-    : soa_storage_detail::ViewRowOperations<
-          View,
-          ::ioj::sim::lasers::laser_entities::Layout::column_types,
-          ViewImpl<false>> {
+static_assert(soa_storage_detail::validate_compact_view<ConstView>());
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::sim::lasers::laser_entities::Layout::column_types,
+        ioj::sim::lasers::laser_entities::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -322,7 +311,7 @@ struct View
         this->spawn_times()[index] = new_spawn_times;
     }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+static_assert(soa_storage_detail::validate_compact_view<View>());
 
 } // namespace laser_entities
 
@@ -347,28 +336,25 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // initial_lifetimes: float
 // spawn_times: float
 struct LaserEntities
-    : protected ioj::native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<
-          LaserEntities,
-          ::ioj::sim::lasers::laser_entities::Layout::column_types,
-          ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::sim::lasers::laser_entities::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::sim::lasers::laser_entities::Layout;
+    : protected native_soa::StorageState
+    , soa_storage_detail::OwnerRowOperations<LaserEntities,
+                                             laser_entities::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = laser_entities::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = laser_entities::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::sim::lasers::laser_entities::View;
-    using ConstView = ::ioj::sim::lasers::laser_entities::ConstView;
+    using View = laser_entities::View;
+    using ConstView = laser_entities::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -390,7 +376,7 @@ struct LaserEntities
     }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::sim::lasers::laser_entities::DataPointers<Byte>;
+    using DataPointers = laser_entities::DataPointers<Byte>;
   public:
     auto active(this auto& self) { return self.view().active(); }
     auto sources(this auto& self) { return self.view().sources(); }
@@ -402,10 +388,10 @@ struct LaserEntities
     auto instigator_ids(this auto& self) { return self.view().instigator_ids(); }
     auto initial_lifetimes(this auto& self) { return self.view().initial_lifetimes(); }
     auto spawn_times(this auto& self) { return self.view().spawn_times(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        LaserEntities,
-        ::ioj::sim::lasers::laser_entities::Layout::column_types,
-        ioj::native_soa::StorageOperations>;
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<LaserEntities,
+                                               laser_entities::Layout::column_types,
+                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index,
@@ -458,7 +444,7 @@ struct LaserEntities
     }
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim::lasers

@@ -37,9 +37,8 @@ inline constexpr MinMax<kernel_codegen::detail::Aliasing>
     enum_range<kernel_codegen::detail::Aliasing>{
         kernel_codegen::detail::Aliasing::output_disjoint,
         kernel_codegen::detail::Aliasing::pairwise_disjoint};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::Aliasing, ioj::Serialized>{
-    ioj::PackedStrings{"output-disjoint\000pairwise-disjoint",
-                       std::array<std::uint8_t, 3>{0, 16, 34}}};
+inline constexpr auto enum_strings<kernel_codegen::detail::Aliasing, Serialized>{
+    PackedStrings{"output-disjoint\000pairwise-disjoint", std::array<std::uint8_t, 3>{0, 16, 34}}};
+} // namespace ioj

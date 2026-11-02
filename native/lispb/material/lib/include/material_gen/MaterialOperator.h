@@ -7,6 +7,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -204,16 +205,15 @@ template <>
 inline constexpr MinMax<material_synth::MaterialOperator>
     enum_range<material_synth::MaterialOperator>{material_synth::MaterialOperator::float2,
                                                  material_synth::MaterialOperator::custom};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::material_synth::MaterialOperator, ioj::Serialized>{
-    ioj::PackedStrings{
-        "float2\000float3\000float4\000+\000-\000*\000/"
-        "\000lerp\000saturate\000step\000time\000sin\000cos\000texcoord\000per-instance-custom-"
-        "data\000sample\000texture\000swizzle\000world-position\000object-position\000pixel-"
-        "normal\000vertex-normal\000camera-vector\000camera-position\000vertex-color\000transform-"
-        "position\000scene-texture\000shader-call\000custom",
-        std::array<std::uint16_t, 30>{0,   7,   14,  21,  23,  25,  27,  29,  34,  43,
-                                      48,  53,  57,  61,  70,  95,  102, 110, 118, 133,
-                                      149, 162, 176, 190, 206, 219, 238, 252, 264, 271}}};
+inline constexpr auto enum_strings<material_synth::MaterialOperator, Serialized>{PackedStrings{
+    "float2\000float3\000float4\000+\000-\000*\000/"
+    "\000lerp\000saturate\000step\000time\000sin\000cos\000texcoord\000per-instance-custom-"
+    "data\000sample\000texture\000swizzle\000world-position\000object-position\000pixel-"
+    "normal\000vertex-normal\000camera-vector\000camera-position\000vertex-color\000transform-"
+    "position\000scene-texture\000shader-call\000custom",
+    std::array<std::uint16_t, 30>{0,   7,   14,  21,  23,  25,  27,  29,  34,  43,
+                                  48,  53,  57,  61,  70,  95,  102, 110, 118, 133,
+                                  149, 162, 176, 190, 206, 219, 238, 252, 264, 271}}};
+} // namespace ioj

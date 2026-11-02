@@ -25,7 +25,7 @@ enum class ObjectiveWinsLevel : ObjectiveWinsLevelUnderlying {
     try_parse_serialized_objective_wins_level(std::string_view const value) noexcept
     -> std::optional<ObjectiveWinsLevel> {
     std::array<std::string_view, 2> constexpr names{"no", "yes"};
-    return ioj::try_parse_enum<ObjectiveWinsLevel>(value, names);
+    return try_parse_enum<ObjectiveWinsLevel>(value, names);
 }
 
 template <>
@@ -37,7 +37,7 @@ struct EnumTraits<ObjectiveWinsLevel> {
     static constexpr std::array values{ObjectiveWinsLevel::No, ObjectiveWinsLevel::Yes};
 };
 
-} // namespace ioj
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::ObjectiveWinsLevel, ioj::Serialized>{
-    ioj::PackedStrings{"no\000yes", std::array<std::uint8_t, 3>{0, 3, 7}}};
+inline constexpr auto enum_strings<ObjectiveWinsLevel, Serialized>{
+    PackedStrings{"no\000yes", std::array<std::uint8_t, 3>{0, 3, 7}}};
+} // namespace ioj

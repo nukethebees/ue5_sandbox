@@ -29,14 +29,14 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout
-    : ioj::single_allocation_layout::ColumnLayouts<EntityId,
-                                                   EntityType,
-                                                   ::ioj::Team,
-                                                   std::uint32_t,
-                                                   EntityId,
-                                                   LifeState,
-                                                   SimTick,
-                                                   Vector3f> {
+    : single_allocation_layout::ColumnLayouts<EntityId,
+                                              EntityType,
+                                              ::ioj::Team,
+                                              std::uint32_t,
+                                              EntityId,
+                                              LifeState,
+                                              SimTick,
+                                              Vector3f> {
     static constexpr std::size_t entity_ids_column{0};
     static constexpr std::size_t entity_types_column{1};
     static constexpr std::size_t teams_column{2};
@@ -94,14 +94,13 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::sim::entity_history::Layout;
-    using view_type = ::ioj::sim::entity_history::ResolvedView;
-    using const_view_type = ::ioj::sim::entity_history::ResolvedConstView;
-    using soa_schema = ::ioj::sim::entity_history::Schema;
+    using Layout = entity_history::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
@@ -120,12 +119,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<ResolvedView,
-                                            ::ioj::sim::entity_history::Layout::column_types,
-                                            ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base =
         ioj::soa_storage_detail::ViewRowOperations<ResolvedView,
-                                                   ::ioj::sim::entity_history::Layout::column_types,
+                                                   ioj::sim::entity_history::Layout::column_types,
                                                    ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -135,16 +133,14 @@ struct ResolvedView
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = ::ioj::sim::entity_history::Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = ::ioj::sim::entity_history::Layout;
-    using view_type = ::ioj::sim::entity_history::View;
-    using const_view_type = ::ioj::sim::entity_history::ConstView;
-    using resolved_view_type = std::conditional_t<Const,
-                                                  ::ioj::sim::entity_history::ResolvedConstView,
-                                                  ::ioj::sim::entity_history::ResolvedView>;
+    using Layout = entity_history::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -166,17 +162,14 @@ struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View
-    : soa_storage_detail::ViewRowOperations<View,
-                                            ::ioj::sim::entity_history::Layout::column_types,
-                                            ViewImpl<false>> {
+static_assert(soa_storage_detail::validate_compact_view<ConstView>());
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::
-        ViewRowOperations<View, ::ioj::sim::entity_history::Layout::column_types, ViewImpl<false>>;
+        ViewRowOperations<View, ioj::sim::entity_history::Layout::column_types, ViewImpl<false>>;
     using Base::Base;
     using Base::set;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+static_assert(soa_storage_detail::validate_compact_view<View>());
 
 } // namespace entity_history
 
@@ -193,27 +186,25 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // death_ticks: SimTick
 // death_locations: Vector3f
 struct EntityHistory
-    : protected ioj::native_soa::StorageState
+    : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<EntityHistory,
-                                             ::ioj::sim::entity_history::Layout::column_types,
-                                             ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::sim::entity_history::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::sim::entity_history::Layout;
+                                             entity_history::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = entity_history::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = entity_history::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::sim::entity_history::View;
-    using ConstView = ::ioj::sim::entity_history::ConstView;
+    using View = entity_history::View;
+    using ConstView = entity_history::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -235,7 +226,7 @@ struct EntityHistory
     }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::sim::entity_history::DataPointers<Byte>;
+    using DataPointers = entity_history::DataPointers<Byte>;
   public:
     auto entity_ids(this auto& self) { return self.view().entity_ids(); }
     auto entity_types(this auto& self) { return self.view().entity_types(); }
@@ -247,13 +238,13 @@ struct EntityHistory
     auto death_locations(this auto& self) { return self.view().death_locations(); }
     using RowOperations =
         soa_storage_detail::OwnerRowOperations<EntityHistory,
-                                               ::ioj::sim::entity_history::Layout::column_types,
-                                               ioj::native_soa::StorageOperations>;
+                                               entity_history::Layout::column_types,
+                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim

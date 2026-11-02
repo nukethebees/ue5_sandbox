@@ -38,9 +38,8 @@ template <>
 inline constexpr MinMax<slate_codegen::detail::SlotOption>
     enum_range<slate_codegen::detail::SlotOption>{slate_codegen::detail::SlotOption::weight,
                                                   slate_codegen::detail::SlotOption::valign};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::slate_codegen::detail::SlotOption, ioj::Serialized>{
-    ioj::PackedStrings{"weight\000padding\000halign\000valign",
-                       std::array<std::uint8_t, 5>{0, 7, 15, 22, 29}}};
+inline constexpr auto enum_strings<slate_codegen::detail::SlotOption, Serialized>{PackedStrings{
+    "weight\000padding\000halign\000valign", std::array<std::uint8_t, 5>{0, 7, 15, 22, 29}}};
+} // namespace ioj

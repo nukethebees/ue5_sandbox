@@ -28,6 +28,16 @@
 namespace lispb::codegen::detail {
 namespace {
 
+auto record_type_matches(CppIR& ir, std::string const& name) -> Expr {
+    return ir.type_reference(ir.types.template_type(
+        ir.types.named("std::same_as", {ir.types.dependency("std::same_as", "concepts")}),
+        {ir.types.template_type(
+             ir.types.named("std::remove_const_t",
+                            {ir.types.dependency("std::remove_const_t", "type_traits")}),
+             {ir.types.named("Self")}),
+         ir.types.named(name)}));
+}
+
 auto record_visitor(LoweringContext& context, DeclarationHandle record, std::string const& name)
     -> Nodes {
     auto& ir{context.ir};
@@ -37,25 +47,31 @@ auto record_visitor(LoweringContext& context, DeclarationHandle record, std::str
     std::vector<EnumValueId> values;
     std::vector<SwitchCaseId> cases;
     std::string accessors;
+    auto const forwarded_visitor{ir.call(
+        ir.template_id(ir.type_reference(ir.types.named(
+                           "std::forward", {ir.types.dependency("std::forward", "utility")})),
+                       {ir.type_reference(ir.types.named("Visitor"))}),
+        {ir.named("visitor")})};
     for (auto const field : fields) {
         auto const member{members.name[members.index(field)]};
         values.push_back(ir.enumerator(member));
         auto const id{"Field::" + context.text(member)};
         accessors += std::format(
             "if constexpr (Selected == {}) {{ return (self.{}); }}\n", id, context.text(member));
-        cases.push_back(ir.switch_case(
-            ir.named(id),
-            ir.block({ir.return_stmt(ir.raw_expr(
-                std::format("invoke_field<{}>(self, std::forward<Visitor>(visitor))", id),
-                {ir.types.dependency("std::forward", "utility")}))}),
-            false));
+        auto const field_value{ir.type_reference(
+            ir.types.decorate(ir.types.named("Field"), "", "::" + context.text(member)))};
+        cases.push_back(ir.switch_case(field_value,
+                                       ir.block({ir.return_stmt(ir.call(
+                                           ir.template_id(ir.named("invoke_field"), {field_value}),
+                                           {ir.named("self"), forwarded_visitor}))}),
+                                       false));
     }
 
     NodeListBuilder result{ir};
     result.add(
         ir.enumeration(ir.strings.intern("Field"),
-                       ir.types.intern(values.size() <= 256 ? "std::uint8_t" : "std::uint32_t",
-                                       {ir.types.dependency("std::uint8_t", "cstdint")}),
+                       ir.types.named(values.size() <= 256 ? "std::uint8_t" : "std::uint32_t",
+                                      {ir.types.dependency("std::uint8_t", "cstdint")}),
                        values),
         2);
     auto const accessor{ir.function("get_field", "decltype(auto)")};
@@ -66,13 +82,20 @@ auto record_visitor(LoweringContext& context, DeclarationHandle record, std::str
              ir.type_template_parameter(ir.strings.intern("Self"))}));
     ir.set_function_requires_clause(
         accessor,
-        ir.raw_expr("(std::same_as<std::remove_const_t<Self>, " + name +
-                        "> && std::to_underlying(Selected) < "
-                        "ioj::enum_count<typename Self::Field>())",
-                    {ir.types.dependency("std::same_as", "concepts"),
-                     ir.types.dependency("std::to_underlying", "utility"),
-                     ir.types.dependency("ioj::enum_count", "ioj/enum_traits.h"),
-                     ir.types.dependency("std::remove_const_t", "type_traits")}));
+        ir.parenthesized(ir.binary(
+            BinaryOperator::logical_and,
+            record_type_matches(ir, name),
+            ir.binary(BinaryOperator::less,
+                      ir.call(ir.type_reference(ir.types.named(
+                                  "std::to_underlying",
+                                  {ir.types.dependency("std::to_underlying", "utility")})),
+                              {ir.named("Selected")}),
+                      ir.call(ir.template_id(
+                          ir.type_reference(ir.types.named(
+                              "ioj::enum_count",
+                              {ir.types.dependency("ioj::enum_count", "ioj/enum_traits.h")})),
+                          {ir.type_reference(ir.types.decorate(
+                              ir.types.named("Self"), "typename ", "::Field"))}))))));
     ir.set_function_receiver(accessor, FunctionReceiver::static_);
     ir.set_function_parameters(accessor, {ir.parameter("Self&", fields.empty() ? "" : "self")});
     ir.function_flags(accessor).set_is_constexpr(true);
@@ -94,9 +117,11 @@ auto record_visitor(LoweringContext& context, DeclarationHandle record, std::str
     ir.function_flags(invoke).set_define_in_header(true);
     ir.set_function_body(
         invoke,
-        {ir.expr_stmt(ir.raw_expr("std::forward<Visitor>(visitor).template "
-                                  "operator()<Selected>(get_field<Selected>(self))",
-                                  {ir.types.dependency("std::forward", "utility")}))});
+        {ir.expr_stmt(
+            ir.call(ir.template_id(ir.member_access(forwarded_visitor, "template operator()"),
+                                   {ir.named("Selected")}),
+                    {ir.call(ir.template_id(ir.named("get_field"), {ir.named("Selected")}),
+                             {ir.named("self")})}))});
     result.add(ir.header_function(invoke), 2);
 
     auto const function{ir.function("visit_field", "void")};
@@ -104,11 +129,7 @@ auto record_visitor(LoweringContext& context, DeclarationHandle record, std::str
         function,
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("Self")),
                                  ir.type_template_parameter(ir.strings.intern("Visitor"))}));
-    ir.set_function_requires_clause(
-        function,
-        ir.raw_expr("std::same_as<std::remove_const_t<Self>, " + name + ">",
-                    {ir.types.dependency("std::same_as", "concepts"),
-                     ir.types.dependency("std::remove_const_t", "type_traits")}));
+    ir.set_function_requires_clause(function, record_type_matches(ir, name));
     ir.set_function_receiver(function, FunctionReceiver::static_);
     ir.set_function_parameters(function,
                                {ir.parameter("Self&", fields.empty() ? "" : "self"),
@@ -121,8 +142,8 @@ auto record_visitor(LoweringContext& context, DeclarationHandle record, std::str
         {ir.switch_stmt(ir.named("field"), cases),
          ir.expr_stmt(ir.raw_expr("assert(false && \"Invalid record field\")",
                                   {ir.types.dependency("assert", "cassert")})),
-         ir.expr_stmt(ir.raw_expr("std::unreachable()",
-                                  {ir.types.dependency("std::unreachable", "utility")}))});
+         ir.expr_stmt(ir.call(ir.type_reference(ir.types.named(
+             "std::unreachable", {ir.types.dependency("std::unreachable", "utility")}))))});
     result.add(ir.header_function(function), 2);
     return result.build();
 }
@@ -185,7 +206,7 @@ auto lower_record(LoweringContext& context, DeclarationHandle schema) -> Declara
         auto const settings{context.declarations.module_settings(context.module)};
         auto const namespace_name{
             context.declarations.module_settings_store.namespace_name[settings]};
-        auto const qualified{"::" + (namespace_name ? context.text(*namespace_name) + "::" : "") +
+        auto const qualified{(namespace_name ? context.text(*namespace_name) + "::" : "::") +
                              context.text(records.name[row]) +
                              (records.constraint_policy[row] ? "Value" : "") + "::Field"};
         auto const fields{context.declarations.items(records.members[row])};
@@ -195,15 +216,18 @@ auto lower_record(LoweringContext& context, DeclarationHandle schema) -> Declara
         }
         result.header_global.push_back(ir.namespace_node(
             ir.strings.intern("ioj"),
-            {enum_count_specialization(ir, ir.types.intern(qualified), fields.size())}));
+            {enum_count_specialization(ir, ir.types.named(qualified), fields.size())}));
         result.header_global.push_back(enum_strings_specialization(ir, qualified, "Name", names));
     }
     if (auto const policy{records.constraint_policy[row]}) {
         auto const name{context.text(records.name[row])};
         auto& ir{context.ir};
-        auto const constrained{ir.types.intern(
-            "ioj::ConstrainedValue<" + name + "Value, " + context.text(*policy) + ">",
-            {ir.types.dependency("ioj::ConstrainedValue", "ioj/constrained_value.h")})};
+        auto const constrained{ir.types.template_type(
+            ir.types.named(
+                "ioj::ConstrainedValue",
+                {ir.types.dependency("ioj::ConstrainedValue", "ioj/constrained_value.h")}),
+            {ir.types.named(name + "Value"),
+             ir.types.reference(ir.types.intern(context.text(*policy)))})};
         result.header.push_back(ir.using_declaration(records.name[row], constrained));
     }
     if (records.s7_tag[schema]) {

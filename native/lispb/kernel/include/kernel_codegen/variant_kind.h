@@ -38,8 +38,8 @@ inline constexpr MinMax<kernel_codegen::detail::VariantKind>
     enum_range<kernel_codegen::detail::VariantKind>{
         kernel_codegen::detail::VariantKind::out_of_place,
         kernel_codegen::detail::VariantKind::in_place};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::VariantKind, ioj::Serialized>{
-    ioj::PackedStrings{"out-of-place\000in-place", std::array<std::uint8_t, 3>{0, 13, 22}}};
+inline constexpr auto enum_strings<kernel_codegen::detail::VariantKind, Serialized>{
+    PackedStrings{"out-of-place\000in-place", std::array<std::uint8_t, 3>{0, 13, 22}}};
+} // namespace ioj

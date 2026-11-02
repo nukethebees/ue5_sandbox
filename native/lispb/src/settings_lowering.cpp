@@ -152,8 +152,7 @@ auto build_functions(LoweringContext& context,
     auto const id{ir.named("id")};
     auto const value{ir.named("value")};
     auto const id_parameter{ir.parameter("GameSetting const", "id")};
-    auto create = [&](std::string_view const name, std::string_view const return_type) {
-        auto const type{ir.types.intern(return_type)};
+    auto create = [&](std::string_view const name, CppTypeId const type) {
         auto const function{ir.function(name, type)};
         ir.set_function_return_type(function, type, ReturnSyntax::trailing);
         ir.set_function_export_specifier(function,
@@ -161,29 +160,35 @@ auto build_functions(LoweringContext& context,
         return function;
     };
 
-    auto const categories{create("game_setting_category_descriptors",
-                                 "std::span<GameSettingCategoryDescriptor const>")};
+    auto span_type = [&](std::string_view const element) {
+        return ir.types.template_type(ir.types.named("std::span"),
+                                      {ir.types.decorate(ir.types.named(element), "", " const")});
+    };
+    auto const categories{
+        create("game_setting_category_descriptors", span_type("GameSettingCategoryDescriptor"))};
     ir.set_function_body(categories, {ir.return_stmt(ir.named("category_descriptors"))});
 
-    auto const descriptors{
-        create("game_setting_descriptors", "std::span<GameSettingDescriptor const>")};
+    auto const descriptors{create("game_setting_descriptors", span_type("GameSettingDescriptor"))};
     ir.set_function_body(descriptors, {ir.return_stmt(ir.named("descriptors"))});
 
-    auto const descriptor{create("game_setting_descriptor", "GameSettingDescriptor const&")};
+    auto const descriptor{
+        create("game_setting_descriptor",
+               ir.types.decorate(ir.types.named("GameSettingDescriptor"), "", " const&"))};
     ir.set_function_parameters(descriptor, {id_parameter});
     ir.set_function_body(
         descriptor,
         {ir.return_stmt(ir.subscript(ir.named("descriptors"),
-                                     ir.static_cast_expr(ir.types.intern("std::size_t"), id)))});
+                                     ir.static_cast_expr(ir.types.named("std::size_t"), id)))});
 
-    auto const getter{create("game_setting_value", "GameSettingValue")};
+    auto const getter{create("game_setting_value", ir.types.named("GameSettingValue"))};
     ir.set_function_parameters(getter,
                                {ir.parameter(state_name + " const&", "state"), id_parameter});
     std::vector<SwitchCaseId> getter_cases;
     for (auto const setting : settings) {
         auto const name{decls.settings.name[setting]};
         getter_cases.push_back(ir.switch_case(
-            ir.named("GameSetting::" + title_case(context.text(name))),
+            ir.type_reference(ir.types.decorate(
+                ir.types.named("GameSetting"), "", "::" + title_case(context.text(name)))),
             ir.block({ir.return_stmt(ir.init_list({ir.member_access(state, name)},
                                                   ir.types.intern("GameSettingValue")))})));
     }
@@ -194,7 +199,7 @@ auto build_functions(LoweringContext& context,
                           ir.return_stmt(ir.init_list({ir.member_access(state, first_name)},
                                                       ir.types.intern("GameSettingValue")))});
 
-    auto const setter{create("set_game_setting_value", "bool")};
+    auto const setter{create("set_game_setting_value", ir.types.intern("bool"))};
     ir.set_function_parameters(setter,
                                {ir.parameter(state_name + "&", "state"),
                                 id_parameter,
@@ -205,11 +210,12 @@ auto build_functions(LoweringContext& context,
         auto const name{decls.settings.name[settings[index]]};
         auto const typed_value{ir.named("typed_value")};
         setter_cases.push_back(ir.switch_case(
-            ir.named("GameSetting::" + title_case(context.text(name))),
+            ir.type_reference(ir.types.decorate(
+                ir.types.named("GameSetting"), "", "::" + title_case(context.text(name)))),
             ir.block({
                 ir.variable("auto const*",
                             "typed_value",
-                            ir.call(ir.template_id(ir.named("std::get_if"),
+                            ir.call(ir.template_id(ir.type_reference(ir.types.named("std::get_if")),
                                                    {ir.type_reference(setting_types[index])}),
                                     {ir.unary(UnaryOperator::address_of, value)})),
                 ir.if_stmt(ir.binary(BinaryOperator::equal, typed_value, ir.literal("nullptr")),
@@ -256,7 +262,8 @@ auto settings_api(LoweringContext& context,
             setter,
             {ir.expr_stmt(ir.call(
                 ir.member_access(ir.call(ir.named("derived")), "set_setting"),
-                {ir.named("GameSetting::" + title_case(context.text(name))),
+                {ir.type_reference(ir.types.decorate(
+                     ir.types.named("GameSetting"), "", "::" + title_case(context.text(name)))),
                  ir.init_list({ir.named("value")}, ir.types.intern("GameSettingValue"))}))});
         members.add(ir.header_function(setter), 2);
     }
@@ -296,7 +303,7 @@ auto build_type_headers(LoweringContext& context,
     auto const setting_list{decls.items(modules.settings_list[module_row])};
     std::vector<std::string> setting_names;
     std::vector<std::string> category_names;
-    std::vector<std::string> value_types;
+    std::vector<CppTypeId> value_types;
     std::vector<std::string> type_names;
     std::set<StringId> unique_types;
     std::set<std::string> unique_type_names;
@@ -312,7 +319,7 @@ auto build_type_headers(LoweringContext& context,
         auto const type_dependencies{ir.types.dependencies(type)};
         dependencies.insert(dependencies.end(), type_dependencies.begin(), type_dependencies.end());
         if (unique_types.insert(ir.types.spelling_id(type)).second) {
-            value_types.emplace_back(ir.types.spelling(type));
+            value_types.push_back(type);
         }
         auto const type_name{setting_type_name(context, setting)};
         if (unique_type_names.insert(type_name).second) {
@@ -374,11 +381,10 @@ auto build_type_headers(LoweringContext& context,
         for (auto const& value : names) {
             values.push_back(ir.enumerator(ir.strings.intern(value)));
         }
-        emit_header(
-            name,
-            ir.enumeration(ir.strings.intern(name), ir.types.intern("std::uint8_t"), values),
-            {"cstdint"},
-            {});
+        emit_header(name,
+                    ir.enumeration(ir.strings.intern(name), ir.types.named("std::uint8_t"), values),
+                    {"cstdint"},
+                    {});
     };
     add_enum("GameSetting", setting_names);
     add_enum("GameSettingCategory", category_names);
@@ -408,7 +414,8 @@ auto build_type_headers(LoweringContext& context,
             std::initializer_list<std::string_view> const includes) {
             NodeListBuilder members{ir};
             for (auto const& [type, member] : fields) {
-                members.add(ir.instance_member(ir.types.intern(type), ir.strings.intern(member)),
+                members.add(ir.instance_member(ir.types.reference(ir.types.intern(type)),
+                                               ir.strings.intern(member)),
                             1);
             }
             auto const record{ir.record(ir.strings.intern(name), members.build())};
@@ -465,12 +472,12 @@ auto build_type_headers(LoweringContext& context,
     ir.set_record_export_specifier(state, modules.export_specifier[module_row]);
     ir.set_record_dependencies(state, dependencies);
     emit_header(context.text(state_name), state, {}, {});
-    emit_header("GameSettingValue",
-                ir.using_declaration(
-                    ir.strings.intern("GameSettingValue"),
-                    ir.types.intern("std::variant<" + join(value_types, ", ") + ">", dependencies)),
-                {"variant"},
-                {});
+    emit_header(
+        "GameSettingValue",
+        ir.using_declaration(ir.strings.intern("GameSettingValue"),
+                             ir.types.template_type(ir.types.named("std::variant"), value_types)),
+        {"variant"},
+        {});
     emit_header(context.text(modules.api_name[module_row]),
                 settings_api(context, module, setting_types),
                 {},
@@ -490,7 +497,8 @@ auto build_source(LoweringContext& context,
     auto const module_row{modules.index(module)};
     auto const settings{modules.settings[module_row]};
     auto enum_value = [&](std::string_view const type, std::string_view const name) {
-        return ir.named(std::format("{}::{}", type, name));
+        return ir.type_reference(
+            ir.types.decorate(ir.types.named(type), "", "::" + std::string{name}));
     };
 
     std::vector<Expr> categories;
@@ -532,14 +540,19 @@ auto build_source(LoweringContext& context,
     }
 
     NodeListBuilder globals{ir};
+    auto array_type = [&](std::string_view const element, std::size_t const count) {
+        return ir.types.decorate(ir.types.template_type(ir.types.named("std::array"),
+                                                        {ir.types.named(element),
+                                                         ir.types.intern(std::to_string(count))}),
+                                 "",
+                                 " const");
+    };
     globals
-        .add(ir.static_member(ir.types.intern("std::array<GameSettingCategoryDescriptor, " +
-                                              std::to_string(categories.size()) + "> const"),
+        .add(ir.static_member(array_type("GameSettingCategoryDescriptor", categories.size()),
                               ir.strings.intern("category_descriptors"),
                               ir.init_list({ir.init_list(categories)})),
              2)
-        .add(ir.static_member(ir.types.intern("std::array<GameSettingDescriptor, " +
-                                              std::to_string(descriptors.size()) + "> const"),
+        .add(ir.static_member(array_type("GameSettingDescriptor", descriptors.size()),
                               ir.strings.intern("descriptors"),
                               ir.init_list({ir.init_list(descriptors)})));
     NodeListBuilder source{ir};

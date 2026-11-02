@@ -38,8 +38,8 @@ inline constexpr MinMax<material_synth::TextureSamplerType>
     enum_range<material_synth::TextureSamplerType>{
         material_synth::TextureSamplerType::linear_color,
         material_synth::TextureSamplerType::linear_grayscale};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::material_synth::TextureSamplerType, ioj::Serialized>{
-    ioj::PackedStrings{"linear-color\000linear-grayscale", std::array<std::uint8_t, 3>{0, 13, 30}}};
+inline constexpr auto enum_strings<material_synth::TextureSamplerType, Serialized>{
+    PackedStrings{"linear-color\000linear-grayscale", std::array<std::uint8_t, 3>{0, 13, 30}}};
+} // namespace ioj

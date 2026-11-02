@@ -38,8 +38,8 @@ inline constexpr MinMax<kernel_codegen::detail::OperationKind>
     enum_range<kernel_codegen::detail::OperationKind>{
         kernel_codegen::detail::OperationKind::map,
         kernel_codegen::detail::OperationKind::component_map};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::OperationKind, ioj::Serialized>{
-    ioj::PackedStrings{"map\000component-map", std::array<std::uint8_t, 3>{0, 4, 18}}};
+inline constexpr auto enum_strings<kernel_codegen::detail::OperationKind, Serialized>{
+    PackedStrings{"map\000component-map", std::array<std::uint8_t, 3>{0, 4, 18}}};
+} // namespace ioj

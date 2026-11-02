@@ -306,67 +306,59 @@ struct EnumTraits<codegen_compile_fixture::ReaderEnum> {
     static constexpr std::array values{codegen_compile_fixture::ReaderEnum::Mixed};
 };
 
-} // namespace ioj
 template <>
-inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::ReaderEnum, ioj::Serialized>{
-    ioj::PackedStrings{"MixedCase", std::array<std::uint8_t, 2>{0, 10}}};
+inline constexpr auto enum_strings<codegen_compile_fixture::ReaderEnum, Serialized>{
+    PackedStrings{"MixedCase", std::array<std::uint8_t, 2>{0, 10}}};
 
-namespace ioj {
 template <>
-[[nodiscard]] constexpr auto
-    enum_count<::codegen_compile_fixture::PositionalChild::Field>() noexcept -> std::size_t {
-    return 2;
-}
-} // namespace ioj
-template <>
-inline constexpr auto
-    ioj::enum_strings<::codegen_compile_fixture::PositionalChild::Field, ioj::Name>{
-        ioj::PackedStrings{"name\000count", std::array<std::uint8_t, 3>{0, 5, 11}}};
-
-namespace ioj {
-template <>
-[[nodiscard]] constexpr auto
-    enum_count<::codegen_compile_fixture::DefaultReadable::Field>() noexcept -> std::size_t {
-    return 2;
-}
-} // namespace ioj
-template <>
-inline constexpr auto
-    ioj::enum_strings<::codegen_compile_fixture::DefaultReadable::Field, ioj::Name>{
-        ioj::PackedStrings{"count\000maybe", std::array<std::uint8_t, 3>{0, 6, 12}}};
-
-namespace ioj {
-template <>
-[[nodiscard]] constexpr auto
-    enum_count<::codegen_compile_fixture::RecursiveReadable::Field>() noexcept -> std::size_t {
-    return 1;
-}
-} // namespace ioj
-template <>
-inline constexpr auto
-    ioj::enum_strings<::codegen_compile_fixture::RecursiveReadable::Field, ioj::Name>{
-        ioj::PackedStrings{"children", std::array<std::uint8_t, 2>{0, 9}}};
-
-namespace ioj {
-template <>
-[[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::ReadableChild::Field>() noexcept
+[[nodiscard]] constexpr auto enum_count<codegen_compile_fixture::PositionalChild::Field>() noexcept
     -> std::size_t {
     return 2;
 }
-} // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::ReadableChild::Field, ioj::Name>{
-    ioj::PackedStrings{"name\000count", std::array<std::uint8_t, 3>{0, 5, 11}}};
 
-namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::ReadableRecord::Field>() noexcept
+inline constexpr auto enum_strings<codegen_compile_fixture::PositionalChild::Field, Name>{
+    PackedStrings{"name\000count", std::array<std::uint8_t, 3>{0, 5, 11}}};
+
+template <>
+[[nodiscard]] constexpr auto enum_count<codegen_compile_fixture::DefaultReadable::Field>() noexcept
+    -> std::size_t {
+    return 2;
+}
+
+template <>
+inline constexpr auto enum_strings<codegen_compile_fixture::DefaultReadable::Field, Name>{
+    PackedStrings{"count\000maybe", std::array<std::uint8_t, 3>{0, 6, 12}}};
+
+template <>
+[[nodiscard]] constexpr auto
+    enum_count<codegen_compile_fixture::RecursiveReadable::Field>() noexcept -> std::size_t {
+    return 1;
+}
+
+template <>
+inline constexpr auto enum_strings<codegen_compile_fixture::RecursiveReadable::Field, Name>{
+    PackedStrings{"children", std::array<std::uint8_t, 2>{0, 9}}};
+
+template <>
+[[nodiscard]] constexpr auto enum_count<codegen_compile_fixture::ReadableChild::Field>() noexcept
+    -> std::size_t {
+    return 2;
+}
+
+template <>
+inline constexpr auto enum_strings<codegen_compile_fixture::ReadableChild::Field, Name>{
+    PackedStrings{"name\000count", std::array<std::uint8_t, 3>{0, 5, 11}}};
+
+template <>
+[[nodiscard]] constexpr auto enum_count<codegen_compile_fixture::ReadableRecord::Field>() noexcept
     -> std::size_t {
     return 9;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::codegen_compile_fixture::ReadableRecord::Field,
-                                        ioj::Name>{ioj::PackedStrings{
-    "child\000values\000points\000enabled\000maybe\000scale\000offset\000title\000mode",
-    std::array<std::uint8_t, 10>{0, 6, 13, 20, 28, 34, 40, 47, 53, 58}}};
+inline constexpr auto enum_strings<codegen_compile_fixture::ReadableRecord::Field, Name>{
+    PackedStrings{
+        "child\000values\000points\000enabled\000maybe\000scale\000offset\000title\000mode",
+        std::array<std::uint8_t, 10>{0, 6, 13, 20, 28, 34, 40, 47, 53, 58}}};
+} // namespace ioj

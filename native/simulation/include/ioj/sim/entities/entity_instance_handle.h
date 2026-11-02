@@ -114,10 +114,9 @@ struct EntityInstanceHandle : detail::EntityInstanceHandleBase {
     static constexpr PackedField<storage_type, std::uint8_t, 21, 2> health_state_layout{};
 
     constexpr EntityInstanceHandle() noexcept = default;
-    constexpr explicit EntityInstanceHandle(
-        decltype(index_layout)::value_type const index_value,
-        decltype(team_layout)::value_type const team_value,
-        decltype(health_state_layout)::value_type const health_state_value) noexcept
+    constexpr explicit EntityInstanceHandle(std::uint32_t const index_value,
+                                            Team const team_value,
+                                            std::uint8_t const health_state_value) noexcept
         : Base{static_cast<storage_type>(
               packed_pack<decltype(index_layout)>(index_value) |
               packed_pack<decltype(team_layout)>(team_value) |
@@ -130,42 +129,37 @@ struct EntityInstanceHandle : detail::EntityInstanceHandleBase {
 
     [[nodiscard]] constexpr auto operator<=>(EntityInstanceHandle const&) const noexcept = default;
 
-    [[nodiscard]] static constexpr auto
-        is_valid_index(decltype(index_layout)::value_type const value) noexcept -> bool {
+    [[nodiscard]] static constexpr auto is_valid_index(std::uint32_t const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= index_layout.value_mask;
     }
-    [[nodiscard]] static constexpr auto
-        is_valid_team(decltype(team_layout)::value_type const value) noexcept -> bool {
+    [[nodiscard]] static constexpr auto is_valid_team(Team const value) noexcept -> bool {
         return value <= team_layout.range.max;
     }
-    [[nodiscard]] static constexpr auto
-        is_valid_health_state(decltype(health_state_layout)::value_type const value) noexcept
+    [[nodiscard]] static constexpr auto is_valid_health_state(std::uint8_t const value) noexcept
         -> bool {
         return static_cast<storage_type>(value) <= health_state_layout.value_mask;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_team(extract<decltype(team_layout)>());
     }
-    [[nodiscard]] constexpr auto index() const noexcept -> decltype(index_layout)::value_type {
+    [[nodiscard]] constexpr auto index() const noexcept -> std::uint32_t {
         return extract<decltype(index_layout)>();
     }
-    constexpr void set_index(decltype(index_layout)::value_type const value) noexcept {
+    constexpr void set_index(std::uint32_t const value) noexcept {
         assert((is_valid_index(value)));
         insert<decltype(index_layout)>(value);
     }
-    [[nodiscard]] constexpr auto team() const noexcept -> decltype(team_layout)::value_type {
+    [[nodiscard]] constexpr auto team() const noexcept -> Team {
         return extract<decltype(team_layout)>();
     }
-    constexpr void set_team(decltype(team_layout)::value_type const value) noexcept {
+    constexpr void set_team(Team const value) noexcept {
         assert((is_valid_team(value)));
         insert<decltype(team_layout)>(value);
     }
-    [[nodiscard]] constexpr auto health_state() const noexcept
-        -> decltype(health_state_layout)::value_type {
+    [[nodiscard]] constexpr auto health_state() const noexcept -> std::uint8_t {
         return extract<decltype(health_state_layout)>();
     }
-    constexpr void
-        set_health_state(decltype(health_state_layout)::value_type const value) noexcept {
+    constexpr void set_health_state(std::uint8_t const value) noexcept {
         assert((is_valid_health_state(value)));
         insert<decltype(health_state_layout)>(value);
     }

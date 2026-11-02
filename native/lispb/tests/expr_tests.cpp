@@ -49,13 +49,17 @@ TEST_F(ExprTest, RequiresExplicitRawAndSupportsIndependentCopies) {
 }
 
 TEST_F(ExprTest, RendersCallsCastsAndInitializerLists) {
-    auto const lookup{ir.call(ir.named("get_name"), {ir.named("project::Mode::Ready")})};
+    auto const lookup{ir.call(
+        ir.named("get_name"),
+        {ir.type_reference(ir.types.decorate(ir.types.named("project::Mode"), "", "::Ready"))})};
     expect_rendered(ir.init_list({lookup}, types.intern("FString")),
                     "FString{get_name(project::Mode::Ready)}");
     expect_rendered(ir.init_list({ir.literal("1"), ir.literal("2")}), "{1, 2}");
     expect_rendered(ir.init_list({}, types.intern("FString")), "FString{}");
     expect_rendered(ir.init_list({}), "{}");
-    expect_rendered(ir.static_cast_expr(types.intern("int32"), ir.named("Mode::COUNT")),
+    expect_rendered(ir.static_cast_expr(types.intern("int32"),
+                                        ir.type_reference(ir.types.decorate(
+                                            ir.types.named("Mode"), "", "::COUNT"))),
                     "static_cast<int32>(Mode::COUNT)");
     expect_rendered(ir.call(ir.call(ir.named("factory")), {ir.literal("42")}), "factory()(42)");
 }
@@ -319,7 +323,8 @@ TEST_F(AstTest, RendersNestedControlFlowWithExplicitBreaksAndSpacing) {
         .add(ir.break_stmt());
     NodeId const statement{ir.switch_stmt(
         ir.named("mode"),
-        {ir.switch_case(ir.named("Mode::Ready"), ir.block(body.build())),
+        {ir.switch_case(ir.type_reference(ir.types.decorate(ir.types.named("Mode"), "", "::Ready")),
+                        ir.block(body.build())),
          ir.switch_case(std::nullopt, ir.block({ir.return_stmt(ir.literal("false"))}))})};
 
     EXPECT_EQ(CppRenderer{ir}.render(statement, {.indent_level = 1}),
@@ -367,7 +372,9 @@ TEST_F(AstTest, RendersUnbracedSwitchReturnsWithoutChangingOtherCases) {
     auto const selection{ir.switch_stmt(
         ir.named("field"),
         {ir.switch_case(
-             ir.named("Field::value"), ir.block({ir.return_stmt(ir.named("value"))}), false),
+             ir.type_reference(ir.types.decorate(ir.types.named("Field"), "", "::value")),
+             ir.block({ir.return_stmt(ir.named("value"))}),
+             false),
          ir.switch_case(std::nullopt, ir.block({ir.return_stmt(ir.literal("0"))}))})};
     EXPECT_EQ(
         CppRenderer{ir}.render(selection),

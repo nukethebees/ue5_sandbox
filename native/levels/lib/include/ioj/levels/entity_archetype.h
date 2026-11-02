@@ -31,7 +31,7 @@ using ioj::to_string;
     -> std::optional<EntityArchetype> {
     std::array<std::string_view, 3> constexpr names{
         "player-fighter", "capital-ship", "static-turret"};
-    return ioj::try_parse_enum<EntityArchetype>(value, names);
+    return try_parse_enum<EntityArchetype>(value, names);
 }
 
 } // namespace ioj::levels
@@ -48,15 +48,14 @@ struct EnumTraits<levels::EntityArchetype> {
                                        levels::EntityArchetype::StaticTurret};
 };
 
+template <>
+inline constexpr auto enum_strings<levels::EntityArchetype, Name>{PackedStrings{
+    "PlayerFighter\000CapitalShip\000StaticTurret", std::array<std::uint8_t, 4>{0, 14, 26, 39}}};
+
+template <>
+inline constexpr auto enum_strings<levels::EntityArchetype, Serialized>{PackedStrings{
+    "player-fighter\000capital-ship\000static-turret", std::array<std::uint8_t, 4>{0, 15, 28, 42}}};
 } // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::ioj::levels::EntityArchetype, ioj::Name>{
-    ioj::PackedStrings{"PlayerFighter\000CapitalShip\000StaticTurret",
-                       std::array<std::uint8_t, 4>{0, 14, 26, 39}}};
-template <>
-inline constexpr auto ioj::enum_strings<::ioj::levels::EntityArchetype, ioj::Serialized>{
-    ioj::PackedStrings{"player-fighter\000capital-ship\000static-turret",
-                       std::array<std::uint8_t, 4>{0, 15, 28, 42}}};
 namespace std {
 template <>
 struct formatter<::ioj::levels::EntityArchetype>

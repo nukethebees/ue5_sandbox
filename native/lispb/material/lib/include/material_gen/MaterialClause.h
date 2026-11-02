@@ -7,6 +7,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -135,13 +136,12 @@ namespace ioj {
 template <>
 inline constexpr MinMax<material_synth::MaterialClause> enum_range<material_synth::MaterialClause>{
     material_synth::MaterialClause::asset, material_synth::MaterialClause::world_position_offset};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::material_synth::MaterialClause, ioj::Serialized>{
-    ioj::PackedStrings{
-        "asset\000domain\000blend\000shading\000two-sided\000disable-depth-test\000usage\000adopt-"
-        "existing\000opacity-mask-clip\000parameter\000let\000emissive\000opacity\000base-"
-        "color\000opacity-mask\000world-position-offset",
-        std::array<std::uint8_t, 17>{
-            0, 6, 13, 19, 27, 37, 56, 62, 77, 95, 105, 109, 118, 126, 137, 150, 172}}};
+inline constexpr auto enum_strings<material_synth::MaterialClause, Serialized>{PackedStrings{
+    "asset\000domain\000blend\000shading\000two-sided\000disable-depth-test\000usage\000adopt-"
+    "existing\000opacity-mask-clip\000parameter\000let\000emissive\000opacity\000base-"
+    "color\000opacity-mask\000world-position-offset",
+    std::array<std::uint8_t, 17>{
+        0, 6, 13, 19, 27, 37, 56, 62, 77, 95, 105, 109, 118, 126, 137, 150, 172}}};
+} // namespace ioj

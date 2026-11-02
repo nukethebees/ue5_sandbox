@@ -7,6 +7,7 @@
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -28,7 +29,7 @@ struct LaserWeaponSimConfig {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, LaserWeaponSimConfig> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::damage) {
             return (self.damage);
@@ -75,12 +76,13 @@ struct LaserWeaponSimConfig {
 } // namespace ioj::sim
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::sim::LaserWeaponSimConfig::Field>() noexcept
+[[nodiscard]] constexpr auto enum_count<sim::LaserWeaponSimConfig::Field>() noexcept
     -> std::size_t {
     return 4;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::sim::LaserWeaponSimConfig::Field, ioj::Name>{
-    ioj::PackedStrings{"damage\000projectile_speed\000max_distance\000fire_cooldown",
-                       std::array<std::uint8_t, 5>{0, 7, 24, 37, 51}}};
+inline constexpr auto enum_strings<sim::LaserWeaponSimConfig::Field, Name>{
+    PackedStrings{"damage\000projectile_speed\000max_distance\000fire_cooldown",
+                  std::array<std::uint8_t, 5>{0, 7, 24, 37, 51}}};
+} // namespace ioj

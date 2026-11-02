@@ -42,16 +42,15 @@ inline constexpr MinMax<slate_codegen::detail::ParameterKind>
     enum_range<slate_codegen::detail::ParameterKind>{
         slate_codegen::detail::ParameterKind::value,
         slate_codegen::detail::ParameterKind::existing};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::slate_codegen::detail::ParameterKind, ioj::Name>{
-    ioj::PackedStrings{"value\000callback\000factory\000existing",
-                       std::array<std::uint8_t, 5>{0, 6, 15, 23, 32}}};
+inline constexpr auto enum_strings<slate_codegen::detail::ParameterKind, Name>{PackedStrings{
+    "value\000callback\000factory\000existing", std::array<std::uint8_t, 5>{0, 6, 15, 23, 32}}};
+
 template <>
-inline constexpr auto ioj::enum_strings<::slate_codegen::detail::ParameterKind, ioj::Serialized>{
-    ioj::PackedStrings{"value\000callback\000factory\000existing",
-                       std::array<std::uint8_t, 5>{0, 6, 15, 23, 32}}};
+inline constexpr auto enum_strings<slate_codegen::detail::ParameterKind, Serialized>{PackedStrings{
+    "value\000callback\000factory\000existing", std::array<std::uint8_t, 5>{0, 6, 15, 23, 32}}};
+} // namespace ioj
 namespace std {
 template <>
 struct formatter<::slate_codegen::detail::ParameterKind>

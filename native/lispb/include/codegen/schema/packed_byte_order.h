@@ -37,8 +37,8 @@ template <>
 inline constexpr MinMax<lispb::codegen::PackedByteOrder>
     enum_range<lispb::codegen::PackedByteOrder>{lispb::codegen::PackedByteOrder::little_endian,
                                                 lispb::codegen::PackedByteOrder::big_endian};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::lispb::codegen::PackedByteOrder, ioj::Serialized>{
-    ioj::PackedStrings{"little\000big", std::array<std::uint8_t, 3>{0, 7, 11}}};
+inline constexpr auto enum_strings<lispb::codegen::PackedByteOrder, Serialized>{
+    PackedStrings{"little\000big", std::array<std::uint8_t, 3>{0, 7, 11}}};
+} // namespace ioj

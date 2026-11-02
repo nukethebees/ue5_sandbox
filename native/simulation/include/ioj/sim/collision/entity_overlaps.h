@@ -23,7 +23,7 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : ioj::single_allocation_layout::ColumnLayouts<EntityId, EntityId> {
+struct Layout : single_allocation_layout::ColumnLayouts<EntityId, EntityId> {
     static constexpr std::size_t first_entities_column{0};
     static constexpr std::size_t second_entities_column{1};
 };
@@ -55,14 +55,13 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::sim::collision::entity_entity_overlaps::Layout;
-    using view_type = ::ioj::sim::collision::entity_entity_overlaps::ResolvedView;
-    using const_view_type = ::ioj::sim::collision::entity_entity_overlaps::ResolvedConstView;
-    using soa_schema = ::ioj::sim::collision::entity_entity_overlaps::Schema;
+    using Layout = entity_entity_overlaps::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
@@ -75,13 +74,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<
-          ResolvedView,
-          ::ioj::sim::collision::entity_entity_overlaps::Layout::column_types,
-          ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::sim::collision::entity_entity_overlaps::Layout::column_types,
+        ioj::sim::collision::entity_entity_overlaps::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -91,20 +88,17 @@ struct ResolvedView
 // Strided views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<EntityId, Const> {
-    using soa_schema = ::ioj::sim::collision::entity_entity_overlaps::Schema;
-    using Base = ioj::soa_storage_detail::StridedViewBase<EntityId, Const>;
+struct ViewImpl : soa_storage_detail::StridedViewBase<EntityId, Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::StridedViewBase<EntityId, Const>;
     using Base::Base;
-    using Layout = ::ioj::sim::collision::entity_entity_overlaps::Layout;
-    using view_type = ::ioj::sim::collision::entity_entity_overlaps::View;
-    using const_view_type = ::ioj::sim::collision::entity_entity_overlaps::ConstView;
-    using resolved_view_type =
-        std::conditional_t<Const,
-                           ::ioj::sim::collision::entity_entity_overlaps::ResolvedConstView,
-                           ::ioj::sim::collision::entity_entity_overlaps::ResolvedView>;
+    using Layout = entity_entity_overlaps::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     using State = std::conditional_t<Const,
-                                     ioj::soa_storage_detail::StorageState const,
-                                     ioj::soa_storage_detail::StorageState>;
+                                     soa_storage_detail::StorageState const,
+                                     soa_storage_detail::StorageState>;
     ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
         : Base{ioj::soa_storage_detail::make_strided_view<Base, Layout>(
               state,
@@ -124,14 +118,10 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(std::is_trivially_copyable_v<ConstView>);
-struct View
-    : soa_storage_detail::ViewRowOperations<
-          View,
-          ::ioj::sim::collision::entity_entity_overlaps::Layout::column_types,
-          ViewImpl<false>> {
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::sim::collision::entity_entity_overlaps::Layout::column_types,
+        ioj::sim::collision::entity_entity_overlaps::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -147,28 +137,25 @@ static_assert(std::is_trivially_copyable_v<View>);
 // first_entities: EntityId
 // second_entities: EntityId
 struct EntityEntityOverlaps
-    : protected ioj::native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<
-          EntityEntityOverlaps,
-          ::ioj::sim::collision::entity_entity_overlaps::Layout::column_types,
-          ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::sim::collision::entity_entity_overlaps::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::sim::collision::entity_entity_overlaps::Layout;
+    : protected native_soa::StorageState
+    , soa_storage_detail::OwnerRowOperations<EntityEntityOverlaps,
+                                             entity_entity_overlaps::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = entity_entity_overlaps::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = entity_entity_overlaps::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::sim::collision::entity_entity_overlaps::View;
-    using ConstView = ::ioj::sim::collision::entity_entity_overlaps::ConstView;
+    using View = entity_entity_overlaps::View;
+    using ConstView = entity_entity_overlaps::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -190,19 +177,19 @@ struct EntityEntityOverlaps
     }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::sim::collision::entity_entity_overlaps::DataPointers<Byte>;
+    using DataPointers = entity_entity_overlaps::DataPointers<Byte>;
   public:
     auto first_entities(this auto& self) { return self.view().first_entities(); }
     auto second_entities(this auto& self) { return self.view().second_entities(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        EntityEntityOverlaps,
-        ::ioj::sim::collision::entity_entity_overlaps::Layout::column_types,
-        ioj::native_soa::StorageOperations>;
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<EntityEntityOverlaps,
+                                               entity_entity_overlaps::Layout::column_types,
+                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 
@@ -216,7 +203,7 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : ioj::single_allocation_layout::ColumnLayouts<EntityId, StaticGeometryIndex> {
+struct Layout : single_allocation_layout::ColumnLayouts<EntityId, StaticGeometryIndex> {
     static constexpr std::size_t entities_column{0};
     static constexpr std::size_t static_geometry_indices_column{1};
 };
@@ -248,14 +235,13 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::sim::collision::entity_static_overlaps::Layout;
-    using view_type = ::ioj::sim::collision::entity_static_overlaps::ResolvedView;
-    using const_view_type = ::ioj::sim::collision::entity_static_overlaps::ResolvedConstView;
-    using soa_schema = ::ioj::sim::collision::entity_static_overlaps::Schema;
+    using Layout = entity_static_overlaps::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
@@ -270,13 +256,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<
-          ResolvedView,
-          ::ioj::sim::collision::entity_static_overlaps::Layout::column_types,
-          ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::sim::collision::entity_static_overlaps::Layout::column_types,
+        ioj::sim::collision::entity_static_overlaps::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -286,17 +270,14 @@ struct ResolvedView
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = ::ioj::sim::collision::entity_static_overlaps::Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = ::ioj::sim::collision::entity_static_overlaps::Layout;
-    using view_type = ::ioj::sim::collision::entity_static_overlaps::View;
-    using const_view_type = ::ioj::sim::collision::entity_static_overlaps::ConstView;
-    using resolved_view_type =
-        std::conditional_t<Const,
-                           ::ioj::sim::collision::entity_static_overlaps::ResolvedConstView,
-                           ::ioj::sim::collision::entity_static_overlaps::ResolvedView>;
+    using Layout = entity_static_overlaps::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -310,20 +291,16 @@ struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View
-    : soa_storage_detail::ViewRowOperations<
-          View,
-          ::ioj::sim::collision::entity_static_overlaps::Layout::column_types,
-          ViewImpl<false>> {
+static_assert(soa_storage_detail::validate_compact_view<ConstView>());
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::sim::collision::entity_static_overlaps::Layout::column_types,
+        ioj::sim::collision::entity_static_overlaps::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+static_assert(soa_storage_detail::validate_compact_view<View>());
 
 } // namespace entity_static_overlaps
 
@@ -334,28 +311,25 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // entities: EntityId
 // static_geometry_indices: ioj::sim::collision::StaticGeometryIndex
 struct EntityStaticOverlaps
-    : protected ioj::native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<
-          EntityStaticOverlaps,
-          ::ioj::sim::collision::entity_static_overlaps::Layout::column_types,
-          ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::sim::collision::entity_static_overlaps::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::sim::collision::entity_static_overlaps::Layout;
+    : protected native_soa::StorageState
+    , soa_storage_detail::OwnerRowOperations<EntityStaticOverlaps,
+                                             entity_static_overlaps::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = entity_static_overlaps::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = entity_static_overlaps::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::sim::collision::entity_static_overlaps::View;
-    using ConstView = ::ioj::sim::collision::entity_static_overlaps::ConstView;
+    using View = entity_static_overlaps::View;
+    using ConstView = entity_static_overlaps::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -377,19 +351,19 @@ struct EntityStaticOverlaps
     }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::sim::collision::entity_static_overlaps::DataPointers<Byte>;
+    using DataPointers = entity_static_overlaps::DataPointers<Byte>;
   public:
     auto entities(this auto& self) { return self.view().entities(); }
     auto static_geometry_indices(this auto& self) { return self.view().static_geometry_indices(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        EntityStaticOverlaps,
-        ::ioj::sim::collision::entity_static_overlaps::Layout::column_types,
-        ioj::native_soa::StorageOperations>;
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<EntityStaticOverlaps,
+                                               entity_static_overlaps::Layout::column_types,
+                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim::collision

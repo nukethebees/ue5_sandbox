@@ -82,9 +82,9 @@ auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nod
     auto const enum_name{context.text(*soas.field_enum_name[row])};
     auto const selected{decls.items(soas.members[row])};
     auto const uint8_type{
-        ir.types.intern("std::uint8_t", {ir.types.dependency("std::uint8_t", "cstdint")})};
+        ir.types.named("std::uint8_t", {ir.types.dependency("std::uint8_t", "cstdint")})};
     auto const int32_type{
-        ir.types.intern("std::int32_t", {ir.types.dependency("std::int32_t", "cstdint")})};
+        ir.types.named("std::int32_t", {ir.types.dependency("std::int32_t", "cstdint")})};
     auto const enum_type{ir.types.intern(enum_name)};
     std::vector<EnumValueId> values;
     std::string previous_name;
@@ -106,10 +106,15 @@ auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nod
     }
     values.push_back(ir.enumerator(ir.store_text("Count"), ir.store_text(next_value())));
 
+    auto const field_count{ir.types.compose({{.text = ir.store_text("static_cast<")},
+                                             {.type = ir.types.named("std::size_t")},
+                                             {.text = ir.store_text(">(")},
+                                             {.type = ir.types.decorate(enum_type, "", "::Count")},
+                                             {.text = ir.store_text(")")}})};
     auto const base{ir.types.template_type(
-        ir.types.intern("ioj::FieldMask",
-                        {ir.types.dependency("ioj::FieldMask", "ioj/field_mask.h")}),
-        {enum_type, ir.types.intern("static_cast<std::size_t>(" + enum_name + "::Count)")})};
+        ir.types.named("ioj::FieldMask",
+                       {ir.types.dependency("ioj::FieldMask", "ioj/field_mask.h")}),
+        {enum_type, field_count})};
     NodeListBuilder children{ir};
     children.add(ir.using_declaration(ir.store_text("Base"), base))
         .add(ir.raw("using Base::Base;"));
@@ -123,8 +128,9 @@ auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nod
         auto const name{context.text(members.name[member_row])};
         std::vector<FunctionParameterId> parameters;
         for (auto const dimension : selected_dimensions) {
-            parameters.push_back(ir.parameter(ir.types.intern("std::int32_t const"),
-                                              dimensions.index_name[dimensions.index(dimension)]));
+            parameters.push_back(
+                ir.parameter(ir.types.decorate(ir.types.named("std::int32_t"), "", " const"),
+                             dimensions.index_name[dimensions.index(dimension)]));
         }
         auto const function{ir.function(name + "_field", enum_type)};
         auto& flags{ir.function_flags(function)};
@@ -140,26 +146,29 @@ auto field_mask_nodes(LoweringContext& context, DeclarationHandle schema) -> Nod
             function,
             {ir.return_stmt(ir.static_cast_expr(
                 enum_type,
-                ir.binary(BinaryOperator::add,
-                          ir.static_cast_expr(
-                              int32_type, ir.named(enum_name + "::" + title_case_identifier(name))),
-                          mask_index_expression(context, member))))});
+                ir.binary(
+                    BinaryOperator::add,
+                    ir.static_cast_expr(int32_type,
+                                        ir.type_reference(ir.types.decorate(
+                                            enum_type, "", "::" + title_case_identifier(name)))),
+                    mask_index_expression(context, member))))});
         children.new_lines(1).add(ir.header_function(function));
     }
 
     auto const mask{ir.record(mask_name, children.build())};
     ir.set_record_bases(mask, {base});
 
+    auto const mask_type{ir.types.named(context.text(mask_name))};
     NodeListBuilder result{ir};
     result.add(ir.enumeration(*soas.field_enum_name[row], uint8_type, values))
         .new_lines(1)
         .add(mask)
-        .add(
-            ir.static_assertion(ir.store_text("sizeof(" + context.text(mask_name) + ") == sizeof(" +
-                                              context.text(mask_name) + "::storage_type)"),
-                                {}))
         .add(ir.static_assertion(
-            ir.store_text("std::is_trivially_copyable_v<" + context.text(mask_name) + ">"), {}));
+            ir.binary(BinaryOperator::equal,
+                      ir.sizeof_type(mask_type),
+                      ir.sizeof_type(ir.types.decorate(mask_type, "", "::storage_type")))))
+        .add(ir.static_assertion(ir.type_reference(
+            ir.types.template_type(ir.types.named("std::is_trivially_copyable_v"), {mask_type}))));
     return result.build();
 }
 

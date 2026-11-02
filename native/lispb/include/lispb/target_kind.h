@@ -7,6 +7,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -73,9 +74,9 @@ namespace ioj {
 template <>
 inline constexpr MinMax<lispb::TargetKind> enum_range<lispb::TargetKind>{lispb::TargetKind::none,
                                                                          lispb::TargetKind::group};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::lispb::TargetKind, ioj::Serialized>{
-    ioj::PackedStrings{"none\000cpp-schema\000slate\000kernel\000material\000group",
-                       std::array<std::uint8_t, 7>{0, 5, 16, 22, 29, 38, 44}}};
+inline constexpr auto enum_strings<lispb::TargetKind, Serialized>{
+    PackedStrings{"none\000cpp-schema\000slate\000kernel\000material\000group",
+                  std::array<std::uint8_t, 7>{0, 5, 16, 22, 29, 38, 44}}};
+} // namespace ioj

@@ -36,8 +36,8 @@ namespace ioj {
 template <>
 inline constexpr MinMax<lispb::codegen::SoaMemberKind> enum_range<lispb::codegen::SoaMemberKind>{
     lispb::codegen::SoaMemberKind::array, lispb::codegen::SoaMemberKind::nested};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::lispb::codegen::SoaMemberKind, ioj::Serialized>{
-    ioj::PackedStrings{"array\000nested", std::array<std::uint8_t, 3>{0, 6, 13}}};
+inline constexpr auto enum_strings<lispb::codegen::SoaMemberKind, Serialized>{
+    PackedStrings{"array\000nested", std::array<std::uint8_t, 3>{0, 6, 13}}};
+} // namespace ioj

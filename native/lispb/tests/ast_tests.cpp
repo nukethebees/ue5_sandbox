@@ -306,7 +306,7 @@ TEST_F(AstTest, RendersClassInheritanceAndMemberInitializers) {
             ir.constexpr_member(
                 types.intern("bool"),
                 ir.strings.intern("supports_value"),
-                ir.template_id(ir.named("std::is_constructible_v"),
+                ir.template_id(ir.type_reference(ir.types.named("std::is_constructible_v")),
                                {ir.type_reference(types.intern("int")),
                                 ir.type_reference(types.intern("TArg"))}),
                 ir.template_declaration({ir.type_template_parameter(ir.strings.intern("TArg"))})),

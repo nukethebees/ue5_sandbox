@@ -36,9 +36,8 @@ struct ObjectivePrerequisite : detail::ObjectivePrerequisiteBase {
     static constexpr PackedField<storage_type, std::uint16_t, 0, 16> objective_index_layout{};
 
     constexpr ObjectivePrerequisite() noexcept = default;
-    constexpr explicit ObjectivePrerequisite(
-        ObjectiveId const objective_value,
-        decltype(outcome_layout)::value_type const outcome_value) noexcept
+    constexpr explicit ObjectivePrerequisite(ObjectiveId const objective_value,
+                                             ObjectiveOutcome const outcome_value) noexcept
         : Base{static_cast<storage_type>(
               packed_pack<decltype(objective_layout)>(
                   static_cast<storage_type>(objective_value.raw_value())) |
@@ -49,8 +48,8 @@ struct ObjectivePrerequisite : detail::ObjectivePrerequisiteBase {
 
     [[nodiscard]] constexpr auto operator<=>(ObjectivePrerequisite const&) const noexcept = default;
 
-    [[nodiscard]] static constexpr auto
-        is_valid_outcome(decltype(outcome_layout)::value_type const value) noexcept -> bool {
+    [[nodiscard]] static constexpr auto is_valid_outcome(ObjectiveOutcome const value) noexcept
+        -> bool {
         return value <= outcome_layout.range.max;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
@@ -66,19 +65,17 @@ struct ObjectivePrerequisite : detail::ObjectivePrerequisiteBase {
         assert((value.is_valid()));
         insert<decltype(objective_layout)>(static_cast<storage_type>(value.raw_value()));
     }
-    [[nodiscard]] constexpr auto outcome() const noexcept -> decltype(outcome_layout)::value_type {
+    [[nodiscard]] constexpr auto outcome() const noexcept -> ObjectiveOutcome {
         return extract<decltype(outcome_layout)>();
     }
-    constexpr void set_outcome(decltype(outcome_layout)::value_type const value) noexcept {
+    constexpr void set_outcome(ObjectiveOutcome const value) noexcept {
         assert((is_valid_outcome(value)));
         insert<decltype(outcome_layout)>(value);
     }
-    [[nodiscard]] constexpr auto objective_index() const noexcept
-        -> decltype(objective_index_layout)::value_type {
+    [[nodiscard]] constexpr auto objective_index() const noexcept -> std::uint16_t {
         return extract<decltype(objective_index_layout)>();
     }
-    constexpr void
-        set_objective_index(decltype(objective_index_layout)::value_type const value) noexcept {
+    constexpr void set_objective_index(std::uint16_t const value) noexcept {
         insert<decltype(objective_index_layout)>(value);
     }
 };

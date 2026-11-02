@@ -7,6 +7,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/math_types.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -30,7 +31,7 @@ struct CapitalPresentation {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, CapitalPresentation> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::n_small_explosions) {
             return (self.n_small_explosions);
@@ -94,14 +95,14 @@ struct CapitalPresentation {
 } // namespace ioj::settings
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::settings::CapitalPresentation::Field>() noexcept
+[[nodiscard]] constexpr auto enum_count<settings::CapitalPresentation::Field>() noexcept
     -> std::size_t {
     return 6;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::settings::CapitalPresentation::Field, ioj::Name>{
-    ioj::PackedStrings{
-        "n_small_explosions\000time_between_explosions\000min_small_explosion_range\000max_small_"
-        "explosion_range\000large_explosion_delay\000proxy_arrow_size",
-        std::array<std::uint8_t, 7>{0, 19, 43, 69, 95, 117, 134}}};
+inline constexpr auto enum_strings<settings::CapitalPresentation::Field, Name>{
+    PackedStrings{"n_small_explosions\000time_between_explosions\000min_small_explosion_"
+                  "range\000max_small_explosion_range\000large_explosion_delay\000proxy_arrow_size",
+                  std::array<std::uint8_t, 7>{0, 19, 43, 69, 95, 117, 134}}};
+} // namespace ioj

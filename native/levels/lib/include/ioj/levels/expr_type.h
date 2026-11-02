@@ -93,9 +93,9 @@ struct EnumTraits<levels::ExprType> {
                                        levels::ExprType::EntityKillsReached};
 };
 
-} // namespace ioj
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::levels::ExprType, ioj::Serialized>{
-    ioj::PackedStrings{"all-of\000any-of\000entity-destroyed\000entity-reached-position\000time-"
-                       "elapsed\000objective-resolved\000entity-kills-reached",
-                       std::array<std::uint8_t, 8>{0, 7, 14, 31, 55, 68, 87, 108}}};
+inline constexpr auto enum_strings<levels::ExprType, Serialized>{
+    PackedStrings{"all-of\000any-of\000entity-destroyed\000entity-reached-position\000time-"
+                  "elapsed\000objective-resolved\000entity-kills-reached",
+                  std::array<std::uint8_t, 8>{0, 7, 14, 31, 55, 68, 87, 108}}};
+} // namespace ioj

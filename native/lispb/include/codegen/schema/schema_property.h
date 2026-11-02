@@ -7,6 +7,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
 
+#include <array>
 #include <cstdint>
 
 namespace lispb::codegen {
@@ -144,11 +145,9 @@ namespace ioj {
 template <>
 inline constexpr MinMax<lispb::codegen::SchemaProperty> enum_range<lispb::codegen::SchemaProperty>{
     lispb::codegen::SchemaProperty::api_name, lispb::codegen::SchemaProperty::value_type};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::lispb::codegen::SchemaProperty,
-                                        ioj::Serialized>{ioj::PackedStrings{
+inline constexpr auto enum_strings<lispb::codegen::SchemaProperty, Serialized>{PackedStrings{
     "api-name\000append-columns\000apply\000availability-provider\000backend\000bias\000bind-"
     "access\000bit-order\000bit-width\000bits\000body\000byte-"
     "order\000category\000case\000clipping\000columns\000comparison\000comparison-"
@@ -182,3 +181,4 @@ inline constexpr auto ioj::enum_strings<::lispb::codegen::SchemaProperty,
         958,  967,  976,  991,  1000, 1015, 1031, 1042, 1050, 1064, 1083, 1090, 1099, 1115,
         1125, 1132, 1149, 1156, 1165, 1176, 1183, 1188, 1196, 1203, 1207, 1219, 1234, 1254,
         1262, 1273, 1294, 1299, 1318, 1329, 1353, 1359, 1370}}};
+} // namespace ioj

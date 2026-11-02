@@ -7,6 +7,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/levels/identifiers.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -27,7 +28,7 @@ struct CampaignDefinition {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, CampaignDefinition> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::id) {
             return (self.id);
@@ -68,11 +69,12 @@ struct CampaignDefinition {
 } // namespace ioj::levels
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::levels::CampaignDefinition::Field>() noexcept
+[[nodiscard]] constexpr auto enum_count<levels::CampaignDefinition::Field>() noexcept
     -> std::size_t {
     return 3;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::levels::CampaignDefinition::Field, ioj::Name>{
-    ioj::PackedStrings{"id\000title\000level_ids", std::array<std::uint8_t, 4>{0, 3, 9, 19}}};
+inline constexpr auto enum_strings<levels::CampaignDefinition::Field, Name>{
+    PackedStrings{"id\000title\000level_ids", std::array<std::uint8_t, 4>{0, 3, 9, 19}}};
+} // namespace ioj

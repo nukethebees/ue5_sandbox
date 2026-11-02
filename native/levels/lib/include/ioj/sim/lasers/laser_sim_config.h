@@ -7,6 +7,7 @@
 #include "ioj/enum_strings.h"
 #include "ioj/enum_traits.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -25,7 +26,7 @@ struct LaserSimConfig {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, LaserSimConfig> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::n_preallocated_instances) {
             return (self.n_preallocated_instances);
@@ -55,11 +56,11 @@ struct LaserSimConfig {
 } // namespace ioj::sim
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::sim::LaserSimConfig::Field>() noexcept
-    -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<sim::LaserSimConfig::Field>() noexcept -> std::size_t {
     return 1;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::sim::LaserSimConfig::Field, ioj::Name>{
-    ioj::PackedStrings{"n_preallocated_instances", std::array<std::uint8_t, 2>{0, 25}}};
+inline constexpr auto enum_strings<sim::LaserSimConfig::Field, Name>{
+    PackedStrings{"n_preallocated_instances", std::array<std::uint8_t, 2>{0, 25}}};
+} // namespace ioj

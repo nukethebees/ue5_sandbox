@@ -72,7 +72,7 @@ inline constexpr MinMax<codegen_compile_fixture::DomainState>
                                                      codegen_compile_fixture::DomainState::One};
 
 template <>
-[[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::DomainState>() noexcept
+[[nodiscard]] constexpr auto enum_count<codegen_compile_fixture::DomainState>() noexcept
     -> std::size_t {
     return 2;
 }

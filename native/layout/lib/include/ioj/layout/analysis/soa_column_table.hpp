@@ -32,21 +32,21 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout
-    : ioj::single_allocation_layout::ColumnLayouts<AnalysisId,
-                                                   std::string_view,
-                                                   lispb::schema::TypeId,
-                                                   lispb::StringId,
-                                                   lispb::StringId,
-                                                   std::uint8_t,
-                                                   std::optional<ioj::layout::PhysicalFactId>,
-                                                   std::optional<std::uint64_t>,
-                                                   std::optional<std::uint64_t>,
-                                                   std::optional<std::uint64_t>,
-                                                   std::optional<std::uint64_t>,
-                                                   std::optional<std::uint64_t>,
-                                                   std::optional<std::uint64_t>,
-                                                   std::optional<std::uint64_t>,
-                                                   std::optional<ioj::layout::CacheLineTiling>> {
+    : single_allocation_layout::ColumnLayouts<AnalysisId,
+                                              std::string_view,
+                                              lispb::schema::TypeId,
+                                              lispb::StringId,
+                                              lispb::StringId,
+                                              std::uint8_t,
+                                              std::optional<ioj::layout::PhysicalFactId>,
+                                              std::optional<std::uint64_t>,
+                                              std::optional<std::uint64_t>,
+                                              std::optional<std::uint64_t>,
+                                              std::optional<std::uint64_t>,
+                                              std::optional<std::uint64_t>,
+                                              std::optional<std::uint64_t>,
+                                              std::optional<std::uint64_t>,
+                                              std::optional<ioj::layout::CacheLineTiling>> {
     static constexpr std::size_t parent_column{0};
     static constexpr std::size_t name_column{1};
     static constexpr std::size_t semantic_type_column{2};
@@ -132,14 +132,13 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::layout::soa_column_table::Layout;
-    using view_type = ::ioj::layout::soa_column_table::ResolvedView;
-    using const_view_type = ::ioj::layout::soa_column_table::ResolvedConstView;
-    using soa_schema = ::ioj::layout::soa_column_table::Schema;
+    using Layout = soa_column_table::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
@@ -171,12 +170,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<ResolvedView,
-                                            ::ioj::layout::soa_column_table::Layout::column_types,
-                                            ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::layout::soa_column_table::Layout::column_types,
+        ioj::layout::soa_column_table::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -186,17 +184,14 @@ struct ResolvedView
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = ::ioj::layout::soa_column_table::Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = ::ioj::layout::soa_column_table::Layout;
-    using view_type = ::ioj::layout::soa_column_table::View;
-    using const_view_type = ::ioj::layout::soa_column_table::ConstView;
-    using resolved_view_type =
-        std::conditional_t<Const,
-                           ::ioj::layout::soa_column_table::ResolvedConstView,
-                           ::ioj::layout::soa_column_table::ResolvedView>;
+    using Layout = soa_column_table::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -254,19 +249,16 @@ struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View
-    : soa_storage_detail::ViewRowOperations<View,
-                                            ::ioj::layout::soa_column_table::Layout::column_types,
-                                            ViewImpl<false>> {
+static_assert(soa_storage_detail::validate_compact_view<ConstView>());
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::layout::soa_column_table::Layout::column_types,
+        ioj::layout::soa_column_table::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+static_assert(soa_storage_detail::validate_compact_view<View>());
 
 } // namespace soa_column_table
 
@@ -290,27 +282,25 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // complete_elements_per_page: std::optional<std::uint64_t>
 // cache_line_tiling: std::optional<ioj::layout::CacheLineTiling>
 struct SoaColumnTable
-    : protected ioj::native_soa::StorageState
+    : protected native_soa::StorageState
     , soa_storage_detail::OwnerRowOperations<SoaColumnTable,
-                                             ::ioj::layout::soa_column_table::Layout::column_types,
-                                             ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::layout::soa_column_table::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::layout::soa_column_table::Layout;
+                                             soa_column_table::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = soa_column_table::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = soa_column_table::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::layout::soa_column_table::View;
-    using ConstView = ::ioj::layout::soa_column_table::ConstView;
+    using View = soa_column_table::View;
+    using ConstView = soa_column_table::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -332,7 +322,7 @@ struct SoaColumnTable
     }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::layout::soa_column_table::DataPointers<Byte>;
+    using DataPointers = soa_column_table::DataPointers<Byte>;
   public:
     auto parent(this auto& self) { return self.view().parent(); }
     auto name(this auto& self) { return self.view().name(); }
@@ -351,16 +341,16 @@ struct SoaColumnTable
         return self.view().complete_elements_per_page();
     }
     auto cache_line_tiling(this auto& self) { return self.view().cache_line_tiling(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        SoaColumnTable,
-        ::ioj::layout::soa_column_table::Layout::column_types,
-        ioj::native_soa::StorageOperations>;
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<SoaColumnTable,
+                                               soa_column_table::Layout::column_types,
+                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     std::size_t append();
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::layout

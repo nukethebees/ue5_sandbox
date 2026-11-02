@@ -786,6 +786,7 @@ auto CppIR::named(std::string_view value, std::span<TypeDependencyId const> depe
     return named(strings.intern(value), dependencies);
 }
 auto CppIR::named(StringId value, std::span<TypeDependencyId const> dependencies) -> Expr {
+    assert(!strings.view(value).contains("::"));
     auto const result{expr_detail::handle(ExprKind::named, named_exprs_.spelling.size())};
     named_exprs_.spelling.push_back(value);
     named_exprs_.dependencies.push_back(save_dependencies(dependencies));

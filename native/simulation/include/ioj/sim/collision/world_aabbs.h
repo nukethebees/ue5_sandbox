@@ -23,8 +23,7 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : ioj::single_allocation_layout::ColumnLayouts<float, float, float, float, float, float> {
+struct Layout : single_allocation_layout::ColumnLayouts<float, float, float, float, float, float> {
     static constexpr std::size_t min_points_xs_column{0};
     static constexpr std::size_t min_points_ys_column{1};
     static constexpr std::size_t min_points_zs_column{2};
@@ -76,27 +75,26 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::sim::collision::world_aab_bs::Layout;
-    using view_type = ::ioj::sim::collision::world_aab_bs::ResolvedView;
-    using const_view_type = ::ioj::sim::collision::world_aab_bs::ResolvedConstView;
-    using soa_schema = ::ioj::sim::collision::world_aab_bs::Schema;
+    using Layout = world_aab_bs::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto view_min_points() const -> std::
-        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
+    auto view_min_points() const
+        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
         return {this->columns_.min_points_xs,
                 this->columns_.min_points_ys,
                 this->columns_.min_points_zs,
                 this->num()};
     }
-    auto view_max_points() const -> std::
-        conditional_t<Const, ::ioj::vectors3f::ResolvedConstView, ::ioj::vectors3f::ResolvedView> {
+    auto view_max_points() const
+        -> std::conditional_t<Const, vectors3f::ResolvedConstView, vectors3f::ResolvedView> {
         return {this->columns_.max_points_xs,
                 this->columns_.max_points_ys,
                 this->columns_.max_points_zs,
@@ -108,13 +106,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<
-          ResolvedView,
-          ::ioj::sim::collision::world_aab_bs::Layout::column_types,
-          ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::sim::collision::world_aab_bs::Layout::column_types,
+        ioj::sim::collision::world_aab_bs::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -129,20 +125,17 @@ struct ResolvedView
 // Strided views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
-    using soa_schema = ::ioj::sim::collision::world_aab_bs::Schema;
-    using Base = ioj::soa_storage_detail::StridedViewBase<float, Const>;
+struct ViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::StridedViewBase<float, Const>;
     using Base::Base;
-    using Layout = ::ioj::sim::collision::world_aab_bs::Layout;
-    using view_type = ::ioj::sim::collision::world_aab_bs::View;
-    using const_view_type = ::ioj::sim::collision::world_aab_bs::ConstView;
-    using resolved_view_type =
-        std::conditional_t<Const,
-                           ::ioj::sim::collision::world_aab_bs::ResolvedConstView,
-                           ::ioj::sim::collision::world_aab_bs::ResolvedView>;
+    using Layout = world_aab_bs::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     using State = std::conditional_t<Const,
-                                     ioj::soa_storage_detail::StorageState const,
-                                     ioj::soa_storage_detail::StorageState>;
+                                     soa_storage_detail::StorageState const,
+                                     soa_storage_detail::StorageState>;
     ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
         : Base{ioj::soa_storage_detail::make_strided_view<Base, Layout>(
               state, offset, count, Layout::min_points_xs_column, Layout::min_points_ys_column)} {}
@@ -151,11 +144,11 @@ struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
         requires Enabled
         : Base{other} {}
     auto view_min_points() const
-        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
         return {this->column(0).data(), this->byte_stride(), this->num()};
     }
     auto view_max_points() const
-        -> std::conditional_t<Const, ::ioj::vectors3f::ConstView, ::ioj::vectors3f::View> {
+        -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
         return {this->column(3).data(), this->byte_stride(), this->num()};
     }
 };
@@ -164,14 +157,10 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(std::is_trivially_copyable_v<ConstView>);
-struct View
-    : soa_storage_detail::ViewRowOperations<
-          View,
-          ::ioj::sim::collision::world_aab_bs::Layout::column_types,
-          ViewImpl<false>> {
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::sim::collision::world_aab_bs::Layout::column_types,
+        ioj::sim::collision::world_aab_bs::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -196,28 +185,25 @@ static_assert(std::is_trivially_copyable_v<View>);
 // max_points_ys: float
 // max_points_zs: float
 struct WorldAABBs
-    : protected ioj::native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<
-          WorldAABBs,
-          ::ioj::sim::collision::world_aab_bs::Layout::column_types,
-          ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::sim::collision::world_aab_bs::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::sim::collision::world_aab_bs::Layout;
+    : protected native_soa::StorageState
+    , soa_storage_detail::OwnerRowOperations<WorldAABBs,
+                                             world_aab_bs::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = world_aab_bs::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = world_aab_bs::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::sim::collision::world_aab_bs::View;
-    using ConstView = ::ioj::sim::collision::world_aab_bs::ConstView;
+    using View = world_aab_bs::View;
+    using ConstView = world_aab_bs::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -239,14 +225,13 @@ struct WorldAABBs
     }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::sim::collision::world_aab_bs::DataPointers<Byte>;
+    using DataPointers = world_aab_bs::DataPointers<Byte>;
   public:
     auto view_min_points(this auto& self) { return self.view().view_min_points(); }
     auto view_max_points(this auto& self) { return self.view().view_max_points(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        WorldAABBs,
-        ::ioj::sim::collision::world_aab_bs::Layout::column_types,
-        ioj::native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<WorldAABBs,
+                                                                 world_aab_bs::Layout::column_types,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index, Vector3f const new_min_points, Vector3f const new_max_points) {
@@ -262,7 +247,7 @@ struct WorldAABBs
     }
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::sim::collision

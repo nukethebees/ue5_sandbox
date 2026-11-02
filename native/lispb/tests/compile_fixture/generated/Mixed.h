@@ -251,11 +251,11 @@ struct ParameterLookup {
 namespace ioj {
 template <>
 [[nodiscard]] constexpr auto
-    enum_count<::codegen_compile_fixture::mixed::CrossSettings::Field>() noexcept -> std::size_t {
+    enum_count<codegen_compile_fixture::mixed::CrossSettings::Field>() noexcept -> std::size_t {
     return 1;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto
-    ioj::enum_strings<::codegen_compile_fixture::mixed::CrossSettings::Field, ioj::Name>{
-        ioj::PackedStrings{"actor", std::array<std::uint8_t, 2>{0, 6}}};
+inline constexpr auto enum_strings<codegen_compile_fixture::mixed::CrossSettings::Field, Name>{
+    PackedStrings{"actor", std::array<std::uint8_t, 2>{0, 6}}};
+} // namespace ioj

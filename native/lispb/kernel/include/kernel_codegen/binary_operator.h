@@ -40,8 +40,8 @@ inline constexpr MinMax<kernel_codegen::detail::BinaryOperator>
     enum_range<kernel_codegen::detail::BinaryOperator>{
         kernel_codegen::detail::BinaryOperator::add,
         kernel_codegen::detail::BinaryOperator::divide};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::kernel_codegen::detail::BinaryOperator, ioj::Serialized>{
-    ioj::PackedStrings{"+\000-\000*\000/", std::array<std::uint8_t, 5>{0, 2, 4, 6, 8}}};
+inline constexpr auto enum_strings<kernel_codegen::detail::BinaryOperator, Serialized>{
+    PackedStrings{"+\000-\000*\000/", std::array<std::uint8_t, 5>{0, 2, 4, 6, 8}}};
+} // namespace ioj

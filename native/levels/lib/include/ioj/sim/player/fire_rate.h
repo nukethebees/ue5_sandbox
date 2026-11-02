@@ -30,7 +30,7 @@ using ioj::to_string;
     try_parse_serialized_ship_fire_rate(std::string_view const value) noexcept
     -> std::optional<ShipFireRate> {
     std::array<std::string_view, 3> constexpr names{"single", "burst3", "full-auto"};
-    return ioj::try_parse_enum<ShipFireRate>(value, names);
+    return try_parse_enum<ShipFireRate>(value, names);
 }
 
 } // namespace ioj::sim
@@ -50,10 +50,12 @@ template <>
 [[nodiscard]] constexpr auto enum_count<sim::ShipFireRate>() noexcept -> std::size_t {
     return 3;
 }
+
+template <>
+inline constexpr auto enum_strings<sim::ShipFireRate, Name>{
+    PackedStrings{"Single\000Burst3\000FullAuto", std::array<std::uint8_t, 4>{0, 7, 14, 23}}};
+
+template <>
+inline constexpr auto enum_strings<sim::ShipFireRate, Serialized>{
+    PackedStrings{"single\000burst3\000full-auto", std::array<std::uint8_t, 4>{0, 7, 14, 24}}};
 } // namespace ioj
-template <>
-inline constexpr auto ioj::enum_strings<::ioj::sim::ShipFireRate, ioj::Name>{
-    ioj::PackedStrings{"Single\000Burst3\000FullAuto", std::array<std::uint8_t, 4>{0, 7, 14, 23}}};
-template <>
-inline constexpr auto ioj::enum_strings<::ioj::sim::ShipFireRate, ioj::Serialized>{
-    ioj::PackedStrings{"single\000burst3\000full-auto", std::array<std::uint8_t, 4>{0, 7, 14, 24}}};

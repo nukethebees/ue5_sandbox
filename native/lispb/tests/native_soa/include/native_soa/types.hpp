@@ -47,7 +47,7 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : ioj::single_allocation_layout::ColumnLayouts<std::uint32_t> {
+struct Layout : single_allocation_layout::ColumnLayouts<std::uint32_t> {
     static constexpr std::size_t count_column{0};
 };
 
@@ -77,14 +77,13 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::counts::Layout;
-    using view_type = ::ioj::native_soa_fixture::counts::ResolvedView;
-    using const_view_type = ::ioj::native_soa_fixture::counts::ResolvedConstView;
-    using soa_schema = ::ioj::native_soa_fixture::counts::Schema;
+    using Layout = counts::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
@@ -96,12 +95,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<ResolvedView,
-                                            ::ioj::native_soa_fixture::counts::Layout::column_types,
-                                            ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::native_soa_fixture::counts::Layout::column_types,
+        ioj::native_soa_fixture::counts::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -111,17 +109,14 @@ struct ResolvedView
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = ::ioj::native_soa_fixture::counts::Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::counts::Layout;
-    using view_type = ::ioj::native_soa_fixture::counts::View;
-    using const_view_type = ::ioj::native_soa_fixture::counts::ConstView;
-    using resolved_view_type =
-        std::conditional_t<Const,
-                           ::ioj::native_soa_fixture::counts::ResolvedConstView,
-                           ::ioj::native_soa_fixture::counts::ResolvedView>;
+    using Layout = counts::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -132,19 +127,16 @@ struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View
-    : soa_storage_detail::ViewRowOperations<View,
-                                            ::ioj::native_soa_fixture::counts::Layout::column_types,
-                                            ViewImpl<false>> {
+static_assert(soa_storage_detail::validate_compact_view<ConstView>());
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::native_soa_fixture::counts::Layout::column_types,
+        ioj::native_soa_fixture::counts::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+static_assert(soa_storage_detail::validate_compact_view<View>());
 
 } // namespace counts
 
@@ -154,28 +146,24 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // Columns:
 // count: std::uint32_t
 struct Counts
-    : protected ioj::native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<
-          Counts,
-          ::ioj::native_soa_fixture::counts::Layout::column_types,
-          ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::native_soa_fixture::counts::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::native_soa_fixture::counts::Layout;
+    : protected native_soa::StorageState
+    , soa_storage_detail::
+          OwnerRowOperations<Counts, counts::Layout::column_types, native_soa::StorageOperations> {
+    using soa_schema = counts::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = counts::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::native_soa_fixture::counts::View;
-    using ConstView = ::ioj::native_soa_fixture::counts::ConstView;
+    using View = counts::View;
+    using ConstView = counts::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -195,18 +183,16 @@ struct Counts
     auto operator=(Counts&& other) -> Counts& { return Operations::move_assign(*this, other); }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::native_soa_fixture::counts::DataPointers<Byte>;
+    using DataPointers = counts::DataPointers<Byte>;
   public:
     auto count(this auto& self) { return self.view().count(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        Counts,
-        ::ioj::native_soa_fixture::counts::Layout::column_types,
-        ioj::native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<Counts, counts::Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 
@@ -238,7 +224,7 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : ioj::single_allocation_layout::ColumnLayouts<PointerB*> {
+struct Layout : single_allocation_layout::ColumnLayouts<PointerB*> {
     static constexpr std::size_t others_column{0};
 };
 
@@ -268,14 +254,13 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::pointer_a::Layout;
-    using view_type = ::ioj::native_soa_fixture::pointer_a::ResolvedView;
-    using const_view_type = ::ioj::native_soa_fixture::pointer_a::ResolvedConstView;
-    using soa_schema = ::ioj::native_soa_fixture::pointer_a::Schema;
+    using Layout = pointer_a::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
@@ -287,13 +272,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<
-          ResolvedView,
-          ::ioj::native_soa_fixture::pointer_a::Layout::column_types,
-          ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::native_soa_fixture::pointer_a::Layout::column_types,
+        ioj::native_soa_fixture::pointer_a::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -303,17 +286,14 @@ struct ResolvedView
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = ::ioj::native_soa_fixture::pointer_a::Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::pointer_a::Layout;
-    using view_type = ::ioj::native_soa_fixture::pointer_a::View;
-    using const_view_type = ::ioj::native_soa_fixture::pointer_a::ConstView;
-    using resolved_view_type =
-        std::conditional_t<Const,
-                           ::ioj::native_soa_fixture::pointer_a::ResolvedConstView,
-                           ::ioj::native_soa_fixture::pointer_a::ResolvedView>;
+    using Layout = pointer_a::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -324,20 +304,16 @@ struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View
-    : soa_storage_detail::ViewRowOperations<
-          View,
-          ::ioj::native_soa_fixture::pointer_a::Layout::column_types,
-          ViewImpl<false>> {
+static_assert(soa_storage_detail::validate_compact_view<ConstView>());
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::native_soa_fixture::pointer_a::Layout::column_types,
+        ioj::native_soa_fixture::pointer_a::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+static_assert(soa_storage_detail::validate_compact_view<View>());
 
 } // namespace pointer_a
 
@@ -347,28 +323,25 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // Columns:
 // others: ioj::native_soa_fixture::PointerB*
 struct PointerA
-    : protected ioj::native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<
-          PointerA,
-          ::ioj::native_soa_fixture::pointer_a::Layout::column_types,
-          ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::native_soa_fixture::pointer_a::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::native_soa_fixture::pointer_a::Layout;
+    : protected native_soa::StorageState
+    , soa_storage_detail::OwnerRowOperations<PointerA,
+                                             pointer_a::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = pointer_a::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = pointer_a::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::native_soa_fixture::pointer_a::View;
-    using ConstView = ::ioj::native_soa_fixture::pointer_a::ConstView;
+    using View = pointer_a::View;
+    using ConstView = pointer_a::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -388,18 +361,17 @@ struct PointerA
     auto operator=(PointerA&& other) -> PointerA& { return Operations::move_assign(*this, other); }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::native_soa_fixture::pointer_a::DataPointers<Byte>;
+    using DataPointers = pointer_a::DataPointers<Byte>;
   public:
     auto others(this auto& self) { return self.view().others(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        PointerA,
-        ::ioj::native_soa_fixture::pointer_a::Layout::column_types,
-        ioj::native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<PointerA,
+                                                                 pointer_a::Layout::column_types,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 
@@ -413,7 +385,7 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : ioj::single_allocation_layout::ColumnLayouts<PointerA*> {
+struct Layout : single_allocation_layout::ColumnLayouts<PointerA*> {
     static constexpr std::size_t others_column{0};
 };
 
@@ -443,14 +415,13 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::pointer_b::Layout;
-    using view_type = ::ioj::native_soa_fixture::pointer_b::ResolvedView;
-    using const_view_type = ::ioj::native_soa_fixture::pointer_b::ResolvedConstView;
-    using soa_schema = ::ioj::native_soa_fixture::pointer_b::Schema;
+    using Layout = pointer_b::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
@@ -462,13 +433,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<
-          ResolvedView,
-          ::ioj::native_soa_fixture::pointer_b::Layout::column_types,
-          ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::native_soa_fixture::pointer_b::Layout::column_types,
+        ioj::native_soa_fixture::pointer_b::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -478,17 +447,14 @@ struct ResolvedView
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = ::ioj::native_soa_fixture::pointer_b::Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::pointer_b::Layout;
-    using view_type = ::ioj::native_soa_fixture::pointer_b::View;
-    using const_view_type = ::ioj::native_soa_fixture::pointer_b::ConstView;
-    using resolved_view_type =
-        std::conditional_t<Const,
-                           ::ioj::native_soa_fixture::pointer_b::ResolvedConstView,
-                           ::ioj::native_soa_fixture::pointer_b::ResolvedView>;
+    using Layout = pointer_b::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -499,20 +465,16 @@ struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View
-    : soa_storage_detail::ViewRowOperations<
-          View,
-          ::ioj::native_soa_fixture::pointer_b::Layout::column_types,
-          ViewImpl<false>> {
+static_assert(soa_storage_detail::validate_compact_view<ConstView>());
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::native_soa_fixture::pointer_b::Layout::column_types,
+        ioj::native_soa_fixture::pointer_b::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+static_assert(soa_storage_detail::validate_compact_view<View>());
 
 } // namespace pointer_b
 
@@ -522,28 +484,25 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // Columns:
 // others: ioj::native_soa_fixture::PointerA*
 struct PointerB
-    : protected ioj::native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<
-          PointerB,
-          ::ioj::native_soa_fixture::pointer_b::Layout::column_types,
-          ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::native_soa_fixture::pointer_b::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::native_soa_fixture::pointer_b::Layout;
+    : protected native_soa::StorageState
+    , soa_storage_detail::OwnerRowOperations<PointerB,
+                                             pointer_b::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = pointer_b::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = pointer_b::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::native_soa_fixture::pointer_b::View;
-    using ConstView = ::ioj::native_soa_fixture::pointer_b::ConstView;
+    using View = pointer_b::View;
+    using ConstView = pointer_b::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -563,18 +522,17 @@ struct PointerB
     auto operator=(PointerB&& other) -> PointerB& { return Operations::move_assign(*this, other); }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::native_soa_fixture::pointer_b::DataPointers<Byte>;
+    using DataPointers = pointer_b::DataPointers<Byte>;
   public:
     auto others(this auto& self) { return self.view().others(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        PointerB,
-        ::ioj::native_soa_fixture::pointer_b::Layout::column_types,
-        ioj::native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<PointerB,
+                                                                 pointer_b::Layout::column_types,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 
@@ -588,7 +546,7 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : ioj::single_allocation_layout::ColumnLayouts<MixedRecord*> {
+struct Layout : single_allocation_layout::ColumnLayouts<MixedRecord*> {
     static constexpr std::size_t records_column{0};
 };
 
@@ -618,14 +576,13 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::mixed_rows::Layout;
-    using view_type = ::ioj::native_soa_fixture::mixed_rows::ResolvedView;
-    using const_view_type = ::ioj::native_soa_fixture::mixed_rows::ResolvedConstView;
-    using soa_schema = ::ioj::native_soa_fixture::mixed_rows::Schema;
+    using Layout = mixed_rows::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
@@ -637,13 +594,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<
-          ResolvedView,
-          ::ioj::native_soa_fixture::mixed_rows::Layout::column_types,
-          ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::native_soa_fixture::mixed_rows::Layout::column_types,
+        ioj::native_soa_fixture::mixed_rows::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -653,17 +608,14 @@ struct ResolvedView
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = ::ioj::native_soa_fixture::mixed_rows::Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::mixed_rows::Layout;
-    using view_type = ::ioj::native_soa_fixture::mixed_rows::View;
-    using const_view_type = ::ioj::native_soa_fixture::mixed_rows::ConstView;
-    using resolved_view_type =
-        std::conditional_t<Const,
-                           ::ioj::native_soa_fixture::mixed_rows::ResolvedConstView,
-                           ::ioj::native_soa_fixture::mixed_rows::ResolvedView>;
+    using Layout = mixed_rows::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -674,20 +626,16 @@ struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View
-    : soa_storage_detail::ViewRowOperations<
-          View,
-          ::ioj::native_soa_fixture::mixed_rows::Layout::column_types,
-          ViewImpl<false>> {
+static_assert(soa_storage_detail::validate_compact_view<ConstView>());
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::native_soa_fixture::mixed_rows::Layout::column_types,
+        ioj::native_soa_fixture::mixed_rows::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+static_assert(soa_storage_detail::validate_compact_view<View>());
 
 } // namespace mixed_rows
 
@@ -697,28 +645,25 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // Columns:
 // records: ioj::native_soa_fixture::MixedRecord*
 struct MixedRows
-    : protected ioj::native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<
-          MixedRows,
-          ::ioj::native_soa_fixture::mixed_rows::Layout::column_types,
-          ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::native_soa_fixture::mixed_rows::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::native_soa_fixture::mixed_rows::Layout;
+    : protected native_soa::StorageState
+    , soa_storage_detail::OwnerRowOperations<MixedRows,
+                                             mixed_rows::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = mixed_rows::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = mixed_rows::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::native_soa_fixture::mixed_rows::View;
-    using ConstView = ::ioj::native_soa_fixture::mixed_rows::ConstView;
+    using View = mixed_rows::View;
+    using ConstView = mixed_rows::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -740,18 +685,17 @@ struct MixedRows
     }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::native_soa_fixture::mixed_rows::DataPointers<Byte>;
+    using DataPointers = mixed_rows::DataPointers<Byte>;
   public:
     auto records(this auto& self) { return self.view().records(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        MixedRows,
-        ::ioj::native_soa_fixture::mixed_rows::Layout::column_types,
-        ioj::native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<MixedRows,
+                                                                 mixed_rows::Layout::column_types,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 
@@ -775,7 +719,7 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : ioj::single_allocation_layout::ColumnLayouts<Pair, Node*> {
+struct Layout : single_allocation_layout::ColumnLayouts<Pair, Node*> {
     static constexpr std::size_t pairs_column{0};
     static constexpr std::size_t pointers_column{1};
 };
@@ -807,14 +751,13 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::pair_rows::Layout;
-    using view_type = ::ioj::native_soa_fixture::pair_rows::ResolvedView;
-    using const_view_type = ::ioj::native_soa_fixture::pair_rows::ResolvedConstView;
-    using soa_schema = ::ioj::native_soa_fixture::pair_rows::Schema;
+    using Layout = pair_rows::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
@@ -827,13 +770,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<
-          ResolvedView,
-          ::ioj::native_soa_fixture::pair_rows::Layout::column_types,
-          ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::native_soa_fixture::pair_rows::Layout::column_types,
+        ioj::native_soa_fixture::pair_rows::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -843,17 +784,14 @@ struct ResolvedView
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = ::ioj::native_soa_fixture::pair_rows::Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::pair_rows::Layout;
-    using view_type = ::ioj::native_soa_fixture::pair_rows::View;
-    using const_view_type = ::ioj::native_soa_fixture::pair_rows::ConstView;
-    using resolved_view_type =
-        std::conditional_t<Const,
-                           ::ioj::native_soa_fixture::pair_rows::ResolvedConstView,
-                           ::ioj::native_soa_fixture::pair_rows::ResolvedView>;
+    using Layout = pair_rows::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -865,20 +803,16 @@ struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View
-    : soa_storage_detail::ViewRowOperations<
-          View,
-          ::ioj::native_soa_fixture::pair_rows::Layout::column_types,
-          ViewImpl<false>> {
+static_assert(soa_storage_detail::validate_compact_view<ConstView>());
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::native_soa_fixture::pair_rows::Layout::column_types,
+        ioj::native_soa_fixture::pair_rows::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+static_assert(soa_storage_detail::validate_compact_view<View>());
 
 } // namespace pair_rows
 
@@ -889,28 +823,25 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // pairs: ioj::native_soa_fixture::Pair
 // pointers: ioj::native_soa_fixture::Node*
 struct PairRows
-    : protected ioj::native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<
-          PairRows,
-          ::ioj::native_soa_fixture::pair_rows::Layout::column_types,
-          ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::native_soa_fixture::pair_rows::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::native_soa_fixture::pair_rows::Layout;
+    : protected native_soa::StorageState
+    , soa_storage_detail::OwnerRowOperations<PairRows,
+                                             pair_rows::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = pair_rows::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = pair_rows::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::native_soa_fixture::pair_rows::View;
-    using ConstView = ::ioj::native_soa_fixture::pair_rows::ConstView;
+    using View = pair_rows::View;
+    using ConstView = pair_rows::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -930,19 +861,18 @@ struct PairRows
     auto operator=(PairRows&& other) -> PairRows& { return Operations::move_assign(*this, other); }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::native_soa_fixture::pair_rows::DataPointers<Byte>;
+    using DataPointers = pair_rows::DataPointers<Byte>;
   public:
     auto pairs(this auto& self) { return self.view().pairs(); }
     auto pointers(this auto& self) { return self.view().pointers(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        PairRows,
-        ::ioj::native_soa_fixture::pair_rows::Layout::column_types,
-        ioj::native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<PairRows,
+                                                                 pair_rows::Layout::column_types,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 
@@ -956,7 +886,7 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : ioj::single_allocation_layout::ColumnLayouts<float, float, float> {
+struct Layout : single_allocation_layout::ColumnLayouts<float, float, float> {
     static constexpr std::size_t xs_column{0};
     static constexpr std::size_t ys_column{1};
     static constexpr std::size_t zs_column{2};
@@ -990,14 +920,13 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::vectors::Layout;
-    using view_type = ::ioj::native_soa_fixture::vectors::ResolvedView;
-    using const_view_type = ::ioj::native_soa_fixture::vectors::ResolvedConstView;
-    using soa_schema = ::ioj::native_soa_fixture::vectors::Schema;
+    using Layout = vectors::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
@@ -1011,13 +940,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<
-          ResolvedView,
-          ::ioj::native_soa_fixture::vectors::Layout::column_types,
-          ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::native_soa_fixture::vectors::Layout::column_types,
+        ioj::native_soa_fixture::vectors::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -1027,20 +954,17 @@ struct ResolvedView
 // Strided views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
-    using soa_schema = ::ioj::native_soa_fixture::vectors::Schema;
-    using Base = ioj::soa_storage_detail::StridedViewBase<float, Const>;
+struct ViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::StridedViewBase<float, Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::vectors::Layout;
-    using view_type = ::ioj::native_soa_fixture::vectors::View;
-    using const_view_type = ::ioj::native_soa_fixture::vectors::ConstView;
-    using resolved_view_type =
-        std::conditional_t<Const,
-                           ::ioj::native_soa_fixture::vectors::ResolvedConstView,
-                           ::ioj::native_soa_fixture::vectors::ResolvedView>;
+    using Layout = vectors::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     using State = std::conditional_t<Const,
-                                     ioj::soa_storage_detail::StorageState const,
-                                     ioj::soa_storage_detail::StorageState>;
+                                     soa_storage_detail::StorageState const,
+                                     soa_storage_detail::StorageState>;
     ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
         : Base{ioj::soa_storage_detail::make_strided_view<Base, Layout>(
               state, offset, count, Layout::xs_column, Layout::ys_column)} {}
@@ -1057,14 +981,10 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(std::is_trivially_copyable_v<ConstView>);
-struct View
-    : soa_storage_detail::ViewRowOperations<
-          View,
-          ::ioj::native_soa_fixture::vectors::Layout::column_types,
-          ViewImpl<false>> {
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::native_soa_fixture::vectors::Layout::column_types,
+        ioj::native_soa_fixture::vectors::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -1081,28 +1001,25 @@ static_assert(std::is_trivially_copyable_v<View>);
 // ys: float
 // zs: float
 struct Vectors
-    : protected ioj::native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<
-          Vectors,
-          ::ioj::native_soa_fixture::vectors::Layout::column_types,
-          ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::native_soa_fixture::vectors::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::native_soa_fixture::vectors::Layout;
+    : protected native_soa::StorageState
+    , soa_storage_detail::OwnerRowOperations<Vectors,
+                                             vectors::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = vectors::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = vectors::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::native_soa_fixture::vectors::View;
-    using ConstView = ::ioj::native_soa_fixture::vectors::ConstView;
+    using View = vectors::View;
+    using ConstView = vectors::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -1122,20 +1039,18 @@ struct Vectors
     auto operator=(Vectors&& other) -> Vectors& { return Operations::move_assign(*this, other); }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::native_soa_fixture::vectors::DataPointers<Byte>;
+    using DataPointers = vectors::DataPointers<Byte>;
   public:
     auto xs(this auto& self) { return self.view().xs(); }
     auto ys(this auto& self) { return self.view().ys(); }
     auto zs(this auto& self) { return self.view().zs(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        Vectors,
-        ::ioj::native_soa_fixture::vectors::Layout::column_types,
-        ioj::native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::
+        OwnerRowOperations<Vectors, vectors::Layout::column_types, native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 
@@ -1149,7 +1064,7 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : ioj::single_allocation_layout::ColumnLayouts<OddBytes, OddBytes> {
+struct Layout : single_allocation_layout::ColumnLayouts<OddBytes, OddBytes> {
     static constexpr std::size_t first_column{0};
     static constexpr std::size_t second_column{1};
 };
@@ -1181,14 +1096,13 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::odd_pairs::Layout;
-    using view_type = ::ioj::native_soa_fixture::odd_pairs::ResolvedView;
-    using const_view_type = ::ioj::native_soa_fixture::odd_pairs::ResolvedConstView;
-    using soa_schema = ::ioj::native_soa_fixture::odd_pairs::Schema;
+    using Layout = odd_pairs::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
@@ -1201,13 +1115,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<
-          ResolvedView,
-          ::ioj::native_soa_fixture::odd_pairs::Layout::column_types,
-          ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::native_soa_fixture::odd_pairs::Layout::column_types,
+        ioj::native_soa_fixture::odd_pairs::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -1217,17 +1129,14 @@ struct ResolvedView
 // Strided views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<OddBytes, Const> {
-    using soa_schema = ::ioj::native_soa_fixture::odd_pairs::Schema;
-    using Base = ioj::soa_storage_detail::StridedViewBase<OddBytes, Const>;
+struct ViewImpl : soa_storage_detail::StridedViewBase<OddBytes, Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::StridedViewBase<OddBytes, Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::odd_pairs::Layout;
-    using view_type = ::ioj::native_soa_fixture::odd_pairs::View;
-    using const_view_type = ::ioj::native_soa_fixture::odd_pairs::ConstView;
-    using resolved_view_type =
-        std::conditional_t<Const,
-                           ::ioj::native_soa_fixture::odd_pairs::ResolvedConstView,
-                           ::ioj::native_soa_fixture::odd_pairs::ResolvedView>;
+    using Layout = odd_pairs::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -1240,14 +1149,10 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(std::is_trivially_copyable_v<ConstView>);
-struct View
-    : soa_storage_detail::ViewRowOperations<
-          View,
-          ::ioj::native_soa_fixture::odd_pairs::Layout::column_types,
-          ViewImpl<false>> {
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::native_soa_fixture::odd_pairs::Layout::column_types,
+        ioj::native_soa_fixture::odd_pairs::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -1266,8 +1171,7 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout
-    : ioj::single_allocation_layout::ColumnLayouts<float, float, float, float, float, float> {
+struct Layout : single_allocation_layout::ColumnLayouts<float, float, float, float, float, float> {
     static constexpr std::size_t starts_xs_column{0};
     static constexpr std::size_t starts_ys_column{1};
     static constexpr std::size_t starts_zs_column{2};
@@ -1319,31 +1223,26 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::vector_groups::Layout;
-    using view_type = ::ioj::native_soa_fixture::vector_groups::ResolvedView;
-    using const_view_type = ::ioj::native_soa_fixture::vector_groups::ResolvedConstView;
-    using soa_schema = ::ioj::native_soa_fixture::vector_groups::Schema;
+    using Layout = vector_groups::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto view_starts() const
-        -> std::conditional_t<Const,
-                              ::ioj::native_soa_fixture::vectors::ResolvedConstView,
-                              ::ioj::native_soa_fixture::vectors::ResolvedView> {
+        -> std::conditional_t<Const, vectors::ResolvedConstView, vectors::ResolvedView> {
         return {this->columns_.starts_xs,
                 this->columns_.starts_ys,
                 this->columns_.starts_zs,
                 this->num()};
     }
     auto view_ends() const
-        -> std::conditional_t<Const,
-                              ::ioj::native_soa_fixture::vectors::ResolvedConstView,
-                              ::ioj::native_soa_fixture::vectors::ResolvedView> {
+        -> std::conditional_t<Const, vectors::ResolvedConstView, vectors::ResolvedView> {
         return {
             this->columns_.ends_xs, this->columns_.ends_ys, this->columns_.ends_zs, this->num()};
     }
@@ -1353,13 +1252,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<
-          ResolvedView,
-          ::ioj::native_soa_fixture::vector_groups::Layout::column_types,
-          ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::native_soa_fixture::vector_groups::Layout::column_types,
+        ioj::native_soa_fixture::vector_groups::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -1369,29 +1266,22 @@ struct ResolvedView
 // Strided views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
-    using soa_schema = ::ioj::native_soa_fixture::vector_groups::Schema;
-    using Base = ioj::soa_storage_detail::StridedViewBase<float, Const>;
+struct ViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::StridedViewBase<float, Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::vector_groups::Layout;
-    using view_type = ::ioj::native_soa_fixture::vector_groups::View;
-    using const_view_type = ::ioj::native_soa_fixture::vector_groups::ConstView;
-    using resolved_view_type =
-        std::conditional_t<Const,
-                           ::ioj::native_soa_fixture::vector_groups::ResolvedConstView,
-                           ::ioj::native_soa_fixture::vector_groups::ResolvedView>;
+    using Layout = vector_groups::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto view_starts() const -> std::conditional_t<Const,
-                                                   ::ioj::native_soa_fixture::vectors::ConstView,
-                                                   ::ioj::native_soa_fixture::vectors::View> {
+    auto view_starts() const -> std::conditional_t<Const, vectors::ConstView, vectors::View> {
         return {this->column(0).data(), this->byte_stride(), this->num()};
     }
-    auto view_ends() const -> std::conditional_t<Const,
-                                                 ::ioj::native_soa_fixture::vectors::ConstView,
-                                                 ::ioj::native_soa_fixture::vectors::View> {
+    auto view_ends() const -> std::conditional_t<Const, vectors::ConstView, vectors::View> {
         return {this->column(3).data(), this->byte_stride(), this->num()};
     }
 };
@@ -1400,14 +1290,10 @@ struct ConstView : ViewImpl<true> {
     using Base::Base;
 };
 static_assert(std::is_trivially_copyable_v<ConstView>);
-struct View
-    : soa_storage_detail::ViewRowOperations<
-          View,
-          ::ioj::native_soa_fixture::vector_groups::Layout::column_types,
-          ViewImpl<false>> {
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::native_soa_fixture::vector_groups::Layout::column_types,
+        ioj::native_soa_fixture::vector_groups::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -1427,7 +1313,7 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout
-    : ioj::single_allocation_layout::
+    : single_allocation_layout::
           ColumnLayouts<std::int32_t, float, float, float, float, float, float> {
     static constexpr std::size_t values_column{0};
     static constexpr std::size_t positions_xs_column{1};
@@ -1484,32 +1370,27 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::single_rows::Layout;
-    using view_type = ::ioj::native_soa_fixture::single_rows::ResolvedView;
-    using const_view_type = ::ioj::native_soa_fixture::single_rows::ResolvedConstView;
-    using soa_schema = ::ioj::native_soa_fixture::single_rows::Schema;
+    using Layout = single_rows::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto values() const { return this->column(this->columns_.values); }
     auto view_positions() const
-        -> std::conditional_t<Const,
-                              ::ioj::native_soa_fixture::vectors::ResolvedConstView,
-                              ::ioj::native_soa_fixture::vectors::ResolvedView> {
+        -> std::conditional_t<Const, vectors::ResolvedConstView, vectors::ResolvedView> {
         return {this->columns_.positions_xs,
                 this->columns_.positions_ys,
                 this->columns_.positions_zs,
                 this->num()};
     }
     auto view_velocities() const
-        -> std::conditional_t<Const,
-                              ::ioj::native_soa_fixture::vectors::ResolvedConstView,
-                              ::ioj::native_soa_fixture::vectors::ResolvedView> {
+        -> std::conditional_t<Const, vectors::ResolvedConstView, vectors::ResolvedView> {
         return {this->columns_.velocities_xs,
                 this->columns_.velocities_ys,
                 this->columns_.velocities_zs,
@@ -1521,13 +1402,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<
-          ResolvedView,
-          ::ioj::native_soa_fixture::single_rows::Layout::column_types,
-          ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::native_soa_fixture::single_rows::Layout::column_types,
+        ioj::native_soa_fixture::single_rows::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -1537,68 +1416,52 @@ struct ResolvedView
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = ::ioj::native_soa_fixture::single_rows::Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::single_rows::Layout;
-    using view_type = ::ioj::native_soa_fixture::single_rows::View;
-    using const_view_type = ::ioj::native_soa_fixture::single_rows::ConstView;
-    using resolved_view_type =
-        std::conditional_t<Const,
-                           ::ioj::native_soa_fixture::single_rows::ResolvedConstView,
-                           ::ioj::native_soa_fixture::single_rows::ResolvedView>;
+    using Layout = single_rows::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto values() const { return this->template column<std::int32_t>(Layout::values_column); }
-    auto view_positions() const -> std::conditional_t<Const,
-                                                      ::ioj::native_soa_fixture::vectors::ConstView,
-                                                      ::ioj::native_soa_fixture::vectors::View> {
-        return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const,
-                               ::ioj::native_soa_fixture::vectors::ConstView,
-                               ::ioj::native_soa_fixture::vectors::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::positions_xs_column,
-                    Layout::positions_ys_column);
+    auto view_positions() const -> std::conditional_t<Const, vectors::ConstView, vectors::View> {
+        return soa_storage_detail::
+            make_strided_view<std::conditional_t<Const, vectors::ConstView, vectors::View>, Layout>(
+                this->state_,
+                this->offset_,
+                this->num(),
+                Layout::positions_xs_column,
+                Layout::positions_ys_column);
     }
-    auto view_velocities() const
-        -> std::conditional_t<Const,
-                              ::ioj::native_soa_fixture::vectors::ConstView,
-                              ::ioj::native_soa_fixture::vectors::View> {
-        return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const,
-                               ::ioj::native_soa_fixture::vectors::ConstView,
-                               ::ioj::native_soa_fixture::vectors::View>,
-            Layout>(this->state_,
-                    this->offset_,
-                    this->num(),
-                    Layout::velocities_xs_column,
-                    Layout::velocities_ys_column);
+    auto view_velocities() const -> std::conditional_t<Const, vectors::ConstView, vectors::View> {
+        return soa_storage_detail::
+            make_strided_view<std::conditional_t<Const, vectors::ConstView, vectors::View>, Layout>(
+                this->state_,
+                this->offset_,
+                this->num(),
+                Layout::velocities_xs_column,
+                Layout::velocities_ys_column);
     }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View
-    : soa_storage_detail::ViewRowOperations<
-          View,
-          ::ioj::native_soa_fixture::single_rows::Layout::column_types,
-          ViewImpl<false>> {
+static_assert(soa_storage_detail::validate_compact_view<ConstView>());
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::native_soa_fixture::single_rows::Layout::column_types,
+        ioj::native_soa_fixture::single_rows::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+static_assert(soa_storage_detail::validate_compact_view<View>());
 
 } // namespace single_rows
 
@@ -1614,28 +1477,25 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // velocities_ys: float
 // velocities_zs: float
 struct SingleRows
-    : protected ioj::native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<
-          SingleRows,
-          ::ioj::native_soa_fixture::single_rows::Layout::column_types,
-          ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::native_soa_fixture::single_rows::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::native_soa_fixture::single_rows::Layout;
+    : protected native_soa::StorageState
+    , soa_storage_detail::OwnerRowOperations<SingleRows,
+                                             single_rows::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = single_rows::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = single_rows::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::native_soa_fixture::single_rows::View;
-    using ConstView = ::ioj::native_soa_fixture::single_rows::ConstView;
+    using View = single_rows::View;
+    using ConstView = single_rows::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -1657,20 +1517,19 @@ struct SingleRows
     }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::native_soa_fixture::single_rows::DataPointers<Byte>;
+    using DataPointers = single_rows::DataPointers<Byte>;
   public:
     auto values(this auto& self) { return self.view().values(); }
     auto view_positions(this auto& self) { return self.view().view_positions(); }
     auto view_velocities(this auto& self) { return self.view().view_velocities(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        SingleRows,
-        ::ioj::native_soa_fixture::single_rows::Layout::column_types,
-        ioj::native_soa::StorageOperations>;
+    using RowOperations = soa_storage_detail::OwnerRowOperations<SingleRows,
+                                                                 single_rows::Layout::column_types,
+                                                                 native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 
@@ -1685,18 +1544,18 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout
-    : ioj::single_allocation_layout::ColumnLayouts<std::uint8_t,
-                                                   OddBytes,
-                                                   OddBytes,
-                                                   Aligned32,
-                                                   float,
-                                                   float,
-                                                   float,
-                                                   float,
-                                                   float,
-                                                   float,
-                                                   Aligned64,
-                                                   Aligned256> {
+    : single_allocation_layout::ColumnLayouts<std::uint8_t,
+                                              OddBytes,
+                                              OddBytes,
+                                              Aligned32,
+                                              float,
+                                              float,
+                                              float,
+                                              float,
+                                              float,
+                                              float,
+                                              Aligned64,
+                                              Aligned256> {
     static constexpr std::size_t bytes_column{0};
     static constexpr std::size_t odd_first_column{1};
     static constexpr std::size_t odd_second_column{2};
@@ -1774,30 +1633,25 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::single_alignment_rows::Layout;
-    using view_type = ::ioj::native_soa_fixture::single_alignment_rows::ResolvedView;
-    using const_view_type = ::ioj::native_soa_fixture::single_alignment_rows::ResolvedConstView;
-    using soa_schema = ::ioj::native_soa_fixture::single_alignment_rows::Schema;
+    using Layout = single_alignment_rows::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto bytes() const { return this->column(this->columns_.bytes); }
     auto view_odd() const
-        -> std::conditional_t<Const,
-                              ::ioj::native_soa_fixture::odd_pairs::ResolvedConstView,
-                              ::ioj::native_soa_fixture::odd_pairs::ResolvedView> {
+        -> std::conditional_t<Const, odd_pairs::ResolvedConstView, odd_pairs::ResolvedView> {
         return {this->columns_.odd_first, this->columns_.odd_second, this->num()};
     }
     auto aligned32() const { return this->column(this->columns_.aligned32); }
-    auto view_nested() const
-        -> std::conditional_t<Const,
-                              ::ioj::native_soa_fixture::vector_groups::ResolvedConstView,
-                              ::ioj::native_soa_fixture::vector_groups::ResolvedView> {
+    auto view_nested() const -> std::
+        conditional_t<Const, vector_groups::ResolvedConstView, vector_groups::ResolvedView> {
         return {this->columns_.nested_starts_xs,
                 this->columns_.nested_starts_ys,
                 this->columns_.nested_starts_zs,
@@ -1814,13 +1668,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<
-          ResolvedView,
-          ::ioj::native_soa_fixture::single_alignment_rows::Layout::column_types,
-          ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::native_soa_fixture::single_alignment_rows::Layout::column_types,
+        ioj::native_soa_fixture::single_alignment_rows::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -1830,29 +1682,22 @@ struct ResolvedView
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = ::ioj::native_soa_fixture::single_alignment_rows::Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::single_alignment_rows::Layout;
-    using view_type = ::ioj::native_soa_fixture::single_alignment_rows::View;
-    using const_view_type = ::ioj::native_soa_fixture::single_alignment_rows::ConstView;
-    using resolved_view_type =
-        std::conditional_t<Const,
-                           ::ioj::native_soa_fixture::single_alignment_rows::ResolvedConstView,
-                           ::ioj::native_soa_fixture::single_alignment_rows::ResolvedView>;
+    using Layout = single_alignment_rows::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
     auto bytes() const { return this->template column<std::uint8_t>(Layout::bytes_column); }
-    auto view_odd() const -> std::conditional_t<Const,
-                                                ::ioj::native_soa_fixture::odd_pairs::ConstView,
-                                                ::ioj::native_soa_fixture::odd_pairs::View> {
-        return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const,
-                               ::ioj::native_soa_fixture::odd_pairs::ConstView,
-                               ::ioj::native_soa_fixture::odd_pairs::View>,
+    auto view_odd() const -> std::conditional_t<Const, odd_pairs::ConstView, odd_pairs::View> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, odd_pairs::ConstView, odd_pairs::View>,
             Layout>(this->state_,
                     this->offset_,
                     this->num(),
@@ -1861,13 +1706,9 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     }
     auto aligned32() const { return this->template column<Aligned32>(Layout::aligned32_column); }
     auto view_nested() const
-        -> std::conditional_t<Const,
-                              ::ioj::native_soa_fixture::vector_groups::ConstView,
-                              ::ioj::native_soa_fixture::vector_groups::View> {
-        return ioj::soa_storage_detail::make_strided_view<
-            std::conditional_t<Const,
-                               ::ioj::native_soa_fixture::vector_groups::ConstView,
-                               ::ioj::native_soa_fixture::vector_groups::View>,
+        -> std::conditional_t<Const, vector_groups::ConstView, vector_groups::View> {
+        return soa_storage_detail::make_strided_view<
+            std::conditional_t<Const, vector_groups::ConstView, vector_groups::View>,
             Layout>(this->state_,
                     this->offset_,
                     this->num(),
@@ -1881,20 +1722,16 @@ struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View
-    : soa_storage_detail::ViewRowOperations<
-          View,
-          ::ioj::native_soa_fixture::single_alignment_rows::Layout::column_types,
-          ViewImpl<false>> {
+static_assert(soa_storage_detail::validate_compact_view<ConstView>());
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::native_soa_fixture::single_alignment_rows::Layout::column_types,
+        ioj::native_soa_fixture::single_alignment_rows::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+static_assert(soa_storage_detail::validate_compact_view<View>());
 
 } // namespace single_alignment_rows
 
@@ -1915,28 +1752,25 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // aligned64: Aligned64
 // aligned256: Aligned256
 struct SingleAlignmentRows
-    : protected ioj::native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<
-          SingleAlignmentRows,
-          ::ioj::native_soa_fixture::single_alignment_rows::Layout::column_types,
-          ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::native_soa_fixture::single_alignment_rows::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::native_soa_fixture::single_alignment_rows::Layout;
+    : protected native_soa::StorageState
+    , soa_storage_detail::OwnerRowOperations<SingleAlignmentRows,
+                                             single_alignment_rows::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = single_alignment_rows::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = single_alignment_rows::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::native_soa_fixture::single_alignment_rows::View;
-    using ConstView = ::ioj::native_soa_fixture::single_alignment_rows::ConstView;
+    using View = single_alignment_rows::View;
+    using ConstView = single_alignment_rows::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -1958,7 +1792,7 @@ struct SingleAlignmentRows
     }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::native_soa_fixture::single_alignment_rows::DataPointers<Byte>;
+    using DataPointers = single_alignment_rows::DataPointers<Byte>;
   public:
     auto bytes(this auto& self) { return self.view().bytes(); }
     auto view_odd(this auto& self) { return self.view().view_odd(); }
@@ -1966,15 +1800,15 @@ struct SingleAlignmentRows
     auto view_nested(this auto& self) { return self.view().view_nested(); }
     auto aligned64(this auto& self) { return self.view().aligned64(); }
     auto aligned256(this auto& self) { return self.view().aligned256(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        SingleAlignmentRows,
-        ::ioj::native_soa_fixture::single_alignment_rows::Layout::column_types,
-        ioj::native_soa::StorageOperations>;
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<SingleAlignmentRows,
+                                               single_alignment_rows::Layout::column_types,
+                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 
@@ -1995,7 +1829,7 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : ioj::single_allocation_layout::ColumnLayouts<float, float> {
+struct Layout : single_allocation_layout::ColumnLayouts<float, float> {
     static constexpr std::size_t xs_column{0};
     static constexpr std::size_t ys_column{1};
 };
@@ -2027,14 +1861,13 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::api_coordinates::Layout;
-    using view_type = ::ioj::native_soa_fixture::api_coordinates::ResolvedView;
-    using const_view_type = ::ioj::native_soa_fixture::api_coordinates::ResolvedConstView;
-    using soa_schema = ::ioj::native_soa_fixture::api_coordinates::Schema;
+    using Layout = api_coordinates::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
@@ -2053,13 +1886,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     }
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<
-          ResolvedView,
-          ::ioj::native_soa_fixture::api_coordinates::Layout::column_types,
-          ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::native_soa_fixture::api_coordinates::Layout::column_types,
+        ioj::native_soa_fixture::api_coordinates::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -2085,17 +1916,14 @@ struct ResolvedView
 // Strided views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
-    using soa_schema = ::ioj::native_soa_fixture::api_coordinates::Schema;
-    using Base = ioj::soa_storage_detail::StridedViewBase<float, Const>;
+struct ViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::StridedViewBase<float, Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::api_coordinates::Layout;
-    using view_type = ::ioj::native_soa_fixture::api_coordinates::View;
-    using const_view_type = ::ioj::native_soa_fixture::api_coordinates::ConstView;
-    using resolved_view_type =
-        std::conditional_t<Const,
-                           ::ioj::native_soa_fixture::api_coordinates::ResolvedConstView,
-                           ::ioj::native_soa_fixture::api_coordinates::ResolvedView>;
+    using Layout = api_coordinates::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -2114,14 +1942,10 @@ struct ConstView : ViewImpl<true> {
     }
 };
 static_assert(std::is_trivially_copyable_v<ConstView>);
-struct View
-    : soa_storage_detail::ViewRowOperations<
-          View,
-          ::ioj::native_soa_fixture::api_coordinates::Layout::column_types,
-          ViewImpl<false>> {
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::native_soa_fixture::api_coordinates::Layout::column_types,
+        ioj::native_soa_fixture::api_coordinates::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -2150,7 +1974,7 @@ enum class ApiField : std::uint8_t {
     Values = 0,
     Count = static_cast<std::uint8_t>(Values) + 1,
 };
-struct ApiMask : ioj::FieldMask<ApiField, static_cast<std::size_t>(ApiField::Count)> {
+struct ApiMask : FieldMask<ApiField, static_cast<std::size_t>(ApiField::Count)> {
     using Base = ioj::FieldMask<ApiField, static_cast<std::size_t>(ApiField::Count)>;
 
     using Base::Base;
@@ -2170,7 +1994,7 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : ioj::single_allocation_layout::ColumnLayouts<float, ApiMask, float, float> {
+struct Layout : single_allocation_layout::ColumnLayouts<float, ApiMask, float, float> {
     static constexpr std::size_t values_column{0};
     static constexpr std::size_t masks_column{1};
     static constexpr std::size_t positions_xs_column{2};
@@ -2207,14 +2031,14 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
     using Base =
         ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::api_owner::Layout;
-    using view_type = ::ioj::native_soa_fixture::api_owner::ResolvedView;
-    using const_view_type = ::ioj::native_soa_fixture::api_owner::ResolvedConstView;
-    using soa_schema = ::ioj::native_soa_fixture::api_owner::Schema;
+    using Layout = ioj::native_soa_fixture::api_owner::Layout;
+    using view_type = ioj::native_soa_fixture::api_owner::ResolvedView;
+    using const_view_type = ioj::native_soa_fixture::api_owner::ResolvedConstView;
+    using soa_schema = ioj::native_soa_fixture::api_owner::Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
@@ -2223,8 +2047,8 @@ struct ResolvedViewImpl
     auto masks() const { return this->column(this->columns_.masks); }
     auto view_positions() const
         -> std::conditional_t<Const,
-                              ::ioj::native_soa_fixture::api_coordinates::ResolvedConstView,
-                              ::ioj::native_soa_fixture::api_coordinates::ResolvedView> {
+                              ioj::native_soa_fixture::api_coordinates::ResolvedConstView,
+                              ioj::native_soa_fixture::api_coordinates::ResolvedView> {
         return {this->columns_.positions_xs, this->columns_.positions_ys, this->num()};
     }
 };
@@ -2236,13 +2060,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     float first_x() const;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<
-          ResolvedView,
-          ::ioj::native_soa_fixture::api_owner::Layout::column_types,
-          ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::native_soa_fixture::api_owner::Layout::column_types,
+        ioj::native_soa_fixture::api_owner::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -2266,17 +2088,17 @@ struct ResolvedView
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = ::ioj::native_soa_fixture::api_owner::Schema;
+struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = ioj::native_soa_fixture::api_owner::Schema;
     using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::api_owner::Layout;
-    using view_type = ::ioj::native_soa_fixture::api_owner::View;
-    using const_view_type = ::ioj::native_soa_fixture::api_owner::ConstView;
+    using Layout = ioj::native_soa_fixture::api_owner::Layout;
+    using view_type = ioj::native_soa_fixture::api_owner::View;
+    using const_view_type = ioj::native_soa_fixture::api_owner::ConstView;
     using resolved_view_type =
         std::conditional_t<Const,
-                           ::ioj::native_soa_fixture::api_owner::ResolvedConstView,
-                           ::ioj::native_soa_fixture::api_owner::ResolvedView>;
+                           ioj::native_soa_fixture::api_owner::ResolvedConstView,
+                           ioj::native_soa_fixture::api_owner::ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -2285,12 +2107,12 @@ struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
     auto masks() const { return this->template column<ApiMask>(Layout::masks_column); }
     auto view_positions() const
         -> std::conditional_t<Const,
-                              ::ioj::native_soa_fixture::api_coordinates::ConstView,
-                              ::ioj::native_soa_fixture::api_coordinates::View> {
+                              ioj::native_soa_fixture::api_coordinates::ConstView,
+                              ioj::native_soa_fixture::api_coordinates::View> {
         return ioj::soa_storage_detail::make_strided_view<
             std::conditional_t<Const,
-                               ::ioj::native_soa_fixture::api_coordinates::ConstView,
-                               ::ioj::native_soa_fixture::api_coordinates::View>,
+                               ioj::native_soa_fixture::api_coordinates::ConstView,
+                               ioj::native_soa_fixture::api_coordinates::View>,
             Layout>(this->state_,
                     this->offset_,
                     this->num(),
@@ -2305,15 +2127,12 @@ struct NATIVE_SOA_FIXTURE_API ConstView : ViewImpl<true> {
     [[nodiscard]] constexpr int schema_version() const { return 7; }
     float first_x() const;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
+static_assert(soa_storage_detail::validate_compact_view<ConstView>());
 struct NATIVE_SOA_FIXTURE_API View
-    : soa_storage_detail::ViewRowOperations<
-          View,
-          ::ioj::native_soa_fixture::api_owner::Layout::column_types,
-          ViewImpl<false>> {
+    : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::native_soa_fixture::api_owner::Layout::column_types,
+        ioj::native_soa_fixture::api_owner::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -2332,7 +2151,7 @@ struct NATIVE_SOA_FIXTURE_API View
     [[nodiscard]] constexpr auto mutable_version() -> int { return 8; }
     void assign_first(float value) { this->values()[0] = value; }
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+static_assert(soa_storage_detail::validate_compact_view<View>());
 
 } // namespace api_owner
 
@@ -2345,28 +2164,25 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // positions_xs: float
 // positions_ys: float
 struct NATIVE_SOA_FIXTURE_API ApiOwner
-    : protected ioj::native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<
-          ApiOwner,
-          ::ioj::native_soa_fixture::api_owner::Layout::column_types,
-          ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::native_soa_fixture::api_owner::Schema;
+    : protected native_soa::StorageState
+    , soa_storage_detail::OwnerRowOperations<ApiOwner,
+                                             api_owner::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = ioj::native_soa_fixture::api_owner::Schema;
     using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::native_soa_fixture::api_owner::Layout;
+    using Layout = ioj::native_soa_fixture::api_owner::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::native_soa_fixture::api_owner::View;
-    using ConstView = ::ioj::native_soa_fixture::api_owner::ConstView;
+    using View = ioj::native_soa_fixture::api_owner::View;
+    using ConstView = ioj::native_soa_fixture::api_owner::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -2386,14 +2202,14 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
     auto operator=(ApiOwner&& other) -> ApiOwner& { return Operations::move_assign(*this, other); }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::native_soa_fixture::api_owner::DataPointers<Byte>;
+    using DataPointers = ioj::native_soa_fixture::api_owner::DataPointers<Byte>;
   public:
     auto values(this auto& self) { return self.view().values(); }
     auto masks(this auto& self) { return self.view().masks(); }
     auto view_positions(this auto& self) { return self.view().view_positions(); }
     using RowOperations = ioj::soa_storage_detail::OwnerRowOperations<
         ApiOwner,
-        ::ioj::native_soa_fixture::api_owner::Layout::column_types,
+        ioj::native_soa_fixture::api_owner::Layout::column_types,
         ioj::native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
@@ -2433,7 +2249,7 @@ struct NATIVE_SOA_FIXTURE_API ApiOwner
     Value total() const;
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend ioj::soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 
@@ -2447,7 +2263,7 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : ioj::single_allocation_layout::ColumnLayouts<float, float> {
+struct Layout : single_allocation_layout::ColumnLayouts<float, float> {
     static constexpr std::size_t xs_column{0};
     static constexpr std::size_t ys_column{1};
 };
@@ -2479,14 +2295,13 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::equivalent_owner::Layout;
-    using view_type = ::ioj::native_soa_fixture::equivalent_owner::ResolvedView;
-    using const_view_type = ::ioj::native_soa_fixture::equivalent_owner::ResolvedConstView;
-    using soa_schema = ::ioj::native_soa_fixture::equivalent_owner::Schema;
+    using Layout = equivalent_owner::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
@@ -2504,13 +2319,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     }
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<
-          ResolvedView,
-          ::ioj::native_soa_fixture::equivalent_owner::Layout::column_types,
-          ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::native_soa_fixture::equivalent_owner::Layout::column_types,
+        ioj::native_soa_fixture::equivalent_owner::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -2528,20 +2341,17 @@ struct ResolvedView
 // Strided views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
-    using soa_schema = ::ioj::native_soa_fixture::equivalent_owner::Schema;
-    using Base = ioj::soa_storage_detail::StridedViewBase<float, Const>;
+struct ViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::StridedViewBase<float, Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::equivalent_owner::Layout;
-    using view_type = ::ioj::native_soa_fixture::equivalent_owner::View;
-    using const_view_type = ::ioj::native_soa_fixture::equivalent_owner::ConstView;
-    using resolved_view_type =
-        std::conditional_t<Const,
-                           ::ioj::native_soa_fixture::equivalent_owner::ResolvedConstView,
-                           ::ioj::native_soa_fixture::equivalent_owner::ResolvedView>;
+    using Layout = equivalent_owner::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     using State = std::conditional_t<Const,
-                                     ioj::soa_storage_detail::StorageState const,
-                                     ioj::soa_storage_detail::StorageState>;
+                                     soa_storage_detail::StorageState const,
+                                     soa_storage_detail::StorageState>;
     ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
         : Base{ioj::soa_storage_detail::make_strided_view<Base, Layout>(
               state, offset, count, Layout::xs_column, Layout::ys_column)} {}
@@ -2562,14 +2372,10 @@ struct ConstView : ViewImpl<true> {
     }
 };
 static_assert(std::is_trivially_copyable_v<ConstView>);
-struct View
-    : soa_storage_detail::ViewRowOperations<
-          View,
-          ::ioj::native_soa_fixture::equivalent_owner::Layout::column_types,
-          ViewImpl<false>> {
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::native_soa_fixture::equivalent_owner::Layout::column_types,
+        ioj::native_soa_fixture::equivalent_owner::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -2593,28 +2399,25 @@ static_assert(std::is_trivially_copyable_v<View>);
 // xs: float
 // ys: float
 struct EquivalentOwner
-    : protected ioj::native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<
-          EquivalentOwner,
-          ::ioj::native_soa_fixture::equivalent_owner::Layout::column_types,
-          ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::native_soa_fixture::equivalent_owner::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::native_soa_fixture::equivalent_owner::Layout;
+    : protected native_soa::StorageState
+    , soa_storage_detail::OwnerRowOperations<EquivalentOwner,
+                                             equivalent_owner::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = equivalent_owner::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = equivalent_owner::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::native_soa_fixture::equivalent_owner::View;
-    using ConstView = ::ioj::native_soa_fixture::equivalent_owner::ConstView;
+    using View = equivalent_owner::View;
+    using ConstView = equivalent_owner::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -2636,14 +2439,14 @@ struct EquivalentOwner
     }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::native_soa_fixture::equivalent_owner::DataPointers<Byte>;
+    using DataPointers = equivalent_owner::DataPointers<Byte>;
   public:
     auto xs(this auto& self) { return self.view().xs(); }
     auto ys(this auto& self) { return self.view().ys(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        EquivalentOwner,
-        ::ioj::native_soa_fixture::equivalent_owner::Layout::column_types,
-        ioj::native_soa::StorageOperations>;
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<EquivalentOwner,
+                                               equivalent_owner::Layout::column_types,
+                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index, ApiPair const value) { set(index, (value.x), (value.y)); }
@@ -2655,7 +2458,7 @@ struct EquivalentOwner
     }
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 
@@ -2673,7 +2476,7 @@ struct ResolvedConstView;
 /* **************************************** */
 // Layout
 /* **************************************** */
-struct Layout : ioj::single_allocation_layout::ColumnLayouts<float, float, float> {
+struct Layout : single_allocation_layout::ColumnLayouts<float, float, float> {
     static constexpr std::size_t horizontal_column{0};
     static constexpr std::size_t vertical_column{1};
     static constexpr std::size_t depth_column{2};
@@ -2707,14 +2510,13 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::accessor_owner::Layout;
-    using view_type = ::ioj::native_soa_fixture::accessor_owner::ResolvedView;
-    using const_view_type = ::ioj::native_soa_fixture::accessor_owner::ResolvedConstView;
-    using soa_schema = ::ioj::native_soa_fixture::accessor_owner::Schema;
+    using Layout = accessor_owner::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
@@ -2733,13 +2535,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     }
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<
-          ResolvedView,
-          ::ioj::native_soa_fixture::accessor_owner::Layout::column_types,
-          ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::native_soa_fixture::accessor_owner::Layout::column_types,
+        ioj::native_soa_fixture::accessor_owner::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -2757,20 +2557,17 @@ struct ResolvedView
 // Strided views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::StridedViewBase<float, Const> {
-    using soa_schema = ::ioj::native_soa_fixture::accessor_owner::Schema;
-    using Base = ioj::soa_storage_detail::StridedViewBase<float, Const>;
+struct ViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::StridedViewBase<float, Const>;
     using Base::Base;
-    using Layout = ::ioj::native_soa_fixture::accessor_owner::Layout;
-    using view_type = ::ioj::native_soa_fixture::accessor_owner::View;
-    using const_view_type = ::ioj::native_soa_fixture::accessor_owner::ConstView;
-    using resolved_view_type =
-        std::conditional_t<Const,
-                           ::ioj::native_soa_fixture::accessor_owner::ResolvedConstView,
-                           ::ioj::native_soa_fixture::accessor_owner::ResolvedView>;
+    using Layout = accessor_owner::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     using State = std::conditional_t<Const,
-                                     ioj::soa_storage_detail::StorageState const,
-                                     ioj::soa_storage_detail::StorageState>;
+                                     soa_storage_detail::StorageState const,
+                                     soa_storage_detail::StorageState>;
     ViewImpl(State* state, std::uint32_t offset, std::uint32_t count)
         : Base{ioj::soa_storage_detail::make_strided_view<Base, Layout>(
               state, offset, count, Layout::horizontal_column, Layout::vertical_column)} {}
@@ -2792,14 +2589,10 @@ struct ConstView : ViewImpl<true> {
     }
 };
 static_assert(std::is_trivially_copyable_v<ConstView>);
-struct View
-    : soa_storage_detail::ViewRowOperations<
-          View,
-          ::ioj::native_soa_fixture::accessor_owner::Layout::column_types,
-          ViewImpl<false>> {
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::native_soa_fixture::accessor_owner::Layout::column_types,
+        ioj::native_soa_fixture::accessor_owner::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -2824,28 +2617,25 @@ static_assert(std::is_trivially_copyable_v<View>);
 // vertical: float
 // depth: float
 struct AccessorOwner
-    : protected ioj::native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<
-          AccessorOwner,
-          ::ioj::native_soa_fixture::accessor_owner::Layout::column_types,
-          ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::native_soa_fixture::accessor_owner::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::native_soa_fixture::accessor_owner::Layout;
+    : protected native_soa::StorageState
+    , soa_storage_detail::OwnerRowOperations<AccessorOwner,
+                                             accessor_owner::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = accessor_owner::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = accessor_owner::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::native_soa_fixture::accessor_owner::View;
-    using ConstView = ::ioj::native_soa_fixture::accessor_owner::ConstView;
+    using View = accessor_owner::View;
+    using ConstView = accessor_owner::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -2867,15 +2657,15 @@ struct AccessorOwner
     }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::native_soa_fixture::accessor_owner::DataPointers<Byte>;
+    using DataPointers = accessor_owner::DataPointers<Byte>;
   public:
     auto horizontal(this auto& self) { return self.view().horizontal(); }
     auto vertical(this auto& self) { return self.view().vertical(); }
     auto depth(this auto& self) { return self.view().depth(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        AccessorOwner,
-        ::ioj::native_soa_fixture::accessor_owner::Layout::column_types,
-        ioj::native_soa::StorageOperations>;
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<AccessorOwner,
+                                               accessor_owner::Layout::column_types,
+                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
     void set(size_type index, Vector3f const value) {
@@ -2889,7 +2679,7 @@ struct AccessorOwner
     }
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::native_soa_fixture

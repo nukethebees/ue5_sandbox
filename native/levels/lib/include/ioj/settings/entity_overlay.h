@@ -8,6 +8,7 @@
 #include "ioj/settings/soft_target.h"
 #include "ioj/vector.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -37,7 +38,7 @@ struct EntityOverlay {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, EntityOverlay> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::enabled) {
             return (self.enabled);
@@ -137,15 +138,14 @@ struct EntityOverlay {
 } // namespace ioj::settings
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::settings::EntityOverlay::Field>() noexcept
-    -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<settings::EntityOverlay::Field>() noexcept -> std::size_t {
     return 12;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::settings::EntityOverlay::Field, ioj::Name>{
-    ioj::PackedStrings{
-        "enabled\000maximum_range\000bar_size_pixels\000screen_offset_pixels\000minimum_bar_"
-        "scale\000maximum_bar_scale\000inset_pixels\000maximum_inset_height_ratio\000objective_"
-        "frame_pixels\000objective_bar_height_scale\000screen_edge_padding_pixels\000soft_target",
-        std::array<std::uint8_t, 13>{0, 8, 22, 38, 59, 77, 95, 108, 135, 158, 185, 212, 224}}};
+inline constexpr auto enum_strings<settings::EntityOverlay::Field, Name>{PackedStrings{
+    "enabled\000maximum_range\000bar_size_pixels\000screen_offset_pixels\000minimum_bar_"
+    "scale\000maximum_bar_scale\000inset_pixels\000maximum_inset_height_ratio\000objective_frame_"
+    "pixels\000objective_bar_height_scale\000screen_edge_padding_pixels\000soft_target",
+    std::array<std::uint8_t, 13>{0, 8, 22, 38, 59, 77, 95, 108, 135, 158, 185, 212, 224}}};
+} // namespace ioj

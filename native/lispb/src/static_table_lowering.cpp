@@ -26,12 +26,10 @@ namespace lispb::codegen::detail {
 namespace {
 
 auto static_array_type(CppIR& ir, CppTypeId element_type) -> CppTypeId {
-    auto const nested{ir.types.dependencies(element_type)};
-    std::vector<TypeDependencyId> dependencies{nested.begin(), nested.end()};
-    dependencies.push_back(ir.types.dependency("TStaticArray", "Containers/StaticArray.h"));
-    return ir.types.intern("TStaticArray<" + std::string{ir.types.spelling(element_type)} +
-                               ", num_rows>",
-                           dependencies);
+    return ir.types.template_type(
+        ir.types.named("TStaticArray",
+                       {ir.types.dependency("TStaticArray", "Containers/StaticArray.h")}),
+        {element_type, ir.types.named("num_rows")});
 }
 
 auto group_getter(LoweringContext& context, StaticTableGroupId group) -> NodeId {

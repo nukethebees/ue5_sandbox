@@ -28,7 +28,7 @@ using ioj::to_serialized_string;
     try_parse_serialized_ship_laser_mode(std::string_view const value) noexcept
     -> std::optional<ShipLaserMode> {
     std::array<std::string_view, 3> constexpr names{"single", "double", "hyper"};
-    return ioj::try_parse_enum<ShipLaserMode>(value, names);
+    return try_parse_enum<ShipLaserMode>(value, names);
 }
 
 } // namespace ioj::sim
@@ -44,7 +44,7 @@ struct EnumTraits<sim::ShipLaserMode> {
         sim::ShipLaserMode::Single, sim::ShipLaserMode::Double, sim::ShipLaserMode::Hyper};
 };
 
-} // namespace ioj
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::sim::ShipLaserMode, ioj::Serialized>{
-    ioj::PackedStrings{"single\000double\000hyper", std::array<std::uint8_t, 4>{0, 7, 14, 20}}};
+inline constexpr auto enum_strings<sim::ShipLaserMode, Serialized>{
+    PackedStrings{"single\000double\000hyper", std::array<std::uint8_t, 4>{0, 7, 14, 20}}};
+} // namespace ioj

@@ -135,9 +135,15 @@ auto fields_body(LoweringContext& context, DeclarationHandle const record, bool 
     if (constructing) {
         for (auto const field : fields) {
             auto const name{context.text(members.name[members.index(field)])};
-            body.add(ir.variable(std::format("std::optional<decltype(value_type::{})>", name),
-                                 "value_" + name,
-                                 ir.literal("")));
+            body.add(ir.variable(
+                ir.types.template_type(
+                    ir.types.named("std::optional"),
+                    {ir.types.decorate(
+                        ir.types.decorate(ir.types.named("value_type"), "", "::" + name),
+                        "decltype(",
+                        ")")}),
+                "value_" + name,
+                ir.literal("")));
         }
     }
 
@@ -316,13 +322,14 @@ void lower_record_reader(LoweringContext& context,
     }
     if (!records.s7_positional[row]) {
         if (records.generate_visitor[row]) {
-            decls.add(ir.using_declaration(ir.strings.intern("Field"),
-                                           ir.types.intern("value_type::Field")),
+            decls.add(ir.using_declaration(
+                          ir.strings.intern("Field"),
+                          ir.types.decorate(ir.types.named("value_type"), "", "::Field")),
                       2);
         } else {
             decls.add(ir.enumeration(
                           ir.strings.intern("Field"),
-                          ir.types.intern(values.size() <= 256 ? "std::uint8_t" : "std::uint32_t"),
+                          ir.types.named(values.size() <= 256 ? "std::uint8_t" : "std::uint32_t"),
                           values),
                       2);
         }
@@ -339,7 +346,8 @@ void lower_record_reader(LoweringContext& context,
             }
             names.push_back(ir.string_literal(record_reader::field_name(context, field)));
             if (members.s7[index].required) {
-                required.push_back(ir.named("Field::" + context.text(members.name[index])));
+                required.push_back(ir.type_reference(ir.types.decorate(
+                    ir.types.named("Field"), "", "::" + context.text(members.name[index]))));
             }
         }
         auto const array_type{ir.types.template_type(

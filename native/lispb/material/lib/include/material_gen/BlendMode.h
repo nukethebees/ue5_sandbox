@@ -7,6 +7,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -66,9 +67,9 @@ namespace ioj {
 template <>
 inline constexpr MinMax<material_synth::BlendMode> enum_range<material_synth::BlendMode>{
     material_synth::BlendMode::additive, material_synth::BlendMode::alpha_composite};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::material_synth::BlendMode, ioj::Serialized>{
-    ioj::PackedStrings{"additive\000translucent\000opaque\000masked\000alpha-composite",
-                       std::array<std::uint8_t, 6>{0, 9, 21, 28, 35, 51}}};
+inline constexpr auto enum_strings<material_synth::BlendMode, Serialized>{
+    PackedStrings{"additive\000translucent\000opaque\000masked\000alpha-composite",
+                  std::array<std::uint8_t, 6>{0, 9, 21, 28, 35, 51}}};
+} // namespace ioj

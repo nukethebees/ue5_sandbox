@@ -37,8 +37,8 @@ template <>
 inline constexpr MinMax<lispb::codegen::ChildOccurrenceKind>
     enum_range<lispb::codegen::ChildOccurrenceKind>{lispb::codegen::ChildOccurrenceKind::value,
                                                     lispb::codegen::ChildOccurrenceKind::reserved};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::lispb::codegen::ChildOccurrenceKind, ioj::Serialized>{
-    ioj::PackedStrings{"value\000reserved", std::array<std::uint8_t, 3>{0, 6, 15}}};
+inline constexpr auto enum_strings<lispb::codegen::ChildOccurrenceKind, Serialized>{
+    PackedStrings{"value\000reserved", std::array<std::uint8_t, 3>{0, 6, 15}}};
+} // namespace ioj

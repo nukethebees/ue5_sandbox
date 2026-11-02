@@ -7,6 +7,9 @@
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
 
+#include <array>
+#include <cstdint>
+
 namespace ioj::layout {
 using DeclarationKindUnderlying = int;
 
@@ -37,12 +40,12 @@ namespace ioj {
 template <>
 inline constexpr MinMax<layout::DeclarationKind> enum_range<layout::DeclarationKind>{
     layout::DeclarationKind::external, layout::DeclarationKind::facade};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::layout::DeclarationKind, ioj::Display>{
-    ioj::PackedStrings{"external\000enum\000integer scalar\000linear quantized\000integer "
-                       "varint\000fixed point\000mini float\000optional sentinel\000optional "
-                       "presence bit\000packed record\000record\000union\000SoA\000table\000facade",
-                       std::array<std::uint8_t, 16>{
-                           0, 9, 14, 29, 46, 61, 73, 84, 102, 124, 138, 145, 151, 155, 161, 168}}};
+inline constexpr auto enum_strings<layout::DeclarationKind, Display>{
+    PackedStrings{"external\000enum\000integer scalar\000linear quantized\000integer "
+                  "varint\000fixed point\000mini float\000optional sentinel\000optional presence "
+                  "bit\000packed record\000record\000union\000SoA\000table\000facade",
+                  std::array<std::uint8_t, 16>{
+                      0, 9, 14, 29, 46, 61, 73, 84, 102, 124, 138, 145, 151, 155, 161, 168}}};
+} // namespace ioj

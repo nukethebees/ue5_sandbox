@@ -7,6 +7,7 @@
 #include "ioj/enum_traits.h"
 #include "ioj/min_max.h"
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -78,10 +79,9 @@ template <>
 inline constexpr MinMax<lispb::codegen::PackedFieldKind>
     enum_range<lispb::codegen::PackedFieldKind>{lispb::codegen::PackedFieldKind::unsigned_integer,
                                                 lispb::codegen::PackedFieldKind::mini_float};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::lispb::codegen::PackedFieldKind, ioj::Serialized>{
-    ioj::PackedStrings{
-        "unsigned\000signed\000enum\000linear-quantized\000fixed-point\000mini-float",
-        std::array<std::uint8_t, 7>{0, 9, 16, 21, 38, 50, 61}}};
+inline constexpr auto enum_strings<lispb::codegen::PackedFieldKind, Serialized>{
+    PackedStrings{"unsigned\000signed\000enum\000linear-quantized\000fixed-point\000mini-float",
+                  std::array<std::uint8_t, 7>{0, 9, 16, 21, 38, 50, 61}}};
+} // namespace ioj

@@ -39,16 +39,15 @@ namespace ioj {
 template <>
 inline constexpr MinMax<lispb::codegen::TypeOperation> enum_range<lispb::codegen::TypeOperation>{
     lispb::codegen::TypeOperation::add_element, lispb::codegen::TypeOperation::set_element};
-} // namespace ioj
 
 template <>
-inline constexpr auto ioj::enum_strings<::lispb::codegen::TypeOperation, ioj::Name>{
-    ioj::PackedStrings{"add_element\000remove_at_swap\000set_element",
-                       std::array<std::uint8_t, 4>{0, 12, 27, 39}}};
+inline constexpr auto enum_strings<lispb::codegen::TypeOperation, Name>{PackedStrings{
+    "add_element\000remove_at_swap\000set_element", std::array<std::uint8_t, 4>{0, 12, 27, 39}}};
+
 template <>
-inline constexpr auto ioj::enum_strings<::lispb::codegen::TypeOperation, ioj::Serialized>{
-    ioj::PackedStrings{"add-element\000remove-at-swap\000set-element",
-                       std::array<std::uint8_t, 4>{0, 12, 27, 39}}};
+inline constexpr auto enum_strings<lispb::codegen::TypeOperation, Serialized>{PackedStrings{
+    "add-element\000remove-at-swap\000set-element", std::array<std::uint8_t, 4>{0, 12, 27, 39}}};
+} // namespace ioj
 namespace std {
 template <>
 struct formatter<::lispb::codegen::TypeOperation>

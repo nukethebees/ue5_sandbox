@@ -9,6 +9,7 @@
 #include "ioj/settings/simulation_constraints.h"
 #include "ioj/sim/lasers/laser_weapon_sim_config.h"
 
+#include <array>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
@@ -45,7 +46,7 @@ struct FighterSimConfig {
     template <Field Selected, typename Self>
     static constexpr decltype(auto) get_field(Self& self)
         requires (std::same_as<std::remove_const_t<Self>, FighterSimConfig> &&
-                  std::to_underlying(Selected) < ioj::enum_count<typename Self::Field>())
+                  std::to_underlying(Selected) < enum_count<typename Self::Field>())
     {
         if constexpr (Selected == Field::max_live_fighters) {
             return (self.max_live_fighters);
@@ -195,19 +196,18 @@ struct FighterSimConfig {
 } // namespace ioj::sim
 namespace ioj {
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::sim::FighterSimConfig::Field>() noexcept
-    -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<sim::FighterSimConfig::Field>() noexcept -> std::size_t {
     return 19;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::sim::FighterSimConfig::Field, ioj::Name>{
-    ioj::PackedStrings{
-        "max_live_fighters\000fire_point_distance\000fire_dot_product_threshold\000speed\000turn_"
-        "speed_unitless\000avoidance_clear_update_frequency\000avoidance_update_"
-        "frequency\000avoidance_active_update_frequency\000avoidance_immediate_update_"
-        "frequency\000avoidance_lookahead_time\000avoidance_clearance_buffer\000separation_"
-        "radius\000separation_strength\000steering_memory_duration\000dense_traffic_neighbour_"
-        "threshold\000laser\000health\000attack_retry_cooldown\000los_check_buffer",
-        std::array<std::uint16_t, 20>{0,   18,  38,  65,  71,  91,  124, 151, 185, 222,
-                                      247, 274, 292, 312, 337, 371, 377, 384, 406, 423}}};
+inline constexpr auto enum_strings<sim::FighterSimConfig::Field, Name>{PackedStrings{
+    "max_live_fighters\000fire_point_distance\000fire_dot_product_threshold\000speed\000turn_speed_"
+    "unitless\000avoidance_clear_update_frequency\000avoidance_update_frequency\000avoidance_"
+    "active_update_frequency\000avoidance_immediate_update_frequency\000avoidance_lookahead_"
+    "time\000avoidance_clearance_buffer\000separation_radius\000separation_strength\000steering_"
+    "memory_duration\000dense_traffic_neighbour_threshold\000laser\000health\000attack_retry_"
+    "cooldown\000los_check_buffer",
+    std::array<std::uint16_t, 20>{0,   18,  38,  65,  71,  91,  124, 151, 185, 222,
+                                  247, 274, 292, 312, 337, 371, 377, 384, 406, 423}}};
+} // namespace ioj

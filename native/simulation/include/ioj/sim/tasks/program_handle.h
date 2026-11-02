@@ -31,17 +31,17 @@ struct ProgramHandle : detail::ProgramHandleBase {
     static constexpr PackedField<storage_type, std::uint32_t, 0, 32> index_layout{};
 
     constexpr ProgramHandle() noexcept = default;
-    constexpr explicit ProgramHandle(decltype(index_layout)::value_type const index_value) noexcept
+    constexpr explicit ProgramHandle(std::uint32_t const index_value) noexcept
         : Base{index_value} {
         assert((value_ != invalid_value));
     }
 
     [[nodiscard]] constexpr auto operator<=>(ProgramHandle const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto index() const noexcept -> decltype(index_layout)::value_type {
+    [[nodiscard]] constexpr auto index() const noexcept -> std::uint32_t {
         return extract<decltype(index_layout)>();
     }
-    constexpr void set_index(decltype(index_layout)::value_type const value) noexcept {
+    constexpr void set_index(std::uint32_t const value) noexcept {
         insert<decltype(index_layout)>(value);
     }
 };

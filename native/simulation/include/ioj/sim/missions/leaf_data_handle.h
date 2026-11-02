@@ -30,8 +30,8 @@ struct LeafDataHandle : detail::LeafDataHandleBase {
     static constexpr PackedField<storage_type, LeafKind, 24, 3> kind_layout{};
 
     constexpr LeafDataHandle() noexcept = default;
-    constexpr explicit LeafDataHandle(decltype(index_layout)::value_type const index_value,
-                                      decltype(kind_layout)::value_type const kind_value) noexcept
+    constexpr explicit LeafDataHandle(std::uint32_t const index_value,
+                                      LeafKind const kind_value) noexcept
         : Base{static_cast<storage_type>(packed_pack<decltype(index_layout)>(index_value) |
                                          packed_pack<decltype(kind_layout)>(kind_value))} {
         assert((is_valid_index(index_value)));
@@ -40,28 +40,26 @@ struct LeafDataHandle : detail::LeafDataHandleBase {
 
     [[nodiscard]] constexpr auto operator<=>(LeafDataHandle const&) const noexcept = default;
 
-    [[nodiscard]] static constexpr auto
-        is_valid_index(decltype(index_layout)::value_type const value) noexcept -> bool {
+    [[nodiscard]] static constexpr auto is_valid_index(std::uint32_t const value) noexcept -> bool {
         return static_cast<storage_type>(value) <= index_layout.value_mask;
     }
-    [[nodiscard]] static constexpr auto
-        is_valid_kind(decltype(kind_layout)::value_type const value) noexcept -> bool {
+    [[nodiscard]] static constexpr auto is_valid_kind(LeafKind const value) noexcept -> bool {
         return value <= kind_layout.range.max;
     }
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return Base::is_valid() && is_valid_kind(extract<decltype(kind_layout)>());
     }
-    [[nodiscard]] constexpr auto index() const noexcept -> decltype(index_layout)::value_type {
+    [[nodiscard]] constexpr auto index() const noexcept -> std::uint32_t {
         return extract<decltype(index_layout)>();
     }
-    constexpr void set_index(decltype(index_layout)::value_type const value) noexcept {
+    constexpr void set_index(std::uint32_t const value) noexcept {
         assert((is_valid_index(value)));
         insert<decltype(index_layout)>(value);
     }
-    [[nodiscard]] constexpr auto kind() const noexcept -> decltype(kind_layout)::value_type {
+    [[nodiscard]] constexpr auto kind() const noexcept -> LeafKind {
         return extract<decltype(kind_layout)>();
     }
-    constexpr void set_kind(decltype(kind_layout)::value_type const value) noexcept {
+    constexpr void set_kind(LeafKind const value) noexcept {
         assert((is_valid_kind(value)));
         insert<decltype(kind_layout)>(value);
     }

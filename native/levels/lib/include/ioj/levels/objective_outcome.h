@@ -27,7 +27,7 @@ enum class ObjectiveOutcome : ObjectiveOutcomeUnderlying {
     try_parse_serialized_objective_outcome(std::string_view const value) noexcept
     -> std::optional<ObjectiveOutcome> {
     std::array<std::string_view, 3> constexpr names{"passed", "failed", "expired"};
-    return ioj::try_parse_enum<ObjectiveOutcome>(value, names);
+    return try_parse_enum<ObjectiveOutcome>(value, names);
 }
 
 template <>
@@ -44,7 +44,8 @@ template <>
 [[nodiscard]] constexpr auto enum_count<ObjectiveOutcome>() noexcept -> std::size_t {
     return 3;
 }
-} // namespace ioj
+
 template <>
-inline constexpr auto ioj::enum_strings<::ioj::ObjectiveOutcome, ioj::Serialized>{
-    ioj::PackedStrings{"passed\000failed\000expired", std::array<std::uint8_t, 4>{0, 7, 14, 22}}};
+inline constexpr auto enum_strings<ObjectiveOutcome, Serialized>{
+    PackedStrings{"passed\000failed\000expired", std::array<std::uint8_t, 4>{0, 7, 14, 22}}};
+} // namespace ioj

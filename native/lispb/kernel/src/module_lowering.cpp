@@ -34,20 +34,22 @@
 namespace kernel_codegen::detail {
 namespace {
 
-auto parameter_type(Document const& document,
+auto parameter_type(lispb::codegen::CppIR& cpp,
+                    Document const& document,
                     ExpandedVariantId const id,
                     std::size_t const index,
-                    bool const raw) -> std::string {
+                    bool const raw) -> lispb::codegen::CppTypeId {
     auto const& expanded{document.expanded_variants};
-    auto type{standard_type(expanded.type(id))};
+    auto const type{cpp.types.named(standard_type(expanded.type(id)))};
     if (expanded.storage(id)[index] == StorageKind::scalar) {
         return type;
     }
     auto const target{is_target(document, id, index)};
     if (raw) {
-        return type + (target ? "*" : " const*");
+        return cpp.types.decorate(type, "", target ? "*" : " const*");
     }
-    return "std::span<" + type + (target ? ">" : " const>");
+    return cpp.types.template_type(cpp.types.named("std::span"),
+                                   {target ? type : cpp.types.decorate(type, "", " const")});
 }
 
 auto parameters(lispb::codegen::CppIR& cpp,
@@ -59,21 +61,22 @@ auto parameters(lispb::codegen::CppIR& cpp,
     auto const operation{expanded.operation(id)};
     auto const count{document.operations.operands(operation).size()};
     for (std::size_t index{}; index < count; ++index) {
-        auto const type{cpp.types.intern(parameter_type(document, id, index, raw))};
+        auto const type{parameter_type(cpp, document, id, index, raw)};
         for (auto const& name : operand_names(document, id, index)) {
             result.push_back(cpp.parameter(type, name));
         }
     }
     if (document.variants.kind(expanded.variant(id)) == VariantKind::out_of_place) {
-        auto const scalar{standard_type(expanded.type(id))};
-        auto const spelling{raw ? scalar + "*" : "std::span<" + scalar + ">"};
-        auto const type{cpp.types.intern(spelling)};
+        auto const scalar{cpp.types.named(standard_type(expanded.type(id)))};
+        auto const type{raw ? cpp.types.decorate(scalar, "", "*")
+                            : cpp.types.template_type(cpp.types.named("std::span"), {scalar})};
         for (auto const& name : output_names(document, id)) {
             result.push_back(cpp.parameter(type, name));
         }
     }
     if (raw) {
-        result.push_back(cpp.parameter("std::size_t const", "count"));
+        result.push_back(cpp.parameter(
+            cpp.types.decorate(cpp.types.named("std::size_t"), "", " const"), "count"));
     }
     return result;
 }
@@ -106,16 +109,19 @@ auto lower_expression(lispb::codegen::CppIR& cpp,
             return cpp.static_cast_expr(concrete_type,
                                         cpp.literal(document.expressions.literal_id(expression)));
         case ExpressionKind::constant: {
-            auto const type{std::string{cpp.types.spelling(concrete_type)}};
-            auto const prefix{"std::numeric_limits<" + type + ">::"};
+            auto const limits{
+                cpp.types.template_type(cpp.types.named("std::numeric_limits"), {concrete_type})};
+            auto const constant = [&](std::string_view name) {
+                return cpp.call(cpp.type_reference(cpp.types.decorate(limits, "", name)));
+            };
             if (document.expressions.constant(expression) == ConstantKind::nan) {
-                return cpp.call(cpp.named(prefix + "quiet_NaN"));
+                return constant("::quiet_NaN");
             }
-            auto const infinity{cpp.call(cpp.named(prefix + "infinity"))};
+            auto const infinity{constant("::infinity")};
             if (document.expressions.constant(expression) == ConstantKind::infinity) {
                 return infinity;
             }
-            return cpp.raw_expr("(-" + prefix + "infinity())");
+            return cpp.unary(lispb::codegen::UnaryOperator::negate, infinity);
         }
         case ExpressionKind::binary: {
             using BinOp = lispb::codegen::BinaryOperator;
@@ -217,18 +223,20 @@ auto raw_arguments(lispb::codegen::CppIR& cpp, Document const& document, Expande
 auto checked_condition(lispb::codegen::CppIR& cpp,
                        lispb::codegen::Expr const condition,
                        std::string const& detail_namespace) -> lispb::codegen::NodeId {
-    return cpp.expr_stmt(cpp.call(cpp.named(detail_namespace + "::require"), {condition}));
+    return cpp.expr_stmt(
+        cpp.call(cpp.type_reference(cpp.types.named(detail_namespace + "::require")), {condition}));
 }
 
 auto overlap_check(lispb::codegen::CppIR& cpp,
                    std::string const& detail_namespace,
                    std::string const& lhs,
                    std::string const& rhs) -> lispb::codegen::NodeId {
-    auto const overlaps{cpp.call(cpp.named(detail_namespace + "::ranges_overlap"),
-                                 {member_call(cpp, lhs, "data"),
-                                  member_call(cpp, lhs, "size_bytes"),
-                                  member_call(cpp, rhs, "data"),
-                                  member_call(cpp, rhs, "size_bytes")})};
+    auto const overlaps{
+        cpp.call(cpp.type_reference(cpp.types.named(detail_namespace + "::ranges_overlap")),
+                 {member_call(cpp, lhs, "data"),
+                  member_call(cpp, lhs, "size_bytes"),
+                  member_call(cpp, rhs, "data"),
+                  member_call(cpp, rhs, "size_bytes")})};
     auto const condition{cpp.unary(lispb::codegen::UnaryOperator::logical_not, overlaps)};
     return checked_condition(cpp, condition, detail_namespace);
 }
@@ -277,7 +285,8 @@ auto public_body(lispb::codegen::CppIR& cpp,
         }
     }
     auto const name{detail_namespace + "::" + raw_name(document, id)};
-    output.push_back(cpp.expr_stmt(cpp.call(cpp.named(name), raw_arguments(cpp, document, id))));
+    output.push_back(cpp.expr_stmt(
+        cpp.call(cpp.type_reference(cpp.types.named(name)), raw_arguments(cpp, document, id))));
     return output;
 }
 

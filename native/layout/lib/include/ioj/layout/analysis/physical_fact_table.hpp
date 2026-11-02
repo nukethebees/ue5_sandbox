@@ -28,12 +28,12 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout
-    : ioj::single_allocation_layout::ColumnLayouts<std::uint64_t,
-                                                   std::uint64_t,
-                                                   lispb::schema::EnumSignedness,
-                                                   std::optional<std::uint32_t>,
-                                                   lispb::StringId,
-                                                   FactOrigin> {
+    : single_allocation_layout::ColumnLayouts<std::uint64_t,
+                                              std::uint64_t,
+                                              lispb::schema::EnumSignedness,
+                                              std::optional<std::uint32_t>,
+                                              lispb::StringId,
+                                              FactOrigin> {
     static constexpr std::size_t size_bytes_column{0};
     static constexpr std::size_t alignment_bytes_column{1};
     static constexpr std::size_t signedness_column{2};
@@ -83,14 +83,13 @@ struct Schema {
 /* **************************************** */
 template <bool Const>
 struct ResolvedViewImpl
-    : ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
-    using Base =
-        ioj::soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
+    : soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const> {
+    using Base = soa_storage_detail::ResolvedViewBase<Layout::column_types, DataPointers, Const>;
     using Base::Base;
-    using Layout = ::ioj::layout::physical_fact_table::Layout;
-    using view_type = ::ioj::layout::physical_fact_table::ResolvedView;
-    using const_view_type = ::ioj::layout::physical_fact_table::ResolvedConstView;
-    using soa_schema = ::ioj::layout::physical_fact_table::Schema;
+    using Layout = physical_fact_table::Layout;
+    using view_type = ResolvedView;
+    using const_view_type = ResolvedConstView;
+    using soa_schema = Schema;
     template <bool Enabled = Const>
     ResolvedViewImpl(ResolvedViewImpl<false> const& other)
         requires Enabled
@@ -107,13 +106,11 @@ struct ResolvedConstView : ResolvedViewImpl<true> {
     using Base::Base;
 };
 struct ResolvedView
-    : soa_storage_detail::ViewRowOperations<
-          ResolvedView,
-          ::ioj::layout::physical_fact_table::Layout::column_types,
-          ResolvedViewImpl<false>> {
+    : soa_storage_detail::
+          ViewRowOperations<ResolvedView, Layout::column_types, ResolvedViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         ResolvedView,
-        ::ioj::layout::physical_fact_table::Layout::column_types,
+        ioj::layout::physical_fact_table::Layout::column_types,
         ResolvedViewImpl<false>>;
     using Base::Base;
     using Base::set;
@@ -123,17 +120,14 @@ struct ResolvedView
 // Compact views
 /* **************************************** */
 template <bool Const>
-struct ViewImpl : ioj::soa_storage_detail::CompactViewBase<Const> {
-    using soa_schema = ::ioj::layout::physical_fact_table::Schema;
-    using Base = ioj::soa_storage_detail::CompactViewBase<Const>;
+struct ViewImpl : soa_storage_detail::CompactViewBase<Const> {
+    using soa_schema = Schema;
+    using Base = soa_storage_detail::CompactViewBase<Const>;
     using Base::Base;
-    using Layout = ::ioj::layout::physical_fact_table::Layout;
-    using view_type = ::ioj::layout::physical_fact_table::View;
-    using const_view_type = ::ioj::layout::physical_fact_table::ConstView;
-    using resolved_view_type =
-        std::conditional_t<Const,
-                           ::ioj::layout::physical_fact_table::ResolvedConstView,
-                           ::ioj::layout::physical_fact_table::ResolvedView>;
+    using Layout = physical_fact_table::Layout;
+    using view_type = View;
+    using const_view_type = ConstView;
+    using resolved_view_type = std::conditional_t<Const, ResolvedConstView, ResolvedView>;
     template <bool Enabled = Const>
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
@@ -160,20 +154,16 @@ struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
     using Base::Base;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<ConstView>());
-struct View
-    : soa_storage_detail::ViewRowOperations<
-          View,
-          ::ioj::layout::physical_fact_table::Layout::column_types,
-          ViewImpl<false>> {
+static_assert(soa_storage_detail::validate_compact_view<ConstView>());
+struct View : soa_storage_detail::ViewRowOperations<View, Layout::column_types, ViewImpl<false>> {
     using Base = ioj::soa_storage_detail::ViewRowOperations<
         View,
-        ::ioj::layout::physical_fact_table::Layout::column_types,
+        ioj::layout::physical_fact_table::Layout::column_types,
         ViewImpl<false>>;
     using Base::Base;
     using Base::set;
 };
-static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
+static_assert(soa_storage_detail::validate_compact_view<View>());
 
 } // namespace physical_fact_table
 
@@ -188,28 +178,25 @@ static_assert(ioj::soa_storage_detail::validate_compact_view<View>());
 // provenance: lispb::StringId
 // origin: ioj::layout::FactOrigin
 struct PhysicalFactTable
-    : protected ioj::native_soa::StorageState
-    , soa_storage_detail::OwnerRowOperations<
-          PhysicalFactTable,
-          ::ioj::layout::physical_fact_table::Layout::column_types,
-          ioj::native_soa::StorageOperations> {
-    using soa_schema = ::ioj::layout::physical_fact_table::Schema;
-    using Operations = ioj::native_soa::StorageOperations;
-    using Layout = ::ioj::layout::physical_fact_table::Layout;
+    : protected native_soa::StorageState
+    , soa_storage_detail::OwnerRowOperations<PhysicalFactTable,
+                                             physical_fact_table::Layout::column_types,
+                                             native_soa::StorageOperations> {
+    using soa_schema = physical_fact_table::Schema;
+    using Operations = native_soa::StorageOperations;
+    using Layout = physical_fact_table::Layout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-
-    static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    static constexpr auto max_capacity = Layout::max_capacity;
-
+    static constexpr auto capacity_granularity{Layout::capacity_granularity};
+    static constexpr auto allocation_alignment{Layout::allocation_alignment};
+    static constexpr auto capacity_block_bound{Layout::capacity_block_bound};
+    static constexpr auto max_capacity{Layout::max_capacity};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
 
-    using View = ::ioj::layout::physical_fact_table::View;
-    using ConstView = ::ioj::layout::physical_fact_table::ConstView;
+    using View = physical_fact_table::View;
+    using ConstView = physical_fact_table::ConstView;
 
     /* **************************************** */
     // Lifetime
@@ -231,7 +218,7 @@ struct PhysicalFactTable
     }
   protected:
     template <typename Byte>
-    using DataPointers = ::ioj::layout::physical_fact_table::DataPointers<Byte>;
+    using DataPointers = physical_fact_table::DataPointers<Byte>;
   public:
     auto size_bytes(this auto& self) { return self.view().size_bytes(); }
     auto alignment_bytes(this auto& self) { return self.view().alignment_bytes(); }
@@ -239,15 +226,15 @@ struct PhysicalFactTable
     auto unsigned_value_bits(this auto& self) { return self.view().unsigned_value_bits(); }
     auto provenance(this auto& self) { return self.view().provenance(); }
     auto origin(this auto& self) { return self.view().origin(); }
-    using RowOperations = soa_storage_detail::OwnerRowOperations<
-        PhysicalFactTable,
-        ::ioj::layout::physical_fact_table::Layout::column_types,
-        ioj::native_soa::StorageOperations>;
+    using RowOperations =
+        soa_storage_detail::OwnerRowOperations<PhysicalFactTable,
+                                               physical_fact_table::Layout::column_types,
+                                               native_soa::StorageOperations>;
     using RowOperations::add;
     using RowOperations::set;
   private:
     friend Operations;
-    friend ::ioj::soa_storage_detail::StorageRequirements;
+    friend soa_storage_detail::StorageRequirements;
     std::pmr::memory_resource* resource_{};
 };
 } // namespace ioj::layout

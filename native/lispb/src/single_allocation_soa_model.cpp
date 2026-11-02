@@ -35,7 +35,7 @@ auto schema_namespace(LoweringContext& context, DeclarationHandle schema) -> std
     auto const& decls{context.declarations};
     auto const& settings{decls.module_settings_store};
     auto const namespace_name{settings.namespace_name[decls.module_settings(scoped.module)]};
-    return (namespace_name ? "::" + context.text(*namespace_name) + "::" : "::") +
+    return (namespace_name ? context.text(*namespace_name) + "::" : "") +
            soa_namespace_name(context.text(decls.soas.name[schema]));
 }
 
