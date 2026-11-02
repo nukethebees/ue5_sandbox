@@ -410,13 +410,7 @@
         (parameter value "std::string_view")
         (parameter dependencies "std::initializer_list<TypeDependencyId>"))
       (method literal "Expr"
-        (parameter value "std::string_view"))
-      (method literal "Expr"
-        (parameter value "char const*"))
-      (method literal "Expr"
-        (parameter value "bool"))
-      (method literal "Expr"
-        (parameter value "StringId"))
+        (parameter value "auto&&"))
       (method string_literal "Expr"
         (parameter value "std::string_view"))
       (method string_literal "Expr"

@@ -70,6 +70,7 @@ class FacadeLowering : public CppIRBuilder {
             for (auto const parameter_id : decls.items(method_schemas.parameters[method_row])) {
                 auto const parameter_row{parameter_schemas.index(parameter_id)};
                 auto type{ctx.resolve(parameter_schemas.type[parameter_row])};
+                auto const forwarding{type_spelling(type) == "auto&&"};
                 auto const is_pack{parameter_schemas.is_pack[parameter_row]};
                 if (is_pack) {
                     type = decorate_type(type, "", "...");
@@ -81,7 +82,12 @@ class FacadeLowering : public CppIRBuilder {
                               parameter_schemas.default_value[parameter_row]
                                   ? raw_expr(*parameter_schemas.default_value[parameter_row])
                                   : Expr{}));
-                auto const argument{named(name)};
+                auto argument{named(name)};
+                if (forwarding) {
+                    argument = template_call(type_reference(std_types().forward),
+                                             {type_reference(decltype_type(argument))},
+                                             {argument});
+                }
                 arguments.push_back(is_pack ? unary(UnaryOperator::pack_expansion, argument)
                                             : argument);
             }

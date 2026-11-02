@@ -95,6 +95,7 @@
 #include <string_view>
 #include <type_traits>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace lispb {
@@ -288,10 +289,22 @@ class CppIR {
         -> Expr {
         return named(value, std::span<TypeDependencyId const>{dependencies});
     }
-    auto literal(std::string_view value) -> Expr;
-    auto literal(char const* value) -> Expr { return literal(std::string_view{value}); }
-    auto literal(bool value) -> Expr;
-    auto literal(StringId value) -> Expr;
+    auto literal(auto&& value) -> Expr {
+        using Value = std::remove_cvref_t<decltype(value)>;
+        if constexpr (std::same_as<Value, bool>) {
+            return boolean_literal(value);
+        } else if constexpr (std::same_as<Value, StringId>) {
+            return spelled_literal(value);
+        } else if constexpr (std::constructible_from<ir::NumericLiteral,
+                                                     std::in_place_type_t<Value>,
+                                                     Value>) {
+            return numeric_literal(ir::NumericLiteral{std::in_place_type<Value>, value});
+        } else if constexpr (std::convertible_to<decltype(value), std::string_view>) {
+            return spelled_literal(std::string_view{std::forward<decltype(value)>(value)});
+        } else {
+            static_assert(false, "Unsupported literal type");
+        }
+    }
     auto string_literal(std::string_view value) -> Expr;
     auto string_literal(StringId value) -> Expr;
     auto raw_expr(StringId value, std::span<TypeDependencyId const> dependencies = {}) -> Expr;
@@ -435,6 +448,10 @@ class CppIR {
     void merge_adjacent_namespaces(CppFileId file);
   private:
     friend class CppRenderer;
+    auto boolean_literal(bool value) -> Expr;
+    auto numeric_literal(ir::NumericLiteral value) -> Expr;
+    auto spelled_literal(std::string_view value) -> Expr;
+    auto spelled_literal(StringId value) -> Expr;
     auto merge_adjacent_namespaces(std::vector<NodeId>& values) -> bool;
     void collect_dependencies(TemplateId declaration, std::vector<TypeDependencyId>& result) const;
     ir::TypeTemplateParameters type_template_parameters_;
@@ -497,6 +514,7 @@ class CppIR {
     ir::Namespaces namespace_nodes_;
     ir::Names named_exprs_;
     ir::Literals literal_exprs_;
+    ir::NumericLiterals numeric_literal_exprs_;
     std::vector<StringId> string_literal_exprs_;
     ir::Calls call_exprs_;
     ir::MemberExprs member_exprs_;

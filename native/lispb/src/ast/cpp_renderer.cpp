@@ -675,6 +675,34 @@ void CppRenderer::append_expr(
         case ExprKind::boolean_literal:
             output += index != 0 ? "true" : "false";
             break;
+        case ExprKind::numeric_literal:
+            std::visit(
+                [&]<typename Value>(Value const value) {
+                    auto spelling{std::format("{}", value)};
+                    if constexpr (std::floating_point<Value>) {
+                        if (spelling.find_first_of(".eE") == std::string::npos) {
+                            spelling += ".0";
+                        }
+                    }
+                    output += spelling;
+                    if constexpr (std::same_as<Value, unsigned int>) {
+                        output += 'U';
+                    } else if constexpr (std::same_as<Value, long>) {
+                        output += 'L';
+                    } else if constexpr (std::same_as<Value, unsigned long>) {
+                        output += "UL";
+                    } else if constexpr (std::same_as<Value, long long>) {
+                        output += "LL";
+                    } else if constexpr (std::same_as<Value, unsigned long long>) {
+                        output += "ULL";
+                    } else if constexpr (std::same_as<Value, float>) {
+                        output += 'f';
+                    } else if constexpr (std::same_as<Value, long double>) {
+                        output += 'L';
+                    }
+                },
+                ir_.numeric_literal_exprs_.value[index]);
+            break;
         case ExprKind::string_literal:
             output += '"';
             append_escaped_cpp_string(output, ir_.strings.view(ir_.string_literal_exprs_[index]));

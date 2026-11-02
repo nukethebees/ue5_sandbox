@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <utility>
 
 namespace lispb::codegen {
 class CppIRBuilder {
@@ -563,13 +564,7 @@ class CppIRBuilder {
         return ir_.named(value, dependencies);
     }
 
-    Expr literal(std::string_view value) { return ir_.literal(value); }
-
-    Expr literal(char const* value) { return ir_.literal(value); }
-
-    Expr literal(bool value) { return ir_.literal(value); }
-
-    Expr literal(StringId value) { return ir_.literal(value); }
+    Expr literal(auto&& value) { return ir_.literal(std::forward<decltype(value)>(value)); }
 
     Expr string_literal(std::string_view value) { return ir_.string_literal(value); }
 

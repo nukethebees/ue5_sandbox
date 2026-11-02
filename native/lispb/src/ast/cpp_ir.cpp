@@ -38,9 +38,11 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <limits>
 #include <optional>
 #include <set>
 #include <span>
@@ -670,6 +672,7 @@ void CppIR::clear() {
     clear(namespace_nodes_.name, namespace_nodes_.children);
     clear(named_exprs_.spelling, named_exprs_.dependencies);
     clear(literal_exprs_.spelling);
+    clear(numeric_literal_exprs_.value);
     clear(string_literal_exprs_);
     clear(call_exprs_.callee, call_exprs_.arguments);
     clear(member_exprs_.object, member_exprs_.member, member_exprs_.through_pointer);
@@ -760,13 +763,62 @@ auto CppIR::named(StringId value, std::span<TypeDependencyId const> dependencies
     named_exprs_.dependencies.push_back(save_dependencies(dependencies));
     return result;
 }
-auto CppIR::literal(std::string_view value) -> Expr {
-    return literal(strings.intern(value));
+auto CppIR::spelled_literal(std::string_view value) -> Expr {
+    return spelled_literal(strings.intern(value));
 }
-auto CppIR::literal(bool const value) -> Expr {
+auto CppIR::boolean_literal(bool const value) -> Expr {
     return expr_detail::handle(ExprKind::boolean_literal, value);
 }
-auto CppIR::literal(StringId value) -> Expr {
+auto CppIR::numeric_literal(ir::NumericLiteral value) -> Expr {
+    return std::visit(
+        [&]<typename Value>(Value const number) -> Expr {
+            if constexpr (std::same_as<Value, signed char>) {
+                return static_cast_expr(types.intern("signed char"),
+                                        literal(static_cast<int>(number)));
+            } else if constexpr (std::same_as<Value, unsigned char>) {
+                return static_cast_expr(types.std.unsigned_char,
+                                        literal(static_cast<unsigned int>(number)));
+            } else if constexpr (std::same_as<Value, short>) {
+                return static_cast_expr(types.intern("short"), literal(static_cast<int>(number)));
+            } else if constexpr (std::same_as<Value, unsigned short>) {
+                return static_cast_expr(types.intern("unsigned short"),
+                                        literal(static_cast<unsigned int>(number)));
+            } else {
+                if constexpr (std::floating_point<Value>) {
+                    if (!std::isfinite(number)) {
+                        auto const scalar{std::same_as<Value, float> ? types.std.f32
+                                          : std::same_as<Value, double>
+                                              ? types.std.f64
+                                              : types.intern("long double")};
+                        auto const limits{types.template_type(types.std.numeric_limits, {scalar})};
+                        auto const result{call(
+                            scope_member(limits, std::isnan(number) ? "quiet_NaN" : "infinity"))};
+                        return std::signbit(number) ? unary(UnaryOperator::negate, result) : result;
+                    }
+                    if (std::signbit(number)) {
+                        return unary(UnaryOperator::negate, literal(-number));
+                    }
+                } else if constexpr (std::signed_integral<Value>) {
+                    if (number == std::numeric_limits<Value>::min()) {
+                        return parenthesized(
+                            binary(BinaryOperator::subtract,
+                                   unary(UnaryOperator::negate,
+                                         literal(std::numeric_limits<Value>::max())),
+                                   literal(1)));
+                    }
+                    if (number < 0) {
+                        return unary(UnaryOperator::negate, literal(-number));
+                    }
+                }
+                auto const result{expr_detail::handle(ExprKind::numeric_literal,
+                                                      numeric_literal_exprs_.value.size())};
+                numeric_literal_exprs_.value.push_back(value);
+                return result;
+            }
+        },
+        value);
+}
+auto CppIR::spelled_literal(StringId value) -> Expr {
     auto const result{expr_detail::handle(ExprKind::literal, literal_exprs_.spelling.size())};
     literal_exprs_.spelling.push_back(value);
     return result;
@@ -1309,6 +1361,7 @@ void CppIR::collect_dependencies(Expr expr, std::vector<TypeDependencyId>& resul
             break;
         case ExprKind::literal:
         case ExprKind::boolean_literal:
+        case ExprKind::numeric_literal:
         case ExprKind::string_literal:
             break;
         case ExprKind::invalid:
