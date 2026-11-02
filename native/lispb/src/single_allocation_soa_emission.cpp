@@ -71,7 +71,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
             children.add(constexpr_member(
                 std_types().size_t,
                 store_text(ctx.text(columns.flattened_identifier[row]) + "_column"),
-                literal(std::to_string(index))));
+                literal(index)));
         }
         std::vector<StringId> inherited;
         for (auto const name : {"ColumnLayouts",
@@ -587,7 +587,7 @@ class SingleAllocationEmitter : public CppIRBuilder {
                                    ctx.text(columns.flattened_identifier[columns.index(column)]))});
             }
             if (strided) {
-                return this_member_call("column", {literal(std::to_string(index))});
+                return this_member_call("column", {literal(index)});
             }
             return template_call(this_member("template column"),
                                  {type_reference(columns.type[columns.index(column)])},

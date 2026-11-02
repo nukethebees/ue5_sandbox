@@ -24,7 +24,7 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : ioj::single_allocation_layout::ColumnLayouts<RestrictedLeaf> {
-    static constexpr std::size_t restricted_column{0};
+    static constexpr std::size_t restricted_column{0ULL};
 };
 
 /* **************************************** */

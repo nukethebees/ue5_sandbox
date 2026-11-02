@@ -26,9 +26,9 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : single_allocation_layout::ColumnLayouts<EntityType, std::int32_t, LevelEventCount> {
-    static constexpr std::size_t types_column{0};
-    static constexpr std::size_t offsets_column{1};
-    static constexpr std::size_t counts_column{2};
+    static constexpr std::size_t types_column{0ULL};
+    static constexpr std::size_t offsets_column{1ULL};
+    static constexpr std::size_t counts_column{2ULL};
 };
 
 /* **************************************** */

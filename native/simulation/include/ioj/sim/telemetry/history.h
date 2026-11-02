@@ -75,16 +75,16 @@ struct Layout
                                               std::int32_t,
                                               std::int32_t,
                                               std::int32_t> {
-    static constexpr std::size_t completed_ticks_column{0};
-    static constexpr std::size_t validity_masks_column{1};
-    static constexpr std::size_t active_entities_column{2};
-    static constexpr std::size_t active_entities_by_type_column{3};
-    static constexpr std::size_t active_entities_by_team_and_type_column{4};
-    static constexpr std::size_t spawned_entities_column{5};
-    static constexpr std::size_t destroyed_entities_column{6};
-    static constexpr std::size_t kills_column{7};
-    static constexpr std::size_t active_lasers_column{8};
-    static constexpr std::size_t lasers_fired_column{9};
+    static constexpr std::size_t completed_ticks_column{0ULL};
+    static constexpr std::size_t validity_masks_column{1ULL};
+    static constexpr std::size_t active_entities_column{2ULL};
+    static constexpr std::size_t active_entities_by_type_column{3ULL};
+    static constexpr std::size_t active_entities_by_team_and_type_column{4ULL};
+    static constexpr std::size_t spawned_entities_column{5ULL};
+    static constexpr std::size_t destroyed_entities_column{6ULL};
+    static constexpr std::size_t kills_column{7ULL};
+    static constexpr std::size_t active_lasers_column{8ULL};
+    static constexpr std::size_t lasers_fired_column{9ULL};
 };
 
 /* **************************************** */

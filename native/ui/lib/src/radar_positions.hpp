@@ -24,8 +24,8 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : single_allocation_layout::ColumnLayouts<float, float> {
-    static constexpr std::size_t xs_column{0};
-    static constexpr std::size_t ys_column{1};
+    static constexpr std::size_t xs_column{0ULL};
+    static constexpr std::size_t ys_column{1ULL};
 };
 
 /* **************************************** */
@@ -106,8 +106,8 @@ struct ViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(0); }
-    auto ys() const { return this->column(1); }
+    auto xs() const { return this->column(0LL); }
+    auto ys() const { return this->column(1LL); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

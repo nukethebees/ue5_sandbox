@@ -72,11 +72,11 @@ namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<sim::OverlapResponseConfig::Field>() noexcept
     -> std::size_t {
-    return 3;
+    return 3ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<sim::OverlapResponseConfig::Field, Name>{
     PackedStrings{"damage_per_overlap_detection\000level_size\000cell_size",
-                  std::array<std::uint8_t, 4>{0, 29, 40, 50}}};
+                  std::array<std::uint8_t, 4>{0ULL, 29ULL, 40ULL, 50ULL}}};
 } // namespace ioj

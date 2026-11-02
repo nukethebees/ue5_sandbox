@@ -287,7 +287,7 @@ static_assert(ioj::valid_packed_value_layout<NestedId>());
 struct PaddedInvalid;
 
 namespace detail {
-inline constexpr std::uint16_t padded_invalid_default_raw_value{256};
+inline constexpr std::uint16_t padded_invalid_default_raw_value{256ULL};
 
 using PaddedInvalidBase =
     ioj::PackedValueBase<PaddedInvalid,

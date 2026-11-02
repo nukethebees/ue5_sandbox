@@ -78,11 +78,11 @@ namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<sim::LaserWeaponSimConfig::Field>() noexcept
     -> std::size_t {
-    return 4;
+    return 4ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<sim::LaserWeaponSimConfig::Field, Name>{
     PackedStrings{"damage\000projectile_speed\000max_distance\000fire_cooldown",
-                  std::array<std::uint8_t, 5>{0, 7, 24, 37, 51}}};
+                  std::array<std::uint8_t, 5>{0ULL, 7ULL, 24ULL, 37ULL, 51ULL}}};
 } // namespace ioj

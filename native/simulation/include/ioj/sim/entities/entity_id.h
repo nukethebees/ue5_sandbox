@@ -14,7 +14,7 @@ namespace ioj::sim {
 struct EntityId;
 
 namespace detail {
-inline constexpr std::uint32_t entity_id_default_raw_value{4294967295};
+inline constexpr std::uint32_t entity_id_default_raw_value{4294967295ULL};
 
 using EntityIdBase =
     PackedValueBase<EntityId, PackedStorage<std::uint32_t, 32>{entity_id_default_raw_value}>;

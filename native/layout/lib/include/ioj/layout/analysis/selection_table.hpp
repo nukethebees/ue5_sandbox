@@ -35,13 +35,13 @@ struct Layout
                                               RegionFootprint,
                                               RegionFootprint,
                                               std::optional<std::uint64_t>> {
-    static constexpr std::size_t source_column{0};
-    static constexpr std::size_t operation_column{1};
-    static constexpr std::size_t bytes_column{2};
-    static constexpr std::size_t bits_column{3};
-    static constexpr std::size_t cache_column{4};
-    static constexpr std::size_t pages_column{5};
-    static constexpr std::size_t capacity_slack_bytes_column{6};
+    static constexpr std::size_t source_column{0ULL};
+    static constexpr std::size_t operation_column{1ULL};
+    static constexpr std::size_t bytes_column{2ULL};
+    static constexpr std::size_t bits_column{3ULL};
+    static constexpr std::size_t cache_column{4ULL};
+    static constexpr std::size_t pages_column{5ULL};
+    static constexpr std::size_t capacity_slack_bytes_column{6ULL};
 };
 
 /* **************************************** */

@@ -71,11 +71,11 @@ namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<levels::LevelCameraDefinition::Field>() noexcept
     -> std::size_t {
-    return 3;
+    return 3ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<levels::LevelCameraDefinition::Field, Name>{
     PackedStrings{"target_entity_ids\000offset_direction\000distance",
-                  std::array<std::uint8_t, 4>{0, 18, 35, 44}}};
+                  std::array<std::uint8_t, 4>{0ULL, 18ULL, 35ULL, 44ULL}}};
 } // namespace ioj

@@ -38,5 +38,5 @@ inline constexpr MinMax<lispb::codegen::LayoutKind> enum_range<lispb::codegen::L
 
 template <>
 inline constexpr auto enum_strings<lispb::codegen::LayoutKind, Serialized>{
-    PackedStrings{"native\000packed", std::array<std::uint8_t, 3>{0, 7, 14}}};
+    PackedStrings{"native\000packed", std::array<std::uint8_t, 3>{0ULL, 7ULL, 14ULL}}};
 } // namespace ioj

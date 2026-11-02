@@ -63,10 +63,10 @@ namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<sim::player::PhysicalMovementState::Field>() noexcept
     -> std::size_t {
-    return 2;
+    return 2ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<sim::player::PhysicalMovementState::Field, Name>{
-    PackedStrings{"transform\000velocity", std::array<std::uint8_t, 3>{0, 10, 19}}};
+    PackedStrings{"transform\000velocity", std::array<std::uint8_t, 3>{0ULL, 10ULL, 19ULL}}};
 } // namespace ioj

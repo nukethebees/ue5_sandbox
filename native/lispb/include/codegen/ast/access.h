@@ -38,6 +38,6 @@ inline constexpr MinMax<lispb::codegen::Access> enum_range<lispb::codegen::Acces
     lispb::codegen::Access::public_, lispb::codegen::Access::private_};
 
 template <>
-inline constexpr auto enum_strings<lispb::codegen::Access, Serialized>{
-    PackedStrings{"public\000protected\000private", std::array<std::uint8_t, 4>{0, 7, 17, 25}}};
+inline constexpr auto enum_strings<lispb::codegen::Access, Serialized>{PackedStrings{
+    "public\000protected\000private", std::array<std::uint8_t, 4>{0ULL, 7ULL, 17ULL, 25ULL}}};
 } // namespace ioj

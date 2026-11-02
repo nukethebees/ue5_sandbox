@@ -27,7 +27,7 @@ struct ObjectivePrerequisite : detail::ObjectivePrerequisiteBase {
 
     // objective
     static constexpr PackedField<storage_type, storage_type, 0, 16> objective_layout{};
-    static constexpr storage_type objective_invalid_value{65535};
+    static constexpr storage_type objective_invalid_value{65535ULL};
 
     // outcome
     static constexpr PackedField<storage_type, ObjectiveOutcome, 16, 2> outcome_layout{};

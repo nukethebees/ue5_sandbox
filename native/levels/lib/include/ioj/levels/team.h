@@ -29,19 +29,19 @@ enum class Team : TeamUnderlying {
 [[nodiscard]] constexpr auto try_parse_serialized_team(std::string_view const value) noexcept
     -> std::optional<Team> {
     switch (value.size()) {
-        case 3: {
+        case 3ULL: {
             if (value == "red") {
                 return Team::Red;
             }
             return std::nullopt;
         }
-        case 4: {
+        case 4ULL: {
             if (value == "blue") {
                 return Team::Blue;
             }
             return std::nullopt;
         }
-        case 5: {
+        case 5ULL: {
             if (value == "white") {
                 return Team::White;
             }
@@ -50,7 +50,7 @@ enum class Team : TeamUnderlying {
             }
             return std::nullopt;
         }
-        case 6: {
+        case 6ULL: {
             if (value == "orange") {
                 return Team::Orange;
             }
@@ -76,18 +76,18 @@ struct EnumTraits<Team> {
 
 template <>
 [[nodiscard]] constexpr auto enum_count<Team>() noexcept -> std::size_t {
-    return 6;
+    return 6ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<Team, Name>{
     PackedStrings{"White\000Red\000Green\000Blue\000Orange\000Yellow",
-                  std::array<std::uint8_t, 7>{0, 6, 10, 16, 21, 28, 35}}};
+                  std::array<std::uint8_t, 7>{0ULL, 6ULL, 10ULL, 16ULL, 21ULL, 28ULL, 35ULL}}};
 
 template <>
 inline constexpr auto enum_strings<Team, Serialized>{
     PackedStrings{"white\000red\000green\000blue\000orange\000yellow",
-                  std::array<std::uint8_t, 7>{0, 6, 10, 16, 21, 28, 35}}};
+                  std::array<std::uint8_t, 7>{0ULL, 6ULL, 10ULL, 16ULL, 21ULL, 28ULL, 35ULL}}};
 } // namespace ioj
 namespace std {
 template <>

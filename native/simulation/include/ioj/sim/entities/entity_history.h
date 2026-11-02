@@ -38,14 +38,14 @@ struct Layout
                                               LifeState,
                                               SimTick,
                                               Vector3f> {
-    static constexpr std::size_t entity_ids_column{0};
-    static constexpr std::size_t entity_types_column{1};
-    static constexpr std::size_t teams_column{2};
-    static constexpr std::size_t kills_column{3};
-    static constexpr std::size_t killed_by_column{4};
-    static constexpr std::size_t life_state_column{5};
-    static constexpr std::size_t death_ticks_column{6};
-    static constexpr std::size_t death_locations_column{7};
+    static constexpr std::size_t entity_ids_column{0ULL};
+    static constexpr std::size_t entity_types_column{1ULL};
+    static constexpr std::size_t teams_column{2ULL};
+    static constexpr std::size_t kills_column{3ULL};
+    static constexpr std::size_t killed_by_column{4ULL};
+    static constexpr std::size_t life_state_column{5ULL};
+    static constexpr std::size_t death_ticks_column{6ULL};
+    static constexpr std::size_t death_locations_column{7ULL};
 };
 
 /* **************************************** */

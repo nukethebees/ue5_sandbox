@@ -113,11 +113,11 @@ TEST_F(AstTest, RendersTypedStmts) {
     auto const left{ir.named("left")};
     auto const right{ir.named("right")};
     auto const comparison{ir.binary(BinaryOperator::three_way, left, right)};
-    expect_rendered(ir.binary(BinaryOperator::less_equal, comparison, ir.literal("0")),
+    expect_rendered(ir.binary(BinaryOperator::less_equal, comparison, ir.literal(0)),
                     "left <=> right <= 0");
     expect_rendered(ir.binary(BinaryOperator::three_way,
                               ir.binary(BinaryOperator::less_equal, left, right),
-                              ir.literal("0")),
+                              ir.literal(0)),
                     "(left <= right) <=> 0");
     expect_rendered(ir.unary(UnaryOperator::negate, comparison), "-(left <=> right)");
 
@@ -428,7 +428,7 @@ TEST_F(AstTest, RendersConstrainedStructuresAndSpecialMembers) {
          .template_declaration = ir.template_declaration(
              {ir.value_template_parameter(types.std.int_, ir.strings.intern("Capacity"))}),
          .requires_clause = ir.parenthesized(
-             ir.binary(BinaryOperator::greater_equal, ir.named("Capacity"), ir.literal("0"))),
+             ir.binary(BinaryOperator::greater_equal, ir.named("Capacity"), ir.literal(0))),
          .dependencies = {dependency}})};
 
     EXPECT_EQ(CppRenderer{ir}.render(structure),
@@ -454,7 +454,7 @@ TEST_F(AstTest, RendersDeclarationsAndOutOfLineDefinitionsFromOneSpec) {
         .name = ir.named("set"),
         .return_type = types.std.void_,
         .parameters = {ir.parameter(
-            types.intern("int32 const"), ir.strings.intern("value"), ir.literal("0"))},
+            types.intern("int32 const"), ir.strings.intern("value"), ir.literal(0))},
         .implementation = {.kind = FunctionImplementationKind::body,
                            .body = {ir.raw("stored = value;")}},
         .exception_specification = {.kind = FunctionExceptionKind::noexcept_}};
@@ -590,7 +590,7 @@ TEST_F(AstTest, AppliesStaticAndDefaultArgumentRulesToFunctionForms) {
         .name = ir.named("make"),
         .return_type = types.intern("int32"),
         .parameters = {ir.parameter(
-            types.intern("int32 const"), ir.strings.intern("value"), ir.literal("7"))},
+            types.intern("int32 const"), ir.strings.intern("value"), ir.literal(7))},
         .implementation = {.kind = FunctionImplementationKind::body,
                            .body = {ir.return_stmt(ir.raw_expr("value"))}},
         .receiver = FunctionReceiver::static_,

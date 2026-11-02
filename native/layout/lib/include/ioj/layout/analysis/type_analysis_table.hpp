@@ -40,13 +40,13 @@ struct Layout
                                               std::optional<ioj::layout::AggregateLayout>,
                                               std::optional<ioj::layout::PackedLayout>,
                                               std::optional<ioj::layout::SoaLayout>> {
-    static constexpr std::size_t schema_type_column{0};
-    static constexpr std::size_t scenario_column{1};
-    static constexpr std::size_t physical_column{2};
-    static constexpr std::size_t enum_backing_column{3};
-    static constexpr std::size_t aggregate_column{4};
-    static constexpr std::size_t packed_column{5};
-    static constexpr std::size_t soa_column{6};
+    static constexpr std::size_t schema_type_column{0ULL};
+    static constexpr std::size_t scenario_column{1ULL};
+    static constexpr std::size_t physical_column{2ULL};
+    static constexpr std::size_t enum_backing_column{3ULL};
+    static constexpr std::size_t aggregate_column{4ULL};
+    static constexpr std::size_t packed_column{5ULL};
+    static constexpr std::size_t soa_column{6ULL};
 };
 
 /* **************************************** */

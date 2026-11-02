@@ -38,6 +38,6 @@ inline constexpr MinMax<material_synth::SceneTexture> enum_range<material_synth:
     material_synth::SceneTexture::post_process_input0, material_synth::SceneTexture::scene_depth};
 
 template <>
-inline constexpr auto enum_strings<material_synth::SceneTexture, Serialized>{
-    PackedStrings{"post-process-input0\000scene-depth", std::array<std::uint8_t, 3>{0, 20, 32}}};
+inline constexpr auto enum_strings<material_synth::SceneTexture, Serialized>{PackedStrings{
+    "post-process-input0\000scene-depth", std::array<std::uint8_t, 3>{0ULL, 20ULL, 32ULL}}};
 } // namespace ioj

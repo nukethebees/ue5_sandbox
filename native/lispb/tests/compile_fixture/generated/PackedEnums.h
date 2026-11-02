@@ -74,6 +74,6 @@ inline constexpr MinMax<codegen_compile_fixture::DomainState>
 template <>
 [[nodiscard]] constexpr auto enum_count<codegen_compile_fixture::DomainState>() noexcept
     -> std::size_t {
-    return 2;
+    return 2ULL;
 }
 } // namespace ioj

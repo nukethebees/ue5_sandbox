@@ -57,30 +57,30 @@ struct Layout
                                               std::optional<std::uint32_t>,
                                               std::optional<std::uint64_t>,
                                               RowRange> {
-    static constexpr std::size_t parent_column{0};
-    static constexpr std::size_t segment_column{1};
-    static constexpr std::size_t name_column{2};
-    static constexpr std::size_t semantic_type_column{3};
-    static constexpr std::size_t logical_type_column{4};
-    static constexpr std::size_t kind_column{5};
-    static constexpr std::size_t reserved_column{6};
-    static constexpr std::size_t schema_bit_width_column{7};
-    static constexpr std::size_t schema_bit_width_auto_column{8};
-    static constexpr std::size_t bit_width_column{9};
-    static constexpr std::size_t overridden_column{10};
-    static constexpr std::size_t least_significant_bit_column{11};
-    static constexpr std::size_t most_significant_bit_column{12};
-    static constexpr std::size_t maximum_unsigned_value_column{13};
-    static constexpr std::size_t minimum_signed_value_column{14};
-    static constexpr std::size_t maximum_signed_value_column{15};
-    static constexpr std::size_t minimum_semantic_value_column{16};
-    static constexpr std::size_t maximum_semantic_value_column{17};
-    static constexpr std::size_t semantic_value_count_column{18};
-    static constexpr std::size_t sentinel_code_count_column{19};
-    static constexpr std::size_t required_code_count_column{20};
-    static constexpr std::size_t minimum_required_bits_column{21};
-    static constexpr std::size_t unused_codes_column{22};
-    static constexpr std::size_t codes_column{23};
+    static constexpr std::size_t parent_column{0ULL};
+    static constexpr std::size_t segment_column{1ULL};
+    static constexpr std::size_t name_column{2ULL};
+    static constexpr std::size_t semantic_type_column{3ULL};
+    static constexpr std::size_t logical_type_column{4ULL};
+    static constexpr std::size_t kind_column{5ULL};
+    static constexpr std::size_t reserved_column{6ULL};
+    static constexpr std::size_t schema_bit_width_column{7ULL};
+    static constexpr std::size_t schema_bit_width_auto_column{8ULL};
+    static constexpr std::size_t bit_width_column{9ULL};
+    static constexpr std::size_t overridden_column{10ULL};
+    static constexpr std::size_t least_significant_bit_column{11ULL};
+    static constexpr std::size_t most_significant_bit_column{12ULL};
+    static constexpr std::size_t maximum_unsigned_value_column{13ULL};
+    static constexpr std::size_t minimum_signed_value_column{14ULL};
+    static constexpr std::size_t maximum_signed_value_column{15ULL};
+    static constexpr std::size_t minimum_semantic_value_column{16ULL};
+    static constexpr std::size_t maximum_semantic_value_column{17ULL};
+    static constexpr std::size_t semantic_value_count_column{18ULL};
+    static constexpr std::size_t sentinel_code_count_column{19ULL};
+    static constexpr std::size_t required_code_count_column{20ULL};
+    static constexpr std::size_t minimum_required_bits_column{21ULL};
+    static constexpr std::size_t unused_codes_column{22ULL};
+    static constexpr std::size_t codes_column{23ULL};
 };
 
 /* **************************************** */

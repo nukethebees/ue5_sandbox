@@ -150,7 +150,7 @@ struct SoftTarget {
 namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<settings::SoftTarget::Field>() noexcept -> std::size_t {
-    return 13;
+    return 13ULL;
 }
 
 template <>
@@ -159,6 +159,18 @@ inline constexpr auto enum_strings<settings::SoftTarget::Field, Name>{PackedStri
     "improvement_ratio\000range_transition_start_multiplier\000minimum_radius_pixels\000maximum_"
     "radius_pixels\000bounds_padding_pixels\000bracket_start_radius_multiplier\000opacity\000pulse_"
     "opacity_boost\000pulse_duration\000fade_out_duration",
-    std::array<std::uint16_t, 14>{
-        0, 26, 50, 75, 100, 134, 156, 178, 200, 232, 240, 260, 275, 293}}};
+    std::array<std::uint16_t, 14>{0ULL,
+                                  26ULL,
+                                  50ULL,
+                                  75ULL,
+                                  100ULL,
+                                  134ULL,
+                                  156ULL,
+                                  178ULL,
+                                  200ULL,
+                                  232ULL,
+                                  240ULL,
+                                  260ULL,
+                                  275ULL,
+                                  293ULL}}};
 } // namespace ioj

@@ -82,11 +82,11 @@ namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<sim::CapitalShipSimConfig::Field>() noexcept
     -> std::size_t {
-    return 4;
+    return 4ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<sim::CapitalShipSimConfig::Field, Name>{PackedStrings{
     "spawn_delay\000fighter_spawn_slots\000fighter_spawn_slots_relative_transforms\000max_health",
-    std::array<std::uint8_t, 5>{0, 12, 32, 72, 83}}};
+    std::array<std::uint8_t, 5>{0ULL, 12ULL, 32ULL, 72ULL, 83ULL}}};
 } // namespace ioj

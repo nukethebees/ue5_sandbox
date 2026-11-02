@@ -28,6 +28,6 @@ inline constexpr MinMax<::ETestTeam> enum_range<::ETestTeam>{::ETestTeam::White,
 
 template <>
 [[nodiscard]] constexpr auto enum_count<::ETestTeam>() noexcept -> std::size_t {
-    return 6;
+    return 6ULL;
 }
 } // namespace ioj

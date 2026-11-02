@@ -314,7 +314,7 @@ class Renderer {
                     ? ir_.literal(float_literal(text(document_.values.text[weight.index()])))
                     : render_value(weight));
         } else if (fill && margin) {
-            arguments.push_back(ir_.literal("1.0f"));
+            arguments.push_back(ir_.literal(1.0f));
         }
         if (margin) {
             arguments.push_back(render_value(margin));

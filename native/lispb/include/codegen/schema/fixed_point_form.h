@@ -39,5 +39,5 @@ inline constexpr MinMax<lispb::codegen::FixedPointForm> enum_range<lispb::codege
 
 template <>
 inline constexpr auto enum_strings<lispb::codegen::FixedPointForm, Serialized>{
-    PackedStrings{"binary-point\000range", std::array<std::uint8_t, 3>{0, 13, 19}}};
+    PackedStrings{"binary-point\000range", std::array<std::uint8_t, 3>{0ULL, 13ULL, 19ULL}}};
 } // namespace ioj

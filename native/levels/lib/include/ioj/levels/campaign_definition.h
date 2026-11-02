@@ -71,10 +71,10 @@ namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<levels::CampaignDefinition::Field>() noexcept
     -> std::size_t {
-    return 3;
+    return 3ULL;
 }
 
 template <>
-inline constexpr auto enum_strings<levels::CampaignDefinition::Field, Name>{
-    PackedStrings{"id\000title\000level_ids", std::array<std::uint8_t, 4>{0, 3, 9, 19}}};
+inline constexpr auto enum_strings<levels::CampaignDefinition::Field, Name>{PackedStrings{
+    "id\000title\000level_ids", std::array<std::uint8_t, 4>{0ULL, 3ULL, 9ULL, 19ULL}}};
 } // namespace ioj

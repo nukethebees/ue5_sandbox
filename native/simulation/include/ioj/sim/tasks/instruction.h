@@ -65,7 +65,7 @@ struct Instruction : detail::InstructionBase {
 
     // data_kill
     static constexpr PackedField<storage_type, storage_type, 8, 32> data_kill_layout{};
-    static constexpr storage_type data_kill_invalid_value{4294967295};
+    static constexpr storage_type data_kill_invalid_value{4294967295ULL};
 
     // data_move_to
     static constexpr PackedField<storage_type, storage_type, 8, 32> data_move_to_layout{};
@@ -173,6 +173,6 @@ static_assert(valid_packed_value_layout<Instruction>());
 } // namespace ioj::sim::tasks
 namespace ioj {
 template <>
-inline constexpr auto enum_strings<sim::tasks::InstructionKind, Serialized>{
-    PackedStrings{"kill\000idle\000move-to", std::array<std::uint8_t, 4>{0, 5, 10, 18}}};
+inline constexpr auto enum_strings<sim::tasks::InstructionKind, Serialized>{PackedStrings{
+    "kill\000idle\000move-to", std::array<std::uint8_t, 4>{0ULL, 5ULL, 10ULL, 18ULL}}};
 } // namespace ioj

@@ -26,9 +26,9 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : single_allocation_layout::ColumnLayouts<float, float, float> {
-    static constexpr std::size_t pitches_column{0};
-    static constexpr std::size_t yaws_column{1};
-    static constexpr std::size_t rolls_column{2};
+    static constexpr std::size_t pitches_column{0ULL};
+    static constexpr std::size_t yaws_column{1ULL};
+    static constexpr std::size_t rolls_column{2ULL};
 };
 
 /* **************************************** */
@@ -123,9 +123,9 @@ struct ViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto pitches() const { return this->column(0); }
-    auto yaws() const { return this->column(1); }
-    auto rolls() const { return this->column(2); }
+    auto pitches() const { return this->column(0LL); }
+    auto yaws() const { return this->column(1LL); }
+    auto rolls() const { return this->column(2LL); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

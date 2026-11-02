@@ -261,7 +261,7 @@ struct BinaryVelocity : detail::BinaryVelocityBase {
     using value_type = std::int16_t;
     static constexpr ioj::PackedField<storage_type, value_type, 0, storage.encoded_bits>
         value_layout{};
-    static constexpr int value_fractional_bits{4};
+    static constexpr int value_fractional_bits{4U};
     // Range: [-32768 / 16, 32767 / 16]; step: 0.0625.
 
     constexpr BinaryVelocity() noexcept = default;
@@ -458,7 +458,7 @@ static_assert(ioj::valid_packed_value_layout<RangeFields>());
 struct Defaults;
 
 namespace detail {
-inline constexpr std::uint16_t defaults_default_raw_value{933};
+inline constexpr std::uint16_t defaults_default_raw_value{933ULL};
 
 using DefaultsBase =
     ioj::PackedValueBase<Defaults,
@@ -516,7 +516,7 @@ static_assert(ioj::valid_packed_value_layout<Defaults>());
 struct DefaultsMsb;
 
 namespace detail {
-inline constexpr std::uint16_t defaults_msb_default_raw_value{42816};
+inline constexpr std::uint16_t defaults_msb_default_raw_value{42816ULL};
 
 using DefaultsMsbBase =
     ioj::PackedValueBase<DefaultsMsb,
@@ -1115,7 +1115,7 @@ static_assert(ioj::valid_packed_value_layout<PackedOpaqueState>());
 struct CheckedValue;
 
 namespace detail {
-inline constexpr std::uint32_t checked_value_default_raw_value{2147483647};
+inline constexpr std::uint32_t checked_value_default_raw_value{2147483647ULL};
 
 using CheckedValueBase =
     ioj::PackedValueBase<CheckedValue,
@@ -1244,12 +1244,12 @@ struct Motion : detail::MotionBase {
 
     // velocity
     static constexpr ioj::PackedField<storage_type, std::int16_t, 0, 12> velocity_raw_layout{};
-    static constexpr int velocity_fractional_bits{4};
+    static constexpr int velocity_fractional_bits{4U};
     // Range: [-2048 / 16, 2047 / 16]; step: 0.0625.
 
     // fraction
     static constexpr ioj::PackedField<storage_type, std::uint8_t, 12, 7> fraction_raw_layout{};
-    static constexpr int fraction_fractional_bits{7};
+    static constexpr int fraction_fractional_bits{7U};
     // Range: [0 / 128, 127 / 128]; step: 0.0078125.
 
     // state

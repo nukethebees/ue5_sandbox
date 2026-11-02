@@ -29,13 +29,13 @@ using ioj::to_serialized_string;
     try_parse_serialized_emission_field(std::string_view const value) noexcept
     -> std::optional<EmissionField> {
     switch (value.size()) {
-        case 5: {
+        case 5ULL: {
             if (value == "tests") {
                 return EmissionField::tests;
             }
             return std::nullopt;
         }
-        case 6: {
+        case 6ULL: {
             if (value == "header") {
                 return EmissionField::header;
             }
@@ -44,13 +44,13 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 9: {
+        case 9ULL: {
             if (value == "namespace") {
                 return EmissionField::namespace_;
             }
             return std::nullopt;
         }
-        case 14: {
+        case 14ULL: {
             if (value == "header-include") {
                 return EmissionField::header_include;
             }
@@ -74,5 +74,5 @@ inline constexpr MinMax<kernel_codegen::detail::EmissionField>
 template <>
 inline constexpr auto enum_strings<kernel_codegen::detail::EmissionField, Serialized>{
     PackedStrings{"header\000source\000tests\000header-include\000namespace",
-                  std::array<std::uint8_t, 6>{0, 7, 14, 20, 35, 45}}};
+                  std::array<std::uint8_t, 6>{0ULL, 7ULL, 14ULL, 20ULL, 35ULL, 45ULL}}};
 } // namespace ioj

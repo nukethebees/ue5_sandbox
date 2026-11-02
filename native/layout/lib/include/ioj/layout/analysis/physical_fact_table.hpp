@@ -35,12 +35,12 @@ struct Layout
                                               std::optional<std::uint32_t>,
                                               lispb::StringId,
                                               FactOrigin> {
-    static constexpr std::size_t size_bytes_column{0};
-    static constexpr std::size_t alignment_bytes_column{1};
-    static constexpr std::size_t signedness_column{2};
-    static constexpr std::size_t unsigned_value_bits_column{3};
-    static constexpr std::size_t provenance_column{4};
-    static constexpr std::size_t origin_column{5};
+    static constexpr std::size_t size_bytes_column{0ULL};
+    static constexpr std::size_t alignment_bytes_column{1ULL};
+    static constexpr std::size_t signedness_column{2ULL};
+    static constexpr std::size_t unsigned_value_bits_column{3ULL};
+    static constexpr std::size_t provenance_column{4ULL};
+    static constexpr std::size_t origin_column{5ULL};
 };
 
 /* **************************************** */

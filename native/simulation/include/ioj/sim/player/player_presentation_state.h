@@ -63,10 +63,10 @@ namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<sim::player::PlayerPresentationState::Field>() noexcept
     -> std::size_t {
-    return 2;
+    return 2ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<sim::player::PlayerPresentationState::Field, Name>{PackedStrings{
-    "body_transform\000boost_start_sequence", std::array<std::uint8_t, 3>{0, 15, 36}}};
+    "body_transform\000boost_start_sequence", std::array<std::uint8_t, 3>{0ULL, 15ULL, 36ULL}}};
 } // namespace ioj

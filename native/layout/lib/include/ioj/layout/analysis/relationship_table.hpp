@@ -32,10 +32,10 @@ struct Layout
                                               std::optional<std::size_t>,
                                               lispb::schema::RelationshipId,
                                               std::optional<ioj::layout::RelationshipMetrics>> {
-    static constexpr std::size_t owner_column{0};
-    static constexpr std::size_t field_column{1};
-    static constexpr std::size_t relationship_column{2};
-    static constexpr std::size_t metrics_column{3};
+    static constexpr std::size_t owner_column{0ULL};
+    static constexpr std::size_t field_column{1ULL};
+    static constexpr std::size_t relationship_column{2ULL};
+    static constexpr std::size_t metrics_column{3ULL};
 };
 
 /* **************************************** */

@@ -43,19 +43,19 @@ struct Layout
                                               std::int32_t,
                                               std::int32_t,
                                               EntityId> {
-    static constexpr std::size_t min_points_xs_column{0};
-    static constexpr std::size_t min_points_ys_column{1};
-    static constexpr std::size_t min_points_zs_column{2};
-    static constexpr std::size_t max_points_xs_column{3};
-    static constexpr std::size_t max_points_ys_column{4};
-    static constexpr std::size_t max_points_zs_column{5};
-    static constexpr std::size_t min_cells_xs_column{6};
-    static constexpr std::size_t min_cells_ys_column{7};
-    static constexpr std::size_t min_cells_zs_column{8};
-    static constexpr std::size_t max_cells_xs_column{9};
-    static constexpr std::size_t max_cells_ys_column{10};
-    static constexpr std::size_t max_cells_zs_column{11};
-    static constexpr std::size_t entity_ids_column{12};
+    static constexpr std::size_t min_points_xs_column{0ULL};
+    static constexpr std::size_t min_points_ys_column{1ULL};
+    static constexpr std::size_t min_points_zs_column{2ULL};
+    static constexpr std::size_t max_points_xs_column{3ULL};
+    static constexpr std::size_t max_points_ys_column{4ULL};
+    static constexpr std::size_t max_points_zs_column{5ULL};
+    static constexpr std::size_t min_cells_xs_column{6ULL};
+    static constexpr std::size_t min_cells_ys_column{7ULL};
+    static constexpr std::size_t min_cells_zs_column{8ULL};
+    static constexpr std::size_t max_cells_xs_column{9ULL};
+    static constexpr std::size_t max_cells_ys_column{10ULL};
+    static constexpr std::size_t max_cells_zs_column{11ULL};
+    static constexpr std::size_t entity_ids_column{12ULL};
 };
 
 /* **************************************** */

@@ -61,13 +61,13 @@ using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_property(std::string_view const value) noexcept
     -> std::optional<Property> {
     switch (value.size()) {
-        case 2: {
+        case 2ULL: {
             if (value == "id") {
                 return Property::Id;
             }
             return std::nullopt;
         }
-        case 4: {
+        case 4ULL: {
             if (value == "pass") {
                 return Property::Pass;
             }
@@ -82,7 +82,7 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 5: {
+        case 5ULL: {
             if (value == "title") {
                 return Property::Title;
             }
@@ -97,8 +97,8 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 6: {
-            switch (static_cast<unsigned char>(value[0])) {
+        case 6ULL: {
+            switch (static_cast<unsigned char>(value[0ULL])) {
                 case 'c': {
                     if (value == "camera") {
                         return Property::Camera;
@@ -140,7 +140,7 @@ using ioj::to_serialized_string;
                 }
             }
         }
-        case 7: {
+        case 7ULL: {
             if (value == "mission") {
                 return Property::Mission;
             }
@@ -149,8 +149,8 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 8: {
-            switch (static_cast<unsigned char>(value[0])) {
+        case 8ULL: {
+            switch (static_cast<unsigned char>(value[0ULL])) {
                 case 'd': {
                     if (value == "distance") {
                         return Property::Distance;
@@ -192,7 +192,7 @@ using ioj::to_serialized_string;
                 }
             }
         }
-        case 9: {
+        case 9ULL: {
             if (value == "campaigns") {
                 return Property::Campaigns;
             }
@@ -204,7 +204,7 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 10: {
+        case 10ULL: {
             if (value == "objectives") {
                 return Property::Objectives;
             }
@@ -219,19 +219,19 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 11: {
+        case 11ULL: {
             if (value == "description") {
                 return Property::Description;
             }
             return std::nullopt;
         }
-        case 12: {
+        case 12ULL: {
             if (value == "laser-damage") {
                 return Property::LaserDamage;
             }
             return std::nullopt;
         }
-        case 14: {
+        case 14ULL: {
             if (value == "collision-grid") {
                 return Property::CollisionGrid;
             }
@@ -240,13 +240,13 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 16: {
+        case 16ULL: {
             if (value == "offset-direction") {
                 return Property::OffsetDirection;
             }
             return std::nullopt;
         }
-        case 19: {
+        case 19ULL: {
             if (value == "initial-spawn-delay") {
                 return Property::InitialSpawnDelay;
             }
@@ -368,9 +368,11 @@ inline constexpr auto enum_strings<levels::authoring::Property, Serialized>{Pack
     "size\000cell-size\000look-at\000distance\000offset-"
     "direction\000archetype\000team\000position\000rotation\000spawn-at\000health\000laser-"
     "damage\000initial-spawn-delay\000spawn-cooldown",
-    std::array<std::uint16_t, 38>{0,   3,   9,   21,  30,  45,  52,  59,  66,  74,  85,  91,  96,
-                                  101, 108, 119, 130, 139, 148, 155, 165, 170, 176, 182, 193, 203,
-                                  211, 220, 237, 247, 252, 261, 270, 279, 286, 299, 319, 334}}};
+    std::array<std::uint16_t, 38>{0ULL,   3ULL,   9ULL,   21ULL,  30ULL,  45ULL,  52ULL,  59ULL,
+                                  66ULL,  74ULL,  85ULL,  91ULL,  96ULL,  101ULL, 108ULL, 119ULL,
+                                  130ULL, 139ULL, 148ULL, 155ULL, 165ULL, 170ULL, 176ULL, 182ULL,
+                                  193ULL, 203ULL, 211ULL, 220ULL, 237ULL, 247ULL, 252ULL, 261ULL,
+                                  270ULL, 279ULL, 286ULL, 299ULL, 319ULL, 334ULL}}};
 
 template <>
 struct EnumTraits<levels::authoring::ExpressionSyntax> {
@@ -380,11 +382,12 @@ struct EnumTraits<levels::authoring::ExpressionSyntax> {
 
 template <>
 inline constexpr auto enum_strings<levels::authoring::ExpressionSyntax, Serialized>{
-    PackedStrings{"expr\000expr-ref", std::array<std::uint8_t, 3>{0, 5, 14}}};
+    PackedStrings{"expr\000expr-ref", std::array<std::uint8_t, 3>{0ULL, 5ULL, 14ULL}}};
 
 template <>
 inline constexpr auto enum_strings<levels::authoring::RecordKind, Serialized>{PackedStrings{
     "level\000campaign\000catalog\000included-"
     "definition\000entity\000mission\000camera\000collision-grid\000objective\000level-completed",
-    std::array<std::uint8_t, 11>{0, 6, 15, 23, 43, 50, 58, 65, 80, 90, 106}}};
+    std::array<std::uint8_t, 11>{
+        0ULL, 6ULL, 15ULL, 23ULL, 43ULL, 50ULL, 58ULL, 65ULL, 80ULL, 90ULL, 106ULL}}};
 } // namespace ioj

@@ -73,11 +73,11 @@ struct HudSettings {
 namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<sim::HudSettings::Field>() noexcept -> std::size_t {
-    return 3;
+    return 3ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<sim::HudSettings::Field, Name>{PackedStrings{
     "player_status_update_period\000entity_count_update_period\000mission_status_update_period",
-    std::array<std::uint8_t, 4>{0, 28, 55, 84}}};
+    std::array<std::uint8_t, 4>{0ULL, 28ULL, 55ULL, 84ULL}}};
 } // namespace ioj

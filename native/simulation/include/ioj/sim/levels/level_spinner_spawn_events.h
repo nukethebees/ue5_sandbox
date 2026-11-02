@@ -30,12 +30,12 @@ struct ResolvedConstView;
 struct Layout
     : single_allocation_layout::
           ColumnLayouts<LevelEntityIndex, float, float, float, float, std::int32_t> {
-    static constexpr std::size_t entity_indices_column{0};
-    static constexpr std::size_t locations_xs_column{1};
-    static constexpr std::size_t locations_ys_column{2};
-    static constexpr std::size_t locations_zs_column{3};
-    static constexpr std::size_t yaws_column{4};
-    static constexpr std::size_t initial_fire_point_indices_column{5};
+    static constexpr std::size_t entity_indices_column{0ULL};
+    static constexpr std::size_t locations_xs_column{1ULL};
+    static constexpr std::size_t locations_ys_column{2ULL};
+    static constexpr std::size_t locations_zs_column{3ULL};
+    static constexpr std::size_t yaws_column{4ULL};
+    static constexpr std::size_t initial_fire_point_indices_column{5ULL};
 };
 
 /* **************************************** */

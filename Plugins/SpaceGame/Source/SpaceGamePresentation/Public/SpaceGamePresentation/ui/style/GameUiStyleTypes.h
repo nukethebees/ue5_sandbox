@@ -76,24 +76,25 @@ inline constexpr MinMax<::EGameUiIcon> enum_range<::EGameUiIcon>{::EGameUiIcon::
 
 template <>
 [[nodiscard]] constexpr auto enum_count<::EGameTextStyle>() noexcept -> std::size_t {
-    return 10;
+    return 10ULL;
 }
 
 template <>
 [[nodiscard]] constexpr auto enum_count<::EGameButtonStyle>() noexcept -> std::size_t {
-    return 2;
+    return 2ULL;
 }
 
 template <>
 [[nodiscard]] constexpr auto enum_count<::EGameUiIcon>() noexcept -> std::size_t {
-    return 9;
+    return 9ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<EGameUiIcon, Name>{
     PackedStrings{TEXT("Hive\000Video\000Gameplay\000Audio\000Controls\000Accessibility\000System"
                        "\000LevelIncomplete\000LevelComplete"),
-                  std::array<std::uint8_t, 10>{0, 5, 11, 20, 26, 35, 49, 56, 72, 86}}};
+                  std::array<std::uint8_t, 10>{
+                      0ULL, 5ULL, 11ULL, 20ULL, 26ULL, 35ULL, 49ULL, 56ULL, 72ULL, 86ULL}}};
 } // namespace ioj
 
 SPACEGAMEPRESENTATION_API auto LexToString(EGameUiIcon const value) -> TCHAR const*;

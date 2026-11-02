@@ -53,7 +53,7 @@ using ioj::to_serialized_string;
     try_parse_serialized_material_operator(std::string_view const value) noexcept
     -> std::optional<MaterialOperator> {
     switch (value.size()) {
-        case 1: {
+        case 1ULL: {
             if (value == "+") {
                 return MaterialOperator::add;
             }
@@ -68,7 +68,7 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 3: {
+        case 3ULL: {
             if (value == "sin") {
                 return MaterialOperator::sin;
             }
@@ -77,7 +77,7 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 4: {
+        case 4ULL: {
             if (value == "lerp") {
                 return MaterialOperator::lerp;
             }
@@ -89,8 +89,8 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 6: {
-            switch (static_cast<unsigned char>(value[0])) {
+        case 6ULL: {
+            switch (static_cast<unsigned char>(value[0ULL])) {
                 case 'c': {
                     if (value == "custom") {
                         return MaterialOperator::custom;
@@ -120,7 +120,7 @@ using ioj::to_serialized_string;
                 }
             }
         }
-        case 7: {
+        case 7ULL: {
             if (value == "texture") {
                 return MaterialOperator::texture;
             }
@@ -129,7 +129,7 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 8: {
+        case 8ULL: {
             if (value == "saturate") {
                 return MaterialOperator::saturate;
             }
@@ -138,13 +138,13 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 11: {
+        case 11ULL: {
             if (value == "shader-call") {
                 return MaterialOperator::shader_call;
             }
             return std::nullopt;
         }
-        case 12: {
+        case 12ULL: {
             if (value == "pixel-normal") {
                 return MaterialOperator::pixel_normal;
             }
@@ -153,7 +153,7 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 13: {
+        case 13ULL: {
             if (value == "vertex-normal") {
                 return MaterialOperator::vertex_normal;
             }
@@ -165,13 +165,13 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 14: {
+        case 14ULL: {
             if (value == "world-position") {
                 return MaterialOperator::world_position;
             }
             return std::nullopt;
         }
-        case 15: {
+        case 15ULL: {
             if (value == "object-position") {
                 return MaterialOperator::object_position;
             }
@@ -180,13 +180,13 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 18: {
+        case 18ULL: {
             if (value == "transform-position") {
                 return MaterialOperator::transform_position;
             }
             return std::nullopt;
         }
-        case 24: {
+        case 24ULL: {
             if (value == "per-instance-custom-data") {
                 return MaterialOperator::per_instance_custom_data;
             }
@@ -213,7 +213,8 @@ inline constexpr auto enum_strings<material_synth::MaterialOperator, Serialized>
     "data\000sample\000texture\000swizzle\000world-position\000object-position\000pixel-"
     "normal\000vertex-normal\000camera-vector\000camera-position\000vertex-color\000transform-"
     "position\000scene-texture\000shader-call\000custom",
-    std::array<std::uint16_t, 30>{0,   7,   14,  21,  23,  25,  27,  29,  34,  43,
-                                  48,  53,  57,  61,  70,  95,  102, 110, 118, 133,
-                                  149, 162, 176, 190, 206, 219, 238, 252, 264, 271}}};
+    std::array<std::uint16_t, 30>{0ULL,   7ULL,   14ULL,  21ULL,  23ULL,  25ULL,  27ULL,  29ULL,
+                                  34ULL,  43ULL,  48ULL,  53ULL,  57ULL,  61ULL,  70ULL,  95ULL,
+                                  102ULL, 110ULL, 118ULL, 133ULL, 149ULL, 162ULL, 176ULL, 190ULL,
+                                  206ULL, 219ULL, 238ULL, 252ULL, 264ULL, 271ULL}}};
 } // namespace ioj

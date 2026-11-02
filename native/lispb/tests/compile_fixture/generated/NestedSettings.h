@@ -69,10 +69,11 @@ namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<codegen_compile_fixture::SettingsTarget::Field>() noexcept
     -> std::size_t {
-    return 3;
+    return 3ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<codegen_compile_fixture::SettingsTarget::Field, Name>{
-    PackedStrings{"first\000second\000external_value", std::array<std::uint8_t, 4>{0, 6, 13, 28}}};
+    PackedStrings{"first\000second\000external_value",
+                  std::array<std::uint8_t, 4>{0ULL, 6ULL, 13ULL, 28ULL}}};
 } // namespace ioj

@@ -13,7 +13,7 @@ namespace ioj::sim::tasks {
 struct ProgramHandle;
 
 namespace detail {
-inline constexpr std::uint32_t program_handle_default_raw_value{4294967295};
+inline constexpr std::uint32_t program_handle_default_raw_value{4294967295ULL};
 
 using ProgramHandleBase =
     PackedValueBase<ProgramHandle,

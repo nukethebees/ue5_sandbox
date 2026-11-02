@@ -29,6 +29,6 @@ inline constexpr MinMax<::ECharacterCameraMode> enum_range<::ECharacterCameraMod
 
 template <>
 [[nodiscard]] constexpr auto enum_count<::ECharacterCameraMode>() noexcept -> std::size_t {
-    return 2;
+    return 2ULL;
 }
 } // namespace ioj

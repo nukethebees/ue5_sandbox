@@ -30,37 +30,37 @@ using ioj::to_serialized_string;
     try_parse_serialized_packed_field_kind(std::string_view const value) noexcept
     -> std::optional<PackedFieldKind> {
     switch (value.size()) {
-        case 4: {
+        case 4ULL: {
             if (value == "enum") {
                 return PackedFieldKind::enumeration;
             }
             return std::nullopt;
         }
-        case 6: {
+        case 6ULL: {
             if (value == "signed") {
                 return PackedFieldKind::signed_integer;
             }
             return std::nullopt;
         }
-        case 8: {
+        case 8ULL: {
             if (value == "unsigned") {
                 return PackedFieldKind::unsigned_integer;
             }
             return std::nullopt;
         }
-        case 10: {
+        case 10ULL: {
             if (value == "mini-float") {
                 return PackedFieldKind::mini_float;
             }
             return std::nullopt;
         }
-        case 11: {
+        case 11ULL: {
             if (value == "fixed-point") {
                 return PackedFieldKind::fixed_point;
             }
             return std::nullopt;
         }
-        case 16: {
+        case 16ULL: {
             if (value == "linear-quantized") {
                 return PackedFieldKind::linear_quantized;
             }
@@ -83,5 +83,5 @@ inline constexpr MinMax<lispb::codegen::PackedFieldKind>
 template <>
 inline constexpr auto enum_strings<lispb::codegen::PackedFieldKind, Serialized>{
     PackedStrings{"unsigned\000signed\000enum\000linear-quantized\000fixed-point\000mini-float",
-                  std::array<std::uint8_t, 7>{0, 9, 16, 21, 38, 50, 61}}};
+                  std::array<std::uint8_t, 7>{0ULL, 9ULL, 16ULL, 21ULL, 38ULL, 50ULL, 61ULL}}};
 } // namespace ioj

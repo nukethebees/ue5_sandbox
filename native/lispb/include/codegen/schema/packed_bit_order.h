@@ -40,5 +40,5 @@ inline constexpr MinMax<lispb::codegen::PackedBitOrder> enum_range<lispb::codege
 
 template <>
 inline constexpr auto enum_strings<lispb::codegen::PackedBitOrder, Serialized>{
-    PackedStrings{"lsb-first\000msb-first", std::array<std::uint8_t, 3>{0, 10, 20}}};
+    PackedStrings{"lsb-first\000msb-first", std::array<std::uint8_t, 3>{0ULL, 10ULL, 20ULL}}};
 } // namespace ioj

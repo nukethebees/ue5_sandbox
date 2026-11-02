@@ -34,11 +34,11 @@ struct Layout
                                               std::uint8_t,
                                               std::optional<ioj::layout::EnumCodeValue>,
                                               std::optional<lispb::codegen::PackedIntegerValue>> {
-    static constexpr std::size_t name_column{0};
-    static constexpr std::size_t sentinel_column{1};
-    static constexpr std::size_t count_sentinel_column{2};
-    static constexpr std::size_t code_column{3};
-    static constexpr std::size_t integer_value_column{4};
+    static constexpr std::size_t name_column{0ULL};
+    static constexpr std::size_t sentinel_column{1ULL};
+    static constexpr std::size_t count_sentinel_column{2ULL};
+    static constexpr std::size_t code_column{3ULL};
+    static constexpr std::size_t integer_value_column{4ULL};
 };
 
 /* **************************************** */

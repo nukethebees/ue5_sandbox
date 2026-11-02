@@ -26,9 +26,9 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : single_allocation_layout::ColumnLayouts<std::int32_t, std::int32_t, std::int32_t> {
-    static constexpr std::size_t xs_column{0};
-    static constexpr std::size_t ys_column{1};
-    static constexpr std::size_t zs_column{2};
+    static constexpr std::size_t xs_column{0ULL};
+    static constexpr std::size_t ys_column{1ULL};
+    static constexpr std::size_t zs_column{2ULL};
 };
 
 /* **************************************** */
@@ -124,9 +124,9 @@ struct ViewImpl : soa_storage_detail::StridedViewBase<std::int32_t, Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(0); }
-    auto ys() const { return this->column(1); }
-    auto zs() const { return this->column(2); }
+    auto xs() const { return this->column(0LL); }
+    auto ys() const { return this->column(1LL); }
+    auto zs() const { return this->column(2LL); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

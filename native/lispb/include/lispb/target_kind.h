@@ -29,13 +29,13 @@ using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_target_kind(std::string_view const value) noexcept
     -> std::optional<TargetKind> {
     switch (value.size()) {
-        case 4: {
+        case 4ULL: {
             if (value == "none") {
                 return TargetKind::none;
             }
             return std::nullopt;
         }
-        case 5: {
+        case 5ULL: {
             if (value == "slate") {
                 return TargetKind::slate;
             }
@@ -44,19 +44,19 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 6: {
+        case 6ULL: {
             if (value == "kernel") {
                 return TargetKind::kernel;
             }
             return std::nullopt;
         }
-        case 8: {
+        case 8ULL: {
             if (value == "material") {
                 return TargetKind::material;
             }
             return std::nullopt;
         }
-        case 10: {
+        case 10ULL: {
             if (value == "cpp-schema") {
                 return TargetKind::cpp_schema;
             }
@@ -78,5 +78,5 @@ inline constexpr MinMax<lispb::TargetKind> enum_range<lispb::TargetKind>{lispb::
 template <>
 inline constexpr auto enum_strings<lispb::TargetKind, Serialized>{
     PackedStrings{"none\000cpp-schema\000slate\000kernel\000material\000group",
-                  std::array<std::uint8_t, 7>{0, 5, 16, 22, 29, 38, 44}}};
+                  std::array<std::uint8_t, 7>{0ULL, 5ULL, 16ULL, 22ULL, 29ULL, 38ULL, 44ULL}}};
 } // namespace ioj

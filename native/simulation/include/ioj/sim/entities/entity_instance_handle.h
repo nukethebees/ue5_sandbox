@@ -90,7 +90,7 @@ static_assert(valid_packed_value_layout<QuantisedHealth>());
 struct EntityInstanceHandle;
 
 namespace detail {
-inline constexpr std::uint32_t entity_instance_handle_default_raw_value{4294967295};
+inline constexpr std::uint32_t entity_instance_handle_default_raw_value{4294967295ULL};
 
 using EntityInstanceHandleBase =
     PackedValueBase<EntityInstanceHandle,

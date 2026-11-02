@@ -32,49 +32,49 @@ using ioj::to_serialized_string;
     try_parse_serialized_enum_conversion(std::string_view const value) noexcept
     -> std::optional<EnumConversion> {
     switch (value.size()) {
-        case 6: {
+        case 6ULL: {
             if (value == "string") {
                 return EnumConversion::string;
             }
             return std::nullopt;
         }
-        case 11: {
+        case 11ULL: {
             if (value == "string-view") {
                 return EnumConversion::string_view;
             }
             return std::nullopt;
         }
-        case 13: {
+        case 13ULL: {
             if (value == "lex-to-string") {
                 return EnumConversion::lex_to_string;
             }
             return std::nullopt;
         }
-        case 14: {
+        case 14ULL: {
             if (value == "display-string") {
                 return EnumConversion::display_string;
             }
             return std::nullopt;
         }
-        case 19: {
+        case 19ULL: {
             if (value == "display-string-view") {
                 return EnumConversion::display_string_view;
             }
             return std::nullopt;
         }
-        case 20: {
+        case 20ULL: {
             if (value == "try-parse-serialized") {
                 return EnumConversion::try_parse_serialized;
             }
             return std::nullopt;
         }
-        case 21: {
+        case 21ULL: {
             if (value == "lex-to-display-string") {
                 return EnumConversion::lex_to_display_string;
             }
             return std::nullopt;
         }
-        case 24: {
+        case 24ULL: {
             if (value == "lex-to-serialized-string") {
                 return EnumConversion::lex_to_serialized_string;
             }
@@ -98,5 +98,5 @@ template <>
 inline constexpr auto enum_strings<lispb::codegen::EnumConversion, Serialized>{PackedStrings{
     "lex-to-string\000string-view\000string\000lex-to-display-string\000display-string-"
     "view\000display-string\000lex-to-serialized-string\000try-parse-serialized",
-    std::array<std::uint8_t, 9>{0, 14, 26, 33, 55, 75, 90, 115, 136}}};
+    std::array<std::uint8_t, 9>{0ULL, 14ULL, 26ULL, 33ULL, 55ULL, 75ULL, 90ULL, 115ULL, 136ULL}}};
 } // namespace ioj

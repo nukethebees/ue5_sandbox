@@ -88,11 +88,11 @@ struct TurretSimConfig {
 namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<sim::TurretSimConfig::Field>() noexcept -> std::size_t {
-    return 5;
+    return 5ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<sim::TurretSimConfig::Field, Name>{PackedStrings{
     "detection_radius\000target_refresh_frequency\000fire_point_offset\000laser\000max_health",
-    std::array<std::uint8_t, 6>{0, 17, 42, 60, 66, 77}}};
+    std::array<std::uint8_t, 6>{0ULL, 17ULL, 42ULL, 60ULL, 66ULL, 77ULL}}};
 } // namespace ioj

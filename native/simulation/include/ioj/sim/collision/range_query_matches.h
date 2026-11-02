@@ -27,11 +27,11 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : single_allocation_layout::ColumnLayouts<EntityId, float, float, float, float> {
-    static constexpr std::size_t entities_column{0};
-    static constexpr std::size_t distances_column{1};
-    static constexpr std::size_t directions_xs_column{2};
-    static constexpr std::size_t directions_ys_column{3};
-    static constexpr std::size_t directions_zs_column{4};
+    static constexpr std::size_t entities_column{0ULL};
+    static constexpr std::size_t distances_column{1ULL};
+    static constexpr std::size_t directions_xs_column{2ULL};
+    static constexpr std::size_t directions_ys_column{3ULL};
+    static constexpr std::size_t directions_zs_column{4ULL};
 };
 
 /* **************************************** */

@@ -32,25 +32,25 @@ using ioj::to_serialized_string;
     try_parse_serialized_operation_field(std::string_view const value) noexcept
     -> std::optional<OperationField> {
     switch (value.size()) {
-        case 5: {
+        case 5ULL: {
             if (value == "types") {
                 return OperationField::types;
             }
             return std::nullopt;
         }
-        case 6: {
+        case 6ULL: {
             if (value == "output") {
                 return OperationField::output;
             }
             return std::nullopt;
         }
-        case 7: {
+        case 7ULL: {
             if (value == "operand") {
                 return OperationField::operand;
             }
             return std::nullopt;
         }
-        case 8: {
+        case 8ULL: {
             if (value == "variants") {
                 return OperationField::variants;
             }
@@ -59,7 +59,7 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 10: {
+        case 10ULL: {
             if (value == "components") {
                 return OperationField::components;
             }
@@ -68,7 +68,7 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 17: {
+        case 17ULL: {
             if (value == "component-operand") {
                 return OperationField::component_operand;
             }
@@ -91,7 +91,8 @@ inline constexpr MinMax<kernel_codegen::detail::OperationField>
 
 template <>
 inline constexpr auto enum_strings<kernel_codegen::detail::OperationField, Serialized>{
-    PackedStrings{"operand\000component-"
-                  "operand\000components\000types\000output\000expression\000variants\000aliasing",
-                  std::array<std::uint8_t, 9>{0, 8, 26, 37, 43, 50, 61, 70, 79}}};
+    PackedStrings{
+        "operand\000component-"
+        "operand\000components\000types\000output\000expression\000variants\000aliasing",
+        std::array<std::uint8_t, 9>{0ULL, 8ULL, 26ULL, 37ULL, 43ULL, 50ULL, 61ULL, 70ULL, 79ULL}}};
 } // namespace ioj

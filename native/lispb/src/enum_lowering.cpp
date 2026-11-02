@@ -63,7 +63,7 @@ class EnumLowering : public CppIRBuilder {
             .return_type = std_types().size_t,
             .return_syntax = ReturnSyntax::trailing,
             .implementation = {.kind = FunctionImplementationKind::body,
-                               .body = {return_stmt(literal(std::to_string(count)))}},
+                               .body = {return_stmt(literal(count))}},
             .exception_specification = {.kind = FunctionExceptionKind::noexcept_},
             .flags = {.is_constexpr = true, .is_nodiscard = true, .define_in_header = true},
             .template_declaration = template_specialization()};
@@ -116,11 +116,11 @@ class EnumLowering : public CppIRBuilder {
         for (std::size_t i{}; i < count; ++i) {
             if (wide && offsets[i] != wide_offsets[i]) {
                 offset_values.push_back(conditional(
-                    binary(BinaryOperator::equal, sizeof_type(named_type("TCHAR")), literal("2")),
-                    literal(std::to_string(wide_offsets[i])),
-                    literal(std::to_string(offsets[i]))));
+                    binary(BinaryOperator::equal, sizeof_type(named_type("TCHAR")), literal(2)),
+                    literal(wide_offsets[i]),
+                    literal(offsets[i])));
             } else {
-                offset_values.push_back(literal(std::to_string(offsets[i])));
+                offset_values.push_back(literal(offsets[i]));
             }
         }
         auto const offset_type{std_types().integer(bits)};

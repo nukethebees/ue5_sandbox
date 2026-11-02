@@ -47,21 +47,21 @@ struct Layout
                                               std::optional<std::uint64_t>,
                                               std::optional<std::uint64_t>,
                                               std::optional<ioj::layout::CacheLineTiling>> {
-    static constexpr std::size_t parent_column{0};
-    static constexpr std::size_t name_column{1};
-    static constexpr std::size_t semantic_type_column{2};
-    static constexpr std::size_t schema_type_column{3};
-    static constexpr std::size_t physical_type_column{4};
-    static constexpr std::size_t overridden_column{5};
-    static constexpr std::size_t type_facts_column{6};
-    static constexpr std::size_t total_bytes_column{7};
-    static constexpr std::size_t allocation_offset_bytes_column{8};
-    static constexpr std::size_t padding_before_bytes_column{9};
-    static constexpr std::size_t minimum_cache_lines_column{10};
-    static constexpr std::size_t elements_per_cache_line_column{11};
-    static constexpr std::size_t minimum_pages_column{12};
-    static constexpr std::size_t complete_elements_per_page_column{13};
-    static constexpr std::size_t cache_line_tiling_column{14};
+    static constexpr std::size_t parent_column{0ULL};
+    static constexpr std::size_t name_column{1ULL};
+    static constexpr std::size_t semantic_type_column{2ULL};
+    static constexpr std::size_t schema_type_column{3ULL};
+    static constexpr std::size_t physical_type_column{4ULL};
+    static constexpr std::size_t overridden_column{5ULL};
+    static constexpr std::size_t type_facts_column{6ULL};
+    static constexpr std::size_t total_bytes_column{7ULL};
+    static constexpr std::size_t allocation_offset_bytes_column{8ULL};
+    static constexpr std::size_t padding_before_bytes_column{9ULL};
+    static constexpr std::size_t minimum_cache_lines_column{10ULL};
+    static constexpr std::size_t elements_per_cache_line_column{11ULL};
+    static constexpr std::size_t minimum_pages_column{12ULL};
+    static constexpr std::size_t complete_elements_per_page_column{13ULL};
+    static constexpr std::size_t cache_line_tiling_column{14ULL};
 };
 
 /* **************************************** */

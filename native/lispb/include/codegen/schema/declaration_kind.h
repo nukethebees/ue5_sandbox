@@ -34,13 +34,13 @@ enum class DeclarationKind : DeclarationKindUnderlying {
     try_parse_serialized_declaration_kind(std::string_view const value) noexcept
     -> std::optional<DeclarationKind> {
     switch (value.size()) {
-        case 4: {
+        case 4ULL: {
             if (value == "enum") {
                 return DeclarationKind::enumeration;
             }
             return std::nullopt;
         }
-        case 5: {
+        case 5ULL: {
             if (value == "union") {
                 return DeclarationKind::union_type;
             }
@@ -49,7 +49,7 @@ enum class DeclarationKind : DeclarationKindUnderlying {
             }
             return std::nullopt;
         }
-        case 6: {
+        case 6ULL: {
             if (value == "record") {
                 return DeclarationKind::record;
             }
@@ -61,19 +61,19 @@ enum class DeclarationKind : DeclarationKindUnderlying {
             }
             return std::nullopt;
         }
-        case 10: {
+        case 10ULL: {
             if (value == "mini-float") {
                 return DeclarationKind::mini_float;
             }
             return std::nullopt;
         }
-        case 11: {
+        case 11ULL: {
             if (value == "fixed-point") {
                 return DeclarationKind::fixed_point;
             }
             return std::nullopt;
         }
-        case 14: {
+        case 14ULL: {
             if (value == "integer-scalar") {
                 return DeclarationKind::integer_scalar;
             }
@@ -82,19 +82,19 @@ enum class DeclarationKind : DeclarationKindUnderlying {
             }
             return std::nullopt;
         }
-        case 16: {
+        case 16ULL: {
             if (value == "linear-quantized") {
                 return DeclarationKind::linear_quantized;
             }
             return std::nullopt;
         }
-        case 17: {
+        case 17ULL: {
             if (value == "optional-sentinel") {
                 return DeclarationKind::optional_sentinel;
             }
             return std::nullopt;
         }
-        case 21: {
+        case 21ULL: {
             if (value == "optional-presence-bit") {
                 return DeclarationKind::optional_presence_bit;
             }

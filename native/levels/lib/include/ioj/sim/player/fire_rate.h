@@ -48,14 +48,14 @@ struct EnumTraits<sim::ShipFireRate> {
 
 template <>
 [[nodiscard]] constexpr auto enum_count<sim::ShipFireRate>() noexcept -> std::size_t {
-    return 3;
+    return 3ULL;
 }
 
 template <>
-inline constexpr auto enum_strings<sim::ShipFireRate, Name>{
-    PackedStrings{"Single\000Burst3\000FullAuto", std::array<std::uint8_t, 4>{0, 7, 14, 23}}};
+inline constexpr auto enum_strings<sim::ShipFireRate, Name>{PackedStrings{
+    "Single\000Burst3\000FullAuto", std::array<std::uint8_t, 4>{0ULL, 7ULL, 14ULL, 23ULL}}};
 
 template <>
-inline constexpr auto enum_strings<sim::ShipFireRate, Serialized>{
-    PackedStrings{"single\000burst3\000full-auto", std::array<std::uint8_t, 4>{0, 7, 14, 24}}};
+inline constexpr auto enum_strings<sim::ShipFireRate, Serialized>{PackedStrings{
+    "single\000burst3\000full-auto", std::array<std::uint8_t, 4>{0ULL, 7ULL, 14ULL, 24ULL}}};
 } // namespace ioj

@@ -63,10 +63,10 @@ namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<settings::LaserPresentation::Field>() noexcept
     -> std::size_t {
-    return 2;
+    return 2ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<settings::LaserPresentation::Field, Name>{PackedStrings{
-    "min_cull_distance\000max_cull_distance", std::array<std::uint8_t, 3>{0, 18, 36}}};
+    "min_cull_distance\000max_cull_distance", std::array<std::uint8_t, 3>{0ULL, 18ULL, 36ULL}}};
 } // namespace ioj

@@ -42,10 +42,10 @@ struct EnumTraits<ObjectiveOutcome> {
 
 template <>
 [[nodiscard]] constexpr auto enum_count<ObjectiveOutcome>() noexcept -> std::size_t {
-    return 3;
+    return 3ULL;
 }
 
 template <>
-inline constexpr auto enum_strings<ObjectiveOutcome, Serialized>{
-    PackedStrings{"passed\000failed\000expired", std::array<std::uint8_t, 4>{0, 7, 14, 22}}};
+inline constexpr auto enum_strings<ObjectiveOutcome, Serialized>{PackedStrings{
+    "passed\000failed\000expired", std::array<std::uint8_t, 4>{0ULL, 7ULL, 14ULL, 22ULL}}};
 } // namespace ioj

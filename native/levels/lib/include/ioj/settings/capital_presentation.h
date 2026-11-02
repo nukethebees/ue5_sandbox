@@ -97,12 +97,12 @@ namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<settings::CapitalPresentation::Field>() noexcept
     -> std::size_t {
-    return 6;
+    return 6ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<settings::CapitalPresentation::Field, Name>{
     PackedStrings{"n_small_explosions\000time_between_explosions\000min_small_explosion_"
                   "range\000max_small_explosion_range\000large_explosion_delay\000proxy_arrow_size",
-                  std::array<std::uint8_t, 7>{0, 19, 43, 69, 95, 117, 134}}};
+                  std::array<std::uint8_t, 7>{0ULL, 19ULL, 43ULL, 69ULL, 95ULL, 117ULL, 134ULL}}};
 } // namespace ioj

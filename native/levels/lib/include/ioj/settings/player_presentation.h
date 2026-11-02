@@ -57,10 +57,10 @@ namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<settings::PlayerPresentation::Field>() noexcept
     -> std::size_t {
-    return 1;
+    return 1ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<settings::PlayerPresentation::Field, Name>{
-    PackedStrings{"boost_effect_colour_intensity", std::array<std::uint8_t, 2>{0, 30}}};
+    PackedStrings{"boost_effect_colour_intensity", std::array<std::uint8_t, 2>{0ULL, 30ULL}}};
 } // namespace ioj

@@ -26,10 +26,10 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : single_allocation_layout::ColumnLayouts<DeathReason, EntityId, EntityId, Vector3f> {
-    static constexpr std::size_t reasons_column{0};
-    static constexpr std::size_t victims_column{1};
-    static constexpr std::size_t killers_column{2};
-    static constexpr std::size_t locations_column{3};
+    static constexpr std::size_t reasons_column{0ULL};
+    static constexpr std::size_t victims_column{1ULL};
+    static constexpr std::size_t killers_column{2ULL};
+    static constexpr std::size_t locations_column{3ULL};
 };
 
 /* **************************************** */

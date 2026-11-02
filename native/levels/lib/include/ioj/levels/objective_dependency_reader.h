@@ -15,19 +15,19 @@ template <>
 struct TypeReader<levels::ObjectiveDependency> : RecordReader<levels::ObjectiveDependency> {
     static void decode(DecodeContext ctx, value_type& result) {
         auto const arguments{
-            positional_arguments(ctx.reader, ctx.node, "objective-resolved", ctx.path, 2)};
+            positional_arguments(ctx.reader, ctx.node, "objective-resolved", ctx.path, 2ULL)};
 
         if (!arguments) {
             append_errors(ctx.errors, arguments.error());
             return;
         }
         FieldReader{{ctx.reader,
-                     (*arguments)[0],
+                     (*arguments)[0ULL],
                      std::string{ctx.path} + ".objective",
                      ctx.mode,
                      ctx.errors}}(result.objective);
         FieldReader{{ctx.reader,
-                     (*arguments)[1],
+                     (*arguments)[1ULL],
                      std::string{ctx.path} + ".outcome",
                      ctx.mode,
                      ctx.errors}}(result.outcome);

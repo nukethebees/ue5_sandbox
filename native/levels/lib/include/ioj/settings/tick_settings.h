@@ -64,10 +64,10 @@ struct TickSettings {
 namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<settings::TickSettings::Field>() noexcept -> std::size_t {
-    return 2;
+    return 2ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<settings::TickSettings::Field, Name>{
-    PackedStrings{"tick_rate\000time_scale", std::array<std::uint8_t, 3>{0, 10, 21}}};
+    PackedStrings{"tick_rate\000time_scale", std::array<std::uint8_t, 3>{0ULL, 10ULL, 21ULL}}};
 } // namespace ioj

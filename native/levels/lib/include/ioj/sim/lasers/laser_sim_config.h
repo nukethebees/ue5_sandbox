@@ -57,10 +57,10 @@ struct LaserSimConfig {
 namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<sim::LaserSimConfig::Field>() noexcept -> std::size_t {
-    return 1;
+    return 1ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<sim::LaserSimConfig::Field, Name>{
-    PackedStrings{"n_preallocated_instances", std::array<std::uint8_t, 2>{0, 25}}};
+    PackedStrings{"n_preallocated_instances", std::array<std::uint8_t, 2>{0ULL, 25ULL}}};
 } // namespace ioj

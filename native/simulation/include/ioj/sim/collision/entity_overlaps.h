@@ -26,8 +26,8 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : single_allocation_layout::ColumnLayouts<EntityId, EntityId> {
-    static constexpr std::size_t first_entities_column{0};
-    static constexpr std::size_t second_entities_column{1};
+    static constexpr std::size_t first_entities_column{0ULL};
+    static constexpr std::size_t second_entities_column{1ULL};
 };
 
 /* **************************************** */
@@ -114,8 +114,8 @@ struct ViewImpl : soa_storage_detail::StridedViewBase<EntityId, Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto first_entities() const { return this->column(0); }
-    auto second_entities() const { return this->column(1); }
+    auto first_entities() const { return this->column(0LL); }
+    auto second_entities() const { return this->column(1LL); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -207,8 +207,8 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : single_allocation_layout::ColumnLayouts<EntityId, StaticGeometryIndex> {
-    static constexpr std::size_t entities_column{0};
-    static constexpr std::size_t static_geometry_indices_column{1};
+    static constexpr std::size_t entities_column{0ULL};
+    static constexpr std::size_t static_geometry_indices_column{1ULL};
 };
 
 /* **************************************** */

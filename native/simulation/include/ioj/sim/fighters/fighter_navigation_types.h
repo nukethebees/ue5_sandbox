@@ -159,6 +159,6 @@ namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<sim::fighters::NavigationRiskTier>() noexcept
     -> std::size_t {
-    return 4;
+    return 4ULL;
 }
 } // namespace ioj

@@ -184,7 +184,7 @@ void append_case(lispb::codegen::CppIR& cpp,
         body.push_back(cpp.expr_stmt(
             cpp.member_call(cpp.named(destination),
                             "fill",
-                            {cpp.static_cast_expr(element_type, cpp.literal("-12345"))})));
+                            {cpp.static_cast_expr(element_type, cpp.literal(-12345))})));
     }
     body.push_back(cpp.variable("auto const&",
                                 "expected",
@@ -271,7 +271,7 @@ auto lower_standard_tests(lispb::codegen::CppIR& cpp,
          cpp.binary(lispb::codegen::BinaryOperator::add, cpp.named("before"), cpp.named("count")),
          untouched_bytes})};
     auto const check_untouched_storage{
-        cpp.expr_stmt(cpp.call(cpp.named("EXPECT_EQ"), {untouched_comparison, cpp.literal("0")}))};
+        cpp.expr_stmt(cpp.call(cpp.named("EXPECT_EQ"), {untouched_comparison, cpp.literal(0)}))};
     lispb::codegen::FunctionDefinition const expect_result{
         .name = cpp.named("expect_result"),
         .return_type = cpp.types.std.void_,

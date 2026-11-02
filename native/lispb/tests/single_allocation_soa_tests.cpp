@@ -46,7 +46,7 @@ TEST(SingleAllocationSoa, OrdinarySchemasGenerateNativeOwnersAndViews) {
          "struct DataPointers",
          "ResolvedViewBase<Layout::column_types, DataPointers, Const>"});
     EXPECT_FALSE(output.contains("make_data_unchecked("));
-    expect_contains_all(output, {"auto ids() const", "ids_column{0}", "nested_xs_column{1}"});
+    expect_contains_all(output, {"auto ids() const", "ids_column{0ULL}", "nested_xs_column{1ULL}"});
     EXPECT_FALSE(output.contains("LayoutColumns"));
     EXPECT_TRUE(output.contains("CompactViewBase<Const>"));
     expect_contains_none(output,

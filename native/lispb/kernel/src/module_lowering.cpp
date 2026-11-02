@@ -308,8 +308,8 @@ auto overlap_helper(lispb::codegen::CppIR& cpp) -> lispb::codegen::NodeId {
             {.kind = lispb::codegen::FunctionImplementationKind::body,
              .body = {cpp.if_stmt(
                           cpp.binary(BinaryOperator::logical_or,
-                                     cpp.binary(BinaryOperator::equal, lhs_size, cpp.literal("0")),
-                                     cpp.binary(BinaryOperator::equal, rhs_size, cpp.literal("0"))),
+                                     cpp.binary(BinaryOperator::equal, lhs_size, cpp.literal(0)),
+                                     cpp.binary(BinaryOperator::equal, rhs_size, cpp.literal(0))),
                           cpp.block({cpp.return_stmt(cpp.literal(false))})),
                       cpp.variable("auto const",
                                    "lhs_address",

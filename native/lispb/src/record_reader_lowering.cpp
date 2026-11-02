@@ -329,7 +329,7 @@ class RecordReaderLowering : public CppIRBuilder {
                                     member_access(decode_ctx, "node"),
                                     string_literal(ctx.text(*records.s7_tag[row])),
                                     member_access(decode_ctx, "path"),
-                                    literal(std::to_string(fields.size()))})),
+                                    literal(fields.size())})),
                      2);
             body.add(if_stmt(
                 unary(UnaryOperator::logical_not, named("arguments")),
@@ -348,7 +348,7 @@ class RecordReaderLowering : public CppIRBuilder {
                 auto const reader{init_list(
                     {init_list({member_access(decode_ctx, "reader"),
                                 subscript(unary(UnaryOperator::dereference, named("arguments")),
-                                          literal(std::to_string(index++))),
+                                          literal(index++)),
                                 path,
                                 member_access(decode_ctx, "mode"),
                                 errors})},

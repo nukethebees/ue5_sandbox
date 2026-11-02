@@ -45,20 +45,20 @@ struct Layout
                                               float,
                                               EntityId,
                                               LaserSource> {
-    static constexpr std::size_t locations_xs_column{0};
-    static constexpr std::size_t locations_ys_column{1};
-    static constexpr std::size_t locations_zs_column{2};
-    static constexpr std::size_t rotations_pitches_column{3};
-    static constexpr std::size_t rotations_yaws_column{4};
-    static constexpr std::size_t rotations_rolls_column{5};
-    static constexpr std::size_t base_velocities_xs_column{6};
-    static constexpr std::size_t base_velocities_ys_column{7};
-    static constexpr std::size_t base_velocities_zs_column{8};
-    static constexpr std::size_t damages_column{9};
-    static constexpr std::size_t speeds_column{10};
-    static constexpr std::size_t max_distances_column{11};
-    static constexpr std::size_t instigator_ids_column{12};
-    static constexpr std::size_t sources_column{13};
+    static constexpr std::size_t locations_xs_column{0ULL};
+    static constexpr std::size_t locations_ys_column{1ULL};
+    static constexpr std::size_t locations_zs_column{2ULL};
+    static constexpr std::size_t rotations_pitches_column{3ULL};
+    static constexpr std::size_t rotations_yaws_column{4ULL};
+    static constexpr std::size_t rotations_rolls_column{5ULL};
+    static constexpr std::size_t base_velocities_xs_column{6ULL};
+    static constexpr std::size_t base_velocities_ys_column{7ULL};
+    static constexpr std::size_t base_velocities_zs_column{8ULL};
+    static constexpr std::size_t damages_column{9ULL};
+    static constexpr std::size_t speeds_column{10ULL};
+    static constexpr std::size_t max_distances_column{11ULL};
+    static constexpr std::size_t instigator_ids_column{12ULL};
+    static constexpr std::size_t sources_column{13ULL};
 };
 
 /* **************************************** */

@@ -197,7 +197,7 @@ struct FighterSimConfig {
 namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<sim::FighterSimConfig::Field>() noexcept -> std::size_t {
-    return 19;
+    return 19ULL;
 }
 
 template <>
@@ -208,6 +208,7 @@ inline constexpr auto enum_strings<sim::FighterSimConfig::Field, Name>{PackedStr
     "time\000avoidance_clearance_buffer\000separation_radius\000separation_strength\000steering_"
     "memory_duration\000dense_traffic_neighbour_threshold\000laser\000health\000attack_retry_"
     "cooldown\000los_check_buffer",
-    std::array<std::uint16_t, 20>{0,   18,  38,  65,  71,  91,  124, 151, 185, 222,
-                                  247, 274, 292, 312, 337, 371, 377, 384, 406, 423}}};
+    std::array<std::uint16_t, 20>{0ULL,   18ULL,  38ULL,  65ULL,  71ULL,  91ULL,  124ULL,
+                                  151ULL, 185ULL, 222ULL, 247ULL, 274ULL, 292ULL, 312ULL,
+                                  337ULL, 371ULL, 377ULL, 384ULL, 406ULL, 423ULL}}};
 } // namespace ioj

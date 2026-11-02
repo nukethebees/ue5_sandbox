@@ -42,17 +42,17 @@ struct Layout
                                               Health,
                                               float,
                                               float> {
-    static constexpr std::size_t entity_indices_column{0};
-    static constexpr std::size_t locations_xs_column{1};
-    static constexpr std::size_t locations_ys_column{2};
-    static constexpr std::size_t locations_zs_column{3};
-    static constexpr std::size_t rotations_pitches_column{4};
-    static constexpr std::size_t rotations_yaws_column{5};
-    static constexpr std::size_t rotations_rolls_column{6};
-    static constexpr std::size_t teams_column{7};
-    static constexpr std::size_t healths_column{8};
-    static constexpr std::size_t initial_fighter_spawn_delays_column{9};
-    static constexpr std::size_t fighter_spawn_cooldowns_column{10};
+    static constexpr std::size_t entity_indices_column{0ULL};
+    static constexpr std::size_t locations_xs_column{1ULL};
+    static constexpr std::size_t locations_ys_column{2ULL};
+    static constexpr std::size_t locations_zs_column{3ULL};
+    static constexpr std::size_t rotations_pitches_column{4ULL};
+    static constexpr std::size_t rotations_yaws_column{5ULL};
+    static constexpr std::size_t rotations_rolls_column{6ULL};
+    static constexpr std::size_t teams_column{7ULL};
+    static constexpr std::size_t healths_column{8ULL};
+    static constexpr std::size_t initial_fighter_spawn_delays_column{9ULL};
+    static constexpr std::size_t fighter_spawn_cooldowns_column{10ULL};
 };
 
 /* **************************************** */

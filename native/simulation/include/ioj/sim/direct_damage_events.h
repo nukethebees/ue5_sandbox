@@ -25,9 +25,9 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : single_allocation_layout::ColumnLayouts<EntityId, std::int32_t, EntityId> {
-    static constexpr std::size_t damaged_entities_column{0};
-    static constexpr std::size_t damage_amounts_column{1};
-    static constexpr std::size_t instigators_column{2};
+    static constexpr std::size_t damaged_entities_column{0ULL};
+    static constexpr std::size_t damage_amounts_column{1ULL};
+    static constexpr std::size_t instigators_column{2ULL};
 };
 
 /* **************************************** */

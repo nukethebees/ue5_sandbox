@@ -17,7 +17,7 @@ namespace ioj::sim {
 struct ExprHandle;
 
 namespace detail {
-inline constexpr std::uint32_t expr_handle_default_raw_value{4294967295};
+inline constexpr std::uint32_t expr_handle_default_raw_value{4294967295ULL};
 
 using ExprHandleBase =
     PackedValueBase<ExprHandle, PackedStorage<std::uint32_t, 32>{expr_handle_default_raw_value}>;

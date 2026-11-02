@@ -13,7 +13,7 @@ namespace ioj::sim {
 struct ObjectiveId;
 
 namespace detail {
-inline constexpr std::uint16_t objective_id_default_raw_value{65535};
+inline constexpr std::uint16_t objective_id_default_raw_value{65535ULL};
 
 using ObjectiveIdBase =
     PackedValueBase<ObjectiveId, PackedStorage<std::uint16_t, 16>{objective_id_default_raw_value}>;

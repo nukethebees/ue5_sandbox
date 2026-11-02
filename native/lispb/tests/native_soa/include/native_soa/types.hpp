@@ -50,7 +50,7 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : single_allocation_layout::ColumnLayouts<std::uint32_t> {
-    static constexpr std::size_t count_column{0};
+    static constexpr std::size_t count_column{0ULL};
 };
 
 /* **************************************** */
@@ -227,7 +227,7 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : single_allocation_layout::ColumnLayouts<PointerB*> {
-    static constexpr std::size_t others_column{0};
+    static constexpr std::size_t others_column{0ULL};
 };
 
 /* **************************************** */
@@ -387,7 +387,7 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : single_allocation_layout::ColumnLayouts<PointerA*> {
-    static constexpr std::size_t others_column{0};
+    static constexpr std::size_t others_column{0ULL};
 };
 
 /* **************************************** */
@@ -547,7 +547,7 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : single_allocation_layout::ColumnLayouts<MixedRecord*> {
-    static constexpr std::size_t records_column{0};
+    static constexpr std::size_t records_column{0ULL};
 };
 
 /* **************************************** */
@@ -719,8 +719,8 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : single_allocation_layout::ColumnLayouts<Pair, Node*> {
-    static constexpr std::size_t pairs_column{0};
-    static constexpr std::size_t pointers_column{1};
+    static constexpr std::size_t pairs_column{0ULL};
+    static constexpr std::size_t pointers_column{1ULL};
 };
 
 /* **************************************** */
@@ -885,9 +885,9 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : single_allocation_layout::ColumnLayouts<float, float, float> {
-    static constexpr std::size_t xs_column{0};
-    static constexpr std::size_t ys_column{1};
-    static constexpr std::size_t zs_column{2};
+    static constexpr std::size_t xs_column{0ULL};
+    static constexpr std::size_t ys_column{1ULL};
+    static constexpr std::size_t zs_column{2ULL};
 };
 
 /* **************************************** */
@@ -970,9 +970,9 @@ struct ViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(0); }
-    auto ys() const { return this->column(1); }
-    auto zs() const { return this->column(2); }
+    auto xs() const { return this->column(0LL); }
+    auto ys() const { return this->column(1LL); }
+    auto zs() const { return this->column(2LL); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -1063,8 +1063,8 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : single_allocation_layout::ColumnLayouts<OddBytes, OddBytes> {
-    static constexpr std::size_t first_column{0};
-    static constexpr std::size_t second_column{1};
+    static constexpr std::size_t first_column{0ULL};
+    static constexpr std::size_t second_column{1ULL};
 };
 
 /* **************************************** */
@@ -1139,8 +1139,8 @@ struct ViewImpl : soa_storage_detail::StridedViewBase<OddBytes, Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto first() const { return this->column(0); }
-    auto second() const { return this->column(1); }
+    auto first() const { return this->column(0LL); }
+    auto second() const { return this->column(1LL); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -1170,12 +1170,12 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : single_allocation_layout::ColumnLayouts<float, float, float, float, float, float> {
-    static constexpr std::size_t starts_xs_column{0};
-    static constexpr std::size_t starts_ys_column{1};
-    static constexpr std::size_t starts_zs_column{2};
-    static constexpr std::size_t ends_xs_column{3};
-    static constexpr std::size_t ends_ys_column{4};
-    static constexpr std::size_t ends_zs_column{5};
+    static constexpr std::size_t starts_xs_column{0ULL};
+    static constexpr std::size_t starts_ys_column{1ULL};
+    static constexpr std::size_t starts_zs_column{2ULL};
+    static constexpr std::size_t ends_xs_column{3ULL};
+    static constexpr std::size_t ends_ys_column{4ULL};
+    static constexpr std::size_t ends_zs_column{5ULL};
 };
 
 /* **************************************** */
@@ -1277,10 +1277,10 @@ struct ViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
         requires Enabled
         : Base{other} {}
     auto view_starts() const -> std::conditional_t<Const, vectors::ConstView, vectors::View> {
-        return {this->column(0).data(), this->byte_stride(), this->num()};
+        return {this->column(0LL).data(), this->byte_stride(), this->num()};
     }
     auto view_ends() const -> std::conditional_t<Const, vectors::ConstView, vectors::View> {
-        return {this->column(3).data(), this->byte_stride(), this->num()};
+        return {this->column(3LL).data(), this->byte_stride(), this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {
@@ -1313,13 +1313,13 @@ struct ResolvedConstView;
 struct Layout
     : single_allocation_layout::
           ColumnLayouts<std::int32_t, float, float, float, float, float, float> {
-    static constexpr std::size_t values_column{0};
-    static constexpr std::size_t positions_xs_column{1};
-    static constexpr std::size_t positions_ys_column{2};
-    static constexpr std::size_t positions_zs_column{3};
-    static constexpr std::size_t velocities_xs_column{4};
-    static constexpr std::size_t velocities_ys_column{5};
-    static constexpr std::size_t velocities_zs_column{6};
+    static constexpr std::size_t values_column{0ULL};
+    static constexpr std::size_t positions_xs_column{1ULL};
+    static constexpr std::size_t positions_ys_column{2ULL};
+    static constexpr std::size_t positions_zs_column{3ULL};
+    static constexpr std::size_t velocities_xs_column{4ULL};
+    static constexpr std::size_t velocities_ys_column{5ULL};
+    static constexpr std::size_t velocities_zs_column{6ULL};
 };
 
 /* **************************************** */
@@ -1553,18 +1553,18 @@ struct Layout
                                               float,
                                               Aligned64,
                                               Aligned256> {
-    static constexpr std::size_t bytes_column{0};
-    static constexpr std::size_t odd_first_column{1};
-    static constexpr std::size_t odd_second_column{2};
-    static constexpr std::size_t aligned32_column{3};
-    static constexpr std::size_t nested_starts_xs_column{4};
-    static constexpr std::size_t nested_starts_ys_column{5};
-    static constexpr std::size_t nested_starts_zs_column{6};
-    static constexpr std::size_t nested_ends_xs_column{7};
-    static constexpr std::size_t nested_ends_ys_column{8};
-    static constexpr std::size_t nested_ends_zs_column{9};
-    static constexpr std::size_t aligned64_column{10};
-    static constexpr std::size_t aligned256_column{11};
+    static constexpr std::size_t bytes_column{0ULL};
+    static constexpr std::size_t odd_first_column{1ULL};
+    static constexpr std::size_t odd_second_column{2ULL};
+    static constexpr std::size_t aligned32_column{3ULL};
+    static constexpr std::size_t nested_starts_xs_column{4ULL};
+    static constexpr std::size_t nested_starts_ys_column{5ULL};
+    static constexpr std::size_t nested_starts_zs_column{6ULL};
+    static constexpr std::size_t nested_ends_xs_column{7ULL};
+    static constexpr std::size_t nested_ends_ys_column{8ULL};
+    static constexpr std::size_t nested_ends_zs_column{9ULL};
+    static constexpr std::size_t aligned64_column{10ULL};
+    static constexpr std::size_t aligned256_column{11ULL};
 };
 
 /* **************************************** */
@@ -1826,8 +1826,8 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : single_allocation_layout::ColumnLayouts<float, float> {
-    static constexpr std::size_t xs_column{0};
-    static constexpr std::size_t ys_column{1};
+    static constexpr std::size_t xs_column{0ULL};
+    static constexpr std::size_t ys_column{1ULL};
 };
 
 /* **************************************** */
@@ -1924,8 +1924,8 @@ struct ViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(0); }
-    auto ys() const { return this->column(1); }
+    auto xs() const { return this->column(0LL); }
+    auto ys() const { return this->column(1LL); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -1991,10 +1991,10 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : single_allocation_layout::ColumnLayouts<float, ApiMask, float, float> {
-    static constexpr std::size_t values_column{0};
-    static constexpr std::size_t masks_column{1};
-    static constexpr std::size_t positions_xs_column{2};
-    static constexpr std::size_t positions_ys_column{3};
+    static constexpr std::size_t values_column{0ULL};
+    static constexpr std::size_t masks_column{1ULL};
+    static constexpr std::size_t positions_xs_column{2ULL};
+    static constexpr std::size_t positions_ys_column{3ULL};
 };
 
 /* **************************************** */
@@ -2258,8 +2258,8 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : single_allocation_layout::ColumnLayouts<float, float> {
-    static constexpr std::size_t xs_column{0};
-    static constexpr std::size_t ys_column{1};
+    static constexpr std::size_t xs_column{0ULL};
+    static constexpr std::size_t ys_column{1ULL};
 };
 
 /* **************************************** */
@@ -2353,8 +2353,8 @@ struct ViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto xs() const { return this->column(0); }
-    auto ys() const { return this->column(1); }
+    auto xs() const { return this->column(0LL); }
+    auto ys() const { return this->column(1LL); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;
@@ -2469,9 +2469,9 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : single_allocation_layout::ColumnLayouts<float, float, float> {
-    static constexpr std::size_t horizontal_column{0};
-    static constexpr std::size_t vertical_column{1};
-    static constexpr std::size_t depth_column{2};
+    static constexpr std::size_t horizontal_column{0ULL};
+    static constexpr std::size_t vertical_column{1ULL};
+    static constexpr std::size_t depth_column{2ULL};
 };
 
 /* **************************************** */
@@ -2567,9 +2567,9 @@ struct ViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
     ViewImpl(ViewImpl<false> const& other)
         requires Enabled
         : Base{other} {}
-    auto horizontal() const { return this->column(0); }
-    auto vertical() const { return this->column(1); }
-    auto depth() const { return this->column(2); }
+    auto horizontal() const { return this->column(0LL); }
+    auto vertical() const { return this->column(1LL); }
+    auto depth() const { return this->column(2LL); }
 };
 struct ConstView : ViewImpl<true> {
     using Base = ViewImpl<true>;

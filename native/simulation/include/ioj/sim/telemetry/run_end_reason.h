@@ -30,37 +30,37 @@ using ioj::to_serialized_string;
     try_parse_serialized_run_end_reason(std::string_view const value) noexcept
     -> std::optional<RunEndReason> {
     switch (value.size()) {
-        case 9: {
+        case 9ULL: {
             if (value == "world_end") {
                 return RunEndReason::WorldEnd;
             }
             return std::nullopt;
         }
-        case 14: {
+        case 14ULL: {
             if (value == "mission_failed") {
                 return RunEndReason::MissionFailed;
             }
             return std::nullopt;
         }
-        case 15: {
+        case 15ULL: {
             if (value == "battle_resolved") {
                 return RunEndReason::BattleResolved;
             }
             return std::nullopt;
         }
-        case 16: {
+        case 16ULL: {
             if (value == "duration_reached") {
                 return RunEndReason::DurationReached;
             }
             return std::nullopt;
         }
-        case 17: {
+        case 17ULL: {
             if (value == "mission_succeeded") {
                 return RunEndReason::MissionSucceeded;
             }
             return std::nullopt;
         }
-        case 18: {
+        case 18ULL: {
             if (value == "orchestrator_reset") {
                 return RunEndReason::OrchestratorReset;
             }
@@ -83,5 +83,5 @@ template <>
 inline constexpr auto enum_strings<sim::telemetry::RunEndReason, Serialized>{
     PackedStrings{"mission_succeeded\000mission_failed\000battle_resolved\000duration_"
                   "reached\000orchestrator_reset\000world_end",
-                  std::array<std::uint8_t, 7>{0, 18, 33, 49, 66, 85, 95}}};
+                  std::array<std::uint8_t, 7>{0ULL, 18ULL, 33ULL, 49ULL, 66ULL, 85ULL, 95ULL}}};
 } // namespace ioj

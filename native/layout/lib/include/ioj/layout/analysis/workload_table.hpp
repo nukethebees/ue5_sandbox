@@ -48,22 +48,22 @@ struct Layout
                                               std::optional<std::uint64_t>,
                                               std::optional<std::uint64_t>,
                                               std::optional<std::uint64_t>> {
-    static constexpr std::size_t analysis_column{0};
-    static constexpr std::size_t selections_column{1};
-    static constexpr std::size_t element_count_column{2};
-    static constexpr std::size_t multiplicity_column{3};
-    static constexpr std::size_t bytes_column{4};
-    static constexpr std::size_t bits_column{5};
-    static constexpr std::size_t cache_column{6};
-    static constexpr std::size_t pages_column{7};
-    static constexpr std::size_t cache_capacity_column{8};
-    static constexpr std::size_t packed_waste_column{9};
-    static constexpr std::size_t footprint_exact_column{10};
-    static constexpr std::size_t storage_bytes_column{11};
-    static constexpr std::size_t full_logical_payload_bytes_column{12};
-    static constexpr std::size_t unselected_payload_bytes_column{13};
-    static constexpr std::size_t allocated_payload_bytes_column{14};
-    static constexpr std::size_t capacity_slack_bytes_column{15};
+    static constexpr std::size_t analysis_column{0ULL};
+    static constexpr std::size_t selections_column{1ULL};
+    static constexpr std::size_t element_count_column{2ULL};
+    static constexpr std::size_t multiplicity_column{3ULL};
+    static constexpr std::size_t bytes_column{4ULL};
+    static constexpr std::size_t bits_column{5ULL};
+    static constexpr std::size_t cache_column{6ULL};
+    static constexpr std::size_t pages_column{7ULL};
+    static constexpr std::size_t cache_capacity_column{8ULL};
+    static constexpr std::size_t packed_waste_column{9ULL};
+    static constexpr std::size_t footprint_exact_column{10ULL};
+    static constexpr std::size_t storage_bytes_column{11ULL};
+    static constexpr std::size_t full_logical_payload_bytes_column{12ULL};
+    static constexpr std::size_t unselected_payload_bytes_column{13ULL};
+    static constexpr std::size_t allocated_payload_bytes_column{14ULL};
+    static constexpr std::size_t capacity_slack_bytes_column{15ULL};
 };
 
 /* **************************************** */

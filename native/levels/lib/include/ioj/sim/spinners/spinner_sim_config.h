@@ -74,11 +74,11 @@ struct SpinnerSimConfig {
 namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<sim::SpinnerSimConfig::Field>() noexcept -> std::size_t {
-    return 3;
+    return 3ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<sim::SpinnerSimConfig::Field, Name>{
     PackedStrings{"fire_point_offsets\000yaw_rotation_speed_degrees\000laser",
-                  std::array<std::uint8_t, 4>{0, 19, 46, 52}}};
+                  std::array<std::uint8_t, 4>{0ULL, 19ULL, 46ULL, 52ULL}}};
 } // namespace ioj

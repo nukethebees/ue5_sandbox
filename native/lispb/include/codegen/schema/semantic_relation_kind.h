@@ -35,7 +35,7 @@ using ioj::to_string;
     try_parse_serialized_semantic_relation_kind(std::string_view const value) noexcept
     -> std::optional<SemanticRelationKind> {
     switch (value.size()) {
-        case 8: {
+        case 8ULL: {
             if (value == "count_of") {
                 return SemanticRelationKind::count_of;
             }
@@ -44,7 +44,7 @@ using ioj::to_string;
             }
             return std::nullopt;
         }
-        case 9: {
+        case 9ULL: {
             if (value == "member_of") {
                 return SemanticRelationKind::member_of;
             }
@@ -53,7 +53,7 @@ using ioj::to_string;
             }
             return std::nullopt;
         }
-        case 10: {
+        case 10ULL: {
             if (value == "index_into") {
                 return SemanticRelationKind::index_into;
             }
@@ -65,13 +65,13 @@ using ioj::to_string;
             }
             return std::nullopt;
         }
-        case 11: {
+        case 11ULL: {
             if (value == "offset_into") {
                 return SemanticRelationKind::offset_into;
             }
             return std::nullopt;
         }
-        case 13: {
+        case 13ULL: {
             if (value == "discriminates") {
                 return SemanticRelationKind::discriminates;
             }
@@ -96,13 +96,15 @@ template <>
 inline constexpr auto enum_strings<lispb::codegen::SemanticRelationKind, Name>{
     PackedStrings{"index_into\000count_of\000offset_into\000discriminates\000contains\000member_"
                   "of\000quantises\000encoded_as\000references",
-                  std::array<std::uint8_t, 10>{0, 11, 20, 32, 46, 55, 65, 75, 86, 97}}};
+                  std::array<std::uint8_t, 10>{
+                      0ULL, 11ULL, 20ULL, 32ULL, 46ULL, 55ULL, 65ULL, 75ULL, 86ULL, 97ULL}}};
 
 template <>
 inline constexpr auto enum_strings<lispb::codegen::SemanticRelationKind, Serialized>{
     PackedStrings{"index_into\000count_of\000offset_into\000discriminates\000contains\000member_"
                   "of\000quantises\000encoded_as\000references",
-                  std::array<std::uint8_t, 10>{0, 11, 20, 32, 46, 55, 65, 75, 86, 97}}};
+                  std::array<std::uint8_t, 10>{
+                      0ULL, 11ULL, 20ULL, 32ULL, 46ULL, 55ULL, 65ULL, 75ULL, 86ULL, 97ULL}}};
 } // namespace ioj
 namespace std {
 template <>

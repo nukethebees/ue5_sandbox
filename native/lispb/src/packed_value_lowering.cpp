@@ -31,14 +31,6 @@
 namespace lispb::codegen::detail {
 namespace {
 
-auto packed_literal(PackedIntegerValue value) -> std::string {
-    if (value.negative && value.magnitude == (std::uint64_t{1} << 63)) {
-        return "(-9223372036854775807LL - 1)";
-    }
-    return std::format(
-        "{}{}{}", value.negative ? "-" : "", value.magnitude, value.negative ? "LL" : "ULL");
-}
-
 auto mask(std::uint32_t bits) -> std::uint64_t {
     return bits == 64 ? (std::numeric_limits<std::uint64_t>::max)()
                       : (std::uint64_t{1} << bits) - 1;
@@ -106,7 +98,7 @@ class PackedEmitter : public CppIRBuilder {
             auto const default_symbol{type(detail_namespace + default_name, NameOrigin::global)};
             detail_members.push_back(variable(decorate_type(storage_type, "inline constexpr ", ""),
                                               text(default_name),
-                                              number(*layout_.default_raw_value)));
+                                              literal(*layout_.default_raw_value)));
             default_value = default_symbol;
         }
         auto const descriptor{
@@ -249,13 +241,10 @@ class PackedEmitter : public CppIRBuilder {
     auto type(std::string_view value, NameOrigin origin = NameOrigin::enclosing) -> CppTypeId {
         return named_type(value, origin);
     }
-    auto number(std::uint64_t value) -> Expr {
-        return literal(
-            std::to_string(value) +
-            (value > static_cast<std::uint64_t>((std::numeric_limits<std::int64_t>::max)()) ? "ULL"
-                                                                                            : ""));
+    auto integer(PackedIntegerValue value) -> Expr {
+        return value.negative ? literal(*packed_integer_as_signed(value))
+                              : literal(value.magnitude);
     }
-    auto integer(PackedIntegerValue value) -> Expr { return literal(packed_literal(value)); }
     auto value() -> Expr { return named("value"); }
     auto stored_value() -> Expr { return named("value_"); }
     auto external(std::string_view name, std::string_view header) -> Expr {
@@ -627,13 +616,13 @@ class PackedEmitter : public CppIRBuilder {
                                      definitions.optional_sentinels.sentinel_value[definition]));
                 } else {
                     auto const presence{binary(BinaryOperator::shift_left,
-                                               init_list({number(1)}, type("storage_type")),
+                                               init_list({literal(1)}, type("storage_type")),
                                                member_access(named(payload + "_layout"), "bits"))};
                     absent = binary(BinaryOperator::equal,
                                     binary(BinaryOperator::bitwise_and,
                                            cast("storage_type", expression),
                                            presence),
-                                    number(0));
+                                    literal(0));
                 }
                 return source_check
                          ? Predicate{binary(BinaryOperator::logical_or, absent, *source_check)}
@@ -804,7 +793,7 @@ class PackedEmitter : public CppIRBuilder {
                      "storage_type",
                      layout_.default_raw_value == invalid
                          ? member_access(named("storage"), "default_raw_value")
-                         : number(*invalid));
+                         : literal(*invalid));
         }
         auto const count{layout_.placements.size()};
         for (std::size_t index{}; index < count; ++index) {
@@ -887,7 +876,7 @@ class PackedEmitter : public CppIRBuilder {
     auto guard_code(schema::BitGuard const& guard) -> Expr {
         auto const declaration_id{graph_.source_declaration(guard.enumeration)};
         if (!context_.declarations.enums.cpp_projection[declaration_id]) {
-            return cast(descriptor_value(guard.path + "_layout"), number(guard.value));
+            return cast(descriptor_value(guard.path + "_layout"), literal(guard.value));
         }
         auto const definition{graph_.definition(guard.enumeration)};
         auto const& enums{graph_.definitions().enums};
@@ -969,7 +958,7 @@ class PackedEmitter : public CppIRBuilder {
                 auto const constant_{constant(field_metadata_[*parent],
                                               placement.path + "_invalid_value",
                                               "storage_type",
-                                              number(*invalid))};
+                                              literal(*invalid))};
                 result = all({binary(BinaryOperator::not_equal,
                                      extract(field_name(placement) + "_layout", source),
                                      constant_),
@@ -1038,7 +1027,7 @@ class PackedEmitter : public CppIRBuilder {
     }
     auto combine_fields(std::span<Expr const> fields) -> Expr {
         if (fields.empty()) {
-            return number(0);
+            return literal(0);
         }
 
         auto encoded{fields.front()};
@@ -1207,15 +1196,8 @@ class PackedEmitter : public CppIRBuilder {
             auto const step{std::isfinite(span) ? span / intervals
                                                 : range.max / intervals - range.min / intervals};
             metadata.push_back(line_comment(std::format("Range: {}; step: {}.", range, step)));
-            auto const real = [&](double value) {
-                auto spelling{std::format("{}", value)};
-                if (spelling.find_first_of(".eE") == std::string::npos) {
-                    spelling += ".0";
-                }
-                return literal(spelling);
-            };
-            minimum = constant(metadata, path + "_minimum", std_types().f64, real(range.min));
-            maximum = constant(metadata, path + "_maximum", std_types().f64, real(range.max));
+            minimum = constant(metadata, path + "_minimum", std_types().f64, literal(range.min));
+            maximum = constant(metadata, path + "_maximum", std_types().f64, literal(range.max));
             auto const codes{cast(std_types().f64, upper)};
             decode = call(
                 std_types().lerp,
@@ -1226,7 +1208,7 @@ class PackedEmitter : public CppIRBuilder {
             // Halve opposite extreme endpoints before subtracting to avoid an overflowing span.
             auto const half_span{!std::isfinite(span)};
             auto const adjusted = [&](Expr input) {
-                return half_span ? binary(BinaryOperator::multiply, input, literal("0.5")) : input;
+                return half_span ? binary(BinaryOperator::multiply, input, literal(0.5)) : input;
             };
             scale = binary(
                 BinaryOperator::multiply,
@@ -1237,7 +1219,7 @@ class PackedEmitter : public CppIRBuilder {
         } else {
             auto const fractional_bits{fixed.fractional_bits[row]};
             auto const fractional{constant(
-                metadata, path + "_fractional_bits", std_types().int_, number(fractional_bits))};
+                metadata, path + "_fractional_bits", std_types().int_, literal(fractional_bits))};
             auto const negative_fractional{unary(UnaryOperator::negate, fractional)};
             minimum = ldexp(cast(std_types().f64, lower), negative_fractional);
             maximum = ldexp(cast(std_types().f64, upper), negative_fractional);
@@ -1282,19 +1264,18 @@ class PackedEmitter : public CppIRBuilder {
                 "auto const", "fraction", binary(BinaryOperator::subtract, scaled, rounded)));
             auto const fraction{named("fraction")};
             auto const tie{binary(BinaryOperator::logical_and,
-                                  binary(BinaryOperator::equal, fraction, literal("0.5")),
+                                  binary(BinaryOperator::equal, fraction, literal(0.5)),
                                   binary(BinaryOperator::not_equal,
-                                         call(std_types().fmod, {rounded, literal("2.0")}),
-                                         literal("0.0")))};
+                                         call(std_types().fmod, {rounded, literal(2.0)}),
+                                         literal(0.0)))};
             auto const round_up{binary(BinaryOperator::logical_or,
-                                       binary(BinaryOperator::greater, fraction, literal("0.5")),
+                                       binary(BinaryOperator::greater, fraction, literal(0.5)),
                                        tie)};
             body.push_back(if_stmt(
                 round_up,
-                block(
-                    {assignment(rounded, binary(BinaryOperator::add, rounded, literal("1.0")))})));
+                block({assignment(rounded, binary(BinaryOperator::add, rounded, literal(1.0)))})));
         }
-        auto const range{ldexp(literal("1.0"), magnitude)};
+        auto const range{ldexp(literal(1.0), magnitude)};
         if (range_form) {
             // The largest 64-bit code rounds to 2^64 as a double; handle it before casting.
             body.push_back(if_stmt(
@@ -1306,7 +1287,7 @@ class PackedEmitter : public CppIRBuilder {
                    binary(BinaryOperator::greater_equal, rounded, range),
                    binary(BinaryOperator::less,
                           rounded,
-                          signedness ? unary(UnaryOperator::negate, range) : literal("0.0")))));
+                          signedness ? unary(UnaryOperator::negate, range) : literal(0.0)))));
         auto const raw_type{descriptor_value(layout_name)};
         body.push_back(
             variable(decorate_type(raw_type, "", " const"), "raw", cast(raw_type, rounded)));

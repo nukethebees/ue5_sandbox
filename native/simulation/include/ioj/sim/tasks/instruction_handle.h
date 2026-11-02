@@ -13,7 +13,7 @@ namespace ioj::sim::tasks {
 struct InstructionHandle;
 
 namespace detail {
-inline constexpr std::uint32_t instruction_handle_default_raw_value{4294967295};
+inline constexpr std::uint32_t instruction_handle_default_raw_value{4294967295ULL};
 
 using InstructionHandleBase =
     PackedValueBase<InstructionHandle,

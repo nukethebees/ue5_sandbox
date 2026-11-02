@@ -142,7 +142,7 @@ class SoaApiLowering : public CppIRBuilder {
                     auto const index{named(index_name)};
                     auto append_body{node_list()};
                     append_body.add(variable("auto const", index_name, this_member_call("num")))
-                        .add(expr_stmt(this_member_call("add_defaulted", {literal("1")})));
+                        .add(expr_stmt(this_member_call("add_defaulted", {literal(1)})));
                     auto const count{columns.size()};
                     for (std::size_t column{}; column < count; ++column) {
                         append_body.add(
@@ -392,7 +392,7 @@ class SoaApiLowering : public CppIRBuilder {
                 emit("add",
                      logical_parameters,
                      {variable("auto const", "index", call(named("num"))),
-                      expr_stmt(call(named("add_uninitialised"), {literal("1")})),
+                      expr_stmt(call(named("add_uninitialised"), {literal(1)})),
                       expr_stmt(call(named("set"), logical_arguments)),
                       return_stmt(named("index"))});
             }

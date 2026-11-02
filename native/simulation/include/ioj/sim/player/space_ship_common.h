@@ -31,6 +31,7 @@ inline constexpr MinMax<sim::player::BoostBrakeState> enum_range<sim::player::Bo
     sim::player::BoostBrakeState::None, sim::player::BoostBrakeState::EmergencyBrake};
 
 template <>
-inline constexpr auto enum_strings<sim::player::BoostBrakeState, Name>{PackedStrings{
-    "None\000Boost\000Brake\000EmergencyBrake", std::array<std::uint8_t, 5>{0, 5, 11, 17, 32}}};
+inline constexpr auto enum_strings<sim::player::BoostBrakeState, Name>{
+    PackedStrings{"None\000Boost\000Brake\000EmergencyBrake",
+                  std::array<std::uint8_t, 5>{0ULL, 5ULL, 11ULL, 17ULL, 32ULL}}};
 } // namespace ioj

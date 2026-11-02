@@ -28,7 +28,7 @@ using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_blend_mode(std::string_view const value) noexcept
     -> std::optional<BlendMode> {
     switch (value.size()) {
-        case 6: {
+        case 6ULL: {
             if (value == "opaque") {
                 return BlendMode::opaque;
             }
@@ -37,19 +37,19 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 8: {
+        case 8ULL: {
             if (value == "additive") {
                 return BlendMode::additive;
             }
             return std::nullopt;
         }
-        case 11: {
+        case 11ULL: {
             if (value == "translucent") {
                 return BlendMode::translucent;
             }
             return std::nullopt;
         }
-        case 15: {
+        case 15ULL: {
             if (value == "alpha-composite") {
                 return BlendMode::alpha_composite;
             }
@@ -71,5 +71,5 @@ inline constexpr MinMax<material_synth::BlendMode> enum_range<material_synth::Bl
 template <>
 inline constexpr auto enum_strings<material_synth::BlendMode, Serialized>{
     PackedStrings{"additive\000translucent\000opaque\000masked\000alpha-composite",
-                  std::array<std::uint8_t, 6>{0, 9, 21, 28, 35, 51}}};
+                  std::array<std::uint8_t, 6>{0ULL, 9ULL, 21ULL, 28ULL, 35ULL, 51ULL}}};
 } // namespace ioj

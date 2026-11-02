@@ -41,6 +41,6 @@ inline constexpr MinMax<lispb::codegen::IntegerVarintEncoding>
         lispb::codegen::IntegerVarintEncoding::zigzag_varint};
 
 template <>
-inline constexpr auto enum_strings<lispb::codegen::IntegerVarintEncoding, Serialized>{
-    PackedStrings{"unsigned\000signed\000zigzag", std::array<std::uint8_t, 4>{0, 9, 16, 23}}};
+inline constexpr auto enum_strings<lispb::codegen::IntegerVarintEncoding, Serialized>{PackedStrings{
+    "unsigned\000signed\000zigzag", std::array<std::uint8_t, 4>{0ULL, 9ULL, 16ULL, 23ULL}}};
 } // namespace ioj

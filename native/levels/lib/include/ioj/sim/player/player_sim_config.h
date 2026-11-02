@@ -131,12 +131,13 @@ struct PlayerSimConfig {
 namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<sim::PlayerSimConfig::Field>() noexcept -> std::size_t {
-    return 11;
+    return 11ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<sim::PlayerSimConfig::Field, Name>{PackedStrings{
     "thrust_energy_max\000pitch_angle_max\000pitch_speed\000yaw_angle_max\000yaw_speed\000turn_"
     "bank_angle_max\000turn_bank_speed\000laser\000health\000laser_mode\000laser_fire_rate",
-    std::array<std::uint8_t, 12>{0, 18, 34, 46, 60, 70, 90, 106, 112, 119, 130, 146}}};
+    std::array<std::uint8_t, 12>{
+        0ULL, 18ULL, 34ULL, 46ULL, 60ULL, 70ULL, 90ULL, 106ULL, 112ULL, 119ULL, 130ULL, 146ULL}}};
 } // namespace ioj

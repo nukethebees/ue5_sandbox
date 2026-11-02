@@ -57,10 +57,10 @@ namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<settings::TurretPresentation::Field>() noexcept
     -> std::size_t {
-    return 1;
+    return 1ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<settings::TurretPresentation::Field, Name>{
-    PackedStrings{"death_effect_scale", std::array<std::uint8_t, 2>{0, 19}}};
+    PackedStrings{"death_effect_scale", std::array<std::uint8_t, 2>{0ULL, 19ULL}}};
 } // namespace ioj

@@ -30,7 +30,7 @@ using ioj::to_serialized_string;
 [[nodiscard]] constexpr auto try_parse_serialized_expr_type(std::string_view const value) noexcept
     -> std::optional<ExprType> {
     switch (value.size()) {
-        case 6: {
+        case 6ULL: {
             if (value == "all-of") {
                 return ExprType::All;
             }
@@ -39,31 +39,31 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 12: {
+        case 12ULL: {
             if (value == "time-elapsed") {
                 return ExprType::TimeElapsed;
             }
             return std::nullopt;
         }
-        case 16: {
+        case 16ULL: {
             if (value == "entity-destroyed") {
                 return ExprType::EntityDestroyed;
             }
             return std::nullopt;
         }
-        case 18: {
+        case 18ULL: {
             if (value == "objective-resolved") {
                 return ExprType::ObjectiveResolved;
             }
             return std::nullopt;
         }
-        case 20: {
+        case 20ULL: {
             if (value == "entity-kills-reached") {
                 return ExprType::EntityKillsReached;
             }
             return std::nullopt;
         }
-        case 23: {
+        case 23ULL: {
             if (value == "entity-reached-position") {
                 return ExprType::EntityReachedPosition;
             }
@@ -94,8 +94,8 @@ struct EnumTraits<levels::ExprType> {
 };
 
 template <>
-inline constexpr auto enum_strings<levels::ExprType, Serialized>{
-    PackedStrings{"all-of\000any-of\000entity-destroyed\000entity-reached-position\000time-"
-                  "elapsed\000objective-resolved\000entity-kills-reached",
-                  std::array<std::uint8_t, 8>{0, 7, 14, 31, 55, 68, 87, 108}}};
+inline constexpr auto enum_strings<levels::ExprType, Serialized>{PackedStrings{
+    "all-of\000any-of\000entity-destroyed\000entity-reached-position\000time-elapsed\000objective-"
+    "resolved\000entity-kills-reached",
+    std::array<std::uint8_t, 8>{0ULL, 7ULL, 14ULL, 31ULL, 55ULL, 68ULL, 87ULL, 108ULL}}};
 } // namespace ioj

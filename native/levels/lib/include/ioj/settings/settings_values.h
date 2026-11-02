@@ -136,12 +136,13 @@ struct SettingsValues {
 namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<settings::SettingsValues::Field>() noexcept -> std::size_t {
-    return 11;
+    return 11ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<settings::SettingsValues::Field, Name>{PackedStrings{
     "tick\000player_ship\000laser_projectiles\000capital_ships\000fighters\000turrets\000tube_"
     "spinners\000collision_grid\000hud\000presentation\000starfield",
-    std::array<std::uint8_t, 12>{0, 5, 17, 35, 49, 58, 66, 80, 95, 99, 112, 122}}};
+    std::array<std::uint8_t, 12>{
+        0ULL, 5ULL, 17ULL, 35ULL, 49ULL, 58ULL, 66ULL, 80ULL, 95ULL, 99ULL, 112ULL, 122ULL}}};
 } // namespace ioj

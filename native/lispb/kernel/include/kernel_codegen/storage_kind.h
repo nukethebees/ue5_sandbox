@@ -40,5 +40,5 @@ inline constexpr MinMax<kernel_codegen::detail::StorageKind>
 
 template <>
 inline constexpr auto enum_strings<kernel_codegen::detail::StorageKind, Serialized>{
-    PackedStrings{"array\000scalar", std::array<std::uint8_t, 3>{0, 6, 13}}};
+    PackedStrings{"array\000scalar", std::array<std::uint8_t, 3>{0ULL, 6ULL, 13ULL}}};
 } // namespace ioj

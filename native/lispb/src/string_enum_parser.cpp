@@ -125,8 +125,8 @@ class StringEnumParserLowering : public CppIRBuilder {
                             block(length_bucket(input, length, group, prefix_size, position + 1))));
         }
         cases.push_back(switch_case({}, block({return_stmt(type_reference(std_types().nullopt))})));
-        auto const selected_character{static_cast_expr(
-            std_types().unsigned_char, subscript(input, literal(std::to_string(position))))};
+        auto const selected_character{
+            static_cast_expr(std_types().unsigned_char, subscript(input, literal(position)))};
         return {switch_stmt(selected_character, cases)};
     }
     auto parser_body(Expr const input, std::span<StringEnumEntry const> const entries) -> Nodes {
@@ -147,11 +147,10 @@ class StringEnumParserLowering : public CppIRBuilder {
                                    member_call(input, "starts_with", {string_literal(prefix)})),
                              block({return_stmt(type_reference(std_types().nullopt))})),
                      2);
-            body.add(
-                variable("auto const",
-                         "suffix",
-                         member_call(input, "substr", {literal(std::to_string(prefix.size()))})),
-                2);
+            body.add(variable("auto const",
+                              "suffix",
+                              member_call(input, "substr", {literal(prefix.size())})),
+                     2);
             suffix = named("suffix");
         }
 
@@ -161,9 +160,8 @@ class StringEnumParserLowering : public CppIRBuilder {
         }
         std::vector<SwitchCaseId> cases;
         for (auto const& [length, group] : lengths) {
-            cases.push_back(
-                switch_case(literal(std::to_string(length)),
-                            block(length_bucket(suffix, length, group, prefix.size()))));
+            cases.push_back(switch_case(
+                literal(length), block(length_bucket(suffix, length, group, prefix.size()))));
         }
         cases.push_back(switch_case({}, block({return_stmt(type_reference(std_types().nullopt))})));
         body.add(switch_stmt(member_call(suffix, "size"), cases));

@@ -54,13 +54,13 @@ TEST_F(ExprTest, RendersCallsCastsAndInitializerLists) {
                 {ir.scope_member(ir.types.named("project::Mode", NameOrigin::global), "Ready")})};
     expect_rendered(ir.init_list({lookup}, types.intern("FString")),
                     "FString{get_name(project::Mode::Ready)}");
-    expect_rendered(ir.init_list({ir.literal("1"), ir.literal("2")}), "{1, 2}");
+    expect_rendered(ir.init_list({ir.literal(1), ir.literal(2)}), "{1, 2}");
     expect_rendered(ir.init_list({}, types.intern("FString")), "FString{}");
     expect_rendered(ir.init_list({}), "{}");
     expect_rendered(ir.static_cast_expr(types.intern("int32"),
                                         ir.scope_member(ir.types.named("Mode"), "COUNT")),
                     "static_cast<int32>(Mode::COUNT)");
-    expect_rendered(ir.call(ir.call(ir.named("factory")), {ir.literal("42")}), "factory()(42)");
+    expect_rendered(ir.call(ir.call(ir.named("factory")), {ir.literal(42)}), "factory()(42)");
 }
 
 TEST_F(ExprTest, PreservesBinaryGroupingAndPostfixBinding) {
@@ -109,7 +109,7 @@ TEST_F(ExprTest, PreservesBitwiseAndShiftPrecedence) {
     auto const value{ir.named("value")};
     auto const bit{ir.call(ir.named("bit"), {ir.named("field")})};
     auto const masked{ir.binary(BinaryOperator::bitwise_and, value, bit)};
-    expect_rendered(ir.binary(BinaryOperator::not_equal, masked, ir.literal("0")),
+    expect_rendered(ir.binary(BinaryOperator::not_equal, masked, ir.literal(0)),
                     "(value & bit(field)) != 0");
     expect_rendered(
         ir.binary(BinaryOperator::bitwise_and, value, ir.unary(UnaryOperator::bitwise_not, bit)),
@@ -117,7 +117,7 @@ TEST_F(ExprTest, PreservesBitwiseAndShiftPrecedence) {
     auto const combined{ir.binary(BinaryOperator::bitwise_or, value, bit)};
     expect_rendered(ir.binary(BinaryOperator::shift_left,
                               combined,
-                              ir.binary(BinaryOperator::add, ir.named("index"), ir.literal("1"))),
+                              ir.binary(BinaryOperator::add, ir.named("index"), ir.literal(1))),
                     "(value | bit(field)) << index + 1");
     expect_rendered(ir.unary(UnaryOperator::bitwise_not, combined), "~(value | bit(field))");
     expect_rendered(ir.member_call(combined, "test"), "(value | bit(field)).test()");
@@ -178,7 +178,7 @@ TEST_F(ExprTest, CollectsSizeofTypeDependenciesThroughArithmetic) {
         .implementation = {
             .kind = FunctionImplementationKind::body,
             .body = {ir.return_stmt(
-                ir.binary(BinaryOperator::multiply, ir.literal("2"), ir.sizeof_type(element)))}}};
+                ir.binary(BinaryOperator::multiply, ir.literal(2), ir.sizeof_type(element)))}}};
     auto const file{ir.files.add(
         {.path = ir.strings.intern("Example.h"),
          .nodes = {ir.include_dependencies(), ir.definition(ir.add_function(function))}})};
@@ -192,9 +192,9 @@ TEST_F(ExprTest, KeepsRawVerbatimAndProtectsNestedRawOperands) {
     expect_rendered(ir.return_stmt(raw_expr), "return left, right;");
     expect_rendered(ir.call(ir.named("f"), {raw_expr}), "f((left, right))");
     expect_rendered(ir.call(ir.raw_expr("*function_pointer")), "(*function_pointer)()");
-    expect_rendered(ir.binary(BinaryOperator::equal, raw_expr, ir.literal("0")),
+    expect_rendered(ir.binary(BinaryOperator::equal, raw_expr, ir.literal(0)),
                     "(left, right) == 0");
-    expect_rendered(ir.binary(BinaryOperator::equal, ir.literal("0"), raw_expr),
+    expect_rendered(ir.binary(BinaryOperator::equal, ir.literal(0), raw_expr),
                     "0 == (left, right)");
     expect_rendered(ir.static_cast_expr(types.std.int_, raw_expr),
                     "static_cast<int>((left, right))");
@@ -208,9 +208,8 @@ TEST_F(ExprTest, RendersMemberAccessAndSubscriptsWithPostfixBinding) {
     expect_rendered(ir.member_call(element, "size"), "other.values[index].size()");
     expect_rendered(ir.subscript(ir.call(ir.named("get_values")), ir.named("index")),
                     "get_values()[index]");
-    expect_rendered(
-        ir.member_call(ir.named("values"), "set", {ir.named("index"), ir.literal("42")}),
-        "values.set(index, 42)");
+    expect_rendered(ir.member_call(ir.named("values"), "set", {ir.named("index"), ir.literal(42)}),
+                    "values.set(index, 42)");
     auto const difference{ir.binary(BinaryOperator::subtract, ir.named("end"), ir.named("count"))};
     expect_rendered(ir.subscript(other_values, difference), "other.values[end - count]");
     expect_rendered(ir.subscript(difference, ir.named("index")), "(end - count)[index]");
@@ -251,7 +250,7 @@ TEST_F(ExprTest, CollectsMemberObjectAndSubscriptIndexDependencies) {
                      ir.call(ir.named("get_index", {index})))};
     EXPECT_EQ(collected_dependencies(ir, expression),
               (std::vector<TypeDependencyId>{object, index}));
-    EXPECT_EQ(collected_dependencies(ir, ir.assignment(expression, ir.literal("42"))),
+    EXPECT_EQ(collected_dependencies(ir, ir.assignment(expression, ir.literal(42))),
               (std::vector<TypeDependencyId>{object, index}));
 }
 
@@ -314,9 +313,8 @@ TEST_F(ExprTest, PreservesAbsentEmptyAndStructuredInitializers) {
     expect_rendered(ir.instance_member(types.std.int_, ir.strings.intern("value")), "int value;");
     expect_rendered(ir.instance_member(types.std.int_, ir.strings.intern("value"), ir.raw_expr("")),
                     "int value{};");
-    expect_rendered(
-        ir.instance_member(types.std.int_, ir.strings.intern("value"), ir.literal("42")),
-        "int value{42};");
+    expect_rendered(ir.instance_member(types.std.int_, ir.strings.intern("value"), ir.literal(42)),
+                    "int value{42};");
     expect_rendered(ir.variable(types.std.int_, ir.strings.intern("value"), ir.raw_expr("")),
                     "int value{};");
     expect_rendered(
@@ -368,8 +366,8 @@ TEST_F(AstTest, VisitsBothBranchesAndAllSwitchBodiesInOrder) {
         ir.if_stmt(ir.named("ready"), ir.block({ir.raw("then")}), ir.block({ir.raw("else")}))};
     NodeId const cases{
         ir.switch_stmt(ir.named("mode"),
-                       {ir.switch_case(ir.literal("1"), ir.block({ir.raw("one")})),
-                        ir.switch_case(ir.literal("2"), ir.block({ir.raw("two")})),
+                       {ir.switch_case(ir.literal(1), ir.block({ir.raw("one")})),
+                        ir.switch_case(ir.literal(2), ir.block({ir.raw("two")})),
                         ir.switch_case(std::nullopt, ir.block({ir.raw("default")}))})};
     std::vector<std::string> visited;
     auto visit = [&](NodeId const& node) { visited.push_back(CppRenderer{ir}.render(node)); };
@@ -379,12 +377,12 @@ TEST_F(AstTest, VisitsBothBranchesAndAllSwitchBodiesInOrder) {
 }
 
 TEST_F(AstTest, RendersUnbracedSwitchReturnsWithoutChangingOtherCases) {
-    auto const selection{ir.switch_stmt(
-        ir.named("field"),
-        {ir.switch_case(ir.scope_member(ir.types.named("Field"), "value"),
-                        ir.block({ir.return_stmt(ir.named("value"))}),
-                        false),
-         ir.switch_case(std::nullopt, ir.block({ir.return_stmt(ir.literal("0"))}))})};
+    auto const selection{
+        ir.switch_stmt(ir.named("field"),
+                       {ir.switch_case(ir.scope_member(ir.types.named("Field"), "value"),
+                                       ir.block({ir.return_stmt(ir.named("value"))}),
+                                       false),
+                        ir.switch_case(std::nullopt, ir.block({ir.return_stmt(ir.literal(0))}))})};
     EXPECT_EQ(
         CppRenderer{ir}.render(selection),
         "switch (field) {\ncase Field::value:\n    return value;\ndefault: {\n    return 0;\n}\n}");

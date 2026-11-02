@@ -37,7 +37,7 @@ struct TypeReader<codegen_compile_fixture::EmptyPositional>
     : RecordReader<codegen_compile_fixture::EmptyPositional> {
     static void decode(DecodeContext ctx, value_type&) {
         auto const arguments{
-            positional_arguments(ctx.reader, ctx.node, "empty-position", ctx.path, 0)};
+            positional_arguments(ctx.reader, ctx.node, "empty-position", ctx.path, 0ULL)};
 
         if (!arguments) {
             append_errors(ctx.errors, arguments.error());
@@ -52,17 +52,21 @@ struct TypeReader<codegen_compile_fixture::PositionalChild>
     static ReadResult<value_type> construct(DecodeContext ctx) {
         std::optional<decltype(value_type::name)> value_name{};
         std::optional<decltype(value_type::count)> value_count{};
-        auto const arguments{positional_arguments(ctx.reader, ctx.node, "position", ctx.path, 2)};
+        auto const arguments{
+            positional_arguments(ctx.reader, ctx.node, "position", ctx.path, 2ULL)};
 
         if (!arguments) {
             append_errors(ctx.errors, arguments.error());
             return std::unexpected{std::move(ctx.errors)};
         }
         FieldReader{
-            {ctx.reader, (*arguments)[0], std::string{ctx.path} + ".name", ctx.mode, ctx.errors}}
+            {ctx.reader, (*arguments)[0ULL], std::string{ctx.path} + ".name", ctx.mode, ctx.errors}}
             .construct(value_name);
-        FieldReader{
-            {ctx.reader, (*arguments)[1], std::string{ctx.path} + ".count", ctx.mode, ctx.errors}}
+        FieldReader{{ctx.reader,
+                     (*arguments)[1ULL],
+                     std::string{ctx.path} + ".count",
+                     ctx.mode,
+                     ctx.errors}}
             .construct(value_count, constraints::nonnegative);
         if (!ctx.errors.empty()) {
             return std::unexpected{std::move(ctx.errors)};
@@ -74,18 +78,23 @@ struct TypeReader<codegen_compile_fixture::PositionalChild>
     }
 
     static void decode(DecodeContext ctx, value_type& result) {
-        auto const arguments{positional_arguments(ctx.reader, ctx.node, "position", ctx.path, 2)};
+        auto const arguments{
+            positional_arguments(ctx.reader, ctx.node, "position", ctx.path, 2ULL)};
 
         if (!arguments) {
             append_errors(ctx.errors, arguments.error());
             return;
         }
-        FieldReader{
-            {ctx.reader, (*arguments)[0], std::string{ctx.path} + ".name", ctx.mode, ctx.errors}}(
-            result.name);
-        FieldReader{
-            {ctx.reader, (*arguments)[1], std::string{ctx.path} + ".count", ctx.mode, ctx.errors}}(
-            result.count, constraints::nonnegative);
+        FieldReader{{ctx.reader,
+                     (*arguments)[0ULL],
+                     std::string{ctx.path} + ".name",
+                     ctx.mode,
+                     ctx.errors}}(result.name);
+        FieldReader{{ctx.reader,
+                     (*arguments)[1ULL],
+                     std::string{ctx.path} + ".count",
+                     ctx.mode,
+                     ctx.errors}}(result.count, constraints::nonnegative);
     }
 };
 

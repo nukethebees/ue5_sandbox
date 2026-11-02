@@ -26,7 +26,7 @@ enum class SettingControlKind : SettingControlKindUnderlying {
     try_parse_serialized_setting_control_kind(std::string_view const value) noexcept
     -> std::optional<SettingControlKind> {
     switch (value.size()) {
-        case 6: {
+        case 6ULL: {
             if (value == "toggle") {
                 return SettingControlKind::toggle;
             }
@@ -38,13 +38,13 @@ enum class SettingControlKind : SettingControlKindUnderlying {
             }
             return std::nullopt;
         }
-        case 11: {
+        case 11ULL: {
             if (value == "float-range") {
                 return SettingControlKind::float_range;
             }
             return std::nullopt;
         }
-        case 13: {
+        case 13ULL: {
             if (value == "integer-range") {
                 return SettingControlKind::integer_range;
             }

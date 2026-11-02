@@ -70,15 +70,11 @@ class StaticTableLowering : public CppIRBuilder {
         auto const columns{ctx.declarations.items(tables.columns[table_row])};
         auto const int32_type{intern_type("int32", {dependency("int32", "CoreMinimal.h")})};
         auto children{node_list()};
-        children.add(constexpr_member(
-                         int32_type, store_text("num_rows"), literal(std::to_string(row_count))),
-                     2);
+        children.add(constexpr_member(int32_type, store_text("num_rows"), literal(row_count)), 2);
 
         for (std::size_t index{0}; index < row_count; ++index) {
             auto const name{ctx.text(row_schemas.name[row_schemas.index(rows[index])])};
-            children.add(constexpr_member(int32_type,
-                                          store_text(name + "_index"),
-                                          literal(std::to_string(index))),
+            children.add(constexpr_member(int32_type, store_text(name + "_index"), literal(index)),
                          index + 1 < row_count ? 1 : 2);
         }
 

@@ -38,16 +38,16 @@ struct Layout
                                               std::optional<long double>,
                                               std::optional<long double>,
                                               std::optional<long double>> {
-    static constexpr std::size_t analysis_column{0};
-    static constexpr std::size_t entries_column{1};
-    static constexpr std::size_t element_count_column{2};
-    static constexpr std::size_t total_weight_column{3};
-    static constexpr std::size_t total_extent_bytes_column{4};
-    static constexpr std::size_t total_slack_bytes_column{5};
-    static constexpr std::size_t expected_extent_bytes_column{6};
-    static constexpr std::size_t expected_slack_bytes_column{7};
-    static constexpr std::size_t expected_selected_extent_bytes_column{8};
-    static constexpr std::size_t expected_selected_slack_bytes_column{9};
+    static constexpr std::size_t analysis_column{0ULL};
+    static constexpr std::size_t entries_column{1ULL};
+    static constexpr std::size_t element_count_column{2ULL};
+    static constexpr std::size_t total_weight_column{3ULL};
+    static constexpr std::size_t total_extent_bytes_column{4ULL};
+    static constexpr std::size_t total_slack_bytes_column{5ULL};
+    static constexpr std::size_t expected_extent_bytes_column{6ULL};
+    static constexpr std::size_t expected_slack_bytes_column{7ULL};
+    static constexpr std::size_t expected_selected_extent_bytes_column{8ULL};
+    static constexpr std::size_t expected_selected_slack_bytes_column{9ULL};
 };
 
 /* **************************************** */

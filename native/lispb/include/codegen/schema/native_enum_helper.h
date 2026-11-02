@@ -31,13 +31,13 @@ using ioj::to_serialized_string;
     try_parse_serialized_native_enum_helper(std::string_view const value) noexcept
     -> std::optional<NativeEnumHelper> {
     switch (value.size()) {
-        case 6: {
+        case 6ULL: {
             if (value == "traits") {
                 return NativeEnumHelper::traits;
             }
             return std::nullopt;
         }
-        case 9: {
+        case 9ULL: {
             if (value == "to-string") {
                 return NativeEnumHelper::to_string;
             }
@@ -49,13 +49,13 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 17: {
+        case 17ULL: {
             if (value == "to-display-string") {
                 return NativeEnumHelper::to_display_string;
             }
             return std::nullopt;
         }
-        case 20: {
+        case 20ULL: {
             if (value == "to-serialized-string") {
                 return NativeEnumHelper::to_serialized_string;
             }
@@ -79,8 +79,8 @@ inline constexpr MinMax<lispb::codegen::NativeEnumHelper>
                                                  lispb::codegen::NativeEnumHelper::formatter};
 
 template <>
-inline constexpr auto enum_strings<lispb::codegen::NativeEnumHelper, Serialized>{
-    PackedStrings{"to-string\000try-parse\000to-display-string\000to-serialized-string\000try-"
-                  "parse-serialized\000traits\000formatter",
-                  std::array<std::uint8_t, 8>{0, 10, 20, 38, 59, 80, 87, 97}}};
+inline constexpr auto enum_strings<lispb::codegen::NativeEnumHelper, Serialized>{PackedStrings{
+    "to-string\000try-parse\000to-display-string\000to-serialized-string\000try-parse-"
+    "serialized\000traits\000formatter",
+    std::array<std::uint8_t, 8>{0ULL, 10ULL, 20ULL, 38ULL, 59ULL, 80ULL, 87ULL, 97ULL}}};
 } // namespace ioj

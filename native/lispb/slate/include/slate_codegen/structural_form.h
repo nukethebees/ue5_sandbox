@@ -37,14 +37,14 @@ using ioj::to_serialized_string;
     try_parse_serialized_structural_form(std::string_view const value) noexcept
     -> std::optional<StructuralForm> {
     switch (value.size()) {
-        case 3: {
+        case 3ULL: {
             if (value == "let") {
                 return StructuralForm::let_;
             }
             return std::nullopt;
         }
-        case 4: {
-            switch (static_cast<unsigned char>(value[0])) {
+        case 4ULL: {
+            switch (static_cast<unsigned char>(value[0ULL])) {
                 case 'a': {
                     if (value == "auto") {
                         return StructuralForm::auto_;
@@ -86,7 +86,7 @@ using ioj::to_serialized_string;
                 }
             }
         }
-        case 6: {
+        case 6ULL: {
             if (value == "assign") {
                 return StructuralForm::assign;
             }
@@ -95,7 +95,7 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 8: {
+        case 8ULL: {
             if (value == "function") {
                 return StructuralForm::function;
             }
@@ -104,13 +104,13 @@ using ioj::to_serialized_string;
             }
             return std::nullopt;
         }
-        case 12: {
+        case 12ULL: {
             if (value == "widget-class") {
                 return StructuralForm::widget_class;
             }
             return std::nullopt;
         }
-        case 14: {
+        case 14ULL: {
             if (value == "widget-library") {
                 return StructuralForm::widget_library;
             }
@@ -132,9 +132,22 @@ inline constexpr MinMax<slate_codegen::detail::StructuralForm>
         slate_codegen::detail::StructuralForm::params};
 
 template <>
-inline constexpr auto enum_strings<slate_codegen::detail::StructuralForm, Serialized>{PackedStrings{
-    "widget-class\000widget-"
-    "library\000function\000vbox\000hbox\000slot\000auto\000fill\000assign\000existing\000call\000l"
-    "et\000params",
-    std::array<std::uint8_t, 14>{0, 13, 28, 37, 42, 47, 52, 57, 62, 69, 78, 83, 87, 94}}};
+inline constexpr auto enum_strings<slate_codegen::detail::StructuralForm, Serialized>{
+    PackedStrings{"widget-class\000widget-"
+                  "library\000function\000vbox\000hbox\000slot\000auto\000fill\000assign\000existin"
+                  "g\000call\000let\000params",
+                  std::array<std::uint8_t, 14>{0ULL,
+                                               13ULL,
+                                               28ULL,
+                                               37ULL,
+                                               42ULL,
+                                               47ULL,
+                                               52ULL,
+                                               57ULL,
+                                               62ULL,
+                                               69ULL,
+                                               78ULL,
+                                               83ULL,
+                                               87ULL,
+                                               94ULL}}};
 } // namespace ioj

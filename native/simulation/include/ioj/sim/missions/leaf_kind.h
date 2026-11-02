@@ -40,6 +40,6 @@ struct EnumTraits<sim::LeafKind> {
 
 template <>
 [[nodiscard]] constexpr auto enum_count<sim::LeafKind>() noexcept -> std::size_t {
-    return 5;
+    return 5ULL;
 }
 } // namespace ioj

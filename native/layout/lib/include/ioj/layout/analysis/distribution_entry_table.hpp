@@ -34,13 +34,13 @@ struct Layout
                                               std::optional<std::uint64_t>,
                                               std::optional<std::uint64_t>,
                                               std::optional<std::uint64_t>> {
-    static constexpr std::size_t component_column{0};
-    static constexpr std::size_t value_column{1};
-    static constexpr std::size_t weight_column{2};
-    static constexpr std::size_t extent_bytes_column{3};
-    static constexpr std::size_t slack_bytes_column{4};
-    static constexpr std::size_t weighted_extent_bytes_column{5};
-    static constexpr std::size_t weighted_slack_bytes_column{6};
+    static constexpr std::size_t component_column{0ULL};
+    static constexpr std::size_t value_column{1ULL};
+    static constexpr std::size_t weight_column{2ULL};
+    static constexpr std::size_t extent_bytes_column{3ULL};
+    static constexpr std::size_t slack_bytes_column{4ULL};
+    static constexpr std::size_t weighted_extent_bytes_column{5ULL};
+    static constexpr std::size_t weighted_slack_bytes_column{6ULL};
 };
 
 /* **************************************** */

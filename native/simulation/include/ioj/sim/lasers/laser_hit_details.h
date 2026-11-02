@@ -29,13 +29,13 @@ struct ResolvedConstView;
 struct Layout
     : single_allocation_layout::
           ColumnLayouts<float, float, float, float, float, float, LaserSource> {
-    static constexpr std::size_t locations_xs_column{0};
-    static constexpr std::size_t locations_ys_column{1};
-    static constexpr std::size_t locations_zs_column{2};
-    static constexpr std::size_t emission_directions_xs_column{3};
-    static constexpr std::size_t emission_directions_ys_column{4};
-    static constexpr std::size_t emission_directions_zs_column{5};
-    static constexpr std::size_t sources_column{6};
+    static constexpr std::size_t locations_xs_column{0ULL};
+    static constexpr std::size_t locations_ys_column{1ULL};
+    static constexpr std::size_t locations_zs_column{2ULL};
+    static constexpr std::size_t emission_directions_xs_column{3ULL};
+    static constexpr std::size_t emission_directions_ys_column{4ULL};
+    static constexpr std::size_t emission_directions_zs_column{5ULL};
+    static constexpr std::size_t sources_column{6ULL};
 };
 
 /* **************************************** */

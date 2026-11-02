@@ -180,12 +180,13 @@ namespace ioj {
 template <>
 [[nodiscard]] constexpr auto enum_count<levels::authoring::EntityInput::Field>() noexcept
     -> std::size_t {
-    return 10;
+    return 10ULL;
 }
 
 template <>
 inline constexpr auto enum_strings<levels::authoring::EntityInput::Field, Name>{
     PackedStrings{"id\000archetype\000team\000position\000rotation\000spawn_at\000health\000laser_"
                   "damage\000initial_spawn_delay\000spawn_cooldown",
-                  std::array<std::uint8_t, 11>{0, 3, 13, 18, 27, 36, 45, 52, 65, 85, 100}}};
+                  std::array<std::uint8_t, 11>{
+                      0ULL, 3ULL, 13ULL, 18ULL, 27ULL, 36ULL, 45ULL, 52ULL, 65ULL, 85ULL, 100ULL}}};
 } // namespace ioj

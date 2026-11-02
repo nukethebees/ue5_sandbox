@@ -27,12 +27,12 @@ struct ResolvedConstView;
 // Layout
 /* **************************************** */
 struct Layout : single_allocation_layout::ColumnLayouts<float, float, float, float, float, float> {
-    static constexpr std::size_t starts_xs_column{0};
-    static constexpr std::size_t starts_ys_column{1};
-    static constexpr std::size_t starts_zs_column{2};
-    static constexpr std::size_t ends_xs_column{3};
-    static constexpr std::size_t ends_ys_column{4};
-    static constexpr std::size_t ends_zs_column{5};
+    static constexpr std::size_t starts_xs_column{0ULL};
+    static constexpr std::size_t starts_ys_column{1ULL};
+    static constexpr std::size_t starts_zs_column{2ULL};
+    static constexpr std::size_t ends_xs_column{3ULL};
+    static constexpr std::size_t ends_ys_column{4ULL};
+    static constexpr std::size_t ends_zs_column{5ULL};
 };
 
 /* **************************************** */
@@ -145,10 +145,10 @@ struct ViewImpl : soa_storage_detail::StridedViewBase<float, Const> {
         requires Enabled
         : Base{other} {}
     auto view_starts() const -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->column(0).data(), this->byte_stride(), this->num()};
+        return {this->column(0LL).data(), this->byte_stride(), this->num()};
     }
     auto view_ends() const -> std::conditional_t<Const, vectors3f::ConstView, vectors3f::View> {
-        return {this->column(3).data(), this->byte_stride(), this->num()};
+        return {this->column(3LL).data(), this->byte_stride(), this->num()};
     }
 };
 struct ConstView : ViewImpl<true> {

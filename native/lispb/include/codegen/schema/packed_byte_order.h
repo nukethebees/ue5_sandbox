@@ -40,5 +40,5 @@ inline constexpr MinMax<lispb::codegen::PackedByteOrder>
 
 template <>
 inline constexpr auto enum_strings<lispb::codegen::PackedByteOrder, Serialized>{
-    PackedStrings{"little\000big", std::array<std::uint8_t, 3>{0, 7, 11}}};
+    PackedStrings{"little\000big", std::array<std::uint8_t, 3>{0ULL, 7ULL, 11ULL}}};
 } // namespace ioj

@@ -13,7 +13,7 @@ namespace ioj::sim::tasks {
 struct TaskId;
 
 namespace detail {
-inline constexpr std::uint32_t task_id_default_raw_value{4294967295};
+inline constexpr std::uint32_t task_id_default_raw_value{4294967295ULL};
 
 using TaskIdBase =
     PackedValueBase<TaskId, PackedStorage<std::uint32_t, 32>{task_id_default_raw_value}>;

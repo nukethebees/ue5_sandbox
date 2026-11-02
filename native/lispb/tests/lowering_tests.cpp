@@ -86,7 +86,7 @@ TEST(Lowering, PackedEnumOffsetsUseTheSmallestStorageIncludingTheSentinel) {
         auto const bits{length < 255 ? 8 : length < 65535 ? 16 : 32};
         EXPECT_NE(files.front().content.find(std::format("std::array<std::uint{}_t, 2>", bits)),
                   std::string::npos);
-        EXPECT_NE(files.front().content.find(std::format("{{0, {}}}", length + 1)),
+        EXPECT_NE(files.front().content.find(std::format("{{0ULL, {}ULL}}", length + 1)),
                   std::string::npos);
     }
 }
@@ -683,7 +683,7 @@ TEST(Lowering, EmitsCountsForEnumArrays) {
     expect_contains_all(
         output.header,
         {"#include \"ioj/enum_traits.h\"",
-         "constexpr auto enum_count<::EMode>() noexcept -> std::size_t {\n    return 2;\n}"});
+         "constexpr auto enum_count<::EMode>() noexcept -> std::size_t {\n    return 2ULL;\n}"});
     EXPECT_FALSE(output.header.contains("COUNT"));
 }
 
@@ -730,7 +730,7 @@ TEST(Lowering, EmitsCountsForReflectedEnumArrays) {
 
     expect_contains_all(output.header,
                         {"#include \"ioj/enum_traits.h\"",
-                         "enum_count<::EMode>() noexcept -> std::size_t {\n    return 2;\n}"});
+                         "enum_count<::EMode>() noexcept -> std::size_t {\n    return 2ULL;\n}"});
 }
 
 TEST(Lowering, EnumDisplayLookupWithoutOverridesFallsBackDirectly) {
@@ -892,7 +892,7 @@ TEST(Lowering, EnumCountsUseMlNamespaceForQualifiedHeaderOnlyEnums) {
     expect_contains_all(
         files.front().content,
         {"namespace ioj {",
-         "enum_count<project::states::EState>() noexcept -> std::size_t {\n    return 1;\n}"});
+         "enum_count<project::states::EState>() noexcept -> std::size_t {\n    return 1ULL;\n}"});
 }
 
 TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
