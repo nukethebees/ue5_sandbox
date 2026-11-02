@@ -294,7 +294,7 @@ void lower_record_reader(LoweringContext& context,
     emission.reader_includes.insert(
         emission.reader_includes.end(), includes.begin(), includes.end());
     auto const add_function{[&](std::string const& method,
-                                std::string const& return_type,
+                                CppTypeId const return_type,
                                 std::vector<FunctionParameterId> const& parameters,
                                 Nodes body) {
         auto const function{ir.function(method, return_type)};
@@ -311,14 +311,17 @@ void lower_record_reader(LoweringContext& context,
             return !members.initializer[index].has_value();
         })) {
         add_function("construct",
-                     "ReadResult<value_type>",
+                     ir.types.template_type(ir.types.named("ioj::s7::ReadResult"),
+                                            {ir.types.named("value_type")}),
                      read_parameters,
                      record_reader::fields_body(context, record, true));
     }
     auto decode_parameters{read_parameters};
     decode_parameters.push_back(ir.parameter("value_type&", empty ? "" : "result"));
-    add_function(
-        "decode", "void", decode_parameters, record_reader::fields_body(context, record, false));
+    add_function("decode",
+                 ir.types.intern("void"),
+                 decode_parameters,
+                 record_reader::fields_body(context, record, false));
     if (!records.s7_positional[row]) {
         decls.add(ir.access(Access::private_), 1);
     }

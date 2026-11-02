@@ -180,8 +180,9 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
     auto const& soas{context.declarations.soas};
     auto const owner_name{soas.name[soas.index(model_store.schema[model_store.index(model)])]};
     auto& ir{context.ir};
-    auto const copy_parameter{ir.parameter(context.text(owner_name) + " const&", "")};
-    auto const move_parameter{ir.parameter(context.text(owner_name) + "&&", "other")};
+    auto const owner_type{ir.types.named(context.text(owner_name))};
+    auto const copy_parameter{ir.parameter(ir.types.decorate(owner_type, "", " const&"))};
+    auto const move_parameter{ir.parameter(ir.types.decorate(owner_type, "", "&&"), "other")};
     auto const free_data{ir.call(
         ir.type_reference(ir.types.decorate(ir.types.named("Operations"), "", "::release_storage")),
         {ir.unary(UnaryOperator::dereference, ir.named("this"))})};
@@ -221,7 +222,7 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
     auto const copy_assignment{ir.function("operator=", "auto")};
     ir.set_function_parameters(copy_assignment, {copy_parameter});
     ir.set_function_return_type(
-        copy_assignment, ir.types.intern(context.text(owner_name) + "&"), ReturnSyntax::trailing);
+        copy_assignment, ir.types.decorate(owner_type, "", "&"), ReturnSyntax::trailing);
     ir.set_function_deleted(copy_assignment);
     auto const move_constructor{ir.constructor(owner_name)};
     ir.set_function_parameters(move_constructor, {move_parameter});
@@ -242,7 +243,7 @@ auto storage_lifetime_nodes(LoweringContext& context, SingleAllocationModelId mo
             ir.type_reference(ir.types.decorate(ir.types.named("Operations"), "", "::move_assign")),
             {ir.unary(UnaryOperator::dereference, ir.named("this")), ir.named("other")}))});
     ir.set_function_return_type(
-        move_assignment, ir.types.intern(context.text(owner_name) + "&"), ReturnSyntax::trailing);
+        move_assignment, ir.types.decorate(owner_type, "", "&"), ReturnSyntax::trailing);
 
     NodeListBuilder result{ir};
     result.append(section_header(context, "Lifetime"))
@@ -275,7 +276,11 @@ auto data_pointers_node(LoweringContext& context, SingleAllocationModelId model)
         ir.template_declaration({ir.type_template_parameter(ir.strings.intern("T"))})));
     for (auto const column : context.ir.lowering.items(model_store.columns[model_store_index])) {
         children.new_lines(1).add(ir.instance_member(
-            ir.types.decorate(column_store.type[column_store.index(column)], "Element<", ">*"),
+            ir.types.decorate(
+                ir.types.template_type(ir.types.named("Element"),
+                                       {column_store.type[column_store.index(column)]}),
+                "",
+                "*"),
             column_store.flattened_identifier[column_store.index(column)],
             ir.init_list({})));
     }
@@ -491,8 +496,13 @@ auto emit_resolved_views(LoweringContext& context,
                               ir.types.named(scope + "::Schema"))}));
 
     auto const conversion{ir.constructor(ir.strings.intern(implementation))};
-    ir.set_function_parameters(conversion,
-                               {ir.parameter(implementation + "<false> const&", "other")});
+    ir.set_function_parameters(
+        conversion,
+        {ir.parameter(ir.types.decorate(ir.types.template_type(ir.types.named(implementation),
+                                                               {ir.types.intern("false")}),
+                                        "",
+                                        " const&"),
+                      "other")});
     ir.set_function_template(
         conversion,
         ir.template_declaration({ir.value_template_parameter(
@@ -519,7 +529,8 @@ auto emit_resolved_views(LoweringContext& context,
             schema,
             receiver,
             name,
-            ir.types.intern(implementation + (is_const ? "<true>" : "<false>")))};
+            ir.types.template_type(ir.types.named(implementation),
+                                   {ir.types.intern(is_const ? "true" : "false")}))};
         NodeListBuilder wrapper{ir};
         wrapper.add(ir.using_declaration(ir.strings.intern("Base"), base))
             .new_lines(1)
@@ -595,7 +606,13 @@ auto compact_view_node(LoweringContext& context, SingleAllocationModelId model) 
         children.new_lines(1).add(inline_function(context, constructor));
     }
     auto const conversion{ir.constructor(ir.strings.intern("ViewImpl"))};
-    ir.set_function_parameters(conversion, {ir.parameter("ViewImpl<false> const&", "other")});
+    ir.set_function_parameters(
+        conversion,
+        {ir.parameter(ir.types.decorate(ir.types.template_type(ir.types.named("ViewImpl"),
+                                                               {ir.types.intern("false")}),
+                                        "",
+                                        " const&"),
+                      "other")});
     ir.set_function_body(
         conversion, {}, {ir.member_initializer(ir.strings.intern("Base"), ir.named("other"))});
     ir.set_function_template(
@@ -735,12 +752,13 @@ auto emit_single_allocation_views(LoweringContext& context,
     for (bool const is_const : {true, false}) {
         std::string const name{is_const ? "ConstView" : "View"};
         auto const receiver{is_const ? SoaReceiver::const_view : SoaReceiver::mutable_view};
-        auto const base{
-            soa_row_operations(context,
-                               schema,
-                               receiver,
-                               name,
-                               ir.types.intern(is_const ? "ViewImpl<true>" : "ViewImpl<false>"))};
+        auto const base{soa_row_operations(
+            context,
+            schema,
+            receiver,
+            name,
+            ir.types.template_type(ir.types.named("ViewImpl"),
+                                   {ir.types.intern(is_const ? "true" : "false")}))};
         NodeListBuilder children{ir};
         children.add(ir.using_declaration(ir.strings.intern("Base"), base))
             .new_lines(1)

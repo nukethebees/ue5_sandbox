@@ -109,7 +109,9 @@ auto lookup_function(LoweringContext& context,
     ir.set_function_body(function, body);
     ir.set_function_return_type(
         function,
-        ir.types.intern("TCHAR const*", {ir.types.dependency("TCHAR const*", "CoreMinimal.h")}),
+        ir.types.decorate(ir.types.named("TCHAR", {ir.types.dependency("TCHAR", "CoreMinimal.h")}),
+                          "",
+                          " const*"),
         ReturnSyntax::trailing);
     return function;
 }
@@ -268,10 +270,13 @@ auto serialized_parser(LoweringContext& context,
     auto const created_function{ir.function("try_parse_serialized", "auto")};
     ir.set_function_parameters(
         created_function,
-        {ir.parameter(ir.types.intern("FStringView const",
-                                      {ir.types.dependency("FStringView const", "CoreMinimal.h")}),
+        {ir.parameter(ir.types.decorate(
+                          ir.types.named("FStringView",
+                                         {ir.types.dependency("FStringView", "CoreMinimal.h")}),
+                          "",
+                          " const"),
                       "value"),
-         ir.parameter(enum_name + "&", "result")});
+         ir.parameter(ir.types.decorate(ir.types.named(enum_name), "", "&"), "result")});
     ir.set_function_body(created_function, body.build());
     ir.set_function_return_type(created_function, ir.types.intern("bool"), ReturnSyntax::trailing);
     ir.set_function_export_specifier(created_function, enums.export_specifier[schema]);
@@ -307,40 +312,43 @@ auto conversion_function(LoweringContext& context,
             context, schema, serialized ? "serialized_name" : (display ? "display_name" : "name"))),
         {ir.named("value")})};
     auto const result{ir.function(StringId{}, ir.types.intern("auto"))};
-    ir.set_function_parameters(result, {ir.parameter(parameter_type + " const", "value")});
+    ir.set_function_parameters(
+        result,
+        {ir.parameter(ir.types.decorate(ir.types.named(parameter_type), "", " const"), "value")});
     ir.set_function_body(result, {ir.return_stmt(lookup)});
     ir.set_function_export_specifier(result, enums.export_specifier[schema]);
-    auto configure_result =
-        [&](std::string_view name, std::string_view type_name, bool construct = false) {
-            auto const type{
-                ir.types.intern(type_name, {ir.types.dependency(type_name, "CoreMinimal.h")})};
-            ir.set_function_name(result, ir.strings.intern(name));
-            ir.set_function_return_type(result, type, ReturnSyntax::trailing);
-            if (construct) {
-                ir.set_function_body(result, {ir.return_stmt(ir.init_list({lookup}, type))});
-            }
-        };
+    auto configure_result = [&](std::string_view name, CppTypeId type, bool construct = false) {
+        ir.set_function_name(result, ir.strings.intern(name));
+        ir.set_function_return_type(result, type, ReturnSyntax::trailing);
+        if (construct) {
+            ir.set_function_body(result, {ir.return_stmt(ir.init_list({lookup}, type))});
+        }
+    };
+    auto unreal_type = [&](std::string_view name) {
+        return ir.types.named(name, {ir.types.dependency(name, "CoreMinimal.h")});
+    };
+    auto const text_pointer{ir.types.decorate(unreal_type("TCHAR"), "", " const*")};
     switch (conversion) {
         case EnumConversion::lex_to_string:
-            configure_result("LexToString", "TCHAR const*");
+            configure_result("LexToString", text_pointer);
             break;
         case EnumConversion::string_view:
-            configure_result("to_string_view", "FStringView", true);
+            configure_result("to_string_view", unreal_type("FStringView"), true);
             break;
         case EnumConversion::string:
-            configure_result("to_string", "FString", true);
+            configure_result("to_string", unreal_type("FString"), true);
             break;
         case EnumConversion::lex_to_display_string:
-            configure_result("LexToDisplayString", "TCHAR const*");
+            configure_result("LexToDisplayString", text_pointer);
             break;
         case EnumConversion::display_string_view:
-            configure_result("to_display_string_view", "FStringView", true);
+            configure_result("to_display_string_view", unreal_type("FStringView"), true);
             break;
         case EnumConversion::display_string:
-            configure_result("to_display_string", "FString", true);
+            configure_result("to_display_string", unreal_type("FString"), true);
             break;
         case EnumConversion::lex_to_serialized_string:
-            configure_result("LexToSerializedString", "TCHAR const*");
+            configure_result("LexToSerializedString", text_pointer);
             break;
         case EnumConversion::try_parse_serialized:
             break;

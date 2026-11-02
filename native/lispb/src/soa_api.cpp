@@ -398,7 +398,8 @@ auto lower_soa_api(LoweringContext& parent_context,
             expression += constructor ? ")" : "}";
         }
         auto const function{ir.function("operator[]", "auto")};
-        ir.set_function_parameters(function, {ir.parameter("std::uint32_t", "index")});
+        ir.set_function_parameters(function,
+                                   {ir.parameter(ir.types.named("std::uint32_t"), "index")});
         ir.set_function_body(function,
                              {ir.raw("assert(index < num());\nreturn " + expression + ";")});
         ir.set_function_return_type(
